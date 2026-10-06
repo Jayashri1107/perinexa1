@@ -1,20 +1,40 @@
-// The frame of every signed-in page: menu on the left, the person (and anything extra) at the top, the page in the middle.
-import { KeyRound, LogOut, Plus } from 'lucide-react';
+// The frame of every signed-in page (styled like Perinexa): the sidebar with the logo, a ☰ button that collapses it to
+// an icon rail (the choice is remembered in this browser), each menu item as an icon tile; the person at the top; the
+// page in the middle.
+import { KeyRound, LogOut, Menu } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import appIcon from '../assets/brand/perinexa-app-icon.png';
+import logo from '../assets/brand/perinexa-logo.png';
+import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { useAppConfig } from '../context/AppConfigContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
+const COLLAPSE_KEY = 'perinexa1:sidebarCollapsed';
+
+// Browser storage may be blocked (private windows): the sidebar then simply starts open.
+function readCollapsed() {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function saveCollapsed(value) {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, value ? '1' : '0');
+  } catch {
+    /* not remembered – fine */
+  }
+}
+
+// The logo on light pages (login, password): the full-colour Perinexa logo.
 export function BrandMark({ size = 'md', subtitle }) {
   const { app } = useAppConfig();
   return (
     <div className={`brand brand-${size}`}>
-      <span className="brand-icon" aria-hidden>
-        <Plus size={size === 'lg' ? 26 : 18} strokeWidth={3} />
-      </span>
-      <span>
-        <span className="brand-name">{app.name}</span>
-        <span className="brand-tagline">{subtitle ?? app.tagline}</span>
-      </span>
+      <img className="brand-logo" src={logo} alt={app.name} width={size === 'lg' ? 196 : 160} height={size === 'lg' ? 48 : 39} />
+      {subtitle && <span className="brand-tagline">{subtitle}</span>}
     </div>
   );
 }
@@ -22,28 +42,55 @@ export function BrandMark({ size = 'md', subtitle }) {
 // contentKey: when it changes (another hospital chosen), the page starts fresh and loads its data again.
 export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, contentKey, banner }) {
   const { user, logout } = useAuth();
+  const { app } = useAppConfig();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const initials = user.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
+  useEffect(() => saveCollapsed(collapsed), [collapsed]);
+
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <BrandMark subtitle={brandSubtitle} />
-        <nav aria-label="Main">
+    <div className={`shell${collapsed ? ' collapsed' : ''}`}>
+      <aside className="sidebar" aria-label="Main navigation">
+        <div className="sb-brand">
+          <button
+            type="button"
+            className="sb-toggle"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+            aria-expanded={!collapsed}
+            aria-controls="main-menu"
+            title={collapsed ? 'Expand menu' : 'Collapse menu'}
+          >
+            <Menu size={22} aria-hidden />
+          </button>
+          {collapsed ? (
+            <img className="sb-appicon" src={appIcon} alt={app.name} width="40" height="40" />
+          ) : (
+            <img className="sb-logo" src={logoReversed} alt={app.name} width="150" height="37" />
+          )}
+        </div>
+        {!collapsed && brandSubtitle && <div className="sb-subtitle">{brandSubtitle}</div>}
+
+        <nav id="main-menu" aria-label="Main">
           {navigation.map(({ to, label, icon: Icon, end, activeFor = [] }) => (
             <NavLink
               key={label}
               to={to}
               end={end}
+              title={collapsed ? label : undefined}
+              aria-label={collapsed ? label : undefined}
               className={({ isActive }) => `nav-link${isActive || activeFor.some((p) => pathname.startsWith(p)) ? ' active' : ''}`}
             >
-              <Icon size={18} aria-hidden />
-              <span>{label}</span>
+              <span className="sb-tile" aria-hidden>
+                <Icon size={20} />
+              </span>
+              <span className="sb-label">{label}</span>
             </NavLink>
           ))}
         </nav>
-        {sidebarFoot && <div className="sidebar-foot">{sidebarFoot}</div>}
+        {!collapsed && sidebarFoot && <div className="sidebar-foot">{sidebarFoot}</div>}
       </aside>
 
       <div className="main">

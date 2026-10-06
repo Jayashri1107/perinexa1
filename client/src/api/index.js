@@ -81,6 +81,8 @@ export const auditApi = {
 export const todayApi = { get: () => http.get('/hospital/today') };
 
 export const platformAnalyticsApi = { get: () => http.get('/platform-analytics') };
+export const platformBillingApi = { get: () => http.get('/platform-billing') };
+export const platformPharmacyApi = { get: () => http.get('/platform-pharmacy') };
 
 // Module 3 – patients
 const PATIENTS = '/hospital/patients';

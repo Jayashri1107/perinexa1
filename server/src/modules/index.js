@@ -25,6 +25,8 @@ import patientRoutes from './patients/patient.routes.js';
 import pharmacyReportRoutes from './pharmacyReports/pharmacyReports.routes.js';
 import pharmacySettingsRoutes from './pharmacySettings/pharmacySettings.routes.js';
 import platformAnalyticsRoutes from './platformAnalytics/platformAnalytics.routes.js';
+import platformBillingRoutes from './platformBilling/platformBilling.routes.js';
+import platformPharmacyRoutes from './platformPharmacy/platformPharmacy.routes.js';
 import priceListRoutes from './priceList/priceList.routes.js';
 import purchaseRoutes from './purchases/purchase.routes.js';
 import saleRoutes from './sales/sale.routes.js';
@@ -45,6 +47,8 @@ export const modules = [
   // Module 1 – main admin (super admin)
   { path: '/dashboard', access: 'superAdmin', router: dashboardRoutes },
   { path: '/platform-analytics', access: 'superAdmin', router: platformAnalyticsRoutes },
+  { path: '/platform-billing', access: 'superAdmin', router: platformBillingRoutes },
+  { path: '/platform-pharmacy', access: 'superAdmin', router: platformPharmacyRoutes },
   { path: '/hospitals/:hospitalId/members', access: 'superAdmin', router: memberRoutes },
   { path: '/hospitals', access: 'superAdmin', router: hospitalRoutes },
   { path: '/users', access: 'superAdmin', router: userRoutes },

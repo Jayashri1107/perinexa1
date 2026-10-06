@@ -36,6 +36,8 @@ export const ADMIN_NAVIGATION = [
   { to: '/analytics', label: 'Analytics', icon: ChartColumn },
   { to: '/hospitals', label: 'Hospitals', icon: Building2 },
   { to: '/users', label: 'Users & access', icon: Users },
+  { to: '/billing', label: 'Billing', icon: Receipt },
+  { to: '/pharmacy', label: 'Pharmacy', icon: Pill },
   { to: '/audit', label: 'Audit & compliance', icon: ShieldCheck },
   { to: '/master-data', label: 'Master data', icon: Database },
   MY_SETTINGS,

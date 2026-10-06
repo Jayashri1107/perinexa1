@@ -42,6 +42,8 @@ import { SalesPage } from './pages/pharmacy/SalesPage.jsx';
 import { SellPage } from './pages/pharmacy/SellPage.jsx';
 import { StockPage } from './pages/pharmacy/StockPage.jsx';
 import { SuppliersPage } from './pages/pharmacy/SuppliersPage.jsx';
+import { PlatformBillingPage } from './pages/platform/PlatformBillingPage.jsx';
+import { PlatformPharmacyPage } from './pages/platform/PlatformPharmacyPage.jsx';
 import { BillPrintPage } from './pages/print/BillPrintPage.jsx';
 import { SaleInvoicePrintPage } from './pages/print/SaleInvoicePrintPage.jsx';
 import { UsersPage } from './pages/users/UsersPage.jsx';
@@ -169,6 +171,8 @@ export function App() {
                 <Route path="master-data" element={<Navigate to="/master-data/_" replace />} />
                 <Route path="master-data/:type" element={<MasterDataPage />} />
                 <Route path="analytics" element={<PlatformAnalyticsPage />} />
+                <Route path="billing" element={<PlatformBillingPage />} />
+                <Route path="pharmacy" element={<PlatformPharmacyPage />} />
                 <Route path="audit" element={<AuditPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
