@@ -58,3 +58,20 @@ export const AUDIT_ACTIONS = Object.freeze({
 });
 
 export const AUDIT_ACTION_KEYS = Object.keys(AUDIT_ACTIONS);
+
+// Simple groups for filtering the audit log, by the start of the event name. An event not matched falls in "other".
+const GROUPS = [
+  { key: 'logins', label: 'Logins and passwords', prefixes: ['LOGIN', 'LOGOUT', 'PASSWORD', 'HOSPITAL_SWITCHED'] },
+  { key: 'accounts', label: 'Accounts and staff', prefixes: ['USER', 'MEMBER', 'PROFILE'] },
+  { key: 'hospitals', label: 'Hospitals and settings', prefixes: ['HOSPITAL_', 'SETTINGS', 'OPD', 'MASTER'] },
+  { key: 'patients', label: 'Patient records', prefixes: ['PATIENT'] },
+  { key: 'billing', label: 'Billing', prefixes: ['BILL', 'PAYMENT', 'REFUND', 'PRICE'] },
+  { key: 'pharmacy', label: 'Pharmacy', prefixes: ['MEDICINE', 'SUPPLIER', 'PURCHASE', 'SALE', 'STOCK'] },
+];
+const groupOf = (action) => GROUPS.find((g) => g.prefixes.some((p) => action.startsWith(p)))?.key ?? 'other';
+
+export const AUDIT_CATEGORIES = [...GROUPS, { key: 'other', label: 'Other' }].map(({ key, label }) => ({
+  key,
+  label,
+  actions: AUDIT_ACTION_KEYS.filter((a) => groupOf(a) === key),
+})).filter((c) => c.actions.length);

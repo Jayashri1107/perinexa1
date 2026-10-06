@@ -1,3 +1,4 @@
+import { setSessionCookie } from '../../core/session.js';
 import { idParams, parse, statusBody } from '../../core/validate.js';
 import { addMember } from '../members/member.service.js';
 import * as service from './user.service.js';
@@ -25,7 +26,10 @@ export async function create(req, res) {
 
 export async function update(req, res) {
   const { id } = parse(idParams, req.params);
-  res.json({ user: await service.updateUser(req, id, parse(updateUserBody, req.body)) });
+  const user = await service.updateUser(req, id, parse(updateUserBody, req.body));
+  // Changing your own email ends your other sessions; this browser gets a fresh cookie so you stay signed in.
+  if (req.user._id.equals(id)) setSessionCookie(res, await service.findUserOr404(id), req.hospitalId);
+  res.json({ user });
 }
 
 export async function setStatus(req, res) {

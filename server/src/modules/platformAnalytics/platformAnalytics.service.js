@@ -1,6 +1,6 @@
 // The super admin's analytics: totals per hospital and for all hospitals – numbers only.
 import { config } from '../../config/index.js';
-import { monthStart } from '../../core/dates.js';
+import { lastMonths, monthOf, monthStart } from '../../core/dates.js';
 import { round2 } from '../../core/money.js';
 import { Bill, Payment } from '../bills/bill.model.js';
 import { Hospital } from '../hospitals/hospital.model.js';
@@ -59,5 +59,27 @@ export async function platformAnalytics() {
   });
   const keys = ['patients', 'active', 'newThisMonth', 'pregnancies', 'staff', 'billedThisMonth', 'collectedThisMonth', 'pharmacyThisMonth'];
   const totals = Object.fromEntries(keys.map((k) => [k, round2(rows.reduce((n, r) => n + r[k], 0))]));
-  return { hospitals: rows, totals };
+  return { hospitals: rows, totals, trend: await monthlyTrend(inAll) };
+}
+
+// All hospitals together, month by month (config.analytics.months): new patients, billed, received, pharmacy sales.
+async function monthlyTrend(inAll) {
+  const since = monthStart(config.analytics.months - 1);
+  const [patients, billed, received, pharmacy] = await Promise.all([
+    Patient.aggregate([{ $match: { ...inAll, createdAt: { $gte: since } } }, { $group: { _id: monthOf('$createdAt'), v: { $sum: 1 } } }]),
+    Bill.aggregate([{ $match: { ...inAll, createdAt: { $gte: since }, status: { $ne: 'cancelled' } } }, { $group: { _id: monthOf('$createdAt'), v: { $sum: '$total' } } }]),
+    Payment.aggregate([
+      { $match: { ...inAll, createdAt: { $gte: since } } },
+      { $group: { _id: monthOf('$createdAt'), v: { $sum: { $cond: [{ $eq: ['$kind', 'refund'] }, { $multiply: ['$amount', -1] }, '$amount'] } } } },
+    ]),
+    Sale.aggregate([{ $match: { ...inAll, createdAt: { $gte: since } } }, { $group: { _id: monthOf('$createdAt'), v: { $sum: { $subtract: ['$total', '$returnedAmount'] } } } }]),
+  ]);
+  const at = (rows, m) => round2(rows.find((r) => r._id === m)?.v ?? 0);
+  return lastMonths(config.analytics.months).map((month) => ({
+    month,
+    newPatients: at(patients, month),
+    billed: at(billed, month),
+    received: at(received, month),
+    pharmacy: at(pharmacy, month),
+  }));
 }

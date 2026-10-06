@@ -2,6 +2,7 @@ import { lookupOne, withId } from '../../core/aggregate.js';
 import { paginate, toSort } from '../../core/pagination.js';
 import { containsText } from '../../core/validate.js';
 import { Hospital } from '../hospitals/hospital.model.js';
+import { AUDIT_CATEGORIES } from './audit.actions.js';
 import { AuditLog } from './auditLog.model.js';
 
 // Records "who did what, to whom, and when". Never stores passwords. A failure to write is logged but never
@@ -28,6 +29,7 @@ export async function recordAudit(req, action, { actor, target, hospitalId = nul
 export async function listAuditLogs(q) {
   const match = {};
   if (q.action) match.action = q.action;
+  else if (q.category) match.action = { $in: AUDIT_CATEGORIES.find((c) => c.key === q.category).actions };
   if (q.hospitalId) match.hospitalId = q.hospitalId;
   if (q.from || q.to) {
     match.createdAt = {};

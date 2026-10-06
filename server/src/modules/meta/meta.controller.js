@@ -1,7 +1,7 @@
 // The settings the website needs (no secrets): it reads them once at start instead of repeating them in its code.
 import { config } from '../../config/index.js';
 import { PASSWORD_RULE_TEXT } from '../../core/password.js';
-import { AUDIT_ACTIONS } from '../audit/audit.actions.js';
+import { AUDIT_ACTIONS, AUDIT_CATEGORIES } from '../audit/audit.actions.js';
 
 const { superAdminInHospitals, superAdminPatientAccess, ...roleAccess } = config.access;
 
@@ -25,6 +25,7 @@ const publicSettings = Object.freeze({
   pharmacy: config.pharmacy,
   analytics: config.analytics,
   auditActions: AUDIT_ACTIONS,
+  auditCategories: AUDIT_CATEGORIES.map(({ key, label }) => ({ key, label })),
 });
 
 export function get(_req, res) {

@@ -23,4 +23,22 @@ export const newUserFields = ({ roles, hospitals, canCreateSuperAdmin }) => [
 
 export const emptyUser = { accountType: 'staff', name: '', email: '', hospitalId: '', roles: [] };
 
-export const editUserFields = [{ name: 'name', label: 'Full name', required: true }];
+// Edit an account: name, email, and the roles ("post") in each hospital the person works in.
+export const editUserFields = ({ memberships = [], roles }) => [
+  { name: 'name', label: 'Full name', required: true, width: 'half' },
+  { name: 'email', label: 'Email (login)', type: 'email', required: true, width: 'half', help: 'Changing it signs them out; they log in with the new email.' },
+  ...(memberships.length ? [{ section: 'Roles in each hospital' }] : []),
+  ...memberships.map((m) => ({
+    name: `roles.${m.id}`,
+    label: `${m.hospital?.name ?? 'Hospital'}${m.isActive ? '' : ' (access removed)'}`,
+    type: 'checkboxes',
+    required: true,
+    options: roles,
+  })),
+];
+
+export const editUserValues = (u) => ({
+  name: u.name,
+  email: u.email,
+  roles: Object.fromEntries((u.memberships ?? []).map((m) => [m.id, [...m.roles]])),
+});

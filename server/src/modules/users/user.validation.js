@@ -30,4 +30,4 @@ export const createUserBody = z
     if (!d.roles.length) ctx.addIssue({ code: 'custom', path: ['roles'], message: 'Choose at least one role' });
   });
 
-export const updateUserBody = z.object({ name: name() });
+export const updateUserBody = z.object({ name: name(), email });

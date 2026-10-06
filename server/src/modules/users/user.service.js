@@ -79,10 +79,19 @@ export async function createAccount(req, { name, email, isSuperAdmin = false, ho
 export async function updateUser(req, id, data) {
   const user = await findUserOr404(id);
   assertCanManage(req, user);
-  const before = user.name;
+  const changed = [];
+  if (user.name !== data.name) changed.push('name');
+  if (user.email !== data.email) {
+    const taken = await User.exists({ email: data.email, _id: { $ne: user._id } });
+    if (taken) throw fieldError('email', 'A user with this email already exists.', 'DUPLICATE');
+    changed.push('email');
+    user.tokenVersion += 1; // a new login name: they sign in again with it
+  }
+  if (!changed.length) return getUser(id);
   user.name = data.name;
+  user.email = data.email;
   await user.save();
-  if (before !== user.name) await recordAudit(req, 'USER_UPDATED', { target: user, details: { from: before, to: user.name } });
+  await recordAudit(req, 'USER_UPDATED', { target: user, details: { changed } });
   return getUser(id);
 }
 

@@ -1,24 +1,25 @@
-// Every account on the platform, with the hospitals and roles each person holds (one consolidated list).
-import { Lock, Plus } from 'lucide-react';
+// Every account on the platform: who they are, what kind of account, where they work and as what, and their status.
+import { KeyRound, Lock, Pencil, Plus, Power } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { SectionTabs } from '../../components/SectionTabs.jsx';
-import { USERS_TABS } from '../../config/navigation.js';
-import { hospitalsApi, usersApi } from '../../api/index.js';
+import { hospitalsApi, membersApi, usersApi } from '../../api/index.js';
+import { ApiError } from '../../api/http.js';
 import { Alert } from '../../components/Alert.jsx';
 import { FormModal } from '../../components/form/FormModal.jsx';
 import { ListPanel } from '../../components/list/ListPanel.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SectionTabs } from '../../components/SectionTabs.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { TemporaryPasswordNotice } from '../../components/TemporaryPasswordNotice.jsx';
+import { USERS_TABS } from '../../config/navigation.js';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { editUserFields, emptyUser, newUserFields } from '../../forms/userForm.js';
+import { editUserFields, editUserValues, emptyUser, newUserFields } from '../../forms/userForm.js';
 import { useForm } from '../../hooks/useForm.js';
 import { useOptions } from '../../hooks/useOptions.js';
 import { usePagedList } from '../../hooks/usePagedList.js';
 import { USER_STATUS_FILTER } from '../../utils/filters.js';
-import { formatDateTime, toOptions, userStatus } from '../../utils/format.js';
+import { initialsOf, timeAgo, toOptions, userStatus } from '../../utils/format.js';
 
 const KIND_FILTER = {
   name: 'kind',
@@ -29,11 +30,14 @@ const KIND_FILTER = {
   ],
 };
 
+const sameRoles = (a = [], b = []) => a.length === b.length && a.every((r) => b.includes(r));
+
 // The tabs of Users & access (as in Perinexa) are this page with a filter set:
 // preset – e.g. { kind: 'superAdmin' } or { status: 'pending' }; startAdding – the "New account" tab.
 export function UsersPage({ preset = {}, startAdding = false }) {
   const { roles, roleLabel } = useAppConfig();
-  const { user: me } = useAuth();
+  const roleOptions = toOptions(roles);
+  const { user: me, refresh } = useAuth();
   const navigate = useNavigate();
   const list = usePagedList(usersApi.list, preset);
   const hospitals = useOptions(hospitalsApi.options);
@@ -47,7 +51,8 @@ export function UsersPage({ preset = {}, startAdding = false }) {
   const [error, setError] = useState('');
 
   // The same rule as the server: the main super admin's account is protected, and only the main super admin
-  // changes other super admin accounts.
+  // changes other super admin accounts. Everyone may edit their own name and email.
+  const isMe = (u) => u.id === me.id;
   const canManage = (u) => !u.isPrimary && (!u.isSuperAdmin || me.isPrimary);
 
   const open = (next, values) => {
@@ -85,50 +90,78 @@ export function UsersPage({ preset = {}, startAdding = false }) {
     setNotice({ email: result.user.email, password: result.temporaryPassword });
   };
 
-  const rename = async (values) => {
-    await usersApi.update(dialog.user.id, values);
+  // Name and email, then the roles of each hospital that changed.
+  const saveEdit = async (values) => {
+    const u = dialog.user;
+    const empty = u.memberships.find((m) => !(values.roles?.[m.id] ?? []).length);
+    if (empty) throw new ApiError(400, { message: 'Choose at least one role.', fields: { [`roles.${empty.id}`]: 'Choose at least one role' } });
+    await usersApi.update(u.id, { name: values.name, email: values.email });
+    for (const m of u.memberships) {
+      const next = values.roles[m.id];
+      if (!sameRoles(next, m.roles)) await membersApi(m.hospital.id).updateRoles(m.id, next);
+    }
     setDialog(null);
     list.reload();
+    if (isMe(u)) refresh();
   };
 
   const columns = [
-    { key: 'name', label: 'Name', render: (u) => (<><strong>{u.name}</strong><span className="muted block">{u.email}</span></>) },
+    {
+      key: 'name',
+      label: 'Person',
+      render: (u) => (
+        <div className="person">
+          <span className="avatar" aria-hidden>{initialsOf(u.name)}</span>
+          <span>
+            <strong className="block">{u.name}{isMe(u) && <span className="muted small"> (you)</span>}</strong>
+            <span className="muted small">{u.email}</span>
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      label: 'Account',
+      render: (u) => (u.isSuperAdmin ? <span className="pill pill-strong">{u.isPrimary ? 'Main super admin' : 'Super admin'}</span> : <span className="pill">Hospital staff</span>),
+    },
     {
       key: 'access',
-      label: 'Access',
+      label: 'Works at',
       render: (u) =>
         u.isSuperAdmin ? (
-          <span className="chip chip-strong">{u.isPrimary ? 'Main super admin' : 'Super admin'}</span>
+          <span className="muted small">All hospitals</span>
+        ) : u.memberships.length === 0 ? (
+          <span className="muted small">No hospital yet</span>
         ) : (
-          <ul className="plain-list tight">
-            {u.memberships.length === 0 && <li className="muted">No hospital</li>}
+          <div className="workplaces">
             {u.memberships.map((m) => (
-              <li key={m.id} className={m.isActive ? undefined : 'struck'}>
-                <Link to={`/hospitals/${m.hospital?.id}`}>{m.hospital?.name}</Link>: {m.roles.map(roleLabel).join(', ')}
-              </li>
+              <div key={m.id} className={m.isActive ? 'workplace' : 'workplace struck'}>
+                <Link to={`/hospitals/${m.hospital?.id}`}>{m.hospital?.name}</Link>
+                <span className="muted small"> · {m.roles.map(roleLabel).join(', ')}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         ),
     },
     { key: 'status', label: 'Status', render: (u) => <StatusBadge status={userStatus(u)} /> },
-    { key: 'lastLoginAt', label: 'Last login', render: (u) => formatDateTime(u.lastLoginAt) },
+    { key: 'lastLoginAt', label: 'Last login', className: 'nowrap', render: (u) => <span title={u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : ''}>{u.lastLoginAt ? timeAgo(u.lastLoginAt) : 'Never'}</span> },
     {
       key: 'actions',
       label: '',
       className: 'actions',
       render: (u) =>
-        u.id === me.id ? (
-          <span className="muted small">You</span>
+        isMe(u) ? (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => open({ user: u }, editUserValues(u))}><Pencil size={14} aria-hidden /> Edit</button>
         ) : !canManage(u) ? (
-          <span className="muted small locked">
-            <Lock size={14} aria-hidden /> Protected
-          </span>
+          <span className="muted small locked"><Lock size={14} aria-hidden /> Protected</span>
         ) : (
-          <>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => open({ user: u }, { name: u.name })}>Edit</button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => reset(u)}>Reset password</button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => toggle(u)}>{u.isActive ? 'Deactivate' : 'Activate'}</button>
-          </>
+          <div className="row-actions">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => open({ user: u }, editUserValues(u))}><Pencil size={14} aria-hidden /> Edit</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => reset(u)}><KeyRound size={14} aria-hidden /> Reset password</button>
+            <button type="button" className={`btn btn-ghost btn-sm${u.isActive ? ' btn-danger-text' : ''}`} onClick={() => toggle(u)}>
+              <Power size={14} aria-hidden /> {u.isActive ? 'Deactivate' : 'Activate'}
+            </button>
+          </div>
         ),
     },
   ];
@@ -137,7 +170,7 @@ export function UsersPage({ preset = {}, startAdding = false }) {
     <>
       <PageHeader
         title="Users & access"
-        subtitle="All accounts, their hospitals and roles. Accounts are deactivated, never deleted."
+        subtitle="Everyone who can log in, where they work and as what. Accounts are deactivated, never deleted."
         actions={
           <button type="button" className="btn btn-primary" onClick={() => open('add', emptyUser)}>
             <Plus size={16} aria-hidden /> New account
@@ -154,10 +187,17 @@ export function UsersPage({ preset = {}, startAdding = false }) {
         emptyText="No accounts found."
       />
       {dialog === 'add' && (
-        <FormModal title="New account" fields={newUserFields({ roles: toOptions(roles), hospitals, canCreateSuperAdmin: me.isPrimary })} form={form} onSubmit={create} onClose={() => setDialog(null)} submitLabel="Create account" />
+        <FormModal title="New account" fields={newUserFields({ roles: roleOptions, hospitals, canCreateSuperAdmin: me.isPrimary })} form={form} onSubmit={create} onClose={() => setDialog(null)} submitLabel="Create account" />
       )}
       {dialog?.user && (
-        <FormModal title={`Edit ${dialog.user.name}`} size="sm" fields={editUserFields} form={form} onSubmit={rename} onClose={() => setDialog(null)} />
+        <FormModal
+          title={`Edit ${dialog.user.name}`}
+          fields={editUserFields({ memberships: dialog.user.memberships ?? [], roles: roleOptions })}
+          form={form}
+          onSubmit={saveEdit}
+          onClose={() => setDialog(null)}
+          submitLabel="Save changes"
+        />
       )}
       {notice && <TemporaryPasswordNotice email={notice.email} password={notice.password} onClose={() => setNotice(null)} />}
     </>
