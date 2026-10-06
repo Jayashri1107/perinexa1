@@ -5,5 +5,5 @@ import { auditListQuery } from '../audit/audit.validation.js';
 
 export async function list(req, res) {
   const query = parse(auditListQuery, req.query);
-  res.json(await listAuditLogs({ ...query, hospitalId: req.hospitalId }));
+  res.json(await listAuditLogs({ ...query, hospitalId: req.hospitalId }, { withPatients: true }));
 }

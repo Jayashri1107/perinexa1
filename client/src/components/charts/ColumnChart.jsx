@@ -30,13 +30,19 @@ function column(x, y, w, h) {
 const shortNumber = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 });
 
 // integer: the values are counts (whole numbers on the axis). empty: what to say when every value is 0.
+// A data item may carry texts: [string] – shown instead of the value (e.g. "fewer than 5" for a hidden small count,
+// drawn as 0).
 export function ColumnChart({ data, series, format = (n) => String(n), title, integer = false, empty = 'Nothing yet.' }) {
   const id = useId();
   const [active, setActive] = useState(null);
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
   const max = Math.max(0, ...data.flatMap((d) => d.values));
-  if (max === 0) return <p className="chart-empty muted">{empty}</p>;
+  const valueText = (d, s) => d.texts?.[s] ?? format(d.values[s]);
+  if (max === 0) {
+    const hidden = data.some((d) => d.texts?.some(Boolean));
+    return <p className="chart-empty muted">{hidden ? 'Each month is below 5 – hidden to protect privacy.' : empty}</p>;
+  }
   const ticks = niceTicks(max, integer);
   const top = ticks.at(-1);
   const slot = plotW / Math.max(1, data.length);
@@ -85,7 +91,7 @@ export function ColumnChart({ data, series, format = (n) => String(n), title, in
                   width={slot}
                   height={plotH}
                   tabIndex={0}
-                  aria-label={`${d.label}: ${d.values.map((v, s) => `${series[s].label} ${format(v)}`).join(', ')}`}
+                  aria-label={`${d.label}: ${d.values.map((_, s) => `${series[s].label} ${valueText(d, s)}`).join(', ')}`}
                   onPointerEnter={() => setActive(i)}
                   onPointerLeave={() => setActive(null)}
                   onFocus={() => setActive(i)}
@@ -98,10 +104,10 @@ export function ColumnChart({ data, series, format = (n) => String(n), title, in
         {active !== null && (
           <div className="chart-tip" style={{ left: `${((PAD.left + active * slot + slot / 2) / W) * 100}%` }} role="status">
             <div className="chart-tip-title">{data[active].label}</div>
-            {data[active].values.map((v, s) => (
+            {data[active].values.map((_, s) => (
               <div key={series[s].label} className="chart-tip-row">
                 <span className="chart-key" style={{ background: series[s].color }} aria-hidden />
-                <strong>{format(v)}</strong> <span className="muted">{series[s].label}</span>
+                <strong>{valueText(data[active], s)}</strong> <span className="muted">{series[s].label}</span>
               </div>
             ))}
           </div>
