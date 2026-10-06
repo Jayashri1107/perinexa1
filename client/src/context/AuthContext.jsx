@@ -19,7 +19,7 @@ function applyAppearance(user) {
 }
 
 export function AuthProvider({ children }) {
-  const { sessionTimeoutMinutes, adminRole } = useAppConfig();
+  const { sessionTimeoutMinutes, adminRole, access } = useAppConfig();
   const [session, setSessionState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [endReason, setEndReason] = useState('');
@@ -64,6 +64,7 @@ export function AuthProvider({ children }) {
 
   const changePassword = useCallback(async (data) => setSession(await authApi.changePassword(data)), [setSession]);
   const switchHospital = useCallback(async (hospitalId) => setSession(await authApi.switchHospital(hospitalId)), [setSession]);
+  const leaveHospital = useCallback(async () => setSession(await authApi.leaveHospital()), [setSession]);
   // After saving My settings (appearance, professional details).
   const updateUser = useCallback((user) => setSession({ ...session, user }), [session, setSession]);
 
@@ -91,24 +92,29 @@ export function AuthProvider({ children }) {
     const activeHospitalId = session?.activeHospitalId ?? null;
     const activeMembership = memberships.find((m) => m.hospital.id === activeHospitalId) ?? null;
     const roles = activeMembership?.roles ?? [];
+    const hasRole = (...wanted) => roles.some((r) => wanted.includes(r));
     return {
       user: session?.user ?? null,
       memberships,
       activeHospitalId,
       activeMembership,
       roles,
-      hasRole: (...wanted) => roles.some((r) => wanted.includes(r)),
+      hasRole,
+      // access key from config.access (patients, billing, pharmacy …), or 'admin' for the hospital admin role
+      canAccess: (key) => (key === 'admin' ? roles.includes(adminRole) : hasRole(...(access[key] ?? []))),
       isHospitalAdmin: roles.includes(adminRole),
+      isSuperAdminInHospital: Boolean(session?.user?.isSuperAdmin && activeHospitalId),
       loading,
       endReason,
       login,
       logout,
       changePassword,
       switchHospital,
+      leaveHospital,
       updateUser,
       refresh,
     };
-  }, [session, loading, endReason, login, logout, changePassword, switchHospital, updateUser, refresh, adminRole]);
+  }, [session, loading, endReason, login, logout, changePassword, switchHospital, leaveHospital, updateUser, refresh, adminRole, access]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

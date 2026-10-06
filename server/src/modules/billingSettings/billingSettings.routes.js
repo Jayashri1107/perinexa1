@@ -8,6 +8,7 @@ const router = Router();
 const adminOnly = requireRoles(config.access.billingAdmin);
 
 router.get('/payee', controller.payee);
+router.get('/letterhead', controller.letterhead);
 router.get('/', adminOnly, controller.get);
 router.put('/', adminOnly, controller.update);
 

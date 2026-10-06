@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { metaApi } from '../api/index.js';
 import { Loader } from '../components/Loader.jsx';
+import { setCurrencySymbol } from '../utils/format.js';
 
 const AppConfigContext = createContext(null);
 
@@ -11,7 +12,13 @@ export function AppConfigProvider({ children }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    metaApi.get().then(setConfig).catch((err) => setError(err.message));
+    metaApi
+      .get()
+      .then((c) => {
+        setCurrencySymbol(c.billing.currencySymbol);
+        setConfig(c);
+      })
+      .catch((err) => setError(err.message));
   }, []);
 
   const value = useMemo(() => {

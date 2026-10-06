@@ -6,6 +6,8 @@ import { Alert } from '../../components/Alert.jsx';
 import { FormBuilder } from '../../components/form/FormBuilder.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SectionTabs } from '../../components/SectionTabs.jsx';
+import { HOSPITAL_ADMIN_TABS } from '../../config/navigation.js';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { HOSPITAL_SETTINGS_SECTIONS, sectionValues } from '../../forms/hospitalSettingsForms.js';
 import { useForm } from '../../hooks/useForm.js';
@@ -57,7 +59,8 @@ export function HospitalSettingsPage() {
         title="Hospital settings"
         subtitle={settings?.settingsUpdatedAt ? `Last changed ${formatDateTime(settings.settingsUpdatedAt)} by ${settings.settingsUpdatedByName ?? 'an admin'}` : 'Settings of this hospital'}
       />
-      <nav className="tabs" aria-label="Settings sections">
+      <SectionTabs tabs={HOSPITAL_ADMIN_TABS} label="Hospital admin" />
+      <nav className="tabs sub-tabs" aria-label="Settings sections">
         {HOSPITAL_SETTINGS_SECTIONS.map((s) => (
           <NavLink key={s.key} to={`/hospital/settings/${s.key}`} className="tab">{s.label}</NavLink>
         ))}

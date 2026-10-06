@@ -13,7 +13,7 @@ export const changePasswordFields = (rules) => [
     type: 'password',
     required: true,
     autoComplete: 'new-password',
-    help: `At least ${rules.minLength} characters, with at least one letter and one number.`,
+    help: rules.ruleText, // the server's rule, e.g. "At least 8 characters, with a capital letter, a small letter, a number and a special character."
   },
   { name: 'confirmPassword', label: 'Repeat new password', type: 'password', required: true, autoComplete: 'new-password' },
 ];

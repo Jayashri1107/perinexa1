@@ -1,5 +1,4 @@
-// The start page in a hospital. Hospital admins see the consolidated overview; other roles see their access until
-// their own modules (patients, appointments, lab …) are built.
+// Hospital admin → Overview: the consolidated view of the hospital (staff, setup checklist, recent activity).
 import { CalendarClock, CircleCheck, CircleDashed, Clock, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -7,9 +6,9 @@ import { hospitalOverviewApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SectionTabs } from '../../components/SectionTabs.jsx';
 import { StatCard } from '../../components/StatCard.jsx';
-import { useAppConfig } from '../../context/AppConfigContext.jsx';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { HOSPITAL_ADMIN_TABS } from '../../config/navigation.js';
 import { formatDateTime } from '../../utils/format.js';
 
 // Where each setup item is done.
@@ -20,7 +19,7 @@ const SETUP_LINKS = {
   abdm: '/hospital/settings/abdm',
 };
 
-function HospitalOverview() {
+export function AdminOverviewPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
@@ -37,7 +36,8 @@ function HospitalOverview() {
 
   return (
     <>
-      <PageHeader title={hospital.name} subtitle={`Code ${hospital.code}${address ? ` · ${address}` : ''}`} />
+      <PageHeader title="Hospital admin" subtitle={`${hospital.name} · code ${hospital.code}${address ? ` · ${address}` : ''}`} />
+      <SectionTabs tabs={HOSPITAL_ADMIN_TABS} label="Hospital admin" />
 
       <div className="stat-grid">
         <StatCard icon={Users} label="Active staff" value={staff.active} hint={`${staff.admins} admin${staff.admins === 1 ? '' : 's'} · ${staff.inactive} without access`} />
@@ -107,27 +107,4 @@ function HospitalOverview() {
       </div>
     </>
   );
-}
-
-function StaffWelcome() {
-  const { user, activeMembership, roles } = useAuth();
-  const { roleLabel } = useAppConfig();
-  return (
-    <>
-      <PageHeader title={`Welcome, ${user.name}`} subtitle={activeMembership?.hospital.name} />
-      <section className="card">
-        <h2>Your access here</h2>
-        <p>{roles.map(roleLabel).join(', ')}</p>
-        <p className="muted">
-          The pages for your work (patients, appointments, lab …) are the next modules to be built. You can already set up
-          your details under <Link to="/account">My settings</Link>.
-        </p>
-      </section>
-    </>
-  );
-}
-
-export function HospitalHomePage() {
-  const { isHospitalAdmin } = useAuth();
-  return isHospitalAdmin ? <HospitalOverview /> : <StaffWelcome />;
 }

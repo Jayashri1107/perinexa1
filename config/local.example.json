@@ -5,7 +5,7 @@
   "seed": {
     "superAdmin": {
       "email": "admin@example.com",
-      "password": "replace-with-a-strong-password-123"
+      "password": "Replace@Me123"
     }
   }
 }

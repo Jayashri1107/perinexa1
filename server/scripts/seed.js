@@ -12,17 +12,18 @@ import { User } from '../src/modules/users/user.model.js';
 
 async function seedSuperAdmin() {
   const { name, email, password } = config.seed.superAdmin;
+  // An existing account is left alone (its password may long since have been changed).
+  const existing = email && (await User.findOne({ email: email.toLowerCase() }));
+  if (existing) {
+    console.log(`Super admin ${existing.email} already exists. Nothing changed.`);
+    return;
+  }
+
   const checks = [emailSchema.safeParse(email), passwordSchema.safeParse(password)];
   const problems = checks.filter((c) => !c.success).flatMap((c) => c.error.issues.map((i) => i.message));
   if (problems.length) {
     console.error(`Set seed.superAdmin.email and seed.superAdmin.password in config/local.json:\n  - ${problems.join('\n  - ')}`);
     process.exitCode = 1;
-    return;
-  }
-
-  const existing = await User.findOne({ email: email.toLowerCase() });
-  if (existing) {
-    console.log(`Super admin ${existing.email} already exists. Nothing changed.`);
     return;
   }
   // The first super admin is the main one (only they manage super admin accounts).

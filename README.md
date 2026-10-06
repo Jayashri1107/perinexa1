@@ -7,7 +7,27 @@ Fake sample data only.
 | --- | --- | --- |
 | 1 | **Main admin** (super admin): login, dashboard, hospitals, users & access, master data, audit log | Done |
 | 2 | **Hospital admin**: overview, staff, OPD timings, hospital settings (print letterhead, patient messages, ABDM), the hospital's audit log, hospital switcher, My settings | Done |
-| 3 | Patients (registration, need-to-know access) | Next |
+| 3 | **Patients**: registration with a duplicate warning, need-to-know access per role, sensitive records, emergency access | Done |
+| 4 | **Billing**: price list, bills, payments, refunds, discounts, unpaid, daily summary, monthly income, CSV export, UPI settings, printed bills | Done |
+| 5 | **Pharmacy**: medicines, suppliers, purchases, batch stock, counter sales (earliest expiry first), returns, write-offs, H1 / X / narcotic registers, alerts, sales and GST reports, settings, printed tax invoices | Done |
+| 6 | **Analytics and Today**: per hospital (small numbers hidden for non-doctors), platform analytics for the super admin, a role-aware Today page | Done |
+| 7 | Visits and prescriptions, care plans, appointments, lab | Next |
+
+### Who sees what (config.access)
+
+| Role | Menu |
+| --- | --- |
+| Hospital admin | Today, Billing (all tabs), Pharmacy (no counter), Analytics (small numbers hidden), Hospital admin, My settings – no patient records |
+| Doctor | Today, Patients (own patients full, others read-only, emergency access), Analytics (exact, "my patients"), My settings |
+| RMO | Today, Patients (all records), My settings |
+| Nurse | Today, Patients (read), My settings |
+| Receptionist | Today, Patients (register, contact details), Billing (no Monthly / Settings), My settings |
+| Lab staff | Today, Patients (name and number), My settings |
+| Pharmacist | Today, Patients (contact), Pharmacy (everything but its settings), My settings |
+| Super admin | The platform; can open any hospital with every role (`access.superAdminInHospitals`), including patient records (`access.superAdminPatientAccess` – the owner's choice; every record opened is in the audit log). Switch either off in `config/local.json`. |
+
+Passwords: at least 8 characters with a capital letter, a small letter, a number and a special character
+(`auth.password` in config).
 
 ### Module 2 – how it works
 

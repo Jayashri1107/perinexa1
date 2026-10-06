@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { opdTimingsApi } from '../../api/index.js';
 import { ListPanel } from '../../components/list/ListPanel.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SectionTabs } from '../../components/SectionTabs.jsx';
+import { HOSPITAL_ADMIN_TABS } from '../../config/navigation.js';
 import { usePagedList } from '../../hooks/usePagedList.js';
 import { formatDateTime } from '../../utils/format.js';
 import { weekSummary } from '../../utils/weekdays.js';
@@ -35,6 +37,7 @@ export function OpdTimingsPage() {
   return (
     <>
       <PageHeader title="OPD timings" subtitle="Each doctor's OPD sessions, visit lengths and leave. Appointment booking uses these." />
+      <SectionTabs tabs={HOSPITAL_ADMIN_TABS} label="Hospital admin" />
       <ListPanel
         list={list}
         columns={columns}

@@ -1,6 +1,6 @@
 // The frame of every signed-in page: menu on the left, the person (and anything extra) at the top, the page in the middle.
 import { KeyRound, LogOut, Plus } from 'lucide-react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppConfig } from '../context/AppConfigContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -20,9 +20,10 @@ export function BrandMark({ size = 'md', subtitle }) {
 }
 
 // contentKey: when it changes (another hospital chosen), the page starts fresh and loads its data again.
-export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, contentKey }) {
+export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, contentKey, banner }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const initials = user.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
   return (
@@ -30,8 +31,13 @@ export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, 
       <aside className="sidebar">
         <BrandMark subtitle={brandSubtitle} />
         <nav aria-label="Main">
-          {navigation.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className="nav-link">
+          {navigation.map(({ to, label, icon: Icon, end, activeFor = [] }) => (
+            <NavLink
+              key={label}
+              to={to}
+              end={end}
+              className={({ isActive }) => `nav-link${isActive || activeFor.some((p) => pathname.startsWith(p)) ? ' active' : ''}`}
+            >
               <Icon size={18} aria-hidden />
               <span>{label}</span>
             </NavLink>
@@ -61,6 +67,7 @@ export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, 
             </button>
           </div>
         </header>
+        {banner}
         <main className="content" key={contentKey}>
           <Outlet />
         </main>

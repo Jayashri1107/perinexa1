@@ -1,7 +1,8 @@
 // One hospital, consolidated: details, departments, staff per role, and its staff list (super admin).
-import { ArrowLeft, Pencil, Power } from 'lucide-react';
+import { ArrowLeft, LogIn, Pencil, Power } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { hospitalsApi, masterDataApi, membersApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { FormModal } from '../../components/form/FormModal.jsx';
@@ -17,7 +18,9 @@ import { activeStatus, formatDateTime } from '../../utils/format.js';
 
 export function HospitalDetailPage() {
   const { id } = useParams();
-  const { hospitalDepartmentType } = useAppConfig();
+  const { hospitalDepartmentType, superAdmin } = useAppConfig();
+  const { switchHospital } = useAuth();
+  const navigate = useNavigate();
   const [hospital, setHospital] = useState(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
@@ -40,6 +43,17 @@ export function HospitalDetailPage() {
     try {
       await hospitalsApi.setStatus(id, !hospital.isActive);
       load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // The super admin works inside this hospital with every role (config.access.superAdminInHospitals).
+  const openWorkspace = async () => {
+    setError('');
+    try {
+      await switchHospital(id);
+      navigate('/hospital');
     } catch (err) {
       setError(err.message);
     }
@@ -73,6 +87,11 @@ export function HospitalDetailPage() {
             <button type="button" className="btn btn-ghost" onClick={openEdit}>
               <Pencil size={16} aria-hidden /> Edit
             </button>
+            {superAdmin.inHospitals && hospital.isActive && (
+              <button type="button" className="btn btn-primary" onClick={openWorkspace}>
+                <LogIn size={16} aria-hidden /> Open workspace
+              </button>
+            )}
           </>
         }
       />

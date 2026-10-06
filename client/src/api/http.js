@@ -19,8 +19,12 @@ export class ApiError extends Error {
     this.status = status;
     this.code = error.code ?? 'ERROR';
     this.fields = error.fields ?? null;
+    this.details = error; // everything the server sent (e.g. the possible duplicates of a patient)
   }
 }
+
+// The address of a file download (opened by the browser itself; the session cookie goes along).
+export const apiUrl = (path) => API_PREFIX + path;
 
 function buildUrl(path, query) {
   const url = new URL(API_PREFIX + path, window.location.origin);

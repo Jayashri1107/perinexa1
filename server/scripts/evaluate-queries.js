@@ -6,7 +6,11 @@ import { AuditLog } from '../src/modules/audit/auditLog.model.js';
 import { Hospital } from '../src/modules/hospitals/hospital.model.js';
 import { MasterData } from '../src/modules/masterData/masterData.model.js';
 import { Membership } from '../src/modules/members/membership.model.js';
+import { Bill } from '../src/modules/bills/bill.model.js';
 import { OpdSchedule } from '../src/modules/opdTimings/opdSchedule.model.js';
+import { Patient } from '../src/modules/patients/patient.model.js';
+import { Sale } from '../src/modules/sales/sale.model.js';
+import { StockBatch, StockMovement } from '../src/modules/stock/stock.model.js';
 import { User } from '../src/modules/users/user.model.js';
 import { config } from '../src/config/index.js';
 
@@ -36,7 +40,7 @@ async function evaluate(label, Model, filter, sort) {
 await connectDatabase();
 try {
   // creates missing indexes only (never drops any)
-  await Promise.all([User, Hospital, Membership, MasterData, AuditLog, OpdSchedule].map((M) => M.init()));
+  await Promise.all([User, Hospital, Membership, MasterData, AuditLog, OpdSchedule, Patient, Bill, StockBatch, Sale, StockMovement].map((M) => M.init()));
   const hospitalId = await anyId(Hospital);
   const firstType = config.masterData.types[0].key;
 
@@ -50,6 +54,12 @@ try {
   await evaluate("A hospital's doctors (OPD timings)", Membership, { hospitalId, isActive: true, roles: config.opd.doctorRole }, { createdAt: 1 });
   await evaluate("A doctor's OPD timings", OpdSchedule, { hospitalId, doctorId: hospitalId }, {});
   await evaluate("A hospital's audit log, newest", AuditLog, { hospitalId }, { createdAt: -1 });
+  await evaluate("A doctor's patients, newest", Patient, { hospitalId, assignedDoctorId: hospitalId }, { createdAt: -1 });
+  await evaluate('Patients: duplicate check by phone', Patient, { hospitalId, phone: '9000000000' }, {});
+  await evaluate('Unpaid bills, oldest first', Bill, { hospitalId, status: 'open', balance: { $gt: 0 } }, { createdAt: 1 });
+  await evaluate('Stock: earliest expiry first (sale)', StockBatch, { hospitalId, medicineId: hospitalId, qty: { $gt: 0 } }, { expiry: 1 });
+  await evaluate('Pharmacy sales, newest', Sale, { hospitalId }, { createdAt: -1 });
+  await evaluate('H1 register, newest', StockMovement, { hospitalId, schedule: 'H1' }, { createdAt: -1 });
   await evaluate('Audit log: newest first', AuditLog, {}, { createdAt: -1 });
   await evaluate('Audit log: one event, newest', AuditLog, { action: 'LOGIN_SUCCESS' }, { createdAt: -1 });
   console.log('\nOK = the query uses an index. SCAN = it reads the whole collection: add an index in the model.');
