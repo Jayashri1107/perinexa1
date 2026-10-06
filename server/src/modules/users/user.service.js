@@ -61,6 +61,7 @@ export const findUserByEmail = (email) => User.findOne({ email });
 
 // Creates a login with a temporary password, shown once to the person who created it.
 export async function createAccount(req, { name, email, isSuperAdmin = false, hospitalId = null }) {
+  if (isSuperAdmin) assertCanCreateSuperAdmin(req);
   if (await findUserByEmail(email)) throw fieldError('email', 'A user with this email already exists.', 'DUPLICATE');
   const temporaryPassword = generateTemporaryPassword();
   const user = await User.create({
@@ -77,6 +78,7 @@ export async function createAccount(req, { name, email, isSuperAdmin = false, ho
 
 export async function updateUser(req, id, data) {
   const user = await findUserOr404(id);
+  assertCanManage(req, user);
   const before = user.name;
   user.name = data.name;
   await user.save();
@@ -85,6 +87,27 @@ export async function updateUser(req, id, data) {
 }
 
 const isSelf = (req, user) => req.user._id.equals(user._id);
+
+// Who may change whose account:
+// - nobody else may change the main super admin's account;
+// - only the main super admin may change other super admin accounts;
+// - any super admin may change hospital staff accounts.
+function assertCanManage(req, user) {
+  if (isSelf(req, user)) return;
+  if (user.isPrimary) {
+    throw new HttpError(403, 'The main super admin account is protected. Only its owner can change it.', 'PROTECTED_ACCOUNT');
+  }
+  if (user.isSuperAdmin && !req.user.isPrimary) {
+    throw new HttpError(403, 'Only the main super admin can change super admin accounts.', 'PRIMARY_ONLY');
+  }
+}
+
+// Only the main super admin may create another super admin.
+export function assertCanCreateSuperAdmin(req) {
+  if (!req.user.isPrimary) {
+    throw new HttpError(403, 'Only the main super admin can create super admin accounts.', 'PRIMARY_ONLY');
+  }
+}
 
 // There must always be at least one active super admin who can manage the platform.
 async function assertAnotherSuperAdmin(user) {
@@ -96,6 +119,7 @@ async function assertAnotherSuperAdmin(user) {
 export async function setUserStatus(req, id, isActive) {
   const user = await findUserOr404(id);
   if (isSelf(req, user)) throw new HttpError(400, 'You cannot change the status of your own account.', 'SELF_ACTION');
+  assertCanManage(req, user);
   if (user.isActive === isActive) return getUser(id);
   if (!isActive && user.isSuperAdmin) await assertAnotherSuperAdmin(user);
 
@@ -112,6 +136,7 @@ export async function resetPassword(req, id) {
   if (isSelf(req, user)) {
     throw new HttpError(400, 'To change your own password, use "Change password" instead.', 'SELF_ACTION');
   }
+  assertCanManage(req, user);
   const temporaryPassword = generateTemporaryPassword();
   user.passwordHash = await hashPassword(temporaryPassword);
   user.mustChangePassword = true;

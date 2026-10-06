@@ -4,6 +4,10 @@ import { z } from 'zod';
 
 export const parse = (schema, data) => schema.parse(data ?? {});
 
+// An empty box (or a hidden field sent as "") counts as "not given".
+export const optional = (schema) =>
+  z.preprocess((v) => (v === '' || v === null || (typeof v === 'string' && v.trim() === '') ? undefined : v), schema.optional());
+
 export const objectId = z.string().refine((v) => mongoose.isValidObjectId(v), 'Invalid id');
 
 export const toObjectId = (id) => new mongoose.Types.ObjectId(String(id));

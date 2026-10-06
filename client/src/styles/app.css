@@ -25,6 +25,7 @@ code { font-family: ui-monospace, Consolas, monospace; }
 .block { display: block; }
 .nowrap { white-space: nowrap; }
 .struck { text-decoration: line-through; color: var(--color-text-muted); }
+.locked { display: inline-flex; align-items: center; gap: 4px; }
 
 /* ---------- Layout ---------- */
 .shell { display: flex; min-height: 100vh; }

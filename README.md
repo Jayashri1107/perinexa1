@@ -76,6 +76,9 @@ client/src/
 - **Accounts**: the super admin creates hospitals (optionally with the first hospital admin), super admins and staff.
   New accounts get a temporary password shown once. Accounts, hospitals, staff access and master data are
   deactivated, never deleted. There is always at least one active super admin and one admin per hospital.
+- **Main super admin**: the first super admin (made by the seed, `isPrimary`) is protected – nobody else can edit,
+  deactivate or reset it. Only the main super admin creates super admins or changes other super admin accounts;
+  every super admin can manage hospitals and staff.
 - **Lists**: every list is one aggregate – `$match` → `$sort` → `$facet` (the page + the total) – with joins
   (`$lookup`) only for the rows on the page (`server/src/core/pagination.js`).
 - **Consolidated views**: the dashboard (platform totals, staff by role, largest hospitals, master data, recent

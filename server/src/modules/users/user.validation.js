@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ROLE_KEYS } from '../../config/index.js';
 import { listQuery } from '../../core/pagination.js';
-import { email, name, objectId, toObjectId } from '../../core/validate.js';
+import { email, name, objectId, optional, toObjectId } from '../../core/validate.js';
 
 export const USER_STATUSES = ['active', 'inactive', 'pending'];
 export const ACCOUNT_TYPES = ['superAdmin', 'staff'];
@@ -21,7 +21,7 @@ export const createUserBody = z
     name: name(),
     email,
     accountType: z.enum(ACCOUNT_TYPES, 'Choose the type of account'),
-    hospitalId: objectId.optional(),
+    hospitalId: optional(objectId),
     roles: z.array(z.enum(ROLE_KEYS)).default([]),
   })
   .superRefine((d, ctx) => {

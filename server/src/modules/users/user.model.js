@@ -8,6 +8,9 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true, select: false },
     isSuperAdmin: { type: Boolean, default: false },
+    // the main super admin (the first one, made by the seed): only they manage super admin accounts,
+    // and nobody else can change, deactivate or reset their account
+    isPrimary: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     // true until the person replaces their temporary password
     mustChangePassword: { type: Boolean, default: true },
@@ -33,6 +36,8 @@ const userSchema = new mongoose.Schema(
 
 // The user list is filtered by kind and status, newest first.
 userSchema.index({ isSuperAdmin: 1, isActive: 1, createdAt: -1 });
+// there can only ever be one main super admin
+userSchema.index({ isPrimary: 1 }, { unique: true, partialFilterExpression: { isPrimary: true } });
 
 export const User = mongoose.model('User', userSchema, 'users');
 

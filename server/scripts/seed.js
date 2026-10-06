@@ -1,5 +1,6 @@
 // Sets up an empty database:
-//  1. the first platform super admin, from config.seed.superAdmin (config/local.json) – must change the password at first login;
+//  1. the first platform super admin – the main one – from config.seed.superAdmin (config/local.json);
+//     must change the password at first login;
 //  2. the starting master data lists, from config.seed.masterData.
 // Safe to run again: anything that already exists is left as it is.
 import { config } from '../src/config/index.js';
@@ -24,7 +25,9 @@ async function seedSuperAdmin() {
     console.log(`Super admin ${existing.email} already exists. Nothing changed.`);
     return;
   }
-  await User.create({ name, email, passwordHash: await hashPassword(password), isSuperAdmin: true, mustChangePassword: true });
+  // The first super admin is the main one (only they manage super admin accounts).
+  const isPrimary = !(await User.exists({ isPrimary: true }));
+  await User.create({ name, email, passwordHash: await hashPassword(password), isSuperAdmin: true, isPrimary, mustChangePassword: true });
   console.log(`Super admin created for ${email}. A new password is asked for at first login.`);
 }
 

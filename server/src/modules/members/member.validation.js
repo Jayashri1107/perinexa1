@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ROLE_KEYS } from '../../config/index.js';
 import { listQuery } from '../../core/pagination.js';
-import { email, name, objectId } from '../../core/validate.js';
+import { email, name, objectId, optional } from '../../core/validate.js';
 
 const roles = z.array(z.enum(ROLE_KEYS)).min(1, 'Choose at least one role');
 
@@ -19,7 +19,7 @@ export const memberListQuery = listQuery({
 
 // The name is needed only for a person who has no account yet (an empty box counts as not given).
 export const addMemberBody = z.object({
-  name: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), name().optional()),
+  name: optional(name()),
   email,
   roles,
 });

@@ -1,5 +1,5 @@
 // Every account on the platform, with the hospitals and roles each person holds (one consolidated list).
-import { Plus } from 'lucide-react';
+import { Lock, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { hospitalsApi, usersApi } from '../../api/index.js';
@@ -36,6 +36,10 @@ export function UsersPage() {
   const [dialog, setDialog] = useState(null); // 'add' | { user }
   const [notice, setNotice] = useState(null);
   const [error, setError] = useState('');
+
+  // The same rule as the server: the main super admin's account is protected, and only the main super admin
+  // changes other super admin accounts.
+  const canManage = (u) => !u.isPrimary && (!u.isSuperAdmin || me.isPrimary);
 
   const open = (next, values) => {
     form.reset(values);
@@ -85,7 +89,7 @@ export function UsersPage() {
       label: 'Access',
       render: (u) =>
         u.isSuperAdmin ? (
-          <span className="chip chip-strong">Super admin</span>
+          <span className="chip chip-strong">{u.isPrimary ? 'Main super admin' : 'Super admin'}</span>
         ) : (
           <ul className="plain-list tight">
             {u.memberships.length === 0 && <li className="muted">No hospital</li>}
@@ -106,6 +110,10 @@ export function UsersPage() {
       render: (u) =>
         u.id === me.id ? (
           <span className="muted small">You</span>
+        ) : !canManage(u) ? (
+          <span className="muted small locked">
+            <Lock size={14} aria-hidden /> Protected
+          </span>
         ) : (
           <>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => open({ user: u }, { name: u.name })}>Edit</button>
@@ -136,7 +144,7 @@ export function UsersPage() {
         emptyText="No accounts found."
       />
       {dialog === 'add' && (
-        <FormModal title="New account" fields={newUserFields({ roles: toOptions(roles), hospitals })} form={form} onSubmit={create} onClose={() => setDialog(null)} submitLabel="Create account" />
+        <FormModal title="New account" fields={newUserFields({ roles: toOptions(roles), hospitals, canCreateSuperAdmin: me.isPrimary })} form={form} onSubmit={create} onClose={() => setDialog(null)} submitLabel="Create account" />
       )}
       {dialog?.user && (
         <FormModal title={`Edit ${dialog.user.name}`} size="sm" fields={editUserFields} form={form} onSubmit={rename} onClose={() => setDialog(null)} />

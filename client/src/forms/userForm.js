@@ -6,8 +6,15 @@ export const ACCOUNT_TYPE_OPTIONS = [
 
 const isStaff = (v) => v.accountType === 'staff';
 
-export const newUserFields = ({ roles, hospitals }) => [
-  { name: 'accountType', label: 'Type of account', type: 'select', required: true, options: ACCOUNT_TYPE_OPTIONS },
+// canCreateSuperAdmin: only the main super admin may create super admin accounts.
+export const newUserFields = ({ roles, hospitals, canCreateSuperAdmin }) => [
+  {
+    name: 'accountType',
+    label: 'Type of account',
+    type: 'select',
+    required: true,
+    options: ACCOUNT_TYPE_OPTIONS.filter((o) => canCreateSuperAdmin || o.value !== 'superAdmin'),
+  },
   { name: 'name', label: 'Full name', required: true, width: 'half' },
   { name: 'email', label: 'Email', type: 'email', required: true, width: 'half' },
   { name: 'hospitalId', label: 'Hospital', type: 'select', required: true, options: hospitals, showIf: isStaff },
