@@ -12,5 +12,6 @@ router.post('/logout', controller.logout);
 router.get('/me', requireAuth, controller.me);
 router.post('/change-password', requireAuth, controller.changePassword);
 router.post('/switch-hospital', requireAuth, requirePasswordChanged, controller.switchHospital);
+router.post('/leave-hospital', requireAuth, requirePasswordChanged, controller.leaveHospital);
 
 export default router;

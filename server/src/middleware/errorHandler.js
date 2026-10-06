@@ -11,6 +11,9 @@ const DUPLICATE_MESSAGES = {
   'hospitalId,userId': ['email', 'This person is already a member of this hospital.'],
   'hospitalId,doctorId': ['doctorId', 'This doctor already has OPD timings here. Reload the page.'],
   isPrimary: ['accountType', 'There is already a main super admin.'],
+  'hospitalId,code': ['code', 'This code is already in use in this hospital.'],
+  'hospitalId,nameKey': ['name', 'This name is already on the list.'],
+  'hospitalId,supplierId,invoiceNumber': ['invoiceNumber', 'This invoice of this supplier is already recorded.'],
 };
 
 export function notFound(_req, _res, next) {
@@ -27,7 +30,9 @@ export function errorHandler(err, _req, res, _next) {
   }
 
   if (err instanceof HttpError) {
-    return res.status(err.status).json({ error: { message: err.message, code: err.code, ...(err.fields && { fields: err.fields }) } });
+    return res.status(err.status).json({
+      error: { message: err.message, code: err.code, ...(err.fields && { fields: err.fields }), ...err.extra },
+    });
   }
 
   if (err instanceof mongoose.Error.VersionError) {

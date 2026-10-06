@@ -27,6 +27,34 @@ export const AUDIT_ACTIONS = Object.freeze({
   SETTINGS_UPDATED: 'Hospital settings changed',
   OPD_TIMINGS_UPDATED: 'OPD timings changed',
   PROFILE_UPDATED: 'Professional details changed',
+  // Patients (ids and field names only – never medical details)
+  PATIENT_REGISTERED: 'Patient registered',
+  PATIENT_REGISTERED_ANYWAY: 'Patient registered despite a possible duplicate',
+  PATIENT_VIEWED: 'Patient record opened',
+  PATIENT_UPDATED: 'Patient record changed',
+  PATIENT_CLOSED: 'Patient record closed',
+  PATIENT_REOPENED: 'Patient record reopened',
+  PATIENT_EMERGENCY_ACCESS: 'Emergency access to a patient record',
+  // Billing
+  PRICE_ITEM_CREATED: 'Price list item added',
+  PRICE_ITEM_UPDATED: 'Price list item changed',
+  BILL_CREATED: 'Bill created',
+  BILL_UPDATED: 'Bill changed',
+  BILL_DISCOUNTED: 'Discount given',
+  BILL_CANCELLED: 'Bill cancelled',
+  PAYMENT_RECEIVED: 'Payment received',
+  REFUND_GIVEN: 'Refund given',
+  BILLING_SETTINGS_UPDATED: 'Billing settings changed',
+  BILLS_EXPORTED: 'Bills exported',
+  // Pharmacy
+  MEDICINE_CREATED: 'Medicine added',
+  MEDICINE_UPDATED: 'Medicine changed',
+  SUPPLIER_CREATED: 'Supplier added',
+  SUPPLIER_UPDATED: 'Supplier changed',
+  PURCHASE_RECORDED: 'Purchase recorded',
+  SALE_MADE: 'Medicines sold',
+  SALE_RETURNED: 'Medicines returned',
+  STOCK_ADJUSTED: 'Stock written off or corrected',
 });
 
 export const AUDIT_ACTION_KEYS = Object.keys(AUDIT_ACTIONS);

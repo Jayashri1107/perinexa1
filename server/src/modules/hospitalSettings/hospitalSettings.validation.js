@@ -28,6 +28,17 @@ export const SETTINGS_SECTIONS = {
       path: ['portalBooking'],
       message: 'Booking in the portal needs the patient portal switched on.',
     }),
+  pharmacy: z.object({
+    name: optionalText(150),
+    gstin: z.string().trim().toUpperCase().regex(/^$|^[0-9A-Z]{15}$/, 'GSTIN: 15 letters and numbers').default(''),
+    licence20: optionalText(80),
+    licence21: optionalText(80),
+    rmi: optionalText(80),
+    pharmacistName: optionalText(150),
+    state: optionalText(60),
+    place: optionalText(50),
+    pin: z.string().trim().regex(/^[0-9]{0,6}$/, 'PIN code: up to 6 digits').default(''),
+  }),
   abdm: z.object({
     hfrId: z.string().trim().regex(/^[A-Za-z0-9_-]{0,60}$/, 'Letters, numbers, - or _ only').default(''),
     hipId: z.string().trim().regex(/^[A-Za-z0-9_-]{0,60}$/, 'Letters, numbers, - or _ only').default(''),

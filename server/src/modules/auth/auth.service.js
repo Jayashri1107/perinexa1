@@ -5,7 +5,10 @@ import { HttpError, fieldError } from '../../core/httpError.js';
 import { fakeVerify, hashPassword, verifyPassword } from '../../core/password.js';
 import { readSessionToken, verifySessionToken } from '../../core/session.js';
 import { recordAudit } from '../audit/audit.service.js';
-import { findActiveMembership, listUserMemberships } from '../members/member.service.js';
+import { findActiveMembership, listUserMemberships, superAdminAccess, superAdminMemberships } from '../members/member.service.js';
+
+// The hospitals a person may work in. A super admin may open every active hospital (they start on the platform).
+const membershipsOf = (user) => (user.isSuperAdmin ? superAdminMemberships() : listUserMemberships(user._id));
 import { User } from '../users/user.model.js';
 
 const INVALID_LOGIN = 'Invalid email or password.';
@@ -35,8 +38,8 @@ export async function login(req, { email, password }) {
     throw new HttpError(401, INVALID_LOGIN, 'INVALID_LOGIN');
   }
 
-  const memberships = user.isSuperAdmin ? [] : await listUserMemberships(user._id);
-  const hospitalId = pickHospital(memberships, user.lastHospitalId);
+  const memberships = await membershipsOf(user);
+  const hospitalId = user.isSuperAdmin ? null : pickHospital(memberships, user.lastHospitalId);
   user.lastLoginAt = new Date();
   if (hospitalId) user.lastHospitalId = hospitalId;
   await user.save();
@@ -75,18 +78,27 @@ export async function changePassword(req, { currentPassword, newPassword }) {
 
 // The session as the website sees it. If the session has no (or no longer an allowed) hospital, one is chosen.
 export async function currentSession(req) {
-  const memberships = req.user.isSuperAdmin ? [] : await listUserMemberships(req.user._id);
-  const hospitalId = req.hospitalId ?? pickHospital(memberships, req.user.lastHospitalId);
+  const memberships = await membershipsOf(req.user);
+  const hospitalId = req.hospitalId ?? (req.user.isSuperAdmin ? null : pickHospital(memberships, req.user.lastHospitalId));
   return { user: req.user, memberships, hospitalId };
 }
 
 export async function switchHospital(req, hospitalId) {
-  const found = await findActiveMembership(req.user._id, hospitalId);
+  const found = req.user.isSuperAdmin ? await superAdminAccess(hospitalId) : await findActiveMembership(req.user._id, hospitalId);
   if (!found) throw new HttpError(403, 'You do not have access to this hospital.', 'FORBIDDEN');
   req.user.lastHospitalId = found.hospital._id;
   await req.user.save();
-  await recordAudit(req, 'HOSPITAL_SWITCHED', { target: req.user, hospitalId: found.hospital._id });
-  return { user: req.user, memberships: await listUserMemberships(req.user._id), hospitalId: found.hospital._id };
+  await recordAudit(req, 'HOSPITAL_SWITCHED', {
+    target: req.user,
+    hospitalId: found.hospital._id,
+    details: req.user.isSuperAdmin ? { asSuperAdmin: true } : {},
+  });
+  return { user: req.user, memberships: await membershipsOf(req.user), hospitalId: found.hospital._id };
+}
+
+// The super admin goes back to the platform screens (no hospital in the session).
+export async function leaveHospital(req) {
+  return { user: req.user, memberships: await membershipsOf(req.user), hospitalId: null };
 }
 
 // What the website needs to know about the logged-in person.

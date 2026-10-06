@@ -3,7 +3,7 @@
 // The hospital the person works in comes from the session; access to it is checked again on every request.
 import { HttpError } from '../core/httpError.js';
 import { clearSessionCookie, readSessionToken, setSessionCookie, verifySessionToken } from '../core/session.js';
-import { findActiveMembership } from '../modules/members/member.service.js';
+import { findActiveMembership, superAdminAccess } from '../modules/members/member.service.js';
 import { User } from '../modules/users/user.model.js';
 
 export const HOSPITAL_HEADER = 'X-Hospital-Id';
@@ -23,7 +23,11 @@ export async function requireAuth(req, res, next) {
   req.hospitalId = null;
   req.hospital = null;
   req.membership = null;
-  const found = !user.isSuperAdmin && payload.hid ? await findActiveMembership(user._id, payload.hid) : null;
+  const found = payload.hid
+    ? user.isSuperAdmin
+      ? await superAdminAccess(payload.hid)
+      : await findActiveMembership(user._id, payload.hid)
+    : null;
   if (found) {
     req.hospitalId = found.hospital._id;
     req.hospital = found.hospital;

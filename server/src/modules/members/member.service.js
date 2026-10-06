@@ -25,6 +25,24 @@ export async function findActiveMembership(userId, hospitalId) {
   return hospital ? { membership, hospital } : null;
 }
 
+// The super admin working inside a hospital (owner's decision, config.access.superAdminInHospitals): every role there,
+// or only the admin role when config.access.superAdminPatientAccess is off. Every patient record opened is audited.
+export const superAdminRoles = () => (config.access.superAdminPatientAccess ? config.roles.map((r) => r.key) : [config.adminRole]);
+
+export async function superAdminAccess(hospitalId) {
+  if (!config.access.superAdminInHospitals) return null;
+  const hospital = await Hospital.findOne({ _id: hospitalId, isActive: true });
+  return hospital ? { hospital, membership: { roles: superAdminRoles(), isSuperAdminAccess: true } } : null;
+}
+
+// For the super admin's hospital switcher: every active hospital, shaped like a membership.
+export async function superAdminMemberships() {
+  if (!config.access.superAdminInHospitals) return [];
+  const hospitals = await Hospital.find({ isActive: true }).sort({ name: 1 }).select('name code isActive').lean();
+  const roles = superAdminRoles();
+  return hospitals.map((h) => ({ id: h._id, roles, hospital: { id: h._id, name: h.name, code: h.code, isActive: h.isActive } }));
+}
+
 // Nobody changes their own access: an admin cannot lock themselves out or give themselves roles.
 function assertNotSelf(req, member) {
   if (member.userId.equals(req.user._id)) {

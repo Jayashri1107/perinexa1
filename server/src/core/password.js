@@ -1,4 +1,4 @@
-// Password rules, hashing and temporary passwords. All limits come from config.auth.
+// Password rules, hashing and temporary passwords. All rules come from config.auth.password.
 import crypto from 'node:crypto';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
@@ -6,12 +6,23 @@ import { config } from '../config/index.js';
 
 const { bcryptRounds, password: rules, temporaryPassword: temp } = config.auth;
 
-export const passwordSchema = z
-  .string()
-  .min(rules.minLength, `Password must be at least ${rules.minLength} characters`)
-  .max(rules.maxLength, `Password must be at most ${rules.maxLength} characters`)
-  .regex(/[A-Za-z]/, 'Password must contain at least one letter')
-  .regex(/[0-9]/, 'Password must contain at least one number');
+// Each rule that is switched on in config, with its message.
+const CHECKS = [
+  [rules.requireUppercase, /[A-Z]/, 'at least one capital letter (A–Z)'],
+  [rules.requireLowercase, /[a-z]/, 'at least one small letter (a–z)'],
+  [rules.requireNumber, /[0-9]/, 'at least one number (0–9)'],
+  [rules.requireSpecial, /[^A-Za-z0-9]/, 'at least one special character (such as @ # $ % ! -)'],
+].filter(([on]) => on);
+
+export const PASSWORD_RULE_TEXT = `At least ${rules.minLength} characters, with ${CHECKS.map(([, , text]) => text).join(', ')}.`;
+
+export const passwordSchema = CHECKS.reduce(
+  (schema, [, pattern, text]) => schema.regex(pattern, `Password needs ${text}`),
+  z
+    .string()
+    .min(rules.minLength, `Password must be at least ${rules.minLength} characters`)
+    .max(rules.maxLength, `Password must be at most ${rules.maxLength} characters`),
+);
 
 export const hashPassword = (plain) => bcrypt.hash(plain, bcryptRounds);
 export const verifyPassword = (plain, hash) => bcrypt.compare(plain, hash);
@@ -20,7 +31,8 @@ export const verifyPassword = (plain, hash) => bcrypt.compare(plain, hash);
 const dummyHash = bcrypt.hashSync(crypto.randomBytes(16).toString('hex'), bcryptRounds);
 export const fakeVerify = (plain) => bcrypt.compare(plain, dummyHash);
 
-// Readable temporary password such as "Kx7m-Pq3r-Tz9w" (the alphabet leaves out look-alikes such as 0/O, 1/l).
+// Readable temporary password such as "Kx7m-Pq3r-Tz9w" (the alphabet leaves out look-alikes such as 0/O, 1/l;
+// the dashes are the special characters). Tried again until it meets every rule.
 export function generateTemporaryPassword() {
   for (;;) {
     const groups = Array.from({ length: temp.groups }, () =>

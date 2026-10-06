@@ -29,6 +29,10 @@ export async function changePassword(req, res) {
   sendSession(res, await service.currentSession(req));
 }
 
+export async function leaveHospital(req, res) {
+  sendSession(res, await service.leaveHospital(req));
+}
+
 export async function switchHospital(req, res) {
   const { hospitalId } = parse(switchHospitalBody, req.body);
   sendSession(res, await service.switchHospital(req, hospitalId));

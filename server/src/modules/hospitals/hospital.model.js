@@ -48,6 +48,35 @@ const hospitalSchema = new mongoose.Schema(
       hipId: text(60),
       counterCode: text(40),
     },
+    // The pharmacy's details printed on its tax invoices (Pharmacy → Settings).
+    pharmacy: {
+      name: text(150),
+      gstin: text(20),
+      licence20: text(80),
+      licence21: text(80),
+      rmi: text(80),
+      pharmacistName: text(150),
+      state: text(60),
+      place: text(50),
+      pin: text(6),
+    },
+    // Billing → Settings: the hospital's UPI ID for payment links. It decides where patients' money goes, so every
+    // change is kept (who, when, what) and only the admin changes it.
+    billing: {
+      upiId: text(100),
+      payeeName: text(80),
+      updatedByName: text(100),
+      updatedAt: { type: Date, default: null },
+      history: {
+        type: [
+          new mongoose.Schema(
+            { upiId: { type: String, default: '' }, payeeName: { type: String, default: '' }, byName: { type: String, default: '' }, at: { type: Date, default: null } },
+            { _id: false },
+          ),
+        ],
+        default: [],
+      },
+    },
     settingsUpdatedAt: { type: Date, default: null },
     settingsUpdatedBy: { type: ObjectId, ref: 'User', default: null },
 
@@ -67,4 +96,4 @@ hospitalSchema.index({ departments: 1 });
 export const Hospital = mongoose.model('Hospital', hospitalSchema, 'hospitals');
 
 // The hospital's own settings – left out of every platform (super admin) view.
-export const HOSPITAL_SETTINGS_FIELDS = ['letterhead', 'messaging', 'abdm', 'settingsUpdatedAt', 'settingsUpdatedBy'];
+export const HOSPITAL_SETTINGS_FIELDS = ['letterhead', 'messaging', 'abdm', 'pharmacy', 'billing', 'settingsUpdatedAt', 'settingsUpdatedBy'];
