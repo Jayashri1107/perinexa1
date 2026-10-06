@@ -1,27 +1,20 @@
-// Hospital staff land here. Their own hospital screens are the next module; for now this shows where they work.
-import { Building2, LogOut } from 'lucide-react';
-import { useAppConfig } from '../../context/AppConfigContext.jsx';
+// For someone who is signed in but has no active access to any hospital (for example after being deactivated).
+import { LogOut } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { BrandMark } from '../../layout/AdminLayout.jsx';
+import { BrandMark } from '../../layout/AppShell.jsx';
 
 export function WorkspacePage() {
-  const { user, memberships, logout } = useAuth();
-  const { roleLabel } = useAppConfig();
+  const { user, activeHospitalId, logout } = useAuth();
+  if (user.isSuperAdmin) return <Navigate to="/" replace />;
+  if (activeHospitalId) return <Navigate to="/hospital" replace />;
 
   return (
     <div className="auth-page">
       <div className="auth-card card wide">
         <BrandMark size="lg" />
         <h1>Welcome, {user.name}</h1>
-        <p className="muted">The hospital workspace is the next module to be built. Your access:</p>
-        <ul className="plain-list">
-          {memberships.length === 0 && <li className="muted">You have no active hospital access. Ask your administrator.</li>}
-          {memberships.map((m) => (
-            <li key={m.id}>
-              <Building2 size={16} aria-hidden /> <strong>{m.hospital?.name}</strong> — {m.roles.map(roleLabel).join(', ')}
-            </li>
-          ))}
-        </ul>
+        <p className="muted">You have no active access to any hospital. Ask your hospital admin to give you access.</p>
         <button type="button" className="btn btn-ghost" onClick={() => logout()}>
           <LogOut size={16} aria-hidden /> Log out
         </button>

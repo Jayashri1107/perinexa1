@@ -4,6 +4,14 @@
 const API_PREFIX = __API_PREFIX__;
 
 export const SESSION_EXPIRED_EVENT = 'app:session-expired';
+// The hospital changed in another tab: the session is reloaded.
+export const HOSPITAL_CHANGED_EVENT = 'app:hospital-changed';
+
+// The hospital this tab works in, sent with every request so the server can refuse a request meant for another one.
+let activeHospitalId = null;
+export const setActiveHospital = (id) => {
+  activeHospitalId = id ?? null;
+};
 
 export class ApiError extends Error {
   constructor(status, error = {}) {
@@ -28,7 +36,10 @@ async function request(method, path, { body, query } = {}) {
     res = await fetch(buildUrl(path, query), {
       method,
       credentials: 'same-origin',
-      headers: body ? { 'Content-Type': 'application/json' } : {},
+      headers: {
+        ...(body && { 'Content-Type': 'application/json' }),
+        ...(activeHospitalId && { 'X-Hospital-Id': activeHospitalId }),
+      },
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -39,6 +50,9 @@ async function request(method, path, { body, query } = {}) {
     if (res.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
+    if (res.status === 409 && data?.error?.code === 'HOSPITAL_MISMATCH') {
+      window.dispatchEvent(new Event(HOSPITAL_CHANGED_EVENT));
+    }
     throw new ApiError(res.status, data?.error);
   }
   return data;
@@ -48,4 +62,5 @@ export const http = {
   get: (path, query) => request('GET', path, { query }),
   post: (path, body) => request('POST', path, { body }),
   patch: (path, body) => request('PATCH', path, { body }),
+  put: (path, body) => request('PUT', path, { body }),
 };

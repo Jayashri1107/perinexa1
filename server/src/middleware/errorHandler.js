@@ -9,6 +9,8 @@ const DUPLICATE_MESSAGES = {
   code: ['code', 'This code is already in use.'],
   'type,code': ['code', 'This code is already used in this list.'],
   'hospitalId,userId': ['email', 'This person is already a member of this hospital.'],
+  'hospitalId,doctorId': ['doctorId', 'This doctor already has OPD timings here. Reload the page.'],
+  isPrimary: ['accountType', 'There is already a main super admin.'],
 };
 
 export function notFound(_req, _res, next) {

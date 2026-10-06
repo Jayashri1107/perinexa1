@@ -2,7 +2,7 @@ import { PasswordInput } from './PasswordInput.jsx';
 
 // One field of any form. The field is described by data (see client/src/forms/*.js):
 // { name, label, type, required, options, placeholder, help, width, disabled, autoComplete }
-// type: text | email | password | number | tel | date | textarea | select | checkboxes
+// type: text | email | password | number | tel | date | textarea | select | checkboxes | switch
 export function FormField({ field, value, error, onChange }) {
   const id = `field-${field.name.replace(/\./g, '-')}`;
   const common = {
@@ -15,6 +15,15 @@ export function FormField({ field, value, error, onChange }) {
 
   let control;
   switch (field.type) {
+    case 'switch':
+      control = (
+        <label className={`switch${value ? ' on' : ''}`}>
+          <input {...common} type="checkbox" role="switch" aria-labelledby={`${id}-label`} checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />
+          <span className="switch-track" aria-hidden><span className="switch-thumb" /></span>
+          <span className="switch-word">{value ? field.onLabel ?? 'On' : field.offLabel ?? 'Off'}</span>
+        </label>
+      );
+      break;
     case 'password':
       control = <PasswordInput {...common} value={value} placeholder={field.placeholder} autoComplete={field.autoComplete} onChange={onChange} />;
       break;
@@ -64,7 +73,7 @@ export function FormField({ field, value, error, onChange }) {
 
   return (
     <div className={`form-field width-${field.width ?? 'full'}${error ? ' has-error' : ''}`}>
-      <label id={`${id}-label`} htmlFor={field.type === 'checkboxes' ? undefined : id}>
+      <label id={`${id}-label`} htmlFor={field.type === 'checkboxes' || field.type === 'switch' ? undefined : id}>
         {field.label}
         {field.required && <span className="required" aria-hidden> *</span>}
       </label>

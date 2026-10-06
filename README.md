@@ -6,7 +6,19 @@ Fake sample data only.
 | # | Module | Status |
 | --- | --- | --- |
 | 1 | **Main admin** (super admin): login, dashboard, hospitals, users & access, master data, audit log | Done |
-| 2 | Hospital admin workspace (staff, settings of one hospital) | Next |
+| 2 | **Hospital admin**: overview, staff, OPD timings, hospital settings (print letterhead, patient messages, ABDM), the hospital's audit log, hospital switcher, My settings | Done |
+| 3 | Patients (registration, need-to-know access) | Next |
+
+### Module 2 – how it works
+
+- The session (JWT) carries the hospital the person works in. Every hospital address takes the hospital from the
+  session, never from the web address, and checks the person's access to it again on every request. The browser
+  sends `X-Hospital-Id`; if another tab switched hospital, the request is refused (409) and the page reloads.
+- Staff, the audit log and the overview reuse module 1's services, always limited to the session's hospital.
+- Hospital-owned collections use the `hospitalScoped` plugin (`server/src/db/hospitalScoped.js`): any query or
+  aggregate without a `hospitalId` is refused. OPD timings are the first such collection.
+- A hospital admin cannot change their own access or roles, and a hospital always keeps one active admin.
+- The hospital's settings are never part of the super admin's views.
 
 ## Run it
 

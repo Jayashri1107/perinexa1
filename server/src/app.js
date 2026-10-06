@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import { config } from './config/index.js';
-import { ACCESS } from './middleware/auth.js';
+import { ACCESS, HOSPITAL_HEADER, requireRoles } from './middleware/auth.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimiters.js';
 import { modules } from './modules/index.js';
@@ -13,14 +13,14 @@ export function createApp() {
   app.set('trust proxy', config.server.trustProxy);
 
   app.use(helmet());
-  app.use(cors({ origin: config.client.url, credentials: true }));
+  app.use(cors({ origin: config.client.url, credentials: true, allowedHeaders: ['Content-Type', HOSPITAL_HEADER] }));
   app.use(express.json({ limit: config.server.jsonLimit }));
   app.use(cookieParser());
 
   const api = express.Router();
   api.use(apiLimiter);
-  for (const { path, access, router } of modules) {
-    api.use(path, ...ACCESS[access], router);
+  for (const { path, access, roles, router } of modules) {
+    api.use(path, ...ACCESS[access], ...(roles ? [requireRoles(roles)] : []), router);
   }
   app.use(config.server.apiPrefix, api);
 

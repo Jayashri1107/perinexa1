@@ -23,6 +23,10 @@ export const AUDIT_ACTIONS = Object.freeze({
   MASTER_UPDATED: 'Master data updated',
   MASTER_ACTIVATED: 'Master data activated',
   MASTER_DEACTIVATED: 'Master data deactivated',
+  HOSPITAL_SWITCHED: 'Switched hospital',
+  SETTINGS_UPDATED: 'Hospital settings changed',
+  OPD_TIMINGS_UPDATED: 'OPD timings changed',
+  PROFILE_UPDATED: 'Professional details changed',
 });
 
 export const AUDIT_ACTION_KEYS = Object.keys(AUDIT_ACTIONS);

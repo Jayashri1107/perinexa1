@@ -1,12 +1,16 @@
 import { clearSessionCookie, setSessionCookie } from '../../core/session.js';
 import { parse } from '../../core/validate.js';
 import * as service from './auth.service.js';
-import { changePasswordBody, loginBody } from './auth.validation.js';
+import { changePasswordBody, loginBody, switchHospitalBody } from './auth.validation.js';
+
+// Sets the cookie for the session's hospital and answers with the session.
+function sendSession(res, session) {
+  setSessionCookie(res, session.user, session.hospitalId);
+  res.json(service.sessionBody(session));
+}
 
 export async function login(req, res) {
-  const user = await service.login(req, parse(loginBody, req.body));
-  setSessionCookie(res, user);
-  res.json(await service.sessionInfo(user));
+  sendSession(res, await service.login(req, parse(loginBody, req.body)));
 }
 
 export async function logout(req, res) {
@@ -16,11 +20,16 @@ export async function logout(req, res) {
 }
 
 export async function me(req, res) {
-  res.json(await service.sessionInfo(req.user));
+  sendSession(res, await service.currentSession(req));
 }
 
 export async function changePassword(req, res) {
   const user = await service.changePassword(req, parse(changePasswordBody, req.body));
-  setSessionCookie(res, user); // a fresh cookie for this browser; the other sessions are ended
-  res.json(await service.sessionInfo(user));
+  req.user = user; // a fresh cookie for this browser; the other sessions are ended
+  sendSession(res, await service.currentSession(req));
+}
+
+export async function switchHospital(req, res) {
+  const { hospitalId } = parse(switchHospitalBody, req.body);
+  sendSession(res, await service.switchHospital(req, hospitalId));
 }

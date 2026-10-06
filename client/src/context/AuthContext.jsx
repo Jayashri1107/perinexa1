@@ -1,61 +1,115 @@
-// Who is logged in. The session itself is the server's httpOnly cookie; this only mirrors it for the screens.
+// Who is logged in, and which hospital they work in. The session itself is the server's httpOnly cookie;
+// this only mirrors it for the screens.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { SESSION_EXPIRED_EVENT } from '../api/http.js';
+import { HOSPITAL_CHANGED_EVENT, SESSION_EXPIRED_EVENT, setActiveHospital } from '../api/http.js';
 import { authApi } from '../api/index.js';
 import { useIdleLogout } from '../hooks/useIdleLogout.js';
 import { useAppConfig } from './AppConfigContext.jsx';
 
 const AuthContext = createContext(null);
 
+// Each person's appearance choices, applied to the whole page (styles/app.css reads these attributes).
+function applyAppearance(user) {
+  const root = document.documentElement;
+  const prefs = user?.preferences ?? {};
+  for (const key of ['textSize', 'density']) {
+    if (prefs[key]) root.dataset[key] = prefs[key];
+    else delete root.dataset[key];
+  }
+}
+
 export function AuthProvider({ children }) {
-  const { sessionTimeoutMinutes } = useAppConfig();
-  const [session, setSession] = useState(null);
+  const { sessionTimeoutMinutes, adminRole } = useAppConfig();
+  const [session, setSessionState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [endReason, setEndReason] = useState('');
 
+  const setSession = useCallback((data) => {
+    setActiveHospital(data?.activeHospitalId ?? null);
+    applyAppearance(data?.user);
+    setSessionState(data);
+  }, []);
+
+  const refresh = useCallback(
+    () =>
+      authApi
+        .me()
+        .then(setSession)
+        .catch(() => setSession(null)),
+    [setSession],
+  );
+
   useEffect(() => {
-    authApi
-      .me()
-      .then(setSession)
-      .catch(() => setSession(null))
-      .finally(() => setLoading(false));
-  }, []);
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
-  const login = useCallback(async (credentials) => {
-    const data = await authApi.login(credentials);
-    setEndReason('');
-    setSession(data);
-    return data;
-  }, []);
+  const login = useCallback(
+    async (credentials) => {
+      const data = await authApi.login(credentials);
+      setEndReason('');
+      setSession(data);
+      return data;
+    },
+    [setSession],
+  );
 
-  const logout = useCallback(async (reason = '') => {
-    await authApi.logout().catch(() => {});
-    setEndReason(reason);
-    setSession(null);
-  }, []);
+  const logout = useCallback(
+    async (reason = '') => {
+      await authApi.logout().catch(() => {});
+      setEndReason(reason);
+      setSession(null);
+    },
+    [setSession],
+  );
 
-  const changePassword = useCallback(async (data) => {
-    setSession(await authApi.changePassword(data));
-  }, []);
+  const changePassword = useCallback(async (data) => setSession(await authApi.changePassword(data)), [setSession]);
+  const switchHospital = useCallback(async (hospitalId) => setSession(await authApi.switchHospital(hospitalId)), [setSession]);
+  // After saving My settings (appearance, professional details).
+  const updateUser = useCallback((user) => setSession({ ...session, user }), [session, setSession]);
 
-  // The server ended the session (expired, deactivated, password reset elsewhere).
+  // The server ended the session (expired, deactivated, password reset elsewhere), or another tab switched hospital.
   useEffect(() => {
     const onExpired = () => {
       setEndReason('Your session has ended. Please log in again.');
       setSession(null);
     };
+    const onHospitalChanged = () => refresh();
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
-  }, []);
+    window.addEventListener(HOSPITAL_CHANGED_EVENT, onHospitalChanged);
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+      window.removeEventListener(HOSPITAL_CHANGED_EVENT, onHospitalChanged);
+    };
+  }, [refresh, setSession]);
 
   useIdleLogout(Boolean(session), sessionTimeoutMinutes, () =>
     logout(`You were logged out after ${sessionTimeoutMinutes} minutes without activity.`),
   );
 
-  const value = useMemo(
-    () => ({ user: session?.user ?? null, memberships: session?.memberships ?? [], loading, endReason, login, logout, changePassword }),
-    [session, loading, endReason, login, logout, changePassword],
-  );
+  const value = useMemo(() => {
+    const memberships = session?.memberships ?? [];
+    const activeHospitalId = session?.activeHospitalId ?? null;
+    const activeMembership = memberships.find((m) => m.hospital.id === activeHospitalId) ?? null;
+    const roles = activeMembership?.roles ?? [];
+    return {
+      user: session?.user ?? null,
+      memberships,
+      activeHospitalId,
+      activeMembership,
+      roles,
+      hasRole: (...wanted) => roles.some((r) => wanted.includes(r)),
+      isHospitalAdmin: roles.includes(adminRole),
+      loading,
+      endReason,
+      login,
+      logout,
+      changePassword,
+      switchHospital,
+      updateUser,
+      refresh,
+    };
+  }, [session, loading, endReason, login, logout, changePassword, switchHospital, updateUser, refresh, adminRole]);
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

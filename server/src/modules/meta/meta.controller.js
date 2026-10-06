@@ -9,8 +9,12 @@ const publicSettings = Object.freeze({
   password: config.auth.password,
   roles: config.roles,
   adminRole: config.adminRole,
+  prescriberRoles: config.prescriberRoles,
   masterDataTypes: config.masterData.types,
   hospitalDepartmentType: config.masterData.hospitalDepartmentType,
+  languages: config.languages,
+  opd: config.opd,
+  appearance: config.appearance,
   auditActions: AUDIT_ACTIONS,
 });
 

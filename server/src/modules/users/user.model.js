@@ -1,4 +1,5 @@
 import mongoose from '../../db/mongoose.js';
+import { DENSITY_KEYS, TEXT_SIZE_KEYS } from '../../config/index.js';
 
 const { ObjectId } = mongoose.Schema.Types;
 
@@ -17,6 +18,19 @@ const userSchema = new mongoose.Schema(
     // raised to end every session of this person at once
     tokenVersion: { type: Number, default: 0 },
     lastLoginAt: { type: Date, default: null },
+    // the hospital the person last worked in; they land there at the next login
+    lastHospitalId: { type: ObjectId, ref: 'Hospital', default: null },
+    // printed on prescriptions (doctors and RMOs fill these in under My settings)
+    professional: {
+      qualification: { type: String, trim: true, maxlength: 150, default: '' },
+      registrationNumber: { type: String, trim: true, maxlength: 60, default: '' },
+      council: { type: String, trim: true, maxlength: 120, default: '' },
+    },
+    // each person's own look of the website (My settings → Appearance)
+    preferences: {
+      textSize: { type: String, enum: TEXT_SIZE_KEYS, default: TEXT_SIZE_KEYS[0] },
+      density: { type: String, enum: DENSITY_KEYS, default: DENSITY_KEYS[0] },
+    },
     createdBy: { type: ObjectId, ref: 'User', default: null },
   },
   {

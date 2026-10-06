@@ -1,5 +1,6 @@
-// The login session: a signed JWT in an httpOnly cookie. The token carries the user id and their
-// tokenVersion; raising tokenVersion on the user ends every session at once (logout, password change, deactivation).
+// The login session: a signed JWT in an httpOnly cookie. The token carries the user id, their tokenVersion and the
+// hospital they are working in. Raising tokenVersion on the user ends every session at once (logout, password change,
+// deactivation, password reset).
 import jwt from 'jsonwebtoken';
 import { config } from '../config/index.js';
 
@@ -19,10 +20,10 @@ function removeEarlierCookie(res) {
   if (others.length !== existing.length) res.setHeader('Set-Cookie', others);
 }
 
-export function setSessionCookie(res, user) {
-  const token = jwt.sign({ sub: user._id.toString(), tv: user.tokenVersion }, jwtSecret, {
-    expiresIn: sessionTimeoutMinutes * 60,
-  });
+// hospitalId: the hospital the person works in for this session (null for a super admin).
+export function setSessionCookie(res, user, hospitalId = null) {
+  const payload = { sub: user._id.toString(), tv: user.tokenVersion, hid: hospitalId ? String(hospitalId) : null };
+  const token = jwt.sign(payload, jwtSecret, { expiresIn: sessionTimeoutMinutes * 60 });
   removeEarlierCookie(res);
   res.cookie(cookieName, token, { ...cookieOptions(), maxAge: sessionTimeoutMinutes * 60 * 1000 });
 }

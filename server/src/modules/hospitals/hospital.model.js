@@ -1,6 +1,8 @@
 import mongoose from '../../db/mongoose.js';
+import { LANGUAGE_KEYS } from '../../config/index.js';
 
 const { ObjectId } = mongoose.Schema.Types;
+const text = (maxlength) => ({ type: String, trim: true, maxlength, default: '' });
 
 const hospitalSchema = new mongoose.Schema(
   {
@@ -18,6 +20,37 @@ const hospitalSchema = new mongoose.Schema(
     },
     // master data items of the type config.masterData.hospitalDepartmentType
     departments: [{ type: ObjectId, ref: 'MasterData' }],
+
+    // The hospital's own settings, kept by its hospital admin (Hospital settings). The super admin's screens never
+    // show them (HOSPITAL_SETTINGS_FIELDS below).
+    // Printed at the top and bottom of prescriptions, care plans and other documents.
+    letterhead: {
+      name: text(150), // printed name (the hospital name when empty)
+      tagline: text(150),
+      address: text(300),
+      phone: text(60),
+      email: text(254),
+      registrationNumber: text(80),
+      footer: text(300),
+      // the language printed next to English on patient papers
+      consentLanguage: { type: String, enum: LANGUAGE_KEYS, default: LANGUAGE_KEYS[0] },
+    },
+    // Patient messages: switched on here, used by the reminder and portal modules when they are built.
+    messaging: {
+      remindersEnabled: { type: Boolean, default: false },
+      portalEnabled: { type: Boolean, default: false },
+      portalBooking: { type: Boolean, default: false },
+      whatsappDocuments: { type: Boolean, default: false },
+    },
+    // ABDM: the Health Facility Registry ID, the HIP ID and the Scan & Share counter code.
+    abdm: {
+      hfrId: text(60),
+      hipId: text(60),
+      counterCode: text(40),
+    },
+    settingsUpdatedAt: { type: Date, default: null },
+    settingsUpdatedBy: { type: ObjectId, ref: 'User', default: null },
+
     isActive: { type: Boolean, default: true },
     createdBy: { type: ObjectId, ref: 'User', default: null },
   },
@@ -32,3 +65,6 @@ hospitalSchema.index({ isActive: 1, name: 1 });
 hospitalSchema.index({ departments: 1 });
 
 export const Hospital = mongoose.model('Hospital', hospitalSchema, 'hospitals');
+
+// The hospital's own settings – left out of every platform (super admin) view.
+export const HOSPITAL_SETTINGS_FIELDS = ['letterhead', 'messaging', 'abdm', 'settingsUpdatedAt', 'settingsUpdatedBy'];

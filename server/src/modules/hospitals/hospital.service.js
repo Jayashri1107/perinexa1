@@ -10,7 +10,7 @@ import { activeIdsOfType } from '../masterData/masterData.service.js';
 import { addMember } from '../members/member.service.js';
 import { Membership } from '../members/membership.model.js';
 import { findUserByEmail } from '../users/user.service.js';
-import { Hospital } from './hospital.model.js';
+import { HOSPITAL_SETTINGS_FIELDS, Hospital } from './hospital.model.js';
 
 const departmentType = config.masterData.hospitalDepartmentType;
 
@@ -41,7 +41,7 @@ const detailStages = [
       adminCount: { $ifNull: [{ $first: '$staffStats.admins' }, 0] },
     },
   },
-  { $unset: ['staffStats', 'nameKey'] },
+  { $unset: ['staffStats', 'nameKey', ...HOSPITAL_SETTINGS_FIELDS] },
   ...withId(),
 ];
 

@@ -66,6 +66,34 @@
     "recentActivityCount": 8,
     "topHospitalsCount": 5
   },
+  "prescriberRoles": ["doctor", "rmo"],
+  "languages": [
+    { "key": "mr", "label": "Marathi" },
+    { "key": "hi", "label": "Hindi" }
+  ],
+  "opd": {
+    "doctorRole": "doctor",
+    "slotMinutes": 10,
+    "maxSessionsPerDay": 4,
+    "maxLeavePeriods": 50,
+    "visitTypes": [
+      { "key": "new", "label": "New patient", "defaultMinutes": 20 },
+      { "key": "follow_up", "label": "Follow-up", "defaultMinutes": 10 },
+      { "key": "scan", "label": "Scan", "defaultMinutes": 20 },
+      { "key": "other", "label": "Other", "defaultMinutes": 10 }
+    ]
+  },
+  "appearance": {
+    "textSize": [
+      { "key": "standard", "label": "Standard" },
+      { "key": "large", "label": "Large" },
+      { "key": "small", "label": "Small" }
+    ],
+    "density": [
+      { "key": "comfortable", "label": "Comfortable" },
+      { "key": "compact", "label": "Compact" }
+    ]
+  },
   "seed": {
     "superAdmin": {
       "name": "Platform Admin",

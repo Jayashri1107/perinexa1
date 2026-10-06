@@ -137,11 +137,18 @@ export async function resetPassword(req, id) {
     throw new HttpError(400, 'To change your own password, use "Change password" instead.', 'SELF_ACTION');
   }
   assertCanManage(req, user);
+  const temporaryPassword = await issueTemporaryPassword(req, user);
+  return { user: await getUser(id), temporaryPassword };
+}
+
+// Gives the person a new temporary password and signs them out everywhere. Used by the super admin's Users page and
+// the hospital admin's Staff page (hospitalId: where it was done, for the audit log).
+export async function issueTemporaryPassword(req, user, hospitalId = null) {
   const temporaryPassword = generateTemporaryPassword();
   user.passwordHash = await hashPassword(temporaryPassword);
   user.mustChangePassword = true;
   user.tokenVersion += 1;
   await user.save();
-  await recordAudit(req, 'PASSWORD_RESET', { target: user });
-  return { user: await getUser(id), temporaryPassword };
+  await recordAudit(req, 'PASSWORD_RESET', { target: user, hospitalId });
+  return temporaryPassword;
 }

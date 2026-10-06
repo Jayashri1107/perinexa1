@@ -51,6 +51,16 @@ const schema = z.object({
     hospitalDepartmentType: z.string().min(1),
   }),
   dashboard: z.object({ recentActivityCount: z.number().int().positive(), topHospitalsCount: z.number().int().positive() }),
+  prescriberRoles: z.array(z.string().min(1)),
+  languages: z.array(keyLabel).min(1),
+  opd: z.object({
+    doctorRole: z.string().min(1),
+    slotMinutes: z.number().int().min(5).max(60),
+    maxSessionsPerDay: z.number().int().min(1).max(10),
+    maxLeavePeriods: z.number().int().min(1),
+    visitTypes: z.array(keyLabel.extend({ defaultMinutes: z.number().int().positive() })).min(1),
+  }),
+  appearance: z.object({ textSize: z.array(keyLabel).min(1), density: z.array(keyLabel).min(1) }),
   seed: z.object({
     superAdmin: z.object({ name: z.string(), email: z.string(), password: z.string() }),
     masterData: z.record(z.string(), z.array(z.object({ code: z.string(), name: z.string() }))),
@@ -69,6 +79,11 @@ function readConfig() {
     console.error(`adminRole "${cfg.adminRole}" is not one of the roles in config.`);
     process.exit(1);
   }
+  const unknownRoles = [...cfg.prescriberRoles, cfg.opd.doctorRole].filter((r) => !cfg.roles.some((x) => x.key === r));
+  if (unknownRoles.length) {
+    console.error(`Unknown roles in prescriberRoles / opd.doctorRole: ${unknownRoles.join(', ')}`);
+    process.exit(1);
+  }
   if (!cfg.masterData.types.some((t) => t.key === cfg.masterData.hospitalDepartmentType)) {
     console.error(`masterData.hospitalDepartmentType "${cfg.masterData.hospitalDepartmentType}" is not one of the master data types.`);
     process.exit(1);
@@ -81,3 +96,7 @@ export const config = readConfig();
 // Lookups derived from the settings, so the rest of the code never repeats the lists.
 export const ROLE_KEYS = config.roles.map((r) => r.key);
 export const MASTER_TYPE_KEYS = config.masterData.types.map((t) => t.key);
+export const LANGUAGE_KEYS = config.languages.map((l) => l.key);
+export const VISIT_TYPE_KEYS = config.opd.visitTypes.map((v) => v.key);
+export const TEXT_SIZE_KEYS = config.appearance.textSize.map((o) => o.key);
+export const DENSITY_KEYS = config.appearance.density.map((o) => o.key);

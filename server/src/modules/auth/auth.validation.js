@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { config } from '../../config/index.js';
 import { passwordSchema } from '../../core/password.js';
+import { objectId } from '../../core/validate.js';
+
+export const switchHospitalBody = z.object({ hospitalId: objectId });
 
 const { maxLength } = config.auth.password;
 

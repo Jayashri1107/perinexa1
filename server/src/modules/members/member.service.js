@@ -7,15 +7,30 @@ import { containsText, toObjectId } from '../../core/validate.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { Hospital } from '../hospitals/hospital.model.js';
 import { User } from '../users/user.model.js';
-import { createAccount, findUserByEmail } from '../users/user.service.js';
+import { createAccount, findUserByEmail, issueTemporaryPassword } from '../users/user.service.js';
 import { Membership } from './membership.model.js';
 
 const userJoin = lookupOne({
   from: User.collection.name,
   localField: 'userId',
   as: 'user',
-  fields: ['name', 'email', 'isActive', 'mustChangePassword', 'lastLoginAt'],
+  fields: ['name', 'email', 'isActive', 'mustChangePassword', 'lastLoginAt', 'professional'],
 });
+
+// The person's active access to an active hospital, or null.
+export async function findActiveMembership(userId, hospitalId) {
+  const membership = await Membership.findOne({ userId, hospitalId, isActive: true });
+  if (!membership) return null;
+  const hospital = await Hospital.findOne({ _id: hospitalId, isActive: true });
+  return hospital ? { membership, hospital } : null;
+}
+
+// Nobody changes their own access: an admin cannot lock themselves out or give themselves roles.
+function assertNotSelf(req, member) {
+  if (member.userId.equals(req.user._id)) {
+    throw new HttpError(400, 'You cannot change your own access. Ask another admin.', 'SELF_ACTION');
+  }
+}
 
 async function findHospitalOr404(hospitalId) {
   const hospital = await Hospital.findById(hospitalId);
@@ -110,6 +125,7 @@ const isAdmin = (roles) => roles.includes(config.adminRole);
 
 export async function updateRoles(req, hospitalId, memberId, roles) {
   const member = await findMemberOr404(hospitalId, memberId);
+  assertNotSelf(req, member);
   const before = [...member.roles];
   if (member.isActive && isAdmin(before) && !isAdmin(roles)) await assertAnotherAdmin(member);
 
@@ -121,6 +137,7 @@ export async function updateRoles(req, hospitalId, memberId, roles) {
 
 export async function setMemberStatus(req, hospitalId, memberId, isActive) {
   const member = await findMemberOr404(hospitalId, memberId);
+  assertNotSelf(req, member);
   if (member.isActive === isActive) return getMember(hospitalId, memberId);
   if (!isActive && isAdmin(member.roles)) await assertAnotherAdmin(member);
 
@@ -128,4 +145,16 @@ export async function setMemberStatus(req, hospitalId, memberId, isActive) {
   await member.save();
   await recordAudit(req, isActive ? 'MEMBER_ACTIVATED' : 'MEMBER_DEACTIVATED', { target: { _id: member.userId }, hospitalId: member.hospitalId });
   return getMember(hospitalId, memberId);
+}
+
+// A hospital admin resets the password of someone working in their hospital (never their own – that is
+// "Change password"). The person gets a temporary password and is signed out everywhere.
+export async function resetMemberPassword(req, hospitalId, memberId) {
+  const member = await findMemberOr404(hospitalId, memberId);
+  assertNotSelf(req, member);
+  const user = await User.findById(member.userId);
+  if (!user) throw notFoundError('Staff member');
+  if (user.isSuperAdmin) throw new HttpError(403, 'You do not have permission to do this.', 'FORBIDDEN');
+  const temporaryPassword = await issueTemporaryPassword(req, user, member.hospitalId);
+  return { email: user.email, temporaryPassword };
 }
