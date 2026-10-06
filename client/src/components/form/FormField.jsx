@@ -1,3 +1,5 @@
+import { PasswordInput } from './PasswordInput.jsx';
+
 // One field of any form. The field is described by data (see client/src/forms/*.js):
 // { name, label, type, required, options, placeholder, help, width, disabled, autoComplete }
 // type: text | email | password | number | tel | date | textarea | select | checkboxes
@@ -13,6 +15,9 @@ export function FormField({ field, value, error, onChange }) {
 
   let control;
   switch (field.type) {
+    case 'password':
+      control = <PasswordInput {...common} value={value} placeholder={field.placeholder} autoComplete={field.autoComplete} onChange={onChange} />;
+      break;
     case 'textarea':
       control = <textarea {...common} rows={field.rows ?? 3} value={value ?? ''} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />;
       break;

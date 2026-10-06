@@ -12,12 +12,14 @@ export function FormBuilder({ fields, form }) {
 
   return (
     <div className="form-grid">
-      <Alert type="error">
-        {form.formError}
-        {otherErrors.map(([name, message]) => (
-          <div key={name}>{message}</div>
-        ))}
-      </Alert>
+      {(form.formError || otherErrors.length > 0) && (
+        <Alert type="error">
+          {form.formError}
+          {otherErrors.map(([name, message]) => (
+            <div key={name}>{message}</div>
+          ))}
+        </Alert>
+      )}
       {fields
         .filter((f) => !f.showIf || f.showIf(form.values))
         .map((f) =>
