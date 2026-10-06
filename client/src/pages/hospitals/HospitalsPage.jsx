@@ -5,6 +5,8 @@ import { hospitalsApi, masterDataApi } from '../../api/index.js';
 import { FormModal } from '../../components/form/FormModal.jsx';
 import { ListPanel } from '../../components/list/ListPanel.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { SectionTabs } from '../../components/SectionTabs.jsx';
+import { HOSPITALS_TABS } from '../../config/navigation.js';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { TemporaryPasswordNotice } from '../../components/TemporaryPasswordNotice.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
@@ -15,13 +17,18 @@ import { usePagedList } from '../../hooks/usePagedList.js';
 import { activeStatus } from '../../utils/format.js';
 import { STATUS_FILTER } from '../../utils/filters.js';
 
-export function HospitalsPage() {
+// startAdding: opened as the "New hospital" tab – the add dialog opens at once.
+export function HospitalsPage({ startAdding = false }) {
   const { hospitalDepartmentType } = useAppConfig();
   const navigate = useNavigate();
   const list = usePagedList(hospitalsApi.list);
   const departments = useOptions(useCallback(() => masterDataApi(hospitalDepartmentType).options(), [hospitalDepartmentType]));
   const form = useForm(emptyHospital);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(startAdding);
+  const closeAdd = () => {
+    setAdding(false);
+    if (startAdding) navigate('/hospitals');
+  };
   const [created, setCreated] = useState(null);
 
   const columns = [
@@ -41,7 +48,7 @@ export function HospitalsPage() {
 
   const onSubmit = async (values) => {
     const result = await hospitalsApi.create(hospitalPayload(values, true));
-    setAdding(false);
+    closeAdd();
     list.reload();
     if (result.admin?.temporaryPassword) setCreated(result.admin);
     else navigate(`/hospitals/${result.hospital.id}`);
@@ -58,6 +65,7 @@ export function HospitalsPage() {
           </button>
         }
       />
+      <SectionTabs tabs={HOSPITALS_TABS} label="Hospitals" />
       <ListPanel
         list={list}
         columns={columns}
@@ -73,7 +81,7 @@ export function HospitalsPage() {
           fields={hospitalFields({ departments, isNew: true })}
           form={form}
           onSubmit={onSubmit}
-          onClose={() => setAdding(false)}
+          onClose={closeAdd}
           submitLabel="Add hospital"
         />
       )}

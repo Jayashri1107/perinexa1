@@ -1,7 +1,9 @@
 // Every account on the platform, with the hospitals and roles each person holds (one consolidated list).
 import { Lock, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { SectionTabs } from '../../components/SectionTabs.jsx';
+import { USERS_TABS } from '../../config/navigation.js';
 import { hospitalsApi, usersApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { FormModal } from '../../components/form/FormModal.jsx';
@@ -27,13 +29,20 @@ const KIND_FILTER = {
   ],
 };
 
-export function UsersPage() {
+// The tabs of Users & access (as in Perinexa) are this page with a filter set:
+// preset – e.g. { kind: 'superAdmin' } or { status: 'pending' }; startAdding – the "New account" tab.
+export function UsersPage({ preset = {}, startAdding = false }) {
   const { roles, roleLabel } = useAppConfig();
   const { user: me } = useAuth();
-  const list = usePagedList(usersApi.list);
+  const navigate = useNavigate();
+  const list = usePagedList(usersApi.list, preset);
   const hospitals = useOptions(hospitalsApi.options);
   const form = useForm(emptyUser);
-  const [dialog, setDialog] = useState(null); // 'add' | { user }
+  const [dialog, setDialogState] = useState(startAdding ? 'add' : null); // 'add' | { user }
+  const setDialog = (next) => {
+    setDialogState(next);
+    if (!next && startAdding) navigate('/users');
+  };
   const [notice, setNotice] = useState(null);
   const [error, setError] = useState('');
 
@@ -135,6 +144,7 @@ export function UsersPage() {
           </button>
         }
       />
+      <SectionTabs tabs={USERS_TABS} label="Users & access" />
       <Alert type="error">{error}</Alert>
       <ListPanel
         list={list}

@@ -36,7 +36,7 @@ export function AdminOverviewPage() {
 
   return (
     <>
-      <PageHeader title="Hospital admin" subtitle={`${hospital.name} · code ${hospital.code}${address ? ` · ${address}` : ''}`} />
+      <PageHeader title="Hospital overview" subtitle={`${hospital.name} · code ${hospital.code}${address ? ` · ${address}` : ''}`} />
       <SectionTabs tabs={HOSPITAL_ADMIN_TABS} label="Hospital admin" />
 
       <div className="stat-grid">

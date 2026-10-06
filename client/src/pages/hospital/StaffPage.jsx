@@ -11,7 +11,7 @@ export function StaffPage() {
   return (
     <>
       <PageHeader
-        title="Staff"
+        title="Staff members"
         subtitle="Everyone who works here, with their roles. Staff are deactivated, never deleted. A hospital always keeps at least one admin."
       />
       <SectionTabs tabs={HOSPITAL_ADMIN_TABS} label="Hospital admin" />

@@ -59,7 +59,7 @@ function PersonalLayout() {
 // The pharmacy's first page: the counter for the pharmacist, the sales for the others.
 function PharmacyHome() {
   const { canAccess } = useAuth();
-  return canAccess('pharmacyCounter') ? <SellPage /> : <Navigate to="/hospital/pharmacy/sales" replace />;
+  return canAccess('pharmacyCounter') ? <SellPage /> : <Navigate to="/hospital/pharmacy/stock" replace />;
 }
 
 export function App() {
@@ -157,9 +157,15 @@ export function App() {
             <Route element={<ProtectedRoute area="admin" />}>
               <Route element={<AdminLayout />}>
                 <Route index element={<DashboardPage />} />
-                <Route path="hospitals" element={<HospitalsPage />} />
+                <Route path="hospitals" element={<HospitalsPage key="all" />} />
+                <Route path="hospitals/new" element={<HospitalsPage key="new" startAdding />} />
                 <Route path="hospitals/:id" element={<HospitalDetailPage />} />
-                <Route path="users" element={<UsersPage />} />
+                {/* Users & access tabs (as in Perinexa); key: each tab starts with its own filter */}
+                <Route path="users" element={<UsersPage key="all" />} />
+                <Route path="users/super-admins" element={<UsersPage key="super" preset={{ kind: 'superAdmin' }} />} />
+                <Route path="users/staff" element={<UsersPage key="staff" preset={{ kind: 'staff' }} />} />
+                <Route path="users/pending" element={<UsersPage key="pending" preset={{ status: 'pending' }} />} />
+                <Route path="users/new" element={<UsersPage key="new" startAdding />} />
                 <Route path="master-data" element={<Navigate to="/master-data/_" replace />} />
                 <Route path="master-data/:type" element={<MasterDataPage />} />
                 <Route path="analytics" element={<PlatformAnalyticsPage />} />

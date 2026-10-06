@@ -24,7 +24,7 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="The whole platform at a glance" />
+      <PageHeader title="Overview" subtitle="The whole platform at a glance" />
 
       <div className="stat-grid">
         <StatCard icon={Building2} label="Hospitals" value={data.hospitals.total} hint={`${data.hospitals.active} active · ${data.hospitals.inactive} inactive`} />
