@@ -1,10 +1,11 @@
+import { ArrowRight, Lock } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Alert } from '../../components/Alert.jsx';
+import { AuthLayout } from '../../components/AuthLayout.jsx';
 import { FormBuilder } from '../../components/form/FormBuilder.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { emptyLogin, loginFields } from '../../forms/authForms.js';
 import { useForm } from '../../hooks/useForm.js';
-import { BrandMark } from '../../layout/AdminLayout.jsx';
 
 export function LoginPage() {
   const { user, login, endReason } = useAuth();
@@ -20,19 +21,22 @@ export function LoginPage() {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card card">
-        <BrandMark size="lg" />
-        <h1>Log in</h1>
-        <Alert type="info">{endReason}</Alert>
-        <form onSubmit={form.submit(onSubmit)} noValidate>
-          <FormBuilder fields={loginFields} form={form} />
-          <button type="submit" className="btn btn-primary btn-block" disabled={form.submitting}>
-            {form.submitting ? 'Checking…' : 'Log in'}
-          </button>
-        </form>
-        <p className="muted small">Forgot your password? Ask your administrator to reset it.</p>
-      </div>
-    </div>
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Sign in with the email and password your administrator gave you."
+      footer={
+        <>
+          <Lock size={14} aria-hidden /> Forgot your password? Ask your hospital administrator to reset it.
+        </>
+      }
+    >
+      <Alert type="info">{endReason}</Alert>
+      <form onSubmit={form.submit(onSubmit)} noValidate>
+        <FormBuilder fields={loginFields} form={form} />
+        <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={form.submitting}>
+          {form.submitting ? 'Signing in…' : (<>Sign in <ArrowRight size={18} aria-hidden /></>)}
+        </button>
+      </form>
+    </AuthLayout>
   );
 }

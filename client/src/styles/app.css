@@ -605,3 +605,56 @@ input.qty { width: 80px; padding: 6px 8px; border: 1px solid var(--color-border)
 .segmented { display: inline-flex; padding: 3px; border-radius: 99px; background: var(--color-neutral-soft); }
 .segmented button { border: 0; background: transparent; padding: 6px 14px; border-radius: 99px; font: inherit; font-weight: 600; font-size: var(--text-sm); color: var(--color-text-muted); cursor: pointer; }
 .segmented button.on { background: var(--color-surface); color: var(--color-primary); box-shadow: var(--shadow); }
+
+/* ---------- Sign-in pages: brand panel + form card ---------- */
+.auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(380px, 46%) 1fr; background: var(--color-bg); }
+.auth-brand {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-6);
+  padding: 48px 56px; color: #dcecef;
+  background:
+    radial-gradient(circle at 85% 12%, rgba(95, 208, 216, 0.22), transparent 42%),
+    radial-gradient(circle at 10% 95%, rgba(107, 79, 216, 0.25), transparent 45%),
+    linear-gradient(160deg, #0f3d47 0%, #0b2f37 100%);
+}
+.auth-brand-logo { height: 46px; width: auto; }
+.auth-brand-body { margin-top: auto; max-width: 460px; position: relative; z-index: 1; }
+.auth-brand h2 { font-size: 34px; line-height: 1.2; color: #fff; margin: 0 0 var(--space-4); font-weight: 700; letter-spacing: -0.01em; }
+.auth-brand-body > p { font-size: 16px; line-height: 1.6; margin: 0 0 var(--space-6); color: #b9d3d8; }
+.auth-points { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.auth-points li { display: flex; gap: var(--space-3); align-items: flex-start; font-size: var(--text-sm); color: #b9d3d8; }
+.auth-points strong { color: #fff; font-size: var(--text); margin-bottom: 2px; }
+.auth-point-icon {
+  width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08); color: #5fd0d8; border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.auth-pulse { position: absolute; left: 0; right: 0; bottom: 70px; width: 100%; height: 110px; opacity: 0.18; }
+.auth-pulse path { fill: none; stroke: #5fd0d8; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.auth-brand-foot { margin: auto 0 0; font-size: 12px; color: #8fb3ba; position: relative; z-index: 1; }
+
+.auth-main { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-6) var(--space-4); gap: var(--space-4); }
+.auth-panel {
+  width: 100%; max-width: 420px; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 18px; box-shadow: 0 20px 50px rgba(16, 42, 51, 0.08); padding: 40px 36px;
+}
+.auth-mobile-logo { display: none; height: 40px; width: auto; margin-bottom: var(--space-5); }
+.auth-head { margin-bottom: var(--space-5); }
+.auth-head h1 { font-size: 26px; letter-spacing: -0.01em; }
+.auth-head p { margin: 6px 0 0; line-height: 1.5; }
+.auth-panel .form-grid { gap: var(--space-4); }
+.auth-panel .form-field input { padding: 12px 14px; font-size: 15px; border-radius: 10px; }
+.auth-panel .alert { margin-bottom: var(--space-4); }
+.btn-lg { padding: 13px 18px; font-size: 15px; border-radius: 10px; margin-top: var(--space-5); }
+.auth-foot { display: flex; align-items: center; gap: 6px; justify-content: center; margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--color-border); font-size: var(--text-sm); color: var(--color-text-muted); text-align: center; }
+.auth-notice { font-size: 12px; color: var(--color-text-muted); margin: 0; text-align: center; max-width: 420px; }
+
+@media (max-width: 960px) {
+  .auth-shell { grid-template-columns: 1fr; }
+  .auth-brand { display: none; }
+  .auth-mobile-logo { display: block; }
+  .auth-main { background: linear-gradient(180deg, var(--color-primary-soft), var(--color-bg) 40%); }
+}
+@media (max-width: 480px) {
+  .auth-panel { padding: 28px 20px; border-radius: 14px; }
+}
+.auth-brand-logo { align-self: flex-start; position: relative; z-index: 1; }
+.auth-foot { display: block; } .auth-foot svg { vertical-align: -2px; margin-right: 4px; }

@@ -1,6 +1,6 @@
 export const loginFields = [
-  { name: 'email', label: 'Email', type: 'email', required: true, autoComplete: 'username' },
-  { name: 'password', label: 'Password', type: 'password', required: true, autoComplete: 'current-password' },
+  { name: 'email', label: 'Email', type: 'email', required: true, autoComplete: 'username', placeholder: 'you@hospital.com' },
+  { name: 'password', label: 'Password', type: 'password', required: true, autoComplete: 'current-password', placeholder: 'Your password' },
 ];
 
 export const emptyLogin = { email: '', password: '' };
