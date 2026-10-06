@@ -1,0 +1,11 @@
+{
+  "auth": {
+    "jwtSecret": "replace-with-a-long-random-value-at-least-32-characters"
+  },
+  "seed": {
+    "superAdmin": {
+      "email": "admin@example.com",
+      "password": "replace-with-a-strong-password-123"
+    }
+  }
+}

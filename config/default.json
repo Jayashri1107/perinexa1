@@ -1,0 +1,90 @@
+{
+  "app": {
+    "name": "Perinexa1",
+    "tagline": "Hospital administration"
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 5000,
+    "apiPrefix": "/api",
+    "jsonLimit": "100kb",
+    "trustProxy": false
+  },
+  "client": {
+    "port": 5174,
+    "url": "http://localhost:5174"
+  },
+  "database": {
+    "uri": "mongodb://127.0.0.1:27017/perinexa1",
+    "autoIndex": true,
+    "slowQueryMs": 100,
+    "logAllQueries": false
+  },
+  "auth": {
+    "jwtSecret": "",
+    "cookieName": "p1_session",
+    "cookieSecure": false,
+    "sessionTimeoutMinutes": 30,
+    "bcryptRounds": 12,
+    "password": {
+      "minLength": 12,
+      "maxLength": 128
+    },
+    "temporaryPassword": {
+      "groups": 3,
+      "groupLength": 4,
+      "alphabet": "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+    }
+  },
+  "rateLimit": {
+    "login": { "windowMinutes": 15, "max": 10 },
+    "api": { "windowMinutes": 1, "max": 300 }
+  },
+  "pagination": {
+    "defaultLimit": 10,
+    "limitOptions": [10, 25, 50, 100],
+    "maxLimit": 100
+  },
+  "roles": [
+    { "key": "admin", "label": "Hospital admin" },
+    { "key": "doctor", "label": "Doctor" },
+    { "key": "rmo", "label": "RMO" },
+    { "key": "nurse", "label": "Nurse" },
+    { "key": "receptionist", "label": "Receptionist" },
+    { "key": "lab", "label": "Lab staff" },
+    { "key": "pharmacist", "label": "Pharmacist" }
+  ],
+  "adminRole": "admin",
+  "masterData": {
+    "types": [
+      { "key": "department", "label": "Departments", "singular": "Department" },
+      { "key": "speciality", "label": "Specialities", "singular": "Speciality" }
+    ],
+    "hospitalDepartmentType": "department"
+  },
+  "dashboard": {
+    "recentActivityCount": 8,
+    "topHospitalsCount": 5
+  },
+  "seed": {
+    "superAdmin": {
+      "name": "Platform Admin",
+      "email": "",
+      "password": ""
+    },
+    "masterData": {
+      "department": [
+        { "code": "OBGY", "name": "Obstetrics & Gynaecology" },
+        { "code": "PAED", "name": "Paediatrics" },
+        { "code": "GEN", "name": "General Medicine" },
+        { "code": "LAB", "name": "Laboratory" },
+        { "code": "PHARM", "name": "Pharmacy" }
+      ],
+      "speciality": [
+        { "code": "MFM", "name": "Maternal-Fetal Medicine" },
+        { "code": "REI", "name": "Reproductive Medicine" },
+        { "code": "NEO", "name": "Neonatology" }
+      ]
+    }
+  }
+}

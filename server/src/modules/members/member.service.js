@@ -1,0 +1,131 @@
+// Hospital staff: who works in a hospital and with which roles.
+import { config } from '../../config/index.js';
+import { lookupOne, statusMatch, withId } from '../../core/aggregate.js';
+import { HttpError, fieldError, notFoundError } from '../../core/httpError.js';
+import { paginate, toSort } from '../../core/pagination.js';
+import { containsText, toObjectId } from '../../core/validate.js';
+import { recordAudit } from '../audit/audit.service.js';
+import { Hospital } from '../hospitals/hospital.model.js';
+import { User } from '../users/user.model.js';
+import { createAccount, findUserByEmail } from '../users/user.service.js';
+import { Membership } from './membership.model.js';
+
+const userJoin = lookupOne({
+  from: User.collection.name,
+  localField: 'userId',
+  as: 'user',
+  fields: ['name', 'email', 'isActive', 'mustChangePassword', 'lastLoginAt'],
+});
+
+async function findHospitalOr404(hospitalId) {
+  const hospital = await Hospital.findById(hospitalId);
+  if (!hospital) throw notFoundError('Hospital');
+  return hospital;
+}
+
+async function findMemberOr404(hospitalId, memberId) {
+  const member = await Membership.findOne({ _id: memberId, hospitalId });
+  if (!member) throw notFoundError('Staff member');
+  return member;
+}
+
+export async function getMember(hospitalId, memberId) {
+  const [member] = await Membership.aggregate([
+    { $match: { _id: toObjectId(memberId), hospitalId: toObjectId(hospitalId) } },
+    ...userJoin,
+    ...withId(),
+  ]);
+  if (!member) throw notFoundError('Staff member');
+  return member;
+}
+
+export async function listMembers(hospitalId, q) {
+  const match = { hospitalId: toObjectId(hospitalId), ...statusMatch(q.status) };
+  if (q.role) match.roles = q.role;
+
+  // Searching by name or email needs the person first; without a search the join runs for the page only.
+  const searching = Boolean(q.search);
+  const text = searching && containsText(q.search);
+  return paginate(Membership, {
+    match,
+    sort: toSort(q.sort),
+    page: q.page,
+    limit: q.limit,
+    preStages: searching ? [...userJoin, { $match: { $or: [{ 'user.name': text }, { 'user.email': text }] } }] : [],
+    pageStages: [...(searching ? [] : userJoin), ...withId()],
+  });
+}
+
+// The hospitals a person works in (for their own session).
+export function listUserMemberships(userId) {
+  return Membership.aggregate([
+    { $match: { userId: toObjectId(userId), isActive: true } },
+    ...lookupOne({ from: Hospital.collection.name, localField: 'hospitalId', as: 'hospital', fields: ['name', 'code', 'isActive'] }),
+    { $match: { 'hospital.isActive': true } },
+    { $project: { _id: 0, id: '$_id', roles: 1, hospital: 1 } },
+  ]);
+}
+
+// Adds a person to a hospital. A new email gets an account with a temporary password; an existing person
+// simply gains access to this hospital too (same login, no new password).
+export async function addMember(req, hospitalId, { name, email, roles }) {
+  const hospital = await findHospitalOr404(hospitalId);
+  if (!hospital.isActive) throw new HttpError(400, 'This hospital is deactivated. Activate it first.', 'HOSPITAL_INACTIVE');
+
+  let user = await findUserByEmail(email);
+  let temporaryPassword = null;
+  if (user) {
+    if (user.isSuperAdmin) {
+      throw fieldError('email', 'A super admin cannot be added to a hospital. Use a separate account.', 'SUPER_ADMIN');
+    }
+    const existing = await Membership.findOne({ hospitalId: hospital._id, userId: user._id });
+    if (existing) {
+      const message = existing.isActive
+        ? 'This person is already a member of this hospital.'
+        : 'This person is already a member of this hospital but deactivated. Activate them instead.';
+      throw new HttpError(409, message, 'ALREADY_MEMBER', { email: message });
+    }
+  } else {
+    if (!name) throw fieldError('name', 'Name is required for a new person.');
+    ({ user, temporaryPassword } = await createAccount(req, { name, email, hospitalId: hospital._id }));
+  }
+
+  const member = await Membership.create({ hospitalId: hospital._id, userId: user._id, roles, createdBy: req.user._id });
+  await recordAudit(req, 'MEMBER_ADDED', { target: user, hospitalId: hospital._id, details: { roles } });
+  return { member, temporaryPassword, existingUser: !temporaryPassword };
+}
+
+// A hospital must always keep at least one active admin.
+async function assertAnotherAdmin(member) {
+  const others = await Membership.countDocuments({
+    hospitalId: member.hospitalId,
+    _id: { $ne: member._id },
+    isActive: true,
+    roles: config.adminRole,
+  });
+  if (others === 0) throw new HttpError(400, 'This hospital must always have at least one active admin.', 'LAST_ADMIN');
+}
+
+const isAdmin = (roles) => roles.includes(config.adminRole);
+
+export async function updateRoles(req, hospitalId, memberId, roles) {
+  const member = await findMemberOr404(hospitalId, memberId);
+  const before = [...member.roles];
+  if (member.isActive && isAdmin(before) && !isAdmin(roles)) await assertAnotherAdmin(member);
+
+  member.roles = roles;
+  await member.save();
+  await recordAudit(req, 'MEMBER_ROLES_CHANGED', { target: { _id: member.userId }, hospitalId: member.hospitalId, details: { from: before, to: roles } });
+  return getMember(hospitalId, memberId);
+}
+
+export async function setMemberStatus(req, hospitalId, memberId, isActive) {
+  const member = await findMemberOr404(hospitalId, memberId);
+  if (member.isActive === isActive) return getMember(hospitalId, memberId);
+  if (!isActive && isAdmin(member.roles)) await assertAnotherAdmin(member);
+
+  member.isActive = isActive;
+  await member.save();
+  await recordAudit(req, isActive ? 'MEMBER_ACTIVATED' : 'MEMBER_DEACTIVATED', { target: { _id: member.userId }, hospitalId: member.hospitalId });
+  return getMember(hospitalId, memberId);
+}
