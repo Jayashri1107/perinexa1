@@ -767,3 +767,12 @@ input.qty { width: 80px; padding: 6px 8px; border: 1px solid var(--color-border)
 .rx-symbol { font-size: 22px; margin: var(--space-3) 0 0; }
 .print-sign { margin-top: var(--space-6); text-align: right; }
 .rx-table select { width: 100%; min-width: 90px; padding: 6px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; }
+
+/* inpatients */
+.detail-row { display: contents; }
+.stack { display: grid; gap: var(--space-4); align-content: start; }
+.stack > .card-head { margin-bottom: 0; }
+.nursing-form { display: grid; gap: var(--space-2); }
+.nursing-form input { padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; }
+.babies { display: grid; gap: var(--space-3); }
+@media (max-width: 1100px) { .stay-layout { grid-template-columns: 1fr; } }

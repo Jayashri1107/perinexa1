@@ -1,0 +1,90 @@
+// Inpatients (as in Perinexa's Admission, ClinicalDocument and NursingEntry models):
+//  - a stay: admitted on a date, in a ward and bed, for a reason; discharged when a doctor signs the discharge card.
+//    One current stay per patient. Never deleted.
+//  - its documents: admission note, round notes, delivery note, operation note, discharge card – written as a draft,
+//    then signed (admission and round notes by a doctor or RMO; the others by a doctor). Signed: locked; corrections
+//    are added below. One written by mistake is marked "entered in error".
+//  - its nursing chart: vital signs, a medicine given, or a note, with who and when. Never changed; an entry made by
+//    mistake is marked "entered in error" with a reason.
+// PC-PNDT: no fetal sex anywhere – a baby's sex is written only in the delivery note, after the birth.
+import mongoose from '../../db/mongoose.js';
+import { hospitalScoped } from '../../db/hospitalScoped.js';
+
+const { ObjectId } = mongoose.Schema.Types;
+const cancelledSchema = new mongoose.Schema({ reason: String, by: ObjectId, byName: String, at: Date }, { _id: false });
+
+export const DOC_KINDS = ['admission', 'round', 'delivery', 'operation', 'discharge'];
+// Who signs each kind of document.
+export const SIGNED_BY = { admission: ['doctor', 'rmo'], round: ['doctor', 'rmo'], delivery: ['doctor'], operation: ['doctor'], discharge: ['doctor'] };
+export const NURSING_KINDS = ['vitals', 'medicine', 'note'];
+
+const admissionSchema = new mongoose.Schema(
+  {
+    patientId: { type: ObjectId, ref: 'Patient', required: true },
+    careType: { type: String, required: true },
+    admittedAt: { type: Date, required: true },
+    ward: { type: String, trim: true, maxlength: 60, default: '' },
+    bed: { type: String, trim: true, maxlength: 30, default: '' },
+    reason: { type: String, trim: true, maxlength: 300, default: '' },
+    doctorId: { type: ObjectId, ref: 'User', default: null }, // her doctor when admitted
+    status: { type: String, enum: ['admitted', 'discharged'], default: 'admitted' },
+    dischargedAt: { type: Date, default: null },
+    admittedBy: { type: ObjectId, ref: 'User', required: true },
+    admittedByName: { type: String, required: true },
+    dischargedByName: { type: String, default: null },
+    clientRequestId: { type: String, required: true, maxlength: 64 },
+  },
+  { timestamps: true },
+);
+admissionSchema.plugin(hospitalScoped);
+admissionSchema.index({ hospitalId: 1, patientId: 1, admittedAt: -1 });
+admissionSchema.index({ hospitalId: 1, status: 1 });
+admissionSchema.index({ hospitalId: 1, clientRequestId: 1 }, { unique: true });
+admissionSchema.index({ hospitalId: 1, patientId: 1 }, { unique: true, partialFilterExpression: { status: 'admitted' }, name: 'one_current_stay' });
+export const Admission = mongoose.model('Admission', admissionSchema, 'admissions');
+
+const documentSchema = new mongoose.Schema(
+  {
+    patientId: { type: ObjectId, ref: 'Patient', required: true },
+    admissionId: { type: ObjectId, ref: 'Admission', required: true },
+    kind: { type: String, enum: DOC_KINDS, required: true },
+    status: { type: String, enum: ['draft', 'signed', 'cancelled'], default: 'draft' },
+    content: { type: mongoose.Schema.Types.Mixed, default: {} },
+    rev: { type: Number, default: 0 },
+    createdBy: { type: ObjectId, ref: 'User', required: true },
+    createdByName: { type: String, required: true },
+    savedByName: { type: String, default: null },
+    savedAt: { type: Date, default: null },
+    signed: { type: new mongoose.Schema({ by: ObjectId, byName: String, role: String, at: Date }, { _id: false }), default: null },
+    cancelled: { type: cancelledSchema, default: null },
+    additions: { type: [new mongoose.Schema({ text: { type: String, required: true, maxlength: 2000 }, by: ObjectId, byName: String, at: Date })], default: [] },
+    clientRequestId: { type: String, required: true, maxlength: 64 },
+  },
+  { timestamps: true, minimize: false },
+);
+documentSchema.plugin(hospitalScoped);
+documentSchema.index({ hospitalId: 1, admissionId: 1, createdAt: 1 });
+documentSchema.index({ hospitalId: 1, status: 1, kind: 1 });
+documentSchema.index({ hospitalId: 1, clientRequestId: 1 }, { unique: true });
+export const InpatientDocument = mongoose.model('InpatientDocument', documentSchema, 'inpatient_documents');
+
+const nursingSchema = new mongoose.Schema(
+  {
+    patientId: { type: ObjectId, ref: 'Patient', required: true },
+    admissionId: { type: ObjectId, ref: 'Admission', required: true },
+    kind: { type: String, enum: NURSING_KINDS, required: true },
+    at: { type: Date, required: true },
+    vitals: { bpSystolic: Number, bpDiastolic: Number, pulse: Number, temperatureF: Number, spo2: Number },
+    medicine: { drug: String, dose: String, route: String },
+    note: { type: String, default: '' },
+    by: { type: ObjectId, ref: 'User', required: true },
+    byName: { type: String, required: true },
+    cancelled: { type: cancelledSchema, default: null },
+    clientRequestId: { type: String, required: true, maxlength: 64 },
+  },
+  { timestamps: true },
+);
+nursingSchema.plugin(hospitalScoped);
+nursingSchema.index({ hospitalId: 1, admissionId: 1, at: -1 });
+nursingSchema.index({ hospitalId: 1, clientRequestId: 1 }, { unique: true });
+export const NursingEntry = mongoose.model('NursingEntry', nursingSchema, 'nursing_entries');

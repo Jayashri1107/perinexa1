@@ -16,6 +16,7 @@ import { useOptions } from '../../hooks/useOptions.js';
 import { ageText, formatDate, formatDateTime, labelOf } from '../../utils/format.js';
 import { PatientAppointmentsCard } from './PatientAppointmentsCard.jsx';
 import { PatientLabCard } from './PatientLabCard.jsx';
+import { PatientStaysCard } from './PatientStaysCard.jsx';
 import { PatientVisitsCard } from './PatientVisitsCard.jsx';
 
 const ACCESS_WORDS = {
@@ -140,6 +141,7 @@ export function PatientDetailPage() {
           {clinical && canAccess('patientsClinical') && <PatientVisitsCard patient={p} />}
           {canAccess('appointments') && <PatientAppointmentsCard patient={p} />}
           {canAccess('lab') && clinical && <PatientLabCard patient={p} />}
+          {clinical && canAccess('patientsClinical') && <PatientStaysCard patient={p} />}
         </div>
       )}
 

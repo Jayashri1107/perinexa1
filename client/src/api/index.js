@@ -255,3 +255,24 @@ export const visitsApi = {
 export const pharmacyPrescriptionsApi = {
   forPatient: (patientId) => http.get(`${PHARMACY}/prescriptions/${patientId}`),
 };
+
+// Module 9 – inpatients
+const ADMISSIONS = '/hospital/admissions';
+export const admissionsApi = {
+  inpatients: () => http.get(ADMISSIONS),
+  ofPatient: (patientId) => http.get(`${ADMISSIONS}/patient/${patientId}`),
+  admit: (data) => http.post(ADMISSIONS, data),
+  get: (id) => http.get(`${ADMISSIONS}/${id}`),
+  bed: (id, data) => http.patch(`${ADMISSIONS}/${id}/bed`, data),
+  newDocument: (id, kind, clientRequestId) => http.post(`${ADMISSIONS}/${id}/documents`, { kind, clientRequestId }),
+  saveDocument: (id, docId, data) => http.put(`${ADMISSIONS}/${id}/documents/${docId}`, data),
+  signDocument: (id, docId) => http.post(`${ADMISSIONS}/${id}/documents/${docId}/sign`),
+  cancelDocument: (id, docId, reason) => http.post(`${ADMISSIONS}/${id}/documents/${docId}/cancel`, { reason }),
+  addToDocument: (id, docId, text) => http.post(`${ADMISSIONS}/${id}/documents/${docId}/additions`, { text }),
+  nursing: (id, data) => http.post(`${ADMISSIONS}/${id}/nursing`, data),
+  cancelNursing: (id, entryId, reason) => http.post(`${ADMISSIONS}/${id}/nursing/${entryId}/cancel`, { reason }),
+};
+export const wardIssuesApi = {
+  admitted: () => http.get(`${PHARMACY}/ward-issues/admitted`),
+  issue: (data) => http.post(`${PHARMACY}/ward-issues`, data),
+};

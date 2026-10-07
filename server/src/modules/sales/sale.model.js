@@ -27,6 +27,8 @@ const saleSchema = new mongoose.Schema(
     patient: { patientNumber: String, name: String },
     customerName: { type: String, trim: true, maxlength: 120, default: '' }, // a walk-in buyer
     doctorName: { type: String, trim: true, maxlength: 120, default: '' },
+    // issued to a patient in hospital (Pharmacy → Issue to ward): her stay; always charged to her hospital bill
+    admissionId: { type: ObjectId, ref: 'Admission', default: null },
     lines: { type: [lineSchema], default: [] },
     subtotal: { type: Number, required: true, min: 0 },
     discount: { amount: { type: Number, default: 0 }, reason: { type: String, default: '' } },

@@ -112,6 +112,7 @@ export async function sell(req, data) {
     patient: patient ? { patientNumber: patient.patientNumber, name: patient.name } : undefined,
     customerName: patient ? '' : data.customerName,
     doctorName: data.doctorName,
+    admissionId: data.admissionId ?? null,
     lines,
     subtotal,
     discount: { amount: discount, reason: data.discount.reason },
@@ -123,7 +124,7 @@ export async function sell(req, data) {
     byName: req.user.name,
   });
   for (const t of taken) {
-    await recordMovement(req, { medicine: t.medicine, batch: t.batch, kind: 'sale', qty: -t.qty, ref: invoiceNumber, party, doctorName: data.doctorName });
+    await recordMovement(req, { medicine: t.medicine, batch: t.batch, kind: data.admissionId ? 'ward_issue' : 'sale', qty: -t.qty, ref: invoiceNumber, party, doctorName: data.doctorName });
   }
   await recordAudit(req, 'SALE_MADE', { hospitalId, details: { invoiceNumber, total, lines: lines.length, ...(billNumber && { billNumber }) } });
   return sale;

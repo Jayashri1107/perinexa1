@@ -39,6 +39,7 @@ import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { formatDate, formatMoney } from '../../utils/format.js';
 import { appointmentLook, whenText, whoText } from '../appointments/appointmentFormat.js';
+import { InHospitalCard } from '../inpatient/InHospitalCard.jsx';
 
 function greeting() {
   const h = new Date().getHours();
@@ -201,6 +202,8 @@ export function TodayPage() {
                 )}
               </section>
             )}
+
+            {canAccess('patientsClinical') && <InHospitalCard />}
 
             {today.doctor && (
               <section className="card">

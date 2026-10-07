@@ -4,6 +4,7 @@
 // (config.access). The super admin, when working in a hospital, holds every role there.
 import { config } from '../config/index.js';
 import accountRoutes from './account/account.routes.js';
+import admissionRoutes, { wardIssueRouter } from './admissions/admission.routes.js';
 import analyticsRoutes from './analytics/analytics.routes.js';
 import appointmentRoutes from './appointments/appointment.routes.js';
 import auditRoutes from './audit/audit.routes.js';
@@ -102,4 +103,8 @@ export const modules = [
   // Module 8 – visits and prescriptions
   { path: '/hospital/visits', access: 'hospital', roles: access.patientsClinical, router: visitRoutes },
   { path: '/hospital/pharmacy/prescriptions', access: 'hospital', roles: access.pharmacyCounter, router: pharmacyPrescriptionRouter },
+
+  // Module 9 – inpatients (stays, ward documents, nursing chart) and the pharmacy's issue to ward
+  { path: '/hospital/admissions', access: 'hospital', roles: access.patientsClinical, router: admissionRoutes },
+  { path: '/hospital/pharmacy/ward-issues', access: 'hospital', roles: access.pharmacyCounter, router: wardIssueRouter },
 ];

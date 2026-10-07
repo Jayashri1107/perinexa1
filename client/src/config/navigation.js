@@ -61,6 +61,7 @@ export const BILLING_TABS = [
 // The admin has no counter, so their Pharmacy opens on Stock (as in Perinexa).
 export const PHARMACY_TABS = [
   { to: '/hospital/pharmacy', label: 'Sell', end: true, access: 'pharmacyCounter' },
+  { to: '/hospital/pharmacy/ward', label: 'Issue to ward', access: 'pharmacyCounter' },
   { to: '/hospital/pharmacy/stock', label: 'Stock', access: 'pharmacy' },
   { to: '/hospital/pharmacy/sales', label: 'Sales', access: 'pharmacy' },
   { to: '/hospital/pharmacy/medicines', label: 'Medicines', access: 'pharmacy' },
