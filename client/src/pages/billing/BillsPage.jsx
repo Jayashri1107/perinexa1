@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, Printer } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { billsApi } from '../../api/index.js';
 import { ListPanel } from '../../components/list/ListPanel.jsx';
@@ -31,6 +31,24 @@ export function BillsPage() {
     { key: 'paid', label: 'Paid', className: 'num', render: (b) => formatMoney((b.paid ?? 0) - (b.refunded ?? 0)) },
     { key: 'balance', label: 'Balance', className: 'num', render: (b) => formatMoney(b.balance) },
     { key: 'status', label: 'Status', render: (b) => <BillStatus bill={b} /> },
+    {
+      key: 'print',
+      label: '',
+      className: 'actions',
+      // Opens the printed bill in a new tab (the row itself still opens the bill)
+      render: (b) => (
+        <a
+          href={`/hospital/print/bill/${b.id}`}
+          target="_blank"
+          rel="noreferrer"
+          className="btn btn-ghost btn-sm"
+          aria-label={`Print bill ${b.billNumber}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Printer size={14} aria-hidden /> Print
+        </a>
+      ),
+    },
   ];
 
   return (
