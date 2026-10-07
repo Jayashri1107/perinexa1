@@ -5,11 +5,13 @@ import { Link } from 'react-router-dom';
 import { useAppConfig } from '../context/AppConfigContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { initialsOf } from '../utils/format.js';
+import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
 
 export function ProfileMenu() {
   const { user, roles, activeMembership } = useAuth();
   const { roleLabel } = useAppConfig();
   const [open, setOpen] = useState(false);
+  const [changing, setChanging] = useState(false);
   const box = useRef(null);
 
   // close on a click outside or Escape
@@ -45,14 +47,15 @@ export function ProfileMenu() {
               {activeMembership && !user.isSuperAdmin && <span className="muted small block">{activeMembership.hospital.name}</span>}
             </div>
           </div>
-          <Link to="/change-password" className="profile-link" onClick={() => setOpen(false)}>
+          <button type="button" className="profile-link" onClick={() => { setOpen(false); setChanging(true); }}>
             <KeyRound size={16} aria-hidden /> Change password
-          </Link>
+          </button>
           <Link to="/account" className="profile-link" onClick={() => setOpen(false)}>
             <UserCog size={16} aria-hidden /> My settings
           </Link>
         </div>
       )}
+      {changing && <ChangePasswordDialog onClose={() => setChanging(false)} />}
     </div>
   );
 }

@@ -19,6 +19,7 @@ export const accountApi = {
   get: () => http.get('/account'),
   updateProfessional: (data) => http.put('/account/professional', data),
   updateAppearance: (data) => http.put('/account/appearance', data),
+  updateProfile: (data) => http.put('/account/profile', data),
 };
 
 // Module 2 – the hospital of the session (the server takes it from the login, never from the address).

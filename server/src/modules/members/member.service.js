@@ -38,9 +38,9 @@ export async function superAdminAccess(hospitalId) {
 // For the super admin's hospital switcher: every active hospital, shaped like a membership.
 export async function superAdminMemberships() {
   if (!config.access.superAdminInHospitals) return [];
-  const hospitals = await Hospital.find({ isActive: true }).sort({ name: 1 }).select('name code isActive').lean();
+  const hospitals = await Hospital.find({ isActive: true }).sort({ name: 1 }).select('name code isActive address.city').lean();
   const roles = superAdminRoles();
-  return hospitals.map((h) => ({ id: h._id, roles, hospital: { id: h._id, name: h.name, code: h.code, isActive: h.isActive } }));
+  return hospitals.map((h) => ({ id: h._id, roles, hospital: { id: h._id, name: h.name, code: h.code, city: h.address?.city ?? '', isActive: h.isActive } }));
 }
 
 // Nobody changes their own access: an admin cannot lock themselves out or give themselves roles.
@@ -93,8 +93,10 @@ export async function listMembers(hospitalId, q) {
 export function listUserMemberships(userId) {
   return Membership.aggregate([
     { $match: { userId: toObjectId(userId), isActive: true } },
-    ...lookupOne({ from: Hospital.collection.name, localField: 'hospitalId', as: 'hospital', fields: ['name', 'code', 'isActive'] }),
+    ...lookupOne({ from: Hospital.collection.name, localField: 'hospitalId', as: 'hospital', fields: ['name', 'code', 'isActive', 'address'] }),
     { $match: { 'hospital.isActive': true } },
+    { $set: { 'hospital.city': '$hospital.address.city' } },
+    { $unset: 'hospital.address' },
     { $project: { _id: 0, id: '$_id', roles: 1, hospital: 1 } },
   ]);
 }

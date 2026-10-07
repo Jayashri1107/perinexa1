@@ -19,6 +19,16 @@ export async function updateProfessional(req, data) {
   return req.user;
 }
 
+// The person's own name and phone. The email stays as the administrator set it (it is the login).
+export async function updateProfile(req, data) {
+  const changed = ['name', 'phone'].filter((k) => (req.user[k] ?? '') !== data[k]);
+  if (!changed.length) return req.user;
+  req.user.set(data);
+  await req.user.save();
+  await recordAudit(req, 'USER_UPDATED', { target: req.user, hospitalId: req.hospitalId, details: { changed, own: true } });
+  return req.user;
+}
+
 export async function updateAppearance(req, data) {
   req.user.preferences = data;
   await req.user.save();

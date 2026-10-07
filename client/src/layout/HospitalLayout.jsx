@@ -8,7 +8,7 @@ import { useAppConfig } from '../context/AppConfigContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { AppShell } from './AppShell.jsx';
 
-export function HospitalSwitcher({ placeholder }) {
+export function HospitalSwitcher({ placeholder, label = 'Hospital' }) {
   const { memberships, activeHospitalId, switchHospital } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -28,7 +28,7 @@ export function HospitalSwitcher({ placeholder }) {
   return (
     <label className="hospital-switcher">
       <Building2 size={16} aria-hidden />
-      <span className="visually-hidden">Hospital</span>
+      <span className="visually-hidden">{label}</span>
       <select value={activeHospitalId ?? ''} onChange={onChange} disabled={busy}>
         {placeholder && <option value="">{placeholder}</option>}
         {memberships.map((m) => (
@@ -36,6 +36,25 @@ export function HospitalSwitcher({ placeholder }) {
         ))}
       </select>
     </label>
+  );
+}
+
+// Which hospital (branch) this tab works in – always shown at the top, with a switch for those who work in several.
+function WorkspaceBadge() {
+  const { activeMembership, memberships, roles, isSuperAdminInHospital } = useAuth();
+  const { roleLabel } = useAppConfig();
+  const h = activeMembership?.hospital;
+  if (!h) return null;
+  return (
+    <div className="workspace" aria-label="The hospital you are working in">
+      <span className="workspace-icon" aria-hidden><Building2 size={18} /></span>
+      <div className="workspace-text">
+        <span className="workspace-label">Working in</span>
+        <strong className="workspace-name">{h.name}</strong>
+        <span className="workspace-meta">{[h.code, h.city, isSuperAdminInHospital ? 'super admin' : roles.map(roleLabel).join(', ')].filter(Boolean).join(' · ')}</span>
+      </div>
+      {memberships.length > 1 && <HospitalSwitcher label="Switch hospital" />}
+    </div>
   );
 }
 
@@ -73,7 +92,7 @@ export function HospitalLayout() {
       navigation={navigation}
       brandSubtitle={activeMembership?.hospital.name}
       sidebarFoot={isSuperAdminInHospital ? 'Super admin · every role' : roles.map(roleLabel).join(' · ')}
-      topbarStart={<HospitalSwitcher />}
+      topbarStart={<WorkspaceBadge />}
       contentKey={activeHospitalId}
       banner={isSuperAdminInHospital ? <SuperAdminBanner /> : null}
     />

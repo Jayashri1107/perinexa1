@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Perinexa1",
-    "tagline": "Hospital administration",
+    "tagline": "Hospital care platform",
     "timezone": "Asia/Kolkata",
     "utcOffset": "+05:30"
   },

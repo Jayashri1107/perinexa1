@@ -7,5 +7,6 @@ const router = Router();
 router.get('/', controller.get);
 router.put('/professional', controller.updateProfessional);
 router.put('/appearance', controller.updateAppearance);
+router.put('/profile', controller.updateProfile);
 
 export default router;

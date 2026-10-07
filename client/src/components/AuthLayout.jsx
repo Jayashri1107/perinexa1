@@ -1,18 +1,10 @@
-// The frame of the sign-in pages (log in, choose a password, no hospital access): a brand panel on the left,
-// the form card on the right. On small screens the brand panel shrinks to a strip above the card.
+// The frame of the sign-in pages (log in, choose a password, no hospital access): an indigo brand panel on the left
+// with what the platform does, the form card on the right. On small screens the brand panel is hidden and the logo
+// sits above the card.
 import logo from '../assets/brand/perinexa-logo.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { AUTH_HEADLINE, AUTH_INTRO, AUTH_POINTS } from '../config/authContent.js';
 import { useAppConfig } from '../context/AppConfigContext.jsx';
-
-// A quiet heartbeat line, drawn behind the brand panel's text.
-function Pulse() {
-  return (
-    <svg className="auth-pulse" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden>
-      <path d="M0 60 H170 L190 60 L205 25 L222 98 L240 10 L258 84 L272 60 H600" />
-    </svg>
-  );
-}
 
 export function AuthLayout({ title, subtitle, children, footer }) {
   const { app } = useAppConfig();
@@ -20,8 +12,11 @@ export function AuthLayout({ title, subtitle, children, footer }) {
   return (
     <div className="auth-shell">
       <aside className="auth-brand">
-        <img className="auth-brand-logo" src={logoReversed} alt={app.name} width="200" height="49" />
+        <span className="auth-glow auth-glow-1" aria-hidden />
+        <span className="auth-glow auth-glow-2" aria-hidden />
+        <img className="auth-brand-logo" src={logoReversed} alt={app.name} width="190" height="46" />
         <div className="auth-brand-body">
+          <span className="auth-kicker">{app.tagline}</span>
           <h2>{AUTH_HEADLINE}</h2>
           <p>{AUTH_INTRO}</p>
           <ul className="auth-points">
@@ -36,8 +31,7 @@ export function AuthLayout({ title, subtitle, children, footer }) {
             ))}
           </ul>
         </div>
-        <Pulse />
-        <p className="auth-brand-foot">© {year} {app.name} · {app.tagline}</p>
+        <p className="auth-brand-foot">© {year} {app.name}</p>
       </aside>
 
       <main className="auth-main">
