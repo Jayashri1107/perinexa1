@@ -6,10 +6,15 @@ import { HospitalLayout } from './layout/HospitalLayout.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
+import { DayPage } from './pages/appointments/DayPage.jsx';
+import { NeedsTimePage } from './pages/appointments/NeedsTimePage.jsx';
+import { DoctorTimingsPage, TimingsPage } from './pages/appointments/TimingsPage.jsx';
 import { PlatformAnalyticsPage } from './pages/analytics/PlatformAnalyticsPage.jsx';
 import { AuditPage } from './pages/audit/AuditPage.jsx';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage.jsx';
 import { LoginPage } from './pages/auth/LoginPage.jsx';
+import { CalendarPage } from './pages/calendar/CalendarPage.jsx';
+import { RemindersPage } from './pages/calendar/RemindersPage.jsx';
 import { BillDetailPage } from './pages/billing/BillDetailPage.jsx';
 import { BillingSettingsPage } from './pages/billing/BillingSettingsPage.jsx';
 import { BillsPage } from './pages/billing/BillsPage.jsx';
@@ -28,6 +33,10 @@ import { StaffPage } from './pages/hospital/StaffPage.jsx';
 import { TodayPage } from './pages/hospital/TodayPage.jsx';
 import { HospitalDetailPage } from './pages/hospitals/HospitalDetailPage.jsx';
 import { HospitalsPage } from './pages/hospitals/HospitalsPage.jsx';
+import { LabOrderPage } from './pages/lab/LabOrderPage.jsx';
+import { LabPage } from './pages/lab/LabPage.jsx';
+import { LibraryEntryPage } from './pages/library/LibraryEntryPage.jsx';
+import { LibraryListPage } from './pages/library/LibraryListPage.jsx';
 import { MasterDataPage } from './pages/masterData/MasterDataPage.jsx';
 import { PatientDetailPage } from './pages/patients/PatientDetailPage.jsx';
 import { PatientRegisterPage } from './pages/patients/PatientRegisterPage.jsx';
@@ -139,6 +148,27 @@ export function App() {
                 {/* Module 6 – analytics */}
                 <Route element={<ProtectedRoute area="hospital" access="analytics" />}>
                   <Route path="analytics" element={<AnalyticsPage />} />
+                </Route>
+
+                {/* Module 7 – the doctor's work: appointments, calendar, lab, clinic library */}
+                <Route element={<ProtectedRoute area="hospital" access="appointments" />}>
+                  <Route path="appointments" element={<DayPage />} />
+                  <Route path="appointments/needs-time" element={<NeedsTimePage />} />
+                  <Route path="appointments/timings" element={<TimingsPage />} />
+                  <Route path="appointments/timings/:doctorId" element={<DoctorTimingsPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="calendar" />}>
+                  <Route path="calendar" element={<CalendarPage />} />
+                  <Route path="calendar/reminders" element={<RemindersPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="lab" />}>
+                  <Route path="lab" element={<LabPage />} />
+                  <Route path="lab/orders/:id" element={<LabOrderPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="library" />}>
+                  <Route path="library" element={<LibraryListPage />} />
+                  <Route path="library/:kind" element={<LibraryListPage />} />
+                  <Route path="library/:kind/:id" element={<LibraryEntryPage />} />
                 </Route>
 
                 {/* Module 2 – hospital admin */}

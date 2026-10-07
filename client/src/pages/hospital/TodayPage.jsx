@@ -2,19 +2,23 @@
 //  1. a greeting with the hospital and the date,
 //  2. today at a glance (only the numbers this person's work needs; each opens its page),
 //  3. what needs attention (each item says what to do and links there; "All clear" when nothing does),
-//  4. quick actions for the common jobs, and – for doctors – their pregnancies due soon.
+//  4. quick actions for the common jobs, and – for doctors – today's appointments and their pregnancies due soon.
 import {
   AlertTriangle,
   ArrowRight,
   Baby,
   Banknote,
   CalendarClock,
+  CalendarDays,
   CalendarX,
   CircleCheck,
   ClipboardList,
+  DoorOpen,
   FileText,
+  FlaskConical,
   HeartPulse,
   KeyRound,
+  Library,
   PackageMinus,
   PackagePlus,
   Pill,
@@ -30,9 +34,11 @@ import { hospitalOverviewApi, todayApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { StatCard } from '../../components/StatCard.jsx';
+import { StateBadge } from '../../components/StateBadge.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { formatDate, formatMoney } from '../../utils/format.js';
+import { appointmentLook, whenText, whoText } from '../appointments/appointmentFormat.js';
 
 function greeting() {
   const h = new Date().getHours();
@@ -59,6 +65,8 @@ function attentionItems(today, overview) {
   if (today.billing?.unpaidBills) {
     items.push({ icon: Receipt, text: `${plural(today.billing.unpaidBills, 'bill')} not fully paid`, hint: `${formatMoney(today.billing.owed)} still owed.`, to: '/hospital/billing/unpaid', action: 'See unpaid' });
   }
+  if (today.lab?.toReview) items.push({ icon: FlaskConical, text: `${plural(today.lab.toReview, 'lab result')} to review`, hint: 'Results of your patients and your orders.', to: '/hospital/lab', action: 'Review' });
+  if (today.lab?.toReport) items.push({ icon: FlaskConical, text: `${plural(today.lab.toReport, 'lab order')} waiting for results`, hint: today.lab.toCollect ? `${plural(today.lab.toCollect, 'sample')} still to take.` : 'Samples taken.', to: '/hospital/lab', action: 'Open the lab' });
   if (today.pharmacy?.lowStock) items.push({ icon: PackageMinus, text: `${plural(today.pharmacy.lowStock, 'medicine')} running low`, hint: 'At or below the reorder level.', to: '/hospital/pharmacy/stock', action: 'See stock' });
   if (today.pharmacy?.expired) items.push({ icon: CalendarX, text: `${plural(today.pharmacy.expired, 'batch', 'batches')} expired but still in stock`, hint: 'Write them off or return them.', to: '/hospital/pharmacy/reports', action: 'See expiry' });
   if (today.pharmacy?.expiringSoon) items.push({ icon: AlertTriangle, text: `${plural(today.pharmacy.expiringSoon, 'batch', 'batches')} expiring soon`, hint: 'Sell or return them in time.', to: '/hospital/pharmacy/reports', action: 'See expiry' });
@@ -69,6 +77,10 @@ function attentionItems(today, overview) {
 const QUICK_ACTIONS = [
   { access: 'registerPatients', icon: UserPlus, label: 'Register a patient', to: '/hospital/patients/new' },
   { access: 'patients', icon: HeartPulse, label: 'Find a patient', to: '/hospital/patients' },
+  { access: 'appointments', icon: CalendarClock, label: 'Appointments', to: '/hospital/appointments' },
+  { access: 'calendar', icon: CalendarDays, label: 'Calendar', to: '/hospital/calendar' },
+  { access: 'lab', icon: FlaskConical, label: 'Lab', to: '/hospital/lab' },
+  { access: 'library', icon: Library, label: 'Clinic library', to: '/hospital/library' },
   { access: 'billing', icon: Receipt, label: 'Make a bill', to: '/hospital/billing/new' },
   { access: 'billing', icon: Banknote, label: "Today's cash summary", to: '/hospital/billing/daily' },
   { access: 'pharmacyCounter', icon: Pill, label: 'Sell medicines', to: '/hospital/pharmacy' },
@@ -121,6 +133,7 @@ export function TodayPage() {
             {today.billing && <StatCard icon={Receipt} to="/hospital/billing" label="Bills today" value={today.billing.billsToday} hint={`${formatMoney(today.billing.billedToday)} billed`} tone="info" />}
             {today.billing && <StatCard icon={Banknote} to="/hospital/billing/daily" label="Received today" value={formatMoney(today.billing.collectedToday)} hint="After refunds" tone="neutral" />}
             {today.pharmacy && <StatCard icon={Pill} to="/hospital/pharmacy/sales" label="Pharmacy sales today" value={today.pharmacy.salesToday} hint={formatMoney(today.pharmacy.soldToday)} tone="warning" />}
+            {today.appointments && <StatCard icon={CalendarClock} to="/hospital/appointments" label="My appointments today" value={today.appointments.total} hint={`${today.appointments.seen} seen · ${today.appointments.arrived} waiting`} tone="info" />}
             {today.doctor && <StatCard icon={HeartPulse} to="/hospital/patients" label="My patients" value={today.doctor.mine} hint="Under my care" />}
           </div>
 
@@ -156,6 +169,37 @@ export function TodayPage() {
                 ))}
               </div>
             </section>
+
+            {today.appointments && (
+              <section className="card">
+                <div className="card-head">
+                  <h2><DoorOpen size={18} aria-hidden /> Waiting for me</h2>
+                  <Link to="/hospital/appointments" className="small">My day <ArrowRight size={12} aria-hidden /></Link>
+                </div>
+                {today.appointments.waiting.length === 0 && <p className="muted">Nobody is waiting.</p>}
+                <ol className="plain-list rows">
+                  {today.appointments.waiting.map((a) => (
+                    <li key={a.id}>
+                      {a.patient ? <Link to={`/hospital/patients/${a.patient.id}`}>{whoText(a)}</Link> : whoText(a)}
+                      <span className="muted small">{whenText(a)}</span>
+                    </li>
+                  ))}
+                </ol>
+                {today.appointments.next.length > 0 && (
+                  <>
+                    <h3 className="top-gap-sm">Coming next</h3>
+                    <ul className="plain-list rows">
+                      {today.appointments.next.map((a) => (
+                        <li key={a.id}>
+                          <span><strong>{a.start}</strong> {whoText(a)}</span>
+                          <StateBadge look={appointmentLook(a)} small />
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </section>
+            )}
 
             {today.doctor && (
               <section className="card">

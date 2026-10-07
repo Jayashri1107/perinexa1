@@ -14,6 +14,8 @@ import { clinicalFields, clinicalValues, contactFields, contactValues, emergency
 import { useForm } from '../../hooks/useForm.js';
 import { useOptions } from '../../hooks/useOptions.js';
 import { ageText, formatDate, formatDateTime, labelOf } from '../../utils/format.js';
+import { PatientAppointmentsCard } from './PatientAppointmentsCard.jsx';
+import { PatientLabCard } from './PatientLabCard.jsx';
 
 const ACCESS_WORDS = {
   full: 'Full access',
@@ -131,6 +133,13 @@ export function PatientDetailPage() {
           </section>
         )}
       </div>
+
+      {(canAccess('appointments') || (canAccess('lab') && clinical)) && (
+        <div className="grid-2 top-gap">
+          {canAccess('appointments') && <PatientAppointmentsCard patient={p} />}
+          {canAccess('lab') && clinical && <PatientLabCard patient={p} />}
+        </div>
+      )}
 
       {dialog === 'contact' && (
         <FormModal

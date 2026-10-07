@@ -11,18 +11,19 @@ Fake sample data only.
 | 4 | **Billing**: price list, bills, payments, refunds, discounts, unpaid, daily summary, monthly income, CSV export, UPI settings, printed bills | Done |
 | 5 | **Pharmacy**: medicines, suppliers, purchases, batch stock, counter sales (earliest expiry first), returns, write-offs, H1 / X / narcotic registers, alerts, sales and GST reports, settings, printed tax invoices | Done |
 | 6 | **Analytics and Today**: per hospital (small numbers hidden for non-doctors), platform analytics for the super admin, a role-aware Today page | Done |
-| 7 | Visits and prescriptions, care plans, appointments, lab | Next |
+| 7 | **The doctor's work**: Appointments (day of slots, needs a time, walk-in tokens, arrived/seen, OPD timings – doctors set their own), Calendar (booked visits, EDD, LMP; reminders to send), Lab (order, sample, results with flags, amend with a reason, review), Clinic library (Perinexa's DRAFT care plans, red-flag / risk / medicine-safety rules, consent and information forms, test packages, prescription sets – a doctor approves each) | Done |
+| 8 | Visits and prescriptions (using the approved care plans, rules and prescription sets) | Next |
 
 ### Who sees what (config.access)
 
 | Role | Menu |
 | --- | --- |
 | Hospital admin | Today, Billing (all tabs), Pharmacy (no counter), Analytics (small numbers hidden), Hospital admin, My settings – no patient records |
-| Doctor | Today, Patients (own patients full, others read-only, emergency access), Analytics (exact, "my patients"), My settings |
-| RMO | Today, Patients (all records), My settings |
-| Nurse | Today, Patients (read), My settings |
-| Receptionist | Today, Patients (register, contact details), Billing (no Monthly / Settings), My settings |
-| Lab staff | Today, Patients (name and number), My settings |
+| Doctor | Today, Patients (own patients full, others read-only, emergency access), Appointments (book, own OPD timings), Calendar (with EDD / LMP), Lab (order and review for own patients), Analytics (exact, "my patients"), Clinic library (change and approve), My settings |
+| RMO | Today, Patients (all records), Appointments (look, mark seen), Calendar (with EDD / LMP), Lab (order and review), Clinic library (change, not approve), My settings |
+| Nurse | Today, Patients (read), Appointments (look, mark seen), Lab (read results), Clinic library (read; no prescription sets), My settings |
+| Receptionist | Today, Patients (register, contact details), Appointments (book, move, cancel, walk-ins), Calendar (bookings only; reminders), Billing (no Monthly / Settings), My settings |
+| Lab staff | Today, Patients (name and number), Lab (take samples, enter and amend results – patients by name and number only), My settings |
 | Pharmacist | Today, Patients (contact), Pharmacy (everything but its settings), My settings |
 | Super admin | The platform; can open any hospital with every role (`access.superAdminInHospitals`), including patient records (`access.superAdminPatientAccess` – the owner's choice; every record opened is in the audit log). Switch either off in `config/local.json`. |
 

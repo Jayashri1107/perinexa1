@@ -169,3 +169,54 @@ export const pharmacySettingsApi = {
 
 // Module 6 – analytics
 export const analyticsApi = { get: (mine) => http.get('/hospital/analytics', { mine }) };
+
+// Module 7 – the doctor's work
+const APPOINTMENTS = '/hospital/appointments';
+export const appointmentsApi = {
+  doctors: () => http.get(`${APPOINTMENTS}/doctors`),
+  timings: (doctorId) => http.get(`${APPOINTMENTS}/timings/${doctorId}`),
+  saveTimings: (doctorId, data) => http.put(`${APPOINTMENTS}/timings/${doctorId}`, data),
+  day: (doctorId, date) => http.get(`${APPOINTMENTS}/day`, { doctorId, date }),
+  needsTime: () => http.get(`${APPOINTMENTS}/needs-time`),
+  patients: (search) => http.get(`${APPOINTMENTS}/patients`, { search }),
+  forPatient: (patientId) => http.get(`${APPOINTMENTS}/patient/${patientId}`),
+  reminders: (date) => http.get(`${APPOINTMENTS}/reminders`, { date }),
+  book: (data) => http.post(APPOINTMENTS, data),
+  token: (doctorId, patientId) => http.post(`${APPOINTMENTS}/tokens`, { doctorId, patientId }),
+  move: (id, data) => http.post(`${APPOINTMENTS}/${id}/move`, data),
+  cancel: (id, data) => http.post(`${APPOINTMENTS}/${id}/cancel`, data),
+  link: (id, patientId) => http.post(`${APPOINTMENTS}/${id}/link`, { patientId }),
+  arrive: (id) => http.post(`${APPOINTMENTS}/${id}/arrive`),
+  undoArrival: (id) => http.post(`${APPOINTMENTS}/${id}/undo-arrival`),
+  seen: (id) => http.post(`${APPOINTMENTS}/${id}/seen`),
+  reminderSent: (id) => http.post(`${APPOINTMENTS}/${id}/reminder-sent`),
+};
+
+export const calendarApi = {
+  events: (query) => http.get('/hospital/calendar', query),
+};
+
+const LAB = '/hospital/lab';
+export const labApi = {
+  catalogue: () => http.get(`${LAB}/tests`),
+  list: (query) => http.get(`${LAB}/orders`, query),
+  get: (id) => http.get(`${LAB}/orders/${id}`),
+  order: (data) => http.post(`${LAB}/orders`, data),
+  forPatient: (patientId) => http.get(`${LAB}/patient/${patientId}`),
+  collect: (id) => http.post(`${LAB}/orders/${id}/collect`),
+  results: (id, data) => http.put(`${LAB}/orders/${id}/results`, data),
+  review: (id) => http.post(`${LAB}/orders/${id}/review`),
+  cancel: (id, reason) => http.post(`${LAB}/orders/${id}/cancel`, { reason }),
+};
+
+const LIBRARY = '/hospital/library';
+export const libraryApi = {
+  summary: () => http.get(`${LIBRARY}/summary`),
+  list: (query) => http.get(LIBRARY, query),
+  get: (id) => http.get(`${LIBRARY}/${id}`),
+  create: (data) => http.post(LIBRARY, data),
+  update: (id, data) => http.put(`${LIBRARY}/${id}`, data),
+  approve: (id) => http.post(`${LIBRARY}/${id}/approve`),
+  setStatus: (id, isActive) => http.patch(`${LIBRARY}/${id}/status`, { isActive }),
+  duplicate: (id) => http.post(`${LIBRARY}/${id}/duplicate`),
+};

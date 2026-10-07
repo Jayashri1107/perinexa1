@@ -3,9 +3,13 @@
 import {
   Building2,
   CalendarCheck,
+  CalendarClock,
+  CalendarDays,
   ChartColumn,
   Database,
+  FlaskConical,
   HeartPulse,
+  Library,
   LayoutDashboard,
   Pill,
   Receipt,
@@ -76,6 +80,36 @@ export const HOSPITAL_ADMIN_TABS = [
   { to: '/hospital/settings/abdm', label: 'ABDM', access: 'admin' },
 ];
 
+// Appointments (as in Perinexa): one doctor's day, bookings that still need a time, and the doctors' OPD timings.
+export const APPOINTMENT_TABS = [
+  { to: '/hospital/appointments', label: 'Day', end: true, access: 'appointments' },
+  { to: '/hospital/appointments/needs-time', label: 'Needs a time', access: 'appointments' },
+  { to: '/hospital/appointments/timings', label: 'OPD timings', access: 'appointments' },
+];
+
+// The calendar: booked visits, due dates and last periods; the reminders to send.
+export const CALENDAR_TABS = [
+  { to: '/hospital/calendar', label: 'Calendar', end: true, access: 'calendar' },
+  { to: '/hospital/calendar/reminders', label: 'Reminders', access: 'calendar' },
+];
+
+// The clinic library (as in Perinexa): one item in the menu, a tab per kind. Prescription sets only for prescribers
+// (the server's summary says which tabs a person has). Clinical rules hold three kinds, as a second row of tabs.
+export const LIBRARY_TABS = [
+  { to: '/hospital/library', label: 'To approve', end: true },
+  { to: '/hospital/library/care_plan', label: 'Care plans', kinds: ['care_plan'] },
+  { to: '/hospital/library/red_flag_rules', label: 'Clinical rules', kinds: ['red_flag_rules', 'medicine_safety', 'risk_rules'] },
+  { to: '/hospital/library/consent_form', label: 'Consent forms', kinds: ['consent_form'] },
+  { to: '/hospital/library/information_form', label: 'Information forms', kinds: ['information_form'] },
+  { to: '/hospital/library/test_package', label: 'Test packages', kinds: ['test_package'] },
+  { to: '/hospital/library/prescription_set', label: 'Prescription sets', kinds: ['prescription_set'] },
+];
+export const RULE_TABS = [
+  { to: '/hospital/library/red_flag_rules', label: 'Red-flag rules' },
+  { to: '/hospital/library/medicine_safety', label: 'Medicine safety' },
+  { to: '/hospital/library/risk_rules', label: 'Risk rules' },
+];
+
 // The first tab of a section this person may open (pharmacy: the admin has no "Sell").
 export const firstTab = (tabs, canAccess) => tabs.find((t) => canAccess(t.access))?.to;
 
@@ -83,9 +117,13 @@ export const firstTab = (tabs, canAccess) => tabs.find((t) => canAccess(t.access
 export const HOSPITAL_NAVIGATION = [
   { to: '/hospital', label: 'Today', icon: CalendarCheck, end: true },
   { to: '/hospital/patients', label: 'Patients', icon: HeartPulse, access: 'patients' },
+  { to: '/hospital/appointments', label: 'Appointments', icon: CalendarClock, access: 'appointments', tabs: APPOINTMENT_TABS },
+  { to: '/hospital/calendar', label: 'Calendar', icon: CalendarDays, access: 'calendar', tabs: CALENDAR_TABS },
+  { to: '/hospital/lab', label: 'Lab', icon: FlaskConical, access: 'lab' },
   { to: '/hospital/billing', label: 'Billing', icon: Receipt, access: 'billing', tabs: BILLING_TABS },
   { to: '/hospital/pharmacy', label: 'Pharmacy', icon: Pill, access: 'pharmacy', tabs: PHARMACY_TABS },
   { to: '/hospital/analytics', label: 'Analytics', icon: ChartColumn, access: 'analytics' },
+  { to: '/hospital/library', label: 'Clinic library', icon: Library, access: 'library' },
   { to: '/hospital/admin', label: 'Hospital admin', icon: Settings, access: 'admin', tabs: HOSPITAL_ADMIN_TABS, activeFor: ['/hospital/staff', '/hospital/opd-timings', '/hospital/settings', '/hospital/audit'] },
   // (the hospital overview at /hospital/admin is opened from Today)
   MY_SETTINGS,
