@@ -830,3 +830,13 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
   font-size: var(--text-sm);
 }
 .audit-warn { color: var(--color-danger); }
+
+/* fill by voice */
+.voice-card .card-head span { display: inline-flex; align-items: center; gap: 4px; }
+.voice-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.voice-live { border-color: var(--color-danger); color: var(--color-danger); }
+.voice-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--color-danger); font-size: var(--text-sm); font-weight: 600; }
+.voice-dot::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--color-danger); animation: voice-pulse 1.2s ease-in-out infinite; }
+@keyframes voice-pulse { 50% { opacity: 0.3; } }
+.voice-result { padding: var(--space-3); border-radius: var(--radius); background: var(--color-surface-muted); }
+.voice-result li span { display: inline-flex; align-items: center; gap: 6px; color: var(--color-success); }

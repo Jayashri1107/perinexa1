@@ -1,4 +1,5 @@
-// Register a new patient. A possible duplicate (same name or phone) is shown first; she can still be registered.
+// Register a new patient – typed, or filled by voice first (VoiceFill). A possible duplicate (same name or phone) is
+// shown first; she can still be registered.
 import { ArrowLeft } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -11,6 +12,8 @@ import { contactFields, emptyPatient } from '../../forms/patientForms.js';
 import { useForm } from '../../hooks/useForm.js';
 import { useOptions } from '../../hooks/useOptions.js';
 import { ageText } from '../../utils/format.js';
+import { setPath } from '../../utils/objectPath.js';
+import { VoiceFill } from './VoiceFill.jsx';
 
 export function PatientRegisterPage() {
   const { patients: settings } = useAppConfig();
@@ -56,7 +59,12 @@ export function PatientRegisterPage() {
           </div>
         </section>
       )}
-      <section className="card">
+      <VoiceFill
+        careTypes={settings.careTypes}
+        doctors={doctors}
+        onUse={(found) => form.setValues((v) => Object.entries(found).reduce((acc, [k, val]) => setPath(acc, k, val), { ...v, ...(found.ageYears && { birthDate: '' }) }))}
+      />
+      <section className="card top-gap">
         <Alert type="info">Use only fake sample data until the app has been reviewed for real use.</Alert>
         <form onSubmit={form.submit((v) => save(v))} noValidate>
           <FormBuilder fields={contactFields({ careTypes: settings.careTypes, sexes: settings.sexes, doctors })} form={form} />
