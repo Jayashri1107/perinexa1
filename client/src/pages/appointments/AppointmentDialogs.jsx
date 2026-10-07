@@ -59,6 +59,53 @@ function useFreeTimes(doctorId, date, visitType, exceptId) {
   return state;
 }
 
+// The free times of the day as buttons, by part of the day, for a visit of this length. allowNone: book with no time
+// yet (reception gives it one later, under "Needs a time").
+const PARTS = [
+  ['Morning', (m) => m < 12 * 60],
+  ['Afternoon', (m) => m >= 12 * 60 && m < 17 * 60],
+  ['Evening', (m) => m >= 17 * 60],
+];
+const minutesOfTime = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+
+function TimeChoice({ free, value, onChange, visitLabel, allowNone = false, error }) {
+  const minutes = free.day?.lengths?.[visitLabel?.key];
+  const note = dayNote(free.day);
+  return (
+    <div className={`form-field${error ? ' has-error' : ''}`}>
+      <span className="field-label">
+        Time<span className="required" aria-hidden> *</span>
+        {minutes ? <span className="muted"> – free times for a {visitLabel.label.toLowerCase()} visit ({minutes} minutes)</span> : null}
+      </span>
+      {free.loading && <span className="muted small">Loading the doctor’s free times…</span>}
+      {!free.loading && note && <span className="muted small">{note}</span>}
+      {!free.loading && !note && free.times.length === 0 && <span className="muted small">No free time left that day. Choose another day{allowNone ? ', or book without a time' : ''}.</span>}
+      {!free.loading &&
+        PARTS.map(([label, fits]) => {
+          const times = free.times.filter((t) => fits(minutesOfTime(t)));
+          if (!times.length) return null;
+          return (
+            <div key={label} className="time-part">
+              <span className="muted small">{label}</span>
+              <div className="time-chips" role="group" aria-label={`${label} times`}>
+                {times.map((t) => (
+                  <button key={t} type="button" className={`time-chip${value === t ? ' on' : ''}`} aria-pressed={value === t} onClick={() => onChange(t)}>{t}</button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      {allowNone && (
+        <label className="inline-check small">
+          <input type="checkbox" checked={value === 'none'} onChange={(e) => onChange(e.target.checked ? 'none' : '')} />
+          Book without a time – reception gives it one later (it shows under “Needs a time”)
+        </label>
+      )}
+      {error && <span className="field-error">{error}</span>}
+    </div>
+  );
+}
+
 function dayNote(day) {
   if (!day) return '';
   if (day.leave) return 'The doctor is on leave that day.';
@@ -106,7 +153,7 @@ export function BookDialog({ doctors, initial, onClose, onDone }) {
   const [patient, setPatient] = useState(initial.patient ?? null);
   const [quick, setQuick] = useState(false);
   const [guest, setGuest] = useState({ name: '', phone: '' });
-  const [doctorId, setDoctorId] = useState(initial.doctorId ?? '');
+  const [doctorId, setDoctorId] = useState(doctors.some((d) => d.id === initial.doctorId) ? initial.doctorId : doctors[0]?.id ?? '');
   const [date, setDate] = useState(initial.date);
   const [visitType, setVisitType] = useState(initial.visitType ?? opd.visitTypes[0].key);
   const [start, setStart] = useState(initial.start ?? '');
@@ -128,7 +175,6 @@ export function BookDialog({ doctors, initial, onClose, onDone }) {
     });
   };
 
-  const note = dayNote(free.day);
   return (
     <Modal title="Book an appointment" onClose={onClose} size="lg">
       <form onSubmit={submit} noValidate>
@@ -158,18 +204,8 @@ export function BookDialog({ doctors, initial, onClose, onDone }) {
             <input id="book-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </Field>
           <Select id="book-type" label="Visit" required value={visitType} onChange={setVisitType} options={toOptions(opd.visitTypes)} width="half" error={save.fields.visitType} />
-          <Select
-            id="book-time"
-            label="Time"
-            required
-            value={start}
-            onChange={setStart}
-            placeholder={free.loading ? 'Loading…' : free.times.length ? 'Choose a free time…' : 'No free time that day'}
-            options={[...free.times.map((t) => ({ value: t, label: t })), { value: 'none', label: 'No time yet (needs a time)' }]}
-            error={save.fields.start}
-          />
-          {note && <p className="muted small span-2">{note} You can still book it with no time yet.</p>}
           {date && <p className="muted small span-2">{dayText(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>}
+          <TimeChoice free={free} value={start} onChange={setStart} visitLabel={opd.visitTypes.find((v) => v.key === visitType)} allowNone error={save.fields.start} />
         </div>
         <Foot onClose={onClose} saving={save.saving} label="Book" disabled={!start} />
       </form>
@@ -201,17 +237,7 @@ export function MoveDialog({ appointment, doctors, onClose, onDone }) {
             <input id="move-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </Field>
           <Select id="move-type" label="Visit" value={visitType} onChange={setVisitType} options={toOptions(opd.visitTypes)} width="half" />
-          <Select
-            id="move-time"
-            label="Time"
-            required
-            value={start}
-            onChange={setStart}
-            placeholder={free.loading ? 'Loading…' : free.times.length ? 'Choose a free time…' : 'No free time that day'}
-            options={free.times.map((t) => ({ value: t, label: t }))}
-            error={save.fields.start}
-          />
-          {dayNote(free.day) && <p className="muted small span-2">{dayNote(free.day)}</p>}
+          <TimeChoice free={free} value={start} onChange={setStart} visitLabel={opd.visitTypes.find((v) => v.key === visitType)} error={save.fields.start} />
         </div>
         <Foot onClose={onClose} saving={save.saving} label="Save" disabled={!start} />
       </form>
@@ -269,7 +295,8 @@ export function LinkDialog({ appointment, onClose, onDone }) {
 // A walk-in: she gets the next token number of the doctor's day and joins the waiting list.
 export function WalkInDialog({ doctors, doctorId: initialDoctor, onClose, onDone }) {
   const [patient, setPatient] = useState(null);
-  const [doctorId, setDoctorId] = useState(initialDoctor ?? '');
+  // only a doctor on the list (never an id the list does not have)
+  const [doctorId, setDoctorId] = useState(doctors.some((d) => d.id === initialDoctor) ? initialDoctor : doctors[0]?.id ?? '');
   const save = useSave((r) => onDone(r.appointment));
   const submit = (e) => {
     e.preventDefault();

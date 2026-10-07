@@ -776,3 +776,10 @@ input.qty { width: 80px; padding: 6px 8px; border: 1px solid var(--color-border)
 .nursing-form input { padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; }
 .babies { display: grid; gap: var(--space-3); }
 @media (max-width: 1100px) { .stay-layout { grid-template-columns: 1fr; } }
+
+/* choosing a free time */
+.time-part { display: grid; gap: 4px; }
+.time-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.time-chip { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: var(--text-sm); font-variant-numeric: tabular-nums; cursor: pointer; color: var(--color-text); }
+.time-chip:hover { border-color: var(--color-primary); }
+.time-chip.on { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-text); }

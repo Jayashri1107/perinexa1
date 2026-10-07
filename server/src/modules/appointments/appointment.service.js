@@ -49,7 +49,8 @@ export async function doctors(req) {
   const withTimings = new Set(schedules.filter((s) => s.week?.some((w) => w.sessions?.length)).map((s) => String(s.doctorId)));
   return {
     doctors: list.map((d) => ({ ...d, hasTimings: withTimings.has(d.id), canEditTimings: canEditTimings(req, d.id) })),
-    me: req.membership.roles.includes(DOCTOR) ? String(req.user._id) : null,
+    // 'me' only for a doctor on this hospital's list (the super admin holds every role but is not one of its doctors)
+    me: req.membership.roles.includes(DOCTOR) && list.some((d) => d.id === String(req.user._id)) ? String(req.user._id) : null,
     canBook: canBook(req),
     canMarkSeen: canMarkSeen(req),
     today: todayLocal(),
@@ -344,6 +345,9 @@ export async function giveToken(req, { doctorId, patientId }) {
   const on = today();
   const already = await Appointment.findOne({ hospitalId: req.hospitalId, patientId: pid, doctorId: doctor.id, on, status: 'arrived' }).lean();
   if (already) throw new HttpError(409, 'She is already waiting for this doctor.', 'ALREADY_WAITING');
+  // She has a booking with this doctor today: that booking is marked arrived, no second token.
+  const booked = await Appointment.findOne({ hospitalId: req.hospitalId, patientId: pid, doctorId: doctor.id, on, status: 'booked', kind: 'slot' });
+  if (booked) return arrive(req, String(booked._id));
   const { seq } = await Counter.findOneAndUpdate(
     { hospitalId: req.hospitalId, name: `token:${doctor.id}:${isoDay(on)}` },
     { $inc: { seq: 1 } },

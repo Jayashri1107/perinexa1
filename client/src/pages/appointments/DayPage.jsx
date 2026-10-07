@@ -49,7 +49,8 @@ export function DayPage() {
   const [dialog, setDialog] = useState(null); // { kind: 'book' | 'walkin', start? }
   const [showFree, setShowFree] = useState(true);
 
-  const doctorId = params.get('doctor') || info?.me || info?.doctors[0]?.id || '';
+  const wanted = params.get('doctor') || info?.me;
+  const doctorId = (info?.doctors.some((x) => x.id === wanted) ? wanted : info?.doctors[0]?.id) || '';
   const date = params.get('date') || info?.today || '';
   const choose = (next) => setParams({ doctor: next.doctor ?? doctorId, date: next.date ?? date }, { replace: true });
 
