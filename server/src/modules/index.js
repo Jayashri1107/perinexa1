@@ -42,6 +42,9 @@ import supplierRoutes from './suppliers/supplier.routes.js';
 import todayRoutes from './today/today.routes.js';
 import userRoutes from './users/user.routes.js';
 import visitRoutes, { pharmacyPrescriptionRouter } from './visits/visit.routes.js';
+import dischargeRoutes from './discharges/discharge.routes.js';
+import documentRoutes from './documents/document.routes.js';
+import medicalHistoryRoutes from './medicalHistory/medicalHistory.routes.js';
 
 const { access } = config;
 const HOSPITAL_ADMIN = [config.adminRole];
@@ -107,4 +110,9 @@ export const modules = [
   // Module 9 – inpatients (stays, ward documents, nursing chart) and the pharmacy's issue to ward
   { path: '/hospital/admissions', access: 'hospital', roles: access.patientsClinical, router: admissionRoutes },
   { path: '/hospital/pharmacy/ward-issues', access: 'hospital', roles: access.pharmacyCounter, router: wardIssueRouter },
+
+  // Module 10 – medical history, scanned documents and discharge cards at the front desk (7 Oct 2026)
+  { path: '/hospital/medical-history', access: 'hospital', roles: access.patientsClinical, router: medicalHistoryRoutes },
+  { path: '/hospital/patient-documents', access: 'hospital', roles: access.patientDocuments, router: documentRoutes },
+  { path: '/hospital/discharges', access: 'hospital', roles: access.dischargeCards, router: dischargeRoutes },
 ];

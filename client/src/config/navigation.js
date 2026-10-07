@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ChartColumn,
   Database,
+  DoorOpen,
   FlaskConical,
   HeartPulse,
   Library,
@@ -126,6 +127,8 @@ export const HOSPITAL_NAVIGATION = [
   { to: '/hospital/appointments', label: 'Appointments', icon: CalendarClock, access: 'appointments', tabs: APPOINTMENT_TABS },
   { to: '/hospital/calendar', label: 'Calendar', icon: CalendarDays, access: 'calendar', tabs: CALENDAR_TABS },
   { to: '/hospital/lab', label: 'Lab', icon: FlaskConical, access: 'lab' },
+  // Recent discharges: the signed discharge card to print, and scanned papers to upload (config.access.dischargeCards)
+  { to: '/hospital/discharges', label: 'Discharges', icon: DoorOpen, access: 'dischargeCards' },
   { to: '/hospital/billing', label: 'Billing', icon: Receipt, access: 'billing', tabs: BILLING_TABS },
   { to: '/hospital/pharmacy', label: 'Pharmacy', icon: Pill, access: 'pharmacy', tabs: PHARMACY_TABS },
   { to: '/hospital/analytics', label: 'Analytics', icon: ChartColumn, access: 'analytics' },

@@ -34,7 +34,8 @@ function buildUrl(path, query) {
   return url;
 }
 
-async function request(method, path, { body, query } = {}) {
+// raw: a File or Blob sent as it is (uploads), with `headers`; blob: the answer is a file, not JSON.
+async function request(method, path, { body, query, raw, headers, blob = false } = {}) {
   let res;
   try {
     res = await fetch(buildUrl(path, query), {
@@ -42,13 +43,16 @@ async function request(method, path, { body, query } = {}) {
       credentials: 'same-origin',
       headers: {
         ...(body && { 'Content-Type': 'application/json' }),
+        ...(raw && { 'Content-Type': 'application/octet-stream' }),
+        ...headers,
         ...(activeHospitalId && { 'X-Hospital-Id': activeHospitalId }),
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: raw ?? (body ? JSON.stringify(body) : undefined),
     });
   } catch {
     throw new ApiError(0, { message: 'Cannot reach the server. Check that it is running.', code: 'NETWORK' });
   }
+  if (blob && res.ok) return res.blob();
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
     if (res.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
@@ -67,4 +71,8 @@ export const http = {
   post: (path, body) => request('POST', path, { body }),
   patch: (path, body) => request('PATCH', path, { body }),
   put: (path, body) => request('PUT', path, { body }),
+  // A file as the body; `headers` say what it is (header values are URI-encoded by the caller).
+  upload: (path, file, headers) => request('POST', path, { raw: file, headers }),
+  // A file from the server (as a Blob), e.g. a scanned document to show.
+  file: (path) => request('GET', path, { blob: true }),
 };

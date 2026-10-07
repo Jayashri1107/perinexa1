@@ -100,6 +100,13 @@ export const AUDIT_ACTIONS = Object.freeze({
   NURSING_ENTRY: 'Nursing chart entry',
   NURSING_ENTRY_CANCELLED: 'Nursing chart entry marked as entered in error',
   DISCHARGED: 'Patient discharged',
+  DISCHARGES_VIEWED: 'Discharge list opened',
+  DISCHARGE_CARD_VIEWED: 'Discharge card opened',
+  // Medical history and scanned documents (ids and the kind of document only)
+  HISTORY_VIEWED: 'Medical history opened',
+  DOCUMENT_UPLOADED: 'Patient document uploaded',
+  DOCUMENT_VIEWED: 'Patient document opened',
+  DOCUMENT_CANCELLED: 'Patient document marked as entered in error',
   // Clinic library
   LIBRARY_CREATED: 'Clinic library entry added',
   LIBRARY_UPDATED: 'Clinic library entry changed',
@@ -115,7 +122,7 @@ const GROUPS = [
   { key: 'logins', label: 'Logins and passwords', prefixes: ['LOGIN', 'LOGOUT', 'PASSWORD', 'HOSPITAL_SWITCHED'] },
   { key: 'accounts', label: 'Accounts and staff', prefixes: ['USER', 'MEMBER', 'PROFILE'] },
   { key: 'hospitals', label: 'Hospitals and settings', prefixes: ['HOSPITAL_', 'SETTINGS', 'OPD', 'MASTER'] },
-  { key: 'patients', label: 'Patient records', prefixes: ['PATIENT', 'VISIT', 'PRESCRIPTION', 'ADMIT', 'ADMISSION', 'INPATIENT', 'NURSING', 'DISCHARGED'] },
+  { key: 'patients', label: 'Patient records', prefixes: ['PATIENT', 'VISIT', 'PRESCRIPTION', 'ADMIT', 'ADMISSION', 'INPATIENT', 'NURSING', 'DISCHARGE', 'HISTORY', 'DOCUMENT'] },
   { key: 'billing', label: 'Billing', prefixes: ['BILL', 'PAYMENT', 'REFUND', 'PRICE'] },
   { key: 'pharmacy', label: 'Pharmacy', prefixes: ['MEDICINE', 'SUPPLIER', 'PURCHASE', 'SALE', 'STOCK', 'ORDER_'] },
   { key: 'appointments', label: 'Appointments', prefixes: ['APPOINTMENT'] },

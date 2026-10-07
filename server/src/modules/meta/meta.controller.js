@@ -26,6 +26,7 @@ const publicSettings = Object.freeze({
   patients: config.patients,
   billing: config.billing,
   pharmacy: config.pharmacy,
+  documents: config.documents,
   analytics: config.analytics,
   auditActions: AUDIT_ACTIONS,
   auditCategories: AUDIT_CATEGORIES.map(({ key, label }) => ({ key, label })),

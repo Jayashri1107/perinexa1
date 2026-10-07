@@ -13,6 +13,7 @@ Fake sample data only.
 | 6 | **Analytics and Today**: per hospital (small numbers hidden for non-doctors), platform analytics for the super admin, a role-aware Today page | Done |
 | 7 | **The doctor's work**: Appointments (day of slots, needs a time, walk-in tokens, arrived/seen, OPD timings – doctors set their own), Calendar (booked visits, EDD, LMP; reminders to send), Lab (order, sample, results with flags, amend with a reason, review), Clinic library (Perinexa's DRAFT care plans, red-flag / risk / medicine-safety rules, consent and information forms, test packages, prescription sets – a doctor approves each) | Done |
 | 8 | Visits and prescriptions (using the approved care plans, rules and prescription sets) | Next |
+| 10 | **Records** (7 Oct 2026): medical history page (stays and discharge cards, visits, lab, documents); scanned documents on a patient's record (PDF / JPG / PNG, kept in the database, entered in error instead of deleted); Discharges for reception (signed discharge cards to print or save as PDF, scans to upload) | Done |
 
 ### Who sees what (config.access)
 

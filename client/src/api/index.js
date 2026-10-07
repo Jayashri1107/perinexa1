@@ -279,3 +279,26 @@ export const wardIssuesApi = {
   admitted: () => http.get(`${PHARMACY}/ward-issues/admitted`),
   issue: (data) => http.post(`${PHARMACY}/ward-issues`, data),
 };
+
+// Module 10 – medical history, scanned documents and discharge cards at the front desk
+const DOCUMENTS = '/hospital/patient-documents';
+const enc = (v) => (v ? encodeURIComponent(v) : undefined);
+export const documentsApi = {
+  list: (patientId) => http.get(`${DOCUMENTS}/patient/${patientId}`),
+  upload: (patientId, file, { kind, title, documentDate, admissionId }) =>
+    http.upload(`${DOCUMENTS}/patient/${patientId}`, file, Object.fromEntries(Object.entries({
+      'X-Document-Kind': enc(kind),
+      'X-Document-Title': enc(title),
+      'X-Document-Date': enc(documentDate),
+      'X-Admission-Id': enc(admissionId),
+    }).filter(([, v]) => v))),
+  file: (id) => http.file(`${DOCUMENTS}/${id}/file`),
+  cancel: (id, reason) => http.post(`${DOCUMENTS}/${id}/cancel`, { reason }),
+};
+export const dischargesApi = {
+  list: (query) => http.get('/hospital/discharges', query),
+  card: (id) => http.get(`/hospital/discharges/${id}`),
+};
+export const medicalHistoryApi = {
+  get: (patientId) => http.get(`/hospital/medical-history/${patientId}`),
+};

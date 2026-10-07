@@ -66,6 +66,8 @@
     "patients": ["doctor", "rmo", "nurse", "receptionist", "lab", "pharmacist", "billing"],
     "registerPatients": ["doctor", "rmo", "receptionist"],
     "registrationMenu": ["receptionist"],
+    "patientDocuments": ["doctor", "rmo", "nurse", "receptionist"],
+    "dischargeCards": ["doctor", "rmo", "nurse", "receptionist"],
     "patientsAllRecords": ["rmo"],
     "patientsClinical": ["doctor", "rmo", "nurse"],
     "patientsContact": ["doctor", "rmo", "nurse", "receptionist", "pharmacist", "billing"],
@@ -170,6 +172,18 @@
       { "key": "other", "label": "Other" }
     ],
     "ageBands": [0, 1, 18, 25, 30, 35, 40, 50]
+  },
+  "documents": {
+    "maxMegabytes": 10,
+    "recentDischargeDays": 30,
+    "kinds": [
+      { "key": "discharge_card", "label": "Discharge card" },
+      { "key": "previous_record", "label": "Previous medical record" },
+      { "key": "lab_report", "label": "Lab report" },
+      { "key": "sonography", "label": "Sonography" },
+      { "key": "prescription", "label": "Prescription" },
+      { "key": "other", "label": "Other" }
+    ]
   },
   "billing": {
     "billPrefix": "B-",

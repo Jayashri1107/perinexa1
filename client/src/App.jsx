@@ -64,6 +64,9 @@ import { VisitPage } from './pages/visits/VisitPage.jsx';
 import { AdmissionPage } from './pages/inpatient/AdmissionPage.jsx';
 import { IssueToWardPage } from './pages/pharmacy/IssueToWardPage.jsx';
 import { WardDocumentPrintPage } from './pages/print/WardDocumentPrintPage.jsx';
+import { DischargeCardPrintPage } from './pages/print/DischargeCardPrintPage.jsx';
+import { DischargesPage } from './pages/documents/DischargesPage.jsx';
+import { MedicalHistoryPage } from './pages/patients/MedicalHistoryPage.jsx';
 import { SaleInvoicePrintPage } from './pages/print/SaleInvoicePrintPage.jsx';
 import { UsersPage } from './pages/users/UsersPage.jsx';
 import { WorkspacePage } from './pages/workspace/WorkspacePage.jsx';
@@ -108,6 +111,9 @@ export function App() {
               <Route path="/hospital/print/prescription/:patientId/:visitId" element={<PrescriptionPrintPage />} />
               <Route path="/hospital/print/ward-document/:stayId/:docId" element={<WardDocumentPrintPage />} />
             </Route>
+            <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
+              <Route path="/hospital/print/discharge-card/:cardId" element={<DischargeCardPrintPage />} />
+            </Route>
             <Route element={<ProtectedRoute area="hospital" access="billing" />}>
               <Route path="/hospital/print/bill/:id" element={<BillPrintPage />} />
             </Route>
@@ -129,6 +135,10 @@ export function App() {
                 <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
                   <Route path="patients/:id/visits/:visitId" element={<VisitPage />} />
                   <Route path="inpatients/:id" element={<AdmissionPage />} />
+                  <Route path="patients/:id/history" element={<MedicalHistoryPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
+                  <Route path="discharges" element={<DischargesPage />} />
                 </Route>
                 <Route element={<ProtectedRoute area="hospital" access="registerPatients" />}>
                   <Route path="patients/new" element={<PatientRegisterPage />} />

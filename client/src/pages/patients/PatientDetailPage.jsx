@@ -1,5 +1,5 @@
 // One patient's record, showing only what this person may see; changes only where the server allows them.
-import { ArrowLeft, Lock, Pencil, Receipt, Siren } from 'lucide-react';
+import { ArrowLeft, History, Lock, Pencil, Receipt, Siren } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { patientsApi } from '../../api/index.js';
@@ -14,6 +14,7 @@ import { clinicalFields, clinicalValues, contactFields, contactValues, emergency
 import { useForm } from '../../hooks/useForm.js';
 import { useOptions } from '../../hooks/useOptions.js';
 import { ageText, formatDate, formatDateTime, labelOf } from '../../utils/format.js';
+import { PatientDocumentsCard } from '../documents/PatientDocumentsCard.jsx';
 import { PatientAppointmentsCard } from './PatientAppointmentsCard.jsx';
 import { PatientLabCard } from './PatientLabCard.jsx';
 import { PatientStaysCard } from './PatientStaysCard.jsx';
@@ -78,6 +79,9 @@ export function PatientDetailPage() {
             <StatusBadge status={p.status === 'active' ? 'active' : 'inactive'} />
             {p.isSensitive && <span className="badge badge-pending"><Lock size={13} aria-hidden /> Sensitive</span>}
             <span className="badge badge-info">{ACCESS_WORDS[p.access]}</span>
+            {clinical && canAccess('patientsClinical') && (
+              <Link to={`/hospital/patients/${p.id}/history`} className="btn btn-ghost"><History size={16} aria-hidden /> Medical history</Link>
+            )}
             {canAccess('billing') && (
               <Link to={`/hospital/billing?patientId=${p.id}`} className="btn btn-ghost"><Receipt size={16} aria-hidden /> Bills</Link>
             )}
@@ -145,6 +149,11 @@ export function PatientDetailPage() {
           {canAccess('lab') && clinical && <PatientLabCard patient={p} />}
           {clinical && canAccess('patientsClinical') && <PatientStaysCard patient={p} />}
         </div>
+      )}
+
+      {/* Scanned papers: those who look after her clinically, and reception for records that are not sensitive */}
+      {canAccess('patientDocuments') && (clinical || (p.access === 'contactEdit' && !p.isSensitive)) && (
+        <div className="top-gap"><PatientDocumentsCard patient={p} /></div>
       )}
 
       {dialog === 'contact' && (

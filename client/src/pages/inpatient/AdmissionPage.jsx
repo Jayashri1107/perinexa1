@@ -45,7 +45,7 @@ function Doc({ stayId, doc, can, onChanged }) {
           {draft && can.write && !editing && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setContent(doc.content); setEditing(true); }}>Write</button>}
           {draft && !editing && can.sign[doc.kind] && <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => window.confirm('Sign this document? It can no longer change after signing.') && run(() => admissionsApi.signDocument(stayId, doc.id))}>Sign</button>}
           {draft && can.write && !editing && <button type="button" className="btn btn-link btn-sm btn-danger-text" onClick={() => { const r = window.prompt('Why is it entered in error?'); if (r) run(() => admissionsApi.cancelDocument(stayId, doc.id, r)); }}>Entered in error</button>}
-          {doc.status === 'signed' && <a className="btn btn-ghost btn-sm" href={`/hospital/print/ward-document/${stayId}/${doc.id}`} target="_blank" rel="noreferrer"><Printer size={14} aria-hidden /> Print</a>}
+          {doc.status === 'signed' && <a className="btn btn-ghost btn-sm" href={doc.kind === 'discharge' ? `/hospital/print/discharge-card/${doc.id}` : `/hospital/print/ward-document/${stayId}/${doc.id}`} target="_blank" rel="noreferrer"><Printer size={14} aria-hidden /> Print</a>}
         </div>
       </div>
       <p className="muted small">

@@ -67,6 +67,8 @@ const schema = z.object({
     patients: roleList,
     registerPatients: roleList,
     registrationMenu: roleList,
+    patientDocuments: roleList,
+    dischargeCards: roleList,
     patientsAllRecords: roleList,
     patientsClinical: roleList,
     patientsContact: roleList,
@@ -102,6 +104,11 @@ const schema = z.object({
     bloodGroups: z.array(z.string().min(1)),
     idProofTypes: z.array(keyLabel).min(1),
     ageBands: z.array(z.number().int().nonnegative()).min(2),
+  }),
+  documents: z.object({
+    maxMegabytes: z.number().positive().max(15),
+    recentDischargeDays: z.number().int().positive(),
+    kinds: z.array(keyLabel).min(1),
   }),
   billing: z.object({
     billPrefix: prefix,
