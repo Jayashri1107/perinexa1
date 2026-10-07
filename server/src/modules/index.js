@@ -40,6 +40,7 @@ import supplierReturnRoutes from './supplierReturns/supplierReturn.routes.js';
 import supplierRoutes from './suppliers/supplier.routes.js';
 import todayRoutes from './today/today.routes.js';
 import userRoutes from './users/user.routes.js';
+import visitRoutes, { pharmacyPrescriptionRouter } from './visits/visit.routes.js';
 
 const { access } = config;
 const HOSPITAL_ADMIN = [config.adminRole];
@@ -97,4 +98,8 @@ export const modules = [
   { path: '/hospital/calendar', access: 'hospital', roles: access.calendar, router: calendarRoutes },
   { path: '/hospital/lab', access: 'hospital', roles: access.lab, router: labRoutes },
   { path: '/hospital/library', access: 'hospital', roles: access.library, router: libraryRoutes },
+
+  // Module 8 – visits and prescriptions
+  { path: '/hospital/visits', access: 'hospital', roles: access.patientsClinical, router: visitRoutes },
+  { path: '/hospital/pharmacy/prescriptions', access: 'hospital', roles: access.pharmacyCounter, router: pharmacyPrescriptionRouter },
 ];

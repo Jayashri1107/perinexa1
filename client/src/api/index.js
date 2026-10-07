@@ -237,3 +237,21 @@ export const supplierReturnsApi = {
   create: (data) => http.post(`${PHARMACY}/supplier-returns`, data),
   cancel: (id, data) => http.post(`${PHARMACY}/supplier-returns/${id}/cancel`, data),
 };
+
+// Module 8 – visits and prescriptions
+const VISITS = '/hospital/visits';
+export const visitsApi = {
+  list: (patientId) => http.get(`${VISITS}/patient/${patientId}`),
+  start: (patientId, clientRequestId) => http.post(`${VISITS}/patient/${patientId}`, { clientRequestId }),
+  get: (patientId, visitId) => http.get(`${VISITS}/patient/${patientId}/${visitId}`),
+  vitals: (patientId, visitId, data) => http.put(`${VISITS}/patient/${patientId}/${visitId}/vitals`, data),
+  details: (patientId, visitId, data) => http.put(`${VISITS}/patient/${patientId}/${visitId}/details`, data),
+  prescription: (patientId, visitId, data) => http.put(`${VISITS}/patient/${patientId}/${visitId}/prescription`, data),
+  sign: (patientId, visitId) => http.post(`${VISITS}/patient/${patientId}/${visitId}/sign`),
+  cancel: (patientId, visitId, reason) => http.post(`${VISITS}/patient/${patientId}/${visitId}/cancel`, { reason }),
+  addition: (patientId, visitId, text) => http.post(`${VISITS}/patient/${patientId}/${visitId}/additions`, { text }),
+  sets: (careType) => http.get(`${VISITS}/sets`, { careType }),
+};
+export const pharmacyPrescriptionsApi = {
+  forPatient: (patientId) => http.get(`${PHARMACY}/prescriptions/${patientId}`),
+};

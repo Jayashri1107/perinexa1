@@ -65,6 +65,7 @@ function attentionItems(today, overview) {
   if (today.billing?.unpaidBills) {
     items.push({ icon: Receipt, text: `${plural(today.billing.unpaidBills, 'bill')} not fully paid`, hint: `${formatMoney(today.billing.owed)} still owed.`, to: '/hospital/billing/unpaid', action: 'See unpaid' });
   }
+  if (today.unsignedVisits) items.push({ icon: FileText, text: `${plural(today.unsignedVisits, 'visit')} of today not signed`, hint: 'Sign them once the findings and prescription are complete.', to: '/hospital/patients', action: 'Find the patient' });
   if (today.lab?.toReview) items.push({ icon: FlaskConical, text: `${plural(today.lab.toReview, 'lab result')} to review`, hint: 'Results of your patients and your orders.', to: '/hospital/lab', action: 'Review' });
   if (today.lab?.toReport) items.push({ icon: FlaskConical, text: `${plural(today.lab.toReport, 'lab order')} waiting for results`, hint: today.lab.toCollect ? `${plural(today.lab.toCollect, 'sample')} still to take.` : 'Samples taken.', to: '/hospital/lab', action: 'Open the lab' });
   if (today.pharmacy?.lowStock) items.push({ icon: PackageMinus, text: `${plural(today.pharmacy.lowStock, 'medicine')} running low`, hint: 'At or below the reorder level.', to: '/hospital/pharmacy/stock', action: 'See stock' });

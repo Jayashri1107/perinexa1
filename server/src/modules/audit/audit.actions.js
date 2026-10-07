@@ -79,6 +79,14 @@ export const AUDIT_ACTIONS = Object.freeze({
   LAB_REVIEWED: 'Lab results reviewed',
   LAB_CANCELLED: 'Lab order cancelled',
   LAB_VIEWED: 'Lab order opened',
+  // Visits (ids and the part saved only – never medical details)
+  VISIT_STARTED: 'Visit started',
+  VISIT_VIEWED: 'Visit opened',
+  VISIT_UPDATED: 'Visit changed',
+  PRESCRIPTION_SAVED: 'Prescription written',
+  VISIT_SIGNED: 'Visit signed',
+  VISIT_CANCELLED: 'Visit marked as entered in error',
+  VISIT_ADDITION: 'Correction added to a signed visit',
   // Clinic library
   LIBRARY_CREATED: 'Clinic library entry added',
   LIBRARY_UPDATED: 'Clinic library entry changed',
@@ -94,7 +102,7 @@ const GROUPS = [
   { key: 'logins', label: 'Logins and passwords', prefixes: ['LOGIN', 'LOGOUT', 'PASSWORD', 'HOSPITAL_SWITCHED'] },
   { key: 'accounts', label: 'Accounts and staff', prefixes: ['USER', 'MEMBER', 'PROFILE'] },
   { key: 'hospitals', label: 'Hospitals and settings', prefixes: ['HOSPITAL_', 'SETTINGS', 'OPD', 'MASTER'] },
-  { key: 'patients', label: 'Patient records', prefixes: ['PATIENT'] },
+  { key: 'patients', label: 'Patient records', prefixes: ['PATIENT', 'VISIT', 'PRESCRIPTION'] },
   { key: 'billing', label: 'Billing', prefixes: ['BILL', 'PAYMENT', 'REFUND', 'PRICE'] },
   { key: 'pharmacy', label: 'Pharmacy', prefixes: ['MEDICINE', 'SUPPLIER', 'PURCHASE', 'SALE', 'STOCK', 'ORDER_'] },
   { key: 'appointments', label: 'Appointments', prefixes: ['APPOINTMENT'] },

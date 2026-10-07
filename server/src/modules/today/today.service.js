@@ -6,6 +6,7 @@ import { toObjectId } from '../../core/validate.js';
 import { todayFor } from '../appointments/appointment.service.js';
 import { Bill, Payment } from '../bills/bill.model.js';
 import { todayCounts as labCounts } from '../lab/lab.service.js';
+import { unsignedToday } from '../visits/visit.service.js';
 import { Patient } from '../patients/patient.model.js';
 import { alertCounts } from '../pharmacyReports/pharmacyReports.service.js';
 import { Sale } from '../sales/sale.model.js';
@@ -78,7 +79,7 @@ export async function today(req) {
     pharmacy: has(roles, access.pharmacy),
     lab: has(roles, access.lab),
   };
-  const [patients, doctor, appointments, lab, billing, pharmacy] = await Promise.all([
+  const [patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits] = await Promise.all([
     wants.patients ? patientSection(hid, start, end) : null,
     wants.doctor ? doctorSection(hid, req.user._id) : null,
     // a doctor's own appointments today: who is waiting, and who comes next
@@ -86,6 +87,8 @@ export async function today(req) {
     wants.lab ? labCounts(req) : null,
     wants.billing ? billingSection(hid, start, end) : null,
     wants.pharmacy ? pharmacySection(hid, start, end) : null,
+    // visits of today this person started or that are her doctor's, not signed yet
+    has(roles, config.prescriberRoles) ? unsignedToday(hid, req.user._id) : 0,
   ]);
-  return { date: todayLocal(), patients, doctor, appointments, lab, billing, pharmacy };
+  return { date: todayLocal(), patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits };
 }

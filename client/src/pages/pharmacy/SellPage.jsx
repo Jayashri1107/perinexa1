@@ -7,6 +7,7 @@ import { Alert } from '../../components/Alert.jsx';
 import { PatientPicker } from '../../components/PatientPicker.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { formatMoney, labelOf } from '../../utils/format.js';
+import { FromPrescription } from './FromPrescription.jsx';
 import { MedicineSearch } from './MedicineSearch.jsx';
 import { PharmacyFrame } from './PharmacyFrame.jsx';
 
@@ -31,6 +32,16 @@ export function SellPage() {
     if (sale.lines.some((l) => l.medicineId === m.id)) return;
     set({ lines: [...sale.lines, { medicineId: m.id, name: `${m.name} ${m.strength ?? ''}`.trim(), schedule: m.schedule, available: m.available, mrp: m.mrp, qty: 1 }] });
   };
+  // from her prescription: each medicine found on the stock list, once
+  const usePrescription = (found, doctor) =>
+    setSale((s) => {
+      const lines = [...s.lines];
+      for (const { medicine: m, qty } of found) {
+        if (lines.some((l) => l.medicineId === m.id)) continue;
+        lines.push({ medicineId: m.id, name: `${m.name} ${m.strength ?? ''}`.trim(), schedule: m.schedule, available: m.available, mrp: m.mrp, qty: Math.min(qty, m.available) });
+      }
+      return { ...s, lines, doctorName: s.doctorName || doctor || '' };
+    });
   const updateLine = (i, qty) => set({ lines: sale.lines.map((l, j) => (j === i ? { ...l, qty } : l)) });
 
   const submit = async (e) => {
@@ -66,6 +77,7 @@ export function SellPage() {
           <section className="card">
             <h2>Buyer</h2>
             <PatientPicker search={salesApi.patients} value={sale.patient} onChange={(p) => set({ patient: p, payTo: p ? sale.payTo : 'counter' })} label="Registered patient (optional)" error={errors.customerName} />
+            {sale.patient && <FromPrescription patientId={sale.patient.id} onUse={usePrescription} />}
             {!sale.patient && (
               <div className="form-field">
                 <label htmlFor="customer">Or the buyer's name</label>

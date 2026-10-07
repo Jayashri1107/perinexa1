@@ -269,3 +269,9 @@ export async function testPackageOptions(hospitalId) {
   const rows = await LibraryEntry.find({ hospitalId, kind: 'test_package', isActive: true }).sort({ order: 1, name: 1 }).lean();
   return rows.map((p) => ({ key: p.key, name: p.name, status: p.status, who: p.content.who, forWhom: p.content.forWhom, tests: p.content.tests }));
 }
+
+// The APPROVED entries in use of one kind – what other modules may apply to patients (drafts never are).
+export async function approvedEntries(hospitalId, kind) {
+  await ensureLibrary(hospitalId);
+  return LibraryEntry.find({ hospitalId, kind, status: 'approved', isActive: true }).sort({ order: 1, name: 1 }).lean();
+}

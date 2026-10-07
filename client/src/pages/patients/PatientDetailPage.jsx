@@ -16,6 +16,7 @@ import { useOptions } from '../../hooks/useOptions.js';
 import { ageText, formatDate, formatDateTime, labelOf } from '../../utils/format.js';
 import { PatientAppointmentsCard } from './PatientAppointmentsCard.jsx';
 import { PatientLabCard } from './PatientLabCard.jsx';
+import { PatientVisitsCard } from './PatientVisitsCard.jsx';
 
 const ACCESS_WORDS = {
   full: 'Full access',
@@ -134,8 +135,9 @@ export function PatientDetailPage() {
         )}
       </div>
 
-      {(canAccess('appointments') || (canAccess('lab') && clinical)) && (
+      {(canAccess('appointments') || clinical) && (
         <div className="grid-2 top-gap">
+          {clinical && canAccess('patientsClinical') && <PatientVisitsCard patient={p} />}
           {canAccess('appointments') && <PatientAppointmentsCard patient={p} />}
           {canAccess('lab') && clinical && <PatientLabCard patient={p} />}
         </div>

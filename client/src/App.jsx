@@ -59,6 +59,8 @@ import { PlatformBillingPage } from './pages/platform/PlatformBillingPage.jsx';
 import { PlatformPharmacyPage } from './pages/platform/PlatformPharmacyPage.jsx';
 import { BillPrintPage } from './pages/print/BillPrintPage.jsx';
 import { DebitNotePrintPage } from './pages/print/DebitNotePrintPage.jsx';
+import { PrescriptionPrintPage } from './pages/print/PrescriptionPrintPage.jsx';
+import { VisitPage } from './pages/visits/VisitPage.jsx';
 import { SaleInvoicePrintPage } from './pages/print/SaleInvoicePrintPage.jsx';
 import { UsersPage } from './pages/users/UsersPage.jsx';
 import { WorkspacePage } from './pages/workspace/WorkspacePage.jsx';
@@ -99,6 +101,9 @@ export function App() {
             </Route>
 
             {/* Printouts (no menu) */}
+            <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
+              <Route path="/hospital/print/prescription/:patientId/:visitId" element={<PrescriptionPrintPage />} />
+            </Route>
             <Route element={<ProtectedRoute area="hospital" access="billing" />}>
               <Route path="/hospital/print/bill/:id" element={<BillPrintPage />} />
             </Route>
@@ -116,6 +121,9 @@ export function App() {
                 <Route element={<ProtectedRoute area="hospital" access="patients" />}>
                   <Route path="patients" element={<PatientsPage />} />
                   <Route path="patients/:id" element={<PatientDetailPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
+                  <Route path="patients/:id/visits/:visitId" element={<VisitPage />} />
                 </Route>
                 <Route element={<ProtectedRoute area="hospital" access="registerPatients" />}>
                   <Route path="patients/new" element={<PatientRegisterPage />} />
