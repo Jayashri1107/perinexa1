@@ -13,7 +13,7 @@ export function usePagedList(fetchPage, initialFilters = {}) {
     let cancelled = false;
     setResult((r) => ({ ...r, loading: true, error: '' }));
     fetchPage(query)
-      .then((data) => !cancelled && setResult({ items: data.items, pagination: data.pagination, loading: false, error: '' }))
+      .then((data) => !cancelled && setResult({ items: data.items, pagination: data.pagination, summary: data.summary ?? null, loading: false, error: '' }))
       .catch((err) => !cancelled && setResult((r) => ({ ...r, loading: false, error: err.message })));
     return () => {
       cancelled = true;

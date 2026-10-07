@@ -1,8 +1,8 @@
 // A new bill: choose the patient, add lines from the price list.
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { billsApi } from '../../api/index.js';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { billsApi, patientsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { PatientPicker } from '../../components/PatientPicker.jsx';
@@ -14,6 +14,16 @@ export function NewBillPage() {
   const [lines, setLines] = useState([newLine()]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  // Opened from a patient's record ("Bills" → New bill): she is chosen already.
+  const [params] = useSearchParams();
+  const patientId = params.get('patientId');
+  useEffect(() => {
+    if (!patientId) return;
+    patientsApi
+      .get(patientId)
+      .then((r) => setPatient({ id: r.patient.id, name: r.patient.name, patientNumber: r.patient.patientNumber }))
+      .catch(() => {});
+  }, [patientId]);
 
   const save = async (e) => {
     e.preventDefault();

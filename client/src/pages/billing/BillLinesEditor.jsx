@@ -29,6 +29,7 @@ export function BillLinesEditor({ value, onChange }) {
   const update = (i, patch) => onChange(value.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const priceOf = (l) => (l.priceItemId && l.priceItemId !== WRITE_IN ? list.find((x) => x.id === l.priceItemId)?.price ?? 0 : Number(l.unitPrice) || 0);
   const total = value.reduce((n, l) => n + priceOf(l) * (Number(l.qty) || 0), 0);
+  const unpriced = value.filter((l) => l.priceItemId && l.priceItemId !== WRITE_IN && items !== null && !priceOf(l)).length;
 
   return (
     <div className="lines-editor">
@@ -74,11 +75,17 @@ export function BillLinesEditor({ value, onChange }) {
           </button>
         </div>
       ))}
+      {unpriced > 0 && (
+        <p className="field-error">
+          {unpriced === 1 ? '1 line has' : `${unpriced} lines have`} no price yet and would be billed at {formatMoney(0)}.{' '}
+          {canAccess('billingAdmin') ? 'Set the price in Billing → Price list first.' : 'Ask the hospital admin to set the price in Billing → Price list.'}
+        </p>
+      )}
       <div className="line-foot">
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange([...value, newLine()])}>
           <Plus size={14} aria-hidden /> Line
         </button>
-        <strong>{formatMoney(total)}</strong>
+        <strong>Total {formatMoney(total)}</strong>
       </div>
     </div>
   );

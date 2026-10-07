@@ -28,6 +28,7 @@ export function BillsPage() {
     { key: 'createdAt', label: 'Date', className: 'nowrap', render: (b) => formatDateTime(b.createdAt) },
     { key: 'patient', label: 'Patient', render: (b) => (<>{b.patient?.name}<span className="muted block small">{b.patient?.patientNumber}</span></>) },
     { key: 'total', label: 'Total', className: 'num', render: (b) => formatMoney(b.total) },
+    { key: 'paid', label: 'Paid', className: 'num', render: (b) => formatMoney((b.paid ?? 0) - (b.refunded ?? 0)) },
     { key: 'balance', label: 'Balance', className: 'num', render: (b) => formatMoney(b.balance) },
     { key: 'status', label: 'Status', render: (b) => <BillStatus bill={b} /> },
   ];
@@ -41,6 +42,14 @@ export function BillsPage() {
         </button>
       }
     >
+      {list.summary && list.summary.bills > 0 && (
+        <dl className="totals bills-summary">
+          <dt>{list.summary.bills} {list.summary.bills === 1 ? 'bill' : 'bills'} (cancelled left out)</dt><dd></dd>
+          <dt>Total billed</dt><dd>{formatMoney(list.summary.total)}</dd>
+          <dt>Paid</dt><dd>{formatMoney(list.summary.paid)}</dd>
+          <dt><strong>Balance to collect</strong></dt><dd><strong>{formatMoney(list.summary.balance)}</strong></dd>
+        </dl>
+      )}
       <ListPanel list={list} columns={columns} filters={[STATUS_FILTER]} searchPlaceholder="Bill number or patient" emptyText="No bills yet." onRowClick={(b) => navigate(`/hospital/billing/bills/${b.id}`)} />
     </BillingFrame>
   );

@@ -182,13 +182,21 @@ export async function listBills(hospitalId, q) {
     const text = containsText(q.search);
     match.$or = [{ billNumber: new RegExp(`^${escapeRegex(q.search)}`, 'i') }, { 'patient.name': text }, { 'patient.patientNumber': text }];
   }
-  return paginate(Bill, {
-    match,
-    sort: toSort(q.sort),
-    page: q.page,
-    limit: q.limit,
-    pageStages: [{ $project: { lines: 0, __v: 0 } }, ...withId()],
-  });
+  const [page, [sums]] = await Promise.all([
+    paginate(Bill, {
+      match,
+      sort: toSort(q.sort),
+      page: q.page,
+      limit: q.limit,
+      pageStages: [{ $project: { lines: 0, __v: 0 } }, ...withId()],
+    }),
+    // The totals of every bill in this list (all pages; cancelled bills left out), worked out by the server.
+    Bill.aggregate([
+      { $match: { ...match, status: match.status ?? { $ne: 'cancelled' } } },
+      { $group: { _id: null, bills: { $sum: 1 }, total: { $sum: '$total' }, paid: { $sum: { $subtract: ['$paid', '$refunded'] } }, balance: { $sum: '$balance' } } },
+    ]),
+  ]);
+  return { ...page, summary: { bills: sums?.bills ?? 0, total: round2(sums?.total ?? 0), paid: round2(sums?.paid ?? 0), balance: round2(sums?.balance ?? 0) } };
 }
 
 // A pharmacy sale to a registered patient goes on her open bill (a new bill when she has none).
