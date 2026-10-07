@@ -1,0 +1,1489 @@
+[
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "bp_severe_sys",
+  "label": "Severe-range blood pressure",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "bpSystolic",
+    "op": "gte",
+    "value": 160
+   }
+  ],
+  "message": "Recheck in 15 minutes. If it stays this high, treat urgently (e.g. labetalol / nifedipine as per protocol) and assess for severe pre-eclampsia, or refer.",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "BP systolic at least 160 mmHg"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "bp_severe_dia",
+  "label": "Severe-range blood pressure",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "bpDiastolic",
+    "op": "gte",
+    "value": 110
+   }
+  ],
+  "message": "Recheck in 15 minutes. If it stays this high, treat urgently (e.g. labetalol / nifedipine as per protocol) and assess for severe pre-eclampsia, or refer.",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "BP diastolic at least 110 mmHg"
+ },
+ {
+  "fromWeek": 20,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pe_sys",
+  "label": "Possible pre-eclampsia",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "bpSystolic",
+    "op": "gte",
+    "value": 140
+   },
+   {
+    "factor": "urineAlbumin",
+    "grade": "1+"
+   }
+  ],
+  "message": "Raised BP with protein in the urine after 20 weeks. Assess the same day: symptoms (headache, visual change, epigastric pain), platelets, liver and kidney tests; plan monitoring or admission.",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "BP systolic at least 140 mmHg and Urine albumin 1+ or more, from 20 weeks"
+ },
+ {
+  "fromWeek": 20,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pe_dia",
+  "label": "Possible pre-eclampsia",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "bpDiastolic",
+    "op": "gte",
+    "value": 90
+   },
+   {
+    "factor": "urineAlbumin",
+    "grade": "1+"
+   }
+  ],
+  "message": "Raised BP with protein in the urine after 20 weeks. Assess the same day: symptoms (headache, visual change, epigastric pain), platelets, liver and kidney tests; plan monitoring or admission.",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "BP diastolic at least 90 mmHg and Urine albumin 1+ or more, from 20 weeks"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "htn_sys",
+  "label": "Raised blood pressure",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "bpSystolic",
+    "op": "gte",
+    "value": 140
+   },
+   {
+    "factor": "bpSystolic",
+    "op": "lt",
+    "value": 160
+   }
+  ],
+  "message": "BP 140/90 or more. Recheck after rest; if confirmed, check urine protein and follow up closely (gestational or chronic hypertension).",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "BP systolic at least 140 mmHg and BP systolic under 160 mmHg"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "htn_dia",
+  "label": "Raised blood pressure",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "bpDiastolic",
+    "op": "gte",
+    "value": 90
+   },
+   {
+    "factor": "bpDiastolic",
+    "op": "lt",
+    "value": 110
+   }
+  ],
+  "message": "BP 140/90 or more. Recheck after rest; if confirmed, check urine protein and follow up closely (gestational or chronic hypertension).",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "BP diastolic at least 90 mmHg and BP diastolic under 110 mmHg"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "hb_severe",
+  "label": "Severe anaemia",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "hb",
+    "op": "lt",
+    "value": 7
+   }
+  ],
+  "message": "Hb below 7 g/dL. Needs urgent assessment and treatment in hospital (blood transfusion or IV iron as indicated); look for the cause.",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Hb under 7 g/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "hb_moderate",
+  "label": "Moderate anaemia",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "hb",
+    "op": "gte",
+    "value": 7
+   },
+   {
+    "factor": "hb",
+    "op": "lt",
+    "value": 10
+   }
+  ],
+  "message": "Hb 7–9.9 g/dL. Start treatment-dose iron (consider IV iron, especially later in pregnancy or if oral iron is not tolerated) and recheck Hb.",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Hb at least 7 g/dL and Hb under 10 g/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "hb_mild",
+  "label": "Mild anaemia",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "hb",
+    "op": "gte",
+    "value": 10
+   },
+   {
+    "factor": "hb",
+    "op": "lt",
+    "value": 11
+   }
+  ],
+  "message": "Hb 10–10.9 g/dL. Treatment-dose oral iron and folic acid; recheck Hb in about 4 weeks.",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Hb at least 10 g/dL and Hb under 11 g/dL"
+ },
+ {
+  "fromWeek": 28,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "fm_reduced",
+  "label": "Reduced or absent fetal movements",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "fetalMovements",
+    "choices": [
+     "reduced",
+     "absent"
+    ]
+   }
+  ],
+  "message": "Check the fetal heart now and arrange a CTG (and ultrasound if needed) the same day.",
+  "source": "RCOG Green-top 57 Reduced fetal movements; NICE NG229 / FIGO intrapartum fetal monitoring (normal FHR 110–160)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Fetal movements: reduced or absent, from 28 weeks"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "fhr_low",
+  "label": "Slow fetal heart rate",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "fetalHeartRate",
+    "op": "lt",
+    "value": 110
+   }
+  ],
+  "message": "Fetal heart rate below 110/min. Recheck for a full minute and arrange CTG / urgent assessment.",
+  "source": "RCOG Green-top 57 Reduced fetal movements; NICE NG229 / FIGO intrapartum fetal monitoring (normal FHR 110–160)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Fetal heart rate under 110 /min"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "fhr_high",
+  "label": "Fast fetal heart rate",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "fetalHeartRate",
+    "op": "gt",
+    "value": 160
+   }
+  ],
+  "message": "Fetal heart rate above 160/min. Recheck for a full minute, check maternal temperature and pulse, and arrange CTG / urgent assessment.",
+  "source": "RCOG Green-top 57 Reduced fetal movements; NICE NG229 / FIGO intrapartum fetal monitoring (normal FHR 110–160)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Fetal heart rate over 160 /min"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "spo2_low",
+  "label": "Low oxygen saturation",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "spo2",
+    "op": "lt",
+    "value": 95
+   }
+  ],
+  "message": "SpO₂ below 95%. Recheck; assess breathing and arrange urgent medical review.",
+  "source": "WHO recommendations on antenatal care for a positive pregnancy experience (2016); MoHFW India MCP card danger signs",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "SpO₂ under 95 %"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "fever",
+  "label": "Fever",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "temperatureF",
+    "op": "gte",
+    "value": 100.4
+   }
+  ],
+  "message": "Temperature 100.4 °F or more. Look for the cause (urine infection, malaria, dengue, respiratory infection, chorioamnionitis) and treat.",
+  "source": "WHO recommendations on antenatal care for a positive pregnancy experience (2016); MoHFW India MCP card danger signs",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Temperature at least 100.4 °F"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pulse_high",
+  "label": "Fast maternal pulse",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "pulse",
+    "op": "gt",
+    "value": 110
+   }
+  ],
+  "message": "Pulse above 110/min. Look for anaemia, infection, bleeding, dehydration or heart disease.",
+  "source": "WHO recommendations on antenatal care for a positive pregnancy experience (2016); MoHFW India MCP card danger signs",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Pulse over 110 /min"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "urine_sugar",
+  "label": "Sugar in urine",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "urineSugar",
+    "grade": "1+"
+   }
+  ],
+  "message": "Arrange a blood glucose test (75 g OGTT, DIPSI) if not already done.",
+  "source": "FOGSI GCPR Gestational diabetes mellitus (2018); MoHFW India National guidelines for diagnosis and management of GDM (2018)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Urine sugar 1+ or more"
+ },
+ {
+  "fromWeek": 20,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "oedema_marked",
+  "label": "Marked oedema",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "oedema",
+    "grade": "moderate"
+   }
+  ],
+  "message": "Check BP and urine protein for pre-eclampsia.",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Oedema moderate or more, from 20 weeks"
+ },
+ {
+  "fromWeek": 36,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "malpresentation",
+  "label": "Not head-down at term",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "presentation",
+    "choices": [
+     "breech",
+     "transverse",
+     "oblique"
+    ]
+   }
+  ],
+  "message": "Confirm by ultrasound and discuss options (external cephalic version or planned mode of delivery).",
+  "source": "RCOG Green-top 20a/20b (breech); FOGSI GCPR",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Presentation: breech or transverse or oblique, from 36 weeks"
+ },
+ {
+  "fromWeek": 24,
+  "toWeek": 40,
+  "fromDay": null,
+  "toDay": null,
+  "key": "fundal_gap",
+  "label": "Fundal height not matching the weeks",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "fundalHeightGap",
+    "op": "gt",
+    "value": 3
+   }
+  ],
+  "message": "Fundal height differs from the weeks by more than 3 cm. Consider a growth scan (growth restriction, too much or too little fluid, twins, or wrong dates).",
+  "source": "RCOG Green-top 31 Small-for-gestational-age fetus; WHO ANC 2016 (symphysis-fundal height)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Fundal height differs from weeks by over 3 cm, 24–40 weeks"
+ },
+ {
+  "fromWeek": 20,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "weight_gain",
+  "label": "Sudden weight gain",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "weightGainPerWeek",
+    "op": "gt",
+    "value": 1
+   }
+  ],
+  "message": "More than 1 kg a week since the last weighed visit. Check BP, urine protein and oedema (fluid retention / pre-eclampsia).",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Weight gain since last visit over 1 kg/week, from 20 weeks"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "postdates",
+  "label": "41 weeks or more",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "weeksToday",
+    "op": "gte",
+    "value": 41
+   }
+  ],
+  "message": "Plan delivery (induction of labour) as per the hospital protocol if she has not delivered; check fetal wellbeing.",
+  "source": "WHO recommendations for induction of labour (2011, 2022); FOGSI GCPR Induction of labour",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Weeks of pregnancy today at least 41 weeks"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_hb_severe",
+  "label": "Severe anaemia",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labHb",
+    "op": "lt",
+    "value": 7
+   }
+  ],
+  "message": "Hb below 7 g/dL. Needs urgent assessment and treatment in hospital (blood transfusion or IV iron as indicated); look for the cause.",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Haemoglobin (lab) under 7 g/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_hb_moderate",
+  "label": "Moderate anaemia",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labHb",
+    "op": "gte",
+    "value": 7
+   },
+   {
+    "factor": "labHb",
+    "op": "lt",
+    "value": 10
+   }
+  ],
+  "message": "Hb 7–9.9 g/dL. Start treatment-dose iron (consider IV iron, especially later in pregnancy or if oral iron is not tolerated) and recheck Hb.",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Haemoglobin (lab) at least 7 g/dL and Haemoglobin (lab) under 10 g/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_hb_mild",
+  "label": "Mild anaemia",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labHb",
+    "op": "gte",
+    "value": 10
+   },
+   {
+    "factor": "labHb",
+    "op": "lt",
+    "value": 11
+   }
+  ],
+  "message": "Hb 10–10.9 g/dL. Treatment-dose oral iron and folic acid; recheck Hb in about 4 weeks.",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Haemoglobin (lab) at least 10 g/dL and Haemoglobin (lab) under 11 g/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_platelets_mild",
+  "label": "Platelets below normal",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labPlatelets",
+    "op": "gte",
+    "value": 1
+   },
+   {
+    "factor": "labPlatelets",
+    "op": "lt",
+    "value": 1.5
+   }
+  ],
+  "message": "Platelets 1–1.49 lakh/µL. Often gestational thrombocytopenia: check BP, repeat the count, and look for other causes if it falls.",
+  "source": "ACOG Practice Bulletin 207 Thrombocytopenia in pregnancy (2019); ACOG Practice Bulletin 222 Gestational hypertension and preeclampsia (2020); FOGSI GCPR Hypertensive disorders in pregnancy (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Platelets (lab) at least 1 lakh/µL and Platelets (lab) under 1.5 lakh/µL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_ogtt_gdm",
+  "label": "Gestational diabetes range (OGTT)",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labOgtt2h",
+    "op": "gte",
+    "value": 140
+   },
+   {
+    "factor": "labOgtt2h",
+    "op": "lt",
+    "value": 200
+   }
+  ],
+  "message": "2-hour glucose 140–199 mg/dL after 75 g glucose. Start diet advice and glucose monitoring as per the GDM protocol; treat if the targets are not met.",
+  "source": "MoHFW India National guidelines for diagnosis and management of GDM (2018, DIPSI test: 2-hour value 140 mg/dL or more); FOGSI GCPR Gestational diabetes mellitus (2018)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "OGTT 2-hour blood sugar (lab) at least 140 mg/dL and OGTT 2-hour blood sugar (lab) under 200 mg/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_ogtt_diabetes",
+  "label": "Diabetes range (OGTT)",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labOgtt2h",
+    "op": "gte",
+    "value": 200
+   }
+  ],
+  "message": "2-hour glucose 200 mg/dL or more after 75 g glucose: diabetes in pregnancy. Start treatment without delay and involve a physician.",
+  "source": "WHO Diagnostic criteria and classification of hyperglycaemia first detected in pregnancy (2013); MoHFW India National guidelines for diagnosis and management of GDM (2018, DIPSI test: 2-hour value 140 mg/dL or more); FOGSI GCPR Gestational diabetes mellitus (2018)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "OGTT 2-hour blood sugar (lab) at least 200 mg/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_fbs_high",
+  "label": "Raised fasting blood sugar",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labFastingGlucose",
+    "op": "gte",
+    "value": 92
+   },
+   {
+    "factor": "labFastingGlucose",
+    "op": "lt",
+    "value": 126
+   }
+  ],
+  "message": "Fasting glucose 92–125 mg/dL: gestational diabetes range. Confirm as per the hospital protocol (75 g test) and start diet advice.",
+  "source": "WHO Diagnostic criteria and classification of hyperglycaemia first detected in pregnancy (2013); FOGSI GCPR Gestational diabetes mellitus (2018)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Fasting blood sugar (lab) at least 92 mg/dL and Fasting blood sugar (lab) under 126 mg/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_fbs_diabetes",
+  "label": "Diabetes range (fasting sugar)",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labFastingGlucose",
+    "op": "gte",
+    "value": 126
+   }
+  ],
+  "message": "Fasting glucose 126 mg/dL or more: diabetes in pregnancy. Start treatment without delay and involve a physician.",
+  "source": "WHO Diagnostic criteria and classification of hyperglycaemia first detected in pregnancy (2013)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Fasting blood sugar (lab) at least 126 mg/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_rbs_high",
+  "label": "Diabetes range (random sugar)",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labRandomGlucose",
+    "op": "gte",
+    "value": 200
+   }
+  ],
+  "message": "Random glucose 200 mg/dL or more. Confirm with a fasting or 75 g test and start treatment; check urine ketones if she is unwell.",
+  "source": "WHO Diagnostic criteria and classification of hyperglycaemia first detected in pregnancy (2013)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Random blood sugar (lab) at least 200 mg/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_tsh_high",
+  "label": "Raised TSH",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labTsh",
+    "op": "gt",
+    "value": 4
+   }
+  ],
+  "message": "TSH above 4 µIU/mL. Check free T4 (and TPO antibodies if available) and treat hypothyroidism as per guideline; TSH above 10 needs treatment whatever the free T4. The Government of India guideline uses lower limits (2.5 in the first trimester, 3 later) – use your own range if the hospital has one.",
+  "source": "American Thyroid Association guidelines for thyroid disease during pregnancy and the postpartum (2017); MoHFW India National guidelines for screening of hypothyroidism during pregnancy (2014)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "TSH (lab) over 4 µIU/mL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_tsh_low",
+  "label": "Low TSH",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labTsh",
+    "op": "lt",
+    "value": 0.1
+   }
+  ],
+  "message": "TSH below 0.1 µIU/mL. Often normal in early pregnancy (hCG effect, severe vomiting): check free T4 and look for signs of thyrotoxicosis.",
+  "source": "American Thyroid Association guidelines for thyroid disease during pregnancy and the postpartum (2017); MoHFW India National guidelines for screening of hypothyroidism during pregnancy (2014)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "TSH (lab) under 0.1 µIU/mL"
+ },
+ {
+  "fromWeek": 20,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_urine_protein",
+  "label": "Protein in urine (lab result)",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labUrineAlbumin",
+    "grade": "1+"
+   }
+  ],
+  "message": "Albumin 1+ or more in the lab urine test after 20 weeks. Check BP today for pre-eclampsia; rule out urine infection; consider a urine protein : creatinine ratio.",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "Urine albumin (lab) 1+ or more, from 20 weeks"
+ },
+ {
+  "fromWeek": 20,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pe_lab_sys",
+  "label": "Possible pre-eclampsia",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "bpSystolic",
+    "op": "gte",
+    "value": 140
+   },
+   {
+    "factor": "labUrineAlbumin",
+    "grade": "1+"
+   }
+  ],
+  "message": "Raised BP with protein in a lab urine test of the same week (within 7 days), after 20 weeks. Assess the same day: symptoms (headache, visual change, epigastric pain), platelets, liver and kidney tests; plan monitoring or admission.",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "BP systolic at least 140 mmHg and Urine albumin (lab) 1+ or more, from 20 weeks, values recorded within 7 days of each other"
+ },
+ {
+  "fromWeek": 20,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pe_lab_dia",
+  "label": "Possible pre-eclampsia",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "bpDiastolic",
+    "op": "gte",
+    "value": 90
+   },
+   {
+    "factor": "labUrineAlbumin",
+    "grade": "1+"
+   }
+  ],
+  "message": "Raised BP with protein in a lab urine test of the same week (within 7 days), after 20 weeks. Assess the same day: symptoms (headache, visual change, epigastric pain), platelets, liver and kidney tests; plan monitoring or admission.",
+  "source": "FOGSI GCPR Hypertensive disorders in pregnancy (2019); WHO recommendations for prevention and treatment of pre-eclampsia and eclampsia (2011); NICE NG133 (2019)",
+  "appliesTo": [
+   "antenatal"
+  ],
+  "text": "BP diastolic at least 90 mmHg and Urine albumin (lab) 1+ or more, from 20 weeks, values recorded within 7 days of each other"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "lab_platelets_low",
+  "label": "Low platelets",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labPlatelets",
+    "op": "lt",
+    "value": 1
+   }
+  ],
+  "message": "Platelets below 1 lakh/µL. Check BP and liver tests for HELLP or severe pre-eclampsia, repeat the count, and plan delivery, anaesthesia and bleeding risk with the physician.",
+  "source": "ACOG Practice Bulletin 207 Thrombocytopenia in pregnancy (2019); ACOG Practice Bulletin 222 Gestational hypertension and preeclampsia (2020); FOGSI GCPR Hypertensive disorders in pregnancy (2019)",
+  "appliesTo": [
+   "antenatal",
+   "postnatal"
+  ],
+  "text": "Platelets (lab) under 1 lakh/µL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pn_bp_severe_sys",
+  "label": "Severe-range blood pressure after delivery",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "bpSystolic",
+    "op": "gte",
+    "value": 160
+   }
+  ],
+  "message": "BP 160/110 or more after delivery. Recheck in 15 minutes; if it stays this high, treat urgently as per protocol and assess for pre-eclampsia or eclampsia, which can begin after delivery.",
+  "source": "WHO recommendations on maternal and newborn care for a positive postnatal experience (2022); NICE NG133 Hypertension in pregnancy (2019), postnatal care; FOGSI GCPR Hypertensive disorders in pregnancy (2019)",
+  "appliesTo": [
+   "postnatal"
+  ],
+  "text": "BP systolic at least 160 mmHg"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pn_bp_severe_dia",
+  "label": "Severe-range blood pressure after delivery",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "bpDiastolic",
+    "op": "gte",
+    "value": 110
+   }
+  ],
+  "message": "BP 160/110 or more after delivery. Recheck in 15 minutes; if it stays this high, treat urgently as per protocol and assess for pre-eclampsia or eclampsia, which can begin after delivery.",
+  "source": "WHO recommendations on maternal and newborn care for a positive postnatal experience (2022); NICE NG133 Hypertension in pregnancy (2019), postnatal care; FOGSI GCPR Hypertensive disorders in pregnancy (2019)",
+  "appliesTo": [
+   "postnatal"
+  ],
+  "text": "BP diastolic at least 110 mmHg"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pn_bp_sys",
+  "label": "Raised blood pressure after delivery",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "bpSystolic",
+    "op": "gte",
+    "value": 140
+   },
+   {
+    "factor": "bpSystolic",
+    "op": "lt",
+    "value": 160
+   }
+  ],
+  "message": "BP 140/90 or more after delivery. Recheck after rest; ask about headache, visual change and upper abdominal pain; check urine protein and follow up closely.",
+  "source": "WHO recommendations on maternal and newborn care for a positive postnatal experience (2022); NICE NG133 Hypertension in pregnancy (2019), postnatal care; FOGSI GCPR Hypertensive disorders in pregnancy (2019)",
+  "appliesTo": [
+   "postnatal"
+  ],
+  "text": "BP systolic at least 140 mmHg and BP systolic under 160 mmHg"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pn_bp_dia",
+  "label": "Raised blood pressure after delivery",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "bpDiastolic",
+    "op": "gte",
+    "value": 90
+   },
+   {
+    "factor": "bpDiastolic",
+    "op": "lt",
+    "value": 110
+   }
+  ],
+  "message": "BP 140/90 or more after delivery. Recheck after rest; ask about headache, visual change and upper abdominal pain; check urine protein and follow up closely.",
+  "source": "WHO recommendations on maternal and newborn care for a positive postnatal experience (2022); NICE NG133 Hypertension in pregnancy (2019), postnatal care; FOGSI GCPR Hypertensive disorders in pregnancy (2019)",
+  "appliesTo": [
+   "postnatal"
+  ],
+  "text": "BP diastolic at least 90 mmHg and BP diastolic under 110 mmHg"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pn_fever",
+  "label": "Fever after delivery",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "temperatureF",
+    "op": "gte",
+    "value": 100.4
+   }
+  ],
+  "message": "Temperature 100.4 °F (38 °C) or more after delivery. Look for infection – uterus, wound or perineum, breast, urine, chest – and for sepsis; treat or refer the same day.",
+  "source": "WHO recommendations for prevention and treatment of maternal peripartum infections (2015); WHO postnatal care recommendations (2022); MoHFW India SBA guidelines (danger signs after delivery)",
+  "appliesTo": [
+   "postnatal"
+  ],
+  "text": "Temperature at least 100.4 °F"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pn_pulse_high",
+  "label": "Fast pulse after delivery",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "pulse",
+    "op": "gt",
+    "value": 110
+   }
+  ],
+  "message": "Pulse above 110/min after delivery. Check BP, bleeding, the uterus, temperature and Hb: a fast pulse can be the first sign of blood loss or infection.",
+  "source": "WHO Managing complications in pregnancy and childbirth (2nd edition, 2017): a fast pulse (110/min or more) is a sign of shock – this draft rule is raised over 110, like the pregnancy rule; change it to \"at least 110\" to follow WHO exactly. WHO postnatal care recommendations (2022)",
+  "appliesTo": [
+   "postnatal"
+  ],
+  "text": "Pulse over 110 /min"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pn_hb_severe",
+  "label": "Severe anaemia after delivery",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "hb",
+    "op": "lt",
+    "value": 7
+   }
+  ],
+  "message": "Hb below 7 g/dL after delivery. Needs urgent assessment and treatment (blood transfusion or IV iron as indicated); look for continuing bleeding.",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "postnatal"
+  ],
+  "text": "Hb under 7 g/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "pn_lab_hb_severe",
+  "label": "Severe anaemia after delivery",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labHb",
+    "op": "lt",
+    "value": 7
+   }
+  ],
+  "message": "Hb below 7 g/dL after delivery. Needs urgent assessment and treatment (blood transfusion or IV iron as indicated); look for continuing bleeding.",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "postnatal"
+  ],
+  "text": "Haemoglobin (lab) under 7 g/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "nb_temp_very_low",
+  "label": "Very low temperature (baby)",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "temperatureF",
+    "op": "lt",
+    "value": 95.9
+   }
+  ],
+  "message": "Temperature below 95.9 °F (35.5 °C). Rewarm now and assess for serious infection and low blood sugar; admit or refer.",
+  "source": "WHO Thermal protection of the newborn: a practical guide (1997) – normal 36.5–37.5 °C, so a temperature above 37.5 °C is raised; MoHFW India IMNCI and Facility Based Newborn Care – below 35.5 °C is a danger sign. IMNCI counts 37.5 °C itself as fever: change \"over 99.5\" to \"at least 99.5\" to follow IMNCI exactly",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Temperature under 95.9 °F"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "nb_temp_low",
+  "label": "Low temperature (baby)",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "temperatureF",
+    "op": "gte",
+    "value": 95.9
+   },
+   {
+    "factor": "temperatureF",
+    "op": "lt",
+    "value": 97.7
+   }
+  ],
+  "message": "Temperature below 97.7 °F (36.5 °C). Warm the baby – skin-to-skin, cap, warm room – and recheck within an hour; check feeding and blood sugar.",
+  "source": "WHO Thermal protection of the newborn: a practical guide (1997) – normal 36.5–37.5 °C, so a temperature above 37.5 °C is raised; MoHFW India IMNCI and Facility Based Newborn Care – below 35.5 °C is a danger sign. IMNCI counts 37.5 °C itself as fever: change \"over 99.5\" to \"at least 99.5\" to follow IMNCI exactly",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Temperature at least 95.9 °F and Temperature under 97.7 °F"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "nb_temp_high",
+  "label": "High temperature (baby)",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "temperatureF",
+    "op": "gt",
+    "value": 99.5
+   }
+  ],
+  "message": "Temperature above 99.5 °F (37.5 °C). Check for over-wrapping and measure again; if it stays high, assess for infection the same day – fever in a young baby is a danger sign.",
+  "source": "WHO Thermal protection of the newborn: a practical guide (1997) – normal 36.5–37.5 °C, so a temperature above 37.5 °C is raised; MoHFW India IMNCI and Facility Based Newborn Care – below 35.5 °C is a danger sign. IMNCI counts 37.5 °C itself as fever: change \"over 99.5\" to \"at least 99.5\" to follow IMNCI exactly",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Temperature over 99.5 °F"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "nb_weight_loss",
+  "label": "Weight more than 10 % below birth weight",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "weightBelowBirth",
+    "op": "gt",
+    "value": 10
+   }
+  ],
+  "message": "Assess the baby for dehydration, jaundice and illness, watch a feed and support feeding; recheck the weight in 24–48 hours.",
+  "source": "NICE NG75 Faltering growth (2017), recommendation 1.1.2; MoHFW India Facility Based Newborn Care (weight loss in the first week up to 10 % of the birth weight)",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Weight below birth weight by over 10 %"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": 0,
+  "toDay": 0,
+  "key": "nb_bili_day0",
+  "label": "High bilirubin for the baby's age",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labBilirubinTotal",
+    "op": "gt",
+    "value": 5.8
+   }
+  ],
+  "message": "Total bilirubin above 5.8 mg/dL in the first 24 hours of life. This is the NICE line for starting phototherapy at the start of that day, for a baby born at 38 weeks or later. Plot the value on the hour-specific chart now and treat if it is above the line. A baby born before 38 weeks, or with risk factors, needs treatment at lower values, which this rule does not check.",
+  "source": "NICE CG98 Jaundice in newborn babies under 28 days (2010, updated 2023): treatment threshold table for babies of 38 weeks or more (100, 200, 250, 300 and 350 µmol/L at 0, 24, 48, 72 and 96 hours of age); hour-specific charts: AAP 2022, NNF India",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Baby's total bilirubin (lab) over 5.8 mg/dL, baby under 1 day old"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": 1,
+  "toDay": 1,
+  "key": "nb_bili_day1",
+  "label": "High bilirubin for the baby's age",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labBilirubinTotal",
+    "op": "gt",
+    "value": 11.7
+   }
+  ],
+  "message": "Total bilirubin above 11.7 mg/dL at 24–47 hours of age. This is the NICE line for starting phototherapy at the start of that day, for a baby born at 38 weeks or later. Plot the value on the hour-specific chart now and treat if it is above the line. A baby born before 38 weeks, or with risk factors, needs treatment at lower values, which this rule does not check.",
+  "source": "NICE CG98 Jaundice in newborn babies under 28 days (2010, updated 2023): treatment threshold table for babies of 38 weeks or more (100, 200, 250, 300 and 350 µmol/L at 0, 24, 48, 72 and 96 hours of age); hour-specific charts: AAP 2022, NNF India",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Baby's total bilirubin (lab) over 11.7 mg/dL, baby 1 day old"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": 2,
+  "toDay": 2,
+  "key": "nb_bili_day2",
+  "label": "High bilirubin for the baby's age",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labBilirubinTotal",
+    "op": "gt",
+    "value": 14.6
+   }
+  ],
+  "message": "Total bilirubin above 14.6 mg/dL at 48–71 hours of age. This is the NICE line for starting phototherapy at the start of that day, for a baby born at 38 weeks or later. Plot the value on the hour-specific chart now and treat if it is above the line. A baby born before 38 weeks, or with risk factors, needs treatment at lower values, which this rule does not check.",
+  "source": "NICE CG98 Jaundice in newborn babies under 28 days (2010, updated 2023): treatment threshold table for babies of 38 weeks or more (100, 200, 250, 300 and 350 µmol/L at 0, 24, 48, 72 and 96 hours of age); hour-specific charts: AAP 2022, NNF India",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Baby's total bilirubin (lab) over 14.6 mg/dL, baby 2 days old"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": 3,
+  "toDay": 3,
+  "key": "nb_bili_day3",
+  "label": "High bilirubin for the baby's age",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labBilirubinTotal",
+    "op": "gt",
+    "value": 17.5
+   }
+  ],
+  "message": "Total bilirubin above 17.5 mg/dL at 72–95 hours of age. This is the NICE line for starting phototherapy at the start of that day, for a baby born at 38 weeks or later. Plot the value on the hour-specific chart now and treat if it is above the line. A baby born before 38 weeks, or with risk factors, needs treatment at lower values, which this rule does not check.",
+  "source": "NICE CG98 Jaundice in newborn babies under 28 days (2010, updated 2023): treatment threshold table for babies of 38 weeks or more (100, 200, 250, 300 and 350 µmol/L at 0, 24, 48, 72 and 96 hours of age); hour-specific charts: AAP 2022, NNF India",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Baby's total bilirubin (lab) over 17.5 mg/dL, baby 3 days old"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": 4,
+  "toDay": null,
+  "key": "nb_bili_day4",
+  "label": "High bilirubin for the baby's age",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labBilirubinTotal",
+    "op": "gt",
+    "value": 20.5
+   }
+  ],
+  "message": "Total bilirubin above 20.5 mg/dL at 96 hours of age or later. This is the NICE line for starting phototherapy at the start of that day, for a baby born at 38 weeks or later. Plot the value on the hour-specific chart now and treat if it is above the line. A baby born before 38 weeks, or with risk factors, needs treatment at lower values, which this rule does not check.",
+  "source": "NICE CG98 Jaundice in newborn babies under 28 days (2010, updated 2023): treatment threshold table for babies of 38 weeks or more (100, 200, 250, 300 and 350 µmol/L at 0, 24, 48, 72 and 96 hours of age); hour-specific charts: AAP 2022, NNF India",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Baby's total bilirubin (lab) over 20.5 mg/dL, baby 4 days old or more"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "nb_bili_direct",
+  "label": "Raised direct bilirubin (baby)",
+  "level": "watch",
+  "conditions": [
+   {
+    "factor": "labBilirubinDirect",
+    "op": "gt",
+    "value": 1
+   }
+  ],
+  "message": "Direct (conjugated) bilirubin above 1.0 mg/dL. Conjugated jaundice is never normal: ask about pale stools and dark urine and arrange evaluation for cholestasis (for example biliary atresia) without delay.",
+  "source": "NASPGHAN / ESPGHAN guideline for the evaluation of cholestatic jaundice in infants (2017): direct bilirubin above 1.0 mg/dL is abnormal",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Baby's direct bilirubin (lab) over 1 mg/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "nb_lab_sugar_low",
+  "label": "Low blood sugar (baby)",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labBabyGlucose",
+    "op": "lt",
+    "value": 45
+   }
+  ],
+  "message": "Blood glucose below 45 mg/dL. Feed now and recheck in 30–60 minutes as per the hospital protocol; a baby with symptoms or a very low value needs IV glucose.",
+  "source": "NNF India Clinical Practice Guidelines: Management of neonatal hypoglycaemia (2010) – operational threshold: plasma glucose below 45 mg/dL",
+  "appliesTo": [
+   "newborn"
+  ],
+  "text": "Baby's blood sugar (lab) under 45 mg/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "loss_ectopic_pulse",
+  "label": "Possible ruptured ectopic pregnancy",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "lossLocation",
+    "choices": [
+     "ectopic",
+     "unknown"
+    ]
+   },
+   {
+    "factor": "pulse",
+    "op": "gt",
+    "value": 110
+   }
+  ],
+  "message": "An ectopic pregnancy, or a pregnancy not yet located, with a pulse over 110/min. Consider a ruptured ectopic pregnancy with bleeding inside the abdomen. Assess now: pain, pallor, abdominal tenderness, shoulder-tip pain; two IV lines, blood for cross-match, and surgery without delay if she is unstable. A miscarriage with heavy bleeding can look the same. (NICE NG126; RCOG GTG 21)",
+  "source": "NICE NG126 Ectopic pregnancy and miscarriage (2019, updated 2023); RCOG Green-top Guideline 21 Diagnosis and management of ectopic pregnancy (2016); WHO Managing complications in pregnancy and childbirth (2nd edition, 2017): a fast pulse (110/min or more) and systolic BP below 90 mmHg are signs of shock",
+  "appliesTo": [
+   "pregnancy_loss"
+  ],
+  "text": "Pregnancy location: ectopic or unknown and Pulse over 110 /min"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "loss_ectopic_bp",
+  "label": "Possible ruptured ectopic pregnancy",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "lossLocation",
+    "choices": [
+     "ectopic",
+     "unknown"
+    ]
+   },
+   {
+    "factor": "bpSystolic",
+    "op": "lt",
+    "value": 90
+   }
+  ],
+  "message": "An ectopic pregnancy, or a pregnancy not yet located, with systolic BP below 90 mmHg. Consider a ruptured ectopic pregnancy with bleeding inside the abdomen. Assess now: pain, pallor, abdominal tenderness, shoulder-tip pain; two IV lines, blood for cross-match, and surgery without delay if she is unstable. A miscarriage with heavy bleeding can look the same. (NICE NG126; RCOG GTG 21)",
+  "source": "NICE NG126 Ectopic pregnancy and miscarriage (2019, updated 2023); RCOG Green-top Guideline 21 Diagnosis and management of ectopic pregnancy (2016); WHO Managing complications in pregnancy and childbirth (2nd edition, 2017): a fast pulse (110/min or more) and systolic BP below 90 mmHg are signs of shock",
+  "appliesTo": [
+   "pregnancy_loss"
+  ],
+  "text": "Pregnancy location: ectopic or unknown and BP systolic under 90 mmHg"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "loss_rupture_signs",
+  "label": "Possible ruptured ectopic pregnancy",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "lossRuptureSigns",
+    "choices": [
+     "yes"
+    ]
+   }
+  ],
+  "message": "Signs of rupture are recorded on her record. Consider a ruptured ectopic pregnancy with bleeding inside the abdomen. Assess now: pain, pallor, abdominal tenderness, shoulder-tip pain; two IV lines, blood for cross-match, and surgery without delay if she is unstable. A miscarriage with heavy bleeding can look the same. (NICE NG126; RCOG GTG 21)",
+  "source": "NICE NG126 Ectopic pregnancy and miscarriage (2019, updated 2023); RCOG Green-top Guideline 21 Diagnosis and management of ectopic pregnancy (2016); WHO Managing complications in pregnancy and childbirth (2nd edition, 2017): a fast pulse (110/min or more) and systolic BP below 90 mmHg are signs of shock",
+  "appliesTo": [
+   "pregnancy_loss"
+  ],
+  "text": "Signs of rupture: yes"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "loss_sepsis_vitals",
+  "label": "Possible septic abortion",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "temperatureF",
+    "op": "gte",
+    "value": 100.4
+   },
+   {
+    "factor": "pulse",
+    "op": "gt",
+    "value": 110
+   }
+  ],
+  "message": "Temperature 100.4 °F (38 °C) or more with a pulse over 110/min after a pregnancy loss. Consider a septic abortion (infection of the uterus). Assess now: BP, breathing, abdominal and uterine tenderness, the discharge; start broad-spectrum IV antibiotics and fluids without delay and plan to empty the uterus if tissue remains. (WHO MCPC 2017; RCOG GTG 64a)",
+  "source": "WHO Managing complications in pregnancy and childbirth (2nd edition, 2017): septic abortion; RCOG Green-top Guideline 64a Bacterial sepsis in pregnancy (2012); FOGSI",
+  "appliesTo": [
+   "pregnancy_loss"
+  ],
+  "text": "Temperature at least 100.4 °F and Pulse over 110 /min"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "loss_sepsis_signs",
+  "label": "Possible septic abortion",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "lossFeverDischarge",
+    "choices": [
+     "yes"
+    ]
+   }
+  ],
+  "message": "Fever with foul-smelling discharge is recorded on her record. Consider a septic abortion (infection of the uterus). Assess now: BP, breathing, abdominal and uterine tenderness, the discharge; start broad-spectrum IV antibiotics and fluids without delay and plan to empty the uterus if tissue remains. (WHO MCPC 2017; RCOG GTG 64a)",
+  "source": "WHO Managing complications in pregnancy and childbirth (2nd edition, 2017): septic abortion; RCOG Green-top Guideline 64a Bacterial sepsis in pregnancy (2012); FOGSI",
+  "appliesTo": [
+   "pregnancy_loss"
+  ],
+  "text": "Fever with foul-smelling discharge: yes"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "loss_bleeding_heavy",
+  "label": "Heavy bleeding",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "lossBleeding",
+    "choices": [
+     "heavy"
+    ]
+   }
+  ],
+  "message": "Heavy bleeding is recorded on her record. Check pulse, BP and Hb now; look for tissue left in the uterus or at the cervix; resuscitate, and arrange evacuation or surgery as needed. (NICE NG126; WHO MCPC 2017)",
+  "source": "NICE NG126 Ectopic pregnancy and miscarriage (2019, updated 2023); WHO Managing complications in pregnancy and childbirth (2nd edition, 2017): a fast pulse (110/min or more) and systolic BP below 90 mmHg are signs of shock",
+  "appliesTo": [
+   "pregnancy_loss"
+  ],
+  "text": "Bleeding: heavy"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "loss_hb_severe",
+  "label": "Severe anaemia after pregnancy loss",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "hb",
+    "op": "lt",
+    "value": 7
+   }
+  ],
+  "message": "Hb below 7 g/dL. Needs urgent assessment and treatment (blood transfusion or IV iron as indicated); look for continuing bleeding. (WHO haemoglobin thresholds; Anemia Mukt Bharat)",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "pregnancy_loss"
+  ],
+  "text": "Hb under 7 g/dL"
+ },
+ {
+  "fromWeek": null,
+  "toWeek": null,
+  "fromDay": null,
+  "toDay": null,
+  "key": "loss_lab_hb_severe",
+  "label": "Severe anaemia after pregnancy loss",
+  "level": "urgent",
+  "conditions": [
+   {
+    "factor": "labHb",
+    "op": "lt",
+    "value": 7
+   }
+  ],
+  "message": "Hb below 7 g/dL. Needs urgent assessment and treatment (blood transfusion or IV iron as indicated); look for continuing bleeding. (WHO haemoglobin thresholds; Anemia Mukt Bharat)",
+  "source": "WHO haemoglobin thresholds (2011, 2024); MoHFW India Anemia Mukt Bharat guidelines (2018); FOGSI GCPR Anaemia in pregnancy",
+  "appliesTo": [
+   "pregnancy_loss"
+  ],
+  "text": "Haemoglobin (lab) under 7 g/dL"
+ }
+]

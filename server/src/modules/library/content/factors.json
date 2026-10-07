@@ -1,0 +1,190 @@
+{
+ "redFlag": {
+  "bpSystolic": {
+   "label": "BP systolic",
+   "unit": "mmHg"
+  },
+  "bpDiastolic": {
+   "label": "BP diastolic",
+   "unit": "mmHg"
+  },
+  "pulse": {
+   "label": "Pulse",
+   "unit": "/min"
+  },
+  "temperatureF": {
+   "label": "Temperature",
+   "unit": "°F"
+  },
+  "spo2": {
+   "label": "SpO₂",
+   "unit": "%"
+  },
+  "hb": {
+   "label": "Hb",
+   "unit": "g/dL"
+  },
+  "urineAlbumin": {
+   "label": "Urine albumin",
+   "unit": ""
+  },
+  "urineSugar": {
+   "label": "Urine sugar",
+   "unit": ""
+  },
+  "oedema": {
+   "label": "Oedema",
+   "unit": ""
+  },
+  "fetalMovements": {
+   "label": "Fetal movements",
+   "unit": ""
+  },
+  "fetalHeartRate": {
+   "label": "Fetal heart rate",
+   "unit": "/min"
+  },
+  "presentation": {
+   "label": "Presentation",
+   "unit": ""
+  },
+  "fundalHeightGap": {
+   "label": "Fundal height differs from weeks by",
+   "unit": "cm"
+  },
+  "weightGainPerWeek": {
+   "label": "Weight gain since last visit",
+   "unit": "kg/week"
+  },
+  "weeksToday": {
+   "label": "Weeks of pregnancy today",
+   "unit": "weeks"
+  },
+  "weightBelowBirth": {
+   "label": "Weight below birth weight by",
+   "unit": "%"
+  },
+  "labHb": {
+   "label": "Haemoglobin (lab)",
+   "unit": "g/dL"
+  },
+  "labPlatelets": {
+   "label": "Platelets (lab)",
+   "unit": "lakh/µL"
+  },
+  "labFastingGlucose": {
+   "label": "Fasting blood sugar (lab)",
+   "unit": "mg/dL"
+  },
+  "labOgtt2h": {
+   "label": "OGTT 2-hour blood sugar (lab)",
+   "unit": "mg/dL"
+  },
+  "labPostMealGlucose": {
+   "label": "Post-meal blood sugar (lab)",
+   "unit": "mg/dL"
+  },
+  "labRandomGlucose": {
+   "label": "Random blood sugar (lab)",
+   "unit": "mg/dL"
+  },
+  "labTsh": {
+   "label": "TSH (lab)",
+   "unit": "µIU/mL"
+  },
+  "labUrineAlbumin": {
+   "label": "Urine albumin (lab)",
+   "unit": ""
+  },
+  "labBabyGlucose": {
+   "label": "Baby's blood sugar (lab)",
+   "unit": "mg/dL"
+  },
+  "labBilirubinTotal": {
+   "label": "Baby's total bilirubin (lab)",
+   "unit": "mg/dL"
+  },
+  "labBilirubinDirect": {
+   "label": "Baby's direct bilirubin (lab)",
+   "unit": "mg/dL"
+  },
+  "lossLocation": {
+   "label": "Pregnancy location",
+   "unit": ""
+  },
+  "lossRuptureSigns": {
+   "label": "Signs of rupture",
+   "unit": ""
+  },
+  "lossBleeding": {
+   "label": "Bleeding",
+   "unit": ""
+  },
+  "lossFeverDischarge": {
+   "label": "Fever with foul-smelling discharge",
+   "unit": ""
+  }
+ },
+ "risk": {
+  "age": {
+   "label": "Age",
+   "unit": "years"
+  },
+  "heightCm": {
+   "label": "Height",
+   "unit": "cm"
+  },
+  "weightKg": {
+   "label": "Weight",
+   "unit": "kg"
+  },
+  "bmi": {
+   "label": "BMI",
+   "unit": "kg/m²"
+  },
+  "gravida": {
+   "label": "Gravida",
+   "unit": ""
+  },
+  "para": {
+   "label": "Para",
+   "unit": ""
+  },
+  "abortions": {
+   "label": "Abortions / miscarriages",
+   "unit": ""
+  },
+  "previousCaesareans": {
+   "label": "Previous caesareans",
+   "unit": ""
+  },
+  "rhNegative": {
+   "label": "Rh-negative blood group",
+   "unit": ""
+  },
+  "condition": {
+   "label": "Pre-existing condition",
+   "unit": ""
+  },
+  "pastComplication": {
+   "label": "Problem in a previous pregnancy",
+   "unit": ""
+  },
+  "finding": {
+   "label": "Finding in this pregnancy",
+   "unit": ""
+  },
+  "lowestHb": {
+   "label": "Lowest haemoglobin in this pregnancy",
+   "unit": "g/dL"
+  },
+  "bpSystolic": {
+   "label": "Latest blood pressure, upper number (systolic)",
+   "unit": "mmHg"
+  },
+  "bpDiastolic": {
+   "label": "Latest blood pressure, lower number (diastolic)",
+   "unit": "mmHg"
+  }
+ }
+}

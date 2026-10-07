@@ -1,0 +1,631 @@
+[
+ {
+  "key": "anc_first_trimester",
+  "name": "First trimester – routine care",
+  "careTypes": [
+   "antenatal"
+  ],
+  "order": 10,
+  "items": [
+   {
+    "drug": "Folic acid",
+    "form": "tab",
+    "strength": "400 mcg",
+    "dose": "1",
+    "frequency": "1-0-0",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": null,
+    "durationUnit": "",
+    "instructions": "Until 12 weeks of pregnancy"
+   }
+  ],
+  "notes": "",
+  "investigations": "",
+  "advice": "Eat small, frequent meals and drink plenty of water. Rest well and avoid heavy lifting. Do not take any other medicine without asking us. Come at once for bleeding, severe pain in the abdomen, fever, or vomiting that does not stop.",
+  "about": "Folic acid 400 mcg a day until 12 weeks (MoHFW and WHO antenatal care guidance); 5 mg for women at higher risk of a neural tube defect (a previous affected pregnancy, diabetes, epilepsy on treatment, obesity). The booking tests and the dating scan come from the care plan and print under the next visit."
+ },
+ {
+  "key": "anc_second_third",
+  "name": "Second and third trimester – routine care",
+  "careTypes": [
+   "antenatal"
+  ],
+  "order": 20,
+  "items": [
+   {
+    "drug": "Iron + folic acid (IFA)",
+    "form": "tab",
+    "strength": "60 mg + 500 mcg",
+    "dose": "1",
+    "frequency": "0-1-0",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": null,
+    "durationUnit": "till_delivery",
+    "instructions": ""
+   },
+   {
+    "drug": "Calcium carbonate + vitamin D3",
+    "form": "tab",
+    "strength": "500 mg + 250 IU",
+    "dose": "1",
+    "frequency": "1-0-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": null,
+    "durationUnit": "till_delivery",
+    "instructions": ""
+   }
+  ],
+  "notes": "Take the iron and the calcium at least 2 hours apart. Do not take them with tea, coffee or milk.",
+  "investigations": "",
+  "advice": "Eat a balanced diet every day with green leafy vegetables, pulses, fruit and milk. From 28 weeks, notice your baby's movements every day. Come at once for bleeding, leaking of water, severe headache, blurred vision, swelling of the face or hands, or if the baby moves less than usual.",
+  "about": "MoHFW: one IFA tablet (60 mg elemental iron + 500 mcg folic acid) a day from 14–16 weeks for at least 180 days, and calcium 500 mg twice a day from 14 weeks. Albendazole 400 mg once in the second trimester is in the care plan – add it on the day it is given."
+ },
+ {
+  "key": "anc_nausea",
+  "name": "Nausea and vomiting in pregnancy (mild)",
+  "careTypes": [
+   "antenatal"
+  ],
+  "order": 30,
+  "items": [
+   {
+    "drug": "Doxylamine + pyridoxine",
+    "form": "tab",
+    "strength": "10 mg + 10 mg",
+    "dose": "2",
+    "frequency": "0-0-1",
+    "frequencyText": "",
+    "timing": "bedtime",
+    "route": "",
+    "durationValue": 10,
+    "durationUnit": "days",
+    "instructions": "May cause drowsiness"
+   }
+  ],
+  "notes": "",
+  "investigations": "",
+  "advice": "Eat small, dry meals every 2–3 hours (for example biscuits, toast or khakhra) and avoid oily and spicy food. Sip water, coconut water or ORS through the day. Come at once if you cannot keep fluids down, pass very little urine, or feel dizzy or faint.",
+  "about": "Doxylamine with pyridoxine is the usual first choice (ACOG). Labelled dose: 2 tablets at bedtime, up to 4 a day (1 in the morning, 1 in the afternoon, 2 at bedtime) if needed. Admit or refer if she is dehydrated or losing weight (hyperemesis)."
+ },
+ {
+  "key": "anc_anaemia",
+  "name": "Anaemia in pregnancy (mild to moderate)",
+  "careTypes": [
+   "antenatal"
+  ],
+  "order": 40,
+  "items": [
+   {
+    "drug": "Iron + folic acid (IFA)",
+    "form": "tab",
+    "strength": "60 mg + 500 mcg",
+    "dose": "1",
+    "frequency": "1-0-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "months",
+    "instructions": "Not with tea, coffee or milk"
+   }
+  ],
+  "notes": "Take the iron with water or lemon juice. Black stools are normal with iron tablets.",
+  "investigations": "CBC with peripheral smear. Repeat haemoglobin after 4 weeks.",
+  "advice": "Eat iron-rich food every day: green leafy vegetables, jaggery, dates, pulses, and meat, fish or eggs if you eat them. Have lemon, amla or orange with your meals. Come at once for breathlessness, a racing heart or extreme tiredness.",
+  "about": "MoHFW (Anemia Mukt Bharat): mild to moderate anaemia in pregnancy (Hb 7–10.9 g/dL) – 2 IFA tablets a day, and repeat the haemoglobin after a month. Severe anaemia (Hb below 7 g/dL) needs referral and treatment by protocol (IV iron or transfusion). Give albendazole if it was not given in the second trimester."
+ },
+ {
+  "key": "anc_preeclampsia_prevention",
+  "name": "Pre-eclampsia prevention (high risk)",
+  "careTypes": [
+   "antenatal"
+  ],
+  "order": 50,
+  "items": [
+   {
+    "drug": "Aspirin (low dose)",
+    "form": "tab",
+    "strength": "150 mg",
+    "dose": "1",
+    "frequency": "0-0-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": null,
+    "durationUnit": "till_delivery",
+    "instructions": "Stop at 36 weeks unless told otherwise"
+   },
+   {
+    "drug": "Calcium carbonate + vitamin D3",
+    "form": "tab",
+    "strength": "500 mg + 250 IU",
+    "dose": "1",
+    "frequency": "1-0-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": null,
+    "durationUnit": "till_delivery",
+    "instructions": ""
+   }
+  ],
+  "notes": "",
+  "investigations": "",
+  "advice": "Check your blood pressure every week, at home or at a clinic, and bring the readings. Come at once for severe headache, blurred vision, pain in the upper abdomen, swelling of the face or hands, or if the baby moves less than usual.",
+  "about": "For women at high risk of pre-eclampsia (previous pre-eclampsia, chronic hypertension, diabetes, kidney or autoimmune disease, twins – or several moderate risks): aspirin at night from 12–16 weeks, usually until 36 weeks (NICE continues until birth). Doses in guidance range from 75 to 150 mg (FOGSI, ISSHP, NICE); the ASPRE trial used 150 mg. Calcium 1 g a day (MoHFW)."
+ },
+ {
+  "key": "anc_uti",
+  "name": "Urinary infection in pregnancy (cystitis)",
+  "careTypes": [
+   "antenatal"
+  ],
+  "order": 60,
+  "items": [
+   {
+    "drug": "Cephalexin",
+    "form": "cap",
+    "strength": "500 mg",
+    "dose": "1",
+    "frequency": "1-0-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 7,
+    "durationUnit": "days",
+    "instructions": "Complete the full course"
+   }
+  ],
+  "notes": "Drink 2–3 litres of water a day.",
+  "investigations": "Urine routine and culture – send before the first dose.",
+  "advice": "Do not hold urine for long. Come at once for fever with chills, pain in the back or side, vomiting, or pains like contractions.",
+  "about": "NICE NG109 (urinary infection in pregnancy): nitrofurantoin 100 mg modified-release twice a day for 7 days (avoid near term) is the first choice; amoxicillin or cephalexin 500 mg twice a day for 7 days when the culture shows the germ is sensitive. Change to suit the culture report. Fever or loin pain means pyelonephritis – admit."
+ },
+ {
+  "key": "pn_normal_delivery",
+  "name": "After normal delivery (at discharge)",
+  "careTypes": [
+   "postnatal"
+  ],
+  "order": 70,
+  "items": [
+   {
+    "drug": "Iron + folic acid (IFA)",
+    "form": "tab",
+    "strength": "60 mg + 500 mcg",
+    "dose": "1",
+    "frequency": "0-1-0",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 6,
+    "durationUnit": "months",
+    "instructions": ""
+   },
+   {
+    "drug": "Calcium carbonate + vitamin D3",
+    "form": "tab",
+    "strength": "500 mg + 250 IU",
+    "dose": "1",
+    "frequency": "1-0-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 6,
+    "durationUnit": "months",
+    "instructions": ""
+   },
+   {
+    "drug": "Paracetamol",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "1",
+    "frequency": "sos",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 5,
+    "durationUnit": "days",
+    "instructions": "For pain – at least 6 hours apart"
+   }
+  ],
+  "notes": "Take the iron and the calcium at least 2 hours apart.",
+  "investigations": "",
+  "advice": "Breastfeed your baby often, day and night – only breast milk for 6 months. Keep the stitches clean and dry, and wash after using the toilet. Eat well and drink plenty of fluids. Come at once for fever, heavy bleeding or clots, foul-smelling discharge, painful swollen breasts, severe headache, or pain or swelling in the legs. We will talk about family planning at your 6-week check-up.",
+  "about": "MoHFW: IFA (one tablet a day) and calcium (500 mg twice a day) for 180 days after delivery. Paracetamol is compatible with breastfeeding."
+ },
+ {
+  "key": "pn_caesarean",
+  "name": "After caesarean section (at discharge)",
+  "careTypes": [
+   "postnatal"
+  ],
+  "order": 80,
+  "items": [
+   {
+    "drug": "Iron + folic acid (IFA)",
+    "form": "tab",
+    "strength": "60 mg + 500 mcg",
+    "dose": "1",
+    "frequency": "0-1-0",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 6,
+    "durationUnit": "months",
+    "instructions": ""
+   },
+   {
+    "drug": "Calcium carbonate + vitamin D3",
+    "form": "tab",
+    "strength": "500 mg + 250 IU",
+    "dose": "1",
+    "frequency": "1-0-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 6,
+    "durationUnit": "months",
+    "instructions": ""
+   },
+   {
+    "drug": "Paracetamol",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "1",
+    "frequency": "1-1-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 5,
+    "durationUnit": "days",
+    "instructions": "For pain"
+   },
+   {
+    "drug": "Lactulose",
+    "form": "syrup",
+    "strength": "",
+    "dose": "15",
+    "frequency": "0-0-1",
+    "frequencyText": "",
+    "timing": "bedtime",
+    "route": "",
+    "durationValue": 7,
+    "durationUnit": "days",
+    "instructions": "For soft stools"
+   }
+  ],
+  "notes": "Take the iron and the calcium at least 2 hours apart.",
+  "investigations": "",
+  "advice": "Keep the wound clean and dry. Walk a little several times a day and drink plenty of fluids. Do not lift anything heavy for 6 weeks. Breastfeed your baby often. Come at once for fever, redness, pain or discharge from the wound, heavy bleeding, pain or swelling in the legs, or breathlessness.",
+  "about": "No antibiotics are included – add them only if the hospital's protocol gives them after discharge. Set the next visit for the wound check. MoHFW: IFA and calcium for 180 days after delivery."
+ },
+ {
+  "key": "gyn_pcos",
+  "name": "PCOS – first visit (tests, lifestyle, metformin)",
+  "careTypes": [
+   "gynaecology",
+   "infertility"
+  ],
+  "order": 90,
+  "items": [
+   {
+    "drug": "Metformin",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "1",
+    "frequency": "0-0-1",
+    "frequencyText": "",
+    "timing": "with_food",
+    "route": "",
+    "durationValue": 1,
+    "durationUnit": "months",
+    "instructions": "With dinner. Your doctor may increase the dose slowly."
+   }
+  ],
+  "notes": "",
+  "investigations": "Ultrasound pelvis (transvaginal if suitable). TSH, prolactin. Fasting blood sugar and 2-hour 75 g OGTT. Lipid profile.",
+  "advice": "Aim for at least 150 minutes of exercise a week – for example a brisk 30-minute walk on 5 days. Eat regular meals with vegetables, pulses and whole grains; cut down sugar, sweets, fried food and sweet drinks. Losing even 5–10% of your weight can bring your periods back.",
+  "about": "International PCOS guideline (2023): lifestyle first; metformin with lifestyle for adults with a BMI of 25 or more (start with 500 mg with dinner and increase slowly); a combined pill is the first choice for irregular cycles or excess hair – add one if there is no contraindication. Consider 17-OH progesterone if congenital adrenal hyperplasia is possible."
+ },
+ {
+  "key": "gyn_thrush",
+  "name": "Vaginal thrush (candidiasis)",
+  "careTypes": [
+   "gynaecology",
+   "antenatal"
+  ],
+  "order": 100,
+  "items": [
+   {
+    "drug": "Clotrimazole",
+    "form": "pessary",
+    "strength": "100 mg",
+    "dose": "1",
+    "frequency": "0-0-1",
+    "frequencyText": "",
+    "timing": "bedtime",
+    "route": "vaginal",
+    "durationValue": 7,
+    "durationUnit": "days",
+    "instructions": "Insert high in the vagina at bedtime"
+   },
+   {
+    "drug": "Clotrimazole",
+    "form": "cream",
+    "strength": "1%",
+    "dose": "",
+    "frequency": "1-0-1",
+    "frequencyText": "",
+    "timing": "",
+    "route": "local",
+    "durationValue": 7,
+    "durationUnit": "days",
+    "instructions": "On the outer skin for itching"
+   }
+  ],
+  "notes": "",
+  "investigations": "",
+  "advice": "Wear loose cotton underwear and keep the area dry. Do not use soap, douches or vaginal washes inside. Avoid intercourse until the course is finished, or use a condom. Come back if it is not better in a week, or if it keeps coming back.",
+  "about": "Clotrimazole 100 mg pessary at night for 7 nights also suits pregnancy (no oral fluconazole in pregnancy). Outside pregnancy a single 500 mg pessary or fluconazole 150 mg once are alternatives. Check the blood sugar if thrush keeps coming back."
+ },
+ {
+  "key": "gyn_dysmenorrhoea",
+  "name": "Painful periods (primary dysmenorrhoea)",
+  "careTypes": [
+   "gynaecology"
+  ],
+  "order": 110,
+  "items": [
+   {
+    "drug": "Mefenamic acid",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "1",
+    "frequency": "1-1-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "days",
+    "instructions": "Start when the pain or bleeding starts"
+   }
+  ],
+  "notes": "",
+  "investigations": "",
+  "advice": "A hot water bag on the lower abdomen and regular exercise help. Come back if the pain is not relieved, gets worse each month, or comes with heavy bleeding, fever or pain at other times.",
+  "about": "Anti-inflammatory painkillers are the first choice for primary dysmenorrhoea; avoid them with a peptic ulcer, kidney disease or asthma made worse by such painkillers. Consider an ultrasound (endometriosis, adenomyosis, fibroids) if the pain is new, severe or not relieved."
+ },
+ {
+  "key": "gyn_heavy_periods",
+  "name": "Heavy periods (while bleeding)",
+  "careTypes": [
+   "gynaecology"
+  ],
+  "order": 120,
+  "items": [
+   {
+    "drug": "Tranexamic acid",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "2",
+    "frequency": "1-1-1",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 4,
+    "durationUnit": "days",
+    "instructions": "Only on the heavy days of the period"
+   },
+   {
+    "drug": "Ferrous ascorbate + folic acid",
+    "form": "tab",
+    "strength": "100 mg + 1.5 mg",
+    "dose": "1",
+    "frequency": "0-1-0",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "months",
+    "instructions": ""
+   }
+  ],
+  "notes": "",
+  "investigations": "CBC. TSH. Ultrasound pelvis.",
+  "advice": "Keep a note of how many pads you use each day. Come at once if you soak a pad every hour for more than 2 hours, pass large clots, or feel faint or breathless.",
+  "about": "NICE NG88: tranexamic acid 1 g three times a day for up to 4 days while bleeding is heavy; do not use it after a thrombosis. Rule out pregnancy; take an endometrial sample when indicated (for example at 45 or older when treatment fails, or with persistent bleeding between periods)."
+ },
+ {
+  "key": "loss_complete",
+  "name": "Complete miscarriage – after the loss",
+  "careTypes": [
+   "pregnancy_loss"
+  ],
+  "order": 130,
+  "items": [
+   {
+    "drug": "Paracetamol",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "2",
+    "frequency": "sos",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "days",
+    "instructions": "For pain – at least 6 hours apart, at most 4 times a day"
+   },
+   {
+    "drug": "Iron + folic acid (IFA)",
+    "form": "tab",
+    "strength": "60 mg + 500 mcg",
+    "dose": "1",
+    "frequency": "0-1-0",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "months",
+    "instructions": "Not with tea, coffee or milk"
+   }
+  ],
+  "notes": "",
+  "investigations": "Haemoglobin, if the bleeding was heavy. Urine pregnancy test after 3 weeks, if the doctor advises it.",
+  "advice": "Some bleeding, like a period, and mild cramps can go on for up to 2 weeks. Use pads, not tampons, until the bleeding stops. Come at once for heavy bleeding (soaking 2 pads an hour for 2 hours), large clots, fever, a smelly discharge, severe pain in the abdomen, or feeling faint or dizzy. You can become pregnant again even before your next period: use contraception if you do not want a pregnancy now. Feeling sad or low afterwards is common – please talk to us about it.",
+  "about": "For a miscarriage that is already complete – nothing in this set ends a pregnancy. NICE NG126 (2019, updated 2023): a complete miscarriage needs no medicine to empty the uterus; anti-D is not needed after a complete miscarriage (record the answer under Pregnancy loss). When it was not confirmed on a scan, a urine pregnancy test after 3 weeks checks that it is complete (doctor to decide). Iron for 3 months after blood loss is common practice, not a NICE recommendation: check the haemoglobin and treat anaemia by the hospital's protocol (Anemia Mukt Bharat). Methotrexate for an ectopic pregnancy has no set, on purpose: it is a specialist protocol with strict criteria (RCOG Green-top Guideline 21). Every medicine and dose is for the doctor to check (paracetamol 1 g is for an adult over 50 kg)."
+ },
+ {
+  "key": "loss_missed_medical",
+  "name": "Missed miscarriage (diagnosed) – medical management with misoprostol",
+  "careTypes": [
+   "pregnancy_loss"
+  ],
+  "order": 140,
+  "items": [
+   {
+    "drug": "Misoprostol",
+    "form": "tab",
+    "strength": "200 mcg",
+    "dose": "4",
+    "frequency": "custom",
+    "frequencyText": "One dose; a second after 3 hours only if told",
+    "timing": "",
+    "route": "vaginal",
+    "durationValue": null,
+    "durationUnit": "",
+    "instructions": "Place all 4 tablets high in the vagina, then lie down for 30 minutes"
+   },
+   {
+    "drug": "Ibuprofen",
+    "form": "tab",
+    "strength": "400 mg",
+    "dose": "1",
+    "frequency": "sos",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "days",
+    "instructions": "For cramps – after food, at most 3 times a day"
+   },
+   {
+    "drug": "Paracetamol",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "2",
+    "frequency": "sos",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "days",
+    "instructions": "For pain – at least 6 hours apart, at most 4 times a day"
+   }
+  ],
+  "notes": "Bleeding and cramps usually start within a few hours of the tablets, and the bleeding can be heavier than a period. Nausea, loose motions, shivering or a mild fever on that day are common.",
+  "investigations": "Urine pregnancy test 3 weeks after the tablets – come back if it is still positive.",
+  "advice": "Have someone with you on the day you take the tablets. Use pads, not tampons, until the bleeding stops. Call us if no bleeding has started within 48 hours. Come at once for heavy bleeding (soaking 2 pads an hour for 2 hours), large clots, fever, a smelly discharge, severe pain in the abdomen, or feeling faint or dizzy. You can become pregnant again even before your next period: use contraception if you do not want a pregnancy now. Feeling sad or low afterwards is common – please talk to us about it.",
+  "about": "FOR A MISCARRIAGE ALREADY DIAGNOSED – NOT FOR ENDING A CONTINUING PREGNANCY. Only when a scan has confirmed a missed miscarriage under 13 weeks (NICE NG126 criteria). Misoprostol 800 mcg: NICE NG126 (2019, updated 2023) gives 800 mcg vaginally, by mouth or under the tongue 48 hours after mifepristone 200 mg by mouth – add the mifepristone if the hospital uses it; FIGO 2017 (misoprostol alone, under 13 weeks): 800 mcg vaginally or 600 mcg under the tongue every 3 hours, 2 doses. From 13 weeks the doses differ. NICE: offer pain relief and anti-emetics as needed, and a urine pregnancy test after 3 weeks; no anti-D after medical management alone. Methotrexate for an ectopic pregnancy has no set, on purpose: it is a specialist protocol with strict criteria (RCOG Green-top Guideline 21). Every medicine and dose is for the doctor to check (paracetamol 1 g is for an adult over 50 kg)."
+ },
+ {
+  "key": "loss_incomplete_medical",
+  "name": "Incomplete miscarriage (diagnosed) – medical management with misoprostol",
+  "careTypes": [
+   "pregnancy_loss"
+  ],
+  "order": 150,
+  "items": [
+   {
+    "drug": "Misoprostol",
+    "form": "tab",
+    "strength": "200 mcg",
+    "dose": "3",
+    "frequency": "custom",
+    "frequencyText": "Once only",
+    "timing": "",
+    "route": "oral",
+    "durationValue": null,
+    "durationUnit": "",
+    "instructions": "Swallow all 3 tablets together"
+   },
+   {
+    "drug": "Ibuprofen",
+    "form": "tab",
+    "strength": "400 mg",
+    "dose": "1",
+    "frequency": "sos",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "days",
+    "instructions": "For cramps – after food, at most 3 times a day"
+   },
+   {
+    "drug": "Paracetamol",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "2",
+    "frequency": "sos",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "days",
+    "instructions": "For pain – at least 6 hours apart, at most 4 times a day"
+   }
+  ],
+  "notes": "Bleeding and cramps usually start within a few hours of the tablets, and the bleeding can be heavier than a period. Nausea, loose motions, shivering or a mild fever on that day are common.",
+  "investigations": "Urine pregnancy test 3 weeks after the tablets – come back if it is still positive.",
+  "advice": "Have someone with you on the day you take the tablets. Use pads, not tampons, until the bleeding stops. Call us if no bleeding has started within 48 hours. Come at once for heavy bleeding (soaking 2 pads an hour for 2 hours), large clots, fever, a smelly discharge, severe pain in the abdomen, or feeling faint or dizzy. You can become pregnant again even before your next period: use contraception if you do not want a pregnancy now. Feeling sad or low afterwards is common – please talk to us about it.",
+  "about": "FOR A MISCARRIAGE ALREADY DIAGNOSED – NOT FOR ENDING A CONTINUING PREGNANCY. For an incomplete miscarriage under 13 weeks without heavy bleeding or signs of infection – those need surgical evacuation or the hospital's protocol at once. Misoprostol 600 mcg once: NICE NG126 (2019, updated 2023) – vaginally, by mouth or under the tongue, without mifepristone; FIGO 2017 – 600 mcg by mouth or 400 mcg under the tongue once, or 400–800 mcg vaginally once. NICE: offer pain relief and anti-emetics as needed, and a urine pregnancy test after 3 weeks; no anti-D after medical management alone. Methotrexate for an ectopic pregnancy has no set, on purpose: it is a specialist protocol with strict criteria (RCOG Green-top Guideline 21). Every medicine and dose is for the doctor to check (paracetamol 1 g is for an adult over 50 kg)."
+ },
+ {
+  "key": "loss_after_evacuation",
+  "name": "After surgical evacuation for a miscarriage (at discharge)",
+  "careTypes": [
+   "pregnancy_loss"
+  ],
+  "order": 160,
+  "items": [
+   {
+    "drug": "Paracetamol",
+    "form": "tab",
+    "strength": "500 mg",
+    "dose": "2",
+    "frequency": "sos",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "days",
+    "instructions": "For pain – at least 6 hours apart, at most 4 times a day"
+   },
+   {
+    "drug": "Iron + folic acid (IFA)",
+    "form": "tab",
+    "strength": "60 mg + 500 mcg",
+    "dose": "1",
+    "frequency": "0-1-0",
+    "frequencyText": "",
+    "timing": "after_food",
+    "route": "",
+    "durationValue": 3,
+    "durationUnit": "months",
+    "instructions": "Not with tea, coffee or milk"
+   }
+  ],
+  "notes": "",
+  "investigations": "Report of the tissue sent to the laboratory (histopathology) – to be seen at the follow-up visit.",
+  "advice": "Light bleeding or spotting for up to 2 weeks is normal. Use pads, not tampons, and avoid intercourse until the bleeding stops. Come at once for heavy bleeding (soaking 2 pads an hour for 2 hours), large clots, fever, a smelly discharge, severe pain in the abdomen, or feeling faint or dizzy. You can become pregnant again even before your next period: use contraception if you do not want a pregnancy now. Feeling sad or low afterwards is common – please talk to us about it. Come for your follow-up visit in 1–2 weeks.",
+  "about": "After vacuum aspiration (manual or electric) or evacuation under anaesthesia for a miscarriage – nothing in this set ends a pregnancy. No antibiotic: NICE NG126 has no recommendation for antibiotics after surgical management of a miscarriage, and the AIMS trial (Lancet 2019) found that routine prophylaxis before miscarriage surgery did not clearly reduce pelvic infection. Where the hospital gives prophylaxis, it is one dose before the procedure, not a course at discharge; treat an infection by the hospital's protocol. Anti-D: NICE NG126 gives it to a Rh-negative woman after a surgical procedure (record it under Pregnancy loss). Iron after blood loss is common practice, not a NICE recommendation – check the haemoglobin. After a molar pregnancy the hCG follow-up is in the care plan. Every medicine and dose is for the doctor to check (paracetamol 1 g is for an adult over 50 kg)."
+ }
+]

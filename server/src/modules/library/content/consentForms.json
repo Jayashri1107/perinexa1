@@ -1,0 +1,649 @@
+[
+ {
+  "key": "hiv_test",
+  "careTypes": [
+   "antenatal",
+   "gynaecology",
+   "infertility",
+   "pregnancy_loss"
+  ],
+  "suggestWhen": "hiv_test_due",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. HIV and AIDS (Prevention and Control) Act 2017 and NACO guidance: informed consent with pre-test counselling. Compare with the hospital's ICTC / NACO forms.",
+  "kind": "consent",
+  "order": 10,
+  "title": {
+   "en": "Consent for HIV test (with counselling)",
+   "mr": "एचआयव्ही तपासणीसाठी संमतीपत्र (समुपदेशनासह)",
+   "hi": "एचआईवी जाँच के लिए सहमति (परामर्श के साथ)"
+  },
+  "clauses": [
+   {
+    "en": "I, {patient}, aged {age} years (patient no. {mrn}), have received counselling about the HIV test before the test.",
+    "mr": "मी, {patient}, वय {age} वर्षे (रुग्ण क्रमांक {mrn}), एचआयव्ही तपासणीपूर्वी या तपासणीबद्दल समुपदेशन (काउन्सेलिंग) घेतले आहे.",
+    "hi": "मैं, {patient}, आयु {age} वर्ष (रोगी क्रमांक {mrn}), एचआईवी जाँच से पहले इस जाँच के बारे में परामर्श (काउंसलिंग) प्राप्त कर चुकी हूँ।"
+   },
+   {
+    "en": "It has been explained to me why the test is advised, and that if the result is positive, treatment is available that protects my health and, in pregnancy, greatly reduces the chance of passing HIV to the baby.",
+    "mr": "ही तपासणी का सुचवली आहे हे मला समजावून सांगण्यात आले आहे. तसेच, निकाल (रिपोर्ट) पॉझिटिव्ह आल्यास माझ्या आरोग्याचे रक्षण करणारे उपचार उपलब्ध आहेत, आणि गरोदरपणात हे उपचार बाळाला एचआयव्हीची लागण होण्याची शक्यता खूप कमी करतात, हेही मला समजावून सांगण्यात आले आहे.",
+    "hi": "मुझे समझाया गया है कि यह जाँच करवाने की सलाह क्यों दी गई है, और यह भी कि यदि परिणाम पॉज़िटिव आता है तो इलाज उपलब्ध है, जो मेरे स्वास्थ्य की रक्षा करता है और गर्भावस्था में बच्चे तक एचआईवी पहुँचने की संभावना को बहुत कम कर देता है।"
+   },
+   {
+    "en": "I understand that my result will be kept confidential and shared only with the doctors and staff involved in my care, or as required by law (HIV and AIDS (Prevention and Control) Act, 2017).",
+    "mr": "मला समजले आहे की माझा निकाल गोपनीय ठेवला जाईल, आणि तो फक्त माझ्या उपचारांत सहभागी असलेल्या डॉक्टरांना व कर्मचाऱ्यांनाच, किंवा कायद्याने आवश्यक असेल तेव्हाच, सांगितला जाईल (एचआयव्ही आणि एड्स (प्रतिबंध आणि नियंत्रण) कायदा, 2017).",
+    "hi": "मैं समझती हूँ कि मेरी जाँच का परिणाम गोपनीय रखा जाएगा और केवल मेरी देखभाल में शामिल डॉक्टरों और कर्मचारियों को बताया जाएगा, या जहाँ कानून (एचआईवी और एड्स (रोकथाम और नियंत्रण) अधिनियम, 2017) के अनुसार ज़रूरी हो।"
+   },
+   {
+    "en": "I understand that I will receive counselling again when the result is given, and that I may refuse the test; refusing will not affect the rest of my care.",
+    "mr": "मला समजले आहे की निकाल देताना मला पुन्हा समुपदेशन मिळेल, आणि मी ही तपासणी नाकारू शकते; तपासणी नाकारल्याचा माझ्या इतर उपचारांवर कोणताही परिणाम होणार नाही.",
+    "hi": "मैं समझती हूँ कि परिणाम बताते समय मुझे फिर से परामर्श (काउंसलिंग) दिया जाएगा, और मैं यह जाँच करवाने से मना कर सकती हूँ; मना करने से मेरे बाकी इलाज पर कोई असर नहीं पड़ेगा।"
+   },
+   {
+    "en": "I agree to have my blood tested for HIV.",
+    "mr": "माझ्या रक्ताची एचआयव्ही तपासणी करण्यास मी संमती देते.",
+    "hi": "मैं अपने खून की एचआईवी जाँच करवाने के लिए सहमत हूँ।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "high_risk_pregnancy",
+  "careTypes": [
+   "antenatal"
+  ],
+  "suggestWhen": "high_risk",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. For a pregnancy classified as high-risk: the reasons are filled in from the patient's risk level and can be changed before printing.",
+  "kind": "consent",
+  "order": 20,
+  "title": {
+   "en": "High-risk pregnancy: information and consent",
+   "mr": "जोखमीचे गरोदरपण (हाय-रिस्क प्रेग्नन्सी): माहिती व संमती",
+   "hi": "हाई-रिस्क (उच्च जोखिम वाली) गर्भावस्था: जानकारी और सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, {patient}, aged {age} years (patient no. {mrn}), have been told by {doctor} that my pregnancy is high-risk because of: {reason}.",
+    "mr": "मला, {patient}, वय {age} वर्षे (रुग्ण क्रमांक {mrn}), {doctor} यांनी सांगितले आहे की पुढील कारणांमुळे माझे गरोदरपण जोखमीचे (हाय-रिस्क) आहे: {reason}.",
+    "hi": "{doctor} ने मुझे, {patient}, आयु {age} वर्ष (रोगी क्रमांक {mrn}), बताया है कि मेरी गर्भावस्था हाई-रिस्क (उच्च जोखिम वाली) है। इसका कारण है: {reason}।"
+   },
+   {
+    "en": "The possible problems for me and my baby have been explained, such as high blood pressure, diabetes, bleeding, early (preterm) delivery, poor growth of the baby, the need for a caesarean section, admission of the baby to the newborn unit and, rarely, risk to the life of the mother or the baby.",
+    "mr": "माझ्या व माझ्या बाळाच्या बाबतीत उद्भवू शकणाऱ्या समस्यांबद्दल मला समजावून सांगण्यात आले आहे, जसे की उच्च रक्तदाब (हाय बीपी), मधुमेह (शुगर), रक्तस्राव, वेळेआधी (मुदतपूर्व) प्रसूती, बाळाची वाढ नीट न होणे, सिझेरियन शस्त्रक्रियेची गरज, बाळाला नवजात शिशु कक्षात (NICU) दाखल करावे लागणे आणि क्वचित प्रसंगी आईच्या किंवा बाळाच्या जिवाला धोका.",
+    "hi": "मुझे और मेरे बच्चे को होने वाली संभावित समस्याएँ समझाई गई हैं, जैसे हाई ब्लड प्रेशर (उच्च रक्तचाप), डायबिटीज़ (शुगर), खून आना (रक्तस्राव), समय से पहले प्रसव (प्रीटर्म डिलीवरी), बच्चे का ठीक से न बढ़ना, सिज़ेरियन ऑपरेशन की ज़रूरत, बच्चे को नवजात शिशु इकाई (NICU) में भर्ती करना, और कम ही मामलों में माँ या बच्चे की जान को खतरा।"
+   },
+   {
+    "en": "I understand that I need more frequent check-ups, tests and scans, and that I may need to be admitted or referred to a higher centre.",
+    "mr": "मला समजले आहे की मला अधिक वेळा तपासणी (चेक-अप), चाचण्या व सोनोग्राफी करून घ्याव्या लागतील, आणि मला रुग्णालयात दाखल व्हावे लागू शकते किंवा अधिक सुविधा असलेल्या मोठ्या रुग्णालयात (हायर सेंटर) पाठवले जाऊ शकते.",
+    "hi": "मैं समझती हूँ कि मुझे ज़्यादा बार चेक-अप, जाँचें और स्कैन करवाने की ज़रूरत है, और हो सकता है कि मुझे अस्पताल में भर्ती होना पड़े या मुझे किसी बड़े अस्पताल (हायर सेंटर) में रेफर किया जाए।"
+   },
+   {
+    "en": "I agree to follow the advice given and take my medicines regularly, and to come to the hospital at once if I have bleeding, severe headache, blurred vision, fits, fever, leaking of water, pain in the abdomen or reduced movements of the baby.",
+    "mr": "दिलेला सल्ला पाळण्याचे आणि माझी औषधे नियमित घेण्याचे मी मान्य करते. तसेच रक्तस्राव, तीव्र डोकेदुखी, अंधुक दिसणे, झटके (फिट्स) येणे, ताप, अंगावरून पाणी जाणे, पोटात दुखणे किंवा बाळाची हालचाल कमी होणे, यांपैकी काहीही झाल्यास लगेच रुग्णालयात येण्याचे मी मान्य करते.",
+    "hi": "मैं सहमत हूँ कि मैं दी गई सलाह का पालन करूँगी और अपनी दवाइयाँ नियमित रूप से लूँगी, और यदि मुझे खून आए, तेज़ सिरदर्द हो, धुंधला दिखाई दे, दौरे (झटके) आएँ, बुखार हो, पानी जाए या रिसे, पेट में दर्द हो या बच्चे का हिलना-डुलना कम हो जाए, तो मैं तुरंत अस्पताल आऊँगी।"
+   },
+   {
+    "en": "I understand that even with the best care, a good outcome cannot be guaranteed.",
+    "mr": "मला समजले आहे की सर्वोत्तम काळजी घेतली तरीही चांगला परिणाम होईलच, अशी हमी देता येत नाही.",
+    "hi": "मैं समझती हूँ कि सबसे अच्छी देखभाल के बावजूद भी अच्छे परिणाम की गारंटी नहीं दी जा सकती।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "labour_delivery",
+  "careTypes": [
+   "antenatal"
+  ],
+  "suggestWhen": "from_37_weeks",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. Taken at admission for delivery; covers labour care, episiotomy, assisted delivery and an emergency caesarean if needed.",
+  "kind": "consent",
+  "order": 30,
+  "title": {
+   "en": "Consent for labour and vaginal delivery",
+   "mr": "प्रसूती कळा व योनीमार्गे (नॉर्मल) प्रसूतीसाठी संमतीपत्र",
+   "hi": "प्रसव पीड़ा (लेबर) और योनि मार्ग से प्रसव (नॉर्मल डिलीवरी) के लिए सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, {patient}, aged {age} years (patient no. {mrn}), give consent to be cared for in labour and for vaginal delivery at {hospital}.",
+    "mr": "मी, {patient}, वय {age} वर्षे (रुग्ण क्रमांक {mrn}), {hospital} येथे प्रसूती कळांच्या काळात माझी देखभाल करण्यास आणि योनीमार्गे (नॉर्मल) प्रसूतीसाठी संमती देते.",
+    "hi": "मैं, {patient}, आयु {age} वर्ष (रोगी क्रमांक {mrn}), {hospital} में प्रसव पीड़ा (लेबर) के दौरान अपनी देखभाल और योनि मार्ग से प्रसव (नॉर्मल डिलीवरी) के लिए सहमति देती हूँ।"
+   },
+   {
+    "en": "It has been explained to me that during labour the doctors may need to examine me internally, break the waters, give medicines to start or strengthen contractions, monitor the baby's heartbeat, give an episiotomy (a cut to widen the birth opening, stitched afterwards) and use a vacuum or forceps to help deliver the baby.",
+    "mr": "मला समजावून सांगण्यात आले आहे की प्रसूती कळांदरम्यान डॉक्टरांना पुढील गोष्टी कराव्या लागू शकतात: माझी अंतर्गत (योनीमार्गाची) तपासणी करणे, पाण्याची पिशवी फोडणे, कळा सुरू करण्यासाठी किंवा वाढवण्यासाठी औषधे देणे, बाळाच्या हृदयाच्या ठोक्यांवर लक्ष ठेवणे, एपिसिओटॉमी करणे (बाळ बाहेर येण्याचा मार्ग मोठा करण्यासाठी घेतलेला छेद, ज्याला नंतर टाके घातले जातात), आणि बाळाच्या जन्मास मदत करण्यासाठी व्हॅक्यूम किंवा फोर्सेप्स वापरणे.",
+    "hi": "मुझे समझाया गया है कि लेबर के दौरान डॉक्टरों को ये काम करने पड़ सकते हैं: मेरी अंदरूनी जाँच करना, पानी की थैली फोड़ना, दर्द (संकुचन) शुरू करने या तेज़ करने के लिए दवाइयाँ देना, बच्चे की धड़कन की निगरानी करना, एपिसियोटॉमी करना (बच्चे के निकलने का रास्ता चौड़ा करने के लिए लगाया जाने वाला चीरा, जिसे बाद में टाँके लगाकर बंद किया जाता है), और बच्चे के जन्म में मदद के लिए वैक्यूम या फोरसेप्स का उपयोग करना।"
+   },
+   {
+    "en": "If there is a problem with me or the baby, an emergency caesarean section may be needed. I consent to it if the doctors advise it; a separate consent will be taken if time allows.",
+    "mr": "माझ्या किंवा बाळाच्या बाबतीत काही अडचण आल्यास तातडीने (इमर्जन्सी) सिझेरियन शस्त्रक्रिया करावी लागू शकते. डॉक्टरांनी सल्ला दिल्यास त्यासाठी मी संमती देते; वेळ असल्यास त्यासाठी स्वतंत्र संमती घेतली जाईल.",
+    "hi": "यदि मुझे या बच्चे को कोई समस्या हो, तो इमरजेंसी (आपातकालीन) सिज़ेरियन ऑपरेशन की ज़रूरत पड़ सकती है। यदि डॉक्टर इसकी सलाह दें, तो मैं इसके लिए सहमति देती हूँ; यदि समय हो, तो इसके लिए अलग से सहमति ली जाएगी।"
+   },
+   {
+    "en": "The possible complications have been explained, including tears, heavy bleeding after delivery, infection, the need for blood transfusion, a retained placenta that needs removal under anaesthesia, and problems for the baby that may need admission to the newborn unit.",
+    "mr": "संभाव्य गुंतागुंतींबद्दल मला समजावून सांगण्यात आले आहे. यामध्ये प्रसूतीच्या वेळी योनीमार्ग फाटणे, प्रसूतीनंतर जास्त रक्तस्राव, जंतुसंसर्ग (इन्फेक्शन), रक्त द्यावे लागणे, वार (प्लॅसेंटा) आत अडकून राहणे व भूल देऊन काढण्याची गरज पडणे, आणि बाळाला असे त्रास होणे ज्यासाठी त्याला नवजात शिशु कक्षात (NICU) दाखल करावे लागू शकते, यांचा समावेश आहे.",
+    "hi": "संभावित जटिलताएँ (कॉम्प्लिकेशन) समझाई गई हैं, जिनमें शामिल हैं: जन्म मार्ग का फटना (टियर), प्रसव के बाद बहुत ज़्यादा खून बहना, संक्रमण (इंफेक्शन), खून चढ़ाने की ज़रूरत, आँवल (प्लेसेंटा) का अंदर रह जाना जिसे बेहोशी की दवा (एनेस्थीसिया) देकर निकालना पड़े, और बच्चे को ऐसी समस्याएँ जिनके लिए उसे नवजात शिशु इकाई (NICU) में भर्ती करना पड़ सकता है।"
+   },
+   {
+    "en": "I consent to the medicines routinely given at delivery to prevent heavy bleeding, and to routine care of my baby after birth (such as vitamin K and the birth doses of vaccines).",
+    "mr": "प्रसूतीच्या वेळी जास्त रक्तस्राव होऊ नये म्हणून नेहमी दिल्या जाणाऱ्या औषधांना, तसेच जन्मानंतर माझ्या बाळाच्या नेहमीच्या देखभालीला (जसे की व्हिटॅमिन के आणि जन्मानंतर लगेच दिल्या जाणाऱ्या लसी) मी संमती देते.",
+    "hi": "प्रसव के समय बहुत ज़्यादा खून बहने से रोकने के लिए नियमित रूप से दी जाने वाली दवाइयों के लिए, और जन्म के बाद मेरे बच्चे की नियमित देखभाल (जैसे विटामिन के और जन्म के समय लगने वाले टीके) के लिए, मैं सहमति देती हूँ।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "induction",
+  "careTypes": [
+   "antenatal"
+  ],
+  "suggestWhen": "from_40_weeks",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. Methods listed: prostaglandins (vaginal or oral), balloon catheter, amniotomy and oxytocin – adjust to the hospital's practice.",
+  "kind": "consent",
+  "order": 40,
+  "title": {
+   "en": "Consent for induction of labour",
+   "mr": "प्रसूती कळा सुरू करण्यासाठी (इंडक्शन) संमतीपत्र",
+   "hi": "लेबर इंडक्शन (प्रसव पीड़ा शुरू कराने) के लिए सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, {patient}, aged {age} years (patient no. {mrn}), give consent for induction of labour (starting labour with medicines or other methods).",
+    "mr": "मी, {patient}, वय {age} वर्षे (रुग्ण क्रमांक {mrn}), इंडक्शनसाठी, म्हणजे औषधे किंवा इतर पद्धती वापरून प्रसूती कळा सुरू करण्यासाठी, संमती देते.",
+    "hi": "मैं, {patient}, आयु {age} वर्ष (रोगी क्रमांक {mrn}), लेबर इंडक्शन (दवाइयों या अन्य तरीकों से प्रसव पीड़ा शुरू कराना) के लिए सहमति देती हूँ।"
+   },
+   {
+    "en": "The reason it is advised: {reason}.",
+    "mr": "इंडक्शन सुचवण्याचे कारण: {reason}.",
+    "hi": "इसकी सलाह इस कारण से दी गई है: {reason}।"
+   },
+   {
+    "en": "The methods have been explained to me: tablets or gel placed in the vagina or taken by mouth, a balloon catheter in the neck of the womb, breaking the waters, and a drip (oxytocin) to start or strengthen contractions.",
+    "mr": "यासाठीच्या पद्धती मला समजावून सांगण्यात आल्या आहेत: योनीमार्गात ठेवायच्या किंवा तोंडाने घ्यायच्या गोळ्या किंवा जेल, गर्भाशयाच्या तोंडात (गर्भाशयमुखात) ठेवला जाणारा बलून कॅथेटर (फुगा असलेली नळी), पाण्याची पिशवी फोडणे, आणि कळा सुरू करण्यासाठी किंवा वाढवण्यासाठी सलाईनमधून (ड्रिप) दिले जाणारे ऑक्सिटोसिन.",
+    "hi": "मुझे इसके तरीके समझाए गए हैं: गोलियाँ या जेल, जिन्हें योनि में रखा जाता है या मुँह से लिया जाता है; बच्चेदानी के मुँह (गर्भाशय ग्रीवा) में बैलून कैथेटर (गुब्बारे वाली नली); पानी की थैली फोड़ना; और दर्द (संकुचन) शुरू करने या तेज़ करने के लिए ड्रिप (ऑक्सीटोसिन)।"
+   },
+   {
+    "en": "The possible risks have been explained: very strong or frequent contractions, changes in the baby's heartbeat, induction that does not work, a longer labour, infection, and the need for an emergency caesarean section. Very rarely the uterus can tear, especially after a previous caesarean.",
+    "mr": "संभाव्य धोक्यांबद्दल मला समजावून सांगण्यात आले आहे: खूप तीव्र किंवा वारंवार कळा येणे, बाळाच्या हृदयाच्या ठोक्यांमध्ये बदल होणे, इंडक्शन यशस्वी न होणे, प्रसूतीला जास्त वेळ लागणे, जंतुसंसर्ग (इन्फेक्शन), आणि तातडीने (इमर्जन्सी) सिझेरियन शस्त्रक्रिया करावी लागणे. अगदी क्वचित गर्भाशय फाटू शकते, विशेषतः यापूर्वी सिझेरियन झाले असल्यास.",
+    "hi": "संभावित जोखिम समझाए गए हैं: बहुत तेज़ या बहुत जल्दी-जल्दी दर्द (संकुचन) आना, बच्चे की धड़कन में बदलाव, इंडक्शन का सफल न होना, लेबर का लंबा चलना, संक्रमण (इंफेक्शन), और इमरजेंसी सिज़ेरियन ऑपरेशन की ज़रूरत। बहुत ही कम मामलों में गर्भाशय (बच्चेदानी) फट सकता है, खासकर यदि पहले सिज़ेरियन हो चुका हो।"
+   },
+   {
+    "en": "The option of waiting for labour to start naturally, and its risks, have been explained to me.",
+    "mr": "प्रसूती कळा नैसर्गिकरीत्या सुरू होण्याची वाट पाहण्याचा पर्याय आणि त्यातील धोके यांबद्दल मला समजावून सांगण्यात आले आहे.",
+    "hi": "प्रसव पीड़ा के अपने आप (प्राकृतिक रूप से) शुरू होने का इंतज़ार करने का विकल्प, और उसके जोखिम, मुझे समझाए गए हैं।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "vbac",
+  "careTypes": [
+   "antenatal"
+  ],
+  "suggestWhen": "previous_caesarean",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. Figures (about 3 in 4 successful, scar rupture about 1 in 200) follow RCOG Green-top Guideline 45 – doctor to confirm.",
+  "kind": "consent",
+  "order": 50,
+  "title": {
+   "en": "Consent for vaginal birth after caesarean (trial of labour)",
+   "mr": "आधीच्या सिझेरियननंतर योनीमार्गे (नॉर्मल) प्रसूतीसाठी संमतीपत्र (ट्रायल ऑफ लेबर)",
+   "hi": "सिज़ेरियन के बाद योनि मार्ग से प्रसव (ट्रायल ऑफ लेबर) के लिए सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, {patient}, aged {age} years (patient no. {mrn}), have had a caesarean section before, and I choose to try for a vaginal birth in this pregnancy (trial of labour after caesarean).",
+    "mr": "मी, {patient}, वय {age} वर्षे (रुग्ण क्रमांक {mrn}), यापूर्वी सिझेरियन शस्त्रक्रिया करून घेतली आहे, आणि या गरोदरपणात योनीमार्गे (नॉर्मल) प्रसूतीचा प्रयत्न करण्याचे मी निवडले आहे (सिझेरियननंतर प्रसूतीचा प्रयत्न – ट्रायल ऑफ लेबर).",
+    "hi": "मैं, {patient}, आयु {age} वर्ष (रोगी क्रमांक {mrn}), पहले सिज़ेरियन ऑपरेशन करवा चुकी हूँ, और मैं इस गर्भावस्था में योनि मार्ग से प्रसव (नॉर्मल डिलीवरी) का प्रयास करने का निर्णय लेती हूँ (सिज़ेरियन के बाद ट्रायल ऑफ लेबर)।"
+   },
+   {
+    "en": "It has been explained to me that about 3 out of 4 women who try have a vaginal birth, and that if labour does not progress or there is a problem, an emergency caesarean section will be needed.",
+    "mr": "मला समजावून सांगण्यात आले आहे की असा प्रयत्न करणाऱ्या 4 पैकी सुमारे 3 स्त्रियांची योनीमार्गे (नॉर्मल) प्रसूती होते, आणि प्रसूती पुढे सरकत नसेल किंवा काही अडचण आल्यास तातडीने (इमर्जन्सी) सिझेरियन शस्त्रक्रिया करावी लागेल.",
+    "hi": "मुझे समझाया गया है कि प्रयास करने वाली 4 में से लगभग 3 महिलाओं का प्रसव योनि मार्ग से हो जाता है, और यदि लेबर आगे न बढ़े या कोई समस्या हो, तो इमरजेंसी सिज़ेरियन ऑपरेशन की ज़रूरत होगी।"
+   },
+   {
+    "en": "The main risk has been explained: the scar on the uterus can open (scar rupture) in about 1 in 200 women. This is an emergency that can cause serious harm to or death of the baby, heavy bleeding, and the need to remove the uterus.",
+    "mr": "मुख्य धोक्याबद्दल मला समजावून सांगण्यात आले आहे: सुमारे 200 पैकी 1 स्त्रीमध्ये गर्भाशयावरील आधीच्या सिझेरियनचा व्रण (जुना टाका) उघडू शकतो (स्कार रप्चर). ही आणीबाणीची (इमर्जन्सी) स्थिती असते; यामुळे बाळाला गंभीर इजा होऊ शकते किंवा बाळाचा मृत्यू होऊ शकतो, खूप रक्तस्राव होऊ शकतो, आणि गर्भाशय काढून टाकावे लागू शकते.",
+    "hi": "मुख्य जोखिम समझाया गया है: लगभग 200 में से 1 महिला में गर्भाशय (बच्चेदानी) पर पिछले ऑपरेशन का निशान खुल सकता है (स्कार रप्चर)। यह एक इमरजेंसी है, जिससे बच्चे को गंभीर नुकसान हो सकता है या उसकी मृत्यु हो सकती है, बहुत ज़्यादा खून बह सकता है, और गर्भाशय निकालने की ज़रूरत पड़ सकती है।"
+   },
+   {
+    "en": "I understand that I will be monitored closely in labour, including continuous monitoring of the baby's heartbeat, and that I must come to the hospital as soon as labour pains start, the waters break or I have any bleeding.",
+    "mr": "मला समजले आहे की प्रसूती कळांदरम्यान माझ्यावर बारकाईने लक्ष ठेवले जाईल, ज्यामध्ये बाळाच्या हृदयाच्या ठोक्यांवर सतत लक्ष ठेवणे समाविष्ट आहे; आणि कळा सुरू होताच, पाण्याची पिशवी फुटताच (अंगावरून पाणी जाऊ लागताच) किंवा कोणताही रक्तस्राव झाल्यास मला लगेच रुग्णालयात येणे आवश्यक आहे.",
+    "hi": "मैं समझती हूँ कि लेबर के दौरान मेरी बारीकी से निगरानी की जाएगी, जिसमें बच्चे की धड़कन की लगातार निगरानी (मॉनिटरिंग) भी शामिल है, और यह भी कि प्रसव पीड़ा शुरू होते ही, पानी की थैली फटते ही या थोड़ा भी खून आने पर मुझे तुरंत अस्पताल आना होगा।"
+   },
+   {
+    "en": "The option of a planned repeat caesarean section, with its own risks and benefits, has been explained to me.",
+    "mr": "आधीच ठरवून पुन्हा सिझेरियन शस्त्रक्रिया करण्याचा पर्याय, त्याच्या स्वतःच्या धोक्यांसह व फायद्यांसह, मला समजावून सांगण्यात आला आहे.",
+    "hi": "पहले से तय (प्लान करके) दोबारा सिज़ेरियन ऑपरेशन करवाने का विकल्प, उसके अपने जोखिमों और लाभों के साथ, मुझे समझाया गया है।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "caesarean",
+  "careTypes": [
+   "antenatal"
+  ],
+  "suggestWhen": "previous_caesarean",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. Planned or emergency caesarean section; includes consent for hysterectomy for uncontrollable bleeding.",
+  "kind": "consent",
+  "order": 60,
+  "title": {
+   "en": "Consent for caesarean section",
+   "mr": "सिझेरियन शस्त्रक्रियेसाठी संमतीपत्र",
+   "hi": "सिज़ेरियन ऑपरेशन के लिए सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, {patient}, aged {age} years (patient no. {mrn}), give consent for a caesarean section (delivery of the baby through a cut in the abdomen and the uterus).",
+    "mr": "मी, {patient}, वय {age} वर्षे (रुग्ण क्रमांक {mrn}), सिझेरियन शस्त्रक्रियेसाठी (पोटावर व गर्भाशयावर छेद घेऊन बाळाची प्रसूती करणे) संमती देते.",
+    "hi": "मैं, {patient}, आयु {age} वर्ष (रोगी क्रमांक {mrn}), सिज़ेरियन ऑपरेशन (पेट और गर्भाशय में चीरा लगाकर बच्चे का जन्म कराना) के लिए सहमति देती हूँ।"
+   },
+   {
+    "en": "The reason it is advised: {reason}.",
+    "mr": "सिझेरियन शस्त्रक्रिया सुचवण्याचे कारण: {reason}.",
+    "hi": "इसकी सलाह इस कारण से दी गई है: {reason}।"
+   },
+   {
+    "en": "The risks have been explained to me, including bleeding that may need blood transfusion, infection, injury to the bladder or bowel, blood clots in the legs or lungs and a longer recovery than after a vaginal birth; and for the baby, small cuts and breathing difficulty that may need care in the newborn unit.",
+    "mr": "धोक्यांबद्दल मला समजावून सांगण्यात आले आहे. यामध्ये रक्त द्यावे लागू शकेल इतका रक्तस्राव, जंतुसंसर्ग (इन्फेक्शन), मूत्राशय (लघवीची पिशवी) किंवा आतड्यांना इजा, पायांमध्ये किंवा फुप्फुसांमध्ये रक्ताच्या गुठळ्या होणे, आणि योनीमार्गे प्रसूतीपेक्षा बरे होण्यास जास्त वेळ लागणे; तसेच बाळासाठी किरकोळ कापल्याच्या जखमा आणि श्वास घेण्यास त्रास, ज्यासाठी नवजात शिशु कक्षात (NICU) देखभाल करावी लागू शकते, यांचा समावेश आहे.",
+    "hi": "मुझे इसके जोखिम समझाए गए हैं, जिनमें शामिल हैं: खून बहना, जिसके लिए खून चढ़ाने की ज़रूरत पड़ सकती है; संक्रमण (इंफेक्शन); मूत्राशय (पेशाब की थैली) या आँतों को चोट; पैरों या फेफड़ों में खून के थक्के; और योनि मार्ग से प्रसव की तुलना में ठीक होने में ज़्यादा समय लगना; और बच्चे के लिए, छोटे कट लगना और साँस लेने में तकलीफ, जिसके लिए नवजात शिशु इकाई (NICU) में देखभाल की ज़रूरत पड़ सकती है।"
+   },
+   {
+    "en": "I understand that in the rare case of bleeding that cannot be controlled, removal of the uterus (hysterectomy) may be needed to save my life, and I consent to it.",
+    "mr": "मला समजले आहे की क्वचित प्रसंगी रक्तस्राव आटोक्यात न आल्यास माझा जीव वाचवण्यासाठी गर्भाशय काढून टाकावे लागू शकते (हिस्टेरेक्टॉमी), आणि त्यासाठी मी संमती देते.",
+    "hi": "मैं समझती हूँ कि कम ही मामलों में ऐसा खून बहता है जो रोका न जा सके; ऐसी स्थिति में मेरी जान बचाने के लिए बच्चेदानी निकालने का ऑपरेशन (हिस्टेरेक्टॉमी) करना पड़ सकता है, और मैं इसके लिए सहमति देती हूँ।"
+   },
+   {
+    "en": "It has been explained to me that a caesarean affects future pregnancies, including the risk of the scar opening and of problems with the placenta.",
+    "mr": "मला समजावून सांगण्यात आले आहे की सिझेरियनचा पुढील गरोदरपणांवर परिणाम होतो, ज्यामध्ये गर्भाशयावरील व्रण (टाका) उघडण्याचा धोका आणि प्लॅसेंटाशी (वार) संबंधित समस्यांचा धोका यांचा समावेश आहे.",
+    "hi": "मुझे समझाया गया है कि सिज़ेरियन का असर आगे होने वाली गर्भावस्थाओं पर पड़ता है, जिसमें ऑपरेशन के निशान के खुलने और आँवल (प्लेसेंटा) से जुड़ी समस्याओं का जोखिम भी शामिल है।"
+   },
+   {
+    "en": "Anaesthesia, and a family planning operation (tubal ligation) if I request it, will be consented to separately.",
+    "mr": "भुलीसाठी (ॲनेस्थेशिया), तसेच मी विनंती केल्यास कुटुंबनियोजन शस्त्रक्रियेसाठी (नसबंदी / ट्युबेक्टॉमी), स्वतंत्र संमती घेतली जाईल.",
+    "hi": "बेहोशी की दवा (एनेस्थीसिया) के लिए, और यदि मैं अनुरोध करूँ तो परिवार नियोजन ऑपरेशन (नसबंदी / ट्यूबेक्टॉमी) के लिए, अलग से सहमति ली जाएगी।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "tubal_ligation",
+  "careTypes": [
+   "antenatal",
+   "postnatal",
+   "gynaecology"
+  ],
+  "suggestWhen": "none",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. The Government of India \"Standards for Female and Male Sterilization Services\" (2014) prescribe a standard consent form: compare, and use the Government form where it is required. Failure rate about 1 in 200 – doctor to confirm.",
+  "kind": "consent",
+  "order": 70,
+  "title": {
+   "en": "Consent for tubal ligation (permanent family planning)",
+   "mr": "कुटुंबनियोजन शस्त्रक्रियेसाठी संमतीपत्र (स्त्री नसबंदी / ट्युबेक्टॉमी – कायमस्वरूपी पद्धत)",
+   "hi": "नसबंदी ऑपरेशन (ट्यूबेक्टॉमी) के लिए सहमति – स्थायी परिवार नियोजन"
+  },
+  "clauses": [
+   {
+    "en": "I, {patient}, aged {age} years (patient no. {mrn}), request and give consent for tubal ligation (closing both fallopian tubes) so that I do not become pregnant again.",
+    "mr": "मी, {patient}, वय {age} वर्षे (रुग्ण क्रमांक {mrn}), पुन्हा गरोदर राहू नये म्हणून कुटुंबनियोजन शस्त्रक्रियेची (स्त्री नसबंदी / ट्युबेक्टॉमी – दोन्ही गर्भनलिका बंद करणे) विनंती करते आणि त्यासाठी संमती देते.",
+    "hi": "मैं, {patient}, आयु {age} वर्ष (रोगी क्रमांक {mrn}), अपने नसबंदी ऑपरेशन (ट्यूबेक्टॉमी: दोनों फैलोपियन ट्यूब, यानी बच्चेदानी की दोनों नलियों को बंद करना) का अनुरोध करती हूँ और इसके लिए सहमति देती हूँ, ताकि मैं फिर से गर्भवती न होऊँ।"
+   },
+   {
+    "en": "I have been told that this is a permanent method: I will not be able to become pregnant again, and reversing it is difficult and often does not work.",
+    "mr": "मला सांगण्यात आले आहे की ही कायमस्वरूपी पद्धत आहे: यानंतर मी पुन्हा गरोदर राहू शकणार नाही, आणि ही शस्त्रक्रिया उलटवणे (नलिका पुन्हा जोडणे) अवघड असते व बऱ्याचदा ते यशस्वी होत नाही.",
+    "hi": "मुझे बताया गया है कि यह एक स्थायी तरीका है: इसके बाद मैं फिर से गर्भवती नहीं हो पाऊँगी, और इसे वापस खुलवाना (रिवर्सल) मुश्किल है और अक्सर सफल नहीं होता।"
+   },
+   {
+    "en": "Other methods of family planning – such as the Copper-T (IUCD), injections, pills and condoms, and vasectomy for the husband – have been explained to me. I choose this method of my own free will, without any pressure.",
+    "mr": "कुटुंबनियोजनाच्या इतर पद्धती – जसे की कॉपर-टी (IUCD), इंजेक्शन, गोळ्या आणि निरोध (कंडोम), तसेच पतीसाठी पुरुष नसबंदी (व्हॅसेक्टॉमी) – मला समजावून सांगण्यात आल्या आहेत. मी ही पद्धत कोणत्याही दबावाशिवाय, स्वतःच्या इच्छेने निवडली आहे.",
+    "hi": "परिवार नियोजन के अन्य तरीके – जैसे कॉपर-टी (IUCD), इंजेक्शन, गोलियाँ और कंडोम, और पति के लिए पुरुष नसबंदी (वैसेक्टॉमी) – मुझे समझाए गए हैं। मैं यह तरीका अपनी स्वेच्छा से, बिना किसी दबाव के, चुनती हूँ।"
+   },
+   {
+    "en": "I understand that there is a small chance of failure (about 1 in 200), and that a pregnancy after the operation may be outside the womb (ectopic pregnancy), which is an emergency. I will report a missed period at once.",
+    "mr": "मला समजले आहे की ही शस्त्रक्रिया अयशस्वी होण्याची थोडी शक्यता असते (सुमारे 200 पैकी 1), आणि शस्त्रक्रियेनंतर गर्भधारणा झाल्यास ती गर्भाशयाच्या बाहेर (एक्टोपिक गर्भधारणा) असू शकते, जी आणीबाणीची (इमर्जन्सी) स्थिती असते. मासिक पाळी चुकल्यास मी लगेच रुग्णालयात कळवेन.",
+    "hi": "मैं समझती हूँ कि इस ऑपरेशन के असफल होने की थोड़ी संभावना है (लगभग 200 में से 1), और ऑपरेशन के बाद यदि गर्भ ठहरता है तो वह गर्भाशय (बच्चेदानी) के बाहर हो सकता है (एक्टोपिक प्रेग्नेंसी), जो एक इमरजेंसी है। यदि मेरी माहवारी (पीरियड) समय पर न आए, तो मैं तुरंत डॉक्टर को बताऊँगी।"
+   },
+   {
+    "en": "The risks of the operation and of the anaesthesia, including bleeding, infection and injury to nearby organs, have been explained to me.",
+    "mr": "शस्त्रक्रियेचे व भुलीचे धोके, ज्यात रक्तस्राव, जंतुसंसर्ग (इन्फेक्शन) आणि जवळच्या अवयवांना इजा यांचा समावेश आहे, मला समजावून सांगण्यात आले आहेत.",
+    "hi": "ऑपरेशन और बेहोशी की दवा (एनेस्थीसिया) के जोखिम, जिनमें खून बहना, संक्रमण (इंफेक्शन) और आसपास के अंगों को चोट शामिल हैं, मुझे समझाए गए हैं।"
+   },
+   {
+    "en": "I understand that I can change my mind at any time before the operation.",
+    "mr": "मला समजले आहे की शस्त्रक्रियेपूर्वी कधीही मी माझा निर्णय बदलू शकते.",
+    "hi": "मैं समझती हूँ कि ऑपरेशन से पहले किसी भी समय मैं अपना फैसला बदल सकती हूँ।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "admission",
+  "careTypes": [],
+  "suggestWhen": "none",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. General consent at admission, for any type of care. Operations, anaesthesia and blood transfusion need their own forms.",
+  "kind": "consent",
+  "order": 80,
+  "title": {
+   "en": "General consent for admission and treatment",
+   "mr": "रुग्णालयात दाखल करणे व उपचार यांसाठी सर्वसाधारण संमतीपत्र",
+   "hi": "भर्ती और इलाज के लिए सामान्य सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, the undersigned (the patient, or the parent, guardian or relative signing for the patient), consent to the admission of {patient} (patient no. {mrn}) to {hospital}.",
+    "mr": "मी, खाली सही करणार (रुग्ण स्वतः, किंवा रुग्णाच्या वतीने सही करणारे आई, वडील, पालक किंवा नातेवाईक), {patient} (रुग्ण क्रमांक {mrn}) यांना {hospital} येथे दाखल करण्यास संमती देत आहे.",
+    "hi": "मैं, नीचे हस्ताक्षर करने वाला व्यक्ति (रोगी स्वयं, या रोगी की ओर से हस्ताक्षर करने वाले माता-पिता, अभिभावक या रिश्तेदार), सहमत हूँ कि {patient} (रोगी क्रमांक {mrn}) को {hospital} में भर्ती किया जाए।"
+   },
+   {
+    "en": "I consent to the routine examinations, nursing care, blood and urine tests, other investigations and medicines that the doctors consider necessary during the stay. An internal (vaginal) examination will be done only when needed, with a female staff member present.",
+    "mr": "रुग्णालयात असताना डॉक्टरांना आवश्यक वाटेल त्याप्रमाणे नेहमीची शारीरिक तपासणी, नर्सिंग देखभाल, रक्त व लघवीच्या चाचण्या, इतर तपासण्या आणि औषधे यांना मी संमती देत आहे. अंतर्गत (योनीमार्गाची) तपासणी फक्त गरज असेल तेव्हाच केली जाईल, आणि त्या वेळी एक महिला कर्मचारी उपस्थित असेल.",
+    "hi": "अस्पताल में रहने के दौरान डॉक्टर जो नियमित शारीरिक जाँच, नर्सिंग देखभाल, खून और पेशाब की जाँचें, अन्य जाँचें और दवाइयाँ ज़रूरी समझें, उनके लिए मेरी सहमति है। अंदरूनी (योनि की) जाँच केवल ज़रूरत होने पर ही, और किसी महिला कर्मचारी की उपस्थिति में की जाएगी।"
+   },
+   {
+    "en": "I understand that an operation, anaesthesia, blood transfusion or any other special procedure needs a separate written consent, except in an emergency when delay would put life at risk.",
+    "mr": "मला समजले आहे की ऑपरेशन, भूल (ॲनेस्थेशिया), रक्त देणे (रक्तसंक्रमण) किंवा इतर कोणत्याही विशेष प्रक्रियेसाठी स्वतंत्र लेखी संमती आवश्यक असते. मात्र, उशीर केल्यास जिवाला धोका निर्माण होईल अशा आणीबाणीच्या (इमर्जन्सी) परिस्थितीत याला अपवाद असतो.",
+    "hi": "मुझे यह समझ में आ गया है कि ऑपरेशन, बेहोशी की दवा (एनेस्थीसिया), खून चढ़ाने (रक्त आधान) या किसी अन्य विशेष प्रक्रिया के लिए अलग से लिखित सहमति ज़रूरी है, सिवाय ऐसी आपात स्थिति (इमरजेंसी) के जिसमें देरी करने से जान को खतरा हो।"
+   },
+   {
+    "en": "The expected cost of treatment and the hospital's payment rules have been explained to me.",
+    "mr": "उपचारांचा अंदाजे खर्च आणि रुग्णालयाचे पैसे भरण्याबाबतचे नियम मला समजावून सांगण्यात आले आहेत.",
+    "hi": "इलाज का अनुमानित खर्च और अस्पताल के भुगतान संबंधी नियम मुझे समझा दिए गए हैं।"
+   },
+   {
+    "en": "I understand that medical information will be kept confidential and shared only with those involved in the patient's care, or as required by law.",
+    "mr": "मला समजले आहे की वैद्यकीय माहिती गोपनीय ठेवली जाईल, आणि ती फक्त रुग्णाच्या उपचारांत सहभागी असलेल्या व्यक्तींनाच, किंवा कायद्याने आवश्यक असेल तेव्हाच, दिली जाईल.",
+    "hi": "मुझे यह समझ में आ गया है कि चिकित्सा संबंधी जानकारी गोपनीय रखी जाएगी और केवल उन्हीं लोगों को बताई जाएगी जो रोगी की देखभाल में शामिल हैं, या जहाँ कानून के अनुसार ऐसा करना ज़रूरी हो।"
+   },
+   {
+    "en": "I understand that the hospital is not responsible for the loss of valuables, and that the hospital's rules for patients and visitors must be followed.",
+    "mr": "मला समजले आहे की मौल्यवान वस्तू हरवल्यास त्यासाठी रुग्णालय जबाबदार नाही, आणि रुग्णांसाठी व भेटायला येणाऱ्यांसाठी असलेले रुग्णालयाचे नियम पाळणे आवश्यक आहे.",
+    "hi": "मुझे यह समझ में आ गया है कि कीमती सामान खो जाने के लिए अस्पताल ज़िम्मेदार नहीं है, और रोगियों तथा मिलने आने वालों के लिए बने अस्पताल के नियमों का पालन करना होगा।"
+   },
+   {
+    "en": "I understand that medicine is not an exact science and that no guarantee has been given about the result of treatment.",
+    "mr": "मला समजले आहे की वैद्यकशास्त्र हे अचूक शास्त्र नाही, आणि उपचारांच्या परिणामाबद्दल कोणतीही हमी देण्यात आलेली नाही.",
+    "hi": "मुझे यह समझ में आ गया है कि चिकित्सा पूरी तरह सटीक विज्ञान नहीं है, और इलाज के परिणाम के बारे में कोई गारंटी नहीं दी गई है।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "procedure",
+  "careTypes": [],
+  "suggestWhen": "none",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. For any operation or procedure: the doctor types the procedure and the reason when printing (or writes them in by hand).",
+  "kind": "consent",
+  "order": 90,
+  "title": {
+   "en": "Consent for an operation or procedure",
+   "mr": "ऑपरेशन (शस्त्रक्रिया) किंवा प्रक्रियेसाठी संमतीपत्र",
+   "hi": "ऑपरेशन या प्रक्रिया (प्रोसीजर) के लिए सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, the undersigned (the patient, or the parent, guardian or relative signing for the patient), give consent for the following operation or procedure for {patient} (patient no. {mrn}): {procedure}.",
+    "mr": "मी, खाली सही करणार (रुग्ण स्वतः, किंवा रुग्णाच्या वतीने सही करणारे आई, वडील, पालक किंवा नातेवाईक), {patient} (रुग्ण क्रमांक {mrn}) यांच्यावर पुढील ऑपरेशन किंवा प्रक्रिया करण्यास संमती देत आहे: {procedure}.",
+    "hi": "मैं, नीचे हस्ताक्षर करने वाला व्यक्ति (रोगी स्वयं, या रोगी की ओर से हस्ताक्षर करने वाले माता-पिता, अभिभावक या रिश्तेदार), {patient} (रोगी क्रमांक {mrn}) के निम्नलिखित ऑपरेशन या प्रक्रिया के लिए सहमत हूँ: {procedure}।"
+   },
+   {
+    "en": "The reason it is advised: {reason}.",
+    "mr": "ही शस्त्रक्रिया किंवा प्रक्रिया सुचवण्याचे कारण: {reason}.",
+    "hi": "इसकी सलाह इस कारण से दी गई है: {reason}।"
+   },
+   {
+    "en": "{doctor} has explained to me the nature and purpose of the procedure, the expected benefits, the other options (including not having it) and what may happen if it is not done.",
+    "mr": "{doctor} यांनी मला या प्रक्रियेचे स्वरूप व उद्देश, अपेक्षित फायदे, इतर पर्याय (ही प्रक्रिया न करण्याच्या पर्यायासह) आणि ती न केल्यास काय होऊ शकते, हे समजावून सांगितले आहे.",
+    "hi": "{doctor} ने मुझे समझाया है कि यह प्रक्रिया क्या है और किस उद्देश्य से की जा रही है, इससे क्या लाभ होने की उम्मीद है, इसके अन्य विकल्प क्या हैं (इसे न करवाने का विकल्प भी), और यह न किए जाने पर क्या हो सकता है।"
+   },
+   {
+    "en": "The possible risks and complications have been explained to me, including bleeding, infection, injury to nearby organs such as the bladder or bowel, blood clots, reactions to medicines and, rarely, the need for another operation or risk to life.",
+    "mr": "संभाव्य धोके व गुंतागुंत यांबद्दल मला समजावून सांगण्यात आले आहे. यामध्ये रक्तस्राव, जंतुसंसर्ग (इन्फेक्शन), मूत्राशय (लघवीची पिशवी) किंवा आतडे यांसारख्या जवळच्या अवयवांना इजा, रक्ताच्या गुठळ्या होणे, औषधांची रिॲक्शन येणे आणि क्वचित प्रसंगी पुन्हा ऑपरेशन करावे लागणे किंवा जिवाला धोका यांचा समावेश आहे.",
+    "hi": "मुझे संभावित जोखिम और जटिलताएँ (कॉम्प्लिकेशन) समझाई गई हैं, जिनमें शामिल हैं: खून बहना, संक्रमण (इंफेक्शन), आसपास के अंगों जैसे मूत्राशय (पेशाब की थैली) या आँतों को चोट, खून के थक्के (क्लॉट) बनना, दवाइयों से रिएक्शन, और कम ही मामलों में दोबारा ऑपरेशन की ज़रूरत या जान का खतरा।"
+   },
+   {
+    "en": "If, during the procedure, the doctors find that an additional or different procedure is needed to protect life or health, I consent to it.",
+    "mr": "प्रक्रिया सुरू असताना जीव वाचवण्यासाठी किंवा आरोग्याचे रक्षण करण्यासाठी आणखी एखादी किंवा वेगळी प्रक्रिया करणे आवश्यक आहे, असे डॉक्टरांना आढळल्यास त्यासाठी माझी संमती आहे.",
+    "hi": "यदि प्रक्रिया के दौरान डॉक्टर यह पाएँ कि जान या स्वास्थ्य की रक्षा के लिए कोई अतिरिक्त या अलग प्रक्रिया ज़रूरी है, तो उसके लिए मेरी सहमति है।"
+   },
+   {
+    "en": "Anaesthesia and blood transfusion, if needed, will be explained and consented to separately, except in an emergency.",
+    "mr": "भूल (ॲनेस्थेशिया) आणि रक्त देणे (रक्तसंक्रमण) यांची गरज असल्यास, त्यांबद्दल स्वतंत्रपणे समजावून सांगितले जाईल व त्यांसाठी स्वतंत्र संमती घेतली जाईल; मात्र आणीबाणीच्या (इमर्जन्सी) परिस्थितीत याला अपवाद असेल.",
+    "hi": "बेहोशी की दवा (एनेस्थीसिया) और खून चढ़ाने (रक्त आधान) की ज़रूरत होने पर, इनके बारे में अलग से समझाया जाएगा और अलग से सहमति ली जाएगी, सिवाय आपात स्थिति (इमरजेंसी) के।"
+   },
+   {
+    "en": "Tissue removed during the procedure may be sent for laboratory examination and then disposed of as per the rules.",
+    "mr": "प्रक्रियेदरम्यान शरीरातून काढलेला भाग (टिश्यू) प्रयोगशाळेत तपासणीसाठी पाठवला जाऊ शकतो, आणि त्यानंतर नियमांनुसार त्याची विल्हेवाट लावली जाईल.",
+    "hi": "प्रक्रिया के दौरान निकाला गया ऊतक (टिशू) प्रयोगशाला (लैब) में जाँच के लिए भेजा जा सकता है और फिर नियमों के अनुसार नष्ट किया जा सकता है।"
+   },
+   {
+    "en": "No guarantee has been given to me about the result of the procedure.",
+    "mr": "या प्रक्रियेच्या परिणामाबद्दल मला कोणतीही हमी देण्यात आलेली नाही.",
+    "hi": "इस प्रक्रिया के परिणाम के बारे में मुझे कोई गारंटी नहीं दी गई है।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "anaesthesia",
+  "careTypes": [
+   "antenatal",
+   "postnatal",
+   "gynaecology",
+   "infertility",
+   "pregnancy_loss"
+  ],
+  "suggestWhen": "none",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. Usually explained and signed with the anaesthetist.",
+  "kind": "consent",
+  "order": 100,
+  "title": {
+   "en": "Consent for anaesthesia",
+   "mr": "भूल (ॲनेस्थेशिया) देण्यासाठी संमतीपत्र",
+   "hi": "एनेस्थीसिया (बेहोशी या सुन्न करने की दवा) के लिए सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, the undersigned (the patient, or the parent, guardian or relative signing for the patient), give consent for anaesthesia for {patient} (patient no. {mrn}) for the procedure: {procedure}.",
+    "mr": "मी, खाली सही करणार (रुग्ण स्वतः, किंवा रुग्णाच्या वतीने सही करणारे आई, वडील, पालक किंवा नातेवाईक), {patient} (रुग्ण क्रमांक {mrn}) यांना पुढील प्रक्रियेसाठी भूल (ॲनेस्थेशिया) देण्यास संमती देत आहे: {procedure}.",
+    "hi": "मैं, नीचे हस्ताक्षर करने वाला व्यक्ति (रोगी स्वयं, या रोगी की ओर से हस्ताक्षर करने वाले माता-पिता, अभिभावक या रिश्तेदार), सहमत हूँ कि {patient} (रोगी क्रमांक {mrn}) को इस प्रक्रिया के लिए एनेस्थीसिया दिया जाए: {procedure}।"
+   },
+   {
+    "en": "The anaesthetist has explained the type of anaesthesia planned – spinal or epidural (the lower body is made numb), general anaesthesia (complete sleep) or local anaesthesia – and that the type may have to be changed during the procedure for safety.",
+    "mr": "भूलतज्ज्ञांनी (ॲनेस्थेटिस्ट) मला कोणत्या प्रकारची भूल देण्याचे ठरवले आहे ते समजावून सांगितले आहे – स्पायनल किंवा एपिड्युरल भूल (कंबरेखालचा भाग बधीर केला जातो), जनरल ॲनेस्थेशिया (पूर्ण भूल – पूर्णपणे झोपवले जाते) किंवा लोकल ॲनेस्थेशिया (स्थानिक भूल). सुरक्षिततेसाठी प्रक्रियेदरम्यान भुलीचा प्रकार बदलावा लागू शकतो, हेही त्यांनी समजावून सांगितले आहे.",
+    "hi": "एनेस्थीसिया के डॉक्टर (एनेस्थेटिस्ट) ने मुझे समझाया है कि किस प्रकार का एनेस्थीसिया देने की योजना है – स्पाइनल या एपिड्यूरल (शरीर का निचला हिस्सा सुन्न किया जाता है), जनरल एनेस्थीसिया (रोगी को पूरी तरह सुला दिया जाता है) या लोकल एनेस्थीसिया – और यह भी कि सुरक्षा के लिए प्रक्रिया के दौरान एनेस्थीसिया का प्रकार बदलना पड़ सकता है।"
+   },
+   {
+    "en": "The common side effects have been explained: nausea, vomiting, shivering, headache, back pain, sore throat and a fall in blood pressure.",
+    "mr": "सामान्यपणे होणाऱ्या दुष्परिणामांबद्दल मला समजावून सांगण्यात आले आहे: मळमळ, उलटी, अंग थरथरणे, डोकेदुखी, पाठदुखी, घसा दुखणे आणि रक्तदाब (बीपी) कमी होणे.",
+    "hi": "आम तौर पर होने वाले दुष्प्रभाव (साइड इफेक्ट) समझाए गए हैं: जी मिचलाना, उल्टी, कँपकँपी, सिरदर्द, पीठ (कमर) में दर्द, गले में खराश और ब्लड प्रेशर (रक्तचाप) कम होना।"
+   },
+   {
+    "en": "The rare but serious risks have been explained: allergic reaction to medicines, breathing problems, nerve injury, awareness during general anaesthesia, heart problems and, very rarely, risk to life.",
+    "mr": "क्वचित होणाऱ्या पण गंभीर धोक्यांबद्दल मला समजावून सांगण्यात आले आहे: औषधांची ॲलर्जी (रिॲक्शन), श्वास घेण्यास त्रास, मज्जातंतूंना (नसांना) इजा, पूर्ण भूल (जनरल ॲनेस्थेशिया) दिलेली असताना मध्येच जाणीव होणे, हृदयाशी संबंधित त्रास आणि अगदी क्वचित जिवाला धोका.",
+    "hi": "दुर्लभ (कम ही होने वाले) लेकिन गंभीर जोखिम समझाए गए हैं: दवाइयों से एलर्जी, साँस लेने में परेशानी, नसों (तंत्रिकाओं) को चोट, जनरल एनेस्थीसिया के दौरान होश आ जाना, दिल की समस्याएँ, और बहुत ही कम मामलों में जान का खतरा।"
+   },
+   {
+    "en": "I have told the doctors about illnesses, allergies, medicines taken, any earlier anaesthesia and problems with it, and when food or drink was last taken. The fasting instructions given will be followed.",
+    "mr": "मी डॉक्टरांना पुढील गोष्टींबद्दल सांगितले आहे: आजार, ॲलर्जी, घेतलेली औषधे, यापूर्वी कधी भूल दिली असल्यास ती व त्या वेळी आलेल्या अडचणी, आणि शेवटचे खाणे किंवा पिणे कधी झाले. उपाशी राहण्याबाबत (फास्टिंग) दिलेल्या सूचनांचे पालन केले जाईल.",
+    "hi": "मैंने डॉक्टरों को बीमारियों, एलर्जी, ली गई दवाइयों, पहले कभी दिए गए एनेस्थीसिया और उसमें हुई किसी समस्या, और आखिरी बार कब कुछ खाया या पिया गया था – इन सबके बारे में बता दिया है। खाली पेट रहने के बारे में जो निर्देश दिए गए हैं, उनका पालन किया जाएगा।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "blood_transfusion",
+  "careTypes": [],
+  "suggestWhen": "none",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. Blood and blood products; testing as required by the Drugs and Cosmetics Rules.",
+  "kind": "consent",
+  "order": 110,
+  "title": {
+   "en": "Consent for blood transfusion",
+   "mr": "रक्त देण्यासाठी (रक्तसंक्रमण) संमतीपत्र",
+   "hi": "खून चढ़ाने (रक्त आधान) के लिए सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, the undersigned (the patient, or the parent, guardian or relative signing for the patient), give consent for the transfusion of blood and blood products (such as red cells, plasma or platelets) to {patient} (patient no. {mrn}) if the doctors consider it necessary.",
+    "mr": "मी, खाली सही करणार (रुग्ण स्वतः, किंवा रुग्णाच्या वतीने सही करणारे आई, वडील, पालक किंवा नातेवाईक), डॉक्टरांना आवश्यक वाटल्यास {patient} (रुग्ण क्रमांक {mrn}) यांना रक्त व रक्तघटक (जसे की लाल रक्तपेशी, प्लाझ्मा किंवा प्लेटलेट्स) देण्यास संमती देत आहे.",
+    "hi": "मैं, नीचे हस्ताक्षर करने वाला व्यक्ति (रोगी स्वयं, या रोगी की ओर से हस्ताक्षर करने वाले माता-पिता, अभिभावक या रिश्तेदार), सहमत हूँ कि यदि डॉक्टर ज़रूरी समझें तो {patient} (रोगी क्रमांक {mrn}) को खून और खून से बने उत्पाद (जैसे लाल रक्त कोशिकाएँ, प्लाज़्मा या प्लेटलेट्स) चढ़ाए जाएँ।"
+   },
+   {
+    "en": "The reason has been explained to me: {reason}.",
+    "mr": "रक्त देण्याचे कारण मला समजावून सांगण्यात आले आहे: {reason}.",
+    "hi": "मुझे इसका कारण समझाया गया है: {reason}।"
+   },
+   {
+    "en": "I understand that donated blood is tested for HIV, hepatitis B, hepatitis C, syphilis and malaria as required by law, but that a very small risk of infection still remains.",
+    "mr": "मला समजले आहे की दान केलेल्या रक्ताची कायद्यानुसार एचआयव्ही, हिपॅटायटिस बी, हिपॅटायटिस सी, सिफिलिस आणि मलेरिया यांसाठी तपासणी केली जाते, तरीही जंतुसंसर्ग (इन्फेक्शन) होण्याचा अगदी थोडा धोका शिल्लक राहतोच.",
+    "hi": "मुझे यह समझ में आ गया है कि दान किए गए खून की, कानून के अनुसार, एचआईवी, हेपेटाइटिस बी, हेपेटाइटिस सी, सिफलिस और मलेरिया की जाँच की जाती है, लेकिन फिर भी संक्रमण (इंफेक्शन) का बहुत थोड़ा जोखिम बना रहता है।"
+   },
+   {
+    "en": "The possible reactions have been explained: fever, chills, rash and itching and, rarely, serious reactions affecting breathing, blood pressure or the kidneys, which will be treated at once.",
+    "mr": "होऊ शकणाऱ्या प्रतिक्रियांबद्दल (रिॲक्शन) मला समजावून सांगण्यात आले आहे: ताप, थंडी वाजणे, अंगावर पुरळ येणे व खाज सुटणे, आणि क्वचित प्रसंगी श्वास घेणे, रक्तदाब किंवा मूत्रपिंड (किडनी) यांवर परिणाम करणाऱ्या गंभीर प्रतिक्रिया. अशा प्रतिक्रियांवर लगेच उपचार केले जातील.",
+    "hi": "संभावित रिएक्शन (प्रतिक्रियाएँ) समझाए गए हैं: बुखार, ठंड लगना (कँपकँपी), चकत्ते (रैश) और खुजली, और कम ही मामलों में साँस, ब्लड प्रेशर (रक्तचाप) या गुर्दों (किडनी) पर असर डालने वाले गंभीर रिएक्शन, जिनका तुरंत इलाज किया जाएगा।"
+   },
+   {
+    "en": "The benefits of transfusion, the risks of not having it when it is needed, and the other options where available have been explained to me.",
+    "mr": "रक्त देण्याचे फायदे, गरज असताना रक्त न दिल्यास होऊ शकणारे धोके आणि उपलब्ध असल्यास इतर पर्याय यांबद्दल मला समजावून सांगण्यात आले आहे.",
+    "hi": "मुझे खून चढ़ाने के लाभ, ज़रूरत होने पर भी खून न चढ़वाने के जोखिम, और जहाँ उपलब्ध हों वहाँ अन्य विकल्प समझाए गए हैं।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "refusal",
+  "careTypes": [],
+  "suggestWhen": "none",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. Refusal of advised treatment, or leaving against medical advice (LAMA / DAMA).",
+  "kind": "consent",
+  "order": 120,
+  "title": {
+   "en": "Refusal of advised treatment / leaving against medical advice",
+   "mr": "सुचवलेले उपचार नाकारणे / वैद्यकीय सल्ल्याविरुद्ध रुग्णालय सोडणे",
+   "hi": "सलाह दिए गए इलाज से इनकार / डॉक्टर की सलाह के विरुद्ध अस्पताल छोड़ना"
+  },
+  "clauses": [
+   {
+    "en": "I, the undersigned (the patient, or the parent, guardian or relative responsible for the patient), have been advised by {doctor} that {patient} (patient no. {mrn}) needs the following treatment or admission: {procedure}.",
+    "mr": "मला, खाली सही करणाऱ्या व्यक्तीला (रुग्ण स्वतः, किंवा रुग्णाची जबाबदारी असलेले आई, वडील, पालक किंवा नातेवाईक), {doctor} यांनी असा सल्ला दिला आहे की {patient} (रुग्ण क्रमांक {mrn}) यांना पुढील उपचारांची किंवा रुग्णालयात दाखल होण्याची आवश्यकता आहे: {procedure}.",
+    "hi": "नीचे हस्ताक्षर करने वाले व्यक्ति (रोगी स्वयं, या रोगी के लिए ज़िम्मेदार माता-पिता, अभिभावक या रिश्तेदार) के रूप में, मुझे {doctor} ने सलाह दी है कि {patient} (रोगी क्रमांक {mrn}) को निम्नलिखित इलाज या भर्ती की ज़रूरत है: {procedure}।"
+   },
+   {
+    "en": "The reasons for this advice and the possible results of refusing it – including the condition getting worse, harm to the mother and/or the baby, and risk to life – have been explained to me in a language I understand.",
+    "mr": "हा सल्ला देण्याची कारणे आणि तो नाकारल्यास होऊ शकणारे परिणाम – ज्यामध्ये प्रकृती आणखी बिघडणे, आईला आणि/किंवा बाळाला हानी पोहोचणे आणि जिवाला धोका यांचा समावेश आहे – यांबद्दल मला समजणाऱ्या भाषेत समजावून सांगण्यात आले आहे.",
+    "hi": "इस सलाह के कारण, और इससे इनकार करने के संभावित परिणाम – जिनमें हालत और बिगड़ना, माँ और/या बच्चे को नुकसान, और जान का खतरा शामिल हैं – मुझे मेरी समझ में आने वाली भाषा में समझा दिए गए हैं।"
+   },
+   {
+    "en": "Despite this, of my own free will, I refuse the advised treatment / I am taking the patient away from the hospital against medical advice. My reason: {reason}.",
+    "mr": "असे असूनही, मी स्वतःच्या इच्छेने सुचवलेले उपचार नाकारत आहे / वैद्यकीय सल्ल्याविरुद्ध रुग्णाला रुग्णालयातून घेऊन जात आहे. माझे कारण: {reason}.",
+    "hi": "इसके बावजूद, अपनी स्वेच्छा से, मैंने सलाह दिए गए इलाज से इनकार किया है / मैंने रोगी को डॉक्टर की सलाह के विरुद्ध अस्पताल से ले जाने का निर्णय लिया है। मेरा कारण: {reason}।"
+   },
+   {
+    "en": "I take full responsibility for the results of this decision, and I will not hold {hospital}, its doctors or its staff responsible for any harm that results from it.",
+    "mr": "या निर्णयाच्या परिणामांची संपूर्ण जबाबदारी मी घेत आहे, आणि यामुळे होणाऱ्या कोणत्याही हानीसाठी मी {hospital}, तेथील डॉक्टर किंवा कर्मचारी यांना जबाबदार धरणार नाही.",
+    "hi": "इस निर्णय के परिणामों की पूरी ज़िम्मेदारी मेरी है, और इससे होने वाले किसी भी नुकसान के लिए मेरी ओर से {hospital}, उसके डॉक्टरों या उसके कर्मचारियों को ज़िम्मेदार नहीं ठहराया जाएगा।"
+   },
+   {
+    "en": "I understand that the patient may come back to the hospital at any time and that, in an emergency, the patient should be taken to the nearest hospital without delay.",
+    "mr": "मला समजले आहे की रुग्णाला कधीही पुन्हा रुग्णालयात येता येईल, आणि आणीबाणीच्या (इमर्जन्सी) परिस्थितीत रुग्णाला उशीर न करता जवळच्या रुग्णालयात नेले पाहिजे.",
+    "hi": "मुझे यह समझ में आ गया है कि रोगी किसी भी समय अस्पताल वापस आ सकते हैं, और आपात स्थिति (इमरजेंसी) में रोगी को बिना देरी के सबसे नज़दीकी अस्पताल ले जाना चाहिए।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ },
+ {
+  "key": "newborn_care",
+  "careTypes": [
+   "newborn"
+  ],
+  "suggestWhen": "always",
+  "description": "Draft wording prepared by the software developer – the hospital must check it, including the Marathi and Hindi translations, and have it legally reviewed before use. Signed by a parent or guardian; birth doses as per the national immunisation schedule.",
+  "kind": "consent",
+  "order": 130,
+  "title": {
+   "en": "Consent for newborn care and vaccination",
+   "mr": "नवजात बाळाची देखभाल व लसीकरण यांसाठी संमतीपत्र",
+   "hi": "नवजात शिशु की देखभाल और टीकाकरण के लिए सहमति"
+  },
+  "clauses": [
+   {
+    "en": "I, the undersigned, the parent or guardian of baby {patient} (patient no. {mrn}), give consent for the routine care of my baby at {hospital}.",
+    "mr": "मी, खाली सही करणार, {patient} (रुग्ण क्रमांक {mrn}) या बाळाचे आई, वडील किंवा पालक, {hospital} येथे माझ्या बाळाची नेहमीची देखभाल करण्यास संमती देत आहे.",
+    "hi": "मैं, नीचे हस्ताक्षर करने वाला व्यक्ति, शिशु {patient} (रोगी क्रमांक {mrn}) के माता-पिता या अभिभावक के रूप में, {hospital} में अपने शिशु की नियमित देखभाल के लिए सहमत हूँ।"
+   },
+   {
+    "en": "This includes examination, a vitamin K injection, the birth doses of vaccines (BCG, oral polio and hepatitis B) as per the national immunisation schedule, and routine blood or screening tests if advised.",
+    "mr": "यामध्ये बाळाची तपासणी, व्हिटॅमिन के इंजेक्शन, राष्ट्रीय लसीकरण वेळापत्रकानुसार जन्मानंतर लगेच दिल्या जाणाऱ्या लसी (बीसीजी, तोंडावाटे पोलिओ आणि हिपॅटायटिस बी), आणि सल्ला दिल्यास नेहमीच्या रक्त तपासण्या किंवा स्क्रीनिंग चाचण्या यांचा समावेश आहे.",
+    "hi": "इसमें शामिल हैं: शिशु की जाँच, विटामिन के का इंजेक्शन, राष्ट्रीय टीकाकरण सारणी के अनुसार जन्म के समय दिए जाने वाले टीके (बीसीजी, मुँह से दी जाने वाली पोलियो की बूँदें और हेपेटाइटिस बी), और सलाह दिए जाने पर नियमित खून की जाँच या स्क्रीनिंग जाँचें।"
+   },
+   {
+    "en": "The common side effects of vaccines have been explained to me, such as mild fever, soreness or swelling where the injection was given, and the small scar after BCG.",
+    "mr": "लसींच्या सामान्य दुष्परिणामांबद्दल मला समजावून सांगण्यात आले आहे, जसे की थोडा ताप, इंजेक्शन दिलेल्या जागी दुखणे किंवा सूज येणे, आणि बीसीजी नंतर राहणारा लहान व्रण (खूण).",
+    "hi": "मुझे टीकों के आम दुष्प्रभाव (साइड इफेक्ट) समझाए गए हैं, जैसे हल्का बुखार, इंजेक्शन की जगह पर दर्द या सूजन, और बीसीजी के बाद बनने वाला छोटा-सा निशान।"
+   },
+   {
+    "en": "If my baby needs admission to the newborn unit (for example for breathing difficulty, jaundice needing phototherapy, low sugar, low temperature or infection), I consent to the treatment needed, including tests, medicines, oxygen and fluids through a drip. Any major procedure will need a separate consent.",
+    "mr": "जर माझ्या बाळाला नवजात शिशु कक्षात (NICU) दाखल करावे लागले – उदाहरणार्थ श्वास घेण्यास त्रास, फोटोथेरपी (दिव्याखाली ठेवण्याचे उपचार) लागेल अशी कावीळ, रक्तातील साखर कमी होणे, शरीराचे तापमान कमी होणे किंवा जंतुसंसर्ग यांसाठी – तर आवश्यक त्या उपचारांना माझी संमती आहे, ज्यामध्ये तपासण्या, औषधे, ऑक्सिजन आणि ड्रिपद्वारे (सलाईन) द्रव देणे यांचा समावेश आहे. कोणत्याही मोठ्या प्रक्रियेसाठी स्वतंत्र संमती आवश्यक असेल.",
+    "hi": "यदि मेरे शिशु को नवजात शिशु इकाई (NICU) में भर्ती करने की ज़रूरत हो – उदाहरण के लिए साँस लेने में तकलीफ, ऐसा पीलिया जिसके लिए फोटोथेरेपी (रोशनी से इलाज) की ज़रूरत हो, शुगर कम होना, शरीर का तापमान कम होना या संक्रमण के कारण – तो ज़रूरी इलाज के लिए मेरी सहमति है, जिसमें जाँचें, दवाइयाँ, ऑक्सीजन और ड्रिप से तरल (फ्लूइड) देना शामिल है। किसी भी बड़ी प्रक्रिया के लिए अलग से सहमति ज़रूरी होगी।"
+   },
+   {
+    "en": "I have been told how to feed my baby and keep the baby warm, and about the danger signs for which the baby must be brought to the hospital at once.",
+    "mr": "माझ्या बाळाला दूध कसे पाजावे व बाळाला उबदार कसे ठेवावे, तसेच कोणती धोक्याची लक्षणे दिसल्यास बाळाला लगेच रुग्णालयात आणले पाहिजे, हे मला सांगण्यात आले आहे.",
+    "hi": "मुझे बताया गया है कि अपने शिशु को दूध कैसे पिलाना है और उसे गर्म कैसे रखना है, और उन खतरे के लक्षणों के बारे में भी बताया गया है जिनके दिखने पर शिशु को तुरंत अस्पताल लाना ज़रूरी है।"
+   },
+   {
+    "en": "I have read this form, or it has been read and explained to me in a language I understand. I had the chance to ask questions and all my questions were answered. I sign this form of my own free will.",
+    "mr": "मी हा फॉर्म वाचला आहे, किंवा मला समजणाऱ्या भाषेत तो मला वाचून दाखवण्यात आला आहे आणि समजावून सांगण्यात आला आहे. मला प्रश्न विचारण्याची संधी मिळाली आणि माझ्या सर्व प्रश्नांची उत्तरे मिळाली. मी स्वतःच्या इच्छेने या फॉर्मवर सही करत आहे.",
+    "hi": "मैंने यह फॉर्म पढ़ लिया है, या यह मुझे मेरी समझ में आने वाली भाषा में पढ़कर सुनाया और समझाया गया है। मुझे प्रश्न पूछने का अवसर मिला और मेरे सभी प्रश्नों के उत्तर दिए गए। मैंने अपनी स्वेच्छा से इस फॉर्म पर हस्ताक्षर किए हैं।"
+   }
+  ]
+ }
+]

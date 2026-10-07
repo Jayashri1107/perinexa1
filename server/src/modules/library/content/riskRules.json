@@ -1,0 +1,392 @@
+[
+ {
+  "key": "age_under_20",
+  "label": "Age under 20 (teenage pregnancy / young primi)",
+  "factor": "age",
+  "op": "lt",
+  "value": 20,
+  "level": "high",
+  "source": "MoHFW PMSMA: \"young primi (less than 20 years)\"; 2024 HRP list: teenage pregnancy. MoHFW SBA 2010 uses under 18 – doctor to confirm whether for all pregnancies or first only"
+ },
+ {
+  "key": "age_over_35",
+  "label": "Age over 35",
+  "factor": "age",
+  "op": "gt",
+  "value": 35,
+  "level": "high",
+  "source": "MoHFW PMSMA: \"elderly gravida (more than 35 years)\". ACOG / FOGSI-ICOG use 35 or older – doctor to confirm whether exactly 35 should be flagged"
+ },
+ {
+  "key": "height_under_145",
+  "label": "Height under 145 cm (short stature)",
+  "factor": "heightCm",
+  "op": "lt",
+  "value": 145,
+  "level": "high",
+  "source": "MoHFW/MWCD MCP Card guidebook 2018: under 145 cm is an obstetric risk; 2024 HRP list: short stature"
+ },
+ {
+  "key": "bmi_35_plus",
+  "label": "BMI 35 or more (severe obesity)",
+  "factor": "bmi",
+  "op": "gte",
+  "value": 35,
+  "level": "high",
+  "source": "FOGSI-ICOG ANC GCPR: BMI ≥ 35 at first contact is high risk"
+ },
+ {
+  "key": "bmi_30_plus",
+  "label": "BMI 30 or more (obesity)",
+  "factor": "bmi",
+  "op": "gte",
+  "value": 30,
+  "level": "moderate",
+  "source": "WHO / RCOG GTG 72: obesity BMI ≥ 30. Not a named GoI HRP category; MoHFW GDM guideline uses Asian cut-offs (obese > 25) – doctor to decide on a lower tier"
+ },
+ {
+  "key": "bmi_under_18_5",
+  "label": "BMI under 18.5 (underweight)",
+  "factor": "bmi",
+  "op": "lt",
+  "value": 18.5,
+  "level": "moderate",
+  "source": "WHO / MoHFW GDM guideline BMI table: underweight < 18.5. FOGSI-ICOG treats BMI < 18 as high – doctor to confirm level"
+ },
+ {
+  "key": "weight_under_45",
+  "label": "Weight under 45 kg",
+  "factor": "weightKg",
+  "op": "lt",
+  "value": 45,
+  "level": "moderate",
+  "source": "MoHFW SBA/ANM guideline: women under 45 kg need extra nutrition and follow-up"
+ },
+ {
+  "key": "previous_caesarean",
+  "label": "Previous caesarean section",
+  "factor": "previousCaesareans",
+  "op": "gte",
+  "value": 1,
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: previous LSCS (deliver at a CEmOC facility)"
+ },
+ {
+  "key": "grand_multipara",
+  "label": "Grand multipara (4 or more previous births)",
+  "factor": "para",
+  "op": "gte",
+  "value": 4,
+  "level": "high",
+  "source": "MoHFW SBA 2010: grand multipara = 4 or more; PMSMA HRP list: grand multipara; NICE: parity ≥ 4. Classic definition is ≥ 5 – doctor to confirm"
+ },
+ {
+  "key": "abortions_3_plus",
+  "label": "Three or more previous miscarriages / abortions",
+  "factor": "abortions",
+  "op": "gte",
+  "value": 3,
+  "level": "high",
+  "source": "MoHFW SBA 2010: ≥ 3 spontaneous abortions – refer (bad obstetric history). The A count may include losses that were not spontaneous – doctor to confirm"
+ },
+ {
+  "key": "abortions_2",
+  "label": "Two previous miscarriages / abortions",
+  "factor": "abortions",
+  "op": "eq",
+  "value": 2,
+  "level": "moderate",
+  "source": "ESHRE / ASRM: recurrent pregnancy loss from 2 losses (RCOG: 3). The A count may include losses that were not spontaneous – doctor to confirm"
+ },
+ {
+  "key": "hist_stillbirth",
+  "label": "Previous stillbirth or newborn death",
+  "factor": "pastComplication",
+  "complication": "stillbirth_or_neonatal_death",
+  "level": "high",
+  "source": "MoHFW SBA/ANC guidelines: previous stillbirth / neonatal loss; PMSMA: bad obstetric history"
+ },
+ {
+  "key": "hist_preterm",
+  "label": "Previous preterm birth",
+  "factor": "pastComplication",
+  "complication": "preterm_birth",
+  "level": "high",
+  "source": "PMSMA: bad obstetric history (previous preterm)"
+ },
+ {
+  "key": "hist_pre_eclampsia",
+  "label": "Pre-eclampsia / eclampsia in a previous pregnancy",
+  "factor": "pastComplication",
+  "complication": "pre_eclampsia",
+  "level": "high",
+  "source": "MoHFW SBA/ANC guidelines; FOGSI-GESTOSIS-ICOG HDP score"
+ },
+ {
+  "key": "hist_anomaly",
+  "label": "Previous baby with a congenital anomaly",
+  "factor": "pastComplication",
+  "complication": "congenital_anomaly",
+  "level": "high",
+  "source": "PMSMA HRP list: congenital malformation / bad obstetric history"
+ },
+ {
+  "key": "hist_obstructed",
+  "label": "Previous obstructed labour",
+  "factor": "pastComplication",
+  "complication": "obstructed_labour",
+  "level": "high",
+  "source": "MoHFW SBA/ANC guidelines: previous obstructed labour"
+ },
+ {
+  "key": "hist_pph",
+  "label": "Previous bleeding after delivery (PPH)",
+  "factor": "pastComplication",
+  "complication": "pph",
+  "level": "high",
+  "source": "MoHFW SBA/ANC guidelines: previous PPH / APH"
+ },
+ {
+  "key": "hist_rh_iso",
+  "label": "Rh sensitisation in a previous pregnancy",
+  "factor": "pastComplication",
+  "complication": "rh_isoimmunisation",
+  "level": "high",
+  "source": "MoHFW SBA/ANC guidelines: iso-immunisation (Rh −ve) in the previous pregnancy"
+ },
+ {
+  "key": "hist_lbw",
+  "label": "Previous baby under 2.5 kg",
+  "factor": "pastComplication",
+  "complication": "low_birth_weight_baby",
+  "level": "moderate",
+  "source": "MoHFW SBA/ANC guidelines: previous low-birth-weight baby – refer to MO"
+ },
+ {
+  "key": "hist_big_baby",
+  "label": "Previous baby over 4 kg",
+  "factor": "pastComplication",
+  "complication": "big_baby",
+  "level": "moderate",
+  "source": "MoHFW SBA/ANC guidelines: previous baby > 4–4.5 kg – screen for diabetes; doctor to confirm cut-off"
+ },
+ {
+  "key": "rh_negative",
+  "label": "Rh-negative blood group",
+  "factor": "rhNegative",
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: Rh negative. NICE/ACOG treat unsensitised Rh-negative as routine care with anti-D – doctor to confirm level"
+ },
+ {
+  "key": "cond_diabetes",
+  "label": "Diabetes (known before pregnancy)",
+  "factor": "condition",
+  "condition": "diabetes",
+  "level": "high",
+  "source": "PMSMA: GDM and any current systemic illness; MoHFW SBA: diabetes"
+ },
+ {
+  "key": "cond_hypertension",
+  "label": "Chronic high blood pressure",
+  "factor": "condition",
+  "condition": "hypertension",
+  "level": "high",
+  "source": "PMSMA: chronic hypertension antedating pregnancy or before 20 weeks"
+ },
+ {
+  "key": "cond_heart",
+  "label": "Heart disease",
+  "factor": "condition",
+  "condition": "heart_disease",
+  "level": "high",
+  "source": "PMSMA: current systemic illness; MoHFW SBA / MCP card: heart disease (specialist at FRU)"
+ },
+ {
+  "key": "cond_renal",
+  "label": "Kidney disease",
+  "factor": "condition",
+  "condition": "renal_disease",
+  "level": "high",
+  "source": "MoHFW SBA systemic illness list; FOGSI-GESTOSIS-ICOG HDP score (3 points)"
+ },
+ {
+  "key": "cond_autoimmune",
+  "label": "Autoimmune disease (e.g. SLE, antiphospholipid syndrome)",
+  "factor": "condition",
+  "condition": "autoimmune",
+  "level": "high",
+  "source": "FOGSI-GESTOSIS-ICOG HDP score (3 points)"
+ },
+ {
+  "key": "cond_thrombophilia",
+  "label": "Thrombophilia (clotting disorder)",
+  "factor": "condition",
+  "condition": "thrombophilia",
+  "level": "high",
+  "source": "FOGSI-GESTOSIS-ICOG HDP score (3 points)"
+ },
+ {
+  "key": "cond_thyroid",
+  "label": "Thyroid disease",
+  "factor": "condition",
+  "condition": "thyroid",
+  "level": "high",
+  "source": "PMSMA HRP list: hypothyroidism. ATA: well-treated hypothyroidism adds little risk – doctor may choose moderate"
+ },
+ {
+  "key": "cond_epilepsy",
+  "label": "Epilepsy",
+  "factor": "condition",
+  "condition": "epilepsy",
+  "level": "high",
+  "source": "MoHFW SBA: convulsions (epilepsy); RCOG GTG 68"
+ },
+ {
+  "key": "cond_mental_health",
+  "label": "Mental health condition",
+  "factor": "condition",
+  "condition": "mental_health",
+  "level": "high",
+  "source": "FOGSI-GESTOSIS-ICOG HDP score (3 points) – doctor to confirm level"
+ },
+ {
+  "key": "cond_tb",
+  "label": "Tuberculosis",
+  "factor": "condition",
+  "condition": "tuberculosis",
+  "level": "high",
+  "source": "MoHFW SBA / MCP card: tuberculosis; GoI TB-maternal health framework"
+ },
+ {
+  "key": "cond_hiv",
+  "label": "HIV",
+  "factor": "condition",
+  "condition": "hiv",
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: syphilis/HIV positive"
+ },
+ {
+  "key": "cond_syphilis",
+  "label": "Syphilis",
+  "factor": "condition",
+  "condition": "syphilis",
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: syphilis/HIV positive"
+ },
+ {
+  "key": "cond_hepatitis_b",
+  "label": "Hepatitis B",
+  "factor": "condition",
+  "condition": "hepatitis_b",
+  "level": "high",
+  "source": "NVHCP: track HBsAg-positive mothers for institutional delivery and newborn HBIG; not a named PMSMA category – doctor may choose moderate"
+ },
+ {
+  "key": "cond_uterine_surgery",
+  "label": "Previous surgery on the uterus (e.g. myomectomy)",
+  "factor": "condition",
+  "condition": "uterine_surgery",
+  "level": "high",
+  "source": "MoHFW SBA/ANC guidelines: previous surgery on the reproductive tract; WHO FANC classifying form"
+ },
+ {
+  "key": "cond_liver",
+  "label": "Other liver disease / jaundice",
+  "factor": "condition",
+  "condition": "liver_disease",
+  "level": "moderate",
+  "source": "MoHFW SBA systemic illness list: jaundice"
+ },
+ {
+  "key": "cond_anaemia",
+  "label": "Anaemia (severity not recorded)",
+  "factor": "condition",
+  "condition": "anaemia",
+  "level": "moderate",
+  "source": "PMSMA: only severe anaemia (Hb < 7 g/dL) is high risk – the measured Hb of this pregnancy is checked by its own rules below"
+ },
+ {
+  "key": "cond_asthma",
+  "label": "Asthma",
+  "factor": "condition",
+  "condition": "asthma",
+  "level": "moderate",
+  "source": "ACOG / NICE: severe or poorly controlled asthma is higher risk; GoI treats systemic illness as high – doctor to confirm level"
+ },
+ {
+  "key": "preg_gdm",
+  "label": "Gestational diabetes (GDM) in this pregnancy",
+  "factor": "finding",
+  "finding": "gdm",
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: gestational diabetes mellitus; FOGSI-GESTOSIS-ICOG HDP GCPR 2019 – doctor to confirm"
+ },
+ {
+  "key": "preg_hypertension",
+  "label": "High blood pressure in this pregnancy (gestational hypertension / pre-eclampsia)",
+  "factor": "finding",
+  "finding": "hypertension",
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: pregnancy-induced hypertension; Extended PMSMA Guidance Note section F; FOGSI-GESTOSIS-ICOG HDP GCPR 2019 – doctor to confirm"
+ },
+ {
+  "key": "preg_multiple",
+  "label": "Twins or more",
+  "factor": "finding",
+  "finding": "multiple",
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: twins / multiple pregnancy; MoHFW SBA/ANC guidelines; FOGSI-GESTOSIS-ICOG HDP GCPR 2019 – doctor to confirm"
+ },
+ {
+  "key": "preg_placenta_praevia",
+  "label": "Low-lying placenta / placenta praevia",
+  "factor": "finding",
+  "finding": "placenta_praevia",
+  "level": "high",
+  "source": "PMSMA criteria as used in PMSMA-based studies: low-lying placenta or placenta praevia. A placenta that is low before 32 weeks often moves up: untick it after a normal follow-up scan – doctor to confirm"
+ },
+ {
+  "key": "preg_bleeding",
+  "label": "Bleeding in this pregnancy",
+  "factor": "finding",
+  "finding": "bleeding",
+  "level": "high",
+  "source": "MoHFW SBA/ANC guidelines: antepartum haemorrhage; WHO antenatal classifying form: vaginal bleeding. Light early bleeding that has settled may be lower risk – doctor to confirm level"
+ },
+ {
+  "key": "hb_under_7",
+  "label": "Severe anaemia: lowest Hb in this pregnancy under 7 g/dL",
+  "factor": "lowestHb",
+  "op": "lt",
+  "value": 7,
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: severe anaemia (Hb < 7 g/dL); Anemia Mukt Bharat (2018). Uses the lowest Hb of this pregnancy, so it stays after treatment – doctor to confirm (the doctor can override the level)"
+ },
+ {
+  "key": "hb_under_11",
+  "label": "Anaemia: lowest Hb in this pregnancy under 11 g/dL",
+  "factor": "lowestHb",
+  "op": "lt",
+  "value": 11,
+  "level": "moderate",
+  "source": "MoHFW / Anemia Mukt Bharat: anaemia in pregnancy is Hb < 11 g/dL (mild 10–10.9, moderate 7–9.9); WHO 2024: < 11 in the first and third trimesters, < 10.5 in the second; Extended PMSMA tracks anaemia. Mild anaemia is very common: the doctor may lower the cut-off to 10 – doctor to confirm"
+ },
+ {
+  "key": "bp_systolic_140",
+  "label": "Latest blood pressure: upper number 140 or more",
+  "factor": "bpSystolic",
+  "op": "gte",
+  "value": 140,
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: pregnancy-induced hypertension (BP 140/90 or higher); MoHFW SBA guidelines ask for two readings. This uses one reading (the latest): recheck, and when confirmed tick “High blood pressure in this pregnancy” – doctor to confirm level"
+ },
+ {
+  "key": "bp_diastolic_90",
+  "label": "Latest blood pressure: lower number 90 or more",
+  "factor": "bpDiastolic",
+  "op": "gte",
+  "value": 90,
+  "level": "high",
+  "source": "MoHFW PMSMA HRP list: pregnancy-induced hypertension (BP 140/90 or higher); MoHFW SBA guidelines: diastolic 90 or more. This uses one reading (the latest): recheck, and when confirmed tick “High blood pressure in this pregnancy” – doctor to confirm level"
+ }
+]

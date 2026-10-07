@@ -76,6 +76,17 @@ const schema = z.object({
     pharmacyAdmin: roleList,
     analytics: roleList,
     analyticsExact: roleList,
+    appointments: roleList,
+    bookAppointments: roleList,
+    calendar: roleList,
+    calendarClinical: roleList,
+    lab: roleList,
+    labOrder: roleList,
+    labReport: roleList,
+    labReview: roleList,
+    library: roleList,
+    libraryEdit: roleList,
+    libraryApprove: roleList,
     superAdminInHospitals: z.boolean(),
     superAdminPatientAccess: z.boolean(),
   }),
@@ -128,6 +139,18 @@ const schema = z.object({
     maxLeavePeriods: z.number().int().min(1),
     visitTypes: z.array(keyLabel.extend({ defaultMinutes: z.number().int().positive() })).min(1),
   }),
+  appointments: z.object({
+    maxDaysAhead: z.number().int().min(1).max(3660),
+    // reminders: the day this many days ahead is the Reminders tab's first choice
+    reminderDaysAhead: z.number().int().min(0).max(30),
+    cancelReasons: z.array(keyLabel).min(1),
+  }),
+  calendar: z.object({
+    weekStartsOn: z.number().int().min(0).max(6), // 0 = Sunday, 1 = Monday
+    maxRangeDays: z.number().int().min(7).max(62),
+  }),
+  lab: z.object({ orderPrefix: prefix, numberDigits: digits, maxTestsPerOrder: z.number().int().min(1).max(100) }),
+  library: z.object({ maxEntries: z.number().int().min(10).max(2000) }),
   appearance: z.object({ textSize: z.array(keyLabel).min(1), density: z.array(keyLabel).min(1) }),
   seed: z.object({
     superAdmin: z.object({ name: z.string(), email: z.string(), password: z.string() }),
@@ -178,3 +201,4 @@ export const MEDICINE_FORM_KEYS = keysOf(config.pharmacy.forms);
 export const SCHEDULE_KEYS = keysOf(config.pharmacy.schedules);
 export const REGISTER_SCHEDULE_KEYS = config.pharmacy.schedules.filter((s) => s.register).map((s) => s.key);
 export const ADJUST_REASON_KEYS = keysOf(config.pharmacy.adjustReasons);
+export const CANCEL_REASON_KEYS = keysOf(config.appointments.cancelReasons);

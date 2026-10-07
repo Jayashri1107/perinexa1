@@ -55,6 +55,29 @@ export const AUDIT_ACTIONS = Object.freeze({
   SALE_MADE: 'Medicines sold',
   SALE_RETURNED: 'Medicines returned',
   STOCK_ADJUSTED: 'Stock written off or corrected',
+  // Appointments (ids only)
+  APPOINTMENT_BOOKED: 'Appointment booked',
+  APPOINTMENT_MOVED: 'Appointment moved',
+  APPOINTMENT_CANCELLED: 'Appointment cancelled',
+  APPOINTMENT_ARRIVED: 'Patient arrived',
+  APPOINTMENT_SEEN: 'Patient seen',
+  APPOINTMENT_ARRIVAL_UNDONE: 'Arrival undone',
+  APPOINTMENT_LINKED: 'Quick booking linked to a patient',
+  APPOINTMENT_REMINDER_SENT: 'Appointment reminder sent',
+  // Lab (ids and test keys only – never results)
+  LAB_ORDERED: 'Lab tests ordered',
+  LAB_COLLECTED: 'Lab sample collected',
+  LAB_REPORTED: 'Lab results reported',
+  LAB_AMENDED: 'Lab results amended',
+  LAB_REVIEWED: 'Lab results reviewed',
+  LAB_CANCELLED: 'Lab order cancelled',
+  LAB_VIEWED: 'Lab order opened',
+  // Clinic library
+  LIBRARY_CREATED: 'Clinic library entry added',
+  LIBRARY_UPDATED: 'Clinic library entry changed',
+  LIBRARY_APPROVED: 'Clinic library entry approved',
+  LIBRARY_ACTIVATED: 'Clinic library entry activated',
+  LIBRARY_DEACTIVATED: 'Clinic library entry deactivated',
 });
 
 export const AUDIT_ACTION_KEYS = Object.keys(AUDIT_ACTIONS);
@@ -67,6 +90,9 @@ const GROUPS = [
   { key: 'patients', label: 'Patient records', prefixes: ['PATIENT'] },
   { key: 'billing', label: 'Billing', prefixes: ['BILL', 'PAYMENT', 'REFUND', 'PRICE'] },
   { key: 'pharmacy', label: 'Pharmacy', prefixes: ['MEDICINE', 'SUPPLIER', 'PURCHASE', 'SALE', 'STOCK'] },
+  { key: 'appointments', label: 'Appointments', prefixes: ['APPOINTMENT'] },
+  { key: 'lab', label: 'Lab', prefixes: ['LAB_'] },
+  { key: 'library', label: 'Clinic library', prefixes: ['LIBRARY'] },
 ];
 const groupOf = (action) => GROUPS.find((g) => g.prefixes.some((p) => action.startsWith(p)))?.key ?? 'other';
 

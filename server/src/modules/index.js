@@ -5,17 +5,21 @@
 import { config } from '../config/index.js';
 import accountRoutes from './account/account.routes.js';
 import analyticsRoutes from './analytics/analytics.routes.js';
+import appointmentRoutes from './appointments/appointment.routes.js';
 import auditRoutes from './audit/audit.routes.js';
 import authRoutes from './auth/auth.routes.js';
 import billRoutes from './bills/bill.routes.js';
 import billingReportRoutes from './billingReports/billingReports.routes.js';
 import billingSettingsRoutes from './billingSettings/billingSettings.routes.js';
+import calendarRoutes from './calendar/calendar.routes.js';
 import dashboardRoutes from './dashboard/dashboard.routes.js';
 import hospitalAuditRoutes from './hospitalAudit/hospitalAudit.routes.js';
 import hospitalOverviewRoutes from './hospitalOverview/hospitalOverview.routes.js';
 import hospitalRoutes from './hospitals/hospital.routes.js';
 import hospitalSettingsRoutes from './hospitalSettings/hospitalSettings.routes.js';
 import hospitalStaffRoutes from './hospitalStaff/hospitalStaff.routes.js';
+import labRoutes from './lab/lab.routes.js';
+import libraryRoutes from './library/library.routes.js';
 import masterDataRoutes from './masterData/masterData.routes.js';
 import medicineRoutes from './medicines/medicine.routes.js';
 import memberRoutes from './members/member.routes.js';
@@ -83,4 +87,10 @@ export const modules = [
 
   // Module 6 – analytics
   { path: '/hospital/analytics', access: 'hospital', roles: access.analytics, router: analyticsRoutes },
+
+  // Module 7 – the doctor's work: appointments, calendar, lab, clinic library
+  { path: '/hospital/appointments', access: 'hospital', roles: access.appointments, router: appointmentRoutes },
+  { path: '/hospital/calendar', access: 'hospital', roles: access.calendar, router: calendarRoutes },
+  { path: '/hospital/lab', access: 'hospital', roles: access.lab, router: labRoutes },
+  { path: '/hospital/library', access: 'hospital', roles: access.library, router: libraryRoutes },
 ];

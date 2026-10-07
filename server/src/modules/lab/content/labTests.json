@@ -1,0 +1,1273 @@
+{
+ "note": "DRAFT reference values copied from Perinexa (lab/labTests.js) – not reviewed by a doctor. The lab report and the treating doctor decide.",
+ "groups": {
+  "blood": "Blood counts",
+  "screening": "Pregnancy screening",
+  "sugar": "Blood sugar",
+  "chemistry": "Biochemistry",
+  "hormones": "Hormones",
+  "antibodies": "Antibodies",
+  "urine": "Urine",
+  "other": "Other",
+  "nb_blood": "Baby: blood tests",
+  "nb_infection": "Baby: infection",
+  "nb_screening": "Baby: newborn screening",
+  "nb_bedside": "Baby: nursery checks"
+ },
+ "tests": [
+  {
+   "key": "cbc",
+   "name": "Complete blood count (CBC)",
+   "group": "blood",
+   "sample": "Blood (EDTA)",
+   "fields": [
+    {
+     "key": "hb",
+     "name": "Haemoglobin",
+     "type": "number",
+     "unit": "g/dL",
+     "low": 11,
+     "high": 16,
+     "range": "11–16 g/dL (below 11 in pregnancy is anaemia)"
+    },
+    {
+     "key": "tlc",
+     "name": "Total WBC count",
+     "type": "number",
+     "unit": "/µL",
+     "low": 4000,
+     "high": 11000,
+     "range": "4000–11000 /µL"
+    },
+    {
+     "key": "platelets",
+     "name": "Platelets",
+     "type": "number",
+     "unit": "lakh/µL",
+     "low": 1.5,
+     "high": 4.5,
+     "range": "1.5–4.5 lakh/µL"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "hb",
+   "name": "Haemoglobin (Hb)",
+   "group": "blood",
+   "sample": "Blood (EDTA)",
+   "fields": [
+    {
+     "key": "hb",
+     "name": "Haemoglobin",
+     "type": "number",
+     "unit": "g/dL",
+     "low": 11,
+     "high": 16,
+     "range": "11–16 g/dL (below 11 in pregnancy is anaemia)"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "group",
+   "name": "Blood group and Rh",
+   "group": "blood",
+   "sample": "Blood (EDTA)",
+   "fields": [
+    {
+     "key": "group",
+     "name": "Blood group",
+     "type": "choice",
+     "options": [
+      "A+",
+      "A-",
+      "B+",
+      "B-",
+      "AB+",
+      "AB-",
+      "O+",
+      "O-"
+     ],
+     "abnormal": []
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "ict",
+   "name": "Indirect Coombs test (ICT)",
+   "group": "screening",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "ict",
+     "name": "ICT",
+     "type": "choice",
+     "options": [
+      "Negative",
+      "Positive"
+     ],
+     "abnormal": [
+      "Positive"
+     ]
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "hiv",
+   "name": "HIV 1 and 2",
+   "group": "screening",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "hiv",
+     "name": "HIV",
+     "type": "choice",
+     "options": [
+      "Non-reactive",
+      "Reactive"
+     ],
+     "abnormal": [
+      "Reactive"
+     ]
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "vdrl",
+   "name": "VDRL (syphilis)",
+   "group": "screening",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "vdrl",
+     "name": "VDRL",
+     "type": "choice",
+     "options": [
+      "Non-reactive",
+      "Reactive"
+     ],
+     "abnormal": [
+      "Reactive"
+     ]
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "hbsag",
+   "name": "HBsAg (hepatitis B)",
+   "group": "screening",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "hbsag",
+     "name": "HBsAg",
+     "type": "choice",
+     "options": [
+      "Non-reactive",
+      "Reactive"
+     ],
+     "abnormal": [
+      "Reactive"
+     ]
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "hcv",
+   "name": "Anti-HCV (hepatitis C)",
+   "group": "screening",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "hcv",
+     "name": "Anti-HCV",
+     "type": "choice",
+     "options": [
+      "Non-reactive",
+      "Reactive"
+     ],
+     "abnormal": [
+      "Reactive"
+     ]
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "tsh",
+   "name": "TSH (thyroid)",
+   "group": "hormones",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "tsh",
+     "name": "TSH",
+     "type": "number",
+     "unit": "µIU/mL",
+     "low": 0.4,
+     "high": 4,
+     "range": "0.4–4.0 µIU/mL (lower limits in pregnancy – doctor to judge)"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "antiTpo",
+   "name": "Anti-TPO antibodies (thyroid)",
+   "group": "antibodies",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "antiTpo",
+     "name": "Anti-TPO antibodies",
+     "type": "number",
+     "unit": "IU/mL",
+     "low": null,
+     "high": null,
+     "range": "the lab's own cut-off (kits differ)"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "lupusAnticoagulant",
+   "name": "Lupus anticoagulant (LA)",
+   "group": "antibodies",
+   "sample": "Blood (citrate) – before any heparin is started",
+   "fields": [
+    {
+     "key": "la",
+     "name": "Lupus anticoagulant",
+     "type": "choice",
+     "options": [
+      "Negative",
+      "Positive",
+      "Indeterminate"
+     ],
+     "abnormal": [
+      "Positive",
+      "Indeterminate"
+     ]
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "acl",
+   "name": "Anticardiolipin antibodies (IgG and IgM)",
+   "group": "antibodies",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "aclIgg",
+     "name": "Anticardiolipin IgG",
+     "type": "number",
+     "unit": "GPL U/mL",
+     "low": null,
+     "high": null,
+     "range": "the lab's own cut-off; over 40 counts for antiphospholipid syndrome (Sydney criteria 2006)"
+    },
+    {
+     "key": "aclIgm",
+     "name": "Anticardiolipin IgM",
+     "type": "number",
+     "unit": "MPL U/mL",
+     "low": null,
+     "high": null,
+     "range": "the lab's own cut-off; over 40 counts for antiphospholipid syndrome (Sydney criteria 2006)"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "b2gpi",
+   "name": "Anti-beta-2-glycoprotein I antibodies (IgG and IgM)",
+   "group": "antibodies",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "b2gpiIgg",
+     "name": "Anti-beta-2-glycoprotein I IgG",
+     "type": "number",
+     "unit": "U/mL",
+     "low": null,
+     "high": null,
+     "range": "the lab's own cut-off (above its 99th percentile counts for antiphospholipid syndrome)"
+    },
+    {
+     "key": "b2gpiIgm",
+     "name": "Anti-beta-2-glycoprotein I IgM",
+     "type": "number",
+     "unit": "U/mL",
+     "low": null,
+     "high": null,
+     "range": "the lab's own cut-off (above its 99th percentile counts for antiphospholipid syndrome)"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "ogtt",
+   "name": "OGTT 75 g, 2-hour (DIPSI)",
+   "group": "sugar",
+   "sample": "Blood (fluoride), 2 hours after 75 g glucose",
+   "fields": [
+    {
+     "key": "glucose2h",
+     "name": "2-hour glucose",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": null,
+     "high": 139,
+     "range": "below 140 mg/dL"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "fbs",
+   "name": "Fasting blood sugar",
+   "group": "sugar",
+   "sample": "Blood (fluoride), fasting",
+   "fields": [
+    {
+     "key": "fbs",
+     "name": "Fasting glucose",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 70,
+     "high": 99,
+     "range": "70–99 mg/dL"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "ppbs",
+   "name": "Post-meal blood sugar (2 hours)",
+   "group": "sugar",
+   "sample": "Blood (fluoride)",
+   "fields": [
+    {
+     "key": "ppbs",
+     "name": "Post-meal glucose",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": null,
+     "high": 139,
+     "range": "below 140 mg/dL"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "rbs",
+   "name": "Random blood sugar",
+   "group": "sugar",
+   "sample": "Blood (fluoride)",
+   "fields": [
+    {
+     "key": "rbs",
+     "name": "Random glucose",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": null,
+     "high": 139,
+     "range": "below 140 mg/dL"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "hba1c",
+   "name": "HbA1c",
+   "group": "sugar",
+   "sample": "Blood (EDTA)",
+   "fields": [
+    {
+     "key": "hba1c",
+     "name": "HbA1c",
+     "type": "number",
+     "unit": "%",
+     "low": null,
+     "high": 5.6,
+     "range": "below 5.7 %"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "lft",
+   "name": "Liver function tests (LFT)",
+   "group": "chemistry",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "bilirubin",
+     "name": "Total bilirubin",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 0.2,
+     "high": 1.2,
+     "range": "0.2–1.2 mg/dL"
+    },
+    {
+     "key": "sgot",
+     "name": "SGOT (AST)",
+     "type": "number",
+     "unit": "U/L",
+     "low": null,
+     "high": 40,
+     "range": "up to 40 U/L"
+    },
+    {
+     "key": "sgpt",
+     "name": "SGPT (ALT)",
+     "type": "number",
+     "unit": "U/L",
+     "low": null,
+     "high": 40,
+     "range": "up to 40 U/L"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "rft",
+   "name": "Kidney function tests (RFT)",
+   "group": "chemistry",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "urea",
+     "name": "Blood urea",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 15,
+     "high": 40,
+     "range": "15–40 mg/dL"
+    },
+    {
+     "key": "creatinine",
+     "name": "Serum creatinine",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 0.5,
+     "high": 1.1,
+     "range": "0.5–1.1 mg/dL"
+    },
+    {
+     "key": "uricAcid",
+     "name": "Uric acid",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 2.4,
+     "high": 6,
+     "range": "2.4–6 mg/dL"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "ferritin",
+   "name": "Serum ferritin",
+   "group": "chemistry",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "ferritin",
+     "name": "Ferritin",
+     "type": "number",
+     "unit": "ng/mL",
+     "low": 15,
+     "high": 150,
+     "range": "15–150 ng/mL"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "bileAcids",
+   "name": "Serum bile acids (total)",
+   "group": "chemistry",
+   "sample": "Blood (plain) – fasting not needed",
+   "fields": [
+    {
+     "key": "bileAcids",
+     "name": "Total bile acids",
+     "type": "number",
+     "unit": "µmol/L",
+     "low": null,
+     "high": 18.9,
+     "range": "below 19 µmol/L in pregnancy (19 or more with itching: obstetric cholestasis – RCOG Green-top Guideline 43, 2022)"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "bhcg",
+   "name": "Beta hCG (quantitative)",
+   "group": "hormones",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "bhcg",
+     "name": "Beta hCG",
+     "type": "number",
+     "unit": "mIU/mL",
+     "low": null,
+     "high": null,
+     "range": "doctor to judge by the weeks (1 mIU/mL is the same as 1 IU/L)"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "hormones",
+   "name": "Day 2–3 hormones (FSH, LH, AMH, prolactin)",
+   "group": "hormones",
+   "sample": "Blood (plain), day 2–3 of the period",
+   "fields": [
+    {
+     "key": "fsh",
+     "name": "FSH",
+     "type": "number",
+     "unit": "mIU/mL",
+     "low": null,
+     "high": 10,
+     "range": "below 10 mIU/mL"
+    },
+    {
+     "key": "lh",
+     "name": "LH",
+     "type": "number",
+     "unit": "mIU/mL",
+     "low": null,
+     "high": null,
+     "range": "doctor to judge"
+    },
+    {
+     "key": "amh",
+     "name": "AMH",
+     "type": "number",
+     "unit": "ng/mL",
+     "low": 1,
+     "high": null,
+     "range": "1.0 ng/mL or more"
+    },
+    {
+     "key": "prolactin",
+     "name": "Prolactin",
+     "type": "number",
+     "unit": "ng/mL",
+     "low": null,
+     "high": 25,
+     "range": "below 25 ng/mL"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "urine",
+   "name": "Urine routine and microscopy",
+   "group": "urine",
+   "sample": "Urine (midstream)",
+   "fields": [
+    {
+     "key": "albumin",
+     "name": "Albumin",
+     "type": "choice",
+     "options": [
+      "Nil",
+      "Trace",
+      "1+",
+      "2+",
+      "3+",
+      "4+"
+     ],
+     "abnormal": [
+      "1+",
+      "2+",
+      "3+",
+      "4+"
+     ]
+    },
+    {
+     "key": "sugar",
+     "name": "Sugar",
+     "type": "choice",
+     "options": [
+      "Nil",
+      "Trace",
+      "1+",
+      "2+",
+      "3+",
+      "4+"
+     ],
+     "abnormal": [
+      "1+",
+      "2+",
+      "3+",
+      "4+"
+     ]
+    },
+    {
+     "key": "pusCells",
+     "name": "Pus cells",
+     "type": "number",
+     "unit": "/hpf",
+     "low": null,
+     "high": 5,
+     "range": "0–5 /hpf"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "urineCulture",
+   "name": "Urine culture and sensitivity",
+   "group": "urine",
+   "sample": "Urine (sterile container)",
+   "fields": [
+    {
+     "key": "growth",
+     "name": "Growth",
+     "type": "choice",
+     "options": [
+      "No growth",
+      "Growth"
+     ],
+     "abnormal": [
+      "Growth"
+     ]
+    },
+    {
+     "key": "organism",
+     "name": "Organism and sensitivity",
+     "type": "text"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "semen",
+   "name": "Semen analysis (partner)",
+   "group": "other",
+   "sample": "Semen",
+   "fields": [
+    {
+     "key": "count",
+     "name": "Sperm concentration",
+     "type": "number",
+     "unit": "million/mL",
+     "low": 16,
+     "high": null,
+     "range": "16 million/mL or more (WHO 2021)"
+    },
+    {
+     "key": "motility",
+     "name": "Total motility",
+     "type": "number",
+     "unit": "%",
+     "low": 42,
+     "high": null,
+     "range": "42 % or more"
+    },
+    {
+     "key": "morphology",
+     "name": "Normal forms",
+     "type": "number",
+     "unit": "%",
+     "low": 4,
+     "high": null,
+     "range": "4 % or more"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "pap",
+   "name": "Pap smear / cervical screening",
+   "group": "other",
+   "sample": "Cervical smear",
+   "fields": [
+    {
+     "key": "result",
+     "name": "Result",
+     "type": "choice",
+     "options": [
+      "Negative (NILM)",
+      "Abnormal"
+     ],
+     "abnormal": [
+      "Abnormal"
+     ]
+    },
+    {
+     "key": "details",
+     "name": "Details",
+     "type": "text"
+    }
+   ],
+   "who": "adult"
+  },
+  {
+   "key": "nb_sugar",
+   "name": "Blood sugar (baby)",
+   "group": "nb_blood",
+   "sample": "Heel prick or venous blood",
+   "fields": [
+    {
+     "key": "glucose",
+     "name": "Blood glucose",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 45,
+     "high": 150,
+     "range": "45–150 mg/dL (below 45 is low – NNF)"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_bilirubin",
+   "name": "Serum bilirubin, total and direct (baby)",
+   "group": "nb_blood",
+   "sample": "Venous blood (plain), protected from light",
+   "fields": [
+    {
+     "key": "ageHours",
+     "name": "Baby's age when sampled",
+     "type": "number",
+     "unit": "hours",
+     "low": null,
+     "high": null,
+     "range": "for the hour-specific bilirubin chart"
+    },
+    {
+     "key": "total",
+     "name": "Total bilirubin",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": null,
+     "high": null,
+     "range": "judge on the hour-specific chart for the age in hours"
+    },
+    {
+     "key": "direct",
+     "name": "Direct (conjugated) bilirubin",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": null,
+     "high": 1,
+     "range": "up to 1.0 mg/dL (or under 20 % of total)"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_cbc",
+   "name": "Complete blood count with reticulocytes (baby)",
+   "group": "nb_blood",
+   "sample": "Blood (EDTA)",
+   "fields": [
+    {
+     "key": "hb",
+     "name": "Haemoglobin",
+     "type": "number",
+     "unit": "g/dL",
+     "low": 13.5,
+     "high": 22,
+     "range": "13.5–22 g/dL in the first week (falls after)"
+    },
+    {
+     "key": "hct",
+     "name": "Haematocrit (PCV)",
+     "type": "number",
+     "unit": "%",
+     "low": 42,
+     "high": 65,
+     "range": "42–65 % (above 65 is polycythaemia)"
+    },
+    {
+     "key": "tlc",
+     "name": "Total WBC count",
+     "type": "number",
+     "unit": "/µL",
+     "low": 9000,
+     "high": 30000,
+     "range": "9,000–30,000 /µL in the first days"
+    },
+    {
+     "key": "platelets",
+     "name": "Platelets",
+     "type": "number",
+     "unit": "lakh/µL",
+     "low": 1.5,
+     "high": 4.5,
+     "range": "1.5–4.5 lakh/µL"
+    },
+    {
+     "key": "retic",
+     "name": "Reticulocytes",
+     "type": "number",
+     "unit": "%",
+     "low": null,
+     "high": 7,
+     "range": "up to 7 % at birth, falls by the end of the first week"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_group_dct",
+   "name": "Blood group, Rh and direct Coombs test (baby)",
+   "group": "nb_blood",
+   "sample": "Cord or venous blood (EDTA)",
+   "fields": [
+    {
+     "key": "group",
+     "name": "Blood group",
+     "type": "choice",
+     "options": [
+      "A+",
+      "A-",
+      "B+",
+      "B-",
+      "AB+",
+      "AB-",
+      "O+",
+      "O-"
+     ],
+     "abnormal": []
+    },
+    {
+     "key": "dct",
+     "name": "Direct Coombs test (DCT)",
+     "type": "choice",
+     "options": [
+      "Negative",
+      "Positive"
+     ],
+     "abnormal": [
+      "Positive"
+     ]
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_g6pd",
+   "name": "G6PD (quantitative, baby)",
+   "group": "nb_blood",
+   "sample": "Blood (EDTA)",
+   "fields": [
+    {
+     "key": "result",
+     "name": "G6PD",
+     "type": "choice",
+     "options": [
+      "Normal",
+      "Deficient",
+      "Intermediate"
+     ],
+     "abnormal": [
+      "Deficient",
+      "Intermediate"
+     ]
+    },
+    {
+     "key": "activity",
+     "name": "G6PD activity",
+     "type": "number",
+     "unit": "U/g Hb",
+     "low": null,
+     "high": null,
+     "range": "as per the lab's range"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_chem",
+   "name": "Sodium, potassium and calcium (baby)",
+   "group": "nb_blood",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "na",
+     "name": "Sodium",
+     "type": "number",
+     "unit": "mmol/L",
+     "low": 135,
+     "high": 145,
+     "range": "135–145 mmol/L"
+    },
+    {
+     "key": "k",
+     "name": "Potassium",
+     "type": "number",
+     "unit": "mmol/L",
+     "low": 3.5,
+     "high": 6,
+     "range": "3.5–6.0 mmol/L (newborn)"
+    },
+    {
+     "key": "ca",
+     "name": "Total calcium",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 8,
+     "high": 11,
+     "range": "8–11 mg/dL (below 7 is hypocalcaemia)"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_bone",
+   "name": "Calcium, phosphorus and alkaline phosphatase (preterm bone check)",
+   "group": "nb_blood",
+   "sample": "Blood (plain)",
+   "fields": [
+    {
+     "key": "ca",
+     "name": "Total calcium",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 8,
+     "high": 11,
+     "range": "8–11 mg/dL"
+    },
+    {
+     "key": "phosphorus",
+     "name": "Phosphorus",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": 4.5,
+     "high": 9,
+     "range": "4.5–9 mg/dL (below 4 suggests bone disease of prematurity)"
+    },
+    {
+     "key": "alp",
+     "name": "Alkaline phosphatase",
+     "type": "number",
+     "unit": "IU/L",
+     "low": null,
+     "high": 500,
+     "range": "up to 500 IU/L (above 800–900 suggests bone disease of prematurity)"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_tsh",
+   "name": "TSH and free T4 (baby)",
+   "group": "nb_blood",
+   "sample": "Venous blood (plain)",
+   "fields": [
+    {
+     "key": "tsh",
+     "name": "TSH",
+     "type": "number",
+     "unit": "µIU/mL",
+     "low": null,
+     "high": 20,
+     "range": "up to 20 in the first week, up to 10 after 2 weeks"
+    },
+    {
+     "key": "ft4",
+     "name": "Free T4",
+     "type": "number",
+     "unit": "ng/dL",
+     "low": null,
+     "high": null,
+     "range": "doctor to judge by age (higher in the first week)"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_sepsis",
+   "name": "Sepsis screen (baby)",
+   "group": "nb_infection",
+   "sample": "Blood (EDTA + plain)",
+   "fields": [
+    {
+     "key": "tlc",
+     "name": "Total WBC count",
+     "type": "number",
+     "unit": "/µL",
+     "low": 5000,
+     "high": null,
+     "range": "5,000 /µL or more (below is abnormal)"
+    },
+    {
+     "key": "anc",
+     "name": "Absolute neutrophil count",
+     "type": "number",
+     "unit": "/µL",
+     "low": null,
+     "high": null,
+     "range": "judge on the chart for the age in hours"
+    },
+    {
+     "key": "it",
+     "name": "Immature : total neutrophil ratio",
+     "type": "number",
+     "unit": "",
+     "low": null,
+     "high": 0.2,
+     "range": "up to 0.2"
+    },
+    {
+     "key": "esr",
+     "name": "Micro-ESR",
+     "type": "number",
+     "unit": "mm in 1st hour",
+     "low": null,
+     "high": 15,
+     "range": "up to (age in days + 3) mm, at most 15"
+    },
+    {
+     "key": "crp",
+     "name": "CRP",
+     "type": "number",
+     "unit": "mg/L",
+     "low": null,
+     "high": 10,
+     "range": "up to 10 mg/L"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_culture",
+   "name": "Blood culture and sensitivity (baby)",
+   "group": "nb_infection",
+   "sample": "Blood culture bottle (paediatric)",
+   "fields": [
+    {
+     "key": "growth",
+     "name": "Growth",
+     "type": "choice",
+     "options": [
+      "No growth",
+      "Growth"
+     ],
+     "abnormal": [
+      "Growth"
+     ]
+    },
+    {
+     "key": "organism",
+     "name": "Organism",
+     "type": "text"
+    },
+    {
+     "key": "sensitivity",
+     "name": "Sensitive to",
+     "type": "text"
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_screening",
+   "name": "Newborn screening panel (heel-prick blood spot)",
+   "group": "nb_screening",
+   "sample": "Dried blood spot on filter card, after 48 hours of age",
+   "fields": [
+    {
+     "key": "ageHours",
+     "name": "Baby's age when sampled",
+     "type": "number",
+     "unit": "hours",
+     "low": 48,
+     "high": null,
+     "range": "after 48 hours (repeat if taken earlier)"
+    },
+    {
+     "key": "ch",
+     "name": "Congenital hypothyroidism (TSH)",
+     "type": "choice",
+     "options": [
+      "Screen negative",
+      "Screen positive – recall"
+     ],
+     "abnormal": [
+      "Screen positive – recall"
+     ]
+    },
+    {
+     "key": "g6pd",
+     "name": "G6PD deficiency",
+     "type": "choice",
+     "options": [
+      "Screen negative",
+      "Screen positive – recall"
+     ],
+     "abnormal": [
+      "Screen positive – recall"
+     ]
+    },
+    {
+     "key": "cah",
+     "name": "Congenital adrenal hyperplasia (17-OHP)",
+     "type": "choice",
+     "options": [
+      "Screen negative",
+      "Screen positive – recall"
+     ],
+     "abnormal": [
+      "Screen positive – recall"
+     ]
+    },
+    {
+     "key": "gal",
+     "name": "Galactosaemia",
+     "type": "choice",
+     "options": [
+      "Screen negative",
+      "Screen positive – recall"
+     ],
+     "abnormal": [
+      "Screen positive – recall"
+     ]
+    },
+    {
+     "key": "pku",
+     "name": "Phenylketonuria (PKU)",
+     "type": "choice",
+     "options": [
+      "Screen negative",
+      "Screen positive – recall"
+     ],
+     "abnormal": [
+      "Screen positive – recall"
+     ]
+    },
+    {
+     "key": "btd",
+     "name": "Biotinidase deficiency",
+     "type": "choice",
+     "options": [
+      "Screen negative",
+      "Screen positive – recall"
+     ],
+     "abnormal": [
+      "Screen positive – recall"
+     ]
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_oae",
+   "name": "Hearing screen (OAE)",
+   "group": "nb_bedside",
+   "sample": "Done at the bedside / in the nursery",
+   "fields": [
+    {
+     "key": "right",
+     "name": "Right ear",
+     "type": "choice",
+     "options": [
+      "Pass",
+      "Refer"
+     ],
+     "abnormal": [
+      "Refer"
+     ]
+    },
+    {
+     "key": "left",
+     "name": "Left ear",
+     "type": "choice",
+     "options": [
+      "Pass",
+      "Refer"
+     ],
+     "abnormal": [
+      "Refer"
+     ]
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_pulseox",
+   "name": "Pulse-oximetry heart screen (CCHD), after 24 hours",
+   "group": "nb_bedside",
+   "sample": "Done at the bedside: right hand and a foot",
+   "fields": [
+    {
+     "key": "hand",
+     "name": "SpO₂ right hand",
+     "type": "number",
+     "unit": "%",
+     "low": 95,
+     "high": null,
+     "range": "95 % or more"
+    },
+    {
+     "key": "foot",
+     "name": "SpO₂ foot",
+     "type": "number",
+     "unit": "%",
+     "low": 95,
+     "high": null,
+     "range": "95 % or more"
+    },
+    {
+     "key": "result",
+     "name": "Result",
+     "type": "choice",
+     "options": [
+      "Pass",
+      "Repeat",
+      "Fail – echo"
+     ],
+     "abnormal": [
+      "Repeat",
+      "Fail – echo"
+     ]
+    }
+   ],
+   "who": "newborn"
+  },
+  {
+   "key": "nb_tcb",
+   "name": "Skin bilirubin (transcutaneous, TcB)",
+   "group": "nb_bedside",
+   "sample": "Done at the bedside with a bilirubin meter",
+   "fields": [
+    {
+     "key": "ageHours",
+     "name": "Baby's age when sampled",
+     "type": "number",
+     "unit": "hours",
+     "low": null,
+     "high": null,
+     "range": "for the hour-specific bilirubin chart"
+    },
+    {
+     "key": "tcb",
+     "name": "TcB",
+     "type": "number",
+     "unit": "mg/dL",
+     "low": null,
+     "high": null,
+     "range": "judge on the hour-specific chart; confirm a high reading with a blood test"
+    }
+   ],
+   "who": "newborn"
+  }
+ ]
+}

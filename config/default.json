@@ -74,6 +74,17 @@
     "pharmacyAdmin": ["admin"],
     "analytics": ["doctor", "admin"],
     "analyticsExact": ["doctor"],
+    "appointments": ["receptionist", "doctor", "rmo", "nurse"],
+    "bookAppointments": ["receptionist", "doctor"],
+    "calendar": ["doctor", "rmo", "receptionist"],
+    "calendarClinical": ["doctor", "rmo"],
+    "lab": ["lab", "doctor", "rmo", "nurse"],
+    "labOrder": ["doctor", "rmo"],
+    "labReport": ["lab"],
+    "labReview": ["doctor", "rmo"],
+    "library": ["doctor", "rmo", "nurse"],
+    "libraryEdit": ["doctor", "rmo"],
+    "libraryApprove": ["doctor"],
     "superAdminInHospitals": true,
     "superAdminPatientAccess": true
   },
@@ -104,6 +115,27 @@
       { "key": "scan", "label": "Scan", "defaultMinutes": 20 },
       { "key": "other", "label": "Other", "defaultMinutes": 10 }
     ]
+  },
+  "appointments": {
+    "maxDaysAhead": 366,
+    "reminderDaysAhead": 1,
+    "cancelReasons": [
+      { "key": "patient_asked", "label": "Patient asked" },
+      { "key": "doctor_leave", "label": "Doctor on leave" },
+      { "key": "other", "label": "Other" }
+    ]
+  },
+  "calendar": {
+    "weekStartsOn": 1,
+    "maxRangeDays": 42
+  },
+  "lab": {
+    "orderPrefix": "L-",
+    "numberDigits": 6,
+    "maxTestsPerOrder": 30
+  },
+  "library": {
+    "maxEntries": 300
   },
   "patients": {
     "numberPrefix": "P-",

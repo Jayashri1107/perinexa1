@@ -3,7 +3,9 @@ import { config } from '../../config/index.js';
 import { dayRange, todayLocal } from '../../core/dates.js';
 import { round2 } from '../../core/money.js';
 import { toObjectId } from '../../core/validate.js';
+import { todayFor } from '../appointments/appointment.service.js';
 import { Bill, Payment } from '../bills/bill.model.js';
+import { todayCounts as labCounts } from '../lab/lab.service.js';
 import { Patient } from '../patients/patient.model.js';
 import { alertCounts } from '../pharmacyReports/pharmacyReports.service.js';
 import { Sale } from '../sales/sale.model.js';
@@ -74,12 +76,16 @@ export async function today(req) {
     doctor: roles.includes(config.opd.doctorRole),
     billing: has(roles, access.billing),
     pharmacy: has(roles, access.pharmacy),
+    lab: has(roles, access.lab),
   };
-  const [patients, doctor, billing, pharmacy] = await Promise.all([
+  const [patients, doctor, appointments, lab, billing, pharmacy] = await Promise.all([
     wants.patients ? patientSection(hid, start, end) : null,
     wants.doctor ? doctorSection(hid, req.user._id) : null,
+    // a doctor's own appointments today: who is waiting, and who comes next
+    wants.doctor ? todayFor(hid, req.user._id) : null,
+    wants.lab ? labCounts(req) : null,
     wants.billing ? billingSection(hid, start, end) : null,
     wants.pharmacy ? pharmacySection(hid, start, end) : null,
   ]);
-  return { date: todayLocal(), patients, doctor, billing, pharmacy };
+  return { date: todayLocal(), patients, doctor, appointments, lab, billing, pharmacy };
 }

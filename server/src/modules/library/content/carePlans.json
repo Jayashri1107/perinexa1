@@ -1,0 +1,1163 @@
+[
+ {
+  "careType": "antenatal",
+  "name": "Standard antenatal care (FOGSI / WHO / Government of India) – DRAFT",
+  "description": "Combined antenatal schedule drafted from WHO 2016, Government of India (MoHFW) and FOGSI guidance. Must be reviewed and approved by a doctor before use.",
+  "sources": "WHO ANC recommendations 2016; MoHFW (Government of India) ANC, GDM and Anemia Mukt Bharat guidance; FOGSI good clinical practice recommendations.",
+  "items": [
+   {
+    "key": "visit_booking",
+    "kind": "visit",
+    "name": "Booking visit (registration, history, examination)",
+    "patientText": "First pregnancy check-up",
+    "atBooking": true,
+    "source": "WHO: first contact by 12 weeks; MoHFW: first visit as early as possible, before 12 weeks"
+   },
+   {
+    "key": "visit_16",
+    "kind": "visit",
+    "name": "Antenatal visit (16 weeks)",
+    "patientText": "Check-up at about 16 weeks",
+    "fromWeek": 15,
+    "toWeek": 17,
+    "source": "FOGSI/Indian practice: 4-weekly visits in the second trimester"
+   },
+   {
+    "key": "visit_20",
+    "kind": "visit",
+    "name": "Antenatal visit (20 weeks)",
+    "patientText": "Check-up at about 20 weeks",
+    "fromWeek": 19,
+    "toWeek": 21,
+    "source": "WHO contact 2 (20 weeks)"
+   },
+   {
+    "key": "visit_24",
+    "kind": "visit",
+    "name": "Antenatal visit (24–26 weeks)",
+    "patientText": "Check-up at about 24–26 weeks",
+    "fromWeek": 24,
+    "toWeek": 26,
+    "source": "WHO contact 3 (26 weeks); MoHFW visit 2 (14–26 weeks)"
+   },
+   {
+    "key": "visit_28",
+    "kind": "visit",
+    "name": "Antenatal visit (28–30 weeks)",
+    "patientText": "Check-up at about 28–30 weeks",
+    "fromWeek": 28,
+    "toWeek": 30,
+    "source": "WHO contact 4 (30 weeks); MoHFW visit 3 (28–34 weeks)"
+   },
+   {
+    "key": "visit_32",
+    "kind": "visit",
+    "name": "Antenatal visit (32 weeks)",
+    "patientText": "Check-up at about 32 weeks",
+    "fromWeek": 31,
+    "toWeek": 33,
+    "source": "FOGSI/Indian practice: 2-weekly visits from 28 to 36 weeks"
+   },
+   {
+    "key": "visit_34",
+    "kind": "visit",
+    "name": "Antenatal visit (34 weeks)",
+    "patientText": "Check-up at about 34 weeks",
+    "fromWeek": 34,
+    "toWeek": 35,
+    "source": "WHO contact 5 (34 weeks)"
+   },
+   {
+    "key": "visit_36",
+    "kind": "visit",
+    "name": "Antenatal visit (36 weeks)",
+    "patientText": "Check-up at 36 weeks",
+    "fromWeek": 36,
+    "toWeek": 36,
+    "source": "WHO contact 6 (36 weeks); MoHFW visit 4 (36 weeks–term)"
+   },
+   {
+    "key": "visit_37",
+    "kind": "visit",
+    "name": "Antenatal visit (37 weeks)",
+    "patientText": "Check-up at 37 weeks",
+    "fromWeek": 37,
+    "toWeek": 37,
+    "source": "FOGSI/Indian practice: weekly visits from 36 weeks"
+   },
+   {
+    "key": "visit_38",
+    "kind": "visit",
+    "name": "Antenatal visit (38 weeks)",
+    "patientText": "Check-up at 38 weeks",
+    "fromWeek": 38,
+    "toWeek": 38,
+    "source": "WHO contact 7 (38 weeks)"
+   },
+   {
+    "key": "visit_39",
+    "kind": "visit",
+    "name": "Antenatal visit (39 weeks)",
+    "patientText": "Check-up at 39 weeks",
+    "fromWeek": 39,
+    "toWeek": 39,
+    "source": "FOGSI/Indian practice: weekly visits from 36 weeks"
+   },
+   {
+    "key": "visit_40",
+    "kind": "visit",
+    "name": "Antenatal visit (40 weeks) – plan for delivery",
+    "patientText": "Check-up at 40 weeks (due date)",
+    "fromWeek": 40,
+    "toWeek": 40,
+    "source": "WHO contact 8 (40 weeks)"
+   },
+   {
+    "key": "visit_41",
+    "kind": "visit",
+    "name": "Post-dates assessment (41 weeks) if not delivered",
+    "patientText": "Check-up at 41 weeks if baby not yet born",
+    "fromWeek": 41,
+    "toWeek": 41,
+    "source": "Common practice: review for induction at 41 weeks – doctor to confirm"
+   },
+   {
+    "key": "lab_cbc",
+    "kind": "investigation",
+    "name": "Complete blood count (Hb)",
+    "patientText": "Blood test (haemoglobin)",
+    "atBooking": true,
+    "source": "MoHFW / Anemia Mukt Bharat: Hb at first visit"
+   },
+   {
+    "key": "lab_group",
+    "kind": "investigation",
+    "name": "Blood group and Rh typing",
+    "patientText": "Blood group test",
+    "atBooking": true,
+    "source": "WHO, MoHFW, FOGSI"
+   },
+   {
+    "key": "lab_urine",
+    "kind": "investigation",
+    "name": "Urine routine and microscopy (protein, sugar)",
+    "patientText": "Urine test",
+    "atBooking": true,
+    "source": "MoHFW; urine protein at every visit"
+   },
+   {
+    "key": "lab_ogtt1",
+    "kind": "investigation",
+    "name": "GDM screening: 75 g OGTT (2-hour plasma glucose)",
+    "patientText": "Sugar test (glucose drink test)",
+    "atBooking": true,
+    "source": "MoHFW GDM guidelines: universal screening at first visit"
+   },
+   {
+    "key": "lab_hiv",
+    "kind": "investigation",
+    "name": "HIV test (with counselling)",
+    "patientText": "HIV test",
+    "atBooking": true,
+    "source": "MoHFW / NACO: universal antenatal HIV testing"
+   },
+   {
+    "key": "lab_vdrl",
+    "kind": "investigation",
+    "name": "Syphilis test (VDRL / RPR)",
+    "patientText": "Syphilis blood test",
+    "atBooking": true,
+    "source": "WHO, MoHFW"
+   },
+   {
+    "key": "lab_hbsag",
+    "kind": "investigation",
+    "name": "Hepatitis B (HBsAg)",
+    "patientText": "Hepatitis B blood test",
+    "atBooking": true,
+    "source": "FOGSI / MoHFW"
+   },
+   {
+    "key": "lab_tsh",
+    "kind": "investigation",
+    "name": "Thyroid test (TSH)",
+    "patientText": "Thyroid blood test",
+    "atBooking": true,
+    "source": "FOGSI: universal thyroid screening in pregnancy recommended in India – doctor to confirm"
+   },
+   {
+    "key": "lab_ict1",
+    "kind": "investigation",
+    "name": "Indirect Coombs test (ICT)",
+    "patientText": "Antibody blood test (Rh negative)",
+    "atBooking": true,
+    "appliesWhen": "rh_negative",
+    "source": "FOGSI: ICT for Rh-negative mothers at booking"
+   },
+   {
+    "key": "lab_ogtt2",
+    "kind": "investigation",
+    "name": "GDM screening: repeat 75 g OGTT",
+    "patientText": "Repeat sugar test",
+    "fromWeek": 24,
+    "toWeek": 28,
+    "source": "MoHFW GDM guidelines: repeat at 24–28 weeks if first test normal"
+   },
+   {
+    "key": "lab_hb28",
+    "kind": "investigation",
+    "name": "Repeat haemoglobin",
+    "patientText": "Repeat blood test (haemoglobin)",
+    "fromWeek": 28,
+    "toWeek": 30,
+    "source": "MoHFW: Hb in each trimester"
+   },
+   {
+    "key": "lab_ict28",
+    "kind": "investigation",
+    "name": "Repeat indirect Coombs test (ICT)",
+    "patientText": "Repeat antibody blood test",
+    "fromWeek": 28,
+    "toWeek": 28,
+    "appliesWhen": "rh_negative",
+    "source": "FOGSI: repeat ICT at 28 weeks before anti-D"
+   },
+   {
+    "key": "lab_hb36",
+    "kind": "investigation",
+    "name": "Haemoglobin and urine before delivery",
+    "patientText": "Blood and urine tests before delivery",
+    "fromWeek": 36,
+    "toWeek": 37,
+    "source": "Common practice before delivery – doctor to confirm"
+   },
+   {
+    "key": "scan_dating",
+    "kind": "scan",
+    "name": "Dating / viability scan",
+    "patientText": "First ultrasound (to confirm dates)",
+    "fromWeek": 6,
+    "toWeek": 10,
+    "source": "FOGSI / common practice: first-trimester dating scan"
+   },
+   {
+    "key": "scan_nt",
+    "kind": "scan",
+    "name": "NT scan with first-trimester combined screening (double marker)",
+    "patientText": "Ultrasound and blood test for baby’s health (11–13 weeks)",
+    "fromWeek": 11,
+    "toWeek": 13,
+    "source": "FOGSI: combined first-trimester screening at 11–13+6 weeks"
+   },
+   {
+    "key": "scan_anomaly",
+    "kind": "scan",
+    "name": "Anomaly scan (level II / TIFFA)",
+    "patientText": "Detailed ultrasound of baby (18–20 weeks)",
+    "fromWeek": 18,
+    "toWeek": 20,
+    "source": "FOGSI / WHO: one ultrasound before 24 weeks; 18–20 weeks usual in India"
+   },
+   {
+    "key": "scan_growth32",
+    "kind": "scan",
+    "name": "Growth scan",
+    "patientText": "Ultrasound to check baby’s growth",
+    "fromWeek": 30,
+    "toWeek": 32,
+    "source": "Common Indian practice – doctor to decide if routine or only when indicated"
+   },
+   {
+    "key": "scan_doppler",
+    "kind": "scan",
+    "name": "Growth scan with Doppler",
+    "patientText": "Ultrasound with blood-flow check",
+    "fromWeek": 34,
+    "toWeek": 36,
+    "appliesWhen": "high_risk",
+    "source": "For high-risk pregnancies – doctor to confirm indications and timing"
+   },
+   {
+    "key": "scan_twins_24",
+    "kind": "scan",
+    "name": "Growth scan (twins, separate placentas) – 24 weeks",
+    "patientText": "Ultrasound to check growth (24 weeks)",
+    "fromWeek": 24,
+    "toWeek": 25,
+    "appliesWhen": "multiple_pregnancy",
+    "source": "NICE NG137 (2019) / ISUOG twin guideline: dichorionic twins – growth scan at least every 4 weeks from 24 weeks; monochorionic twins need a scan every 2 weeks from 16 weeks (add them for her) – doctor to confirm"
+   },
+   {
+    "key": "scan_twins_28",
+    "kind": "scan",
+    "name": "Growth scan (twins, separate placentas) – 28 weeks",
+    "patientText": "Ultrasound to check growth (28 weeks)",
+    "fromWeek": 28,
+    "toWeek": 29,
+    "appliesWhen": "multiple_pregnancy",
+    "source": "NICE NG137 (2019) / ISUOG twin guideline: dichorionic twins – growth scan at least every 4 weeks – doctor to confirm"
+   },
+   {
+    "key": "scan_growth_gdm",
+    "kind": "scan",
+    "name": "Growth scan with amniotic fluid (gestational diabetes)",
+    "patientText": "Ultrasound to check baby’s growth (28–30 weeks)",
+    "fromWeek": 28,
+    "toWeek": 30,
+    "appliesWhen": "gdm",
+    "source": "MoHFW GDM guidelines (2018): growth scan at 28–30 weeks for GDM, repeated at 34–36 weeks – doctor to confirm"
+   },
+   {
+    "key": "scan_twins_32",
+    "kind": "scan",
+    "name": "Growth scan (twins, separate placentas) – 32 weeks",
+    "patientText": "Ultrasound to check growth (32 weeks)",
+    "fromWeek": 32,
+    "toWeek": 33,
+    "appliesWhen": "multiple_pregnancy",
+    "source": "NICE NG137 (2019) / ISUOG twin guideline: dichorionic twins – growth scan at least every 4 weeks. It takes the place of the routine growth scan at 30–32 weeks (mark that one not needed); the 36-week scan is the high-risk growth scan – doctor to confirm"
+   },
+   {
+    "key": "scan_placenta_32",
+    "kind": "scan",
+    "name": "Repeat scan for the position of the placenta",
+    "patientText": "Follow-up ultrasound (32 weeks)",
+    "fromWeek": 32,
+    "toWeek": 33,
+    "appliesWhen": "placenta_praevia",
+    "source": "RCOG Green-top 27a (2018): follow-up scan at 32 weeks for a low-lying placenta or praevia; if it is still low, again at 36 weeks – doctor to confirm"
+   },
+   {
+    "key": "vacc_td1",
+    "kind": "vaccination",
+    "name": "Td (tetanus-diphtheria) – dose 1 (or booster)",
+    "patientText": "Tetanus (Td) injection – dose 1",
+    "atBooking": true,
+    "source": "MoHFW UIP: Td-1 early in pregnancy; single booster if vaccinated in last 3 years"
+   },
+   {
+    "key": "vacc_td2",
+    "kind": "vaccination",
+    "name": "Td – dose 2",
+    "patientText": "Tetanus (Td) injection – dose 2",
+    "after": {
+     "key": "vacc_td1",
+     "weeks": 4
+    },
+    "source": "MoHFW UIP: Td-2 four weeks after Td-1 (not needed if booster given)"
+   },
+   {
+    "key": "vacc_tdap",
+    "kind": "vaccination",
+    "name": "Tdap (whooping cough protection)",
+    "patientText": "Tdap injection (protects baby from whooping cough)",
+    "fromWeek": 27,
+    "toWeek": 36,
+    "source": "FOGSI: Tdap at 27–36 weeks – may replace Td-2 in private practice; doctor to decide"
+   },
+   {
+    "key": "vacc_flu",
+    "kind": "vaccination",
+    "name": "Inactivated influenza vaccine (in flu season)",
+    "patientText": "Flu injection (if in flu season)",
+    "fromWeek": 14,
+    "toWeek": 36,
+    "source": "FOGSI / WHO: influenza vaccine in any trimester during flu season – doctor to decide"
+   },
+   {
+    "key": "anti_d",
+    "kind": "vaccination",
+    "name": "Anti-D immunoglobulin (if ICT negative)",
+    "patientText": "Anti-D injection (Rh negative)",
+    "fromWeek": 28,
+    "toWeek": 28,
+    "appliesWhen": "rh_negative",
+    "source": "FOGSI: antenatal anti-D prophylaxis at 28 weeks for Rh-negative, ICT-negative mothers"
+   },
+   {
+    "key": "med_folic",
+    "kind": "medication",
+    "name": "Folic acid 400 mcg daily (until 12 weeks)",
+    "patientText": "Folic acid tablet every day until 3 months",
+    "atBooking": true,
+    "source": "WHO / MoHFW"
+   },
+   {
+    "key": "med_ifa",
+    "kind": "medication",
+    "name": "Iron-folic acid daily from 14 weeks (at least 180 days)",
+    "patientText": "Iron tablet every day from 4th month",
+    "fromWeek": 14,
+    "toWeek": 16,
+    "source": "MoHFW / Anemia Mukt Bharat"
+   },
+   {
+    "key": "med_calcium",
+    "kind": "medication",
+    "name": "Calcium 500 mg twice daily from 14 weeks",
+    "patientText": "Calcium tablets from 4th month",
+    "fromWeek": 14,
+    "toWeek": 16,
+    "source": "MoHFW calcium supplementation guidance"
+   },
+   {
+    "key": "med_deworm",
+    "kind": "medication",
+    "name": "Albendazole 400 mg single dose (second trimester)",
+    "patientText": "Deworming tablet (one dose)",
+    "fromWeek": 14,
+    "toWeek": 26,
+    "source": "MoHFW: deworming in the second trimester"
+   },
+   {
+    "key": "adv_diet",
+    "kind": "advice",
+    "name": "Nutrition, rest and hygiene counselling",
+    "patientText": "Eat a balanced diet, rest well, and keep taking your tablets",
+    "atBooking": true,
+    "source": "WHO / MoHFW"
+   },
+   {
+    "key": "adv_danger",
+    "kind": "advice",
+    "name": "Danger signs counselling",
+    "patientText": "Come to hospital at once for bleeding, severe headache, blurred vision, fits, fever, leaking water or reduced baby movements",
+    "atBooking": true,
+    "source": "WHO / MoHFW"
+   },
+   {
+    "key": "adv_fmc",
+    "kind": "advice",
+    "name": "Fetal movement counting",
+    "patientText": "Count your baby’s movements every day",
+    "fromWeek": 28,
+    "toWeek": 28,
+    "source": "Common practice from 28 weeks"
+   },
+   {
+    "key": "adv_birthplan",
+    "kind": "advice",
+    "name": "Birth preparedness and breastfeeding counselling",
+    "patientText": "Plan for delivery; learn about breastfeeding",
+    "fromWeek": 32,
+    "toWeek": 36,
+    "source": "WHO / MoHFW birth preparedness"
+   },
+   {
+    "key": "adv_twins_placentas",
+    "kind": "advice",
+    "name": "Twins or more: check the number of placentas – a shared placenta (monochorionic) or triplets need more scans (add them for her)",
+    "patientText": "Ask your doctor how often you need an ultrasound scan",
+    "fromWeek": 12,
+    "toWeek": 16,
+    "appliesWhen": "multiple_pregnancy",
+    "source": "NICE NG137 (2019) / ISUOG twin guideline: chorionicity is decided at the 11–14 week scan. Monochorionic twins: a scan every 2 weeks from 16 weeks; triplets: every 2 weeks (from 16 weeks when a placenta is shared). The built-in twin scans at 24, 28 and 32 weeks are for dichorionic twins only – doctor to confirm"
+   }
+  ]
+ },
+ {
+  "careType": "postnatal",
+  "name": "Standard postnatal care (WHO / Government of India) – DRAFT",
+  "description": "Postnatal schedule for the mother, counted from the day of delivery. Must be reviewed and approved by a doctor before use.",
+  "sources": "WHO postnatal care recommendations 2022; MoHFW Home-Based Postnatal Care; Anemia Mukt Bharat.",
+  "items": [
+   {
+    "key": "pnc_day1",
+    "kind": "visit",
+    "name": "Postnatal check within 24 hours (bleeding, BP, breastfeeding)",
+    "patientText": "Check-up on the day after delivery",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "WHO 2022: first contact within 24 hours"
+   },
+   {
+    "key": "pnc_day3",
+    "kind": "visit",
+    "name": "Postnatal check (day 3)",
+    "patientText": "Check-up about 3 days after delivery",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "WHO 2022 / MoHFW HBPNC: day 3"
+   },
+   {
+    "key": "pnc_wk1",
+    "kind": "visit",
+    "name": "Postnatal check (days 7–14): wound or perineum, breastfeeding, mood",
+    "patientText": "Check-up 1–2 weeks after delivery",
+    "fromWeek": 1,
+    "toWeek": 2,
+    "source": "WHO 2022: between day 7 and 14"
+   },
+   {
+    "key": "pnc_cs_wound",
+    "kind": "visit",
+    "name": "Caesarean wound check and stitch removal if needed (7–10 days)",
+    "patientText": "Wound check about a week after the operation",
+    "fromWeek": 1,
+    "toWeek": 1,
+    "appliesWhen": "previous_caesarean",
+    "source": "Indian practice; doctor to confirm"
+   },
+   {
+    "key": "pnc_wk6",
+    "kind": "visit",
+    "name": "Postnatal check (6 weeks): recovery, BP, contraception",
+    "patientText": "Check-up 6 weeks after delivery",
+    "fromWeek": 6,
+    "toWeek": 7,
+    "source": "WHO 2022 / MoHFW: 6 weeks"
+   },
+   {
+    "key": "pnc_hb",
+    "kind": "investigation",
+    "name": "Haemoglobin (anaemia check)",
+    "patientText": "Blood test for haemoglobin at 6 weeks",
+    "fromWeek": 6,
+    "toWeek": 7,
+    "source": "Anemia Mukt Bharat"
+   },
+   {
+    "key": "pnc_bp",
+    "kind": "visit",
+    "name": "BP check within the first week (hypertension)",
+    "patientText": "Blood pressure check in the first week",
+    "fromWeek": 0,
+    "toWeek": 1,
+    "appliesWhen": "hypertension_any",
+    "source": "WHO 2022; doctor to confirm for hypertensive disorders of pregnancy"
+   },
+   {
+    "key": "pnc_sugar",
+    "kind": "investigation",
+    "name": "Blood sugar review (diabetes)",
+    "patientText": "Blood sugar test after delivery",
+    "fromWeek": 6,
+    "toWeek": 12,
+    "appliesWhen": "diabetes_any",
+    "source": "MoHFW GDM guidance: 75 g OGTT 6–12 weeks after delivery after GDM; doctor to confirm"
+   },
+   {
+    "key": "pnc_antid",
+    "kind": "vaccination",
+    "name": "Anti-D within 72 hours (Rh-negative mother, Rh-positive baby)",
+    "patientText": "Anti-D injection soon after delivery",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "appliesWhen": "rh_negative",
+    "source": "Standard practice; doctor to confirm the baby’s blood group"
+   },
+   {
+    "key": "pnc_ifa",
+    "kind": "medication",
+    "name": "Iron and folic acid daily for 6 months",
+    "patientText": "Iron tablets every day for 6 months",
+    "fromWeek": 0,
+    "toWeek": 1,
+    "source": "Anemia Mukt Bharat"
+   },
+   {
+    "key": "pnc_calcium",
+    "kind": "medication",
+    "name": "Calcium daily for 6 months",
+    "patientText": "Calcium tablets every day for 6 months",
+    "fromWeek": 0,
+    "toWeek": 1,
+    "source": "MoHFW"
+   },
+   {
+    "key": "pnc_adv_bf",
+    "kind": "advice",
+    "name": "Exclusive breastfeeding for 6 months",
+    "patientText": "Give only breast milk for the first 6 months",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "WHO / MoHFW"
+   },
+   {
+    "key": "pnc_adv_danger",
+    "kind": "advice",
+    "name": "Danger signs (heavy bleeding, fever, foul discharge, severe headache, breathlessness)",
+    "patientText": "Come at once for heavy bleeding, fever, bad-smelling discharge, severe headache or breathlessness",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "WHO 2022"
+   },
+   {
+    "key": "pnc_adv_contra",
+    "kind": "advice",
+    "name": "Family planning counselling (PPIUCD, other methods)",
+    "patientText": "Talk about family planning",
+    "fromWeek": 6,
+    "toWeek": 7,
+    "source": "MoHFW postpartum family planning"
+   }
+  ]
+ },
+ {
+  "careType": "newborn",
+  "name": "Newborn care and immunisation (Government of India UIP) – DRAFT",
+  "description": "Newborn checks and the national immunisation schedule, counted from the day of birth. Must be reviewed and approved by a doctor before use.",
+  "sources": "Government of India Universal Immunization Programme schedule; WHO newborn care; MoHFW Home-Based Newborn Care.",
+  "items": [
+   {
+    "key": "nb_exam",
+    "kind": "visit",
+    "name": "Newborn examination within 24 hours",
+    "patientText": "Baby’s first check-up",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "WHO / MoHFW"
+   },
+   {
+    "key": "nb_check",
+    "kind": "visit",
+    "name": "Newborn check (days 3–7): weight, jaundice, feeding, cord",
+    "patientText": "Baby check-up in the first week",
+    "fromWeek": 0,
+    "toWeek": 1,
+    "source": "MoHFW HBNC"
+   },
+   {
+    "key": "nb_lab_screening",
+    "kind": "investigation",
+    "name": "Newborn screening (heel prick) after 48 hours: hypothyroidism, G6PD, CAH, galactosaemia, PKU, biotinidase",
+    "patientText": "Heel-prick blood test for the baby (after 2 days of age)",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "MoHFW RBSK newborn screening"
+   },
+   {
+    "key": "nb_cchd",
+    "kind": "investigation",
+    "name": "Pulse-oximetry heart screen (CCHD) after 24 hours, before going home",
+    "patientText": "Oxygen check on the baby's hand and foot",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "AAP / AHA critical congenital heart disease screening"
+   },
+   {
+    "key": "nb_hearing",
+    "kind": "investigation",
+    "name": "Hearing screen (OAE) before going home, or by 1 month",
+    "patientText": "Baby's hearing test",
+    "fromWeek": 0,
+    "toWeek": 4,
+    "source": "MoHFW RBSK; JCIH 1-3-6 (screen by 1 month)"
+   },
+   {
+    "key": "nb_vacc_birth",
+    "kind": "vaccination",
+    "name": "Birth doses: BCG, OPV-0, Hepatitis B (birth dose)",
+    "patientText": "Vaccines at birth: BCG, polio drops, Hepatitis B",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "UIP: at birth (Hep B within 24 hours)"
+   },
+   {
+    "key": "nb_vacc_6w",
+    "kind": "vaccination",
+    "name": "6 weeks: OPV-1, Pentavalent-1, Rotavirus-1, fIPV-1, PCV-1",
+    "patientText": "Vaccines at 6 weeks",
+    "fromWeek": 6,
+    "toWeek": 7,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_vacc_10w",
+    "kind": "vaccination",
+    "name": "10 weeks: OPV-2, Pentavalent-2, Rotavirus-2",
+    "patientText": "Vaccines at 10 weeks",
+    "fromWeek": 10,
+    "toWeek": 11,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_vacc_14w",
+    "kind": "vaccination",
+    "name": "14 weeks: OPV-3, Pentavalent-3, Rotavirus-3, fIPV-2, PCV-2",
+    "patientText": "Vaccines at 14 weeks",
+    "fromWeek": 14,
+    "toWeek": 15,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_vacc_9m",
+    "kind": "vaccination",
+    "name": "9 months: MR-1, PCV booster, fIPV-3, JE-1 (where endemic)",
+    "patientText": "Vaccines at 9 months (measles–rubella)",
+    "fromWeek": 39,
+    "toWeek": 52,
+    "source": "UIP (9–12 months)"
+   },
+   {
+    "key": "nb_vita_1",
+    "kind": "medication",
+    "name": "Vitamin A, first dose (9 months)",
+    "patientText": "Vitamin A at 9 months",
+    "fromWeek": 39,
+    "toWeek": 52,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_vacc_16m",
+    "kind": "vaccination",
+    "name": "16–24 months: MR-2, DPT booster-1, OPV booster, JE-2 (where endemic)",
+    "patientText": "Vaccines at 16–24 months",
+    "fromWeek": 69,
+    "toWeek": 104,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_vita_2",
+    "kind": "medication",
+    "name": "Vitamin A, second dose (16 months), then every 6 months till 5 years",
+    "patientText": "Vitamin A every 6 months till 5 years",
+    "fromWeek": 69,
+    "toWeek": 78,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_vacc_5y",
+    "kind": "vaccination",
+    "name": "5–6 years: DPT booster-2",
+    "patientText": "Vaccine at 5–6 years",
+    "fromWeek": 260,
+    "toWeek": 312,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_vacc_10y",
+    "kind": "vaccination",
+    "name": "10 years: Td",
+    "patientText": "Vaccine at 10 years",
+    "fromWeek": 520,
+    "toWeek": 572,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_vacc_16y",
+    "kind": "vaccination",
+    "name": "16 years: Td",
+    "patientText": "Vaccine at 16 years",
+    "fromWeek": 832,
+    "toWeek": 884,
+    "source": "UIP"
+   },
+   {
+    "key": "nb_adv_bf",
+    "kind": "advice",
+    "name": "Exclusive breastfeeding for 6 months; keep warm; cord care",
+    "patientText": "Only breast milk for 6 months, keep the baby warm, keep the cord dry",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "WHO / MoHFW"
+   },
+   {
+    "key": "nb_adv_danger",
+    "kind": "advice",
+    "name": "Danger signs (poor feeding, fast breathing, fever or cold, yellow skin, convulsions)",
+    "patientText": "Come at once if the baby feeds poorly, breathes fast, is hot or cold, turns yellow or has fits",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "source": "WHO IMNCI"
+   }
+  ]
+ },
+ {
+  "careType": "gynaecology",
+  "name": "Routine gynaecology care (WHO / Government of India / FOGSI) – DRAFT",
+  "description": "Well-woman checks counted from the first gynaecology visit. Must be reviewed and approved by a doctor before use.",
+  "sources": "WHO and MoHFW operational guidelines for screening of common cancers; FOGSI good clinical practice recommendations.",
+  "items": [
+   {
+    "key": "gyn_first",
+    "kind": "visit",
+    "name": "Gynaecology consultation (history, examination)",
+    "patientText": "First check-up",
+    "atBooking": true,
+    "source": "Standard practice"
+   },
+   {
+    "key": "gyn_hb",
+    "kind": "investigation",
+    "name": "Haemoglobin (anaemia screening)",
+    "patientText": "Blood test for haemoglobin",
+    "atBooking": true,
+    "source": "Anemia Mukt Bharat"
+   },
+   {
+    "key": "gyn_breast",
+    "kind": "visit",
+    "name": "Clinical breast examination",
+    "patientText": "Breast examination",
+    "atBooking": true,
+    "source": "MoHFW screening of common cancers"
+   },
+   {
+    "key": "gyn_cervix",
+    "kind": "investigation",
+    "name": "Cervical cancer screening if due (VIA / Pap / HPV test; women 30–65)",
+    "patientText": "Test for cervical cancer (if due)",
+    "atBooking": true,
+    "source": "WHO / MoHFW: women 30–65; doctor decides by age and earlier results"
+   },
+   {
+    "key": "gyn_review",
+    "kind": "visit",
+    "name": "Follow-up with reports",
+    "patientText": "Come back with the reports",
+    "fromWeek": 2,
+    "toWeek": 6,
+    "source": "Standard practice"
+   },
+   {
+    "key": "gyn_annual",
+    "kind": "visit",
+    "name": "Annual gynaecology review",
+    "patientText": "Yearly check-up",
+    "fromWeek": 52,
+    "toWeek": 56,
+    "source": "FOGSI"
+   },
+   {
+    "key": "gyn_cervix_repeat",
+    "kind": "investigation",
+    "name": "Repeat cervical screening (if the last result was normal)",
+    "patientText": "Repeat cervical cancer test",
+    "fromWeek": 156,
+    "toWeek": 164,
+    "source": "Pap every 3 years / HPV every 5 years; doctor decides"
+   }
+  ]
+ },
+ {
+  "careType": "infertility",
+  "name": "Infertility evaluation (FOGSI / ICMR / NICE) – DRAFT",
+  "description": "First evaluation of the couple, counted from the first fertility visit. Must be reviewed and approved by a doctor before use.",
+  "sources": "ICMR national guidelines for infertility evaluation (2018); FOGSI; NICE CG156 Fertility problems.",
+  "items": [
+   {
+    "key": "inf_first",
+    "kind": "visit",
+    "name": "Fertility consultation (history of both partners, examination)",
+    "patientText": "First fertility check-up (please come with your partner)",
+    "atBooking": true,
+    "source": "ICMR / NICE"
+   },
+   {
+    "key": "inf_folic",
+    "kind": "medication",
+    "name": "Folic acid daily while trying to conceive",
+    "patientText": "Folic acid tablet every day",
+    "atBooking": true,
+    "source": "NICE CG156 / WHO"
+   },
+   {
+    "key": "inf_hormones",
+    "kind": "investigation",
+    "name": "Day 2–3 hormones: FSH, LH, AMH, TSH, prolactin",
+    "patientText": "Blood tests on day 2–3 of the period",
+    "fromWeek": 0,
+    "toWeek": 5,
+    "source": "ICMR / FOGSI"
+   },
+   {
+    "key": "inf_tvs",
+    "kind": "scan",
+    "name": "Baseline transvaginal scan (antral follicle count, uterus, ovaries)",
+    "patientText": "Scan early in the cycle",
+    "fromWeek": 0,
+    "toWeek": 5,
+    "source": "ICMR / FOGSI"
+   },
+   {
+    "key": "inf_semen",
+    "kind": "investigation",
+    "name": "Semen analysis (partner)",
+    "patientText": "Semen test for your partner",
+    "atBooking": true,
+    "source": "WHO 2021 laboratory manual; ICMR"
+   },
+   {
+    "key": "inf_infections",
+    "kind": "investigation",
+    "name": "Rubella immunity; HIV, HBsAg, HCV, VDRL (both partners)",
+    "patientText": "Blood tests for both partners",
+    "atBooking": true,
+    "source": "NICE CG156 / ICMR"
+   },
+   {
+    "key": "inf_tubal",
+    "kind": "investigation",
+    "name": "Tubal patency test (HSG / sono-HSG), days 6–10 of the cycle",
+    "patientText": "Test to check the tubes",
+    "fromWeek": 1,
+    "toWeek": 8,
+    "source": "ICMR / NICE"
+   },
+   {
+    "key": "inf_review",
+    "kind": "visit",
+    "name": "Review with all reports and treatment plan",
+    "patientText": "Come back with all the reports",
+    "fromWeek": 4,
+    "toWeek": 8,
+    "source": "Standard practice"
+   },
+   {
+    "key": "inf_review_3m",
+    "kind": "visit",
+    "name": "Treatment review (3 months)",
+    "patientText": "Check-up after 3 months",
+    "fromWeek": 12,
+    "toWeek": 14,
+    "source": "Standard practice; doctor decides"
+   },
+   {
+    "key": "inf_adv",
+    "kind": "advice",
+    "name": "Lifestyle: weight, no smoking or alcohol, timed intercourse",
+    "patientText": "Healthy weight, no smoking or alcohol; your doctor explains the fertile days",
+    "atBooking": true,
+    "source": "NICE CG156"
+   }
+  ]
+ },
+ {
+  "careType": "pregnancy_loss",
+  "name": "Care after pregnancy loss (NICE / RCOG / FOGSI / ESHRE) – DRAFT",
+  "description": "Follow-up after a miscarriage, an ectopic or a molar pregnancy, and the work-up for recurrent loss, counted from the day the loss was diagnosed (the date seen on the record). Which items apply follows the type of loss, its management, the anti-D answer and the Abortions (A) count on the record. Must be reviewed and approved by a doctor before use.",
+  "sources": "NICE NG126 Ectopic pregnancy and miscarriage (2019, updated 2023); RCOG Green-top Guideline 38 Gestational trophoblastic disease (2020) and 21 Ectopic pregnancy (2016); FOGSI / FIGO 2021 (trophoblastic disease); ESHRE Recurrent pregnancy loss (update 2022); WHO Medical eligibility criteria for contraceptive use (2015); Anemia Mukt Bharat.",
+  "items": [
+   {
+    "key": "loss_followup",
+    "kind": "visit",
+    "name": "Follow-up visit 1–2 weeks after the loss: bleeding, pain, fever, how she is coping; the report of any tissue sent",
+    "patientText": "Follow-up check-up in 1–2 weeks",
+    "fromWeek": 1,
+    "toWeek": 2,
+    "appliesWhen": "loss_now",
+    "source": "Standard practice; doctor to confirm the interval"
+   },
+   {
+    "key": "loss_hb",
+    "kind": "investigation",
+    "name": "Haemoglobin (anaemia after blood loss)",
+    "patientText": "Blood test for haemoglobin",
+    "fromWeek": 0,
+    "toWeek": 2,
+    "appliesWhen": "loss_now",
+    "source": "Anemia Mukt Bharat; standard practice after blood loss"
+   },
+   {
+    "key": "loss_antid",
+    "kind": "vaccination",
+    "name": "Anti-D for an Rh-negative woman, within 72 hours – record it under Pregnancy loss (Edit details)",
+    "patientText": "Anti-D injection (Rh negative)",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "appliesWhen": "loss_anti_d_due",
+    "source": "NICE NG126: offer after surgical management of a miscarriage or an ectopic pregnancy; not after medical or expectant management alone, or a complete miscarriage. Many Indian units give it to every Rh-negative woman – doctor decides. The item stops applying once anti-D is recorded as given or not needed."
+   },
+   {
+    "key": "loss_adv_contraception",
+    "kind": "advice",
+    "name": "Contraception: ask what she wishes – fertility can return before the next period",
+    "patientText": "Talk about family planning",
+    "fromWeek": 0,
+    "toWeek": 2,
+    "appliesWhen": "loss_now",
+    "source": "WHO Medical eligibility criteria for contraceptive use (2015): most methods can be started straight after a loss in the first 12 weeks; after a molar pregnancy see its own item. Doctor to confirm."
+   },
+   {
+    "key": "loss_adv_next",
+    "kind": "advice",
+    "name": "Next pregnancy: folic acid before trying, early booking; when to try again is for her and the doctor to decide (after methotrexate: wait at least 3 months)",
+    "patientText": "Advice for planning your next pregnancy",
+    "fromWeek": 1,
+    "toWeek": 2,
+    "source": "WHO technical consultation on birth spacing (2005): 6 months after a miscarriage – later studies find no harm in conceiving sooner. RCOG Green-top Guideline 21 (2016): wait at least 3 months after methotrexate. Doctor to advise."
+   },
+   {
+    "key": "loss_molar_hcg_2w",
+    "kind": "investigation",
+    "name": "Beta hCG after molar pregnancy – every 2 weeks until normal (RCOG GTG 38): 2 weeks",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 2,
+    "toWeek": 2,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): complete mole – follow up for 6 months from the evacuation if hCG is normal within 56 days, otherwise 6 months from the first normal value; partial mole – ends when hCG is normal on two samples at least 4 weeks apart. Every 2 weeks until normal: UK centres. FOGSI / FIGO 2021: every 1–2 weeks until normal, then monthly – how long varies. Doctor to confirm."
+   },
+   {
+    "key": "loss_molar_hcg_4w",
+    "kind": "investigation",
+    "name": "Beta hCG after molar pregnancy – every 2 weeks until normal (RCOG GTG 38): 4 weeks",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 4,
+    "toWeek": 4,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): complete mole – follow up for 6 months from the evacuation if hCG is normal within 56 days, otherwise 6 months from the first normal value; partial mole – ends when hCG is normal on two samples at least 4 weeks apart. Every 2 weeks until normal: UK centres. FOGSI / FIGO 2021: every 1–2 weeks until normal, then monthly – how long varies. Doctor to confirm."
+   },
+   {
+    "key": "loss_molar_hcg_6w",
+    "kind": "investigation",
+    "name": "Beta hCG after molar pregnancy – every 2 weeks until normal (RCOG GTG 38): 6 weeks",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 6,
+    "toWeek": 6,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): complete mole – follow up for 6 months from the evacuation if hCG is normal within 56 days, otherwise 6 months from the first normal value; partial mole – ends when hCG is normal on two samples at least 4 weeks apart. Every 2 weeks until normal: UK centres. FOGSI / FIGO 2021: every 1–2 weeks until normal, then monthly – how long varies. Doctor to confirm."
+   },
+   {
+    "key": "loss_molar_hcg_8w",
+    "kind": "investigation",
+    "name": "Beta hCG after molar pregnancy – every 2 weeks until normal (RCOG GTG 38): 8 weeks (56 days). Not normal yet: keep testing every 2 weeks",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 8,
+    "toWeek": 8,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): complete mole – follow up for 6 months from the evacuation if hCG is normal within 56 days, otherwise 6 months from the first normal value; partial mole – ends when hCG is normal on two samples at least 4 weeks apart. Every 2 weeks until normal: UK centres. FOGSI / FIGO 2021: every 1–2 weeks until normal, then monthly – how long varies. Doctor to confirm."
+   },
+   {
+    "key": "loss_molar_hcg_3m",
+    "kind": "investigation",
+    "name": "Beta hCG after molar pregnancy – monthly once normal, to 6 months (RCOG GTG 38): 3 months",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 13,
+    "toWeek": 14,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): complete mole – follow up for 6 months from the evacuation if hCG is normal within 56 days, otherwise 6 months from the first normal value; partial mole – ends when hCG is normal on two samples at least 4 weeks apart. Every 2 weeks until normal: UK centres. FOGSI / FIGO 2021: every 1–2 weeks until normal, then monthly – how long varies. Doctor to confirm."
+   },
+   {
+    "key": "loss_molar_hcg_4m",
+    "kind": "investigation",
+    "name": "Beta hCG after molar pregnancy – monthly once normal, to 6 months (RCOG GTG 38): 4 months",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 17,
+    "toWeek": 18,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): complete mole – follow up for 6 months from the evacuation if hCG is normal within 56 days, otherwise 6 months from the first normal value; partial mole – ends when hCG is normal on two samples at least 4 weeks apart. Every 2 weeks until normal: UK centres. FOGSI / FIGO 2021: every 1–2 weeks until normal, then monthly – how long varies. Doctor to confirm."
+   },
+   {
+    "key": "loss_molar_hcg_5m",
+    "kind": "investigation",
+    "name": "Beta hCG after molar pregnancy – monthly once normal, to 6 months (RCOG GTG 38): 5 months",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 21,
+    "toWeek": 22,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): complete mole – follow up for 6 months from the evacuation if hCG is normal within 56 days, otherwise 6 months from the first normal value; partial mole – ends when hCG is normal on two samples at least 4 weeks apart. Every 2 weeks until normal: UK centres. FOGSI / FIGO 2021: every 1–2 weeks until normal, then monthly – how long varies. Doctor to confirm."
+   },
+   {
+    "key": "loss_molar_hcg_6m",
+    "kind": "investigation",
+    "name": "Beta hCG after molar pregnancy – monthly once normal, to 6 months (RCOG GTG 38): 6 months – the last test for a complete mole whose hCG was normal within 56 days",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 26,
+    "toWeek": 27,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): complete mole – follow up for 6 months from the evacuation if hCG is normal within 56 days, otherwise 6 months from the first normal value; partial mole – ends when hCG is normal on two samples at least 4 weeks apart. Every 2 weeks until normal: UK centres. FOGSI / FIGO 2021: every 1–2 weeks until normal, then monthly – how long varies. Doctor to confirm."
+   },
+   {
+    "key": "loss_molar_adv",
+    "kind": "advice",
+    "name": "Molar pregnancy: no new pregnancy until hCG follow-up is complete; contraception – no intrauterine device until hCG is normal",
+    "patientText": "Please avoid a new pregnancy until your doctor says the follow-up is complete",
+    "fromWeek": 0,
+    "toWeek": 2,
+    "appliesWhen": "loss_molar",
+    "source": "RCOG Green-top Guideline 38 (2020): no pregnancy until follow-up ends; RCOG has advised barrier methods until hCG is normal. WHO Medical eligibility criteria (2015): with hCG falling or undetectable, pills, injections and implants are category 1 and an intrauterine device category 3. The two differ – the doctor confirms the current advice."
+   },
+   {
+    "key": "loss_ect_hcg_d2",
+    "kind": "investigation",
+    "name": "Beta hCG, ectopic managed by waiting (NICE NG126): day 2",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "appliesWhen": "loss_ectopic_expectant",
+    "source": "Waiting – NICE NG126 (2019, updated 2023): hCG days 2, 4, 7, then weekly until negative (under 20 IU/L) if it falls 15% or more each time. Methotrexate – NICE NG126 and RCOG GTG 21 (2016): days 4 and 7, then weekly until negative. After a salpingotomy (tube kept) NICE NG126 also advises hCG follow-up: include these items yourself. Move an item if day 0 was another day. Doctor to confirm."
+   },
+   {
+    "key": "loss_ect_hcg_d4",
+    "kind": "investigation",
+    "name": "Beta hCG, ectopic managed by waiting or with methotrexate (NICE NG126; RCOG GTG 21): day 4",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 0,
+    "toWeek": 0,
+    "appliesWhen": "loss_ectopic_hcg",
+    "source": "Waiting – NICE NG126 (2019, updated 2023): hCG days 2, 4, 7, then weekly until negative (under 20 IU/L) if it falls 15% or more each time. Methotrexate – NICE NG126 and RCOG GTG 21 (2016): days 4 and 7, then weekly until negative. After a salpingotomy (tube kept) NICE NG126 also advises hCG follow-up: include these items yourself. Move an item if day 0 was another day. Doctor to confirm."
+   },
+   {
+    "key": "loss_ect_hcg_d7",
+    "kind": "investigation",
+    "name": "Beta hCG, ectopic managed by waiting or with methotrexate (NICE NG126; RCOG GTG 21): day 7, then weekly until negative",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 1,
+    "toWeek": 1,
+    "appliesWhen": "loss_ectopic_hcg",
+    "source": "Waiting – NICE NG126 (2019, updated 2023): hCG days 2, 4, 7, then weekly until negative (under 20 IU/L) if it falls 15% or more each time. Methotrexate – NICE NG126 and RCOG GTG 21 (2016): days 4 and 7, then weekly until negative. After a salpingotomy (tube kept) NICE NG126 also advises hCG follow-up: include these items yourself. Move an item if day 0 was another day. Doctor to confirm."
+   },
+   {
+    "key": "loss_ect_hcg_w2",
+    "kind": "investigation",
+    "name": "Beta hCG, ectopic follow-up – weekly until negative (NICE NG126; RCOG GTG 21): week 2",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 2,
+    "toWeek": 2,
+    "appliesWhen": "loss_ectopic_hcg",
+    "source": "Waiting – NICE NG126 (2019, updated 2023): hCG days 2, 4, 7, then weekly until negative (under 20 IU/L) if it falls 15% or more each time. Methotrexate – NICE NG126 and RCOG GTG 21 (2016): days 4 and 7, then weekly until negative. After a salpingotomy (tube kept) NICE NG126 also advises hCG follow-up: include these items yourself. Move an item if day 0 was another day. Doctor to confirm."
+   },
+   {
+    "key": "loss_ect_hcg_w3",
+    "kind": "investigation",
+    "name": "Beta hCG, ectopic follow-up – weekly until negative (NICE NG126; RCOG GTG 21): week 3",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 3,
+    "toWeek": 3,
+    "appliesWhen": "loss_ectopic_hcg",
+    "source": "Waiting – NICE NG126 (2019, updated 2023): hCG days 2, 4, 7, then weekly until negative (under 20 IU/L) if it falls 15% or more each time. Methotrexate – NICE NG126 and RCOG GTG 21 (2016): days 4 and 7, then weekly until negative. After a salpingotomy (tube kept) NICE NG126 also advises hCG follow-up: include these items yourself. Move an item if day 0 was another day. Doctor to confirm."
+   },
+   {
+    "key": "loss_ect_hcg_w4",
+    "kind": "investigation",
+    "name": "Beta hCG, ectopic follow-up – weekly until negative (NICE NG126; RCOG GTG 21): week 4",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 4,
+    "toWeek": 4,
+    "appliesWhen": "loss_ectopic_hcg",
+    "source": "Waiting – NICE NG126 (2019, updated 2023): hCG days 2, 4, 7, then weekly until negative (under 20 IU/L) if it falls 15% or more each time. Methotrexate – NICE NG126 and RCOG GTG 21 (2016): days 4 and 7, then weekly until negative. After a salpingotomy (tube kept) NICE NG126 also advises hCG follow-up: include these items yourself. Move an item if day 0 was another day. Doctor to confirm."
+   },
+   {
+    "key": "loss_ect_hcg_w5",
+    "kind": "investigation",
+    "name": "Beta hCG, ectopic follow-up – weekly until negative (NICE NG126; RCOG GTG 21): week 5",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 5,
+    "toWeek": 5,
+    "appliesWhen": "loss_ectopic_hcg",
+    "source": "Waiting – NICE NG126 (2019, updated 2023): hCG days 2, 4, 7, then weekly until negative (under 20 IU/L) if it falls 15% or more each time. Methotrexate – NICE NG126 and RCOG GTG 21 (2016): days 4 and 7, then weekly until negative. After a salpingotomy (tube kept) NICE NG126 also advises hCG follow-up: include these items yourself. Move an item if day 0 was another day. Doctor to confirm."
+   },
+   {
+    "key": "loss_ect_hcg_w6",
+    "kind": "investigation",
+    "name": "Beta hCG, ectopic follow-up – weekly until negative (NICE NG126; RCOG GTG 21): week 6. Still positive: keep testing weekly",
+    "patientText": "Blood test (beta hCG)",
+    "fromWeek": 6,
+    "toWeek": 6,
+    "appliesWhen": "loss_ectopic_hcg",
+    "source": "Waiting – NICE NG126 (2019, updated 2023): hCG days 2, 4, 7, then weekly until negative (under 20 IU/L) if it falls 15% or more each time. Methotrexate – NICE NG126 and RCOG GTG 21 (2016): days 4 and 7, then weekly until negative. After a salpingotomy (tube kept) NICE NG126 also advises hCG follow-up: include these items yourself. Move an item if day 0 was another day. Doctor to confirm."
+   },
+   {
+    "key": "loss_rpl_workup",
+    "kind": "investigation",
+    "name": "Recurrent-loss work-up (the doctor decides when; ESHRE 2022 advises it after two losses): antiphospholipid antibodies, TSH and TPO antibodies, uterine anatomy",
+    "patientText": "Tests your doctor will explain",
+    "fromWeek": 0,
+    "toWeek": 8,
+    "appliesWhen": "loss_recurrent",
+    "source": "ESHRE Recurrent pregnancy loss (2022): antiphospholipid antibodies, thyroid tests and the uterus after two losses; parental karyotype and thrombophilia tests only after assessment. Applies from the number of losses set in the app, counted from Abortions (A) – which may include losses that were not spontaneous: the doctor confirms, and decides for each woman."
+   }
+  ]
+ }
+]
