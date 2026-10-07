@@ -7,6 +7,10 @@ import { Hospital } from '../hospitals/hospital.model.js';
 import { Membership } from '../members/membership.model.js';
 import { Patient } from '../patients/patient.model.js';
 import { Sale } from '../sales/sale.model.js';
+import { Admission } from '../admissions/admission.model.js';
+import { Appointment } from '../appointments/appointment.model.js';
+import { Visit } from '../visits/visit.model.js';
+import { todayLocal } from '../../core/dates.js';
 
 const byHospital = (rows) => new Map(rows.map((r) => [r._id.toString(), r]));
 
@@ -17,7 +21,8 @@ export async function platformAnalytics() {
   const thisMonth = monthStart(0);
   const antenatal = config.patients.careTypes.find((c) => c.needsLmp)?.key;
 
-  const [patients, staff, billed, collected, pharmacy] = await Promise.all([
+  const today = new Date(`${todayLocal()}T00:00:00.000Z`);
+  const [patients, staff, billed, collected, pharmacy, visits, admitted, appointmentsToday] = await Promise.all([
     Patient.aggregate([
       { $match: inAll },
       {
@@ -37,11 +42,14 @@ export async function platformAnalytics() {
       { $group: { _id: '$hospitalId', collected: { $sum: { $cond: [{ $eq: ['$kind', 'refund'] }, { $multiply: ['$amount', -1] }, '$amount'] } } } },
     ]),
     Sale.aggregate([{ $match: { ...inAll, createdAt: { $gte: thisMonth } } }, { $group: { _id: '$hospitalId', pharmacy: { $sum: { $subtract: ['$total', '$returnedAmount'] } } } }]),
+    Visit.aggregate([{ $match: { ...inAll, status: 'active', visitOn: { $gte: thisMonth } } }, { $group: { _id: '$hospitalId', visits: { $sum: 1 } } }]),
+    Admission.aggregate([{ $match: { ...inAll, status: 'admitted' } }, { $group: { _id: '$hospitalId', admitted: { $sum: 1 } } }]),
+    Appointment.aggregate([{ $match: { ...inAll, on: today, status: { $ne: 'cancelled' } } }, { $group: { _id: '$hospitalId', appointments: { $sum: 1 } } }]),
   ]);
-  const maps = [patients, staff, billed, collected, pharmacy].map(byHospital);
+  const maps = [patients, staff, billed, collected, pharmacy, visits, admitted, appointmentsToday].map(byHospital);
   const rows = hospitals.map((h) => {
     const id = h._id.toString();
-    const [p, s, b, c, ph] = maps.map((m) => m.get(id) ?? {});
+    const [p, s, b, c, ph, v, a, ap] = maps.map((m) => m.get(id) ?? {});
     return {
       id,
       name: h.name,
@@ -55,9 +63,12 @@ export async function platformAnalytics() {
       billedThisMonth: round2(b.billed ?? 0),
       collectedThisMonth: round2(c.collected ?? 0),
       pharmacyThisMonth: round2(ph.pharmacy ?? 0),
+      visitsThisMonth: v.visits ?? 0,
+      admittedNow: a.admitted ?? 0,
+      appointmentsToday: ap.appointments ?? 0,
     };
   });
-  const keys = ['patients', 'active', 'newThisMonth', 'pregnancies', 'staff', 'billedThisMonth', 'collectedThisMonth', 'pharmacyThisMonth'];
+  const keys = ['patients', 'active', 'newThisMonth', 'pregnancies', 'staff', 'billedThisMonth', 'collectedThisMonth', 'pharmacyThisMonth', 'visitsThisMonth', 'admittedNow', 'appointmentsToday'];
   const totals = Object.fromEntries(keys.map((k) => [k, round2(rows.reduce((n, r) => n + r[k], 0))]));
   return { hospitals: rows, totals, trend: await monthlyTrend(inAll) };
 }
@@ -65,7 +76,7 @@ export async function platformAnalytics() {
 // All hospitals together, month by month (config.analytics.months): new patients, billed, received, pharmacy sales.
 async function monthlyTrend(inAll) {
   const since = monthStart(config.analytics.months - 1);
-  const [patients, billed, received, pharmacy] = await Promise.all([
+  const [patients, billed, received, pharmacy, visits] = await Promise.all([
     Patient.aggregate([{ $match: { ...inAll, createdAt: { $gte: since } } }, { $group: { _id: monthOf('$createdAt'), v: { $sum: 1 } } }]),
     Bill.aggregate([{ $match: { ...inAll, createdAt: { $gte: since }, status: { $ne: 'cancelled' } } }, { $group: { _id: monthOf('$createdAt'), v: { $sum: '$total' } } }]),
     Payment.aggregate([
@@ -73,6 +84,7 @@ async function monthlyTrend(inAll) {
       { $group: { _id: monthOf('$createdAt'), v: { $sum: { $cond: [{ $eq: ['$kind', 'refund'] }, { $multiply: ['$amount', -1] }, '$amount'] } } } },
     ]),
     Sale.aggregate([{ $match: { ...inAll, createdAt: { $gte: since } } }, { $group: { _id: monthOf('$createdAt'), v: { $sum: { $subtract: ['$total', '$returnedAmount'] } } } }]),
+    Visit.aggregate([{ $match: { ...inAll, status: 'active', visitOn: { $gte: since } } }, { $group: { _id: monthOf('$visitOn'), v: { $sum: 1 } } }]),
   ]);
   const at = (rows, m) => round2(rows.find((r) => r._id === m)?.v ?? 0);
   return lastMonths(config.analytics.months).map((month) => ({
@@ -81,5 +93,6 @@ async function monthlyTrend(inAll) {
     billed: at(billed, month),
     received: at(received, month),
     pharmacy: at(pharmacy, month),
+    visits: at(visits, month),
   }));
 }

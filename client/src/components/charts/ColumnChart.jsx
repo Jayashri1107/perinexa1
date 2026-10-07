@@ -2,11 +2,11 @@
 // Marks follow the chart rules: ≤ 24 px columns with a 4 px rounded top and a square base, a 2 px gap between the
 // columns of a group, hairline gridlines, round tick numbers; a legend whenever there are two series.
 // data: [{ label, values: [n, n?] }]  series: [{ label, color }]  format: number → text
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
-// A compact drawing area, so the axis text stays readable when the chart is shown in half a page.
-const W = 480;
-const H = 230;
+// The chart is drawn at the width of its card and a fixed, compact height, so it never grows huge on a wide screen and
+// its text keeps one size.
+const DEFAULT_HEIGHT = 200;
 const PAD = { top: 12, right: 6, bottom: 28, left: 52 };
 
 // 0 … a round number above the maximum, in about 4 steps (1, 2, 2.5 or 5 × 10ⁿ). integer: counts never get 0.5.
@@ -32,28 +32,41 @@ const shortNumber = new Intl.NumberFormat('en-IN', { notation: 'compact', maximu
 // integer: the values are counts (whole numbers on the axis). empty: what to say when every value is 0.
 // A data item may carry texts: [string] – shown instead of the value (e.g. "fewer than 5" for a hidden small count,
 // drawn as 0).
-export function ColumnChart({ data, series, format = (n) => String(n), title, integer = false, empty = 'Nothing yet.' }) {
+export function ColumnChart({ data, series, format = (n) => String(n), title, integer = false, empty = 'Nothing yet.', height = DEFAULT_HEIGHT }) {
   const id = useId();
   const [active, setActive] = useState(null);
+  const box = useRef(null);
+  const [W, setW] = useState(480);
+  const H = height;
+  useEffect(() => {
+    if (!box.current) return undefined;
+    const observer = new ResizeObserver(([entry]) => setW(Math.max(260, Math.round(entry.contentRect.width))));
+    observer.observe(box.current);
+    return () => observer.disconnect();
+  }, []);
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
   const max = Math.max(0, ...data.flatMap((d) => d.values));
   const valueText = (d, s) => d.texts?.[s] ?? format(d.values[s]);
   if (max === 0) {
     const hidden = data.some((d) => d.texts?.some(Boolean));
-    return <p className="chart-empty muted">{hidden ? 'Each month is below 5 – hidden to protect privacy.' : empty}</p>;
+    return (
+      <div className="chart" ref={box}>
+        <p className="chart-empty muted" style={{ minHeight: H }}>{hidden ? 'Each month is below 5 – hidden to protect privacy.' : empty}</p>
+      </div>
+    );
   }
   const ticks = niceTicks(max, integer);
   const top = ticks.at(-1);
   const slot = plotW / Math.max(1, data.length);
-  const barW = Math.min(24, (slot * 0.6 - (series.length - 1) * 2) / series.length);
+  const barW = Math.min(22, (slot * 0.6 - (series.length - 1) * 2) / series.length);
   const groupW = barW * series.length + (series.length - 1) * 2;
   const y = (v) => PAD.top + plotH - (v / top) * plotH;
   // month labels: every other one when there are many – always including the latest
-  const labelled = (i) => data.length <= 8 || (data.length - 1 - i) % 2 === 0;
+  const labelled = (i) => slot >= 34 || (data.length - 1 - i) % 2 === 0;
 
   return (
-    <div className="chart">
+    <div className="chart" ref={box}>
       {series.length > 1 && (
         <ul className="chart-legend" aria-label="Legend">
           {series.map((s) => (
@@ -65,7 +78,7 @@ export function ColumnChart({ data, series, format = (n) => String(n), title, in
         </ul>
       )}
       <div className="chart-plot">
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={`${id}-t`}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={`${id}-t`}>
           <title id={`${id}-t`}>{title}</title>
           {ticks.map((t) => (
             <g key={t}>

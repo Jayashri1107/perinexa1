@@ -39,6 +39,16 @@ const largestHospitals = () =>
     { $project: { _id: 0, staff: 1, hospital: 1 } },
   ]);
 
+// Active hospitals that have no active hospital admin (nobody can manage their staff or settings).
+async function hospitalsWithoutAdmin() {
+  const [active, withAdmin] = await Promise.all([
+    Hospital.find({ isActive: true }).select('name').lean(),
+    Membership.distinct('hospitalId', { isActive: true, roles: config.adminRole }),
+  ]);
+  const has = new Set(withAdmin.map(String));
+  return active.filter((h) => !has.has(String(h._id))).map((h) => ({ id: String(h._id), name: h.name }));
+}
+
 const masterDataTotals = () =>
   MasterData.aggregate([{ $group: { _id: '$type', total: { $sum: 1 }, active: countIf('$isActive') } }]);
 
@@ -55,13 +65,14 @@ const first = (rows, fallback) => {
 };
 
 export async function getSummary() {
-  const [hospitals, users, roles, topHospitals, masters, activity] = await Promise.all([
+  const [hospitals, users, roles, topHospitals, masters, activity, noAdmin] = await Promise.all([
     hospitalTotals(),
     userTotals(),
     staffByRole(),
     largestHospitals(),
     masterDataTotals(),
     recentActivity(),
+    hospitalsWithoutAdmin(),
   ]);
 
   const hospitalStats = first(hospitals, { total: 0, active: 0 });
@@ -73,6 +84,7 @@ export async function getSummary() {
     users: first(users, { total: 0, active: 0, pendingFirstLogin: 0, superAdmins: 0 }),
     staffByRole: config.roles.map((r) => ({ role: r.key, label: r.label, count: roleCounts[r.key] ?? 0 })),
     topHospitals,
+    hospitalsWithoutAdmin: noAdmin,
     masterData: config.masterData.types.map((t) => ({
       type: t.key,
       label: t.label,
