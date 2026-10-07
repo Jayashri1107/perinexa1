@@ -27,6 +27,9 @@ const purchaseSchema = new mongoose.Schema(
     supplierName: { type: String, required: true },
     invoiceNumber: { type: String, required: true, trim: true, maxlength: 60 },
     invoiceDate: { type: Date, required: true },
+    // the purchase order this invoice delivers, if any
+    purchaseOrderId: { type: ObjectId, ref: 'PurchaseOrder', default: null },
+    orderNumber: { type: String, default: '' },
     lines: { type: [lineSchema], default: [] },
     total: { type: Number, required: true, min: 0 },
     byUserId: { type: ObjectId, ref: 'User', required: true },

@@ -43,6 +43,9 @@ import { PatientRegisterPage } from './pages/patients/PatientRegisterPage.jsx';
 import { PatientsPage } from './pages/patients/PatientsPage.jsx';
 import { MedicinesPage } from './pages/pharmacy/MedicinesPage.jsx';
 import { NewPurchasePage } from './pages/pharmacy/NewPurchasePage.jsx';
+import { NewSupplierReturnPage } from './pages/pharmacy/NewSupplierReturnPage.jsx';
+import { OrderPage } from './pages/pharmacy/OrderPage.jsx';
+import { OrdersPage } from './pages/pharmacy/OrdersPage.jsx';
 import { PharmacyReportsPage } from './pages/pharmacy/PharmacyReportsPage.jsx';
 import { PharmacySettingsPage } from './pages/pharmacy/PharmacySettingsPage.jsx';
 import { PurchasesPage } from './pages/pharmacy/PurchasesPage.jsx';
@@ -50,10 +53,12 @@ import { SaleDetailPage } from './pages/pharmacy/SaleDetailPage.jsx';
 import { SalesPage } from './pages/pharmacy/SalesPage.jsx';
 import { SellPage } from './pages/pharmacy/SellPage.jsx';
 import { StockPage } from './pages/pharmacy/StockPage.jsx';
+import { SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
 import { SuppliersPage } from './pages/pharmacy/SuppliersPage.jsx';
 import { PlatformBillingPage } from './pages/platform/PlatformBillingPage.jsx';
 import { PlatformPharmacyPage } from './pages/platform/PlatformPharmacyPage.jsx';
 import { BillPrintPage } from './pages/print/BillPrintPage.jsx';
+import { DebitNotePrintPage } from './pages/print/DebitNotePrintPage.jsx';
 import { SaleInvoicePrintPage } from './pages/print/SaleInvoicePrintPage.jsx';
 import { UsersPage } from './pages/users/UsersPage.jsx';
 import { WorkspacePage } from './pages/workspace/WorkspacePage.jsx';
@@ -99,6 +104,7 @@ export function App() {
             </Route>
             <Route element={<ProtectedRoute area="hospital" access="pharmacy" />}>
               <Route path="/hospital/print/sale/:id" element={<SaleInvoicePrintPage />} />
+              <Route path="/hospital/print/debit-note/:id" element={<DebitNotePrintPage />} />
             </Route>
 
             {/* Working in a hospital */}
@@ -138,11 +144,15 @@ export function App() {
                   <Route path="pharmacy/medicines" element={<MedicinesPage />} />
                   <Route path="pharmacy/purchases" element={<PurchasesPage />} />
                   <Route path="pharmacy/suppliers" element={<SuppliersPage />} />
+                  <Route path="pharmacy/orders" element={<OrdersPage />} />
+                  <Route path="pharmacy/orders/:id" element={<OrderPage />} />
+                  <Route path="pharmacy/supplier-returns" element={<SupplierReturnsPage />} />
                   <Route path="pharmacy/reports" element={<PharmacyReportsPage />} />
                   <Route path="pharmacy/settings" element={<PharmacySettingsPage />} />
                 </Route>
                 <Route element={<ProtectedRoute area="hospital" access="pharmacyCounter" />}>
                   <Route path="pharmacy/purchases/new" element={<NewPurchasePage />} />
+                  <Route path="pharmacy/supplier-returns/new" element={<NewSupplierReturnPage />} />
                 </Route>
 
                 {/* Module 6 – analytics */}

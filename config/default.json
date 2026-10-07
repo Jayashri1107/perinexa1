@@ -185,6 +185,8 @@
   },
   "pharmacy": {
     "invoicePrefix": "PH-",
+    "orderPrefix": "PO-",
+    "supplierReturnPrefix": "SR-",
     "numberDigits": 6,
     "expiryAlertDays": 90,
     "gstRates": [0, 5, 12, 18],
@@ -202,8 +204,16 @@
       { "key": "none", "label": "Not scheduled" },
       { "key": "H", "label": "Schedule H" },
       { "key": "H1", "label": "Schedule H1", "register": true },
-      { "key": "X", "label": "Schedule X", "register": true },
-      { "key": "narcotic", "label": "Narcotic (NDPS)", "register": true }
+      { "key": "X", "label": "Schedule X", "register": true, "witness": true },
+      { "key": "narcotic", "label": "Narcotic (NDPS)", "register": true, "witness": true }
+    ],
+    "supplierReturnReasons": [
+      { "key": "expired", "label": "Expired" },
+      { "key": "near_expiry", "label": "Near expiry" },
+      { "key": "damaged", "label": "Damaged" },
+      { "key": "wrong_item", "label": "Wrong item or excess supply" },
+      { "key": "recalled", "label": "Recalled by the maker" },
+      { "key": "other", "label": "Other" }
     ],
     "adjustReasons": [
       { "key": "expired", "label": "Expired" },

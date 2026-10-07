@@ -1,8 +1,10 @@
 // Record one supplier invoice: each line (medicine, batch, expiry, quantity, cost, MRP, GST) becomes a stock batch.
+// Opened from a purchase order (?order=…), it starts with that supplier and the medicines still to come, and the units
+// received are counted on the order.
 import { ArrowLeft, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { purchasesApi, suppliersApi } from '../../api/index.js';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { purchaseOrdersApi, purchasesApi, suppliersApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
@@ -19,6 +21,21 @@ export function NewPurchasePage() {
   const [error, setError] = useState('');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [params] = useSearchParams();
+  const orderId = params.get('order');
+  const [order, setOrder] = useState(null);
+
+  useEffect(() => {
+    if (!orderId) return;
+    purchaseOrdersApi
+      .get(orderId)
+      .then(({ order: o }) => {
+        setOrder(o);
+        setHead((h) => ({ ...h, supplierId: o.supplierId }));
+        setLines(o.lines.filter((l) => l.outstanding > 0).map((l) => ({ medicineId: l.medicineId, name: l.medicineName, batch: '', expiry: '', qty: l.outstanding, freeQty: '', purchasePrice: '', mrp: '', gstRate: l.gstRate })));
+      })
+      .catch((err) => setError(err.message));
+  }, [orderId]);
 
   const addLine = (m) =>
     setLines((all) => [...all, { medicineId: m.id, name: `${m.name} ${m.strength ?? ''}`.trim(), batch: '', expiry: '', qty: '', freeQty: '', purchasePrice: '', mrp: '', gstRate: m.gstRate }]);
@@ -33,9 +50,10 @@ export function NewPurchasePage() {
     try {
       await purchasesApi.create({
         ...head,
+        ...(order && { purchaseOrderId: order.id }),
         lines: lines.map(({ name, ...l }) => ({ ...l, freeQty: l.freeQty || 0 })),
       });
-      navigate('/hospital/pharmacy/purchases');
+      navigate(order ? `/hospital/pharmacy/orders/${order.id}` : '/hospital/pharmacy/purchases');
     } catch (err) {
       setErrors(err.fields ?? {});
       setError(err.message);
@@ -48,13 +66,13 @@ export function NewPurchasePage() {
 
   return (
     <form onSubmit={save} noValidate>
-      <PageHeader back={<Link to="/hospital/pharmacy/purchases" className="back-link"><ArrowLeft size={16} aria-hidden /> Purchases</Link>} title="Record purchase" />
+      <PageHeader back={<Link to="/hospital/pharmacy/purchases" className="back-link"><ArrowLeft size={16} aria-hidden /> Purchases</Link>} title="Record purchase" subtitle={order ? `Against order ${order.orderNumber} – the units received are counted on it.` : undefined} />
       <Alert type="error">{error}</Alert>
       <section className="card">
         <div className="form-grid">
           <div className={`form-field width-half${errors.supplierId ? ' has-error' : ''}`}>
             <label htmlFor="supplier">Supplier</label>
-            <select id="supplier" value={head.supplierId} onChange={(e) => setHead({ ...head, supplierId: e.target.value })}>
+            <select id="supplier" disabled={Boolean(order)} value={head.supplierId} onChange={(e) => setHead({ ...head, supplierId: e.target.value })}>
               <option value="">Choose…</option>
               {suppliers.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>

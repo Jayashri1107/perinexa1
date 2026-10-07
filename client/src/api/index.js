@@ -220,3 +220,20 @@ export const libraryApi = {
   setStatus: (id, isActive) => http.patch(`${LIBRARY}/${id}/status`, { isActive }),
   duplicate: (id) => http.post(`${LIBRARY}/${id}/duplicate`),
 };
+export const purchaseOrdersApi = {
+  list: (query) => http.get(`${PHARMACY}/orders`, query),
+  suggest: () => http.get(`${PHARMACY}/orders/suggest`),
+  get: (id) => http.get(`${PHARMACY}/orders/${id}`),
+  create: (data) => http.post(`${PHARMACY}/orders`, data),
+  update: (id, data) => http.put(`${PHARMACY}/orders/${id}`, data),
+  send: (id) => http.post(`${PHARMACY}/orders/${id}/send`),
+  cancel: (id, reason) => http.post(`${PHARMACY}/orders/${id}/cancel`, { reason }),
+  close: (id, reason) => http.post(`${PHARMACY}/orders/${id}/close`, { reason }),
+};
+export const supplierReturnsApi = {
+  list: (query) => http.get(`${PHARMACY}/supplier-returns`, query),
+  batches: (supplierId) => http.get(`${PHARMACY}/supplier-returns/batches/${supplierId}`),
+  get: (id) => http.get(`${PHARMACY}/supplier-returns/${id}`),
+  create: (data) => http.post(`${PHARMACY}/supplier-returns`, data),
+  cancel: (id, data) => http.post(`${PHARMACY}/supplier-returns/${id}/cancel`, data),
+};

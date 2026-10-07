@@ -26,6 +26,7 @@ const line = z
 
 export const purchaseBody = z.object({
   supplierId: objectId,
+  purchaseOrderId: optional(objectId),
   invoiceNumber: z.string().trim().min(1, 'Enter the invoice number').max(60),
   invoiceDate: z.coerce.date().refine((d) => d <= new Date(), 'The invoice date cannot be in the future'),
   lines: z.array(line).min(1, 'Add at least one medicine').max(200),

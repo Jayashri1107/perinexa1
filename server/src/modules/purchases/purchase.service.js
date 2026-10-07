@@ -7,6 +7,7 @@ import { containsText, toObjectId } from '../../core/validate.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { Medicine } from '../medicines/medicine.model.js';
 import { StockBatch, recordMovement } from '../stock/stock.model.js';
+import { openOrderFor, receiveOnOrder } from '../purchaseOrders/purchaseOrder.service.js';
 import { findActiveSupplier } from '../suppliers/supplier.service.js';
 import { Purchase } from './purchase.model.js';
 
@@ -35,6 +36,7 @@ export async function recordPurchase(req, data) {
   if (await Purchase.exists({ hospitalId, supplierId: supplier._id, invoiceNumber: data.invoiceNumber })) {
     throw fieldError('invoiceNumber', 'This invoice of this supplier is already recorded.', 'DUPLICATE');
   }
+  const order = data.purchaseOrderId ? await openOrderFor(req, data.purchaseOrderId, supplier._id) : null;
   const medicines = await Medicine.find({ hospitalId, _id: { $in: data.lines.map((l) => l.medicineId) }, isActive: true });
   const byId = new Map(medicines.map((m) => [m._id.toString(), m]));
   if (data.lines.some((l) => !byId.has(l.medicineId))) throw new HttpError(400, 'A medicine is not on the list or not active.', 'VALIDATION');
@@ -45,6 +47,8 @@ export async function recordPurchase(req, data) {
     supplierName: supplier.name,
     invoiceNumber: data.invoiceNumber,
     invoiceDate: data.invoiceDate,
+    purchaseOrderId: order?._id ?? null,
+    orderNumber: order?.orderNumber ?? '',
     byUserId: req.user._id,
     byName: req.user.name,
     total: sum(data.lines.map((l) => l.purchasePrice * l.qty)),
@@ -69,6 +73,7 @@ export async function recordPurchase(req, data) {
     await recordMovement(req, { medicine, batch, kind: 'purchase', qty: units, ref: data.invoiceNumber, party: supplier.name });
   }
   await purchase.save();
-  await recordAudit(req, 'PURCHASE_RECORDED', { hospitalId, details: { invoiceNumber: purchase.invoiceNumber, supplier: supplier.name, lines: purchase.lines.length, total: purchase.total } });
+  if (order) await receiveOnOrder(order, data.lines);
+  await recordAudit(req, 'PURCHASE_RECORDED', { hospitalId, details: { invoiceNumber: purchase.invoiceNumber, supplier: supplier.name, ...(order && { orderNumber: order.orderNumber }), lines: purchase.lines.length, total: purchase.total } });
   return purchase;
 }

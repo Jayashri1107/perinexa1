@@ -33,7 +33,9 @@ const movementSchema = new mongoose.Schema(
     schedule: { type: String, enum: SCHEDULE_KEYS, required: true },
     batchId: { type: ObjectId, ref: 'StockBatch', required: true },
     batch: { type: String, required: true },
-    kind: { type: String, enum: ['purchase', 'sale', 'return', 'writeoff', 'count'], required: true },
+    // supplier_return(_cancelled): stock sent back to a supplier (or that return undone); ward_issue / ward_return: to and from
+    // a patient in hospital
+    kind: { type: String, enum: ['purchase', 'sale', 'return', 'writeoff', 'count', 'supplier_return', 'supplier_return_cancelled', 'ward_issue', 'ward_return'], required: true },
     qty: { type: Number, required: true }, // + in, − out
     ref: { type: String, default: '' }, // purchase or sale invoice number
     party: { type: String, default: '' }, // supplier, or patient / customer

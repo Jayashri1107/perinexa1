@@ -32,9 +32,11 @@ import platformAnalyticsRoutes from './platformAnalytics/platformAnalytics.route
 import platformBillingRoutes from './platformBilling/platformBilling.routes.js';
 import platformPharmacyRoutes from './platformPharmacy/platformPharmacy.routes.js';
 import priceListRoutes from './priceList/priceList.routes.js';
+import purchaseOrderRoutes from './purchaseOrders/purchaseOrder.routes.js';
 import purchaseRoutes from './purchases/purchase.routes.js';
 import saleRoutes from './sales/sale.routes.js';
 import stockRoutes from './stock/stock.routes.js';
+import supplierReturnRoutes from './supplierReturns/supplierReturn.routes.js';
 import supplierRoutes from './suppliers/supplier.routes.js';
 import todayRoutes from './today/today.routes.js';
 import userRoutes from './users/user.routes.js';
@@ -80,6 +82,8 @@ export const modules = [
   { path: '/hospital/pharmacy/medicines', access: 'hospital', roles: access.pharmacy, router: medicineRoutes },
   { path: '/hospital/pharmacy/suppliers', access: 'hospital', roles: access.pharmacy, router: supplierRoutes },
   { path: '/hospital/pharmacy/purchases', access: 'hospital', roles: access.pharmacy, router: purchaseRoutes },
+  { path: '/hospital/pharmacy/orders', access: 'hospital', roles: access.pharmacy, router: purchaseOrderRoutes },
+  { path: '/hospital/pharmacy/supplier-returns', access: 'hospital', roles: access.pharmacy, router: supplierReturnRoutes },
   { path: '/hospital/pharmacy/stock', access: 'hospital', roles: access.pharmacy, router: stockRoutes },
   { path: '/hospital/pharmacy/sales', access: 'hospital', roles: access.pharmacy, router: saleRoutes },
   { path: '/hospital/pharmacy/reports', access: 'hospital', roles: access.pharmacy, router: pharmacyReportRoutes },

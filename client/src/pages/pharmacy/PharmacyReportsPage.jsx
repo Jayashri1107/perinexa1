@@ -28,7 +28,7 @@ function Register({ period }) {
   const [schedule, setSchedule] = useState(registers[0]?.key);
   const fetchPage = useCallback((q) => pharmacyReportsApi.register({ ...q, schedule, ...period }), [schedule, period]);
   const list = usePagedList(fetchPage);
-  const KIND = { purchase: 'Received', sale: 'Sold', return: 'Returned', writeoff: 'Written off', count: 'Count correction' };
+  const KIND = { purchase: 'Received', sale: 'Sold', return: 'Returned', writeoff: 'Written off', count: 'Count correction', supplier_return: 'Returned to supplier', supplier_return_cancelled: 'Supplier return cancelled', ward_issue: 'Issued to ward', ward_return: 'Returned from ward' };
   return (
     <>
       <div className="section-head">

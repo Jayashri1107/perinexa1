@@ -112,12 +112,15 @@ const schema = z.object({
   }),
   pharmacy: z.object({
     invoicePrefix: prefix,
+    orderPrefix: prefix,
+    supplierReturnPrefix: prefix,
     numberDigits: digits,
     expiryAlertDays: z.number().int().positive(),
     gstRates: z.array(z.number().nonnegative()).min(1),
     forms: z.array(keyLabel).min(1),
     schedules: z.array(keyLabel).min(1),
     adjustReasons: z.array(keyLabel).min(1),
+    supplierReturnReasons: z.array(keyLabel).min(1),
   }),
   analytics: z.object({
     months: z.number().int().min(1).max(36),
@@ -201,4 +204,7 @@ export const MEDICINE_FORM_KEYS = keysOf(config.pharmacy.forms);
 export const SCHEDULE_KEYS = keysOf(config.pharmacy.schedules);
 export const REGISTER_SCHEDULE_KEYS = config.pharmacy.schedules.filter((s) => s.register).map((s) => s.key);
 export const ADJUST_REASON_KEYS = keysOf(config.pharmacy.adjustReasons);
+export const SUPPLIER_RETURN_REASON_KEYS = keysOf(config.pharmacy.supplierReturnReasons);
+// Schedule X and narcotic medicines: a witness signs when they leave the pharmacy other than by sale.
+export const WITNESS_SCHEDULE_KEYS = config.pharmacy.schedules.filter((s) => s.witness).map((s) => s.key);
 export const CANCEL_REASON_KEYS = keysOf(config.appointments.cancelReasons);
