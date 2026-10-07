@@ -19,6 +19,11 @@ const patientSchema = new mongoose.Schema(
     alternatePhone: text(20),
     address: { line: text(200), city: text(80), state: text(80), pincode: text(6) },
     abhaNumber: text(20),
+    // Whom to call in an emergency (a relative or attendant).
+    emergencyContact: { name: text(100), relation: text(50), phone: text(20) },
+    // The ID proof reception saw: its type and only the last 4 characters of its number – never a whole Aadhaar
+    // (or other ID) number.
+    idProof: { kind: { type: String, enum: ['', ...config.patients.idProofTypes.map((t) => t.key)], default: '' }, last4: text(4) },
     consentMessages: { type: Boolean, default: false }, // agreed to receive reminders
     assignedDoctorId: { type: ObjectId, ref: 'User', default: null },
 

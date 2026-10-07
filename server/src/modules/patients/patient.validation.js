@@ -38,6 +38,17 @@ const contact = {
     })
     .default({}),
   abhaNumber: z.string().trim().regex(/^[0-9-]{0,20}$/, 'ABHA number: digits only').default(''),
+  emergencyContact: z
+    .object({ name: optionalText(100), relation: optionalText(50), phone })
+    .default({ name: '', relation: '', phone: '' }),
+  // Only the last 4 characters of the ID's number: a whole Aadhaar (or other ID) number is never stored.
+  idProof: z
+    .object({
+      kind: z.enum(['', ...config.patients.idProofTypes.map((t) => t.key)], 'Choose the type of ID proof').default(''),
+      last4: z.string().trim().regex(/^[0-9A-Za-z]{0,4}$/, 'Type only the last 4 letters or digits of the ID number').default(''),
+    })
+    .default({ kind: '', last4: '' })
+    .refine((v) => v.kind || !v.last4, { path: ['kind'], message: 'Choose the type of ID proof' }),
   consentMessages: z.boolean().default(false),
   assignedDoctorId: optional(objectId),
   careType: z.enum(CARE_TYPE_KEYS, 'Choose the type of care').default(CARE_TYPE_KEYS[0]),

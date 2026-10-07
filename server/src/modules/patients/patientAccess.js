@@ -20,7 +20,7 @@ export const atLeast = (level, wanted) => rank(level) >= rank(wanted);
 
 // The fields each level may see.
 const BASIC = ['patientNumber', 'name', 'birthDate', 'birthDateApprox', 'sex', 'status', 'createdAt'];
-const CONTACT = [...BASIC, 'phone', 'alternatePhone', 'address', 'abhaNumber', 'consentMessages', 'assignedDoctorId', 'careType', 'isSensitive'];
+const CONTACT = [...BASIC, 'phone', 'alternatePhone', 'address', 'abhaNumber', 'emergencyContact', 'idProof', 'consentMessages', 'assignedDoctorId', 'careType', 'isSensitive'];
 const CLINICAL = [...CONTACT, 'lmp', 'edd', 'gravida', 'para', 'bloodGroup', 'allergies', 'notes', 'updatedAt'];
 export const FIELDS = { basic: BASIC, contactRead: CONTACT, contactEdit: CONTACT, clinicalRead: CLINICAL, full: CLINICAL };
 

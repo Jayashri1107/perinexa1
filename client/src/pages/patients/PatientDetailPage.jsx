@@ -110,6 +110,8 @@ export function PatientDetailPage() {
             {p.phone !== undefined && (<><dt>Phone</dt><dd>{[p.phone, p.alternatePhone].filter(Boolean).join(', ') || '—'}</dd></>)}
             {p.address !== undefined && (<><dt>Address</dt><dd>{address || '—'}</dd></>)}
             {p.abhaNumber !== undefined && (<><dt>ABHA</dt><dd>{p.abhaNumber || '—'}</dd></>)}
+            {p.idProof !== undefined && (<><dt>ID proof</dt><dd>{p.idProof?.kind ? `${labelOf(settings.idProofTypes, p.idProof.kind)}${p.idProof.last4 ? ` ending ${p.idProof.last4}` : ''}` : '—'}</dd></>)}
+            {p.emergencyContact !== undefined && (<><dt>Emergency contact</dt><dd>{[p.emergencyContact?.name, p.emergencyContact?.relation && `(${p.emergencyContact.relation})`, p.emergencyContact?.phone].filter(Boolean).join(' ') || '—'}</dd></>)}
             {p.careType !== undefined && (<><dt>Care</dt><dd>{labelOf(settings.careTypes, p.careType)}</dd></>)}
             {p.doctor !== undefined && (<><dt>Doctor</dt><dd>{p.doctor?.name ?? '—'}</dd></>)}
             {p.consentMessages !== undefined && (<><dt>Reminders</dt><dd>{p.consentMessages ? 'Agreed' : 'Not agreed'}</dd></>)}
@@ -149,7 +151,7 @@ export function PatientDetailPage() {
         <FormModal
           title="Contact details"
           size="lg"
-          fields={contactFields({ careTypes: settings.careTypes, sexes: settings.sexes, doctors, withLmp: can.editClinical })}
+          fields={contactFields({ careTypes: settings.careTypes, sexes: settings.sexes, idProofTypes: settings.idProofTypes, doctors, withLmp: can.editClinical })}
           form={form}
           onSubmit={async (v) => done(await patientsApi.updateContact(id, v))}
           onClose={() => setDialog(null)}

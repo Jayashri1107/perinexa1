@@ -67,7 +67,7 @@ export function PatientRegisterPage() {
       <section className="card top-gap">
         <Alert type="info">Use only fake sample data until the app has been reviewed for real use.</Alert>
         <form onSubmit={form.submit((v) => save(v))} noValidate>
-          <FormBuilder fields={contactFields({ careTypes: settings.careTypes, sexes: settings.sexes, doctors })} form={form} />
+          <FormBuilder fields={contactFields({ careTypes: settings.careTypes, sexes: settings.sexes, idProofTypes: settings.idProofTypes, doctors })} form={form} />
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={form.submitting}>{form.submitting ? 'Saving…' : 'Register patient'}</button>
           </div>

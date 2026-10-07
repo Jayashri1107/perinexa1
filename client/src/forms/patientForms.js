@@ -4,7 +4,7 @@ import { toOptions } from '../utils/format.js';
 const needsLmp = (careTypes) => (values) => careTypes.find((c) => c.key === values.careType)?.needsLmp;
 
 // Who she is and how to reach her (registration and reception's changes). withLmp: may give the LMP.
-export const contactFields = ({ careTypes, sexes, doctors, withLmp = true }) => [
+export const contactFields = ({ careTypes, sexes, doctors, idProofTypes = [], withLmp = true }) => [
   { name: 'name', label: 'Full name', required: true, width: 'two-thirds' },
   { name: 'sex', label: 'Sex', type: 'select', required: true, options: toOptions(sexes), width: 'third' },
   { name: 'birthDate', label: 'Date of birth', type: 'date', width: 'third', help: 'Or give the age.' },
@@ -12,6 +12,12 @@ export const contactFields = ({ careTypes, sexes, doctors, withLmp = true }) => 
   { name: 'phone', label: 'Phone', type: 'tel', width: 'third' },
   { name: 'alternatePhone', label: 'Other phone', type: 'tel', width: 'third' },
   { name: 'abhaNumber', label: 'ABHA number', width: 'third' },
+  { name: 'idProof.kind', label: 'ID proof seen', type: 'select', options: toOptions(idProofTypes), placeholder: 'None noted', width: 'third' },
+  { name: 'idProof.last4', label: 'Last 4 of the ID number', width: 'third', help: 'Only the last 4 – never the whole number.' },
+  { section: 'Emergency contact' },
+  { name: 'emergencyContact.name', label: 'Name', width: 'third', help: 'A relative or attendant to call.' },
+  { name: 'emergencyContact.relation', label: 'Relation', width: 'third', help: 'For example husband, mother.' },
+  { name: 'emergencyContact.phone', label: 'Phone', type: 'tel', width: 'third' },
   { section: 'Address' },
   { name: 'address.line', label: 'House, street, area' },
   { name: 'address.city', label: 'City / village', width: 'third' },
@@ -32,6 +38,8 @@ export const emptyPatient = (careTypes, sexes) => ({
   phone: '',
   alternatePhone: '',
   abhaNumber: '',
+  emergencyContact: { name: '', relation: '', phone: '' },
+  idProof: { kind: '', last4: '' },
   address: { line: '', city: '', state: '', pincode: '' },
   careType: careTypes[0].key,
   assignedDoctorId: '',
@@ -49,6 +57,8 @@ export const contactValues = (p) => ({
   phone: p.phone ?? '',
   alternatePhone: p.alternatePhone ?? '',
   abhaNumber: p.abhaNumber ?? '',
+  emergencyContact: { name: '', relation: '', phone: '', ...p.emergencyContact },
+  idProof: { kind: '', last4: '', ...p.idProof },
   address: { line: '', city: '', state: '', pincode: '', ...p.address },
   careType: p.careType,
   assignedDoctorId: p.assignedDoctorId ?? '',
