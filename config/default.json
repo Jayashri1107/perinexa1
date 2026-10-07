@@ -193,7 +193,27 @@
       { "key": "medicine", "label": "Medicines" },
       { "key": "other", "label": "Other" }
     ],
-    "pharmacyGroup": "medicine"
+    "pharmacyGroup": "medicine",
+    "startingPriceList": [
+      { "code": "CONS-NEW", "name": "Consultation – new", "group": "consultation" },
+      { "code": "CONS-FU", "name": "Consultation – follow-up", "group": "consultation" },
+      { "code": "ADMISSION", "name": "Admission charges", "group": "inpatient" },
+      { "code": "ROOM-GEN", "name": "Room – general ward (per day)", "group": "inpatient" },
+      { "code": "ROOM-PVT", "name": "Room – private (per day)", "group": "inpatient" },
+      { "code": "DR-VISIT", "name": "Doctor visit (inpatient)", "group": "inpatient" },
+      { "code": "NURSING", "name": "Nursing charges (per day)", "group": "inpatient" },
+      { "code": "USG-OBS", "name": "Ultrasound – obstetric", "group": "scan" },
+      { "code": "USG-PELVIS", "name": "Ultrasound – pelvis", "group": "scan" },
+      { "code": "NST", "name": "NST", "group": "procedure" },
+      { "code": "DRESSING", "name": "Dressing", "group": "procedure" },
+      { "code": "IUCD", "name": "IUCD insertion", "group": "procedure" },
+      { "code": "DEL-NORMAL", "name": "Normal delivery", "group": "procedure" },
+      { "code": "DEL-LSCS", "name": "Caesarean section", "group": "procedure" },
+      { "code": "LAB-CBC", "name": "CBC", "group": "lab" },
+      { "code": "LAB-SUGAR", "name": "Blood sugar", "group": "lab" },
+      { "code": "LAB-URINE", "name": "Urine routine", "group": "lab" },
+      { "code": "OTHER", "name": "Other charge", "group": "other" }
+    ]
   },
   "pharmacy": {
     "invoicePrefix": "PH-",

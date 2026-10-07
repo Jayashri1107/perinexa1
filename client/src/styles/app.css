@@ -430,6 +430,7 @@ select {
 .line-row input, .line-row select { padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); }
 input.qty { width: 80px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
 .line-amount { min-width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+.line-rate { min-width: 110px; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
 .line-foot { display: flex; justify-content: space-between; align-items: center; padding-top: var(--space-2); border-top: 1px solid var(--color-border); }
 .compact-inputs input, .compact-inputs select { width: 100%; min-width: 80px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
 .filter input[type='date'] { padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }

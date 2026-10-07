@@ -5,17 +5,21 @@ import { useEffect, useState } from 'react';
 export function PatientPicker({ search, value, onChange, label = 'Patient', error }) {
   const [text, setText] = useState('');
   const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     if (value || text.trim().length < 2) {
       setResults([]);
+      setSearching(false);
       return undefined;
     }
     let cancelled = false;
+    setSearching(true);
     const t = setTimeout(() => {
       search(text.trim())
         .then((r) => !cancelled && setResults(r.items))
-        .catch(() => !cancelled && setResults([]));
+        .catch(() => !cancelled && setResults([]))
+        .finally(() => !cancelled && setSearching(false));
     }, 300);
     return () => {
       cancelled = true;
@@ -55,7 +59,10 @@ export function PatientPicker({ search, value, onChange, label = 'Patient', erro
           ))}
         </ul>
       )}
-      {text.trim().length >= 2 && results.length === 0 && <span className="field-help">No patient found.</span>}
+      {text.trim().length >= 2 && searching && <span className="field-help">Searching…</span>}
+      {text.trim().length >= 2 && !searching && results.length === 0 && (
+        <span className="field-help">No patient found in this hospital. Check the spelling, or register her first.</span>
+      )}
       {error && <span className="field-error">{error}</span>}
     </div>
   );
