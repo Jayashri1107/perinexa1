@@ -66,10 +66,12 @@ const schema = z.object({
   access: z.object({
     patients: roleList,
     registerPatients: roleList,
+    registrationMenu: roleList,
     patientsAllRecords: roleList,
     patientsClinical: roleList,
     patientsContact: roleList,
     billing: roleList,
+    billingReports: roleList,
     billingAdmin: roleList,
     pharmacy: roleList,
     pharmacyCounter: roleList,
@@ -98,6 +100,7 @@ const schema = z.object({
     careTypes: z.array(keyLabel).min(1),
     sexes: z.array(keyLabel).min(1),
     bloodGroups: z.array(z.string().min(1)),
+    idProofTypes: z.array(keyLabel).min(1),
     ageBands: z.array(z.number().int().nonnegative()).min(2),
   }),
   billing: z.object({

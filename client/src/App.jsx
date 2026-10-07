@@ -143,8 +143,10 @@ export function App() {
                   <Route path="billing/daily" element={<DailySummaryPage />} />
                   <Route path="billing/price-list" element={<PriceListPage />} />
                 </Route>
-                <Route element={<ProtectedRoute area="hospital" access="billingAdmin" />}>
+                <Route element={<ProtectedRoute area="hospital" access="billingReports" />}>
                   <Route path="billing/monthly" element={<MonthlyPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="billingAdmin" />}>
                   <Route path="billing/settings" element={<BillingSettingsPage />} />
                 </Route>
 

@@ -58,16 +58,19 @@
     { "key": "nurse", "label": "Nurse" },
     { "key": "receptionist", "label": "Receptionist" },
     { "key": "lab", "label": "Lab staff" },
-    { "key": "pharmacist", "label": "Pharmacist" }
+    { "key": "pharmacist", "label": "Pharmacist" },
+    { "key": "billing", "label": "Billing" }
   ],
   "adminRole": "admin",
   "access": {
-    "patients": ["doctor", "rmo", "nurse", "receptionist", "lab", "pharmacist"],
+    "patients": ["doctor", "rmo", "nurse", "receptionist", "lab", "pharmacist", "billing"],
     "registerPatients": ["doctor", "rmo", "receptionist"],
+    "registrationMenu": ["receptionist"],
     "patientsAllRecords": ["rmo"],
     "patientsClinical": ["doctor", "rmo", "nurse"],
-    "patientsContact": ["doctor", "rmo", "nurse", "receptionist", "pharmacist"],
-    "billing": ["receptionist", "admin"],
+    "patientsContact": ["doctor", "rmo", "nurse", "receptionist", "pharmacist", "billing"],
+    "billing": ["receptionist", "billing", "admin"],
+    "billingReports": ["admin", "billing"],
     "billingAdmin": ["admin"],
     "pharmacy": ["pharmacist", "admin"],
     "pharmacyCounter": ["pharmacist"],
@@ -157,6 +160,15 @@
       { "key": "other", "label": "Other" }
     ],
     "bloodGroups": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+    "idProofTypes": [
+      { "key": "aadhaar", "label": "Aadhaar" },
+      { "key": "voter_id", "label": "Voter ID" },
+      { "key": "pan", "label": "PAN card" },
+      { "key": "driving_licence", "label": "Driving licence" },
+      { "key": "passport", "label": "Passport" },
+      { "key": "ration_card", "label": "Ration card" },
+      { "key": "other", "label": "Other" }
+    ],
     "ageBands": [0, 1, 18, 25, 30, 35, 40, 50]
   },
   "billing": {

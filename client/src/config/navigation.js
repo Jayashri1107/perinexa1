@@ -10,6 +10,7 @@ import {
   FlaskConical,
   HeartPulse,
   Library,
+  UserPlus,
   LayoutDashboard,
   Pill,
   Receipt,
@@ -52,7 +53,7 @@ export const BILLING_TABS = [
   { to: '/hospital/billing', label: 'Bills', end: true, access: 'billing' },
   { to: '/hospital/billing/unpaid', label: 'Unpaid', access: 'billing' },
   { to: '/hospital/billing/daily', label: 'Daily summary', access: 'billing' },
-  { to: '/hospital/billing/monthly', label: 'Monthly', access: 'billingAdmin' },
+  { to: '/hospital/billing/monthly', label: 'Monthly', access: 'billingReports' },
   { to: '/hospital/billing/price-list', label: 'Price list', access: 'billing' },
   { to: '/hospital/billing/settings', label: 'Settings', access: 'billingAdmin' },
 ];
@@ -120,6 +121,8 @@ export const firstTab = (tabs, canAccess) => tabs.find((t) => canAccess(t.access
 export const HOSPITAL_NAVIGATION = [
   { to: '/hospital', label: 'Today', icon: CalendarCheck, end: true },
   { to: '/hospital/patients', label: 'Patients', icon: HeartPulse, access: 'patients' },
+  // Reception's shortcut to the registration form (config.access.registrationMenu)
+  { to: '/hospital/patients/new', label: 'New registration', icon: UserPlus, access: 'registrationMenu' },
   { to: '/hospital/appointments', label: 'Appointments', icon: CalendarClock, access: 'appointments', tabs: APPOINTMENT_TABS },
   { to: '/hospital/calendar', label: 'Calendar', icon: CalendarDays, access: 'calendar', tabs: CALENDAR_TABS },
   { to: '/hospital/lab', label: 'Lab', icon: FlaskConical, access: 'lab' },

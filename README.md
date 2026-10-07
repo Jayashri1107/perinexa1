@@ -22,9 +22,10 @@ Fake sample data only.
 | Doctor | Today, Patients (own patients full, others read-only, emergency access), Appointments (book, own OPD timings), Calendar (with EDD / LMP), Lab (order and review for own patients), Analytics (exact, "my patients"), Clinic library (change and approve), My settings |
 | RMO | Today, Patients (all records), Appointments (look, mark seen), Calendar (with EDD / LMP), Lab (order and review), Clinic library (change, not approve), My settings |
 | Nurse | Today, Patients (read), Appointments (look, mark seen), Lab (read results), Clinic library (read; no prescription sets), My settings |
-| Receptionist | Today, Patients (register, contact details), Appointments (book, move, cancel, walk-ins), Calendar (bookings only; reminders), Billing (no Monthly / Settings), My settings |
+| Receptionist | Today, Patients (register, contact details, emergency contact, ID proof type + last 4), New registration, Appointments (book, move, cancel, walk-ins), Calendar (bookings only; reminders), Billing (no Monthly / Settings), My settings |
 | Lab staff | Today, Patients (name and number), Lab (take samples, enter and amend results – patients by name and number only), My settings |
 | Pharmacist | Today, Patients (contact), Pharmacy (everything but its settings), My settings |
+| Billing (7 Oct 2026) | Today, Patients (contact, read-only), Billing (bills, payments, unpaid, daily summary, Monthly and the export; not the price list changes or Settings), My settings – shares billing with reception |
 | Super admin | The platform; can open any hospital with every role (`access.superAdminInHospitals`), including patient records (`access.superAdminPatientAccess` – the owner's choice; every record opened is in the audit log). Switch either off in `config/local.json`. |
 
 Passwords: at least 8 characters with a capital letter, a small letter, a number and a special character

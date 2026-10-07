@@ -3,13 +3,14 @@ import { config } from '../../config/index.js';
 import { requireRoles } from '../../middleware/auth.js';
 import * as controller from './billingReports.controller.js';
 
-// Unpaid and daily: reception and admin. Monthly income and the export: admin only.
+// Unpaid and daily: everyone who bills. Monthly income and the export: the admin and the billing department
+// (config.access.billingReports).
 const router = Router();
-const adminOnly = requireRoles(config.access.billingAdmin);
+const reportsOnly = requireRoles(config.access.billingReports);
 
 router.get('/unpaid', controller.unpaid);
 router.get('/daily', controller.daily);
-router.get('/monthly', adminOnly, controller.monthly);
-router.get('/export', adminOnly, controller.exportCsv);
+router.get('/monthly', reportsOnly, controller.monthly);
+router.get('/export', reportsOnly, controller.exportCsv);
 
 export default router;

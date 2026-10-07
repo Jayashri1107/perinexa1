@@ -1,7 +1,7 @@
 // The frame for working in a hospital: the hospital's name, a switcher for those who work in several hospitals, and a
 // menu with only the pages their roles allow. A super admin working here sees a notice and a way back to the platform.
 import { ArrowLeft, Building2, ShieldAlert } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HOSPITAL_NAVIGATION, firstTab } from '../config/navigation.js';
 import { useAppConfig } from '../context/AppConfigContext.jsx';
@@ -82,7 +82,18 @@ function SuperAdminBanner() {
 
 export function HospitalLayout() {
   const { activeMembership, activeHospitalId, roles, canAccess, isSuperAdminInHospital } = useAuth();
-  const { roleLabel } = useAppConfig();
+  const { roleLabel, app } = useAppConfig();
+  // The browser tab names the hospital being worked in (e.g. "Anandi Hospital Pvt. Ltd. · Perinexa1"), so a computer
+  // shared by two hospitals shows which one is open. The name comes from the hospital's record, never from the code.
+  const hospitalName = activeMembership?.hospital.name;
+  useEffect(() => {
+    if (!hospitalName) return undefined;
+    const before = document.title;
+    document.title = `${hospitalName} · ${app.name}`;
+    return () => {
+      document.title = before;
+    };
+  }, [hospitalName, app.name]);
   const navigation = HOSPITAL_NAVIGATION.filter((item) => !item.access || canAccess(item.access)).map((item) =>
     item.tabs ? { ...item, to: firstTab(item.tabs, canAccess) ?? item.to, activeFor: [item.to, ...(item.activeFor ?? [])] } : item,
   );
