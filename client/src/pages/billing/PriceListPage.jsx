@@ -1,4 +1,4 @@
-// The price list: reception reads it, the hospital admin keeps it.
+// The price list: reception reads it; the hospital admin and the billing department change it.
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { priceListApi } from '../../api/index.js';
@@ -18,7 +18,7 @@ import { BillingFrame } from './BillingFrame.jsx';
 export function PriceListPage() {
   const { billing } = useAppConfig();
   const { canAccess } = useAuth();
-  const canEdit = canAccess('billingAdmin');
+  const canEdit = canAccess('priceListEdit');
   const list = usePagedList(priceListApi.list);
   const form = useForm(emptyPriceItem(billing.priceGroups));
   const [dialog, setDialog] = useState(null); // 'add' | { item }
@@ -57,7 +57,7 @@ export function PriceListPage() {
           className: 'actions',
           render: (i) => (
             <>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => open({ item: i }, { name: i.name, group: i.group, price: i.price })}>Edit</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => open({ item: i }, { name: i.name, group: i.group, price: i.price })}>Edit price</button>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => toggle(i)}>{i.isActive ? 'Deactivate' : 'Activate'}</button>
             </>
           ),
@@ -67,7 +67,7 @@ export function PriceListPage() {
 
   return (
     <BillingFrame
-      subtitle={canEdit ? 'What each service costs. Bills take their prices from here.' : 'What each service costs (kept by the hospital admin).'}
+      subtitle={canEdit ? 'What each service costs. New bill lines take their rate from here; bills already made keep theirs. The starting prices are samples – change each to your hospital’s charge with Edit.' : 'What each service costs (kept by the hospital admin and the billing department).'}
       actions={canEdit && (
         <button type="button" className="btn btn-primary" onClick={() => open('add', emptyPriceItem(billing.priceGroups))}>
           <Plus size={16} aria-hidden /> Add item

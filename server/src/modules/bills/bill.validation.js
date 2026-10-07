@@ -33,6 +33,12 @@ const line = z
     message: 'Choose a price list item, or give a name, group and price',
   });
 
+// A line changed on an open bill: its quantity and rate.
+export const lineUpdateBody = z.object({
+  qty: z.coerce.number().int().min(1, 'At least 1').max(1000),
+  unitPrice: z.coerce.number().min(0, 'The rate cannot be below 0').max(10000000),
+});
+
 export const createBillBody = z.object({ patientId: objectId, lines: z.array(line).min(1, 'Add at least one line').max(100) });
 export const addLinesBody = z.object({ lines: z.array(line).min(1, 'Add at least one line').max(100) });
 

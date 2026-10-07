@@ -6,6 +6,7 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "seed": "node scripts/seed.js",
+    "prices:sample": "node scripts/sample-prices.js",
     "evaluate": "node scripts/evaluate-queries.js"
   },
   "dependencies": {

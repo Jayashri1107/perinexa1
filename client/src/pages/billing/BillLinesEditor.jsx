@@ -38,9 +38,18 @@ export function BillLinesEditor({ value, onChange }) {
       {items !== null && !loadError && list.length === 0 && (
         <p className="field-help">
           The price list has no items yet.{' '}
-          {canAccess('billingAdmin') ? 'Add them in Billing → Price list.' : 'Ask the hospital admin to add them in Billing → Price list.'} Until then, choose
+          {canAccess('priceListEdit') ? 'Add them in Billing → Price list.' : 'Ask the hospital admin to add them in Billing → Price list.'} Until then, choose
           "Something else" and write the item and its price in.
         </p>
+      )}
+      {value.length > 0 && (
+        <div className="line-row line-head muted small" aria-hidden>
+          <span className="line-head-service">Service</span>
+          <span className="qty">Qty</span>
+          <span className="line-rate">Rate</span>
+          <span className="line-amount">Amount</span>
+          <span className="line-head-gap" />
+        </div>
       )}
       {value.map((l, i) => (
         <div key={i} className="line-row">
@@ -66,9 +75,7 @@ export function BillLinesEditor({ value, onChange }) {
             </>
           )}
           <input aria-label="Quantity" className="qty" type="number" min="1" value={l.qty} onChange={(e) => update(i, { qty: e.target.value })} />
-          {l.priceItemId && l.priceItemId !== WRITE_IN && (
-            <span className="line-rate muted">{priceOf(l) ? `Rate ${formatMoney(priceOf(l))}` : 'Price not set'}</span>
-          )}
+          <span className="line-rate muted">{!l.priceItemId ? '' : priceOf(l) ? `× ${formatMoney(priceOf(l))}` : 'Price not set'}</span>
           <span className="line-amount">{formatMoney(priceOf(l) * (Number(l.qty) || 0))}</span>
           <button type="button" className="icon-btn" aria-label={`Remove line ${i + 1}`} onClick={() => onChange(value.filter((_, j) => j !== i))}>
             <Trash2 size={15} />
@@ -78,15 +85,16 @@ export function BillLinesEditor({ value, onChange }) {
       {unpriced > 0 && (
         <p className="field-error">
           {unpriced === 1 ? '1 line has' : `${unpriced} lines have`} no price yet and would be billed at {formatMoney(0)}.{' '}
-          {canAccess('billingAdmin') ? 'Set the price in Billing → Price list first.' : 'Ask the hospital admin to set the price in Billing → Price list.'}
+          {canAccess('priceListEdit') ? 'Set the price in Billing → Price list first.' : 'Ask the hospital admin to set the price in Billing → Price list.'}
         </p>
       )}
       <div className="line-foot">
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange([...value, newLine()])}>
-          <Plus size={14} aria-hidden /> Line
+          <Plus size={14} aria-hidden /> Add another service
         </button>
         <strong>Total {formatMoney(total)}</strong>
       </div>
+      <p className="field-help">The bill's subtotal, discount, total and balance are worked out by the server when it is saved.</p>
     </div>
   );
 }

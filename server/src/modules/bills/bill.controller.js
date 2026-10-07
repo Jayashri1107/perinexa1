@@ -12,6 +12,7 @@ import {
   patientSearchQuery,
   paymentBody,
   refundBody,
+  lineUpdateBody,
 } from './bill.validation.js';
 
 export async function list(req, res) {
@@ -59,4 +60,9 @@ export async function payment(req, res) {
 export async function refund(req, res) {
   const { id } = parse(billParams, req.params);
   res.json(await service.giveRefund(req, id, parse(refundBody, req.body)));
+}
+
+export async function updateLine(req, res) {
+  const { id, lineId } = parse(lineParams, req.params);
+  res.json(await service.updateLine(req, id, lineId, parse(lineUpdateBody, req.body)));
 }

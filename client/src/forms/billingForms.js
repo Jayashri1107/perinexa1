@@ -7,6 +7,12 @@ export const priceItemFields = ({ groups, isNew }) => [
   { name: 'group', label: 'Group', type: 'select', required: true, options: toOptions(groups), width: 'half' },
   { name: 'price', label: 'Price (₹)', type: 'number', required: true, width: 'half' },
 ];
+// One line of an open bill: its quantity and rate (the amount is worked out).
+export const lineEditFields = [
+  { name: 'qty', label: 'Quantity', type: 'number', required: true, width: 'half', help: 'For example the number of days.' },
+  { name: 'unitPrice', label: 'Rate (₹)', type: 'number', required: true, width: 'half', help: 'The price list rate, or a special rate for this bill.' },
+];
+
 export const emptyPriceItem = (groups) => ({ code: '', name: '', group: groups[0].key, price: '' });
 
 const needsReference = (modes) => (v) => modes.find((m) => m.key === v.mode)?.needsReference;

@@ -209,9 +209,9 @@ export async function grantEmergencyAccess(req, id, reason) {
 
 // For other modules (billing, pharmacy): a patient's name and number, if she belongs to this hospital.
 export async function patientSummary(hospitalId, patientId) {
-  const p = await Patient.findOne({ _id: patientId, hospitalId }).select('patientNumber name phone').lean();
+  const p = await Patient.findOne({ _id: patientId, hospitalId }).select('patientNumber name phone sex birthDate birthDateApprox assignedDoctorId').lean();
   if (!p) throw fieldError('patientId', 'Choose a patient of this hospital.');
-  return { id: p._id, patientNumber: p.patientNumber, name: p.name, phone: p.phone };
+  return { id: p._id, patientNumber: p.patientNumber, name: p.name, phone: p.phone, sex: p.sex, birthDate: p.birthDate, birthDateApprox: p.birthDateApprox, assignedDoctorId: p.assignedDoctorId };
 }
 
 // A quick search by name, number or phone – name and number only (billing and pharmacy pick a patient with it).

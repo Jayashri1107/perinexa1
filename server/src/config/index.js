@@ -74,6 +74,7 @@ const schema = z.object({
     patientsContact: roleList,
     billing: roleList,
     billingReports: roleList,
+    priceListEdit: roleList,
     billingAdmin: roleList,
     pharmacy: roleList,
     pharmacyCounter: roleList,
@@ -119,8 +120,8 @@ const schema = z.object({
     paymentModes: z.array(keyLabel).min(1),
     priceGroups: z.array(keyLabel).min(1),
     pharmacyGroup: z.string().min(1),
-    // The ready-made items a hospital's price list starts with (all at ₹0, for the hospital admin to price).
-    startingPriceList: z.array(z.object({ code: z.string().regex(/^[A-Z0-9_-]{2,20}$/), name: z.string().min(1).max(120), group: z.string().min(1) })),
+    // The ready-made items a hospital's price list starts with, at SAMPLE prices for the hospital to check and change.
+    startingPriceList: z.array(z.object({ code: z.string().regex(/^[A-Z0-9_-]{2,20}$/), name: z.string().min(1).max(120), group: z.string().min(1), price: z.number().min(0) })),
   }),
   pharmacy: z.object({
     invoicePrefix: prefix,

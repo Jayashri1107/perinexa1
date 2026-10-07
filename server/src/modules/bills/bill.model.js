@@ -24,7 +24,9 @@ const billSchema = new mongoose.Schema(
   {
     billNumber: { type: String, required: true, immutable: true },
     patientId: { type: ObjectId, ref: 'Patient', required: true, immutable: true },
-    patient: { patientNumber: String, name: String }, // as at the time of the bill
+    // as at the time of the bill (age, sex, phone and her doctor for the printed bill; older bills have name and number only)
+    patient: { patientNumber: String, name: String, sex: String, birthDate: Date, birthDateApprox: Boolean, phone: String },
+    doctorName: { type: String, default: '' },
     lines: { type: [lineSchema], default: [] },
     subtotal: { type: Number, default: 0 },
     discount: {

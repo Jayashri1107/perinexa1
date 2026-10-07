@@ -8,6 +8,7 @@ router.get('/patients', controller.patients);
 router.post('/', controller.create);
 router.get('/:id', controller.get);
 router.post('/:id/lines', controller.addLines);
+router.patch('/:id/lines/:lineId', controller.updateLine);
 router.post('/:id/lines/:lineId/remove', controller.removeLine);
 router.put('/:id/discount', controller.discount);
 router.post('/:id/cancel', controller.cancel);

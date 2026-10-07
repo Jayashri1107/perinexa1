@@ -111,6 +111,7 @@ export const billsApi = {
   get: (id) => http.get(`${BILLING}/bills/${id}`),
   create: (data) => http.post(`${BILLING}/bills`, data),
   addLines: (id, lines) => http.post(`${BILLING}/bills/${id}/lines`, { lines }),
+  updateLine: (id, lineId, data) => http.patch(`${BILLING}/bills/${id}/lines/${lineId}`, data),
   removeLine: (id, lineId) => http.post(`${BILLING}/bills/${id}/lines/${lineId}/remove`),
   discount: (id, data) => http.put(`${BILLING}/bills/${id}/discount`, data),
   cancel: (id, reason) => http.post(`${BILLING}/bills/${id}/cancel`, { reason }),

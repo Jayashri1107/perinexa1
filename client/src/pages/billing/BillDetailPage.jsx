@@ -1,5 +1,5 @@
 // One bill: its lines, discount, payments and refunds; take payment, refund, cancel, print, UPI link.
-import { ArrowLeft, Ban, IndianRupee, Percent, Plus, Printer, Trash2, Undo2 } from 'lucide-react';
+import { ArrowLeft, Ban, IndianRupee, Pencil, Percent, Plus, Printer, Trash2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { billingSettingsApi, billsApi } from '../../api/index.js';
@@ -10,20 +10,21 @@ import { Loader } from '../../components/Loader.jsx';
 import { Modal } from '../../components/Modal.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
-import { cancelFields, discountFields, paymentFields, refundFields } from '../../forms/billingForms.js';
+import { cancelFields, discountFields, lineEditFields, paymentFields, refundFields } from '../../forms/billingForms.js';
 import { useForm } from '../../hooks/useForm.js';
-import { formatDateTime, formatMoney, labelOf } from '../../utils/format.js';
+import { amountInWords } from '../../utils/amountInWords.js';
+import { ageText, formatDateTime, formatMoney, labelOf } from '../../utils/format.js';
 import { BillLinesEditor, newLine, toServerLines } from './BillLinesEditor.jsx';
 import { BillStatus } from './BillStatus.jsx';
 
 export function BillDetailPage() {
   const { id } = useParams();
-  const { billing } = useAppConfig();
+  const { billing, patients: patientSettings } = useAppConfig();
   const [data, setData] = useState(null);
   const [payee, setPayee] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [dialog, setDialog] = useState(null); // 'pay' | 'refund' | 'discount' | 'cancel' | 'lines'
+  const [dialog, setDialog] = useState(null); // 'pay' | 'refund' | 'discount' | 'cancel' | 'lines' | { line }
   const [newLines, setNewLines] = useState([newLine()]);
   const form = useForm({});
 
@@ -73,10 +74,11 @@ export function BillDetailPage() {
       : null;
 
   const lineColumns = [
-    { key: 'name', label: 'Item', render: (l) => (<>{l.name}{l.source === 'pharmacy' && <span className="muted block small">from the pharmacy</span>}</>) },
+    { key: 'no', label: '#', className: 'num', render: (l) => bill.lines.indexOf(l) + 1 },
+    { key: 'name', label: 'Service', render: (l) => (<>{l.name}{l.source === 'pharmacy' && <span className="muted block small">from the pharmacy</span>}</>) },
     { key: 'group', label: 'Group', render: (l) => labelOf(billing.priceGroups, l.group) },
     { key: 'qty', label: 'Qty', className: 'num' },
-    { key: 'unitPrice', label: 'Price', className: 'num', render: (l) => formatMoney(l.unitPrice) },
+    { key: 'unitPrice', label: 'Rate', className: 'num', render: (l) => formatMoney(l.unitPrice) },
     { key: 'amount', label: 'Amount', className: 'num', render: (l) => formatMoney(l.amount) },
     {
       key: 'actions',
@@ -84,9 +86,14 @@ export function BillDetailPage() {
       className: 'actions',
       render: (l) =>
         open && l.source !== 'pharmacy' ? (
+          <span className="row-actions">
+          <button type="button" className="icon-btn" aria-label={`Change ${l.name}`} title="Change quantity or rate" onClick={() => show({ line: l }, { qty: l.qty, unitPrice: l.unitPrice })}>
+            <Pencil size={15} />
+          </button>
           <button type="button" className="icon-btn" aria-label={`Remove ${l.name}`} onClick={() => window.confirm(`Remove ${l.name}?`) && run(() => billsApi.removeLine(id, l.id))}>
             <Trash2 size={15} />
           </button>
+          </span>
         ) : null,
     },
   ];
@@ -105,7 +112,15 @@ export function BillDetailPage() {
       <PageHeader
         back={<Link to="/hospital/billing" className="back-link"><ArrowLeft size={16} aria-hidden /> Bills</Link>}
         title={`Bill ${bill.billNumber}`}
-        subtitle={`${bill.patient?.name} · ${bill.patient?.patientNumber} · ${formatDateTime(bill.createdAt)}`}
+        subtitle={[
+          bill.patient?.name,
+          bill.patient?.patientNumber,
+          bill.patient?.birthDate && ageText(bill.patient.birthDate, bill.patient.birthDateApprox),
+          bill.patient?.sex && labelOf(patientSettings.sexes, bill.patient.sex),
+          bill.patient?.phone,
+          bill.doctorName && `Doctor: ${bill.doctorName}`,
+          formatDateTime(bill.createdAt),
+        ].filter(Boolean).join(' · ')}
         actions={
           <>
             <BillStatus bill={bill} />
@@ -128,6 +143,7 @@ export function BillDetailPage() {
           <dt>Subtotal</dt><dd>{formatMoney(bill.subtotal)}</dd>
           {bill.discount.amount > 0 && (<><dt>Discount{bill.discount.reason ? ` (${bill.discount.reason})` : ''}</dt><dd>−{formatMoney(bill.discount.amount)}</dd></>)}
           <dt><strong>Total</strong></dt><dd><strong>{formatMoney(bill.total)}</strong></dd>
+          <dt className="muted small">In words</dt><dd className="muted small">{amountInWords(bill.total)}</dd>
           <dt>Paid</dt><dd>{formatMoney(netPaid)}</dd>
           <dt><strong>{bill.balance < 0 ? 'To refund' : 'Balance'}</strong></dt><dd><strong>{formatMoney(Math.abs(bill.balance))}</strong></dd>
         </dl>
@@ -174,6 +190,10 @@ export function BillDetailPage() {
       )}
       {dialog === 'cancel' && (
         <FormModal title="Cancel bill" fields={cancelFields} form={form} submitLabel="Cancel the bill" onSubmit={async (v) => done(await billsApi.cancel(id, v.reason))} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.line && (
+        <FormModal title={`Change ${dialog.line.name}`} fields={lineEditFields} form={form} submitLabel="Save"
+          onSubmit={async (v) => done(await billsApi.updateLine(id, dialog.line.id, { qty: Number(v.qty), unitPrice: Number(v.unitPrice) }), `${dialog.line.name} changed – totals worked out again.`)} onClose={() => setDialog(null)} />
       )}
       {dialog === 'lines' && (
         <Modal title="Add lines" size="lg" onClose={() => setDialog(null)}

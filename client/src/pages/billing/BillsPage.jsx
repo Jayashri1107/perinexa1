@@ -35,7 +35,7 @@ export function BillsPage() {
 
   return (
     <BillingFrame
-      subtitle={patientId ? 'Bills of one patient' : 'All bills, newest first'}
+      subtitle={patientId ? 'Patient account: all her bills, with what was billed, paid and is still due' : 'All bills, newest first. A patient can have several bills.'}
       actions={
         <button type="button" className="btn btn-primary" onClick={() => navigate(`/hospital/billing/new${patientId ? `?patientId=${patientId}` : ''}`)}>
           <Plus size={16} aria-hidden /> New bill

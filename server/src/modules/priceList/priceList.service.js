@@ -7,15 +7,35 @@ import { config } from '../../config/index.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { PriceItem } from './priceItem.model.js';
 
-// A hospital with no price list at all gets the ready-made starting items (config.billing.startingPriceList), each at
-// ₹0 ("Price not set") for the hospital admin to price. A hospital that already has items is never changed.
+// A hospital with no price list at all gets the ready-made starting items (config.billing.startingPriceList) at their
+// sample prices, for the hospital to check and change. A hospital that already has items is never changed here.
 async function ensureStartingList(hospitalId) {
   if (await PriceItem.exists({ hospitalId })) return;
-  const rows = config.billing.startingPriceList.map((i) => ({ ...i, price: 0, hospitalId }));
+  const rows = config.billing.startingPriceList.map((i) => ({ ...i, hospitalId }));
   // Two first visits at once: the unique code index keeps one copy of each item.
   await PriceItem.insertMany(rows, { ordered: false }).catch((err) => {
     if (err.code !== 11000 && !err.writeErrors?.every((e) => e.code === 11000)) throw err;
   });
+}
+
+// Run by hand (npm run prices:sample): adds the starting items a hospital is missing, and gives the sample price to
+// starting items still at ₹0. A price someone set, and items the hospital added itself, are never changed.
+export async function fillSamplePrices(hospitalId) {
+  const existing = await PriceItem.find({ hospitalId }).lean();
+  const byCode = new Map(existing.map((i) => [i.code, i]));
+  let added = 0;
+  let priced = 0;
+  for (const item of config.billing.startingPriceList) {
+    const found = byCode.get(item.code);
+    if (!found) {
+      await PriceItem.create({ ...item, hospitalId });
+      added += 1;
+    } else if (found.price === 0 && item.price > 0) {
+      await PriceItem.updateOne({ hospitalId, _id: found._id, price: 0 }, { $set: { price: item.price } });
+      priced += 1;
+    }
+  }
+  return { added, priced };
 }
 
 export async function listPrices(hospitalId, q) {

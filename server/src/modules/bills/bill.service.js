@@ -10,6 +10,7 @@ import { containsText, escapeRegex, toObjectId } from '../../core/validate.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { patientSummary } from '../patients/patient.service.js';
 import { findActiveItems } from '../priceList/priceList.service.js';
+import { User } from '../users/user.model.js';
 import { Bill, Payment } from './bill.model.js';
 
 const { billPrefix, receiptPrefix, numberDigits, pharmacyGroup } = config.billing;
@@ -28,6 +29,17 @@ export function recalculate(bill) {
 }
 
 const netPaid = (bill) => round2(bill.paid - bill.refunded);
+
+// What a new bill keeps about the patient and her doctor (as at the time of the bill).
+async function billHeader(hospitalId, patientId) {
+  const p = await patientSummary(hospitalId, patientId);
+  const doctor = p.assignedDoctorId ? await User.findById(p.assignedDoctorId).select('name').lean() : null;
+  return {
+    patientId: p.id,
+    patient: { patientNumber: p.patientNumber, name: p.name, sex: p.sex, birthDate: p.birthDate, birthDateApprox: p.birthDateApprox, phone: p.phone },
+    doctorName: doctor?.name ?? '',
+  };
+}
 
 // Turns the browser's lines into bill lines, taking names and prices from the price list.
 async function toLines(req, lines) {
@@ -66,12 +78,10 @@ export async function getBill(hospitalId, id) {
 }
 
 export async function createBill(req, { patientId, lines }) {
-  const patient = await patientSummary(req.hospitalId, patientId);
   const bill = new Bill({
     hospitalId: req.hospitalId,
     billNumber: await nextNumber(req.hospitalId, 'bill', billPrefix, numberDigits),
-    patientId: patient.id,
-    patient: { patientNumber: patient.patientNumber, name: patient.name },
+    ...(await billHeader(req.hospitalId, patientId)),
     lines: await toLines(req, lines),
     createdBy: req.user._id,
   });
@@ -102,6 +112,25 @@ export async function removeLine(req, id, lineId) {
   assertNotBelowPaid(bill);
   await bill.save();
   await recordAudit(req, 'BILL_UPDATED', { hospitalId: req.hospitalId, details: { billNumber: bill.billNumber, removed: line.name, total: bill.total } });
+  return getBill(req.hospitalId, id);
+}
+
+// Changes one line's quantity or rate on an open bill (e.g. 3 days instead of 2, or a special rate). The amount and
+// all totals are worked out again; the audit log keeps what it was and what it became.
+export async function updateLine(req, id, lineId, { qty, unitPrice }) {
+  const bill = await findBillOr404(req.hospitalId, id);
+  assertOpen(bill);
+  const line = bill.lines.id(lineId);
+  if (!line) throw notFoundError('Bill line');
+  if (line.source === 'pharmacy') throw new HttpError(400, 'Pharmacy lines are changed by a return in the pharmacy.', 'PHARMACY_LINE');
+  const before = { qty: line.qty, unitPrice: line.unitPrice };
+  line.qty = qty;
+  line.unitPrice = round2(unitPrice);
+  line.amount = round2(line.unitPrice * line.qty);
+  recalculate(bill);
+  assertNotBelowPaid(bill);
+  await bill.save();
+  await recordAudit(req, 'BILL_UPDATED', { hospitalId: req.hospitalId, details: { billNumber: bill.billNumber, line: line.name, from: before, to: { qty: line.qty, unitPrice: line.unitPrice }, total: bill.total } });
   return getBill(req.hospitalId, id);
 }
 
@@ -203,12 +232,10 @@ export async function listBills(hospitalId, q) {
 export async function addPharmacyCharge(req, patientId, { invoiceNumber, amount }) {
   let bill = await Bill.findOne({ hospitalId: req.hospitalId, patientId, status: 'open' }).sort({ createdAt: -1 });
   if (!bill) {
-    const patient = await patientSummary(req.hospitalId, patientId);
     bill = new Bill({
       hospitalId: req.hospitalId,
       billNumber: await nextNumber(req.hospitalId, 'bill', billPrefix, numberDigits),
-      patientId: patient.id,
-      patient: { patientNumber: patient.patientNumber, name: patient.name },
+      ...(await billHeader(req.hospitalId, patientId)),
       createdBy: req.user._id,
     });
   }
