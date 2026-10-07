@@ -10,7 +10,7 @@ export function HospitalAuditPage() {
     <>
       <PageHeader title="Audit log" subtitle="Everything done in this hospital: who did what, and when. Click a line for the details. Entries cannot be changed or deleted." />
       <SectionTabs tabs={HOSPITAL_ADMIN_TABS} label="Hospital admin" />
-      <AuditLogView fetchPage={hospitalAuditApi.list} />
+      <AuditLogView fetchPage={hospitalAuditApi.list} fetchSummary={hospitalAuditApi.summary} />
     </>
   );
 }

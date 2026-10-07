@@ -4,7 +4,7 @@ import { containsText } from '../../core/validate.js';
 import { Hospital } from '../hospitals/hospital.model.js';
 import { Patient } from '../patients/patient.model.js';
 import { User } from '../users/user.model.js';
-import { AUDIT_CATEGORIES } from './audit.actions.js';
+import { AUDIT_CATEGORIES, ROUTINE_ACTIONS } from './audit.actions.js';
 import { AuditLog } from './auditLog.model.js';
 
 // Records "who did what, to whom, and when". Never stores passwords. A failure to write is logged but never
@@ -72,7 +72,8 @@ const aboutStages = (withPatients) => [
 export async function listAuditLogs(q, { withPatients = false } = {}) {
   const match = {};
   if (q.action) match.action = q.action;
-  else if (q.category) match.action = { $in: AUDIT_CATEGORIES.find((c) => c.key === q.category).actions };
+  else if (q.category) match.action = { $in: AUDIT_CATEGORIES.find((c) => c.key === q.category).actions.filter((a) => q.everything === 'true' || !ROUTINE_ACTIONS.includes(a)) };
+  else if (q.everything !== 'true') match.action = { $nin: ROUTINE_ACTIONS };
   if (q.hospitalId) match.hospitalId = q.hospitalId;
   if (q.from || q.to) {
     match.createdAt = {};
@@ -95,4 +96,17 @@ export async function listAuditLogs(q, { withPatients = false } = {}) {
       ...withId(),
     ],
   });
+}
+
+// A short summary of a period: how many changes, failed sign-ins and routine entries, and the changes by group.
+export async function auditSummary({ from, hospitalId }) {
+  const match = { ...(from && { createdAt: { $gte: from } }), ...(hospitalId && { hospitalId }) };
+  const rows = await AuditLog.aggregate([{ $match: match }, { $group: { _id: '$action', count: { $sum: 1 } } }]);
+  const count = (pick) => rows.filter((r) => pick(r._id)).reduce((n, r) => n + r.count, 0);
+  return {
+    changes: count((a) => !ROUTINE_ACTIONS.includes(a) && a !== 'LOGIN_FAILED' && a !== 'LOGIN_RATE_LIMITED'),
+    failedLogins: count((a) => a === 'LOGIN_FAILED' || a === 'LOGIN_RATE_LIMITED'),
+    routine: count((a) => ROUTINE_ACTIONS.includes(a)),
+    byGroup: AUDIT_CATEGORIES.map((c) => ({ key: c.key, label: c.label, count: count((a) => c.actions.includes(a) && !ROUTINE_ACTIONS.includes(a)) })).filter((g) => g.count > 0),
+  };
 }

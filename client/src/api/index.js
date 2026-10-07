@@ -46,6 +46,7 @@ export const hospitalSettingsApi = {
 
 export const hospitalAuditApi = {
   list: (query) => http.get('/hospital/audit-logs', query),
+  summary: (query) => http.get('/hospital/audit-logs/summary', query),
 };
 
 export const dashboardApi = {
@@ -77,6 +78,7 @@ export const masterDataApi = (type) => ({
 
 export const auditApi = {
   list: (query) => http.get('/audit-logs', query),
+  summary: (query) => http.get('/audit-logs/summary', query),
 };
 
 export const todayApi = { get: () => http.get('/hospital/today') };

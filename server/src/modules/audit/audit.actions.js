@@ -129,3 +129,7 @@ export const AUDIT_CATEGORIES = [...GROUPS, { key: 'other', label: 'Other' }].ma
   label,
   actions: AUDIT_ACTION_KEYS.filter((a) => groupOf(a) === key),
 })).filter((c) => c.actions.length);
+
+// Routine entries: a record opened, a sign-in or sign-out, a hospital switch. Kept like every entry, but the log hides
+// them unless asked ("include record openings and sign-ins"), so the changes stand out.
+export const ROUTINE_ACTIONS = AUDIT_ACTION_KEYS.filter((a) => a.endsWith('_VIEWED') || ['LOGIN_SUCCESS', 'LOGOUT', 'HOSPITAL_SWITCHED'].includes(a));
