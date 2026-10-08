@@ -21,14 +21,16 @@ import { usePagedList } from '../../hooks/usePagedList.js';
 import { USER_STATUS_FILTER } from '../../utils/filters.js';
 import { initialsOf, timeAgo, toOptions, userStatus } from '../../utils/format.js';
 
-const KIND_FILTER = {
+// Type: super admins, all hospital staff, or one staff position (each role of config.roles).
+const kindFilter = (roles) => ({
   name: 'kind',
   label: 'Type',
   options: [
     { value: 'superAdmin', label: 'Super admins' },
-    { value: 'staff', label: 'Hospital staff' },
+    { value: 'staff', label: 'All hospital staff' },
+    ...roles.map((r) => ({ value: r.key, label: r.label })),
   ],
-};
+});
 
 const sameRoles = (a = [], b = []) => a.length === b.length && a.every((r) => b.includes(r));
 
@@ -183,7 +185,7 @@ export function UsersPage({ preset = {}, startAdding = false }) {
         list={list}
         columns={columns}
         searchPlaceholder="Search by name or email"
-        filters={[KIND_FILTER, USER_STATUS_FILTER, { name: 'hospitalId', label: 'Hospital', options: hospitals }]}
+        filters={[kindFilter(roles), USER_STATUS_FILTER, { name: 'hospitalId', label: 'Hospital', options: hospitals }]}
         emptyText="No accounts found."
       />
       {dialog === 'add' && (

@@ -35,12 +35,16 @@ const membershipStages = [
 
 export async function listUsers(q) {
   const match = { ...(q.status && STATUS_MATCH[q.status]) };
+  const role = q.kind && !['superAdmin', 'staff'].includes(q.kind) ? q.kind : null;
   if (q.kind) match.isSuperAdmin = q.kind === 'superAdmin';
+  if (role) q = { ...q, role };
   if (q.search) {
     const text = containsText(q.search);
     match.$or = [{ name: text }, { email: text }];
   }
-  if (q.hospitalId) match._id = { $in: await Membership.distinct('userId', { hospitalId: q.hospitalId }) };
+  if (q.hospitalId || q.role) {
+    match._id = { $in: await Membership.distinct('userId', { ...(q.hospitalId && { hospitalId: q.hospitalId }), ...(q.role && { roles: q.role, isActive: true }) }) };
+  }
 
   return paginate(User, { match, sort: toSort(q.sort), page: q.page, limit: q.limit, pageStages: membershipStages });
 }

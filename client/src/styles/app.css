@@ -1083,14 +1083,33 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 }
 .rx-pharmacy-state { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .rx-actions { display: inline-flex; gap: var(--space-2); margin-left: auto; flex-wrap: wrap; }
-/* when to take a medicine: Morning / Afternoon / Night toggles, and Other */
-.dose-times { display: flex; flex-wrap: wrap; gap: 4px; min-width: 250px; }
-.dose-times button {
-  display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 99px; border: 1px solid var(--color-border);
-  background: var(--color-surface); color: var(--color-text-muted); font: inherit; font-size: 12px; cursor: pointer;
+/* the prescription box: one card per medicine; the dose as 1-0-1 buttons, food as buttons */
+.rx-box { display: flex; flex-direction: column; gap: var(--space-3); }
+.rx-hint { margin: 0; }
+.rx-cards { display: flex; flex-direction: column; gap: var(--space-3); }
+.rx-card { padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface-muted); }
+.rx-card input, .rx-card select { padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; color: var(--color-text); }
+.rx-card > input { width: 100%; }
+.rx-card-top { display: flex; align-items: center; gap: var(--space-2); }
+.rx-card-no { flex-shrink: 0; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--color-primary); color: var(--color-primary-text); font-size: 13px; font-weight: 700; }
+.rx-form { width: 110px; }
+.rx-drug { flex: 1; min-width: 160px; font-weight: 600; }
+.rx-strength { width: 110px; }
+.rx-card-row { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; margin-top: var(--space-3); }
+.rx-label { min-width: 40px; font-size: var(--text-sm); font-weight: 600; color: var(--color-text-muted); }
+.rx-days { display: inline-flex; gap: 6px; }
+.rx-days input { width: 64px; }
+.dose-codes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dose-codes button {
+  padding: 6px 12px; border-radius: 99px; border: 1px solid var(--color-border); background: var(--color-surface);
+  color: var(--color-text); font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; cursor: pointer;
 }
-.dose-times button.on { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-text); }
-.dose-times button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.dose-codes button:hover { border-color: var(--color-primary); }
+.dose-codes button.on { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-text); }
+.dose-codes button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.dose-codes select { border-radius: 99px !important; padding: 6px 10px !important; font-size: 13px; }
+.dose-codes select.on { border-color: var(--color-primary); color: var(--color-primary); font-weight: 600; }
+.rx-add { align-self: flex-start; }
 
 /* the pharmacy's Prescriptions tab */
 .rxq-count {

@@ -10,7 +10,9 @@ export const userListQuery = listQuery({
   sortFields: ['name', 'email', 'createdAt', 'lastLoginAt'],
   extra: {
     status: z.enum(USER_STATUSES).optional(),
-    kind: z.enum(ACCOUNT_TYPES).optional(),
+    // super admins, hospital staff, or one staff position (a role key: people with that role in a hospital – in the
+    // chosen hospital, when one is chosen)
+    kind: z.enum([...ACCOUNT_TYPES, ...ROLE_KEYS]).optional(),
     hospitalId: objectId.transform(toObjectId).optional(),
   },
 });
