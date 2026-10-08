@@ -13,7 +13,7 @@ import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { cancelFields, discountFields, lineEditFields, paymentFields, refundFields } from '../../forms/billingForms.js';
 import { useForm } from '../../hooks/useForm.js';
 import { amountInWords } from '../../utils/amountInWords.js';
-import { ageText, formatDateTime, formatMoney, labelOf } from '../../utils/format.js';
+import { ageText, formatDate, formatDateTime, formatMoney, labelOf } from '../../utils/format.js';
 import { BillLinesEditor, newLine, toServerLines } from './BillLinesEditor.jsx';
 import { BillStatus } from './BillStatus.jsx';
 
@@ -37,7 +37,7 @@ export function BillDetailPage() {
   }, []);
 
   if (!data) return error ? <Alert type="error">{error}</Alert> : <Loader />;
-  const { bill, payments } = data;
+  const { bill, payments, context } = data;
   const open = bill.status !== 'cancelled';
   const netPaid = bill.paid - bill.refunded;
 
@@ -105,6 +105,16 @@ export function BillDetailPage() {
     { key: 'mode', label: 'Mode', render: (p) => `${labelOf(billing.paymentModes, p.mode)}${p.reference ? ` · ${p.reference}` : ''}` },
     { key: 'byName', label: 'By' },
     { key: 'amount', label: 'Amount', className: 'num', render: (p) => formatMoney(p.kind === 'refund' ? -p.amount : p.amount) },
+    {
+      key: 'print',
+      label: '',
+      className: 'actions',
+      render: (p) => (
+        <a href={`/hospital/print/receipt/${bill.id}/${p.id}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" aria-label={`Print receipt ${p.receiptNumber}`}>
+          <Printer size={14} aria-hidden /> Receipt
+        </a>
+      ),
+    },
   ];
 
   return (
@@ -136,6 +146,14 @@ export function BillDetailPage() {
       <Alert type="error">{error}</Alert>
       <Alert type="success">{notice}</Alert>
       {bill.status === 'cancelled' && <Alert type="info">Cancelled: {bill.cancelReason}</Alert>}
+      {context && (
+        <p className="muted small">
+          {context.stay
+            ? `Inpatient · ${context.stay.admissionNumber ? `${context.stay.admissionNumber} · ` : ''}${[context.stay.ward, context.stay.bed].filter(Boolean).join(' / ')} · admitted ${formatDate(context.stay.admittedAt)}${context.stay.dischargedAt ? `, discharged ${formatDate(context.stay.dischargedAt)}` : ' (in hospital)'}`
+            : `Outpatient${context.visitOn ? ` · visit ${formatDate(context.visitOn)}` : ''}`}
+          {context.createdByName && ` · bill made by ${context.createdByName}`}
+        </p>
+      )}
 
       <section className="card list-panel">
         <DataTable columns={lineColumns} rows={bill.lines} emptyText="No lines yet." />

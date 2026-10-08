@@ -27,6 +27,7 @@ const billSchema = new mongoose.Schema(
     // as at the time of the bill (age, sex, phone and her doctor for the printed bill; older bills have name and number only)
     patient: { patientNumber: String, name: String, sex: String, birthDate: Date, birthDateApprox: Boolean, phone: String },
     doctorName: { type: String, default: '' },
+    doctorId: { type: ObjectId, ref: 'User', default: null }, // her doctor when the bill was made (for the printed details)
     lines: { type: [lineSchema], default: [] },
     subtotal: { type: Number, default: 0 },
     discount: {

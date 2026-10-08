@@ -8,6 +8,7 @@
 // Signing the discharge card discharges her; its follow-up date books a needs-a-time appointment.
 // The audit log gets ids only – never medical details.
 import { config } from '../../config/index.js';
+import { nextNumber } from '../../db/counter.js';
 import { HttpError, fieldError, notFoundError } from '../../core/httpError.js';
 import { parse, toObjectId } from '../../core/validate.js';
 import { Appointment } from '../appointments/appointment.model.js';
@@ -153,7 +154,7 @@ export async function staysOfPatient(req, patientId) {
   const { patient, level } = await loadPatient(req, patientId);
   const stays = await Admission.find({ hospitalId: req.hospitalId, patientId }).sort({ admittedAt: -1 }).limit(30).lean();
   return {
-    items: stays.map((s) => ({ id: String(s._id), status: s.status, ward: s.ward, bed: s.bed, reason: s.reason, admittedAt: s.admittedAt, dischargedAt: s.dischargedAt })),
+    items: stays.map((s) => ({ id: String(s._id), admissionNumber: s.admissionNumber ?? '', status: s.status, ward: s.ward, bed: s.bed, reason: s.reason, admittedAt: s.admittedAt, dischargedAt: s.dischargedAt })),
     canAdmit: patient.status === 'active' && canWrite(req, level) && !stays.some((s) => s.status === 'admitted'),
   };
 }
@@ -168,6 +169,7 @@ export async function admit(req, body) {
   const stay = await Admission.create({
     hospitalId: req.hospitalId,
     patientId: patient._id,
+    admissionNumber: await nextNumber(req.hospitalId, 'admission', config.admissions.admissionPrefix, config.admissions.numberDigits),
     careType: patient.careType,
     admittedAt: body.admittedAt,
     ward: body.ward,

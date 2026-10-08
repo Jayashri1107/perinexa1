@@ -58,6 +58,7 @@ import { SuppliersPage } from './pages/pharmacy/SuppliersPage.jsx';
 import { PlatformBillingPage } from './pages/platform/PlatformBillingPage.jsx';
 import { PlatformPharmacyPage } from './pages/platform/PlatformPharmacyPage.jsx';
 import { BillPrintPage } from './pages/print/BillPrintPage.jsx';
+import { ReceiptPrintPage } from './pages/print/ReceiptPrintPage.jsx';
 import { DebitNotePrintPage } from './pages/print/DebitNotePrintPage.jsx';
 import { PrescriptionPrintPage } from './pages/print/PrescriptionPrintPage.jsx';
 import { VisitPage } from './pages/visits/VisitPage.jsx';
@@ -116,6 +117,7 @@ export function App() {
             </Route>
             <Route element={<ProtectedRoute area="hospital" access="billing" />}>
               <Route path="/hospital/print/bill/:id" element={<BillPrintPage />} />
+              <Route path="/hospital/print/receipt/:billId/:paymentId" element={<ReceiptPrintPage />} />
             </Route>
             <Route element={<ProtectedRoute area="hospital" access="pharmacy" />}>
               <Route path="/hospital/print/sale/:id" element={<SaleInvoicePrintPage />} />

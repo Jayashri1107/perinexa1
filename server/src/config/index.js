@@ -165,6 +165,7 @@ const schema = z.object({
     weekStartsOn: z.number().int().min(0).max(6), // 0 = Sunday, 1 = Monday
     maxRangeDays: z.number().int().min(7).max(62),
   }),
+  admissions: z.object({ admissionPrefix: prefix, numberDigits: digits }),
   lab: z.object({ orderPrefix: prefix, numberDigits: digits, maxTestsPerOrder: z.number().int().min(1).max(100) }),
   library: z.object({ maxEntries: z.number().int().min(10).max(2000) }),
   appearance: z.object({ textSize: z.array(keyLabel).min(1), density: z.array(keyLabel).min(1) }),

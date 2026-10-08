@@ -135,6 +135,10 @@
     "weekStartsOn": 1,
     "maxRangeDays": 42
   },
+  "admissions": {
+    "admissionPrefix": "ADM-",
+    "numberDigits": 6
+  },
   "lab": {
     "orderPrefix": "L-",
     "numberDigits": 6,

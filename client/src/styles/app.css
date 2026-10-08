@@ -728,7 +728,10 @@ input.qty { width: 80px; padding: 6px 8px; border: 1px solid var(--color-border)
 .rx-symbol { font-size: 22px; margin: var(--space-3) 0 0; }
 .print-sign { margin-top: var(--space-6); text-align: right; }
 .print-sign-row { display: flex; justify-content: space-between; gap: var(--space-6); }
+.print-sign-row .print-sign { flex: 1; text-align: center; border-top: 0; }
 .print-sign-row .print-sign:first-child { text-align: left; }
+.print-sign-row .print-sign:last-child { text-align: right; }
+.receipt-totals { max-width: 100%; margin: 8px 0; }
 .rx-table select { width: 100%; min-width: 90px; padding: 6px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; }
 
 /* inpatients */

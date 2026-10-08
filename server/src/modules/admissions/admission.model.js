@@ -21,6 +21,8 @@ export const NURSING_KINDS = ['vitals', 'medicine', 'note'];
 const admissionSchema = new mongoose.Schema(
   {
     patientId: { type: ObjectId, ref: 'Patient', required: true },
+    // ADM-000001 … (stays admitted before 7 Oct 2026 have none)
+    admissionNumber: { type: String, default: '' },
     careType: { type: String, required: true },
     admittedAt: { type: Date, required: true },
     ward: { type: String, trim: true, maxlength: 60, default: '' },

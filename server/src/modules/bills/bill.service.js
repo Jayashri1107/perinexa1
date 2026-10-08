@@ -11,6 +11,8 @@ import { recordAudit } from '../audit/audit.service.js';
 import { patientSummary } from '../patients/patient.service.js';
 import { findActiveItems } from '../priceList/priceList.service.js';
 import { User } from '../users/user.model.js';
+import { Admission } from '../admissions/admission.model.js';
+import { Visit } from '../visits/visit.model.js';
 import { Bill, Payment } from './bill.model.js';
 
 const { billPrefix, receiptPrefix, numberDigits, pharmacyGroup } = config.billing;
@@ -38,6 +40,7 @@ async function billHeader(hospitalId, patientId) {
     patientId: p.id,
     patient: { patientNumber: p.patientNumber, name: p.name, sex: p.sex, birthDate: p.birthDate, birthDateApprox: p.birthDateApprox, phone: p.phone },
     doctorName: doctor?.name ?? '',
+    doctorId: doctor?._id ?? null,
   };
 }
 
@@ -71,10 +74,40 @@ const assertNotBelowPaid = (bill) => {
   }
 };
 
+// What the bill was for, worked out when it is shown: the stay she was in when the bill was made (admission number,
+// ward and bed, dates) – or, for an outpatient bill, her visit that day – her doctor's professional details, and who
+// made the bill.
+async function billContext(hospitalId, bill) {
+  const at = bill.createdAt ?? new Date();
+  const [stay, creator, doctor] = await Promise.all([
+    Admission.findOne({ hospitalId, patientId: bill.patientId, admittedAt: { $lte: at }, $or: [{ dischargedAt: null }, { dischargedAt: { $gte: new Date(at.getTime() - 24 * 60 * 60 * 1000) } }] })
+      .sort({ admittedAt: -1 })
+      .lean(),
+    bill.createdBy ? User.findById(bill.createdBy).select('name').lean() : null,
+    bill.doctorId ? User.findById(bill.doctorId).select('name professional').lean() : null,
+  ]);
+  let visitOn = null;
+  if (!stay) {
+    const dayStart = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
+    const visit = await Visit.findOne({ hospitalId, patientId: bill.patientId, status: 'active', visitOn: { $lte: at, $gte: new Date(dayStart.getTime() - 24 * 60 * 60 * 1000) } }).sort({ visitOn: -1 }).lean();
+    visitOn = visit?.visitOn ?? null;
+  }
+  return {
+    kind: stay ? 'ipd' : 'opd',
+    stay: stay ? { admissionNumber: stay.admissionNumber ?? '', ward: stay.ward, bed: stay.bed, admittedAt: stay.admittedAt, dischargedAt: stay.dischargedAt } : null,
+    visitOn,
+    doctor: doctor ? { name: doctor.name, qualification: doctor.professional?.qualification ?? '', registrationNumber: doctor.professional?.registrationNumber ?? '', council: doctor.professional?.council ?? '' } : null,
+    createdByName: creator?.name ?? '',
+  };
+}
+
 export async function getBill(hospitalId, id) {
   const bill = await findBillOr404(hospitalId, id);
-  const payments = await Payment.find({ hospitalId, billId: bill._id }).sort({ createdAt: 1 }).lean();
-  return { bill, payments: payments.map(({ _id, ...p }) => ({ id: _id.toString(), ...p })) };
+  const [payments, context] = await Promise.all([
+    Payment.find({ hospitalId, billId: bill._id }).sort({ createdAt: 1 }).lean(),
+    billContext(hospitalId, bill),
+  ]);
+  return { bill, payments: payments.map(({ _id, ...p }) => ({ id: _id.toString(), ...p })), context };
 }
 
 export async function createBill(req, { patientId, lines }) {
