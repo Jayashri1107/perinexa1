@@ -25,7 +25,8 @@ const admissionSchema = new mongoose.Schema(
     admissionNumber: { type: String, default: '' },
     careType: { type: String, required: true },
     admittedAt: { type: Date, required: true },
-    ward: { type: String, trim: true, maxlength: 60, default: '' },
+    wardId: { type: ObjectId, ref: 'Ward', default: null }, // the ward (Hospital admin → Wards and beds); stays before 8 Oct 2026 have none
+    ward: { type: String, trim: true, maxlength: 60, default: '' }, // its name when admitted
     bed: { type: String, trim: true, maxlength: 30, default: '' },
     reason: { type: String, trim: true, maxlength: 300, default: '' },
     doctorId: { type: ObjectId, ref: 'User', default: null }, // her doctor when admitted
@@ -41,6 +42,8 @@ const admissionSchema = new mongoose.Schema(
 admissionSchema.plugin(hospitalScoped);
 admissionSchema.index({ hospitalId: 1, patientId: 1, admittedAt: -1 });
 admissionSchema.index({ hospitalId: 1, status: 1 });
+// One patient per bed: two stays in hospital now can never have the same ward and bed.
+admissionSchema.index({ hospitalId: 1, wardId: 1, bed: 1 }, { unique: true, partialFilterExpression: { status: 'admitted', wardId: { $type: 'objectId' } }, name: 'one_patient_per_bed' });
 admissionSchema.index({ hospitalId: 1, clientRequestId: 1 }, { unique: true });
 admissionSchema.index({ hospitalId: 1, patientId: 1 }, { unique: true, partialFilterExpression: { status: 'admitted' }, name: 'one_current_stay' });
 export const Admission = mongoose.model('Admission', admissionSchema, 'admissions');

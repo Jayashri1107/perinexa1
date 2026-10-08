@@ -24,6 +24,7 @@ import { weeksOn } from '../visits/visit.service.js';
 import { Membership } from '../members/membership.model.js';
 import { notify, notifyRoles } from '../notifications/notification.service.js';
 import { User } from '../users/user.model.js';
+import { assertFreeBed } from '../wards/ward.service.js';
 import { Admission, InpatientDocument, NursingEntry, SIGNED_BY } from './admission.model.js';
 import { DOC_CONTENT } from './admission.validation.js';
 
@@ -125,6 +126,7 @@ async function stayAnswer(req, { stay, patient, level }) {
     stay: {
       id: String(stay._id),
       status: stay.status,
+      wardId: stay.wardId ? String(stay.wardId) : null,
       ward: stay.ward,
       bed: stay.bed,
       reason: stay.reason,
@@ -226,6 +228,7 @@ export async function admit(req, body) {
   const same = await Admission.findOne({ hospitalId: req.hospitalId, clientRequestId: body.clientRequestId });
   if (same) return frontDesk ? { stay: frontDeskStay(same) } : stayAnswer(req, { stay: same, patient, level });
   const doctorId = (await assertHospitalDoctor(req.hospitalId, body.doctorId)) ?? patient.assignedDoctorId ?? null;
+  const ward = await assertFreeBed(req.hospitalId, body.wardId, body.bed);
   if (await Admission.exists({ hospitalId: req.hospitalId, patientId: patient._id, status: 'admitted' })) throw new HttpError(409, 'She is already in hospital.', 'ALREADY_ADMITTED');
   const stay = await Admission.create({
     hospitalId: req.hospitalId,
@@ -233,7 +236,8 @@ export async function admit(req, body) {
     admissionNumber: await nextNumber(req.hospitalId, 'admission', config.admissions.admissionPrefix, config.admissions.numberDigits),
     careType: patient.careType,
     admittedAt: body.admittedAt,
-    ward: body.ward,
+    wardId: ward._id,
+    ward: ward.name,
     bed: body.bed,
     reason: body.reason,
     doctorId,
@@ -249,10 +253,11 @@ export async function admit(req, body) {
   return frontDesk ? { stay: frontDeskStay(stay) } : stayAnswer(req, { stay, patient, level });
 }
 
-export async function moveBed(req, admissionId, { ward, bed }) {
+export async function moveBed(req, admissionId, { wardId, bed }) {
   const loaded = await loadStay(req, admissionId);
   if (loaded.stay.status !== 'admitted' || !canNurse(req, loaded.level)) throw new HttpError(403, 'You cannot change this stay.', 'FORBIDDEN');
-  loaded.stay.set({ ward, bed });
+  const ward = await assertFreeBed(req.hospitalId, wardId, bed, loaded.stay._id);
+  loaded.stay.set({ wardId: ward._id, ward: ward.name, bed });
   await loaded.stay.save();
   await recordAudit(req, 'ADMISSION_UPDATED', { hospitalId: req.hospitalId, details: { admissionId, part: 'bed' } });
   return stayAnswer(req, loaded);

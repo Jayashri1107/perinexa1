@@ -68,6 +68,7 @@ const schema = z.object({
     registerPatients: roleList,
     registrationMenu: roleList,
     admitPatients: roleList,
+    wards: roleList,
     patientDocuments: roleList,
     dischargeCards: roleList,
     patientsAllRecords: roleList,
@@ -107,6 +108,10 @@ const schema = z.object({
     idProofTypes: z.array(keyLabel).min(1),
     ageBands: z.array(z.number().int().nonnegative()).min(2),
     pincodeLookupUrl: z.string().url(),
+  }),
+  wards: z.object({
+    kinds: z.array(keyLabel).min(1),
+    starting: z.array(z.object({ name: z.string().min(2).max(60), kind: z.string().min(1), beds: z.number().int().min(1).max(200), bedPrefix: z.string().max(6) })),
   }),
   notifications: z.object({ listSize: z.number().int().min(5).max(200), keepDays: z.number().int().min(1).max(365) }),
   documents: z.object({

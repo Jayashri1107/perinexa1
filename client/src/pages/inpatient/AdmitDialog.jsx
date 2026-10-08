@@ -7,29 +7,33 @@ import { Modal } from '../../components/Modal.jsx';
 import { useOptions } from '../../hooks/useOptions.js';
 import { requestId } from '../visits/visitFormat.js';
 import { toLocalInput } from './inpatientFormat.js';
+import { BedPicker } from './BedPicker.jsx';
 
 export function AdmitDialog({ patient, onClose, onAdmitted }) {
   const doctors = useOptions(patientsApi.doctors);
-  const [form, setForm] = useState(() => ({ admittedAt: toLocalInput(new Date()), ward: '', bed: '', reason: '', doctorId: patient.assignedDoctorId ?? '', clientRequestId: requestId() }));
+  const [form, setForm] = useState(() => ({ admittedAt: toLocalInput(new Date()), wardId: '', bed: '', reason: '', doctorId: patient.assignedDoctorId ?? '', clientRequestId: requestId() }));
   const [error, setError] = useState('');
+  const [fields, setFields] = useState({});
   const [saving, setSaving] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const admit = async (e) => {
     e.preventDefault();
     setError('');
+    setFields({});
     setSaving(true);
     try {
       const r = await admissionsApi.admit({ patientId: patient.id, ...form, admittedAt: new Date(form.admittedAt).toISOString() });
       onAdmitted(r.stay);
     } catch (err) {
-      setError(Object.values(err.fields ?? {})[0] ?? err.message);
+      setError(err.message);
+      setFields(err.fields ?? {});
       setSaving(false);
     }
   };
 
   return (
-    <Modal title={`Admit ${patient.name}`} onClose={onClose}>
+    <Modal title={`Admit ${patient.name}`} onClose={onClose} size="lg">
       <form onSubmit={admit}>
         <Alert type="error">{error}</Alert>
         <div className="form-grid">
@@ -41,13 +45,12 @@ export function AdmitDialog({ patient, onClose, onAdmitted }) {
               {doctors.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </div>
-          <div className="form-field width-half"><label htmlFor="adm-ward">Ward / room<span className="required" aria-hidden> *</span></label><input id="adm-ward" value={form.ward} maxLength={60} onChange={set('ward')} placeholder="For example General ward, Room 204" /></div>
-          <div className="form-field width-half"><label htmlFor="adm-bed">Bed</label><input id="adm-bed" value={form.bed} maxLength={30} onChange={set('bed')} /></div>
           <div className="form-field"><label htmlFor="adm-reason">Reason for admission</label><input id="adm-reason" value={form.reason} maxLength={300} onChange={set('reason')} placeholder="For example: in labour, planned caesarean" /></div>
         </div>
+        <BedPicker value={{ wardId: form.wardId, bed: form.bed }} onChange={(v) => setForm({ ...form, ...v })} error={fields.bed ?? fields.wardId} />
         <div className="modal-foot inline">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={!form.ward.trim() || saving}>{saving ? 'Admitting…' : 'Admit'}</button>
+          <button type="submit" className="btn btn-primary" disabled={!form.wardId || !form.bed || saving}>{saving ? 'Admitting…' : 'Admit'}</button>
         </div>
       </form>
     </Modal>

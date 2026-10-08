@@ -13,6 +13,7 @@ import { StateBadge } from '../../components/StateBadge.jsx';
 import { formatDateTime } from '../../utils/format.js';
 import { FLAG_LOOKS, requestId } from '../visits/visitFormat.js';
 import { DocumentForm, DocumentView } from './DocumentEditor.jsx';
+import { BedPicker } from './BedPicker.jsx';
 import { KIND_LABELS, SIGNED_BY, VITAL_FIELDS, docLook, stayLook, toLocalInput } from './inpatientFormat.js';
 
 function Doc({ stayId, doc, can, onChanged, startEditing = false }) {
@@ -190,7 +191,7 @@ export function AdmissionPage() {
         actions={
           <>
             <StateBadge look={stayLook(stay)} />
-            {can.bed && <button type="button" className="btn btn-ghost" onClick={() => setMoving({ ward: stay.ward, bed: stay.bed })}>Change ward or bed</button>}
+            {can.bed && <button type="button" className="btn btn-ghost" onClick={() => setMoving({ wardId: stay.wardId ?? '', bed: stay.wardId ? stay.bed : '' })}>Change ward or bed</button>}
             {stay.status === 'admitted' && can.write && (!dischargeCard || dischargeCard.status === 'draft') && (
               <button type="button" className="btn btn-primary" onClick={discharge}><DoorOpen size={16} aria-hidden /> Discharge patient</button>
             )}
@@ -261,10 +262,9 @@ export function AdmissionPage() {
       </div>
 
       {moving && (
-        <Modal title="Change ward or bed" onClose={() => setMoving(null)} size="sm">
+        <Modal title="Change ward or bed" onClose={() => setMoving(null)} size="lg">
           <form onSubmit={async (e) => { e.preventDefault(); try { setData(await admissionsApi.bed(stay.id, moving)); setMoving(null); } catch (err) { setError(err.message); } }}>
-            <div className="form-field"><label htmlFor="mv-ward">Ward</label><input id="mv-ward" value={moving.ward} maxLength={60} onChange={(e) => setMoving((m) => ({ ...m, ward: e.target.value }))} /></div>
-            <div className="form-field top-gap-sm"><label htmlFor="mv-bed">Bed</label><input id="mv-bed" value={moving.bed} maxLength={30} onChange={(e) => setMoving((m) => ({ ...m, bed: e.target.value }))} /></div>
+            <BedPicker value={moving} exceptStayId={stay.id} onChange={(v) => setMoving(v)} />
             <div className="modal-foot inline">
               <button type="button" className="btn btn-ghost" onClick={() => setMoving(null)}>Cancel</button>
               <button type="submit" className="btn btn-primary">Save</button>

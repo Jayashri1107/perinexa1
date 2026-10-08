@@ -87,14 +87,14 @@ const requestId = z.string().trim().min(8).max(64);
 export const admitBody = z.object({
   patientId: objectId,
   admittedAt: when,
-  ward: z.string().trim().min(1, 'Name the ward').max(60),
-  bed: text(30),
+  wardId: objectId,
+  bed: z.string('Choose a free bed').trim().min(1, 'Choose a free bed').max(30),
   reason: text(300),
   doctorId: z.union([objectId, z.literal(''), z.null()]).optional().transform((v) => v || null), // reception chooses her doctor
   clientRequestId: requestId,
 });
 
-export const bedBody = z.object({ ward: z.string().trim().min(1, 'Name the ward').max(60), bed: text(30) });
+export const bedBody = z.object({ wardId: objectId, bed: z.string('Choose a free bed').trim().min(1, 'Choose a free bed').max(30) });
 
 export const newDocBody = z.object({ kind: z.enum(DOC_KINDS), clientRequestId: requestId });
 export const saveDocBody = z.object({ rev: z.number().int().min(0), content: z.unknown() });

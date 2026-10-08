@@ -29,6 +29,7 @@ import { HospitalAuditPage } from './pages/hospital/HospitalAuditPage.jsx';
 import { HospitalSettingsPage } from './pages/hospital/HospitalSettingsPage.jsx';
 import { OpdScheduleEditorPage } from './pages/hospital/OpdScheduleEditorPage.jsx';
 import { OpdTimingsPage } from './pages/hospital/OpdTimingsPage.jsx';
+import { WardsPage } from './pages/hospital/WardsPage.jsx';
 import { StaffPage } from './pages/hospital/StaffPage.jsx';
 import { TodayPage } from './pages/hospital/TodayPage.jsx';
 import { HospitalDetailPage } from './pages/hospitals/HospitalDetailPage.jsx';
@@ -218,6 +219,7 @@ export function App() {
                   <Route path="admin" element={<AdminOverviewPage />} />
                   <Route path="staff" element={<StaffPage />} />
                   <Route path="opd-timings" element={<OpdTimingsPage />} />
+                  <Route path="wards" element={<WardsPage />} />
                   <Route path="opd-timings/:doctorId" element={<OpdScheduleEditorPage />} />
                   <Route path="settings" element={<Navigate to="/hospital/settings/_" replace />} />
                   <Route path="settings/:section" element={<HospitalSettingsPage />} />

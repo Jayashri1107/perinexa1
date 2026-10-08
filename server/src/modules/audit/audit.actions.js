@@ -101,6 +101,8 @@ export const AUDIT_ACTIONS = Object.freeze({
   NURSING_ENTRY_CANCELLED: 'Nursing chart entry marked as entered in error',
   DISCHARGED: 'Patient discharged',
   DISCHARGES_VIEWED: 'Discharge list opened',
+  WARD_CREATED: 'Ward added',
+  WARD_UPDATED: 'Ward or beds changed',
   DISCHARGE_CARD_VIEWED: 'Discharge card opened',
   // Medical history and scanned documents (ids and the kind of document only)
   HISTORY_VIEWED: 'Medical history opened',

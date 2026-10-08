@@ -3,7 +3,7 @@
 import { BedDouble, UserPlus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { admissionsApi, patientsApi } from '../../api/index.js';
+import { admissionsApi, patientsApi, wardsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { Modal } from '../../components/Modal.jsx';
@@ -20,9 +20,11 @@ export function AdmissionsDeskPage() {
   const [notice, setNotice] = useState('');
   const [choosing, setChoosing] = useState(false);
   const [patient, setPatient] = useState(null);
+  const [beds, setBeds] = useState(null);
 
   const load = useCallback(() => {
     admissionsApi.frontDesk().then(setData).catch((err) => setError(err.message));
+    wardsApi.availability().then(setBeds).catch(() => setBeds(null));
   }, []);
   useEffect(load, [load]);
 
@@ -56,9 +58,26 @@ export function AdmissionsDeskPage() {
       <Alert type="error">{error}</Alert>
       <Alert type="success">{notice}</Alert>
       {!data && !error && <Loader />}
+      {beds && beds.items.length > 0 && (
+        <section className="card">
+          <div className="card-head">
+            <h2>Beds</h2>
+            <span className="muted small">{beds.items.reduce((n, w) => n + w.free, 0)} of {beds.items.reduce((n, w) => n + w.total, 0)} free</span>
+          </div>
+          <div className="occupancy">
+            {beds.items.map((w) => (
+              <div key={w.id} className={`ward-card${w.free === 0 ? ' full' : ''}`}>
+                <strong>{w.name}</strong>
+                <span className={`ward-free${w.free === 0 ? ' none' : ''}`}>{w.free === 0 ? 'Full' : `${w.free} free`}</span>
+                <span className="muted small">{w.total - w.free} booked · {w.total} beds</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       {data && (
         <>
-          <section className="card">
+          <section className="card top-gap">
             <div className="card-head"><h2>In hospital now</h2><span className="muted small">{inHospital.length}</span></div>
             {inHospital.length === 0 ? <p className="muted">Nobody is admitted.</p> : <ul className="plain-list rows">{inHospital.map((s) => <Row key={s.id} s={s} />)}</ul>}
           </section>

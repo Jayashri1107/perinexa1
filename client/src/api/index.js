@@ -310,3 +310,9 @@ export const notificationsApi = {
   read: (id) => http.post(`/hospital/notifications/${id}/read`),
   readAll: () => http.post('/hospital/notifications/read-all'),
 };
+export const wardsApi = {
+  availability: (query) => http.get('/hospital/wards/availability', query),
+  list: () => http.get('/hospital/wards'),
+  create: (data) => http.post('/hospital/wards', data),
+  update: (id, data) => http.patch(`/hospital/wards/${id}`, data),
+};

@@ -83,6 +83,7 @@ export const HOSPITAL_ADMIN_TABS = [
   { to: '/hospital/settings/letterhead', label: 'Print letterhead', access: 'admin' },
   { to: '/hospital/settings/messaging', label: 'Patient messages', access: 'admin' },
   { to: '/hospital/opd-timings', label: 'OPD timings', access: 'admin' },
+  { to: '/hospital/wards', label: 'Wards and beds', access: 'admin' },
   { to: '/hospital/settings/abdm', label: 'ABDM', access: 'admin' },
 ];
 
@@ -136,7 +137,7 @@ export const HOSPITAL_NAVIGATION = [
   { to: '/hospital/pharmacy', label: 'Pharmacy', icon: Pill, access: 'pharmacy', tabs: PHARMACY_TABS },
   { to: '/hospital/analytics', label: 'Analytics', icon: ChartColumn, access: 'analytics' },
   { to: '/hospital/library', label: 'Clinic library', icon: Library, access: 'library' },
-  { to: '/hospital/admin', label: 'Hospital admin', icon: Settings, access: 'admin', tabs: HOSPITAL_ADMIN_TABS, activeFor: ['/hospital/staff', '/hospital/opd-timings', '/hospital/settings', '/hospital/audit'] },
+  { to: '/hospital/admin', label: 'Hospital admin', icon: Settings, access: 'admin', tabs: HOSPITAL_ADMIN_TABS, activeFor: ['/hospital/staff', '/hospital/opd-timings', '/hospital/wards', '/hospital/settings', '/hospital/audit'] },
   // (the hospital overview at /hospital/admin is opened from Today)
   MY_SETTINGS,
 ];

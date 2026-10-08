@@ -67,6 +67,7 @@
     "registerPatients": ["doctor", "rmo", "receptionist"],
     "registrationMenu": ["receptionist"],
     "admitPatients": ["doctor", "rmo", "receptionist"],
+    "wards": ["doctor", "rmo", "nurse", "receptionist", "admin"],
     "patientDocuments": ["doctor", "rmo", "nurse", "receptionist"],
     "dischargeCards": ["doctor", "rmo", "nurse", "receptionist"],
     "patientsAllRecords": ["rmo"],
@@ -183,6 +184,26 @@
     ],
     "ageBands": [0, 1, 18, 25, 30, 35, 40, 50],
     "pincodeLookupUrl": "https://api.postalpincode.in/pincode"
+  },
+  "wards": {
+    "kinds": [
+      { "key": "general", "label": "General ward" },
+      { "key": "semi_private", "label": "Semi-private" },
+      { "key": "private", "label": "Private room" },
+      { "key": "icu", "label": "ICU" },
+      { "key": "nicu", "label": "NICU" },
+      { "key": "labour", "label": "Labour room" },
+      { "key": "day_care", "label": "Day care" },
+      { "key": "other", "label": "Other" }
+    ],
+    "starting": [
+      { "name": "General ward", "kind": "general", "beds": 10, "bedPrefix": "G" },
+      { "name": "Semi-private", "kind": "semi_private", "beds": 4, "bedPrefix": "S" },
+      { "name": "Private rooms", "kind": "private", "beds": 4, "bedPrefix": "P" },
+      { "name": "ICU", "kind": "icu", "beds": 4, "bedPrefix": "ICU-" },
+      { "name": "NICU", "kind": "nicu", "beds": 4, "bedPrefix": "N" },
+      { "name": "Labour room", "kind": "labour", "beds": 2, "bedPrefix": "L" }
+    ]
   },
   "notifications": {
     "listSize": 30,

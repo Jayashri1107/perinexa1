@@ -885,3 +885,22 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .slot-book { justify-self: start; }
 .day-layout-wide { grid-template-columns: 1fr; }
 .day-layout-wide .day-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); align-items: start; }
+
+/* wards and beds: choosing a ward, then a free bed */
+.bed-picker { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+.ward-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2); }
+.ward-card { display: grid; gap: 2px; text-align: left; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); cursor: pointer; font: inherit; color: var(--color-text); }
+.ward-card:hover { border-color: var(--color-primary); }
+.ward-card.on { border: 2px solid var(--color-primary); background: var(--color-primary-soft); }
+.ward-card.full { opacity: 0.7; }
+.ward-free { font-size: 12px; font-weight: 600; color: var(--color-success); }
+.ward-free.none { color: var(--color-danger); }
+.bed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--space-2); }
+.bed-chip { display: grid; justify-items: center; gap: 2px; padding: 8px 6px; border: 1px dashed var(--color-success); border-radius: var(--radius-sm); background: var(--color-success-soft); color: var(--color-text); cursor: pointer; font: inherit; font-weight: 600; }
+.bed-chip .bed-state { font-size: 11px; font-weight: 500; color: var(--color-success); }
+.bed-chip.on { border: 2px solid var(--color-primary); background: var(--color-primary-soft); }
+.bed-chip.on .bed-state { color: var(--color-primary); }
+.bed-chip.booked { border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text-muted); cursor: not-allowed; }
+.bed-chip.booked .bed-state { color: var(--color-danger); }
+.occupancy { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-3); }
+.occupancy .ward-card { cursor: default; }
