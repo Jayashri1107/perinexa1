@@ -13,7 +13,8 @@ export const billListQuery = listQuery({
   sortFields: ['createdAt', 'total', 'balance'],
   defaultSort: '-createdAt',
   extra: {
-    status: z.enum(['open', 'paid', 'cancelled']).optional(),
+    // the stored statuses, and views of open bills: unpaid, part paid, overdue, refund due
+    status: z.enum(['open', 'paid', 'cancelled', 'unpaid', 'partial', 'overdue', 'refund_due']).optional(),
     patientId: optional(objectId.transform(toObjectId)),
     from: optional(z.coerce.date()),
     to: optional(z.coerce.date()),

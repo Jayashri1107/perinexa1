@@ -28,8 +28,11 @@ import {
   UserPlus,
   Users,
   BedDouble,
+  FileSearch,
   Footprints,
   Hourglass,
+  IndianRupee,
+  Undo2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -42,6 +45,7 @@ import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { formatDate, formatMoney } from '../../utils/format.js';
 import { appointmentLook, whenText, whoText } from '../appointments/appointmentFormat.js';
+import { BillingDesk } from '../billing/BillingDesk.jsx';
 import { InHospitalCard } from '../inpatient/InHospitalCard.jsx';
 
 function greeting() {
@@ -66,8 +70,17 @@ function attentionItems(today, overview) {
       items.push({ icon: Settings, text: `${s.label} is not filled in`, hint: SETUP[s.key].hint, to: SETUP[s.key].to, action: 'Fill in' });
     }
   }
-  if (today.billing?.unpaidBills) {
-    items.push({ icon: Receipt, text: `${plural(today.billing.unpaidBills, 'bill')} not fully paid`, hint: `${formatMoney(today.billing.owed)} still owed.`, to: '/hospital/billing/unpaid', action: 'See unpaid' });
+  // Money owed: overdue first (red), then part paid (amber), then the rest not paid yet
+  const b = today.billing;
+  if (b?.overdueBills) {
+    items.push({ icon: AlertTriangle, tone: 'danger', text: `${plural(b.overdueBills, 'bill')} overdue`, hint: `${formatMoney(b.overdueOwed)} owed for more than ${b.overdueDays} days.`, to: '/hospital/billing?status=overdue', action: 'View overdue' });
+  }
+  if (b?.partialBills) {
+    items.push({ icon: Hourglass, tone: 'warning', text: `${plural(b.partialBills, 'bill')} part paid`, hint: `${formatMoney(b.partialOwed)} still to collect.`, to: '/hospital/billing?status=partial', action: 'Collect' });
+  }
+  const otherUnpaid = (b?.unpaidBills ?? 0) - (b?.partialBills ?? 0);
+  if (otherUnpaid > 0) {
+    items.push({ icon: Receipt, text: `${plural(otherUnpaid, 'bill')} not paid yet`, hint: `${formatMoney(Math.max(0, b.owed - b.partialOwed))} owed in all.`, to: '/hospital/billing/unpaid', action: 'See unpaid' });
   }
   if (today.unsignedVisits) items.push({ icon: FileText, text: `${plural(today.unsignedVisits, 'visit')} of today not signed`, hint: 'Sign them once the findings and prescription are complete.', to: '/hospital/patients', action: 'Find the patient' });
   if (today.lab?.toReview) items.push({ icon: FlaskConical, text: `${plural(today.lab.toReview, 'lab result')} to review`, hint: 'Results of your patients and your orders.', to: '/hospital/lab', action: 'Review' });
@@ -89,6 +102,8 @@ const QUICK_ACTIONS = [
   { access: 'lab', icon: FlaskConical, label: 'Lab', to: '/hospital/lab' },
   { access: 'library', icon: Library, label: 'Clinic library', to: '/hospital/library' },
   { access: 'billing', icon: Receipt, label: 'Make a bill', to: '/hospital/billing/new' },
+  { access: 'billing', icon: IndianRupee, label: 'Collect a payment', to: '/hospital/billing/unpaid' },
+  { access: 'billing', icon: FileSearch, label: 'Find a bill', to: '/hospital/billing' },
   { access: 'billing', icon: Banknote, label: "Today's cash summary", to: '/hospital/billing/daily' },
   { access: 'pharmacyCounter', icon: Pill, label: 'Sell medicines', to: '/hospital/pharmacy' },
   { access: 'pharmacyCounter', icon: PackagePlus, label: 'Record a purchase', to: '/hospital/pharmacy/purchases/new' },
@@ -146,7 +161,15 @@ export function TodayPage() {
             )}
             {today.patients && <StatCard icon={UserPlus} to={canAccess('patients') ? '/hospital/patients' : undefined} label="Registered today" value={today.patients.registeredToday} hint={`${plural(today.patients.active, 'patient')} under care`} />}
             {today.billing && <StatCard icon={Receipt} to="/hospital/billing" label="Bills today" value={today.billing.billsToday} hint={`${formatMoney(today.billing.billedToday)} billed`} tone="info" />}
-            {today.billing && <StatCard icon={Banknote} to="/hospital/billing/daily" label="Received today" value={formatMoney(today.billing.collectedToday)} hint="After refunds" tone="neutral" />}
+            {today.billing && (
+              <StatCard icon={Banknote} to="/hospital/billing/daily" label="Received today" value={formatMoney(today.billing.receivedToday)} hint={plural(today.billing.paymentsToday, 'payment')} tone="success" />
+            )}
+            {today.billing && (
+              <StatCard icon={Hourglass} to="/hospital/billing/unpaid" label="Outstanding" value={formatMoney(today.billing.owed)} hint={`${plural(today.billing.unpaidBills, 'unpaid bill')}`} tone={today.billing.overdueBills ? 'danger' : 'warning'} />
+            )}
+            {today.billing && (
+              <StatCard icon={Undo2} to="/hospital/billing/daily" label="Refunds today" value={formatMoney(today.billing.refundedToday)} hint={plural(today.billing.refundsToday, 'refund')} tone="neutral" />
+            )}
             {today.pharmacy && <StatCard icon={Pill} to="/hospital/pharmacy/sales" label="Pharmacy sales today" value={today.pharmacy.salesToday} hint={formatMoney(today.pharmacy.soldToday)} tone="warning" />}
             {today.appointments && <StatCard icon={CalendarClock} to="/hospital/appointments" label="My appointments today" value={today.appointments.total} hint={`${today.appointments.seen} seen · ${today.appointments.arrived} waiting`} tone="info" />}
             {today.doctor && <StatCard icon={HeartPulse} to="/hospital/patients" label="My patients" value={today.doctor.mine} hint="Under my care" />}
@@ -160,7 +183,7 @@ export function TodayPage() {
               ) : (
                 <ul className="attention">
                   {attention.map((a) => (
-                    <li key={a.text}>
+                    <li key={a.text} className={a.tone ? `attention-${a.tone}` : undefined}>
                       <span className="attention-icon" aria-hidden><a.icon size={18} /></span>
                       <span className="attention-text">
                         <strong className="block">{a.text}</strong>
@@ -217,6 +240,9 @@ export function TodayPage() {
             )}
 
             {canAccess('patientsClinical') && <InHospitalCard />}
+
+            {/* the billing desk: for the billing department and the hospital admin (reception keeps the cards above) */}
+            {today.billing && (roles.includes('billing') || isHospitalAdmin) && <BillingDesk billing={today.billing} />}
 
             {today.doctor && (
               <section className="card">

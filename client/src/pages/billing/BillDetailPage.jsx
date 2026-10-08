@@ -1,7 +1,7 @@
 // One bill: its lines, discount, payments and refunds; take payment, refund, cancel, print, UPI link.
 import { ArrowLeft, Ban, IndianRupee, Pencil, Percent, Plus, Printer, Trash2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { billingSettingsApi, billsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { DataTable } from '../../components/list/DataTable.jsx';
@@ -35,6 +35,16 @@ export function BillDetailPage() {
   useEffect(() => {
     billingSettingsApi.payee().then((r) => setPayee(r.payee)).catch(() => setPayee(null));
   }, []);
+  // Opened with "Collect" (…?pay=1, from Today): the payment form opens with the balance filled in, once.
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    if (!data || params.get('pay') !== '1') return;
+    setParams({}, { replace: true });
+    if (data.bill.status !== 'cancelled' && data.bill.balance > 0) {
+      form.reset({ mode: billing.paymentModes[0].key, amount: data.bill.balance, reference: '' });
+      setDialog('pay');
+    }
+  }, [data]);
 
   if (!data) return error ? <Alert type="error">{error}</Alert> : <Loader />;
   const { bill, payments, context } = data;

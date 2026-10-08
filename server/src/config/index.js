@@ -125,6 +125,7 @@ const schema = z.object({
     numberDigits: digits,
     currencySymbol: z.string().min(1),
     upiHistoryLimit: z.number().int().positive(),
+    overdueDays: z.number().int().min(1).max(365), // a bill still owing after this many days is "overdue"
     paymentModes: z.array(keyLabel).min(1),
     priceGroups: z.array(keyLabel).min(1),
     pharmacyGroup: z.string().min(1),

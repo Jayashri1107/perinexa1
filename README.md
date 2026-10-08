@@ -27,6 +27,11 @@ Fake sample data only.
 - Sign-in page: things glide in, soft rings drift, two made-up sample cards float beside the form (wide screens);
   still when the computer asks for reduced motion. No gradients anywhere (sidebar, sign-in, Today, My settings).
 - The sidebar's menu scrolls inside it on short screens (it ran off the bottom, e.g. for the super admin).
+- Billing on Today: four cards (bills today, received today, outstanding, refunds today); "Needs your attention" with
+  overdue bills (older than `billing.overdueDays`, 7), part-paid bills and the rest not paid; quick actions Collect a
+  payment and Find a bill. For the billing department and the hospital admin: recent bills (Collect, Print), pending
+  payments (oldest first, overdue in red), today's collection by payment mode, today's activity and the last 7 days.
+  "Collect" opens the bill with the payment form. The bill list filters Unpaid, Part paid, Overdue and Refund due.
 
 ### Who sees what (config.access)
 

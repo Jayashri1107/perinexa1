@@ -12,7 +12,11 @@ const STATUS_FILTER = {
   label: 'Status',
   options: [
     { value: 'open', label: 'Open' },
+    { value: 'unpaid', label: 'Unpaid' },
+    { value: 'partial', label: 'Part paid' },
+    { value: 'overdue', label: 'Overdue' },
     { value: 'paid', label: 'Paid' },
+    { value: 'refund_due', label: 'Refund due' },
     { value: 'cancelled', label: 'Cancelled' },
   ],
 };
@@ -21,7 +25,9 @@ export function BillsPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const patientId = params.get('patientId');
-  const list = usePagedList(billsApi.list, patientId ? { patientId } : {});
+  // ?status=overdue (from Today's "View overdue") opens the list with that filter chosen
+  const status = STATUS_FILTER.options.some((o) => o.value === params.get('status')) ? params.get('status') : null;
+  const list = usePagedList(billsApi.list, { ...(patientId && { patientId }), ...(status && { status }) });
 
   const columns = [
     { key: 'billNumber', label: 'Bill', className: 'nowrap', render: (b) => <strong>{b.billNumber}</strong> },

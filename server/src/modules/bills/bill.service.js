@@ -235,11 +235,28 @@ export async function giveRefund(req, id, data) {
   return { ...(await getBill(req.hospitalId, id)), receipt: payment.receiptNumber };
 }
 
+// The Status filter of the bill list: a stored status, or a view of the open bills.
+function statusMatch(status) {
+  const owing = { status: 'open', balance: { $gt: 0 } };
+  const netPaid = { $subtract: ['$paid', '$refunded'] };
+  switch (status) {
+    case 'unpaid':
+      return { ...owing, $expr: { $lte: [netPaid, 0] } };
+    case 'partial':
+      return { ...owing, $expr: { $gt: [netPaid, 0] } };
+    case 'overdue':
+      return { ...owing, createdAt: { $lt: new Date(Date.now() - config.billing.overdueDays * 24 * 60 * 60 * 1000) } };
+    case 'refund_due':
+      return { status: { $ne: 'cancelled' }, balance: { $lt: 0 } };
+    default:
+      return status ? { status } : {};
+  }
+}
+
 export async function listBills(hospitalId, q) {
-  const match = { hospitalId: toObjectId(hospitalId) };
-  if (q.status) match.status = q.status;
+  const match = { hospitalId: toObjectId(hospitalId), ...statusMatch(q.status) };
   if (q.patientId) match.patientId = q.patientId;
-  if (q.from || q.to) match.createdAt = { ...(q.from && { $gte: q.from }), ...(q.to && { $lte: q.to }) };
+  if (q.from || q.to) match.createdAt = { ...match.createdAt, ...(q.from && { $gte: q.from }), ...(q.to && { $lte: q.to }) };
   if (q.search) {
     const text = containsText(q.search);
     match.$or = [{ billNumber: new RegExp(`^${escapeRegex(q.search)}`, 'i') }, { 'patient.name': text }, { 'patient.patientNumber': text }];
