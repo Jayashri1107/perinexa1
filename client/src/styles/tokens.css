@@ -41,6 +41,7 @@
   /* sign-in page decoration */
   --auth-ring-teal: rgba(79, 214, 200, 0.1);
   --auth-button-shadow: rgba(59, 63, 166, 0.28);
+  --auth-orbit: rgba(59, 63, 166, 0.18); /* the dashed ring turning behind the sign-in card */
 
   --overlay: rgba(23, 26, 82, 0.45);
   --print-line: #999999;
