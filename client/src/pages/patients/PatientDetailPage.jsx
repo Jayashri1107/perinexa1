@@ -12,6 +12,7 @@ import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { clinicalFields, clinicalValues, contactFields, contactValues, emergencyFields } from '../../forms/patientForms.js';
 import { useForm } from '../../hooks/useForm.js';
+import { PincodeFill } from '../../hooks/usePincodeFill.js';
 import { useOptions } from '../../hooks/useOptions.js';
 import { ageText, formatDate, formatDateTime, labelOf } from '../../utils/format.js';
 import { PatientDocumentsCard } from '../documents/PatientDocumentsCard.jsx';
@@ -114,7 +115,7 @@ export function PatientDetailPage() {
             {p.phone !== undefined && (<><dt>Phone</dt><dd>{[p.phone, p.alternatePhone].filter(Boolean).join(', ') || '—'}</dd></>)}
             {p.address !== undefined && (<><dt>Address</dt><dd>{address || '—'}</dd></>)}
             {p.abhaNumber !== undefined && (<><dt>ABHA</dt><dd>{p.abhaNumber || '—'}</dd></>)}
-            {p.idProof !== undefined && (<><dt>ID proof</dt><dd>{p.idProof?.kind ? `${labelOf(settings.idProofTypes, p.idProof.kind)}${p.idProof.last4 ? ` ending ${p.idProof.last4}` : ''}` : '—'}</dd></>)}
+            {p.idProof !== undefined && (<><dt>ID proof</dt><dd>{p.idProof?.kind ? `${labelOf(settings.idProofTypes, p.idProof.kind)}${p.idProof.kind === 'aadhaar' || !p.idProof.number ? ((p.idProof.number || p.idProof.last4) ? ` ending ${p.idProof.number || p.idProof.last4}` : '') : ` ${p.idProof.number}`}` : '—'}</dd></>)}
             {p.emergencyContact !== undefined && (<><dt>Emergency contact</dt><dd>{[p.emergencyContact?.name, p.emergencyContact?.relation && `(${p.emergencyContact.relation})`, p.emergencyContact?.phone].filter(Boolean).join(' ') || '—'}</dd></>)}
             {p.careType !== undefined && (<><dt>Care</dt><dd>{labelOf(settings.careTypes, p.careType)}</dd></>)}
             {p.doctor !== undefined && (<><dt>Doctor</dt><dd>{p.doctor?.name ?? '—'}</dd></>)}
@@ -156,6 +157,7 @@ export function PatientDetailPage() {
         <div className="top-gap"><PatientDocumentsCard patient={p} /></div>
       )}
 
+      {dialog === 'contact' && <PincodeFill form={form} />}
       {dialog === 'contact' && (
         <FormModal
           title="Contact details"

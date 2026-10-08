@@ -1,5 +1,6 @@
 import { parse } from '../../core/validate.js';
 import * as service from './patient.service.js';
+import { lookupPincode } from './pincode.js';
 import {
   clinicalBody,
   contactBody,
@@ -50,4 +51,9 @@ export async function setStatus(req, res) {
 export async function emergencyAccess(req, res) {
   const { id } = parse(patientParams, req.params);
   res.json(await service.grantEmergencyAccess(req, id, parse(emergencyBody, req.body).reason));
+}
+
+// City, state and areas of a PIN code (only the PIN code is sent to the India Post service).
+export async function pincode(req, res) {
+  res.json(await lookupPincode(String(req.params.pin ?? '')));
 }

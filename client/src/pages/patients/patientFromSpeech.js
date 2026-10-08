@@ -1,7 +1,7 @@
 // Picks a new patient's details out of what was said (or typed), in the browser – simple rules, not AI, nothing sent
 // anywhere. Understands sentences such as:
 //   "Name Asha Patil, 28 years, female, phone 98765 43210, from Pune, pregnant, last period 5 August, doctor Mehta,
-//    agrees to reminders"
+//    agrees to reminders, husband Ramesh Patil mobile 91234 56780, pin code 431005, aadhaar ending 1234"
 // Returns { values: the fields it is sure of, understood: [{ label, text }] }. Staff check every field before saving.
 // PC-PNDT: nothing about a baby's sex before birth is read here (this is the patient's own sex).
 
@@ -9,7 +9,8 @@ const NUMBER_WORDS = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six:
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 const MONTH_RE = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
 // Words that start another detail: a name or a city ends before them.
-const STOP = '(?=,|\\.|\\b(?:age|aged|years?|yrs|year old|phone|mobile|number|contact|from|lives|living|city|village|lmp|last|period|female|male|woman|man|girl|boy|doctor|dr|pregnant|pregnancy|antenatal|postnatal|newborn|baby|gynae|gyne|infertility|miscarriage|abortion|agrees|whatsapp|reminders?|abha)\\b|$)';
+const STOP = '(?=,|\\.|\\s\\d|\\b(?:age|aged|years?|yrs|year old|phone|mobile|number|contact|from|lives|living|city|village|lmp|last|period|female|male|woman|man|girl|boy|doctor|dr|pregnant|pregnancy|antenatal|postnatal|newborn|baby|gynae|gyne|infertility|miscarriage|abortion|agrees|whatsapp|reminders?|abha|husband|wife|mother|father|son|daughter|brother|sister|relative|attendant|guardian|pin|aadhaar|aadhar)\\b|$)';
+const RELATIONS = 'husband|wife|mother|father|son|daughter|brother|sister|relative|attendant|guardian';
 
 // "twenty eight" → "28", "double five" → "55", spoken digits joined.
 function wordsToDigits(text) {
@@ -60,10 +61,31 @@ export function patientFromSpeech(raw, { careTypes, doctors }) {
   const age = m && Number(m[1] ?? m[2]);
   if (age && age < 120) take('ageYears', age, 'Age', `${age} years`);
 
-  // Phone: 10 digits (spaces allowed), an optional +91 / 0 in front
+  // Her relative or attendant: "husband Ramesh Patil", with the mobile number said after it
+  const rel = new RegExp(`\\b(${RELATIONS})(?:'?s)?(?:\\s+name)?(?:\\s+is)?\\s+([a-z][a-z .'-]{1,60}?)\\s*${STOP}`).exec(text);
+  if (rel) {
+    take('emergencyContact.name', title(rel[2]), 'Relative');
+    take('emergencyContact.relation', title(rel[1]), 'Relation');
+  }
+
+  // Mobile numbers: 10 digits (spaces allowed), an optional +91 / 0 in front. Hers is the one said before the
+  // relative; the relative's is the one said after.
   const digits = text.replace(/(\d)[\s-]+(?=\d)/g, '$1');
-  m = /(?:\+?91|0)?([6-9]\d{9})\b/.exec(digits);
-  if (m) take('phone', m[1], 'Phone');
+  const relAt = rel ? digits.search(new RegExp(`\\b${rel[1]}\\b`)) : -1;
+  const phones = [...digits.matchAll(/(?:\+?91|0)?(\d{10})\b/g)].map((x) => ({ number: x[1], at: x.index }));
+  const hers = phones.find((x) => relAt < 0 || x.at < relAt);
+  if (hers) take('phone', hers.number, 'Mobile');
+  const theirs = relAt >= 0 ? phones.find((x) => x.at > relAt) : null;
+  if (theirs) take('emergencyContact.phone', theirs.number, 'Relative’s mobile');
+
+  m = /\bpin(?:\s*code)?\s*(?:is|number)?\s*(\d{6})\b/.exec(digits);
+  if (m) take('address.pincode', m[1], 'PIN code');
+  // Aadhaar: only its last 4 digits are ever kept
+  m = /\baadh?aar(?:\s+card)?(?:\s+(?:number|ending|ends|last|four|digits?|with|is|in))*\s*(\d{4})\b/.exec(text);
+  if (m) {
+    take('idProof.kind', 'aadhaar', 'ID proof', 'Aadhaar');
+    take('idProof.number', m[1], 'Aadhaar ending');
+  }
   m = /\babha(?:\s+number)?\s*(?:is)?\s*(\d{14})\b/.exec(digits);
   if (m) take('abhaNumber', m[1], 'ABHA number');
 

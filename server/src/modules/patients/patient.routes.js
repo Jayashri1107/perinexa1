@@ -9,6 +9,7 @@ const canRegister = requireRoles(config.access.registerPatients);
 
 router.get('/', controller.list);
 router.get('/doctors', controller.doctors);
+router.get('/pincode/:pin', controller.pincode);
 router.get('/duplicates', canRegister, controller.duplicates);
 router.post('/', canRegister, controller.register);
 router.get('/:id', controller.get);

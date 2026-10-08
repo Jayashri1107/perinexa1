@@ -176,7 +176,8 @@
       { "key": "ration_card", "label": "Ration card" },
       { "key": "other", "label": "Other" }
     ],
-    "ageBands": [0, 1, 18, 25, 30, 35, 40, 50]
+    "ageBands": [0, 1, 18, 25, 30, 35, 40, 50],
+    "pincodeLookupUrl": "https://api.postalpincode.in/pincode"
   },
   "documents": {
     "maxMegabytes": 10,

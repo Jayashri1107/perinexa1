@@ -14,6 +14,7 @@ import { useOptions } from '../../hooks/useOptions.js';
 import { ageText } from '../../utils/format.js';
 import { setPath } from '../../utils/objectPath.js';
 import { VoiceFill } from './VoiceFill.jsx';
+import { usePincodeFill } from '../../hooks/usePincodeFill.js';
 
 export function PatientRegisterPage() {
   const { patients: settings } = useAppConfig();
@@ -21,6 +22,7 @@ export function PatientRegisterPage() {
   const doctors = useOptions(patientsApi.doctors);
   const initial = useMemo(() => emptyPatient(settings.careTypes, settings.sexes), [settings]);
   const form = useForm(initial);
+  usePincodeFill(form);
   const [duplicates, setDuplicates] = useState(null);
 
   const save = async (values, confirmDuplicate = false) => {

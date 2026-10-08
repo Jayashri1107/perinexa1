@@ -105,6 +105,7 @@ const schema = z.object({
     bloodGroups: z.array(z.string().min(1)),
     idProofTypes: z.array(keyLabel).min(1),
     ageBands: z.array(z.number().int().nonnegative()).min(2),
+    pincodeLookupUrl: z.string().url(),
   }),
   documents: z.object({
     maxMegabytes: z.number().positive().max(15),

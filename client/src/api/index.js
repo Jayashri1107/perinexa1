@@ -98,6 +98,7 @@ export const patientsApi = {
   setStatus: (id, status) => http.patch(`${PATIENTS}/${id}/status`, { status }),
   emergencyAccess: (id, reason) => http.post(`${PATIENTS}/${id}/emergency-access`, { reason }),
   doctors: () => http.get(`${PATIENTS}/doctors`),
+  pincode: (pin) => http.get(`${PATIENTS}/pincode/${pin}`),
 };
 
 // Module 4 – billing

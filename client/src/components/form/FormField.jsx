@@ -58,7 +58,13 @@ export function FormField({ field, value, error, onChange }) {
       );
       break;
     }
-    default:
+    default: {
+      // digits: only digits can be typed (anything else is dropped), at most `maxLength`; upper: capital letters.
+      const clean = (v) => {
+        if (field.digits) return v.replace(/\D/g, '');
+        if (field.upper) return v.toUpperCase().replace(/\s+/g, '');
+        return v;
+      };
       control = (
         <input
           {...common}
@@ -66,9 +72,12 @@ export function FormField({ field, value, error, onChange }) {
           value={value ?? ''}
           placeholder={field.placeholder}
           autoComplete={field.autoComplete}
-          onChange={(e) => onChange(field.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
+          inputMode={field.digits ? 'numeric' : undefined}
+          maxLength={field.maxLength}
+          onChange={(e) => onChange(field.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : clean(e.target.value))}
         />
       );
+    }
   }
 
   return (

@@ -21,9 +21,9 @@ const patientSchema = new mongoose.Schema(
     abhaNumber: text(20),
     // Whom to call in an emergency (a relative or attendant).
     emergencyContact: { name: text(100), relation: text(50), phone: text(20) },
-    // The ID proof reception saw: its type and only the last 4 characters of its number – never a whole Aadhaar
-    // (or other ID) number.
-    idProof: { kind: { type: String, enum: ['', ...config.patients.idProofTypes.map((t) => t.key)], default: '' }, last4: text(4) },
+    // The ID proof reception saw: its type and number – for Aadhaar only the last 4 digits, never the whole number.
+    // last4: how it was kept before 8 Oct 2026 (the last 4 characters of any ID). TODO before real use: encrypt `number`.
+    idProof: { kind: { type: String, enum: ['', ...config.patients.idProofTypes.map((t) => t.key)], default: '' }, number: text(30), last4: text(4) },
     consentMessages: { type: Boolean, default: false }, // agreed to receive reminders
     assignedDoctorId: { type: ObjectId, ref: 'User', default: null },
 
