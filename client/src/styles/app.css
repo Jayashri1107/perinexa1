@@ -985,6 +985,22 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .print-sheet .summary-row { grid-template-columns: 150px 1fr; }
 .print-sheet .summary-h { color: #000; }
 
+/* new patient: the "fake data only" notice with the voice microphone beside it (owner, 8 Oct 2026) */
+.voice-bar { padding: var(--space-3) var(--space-4); }
+.voice-bar-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.voice-bar-notice { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--color-info); font-size: var(--text-sm); }
+.voice-mic {
+  position: relative; flex-shrink: 0; width: 46px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 50%;
+  background: var(--color-primary); color: var(--color-primary-text); cursor: pointer; box-shadow: var(--shadow); transition: transform 0.15s ease, background 0.15s ease;
+}
+.voice-mic:hover:not(:disabled) { transform: scale(1.06); background: var(--color-primary-hover); }
+.voice-mic:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.voice-mic:disabled { opacity: 0.6; cursor: wait; }
+.voice-mic.is-live { background: var(--color-danger); }
+.voice-mic.is-live::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--color-danger); animation: auth-ping 1.6s ease-out infinite; }
+.voice-bar.is-running .ask-box { margin-top: var(--space-3); }
+@media (prefers-reduced-motion: reduce) { .voice-mic.is-live::after { animation: none; } }
+
 /* ---------- Send to pharmacy (owner, 8 Oct 2026) ---------- */
 /* a positive action in teal (e.g. "Send to pharmacy"); the screen's one primary button stays indigo */
 .btn-accent { background: var(--color-accent-strong); border-color: var(--color-accent-strong); color: var(--color-primary-text); }

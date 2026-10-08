@@ -1,10 +1,9 @@
-// Register a new patient – typed, or filled by voice first (VoiceFill). A possible duplicate (same name or phone) is
-// shown first; she can still be registered.
+// Register a new patient – typed, or filled by voice (the microphone at the top asks one question at a time). A
+// possible duplicate (same name or phone) is shown first; she can still be registered.
 import { ArrowLeft } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { patientsApi } from '../../api/index.js';
-import { Alert } from '../../components/Alert.jsx';
 import { FormBuilder } from '../../components/form/FormBuilder.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
@@ -12,8 +11,6 @@ import { contactFields, emptyPatient } from '../../forms/patientForms.js';
 import { useForm } from '../../hooks/useForm.js';
 import { useOptions } from '../../hooks/useOptions.js';
 import { ageText } from '../../utils/format.js';
-import { setPath } from '../../utils/objectPath.js';
-import { VoiceFill } from './VoiceFill.jsx';
 import { AskByVoice } from './AskByVoice.jsx';
 import { usePincodeFill } from '../../hooks/usePincodeFill.js';
 
@@ -62,6 +59,7 @@ export function PatientRegisterPage() {
           </div>
         </section>
       )}
+      {/* the notice, with the microphone beside it: it asks the questions one at a time and fills the form */}
       <AskByVoice
         values={form.values}
         onFill={form.setField}
@@ -69,14 +67,9 @@ export function PatientRegisterPage() {
         sexes={settings.sexes}
         idProofTypes={settings.idProofTypes}
         doctors={doctors}
-      />
-      <VoiceFill
-        careTypes={settings.careTypes}
-        doctors={doctors}
-        onUse={(found) => form.setValues((v) => Object.entries(found).reduce((acc, [k, val]) => setPath(acc, k, val), { ...v, ...(found.ageYears && { birthDate: '' }) }))}
+        notice="Use only fake sample data until the app has been reviewed for real use."
       />
       <section className="card top-gap">
-        <Alert type="info">Use only fake sample data until the app has been reviewed for real use.</Alert>
         <form onSubmit={form.submit((v) => save(v))} noValidate>
           <FormBuilder fields={contactFields({ careTypes: settings.careTypes, sexes: settings.sexes, idProofTypes: settings.idProofTypes, doctors })} form={form} />
           <div className="form-actions">

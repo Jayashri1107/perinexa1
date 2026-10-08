@@ -1,18 +1,19 @@
-// "Ask by voice" on the new-patient form (owner, 8 Oct 2026): the computer asks one question at a time – out loud and
-// on screen – listens for the answer, puts it in that one field, and goes on to the next. Say "skip", "back",
-// "repeat" or "stop" at any time (or use the buttons); an answer can also be typed. Speech becomes text ON THIS
-// COMPUTER only (utils/speech.js); only the questions are spoken aloud, never the answers. Staff check every field
-// before saving.
-import { CircleCheck, Mic, MicOff, RotateCcw, SkipForward, StepBack } from 'lucide-react';
+// Voice on the new-patient form (owner, 8 Oct 2026): one microphone button at the top, beside the "fake data only"
+// notice. Pressed, the computer asks one question at a time – out loud and on screen – listens for the answer, puts it
+// in that one field, and goes on to the next. Say "skip", "back", "repeat" or "stop" at any time (or use the buttons);
+// an answer can also be typed. The first press sets up Chrome's on-device speech when it is needed. Speech becomes text
+// ON THIS COMPUTER only (utils/speech.js); only the questions are spoken aloud, never the answers. Staff check every
+// field before saving.
+import { CircleCheck, Info, Mic, MicOff, RotateCcw, SkipForward, StepBack } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from '../../components/Alert.jsx';
 import { getPath, setPath } from '../../utils/objectPath.js';
-import { listenOnce, speak, speechStatus, stopSpeaking } from '../../utils/speech.js';
+import { listenOnce, setUpSpeech, speak, speechStatus, stopSpeaking } from '../../utils/speech.js';
 import { QUESTIONS, askText, commandOf } from './voiceQuestions.js';
 
 const MAX_TRIES = 2;
 
-export function AskByVoice({ values, onFill, careTypes, sexes, idProofTypes, doctors }) {
+export function AskByVoice({ values, onFill, careTypes, sexes, idProofTypes, doctors, notice }) {
   const ctxBase = useMemo(() => ({ careTypes, sexes, idProofTypes, doctors }), [careTypes, sexes, idProofTypes, doctors]);
   const [speech, setSpeech] = useState({ status: 'checking' });
   const [running, setRunning] = useState(false);
@@ -25,9 +26,14 @@ export function AskByVoice({ values, onFill, careTypes, sexes, idProofTypes, doc
   const stopRef = useRef(null);
   const live = useRef({ values, running: false, tries: 0 });
   live.current.values = values;
+  live.current.speech ??= speech;
 
   useEffect(() => {
-    speechStatus().then(setSpeech).catch(() => setSpeech({ status: 'unsupported' }));
+    const keep = (s) => {
+      live.current.speech = s;
+      setSpeech(s);
+    };
+    speechStatus().then(keep).catch(() => keep({ status: 'unsupported' }));
     return () => {
       live.current.running = false;
       stopRef.current?.();
@@ -59,12 +65,13 @@ export function AskByVoice({ values, onFill, careTypes, sexes, idProofTypes, doc
     const q = list[i];
     await speak(`${again}${askText(q, v)}`);
     if (!live.current.running) return undefined;
-    if (!canListen) {
+    const sp = live.current.speech; // the latest (a set-up may have just finished)
+    if (sp.status !== 'ready') {
       setPhase('listening');
       return undefined; // no microphone: the answer is typed
     }
     setPhase('listening');
-    stopRef.current = listenOnce(speech.lang, {
+    stopRef.current = listenOnce(sp.lang, {
       onText: (finalText, interim) => setHeard(`${finalText} ${interim}`.trim()),
       onDone: (text) => live.current.running && answer(i, text, v),
       onError: (message) => {
@@ -114,9 +121,22 @@ export function AskByVoice({ values, onFill, careTypes, sexes, idProofTypes, doc
     return ask(i + 1, v);
   };
 
-  const start = () => {
+  const start = async () => {
     setError('');
     setFilled({});
+    // the one-time speech set-up on this computer (Chrome downloads its speech model); answers can be typed meanwhile
+    if (speech.status === 'needs-setup') {
+      setSpeech({ ...speech, status: 'setting-up' });
+      let after;
+      try {
+        await setUpSpeech(speech.lang);
+        after = await speechStatus();
+      } catch {
+        after = { status: 'unavailable' };
+      }
+      live.current.speech = after;
+      setSpeech(after);
+    }
     live.current.running = true;
     live.current.tries = 0;
     setRunning(true);
@@ -135,23 +155,31 @@ export function AskByVoice({ values, onFill, careTypes, sexes, idProofTypes, doc
     answer(index, typed.trim());
   };
 
+  const noMic = ['unsupported', 'unavailable'].includes(speech.status);
   return (
-    <section className="card voice-card">
-      <div className="card-head">
-        <h2><Mic size={18} aria-hidden /> Ask by voice</h2>
-        <span className="muted small">One question at a time · speech stays on this computer</span>
+    <section className={`card voice-bar${running ? ' is-running' : ''}`}>
+      <div className="voice-bar-top">
+        <p className="voice-bar-notice"><Info size={16} aria-hidden /> {notice}</p>
+        {running ? (
+          <button type="button" className="voice-mic is-live" onClick={finish} aria-label="Stop asking" title="Stop">
+            <MicOff size={20} aria-hidden />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="voice-mic"
+            onClick={start}
+            disabled={speech.status === 'setting-up'}
+            aria-label={phase === 'done' ? 'Ask the questions again by voice' : 'Fill the form by voice: one question at a time'}
+            title={noMic ? 'Answer the questions by typing (no microphone in this browser)' : 'Fill by voice – one question at a time'}
+          >
+            <Mic size={20} aria-hidden />
+          </button>
+        )}
       </div>
-      {speech.status !== 'ready' && speech.status !== 'checking' && (
-        <Alert type="info">The microphone needs Google Chrome with on-device speech (set up with the “Fill by voice” card). The questions still work: type each answer.</Alert>
-      )}
+      {speech.status === 'setting-up' && <p className="muted small">Setting up speech on this computer… this can take a minute.</p>}
+      {running && noMic && <p className="muted small">No microphone here (it needs Google Chrome with on-device speech): type each answer.</p>}
       <Alert type="error">{error}</Alert>
-
-      {!running && (
-        <div className="voice-row">
-          <button type="button" className="btn btn-ghost" onClick={start}><Mic size={16} aria-hidden /> {phase === 'done' ? 'Ask again' : 'Start asking'}</button>
-          <span className="muted small">{active.length} questions. Say “skip”, “back”, “repeat” or “stop” at any time.</span>
-        </div>
-      )}
 
       {running && current && (
         <div className="ask-box" aria-live="polite">
@@ -181,7 +209,7 @@ export function AskByVoice({ values, onFill, careTypes, sexes, idProofTypes, doc
           ))}
         </ul>
       )}
-      {phase === 'done' && <p className="muted small top-gap-sm">Done. Check every field in the form below, then register her.</p>}
+      {phase === 'done' && <p className="muted small top-gap-sm">Done. Check every field in the form below, then register her. Press the microphone to ask again.</p>}
     </section>
   );
 }
