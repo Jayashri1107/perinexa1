@@ -4,7 +4,7 @@
 /** What a medicine is: printed before its name ("TAB.", "INJ." …). */
 export const RX_FORMS = ['tab', 'cap', 'syrup', 'suspension', 'drops', 'inj', 'sachet', 'powder', 'pessary', 'suppository', 'cream', 'ointment', 'gel', 'lotion', 'spray', 'inhaler', 'other'];
 /** How often, in the Indian 1-0-1 style (morning – afternoon – night), or in words; "custom": the doctor's own words. */
-export const RX_FREQUENCIES = ['1-0-0', '0-1-0', '0-0-1', '1-0-1', '1-1-1', '1-1-1-1', 'sos', 'stat', 'weekly', 'alternate', 'custom'];
+export const RX_FREQUENCIES = ['1-0-0', '0-1-0', '0-0-1', '1-1-0', '0-1-1', '1-0-1', '1-1-1', '1-1-1-1', 'sos', 'stat', 'weekly', 'alternate', 'custom'];
 export const RX_TIMINGS = ['', 'after_food', 'before_food', 'with_food', 'empty_stomach', 'bedtime'];
 export const RX_ROUTES = ['', 'oral', 'vaginal', 'rectal', 'im', 'iv', 'sc', 'sublingual', 'local'];
 export const RX_DURATION_UNITS = ['', 'days', 'weeks', 'months', 'till_delivery', 'continue'];

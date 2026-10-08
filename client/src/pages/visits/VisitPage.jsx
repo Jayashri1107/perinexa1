@@ -3,7 +3,7 @@
 // below. A visit opened by mistake is marked "entered in error" (never deleted).
 import { ArrowLeft, Printer } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { visitsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
@@ -20,6 +20,7 @@ import { visitLook } from './visitFormat.js';
 
 export function VisitPage() {
   const { id: patientId, visitId } = useParams();
+  const writeRx = useSearchParams()[0].get('rx') === '1'; // from "Write prescription" on her record
   const { patients: settings, prescriberRoles } = useAppConfig();
   const { hasRole } = useAuth();
   const [data, setData] = useState(null);
@@ -79,7 +80,7 @@ export function VisitPage() {
         <FindingsPart visit={visit} careType={visit.careType} editable={can.details} isPrescriber={isPrescriber} save={(v) => visitsApi.details(patient.id, visit.id, v)} onSaved={setData} />
       </div>
       <div className="top-gap">
-        <PrescriptionPart visit={visit} careType={visit.careType} checks={checks} editable={can.prescription} canSend={can.sendToPharmacy} save={(v) => visitsApi.prescription(patient.id, visit.id, v)} onSaved={setData} />
+        <PrescriptionPart visit={visit} careType={visit.careType} checks={checks} editable={can.prescription} canSend={can.sendToPharmacy} autoEdit={writeRx} save={(v) => visitsApi.prescription(patient.id, visit.id, v)} onSaved={setData} />
       </div>
       <div className="top-gap">
         <AdditionsCard visit={visit} canAdd={can.addition} add={async (text) => setData(await visitsApi.addition(patient.id, visit.id, text))} />

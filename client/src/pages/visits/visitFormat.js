@@ -6,6 +6,8 @@ export const FREQUENCIES = {
   '1-0-0': '1-0-0 (morning)',
   '0-1-0': '0-1-0 (afternoon)',
   '0-0-1': '0-0-1 (night)',
+  '1-1-0': '1-1-0 (morning and afternoon)',
+  '0-1-1': '0-1-1 (afternoon and night)',
   '1-0-1': '1-0-1 (morning and night)',
   '1-1-1': '1-1-1 (three times)',
   '1-1-1-1': '1-1-1-1 (four times)',

@@ -355,7 +355,7 @@ export async function prescriptionSets(req, careType) {
 // Her latest prescriptions, to sell from: the medicines only, with the doctor and the date – no findings, no
 // diagnosis (the pharmacist needs only what to give).
 const pharmacyItems = (v) =>
-  v.prescription.items.map((i) => ({ drug: i.drug, form: i.form, strength: i.strength, dose: i.dose, frequency: i.frequency, frequencyText: i.frequencyText, durationValue: i.durationValue, durationUnit: i.durationUnit }));
+  v.prescription.items.map((i) => ({ drug: i.drug, form: i.form, strength: i.strength, dose: i.dose, frequency: i.frequency, frequencyText: i.frequencyText, timing: i.timing, durationValue: i.durationValue, durationUnit: i.durationUnit }));
 
 export async function prescriptionsForPharmacy(req, patientId) {
   const patient = await Patient.findOne({ hospitalId: req.hospitalId, _id: patientId }).select('_id').lean();

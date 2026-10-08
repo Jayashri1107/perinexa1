@@ -1,8 +1,8 @@
 // One patient's record, showing only what this person may see; changes only where the server allows them.
-import { ArrowLeft, History, Lock, Pencil, Receipt, Siren } from 'lucide-react';
+import { ArrowLeft, History, Lock, Pencil, Pill, Receipt, Siren } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { patientsApi } from '../../api/index.js';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { patientsApi, visitsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { FormModal } from '../../components/form/FormModal.jsx';
 import { Loader } from '../../components/Loader.jsx';
@@ -14,7 +14,8 @@ import { clinicalFields, clinicalValues, contactFields, contactValues, emergency
 import { useForm } from '../../hooks/useForm.js';
 import { PincodeFill } from '../../hooks/usePincodeFill.js';
 import { useOptions } from '../../hooks/useOptions.js';
-import { ageText, formatDate, formatDateTime, labelOf } from '../../utils/format.js';
+import { ageText, formatDate, formatDateTime, labelOf, todayInput } from '../../utils/format.js';
+import { requestId } from '../visits/visitFormat.js';
 import { PatientDocumentsCard } from '../documents/PatientDocumentsCard.jsx';
 import { PatientAppointmentsCard } from './PatientAppointmentsCard.jsx';
 import { PatientLabCard } from './PatientLabCard.jsx';
@@ -32,7 +33,10 @@ const ACCESS_WORDS = {
 export function PatientDetailPage() {
   const { id } = useParams();
   const { patients: settings } = useAppConfig();
-  const { canAccess } = useAuth();
+  const { canAccess, hasRole } = useAuth();
+  const { prescriberRoles } = useAppConfig();
+  const navigate = useNavigate();
+  const [writing, setWriting] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState(null); // 'contact' | 'clinical' | 'emergency'
@@ -56,6 +60,20 @@ export function PatientDetailPage() {
   const done = (result) => {
     setData(result);
     setDialog(null);
+  };
+  // Write prescription (owner, 8 Oct 2026): today's open visit (or a new one), with the medicine form open.
+  const writePrescription = async () => {
+    setWriting(true);
+    setError('');
+    try {
+      const { items } = await visitsApi.list(p.id);
+      let visit = items.find((v) => v.visitOn === todayInput() && v.status === 'active' && !v.signed);
+      if (!visit) visit = (await visitsApi.start(p.id, requestId())).visit;
+      navigate(`/hospital/patients/${p.id}/visits/${visit.id}?rx=1`);
+    } catch (err) {
+      setError(err.message);
+      setWriting(false);
+    }
   };
   const toggleStatus = async () => {
     const next = p.status === 'active' ? 'closed' : 'active';
@@ -82,6 +100,9 @@ export function PatientDetailPage() {
             <span className="badge badge-info">{ACCESS_WORDS[p.access]}</span>
             {clinical && canAccess('patientsClinical') && (
               <Link to={`/hospital/patients/${p.id}/history`} className="btn btn-ghost"><History size={16} aria-hidden /> Medical history</Link>
+            )}
+            {p.access === 'full' && p.status === 'active' && hasRole(...prescriberRoles) && (
+              <button type="button" className="btn btn-primary" disabled={writing} onClick={writePrescription}><Pill size={16} aria-hidden /> {writing ? 'Opening…' : 'Write prescription'}</button>
             )}
             {canAccess('billing') && (
               <Link to={`/hospital/billing?patientId=${p.id}`} className="btn btn-ghost"><Receipt size={16} aria-hidden /> Bills</Link>

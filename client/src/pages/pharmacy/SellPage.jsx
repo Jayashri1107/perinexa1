@@ -1,5 +1,5 @@
 // The counter: sell medicines to a registered patient (paid here or on her hospital bill) or to a walk-in buyer.
-import { Trash2 } from 'lucide-react';
+import { Lock, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { salesApi } from '../../api/index.js';
@@ -35,13 +35,15 @@ export function SellPage() {
     if (sale.lines.some((l) => l.medicineId === m.id)) return;
     set({ lines: [...sale.lines, { medicineId: m.id, name: `${m.name} ${m.strength ?? ''}`.trim(), schedule: m.schedule, available: m.available, mrp: m.mrp, qty: 1 }] });
   };
-  // from her prescription: each medicine found on the stock list, once
+  // from her prescription: each medicine found on the stock list, once. These lines are the doctor's (owner, 8 Oct
+  // 2026): locked – no removing, no changing the quantity; the pharmacist only adds more medicines below them.
   const usePrescription = (found, doctor) =>
     setSale((s) => {
-      const lines = [...s.lines];
+      const lines = s.lines.filter((l) => !l.fromRx); // another prescription replaces the earlier one's lines
       for (const { medicine: m, qty } of found) {
-        if (lines.some((l) => l.medicineId === m.id)) continue;
-        lines.push({ medicineId: m.id, name: `${m.name} ${m.strength ?? ''}`.trim(), schedule: m.schedule, available: m.available, mrp: m.mrp, qty: Math.min(qty, m.available) });
+        const same = lines.findIndex((l) => l.medicineId === m.id);
+        if (same >= 0) lines.splice(same, 1); // added by hand before: now the doctor's line
+        lines.unshift({ medicineId: m.id, name: `${m.name} ${m.strength ?? ''}`.trim(), schedule: m.schedule, available: m.available, mrp: m.mrp, qty: Math.min(qty, m.available), fromRx: true });
       }
       return { ...s, lines, doctorName: s.doctorName || doctor || '' };
     });
@@ -84,8 +86,9 @@ export function SellPage() {
               search={salesApi.patients}
               value={sale.patient}
               onChange={(p) => {
-                if (p?.id !== sale.patient?.id) setVisitId(null); // another patient: not that prescription any more
-                set({ patient: p, payTo: p ? sale.payTo : 'counter' });
+                const other = p?.id !== sale.patient?.id;
+                if (other) setVisitId(null); // another patient: not that prescription any more
+                set({ patient: p, payTo: p ? sale.payTo : 'counter', ...(other && { lines: sale.lines.filter((l) => !l.fromRx) }) });
               }}
               label="Registered patient (optional)"
               error={errors.customerName}
@@ -147,14 +150,23 @@ export function SellPage() {
                 </thead>
                 <tbody>
                   {sale.lines.map((l, i) => (
-                    <tr key={l.medicineId}>
-                      <td>{l.name} {l.schedule !== pharmacy.schedules[0].key && <span className="badge badge-pending small">{labelOf(pharmacy.schedules, l.schedule)}</span>}</td>
+                    <tr key={l.medicineId} className={l.fromRx ? 'rx-locked' : undefined}>
+                      <td>
+                        {l.name} {l.schedule !== pharmacy.schedules[0].key && <span className="badge badge-pending small">{labelOf(pharmacy.schedules, l.schedule)}</span>}
+                        {l.fromRx && <span className="badge badge-info small"><Lock size={11} aria-hidden /> Prescribed</span>}
+                      </td>
                       <td className="num">{l.available}</td>
-                      <td className="num"><input className="qty" type="number" min="1" max={l.available} aria-label={`Quantity of ${l.name}`} value={l.qty} onChange={(e) => updateLine(i, e.target.value)} /></td>
+                      <td className="num">
+                        {l.fromRx ? (
+                          <strong title="From the doctor's prescription – cannot be changed here">{l.qty}</strong>
+                        ) : (
+                          <input className="qty" type="number" min="1" max={l.available} aria-label={`Quantity of ${l.name}`} value={l.qty} onChange={(e) => updateLine(i, e.target.value)} />
+                        )}
+                      </td>
                       <td className="num">{formatMoney(l.mrp)}</td>
                       <td className="num">{formatMoney(l.mrp * (Number(l.qty) || 0))}</td>
                       <td className="actions">
-                        <button type="button" className="icon-btn" aria-label={`Remove ${l.name}`} onClick={() => set({ lines: sale.lines.filter((_, j) => j !== i) })}><Trash2 size={15} /></button>
+                        {!l.fromRx && <button type="button" className="icon-btn" aria-label={`Remove ${l.name}`} onClick={() => set({ lines: sale.lines.filter((_, j) => j !== i) })}><Trash2 size={15} /></button>}
                       </td>
                     </tr>
                   ))}

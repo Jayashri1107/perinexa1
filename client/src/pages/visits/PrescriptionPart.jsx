@@ -1,8 +1,8 @@
 // The prescription of a visit: the medicines (form, strength, dose, how often, when, how long), a ready-made set from
 // the Clinic library as a starting point (approved sets only), and the medicine safety warnings. Going ahead despite an
 // Avoid or Allergy warning needs a one-line reason, kept with the visit and never printed.
-import { CircleCheck, Clock, Pencil, Plus, Send, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CircleCheck, Clock, Moon, Pencil, Plus, Printer, Send, Sun, Sunrise, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { visitsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
@@ -29,36 +29,69 @@ function Warnings({ warnings, reasons, setReason, asking }) {
   );
 }
 
+// When to take it (owner, 8 Oct 2026): three buttons – Morning, Afternoon, Night – make the 1-0-1 code; "Other" for
+// SOS, once now, weekly, alternate days or the doctor's own words (a select appears).
+const SLOTS = [
+  { icon: Sunrise, word: 'Morning' },
+  { icon: Sun, word: 'Afternoon' },
+  { icon: Moon, word: 'Night' },
+];
+function DoseTimes({ value, onChange, n }) {
+  const pattern = /^\d-\d-\d$/.test(value) ? value.split('-').map(Number) : null;
+  const toggle = (k) => {
+    const next = (pattern ?? [0, 0, 0]).map((x, j) => (j === k ? (x ? 0 : 1) : x));
+    if (next.some(Boolean)) onChange(next.join('-'));
+  };
+  return (
+    <div className="dose-times" role="group" aria-label={`When to take medicine ${n}`}>
+      {SLOTS.map(({ icon: Icon, word }, k) => (
+        <button key={word} type="button" className={pattern?.[k] ? 'on' : ''} aria-pressed={Boolean(pattern?.[k])} title={word} onClick={() => toggle(k)}>
+          <Icon size={14} aria-hidden /> {word}
+        </button>
+      ))}
+      <button type="button" className={pattern ? '' : 'on'} aria-pressed={!pattern} onClick={() => !pattern || onChange('sos')}>Other</button>
+    </div>
+  );
+}
+
 // Where the prescription is with the pharmacy: waiting there, or given (sold at the counter, or given another way).
 const PHARMACY_LOOKS = {
   sent: { tone: 'pending', icon: Clock, word: 'Waiting at the pharmacy' },
   given: { tone: 'active', icon: CircleCheck, word: 'Given by the pharmacy' },
 };
 
-function PharmacyStatus({ pharmacy, canSend, sending, onSend }) {
+function PharmacyStatus({ pharmacy, canSend, sending, onSend, printHref }) {
   const look = PHARMACY_LOOKS[pharmacy?.status];
   return (
     <div className="rx-pharmacy">
-      {look && (
-        <span className="rx-pharmacy-state">
-          <StateBadge look={look} />
-          <span className="muted small">
-            {pharmacy.status === 'given'
-              ? `${pharmacy.givenByName}, ${formatDateTime(pharmacy.givenAt)}${pharmacy.invoiceNumber ? ` · invoice ${pharmacy.invoiceNumber}` : ''}`
-              : `Sent by ${pharmacy.sentByName}, ${formatDateTime(pharmacy.sentAt)}`}
-          </span>
-        </span>
-      )}
-      {canSend && (
-        <button type="button" className={`btn ${look ? 'btn-ghost' : 'btn-accent'} btn-sm`} disabled={sending} onClick={onSend}>
-          <Send size={14} aria-hidden /> {sending ? 'Sending…' : look ? 'Send again' : 'Send to pharmacy'}
-        </button>
-      )}
+      <span className="rx-pharmacy-state">
+        {look ? (
+          <>
+            <StateBadge look={look} />
+            <span className="muted small">
+              {pharmacy.status === 'given'
+                ? `${pharmacy.givenByName}, ${formatDateTime(pharmacy.givenAt)}${pharmacy.invoiceNumber ? ` · invoice ${pharmacy.invoiceNumber}` : ''}`
+                : `Sent by ${pharmacy.sentByName}, ${formatDateTime(pharmacy.sentAt)}`}
+            </span>
+          </>
+        ) : (
+          <span className="muted small">Ready: send it to the pharmacy, or print it for her.</span>
+        )}
+      </span>
+      <span className="rx-actions">
+        <a className="btn btn-ghost btn-sm" href={printHref} target="_blank" rel="noreferrer"><Printer size={14} aria-hidden /> Print</a>
+        {canSend && (
+          <button type="button" className={`btn ${look ? 'btn-ghost' : 'btn-accent'} btn-sm`} disabled={sending} onClick={onSend}>
+            <Send size={14} aria-hidden /> {sending ? 'Sending…' : look ? 'Send again' : 'Send to pharmacy'}
+          </button>
+        )}
+      </span>
     </div>
   );
 }
 
-export function PrescriptionPart({ visit, careType, checks, editable, canSend, save, onSaved }) {
+// autoEdit: opened with "Write prescription" from her record – the form opens at once (with one empty row).
+export function PrescriptionPart({ visit, careType, checks, editable, canSend, save, onSaved, autoEdit = false }) {
   const rx = visit.prescription;
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
@@ -90,6 +123,14 @@ export function PrescriptionPart({ visit, careType, checks, editable, canSend, s
     setDraft({ items: rx.items.map(({ id, ...i }) => ({ ...i, durationValue: i.durationValue ?? '' })), notes: rx.notes ?? '' });
     setReasons(Object.fromEntries((rx.warningReasons ?? []).map((w) => [w.key, w.reason])));
   };
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!autoEdit || !editable || opened.current) return;
+    opened.current = true;
+    setDraft({ items: rx.items.length ? rx.items.map(({ id, ...i }) => ({ ...i, durationValue: i.durationValue ?? '' })) : [{ ...EMPTY }], notes: rx.notes ?? '' });
+    setReasons(Object.fromEntries((rx.warningReasons ?? []).map((w) => [w.key, w.reason])));
+    document.getElementById('prescription')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [autoEdit, editable]); // the visit's first answer only
   const setItem = (i, k, v) => setDraft((d) => ({ ...d, items: d.items.map((x, j) => (j === i ? { ...x, [k]: v } : x)) }));
   const addSet = (key) => {
     const set = sets.find((s) => s.key === key);
@@ -121,7 +162,7 @@ export function PrescriptionPart({ visit, careType, checks, editable, canSend, s
   const rowError = (i) => Object.entries(fields).filter(([k]) => k.startsWith(`items.${i}.`)).map(([, m]) => m).join(' ');
 
   return (
-    <section className="card">
+    <section className="card" id="prescription">
       <div className="card-head">
         <h2>Prescription</h2>
         {editable && !draft && <button type="button" className="btn btn-ghost btn-sm" onClick={startEditing}><Pencil size={14} aria-hidden /> {rx.items.length ? 'Change' : 'Write'}</button>}
@@ -140,9 +181,9 @@ export function PrescriptionPart({ visit, careType, checks, editable, canSend, s
           {rx.warningReasons?.length > 0 && (
             <p className="small muted">Went ahead despite: {rx.warningReasons.map((w) => `${w.title} – “${w.reason}”`).join('; ')}</p>
           )}
-          {rx.items.length > 0 && (canSend || (visit.pharmacy?.status ?? 'none') !== 'none') && (
+          {rx.items.length > 0 && (
             <>
-              <PharmacyStatus pharmacy={visit.pharmacy} canSend={canSend} sending={sending} onSend={send} />
+              <PharmacyStatus pharmacy={visit.pharmacy} canSend={canSend} sending={sending} onSend={send} printHref={`/hospital/print/prescription/${visit.patientId}/${visit.id}`} />
               <Alert type="error">{sendError}</Alert>
             </>
           )}
@@ -165,7 +206,7 @@ export function PrescriptionPart({ visit, careType, checks, editable, canSend, s
           <div className="table-wrap top-gap-sm">
             <table className="table rx-table">
               <thead>
-                <tr><th>Form</th><th>Medicine</th><th>Strength</th><th>Dose</th><th>How often</th><th>When</th><th>Route</th><th>For</th><th /><th>Instructions</th><th /></tr>
+                <tr><th>Form</th><th>Medicine</th><th>Strength</th><th>Dose</th><th>When to take</th><th>Food</th><th>Route</th><th>For</th><th /><th>Instructions</th><th /></tr>
               </thead>
               <tbody>
                 {draft.items.length === 0 && <tr><td colSpan={11} className="empty">No medicines yet.</td></tr>}
@@ -179,7 +220,10 @@ export function PrescriptionPart({ visit, careType, checks, editable, canSend, s
                     <td><input aria-label={`Strength, medicine ${i + 1}`} placeholder="500 mg" value={it.strength} onChange={(e) => setItem(i, 'strength', e.target.value)} /></td>
                     <td><input aria-label={`Dose, medicine ${i + 1}`} value={it.dose} onChange={(e) => setItem(i, 'dose', e.target.value)} /></td>
                     <td>
-                      <select aria-label={`How often, medicine ${i + 1}`} value={it.frequency} onChange={(e) => setItem(i, 'frequency', e.target.value)}>{options(FREQUENCIES).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+                      <DoseTimes value={it.frequency} onChange={(f) => setItem(i, 'frequency', f)} n={i + 1} />
+                      {!/^\d-\d-\d$/.test(it.frequency) && (
+                        <select className="top-gap-sm" aria-label={`How often, medicine ${i + 1}`} value={it.frequency} onChange={(e) => setItem(i, 'frequency', e.target.value)}>{options(FREQUENCIES).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+                      )}
                       {it.frequency === 'custom' && <input aria-label={`How often in words, medicine ${i + 1}`} value={it.frequencyText} onChange={(e) => setItem(i, 'frequencyText', e.target.value)} />}
                     </td>
                     <td><select aria-label={`When, medicine ${i + 1}`} value={it.timing} onChange={(e) => setItem(i, 'timing', e.target.value)}>{Object.entries(TIMINGS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
