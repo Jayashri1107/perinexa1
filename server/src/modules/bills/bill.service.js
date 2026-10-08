@@ -278,9 +278,13 @@ export async function listBills(hospitalId, q) {
   return { ...page, summary: { bills: sums?.bills ?? 0, total: round2(sums?.total ?? 0), paid: round2(sums?.paid ?? 0), balance: round2(sums?.balance ?? 0) } };
 }
 
-// A pharmacy sale to a registered patient goes on her open bill (a new bill when she has none).
-export async function addPharmacyCharge(req, patientId, { invoiceNumber, amount }) {
-  let bill = await Bill.findOne({ hospitalId: req.hospitalId, patientId, status: 'open' }).sort({ createdAt: -1 });
+// A pharmacy sale to a registered patient goes on her open bill (a new bill when she has none) – or on the bill given
+// (billId: the bill of a prescription given at the desk, which also holds its other charges).
+export async function addPharmacyCharge(req, patientId, { invoiceNumber, amount }, billId = null) {
+  let bill = billId
+    ? await Bill.findOne({ hospitalId: req.hospitalId, _id: billId, patientId, status: 'open' })
+    : await Bill.findOne({ hospitalId: req.hospitalId, patientId, status: 'open' }).sort({ createdAt: -1 });
+  if (billId && !bill) throw new HttpError(409, 'That bill is closed. Start again.', 'BILL_CLOSED');
   if (!bill) {
     bill = new Bill({
       hospitalId: req.hospitalId,

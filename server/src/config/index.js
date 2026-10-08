@@ -82,6 +82,7 @@ const schema = z.object({
     billingAdmin: roleList,
     pharmacy: roleList,
     pharmacyCounter: roleList,
+    dispense: roleList, // give a prescription: its medicines, other charges, payment and the bill
     pharmacyAdmin: roleList,
     analytics: roleList,
     analyticsExact: roleList,

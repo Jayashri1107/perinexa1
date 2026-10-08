@@ -330,11 +330,12 @@ export async function sendToPharmacy(req, patientId, visitId) {
   await visit.save();
   await recordAudit(req, 'PRESCRIPTION_SENT', { hospitalId: req.hospitalId, details: { patientId, visitId, medicines: visit.prescription.items.length } });
   const count = visit.prescription.items.length;
-  await notifyRoles(req, config.access.pharmacyCounter, {
+  // the pharmacy and the front desk (config.access.dispense) – the link opens "Give prescription"
+  await notifyRoles(req, config.access.dispense, {
     type: 'PRESCRIPTION_SENT',
     title: 'Prescription to give',
     message: `${patient.name} (${patient.patientNumber}) · ${count} ${count === 1 ? 'medicine' : 'medicines'} · from ${req.user.name}`,
-    link: '/hospital/pharmacy/prescriptions',
+    link: `/hospital/dispensing/${visit._id}`,
   });
   return fullAnswer(req, loaded);
 }

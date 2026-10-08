@@ -54,7 +54,7 @@ export function PrescriptionsQueuePage() {
       setBusy(null);
     }
   };
-  const sell = (rx) => navigate('/hospital/pharmacy', { state: { patient: rx.patient, visitId: rx.visitId } });
+  const sell = (rx) => navigate(`/hospital/dispensing/${rx.visitId}`);
 
   return (
     <PharmacyFrame subtitle="Prescriptions the doctors sent to the pharmacy. The list updates by itself.">
@@ -85,7 +85,7 @@ export function PrescriptionsQueuePage() {
                   </ol>
                   <div className="rxq-actions">
                     <button type="button" className="btn btn-ghost btn-sm" disabled={busy === rx.visitId} onClick={() => given(rx)}>Mark as given</button>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => sell(rx)}><ShoppingCart size={14} aria-hidden /> Sell at the counter</button>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => sell(rx)}><ShoppingCart size={14} aria-hidden /> Give prescription</button>
                   </div>
                 </article>
               ))}

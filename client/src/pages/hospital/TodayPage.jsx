@@ -49,6 +49,7 @@ import { BillingDesk } from '../billing/BillingDesk.jsx';
 import { BookedBedsCard, bedCounts } from '../inpatient/BookedBeds.jsx';
 import { InHospitalCard } from '../inpatient/InHospitalCard.jsx';
 import { TodayBooking } from './TodayBooking.jsx';
+import { PrescriptionOrdersCard } from '../dispensing/PrescriptionOrdersCard.jsx';
 
 function greeting() {
   const h = new Date().getHours();
@@ -188,6 +189,8 @@ export function TodayPage() {
           </div>
 
           <div className="grid-2 today-grid">
+            {canAccess('dispense') && <PrescriptionOrdersCard />}
+
             <section className="card">
               <h2>Needs your attention</h2>
               {attention.length === 0 ? (

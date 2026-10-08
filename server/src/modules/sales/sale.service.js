@@ -101,7 +101,7 @@ export async function sell(req, data) {
   const party = patient ? `${patient.name} (${patient.patientNumber})` : data.customerName;
   let billNumber = '';
   try {
-    if (data.payTo === 'bill') billNumber = await addPharmacyCharge(req, patient.id, { invoiceNumber, amount: total });
+    if (data.payTo === 'bill') billNumber = await addPharmacyCharge(req, patient.id, { invoiceNumber, amount: total }, data.billId ?? null);
   } catch (err) {
     await putBack(taken);
     throw err;

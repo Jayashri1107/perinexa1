@@ -80,6 +80,7 @@
     "billingAdmin": ["admin"],
     "pharmacy": ["pharmacist", "admin"],
     "pharmacyCounter": ["pharmacist"],
+    "dispense": ["pharmacist", "receptionist"],
     "pharmacyAdmin": ["admin"],
     "analytics": ["doctor", "admin"],
     "analyticsExact": ["doctor"],
@@ -235,6 +236,7 @@
       { "key": "cash", "label": "Cash" },
       { "key": "upi", "label": "UPI", "needsReference": true },
       { "key": "card", "label": "Card", "needsReference": true },
+      { "key": "bank", "label": "Bank transfer", "needsReference": true },
       { "key": "insurance", "label": "Insurance", "needsReference": true },
       { "key": "scheme", "label": "Scheme (PM-JAY etc.)", "needsReference": true }
     ],

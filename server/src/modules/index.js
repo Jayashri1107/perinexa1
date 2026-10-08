@@ -44,6 +44,7 @@ import userRoutes from './users/user.routes.js';
 import visitRoutes, { pharmacyPrescriptionRouter } from './visits/visit.routes.js';
 import dischargeRoutes from './discharges/discharge.routes.js';
 import documentRoutes from './documents/document.routes.js';
+import dispensingRoutes from './dispensing/dispensing.routes.js';
 import medicalHistoryRoutes from './medicalHistory/medicalHistory.routes.js';
 import notificationRoutes from './notifications/notification.routes.js';
 import wardRoutes from './wards/ward.routes.js';
@@ -110,6 +111,8 @@ export const modules = [
   // Module 8 – visits and prescriptions
   { path: '/hospital/visits', access: 'hospital', roles: access.patientsClinical, router: visitRoutes },
   { path: '/hospital/pharmacy/prescriptions', access: 'hospital', roles: access.pharmacyCounter, router: pharmacyPrescriptionRouter },
+  // Giving a prescription: its medicines, other charges, payment and the bill (the pharmacy and the front desk)
+  { path: '/hospital/dispensing', access: 'hospital', roles: access.dispense, router: dispensingRoutes },
 
   // Module 9 – inpatients (stays, ward documents, nursing chart) and the pharmacy's issue to ward
   { path: '/hospital/admissions', access: 'hospital', roles: [...new Set([...access.patientsClinical, ...access.admitPatients])], router: admissionRoutes },

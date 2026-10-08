@@ -107,6 +107,7 @@ const visitSchema = new mongoose.Schema(
       givenAt: { type: Date, default: null },
       givenByName: { type: String, default: null },
       invoiceNumber: { type: String, default: null }, // the counter sale that gave it, when sold here
+      billId: { type: ObjectId, ref: 'Bill', default: null }, // given at the desk: the one bill of its medicines and charges
     },
     createdBy: { type: ObjectId, ref: 'User', required: true },
     createdByName: { type: String, required: true },

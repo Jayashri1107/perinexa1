@@ -41,6 +41,15 @@ Fake sample data only.
   (the two voice cards are gone).
 - Sign-in page: calm and minimal – a small stethoscope symbol, one headline, one changing line, three chips.
 
+- Give a prescription (`config.access.dispense`: pharmacist, receptionist; `/api/hospital/dispensing`): Today shows
+  "Prescriptions to give"; **Give prescription** shows her details and the doctor's medicines read-only, matched to
+  stock with the quantity from the dose and days, price and amount; more medicines can be added; other charges from
+  the price list or written in; discount; payment (Cash, UPI, Card, Bank transfer …). "Give and make the bill": the
+  medicines are sold from stock onto ONE new bill with the charges, the payment is recorded, the prescription is
+  marked given; **Print bill** shows each medicine and charge.
+- The prescription opens in a box, one card per medicine, the dose as 1-0-1 buttons. Users & access → Type lists each
+  staff position.
+
 ### Who sees what (config.access)
 
 | Role | Menu |

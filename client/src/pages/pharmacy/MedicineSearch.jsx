@@ -4,7 +4,8 @@ import { medicinesApi } from '../../api/index.js';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { formatMoney, labelOf } from '../../utils/format.js';
 
-export function MedicineSearch({ onPick, label = 'Add a medicine', showStock = true }) {
+// search: where to look (the pharmacy's medicine list by default; giving a prescription at the desk uses its own)
+export function MedicineSearch({ onPick, label = 'Add a medicine', showStock = true, search = medicinesApi.options }) {
   const { pharmacy } = useAppConfig();
   const [text, setText] = useState('');
   const [results, setResults] = useState([]);
@@ -12,8 +13,7 @@ export function MedicineSearch({ onPick, label = 'Add a medicine', showStock = t
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(() => {
-      medicinesApi
-        .options(text.trim())
+      search(text.trim())
         .then((r) => !cancelled && setResults(r.items))
         .catch(() => !cancelled && setResults([]));
     }, 250);
@@ -21,7 +21,7 @@ export function MedicineSearch({ onPick, label = 'Add a medicine', showStock = t
       cancelled = true;
       clearTimeout(t);
     };
-  }, [text]);
+  }, [text, search]);
 
   return (
     <div className="form-field picker">
