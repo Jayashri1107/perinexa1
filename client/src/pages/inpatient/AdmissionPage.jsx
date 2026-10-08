@@ -1,7 +1,7 @@
 // A stay in hospital (as in Perinexa's AdmissionPage): ward and bed, red flags from the nursing chart and recent lab
 // results, the ward documents (admission, rounds, delivery, operation, discharge card – draft, then signed), and the
 // nursing chart. Signing the discharge card discharges her.
-import { ArrowLeft, Plus, Printer, Siren } from 'lucide-react';
+import { ArrowLeft, DoorOpen, Plus, Printer, Siren } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { admissionsApi } from '../../api/index.js';
@@ -15,8 +15,8 @@ import { FLAG_LOOKS, requestId } from '../visits/visitFormat.js';
 import { DocumentForm, DocumentView } from './DocumentEditor.jsx';
 import { KIND_LABELS, SIGNED_BY, VITAL_FIELDS, docLook, stayLook, toLocalInput } from './inpatientFormat.js';
 
-function Doc({ stayId, doc, can, onChanged }) {
-  const [editing, setEditing] = useState(false);
+function Doc({ stayId, doc, can, onChanged, startEditing = false }) {
+  const [editing, setEditing] = useState(startEditing && doc.status === 'draft' && can.write);
   const [content, setContent] = useState(doc.content);
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
@@ -43,7 +43,19 @@ function Doc({ stayId, doc, can, onChanged }) {
         <h2>{KIND_LABELS[doc.kind]} <StateBadge look={docLook(doc)} small /></h2>
         <div className="row-actions">
           {draft && can.write && !editing && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setContent(doc.content); setEditing(true); }}>Write</button>}
-          {draft && !editing && can.sign[doc.kind] && <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => window.confirm('Sign this document? It can no longer change after signing.') && run(() => admissionsApi.signDocument(stayId, doc.id))}>Sign</button>}
+          {draft && !editing && can.sign[doc.kind] && (
+            <button
+              type="button"
+              className={doc.kind === 'discharge' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
+              disabled={busy}
+              onClick={() =>
+                window.confirm(doc.kind === 'discharge' ? 'Sign the discharge card and discharge her? The card can no longer change after signing.' : 'Sign this document? It can no longer change after signing.') &&
+                run(() => admissionsApi.signDocument(stayId, doc.id))
+              }
+            >
+              {doc.kind === 'discharge' ? 'Sign and discharge' : 'Sign'}
+            </button>
+          )}
           {draft && can.write && !editing && <button type="button" className="btn btn-link btn-sm btn-danger-text" onClick={() => { const r = window.prompt('Why is it entered in error?'); if (r) run(() => admissionsApi.cancelDocument(stayId, doc.id, r)); }}>Entered in error</button>}
           {doc.status === 'signed' && <a className="btn btn-ghost btn-sm" href={doc.kind === 'discharge' ? `/hospital/print/discharge-card/${doc.id}` : `/hospital/print/ward-document/${stayId}/${doc.id}`} target="_blank" rel="noreferrer"><Printer size={14} aria-hidden /> Print</a>}
         </div>
@@ -137,6 +149,7 @@ export function AdmissionPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [moving, setMoving] = useState(null);
+  const [openDocId, setOpenDocId] = useState(null); // a document to open for writing (Discharge patient)
 
   const load = useCallback(() => {
     admissionsApi.get(id).then(setData).catch((err) => setError(err.message));
@@ -149,9 +162,22 @@ export function AdmissionPage() {
 
   const newDoc = async (kind) => {
     try {
-      setData(await admissionsApi.newDocument(stay.id, kind, requestId()));
+      const next = await admissionsApi.newDocument(stay.id, kind, requestId());
+      setData(next);
+      return next;
     } catch (err) {
       setError(err.message);
+      return null;
+    }
+  };
+  // Discharge patient: opens her discharge card for writing (a new one, or the draft already started). Signing it
+  // discharges her; reception then prints it from Discharges.
+  const dischargeCard = documents.find((d) => d.kind === 'discharge' && d.status !== 'cancelled');
+  const discharge = async () => {
+    const draft = dischargeCard ?? (await newDoc('discharge'))?.documents.find((d) => d.kind === 'discharge' && d.status === 'draft');
+    if (draft) {
+      setOpenDocId(draft.id);
+      setTimeout(() => document.getElementById(`doc-${draft.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     }
   };
 
@@ -165,6 +191,12 @@ export function AdmissionPage() {
           <>
             <StateBadge look={stayLook(stay)} />
             {can.bed && <button type="button" className="btn btn-ghost" onClick={() => setMoving({ ward: stay.ward, bed: stay.bed })}>Change ward or bed</button>}
+            {stay.status === 'admitted' && can.write && (!dischargeCard || dischargeCard.status === 'draft') && (
+              <button type="button" className="btn btn-primary" onClick={discharge}><DoorOpen size={16} aria-hidden /> Discharge patient</button>
+            )}
+            {dischargeCard?.status === 'signed' && (
+              <a className="btn btn-primary" href={`/hospital/print/discharge-card/${dischargeCard.id}`} target="_blank" rel="noreferrer"><Printer size={16} aria-hidden /> Discharge card</a>
+            )}
           </>
         }
       />
@@ -198,7 +230,11 @@ export function AdmissionPage() {
             )}
           </div>
           {documents.length === 0 && <p className="muted">No documents yet.</p>}
-          {documents.map((d) => <Doc key={d.id} stayId={stay.id} doc={d} can={can} onChanged={(r) => setData(r)} />)}
+          {documents.map((d) => (
+            <div key={d.id === openDocId ? `${d.id}-open` : d.id} id={`doc-${d.id}`}>
+              <Doc stayId={stay.id} doc={d} can={can} startEditing={d.id === openDocId} onChanged={(r) => setData(r)} />
+            </div>
+          ))}
         </div>
         <section className="card">
           <h2>Nursing chart</h2>
