@@ -291,7 +291,7 @@
     "orderPrefix": "PO-",
     "supplierReturnPrefix": "SR-",
     "numberDigits": 6,
-    "expiryAlertDays": 90,
+    "expiryAlertDays": 30,
     "gstRates": [0, 5, 12, 18],
     "forms": [
       { "key": "tablet", "label": "Tablet" },

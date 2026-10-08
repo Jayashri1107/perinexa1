@@ -11,7 +11,8 @@ import { usePagedList } from '../../hooks/usePagedList.js';
 import { activeStatus } from '../../utils/format.js';
 import { PharmacyFrame } from './PharmacyFrame.jsx';
 
-export function SimpleListPage({ api, subtitle, noun, columns, filters, fields, empty, valuesOf, searchPlaceholder }) {
+// addFields / addEmpty: a different form when adding (e.g. a new medicine with its opening stock)
+export function SimpleListPage({ api, subtitle, noun, columns, filters, fields, empty, valuesOf, searchPlaceholder, addFields = fields, addEmpty = empty }) {
   const { canAccess } = useAuth();
   const canEdit = canAccess('pharmacyCounter');
   const list = usePagedList(api.list);
@@ -61,7 +62,7 @@ export function SimpleListPage({ api, subtitle, noun, columns, filters, fields, 
     <PharmacyFrame
       subtitle={subtitle}
       actions={canEdit && (
-        <button type="button" className="btn btn-primary" onClick={() => open('add', empty)}>
+        <button type="button" className="btn btn-primary" onClick={() => open('add', addEmpty)}>
           <Plus size={16} aria-hidden /> Add {noun}
         </button>
       )}
@@ -69,7 +70,7 @@ export function SimpleListPage({ api, subtitle, noun, columns, filters, fields, 
       <Alert type="error">{error}</Alert>
       <ListPanel list={list} columns={allColumns} filters={filters} searchPlaceholder={searchPlaceholder} emptyText={`No ${noun}s yet.`} />
       {dialog && (
-        <FormModal title={dialog === 'add' ? `Add ${noun}` : `Edit ${dialog.item.name}`} size="lg" fields={fields} form={form} onSubmit={save} onClose={() => setDialog(null)} />
+        <FormModal title={dialog === 'add' ? `Add ${noun}` : `Edit ${dialog.item.name}`} size="lg" fields={dialog === 'add' ? addFields : fields} form={form} onSubmit={save} onClose={() => setDialog(null)} />
       )}
     </PharmacyFrame>
   );

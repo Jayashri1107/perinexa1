@@ -3,7 +3,7 @@ import { notFoundError } from '../../core/httpError.js';
 import { paginate, toSort } from '../../core/pagination.js';
 import { containsText, toObjectId } from '../../core/validate.js';
 import { recordAudit } from '../audit/audit.service.js';
-import { StockBatch } from '../stock/stock.model.js';
+import { StockBatch, recordMovement } from '../stock/stock.model.js';
 import { Medicine } from './medicine.model.js';
 
 export async function listMedicines(hospitalId, q) {
@@ -55,9 +55,15 @@ async function findOr404(hospitalId, id) {
   return medicine;
 }
 
-export async function createMedicine(req, data) {
+// A new medicine and its opening stock (one batch: batch number, expiry, units, purchase price, MRP), recorded as
+// received ("Opening stock") so it shows in the stock and the registers like a purchase.
+export async function createMedicine(req, { stock, ...data }) {
   const medicine = await Medicine.create({ ...data, hospitalId: req.hospitalId });
-  await recordAudit(req, 'MEDICINE_CREATED', { hospitalId: req.hospitalId, details: { name: medicine.name, schedule: medicine.schedule } });
+  if (stock) {
+    const batch = await StockBatch.create({ hospitalId: req.hospitalId, medicineId: medicine._id, batch: stock.batch, expiry: stock.expiry, qty: stock.qty, purchasePrice: stock.purchasePrice, mrp: stock.mrp, gstRate: medicine.gstRate });
+    await recordMovement(req, { medicine, batch, kind: 'purchase', qty: stock.qty, ref: 'Opening stock' });
+  }
+  await recordAudit(req, 'MEDICINE_CREATED', { hospitalId: req.hospitalId, details: { name: medicine.name, schedule: medicine.schedule, ...(stock && { openingUnits: stock.qty }) } });
   return medicine;
 }
 

@@ -89,8 +89,12 @@ function attentionItems(today, overview) {
   if (today.lab?.toReview) items.push({ icon: FlaskConical, text: `${plural(today.lab.toReview, 'lab result')} to review`, hint: 'Results of your patients and your orders.', to: '/hospital/lab', action: 'Review' });
   if (today.lab?.toReport) items.push({ icon: FlaskConical, text: `${plural(today.lab.toReport, 'lab order')} waiting for results`, hint: today.lab.toCollect ? `${plural(today.lab.toCollect, 'sample')} still to take.` : 'Samples taken.', to: '/hospital/lab', action: 'Open the lab' });
   if (today.pharmacy?.lowStock) items.push({ icon: PackageMinus, text: `${plural(today.pharmacy.lowStock, 'medicine')} running low`, hint: 'At or below the reorder level.', to: '/hospital/pharmacy/stock', action: 'See stock' });
-  if (today.pharmacy?.expired) items.push({ icon: CalendarX, text: `${plural(today.pharmacy.expired, 'batch', 'batches')} expired but still in stock`, hint: 'Write them off or return them.', to: '/hospital/pharmacy/reports', action: 'See expiry' });
-  if (today.pharmacy?.expiringSoon) items.push({ icon: AlertTriangle, text: `${plural(today.pharmacy.expiringSoon, 'batch', 'batches')} expiring soon`, hint: 'Sell or return them in time.', to: '/hospital/pharmacy/reports', action: 'See expiry' });
+  if (today.pharmacy?.expired) items.push({ icon: CalendarX, tone: 'danger', text: `${plural(today.pharmacy.expired, 'batch', 'batches')} expired but still in stock`, hint: 'Write them off or return them.', to: '/hospital/pharmacy/expiring', action: 'See them' });
+  if (today.pharmacy?.expiringSoon) {
+    const ph = today.pharmacy;
+    const names = ph.expiringNames.join(', ') + (ph.expiringMedicines > ph.expiringNames.length ? ` and ${ph.expiringMedicines - ph.expiringNames.length} more` : '');
+    items.push({ icon: AlertTriangle, tone: 'warning', text: `${plural(ph.expiringMedicines, 'medicine')} expire${ph.expiringMedicines === 1 ? 's' : ''} within ${ph.expiryAlertDays} days`, hint: `${names}. Sell first or return in time.`, to: '/hospital/pharmacy/expiring', action: 'See them' });
+  }
   return items;
 }
 
@@ -183,7 +187,20 @@ export function TodayPage() {
             {today.billing && (
               <StatCard icon={Undo2} to="/hospital/billing/daily" label="Refunds today" value={formatMoney(today.billing.refundedToday)} hint={plural(today.billing.refundsToday, 'refund')} tone="neutral" />
             )}
-            {today.pharmacy && <StatCard icon={Pill} to="/hospital/pharmacy/sales" label="Pharmacy sales today" value={today.pharmacy.salesToday} hint={formatMoney(today.pharmacy.soldToday)} tone="warning" />}
+            {today.pharmacy && <StatCard icon={Pill} to="/hospital/pharmacy/sales" label="Pharmacy sales today" value={today.pharmacy.salesToday} hint={formatMoney(today.pharmacy.soldToday)} tone="info" />}
+            {today.pharmacy && (
+              <StatCard icon={PackageMinus} to="/hospital/pharmacy/stock" label="Low stock" value={today.pharmacy.lowStock} hint="At or below the reorder level" tone={today.pharmacy.lowStock ? 'warning' : 'neutral'} />
+            )}
+            {today.pharmacy && (
+              <StatCard
+                icon={AlertTriangle}
+                to="/hospital/pharmacy/expiring"
+                label={`Expiring in ${today.pharmacy.expiryAlertDays} days`}
+                value={today.pharmacy.expiringMedicines}
+                hint={today.pharmacy.expiringNames.length ? today.pharmacy.expiringNames.join(', ') : 'No medicine expires soon'}
+                tone={today.pharmacy.expiringMedicines ? 'danger' : 'neutral'}
+              />
+            )}
             {today.appointments && <StatCard icon={CalendarClock} to="/hospital/appointments" label="My appointments today" value={today.appointments.total} hint={`${today.appointments.seen} seen · ${today.appointments.arrived} waiting`} tone="info" />}
             {today.doctor && <StatCard icon={HeartPulse} to="/hospital/patients" label="My patients" value={today.doctor.mine} hint="Under my care" />}
           </div>

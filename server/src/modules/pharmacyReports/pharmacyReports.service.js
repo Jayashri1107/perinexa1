@@ -23,10 +23,11 @@ export async function expiryReport(hospitalId) {
     { $project: { batch: 1, expiry: 1, qty: 1, mrp: 1, purchasePrice: 1, medicine: 1, expired: { $lte: ['$expiry', now] } } },
     ...withId(),
   ]);
+  const withDays = rows.map((r) => ({ ...r, daysLeft: Math.ceil((new Date(r.expiry) - now) / DAY) }));
   return {
     alertDays: config.pharmacy.expiryAlertDays,
-    expired: rows.filter((r) => r.expired),
-    expiringSoon: rows.filter((r) => !r.expired),
+    expired: withDays.filter((r) => r.expired),
+    expiringSoon: withDays.filter((r) => !r.expired),
   };
 }
 
@@ -137,8 +138,28 @@ export async function alertCounts(hospitalId) {
     ]),
     StockBatch.aggregate([
       { $match: { hospitalId: hid, qty: { $gt: 0 }, expiry: { $lte: soon } } },
-      { $group: { _id: null, expired: { $sum: { $cond: [{ $lte: ['$expiry', now] }, 1, 0] } }, soon: { $sum: { $cond: [{ $gt: ['$expiry', now] }, 1, 0] } } } },
+      { $sort: { expiry: 1 } },
+      {
+        $group: {
+          _id: null,
+          expired: { $sum: { $cond: [{ $lte: ['$expiry', now] }, 1, 0] } },
+          soon: { $sum: { $cond: [{ $gt: ['$expiry', now] }, 1, 0] } },
+          // the medicines expiring soon (not yet expired), soonest first
+          soonMedicines: { $push: { $cond: [{ $gt: ['$expiry', now] }, '$medicineId', '$$REMOVE'] } },
+        },
+      },
     ]),
   ]);
-  return { lowStock: low?.count ?? 0, expiringSoon: expiry?.soon ?? 0, expired: expiry?.expired ?? 0 };
+  // how many different medicines expire soon, and the names of the first three (soonest first)
+  const ids = [...new Map((expiry?.soonMedicines ?? []).map((id) => [String(id), id])).values()];
+  const named = ids.length ? await Medicine.find({ hospitalId: hid, _id: { $in: ids.slice(0, 3) } }).select('name strength').lean() : [];
+  const byId = new Map(named.map((m) => [String(m._id), `${m.name}${m.strength ? ` ${m.strength}` : ''}`]));
+  return {
+    lowStock: low?.count ?? 0,
+    expiringSoon: expiry?.soon ?? 0,
+    expiringMedicines: ids.length,
+    expiringNames: ids.slice(0, 3).map((id) => byId.get(String(id))).filter(Boolean),
+    expiryAlertDays: config.pharmacy.expiryAlertDays,
+    expired: expiry?.expired ?? 0,
+  };
 }

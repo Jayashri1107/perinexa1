@@ -55,6 +55,7 @@ import { SaleDetailPage } from './pages/pharmacy/SaleDetailPage.jsx';
 import { SalesPage } from './pages/pharmacy/SalesPage.jsx';
 import { SellPage } from './pages/pharmacy/SellPage.jsx';
 import { StockPage } from './pages/pharmacy/StockPage.jsx';
+import { ExpiringPage } from './pages/pharmacy/ExpiringPage.jsx';
 import { SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
 import { SuppliersPage } from './pages/pharmacy/SuppliersPage.jsx';
 import { PlatformBillingPage } from './pages/platform/PlatformBillingPage.jsx';
@@ -183,6 +184,7 @@ export function App() {
                   <Route path="pharmacy/sales" element={<SalesPage />} />
                   <Route path="pharmacy/sales/:id" element={<SaleDetailPage />} />
                   <Route path="pharmacy/stock" element={<StockPage />} />
+                  <Route path="pharmacy/expiring" element={<ExpiringPage />} />
                   <Route path="pharmacy/medicines" element={<MedicinesPage />} />
                   <Route path="pharmacy/purchases" element={<PurchasesPage />} />
                   <Route path="pharmacy/suppliers" element={<SuppliersPage />} />

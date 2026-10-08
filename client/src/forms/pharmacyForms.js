@@ -11,6 +11,19 @@ export const medicineFields = ({ pharmacy }) => [
   { name: 'hsn', label: 'HSN code', width: 'third' },
   { name: 'reorderLevel', label: 'Reorder level (units)', type: 'number', width: 'third', help: 'Shown as low stock at or below this.' },
 ];
+// Adding a medicine also asks for its opening stock (owner, 8 Oct 2026), so it can be sold – and priced on
+// prescriptions – at once.
+export const newMedicineFields = ({ pharmacy }) => [
+  ...medicineFields({ pharmacy }),
+  { section: 'Opening stock' },
+  { name: 'stock.batch', label: 'Batch number', required: true, width: 'third' },
+  { name: 'stock.expiry', label: 'Expiry date', type: 'date', required: true, width: 'third' },
+  { name: 'stock.qty', label: 'Quantity (units)', type: 'number', required: true, width: 'third', placeholder: 'e.g. 100' },
+  { name: 'stock.purchasePrice', label: 'Purchase price per unit (₹)', type: 'number', required: true, width: 'half' },
+  { name: 'stock.mrp', label: 'MRP – selling price per unit (₹)', type: 'number', required: true, width: 'half', help: 'GST included. Used at the counter and on prescriptions.' },
+];
+export const emptyNewMedicine = (pharmacy) => ({ ...emptyMedicine(pharmacy), stock: { batch: '', expiry: '', qty: '', purchasePrice: '', mrp: '' } });
+
 export const emptyMedicine = (pharmacy) => ({
   name: '',
   strength: '',

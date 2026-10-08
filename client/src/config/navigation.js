@@ -68,6 +68,7 @@ export const PHARMACY_TABS = [
   { to: '/hospital/pharmacy/prescriptions', label: 'Prescriptions', access: 'pharmacyCounter' },
   { to: '/hospital/pharmacy/ward', label: 'Issue to ward', access: 'pharmacyCounter' },
   { to: '/hospital/pharmacy/stock', label: 'Stock', access: 'pharmacy' },
+  { to: '/hospital/pharmacy/expiring', label: 'Expiring', access: 'pharmacy' },
   { to: '/hospital/pharmacy/sales', label: 'Sales', access: 'pharmacy' },
   { to: '/hospital/pharmacy/medicines', label: 'Medicines', access: 'pharmacy' },
   { to: '/hospital/pharmacy/purchases', label: 'Purchases', access: 'pharmacy' },
