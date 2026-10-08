@@ -6,7 +6,7 @@
 //  4. discount, total, payment method and amount received;
 //  5. "Give and make the bill": stock goes out, one bill holds everything, the payment is recorded – then "Print bill".
 import { ArrowLeft, CircleCheck, Lock, Plus, Printer, ReceiptText, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { dispensingApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
@@ -29,6 +29,7 @@ export function GivePrescriptionPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [fields, setFields] = useState({});
+  const [rows, setRows] = useState([]); // the doctor's medicines: { rx, medicine (stock match or null), qty, price }
   const [extra, setExtra] = useState([]); // medicines added here: { medicine, qty }
   const [charges, setCharges] = useState([]); // { priceItemId | name, group, unitPrice, qty, label }
   const [pick, setPick] = useState('');
@@ -43,14 +44,14 @@ export function GivePrescriptionPage() {
       .get(visitId)
       .then((d) => {
         setData(d);
+        // every medicine the doctor wrote: in stock (the stock's price) or not (the price is typed here)
+        setRows(d.items.map((i) => ({ rx: i.rx, medicine: i.medicine, qty: i.qty, price: i.medicine ? i.medicine.mrp : '' })));
         setPayment((p) => ({ ...p, mode: d.modes[0]?.key ?? 'cash' }));
       })
       .catch((err) => setError(err.message));
   }, [visitId]);
 
-  const prescribed = useMemo(() => (data?.items ?? []).filter((i) => i.medicine && i.qty > 0), [data]);
-  const missing = (data?.items ?? []).filter((i) => !i.medicine);
-  const medicineTotal = money([...prescribed, ...extra].reduce((n, l) => n + l.medicine.mrp * l.qty, 0));
+  const medicineTotal = money(rows.reduce((n, r) => n + money(r.price) * (Number(r.qty) || 0), 0) + extra.reduce((n, l) => n + l.medicine.mrp * l.qty, 0));
   const chargeTotal = money(charges.reduce((n, c) => n + c.unitPrice * c.qty, 0));
   const discountAmount = Math.min(money(discount.amount), medicineTotal + chargeTotal);
   const total = money(medicineTotal + chargeTotal - discountAmount);
@@ -69,7 +70,7 @@ export function GivePrescriptionPage() {
         <section className="card give-done">
           <span className="give-done-icon" aria-hidden><CircleCheck size={34} /></span>
           <h2>Bill {done.billNumber} is ready</h2>
-          <p className="muted">The medicines left the stock, the payment is recorded and the prescription is marked given.</p>
+          <p className="muted">The medicines from stock left the stock, everything is on the bill, the payment is recorded and the prescription is marked given.</p>
           <div className="button-row">
             <a className="btn btn-primary btn-lg" href={`/hospital/print/prescription-bill/${done.billId}`} target="_blank" rel="noreferrer"><Printer size={18} aria-hidden /> Print bill</a>
             <button type="button" className="btn btn-ghost btn-lg" onClick={() => navigate('/hospital')}>Back to Today</button>
@@ -79,8 +80,10 @@ export function GivePrescriptionPage() {
     );
   }
 
+  const setRow = (i, patch) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const giving = rows.filter((r) => Number(r.qty) > 0);
   const addExtra = (m) => {
-    if ([...prescribed, ...extra].some((l) => l.medicine.id === m.id)) return;
+    if ([...rows, ...extra].some((l) => l.medicine?.id === m.id)) return;
     setExtra((x) => [...x, { medicine: m, qty: 1 }]);
   };
   const addCharge = () => {
@@ -96,13 +99,22 @@ export function GivePrescriptionPage() {
   };
 
   const submit = async () => {
+    const noPrice = giving.filter((r) => !r.medicine && r.price === '');
+    if (noPrice.length) {
+      setError(`Enter the price of ${noPrice.map((r) => r.rx.drug).join(', ')} – or set its quantity to 0 if it is not given.`);
+      return;
+    }
     setSaving(true);
     setError('');
     setFields({});
+    // not on the stock list: on the bill as a medicine line with the price typed here (no stock change)
+    const writtenIn = giving
+      .filter((r) => !r.medicine)
+      .map((r) => ({ name: `${r.rx.drug}${r.rx.strength && !r.rx.drug.includes(r.rx.strength) ? ` ${r.rx.strength}` : ''}`, group: 'medicine', unitPrice: money(r.price), qty: Number(r.qty) }));
     try {
       const r = await dispensingApi.give(visitId, {
-        medicines: [...prescribed, ...extra].map((l) => ({ medicineId: l.medicine.id, qty: l.qty })),
-        charges: charges.map(({ priceItemId, name, group, unitPrice, qty }) => (priceItemId ? { priceItemId, qty } : { name, group, unitPrice, qty })),
+        medicines: [...giving.filter((x) => x.medicine).map((x) => ({ medicineId: x.medicine.id, qty: Number(x.qty) })), ...extra.map((l) => ({ medicineId: l.medicine.id, qty: l.qty }))],
+        charges: [...writtenIn, ...charges.map(({ priceItemId, name, group, unitPrice, qty }) => (priceItemId ? { priceItemId, qty } : { name, group, unitPrice, qty }))],
         discount: { amount: discountAmount, reason: discount.reason },
         payment: { mode: payment.mode, reference: payment.reference, amount: Math.min(received, total) },
       });
@@ -116,33 +128,50 @@ export function GivePrescriptionPage() {
     }
   };
 
-  const medicineRow = (l, locked, i) => (
-    <tr key={l.medicine.id} className={locked ? 'rx-locked' : undefined}>
+  // A medicine the doctor wrote: the name and dose locked; the quantity can be set (0 = not given); the price is the
+  // stock's (in stock) or typed here (not on the stock list).
+  const rxRow = (r, i) => {
+    const qty = Number(r.qty) || 0;
+    return (
+      <tr key={`rx${i}`} className={`rx-locked${qty === 0 ? ' struck-row' : ''}`}>
+        <td>
+          <strong><Lock size={12} aria-hidden /> {r.rx.drug}{r.rx.strength && !r.rx.drug.includes(r.rx.strength) ? ` ${r.rx.strength}` : ''}</strong>
+          <span className="block small muted">
+            {r.rx.frequency === 'custom' ? r.rx.frequencyText : r.rx.frequency}
+            {r.rx.timing && TIMINGS[r.rx.timing] !== '—' && ` · ${TIMINGS[r.rx.timing]}`} · {howLong(r.rx)}
+          </span>
+          <span className="block small">{r.medicine ? <span className="give-stock">From stock: {r.medicine.name} {r.medicine.strength}</span> : <span className="give-nostock">Not on the stock list – enter the price</span>}</span>
+        </td>
+        <td className="num">{r.medicine ? r.medicine.available : '—'}</td>
+        <td className="num">
+          <input className="qty" type="number" min="0" max={r.medicine ? r.medicine.available : 10000} aria-label={`Quantity of ${r.rx.drug}`} value={r.qty} disabled={given} onChange={(e) => setRow(i, { qty: e.target.value === '' ? '' : Math.max(0, Math.min(Number(e.target.value), r.medicine ? r.medicine.available : 10000)) })} />
+        </td>
+        <td className="num">
+          {r.medicine ? (
+            formatMoney(r.medicine.mrp)
+          ) : (
+            <input className="qty give-price" type="number" min="0" step="0.01" placeholder="₹" aria-label={`Price of ${r.rx.drug}`} value={r.price} disabled={given} onChange={(e) => setRow(i, { price: e.target.value })} />
+          )}
+        </td>
+        <td className="num">{formatMoney(money(r.price) * qty)}</td>
+        <td className="actions"><span className="badge badge-info small" title="From the doctor's prescription – the name cannot be changed">Prescribed</span></td>
+      </tr>
+    );
+  };
+  const extraRow = (l, i) => (
+    <tr key={l.medicine.id}>
       <td>
         <strong>{l.medicine.name} {l.medicine.strength}</strong>
-        {locked ? (
-          <span className="block small muted">
-            {l.rx.drug} · {l.rx.frequency === 'custom' ? l.rx.frequencyText : l.rx.frequency}
-            {l.rx.timing && TIMINGS[l.rx.timing] !== '—' && ` · ${TIMINGS[l.rx.timing]}`} · {howLong(l.rx)}
-          </span>
-        ) : (
-          <span className="block small muted">Added here</span>
-        )}
+        <span className="block small muted">Added here</span>
       </td>
       <td className="num">{l.medicine.available}</td>
       <td className="num">
-        {locked ? (
-          <strong>{l.qty}</strong>
-        ) : (
-          <input className="qty" type="number" min="1" max={l.medicine.available} aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setExtra((x) => x.map((y, j) => (j === i ? { ...y, qty: Math.max(1, Math.min(Number(e.target.value) || 1, l.medicine.available)) } : y)))} />
-        )}
+        <input className="qty" type="number" min="1" max={l.medicine.available} aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setExtra((x) => x.map((y, j) => (j === i ? { ...y, qty: Math.max(1, Math.min(Number(e.target.value) || 1, l.medicine.available)) } : y)))} />
       </td>
       <td className="num">{formatMoney(l.medicine.mrp)}</td>
       <td className="num">{formatMoney(l.medicine.mrp * l.qty)}</td>
       <td className="actions">
-        {locked ? <span className="badge badge-info small" title="From the doctor's prescription – cannot be changed"><Lock size={11} aria-hidden /> Prescribed</span> : (
-          <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setExtra((x) => x.filter((_, j) => j !== i))}><Trash2 size={15} /></button>
-        )}
+        <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setExtra((x) => x.filter((_, j) => j !== i))}><Trash2 size={15} /></button>
       </td>
     </tr>
   );
@@ -174,21 +203,18 @@ export function GivePrescriptionPage() {
       <section className="card top-gap">
         <div className="card-head">
           <h2>Medicines</h2>
-          <span className="muted small"><Lock size={12} aria-hidden /> The doctor's medicines cannot be changed – you can add more.</span>
+          <span className="muted small"><Lock size={12} aria-hidden /> The doctor's medicines cannot be renamed – set the quantity and price, and add more below.</span>
         </div>
-        {missing.length > 0 && (
-          <Alert type="info">Not in stock or not on the medicine list: {missing.map((m) => m.rx.drug).join(', ')}.</Alert>
-        )}
-        {prescribed.some((i) => i.short) && <p className="small muted">Less in stock than prescribed for: {prescribed.filter((i) => i.short).map((i) => i.medicine.name).join(', ')} – the quantity is what can be given.</p>}
+        {data.items.some((i) => i.short && i.medicine) && <p className="small muted">Less in stock than prescribed for: {data.items.filter((i) => i.short && i.medicine).map((i) => i.medicine.name).join(', ')} – the quantity is what can be given.</p>}
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr><th>Medicine</th><th className="num">In stock</th><th className="num">Qty</th><th className="num">Price</th><th className="num">Amount</th><th /></tr>
             </thead>
             <tbody>
-              {prescribed.map((l) => medicineRow(l, true))}
-              {extra.map((l, i) => medicineRow(l, false, i))}
-              {prescribed.length + extra.length === 0 && <tr><td colSpan={6} className="empty">No medicines to give.</td></tr>}
+              {rows.map(rxRow)}
+              {extra.map(extraRow)}
+              {rows.length + extra.length === 0 && <tr><td colSpan={6} className="empty">No medicines to give.</td></tr>}
             </tbody>
             <tfoot>
               <tr className="total-row"><td colSpan={4}><strong>Medicine total</strong></td><td className="num"><strong>{formatMoney(medicineTotal)}</strong></td><td /></tr>
@@ -278,7 +304,7 @@ export function GivePrescriptionPage() {
                 )}
               </div>
               <p className="give-balance">Balance after payment: <strong>{formatMoney(Math.max(0, total - Math.min(received, total)))}</strong></p>
-              <button type="button" className="btn btn-primary btn-block btn-lg" disabled={saving || prescribed.length + extra.length + charges.length === 0} onClick={submit}>
+              <button type="button" className="btn btn-primary btn-block btn-lg" disabled={saving || giving.length + extra.length + charges.length === 0} onClick={submit}>
                 <ReceiptText size={18} aria-hidden /> {saving ? 'Making the bill…' : 'Give and make the bill'}
               </button>
               <p className="muted small"><Printer size={12} aria-hidden /> The bill opens for printing.</p>

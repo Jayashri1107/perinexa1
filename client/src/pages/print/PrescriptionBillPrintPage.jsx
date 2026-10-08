@@ -50,7 +50,7 @@ export function PrescriptionBillPrintPage() {
             <tr key={`m${(n += 1)}`}>
               <td className="num">{n}</td>
               <td>{m.name}</td>
-              <td>{m.batch}{m.expiry ? ` · ${formatDate(m.expiry)}` : ''}</td>
+              <td>{m.batch ? `${m.batch}${m.expiry ? ` · ${formatDate(m.expiry)}` : ''}` : '—'}</td>
               <td className="num">{m.qty}</td>
               <td className="num">{formatMoney(m.mrp)}</td>
               <td className="num">{formatMoney(m.amount)}</td>

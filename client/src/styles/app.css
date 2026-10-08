@@ -1088,6 +1088,11 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .give-facts dt { font-size: var(--text-sm); color: var(--color-text-muted); }
 .give-facts dd { margin: 2px 0 0; }
 .rx-locked td { background: var(--color-surface-muted); }
+.rx-locked strong svg { color: var(--color-text-muted); vertical-align: -1px; }
+.struck-row td { opacity: 0.55; }
+.give-stock { color: var(--color-success); }
+.give-nostock { color: var(--color-warning); font-weight: 600; }
+.give-price { width: 90px; }
 .give-charges li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--space-3); padding: 6px 0; border-bottom: 1px solid var(--color-border); }
 .give-add { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
 .give-add select, .give-add input { flex: 1; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; }
