@@ -108,7 +108,7 @@ export const modules = [
   { path: '/hospital/pharmacy/prescriptions', access: 'hospital', roles: access.pharmacyCounter, router: pharmacyPrescriptionRouter },
 
   // Module 9 – inpatients (stays, ward documents, nursing chart) and the pharmacy's issue to ward
-  { path: '/hospital/admissions', access: 'hospital', roles: access.patientsClinical, router: admissionRoutes },
+  { path: '/hospital/admissions', access: 'hospital', roles: [...new Set([...access.patientsClinical, ...access.admitPatients])], router: admissionRoutes },
   { path: '/hospital/pharmacy/ward-issues', access: 'hospital', roles: access.pharmacyCounter, router: wardIssueRouter },
 
   // Module 10 – medical history, scanned documents and discharge cards at the front desk (7 Oct 2026)

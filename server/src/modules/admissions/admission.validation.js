@@ -90,6 +90,7 @@ export const admitBody = z.object({
   ward: z.string().trim().min(1, 'Name the ward').max(60),
   bed: text(30),
   reason: text(300),
+  doctorId: z.union([objectId, z.literal(''), z.null()]).optional().transform((v) => v || null), // reception chooses her doctor
   clientRequestId: requestId,
 });
 

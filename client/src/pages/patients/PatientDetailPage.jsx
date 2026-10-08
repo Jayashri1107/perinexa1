@@ -148,7 +148,7 @@ export function PatientDetailPage() {
           {clinical && canAccess('patientsClinical') && <PatientVisitsCard patient={p} />}
           {canAccess('appointments') && <PatientAppointmentsCard patient={p} />}
           {canAccess('lab') && clinical && <PatientLabCard patient={p} />}
-          {clinical && canAccess('patientsClinical') && <PatientStaysCard patient={p} />}
+          {((clinical && canAccess('patientsClinical')) || (p.access === 'contactEdit' && canAccess('admitPatients'))) && <PatientStaysCard patient={p} />}
         </div>
       )}
 

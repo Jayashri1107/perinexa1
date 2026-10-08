@@ -1,6 +1,7 @@
 // The menus and page tabs. A new screen = one line here + its route in App.jsx.
 // access: who sees it – a key of the server's config.access (patients, billing …), or 'admin' (hospital admin role).
 import {
+  BedDouble,
   Building2,
   CalendarCheck,
   CalendarClock,
@@ -124,6 +125,8 @@ export const HOSPITAL_NAVIGATION = [
   { to: '/hospital/patients', label: 'Patients', icon: HeartPulse, access: 'patients' },
   // Reception's shortcut to the registration form (config.access.registrationMenu)
   { to: '/hospital/patients/new', label: 'New registration', icon: UserPlus, access: 'registrationMenu' },
+  // Reception's admissions desk: who is in hospital, New admission
+  { to: '/hospital/admissions', label: 'Admissions', icon: BedDouble, access: 'registrationMenu' },
   { to: '/hospital/appointments', label: 'Appointments', icon: CalendarClock, access: 'appointments', tabs: APPOINTMENT_TABS },
   { to: '/hospital/calendar', label: 'Calendar', icon: CalendarDays, access: 'calendar', tabs: CALENDAR_TABS },
   { to: '/hospital/lab', label: 'Lab', icon: FlaskConical, access: 'lab' },

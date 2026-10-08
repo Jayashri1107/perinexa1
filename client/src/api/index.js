@@ -265,6 +265,7 @@ export const pharmacyPrescriptionsApi = {
 const ADMISSIONS = '/hospital/admissions';
 export const admissionsApi = {
   inpatients: () => http.get(ADMISSIONS),
+  frontDesk: () => http.get(`${ADMISSIONS}/front-desk`),
   ofPatient: (patientId) => http.get(`${ADMISSIONS}/patient/${patientId}`),
   admit: (data) => http.post(ADMISSIONS, data),
   get: (id) => http.get(`${ADMISSIONS}/${id}`),

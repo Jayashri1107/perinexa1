@@ -66,6 +66,7 @@
     "patients": ["doctor", "rmo", "nurse", "receptionist", "lab", "pharmacist", "billing"],
     "registerPatients": ["doctor", "rmo", "receptionist"],
     "registrationMenu": ["receptionist"],
+    "admitPatients": ["doctor", "rmo", "receptionist"],
     "patientDocuments": ["doctor", "rmo", "nurse", "receptionist"],
     "dischargeCards": ["doctor", "rmo", "nurse", "receptionist"],
     "patientsAllRecords": ["rmo"],

@@ -67,6 +67,7 @@ const schema = z.object({
     patients: roleList,
     registerPatients: roleList,
     registrationMenu: roleList,
+    admitPatients: roleList,
     patientDocuments: roleList,
     dischargeCards: roleList,
     patientsAllRecords: roleList,

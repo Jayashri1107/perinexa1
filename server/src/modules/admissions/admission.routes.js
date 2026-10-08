@@ -6,6 +6,7 @@ import * as controller from './admission.controller.js';
 const router = Router();
 
 router.get('/', controller.inpatients);
+router.get('/front-desk', controller.frontDesk);
 router.post('/', controller.admit);
 router.get('/patient/:patientId', controller.ofPatient);
 router.get('/:admissionId', controller.get);

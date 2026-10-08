@@ -21,6 +21,8 @@ import { atLeast, listVisibility, recordLevel } from '../patients/patientAccess.
 import { sell } from '../sales/sale.service.js';
 import { evaluateRedFlags, redFlagFacts } from '../visits/redFlags.js';
 import { weeksOn } from '../visits/visit.service.js';
+import { Membership } from '../members/membership.model.js';
+import { User } from '../users/user.model.js';
 import { Admission, InpatientDocument, NursingEntry, SIGNED_BY } from './admission.model.js';
 import { DOC_CONTENT } from './admission.validation.js';
 
@@ -150,21 +152,79 @@ export async function stayOf(req, admissionId) {
   return stayAnswer(req, loaded);
 }
 
+// ---------- The front desk (owner, 8 Oct 2026): reception admits patients ----------
+// Reception (config.access.admitPatients without a clinical role) admits a patient – choosing her doctor, ward and
+// bed – and sees her stays as dates, numbers, ward and bed only: never the notes, documents or nursing chart.
+const isFrontDesk = (req) => has(req, config.access.admitPatients) && !has(req, config.access.patientsClinical);
+
+async function loadForFrontDesk(req, patientId) {
+  const patient = await Patient.findOne({ hospitalId: req.hospitalId, _id: patientId }).lean();
+  if (!patient) throw notFoundError('Patient');
+  if (!atLeast(recordLevel(req, patient), 'contactEdit')) throw notFoundError('Patient');
+  return { patient, level: 'contactEdit' };
+}
+
+const frontDeskStay = (s) => ({
+  id: String(s._id),
+  admissionNumber: s.admissionNumber ?? '',
+  status: s.status,
+  ward: s.ward,
+  bed: s.bed,
+  reason: s.reason,
+  admittedAt: s.admittedAt,
+  dischargedAt: s.dischargedAt,
+});
+
+async function assertHospitalDoctor(hospitalId, doctorId) {
+  if (!doctorId) return null;
+  const ok = await Membership.exists({ hospitalId, userId: doctorId, isActive: true, roles: DOCTOR });
+  if (!ok) throw fieldError('doctorId', 'Choose a doctor who works in this hospital.');
+  return toObjectId(doctorId);
+}
+
+// Who is in hospital now, and who went home today – for reception: name, number, admission number, ward, bed, doctor.
+export async function frontDeskInpatients(req) {
+  const hid = toObjectId(req.hospitalId);
+  const dayStart = new Date(new Date().setHours(0, 0, 0, 0));
+  const stays = await Admission.find({ hospitalId: hid, $or: [{ status: 'admitted' }, { dischargedAt: { $gte: dayStart } }] })
+    .sort({ status: 1, ward: 1, bed: 1 })
+    .limit(500)
+    .lean();
+  const [patients, doctors] = await Promise.all([
+    Patient.find({ hospitalId: hid, _id: { $in: stays.map((s) => s.patientId) } }).select('name patientNumber').lean(),
+    User.find({ _id: { $in: stays.map((s) => s.doctorId).filter(Boolean) } }).select('name').lean(),
+  ]);
+  const pById = new Map(patients.map((p) => [String(p._id), p]));
+  const dById = new Map(doctors.map((d) => [String(d._id), d.name]));
+  await recordAudit(req, 'INPATIENTS_VIEWED', { hospitalId: req.hospitalId, details: { admitted: stays.filter((s) => s.status === 'admitted').length, frontDesk: true } });
+  return {
+    items: stays.map((s) => ({
+      ...frontDeskStay(s),
+      patient: { id: String(s.patientId), name: pById.get(String(s.patientId))?.name ?? '', patientNumber: pById.get(String(s.patientId))?.patientNumber ?? '' },
+      doctorName: s.doctorId ? (dById.get(String(s.doctorId)) ?? '') : '',
+    })),
+  };
+}
+
 export async function staysOfPatient(req, patientId) {
-  const { patient, level } = await loadPatient(req, patientId);
+  const frontDesk = isFrontDesk(req);
+  const { patient, level } = frontDesk ? await loadForFrontDesk(req, patientId) : await loadPatient(req, patientId);
   const stays = await Admission.find({ hospitalId: req.hospitalId, patientId }).sort({ admittedAt: -1 }).limit(30).lean();
   return {
-    items: stays.map((s) => ({ id: String(s._id), admissionNumber: s.admissionNumber ?? '', status: s.status, ward: s.ward, bed: s.bed, reason: s.reason, admittedAt: s.admittedAt, dischargedAt: s.dischargedAt })),
-    canAdmit: patient.status === 'active' && canWrite(req, level) && !stays.some((s) => s.status === 'admitted'),
+    items: stays.map(frontDeskStay),
+    canAdmit: patient.status === 'active' && (frontDesk || canWrite(req, level)) && !stays.some((s) => s.status === 'admitted'),
+    canOpen: !frontDesk, // reception does not open the stay itself (notes, documents, nursing chart)
   };
 }
 
 export async function admit(req, body) {
-  const { patient, level } = await loadPatient(req, body.patientId);
-  if (!canWrite(req, level)) throw new HttpError(403, 'Her doctor or an RMO admits her.', 'FORBIDDEN');
+  const frontDesk = isFrontDesk(req);
+  const { patient, level } = frontDesk ? await loadForFrontDesk(req, body.patientId) : await loadPatient(req, body.patientId);
+  if (!frontDesk && !canWrite(req, level)) throw new HttpError(403, 'Her doctor, an RMO or reception admits her.', 'FORBIDDEN');
   if (patient.status !== 'active') throw new HttpError(409, 'Her record is closed. Reopen it first.', 'CLOSED');
   const same = await Admission.findOne({ hospitalId: req.hospitalId, clientRequestId: body.clientRequestId });
-  if (same) return stayAnswer(req, { stay: same, patient, level });
+  if (same) return frontDesk ? { stay: frontDeskStay(same) } : stayAnswer(req, { stay: same, patient, level });
+  const doctorId = (await assertHospitalDoctor(req.hospitalId, body.doctorId)) ?? patient.assignedDoctorId ?? null;
   if (await Admission.exists({ hospitalId: req.hospitalId, patientId: patient._id, status: 'admitted' })) throw new HttpError(409, 'She is already in hospital.', 'ALREADY_ADMITTED');
   const stay = await Admission.create({
     hospitalId: req.hospitalId,
@@ -175,13 +235,13 @@ export async function admit(req, body) {
     ward: body.ward,
     bed: body.bed,
     reason: body.reason,
-    doctorId: patient.assignedDoctorId ?? null,
+    doctorId,
     admittedBy: req.user._id,
     admittedByName: req.user.name,
     clientRequestId: body.clientRequestId,
   });
-  await recordAudit(req, 'ADMITTED', { hospitalId: req.hospitalId, details: { patientId: String(patient._id), admissionId: String(stay._id) } });
-  return stayAnswer(req, { stay, patient, level });
+  await recordAudit(req, 'ADMITTED', { hospitalId: req.hospitalId, details: { patientId: String(patient._id), admissionId: String(stay._id), ...(frontDesk && { byReception: true }) } });
+  return frontDesk ? { stay: frontDeskStay(stay) } : stayAnswer(req, { stay, patient, level });
 }
 
 export async function moveBed(req, admissionId, { ward, bed }) {

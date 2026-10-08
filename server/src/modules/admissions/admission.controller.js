@@ -5,6 +5,9 @@ import { additionBody, admissionParams, admitBody, bedBody, docParams, entryPara
 const stayId = (req) => parse(admissionParams, req.params).admissionId;
 const doc = (req) => parse(docParams, req.params);
 
+export async function frontDesk(req, res) {
+  res.json(await service.frontDeskInpatients(req));
+}
 export async function inpatients(req, res) {
   res.json(await service.inpatients(req));
 }

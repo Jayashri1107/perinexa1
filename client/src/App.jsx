@@ -67,6 +67,7 @@ import { IssueToWardPage } from './pages/pharmacy/IssueToWardPage.jsx';
 import { WardDocumentPrintPage } from './pages/print/WardDocumentPrintPage.jsx';
 import { DischargeCardPrintPage } from './pages/print/DischargeCardPrintPage.jsx';
 import { DischargesPage } from './pages/documents/DischargesPage.jsx';
+import { AdmissionsDeskPage } from './pages/inpatient/AdmissionsDeskPage.jsx';
 import { MedicalHistoryPage } from './pages/patients/MedicalHistoryPage.jsx';
 import { SaleInvoicePrintPage } from './pages/print/SaleInvoicePrintPage.jsx';
 import { UsersPage } from './pages/users/UsersPage.jsx';
@@ -141,6 +142,9 @@ export function App() {
                 </Route>
                 <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
                   <Route path="discharges" element={<DischargesPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="registrationMenu" />}>
+                  <Route path="admissions" element={<AdmissionsDeskPage />} />
                 </Route>
                 <Route element={<ProtectedRoute area="hospital" access="registerPatients" />}>
                   <Route path="patients/new" element={<PatientRegisterPage />} />
