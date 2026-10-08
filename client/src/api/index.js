@@ -326,7 +326,7 @@ export const medicalHistoryApi = {
 export const notificationsApi = {
   list: () => http.get('/hospital/notifications'),
   read: (id) => http.post(`/hospital/notifications/${id}/read`),
-  readAll: () => http.post('/hospital/notifications/read-all'),
+  readAll: (types) => http.post('/hospital/notifications/read-all', types ? { types } : {}),
 };
 export const wardsApi = {
   availability: (query) => http.get('/hospital/wards/availability', query),

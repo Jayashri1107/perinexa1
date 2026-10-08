@@ -1,5 +1,7 @@
 // The bell in the top bar (in a hospital): how many notifications are unread, and the latest ones. It checks every
 // minute. Clicking one marks it read and opens its page.
+// Each notification is its own row, and the list has a tab per kind with its own unread count (owner, 8 Oct 2026):
+// All · Appointments · Admissions · Discharges · Prescriptions · Lab · Billing – "Mark all as read" acts on the open tab.
 import { BedDouble, Bell, CalendarCheck, CalendarPlus, DoorOpen, FlaskConical, Pill, Receipt, UserCheck } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +13,9 @@ const EVERY_MS = 60_000;
 // Each kind of notification has its own icon in a pastel tile, so they can be told apart at a glance.
 const KINDS = {
   TODAY_SUMMARY: { icon: CalendarCheck, tone: '' },
+  TODAY_APPOINTMENTS: { icon: CalendarCheck, tone: 'tone-teal' },
+  TODAY_ADMISSIONS: { icon: BedDouble, tone: '' },
+  TODAY_DISCHARGES: { icon: DoorOpen, tone: 'tone-amber' },
   NEW_APPOINTMENT: { icon: CalendarPlus, tone: 'tone-teal' },
   PATIENT_ARRIVED: { icon: UserCheck, tone: 'tone-blue' },
   NEW_ADMISSION: { icon: BedDouble, tone: '' },
@@ -21,10 +26,22 @@ const KINDS = {
   LAB_BOOKED: { icon: FlaskConical, tone: 'tone-amber' },
 };
 
+// The tabs: which kinds each holds ("All" holds every kind).
+const GROUPS = [
+  { key: 'all', label: 'All' },
+  { key: 'appointments', label: 'Appointments', types: ['NEW_APPOINTMENT', 'PATIENT_ARRIVED', 'TODAY_APPOINTMENTS'] },
+  { key: 'admissions', label: 'Admissions', types: ['NEW_ADMISSION', 'TODAY_ADMISSIONS'] },
+  { key: 'discharges', label: 'Discharges', types: ['DISCHARGE_SOON', 'DISCHARGE_READY', 'TODAY_DISCHARGES'] },
+  { key: 'prescriptions', label: 'Prescriptions', types: ['PRESCRIPTION_SENT'] },
+  { key: 'lab', label: 'Lab', types: ['LAB_BOOKED'] },
+  { key: 'billing', label: 'Billing', types: ['FINAL_BILL'] },
+];
+
 export function NotificationBell() {
   const navigate = useNavigate();
-  const [data, setData] = useState({ items: [], unread: 0 });
+  const [data, setData] = useState({ items: [], unread: 0, unreadByType: {} });
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState('all');
   const box = useRef(null);
 
   const load = useCallback(() => {
@@ -55,6 +72,14 @@ export function NotificationBell() {
     if (n.link) navigate(n.link);
   };
 
+  const byType = data.unreadByType ?? {};
+  const unreadOf = (g) => (g.types ? g.types.reduce((s, t) => s + (byType[t] ?? 0), 0) : data.unread);
+  // the tabs worth showing: All, and every kind with a notification in the list or unread
+  const tabs = GROUPS.filter((g) => !g.types || unreadOf(g) > 0 || data.items.some((n) => g.types.includes(n.type)));
+  const current = tabs.find((g) => g.key === tab) ?? tabs[0];
+  const shown = current.types ? data.items.filter((n) => current.types.includes(n.type)) : data.items;
+  const unreadHere = unreadOf(current);
+
   return (
     <div className="profile notif" ref={box}>
       <button
@@ -74,14 +99,29 @@ export function NotificationBell() {
       {open && (
         <div className="profile-card notif-card" role="dialog" aria-label="Notifications">
           <div className="card-head">
-            <strong>Notifications</strong>
-            {data.unread > 0 && (
-              <button type="button" className="btn btn-link btn-sm" onClick={() => notificationsApi.readAll().then(setData).catch(() => {})}>Mark all as read</button>
+            <strong>Notifications {data.unread > 0 && <span className="notif-total">{data.unread} unread</span>}</strong>
+            {unreadHere > 0 && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => notificationsApi.readAll(current.types).then(setData).catch(() => {})}>
+                Mark {current.types ? `${current.label.toLowerCase()} ` : 'all '}as read
+              </button>
             )}
           </div>
-          {data.items.length === 0 && <p className="muted small">Nothing yet.</p>}
+          {tabs.length > 1 && (
+            <div className="notif-tabs" role="tablist" aria-label="Kinds of notification">
+              {tabs.map((g) => {
+                const n = unreadOf(g);
+                return (
+                  <button key={g.key} type="button" role="tab" aria-selected={g.key === current.key} className={g.key === current.key ? 'on' : ''} onClick={() => setTab(g.key)}>
+                    {g.label}
+                    {n > 0 && <span className="notif-tab-count">{n > 99 ? '99+' : n}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {shown.length === 0 && <p className="muted small notif-empty">Nothing here yet.</p>}
           <ul className="plain-list notif-list">
-            {data.items.map((n) => {
+            {shown.map((n) => {
               const kind = KINDS[n.type] ?? { icon: Bell, tone: '' };
               const Icon = kind.icon;
               return (
@@ -93,6 +133,7 @@ export function NotificationBell() {
                       {n.message && <span className="block small">{n.message}</span>}
                       <span className="block small muted">{formatDateTime(n.createdAt)}</span>
                     </span>
+                    {!n.isRead && <span className="notif-dot" aria-label="Unread" />}
                   </button>
                 </li>
               );

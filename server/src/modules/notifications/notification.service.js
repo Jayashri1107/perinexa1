@@ -35,9 +35,10 @@ export async function notifyRoles(req, roles, notification) {
 const view = (n) => ({ id: String(n._id), type: n.type, title: n.title, message: n.message, link: n.link, isRead: n.isRead, createdAt: n.createdAt });
 
 // ---------- The day's summary (owner, 8 Oct 2026) ----------
-// The first time a person's bell is checked on a day, a doctor gets "Your day today" (her appointments, her patients
-// admitted today and in hospital) and reception gets "Discharges today" (discharged today, discharge cards being
-// prepared). Sent once a day (its key), and only when there is something to tell. Counts only – no names.
+// When a person's bell is checked, each part of their day is its own notification (so each counts on the bell): a
+// doctor gets "N appointments today", "N admitted today" and "N in hospital"; reception gets "N discharged today" and
+// "N discharge cards being prepared". Each part is sent once a day (its own key), and only once there is something to
+// tell. Counts only – no names.
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -49,11 +50,11 @@ async function doctorDay(hid, userId, start, end) {
     Admission.countDocuments({ hospitalId: hid, doctorId: userId, admittedAt: { $gte: start, $lt: end } }),
     Admission.countDocuments({ hospitalId: hid, doctorId: userId, status: 'admitted' }),
   ]);
-  const parts = [];
-  if (booked) parts.push(`${plural(booked, 'appointment')}${waiting ? ` (${waiting} waiting)` : ''}`);
-  if (admittedToday) parts.push(`${admittedToday} admitted today`);
-  if (inHospital) parts.push(`${inHospital} in hospital`);
-  return parts.length ? { type: 'TODAY_SUMMARY', title: 'Your day today', message: parts.join(' · '), link: booked ? '/hospital/appointments' : '/hospital' } : null;
+  return [
+    booked && { part: 'appointments', type: 'TODAY_APPOINTMENTS', title: `${plural(booked, 'appointment')} today`, message: waiting ? `${waiting} waiting now` : 'Your OPD day', link: '/hospital/appointments' },
+    admittedToday && { part: 'admitted', type: 'TODAY_ADMISSIONS', title: `${admittedToday} of your patients admitted today`, message: '', link: '/hospital' },
+    inHospital && { part: 'in-hospital', type: 'TODAY_ADMISSIONS', title: `${plural(inHospital, 'patient')} of yours in hospital`, message: '', link: '/hospital' },
+  ].filter(Boolean);
 }
 
 async function dischargeDay(hid, start, end) {
@@ -64,26 +65,25 @@ async function dischargeDay(hid, start, end) {
       ? InpatientDocument.countDocuments({ hospitalId: hid, kind: 'discharge', status: 'draft', admissionId: { $in: stillIn.map((s) => s._id) } })
       : 0,
   ]);
-  const parts = [];
-  if (discharged) parts.push(`${discharged} discharged`);
-  if (preparing) parts.push(`${plural(preparing, 'discharge card')} being prepared`);
-  return parts.length ? { type: 'TODAY_SUMMARY', title: 'Discharges today', message: parts.join(' · '), link: '/hospital/discharges' } : null;
+  return [
+    discharged && { part: 'discharged', type: 'TODAY_DISCHARGES', title: `${plural(discharged, 'patient')} discharged today`, message: 'Print the discharge cards', link: '/hospital/discharges' },
+    preparing && { part: 'preparing', type: 'TODAY_DISCHARGES', title: `${plural(preparing, 'discharge card')} being prepared`, message: 'Going home soon', link: '/hospital/admissions' },
+  ].filter(Boolean);
 }
 
 async function sendDaySummaries(req) {
   const hid = toObjectId(req.hospitalId);
   const roles = req.membership?.roles ?? [];
   const date = todayLocal();
-  const wanted = [
-    roles.includes(config.opd.doctorRole) && { key: `today-${date}-doctor`, make: (s, e) => doctorDay(hid, req.user._id, s, e) },
-    roles.some((r) => config.access.registrationMenu.includes(r)) && { key: `today-${date}-discharges`, make: (s, e) => dischargeDay(hid, s, e) },
+  const makers = [
+    roles.includes(config.opd.doctorRole) && ((s, e) => doctorDay(hid, req.user._id, s, e)),
+    roles.some((r) => config.access.registrationMenu.includes(r)) && ((s, e) => dischargeDay(hid, s, e)),
   ].filter(Boolean);
-  if (!wanted.length) return;
+  if (!makers.length) return;
   const [start, end] = dayRange(date);
-  for (const { key, make } of wanted) {
-    if (await Notification.exists({ hospitalId: hid, recipientId: req.user._id, key })) continue;
-    const n = await make(start, end);
-    if (!n) continue;
+  const parts = (await Promise.all(makers.map((make) => make(start, end)))).flat();
+  for (const { part, ...n } of parts) {
+    const key = `today-${date}-${part}`;
     // two tabs asking at once: the unique key keeps it to one
     await Notification.updateOne({ hospitalId: hid, recipientId: req.user._id, key }, { $setOnInsert: { ...n, isRead: false } }, { upsert: true }).catch((err) => {
       if (err.code !== 11000) throw err;
@@ -98,11 +98,13 @@ export async function myNotifications(req) {
     console.error('Day summary not created:', err.message);
   }
   const mine = { hospitalId: toObjectId(req.hospitalId), recipientId: req.user._id };
-  const [items, unread] = await Promise.all([
+  const [items, unread, byType] = await Promise.all([
     Notification.find(mine).sort({ createdAt: -1 }).limit(config.notifications.listSize).lean(),
     Notification.countDocuments({ ...mine, isRead: false }),
+    // the unread count of each kind (the bell's tabs)
+    Notification.aggregate([{ $match: { ...mine, isRead: false } }, { $group: { _id: '$type', n: { $sum: 1 } } }]),
   ]);
-  return { items: items.map(view), unread };
+  return { items: items.map(view), unread, unreadByType: Object.fromEntries(byType.map((t) => [t._id, t.n])) };
 }
 
 export async function markRead(req, id) {
@@ -111,7 +113,8 @@ export async function markRead(req, id) {
   return myNotifications(req);
 }
 
-export async function markAllRead(req) {
-  await Notification.updateMany({ hospitalId: req.hospitalId, recipientId: req.user._id, isRead: false }, { $set: { isRead: true } });
+// types: only these kinds (the bell's open tab); none – all
+export async function markAllRead(req, types = []) {
+  await Notification.updateMany({ hospitalId: req.hospitalId, recipientId: req.user._id, isRead: false, ...(types.length && { type: { $in: types } }) }, { $set: { isRead: true } });
   return myNotifications(req);
 }
