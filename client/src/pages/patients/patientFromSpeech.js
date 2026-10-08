@@ -13,7 +13,7 @@ const STOP = '(?=,|\\.|\\s\\d|\\b(?:age|aged|years?|yrs|year old|phone|mobile|nu
 const RELATIONS = 'husband|wife|mother|father|son|daughter|brother|sister|relative|attendant|guardian';
 
 // "twenty eight" → "28", "double five" → "55", spoken digits joined.
-function wordsToDigits(text) {
+export function wordsToDigits(text) {
   let t = ` ${text.toLowerCase()} `;
   t = t.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[\s-](one|two|three|four|five|six|seven|eight|nine)\b/g, (_, a, b) => String(NUMBER_WORDS[a] + NUMBER_WORDS[b]));
   t = t.replace(/\b(double|triple)\s+(\w+)\b/g, (_, k, w) => (w in NUMBER_WORDS && NUMBER_WORDS[w] < 10 ? String(NUMBER_WORDS[w]).repeat(k === 'double' ? 2 : 3) : `${k} ${w}`));
@@ -21,11 +21,11 @@ function wordsToDigits(text) {
   return t.replace(/\s+/g, ' ').trim();
 }
 
-const title = (s) => s.trim().replace(/\s+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+export const title = (s) => s.trim().replace(/\s+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
 // "5 august", "august 5th", "5/8/2026" → "2026-08-05" (the year: this one, or last year if that date is ahead).
-function dateFrom(text) {
+export function dateFrom(text) {
   const now = new Date();
   const guessYear = (m, d) => (new Date(now.getFullYear(), m - 1, d) > now ? now.getFullYear() - 1 : now.getFullYear());
   let m = new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?${MONTH_RE}(?:\\s+(\\d{4}))?`).exec(text);

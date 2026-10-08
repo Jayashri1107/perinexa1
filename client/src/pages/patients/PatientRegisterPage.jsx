@@ -14,6 +14,7 @@ import { useOptions } from '../../hooks/useOptions.js';
 import { ageText } from '../../utils/format.js';
 import { setPath } from '../../utils/objectPath.js';
 import { VoiceFill } from './VoiceFill.jsx';
+import { AskByVoice } from './AskByVoice.jsx';
 import { usePincodeFill } from '../../hooks/usePincodeFill.js';
 
 export function PatientRegisterPage() {
@@ -61,6 +62,14 @@ export function PatientRegisterPage() {
           </div>
         </section>
       )}
+      <AskByVoice
+        values={form.values}
+        onFill={form.setField}
+        careTypes={settings.careTypes}
+        sexes={settings.sexes}
+        idProofTypes={settings.idProofTypes}
+        doctors={doctors}
+      />
       <VoiceFill
         careTypes={settings.careTypes}
         doctors={doctors}

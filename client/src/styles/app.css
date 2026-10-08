@@ -904,3 +904,9 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .bed-chip.booked .bed-state { color: var(--color-danger); }
 .occupancy { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-3); }
 .occupancy .ward-card { cursor: default; }
+
+/* Ask by voice: one question at a time */
+.ask-box { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--color-primary); border-radius: var(--radius-lg); background: var(--color-primary-soft); }
+.ask-question { font-size: 1.25rem; font-weight: 600; margin: 0; }
+.ask-state { min-height: 1.4em; margin: 0; display: flex; align-items: center; gap: 6px; }
+.ask-box .voice-row input { flex: 1; min-width: 200px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
