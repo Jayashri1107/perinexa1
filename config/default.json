@@ -114,6 +114,10 @@
   "opd": {
     "doctorRole": "doctor",
     "slotMinutes": 10,
+    "defaultSessions": {
+      "days": [1, 2, 3, 4, 5, 6],
+      "sessions": [{ "from": "10:00", "to": "14:00" }, { "from": "17:00", "to": "20:00" }]
+    },
     "maxSessionsPerDay": 4,
     "maxLeavePeriods": 50,
     "visitTypes": [

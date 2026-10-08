@@ -112,9 +112,9 @@ export function DayPage() {
 
       {day && (
         <>
-          {!day.hasTimings && (
+          {day.usualHours && (
             <Alert type="info">
-              {doctor?.name} has no OPD timings yet, so there are no time slots.{' '}
+              {doctor?.name} has not set her own OPD timings, so the hospital’s usual OPD hours are used.{' '}
               {doctor?.canEditTimings && <Link to="/hospital/appointments/timings">Set OPD timings</Link>}
             </Alert>
           )}
@@ -123,7 +123,7 @@ export function DayPage() {
           )}
           {day.hasTimings && !day.leave && !day.sessions.length && <Alert type="info">No OPD on this day.</Alert>}
 
-          <div className="day-layout">
+          <div className="day-layout day-layout-wide">
             <section className="card">
               <div className="card-head">
                 <h2>Time slots {day.sessions.length > 0 && <span className="muted small">{day.sessions.map((s) => `${s.from}–${s.to}`).join(', ')}</span>}</h2>
@@ -134,26 +134,26 @@ export function DayPage() {
                 )}
               </div>
               {slots.length === 0 && <p className="muted">{day.slots.length ? 'No bookings on this day.' : 'No time slots on this day.'}</p>}
-              <ul className="slot-list">
-                {slots.map((s) => (
-                  <li key={s.start} className={`slot${s.past ? ' past' : ''}`}>
-                    <span className="slot-time">{s.start}</span>
-                    <div className="slot-body">
+              {/* One card per slot, four to a row: booked (who, and what to do), free (Book), taken or passed */}
+              <ul className="slot-grid">
+                {slots.map((s) => {
+                  const state = s.appointments.length ? 'booked' : s.busyWith ? 'taken' : s.past ? 'past' : 'free';
+                  return (
+                    <li key={s.start} className={`slot-card slot-${state}`}>
+                      <div className="slot-card-head">
+                        <span className="slot-time">{s.start}</span>
+                        <span className={`slot-state slot-state-${state}`}>{{ booked: 'Booked', taken: 'Taken', past: 'Passed', free: 'Available' }[state]}</span>
+                      </div>
                       {s.appointments.map((a) => (
                         <AppointmentRow key={a.id} a={a} day={day} info={info} onChanged={changed} onError={setError} />
                       ))}
-                      {!s.appointments.length && s.busyWith && <span className="muted small">Taken by the {s.busyWith.start} visit{s.busyWith.name ? ` (${s.busyWith.name})` : ''}</span>}
-                      {!s.appointments.length && !s.busyWith && (
-                        <span className="slot-free">
-                          <span className="muted small">{s.past ? 'Passed' : 'Free'}</span>
-                          {!s.past && day.canBook && (
-                            <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ kind: 'book', start: s.start })}>Book</button>
-                          )}
-                        </span>
+                      {state === 'taken' && <span className="muted small">By the {s.busyWith.start} visit{s.busyWith.name ? ` (${s.busyWith.name})` : ''}</span>}
+                      {state === 'free' && day.canBook && (
+                        <button type="button" className="btn btn-ghost btn-sm slot-book" onClick={() => setDialog({ kind: 'book', start: s.start })}>Book this time</button>
                       )}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
 

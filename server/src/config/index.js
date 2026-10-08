@@ -154,6 +154,11 @@ const schema = z.object({
   opd: z.object({
     doctorRole: z.string().min(1),
     slotMinutes: z.number().int().min(5).max(60),
+    // The hospital's usual OPD hours (0 = Sunday): used for a doctor who has not set her own OPD timings yet.
+    defaultSessions: z.object({
+      days: z.array(z.number().int().min(0).max(6)),
+      sessions: z.array(z.object({ from: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), to: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) })).min(1),
+    }),
     maxSessionsPerDay: z.number().int().min(1).max(10),
     maxLeavePeriods: z.number().int().min(1),
     visitTypes: z.array(keyLabel.extend({ defaultMinutes: z.number().int().positive() })).min(1),

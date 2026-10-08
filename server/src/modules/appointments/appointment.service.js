@@ -42,12 +42,19 @@ async function findDoctor(hospitalId, doctorId) {
   return doctor;
 }
 
-const scheduleOf = (hospitalId, doctorId) => OpdSchedule.findOne({ hospitalId, doctorId }).lean();
+// A doctor's OPD timings – or, until she sets her own, the hospital's usual OPD hours (config.opd.defaultSessions),
+// so there are always times to book. Her leave and visit lengths are kept either way.
+const hasOwnTimings = (s) => Boolean(s?.week?.some((w) => w.sessions?.length));
+const defaultWeek = () => config.opd.defaultSessions.days.map((day) => ({ day, sessions: config.opd.defaultSessions.sessions }));
+async function scheduleOf(hospitalId, doctorId) {
+  const own = await OpdSchedule.findOne({ hospitalId, doctorId }).lean();
+  return hasOwnTimings(own) ? own : { ...(own ?? {}), week: defaultWeek(), usual: true };
+}
 
 export async function doctors(req) {
   const list = await doctorOptions(req.hospitalId);
   const schedules = await OpdSchedule.find({ hospitalId: req.hospitalId }).select('doctorId week').lean();
-  const withTimings = new Set(schedules.filter((s) => s.week?.some((w) => w.sessions?.length)).map((s) => String(s.doctorId)));
+  const withTimings = new Set(schedules.filter(hasOwnTimings).map((s) => String(s.doctorId)));
   return {
     doctors: list.map((d) => ({ ...d, hasTimings: withTimings.has(d.id), canEditTimings: canEditTimings(req, d.id) })),
     // 'me' only for a doctor on this hospital's list (the super admin holds every role but is not one of its doctors)
@@ -148,7 +155,8 @@ export async function day(req, { doctorId, date }) {
     doctor,
     date: isoDay(on),
     today: isoDay(todayDay),
-    hasTimings: Boolean(schedule?.week?.some((w) => w.sessions?.length)),
+    hasTimings: true,
+    usualHours: Boolean(schedule?.usual), // the hospital's usual OPD hours: the doctor has not set her own
     sessions: onLeave ? [] : sessionsOn(schedule, on).map((s) => ({ from: s.from, to: s.to })),
     leave: onLeave ? { from: isoDay(onLeave.from), to: isoDay(onLeave.to), note: onLeave.note ?? '' } : null,
     slots,
