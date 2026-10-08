@@ -1147,6 +1147,20 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .notif-empty { padding: var(--space-3); margin: 0; }
 .notif-icon.tone-grey { background: var(--color-neutral-soft); color: var(--color-neutral); }
 
+/* ---------- Today: attention and quick actions on top, then one area at a time (owner, 8 Oct 2026) ---------- */
+.today-top { margin-bottom: var(--space-5); align-items: start; }
+.today-area-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.today-area-head .today-title { margin: 0; }
+.today-tabs { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 99px; background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow); }
+.today-tabs button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 0; border-radius: 99px; background: none;
+  color: var(--color-text-muted); font: inherit; font-size: var(--text-sm); font-weight: 600; cursor: pointer;
+}
+.today-tabs button:hover { color: var(--color-primary); }
+.today-tabs button.on { background: var(--color-primary); color: var(--color-primary-text); }
+.today-tabs button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.today-stats { margin-bottom: var(--space-4); }
+
 /* ---------- The billing desk on Today (owner, 8 Oct 2026) ---------- */
 /* attention items with a level: overdue (red), part paid (amber) */
 .attention li.attention-danger .attention-icon { background: var(--color-danger-soft); color: var(--color-danger); }

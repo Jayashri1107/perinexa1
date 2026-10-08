@@ -121,6 +121,23 @@ const QUICK_ACTIONS = [
   { access: 'admin', icon: Settings, label: 'Hospital settings', to: '/hospital/settings/letterhead' },
 ];
 
+// The area tab last chosen (kept in this browser; storage may be blocked – then the first area).
+const AREA_KEY = 'perinexa1:todayArea';
+function readArea() {
+  try {
+    return localStorage.getItem(AREA_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+function saveArea(key) {
+  try {
+    localStorage.setItem(AREA_KEY, key);
+  } catch {
+    /* not remembered – fine */
+  }
+}
+
 export function TodayPage() {
   const { user, activeMembership, roles, canAccess, isHospitalAdmin } = useAuth();
   const { roleLabel } = useAppConfig();
@@ -142,106 +159,45 @@ export function TodayPage() {
   const dateText = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
   const actions = QUICK_ACTIONS.filter((a) => canAccess(a.access)).slice(0, 8);
   const attention = today ? attentionItems(today, overview) : [];
+  const [allAttention, setAllAttention] = useState(false);
+  const [area, setArea] = useState(readArea);
+  const choose = (key) => {
+    setArea(key);
+    saveArea(key);
+  };
 
-  return (
-    <>
-      <header className="today-hero">
-        <div>
-          <h1>{greeting()}, {firstName}</h1>
-          <p className="muted">{activeMembership?.hospital.name} · {dateText}</p>
-        </div>
-        <div className="today-roles">
-          {roles.slice(0, 3).map((r) => <span key={r} className="pill pill-strong">{roleLabel(r)}</span>)}
-          {roles.length > 3 && <span className="pill">+{roles.length - 3}</span>}
-        </div>
-      </header>
-
-      {frontDesk && <TodayBooking />}
-
-      <Alert type="error">{error}</Alert>
-      {!today && !error && <Loader />}
-
-      {today && (
-        <>
-          <h2 className="today-title">Today at a glance</h2>
-          <div className="stat-grid">
-            {today.frontDesk && (
-              <StatCard icon={CalendarClock} to="/hospital/appointments" label="Appointments today" value={today.frontDesk.appointments} hint={`${today.frontDesk.seen} seen · ${today.frontDesk.notArrived} not arrived yet`} tone="info" />
-            )}
-            {today.frontDesk && <StatCard icon={Hourglass} to="/hospital/appointments" label="Waiting now" value={today.frontDesk.waiting} hint="Arrived, not seen yet" tone="warning" />}
-            {today.frontDesk && <StatCard icon={Footprints} to="/hospital/appointments" label="Walk-ins today" value={today.frontDesk.walkIns} hint="Came without an appointment" />}
-            {today.frontDesk && (
-              <StatCard icon={BedDouble} to="/hospital/admissions" label="In hospital now" value={today.frontDesk.inHospital} hint={`${today.frontDesk.admittedToday} admitted · ${today.frontDesk.dischargedToday} discharged today`} tone="neutral" />
-            )}
-            {beds && bedTotals.total > 0 && (
-              <StatCard icon={BedDouble} to="/hospital/admissions" label="Beds booked" value={`${bedTotals.booked} of ${bedTotals.total}`} hint={`${bedTotals.free} free`} tone={bedTotals.free === 0 ? 'danger' : 'primary'} />
-            )}
-            {today.patients && <StatCard icon={UserPlus} to={canAccess('patients') ? '/hospital/patients' : undefined} label="Registered today" value={today.patients.registeredToday} hint={`${plural(today.patients.active, 'patient')} under care`} />}
-            {today.billing && <StatCard icon={Receipt} to="/hospital/billing" label="Bills today" value={today.billing.billsToday} hint={`${formatMoney(today.billing.billedToday)} billed`} tone="info" />}
-            {today.billing && (
-              <StatCard icon={Banknote} to="/hospital/billing/daily" label="Received today" value={formatMoney(today.billing.receivedToday)} hint={plural(today.billing.paymentsToday, 'payment')} tone="success" />
-            )}
-            {today.billing && (
-              <StatCard icon={Hourglass} to="/hospital/billing/unpaid" label="Outstanding" value={formatMoney(today.billing.owed)} hint={`${plural(today.billing.unpaidBills, 'unpaid bill')}`} tone={today.billing.overdueBills ? 'danger' : 'warning'} />
-            )}
-            {today.billing && (
-              <StatCard icon={Undo2} to="/hospital/billing/daily" label="Refunds today" value={formatMoney(today.billing.refundedToday)} hint={plural(today.billing.refundsToday, 'refund')} tone="neutral" />
-            )}
-            {today.pharmacy && <StatCard icon={Pill} to="/hospital/pharmacy/sales" label="Pharmacy sales today" value={today.pharmacy.salesToday} hint={formatMoney(today.pharmacy.soldToday)} tone="info" />}
-            {today.pharmacy && (
-              <StatCard icon={PackageMinus} to="/hospital/pharmacy/stock" label="Low stock" value={today.pharmacy.lowStock} hint="At or below the reorder level" tone={today.pharmacy.lowStock ? 'warning' : 'neutral'} />
-            )}
-            {today.pharmacy && (
-              <StatCard
-                icon={AlertTriangle}
-                to="/hospital/pharmacy/expiring"
-                label={`Expiring in ${today.pharmacy.expiryAlertDays} days`}
-                value={today.pharmacy.expiringMedicines}
-                hint={today.pharmacy.expiringNames.length ? today.pharmacy.expiringNames.join(', ') : 'No medicine expires soon'}
-                tone={today.pharmacy.expiringMedicines ? 'danger' : 'neutral'}
-              />
-            )}
-            {today.appointments && <StatCard icon={CalendarClock} to="/hospital/appointments" label="My appointments today" value={today.appointments.total} hint={`${today.appointments.seen} seen · ${today.appointments.arrived} waiting`} tone="info" />}
-            {today.doctor && <StatCard icon={HeartPulse} to="/hospital/patients" label="My patients" value={today.doctor.mine} hint="Under my care" />}
-          </div>
-
-          <div className="grid-2 today-grid">
-            {canAccess('dispense') && <PrescriptionOrdersCard />}
-
-            <section className="card">
-              <h2>Needs your attention</h2>
-              {attention.length === 0 ? (
-                <p className="all-clear"><CircleCheck size={18} aria-hidden /> All clear – nothing needs you right now.</p>
-              ) : (
-                <ul className="attention">
-                  {attention.map((a) => (
-                    <li key={a.text} className={a.tone ? `attention-${a.tone}` : undefined}>
-                      <span className="attention-icon" aria-hidden><a.icon size={18} /></span>
-                      <span className="attention-text">
-                        <strong className="block">{a.text}</strong>
-                        <span className="muted small">{a.hint}</span>
-                      </span>
-                      <Link to={a.to} className="btn btn-ghost btn-sm">{a.action} <ArrowRight size={14} aria-hidden /></Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="card">
-              <h2>Quick actions</h2>
-              <div className="quick-actions">
-                {actions.map((a) => (
-                  <Link key={a.label} to={a.to} className="quick-action">
-                    <span className="sb-tile" aria-hidden><a.icon size={18} /></span>
-                    <span>{a.label}</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-
-            {today.appointments && (
-              <section className="card">
+  // The areas of this person's work (owner, 8 Oct 2026): each holds its numbers and its cards, shown one at a time
+  // under tabs – so someone with many roles (the super admin) gets a clean page; one area: no tabs.
+  const areas = today
+    ? [
+        {
+          key: 'desk',
+          label: 'Front desk',
+          icon: CalendarClock,
+          stats: [
+            today.frontDesk && <StatCard key="appts" icon={CalendarClock} to="/hospital/appointments" label="Appointments today" value={today.frontDesk.appointments} hint={`${today.frontDesk.seen} seen · ${today.frontDesk.notArrived} not arrived yet`} tone="info" />,
+            today.frontDesk && <StatCard key="waiting" icon={Hourglass} to="/hospital/appointments" label="Waiting now" value={today.frontDesk.waiting} hint="Arrived, not seen yet" tone="warning" />,
+            today.frontDesk && <StatCard key="walkins" icon={Footprints} to="/hospital/appointments" label="Walk-ins today" value={today.frontDesk.walkIns} hint="Came without an appointment" />,
+            today.frontDesk && <StatCard key="inhospital" icon={BedDouble} to="/hospital/admissions" label="In hospital now" value={today.frontDesk.inHospital} hint={`${today.frontDesk.admittedToday} admitted · ${today.frontDesk.dischargedToday} discharged today`} tone="neutral" />,
+            beds && bedTotals.total > 0 && <StatCard key="beds" icon={BedDouble} to="/hospital/admissions" label="Beds booked" value={`${bedTotals.booked} of ${bedTotals.total}`} hint={`${bedTotals.free} free`} tone={bedTotals.free === 0 ? 'danger' : 'primary'} />,
+            today.patients && <StatCard key="registered" icon={UserPlus} to={canAccess('patients') ? '/hospital/patients' : undefined} label="Registered today" value={today.patients.registeredToday} hint={`${plural(today.patients.active, 'patient')} under care`} />,
+          ],
+          cards: [
+            canAccess('dispense') && !canAccess('pharmacyCounter') && <PrescriptionOrdersCard key="rx" />,
+            beds && bedTotals.total > 0 && <BookedBedsCard key="beds" beds={beds} />,
+          ],
+        },
+        {
+          key: 'clinical',
+          label: 'My patients',
+          icon: HeartPulse,
+          stats: [
+            today.appointments && <StatCard key="myappts" icon={CalendarClock} to="/hospital/appointments" label="My appointments today" value={today.appointments.total} hint={`${today.appointments.seen} seen · ${today.appointments.arrived} waiting`} tone="info" />,
+            today.doctor && <StatCard key="mine" icon={HeartPulse} to="/hospital/patients" label="My patients" value={today.doctor.mine} hint="Under my care" />,
+          ],
+          cards: [
+            today.appointments && (
+              <section key="waiting" className="card">
                 <div className="card-head">
                   <h2><DoorOpen size={18} aria-hidden /> Waiting for me</h2>
                   <Link to="/hospital/appointments" className="small">My day <ArrowRight size={12} aria-hidden /></Link>
@@ -269,17 +225,10 @@ export function TodayPage() {
                   </>
                 )}
               </section>
-            )}
-
-            {canAccess('patientsClinical') && <InHospitalCard />}
-
-            {beds && bedTotals.total > 0 && <BookedBedsCard beds={beds} />}
-
-            {/* the billing desk: for the billing department and the hospital admin (reception keeps the cards above) */}
-            {today.billing && (roles.includes('billing') || isHospitalAdmin) && <BillingDesk billing={today.billing} />}
-
-            {today.doctor && (
-              <section className="card">
+            ),
+            canAccess('patientsClinical') && <InHospitalCard key="inhospital" />,
+            today.doctor && (
+              <section key="due" className="card">
                 <h2><Baby size={18} aria-hidden /> Due in the next {today.doctor.dueSoonDays} days</h2>
                 {today.doctor.dueSoon.length === 0 && <p className="muted">None of my patients is due soon.</p>}
                 <ul className="plain-list rows">
@@ -291,10 +240,51 @@ export function TodayPage() {
                   ))}
                 </ul>
               </section>
-            )}
-
-            {isHospitalAdmin && overview && (
-              <section className="card">
+            ),
+          ],
+        },
+        {
+          key: 'billing',
+          label: 'Billing',
+          icon: Receipt,
+          stats: [
+            today.billing && <StatCard key="bills" icon={Receipt} to="/hospital/billing" label="Bills today" value={today.billing.billsToday} hint={`${formatMoney(today.billing.billedToday)} billed`} tone="info" />,
+            today.billing && <StatCard key="received" icon={Banknote} to="/hospital/billing/daily" label="Received today" value={formatMoney(today.billing.receivedToday)} hint={plural(today.billing.paymentsToday, 'payment')} tone="success" />,
+            today.billing && <StatCard key="owed" icon={Hourglass} to="/hospital/billing/unpaid" label="Outstanding" value={formatMoney(today.billing.owed)} hint={plural(today.billing.unpaidBills, 'unpaid bill')} tone={today.billing.overdueBills ? 'danger' : 'warning'} />,
+            today.billing && <StatCard key="refunds" icon={Undo2} to="/hospital/billing/daily" label="Refunds today" value={formatMoney(today.billing.refundedToday)} hint={plural(today.billing.refundsToday, 'refund')} tone="neutral" />,
+          ],
+          // the billing desk: for the billing department and the hospital admin (reception keeps the numbers)
+          cards: [today.billing && (roles.includes('billing') || isHospitalAdmin) && <BillingDesk key="desk" billing={today.billing} />],
+        },
+        {
+          key: 'pharmacy',
+          label: 'Pharmacy',
+          icon: Pill,
+          stats: [
+            today.pharmacy && <StatCard key="sales" icon={Pill} to="/hospital/pharmacy/sales" label="Pharmacy sales today" value={today.pharmacy.salesToday} hint={formatMoney(today.pharmacy.soldToday)} tone="info" />,
+            today.pharmacy && <StatCard key="low" icon={PackageMinus} to="/hospital/pharmacy/stock" label="Low stock" value={today.pharmacy.lowStock} hint="At or below the reorder level" tone={today.pharmacy.lowStock ? 'warning' : 'neutral'} />,
+            today.pharmacy && (
+              <StatCard
+                key="expiring"
+                icon={AlertTriangle}
+                to="/hospital/pharmacy/expiring"
+                label={`Expiring in ${today.pharmacy.expiryAlertDays} days`}
+                value={today.pharmacy.expiringMedicines}
+                hint={today.pharmacy.expiringNames.length ? today.pharmacy.expiringNames.join(', ') : 'No medicine expires soon'}
+                tone={today.pharmacy.expiringMedicines ? 'danger' : 'neutral'}
+              />
+            ),
+          ],
+          cards: [canAccess('pharmacyCounter') && <PrescriptionOrdersCard key="rx" />],
+        },
+        {
+          key: 'hospital',
+          label: 'Hospital',
+          icon: Settings,
+          stats: [],
+          cards: [
+            isHospitalAdmin && overview && (
+              <section key="hospital" className="card">
                 <div className="card-head">
                   <h2>Your hospital</h2>
                   <Link to="/hospital/admin" className="small">Overview <ArrowRight size={12} aria-hidden /></Link>
@@ -306,8 +296,103 @@ export function TodayPage() {
                   <dt>Messages</dt><dd>Reminders {overview.messaging.remindersEnabled ? 'on' : 'off'} · Portal {overview.messaging.portalEnabled ? 'on' : 'off'}</dd>
                 </dl>
               </section>
-            )}
+            ),
+          ],
+        },
+      ]
+        .map((a) => ({ ...a, stats: a.stats.filter(Boolean), cards: a.cards.filter(Boolean) }))
+        .filter((a) => a.stats.length || a.cards.length)
+    : [];
+  const current = areas.find((a) => a.key === area) ?? areas[0];
+  const shownAttention = allAttention ? attention : attention.slice(0, 4);
+
+  return (
+    <>
+      <header className="today-hero">
+        <div>
+          <h1>{greeting()}, {firstName}</h1>
+          <p className="muted">{activeMembership?.hospital.name} · {dateText}</p>
+        </div>
+        <div className="today-roles">
+          {user.isSuperAdmin ? (
+            <span className="pill pill-strong">Super admin · every role</span>
+          ) : (
+            <>
+              {roles.slice(0, 3).map((r) => <span key={r} className="pill pill-strong">{roleLabel(r)}</span>)}
+              {roles.length > 3 && <span className="pill">+{roles.length - 3}</span>}
+            </>
+          )}
+        </div>
+      </header>
+
+      {frontDesk && <TodayBooking />}
+
+      <Alert type="error">{error}</Alert>
+      {!today && !error && <Loader />}
+
+      {today && (
+        <>
+          <div className="grid-2 today-grid today-top">
+            <section className="card">
+              <div className="card-head">
+                <h2>Needs your attention {attention.length > 0 && <span className="rxq-count">{attention.length}</span>}</h2>
+              </div>
+              {attention.length === 0 ? (
+                <p className="all-clear"><CircleCheck size={18} aria-hidden /> All clear – nothing needs you right now.</p>
+              ) : (
+                <>
+                  <ul className="attention">
+                    {shownAttention.map((a) => (
+                      <li key={a.text} className={a.tone ? `attention-${a.tone}` : undefined}>
+                        <span className="attention-icon" aria-hidden><a.icon size={18} /></span>
+                        <span className="attention-text">
+                          <strong className="block">{a.text}</strong>
+                          <span className="muted small">{a.hint}</span>
+                        </span>
+                        <Link to={a.to} className="btn btn-ghost btn-sm">{a.action} <ArrowRight size={14} aria-hidden /></Link>
+                      </li>
+                    ))}
+                  </ul>
+                  {attention.length > 4 && (
+                    <button type="button" className="btn btn-link btn-sm top-gap-sm" onClick={() => setAllAttention((v) => !v)}>
+                      {allAttention ? 'Show fewer' : `Show all ${attention.length}`}
+                    </button>
+                  )}
+                </>
+              )}
+            </section>
+
+            <section className="card">
+              <h2>Quick actions</h2>
+              <div className="quick-actions">
+                {actions.map((a) => (
+                  <Link key={a.label} to={a.to} className="quick-action">
+                    <span className="sb-tile" aria-hidden><a.icon size={18} /></span>
+                    <span>{a.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
           </div>
+
+          {current && (
+            <section className="today-area">
+              <div className="today-area-head">
+                <h2 className="today-title">Today at a glance{areas.length === 1 ? '' : ` – ${current.label}`}</h2>
+                {areas.length > 1 && (
+                  <div className="today-tabs" role="tablist" aria-label="Areas of work">
+                    {areas.map((a) => (
+                      <button key={a.key} type="button" role="tab" aria-selected={a.key === current.key} className={a.key === current.key ? 'on' : ''} onClick={() => choose(a.key)}>
+                        <a.icon size={15} aria-hidden /> {a.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {current.stats.length > 0 && <div className="stat-grid today-stats">{current.stats}</div>}
+              {current.cards.length > 0 && <div className="grid-2 today-grid">{current.cards}</div>}
+            </section>
+          )}
         </>
       )}
     </>

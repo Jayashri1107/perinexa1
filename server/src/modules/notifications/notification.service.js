@@ -8,13 +8,35 @@ import { Admission, InpatientDocument } from '../admissions/admission.model.js';
 import { Appointment } from '../appointments/appointment.model.js';
 import { utcDay } from '../appointments/slots.js';
 import { Membership } from '../members/membership.model.js';
+import { User } from '../users/user.model.js';
 import { Notification } from './notification.model.js';
 
-/** Sends one notification to these people (user ids) of this hospital – never to the person who caused it. */
+// The super admins (owner, 8 Oct 2026: they receive every notification of the hospitals they work in), looked up at
+// most once a minute.
+let superAdmins = { ids: [], at: 0 };
+async function superAdminIds() {
+  if (!config.access.superAdminInHospitals) return [];
+  if (Date.now() - superAdmins.at > 60_000) {
+    const users = await User.find({ isSuperAdmin: true, isActive: true }).select('_id').lean();
+    superAdmins = { ids: users.map((u) => String(u._id)), at: Date.now() };
+  }
+  return superAdmins.ids;
+}
+
+/**
+ * Sends one notification to these people (user ids) of this hospital – never to the person who caused it – and to
+ * every super admin (even the one who caused it: they see everything that happens). One event sent to several roles
+ * reaches a super admin once (remembered on the request).
+ */
 export async function notify(req, recipientIds, { type, title, message = '', link = '' }) {
   try {
     const me = String(req.user?._id ?? '');
-    const ids = [...new Set(recipientIds.filter(Boolean).map(String))].filter((id) => id !== me);
+    const staff = [...new Set(recipientIds.filter(Boolean).map(String))].filter((id) => id !== me);
+    req.notifiedSuperAdmins ??= new Set();
+    const event = `${type}|${title}|${message}`;
+    const supers = (await superAdminIds()).filter((id) => !staff.includes(id) && !req.notifiedSuperAdmins.has(`${event}|${id}`));
+    supers.forEach((id) => req.notifiedSuperAdmins.add(`${event}|${id}`));
+    const ids = [...staff, ...supers];
     if (!ids.length) return;
     await Notification.insertMany(ids.map((id) => ({ hospitalId: req.hospitalId, recipientId: id, type, title, message, link })));
   } catch (err) {
@@ -26,7 +48,7 @@ export async function notify(req, recipientIds, { type, title, message = '', lin
 export async function notifyRoles(req, roles, notification) {
   try {
     const members = await Membership.find({ hospitalId: req.hospitalId, isActive: true, roles: { $in: roles } }).select('userId').lean();
-    await notify(req, members.map((m) => m.userId), notification);
+    await notify(req, members.map((m) => m.userId), notification); // also reaches the super admins (notify)
   } catch (err) {
     console.error('Notification not created:', err.message);
   }
