@@ -6,7 +6,7 @@ import { hospitalScoped } from '../../db/hospitalScoped.js';
 import { config } from '../../config/index.js';
 
 const { ObjectId } = mongoose.Schema.Types;
-export const NOTIFICATION_TYPES = ['NEW_APPOINTMENT', 'PATIENT_ARRIVED', 'NEW_ADMISSION', 'DISCHARGE_READY', 'FINAL_BILL'];
+export const NOTIFICATION_TYPES = ['NEW_APPOINTMENT', 'PATIENT_ARRIVED', 'NEW_ADMISSION', 'DISCHARGE_READY', 'FINAL_BILL', 'TODAY_SUMMARY', 'DISCHARGE_SOON', 'PRESCRIPTION_SENT'];
 
 const notificationSchema = new mongoose.Schema(
   {
@@ -16,11 +16,14 @@ const notificationSchema = new mongoose.Schema(
     message: { type: String, default: '', maxlength: 300 },
     link: { type: String, default: '', maxlength: 200 }, // a page of the website to open
     isRead: { type: Boolean, default: false },
+    // set only on notifications sent once, e.g. "today-2026-10-08-doctor": the same key is never sent twice to one person
+    key: { type: String, maxlength: 60 },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 notificationSchema.plugin(hospitalScoped);
 notificationSchema.index({ hospitalId: 1, recipientId: 1, createdAt: -1 });
+notificationSchema.index({ hospitalId: 1, recipientId: 1, key: 1 }, { unique: true, partialFilterExpression: { key: { $type: 'string' } } });
 notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: config.notifications.keepDays * 24 * 60 * 60 });
 
 export const Notification = mongoose.model('Notification', notificationSchema, 'notifications');

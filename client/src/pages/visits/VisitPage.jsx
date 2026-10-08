@@ -79,7 +79,7 @@ export function VisitPage() {
         <FindingsPart visit={visit} careType={visit.careType} editable={can.details} isPrescriber={isPrescriber} save={(v) => visitsApi.details(patient.id, visit.id, v)} onSaved={setData} />
       </div>
       <div className="top-gap">
-        <PrescriptionPart visit={visit} careType={visit.careType} checks={checks} editable={can.prescription} save={(v) => visitsApi.prescription(patient.id, visit.id, v)} onSaved={setData} />
+        <PrescriptionPart visit={visit} careType={visit.careType} checks={checks} editable={can.prescription} canSend={can.sendToPharmacy} save={(v) => visitsApi.prescription(patient.id, visit.id, v)} onSaved={setData} />
       </div>
       <div className="top-gap">
         <AdditionsCard visit={visit} canAdd={can.addition} add={async (text) => setData(await visitsApi.addition(patient.id, visit.id, text))} />

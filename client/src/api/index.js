@@ -255,9 +255,12 @@ export const visitsApi = {
   sign: (patientId, visitId) => http.post(`${VISITS}/patient/${patientId}/${visitId}/sign`),
   cancel: (patientId, visitId, reason) => http.post(`${VISITS}/patient/${patientId}/${visitId}/cancel`, { reason }),
   addition: (patientId, visitId, text) => http.post(`${VISITS}/patient/${patientId}/${visitId}/additions`, { text }),
+  sendToPharmacy: (patientId, visitId) => http.post(`${VISITS}/patient/${patientId}/${visitId}/send-to-pharmacy`),
   sets: (careType) => http.get(`${VISITS}/sets`, { careType }),
 };
 export const pharmacyPrescriptionsApi = {
+  queue: () => http.get(`${PHARMACY}/prescriptions/queue`),
+  markGiven: (visitId) => http.post(`${PHARMACY}/prescriptions/queue/${visitId}/given`),
   forPatient: (patientId) => http.get(`${PHARMACY}/prescriptions/${patientId}`),
 };
 

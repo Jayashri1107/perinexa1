@@ -1,7 +1,7 @@
 // The counter: sell medicines to a registered patient (paid here or on her hospital bill) or to a walk-in buyer.
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { salesApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { PatientPicker } from '../../components/PatientPicker.jsx';
@@ -16,7 +16,10 @@ const EMPTY = { patient: null, customerName: '', doctorName: '', lines: [], disc
 export function SellPage() {
   const { pharmacy, billing } = useAppConfig();
   const navigate = useNavigate();
-  const [sale, setSale] = useState({ ...EMPTY, mode: billing.paymentModes[0].key });
+  // Opened from the Prescriptions tab: her, and the prescription the doctor sent (its medicines are put on the sale)
+  const from = useLocation().state;
+  const [visitId, setVisitId] = useState(from?.visitId ?? null);
+  const [sale, setSale] = useState({ ...EMPTY, patient: from?.patient ?? null, mode: billing.paymentModes[0].key });
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -52,6 +55,7 @@ export function SellPage() {
     try {
       const { sale: done } = await salesApi.create({
         patientId: sale.patient?.id,
+        visitId: sale.patient ? visitId ?? undefined : undefined,
         customerName: sale.patient ? '' : sale.customerName,
         doctorName: sale.doctorName,
         lines: sale.lines.map((l) => ({ medicineId: l.medicineId, qty: Number(l.qty) })),
@@ -76,8 +80,17 @@ export function SellPage() {
         <div className="grid-2">
           <section className="card">
             <h2>Buyer</h2>
-            <PatientPicker search={salesApi.patients} value={sale.patient} onChange={(p) => set({ patient: p, payTo: p ? sale.payTo : 'counter' })} label="Registered patient (optional)" error={errors.customerName} />
-            {sale.patient && <FromPrescription patientId={sale.patient.id} onUse={usePrescription} />}
+            <PatientPicker
+              search={salesApi.patients}
+              value={sale.patient}
+              onChange={(p) => {
+                if (p?.id !== sale.patient?.id) setVisitId(null); // another patient: not that prescription any more
+                set({ patient: p, payTo: p ? sale.payTo : 'counter' });
+              }}
+              label="Registered patient (optional)"
+              error={errors.customerName}
+            />
+            {sale.patient && <FromPrescription patientId={sale.patient.id} onUse={usePrescription} autoUseVisitId={visitId} onUsed={setVisitId} />}
             {!sale.patient && (
               <div className="form-field">
                 <label htmlFor="customer">Or the buyer's name</label>

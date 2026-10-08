@@ -98,6 +98,16 @@ const visitSchema = new mongoose.Schema(
       },
       ...saved,
     },
+    // Sent to the pharmacy (owner, 8 Oct 2026): the prescription waits on the pharmacy's Prescriptions tab until the
+    // pharmacist sells it at the counter or marks it given. Sending again (after a change) puts it back on the list.
+    pharmacy: {
+      status: { type: String, enum: ['none', 'sent', 'given'], default: 'none' },
+      sentAt: { type: Date, default: null },
+      sentByName: { type: String, default: null },
+      givenAt: { type: Date, default: null },
+      givenByName: { type: String, default: null },
+      invoiceNumber: { type: String, default: null }, // the counter sale that gave it, when sold here
+    },
     createdBy: { type: ObjectId, ref: 'User', required: true },
     createdByName: { type: String, required: true },
   },
@@ -107,5 +117,6 @@ visitSchema.plugin(hospitalScoped);
 visitSchema.index({ hospitalId: 1, patientId: 1, visitOn: -1, createdAt: -1 });
 visitSchema.index({ hospitalId: 1, clientRequestId: 1 }, { unique: true });
 visitSchema.index({ hospitalId: 1, visitOn: 1 });
+visitSchema.index({ hospitalId: 1, 'pharmacy.status': 1, 'pharmacy.sentAt': 1 });
 
 export const Visit = mongoose.model('Visit', visitSchema, 'visits');

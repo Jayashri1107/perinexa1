@@ -8,7 +8,7 @@
 // hospital's APPROVED medicine safety list and the visit against the APPROVED red-flag rules (Clinic library).
 // The audit log gets ids only – never medical details.
 import { config } from '../../config/index.js';
-import { todayLocal } from '../../core/dates.js';
+import { dayRange, todayLocal } from '../../core/dates.js';
 import { HttpError, notFoundError } from '../../core/httpError.js';
 import { toObjectId } from '../../core/validate.js';
 import { Appointment } from '../appointments/appointment.model.js';
@@ -19,6 +19,7 @@ import { LabOrder } from '../lab/labOrder.model.js';
 import { approvedEntries } from '../library/library.service.js';
 import { EmergencyAccess, Patient } from '../patients/patient.model.js';
 import { atLeast, recordLevel } from '../patients/patientAccess.js';
+import { notifyRoles } from '../notifications/notification.service.js';
 import { User } from '../users/user.model.js';
 import { medicineWarnings, needsReason } from './medicineSafety.js';
 import { evaluateRedFlags, redFlagFacts } from './redFlags.js';
@@ -54,6 +55,8 @@ function can(req, level, visit, patient) {
     sign: open && canDoClinical(req, level),
     cancel: open && canDoClinical(req, level),
     addition: visit.status === 'active' && Boolean(visit.signed) && (canDoClinical(req, level) || canDoVitals(req, level)),
+    // signed or not: the medicines as they are now go to the pharmacy's list
+    sendToPharmacy: visit.status === 'active' && canDoClinical(req, level) && (visit.prescription?.items?.length ?? 0) > 0,
     print: visit.status === 'active' && patient.status !== undefined,
   };
 }
@@ -92,6 +95,7 @@ function visitView(req, v, { full = true } = {}) {
     // the private note: doctors and RMOs only
     details: { ...details, nextVisitOn: dayIso(details.nextVisitOn), ...(isPrescriber(req) && { privateNote }) },
     prescription: { ...x.prescription, items: (x.prescription?.items ?? []).map((i) => ({ ...i, id: String(i._id), _id: undefined })), warningReasons: isPrescriber(req) ? x.prescription?.warningReasons ?? [] : [] },
+    pharmacy: x.pharmacy?.status ? x.pharmacy : { status: 'none' },
     additions: x.additions ?? [],
   };
 }
@@ -312,6 +316,29 @@ export async function addAddition(req, patientId, visitId, text) {
   return fullAnswer(req, loaded);
 }
 
+// ---------- Send to the pharmacy ----------
+
+// Her doctor or an RMO sends the prescription to the pharmacy: it waits on the pharmacy's Prescriptions tab, and the
+// pharmacists get a notification (her name and number and how many medicines – never the diagnosis).
+export async function sendToPharmacy(req, patientId, visitId) {
+  const loaded = await loadVisit(req, patientId, visitId);
+  const { visit, level, patient } = loaded;
+  if (!can(req, level, visit, patient).sendToPharmacy) {
+    throw new HttpError(403, visit.prescription?.items?.length ? 'Her doctor or an RMO sends the prescription to the pharmacy.' : 'Save at least one medicine first.', 'FORBIDDEN');
+  }
+  visit.pharmacy = { status: 'sent', sentAt: new Date(), sentByName: req.user.name, givenAt: null, givenByName: null, invoiceNumber: null };
+  await visit.save();
+  await recordAudit(req, 'PRESCRIPTION_SENT', { hospitalId: req.hospitalId, details: { patientId, visitId, medicines: visit.prescription.items.length } });
+  const count = visit.prescription.items.length;
+  await notifyRoles(req, config.access.pharmacyCounter, {
+    type: 'PRESCRIPTION_SENT',
+    title: 'Prescription to give',
+    message: `${patient.name} (${patient.patientNumber}) · ${count} ${count === 1 ? 'medicine' : 'medicines'} · from ${req.user.name}`,
+    link: '/hospital/pharmacy/prescriptions',
+  });
+  return fullAnswer(req, loaded);
+}
+
 // ---------- For the prescription form ----------
 
 // The approved prescription sets for this patient's type of care, and the approved medicine safety list's status.
@@ -327,6 +354,9 @@ export async function prescriptionSets(req, careType) {
 
 // Her latest prescriptions, to sell from: the medicines only, with the doctor and the date – no findings, no
 // diagnosis (the pharmacist needs only what to give).
+const pharmacyItems = (v) =>
+  v.prescription.items.map((i) => ({ drug: i.drug, form: i.form, strength: i.strength, dose: i.dose, frequency: i.frequency, frequencyText: i.frequencyText, durationValue: i.durationValue, durationUnit: i.durationUnit }));
+
 export async function prescriptionsForPharmacy(req, patientId) {
   const patient = await Patient.findOne({ hospitalId: req.hospitalId, _id: patientId }).select('_id').lean();
   if (!patient) throw notFoundError('Patient');
@@ -335,8 +365,45 @@ export async function prescriptionsForPharmacy(req, patientId) {
     visitId: String(v._id),
     visitOn: dayIso(v.visitOn),
     doctor: v.prescription.byName,
-    items: v.prescription.items.map((i) => ({ drug: i.drug, form: i.form, strength: i.strength, dose: i.dose, frequency: i.frequency, frequencyText: i.frequencyText, durationValue: i.durationValue, durationUnit: i.durationUnit })),
+    pharmacyStatus: v.pharmacy?.status ?? 'none',
+    items: pharmacyItems(v),
   }));
+}
+
+// The pharmacy's Prescriptions tab: what doctors sent and is still to give (oldest first), and what was given today.
+export async function pharmacyQueue(req) {
+  const hid = toObjectId(req.hospitalId);
+  const [start] = dayRange(todayLocal());
+  const [waiting, given] = await Promise.all([
+    Visit.find({ hospitalId: hid, status: 'active', 'pharmacy.status': 'sent' }).sort({ 'pharmacy.sentAt': 1 }).limit(100).lean(),
+    Visit.find({ hospitalId: hid, status: 'active', 'pharmacy.status': 'given', 'pharmacy.givenAt': { $gte: start } }).sort({ 'pharmacy.givenAt': -1 }).limit(100).lean(),
+  ]);
+  const ids = [...new Set([...waiting, ...given].map((v) => String(v.patientId)))];
+  const patients = await Patient.find({ hospitalId: hid, _id: { $in: ids } }).select('name patientNumber').lean();
+  const byId = new Map(patients.map((p) => [String(p._id), p]));
+  const row = (v) => {
+    const p = byId.get(String(v.patientId));
+    return {
+      visitId: String(v._id),
+      patient: { id: String(v.patientId), name: p?.name ?? '', patientNumber: p?.patientNumber ?? '' },
+      visitOn: dayIso(v.visitOn),
+      doctor: v.prescription.byName,
+      items: pharmacyItems(v),
+      ...v.pharmacy,
+    };
+  };
+  return { waiting: waiting.map(row), givenToday: given.map(row) };
+}
+
+// The pharmacist gives it (sold at the counter, or given another way): it leaves the waiting list.
+export async function markGiven(req, visitId, invoiceNumber = null) {
+  const done = await Visit.findOneAndUpdate(
+    { hospitalId: req.hospitalId, _id: visitId, 'pharmacy.status': 'sent' },
+    { $set: { 'pharmacy.status': 'given', 'pharmacy.givenAt': new Date(), 'pharmacy.givenByName': req.user.name, 'pharmacy.invoiceNumber': invoiceNumber } },
+  );
+  if (!done) return false;
+  await recordAudit(req, 'PRESCRIPTION_GIVEN', { hospitalId: req.hospitalId, details: { patientId: String(done.patientId), visitId: String(visitId), ...(invoiceNumber && { invoiceNumber }) } });
+  return true;
 }
 
 // ---------- For Today ----------

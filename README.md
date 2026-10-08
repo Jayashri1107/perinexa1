@@ -15,6 +15,19 @@ Fake sample data only.
 | 8 | Visits and prescriptions (using the approved care plans, rules and prescription sets) | Next |
 | 10 | **Records** (7 Oct 2026): medical history page (stays and discharge cards, visits, lab, documents); scanned documents on a patient's record (PDF / JPG / PNG, kept in the database, entered in error instead of deleted); Discharges for reception (signed discharge cards to print or save as PDF, scans to upload) | Done |
 
+**8 Oct 2026 – notifications, Send to pharmacy, sign-in page, sidebar**
+- The bell: once a day a doctor gets "Your day today" (her appointments, admitted today, in hospital) and reception
+  "Discharges today" (discharged, cards being prepared) – counts only, sent only when there is something to tell. A
+  booking for today says "today"; reception also hears when a discharge summary is marked ready for review. Each kind
+  of notification has its own icon.
+- Send to pharmacy: on a visit's prescription her doctor or an RMO clicks **Send to pharmacy**; it appears on
+  Pharmacy → **Prescriptions** (waiting, oldest first; given today) and the pharmacists are notified. "Sell at the
+  counter" opens the counter with her and the medicines filled in; the sale takes it off the list ("Mark as given"
+  for one given another way). The visit shows "Waiting at the pharmacy" / "Given by the pharmacy".
+- Sign-in page: things glide in, soft rings drift, two made-up sample cards float beside the form (wide screens);
+  still when the computer asks for reduced motion. No gradients anywhere (sidebar, sign-in, Today, My settings).
+- The sidebar's menu scrolls inside it on short screens (it ran off the bottom, e.g. for the super admin).
+
 ### Who sees what (config.access)
 
 | Role | Menu |

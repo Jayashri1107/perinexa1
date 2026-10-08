@@ -15,9 +15,13 @@ router.put('/patient/:patientId/:visitId/prescription', controller.prescription)
 router.post('/patient/:patientId/:visitId/sign', controller.sign);
 router.post('/patient/:patientId/:visitId/cancel', controller.cancel);
 router.post('/patient/:patientId/:visitId/additions', controller.addition);
+router.post('/patient/:patientId/:visitId/send-to-pharmacy', controller.sendToPharmacy);
 
 export default router;
 
-// The pharmacy's view: a patient's latest prescriptions to sell from (medicines only).
+// The pharmacy's view (pharmacists at the counter): the prescriptions doctors sent (waiting, and given today), marking
+// one given, and a patient's latest prescriptions to sell from (medicines only).
 export const pharmacyPrescriptionRouter = Router();
+pharmacyPrescriptionRouter.get('/queue', controller.pharmacyQueue);
+pharmacyPrescriptionRouter.post('/queue/:visitId/given', controller.markGiven);
 pharmacyPrescriptionRouter.get('/:patientId', controller.forPharmacy);

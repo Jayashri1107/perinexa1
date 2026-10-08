@@ -54,6 +54,21 @@ export async function sets(req, res) {
   res.json({ items: await service.prescriptionSets(req, careType) });
 }
 
+export async function sendToPharmacy(req, res) {
+  const { patientId, visitId } = ids(req);
+  res.json(await service.sendToPharmacy(req, patientId, visitId));
+}
+
 export async function forPharmacy(req, res) {
   res.json({ items: await service.prescriptionsForPharmacy(req, parse(patientParams, req.params).patientId) });
+}
+
+export async function pharmacyQueue(req, res) {
+  res.json(await service.pharmacyQueue(req));
+}
+
+export async function markGiven(req, res) {
+  const { visitId } = parse(z.object({ visitId: visitParams.shape.visitId }), req.params);
+  await service.markGiven(req, visitId);
+  res.json(await service.pharmacyQueue(req));
 }

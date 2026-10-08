@@ -256,10 +256,11 @@ export async function book(req, body) {
     details: { appointmentId: String(appt._id), ...(patientId && { patientId: String(patientId) }), doctorId: doctor.id, date: body.date },
   });
   const view = await viewOne(req.hospitalId, appt);
+  const forToday = body.date === todayLocal();
   await notify(req, [doctor.id], {
     type: 'NEW_APPOINTMENT',
-    title: 'New appointment',
-    message: `${view.patient?.name ?? view.guest?.name ?? 'A patient'} · ${body.date}${body.start ? ` at ${body.start}` : ' (time to be given)'}`,
+    title: forToday ? 'New appointment today' : 'New appointment',
+    message: `${view.patient?.name ?? view.guest?.name ?? 'A patient'} · ${forToday ? 'today' : body.date}${body.start ? ` at ${body.start}` : ' (time to be given)'}`,
     link: '/hospital/appointments',
   });
   return view;

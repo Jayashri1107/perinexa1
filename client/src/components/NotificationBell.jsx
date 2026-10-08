@@ -1,12 +1,24 @@
 // The bell in the top bar (in a hospital): how many notifications are unread, and the latest ones. It checks every
 // minute. Clicking one marks it read and opens its page.
-import { Bell } from 'lucide-react';
+import { BedDouble, Bell, CalendarCheck, CalendarPlus, DoorOpen, Pill, Receipt, UserCheck } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationsApi } from '../api/index.js';
 import { formatDateTime } from '../utils/format.js';
 
 const EVERY_MS = 60_000;
+
+// Each kind of notification has its own icon in a pastel tile, so they can be told apart at a glance.
+const KINDS = {
+  TODAY_SUMMARY: { icon: CalendarCheck, tone: '' },
+  NEW_APPOINTMENT: { icon: CalendarPlus, tone: 'tone-teal' },
+  PATIENT_ARRIVED: { icon: UserCheck, tone: 'tone-blue' },
+  NEW_ADMISSION: { icon: BedDouble, tone: '' },
+  DISCHARGE_SOON: { icon: DoorOpen, tone: 'tone-amber' },
+  DISCHARGE_READY: { icon: DoorOpen, tone: 'tone-green' },
+  FINAL_BILL: { icon: Receipt, tone: 'tone-amber' },
+  PRESCRIPTION_SENT: { icon: Pill, tone: 'tone-teal' },
+};
 
 export function NotificationBell() {
   const navigate = useNavigate();
@@ -68,15 +80,22 @@ export function NotificationBell() {
           </div>
           {data.items.length === 0 && <p className="muted small">Nothing yet.</p>}
           <ul className="plain-list notif-list">
-            {data.items.map((n) => (
-              <li key={n.id}>
-                <button type="button" className={`notif-item${n.isRead ? '' : ' unread'}`} onClick={() => openOne(n)}>
-                  <strong>{n.title}</strong>
-                  {n.message && <span className="block small">{n.message}</span>}
-                  <span className="block small muted">{formatDateTime(n.createdAt)}</span>
-                </button>
-              </li>
-            ))}
+            {data.items.map((n) => {
+              const kind = KINDS[n.type] ?? { icon: Bell, tone: '' };
+              const Icon = kind.icon;
+              return (
+                <li key={n.id}>
+                  <button type="button" className={`notif-item${n.isRead ? '' : ' unread'}`} onClick={() => openOne(n)}>
+                    <span className={`notif-icon ${kind.tone}`} aria-hidden><Icon size={16} /></span>
+                    <span className="notif-text">
+                      <strong className="block">{n.title}</strong>
+                      {n.message && <span className="block small">{n.message}</span>}
+                      <span className="block small muted">{formatDateTime(n.createdAt)}</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

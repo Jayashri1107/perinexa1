@@ -25,6 +25,8 @@ const line = z.object({
 export const saleBody = z
   .object({
     patientId: optional(objectId),
+    // sold from a prescription a doctor sent to the pharmacy: it is then marked given
+    visitId: optional(objectId),
     customerName: z.string().trim().max(120).default(''),
     doctorName: z.string().trim().max(120).default(''),
     lines: z.array(line).min(1, 'Add at least one medicine').max(100),

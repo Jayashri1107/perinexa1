@@ -346,9 +346,21 @@ export async function markReady(req, admissionId, docId) {
   if (doc.status !== 'draft') throw new HttpError(409, 'This document is already finalized or entered in error.', 'LOCKED');
   const content = checkContent(doc.kind, doc.content);
   if (doc.kind === 'discharge') await checkDischargeLinks(req, content);
+  const wasReady = Boolean(doc.readyForReview);
   doc.set({ readyForReview: stamp(req) });
   await doc.save();
   await recordAudit(req, 'INPATIENT_DOC_SAVED', { hospitalId: req.hospitalId, details: { admissionId, documentId: docId, kind: doc.kind, ready: true } });
+  // Reception hears early that she is going home, to get the bill and the papers ready (each time the discharge card
+  // becomes ready for review; changing the draft takes "ready" away again)
+  if (doc.kind === 'discharge' && !wasReady) {
+    const { patient } = loaded;
+    await notifyRoles(req, config.access.registrationMenu, {
+      type: 'DISCHARGE_SOON',
+      title: 'Discharge being prepared',
+      message: `${patient.name} (${patient.patientNumber}) · going home ${utcDay(content.dischargedAt).getTime() === utcDay(new Date()).getTime() ? 'today' : 'soon'} – card ready for review`,
+      link: '/hospital/admissions',
+    });
+  }
   return { document: docView(doc), ...(await stayAnswer(req, loaded)) };
 }
 

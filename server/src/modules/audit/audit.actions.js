@@ -84,6 +84,8 @@ export const AUDIT_ACTIONS = Object.freeze({
   VISIT_VIEWED: 'Visit opened',
   VISIT_UPDATED: 'Visit changed',
   PRESCRIPTION_SAVED: 'Prescription written',
+  PRESCRIPTION_SENT: 'Prescription sent to the pharmacy',
+  PRESCRIPTION_GIVEN: 'Prescription given by the pharmacy',
   VISIT_SIGNED: 'Visit signed',
   VISIT_CANCELLED: 'Visit marked as entered in error',
   VISIT_ADDITION: 'Correction added to a signed visit',

@@ -16,6 +16,8 @@ import { addPharmacyCharge, reducePharmacyCharge } from '../bills/bill.service.j
 import { Medicine } from '../medicines/medicine.model.js';
 import { patientSummary } from '../patients/patient.service.js';
 import { StockBatch, recordMovement } from '../stock/stock.model.js';
+import { Visit } from '../visits/visit.model.js';
+import { markGiven } from '../visits/visit.service.js';
 import { Sale } from './sale.model.js';
 
 const { invoicePrefix, numberDigits } = config.pharmacy;
@@ -127,6 +129,10 @@ export async function sell(req, data) {
     await recordMovement(req, { medicine: t.medicine, batch: t.batch, kind: data.admissionId ? 'ward_issue' : 'sale', qty: -t.qty, ref: invoiceNumber, party, doctorName: data.doctorName });
   }
   await recordAudit(req, 'SALE_MADE', { hospitalId, details: { invoiceNumber, total, lines: lines.length, ...(billNumber && { billNumber }) } });
+  // the prescription it was sold from (her own) leaves the pharmacy's waiting list
+  if (data.visitId && patient && (await Visit.exists({ hospitalId, _id: data.visitId, patientId: patient.id }))) {
+    await markGiven(req, data.visitId, invoiceNumber);
+  }
   return sale;
 }
 

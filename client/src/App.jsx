@@ -49,6 +49,7 @@ import { OrderPage } from './pages/pharmacy/OrderPage.jsx';
 import { OrdersPage } from './pages/pharmacy/OrdersPage.jsx';
 import { PharmacyReportsPage } from './pages/pharmacy/PharmacyReportsPage.jsx';
 import { PharmacySettingsPage } from './pages/pharmacy/PharmacySettingsPage.jsx';
+import { PrescriptionsQueuePage } from './pages/pharmacy/PrescriptionsQueuePage.jsx';
 import { PurchasesPage } from './pages/pharmacy/PurchasesPage.jsx';
 import { SaleDetailPage } from './pages/pharmacy/SaleDetailPage.jsx';
 import { SalesPage } from './pages/pharmacy/SalesPage.jsx';
@@ -186,6 +187,7 @@ export function App() {
                   <Route path="pharmacy/purchases/new" element={<NewPurchasePage />} />
                   <Route path="pharmacy/supplier-returns/new" element={<NewSupplierReturnPage />} />
                   <Route path="pharmacy/ward" element={<IssueToWardPage />} />
+                  <Route path="pharmacy/prescriptions" element={<PrescriptionsQueuePage />} />
                 </Route>
 
                 {/* Module 6 – analytics */}

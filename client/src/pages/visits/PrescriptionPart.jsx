@@ -1,7 +1,7 @@
 // The prescription of a visit: the medicines (form, strength, dose, how often, when, how long), a ready-made set from
 // the Clinic library as a starting point (approved sets only), and the medicine safety warnings. Going ahead despite an
 // Avoid or Allergy warning needs a one-line reason, kept with the visit and never printed.
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { CircleCheck, Clock, Pencil, Plus, Send, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { visitsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
@@ -29,8 +29,51 @@ function Warnings({ warnings, reasons, setReason, asking }) {
   );
 }
 
-export function PrescriptionPart({ visit, careType, checks, editable, save, onSaved }) {
+// Where the prescription is with the pharmacy: waiting there, or given (sold at the counter, or given another way).
+const PHARMACY_LOOKS = {
+  sent: { tone: 'pending', icon: Clock, word: 'Waiting at the pharmacy' },
+  given: { tone: 'active', icon: CircleCheck, word: 'Given by the pharmacy' },
+};
+
+function PharmacyStatus({ pharmacy, canSend, sending, onSend }) {
+  const look = PHARMACY_LOOKS[pharmacy?.status];
+  return (
+    <div className="rx-pharmacy">
+      {look && (
+        <span className="rx-pharmacy-state">
+          <StateBadge look={look} />
+          <span className="muted small">
+            {pharmacy.status === 'given'
+              ? `${pharmacy.givenByName}, ${formatDateTime(pharmacy.givenAt)}${pharmacy.invoiceNumber ? ` · invoice ${pharmacy.invoiceNumber}` : ''}`
+              : `Sent by ${pharmacy.sentByName}, ${formatDateTime(pharmacy.sentAt)}`}
+          </span>
+        </span>
+      )}
+      {canSend && (
+        <button type="button" className={`btn ${look ? 'btn-ghost' : 'btn-accent'} btn-sm`} disabled={sending} onClick={onSend}>
+          <Send size={14} aria-hidden /> {sending ? 'Sending…' : look ? 'Send again' : 'Send to pharmacy'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function PrescriptionPart({ visit, careType, checks, editable, canSend, save, onSaved }) {
   const rx = visit.prescription;
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const send = async () => {
+    if (visit.pharmacy?.status === 'sent' && !window.confirm('It is already waiting at the pharmacy. Send it again with the medicines as they are now?')) return;
+    setSending(true);
+    setSendError('');
+    try {
+      onSaved(await visitsApi.sendToPharmacy(visit.patientId, visit.id));
+    } catch (err) {
+      setSendError(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
   const [draft, setDraft] = useState(null);
   const [sets, setSets] = useState([]);
   const [asking, setAsking] = useState([]); // warnings that need a reason, from the last save
@@ -96,6 +139,12 @@ export function PrescriptionPart({ visit, careType, checks, editable, save, onSa
           <Warnings warnings={checks.warnings} reasons={{}} setReason={() => {}} asking={false} />
           {rx.warningReasons?.length > 0 && (
             <p className="small muted">Went ahead despite: {rx.warningReasons.map((w) => `${w.title} – “${w.reason}”`).join('; ')}</p>
+          )}
+          {rx.items.length > 0 && (canSend || (visit.pharmacy?.status ?? 'none') !== 'none') && (
+            <>
+              <PharmacyStatus pharmacy={visit.pharmacy} canSend={canSend} sending={sending} onSend={send} />
+              <Alert type="error">{sendError}</Alert>
+            </>
           )}
         </>
       )}
