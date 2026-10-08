@@ -15,12 +15,97 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { ageText, formatMoney, labelOf } from '../../utils/format.js';
 import { dayText } from '../appointments/appointmentFormat.js';
-import { MedicineSearch } from '../pharmacy/MedicineSearch.jsx';
 import { DURATION_UNITS, TIMINGS } from '../visits/visitFormat.js';
 
-const searchMedicines = (text) => dispensingApi.medicines(text);
 const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const howLong = (i) => (i.durationUnit === 'till_delivery' || i.durationUnit === 'continue' ? DURATION_UNITS[i.durationUnit] : i.durationValue ? `${i.durationValue} ${DURATION_UNITS[i.durationUnit] || 'days'}` : '—');
+
+// The last row of the medicine table (owner, 8 Oct 2026): type a medicine, its quantity and price, and Add. Typing shows
+// the medicines in stock – picking one fills its price (it is then sold from stock); any other name is added with the
+// price typed here (on the bill, no stock change).
+function AddMedicineRow({ onAdd, disabled }) {
+  const empty = { name: '', medicine: null, qty: 1, price: '' };
+  const [row, setRow] = useState(empty);
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [problem, setProblem] = useState('');
+
+  useEffect(() => {
+    const text = row.name.trim();
+    if (!text || row.medicine) {
+      setResults([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      dispensingApi.medicines(text).then((r) => !cancelled && setResults(r.items.filter((m) => m.available > 0))).catch(() => !cancelled && setResults([]));
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [row.name, row.medicine]);
+
+  const pickStock = (m) => {
+    setRow((r) => ({ ...r, name: `${m.name}${m.strength ? ` ${m.strength}` : ''}`, medicine: m, price: m.mrp, qty: Math.min(Number(r.qty) || 1, m.available) }));
+    setOpen(false);
+  };
+  const add = () => {
+    const qty = Number(row.qty);
+    if (row.name.trim().length < 2) return setProblem('Type the medicine name.');
+    if (!(qty >= 1)) return setProblem('Enter the quantity.');
+    if (row.medicine && qty > row.medicine.available) return setProblem(`Only ${row.medicine.available} in stock.`);
+    if (!row.medicine && (row.price === '' || !(Number(row.price) >= 0))) return setProblem('Enter the price.');
+    setProblem('');
+    onAdd({ medicine: row.medicine, name: row.name.trim(), qty, price: row.medicine ? row.medicine.mrp : money(row.price) });
+    setRow(empty);
+    return undefined;
+  };
+  const amount = money(row.price) * (Number(row.qty) || 0);
+
+  return (
+    <tr className="give-add-row">
+      <td>
+        <div className="picker">
+          <input
+            aria-label="Medicine to add"
+            placeholder="+ Add a medicine – type its name"
+            value={row.name}
+            disabled={disabled}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            onChange={(e) => setRow((r) => ({ ...r, name: e.target.value, medicine: null, price: r.medicine ? '' : r.price }))}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
+          />
+          {open && results.length > 0 && (
+            <ul className="picker-results" role="listbox">
+              {results.map((m) => (
+                <li key={m.id}>
+                  <button type="button" role="option" aria-selected="false" onMouseDown={(e) => e.preventDefault()} onClick={() => pickStock(m)}>
+                    <strong>{m.name}</strong> {m.strength} <span className="muted"> · {m.available} in stock · MRP {formatMoney(m.mrp)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {row.medicine ? <span className="block small give-stock">From stock</span> : row.name.trim() && <span className="block small give-nostock">Not from stock – enter the price</span>}
+        {problem && <span className="field-error block">{problem}</span>}
+      </td>
+      <td className="num">{row.medicine ? row.medicine.available : '—'}</td>
+      <td className="num">
+        <input className="qty" type="number" min="1" aria-label="Quantity of the medicine to add" value={row.qty} disabled={disabled} onChange={(e) => setRow((r) => ({ ...r, qty: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())} />
+      </td>
+      <td className="num">
+        {row.medicine ? formatMoney(row.medicine.mrp) : (
+          <input className="qty give-price" type="number" min="0" step="0.01" placeholder="₹" aria-label="Price of the medicine to add" value={row.price} disabled={disabled} onChange={(e) => setRow((r) => ({ ...r, price: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())} />
+        )}
+      </td>
+      <td className="num">{formatMoney(amount)}</td>
+      <td className="actions"><button type="button" className="btn btn-primary btn-sm" disabled={disabled} onClick={add}><Plus size={14} aria-hidden /> Add</button></td>
+    </tr>
+  );
+}
 
 export function GivePrescriptionPage() {
   const { visitId } = useParams();
@@ -30,7 +115,7 @@ export function GivePrescriptionPage() {
   const [error, setError] = useState('');
   const [fields, setFields] = useState({});
   const [rows, setRows] = useState([]); // the doctor's medicines: { rx, medicine (stock match or null), qty, price }
-  const [extra, setExtra] = useState([]); // medicines added here: { medicine, qty }
+  const [extra, setExtra] = useState([]); // medicines added here: { medicine (from stock) or null, name, qty, price }
   const [charges, setCharges] = useState([]); // { priceItemId | name, group, unitPrice, qty, label }
   const [pick, setPick] = useState('');
   const [custom, setCustom] = useState({ name: '', amount: '' });
@@ -51,7 +136,7 @@ export function GivePrescriptionPage() {
       .catch((err) => setError(err.message));
   }, [visitId]);
 
-  const medicineTotal = money(rows.reduce((n, r) => n + money(r.price) * (Number(r.qty) || 0), 0) + extra.reduce((n, l) => n + l.medicine.mrp * l.qty, 0));
+  const medicineTotal = money(rows.reduce((n, r) => n + money(r.price) * (Number(r.qty) || 0), 0) + extra.reduce((n, l) => n + money(l.price) * (Number(l.qty) || 0), 0));
   const chargeTotal = money(charges.reduce((n, c) => n + c.unitPrice * c.qty, 0));
   const discountAmount = Math.min(money(discount.amount), medicineTotal + chargeTotal);
   const total = money(medicineTotal + chargeTotal - discountAmount);
@@ -82,10 +167,14 @@ export function GivePrescriptionPage() {
 
   const setRow = (i, patch) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const giving = rows.filter((r) => Number(r.qty) > 0);
-  const addExtra = (m) => {
-    if ([...rows, ...extra].some((l) => l.medicine?.id === m.id)) return;
-    setExtra((x) => [...x, { medicine: m, qty: 1 }]);
-  };
+  // the same stock medicine twice: its quantities add up on one row
+  const addExtra = (item) =>
+    setExtra((x) => {
+      const same = item.medicine && x.findIndex((l) => l.medicine?.id === item.medicine.id);
+      if (item.medicine && same >= 0) return x.map((l, j) => (j === same ? { ...l, qty: Math.min(l.qty + item.qty, item.medicine.available) } : l));
+      return [...x, item];
+    });
+  const setExtraRow = (i, patch) => setExtra((x) => x.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const addCharge = () => {
     const item = data.charges.find((c) => c.id === pick);
     if (!item) return;
@@ -99,21 +188,22 @@ export function GivePrescriptionPage() {
   };
 
   const submit = async () => {
-    const noPrice = giving.filter((r) => !r.medicine && r.price === '');
+    const noPrice = [...giving.filter((r) => !r.medicine && r.price === '').map((r) => r.rx.drug), ...extra.filter((l) => !l.medicine && l.price === '').map((l) => l.name)];
     if (noPrice.length) {
-      setError(`Enter the price of ${noPrice.map((r) => r.rx.drug).join(', ')} – or set its quantity to 0 if it is not given.`);
+      setError(`Enter the price of ${noPrice.join(', ')} – or set its quantity to 0 if it is not given.`);
       return;
     }
     setSaving(true);
     setError('');
     setFields({});
     // not on the stock list: on the bill as a medicine line with the price typed here (no stock change)
-    const writtenIn = giving
-      .filter((r) => !r.medicine)
-      .map((r) => ({ name: `${r.rx.drug}${r.rx.strength && !r.rx.drug.includes(r.rx.strength) ? ` ${r.rx.strength}` : ''}`, group: 'medicine', unitPrice: money(r.price), qty: Number(r.qty) }));
+    const writtenIn = [
+      ...giving.filter((r) => !r.medicine).map((r) => ({ name: `${r.rx.drug}${r.rx.strength && !r.rx.drug.includes(r.rx.strength) ? ` ${r.rx.strength}` : ''}`, group: 'medicine', unitPrice: money(r.price), qty: Number(r.qty) })),
+      ...extra.filter((l) => !l.medicine).map((l) => ({ name: l.name, group: 'medicine', unitPrice: money(l.price), qty: Number(l.qty) || 1 })),
+    ];
     try {
       const r = await dispensingApi.give(visitId, {
-        medicines: [...giving.filter((x) => x.medicine).map((x) => ({ medicineId: x.medicine.id, qty: Number(x.qty) })), ...extra.map((l) => ({ medicineId: l.medicine.id, qty: l.qty }))],
+        medicines: [...giving.filter((x) => x.medicine).map((x) => ({ medicineId: x.medicine.id, qty: Number(x.qty) })), ...extra.filter((l) => l.medicine).map((l) => ({ medicineId: l.medicine.id, qty: Number(l.qty) || 1 }))],
         charges: [...writtenIn, ...charges.map(({ priceItemId, name, group, unitPrice, qty }) => (priceItemId ? { priceItemId, qty } : { name, group, unitPrice, qty }))],
         discount: { amount: discountAmount, reason: discount.reason },
         payment: { mode: payment.mode, reference: payment.reference, amount: Math.min(received, total) },
@@ -158,23 +248,31 @@ export function GivePrescriptionPage() {
       </tr>
     );
   };
-  const extraRow = (l, i) => (
-    <tr key={l.medicine.id}>
-      <td>
-        <strong>{l.medicine.name} {l.medicine.strength}</strong>
-        <span className="block small muted">Added here</span>
-      </td>
-      <td className="num">{l.medicine.available}</td>
-      <td className="num">
-        <input className="qty" type="number" min="1" max={l.medicine.available} aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setExtra((x) => x.map((y, j) => (j === i ? { ...y, qty: Math.max(1, Math.min(Number(e.target.value) || 1, l.medicine.available)) } : y)))} />
-      </td>
-      <td className="num">{formatMoney(l.medicine.mrp)}</td>
-      <td className="num">{formatMoney(l.medicine.mrp * l.qty)}</td>
-      <td className="actions">
-        <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setExtra((x) => x.filter((_, j) => j !== i))}><Trash2 size={15} /></button>
-      </td>
-    </tr>
-  );
+  // A medicine added here: quantity (and the price when not from stock) can still be changed, or the row removed.
+  const extraRow = (l, i) => {
+    const max = l.medicine ? l.medicine.available : 10000;
+    return (
+      <tr key={`x${i}`}>
+        <td>
+          <strong>{l.name}</strong>
+          <span className="block small">{l.medicine ? <span className="give-stock">Added here · from stock</span> : <span className="muted">Added here · not from stock</span>}</span>
+        </td>
+        <td className="num">{l.medicine ? l.medicine.available : '—'}</td>
+        <td className="num">
+          <input className="qty" type="number" min="1" max={max} aria-label={`Quantity of ${l.name}`} value={l.qty} disabled={given} onChange={(e) => setExtraRow(i, { qty: e.target.value === '' ? '' : Math.max(1, Math.min(Number(e.target.value) || 1, max)) })} />
+        </td>
+        <td className="num">
+          {l.medicine ? formatMoney(l.medicine.mrp) : (
+            <input className="qty give-price" type="number" min="0" step="0.01" aria-label={`Price of ${l.name}`} value={l.price} disabled={given} onChange={(e) => setExtraRow(i, { price: e.target.value })} />
+          )}
+        </td>
+        <td className="num">{formatMoney(money(l.price) * (Number(l.qty) || 0))}</td>
+        <td className="actions">
+          <button type="button" className="icon-btn" aria-label={`Remove ${l.name}`} onClick={() => setExtra((x) => x.filter((_, j) => j !== i))}><Trash2 size={15} /></button>
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <>
@@ -215,13 +313,13 @@ export function GivePrescriptionPage() {
               {rows.map(rxRow)}
               {extra.map(extraRow)}
               {rows.length + extra.length === 0 && <tr><td colSpan={6} className="empty">No medicines to give.</td></tr>}
+              {!given && <AddMedicineRow onAdd={addExtra} />}
             </tbody>
             <tfoot>
               <tr className="total-row"><td colSpan={4}><strong>Medicine total</strong></td><td className="num"><strong>{formatMoney(medicineTotal)}</strong></td><td /></tr>
             </tfoot>
           </table>
         </div>
-        {!given && <MedicineSearch onPick={addExtra} search={searchMedicines} label="+ Add a medicine" />}
         {prescription.notes && <p className="small muted">Doctor's advice: {prescription.notes}</p>}
       </section>
 
