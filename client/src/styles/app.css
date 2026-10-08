@@ -1093,6 +1093,9 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .give-stock { color: var(--color-success); }
 .give-nostock { color: var(--color-warning); font-weight: 600; }
 .give-price { width: 90px; }
+/* a bill shown in a pop-up: the printed bill on screen */
+.bill-popup { max-width: none; box-shadow: none; border: 1px solid var(--color-border); max-height: 65vh; overflow-y: auto; }
+
 /* the row to add a medicine: name (with stock suggestions), quantity, price, Add */
 .give-add-row td { background: var(--color-primary-soft); vertical-align: top; }
 .give-add-row .picker input { width: 100%; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; }

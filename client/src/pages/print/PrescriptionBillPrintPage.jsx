@@ -1,6 +1,7 @@
 // The bill of a given prescription (owner, 8 Oct 2026), for printing or saving as PDF: the letterhead; bill number and
 // date; the patient, the doctor and the prescription's date; each medicine (batch and expiry, quantity, rate, amount);
 // the other charges; the discount and the grand total (in words too); the payments; space to sign and stamp.
+// PrescriptionBill is the bill itself – also shown in a pop-up ("View bill" on the pharmacy's Prescriptions tab).
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { dispensingApi } from '../../api/index.js';
@@ -12,23 +13,16 @@ import { ageText, formatDate, formatDateTime, formatMoney, labelOf } from '../..
 import { Signatures } from './billPrintParts.jsx';
 import { Letterhead, PrintFrame } from './PrintFrame.jsx';
 
-export function PrescriptionBillPrintPage() {
-  const { billId } = useParams();
+export function PrescriptionBill({ data, signatures = true }) {
   const { patients: settings } = useAppConfig();
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    dispensingApi.bill(billId).then(setData).catch((err) => setError(err.message));
-  }, [billId]);
-
-  if (error) return <Alert type="error">{error}</Alert>;
-  if (!data) return <Loader />;
   const { bill, patient, prescription, medicines, payments } = data;
-  let n = 0;
-
+  const rows = [
+    ...medicines.map((m) => ({ name: m.name, detail: m.batch ? `${m.batch}${m.expiry ? ` · ${formatDate(m.expiry)}` : ''}` : '—', qty: m.qty, rate: m.mrp, amount: m.amount })),
+    ...bill.charges.map((c) => ({ name: c.name, detail: '—', qty: c.qty, rate: c.unitPrice, amount: c.amount })),
+  ];
+  const discount = data.medicineDiscount + bill.discount;
   return (
-    <PrintFrame ready title={`Bill_${bill.billNumber}`} footer={data.hospital.letterhead?.footer}>
+    <>
       <Letterhead letterhead={data.hospital.letterhead} hospitalName={data.hospital.name} extra={<div className="print-doc">{bill.status === 'cancelled' ? 'CANCELLED BILL' : 'BILL / INVOICE'}</div>} />
       <table className="print-info">
         <tbody>
@@ -46,24 +40,14 @@ export function PrescriptionBillPrintPage() {
           <tr><th className="num">No.</th><th>Particulars</th><th>Batch · expiry</th><th className="num">Qty</th><th className="num">Rate</th><th className="num">Amount</th></tr>
         </thead>
         <tbody>
-          {medicines.map((m) => (
-            <tr key={`m${(n += 1)}`}>
-              <td className="num">{n}</td>
-              <td>{m.name}</td>
-              <td>{m.batch ? `${m.batch}${m.expiry ? ` · ${formatDate(m.expiry)}` : ''}` : '—'}</td>
-              <td className="num">{m.qty}</td>
-              <td className="num">{formatMoney(m.mrp)}</td>
-              <td className="num">{formatMoney(m.amount)}</td>
-            </tr>
-          ))}
-          {bill.charges.map((c) => (
-            <tr key={`c${(n += 1)}`}>
-              <td className="num">{n}</td>
-              <td>{c.name}</td>
-              <td>—</td>
-              <td className="num">{c.qty}</td>
-              <td className="num">{formatMoney(c.unitPrice)}</td>
-              <td className="num">{formatMoney(c.amount)}</td>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td className="num">{i + 1}</td>
+              <td>{r.name}</td>
+              <td>{r.detail}</td>
+              <td className="num">{r.qty}</td>
+              <td className="num">{formatMoney(r.rate)}</td>
+              <td className="num">{formatMoney(r.amount)}</td>
             </tr>
           ))}
         </tbody>
@@ -72,7 +56,7 @@ export function PrescriptionBillPrintPage() {
       <dl className="totals">
         {medicines.length > 0 && <><dt>Medicines</dt><dd>{formatMoney(medicines.reduce((s, m) => s + m.amount, 0))}</dd></>}
         {bill.charges.length > 0 && <><dt>Other charges</dt><dd>{formatMoney(bill.charges.reduce((s, c) => s + c.amount, 0))}</dd></>}
-        {data.medicineDiscount + bill.discount > 0 && <><dt>Discount</dt><dd>−{formatMoney(data.medicineDiscount + bill.discount)}</dd></>}
+        {discount > 0 && <><dt>Discount</dt><dd>−{formatMoney(discount)}</dd></>}
         <dt><strong>Grand total</strong></dt><dd><strong>{formatMoney(bill.total)}</strong></dd>
         <dt>Paid</dt><dd>{formatMoney(bill.paid)}</dd>
         <dt><strong>Balance due</strong></dt><dd><strong>{formatMoney(Math.max(0, bill.balance))}</strong></dd>
@@ -84,7 +68,25 @@ export function PrescriptionBillPrintPage() {
           <strong>{bill.balance <= 0 ? 'PAID' : 'PART PAID'}</strong>
         </p>
       )}
-      <Signatures />
+      {signatures && <Signatures />}
+    </>
+  );
+}
+
+export function PrescriptionBillPrintPage() {
+  const { billId } = useParams();
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    dispensingApi.bill(billId).then(setData).catch((err) => setError(err.message));
+  }, [billId]);
+
+  if (error) return <Alert type="error">{error}</Alert>;
+  if (!data) return <Loader />;
+  return (
+    <PrintFrame ready title={`Bill_${data.bill.billNumber}`} footer={data.hospital.letterhead?.footer}>
+      <PrescriptionBill data={data} />
     </PrintFrame>
   );
 }

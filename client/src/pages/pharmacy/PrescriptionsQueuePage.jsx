@@ -1,7 +1,8 @@
 // The pharmacy's Prescriptions tab (owner, 8 Oct 2026): what doctors sent with "Send to pharmacy", oldest first, and
 // what was given today. "Sell at the counter" opens the counter with her and these medicines filled in; the sale then
 // takes the prescription off the list. "Mark as given" is for one given another way (for example on the ward).
-import { CircleCheck, Clock, ShoppingCart } from 'lucide-react';
+import { CircleCheck, Clock, Eye, ShoppingCart } from 'lucide-react';
+import { BillPopup } from '../dispensing/BillPopup.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { pharmacyPrescriptionsApi } from '../../api/index.js';
@@ -32,6 +33,7 @@ export function PrescriptionsQueuePage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(null);
+  const [billOf, setBillOf] = useState(null); // the bill shown in the pop-up
 
   const load = useCallback(() => {
     pharmacyPrescriptionsApi.queue().then(setData).catch((err) => setError(err.message));
@@ -107,6 +109,9 @@ export function PrescriptionsQueuePage() {
                       <StateBadge look={GIVEN} small />
                       <span className="muted small">{rx.givenByName}, {formatDateTime(rx.givenAt)}{rx.invoiceNumber ? ` · ${rx.invoiceNumber}` : ''}</span>
                     </span>
+                    {rx.billId && (
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBillOf(rx.billId)}><Eye size={14} aria-hidden /> View bill</button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -114,6 +119,7 @@ export function PrescriptionsQueuePage() {
           </div>
         </>
       )}
+      {billOf && <BillPopup billId={billOf} onClose={() => setBillOf(null)} />}
     </PharmacyFrame>
   );
 }
