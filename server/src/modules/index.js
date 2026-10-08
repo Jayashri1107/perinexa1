@@ -19,7 +19,7 @@ import hospitalOverviewRoutes from './hospitalOverview/hospitalOverview.routes.j
 import hospitalRoutes from './hospitals/hospital.routes.js';
 import hospitalSettingsRoutes from './hospitalSettings/hospitalSettings.routes.js';
 import hospitalStaffRoutes from './hospitalStaff/hospitalStaff.routes.js';
-import labRoutes from './lab/lab.routes.js';
+import labRoutes, { labBookingRouter } from './lab/lab.routes.js';
 import libraryRoutes from './library/library.routes.js';
 import masterDataRoutes from './masterData/masterData.routes.js';
 import medicineRoutes from './medicines/medicine.routes.js';
@@ -103,6 +103,8 @@ export const modules = [
   { path: '/hospital/appointments', access: 'hospital', roles: access.appointments, router: appointmentRoutes },
   { path: '/hospital/calendar', access: 'hospital', roles: access.calendar, router: calendarRoutes },
   { path: '/hospital/lab', access: 'hospital', roles: access.lab, router: labRoutes },
+  // Reception books lab tests from Today (owner, 8 Oct 2026)
+  { path: '/hospital/lab-bookings', access: 'hospital', roles: access.registrationMenu, router: labBookingRouter },
   { path: '/hospital/library', access: 'hospital', roles: access.library, router: libraryRoutes },
 
   // Module 8 – visits and prescriptions

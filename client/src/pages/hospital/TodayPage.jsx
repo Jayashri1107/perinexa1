@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { hospitalOverviewApi, todayApi } from '../../api/index.js';
+import { hospitalOverviewApi, todayApi, wardsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { StatCard } from '../../components/StatCard.jsx';
@@ -46,7 +46,9 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { formatDate, formatMoney } from '../../utils/format.js';
 import { appointmentLook, whenText, whoText } from '../appointments/appointmentFormat.js';
 import { BillingDesk } from '../billing/BillingDesk.jsx';
+import { BookedBedsCard, bedCounts } from '../inpatient/BookedBeds.jsx';
 import { InHospitalCard } from '../inpatient/InHospitalCard.jsx';
+import { TodayBooking } from './TodayBooking.jsx';
 
 function greeting() {
   const h = new Date().getHours();
@@ -121,10 +123,15 @@ export function TodayPage() {
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState('');
 
+  // the front desk: the beds, each booked one with the patient in it
+  const frontDesk = canAccess('registrationMenu');
+  const [beds, setBeds] = useState(null);
   useEffect(() => {
     todayApi.get().then(setToday).catch((err) => setError(err.message));
     if (isHospitalAdmin) hospitalOverviewApi.get().then(setOverview).catch(() => setOverview(null));
-  }, [isHospitalAdmin]);
+    if (frontDesk) wardsApi.availability().then(setBeds).catch(() => setBeds(null));
+  }, [isHospitalAdmin, frontDesk]);
+  const bedTotals = bedCounts(beds);
 
   const firstName = user.name.split(' ')[0];
   const dateText = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
@@ -144,6 +151,8 @@ export function TodayPage() {
         </div>
       </header>
 
+      {frontDesk && <TodayBooking />}
+
       <Alert type="error">{error}</Alert>
       {!today && !error && <Loader />}
 
@@ -158,6 +167,9 @@ export function TodayPage() {
             {today.frontDesk && <StatCard icon={Footprints} to="/hospital/appointments" label="Walk-ins today" value={today.frontDesk.walkIns} hint="Came without an appointment" />}
             {today.frontDesk && (
               <StatCard icon={BedDouble} to="/hospital/admissions" label="In hospital now" value={today.frontDesk.inHospital} hint={`${today.frontDesk.admittedToday} admitted · ${today.frontDesk.dischargedToday} discharged today`} tone="neutral" />
+            )}
+            {beds && bedTotals.total > 0 && (
+              <StatCard icon={BedDouble} to="/hospital/admissions" label="Beds booked" value={`${bedTotals.booked} of ${bedTotals.total}`} hint={`${bedTotals.free} free`} tone={bedTotals.free === 0 ? 'danger' : 'primary'} />
             )}
             {today.patients && <StatCard icon={UserPlus} to={canAccess('patients') ? '/hospital/patients' : undefined} label="Registered today" value={today.patients.registeredToday} hint={`${plural(today.patients.active, 'patient')} under care`} />}
             {today.billing && <StatCard icon={Receipt} to="/hospital/billing" label="Bills today" value={today.billing.billsToday} hint={`${formatMoney(today.billing.billedToday)} billed`} tone="info" />}
@@ -240,6 +252,8 @@ export function TodayPage() {
             )}
 
             {canAccess('patientsClinical') && <InHospitalCard />}
+
+            {beds && bedTotals.total > 0 && <BookedBedsCard beds={beds} />}
 
             {/* the billing desk: for the billing department and the hospital admin (reception keeps the cards above) */}
             {today.billing && (roles.includes('billing') || isHospitalAdmin) && <BillingDesk billing={today.billing} />}

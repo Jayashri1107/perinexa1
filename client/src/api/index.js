@@ -213,6 +213,11 @@ export const labApi = {
   review: (id) => http.post(`${LAB}/orders/${id}/review`),
   cancel: (id, reason) => http.post(`${LAB}/orders/${id}/cancel`, { reason }),
 };
+// Reception books lab tests from Today
+export const labBookingsApi = {
+  tests: () => http.get('/hospital/lab-bookings/tests'),
+  book: (data) => http.post('/hospital/lab-bookings', data),
+};
 
 const LIBRARY = '/hospital/library';
 export const libraryApi = {

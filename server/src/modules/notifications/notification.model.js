@@ -6,7 +6,7 @@ import { hospitalScoped } from '../../db/hospitalScoped.js';
 import { config } from '../../config/index.js';
 
 const { ObjectId } = mongoose.Schema.Types;
-export const NOTIFICATION_TYPES = ['NEW_APPOINTMENT', 'PATIENT_ARRIVED', 'NEW_ADMISSION', 'DISCHARGE_READY', 'FINAL_BILL', 'TODAY_SUMMARY', 'DISCHARGE_SOON', 'PRESCRIPTION_SENT'];
+export const NOTIFICATION_TYPES = ['NEW_APPOINTMENT', 'PATIENT_ARRIVED', 'NEW_ADMISSION', 'DISCHARGE_READY', 'FINAL_BILL', 'TODAY_SUMMARY', 'DISCHARGE_SOON', 'PRESCRIPTION_SENT', 'LAB_BOOKED'];
 
 const notificationSchema = new mongoose.Schema(
   {

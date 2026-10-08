@@ -125,6 +125,8 @@
       { "key": "new", "label": "New patient", "defaultMinutes": 20 },
       { "key": "follow_up", "label": "Follow-up", "defaultMinutes": 10 },
       { "key": "scan", "label": "Scan", "defaultMinutes": 20 },
+      { "key": "usg_obstetric", "label": "Ultrasound – obstetric", "defaultMinutes": 20 },
+      { "key": "usg_gynaecology", "label": "Ultrasound – gynaecology", "defaultMinutes": 20 },
       { "key": "other", "label": "Other", "defaultMinutes": 10 }
     ]
   },

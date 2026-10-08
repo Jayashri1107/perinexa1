@@ -1,14 +1,16 @@
 // Ordering lab tests for a patient (from her record): tests grouped as in the lab's list – adult tests, or baby tests
 // for a newborn – the hospital's test packages (a package only ticks its tests; a DRAFT package says so), tests not
 // in the list, urgent, and a note to the lab.
+// reception: the same form for reception's "Book lab" on Today (owner, 8 Oct 2026) – the tests come from the booking
+// list, the order goes straight to the lab's worklist and onBooked gets the answer (reception does not open the order).
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { labApi } from '../../api/index.js';
+import { labApi, labBookingsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { Modal } from '../../components/Modal.jsx';
 
-export function LabOrderDialog({ patient, who, onClose }) {
+export function LabOrderDialog({ patient, who, onClose, reception = false, onBooked }) {
   const navigate = useNavigate();
   const [catalogue, setCatalogue] = useState(null);
   const [tests, setTests] = useState([]);
@@ -20,8 +22,8 @@ export function LabOrderDialog({ patient, who, onClose }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    labApi.catalogue().then(setCatalogue).catch((err) => setError(err.message));
-  }, []);
+    (reception ? labBookingsApi.tests() : labApi.catalogue()).then(setCatalogue).catch((err) => setError(err.message));
+  }, [reception]);
 
   const groups = useMemo(() => {
     if (!catalogue) return [];
@@ -49,7 +51,12 @@ export function LabOrderDialog({ patient, who, onClose }) {
     try {
       const otherTests = other.split('\n').map((s) => s.trim()).filter(Boolean);
       // The tests ticked hold every test of the chosen packages, so the packages are sent for the record only.
-      const { order } = await labApi.order({ patientId: patient.id, tests, otherTests, packages, urgent, noteToLab });
+      const body = { patientId: patient.id, tests, otherTests, packages, urgent, noteToLab };
+      if (reception) {
+        onBooked(await labBookingsApi.book(body));
+        return;
+      }
+      const { order } = await labApi.order(body);
       navigate(`/hospital/lab/orders/${order.id}`);
     } catch (err) {
       setError(err.message);
@@ -59,7 +66,7 @@ export function LabOrderDialog({ patient, who, onClose }) {
 
   const count = tests.length + other.split('\n').filter((s) => s.trim()).length;
   return (
-    <Modal title={`Order lab tests – ${patient.name}`} onClose={onClose} size="lg">
+    <Modal title={`${reception ? 'Book lab tests' : 'Order lab tests'} – ${patient.name}`} onClose={onClose} size="lg">
       {!catalogue && !error && <Loader />}
       {catalogue && (
         <form onSubmit={submit} noValidate>
@@ -107,7 +114,7 @@ export function LabOrderDialog({ patient, who, onClose }) {
           <div className="modal-foot inline">
             <span className="muted small grow">{count} test{count === 1 ? '' : 's'} chosen</span>
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving || count === 0}>{saving ? 'Ordering…' : 'Order tests'}</button>
+            <button type="submit" className="btn btn-primary" disabled={saving || count === 0}>{saving ? (reception ? 'Booking…' : 'Ordering…') : reception ? 'Book tests' : 'Order tests'}</button>
           </div>
         </form>
       )}

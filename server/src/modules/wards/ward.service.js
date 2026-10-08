@@ -48,7 +48,7 @@ export async function availability(req, { exceptStayId = null } = {}) {
         .filter((b) => b.isActive)
         .map((b) => {
           const p = booked.get(`${w._id}|${b.label}`);
-          return { label: b.label, booked: booked.has(`${w._id}|${b.label}`), patient: p ? { name: p.name, patientNumber: p.patientNumber } : null };
+          return { label: b.label, booked: booked.has(`${w._id}|${b.label}`), patient: p ? { id: String(p._id), name: p.name, patientNumber: p.patientNumber } : null };
         });
       return { id: String(w._id), name: w.name, kind: w.kind, beds, total: beds.length, free: beds.filter((b) => !b.booked).length };
     }),

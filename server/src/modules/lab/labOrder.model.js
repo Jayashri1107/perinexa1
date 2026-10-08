@@ -37,6 +37,8 @@ const labOrderSchema = new mongoose.Schema(
     tests: { type: [testSchema], default: [] },
     packages: { type: [new mongoose.Schema({ key: String, name: String, approved: Boolean }, { _id: false })], default: [] },
     noteToLab: { type: String, trim: true, maxlength: 500, default: '' },
+    bookedByReception: { type: Boolean, default: false }, // booked at the front desk, not ordered by a doctor
+
     labNote: { type: String, trim: true, maxlength: 1000, default: '' },
     ordered: { type: new mongoose.Schema({ by: { type: ObjectId, ref: 'User' }, at: Date }, { _id: false }), required: true },
     collected: stamp(),

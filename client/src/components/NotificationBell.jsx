@@ -1,6 +1,6 @@
 // The bell in the top bar (in a hospital): how many notifications are unread, and the latest ones. It checks every
 // minute. Clicking one marks it read and opens its page.
-import { BedDouble, Bell, CalendarCheck, CalendarPlus, DoorOpen, Pill, Receipt, UserCheck } from 'lucide-react';
+import { BedDouble, Bell, CalendarCheck, CalendarPlus, DoorOpen, FlaskConical, Pill, Receipt, UserCheck } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationsApi } from '../api/index.js';
@@ -18,6 +18,7 @@ const KINDS = {
   DISCHARGE_READY: { icon: DoorOpen, tone: 'tone-green' },
   FINAL_BILL: { icon: Receipt, tone: 'tone-amber' },
   PRESCRIPTION_SENT: { icon: Pill, tone: 'tone-teal' },
+  LAB_BOOKED: { icon: FlaskConical, tone: 'tone-amber' },
 };
 
 export function NotificationBell() {

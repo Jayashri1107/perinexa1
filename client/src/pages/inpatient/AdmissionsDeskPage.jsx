@@ -11,6 +11,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { PatientPicker } from '../../components/PatientPicker.jsx';
 import { formatDateTime } from '../../utils/format.js';
 import { AdmitDialog } from './AdmitDialog.jsx';
+import { BookedBedsList, bedCounts } from './BookedBeds.jsx';
 
 const searchPatients = (text) => patientsApi.list({ search: text, limit: 10, status: 'active' }).then((r) => ({ items: r.items }));
 
@@ -62,7 +63,7 @@ export function AdmissionsDeskPage() {
         <section className="card">
           <div className="card-head">
             <h2>Beds</h2>
-            <span className="muted small">{beds.items.reduce((n, w) => n + w.free, 0)} of {beds.items.reduce((n, w) => n + w.total, 0)} free</span>
+            <span className="muted small">{bedCounts(beds).booked} booked · {bedCounts(beds).free} of {bedCounts(beds).total} free</span>
           </div>
           <div className="occupancy">
             {beds.items.map((w) => (
@@ -73,6 +74,8 @@ export function AdmissionsDeskPage() {
               </div>
             ))}
           </div>
+          <h3 className="top-gap">Booked beds</h3>
+          <BookedBedsList beds={beds} />
         </section>
       )}
       {data && (

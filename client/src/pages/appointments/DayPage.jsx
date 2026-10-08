@@ -54,6 +54,21 @@ export function DayPage() {
   const date = params.get('date') || info?.today || '';
   const choose = (next) => setParams({ doctor: next.doctor ?? doctorId, date: next.date ?? date }, { replace: true });
 
+  // Opened from Today's "+ Book appointment" or "Book ultrasound" (…?book=1&type=usg_obstetric): the booking form
+  // opens at once, with that visit type chosen.
+  const openBook = params.get('book') === '1';
+  const bookType = params.get('type');
+  useEffect(() => {
+    if (!openBook || !info?.canBook) return;
+    setDialog({ kind: 'book', visitType: bookType || undefined });
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      next.delete('book');
+      next.delete('type');
+      return next;
+    }, { replace: true });
+  }, [openBook, bookType, info?.canBook, setParams]);
+
   const load = useCallback(() => {
     if (!doctorId || !date) return;
     setError('');
@@ -202,7 +217,7 @@ export function DayPage() {
       {dialog?.kind === 'book' && (
         <BookDialog
           doctors={info.doctors}
-          initial={{ doctorId, date, start: dialog.start }}
+          initial={{ doctorId, date, start: dialog.start, visitType: dialog.visitType }}
           onClose={() => setDialog(null)}
           onDone={(a) => {
             setDialog(null);

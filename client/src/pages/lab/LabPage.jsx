@@ -28,7 +28,7 @@ export function LabPage() {
   );
 
   const columns = [
-    { key: 'orderNumber', label: 'Order', className: 'nowrap', render: (o) => (<><strong>{o.orderNumber}</strong>{o.urgent && <span className="badge badge-danger small"><Zap size={12} aria-hidden /> Urgent</span>}</>) },
+    { key: 'orderNumber', label: 'Order', className: 'nowrap', render: (o) => (<><strong>{o.orderNumber}</strong>{o.urgent && <span className="badge badge-danger small"><Zap size={12} aria-hidden /> Urgent</span>}{o.bookedByReception && <span className="badge badge-info small">Booked by reception</span>}</>) },
     { key: 'patient', label: 'Patient', render: (o) => (<>{o.patient?.name}<span className="muted block small">{o.patient?.patientNumber}</span></>) },
     { key: 'tests', label: 'Tests', render: (o) => <span className="small">{o.tests.join(', ')}</span> },
     { key: 'status', label: 'Status', render: (o) => (<><StateBadge look={orderLook(o.status)} small />{o.abnormal > 0 && <span className="badge badge-danger small"><TriangleAlert size={12} aria-hidden /> {o.abnormal} outside range</span>}</>) },

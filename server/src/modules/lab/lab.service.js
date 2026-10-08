@@ -9,6 +9,7 @@ import { containsText, escapeRegex, toObjectId } from '../../core/validate.js';
 import { nextNumber } from '../../db/counter.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { testPackageOptions } from '../library/library.service.js';
+import { notify } from '../notifications/notification.service.js';
 import { EmergencyAccess, Patient } from '../patients/patient.model.js';
 import { atLeast, listVisibility, recordLevel } from '../patients/patientAccess.js';
 import { User } from '../users/user.model.js';
@@ -101,6 +102,7 @@ export async function listOrders(req, q) {
     orderNumber: o.orderNumber,
     status: o.status,
     urgent: o.urgent,
+    bookedByReception: Boolean(o.bookedByReception),
     patient: o.patient ? { id: String(o.patient._id), name: o.patient.name, patientNumber: o.patient.patientNumber } : null,
     tests: o.tests.map((t) => t.name),
     abnormal: o.tests.flatMap((t) => t.values).filter((v) => isAbnormal(v.flag)).length,
@@ -135,6 +137,7 @@ async function orderView(req, order, { patient, level }) {
       orderNumber: order.orderNumber,
       status: order.status,
       urgent: order.urgent,
+      bookedByReception: Boolean(order.bookedByReception),
       noteToLab: order.noteToLab,
       labNote: order.labNote,
       packages: order.packages,
@@ -173,12 +176,9 @@ export async function getOrder(req, id) {
 
 // ---------- Ordering ----------
 
-export async function createOrder(req, body) {
-  if (!canOrder(req)) throw new HttpError(403, 'Doctors and RMOs order lab tests.', 'FORBIDDEN');
-  const { patient, level } = await patientAccess(req, body.patientId);
-  if (level !== 'full') throw new HttpError(403, 'Only her doctor or an RMO can order tests for her.', 'READ_ONLY');
-  if (patient.status !== 'active') throw fieldError('patientId', 'Her record is closed. Reopen it first.');
-
+// The tests and packages of a new order, checked: catalogue tests for her (adult or baby), named other tests, at most
+// config.lab.maxTestsPerOrder.
+async function testsOfOrder(req, patient, body) {
   const who = testsFor(patient.careType);
   const packages = (await testPackageOptions(req.hospitalId)).filter((p) => body.packages.includes(p.key));
   const keys = [...new Set([...packages.flatMap((p) => p.tests), ...body.tests])].filter((k) => testByKey.has(k));
@@ -190,6 +190,16 @@ export async function createOrder(req, body) {
     ...[...new Set(body.otherTests)].map((name) => ({ key: OTHER_TEST, name, values: [], text: '' })),
   ];
   if (tests.length > config.lab.maxTestsPerOrder) throw fieldError('tests', `At most ${config.lab.maxTestsPerOrder} tests in one order.`);
+  if (!tests.length) throw fieldError('tests', 'Choose at least one test.');
+  return { tests, packages };
+}
+
+export async function createOrder(req, body) {
+  if (!canOrder(req)) throw new HttpError(403, 'Doctors and RMOs order lab tests.', 'FORBIDDEN');
+  const { patient, level } = await patientAccess(req, body.patientId);
+  if (level !== 'full') throw new HttpError(403, 'Only her doctor or an RMO can order tests for her.', 'READ_ONLY');
+  if (patient.status !== 'active') throw fieldError('patientId', 'Her record is closed. Reopen it first.');
+  const { tests, packages } = await testsOfOrder(req, patient, body);
 
   const order = await LabOrder.create({
     hospitalId: req.hospitalId,
@@ -206,6 +216,48 @@ export async function createOrder(req, body) {
     details: { patientId: String(patient._id), orderNumber: order.orderNumber, tests: tests.map((t) => t.key) },
   });
   return orderView(req, order, { patient, level });
+}
+
+// ---------- Booked by reception (owner, 8 Oct 2026) ----------
+
+// The tests reception may book (the catalogue and the packages – no results, no patient records).
+export async function bookingCatalogue(req) {
+  return { ...catalogueView(), packages: await testPackageOptions(req.hospitalId) };
+}
+
+// Reception books tests for a registered patient: the order goes straight to the lab's worklist, marked "booked by
+// reception", and her doctor is told (her name and number and the tests – never results). The answer holds only what
+// reception may see: the order number, her name and number, and the test names.
+export async function bookByReception(req, body) {
+  const patient = await Patient.findOne({ hospitalId: req.hospitalId, _id: body.patientId }).lean();
+  if (!patient) throw fieldError('patientId', 'Choose a patient of this hospital.');
+  if (patient.status !== 'active') throw fieldError('patientId', 'Her record is closed. Reopen it first.');
+  const { tests, packages } = await testsOfOrder(req, patient, body);
+
+  const order = await LabOrder.create({
+    hospitalId: req.hospitalId,
+    orderNumber: await nextNumber(req.hospitalId, 'labOrder', config.lab.orderPrefix, config.lab.numberDigits),
+    patientId: patient._id,
+    urgent: body.urgent,
+    tests,
+    packages: packages.map((p) => ({ key: p.key, name: p.name, approved: p.status === 'approved' })),
+    noteToLab: body.noteToLab,
+    bookedByReception: true,
+    ordered: { by: req.user._id, at: new Date() },
+  });
+  await recordAudit(req, 'LAB_ORDERED', {
+    hospitalId: req.hospitalId,
+    details: { patientId: String(patient._id), orderNumber: order.orderNumber, tests: tests.map((t) => t.key), byReception: true },
+  });
+  if (patient.assignedDoctorId) {
+    await notify(req, [patient.assignedDoctorId], {
+      type: 'LAB_BOOKED',
+      title: 'Lab tests booked by reception',
+      message: `${patient.name} (${patient.patientNumber}) · ${tests.map((t) => t.name).join(', ')}`.slice(0, 300),
+      link: `/hospital/lab/orders/${order._id}`,
+    });
+  }
+  return { order: { id: String(order._id), orderNumber: order.orderNumber, urgent: order.urgent, tests: tests.map((t) => t.name) }, patient: { name: patient.name, patientNumber: patient.patientNumber } };
 }
 
 // ---------- The lab ----------

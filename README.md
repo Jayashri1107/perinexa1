@@ -33,6 +33,14 @@ Fake sample data only.
   payments (oldest first, overdue in red), today's collection by payment mode, today's activity and the last 7 days.
   "Collect" opens the bill with the payment form. The bill list filters Unpaid, Part paid, Overdue and Refund due.
 
+- Today for reception: **Book appointment** (the booking form opens at once), **Book lab** (choose the patient and the
+  tests – straight to the lab's worklist, marked "Booked by reception", her doctor notified; `/api/hospital/lab-bookings`)
+  and **Book ultrasound** (Obstetric or Gynaecology – the booking form with visit type "Ultrasound – obstetric /
+  gynaecology"). A "Beds booked" card and the booked beds with the patient in each, on Today and on Admissions.
+- New patient: one microphone beside the "fake data only" notice asks the questions one at a time and fills the form
+  (the two voice cards are gone).
+- Sign-in page: calm and minimal – a small stethoscope symbol, one headline, one changing line, three chips.
+
 ### Who sees what (config.access)
 
 | Role | Menu |

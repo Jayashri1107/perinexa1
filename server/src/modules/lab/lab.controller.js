@@ -24,6 +24,14 @@ export async function create(req, res) {
   res.status(201).json(await service.createOrder(req, parse(orderBody, req.body)));
 }
 
+export async function bookingCatalogue(req, res) {
+  res.json(await service.bookingCatalogue(req));
+}
+
+export async function book(req, res) {
+  res.status(201).json(await service.bookByReception(req, parse(orderBody, req.body)));
+}
+
 export async function collect(req, res) {
   res.json(await service.collect(req, idOf(req)));
 }

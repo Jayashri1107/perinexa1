@@ -16,3 +16,10 @@ router.post('/orders/:id/review', controller.review);
 router.post('/orders/:id/cancel', controller.cancel);
 
 export default router;
+
+// Reception books lab tests (config.access.registrationMenu; owner, 8 Oct 2026):
+//  GET  /tests   the tests and packages to choose from
+//  POST /        book tests for a registered patient – straight to the lab's worklist
+export const labBookingRouter = Router();
+labBookingRouter.get('/tests', controller.bookingCatalogue);
+labBookingRouter.post('/', controller.book);

@@ -194,6 +194,7 @@ export function LabOrderPage() {
           <>
             <StateBadge look={orderLook(order.status)} />
             {order.urgent && <span className="badge badge-danger"><Zap size={14} aria-hidden /> Urgent</span>}
+            {order.bookedByReception && <span className="badge badge-info">Booked by reception</span>}
             {can.collect && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => act(() => labApi.collect(order.id))}><TestTube size={16} aria-hidden /> Sample taken</button>}
             {can.report && !editing && (
               <button type="button" className={amending ? 'btn btn-ghost' : 'btn btn-primary'} onClick={() => setEditing(true)}>
