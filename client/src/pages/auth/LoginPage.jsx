@@ -47,10 +47,10 @@ export function LoginPage() {
   return (
     <AuthLayout
       title={remembered ? 'Welcome back' : 'Sign in'}
-      subtitle="Use the email and password your administrator gave you."
+      subtitle="Use your hospital account."
       footer={
         <>
-          <Lock size={14} aria-hidden /> Forgot your password? Ask your hospital administrator to reset it.
+          <Lock size={14} aria-hidden /> Forgot your password? Ask your administrator.
         </>
       }
     >
