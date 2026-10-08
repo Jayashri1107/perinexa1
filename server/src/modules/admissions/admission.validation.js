@@ -31,6 +31,17 @@ const baby = z
   })
   .transform((b) => (b.outcome === 'stillbirth' ? { ...b, breastfedWithinHour: '', nicu: '' } : { ...b, stillbirthType: '' }));
 
+const required = (what, max) => z.string({ error: `Write ${what}` }).trim().min(2, `Write ${what}`).max(max, 'This is too long');
+export const ADMISSION_TYPES = ['emergency', 'planned', 'referral', 'labour', 'transfer'];
+// A medicine on the discharge summary: every column filled in (name, strength or dose, how often, route, how long).
+export const dischargeMedicine = rxItem
+  .extend({
+    dose: z.string({ error: 'Give the dose' }).trim().min(1, 'Give the dose, e.g. 500 mg or 1 tab').max(40),
+    route: z.enum(['oral', 'vaginal', 'rectal', 'im', 'iv', 'sc', 'sublingual', 'local'], { error: 'Choose the route' }),
+    durationValue: z.preprocess((v) => (v === '' || v === undefined ? null : v), z.coerce.number({ error: 'Give how long' }).int().min(1, 'Give how long').max(365)),
+    durationUnit: z.enum(['days', 'weeks', 'months', 'till_delivery', 'continue'], { error: 'Choose days, weeks or months' }),
+  });
+
 export const DOC_CONTENT = {
   admission: z.object({ reason: z.string().trim().min(2, 'Give the reason for admission').max(500), history: text(), vitals, examination: text(), provisionalDiagnosis: text(500), plan: text() }),
   round: z.object({ at: when, complaints: text(), vitals, examination: text(), assessment: text(1000), plan: text() }),
@@ -64,16 +75,31 @@ export const DOC_CONTENT = {
     specimens: text(500),
     postOpOrders: text(),
   }),
+  // The discharge summary (owner, 8 Oct 2026): every field is required when it is marked ready for review or
+  // finalized; a draft may be incomplete. Write "None" or "Not applicable" where nothing applies.
   discharge: z.object({
     dischargedAt: when,
-    finalDiagnosis: z.string().trim().min(2, 'Give the final diagnosis').max(1000),
-    procedures: text(1000),
-    course: text(4000),
-    conditionAtDischarge: text(1000),
-    medicines: z.array(rxItem).max(40).default([]),
-    advice: text(),
-    followUpOn: z.union([isoDate('Follow-up'), z.literal(''), z.null()]).default(''),
-    followUpNote: text(200),
+    admissionType: z.enum(ADMISSION_TYPES, { error: 'Choose the type of admission' }),
+    department: required('the department', 100),
+    chiefComplaint: required('the chief complaint', 1000),
+    admissionDiagnosis: required('the diagnosis at admission', 1000),
+    finalDiagnosis: required('the final diagnosis', 1000),
+    procedures: required('the procedures or surgery (or None)', 1000),
+    course: required('the course in hospital', 4000),
+    investigations: required('the investigation summary', 4000),
+    importantFindings: required('the important findings (or None)', 2000),
+    conditionAtDischarge: required('the condition at discharge', 1000),
+    medicines: z.array(dischargeMedicine).min(1, 'Add at least one medicine (or the medicine “None”)').max(40),
+    diet: required('the diet advice', 1000),
+    activity: required('the activity restrictions (or None)', 1000),
+    woundCare: required('the wound care (or Not applicable)', 1000),
+    warningSigns: required('the warning signs – when to come back', 1000),
+    otherInstructions: required('other instructions (or None)', 2000),
+    followUpOn: isoDate('Follow-up date'),
+    followUpDoctorId: objectId,
+    followUpDepartment: required('the follow-up department', 100),
+    followUpInstructions: required('the follow-up instructions', 500),
+    followUpDoctorName: z.string().max(100).optional(), // filled in by the server from followUpDoctorId
   }),
 };
 

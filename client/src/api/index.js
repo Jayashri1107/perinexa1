@@ -273,6 +273,7 @@ export const admissionsApi = {
   newDocument: (id, kind, clientRequestId) => http.post(`${ADMISSIONS}/${id}/documents`, { kind, clientRequestId }),
   saveDocument: (id, docId, data) => http.put(`${ADMISSIONS}/${id}/documents/${docId}`, data),
   signDocument: (id, docId) => http.post(`${ADMISSIONS}/${id}/documents/${docId}/sign`),
+  readyDocument: (id, docId) => http.post(`${ADMISSIONS}/${id}/documents/${docId}/ready`),
   cancelDocument: (id, docId, reason) => http.post(`${ADMISSIONS}/${id}/documents/${docId}/cancel`, { reason }),
   addToDocument: (id, docId, text) => http.post(`${ADMISSIONS}/${id}/documents/${docId}/additions`, { text }),
   nursing: (id, data) => http.post(`${ADMISSIONS}/${id}/nursing`, data),

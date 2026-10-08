@@ -76,7 +76,7 @@ export async function dischargeCard(req, cardId) {
       phone: patient.phone ?? '',
       address: patient.address ?? {},
     },
-    stay: stay ? { id: String(stay._id), admittedAt: stay.admittedAt, ward: stay.ward, bed: stay.bed, dischargedAt: stay.dischargedAt } : null,
+    stay: stay ? { id: String(stay._id), admissionNumber: stay.admissionNumber ?? '', admittedAt: stay.admittedAt, ward: stay.ward, bed: stay.bed, dischargedAt: stay.dischargedAt, doctorName: doctor?.name ?? '' } : null,
     consultant: doctor?.name ?? '',
     card: { id: String(card._id), content: card.content, signed: card.signed, additions: (card.additions ?? []).map((a) => ({ text: a.text, byName: a.byName, at: a.at })) },
   };

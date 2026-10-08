@@ -61,6 +61,8 @@ const documentSchema = new mongoose.Schema(
     savedByName: { type: String, default: null },
     savedAt: { type: Date, default: null },
     signed: { type: new mongoose.Schema({ by: ObjectId, byName: String, role: String, at: Date }, { _id: false }), default: null },
+    // A draft checked complete and marked ready for review (discharge summary); any later change takes it back to draft.
+    readyForReview: { type: new mongoose.Schema({ by: ObjectId, byName: String, at: Date }, { _id: false }), default: null },
     cancelled: { type: cancelledSchema, default: null },
     additions: { type: [new mongoose.Schema({ text: { type: String, required: true, maxlength: 2000 }, by: ObjectId, byName: String, at: Date })], default: [] },
     clientRequestId: { type: String, required: true, maxlength: 64 },

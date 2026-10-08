@@ -26,7 +26,7 @@ import { notify, notifyRoles } from '../notifications/notification.service.js';
 import { User } from '../users/user.model.js';
 import { assertFreeBed } from '../wards/ward.service.js';
 import { Admission, InpatientDocument, NursingEntry, SIGNED_BY } from './admission.model.js';
-import { DOC_CONTENT } from './admission.validation.js';
+import { DOC_CONTENT, dischargeMedicine } from './admission.validation.js';
 import { z } from 'zod';
 
 // The content of a ward document, checked. Errors are named "content.<field>", as the form names its fields.
@@ -39,8 +39,16 @@ function checkContent(kind, content, { draft = false } = {}) {
     data = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== '' && v !== null && v !== undefined));
     if (Array.isArray(data.medicines)) data.medicines = data.medicines.filter((m) => String(m?.drug ?? '').trim());
     if (typeof schema.partial === 'function') schema = schema.partial();
+    if (kind === 'discharge') schema = schema.extend({ medicines: z.array(dischargeMedicine.partial().required({ drug: true })).max(40).optional() });
   }
   return parse(z.object({ content: schema }), { content: data }).content;
+}
+
+// The follow-up doctor's name kept with the discharge summary (for the printed summary).
+async function withDoctorName(kind, content) {
+  if (kind !== 'discharge' || !content.followUpDoctorId) return content;
+  const d = await User.findById(content.followUpDoctorId).select('name').lean();
+  return { ...content, followUpDoctorName: d?.name ?? '' };
 }
 
 const DOCTOR = config.opd.doctorRole;
@@ -126,20 +134,25 @@ const docView = (d) => ({
   savedByName: d.savedByName,
   savedAt: d.savedAt,
   signed: d.signed,
+  readyForReview: d.readyForReview ?? null,
   cancelled: d.cancelled,
   additions: d.additions ?? [],
 });
 
 async function stayAnswer(req, { stay, patient, level }) {
-  const [docs, nursing, rules] = await Promise.all([
+  const [docs, nursing, rules, doctor] = await Promise.all([
     InpatientDocument.find({ hospitalId: req.hospitalId, admissionId: stay._id }).sort({ createdAt: 1 }).lean(),
     NursingEntry.find({ hospitalId: req.hospitalId, admissionId: stay._id }).sort({ at: -1 }).limit(200).lean(),
     approvedEntries(req.hospitalId, 'red_flag_rules').then((e) => e.flatMap((x) => x.content.rules ?? [])),
+    stay.doctorId ? User.findById(stay.doctorId).select('name').lean() : null,
   ]);
   const open = stay.status === 'admitted';
   return {
     stay: {
       id: String(stay._id),
+      admissionNumber: stay.admissionNumber ?? '',
+      doctorId: stay.doctorId ? String(stay.doctorId) : null,
+      doctorName: doctor?.name ?? '',
       status: stay.status,
       wardId: stay.wardId ? String(stay.wardId) : null,
       ward: stay.ward,
@@ -150,7 +163,7 @@ async function stayAnswer(req, { stay, patient, level }) {
       dischargedAt: stay.dischargedAt,
       dischargedByName: stay.dischargedByName,
     },
-    patient: { id: String(patient._id), name: patient.name, patientNumber: patient.patientNumber, careType: patient.careType, allergies: patient.allergies ?? '', bloodGroup: patient.bloodGroup ?? '' },
+    patient: { id: String(patient._id), name: patient.name, patientNumber: patient.patientNumber, careType: patient.careType, allergies: patient.allergies ?? '', bloodGroup: patient.bloodGroup ?? '', sex: patient.sex, birthDate: patient.birthDate, birthDateApprox: patient.birthDateApprox },
     documents: docs.map(docView),
     nursing: nursing.map((n) => ({ id: String(n._id), kind: n.kind, at: n.at, vitals: n.vitals, medicine: n.medicine, note: n.note, byName: n.byName, cancelled: n.cancelled, mine: String(n.by) === String(req.user._id) })),
     redFlags: rules.length && open ? await stayFlags(req, stay, patient, rules) : [],
@@ -299,7 +312,13 @@ export async function newDocument(req, admissionId, { kind, clientRequestId }) {
     let content = {};
     if (kind === 'discharge') {
       const note = await InpatientDocument.findOne({ hospitalId: req.hospitalId, admissionId, kind: 'admission', status: 'signed' }).lean();
-      content = { dischargedAt: new Date().toISOString(), finalDiagnosis: note?.content?.provisionalDiagnosis ?? '', medicines: [] };
+      content = {
+        dischargedAt: new Date().toISOString(),
+        chiefComplaint: note?.content?.reason ?? loaded.stay.reason ?? '',
+        admissionDiagnosis: note?.content?.provisionalDiagnosis ?? '',
+        medicines: [],
+        followUpDoctorId: loaded.stay.doctorId ? String(loaded.stay.doctorId) : '',
+      };
     }
     const doc = await InpatientDocument.create({ hospitalId: req.hospitalId, patientId: loaded.stay.patientId, admissionId, kind, content, createdBy: req.user._id, createdByName: req.user.name, clientRequestId });
     await recordAudit(req, 'INPATIENT_DOC_STARTED', { hospitalId: req.hospitalId, details: { admissionId, documentId: String(doc._id), kind } });
@@ -308,13 +327,38 @@ export async function newDocument(req, admissionId, { kind, clientRequestId }) {
   return { document: docView(same), ...(await stayAnswer(req, loaded)) };
 }
 
+// The discharge summary's links, checked when it is marked ready or finalized: the follow-up doctor works in this
+// hospital, and the follow-up is not before the discharge.
+async function checkDischargeLinks(req, content) {
+  await assertHospitalDoctor(req.hospitalId, content.followUpDoctorId).catch(() => {
+    throw new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION', { 'content.followUpDoctorId': 'Choose a doctor of this hospital' });
+  });
+  if (utcDay(content.followUpOn) < utcDay(content.dischargedAt)) {
+    throw new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION', { 'content.followUpOn': 'The follow-up cannot be before the discharge' });
+  }
+}
+
+// Ready for review: the draft is checked complete (every field) and marked; a doctor then finalizes it.
+export async function markReady(req, admissionId, docId) {
+  const loaded = await loadDoc(req, admissionId, docId);
+  const { doc } = loaded;
+  if (!canWrite(req, loaded.level)) throw new HttpError(403, 'Her doctor or an RMO writes ward documents.', 'FORBIDDEN');
+  if (doc.status !== 'draft') throw new HttpError(409, 'This document is already finalized or entered in error.', 'LOCKED');
+  const content = checkContent(doc.kind, doc.content);
+  if (doc.kind === 'discharge') await checkDischargeLinks(req, content);
+  doc.set({ readyForReview: stamp(req) });
+  await doc.save();
+  await recordAudit(req, 'INPATIENT_DOC_SAVED', { hospitalId: req.hospitalId, details: { admissionId, documentId: docId, kind: doc.kind, ready: true } });
+  return { document: docView(doc), ...(await stayAnswer(req, loaded)) };
+}
+
 export async function saveDocument(req, admissionId, docId, { rev, content }) {
   const loaded = await loadDoc(req, admissionId, docId);
   const { doc } = loaded;
   if (!canWrite(req, loaded.level)) throw new HttpError(403, 'Her doctor or an RMO writes ward documents.', 'FORBIDDEN');
   if (doc.status !== 'draft') throw new HttpError(409, 'This document is signed or entered in error: add a correction instead.', 'LOCKED');
   if (doc.rev !== rev) throw new HttpError(409, 'Someone else saved this document a moment ago. Reload to see their changes.', 'STALE');
-  doc.set({ content: checkContent(doc.kind, content, { draft: true }), rev: rev + 1, savedByName: req.user.name, savedAt: new Date() });
+  doc.set({ content: await withDoctorName(doc.kind, checkContent(doc.kind, content, { draft: true })), rev: rev + 1, savedByName: req.user.name, savedAt: new Date(), readyForReview: null });
   doc.markModified('content');
   await doc.save();
   await recordAudit(req, 'INPATIENT_DOC_SAVED', { hospitalId: req.hospitalId, details: { admissionId, documentId: docId, kind: doc.kind } });
@@ -328,6 +372,7 @@ export async function signDocument(req, admissionId, docId) {
   if (doc.status !== 'draft') throw new HttpError(409, 'This document is already signed or entered in error.', 'LOCKED');
   // a document is signed only complete: its fields checked once more
   const content = checkContent(doc.kind, doc.content);
+  if (doc.kind === 'discharge') await checkDischargeLinks(req, content);
   const role = req.membership.roles.includes(DOCTOR) ? DOCTOR : 'rmo';
   doc.set({ status: 'signed', signed: stamp(req, { role }) });
   await doc.save();
@@ -335,7 +380,7 @@ export async function signDocument(req, admissionId, docId) {
     stay.set({ status: 'discharged', dischargedAt: content.dischargedAt, dischargedByName: req.user.name });
     await stay.save();
     if (content.followUpOn && utcDay(content.followUpOn) > utcDay(new Date())) {
-      const doctorId = stay.doctorId ?? patient.assignedDoctorId ?? (role === DOCTOR ? req.user._id : null);
+      const doctorId = content.followUpDoctorId ?? stay.doctorId ?? patient.assignedDoctorId ?? (role === DOCTOR ? req.user._id : null);
       const on = utcDay(content.followUpOn);
       if (doctorId && !(await Appointment.exists({ hospitalId: req.hospitalId, patientId: patient._id, on, status: { $ne: 'cancelled' } }))) {
         await Appointment.create({ hospitalId: req.hospitalId, patientId: patient._id, doctorId, on, kind: 'slot', start: null, visitType: 'follow_up', source: 'booked', createdBy: req.user._id });

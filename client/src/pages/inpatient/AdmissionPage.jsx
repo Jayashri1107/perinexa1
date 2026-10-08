@@ -13,6 +13,7 @@ import { StateBadge } from '../../components/StateBadge.jsx';
 import { formatDateTime } from '../../utils/format.js';
 import { FLAG_LOOKS, requestId } from '../visits/visitFormat.js';
 import { DocumentForm, DocumentView, fieldName } from './DocumentEditor.jsx';
+import { DischargeSummary } from './DischargeSummary.jsx';
 import { BedPicker } from './BedPicker.jsx';
 import { KIND_LABELS, SIGNED_BY, VITAL_FIELDS, docLook, stayLook, toLocalInput, vitalsText } from './inpatientFormat.js';
 
@@ -168,6 +169,35 @@ function NursingForm({ stayId, onChanged }) {
   );
 }
 
+// Beside the discharge summary: what the nursing chart says lately – for reference while writing it.
+function NursingReference({ nursing, redFlags }) {
+  const live = nursing.filter((n) => !n.cancelled);
+  const vitals = live.find((n) => n.kind === 'vitals');
+  const notes = live.filter((n) => n.note).slice(0, 3);
+  const meds = live.filter((n) => n.kind === 'medicine').slice(0, 5);
+  return (
+    <aside className="card nursing-ref">
+      <h2>Nursing chart</h2>
+      <h3 className="summary-h">Latest vital signs</h3>
+      <p className="small">{vitals ? <>{vitalsText(vitals.vitals)}<span className="muted block">{formatDateTime(vitals.at)} · {vitals.byName}</span></> : <span className="muted">None recorded.</span>}</p>
+      <h3 className="summary-h">Medicines given</h3>
+      {meds.length === 0 ? <p className="muted small">None recorded.</p> : (
+        <ul className="plain-list small">{meds.map((m) => <li key={m.id}>{[m.medicine?.drug, m.medicine?.dose, m.medicine?.route].filter(Boolean).join(' · ')} <span className="muted">– {formatDateTime(m.at)}</span></li>)}</ul>
+      )}
+      <h3 className="summary-h">Latest notes</h3>
+      {notes.length === 0 ? <p className="muted small">None.</p> : (
+        <ul className="plain-list small">{notes.map((n) => <li key={n.id}>{n.note} <span className="muted">– {n.byName}, {formatDateTime(n.at)}</span></li>)}</ul>
+      )}
+      {redFlags.length > 0 && (
+        <>
+          <h3 className="summary-h">Alerts</h3>
+          <ul className="plain-list small">{redFlags.map((f) => <li key={f.key}><strong>{f.label}</strong></li>)}</ul>
+        </>
+      )}
+    </aside>
+  );
+}
+
 export function AdmissionPage() {
   const { id } = useParams();
   const [data, setData] = useState(null);
@@ -201,7 +231,7 @@ export function AdmissionPage() {
     const draft = dischargeCard ?? (await newDoc('discharge'))?.documents.find((d) => d.kind === 'discharge' && d.status === 'draft');
     if (draft) {
       setOpenDocId(draft.id);
-      setTimeout(() => document.getElementById(`doc-${draft.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+      setTimeout(() => document.getElementById('discharge-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     }
   };
 
@@ -219,7 +249,7 @@ export function AdmissionPage() {
               <button type="button" className="btn btn-primary" onClick={discharge}><DoorOpen size={16} aria-hidden /> Discharge patient</button>
             )}
             {dischargeCard?.status === 'signed' && (
-              <a className="btn btn-primary" href={`/hospital/print/discharge-card/${dischargeCard.id}`} target="_blank" rel="noreferrer"><Printer size={16} aria-hidden /> Discharge card</a>
+              <a className="btn btn-primary" href={`/hospital/print/discharge-card/${dischargeCard.id}`} target="_blank" rel="noreferrer"><Printer size={16} aria-hidden /> Discharge summary</a>
             )}
           </>
         }
@@ -239,6 +269,13 @@ export function AdmissionPage() {
         </section>
       )}
 
+      {dischargeCard && (
+        <div id="discharge-summary" className="discharge-layout top-gap">
+          <DischargeSummary key={`${dischargeCard.id}-${dischargeCard.status}`} stayId={stay.id} stay={stay} patient={patient} doc={dischargeCard} can={can} onChanged={(r) => setData(r)} />
+          <NursingReference nursing={nursing} redFlags={redFlags} />
+        </div>
+      )}
+
       <div className="grid-2 top-gap stay-layout">
         <div className="stack">
           <div className="card-head">
@@ -254,7 +291,7 @@ export function AdmissionPage() {
             )}
           </div>
           {documents.length === 0 && <p className="muted">No documents yet.</p>}
-          {documents.map((d) => (
+          {documents.filter((d) => d.kind !== 'discharge' || d.status === 'cancelled').map((d) => (
             <div key={d.id === openDocId ? `${d.id}-open` : d.id} id={`doc-${d.id}`}>
               <Doc stayId={stay.id} doc={d} can={can} startEditing={d.id === openDocId} onChanged={(r) => setData(r)} />
             </div>

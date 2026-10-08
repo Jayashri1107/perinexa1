@@ -14,6 +14,7 @@ router.patch('/:admissionId/bed', controller.bed);
 router.post('/:admissionId/documents', controller.newDocument);
 router.put('/:admissionId/documents/:docId', controller.saveDocument);
 router.post('/:admissionId/documents/:docId/sign', controller.signDocument);
+router.post('/:admissionId/documents/:docId/ready', controller.readyDocument);
 router.post('/:admissionId/documents/:docId/cancel', controller.cancelDocument);
 router.post('/:admissionId/documents/:docId/additions', controller.addToDocument);
 router.post('/:admissionId/nursing', controller.addNursing);

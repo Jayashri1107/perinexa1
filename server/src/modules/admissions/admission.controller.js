@@ -55,3 +55,7 @@ export async function admitted(req, res) {
 export async function issue(req, res) {
   res.status(201).json({ sale: await service.issueToWard(req, parse(wardIssueBody, req.body)) });
 }
+export async function readyDocument(req, res) {
+  const { admissionId, docId } = doc(req);
+  res.json(await service.markReady(req, admissionId, docId));
+}
