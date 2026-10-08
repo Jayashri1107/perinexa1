@@ -1,6 +1,6 @@
 // Sign in. "Remember my email" keeps only the email in this browser (never the password), so the next sign-in starts
 // with the password.
-import { ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Alert } from '../../components/Alert.jsx';
@@ -32,6 +32,7 @@ export function LoginPage() {
   const { user, login, endReason } = useAuth();
   const [remembered] = useState(readEmail);
   const [remember, setRemember] = useState(Boolean(remembered));
+  const [forgot, setForgot] = useState(false);
   const form = useForm({ ...emptyLogin, email: remembered });
   const navigate = useNavigate();
   const from = useLocation().state?.from ?? '/';
@@ -46,20 +47,25 @@ export function LoginPage() {
 
   return (
     <AuthLayout
-      title={remembered ? 'Welcome back' : 'Sign in'}
-      subtitle="Use your hospital account."
+      title="Welcome back"
+      subtitle="Sign in to your hospital account."
       footer={
         <>
-          <Lock size={14} aria-hidden /> Forgot your password? Ask your administrator.
+          <span className="auth-safe"><ShieldCheck size={16} aria-hidden /> Sign-in is protected and every access is recorded.</span>
+          <span className="block">For authorised medical staff only.</span>
         </>
       }
     >
       <Alert type="info">{endReason}</Alert>
       <form onSubmit={form.submit(onSubmit)} noValidate>
         <FormBuilder fields={loginFields} form={form} />
-        <label className="inline-check small top-gap-sm">
-          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Remember my email on this computer
-        </label>
+        <div className="auth-row">
+          <label className="inline-check small">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Remember me
+          </label>
+          <button type="button" className="btn btn-link btn-sm auth-forgot" aria-expanded={forgot} onClick={() => setForgot((f) => !f)}>Forgot password?</button>
+        </div>
+        {forgot && <p className="auth-forgot-note small">Ask your hospital administrator to reset it – you then choose a new one at your next sign-in.</p>}
         <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={form.submitting}>
           {form.submitting ? 'Signing in…' : (<>Sign in <ArrowRight size={18} aria-hidden /></>)}
         </button>

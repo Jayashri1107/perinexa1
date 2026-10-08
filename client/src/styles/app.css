@@ -785,57 +785,94 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 @media (max-width: 720px) { .profile-hero { flex-direction: column; align-items: flex-start; } }
 
 /* ---------- Sign-in pages: indigo brand panel + form card ---------- */
-.auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(400px, 44%) 1fr; background: var(--color-bg); }
-/* the indigo panel: the logo at the top, the words in the middle, the chips at the bottom */
+.auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(400px, 1fr); background: var(--color-bg); }
+/* the deep blue panel */
 .auth-brand {
-  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-6);
-  padding: 40px 56px; color: var(--sidebar-text); background: var(--sidebar-bg);
-  border-radius: 0 28px 28px 0;
+  position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-5);
+  padding: 36px 52px 32px; color: var(--sidebar-text); background: var(--auth-panel);
+  border-radius: 0 36px 36px 0;
 }
-.auth-brand > * { position: relative; z-index: 1; }
-.auth-brand-logo { height: 40px; width: auto; align-self: flex-start; }
-/* a photo (src/assets/brand/login-photo.*) fills the panel, darkened so the words stay readable */
-.auth-photo { position: absolute !important; inset: 0; z-index: 0 !important; width: 100%; height: 100%; object-fit: cover; }
-.auth-brand.has-photo::after { content: ''; position: absolute; inset: 0; background: var(--overlay); }
-.auth-brand-body { max-width: 380px; }
-/* the small stethoscope symbol with a soft pulse around it */
-.auth-symbol {
-  position: relative; display: inline-grid; place-items: center; width: 60px; height: 60px; margin-bottom: var(--space-5);
-  border-radius: 18px; background: var(--sidebar-active-bg); color: var(--sidebar-accent);
-}
-.auth-symbol::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--sidebar-accent); animation: auth-ping 2.6s ease-out infinite; }
-@keyframes auth-ping { from { transform: scale(1); opacity: 0.6; } to { transform: scale(1.45); opacity: 0; } }
-.auth-headline { margin: 0 0 var(--space-5); font-size: 32px; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; color: var(--sidebar-active-text); }
-/* one short line at a time, gliding up */
-.auth-rotator-window { position: relative; height: 40px; overflow: hidden; }
-.auth-rotator-line {
-  position: absolute; inset: 0; display: flex; align-items: center; gap: var(--space-3); margin: 0;
-  font-size: 16px; color: var(--sidebar-text); opacity: 0; transform: translateY(100%);
-  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.6s ease;
-}
-.auth-rotator-line.is-on { opacity: 1; transform: none; }
-.auth-rotator-line.is-out { transform: translateY(-100%); }
-.auth-rotator-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 10px; background: var(--sidebar-hover-bg); color: var(--sidebar-accent); }
-.auth-dots { display: flex; gap: 6px; margin-top: var(--space-3); }
-.auth-dots button { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 99px; background: var(--sidebar-active-bg); cursor: pointer; transition: width 0.4s ease, background 0.4s ease; }
-.auth-dots button.is-on { width: 22px; background: var(--sidebar-accent); }
+.auth-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.auth-brand-logo { height: 42px; width: auto; }
+.auth-tagline { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--sidebar-text); white-space: nowrap; }
+.auth-tagline i { display: inline-block; width: 36px; height: 1px; background: var(--sidebar-text); opacity: 0.7; }
+.auth-tagline span { opacity: 0.5; }
+.auth-hero { flex: 1; display: grid; grid-template-columns: minmax(300px, 1fr) minmax(320px, 1fr); align-items: center; gap: var(--space-5); }
+.auth-headline { margin: 0 0 var(--space-4); font-size: 44px; line-height: 1.12; font-weight: 700; letter-spacing: -0.02em; color: var(--sidebar-active-text); }
+.auth-headline span { display: block; color: var(--sidebar-accent); }
+.auth-intro { margin: 0; max-width: 40ch; min-height: 4.8em; font-size: 16px; line-height: 1.6; color: var(--sidebar-text); animation: auth-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.auth-dots { display: flex; gap: 6px; margin: var(--space-3) 0 var(--space-5); }
+.auth-dots button { width: 8px; height: 6px; padding: 0; border: 0; border-radius: 99px; background: var(--sidebar-active-bg); cursor: pointer; transition: width 0.4s ease, background 0.4s ease; }
+.auth-dots button.is-on { width: 26px; background: var(--sidebar-accent); }
 .auth-dots button:focus-visible { outline: 2px solid var(--sidebar-accent); outline-offset: 3px; }
-/* three small chips at the bottom */
-.auth-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.auth-chips li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--sidebar-active-bg); font-size: 12px; color: var(--sidebar-text); }
+.auth-features { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--space-6); flex-wrap: wrap; }
+.auth-features li { display: flex; flex-direction: column; gap: var(--space-2); font-size: 14px; line-height: 1.35; color: var(--sidebar-active-text); }
+.auth-feature-icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--auth-glass-border); background: var(--auth-glass); color: var(--sidebar-accent); }
+.auth-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.auth-chips li { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 99px; border: 1px solid var(--auth-glass-border); background: var(--auth-glass); font-size: 14px; color: var(--sidebar-active-text); }
 .auth-chips svg { color: var(--sidebar-accent); }
+
+/* the picture: a glowing circle, glass tiles floating on a dotted arc, a glass caption card */
+.auth-visual { position: relative; align-self: stretch; min-height: 440px; }
+.auth-arc { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.auth-arc path { fill: none; stroke: var(--sidebar-accent); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 2 10; opacity: 0.55; animation: auth-dash 30s linear infinite; }
+@keyframes auth-dash { to { stroke-dashoffset: -480; } }
+.auth-orb {
+  position: absolute; right: 2%; top: 50%; width: min(78%, 360px); aspect-ratio: 1; transform: translateY(-52%);
+  display: grid; place-items: center; border-radius: 50%; overflow: hidden;
+  background: var(--auth-glass); border: 1px solid var(--auth-glass-border); color: var(--sidebar-active-text);
+  box-shadow: 0 0 0 18px var(--auth-glass), 0 0 0 40px var(--auth-glass-soft);
+}
+.auth-orb svg { color: var(--sidebar-accent); }
+.auth-orb.has-photo img { width: 100%; height: 100%; object-fit: cover; }
+.auth-tile {
+  position: absolute; z-index: 2; width: 64px; height: 64px; display: grid; place-items: center; border-radius: 18px;
+  background: var(--auth-glass); border: 1px solid var(--auth-glass-border); color: var(--sidebar-active-text);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 10px 30px var(--auth-glass-shadow);
+  animation: auth-bob 5s ease-in-out infinite;
+}
+.auth-tile b { position: absolute; bottom: 8px; right: 9px; font-size: 10px; font-weight: 800; color: var(--sidebar-accent); }
+.auth-tile-heart svg { color: var(--auth-heart); }
+.auth-tile-teal svg { color: var(--sidebar-accent); }
+@keyframes auth-bob { 50% { transform: translateY(-10px); } }
+.auth-caption {
+  position: absolute; z-index: 2; right: 0; bottom: 0; width: min(92%, 330px); display: flex; align-items: center; gap: var(--space-3);
+  padding: 16px 18px 20px; border-radius: 18px; background: var(--auth-glass); border: 1px solid var(--auth-glass-border);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: 14px; line-height: 1.45; color: var(--sidebar-active-text);
+  animation: auth-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.6s both;
+}
+.auth-caption svg { flex-shrink: 0; color: var(--sidebar-accent); }
+.auth-caption i { position: absolute; left: 66px; bottom: 9px; width: 26px; height: 3px; border-radius: 3px; background: var(--sidebar-accent); }
 
 /* things glide in one after another (--i: their place in line) */
 .auth-enter { animation: auth-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 80ms); }
 @keyframes auth-rise { from { opacity: 0; transform: translateY(12px); } }
 
-/* the form side: just the card */
-.auth-main { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-6) var(--space-4); gap: var(--space-4); }
+/* the form side: the card, with faint "+" signs behind */
+.auth-main { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-6) var(--space-5); gap: var(--space-4); }
+.auth-plus { position: absolute; width: 44px; height: 44px; opacity: 0.5; pointer-events: none; animation: auth-bob 7s ease-in-out infinite; }
+.auth-plus::before, .auth-plus::after { content: ''; position: absolute; border-radius: 4px; background: var(--color-primary-soft); }
+.auth-plus::before { left: 35%; width: 30%; height: 100%; }
+.auth-plus::after { top: 35%; height: 30%; width: 100%; }
+.auth-plus-1 { top: 6%; right: 8%; }
+.auth-plus-2 { bottom: 10%; left: 6%; width: 30px; height: 30px; animation-delay: -3s; }
 .auth-panel {
-  width: 100%; max-width: 380px; background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 20px; box-shadow: var(--shadow-lg); padding: 36px 32px;
+  position: relative; z-index: 1; width: 100%; max-width: 420px; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 24px; box-shadow: var(--shadow-lg); padding: 36px 34px 28px;
   animation: auth-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s both;
 }
+.auth-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
+.auth-head-icon { flex-shrink: 0; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; background: var(--color-accent-soft); color: var(--color-accent-strong); }
+.auth-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+.auth-forgot { padding: 0; font-weight: 600; }
+.auth-forgot-note { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--color-info-soft); color: var(--color-info); }
+.auth-safe { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text); }
+.auth-safe svg { color: var(--color-accent-strong); }
+/* a small icon inside a box (email, password) */
+.input-with-icon { position: relative; }
+.input-with-icon .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; z-index: 1; }
+.input-with-icon input { padding-left: 42px !important; }
+@media (max-width: 1250px) { .auth-hero { grid-template-columns: 1fr; } .auth-visual { display: none; } }
 /* the button lifts and its arrow nudges forward */
 .auth-panel .btn-primary { transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease; }
 .auth-panel .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px var(--auth-button-shadow); }
@@ -844,8 +881,7 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .auth-panel .form-field input { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
 .auth-panel .form-field input:focus { border-color: var(--color-primary); outline: none; }
 @media (prefers-reduced-motion: reduce) {
-  .auth-enter, .auth-panel, .auth-symbol::after { animation: none !important; }
-  .auth-rotator-line { transition: none; }
+  .auth-enter, .auth-panel, .auth-intro, .auth-tile, .auth-caption, .auth-plus, .auth-arc path { animation: none !important; }
   .auth-panel .btn-primary, .auth-panel .btn-primary svg { transition: none; transform: none !important; }
 }
 .auth-mobile-logo { display: none; height: 40px; width: auto; margin-bottom: var(--space-5); }

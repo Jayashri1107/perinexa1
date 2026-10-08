@@ -41,7 +41,13 @@
   /* sign-in page decoration */
   --auth-ring-teal: rgba(79, 214, 200, 0.1);
   --auth-button-shadow: rgba(59, 63, 166, 0.28);
-  --auth-orbit: rgba(59, 63, 166, 0.18); /* the dashed ring turning behind the sign-in card */
+  --auth-orbit: rgba(59, 63, 166, 0.18);
+  --auth-panel: #23278a;                       /* the sign-in page's deep blue panel */
+  --auth-glass: rgba(255, 255, 255, 0.1);      /* glass tiles and chips on it */
+  --auth-glass-soft: rgba(255, 255, 255, 0.04);
+  --auth-glass-border: rgba(255, 255, 255, 0.22);
+  --auth-glass-shadow: rgba(10, 12, 60, 0.25);
+  --auth-heart: #ff8fb1;                       /* the heart tile */
 
   --overlay: rgba(23, 26, 82, 0.45);
   --print-line: #999999;

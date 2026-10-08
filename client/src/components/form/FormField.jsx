@@ -1,7 +1,7 @@
 import { PasswordInput } from './PasswordInput.jsx';
 
 // One field of any form. The field is described by data (see client/src/forms/*.js):
-// { name, label, type, required, options, placeholder, help, width, disabled, autoComplete }
+// { name, label, type, required, options, placeholder, help, width, disabled, autoComplete, icon }
 // type: text | email | password | number | tel | date | textarea | select | checkboxes | switch
 export function FormField({ field, value, error, onChange }) {
   const id = `field-${field.name.replace(/\./g, '-')}`;
@@ -78,6 +78,17 @@ export function FormField({ field, value, error, onChange }) {
         />
       );
     }
+  }
+
+  // icon: a small icon inside the box on the left (e.g. a letter for an email address)
+  if (field.icon) {
+    const Icon = field.icon;
+    control = (
+      <div className="input-with-icon">
+        <Icon size={18} aria-hidden className="input-icon" />
+        {control}
+      </div>
+    );
   }
 
   return (

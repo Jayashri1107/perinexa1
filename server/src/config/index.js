@@ -27,6 +27,7 @@ const schema = z.object({
   client: z.object({ port: z.number().int().positive(), url: z.url() }),
   database: z.object({
     uri: z.string().startsWith('mongodb'),
+    maxPoolSize: z.number().int().min(5).max(500), // database connections kept open for requests served at the same time
     autoIndex: z.boolean(),
     slowQueryMs: z.number().nonnegative(),
     logAllQueries: z.boolean(),
@@ -52,7 +53,8 @@ const schema = z.object({
     }),
   }),
   rateLimit: z.object({
-    login: z.object({ windowMinutes: z.number().positive(), max: z.number().int().positive() }),
+    // max: per account and address; perAddressMax: all accounts from one address
+    login: z.object({ windowMinutes: z.number().positive(), max: z.number().int().positive(), perAddressMax: z.number().int().positive() }),
     api: z.object({ windowMinutes: z.number().positive(), max: z.number().int().positive() }),
   }),
   pagination: z.object({

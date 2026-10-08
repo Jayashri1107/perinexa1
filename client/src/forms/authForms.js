@@ -1,6 +1,8 @@
+import { LockKeyhole, Mail } from 'lucide-react';
+
 export const loginFields = [
-  { name: 'email', label: 'Email', type: 'email', required: true, autoComplete: 'username', placeholder: 'you@hospital.com' },
-  { name: 'password', label: 'Password', type: 'password', required: true, autoComplete: 'current-password', placeholder: 'Your password' },
+  { name: 'email', label: 'Email address', type: 'email', required: true, autoComplete: 'username', placeholder: 'Enter your email address', icon: Mail },
+  { name: 'password', label: 'Password', type: 'password', required: true, autoComplete: 'current-password', placeholder: 'Enter your password', icon: LockKeyhole },
 ];
 
 export const emptyLogin = { email: '', password: '' };
