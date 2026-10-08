@@ -2,7 +2,7 @@
 // computer's clock; a baby's sex is asked only in the delivery note (after the birth – PC-PNDT).
 import { Plus, Trash2 } from 'lucide-react';
 import { BABY_SEX, BREASTFED, DOC_FIELDS, OUTCOME, STILLBIRTH_TYPE, VITAL_FIELDS, YES_NO, emptyBaby, toLocalInput, valueText } from './inpatientFormat.js';
-import { rxLine } from '../visits/visitFormat.js';
+import { DURATION_UNITS, FORMS, FREQUENCIES, ROUTES, TIMINGS, rxLine } from '../visits/visitFormat.js';
 
 const sel = (id, value, onChange, map, placeholder = '—') => (
   <select id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
@@ -36,23 +36,53 @@ function Babies({ value = [], onChange, errors }) {
   );
 }
 
-function Medicines({ value = [], onChange }) {
+// Medicines on discharge: one row each – medicine, form, strength, dose, how often, food, route, how long.
+function Medicines({ value = [], onChange, errors = {} }) {
   const set = (i, k, v) => onChange(value.map((m, j) => (j === i ? { ...m, [k]: v } : m)));
+  const err = (i, k) => errors[`content.medicines.${i}.${k}`];
   return (
-    <div>
-      {value.map((m, i) => (
-        <div key={i} className="leave-row">
-          <input aria-label={`Medicine ${i + 1}`} placeholder="Medicine and strength" value={m.drug} onChange={(e) => set(i, 'drug', e.target.value)} />
-          <select aria-label={`How often, medicine ${i + 1}`} value={m.frequency} onChange={(e) => set(i, 'frequency', e.target.value)}>
-            {['1-0-0', '0-1-0', '0-0-1', '1-0-1', '1-1-1', '1-1-1-1', 'sos'].map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-          <input aria-label={`Days, medicine ${i + 1}`} placeholder="Days" inputMode="numeric" value={m.durationValue ?? ''} onChange={(e) => set(i, 'durationValue', e.target.value)} />
-          <button type="button" className="icon-btn" aria-label={`Remove medicine ${i + 1}`} onClick={() => onChange(value.filter((_, j) => j !== i))}><Trash2 size={15} /></button>
-        </div>
-      ))}
-      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange([...value, { drug: '', form: 'tab', frequency: '1-0-1', durationValue: '', durationUnit: 'days', dose: '1' }])}><Plus size={14} aria-hidden /> Add a medicine</button>
+    <div className="rx-table-wrap">
+      {value.length > 0 && (
+        <table className="rx-table">
+          <thead>
+            <tr><th>Medicine</th><th>Form</th><th>Strength</th><th>Dose</th><th>How often</th><th>Food</th><th>Route</th><th>For</th><th /></tr>
+          </thead>
+          <tbody>
+            {value.map((m, i) => (
+              <tr key={i}>
+                <td>
+                  <input aria-label={`Medicine ${i + 1}`} placeholder="e.g. Paracetamol" value={m.drug ?? ''} onChange={(e) => set(i, 'drug', e.target.value)} className={err(i, 'drug') ? 'has-error' : undefined} />
+                  {err(i, 'drug') && <span className="field-error">{err(i, 'drug')}</span>}
+                </td>
+                <td>{sel(`rx${i}-form`, m.form ?? 'tab', (v) => set(i, 'form', v), Object.fromEntries(Object.entries(FORMS).filter(([k]) => k !== 'other').map(([k, l]) => [k, l.replace('.', '')])), 'Other')}</td>
+                <td><input aria-label={`Strength, medicine ${i + 1}`} placeholder="500 mg" value={m.strength ?? ''} maxLength={40} onChange={(e) => set(i, 'strength', e.target.value)} /></td>
+                <td><input aria-label={`Dose, medicine ${i + 1}`} placeholder="1 tab" value={m.dose ?? ''} maxLength={40} onChange={(e) => set(i, 'dose', e.target.value)} /></td>
+                <td>{sel(`rx${i}-freq`, m.frequency, (v) => set(i, 'frequency', v), Object.fromEntries(Object.entries(FREQUENCIES).filter(([k]) => k !== 'custom')), 'Choose…')}</td>
+                <td>{sel(`rx${i}-food`, m.timing ?? '', (v) => set(i, 'timing', v), Object.fromEntries(Object.entries(TIMINGS).filter(([k]) => k !== '')))}</td>
+                <td>{sel(`rx${i}-route`, m.route ?? '', (v) => set(i, 'route', v), Object.fromEntries(Object.entries(ROUTES).filter(([k]) => k !== '')))}</td>
+                <td className="rx-duration">
+                  <input aria-label={`How long, medicine ${i + 1}`} placeholder="5" inputMode="numeric" value={m.durationValue ?? ''} onChange={(e) => set(i, 'durationValue', e.target.value.replace(/\D/g, ''))} />
+                  {sel(`rx${i}-unit`, m.durationUnit ?? 'days', (v) => set(i, 'durationUnit', v), Object.fromEntries(Object.entries(DURATION_UNITS).filter(([k]) => k !== '')))}
+                </td>
+                <td><button type="button" className="icon-btn" aria-label={`Remove medicine ${i + 1}`} onClick={() => onChange(value.filter((_, j) => j !== i))}><Trash2 size={15} /></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <button type="button" className="btn btn-ghost btn-sm top-gap-sm" onClick={() => onChange([...value, { drug: '', form: 'tab', strength: '', dose: '1', frequency: '1-0-1', timing: 'after_food', route: 'oral', durationValue: '5', durationUnit: 'days' }])}>
+        <Plus size={14} aria-hidden /> Add a medicine
+      </button>
     </div>
   );
+}
+
+// "content.finalDiagnosis" → "Final diagnosis", "content.medicines.0.drug" → "Medicine 1" – for the list of what to fix.
+export function fieldName(kind, key) {
+  const k = key.replace(/^content\./, '');
+  const med = /^medicines\.(\d+)/.exec(k);
+  if (med) return `Medicine ${Number(med[1]) + 1}`;
+  return DOC_FIELDS[kind]?.find((f) => f.key === k.split('.')[0])?.label ?? k;
 }
 
 // The form of a draft: content → onChange(content).
@@ -61,6 +91,7 @@ export function DocumentForm({ kind, content, onChange, errors = {} }) {
   return (
     <div className="form-grid">
       {DOC_FIELDS[kind].map((f) => {
+        if (f.section) return <h3 key={f.section} className="doc-section span-all">{f.section}</h3>;
         const id = `doc-${f.key}`;
         const error = errors[`content.${f.key}`];
         const label = <label htmlFor={id}>{f.label}{f.required && <span className="required" aria-hidden> *</span>}</label>;
@@ -79,7 +110,7 @@ export function DocumentForm({ kind, content, onChange, errors = {} }) {
             </div>
           );
         else if (f.type === 'babies') control = <Babies value={content.babies} onChange={set('babies')} errors={errors} />;
-        else if (f.type === 'medicines') control = <Medicines value={content.medicines} onChange={set('medicines')} />;
+        else if (f.type === 'medicines') control = <Medicines value={content.medicines} onChange={set('medicines')} errors={errors} />;
         else control = <input id={id} value={content[f.key] ?? ''} onChange={(e) => set(f.key)(e.target.value)} />;
         const half = ['datetime', 'date', 'number', 'select'].includes(f.type);
         return (
@@ -98,7 +129,7 @@ export function DocumentForm({ kind, content, onChange, errors = {} }) {
 export function DocumentView({ kind, content }) {
   return (
     <dl className="details wide">
-      {DOC_FIELDS[kind].map((f) => {
+      {DOC_FIELDS[kind].filter((f) => !f.section).map((f) => {
         const v = content?.[f.key];
         let shown;
         if (f.type === 'babies') {

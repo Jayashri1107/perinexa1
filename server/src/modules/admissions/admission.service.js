@@ -27,6 +27,21 @@ import { User } from '../users/user.model.js';
 import { assertFreeBed } from '../wards/ward.service.js';
 import { Admission, InpatientDocument, NursingEntry, SIGNED_BY } from './admission.model.js';
 import { DOC_CONTENT } from './admission.validation.js';
+import { z } from 'zod';
+
+// The content of a ward document, checked. Errors are named "content.<field>", as the form names its fields.
+// draft: a draft may be incomplete – empty fields are left out and required ones may be missing (they are checked
+// when it is signed); medicine rows with no medicine name are dropped.
+function checkContent(kind, content, { draft = false } = {}) {
+  let schema = DOC_CONTENT[kind];
+  let data = content ?? {};
+  if (draft) {
+    data = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== '' && v !== null && v !== undefined));
+    if (Array.isArray(data.medicines)) data.medicines = data.medicines.filter((m) => String(m?.drug ?? '').trim());
+    if (typeof schema.partial === 'function') schema = schema.partial();
+  }
+  return parse(z.object({ content: schema }), { content: data }).content;
+}
 
 const DOCTOR = config.opd.doctorRole;
 const has = (req, list) => req.membership.roles.some((r) => list.includes(r));
@@ -280,7 +295,13 @@ export async function newDocument(req, admissionId, { kind, clientRequestId }) {
     if (kind === 'discharge' && (await InpatientDocument.exists({ hospitalId: req.hospitalId, admissionId, kind: 'discharge', status: { $ne: 'cancelled' } }))) {
       throw new HttpError(409, 'This stay already has a discharge card.', 'ONE_DISCHARGE');
     }
-    const doc = await InpatientDocument.create({ hospitalId: req.hospitalId, patientId: loaded.stay.patientId, admissionId, kind, content: {}, createdBy: req.user._id, createdByName: req.user.name, clientRequestId });
+    // A discharge card starts with what is known: now as the time of discharge, and the diagnosis of her admission note.
+    let content = {};
+    if (kind === 'discharge') {
+      const note = await InpatientDocument.findOne({ hospitalId: req.hospitalId, admissionId, kind: 'admission', status: 'signed' }).lean();
+      content = { dischargedAt: new Date().toISOString(), finalDiagnosis: note?.content?.provisionalDiagnosis ?? '', medicines: [] };
+    }
+    const doc = await InpatientDocument.create({ hospitalId: req.hospitalId, patientId: loaded.stay.patientId, admissionId, kind, content, createdBy: req.user._id, createdByName: req.user.name, clientRequestId });
     await recordAudit(req, 'INPATIENT_DOC_STARTED', { hospitalId: req.hospitalId, details: { admissionId, documentId: String(doc._id), kind } });
     return { document: docView(doc), ...(await stayAnswer(req, loaded)) };
   }
@@ -293,7 +314,7 @@ export async function saveDocument(req, admissionId, docId, { rev, content }) {
   if (!canWrite(req, loaded.level)) throw new HttpError(403, 'Her doctor or an RMO writes ward documents.', 'FORBIDDEN');
   if (doc.status !== 'draft') throw new HttpError(409, 'This document is signed or entered in error: add a correction instead.', 'LOCKED');
   if (doc.rev !== rev) throw new HttpError(409, 'Someone else saved this document a moment ago. Reload to see their changes.', 'STALE');
-  doc.set({ content: parse(DOC_CONTENT[doc.kind], content), rev: rev + 1, savedByName: req.user.name, savedAt: new Date() });
+  doc.set({ content: checkContent(doc.kind, content, { draft: true }), rev: rev + 1, savedByName: req.user.name, savedAt: new Date() });
   doc.markModified('content');
   await doc.save();
   await recordAudit(req, 'INPATIENT_DOC_SAVED', { hospitalId: req.hospitalId, details: { admissionId, documentId: docId, kind: doc.kind } });
@@ -306,7 +327,7 @@ export async function signDocument(req, admissionId, docId) {
   if (!(level === 'full' && has(req, SIGNED_BY[doc.kind]))) throw new HttpError(403, `A ${SIGNED_BY[doc.kind].join(' or ')} with full access to her record signs this document.`, 'FORBIDDEN');
   if (doc.status !== 'draft') throw new HttpError(409, 'This document is already signed or entered in error.', 'LOCKED');
   // a document is signed only complete: its fields checked once more
-  const content = parse(DOC_CONTENT[doc.kind], doc.content);
+  const content = checkContent(doc.kind, doc.content);
   const role = req.membership.roles.includes(DOCTOR) ? DOCTOR : 'rmo';
   doc.set({ status: 'signed', signed: stamp(req, { role }) });
   await doc.save();

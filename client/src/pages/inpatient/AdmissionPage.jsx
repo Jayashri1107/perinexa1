@@ -12,9 +12,9 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
 import { formatDateTime } from '../../utils/format.js';
 import { FLAG_LOOKS, requestId } from '../visits/visitFormat.js';
-import { DocumentForm, DocumentView } from './DocumentEditor.jsx';
+import { DocumentForm, DocumentView, fieldName } from './DocumentEditor.jsx';
 import { BedPicker } from './BedPicker.jsx';
-import { KIND_LABELS, SIGNED_BY, VITAL_FIELDS, docLook, stayLook, toLocalInput } from './inpatientFormat.js';
+import { KIND_LABELS, SIGNED_BY, VITAL_FIELDS, docLook, stayLook, toLocalInput, vitalsText } from './inpatientFormat.js';
 
 function Doc({ stayId, doc, can, onChanged, startEditing = false }) {
   const [editing, setEditing] = useState(startEditing && doc.status === 'draft' && can.write);
@@ -67,7 +67,16 @@ function Doc({ stayId, doc, can, onChanged, startEditing = false }) {
         {draft && ` · signed by ${SIGNED_BY[doc.kind]}`}
         {doc.cancelled && ` · entered in error: ${doc.cancelled.reason}`}
       </p>
-      <Alert type="error">{error}</Alert>
+      {(error || Object.keys(errors).length > 0) && (
+      <Alert type="error">
+        {error}
+        {Object.keys(errors).length > 0 && (
+          <ul className="fix-list">
+            {Object.entries(errors).map(([k, m]) => <li key={k}><strong>{fieldName(doc.kind, k)}:</strong> {m}</li>)}
+          </ul>
+        )}
+      </Alert>
+      )}
       {editing ? (
         <form onSubmit={(e) => { e.preventDefault(); run(() => admissionsApi.saveDocument(stayId, doc.id, { rev: doc.rev, content }), () => setEditing(false)); }} noValidate>
           <DocumentForm kind={doc.kind} content={content} onChange={setContent} errors={errors} />
@@ -101,9 +110,11 @@ function NursingForm({ stayId, onChanged }) {
   const [medicine, setMedicine] = useState({ drug: '', dose: '', route: '' });
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [fields, setFields] = useState({});
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    setFields({});
     try {
       onChanged(await admissionsApi.nursing(stayId, { kind, at: new Date(at).toISOString(), ...(kind === 'vitals' && { vitals }), ...(kind === 'medicine' && { medicine }), note, clientRequestId: requestId() }));
       setVitals({});
@@ -112,11 +123,18 @@ function NursingForm({ stayId, onChanged }) {
       setAt(toLocalInput(new Date()));
     } catch (err) {
       setError(err.message);
+      setFields(err.fields ?? {});
     }
   };
+  const NAMES = { at: 'Time', vitals: 'Vital signs', 'medicine.drug': 'Medicine', note: 'Note', ...Object.fromEntries(VITAL_FIELDS.map(([k, l]) => [`vitals.${k}`, l])) };
   return (
     <form onSubmit={submit} className="nursing-form">
-      <Alert type="error">{error}</Alert>
+      {error && (
+        <Alert type="error">
+          {error}
+          {Object.keys(fields).length > 0 && <ul className="fix-list">{Object.entries(fields).map(([k, m]) => <li key={k}><strong>{NAMES[k] ?? k}:</strong> {m}</li>)}</ul>}
+        </Alert>
+      )}
       <div className="leave-row">
         <div className="segmented" role="group" aria-label="Kind of entry">
           {[['vitals', 'Vital signs'], ['medicine', 'Medicine given'], ['note', 'Note']].map(([k, l]) => (
@@ -126,8 +144,13 @@ function NursingForm({ stayId, onChanged }) {
         <input type="datetime-local" aria-label="When" value={at} onChange={(e) => setAt(e.target.value)} />
       </div>
       {kind === 'vitals' && (
-        <div className="leave-row">
-          {VITAL_FIELDS.map(([k, l]) => <input key={k} aria-label={l} placeholder={l} inputMode="decimal" value={vitals[k] ?? ''} onChange={(e) => setVitals((v) => ({ ...v, [k]: e.target.value }))} />)}
+        <div className="vitals-grid">
+          {VITAL_FIELDS.map(([k, l, unit]) => (
+            <label key={k} className={`vital-box${fields[`vitals.${k}`] ? ' has-error' : ''}`}>
+              <span className="small muted">{l}</span>
+              <span className="vital-input"><input inputMode="decimal" value={vitals[k] ?? ''} onChange={(e) => setVitals((v) => ({ ...v, [k]: e.target.value.replace(/[^d.]/g, '') }))} /><span className="small muted">{unit}</span></span>
+            </label>
+          ))}
         </div>
       )}
       {kind === 'medicine' && (
@@ -246,7 +269,7 @@ export function AdmissionPage() {
               <li key={n.id} className={n.cancelled ? 'struck' : ''}>
                 <span>
                   <strong>{formatDateTime(n.at)}</strong>{' '}
-                  {n.kind === 'vitals' && VITAL_FIELDS.filter(([k]) => n.vitals?.[k] != null).map(([k, l]) => `${l} ${n.vitals[k]}`).join(' · ')}
+                  {n.kind === 'vitals' && vitalsText(n.vitals)}
                   {n.kind === 'medicine' && `Given: ${n.medicine.drug}${n.medicine.dose ? ` ${n.medicine.dose}` : ''}${n.medicine.route ? ` (${n.medicine.route})` : ''}`}
                   {n.note && <span className="block small">{n.note}</span>}
                   {n.cancelled && <span className="block small">Entered in error: {n.cancelled.reason}</span>}

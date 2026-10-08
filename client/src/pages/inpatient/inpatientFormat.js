@@ -63,24 +63,29 @@ export const DOC_FIELDS = {
     { key: 'postOpOrders', label: 'Post-operative orders', type: 'area' },
   ],
   discharge: [
+    { section: '1. Discharge' },
     { key: 'dischargedAt', label: 'Date and time of discharge', type: 'datetime', required: true },
+    { section: '2. Clinical summary' },
     { key: 'finalDiagnosis', label: 'Final diagnosis', type: 'area', required: true },
     { key: 'procedures', label: 'Procedures and operations', type: 'area' },
-    { key: 'course', label: 'Course in hospital', type: 'area' },
+    { key: 'course', label: 'Course in hospital (treatment given, investigations, important findings)', type: 'area' },
     { key: 'conditionAtDischarge', label: 'Condition at discharge', type: 'area' },
-    { key: 'medicines', label: 'Medicines on discharge', type: 'medicines' },
+    { section: '3. Medicines on discharge' },
+    { key: 'medicines', label: 'Medicines', type: 'medicines' },
+    { section: '4. Advice and follow-up' },
     { key: 'advice', label: 'Advice', type: 'area' },
     { key: 'followUpOn', label: 'Follow-up date', type: 'date' },
     { key: 'followUpNote', label: 'Follow-up note', type: 'text' },
   ],
 };
 
+// [key, label, unit]
 export const VITAL_FIELDS = [
-  ['bpSystolic', 'BP upper'],
-  ['bpDiastolic', 'BP lower'],
-  ['pulse', 'Pulse'],
-  ['temperatureF', 'Temp (°F)'],
-  ['spo2', 'SpO₂ (%)'],
+  ['bpSystolic', 'BP upper (systolic)', 'mmHg'],
+  ['bpDiastolic', 'BP lower (diastolic)', 'mmHg'],
+  ['pulse', 'Pulse', '/min'],
+  ['temperatureF', 'Temperature', '°F'],
+  ['spo2', 'SpO₂', '%'],
 ];
 
 export const emptyBaby = () => ({ sex: '', weightGrams: '', apgar1: '', apgar5: '', outcome: '', stillbirthType: '', breastfedWithinHour: '', nicu: '', notes: '' });
@@ -110,4 +115,12 @@ export function valueText(field, v) {
     return parts.length ? parts.join(' · ') : '—';
   }
   return String(v);
+}
+
+/** "BP 120/80 mmHg · Pulse 78 /min · Temperature 98.6 °F · SpO₂ 98 %" (only what was recorded). */
+export function vitalsText(v = {}) {
+  const parts = [];
+  if (v.bpSystolic != null || v.bpDiastolic != null) parts.push(`BP ${v.bpSystolic ?? '–'}/${v.bpDiastolic ?? '–'} mmHg`);
+  for (const [k, l, unit] of VITAL_FIELDS) if (!k.startsWith('bp') && v[k] != null) parts.push(`${l} ${v[k]} ${unit}`);
+  return parts.join(' · ');
 }

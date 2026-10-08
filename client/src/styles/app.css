@@ -910,3 +910,21 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .ask-question { font-size: 1.25rem; font-weight: 600; margin: 0; }
 .ask-state { min-height: 1.4em; margin: 0; display: flex; align-items: center; gap: 6px; }
 .ask-box .voice-row input { flex: 1; min-width: 200px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+
+/* ward documents: sections, the medicine table, what to fix */
+.doc-section { grid-column: 1 / -1; margin: var(--space-3) 0 0; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); font-size: 1rem; color: var(--color-primary); }
+.rx-table-wrap { overflow-x: auto; }
+.rx-table { width: 100%; border-collapse: collapse; min-width: 820px; }
+.rx-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--color-text-muted); padding: 4px; }
+.rx-table td { padding: 3px 4px; vertical-align: top; }
+.rx-table input, .rx-table select { width: 100%; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); }
+.rx-table input.has-error { border-color: var(--color-danger); }
+.rx-table td:first-child { min-width: 180px; }
+.rx-duration { display: flex; gap: 4px; min-width: 130px; }
+.rx-duration input { width: 52px; }
+.fix-list { margin: 6px 0 0; padding-left: 18px; }
+.vitals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--space-2); margin: var(--space-2) 0; }
+.vital-box { display: grid; gap: 2px; }
+.vital-input { display: flex; align-items: center; gap: 4px; }
+.vital-input input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.vital-box.has-error input { border-color: var(--color-danger); }
