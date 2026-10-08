@@ -7,6 +7,7 @@ import { HOSPITAL_NAVIGATION, firstTab } from '../config/navigation.js';
 import { useAppConfig } from '../context/AppConfigContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { AppShell } from './AppShell.jsx';
+import { NotificationBell } from '../components/NotificationBell.jsx';
 
 export function HospitalSwitcher({ placeholder, label = 'Hospital' }) {
   const { memberships, activeHospitalId, switchHospital } = useAuth();
@@ -104,6 +105,7 @@ export function HospitalLayout() {
       brandSubtitle={activeMembership?.hospital.name}
       sidebarFoot={isSuperAdminInHospital ? 'Super admin · every role' : roles.map(roleLabel).join(' · ')}
       topbarStart={<WorkspaceBadge />}
+      topbarActions={activeHospitalId ? <NotificationBell key={activeHospitalId} /> : null}
       contentKey={activeHospitalId}
       banner={isSuperAdminInHospital ? <SuperAdminBanner /> : null}
     />

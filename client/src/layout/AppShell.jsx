@@ -41,7 +41,7 @@ export function BrandMark({ size = 'md', subtitle }) {
 }
 
 // contentKey: when it changes (another hospital chosen), the page starts fresh and loads its data again.
-export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, contentKey, banner }) {
+export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, topbarActions, contentKey, banner }) {
   const { logout } = useAuth();
   const { app } = useAppConfig();
   const { pathname } = useLocation();
@@ -96,6 +96,7 @@ export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, 
         <header className="topbar">
           <div className="topbar-start">{topbarStart}</div>
           <div className="topbar-actions">
+            {topbarActions}
             <ProfileMenu />
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => logout()}>
               <LogOut size={16} aria-hidden /> Log out

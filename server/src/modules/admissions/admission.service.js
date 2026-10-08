@@ -22,6 +22,7 @@ import { sell } from '../sales/sale.service.js';
 import { evaluateRedFlags, redFlagFacts } from '../visits/redFlags.js';
 import { weeksOn } from '../visits/visit.service.js';
 import { Membership } from '../members/membership.model.js';
+import { notify, notifyRoles } from '../notifications/notification.service.js';
 import { User } from '../users/user.model.js';
 import { Admission, InpatientDocument, NursingEntry, SIGNED_BY } from './admission.model.js';
 import { DOC_CONTENT } from './admission.validation.js';
@@ -241,6 +242,10 @@ export async function admit(req, body) {
     clientRequestId: body.clientRequestId,
   });
   await recordAudit(req, 'ADMITTED', { hospitalId: req.hospitalId, details: { patientId: String(patient._id), admissionId: String(stay._id), ...(frontDesk && { byReception: true }) } });
+  const admitted = { type: 'NEW_ADMISSION', title: 'New admission', message: `${patient.name} (${patient.patientNumber}) · ${stay.ward}${stay.bed ? `, bed ${stay.bed}` : ''}` };
+  await notify(req, [doctorId], { ...admitted, link: `/hospital/inpatients/${stay._id}` });
+  await notifyRoles(req, ['nurse'], { ...admitted, link: `/hospital/inpatients/${stay._id}` });
+  if (!frontDesk) await notifyRoles(req, config.access.registrationMenu, { ...admitted, link: '/hospital/admissions' });
   return frontDesk ? { stay: frontDeskStay(stay) } : stayAnswer(req, { stay, patient, level });
 }
 
@@ -311,6 +316,9 @@ export async function signDocument(req, admissionId, docId) {
       }
     }
     await recordAudit(req, 'DISCHARGED', { hospitalId: req.hospitalId, details: { patientId: String(patient._id), admissionId } });
+    const who = `${patient.name} (${patient.patientNumber})`;
+    await notifyRoles(req, config.access.registrationMenu, { type: 'DISCHARGE_READY', title: 'Discharge card ready', message: `${who} – print the discharge card`, link: '/hospital/discharges' });
+    await notifyRoles(req, ['billing'], { type: 'FINAL_BILL', title: 'Final bill needed', message: `${who} was discharged`, link: `/hospital/billing?patientId=${patient._id}` });
   }
   await recordAudit(req, 'INPATIENT_DOC_SIGNED', { hospitalId: req.hospitalId, details: { admissionId, documentId: docId, kind: doc.kind } });
   return { document: docView(doc), ...(await stayAnswer(req, loaded)) };

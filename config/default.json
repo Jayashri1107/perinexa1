@@ -180,6 +180,10 @@
     "ageBands": [0, 1, 18, 25, 30, 35, 40, 50],
     "pincodeLookupUrl": "https://api.postalpincode.in/pincode"
   },
+  "notifications": {
+    "listSize": 30,
+    "keepDays": 60
+  },
   "documents": {
     "maxMegabytes": 10,
     "recentDischargeDays": 30,

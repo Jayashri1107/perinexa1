@@ -305,3 +305,8 @@ export const dischargesApi = {
 export const medicalHistoryApi = {
   get: (patientId) => http.get(`/hospital/medical-history/${patientId}`),
 };
+export const notificationsApi = {
+  list: () => http.get('/hospital/notifications'),
+  read: (id) => http.post(`/hospital/notifications/${id}/read`),
+  readAll: () => http.post('/hospital/notifications/read-all'),
+};

@@ -45,6 +45,7 @@ import visitRoutes, { pharmacyPrescriptionRouter } from './visits/visit.routes.j
 import dischargeRoutes from './discharges/discharge.routes.js';
 import documentRoutes from './documents/document.routes.js';
 import medicalHistoryRoutes from './medicalHistory/medicalHistory.routes.js';
+import notificationRoutes from './notifications/notification.routes.js';
 
 const { access } = config;
 const HOSPITAL_ADMIN = [config.adminRole];
@@ -115,4 +116,6 @@ export const modules = [
   { path: '/hospital/medical-history', access: 'hospital', roles: access.patientsClinical, router: medicalHistoryRoutes },
   { path: '/hospital/patient-documents', access: 'hospital', roles: access.patientDocuments, router: documentRoutes },
   { path: '/hospital/discharges', access: 'hospital', roles: access.dischargeCards, router: dischargeRoutes },
+  // Everyone in a hospital: their own notifications
+  { path: '/hospital/notifications', access: 'hospital', router: notificationRoutes },
 ];

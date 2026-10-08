@@ -15,6 +15,7 @@ import { recordLevel } from '../patients/patientAccess.js';
 import { doctorOptions, pickPatients } from '../patients/patient.service.js';
 import { User } from '../users/user.model.js';
 import { Appointment } from './appointment.model.js';
+import { notify } from '../notifications/notification.service.js';
 import { addDays, coveredStarts, hhmm, hospitalMinutes, isoDay, leaveOn, lengthFor, minutesOf, sessionsOn, slotCheck, slotStarts, utcDay, waitingOrder } from './slots.js';
 
 const { access, adminRole } = config;
@@ -246,7 +247,14 @@ export async function book(req, body) {
     hospitalId: req.hospitalId,
     details: { appointmentId: String(appt._id), ...(patientId && { patientId: String(patientId) }), doctorId: doctor.id, date: body.date },
   });
-  return viewOne(req.hospitalId, appt);
+  const view = await viewOne(req.hospitalId, appt);
+  await notify(req, [doctor.id], {
+    type: 'NEW_APPOINTMENT',
+    title: 'New appointment',
+    message: `${view.patient?.name ?? view.guest?.name ?? 'A patient'} · ${body.date}${body.start ? ` at ${body.start}` : ' (time to be given)'}`,
+    link: '/hospital/appointments',
+  });
+  return view;
 }
 
 async function findAppointment(req, id) {
@@ -310,7 +318,9 @@ export async function arrive(req, id) {
   appt.set({ status: 'arrived', arrivedAt: new Date(), updatedBy: req.user._id });
   await appt.save();
   await recordAudit(req, 'APPOINTMENT_ARRIVED', { hospitalId: req.hospitalId, details: { appointmentId: id, patientId: String(appt.patientId) } });
-  return viewOne(req.hospitalId, appt);
+  const view = await viewOne(req.hospitalId, appt);
+  await notify(req, [appt.doctorId], { type: 'PATIENT_ARRIVED', title: 'Patient arrived', message: `${view.patient?.name ?? 'A patient'} is waiting`, link: '/hospital/appointments' });
+  return view;
 }
 
 export async function undoArrival(req, id) {
@@ -367,7 +377,9 @@ export async function giveToken(req, { doctorId, patientId }) {
     createdBy: req.user._id,
   });
   await recordAudit(req, 'APPOINTMENT_ARRIVED', { hospitalId: req.hospitalId, details: { appointmentId: String(appt._id), patientId: String(pid), token: seq } });
-  return viewOne(req.hospitalId, appt);
+  const view = await viewOne(req.hospitalId, appt);
+  await notify(req, [doctor.id], { type: 'PATIENT_ARRIVED', title: 'Walk-in patient', message: `${view.patient?.name ?? 'A patient'} · token ${seq}`, link: '/hospital/appointments' });
+  return view;
 }
 
 // ---------- A patient's appointments ----------

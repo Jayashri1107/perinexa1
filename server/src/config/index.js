@@ -108,6 +108,7 @@ const schema = z.object({
     ageBands: z.array(z.number().int().nonnegative()).min(2),
     pincodeLookupUrl: z.string().url(),
   }),
+  notifications: z.object({ listSize: z.number().int().min(5).max(200), keepDays: z.number().int().min(1).max(365) }),
   documents: z.object({
     maxMegabytes: z.number().positive().max(15),
     recentDischargeDays: z.number().int().positive(),
