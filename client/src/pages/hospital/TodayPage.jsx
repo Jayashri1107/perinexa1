@@ -27,6 +27,9 @@ import {
   ChartColumn,
   UserPlus,
   Users,
+  BedDouble,
+  Footprints,
+  Hourglass,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -79,6 +82,8 @@ function attentionItems(today, overview) {
 const QUICK_ACTIONS = [
   { access: 'registerPatients', icon: UserPlus, label: 'Register a patient', to: '/hospital/patients/new' },
   { access: 'patients', icon: HeartPulse, label: 'Find a patient', to: '/hospital/patients' },
+  { access: 'registrationMenu', icon: BedDouble, label: 'Admit a patient', to: '/hospital/admissions' },
+  { access: 'registrationMenu', icon: DoorOpen, label: 'Discharges', to: '/hospital/discharges' },
   { access: 'appointments', icon: CalendarClock, label: 'Appointments', to: '/hospital/appointments' },
   { access: 'calendar', icon: CalendarDays, label: 'Calendar', to: '/hospital/calendar' },
   { access: 'lab', icon: FlaskConical, label: 'Lab', to: '/hospital/lab' },
@@ -131,6 +136,14 @@ export function TodayPage() {
         <>
           <h2 className="today-title">Today at a glance</h2>
           <div className="stat-grid">
+            {today.frontDesk && (
+              <StatCard icon={CalendarClock} to="/hospital/appointments" label="Appointments today" value={today.frontDesk.appointments} hint={`${today.frontDesk.seen} seen · ${today.frontDesk.notArrived} not arrived yet`} tone="info" />
+            )}
+            {today.frontDesk && <StatCard icon={Hourglass} to="/hospital/appointments" label="Waiting now" value={today.frontDesk.waiting} hint="Arrived, not seen yet" tone="warning" />}
+            {today.frontDesk && <StatCard icon={Footprints} to="/hospital/appointments" label="Walk-ins today" value={today.frontDesk.walkIns} hint="Came without an appointment" />}
+            {today.frontDesk && (
+              <StatCard icon={BedDouble} to="/hospital/admissions" label="In hospital now" value={today.frontDesk.inHospital} hint={`${today.frontDesk.admittedToday} admitted · ${today.frontDesk.dischargedToday} discharged today`} tone="neutral" />
+            )}
             {today.patients && <StatCard icon={UserPlus} to={canAccess('patients') ? '/hospital/patients' : undefined} label="Registered today" value={today.patients.registeredToday} hint={`${plural(today.patients.active, 'patient')} under care`} />}
             {today.billing && <StatCard icon={Receipt} to="/hospital/billing" label="Bills today" value={today.billing.billsToday} hint={`${formatMoney(today.billing.billedToday)} billed`} tone="info" />}
             {today.billing && <StatCard icon={Banknote} to="/hospital/billing/daily" label="Received today" value={formatMoney(today.billing.collectedToday)} hint="After refunds" tone="neutral" />}

@@ -10,6 +10,9 @@ import { unsignedToday } from '../visits/visit.service.js';
 import { Patient } from '../patients/patient.model.js';
 import { alertCounts } from '../pharmacyReports/pharmacyReports.service.js';
 import { Sale } from '../sales/sale.model.js';
+import { Admission } from '../admissions/admission.model.js';
+import { Appointment } from '../appointments/appointment.model.js';
+import { utcDay } from '../appointments/slots.js';
 
 const has = (roles, list) => roles.some((r) => list.includes(r));
 const DAY = 86400000;
@@ -67,6 +70,31 @@ async function pharmacySection(hid, start, end) {
   return { ...alerts, salesToday: sales?.count ?? 0, soldToday: round2(sales?.net ?? 0) };
 }
 
+// The front desk's day (owner, 8 Oct 2026): today's appointments across all doctors (booked, waiting, seen,
+// walk-ins), patients registered today, and who is in hospital, admitted and discharged today.
+async function frontDeskSection(hid, start, end) {
+  const day = utcDay(todayLocal());
+  const [byStatus, walkIns, inHospital, admittedToday, dischargedToday] = await Promise.all([
+    Appointment.aggregate([{ $match: { hospitalId: hid, on: day } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
+    Appointment.countDocuments({ hospitalId: hid, on: day, source: 'walk_in', status: { $ne: 'cancelled' } }),
+    Admission.countDocuments({ hospitalId: hid, status: 'admitted' }),
+    Admission.countDocuments({ hospitalId: hid, admittedAt: { $gte: start, $lt: end } }),
+    Admission.countDocuments({ hospitalId: hid, dischargedAt: { $gte: start, $lt: end } }),
+  ]);
+  const n = (st) => byStatus.find((x) => x._id === st)?.n ?? 0;
+  return {
+    appointments: n('booked') + n('arrived') + n('seen'),
+    notArrived: n('booked'),
+    waiting: n('arrived'),
+    seen: n('seen'),
+    cancelled: n('cancelled'),
+    walkIns,
+    inHospital,
+    admittedToday,
+    dischargedToday,
+  };
+}
+
 export async function today(req) {
   const hid = toObjectId(req.hospitalId);
   const roles = req.membership.roles;
@@ -78,8 +106,9 @@ export async function today(req) {
     billing: has(roles, access.billing),
     pharmacy: has(roles, access.pharmacy),
     lab: has(roles, access.lab),
+    frontDesk: has(roles, access.registrationMenu),
   };
-  const [patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits] = await Promise.all([
+  const [patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits, frontDesk] = await Promise.all([
     wants.patients ? patientSection(hid, start, end) : null,
     wants.doctor ? doctorSection(hid, req.user._id) : null,
     // a doctor's own appointments today: who is waiting, and who comes next
@@ -89,6 +118,7 @@ export async function today(req) {
     wants.pharmacy ? pharmacySection(hid, start, end) : null,
     // visits of today this person started or that are her doctor's, not signed yet
     has(roles, config.prescriberRoles) ? unsignedToday(hid, req.user._id) : 0,
+    wants.frontDesk ? frontDeskSection(hid, start, end) : null,
   ]);
-  return { date: todayLocal(), patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits };
+  return { date: todayLocal(), patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits, frontDesk };
 }
