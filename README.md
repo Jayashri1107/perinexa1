@@ -134,6 +134,19 @@ Fake sample data only.
   services and the profile photo. Clinical warnings are never toasts and never flash.
 - Everything stops moving when the device asks for reduced motion.
 
+**9 Oct 2026 (night) – printed papers as the hospital's own forms, with its logo**
+- **Logo**: Hospital admin → Print letterhead → Upload logo (shrunk in the browser, PNG kept transparent; checked by
+  its bytes; `hospital_logos`, `hospital.logoVersion`). Every letterhead carries `logoVersion`; prints load
+  `GET /api/hospital/logo`.
+- **Letterhead** (`print/PrintFrame.jsx`): a ruled box – logo left, the name large in capitals, address, "Mob." and
+  "E-mail" lines – and the paper's name in a dark band (`DocTitle`). Name, address, phones and e-mail come from the
+  letterhead settings: nothing about a hospital is written in the code.
+- **Discharge card** (A4), as the hospital's printed form: Name, Age / Sex, Consultant, D.O.A., D.O.D., Room No.,
+  Reg. No., IPD No.; Diagnosis · History / complaints · O/E · Course in the hospital · Surgery / procedure ·
+  Investigation · Blood investigation (report – the lab results of the stay, `labResults`) · Condition at discharge ·
+  Advice / suggested investigations | Advice on discharge (medicines) · Follow-up with the notes; signatures.
+- **Bills** (and the pharmacy's prescription bill): A4 with the same letterhead and band, ruled tables.
+
 ### Who sees what (config.access)
 
 | Role | Menu |

@@ -25,6 +25,8 @@ export const AUDIT_ACTIONS = Object.freeze({
   MASTER_DEACTIVATED: 'Master data deactivated',
   HOSPITAL_SWITCHED: 'Switched hospital',
   SETTINGS_UPDATED: 'Hospital settings changed',
+  HOSPITAL_LOGO_CHANGED: 'Hospital logo for printed papers changed',
+  HOSPITAL_LOGO_REMOVED: 'Hospital logo for printed papers removed',
   OPD_TIMINGS_UPDATED: 'OPD timings changed',
   PROFILE_UPDATED: 'Professional details changed',
   PROFILE_PHOTO_CHANGED: 'Profile photo changed',

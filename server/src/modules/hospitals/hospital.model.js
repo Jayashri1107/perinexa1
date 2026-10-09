@@ -24,6 +24,8 @@ const hospitalSchema = new mongoose.Schema(
     // The hospital's own settings, kept by its hospital admin (Hospital settings). The super admin's screens never
     // show them (HOSPITAL_SETTINGS_FIELDS below).
     // Printed at the top and bottom of prescriptions, care plans and other documents.
+    // its logo for printed papers (hospitalSettings/hospitalLogo.js): 0 = none; raised at each change
+    logoVersion: { type: Number, default: 0 },
     letterhead: {
       name: text(150), // printed name (the hospital name when empty)
       tagline: text(150),

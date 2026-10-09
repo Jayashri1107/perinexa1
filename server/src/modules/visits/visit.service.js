@@ -157,10 +157,10 @@ async function fullAnswer(req, { patient, level, visit }) {
   const [doctor, hospital] = await Promise.all([
     // the doctor printed on the prescription: who wrote it, else her doctor
     visit.prescription?.by ?? visit.doctorId ? User.findById(visit.prescription?.by ?? visit.doctorId).select('name professional').lean() : null,
-    Hospital.findById(req.hospitalId).select('name letterhead').lean(),
+    Hospital.findById(req.hospitalId).select('name letterhead logoVersion').lean(),
   ]);
   return {
-    print: { hospitalName: hospital?.name ?? '', letterhead: hospital?.letterhead ?? {} },
+    print: { hospitalName: hospital?.name ?? '', letterhead: { ...(hospital?.letterhead ?? {}), logoVersion: hospital?.logoVersion ?? 0 } },
     visit: visitView(req, visit),
     patient: { id: String(patient._id), name: patient.name, patientNumber: patient.patientNumber, careType: patient.careType, edd: patient.edd, allergies: patient.allergies ?? '', bloodGroup: patient.bloodGroup ?? '', status: patient.status },
     doctor: doctor ? { name: doctor.name, ...doctor.professional } : null,

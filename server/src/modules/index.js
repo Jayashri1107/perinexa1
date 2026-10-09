@@ -51,6 +51,7 @@ import wardRoutes from './wards/ward.routes.js';
 import wardCareRoutes from './wardCare/wardCare.routes.js';
 import doctorDeskRoutes from './doctorDesk/doctorDesk.routes.js';
 import nursingServiceRoutes, { billingServicesRouter } from './nursingServices/nursingService.routes.js';
+import { logoAdminRouter, logoRouter } from './hospitalSettings/hospitalLogo.js';
 
 const { access } = config;
 const HOSPITAL_ADMIN = [config.adminRole];
@@ -77,7 +78,10 @@ export const modules = [
   { path: '/hospital/overview', access: 'hospital', roles: HOSPITAL_ADMIN, router: hospitalOverviewRoutes },
   { path: '/hospital/staff', access: 'hospital', roles: HOSPITAL_ADMIN, router: hospitalStaffRoutes },
   { path: '/hospital/opd-timings', access: 'hospital', roles: HOSPITAL_ADMIN, router: opdTimingsRoutes },
+  // the logo on printed papers (9 Oct 2026): kept by the hospital admin, read by everyone printing
+  { path: '/hospital/settings/logo', access: 'hospital', roles: HOSPITAL_ADMIN, router: logoAdminRouter },
   { path: '/hospital/settings', access: 'hospital', roles: HOSPITAL_ADMIN, router: hospitalSettingsRoutes },
+  { path: '/hospital/logo', access: 'hospital', router: logoRouter },
   { path: '/hospital/audit-logs', access: 'hospital', roles: HOSPITAL_ADMIN, router: hospitalAuditRoutes },
 
   // Module 3 – patients

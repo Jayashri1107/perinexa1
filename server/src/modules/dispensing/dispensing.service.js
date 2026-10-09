@@ -129,11 +129,11 @@ export async function billToPrint(req, billId) {
   const [sales, visit, hospital, patient] = await Promise.all([
     invoices.length ? Sale.find({ hospitalId: req.hospitalId, invoiceNumber: { $in: invoices } }).lean() : [],
     Visit.findOne({ hospitalId: req.hospitalId, 'pharmacy.billId': bill._id }).select('visitOn prescription.byName').lean(),
-    Hospital.findById(req.hospitalId).select('name letterhead').lean(),
+    Hospital.findById(req.hospitalId).select('name letterhead logoVersion').lean(),
     Patient.findOne({ hospitalId: req.hospitalId, _id: bill.patientId }).lean(),
   ]);
   return {
-    hospital: { name: hospital?.name ?? '', letterhead: hospital?.letterhead ?? {} },
+    hospital: { name: hospital?.name ?? '', letterhead: { ...(hospital?.letterhead ?? {}), logoVersion: hospital?.logoVersion ?? 0 } },
     patient: patient ? patientView(patient) : { name: bill.patient?.name, patientNumber: bill.patient?.patientNumber },
     prescription: visit ? { visitId: String(visit._id), visitOn: dayIso(visit.visitOn), doctor: visit.prescription?.byName ?? '' } : null,
     bill: {

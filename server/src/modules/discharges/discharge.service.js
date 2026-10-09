@@ -11,6 +11,8 @@ import { getSettings } from '../hospitalSettings/hospitalSettings.service.js';
 import { Patient } from '../patients/patient.model.js';
 import { recordLevel } from '../patients/patientAccess.js';
 import { User } from '../users/user.model.js';
+import { LabOrder } from '../lab/labOrder.model.js';
+import { testByKey } from '../lab/labTests.js';
 import { loadForRecords, mayOpenRecords } from '../documents/recordsAccess.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -61,7 +63,13 @@ export async function dischargeCard(req, cardId) {
   const { patient } = await loadForRecords(req, card.patientId);
   const stay = await Admission.findOne({ hospitalId: req.hospitalId, _id: card.admissionId }).lean();
   const doctorId = stay?.doctorId ?? patient.assignedDoctorId;
-  const [doctor, settings] = await Promise.all([doctorId ? User.findById(doctorId).select('name').lean() : null, getSettings(req.hospitalId)]);
+  // the blood and other lab results reported during the stay (to the day after discharge), for the printed card
+  const until = new Date(new Date(stay?.dischargedAt ?? card.signed?.at ?? Date.now()).getTime() + 24 * 3600_000);
+  const [doctor, settings, labs] = await Promise.all([
+    doctorId ? User.findById(doctorId).select('name professional').lean() : null,
+    getSettings(req.hospitalId),
+    stay ? LabOrder.find({ hospitalId: req.hospitalId, patientId: patient._id, status: { $in: ['reported', 'reviewed'] }, 'reported.at': { $gte: stay.admittedAt, $lte: until } }).sort({ 'reported.at': 1 }).lean() : [],
+  ]);
   await recordAudit(req, 'DISCHARGE_CARD_VIEWED', { hospitalId: req.hospitalId, details: { patientId: String(patient._id), admissionId: String(card.admissionId), documentId: String(card._id) } });
   return {
     letterhead: settings.letterhead ?? {},
@@ -78,6 +86,23 @@ export async function dischargeCard(req, cardId) {
     },
     stay: stay ? { id: String(stay._id), admissionNumber: stay.admissionNumber ?? '', admittedAt: stay.admittedAt, ward: stay.ward, bed: stay.bed, dischargedAt: stay.dischargedAt, doctorName: doctor?.name ?? '' } : null,
     consultant: doctor?.name ?? '',
+    consultantQualification: doctor?.professional?.qualification ?? '',
+    labResults: labs.map((o) => ({
+      orderNumber: o.orderNumber,
+      reportedAt: o.reported?.at,
+      reviewed: o.status === 'reviewed',
+      tests: o.tests.map((t) => {
+        const fields = testByKey.get(t.key)?.fields ?? [];
+        return {
+          name: t.name,
+          values: (t.values ?? []).map((v) => {
+            const f = fields.find((x) => x.key === v.key);
+            return { name: f?.name ?? v.key, value: v.value, unit: f?.unit ?? '', flag: v.flag };
+          }),
+          text: t.text ?? '',
+        };
+      }),
+    })),
     card: { id: String(card._id), content: card.content, signed: card.signed, additions: (card.additions ?? []).map((a) => ({ text: a.text, byName: a.byName, at: a.at })) },
   };
 }

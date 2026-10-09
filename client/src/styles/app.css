@@ -1462,3 +1462,65 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .nt-grid > .stack { grid-template-rows: auto 1fr; }
 .nt-grid > .stack > .card:last-child { display: flex; flex-direction: column; }
 @media (max-width: 1100px) { .nt-grid > .card { max-height: none; } }
+
+/* ---------- Printed papers as the hospital's own forms (owner, 9 Oct 2026) ---------- */
+/* the letterhead: a ruled box, the logo on the left, the name large and bold, address / Mob. / E-mail lines */
+.print-head.lh-box { display: flex; align-items: center; justify-content: flex-start; gap: 14px; border: 1.5px solid #000; padding: 8px 12px; margin-bottom: 8px; }
+.lh-logo { width: 74px; height: 74px; object-fit: contain; flex-shrink: 0; }
+.lh-text { flex: 1; text-align: center; }
+.lh-name { font-size: 20px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1.2; }
+.lh-tagline { font-size: 11px; font-style: italic; }
+.lh-line { font-size: 10.5px; line-height: 1.35; }
+/* the document's name in a dark band, the date (or number) on the right; older prints' titles become the same band */
+.lh-title-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin: 4px 0 8px; }
+.lh-title, .print-sheet > .print-doc { display: inline-block; background: #3a3a3a; color: #fff; font-weight: 700; letter-spacing: 0.04em; padding: 3px 18px; text-align: left; white-space: normal; }
+.print-sheet > .print-doc { margin: 2px 0 8px; }
+.print-sheet > .print-doc strong { color: #fff; }
+.lh-title-right { font-size: 11.5px; }
+/* A4 papers (discharge card, bills); every other print stays A5 */
+.print-sheet.sheet-a4 { max-width: 210mm; padding: 12mm; font-size: 12px; }
+.print-sheet.sheet-a4 .print-info { border: 1px solid #000; }
+.print-sheet.sheet-a4 .print-info th, .print-sheet.sheet-a4 .print-info td { padding: 4px 8px; border-bottom: 1px solid #bbb; }
+.print-sheet.sheet-a4 .print-table { border: 1px solid #000; }
+.print-sheet.sheet-a4 .print-table th, .print-sheet.sheet-a4 .print-table td { border: 1px solid #999; padding: 5px 8px; }
+.print-sheet.sheet-a4 .print-table thead th { background: #eee; }
+/* the discharge card */
+.dc { color: #000; }
+.dc-fields { border: 1.5px solid #000; border-bottom: 0; padding: 6px 12px 8px; }
+.dc-row { display: flex; gap: 14px; margin: 5px 0; }
+.dc-field { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex-basis: 0; }
+.dc-label { white-space: nowrap; }
+.dc-value { flex: 1; border-bottom: 1px solid #555; min-height: 15px; padding: 0 4px; overflow-wrap: anywhere; }
+.dc-box { border: 1.5px solid #000; border-top: 1px solid #000; padding: 6px 12px 10px; min-height: 26mm; break-inside: avoid; }
+.dc-box.dc-short { min-height: 18mm; }
+.dc-box + .dc-box, .dc-fields + .dc-box { border-top-width: 1px; }
+.dc-head { font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; margin: 0 0 4px; color: #000; }
+.dc-sub { margin-top: 10px; }
+.dc-body p { margin: 0 0 4px; }
+.dc-empty { color: #777; margin: 0; }
+.dc-lab { width: 100%; border-collapse: collapse; }
+.dc-lab th, .dc-lab td { text-align: left; vertical-align: top; padding: 2px 6px 2px 0; border-bottom: 1px dotted #999; }
+.dc-lab th { width: 30%; font-weight: 600; }
+.dc-date { display: block; font-weight: 400; font-size: 10px; color: #555; }
+.dc-two { display: grid; grid-template-columns: 2fr 3fr; border: 1.5px solid #000; border-top: 1px solid #000; min-height: 55mm; break-inside: avoid; }
+.dc-col { padding: 0 0 8px; }
+.dc-col + .dc-col { border-left: 1.5px solid #000; }
+.dc-colhead { font-size: 12px; font-weight: 700; text-align: center; margin: 0 0 6px; padding: 5px 8px; border-bottom: 1.5px solid #000; color: #000; }
+.dc-list { margin: 0; padding: 0 10px 0 26px; display: grid; gap: 4px; }
+.dc-follow { border: 1.5px solid #000; border-top: 1px solid #000; padding: 6px 12px 8px; break-inside: avoid; }
+.dc-notes { margin: 4px 0; padding-left: 20px; font-style: italic; display: grid; gap: 3px; }
+.dc-handed { font-style: italic; margin: 4px 0 0; }
+.dc-sign { margin-top: 16mm; }
+@media print {
+  @page a4 { size: A4; margin: 10mm; }
+  .print-sheet.sheet-a4 { page: a4; padding: 0; max-width: none; }
+}
+
+/* Print letterhead: the logo card */
+.logo-card { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: var(--space-4); align-items: center; margin-bottom: var(--space-4); }
+.logo-preview { width: 140px; height: 110px; display: grid; place-items: center; border: 1px dashed var(--color-border); border-radius: var(--radius); background: #fff; }
+.logo-preview img { max-width: 120px; max-height: 96px; object-fit: contain; }
+.logo-card h2 { margin: 0 0 4px; }
+.logo-actions { justify-content: flex-start; margin-top: var(--space-2); }
+@media (max-width: 600px) { .logo-card { grid-template-columns: 1fr; } }
+.print-sheet .totals dt, .print-sheet .totals dd { color: #000; }

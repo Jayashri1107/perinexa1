@@ -44,6 +44,8 @@ export const opdTimingsApi = {
 export const hospitalSettingsApi = {
   get: () => http.get('/hospital/settings'),
   update: (section, data) => http.put(`/hospital/settings/${section}`, data),
+  setLogo: (image) => http.put('/hospital/settings/logo', { image }),
+  removeLogo: () => http.del('/hospital/settings/logo'),
 };
 
 export const hospitalAuditApi = {

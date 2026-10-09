@@ -8,12 +8,13 @@ const PROFILE_FIELDS = 'name code address phone email';
 
 export async function getSettings(hospitalId) {
   const hospital = await Hospital.findById(hospitalId)
-    .select(`${PROFILE_FIELDS} ${SECTION_KEYS.join(' ')} settingsUpdatedAt`)
+    .select(`${PROFILE_FIELDS} ${SECTION_KEYS.join(' ')} settingsUpdatedAt logoVersion`)
     .populate('settingsUpdatedBy', 'name')
     .lean();
   if (!hospital) throw notFoundError('Hospital');
-  const { _id, settingsUpdatedBy, ...rest } = hospital;
-  return { id: _id.toString(), ...rest, settingsUpdatedByName: settingsUpdatedBy?.name ?? null };
+  const { _id, settingsUpdatedBy, logoVersion = 0, ...rest } = hospital;
+  // every printed paper reads the letterhead from here: it carries the logo's version too
+  return { id: _id.toString(), ...rest, letterhead: { ...(rest.letterhead ?? {}), logoVersion }, logoVersion, settingsUpdatedByName: settingsUpdatedBy?.name ?? null };
 }
 
 export async function updateSection(req, hospitalId, section, data) {

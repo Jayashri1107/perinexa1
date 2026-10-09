@@ -1,5 +1,10 @@
-// Hospital settings: one tab per section (Print letterhead, Patient messages, ABDM), each saved on its own.
-import { useEffect, useState } from 'react';
+// Hospital settings: one tab per section (Print letterhead, Patient messages, ABDM), each saved on its own. Print
+// letterhead also holds the hospital's logo for printed papers (owner, 9 Oct 2026).
+import { ImagePlus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { apiUrl } from '../../api/http.js';
+import { toast } from '../../components/Toast.jsx';
+import { shrinkLogo } from '../../utils/shrinkPhoto.js';
 import { Navigate, useParams } from 'react-router-dom';
 import { hospitalSettingsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
@@ -41,6 +46,48 @@ function SectionForm({ section, settings, onSaved }) {
   );
 }
 
+// The logo printed on discharge cards, bills, receipts and prescriptions: upload, see it, remove it.
+function LogoCard({ logoVersion, onChanged }) {
+  const input = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const run = async (action, message) => {
+    setBusy(true);
+    setError('');
+    try {
+      const r = await action();
+      onChanged(r.logoVersion);
+      toast(message);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const pick = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) run(async () => hospitalSettingsApi.setLogo(await shrinkLogo(file)), 'Logo saved – it is on every printed paper now');
+  };
+  return (
+    <section className="card logo-card">
+      <div className="logo-preview">
+        {logoVersion > 0 ? <img src={apiUrl(`/hospital/logo?v=${logoVersion}`)} alt="The hospital's logo" /> : <span className="muted small">No logo yet</span>}
+      </div>
+      <div>
+        <h2>Logo on printed papers</h2>
+        <p className="muted small">Printed at the top left of discharge cards, bills, receipts and prescriptions. A PNG with a transparent background looks best; it is made smaller before it is saved.</p>
+        {error && <p className="field-error">{error}</p>}
+        <div className="row-actions logo-actions">
+          <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => input.current?.click()}><ImagePlus size={14} aria-hidden /> {busy ? 'Saving…' : logoVersion > 0 ? 'Change logo' : 'Upload logo'}</button>
+          {logoVersion > 0 && <button type="button" className="btn btn-link btn-sm btn-danger-text" disabled={busy} onClick={() => window.confirm('Remove the logo from printed papers?') && run(() => hospitalSettingsApi.removeLogo(), 'Logo removed')}><Trash2 size={14} aria-hidden /> Remove</button>}
+        </div>
+        <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={pick} />
+      </div>
+    </section>
+  );
+}
+
 export function HospitalSettingsPage() {
   const { section: key } = useParams();
   const [settings, setSettings] = useState(null);
@@ -63,6 +110,7 @@ export function HospitalSettingsPage() {
       <SectionTabs tabs={HOSPITAL_ADMIN_TABS} label="Hospital admin" />
       <Alert type="error">{error}</Alert>
       {!settings && !error && <Loader />}
+      {settings && section.key === 'letterhead' && <LogoCard logoVersion={settings.logoVersion ?? 0} onChanged={(v) => setSettings((s) => ({ ...s, logoVersion: v, letterhead: { ...s.letterhead, logoVersion: v } }))} />}
       {/* key: a fresh form when the tab changes */}
       {settings && <SectionForm key={section.key} section={section} settings={settings} onSaved={setSettings} />}
     </>

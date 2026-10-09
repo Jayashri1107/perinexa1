@@ -11,7 +11,7 @@ import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { amountInWords } from '../../utils/amountInWords.js';
 import { ageText, formatDate, formatDateTime, formatMoney, labelOf } from '../../utils/format.js';
 import { Signatures } from './billPrintParts.jsx';
-import { Letterhead, PrintFrame } from './PrintFrame.jsx';
+import { DocTitle, Letterhead, PrintFrame } from './PrintFrame.jsx';
 
 export function PrescriptionBill({ data, signatures = true }) {
   const { patients: settings } = useAppConfig();
@@ -23,7 +23,8 @@ export function PrescriptionBill({ data, signatures = true }) {
   const discount = data.medicineDiscount + bill.discount;
   return (
     <>
-      <Letterhead letterhead={data.hospital.letterhead} hospitalName={data.hospital.name} extra={<div className="print-doc">{bill.status === 'cancelled' ? 'CANCELLED BILL' : 'BILL / INVOICE'}</div>} />
+      <Letterhead letterhead={data.hospital.letterhead} hospitalName={data.hospital.name} />
+      <DocTitle right={<>Bill no. <strong>{bill.billNumber}</strong> · {formatDateTime(bill.createdAt)}</>}>{bill.status === 'cancelled' ? 'CANCELLED BILL' : 'BILL / INVOICE'}</DocTitle>
       <table className="print-info">
         <tbody>
           <tr><th>Bill no.</th><td>{bill.billNumber}</td><th>Date</th><td>{formatDateTime(bill.createdAt)}</td></tr>
@@ -85,7 +86,7 @@ export function PrescriptionBillPrintPage() {
   if (error) return <Alert type="error">{error}</Alert>;
   if (!data) return <Loader />;
   return (
-    <PrintFrame ready title={`Bill_${data.bill.billNumber}`} footer={data.hospital.letterhead?.footer}>
+    <PrintFrame ready title={`Bill_${data.bill.billNumber}`} footer={data.hospital.letterhead?.footer} size="A4">
       <PrescriptionBill data={data} />
     </PrintFrame>
   );

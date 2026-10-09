@@ -11,7 +11,7 @@ import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { amountInWords } from '../../utils/amountInWords.js';
 import { formatDateTime, formatMoney, labelOf } from '../../utils/format.js';
 import { BillInfo, GeneratedBy, Signatures } from './billPrintParts.jsx';
-import { Letterhead, PrintFrame } from './PrintFrame.jsx';
+import { DocTitle, Letterhead, PrintFrame } from './PrintFrame.jsx';
 
 export function BillPrintPage() {
   const { id } = useParams();
@@ -33,8 +33,9 @@ export function BillPrintPage() {
   const discountLabel = `Discount${d.amount > 0 && d.mode === 'percent' ? ` (${d.value}%)` : ''}${d.amount > 0 && d.reason ? ` – ${d.reason}` : ''}`;
 
   return (
-    <PrintFrame ready title={`Bill_${bill.billNumber}`} footer={data.letterhead?.footer}>
-      <Letterhead letterhead={data.letterhead} hospitalName={data.hospitalName} extra={<div className="print-doc">{bill.status === 'cancelled' ? 'CANCELLED BILL' : 'BILL / INVOICE'}</div>} />
+    <PrintFrame ready title={`Bill_${bill.billNumber}`} footer={data.letterhead?.footer} size="A4">
+      <Letterhead letterhead={data.letterhead} hospitalName={data.hospitalName} />
+      <DocTitle right={<>Bill no. <strong>{bill.billNumber}</strong> · {formatDateTime(bill.createdAt)}</>}>{bill.status === 'cancelled' ? 'CANCELLED BILL' : 'BILL / INVOICE'}</DocTitle>
       <BillInfo bill={bill} context={context} numberLabel="Bill no." number={bill.billNumber} date={bill.createdAt} />
 
       <table className="print-table">
