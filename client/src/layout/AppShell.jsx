@@ -2,8 +2,9 @@
 // an icon rail (the choice is remembered in this browser), each menu item as an icon tile; the person at the top; the
 // page in the middle.
 import { LogOut, Menu } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Loader } from '../components/Loader.jsx';
 import { ProfileMenu } from '../components/ProfileMenu.jsx';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logo from '../assets/brand/perinexa-logo.png';
@@ -105,7 +106,9 @@ export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, 
         </header>
         {banner}
         <main className="content" key={contentKey}>
-          <Outlet />
+          <Suspense fallback={<Loader />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

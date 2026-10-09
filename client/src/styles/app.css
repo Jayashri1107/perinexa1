@@ -1195,3 +1195,36 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .bed-picker .floor-group + .floor-group { margin-top: var(--space-3); }
 .bed-picker .floor-title { display: block; margin: 0 0 var(--space-2); font-size: 12px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .occupancy .card h3 { margin: 0; font-size: 16px; }
+
+/* ---------- Phones (9 Oct 2026) ---------- */
+/* Touch screens: buttons and links big enough for a finger; boxes at 16px so the iPhone does not zoom in on them. */
+@media (pointer: coarse) {
+  .btn { min-height: 40px; }
+  .btn-sm { min-height: 36px; }
+  input, select, textarea { font-size: 16px; }
+}
+@media (max-width: 600px) {
+  .content { padding: var(--space-3); }
+  .topbar { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
+  .topbar-actions { flex-wrap: wrap; }
+  /* the page title on its own line, its buttons below it, each as wide as needed */
+  .page-header { flex-direction: column; align-items: stretch; margin-bottom: var(--space-4); }
+  .page-actions { width: 100%; }
+  .page-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .card-head, .section-head { flex-wrap: wrap; gap: var(--space-2); }
+  /* pop-ups nearly fill the screen; their buttons wrap instead of running off the side */
+  .modal-backdrop { padding: var(--space-2); }
+  .modal { max-height: calc(100vh - 16px); }
+  .modal-head, .modal-foot { padding: var(--space-3) var(--space-4); }
+  .modal-body { padding: var(--space-4); }
+  .modal-foot { flex-wrap: wrap; }
+  .modal-foot .btn { flex: 1 1 auto; justify-content: center; }
+  /* giving a prescription: facts one under another, the medicine search as wide as the screen */
+  .give-facts { grid-template-columns: 1fr; }
+  .give-add { flex-wrap: wrap; }
+  .give-add .give-amount { flex: 1 1 110px; }
+  .give-add-row .picker-results { min-width: 0; width: calc(100vw - 32px); }
+  .profile-card { width: min(280px, calc(100vw - 24px)); }
+  .occupancy, .ward-cards { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  img { max-width: 100%; height: auto; }
+}
