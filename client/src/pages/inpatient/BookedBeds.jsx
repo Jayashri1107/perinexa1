@@ -2,6 +2,7 @@
 // it (name and number, linking to her record) – for reception on Today and on Admissions. From the wards' availability.
 import { ArrowRight, BedDouble } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { FloorTag } from '../../components/FloorTag.jsx';
 
 export function bedCounts(beds) {
   const total = (beds?.items ?? []).reduce((n, w) => n + w.total, 0);
@@ -10,7 +11,7 @@ export function bedCounts(beds) {
 }
 
 export function BookedBedsList({ beds }) {
-  const rows = (beds?.items ?? []).flatMap((w) => w.beds.filter((b) => b.booked).map((b) => ({ ward: w.floor ? `${w.name} · ${w.floor}` : w.name, ...b, key: `${w.id}|${b.label}` })));
+  const rows = (beds?.items ?? []).flatMap((w) => w.beds.filter((b) => b.booked).map((b) => ({ ward: w.name, floor: w.floor, ...b, key: `${w.id}|${b.label}` })));
   if (rows.length === 0) return <p className="muted">No beds booked – every bed is free.</p>;
   return (
     <ul className="plain-list booked-beds">
@@ -25,7 +26,7 @@ export function BookedBedsList({ beds }) {
             )}
             <span className="muted small"> {r.patient?.patientNumber}</span>
           </span>
-          <span className="muted small">{r.ward}</span>
+          <span className="booked-beds-where"><span className="muted small">{r.ward}</span> <FloorTag floor={r.floor} /></span>
         </li>
       ))}
     </ul>

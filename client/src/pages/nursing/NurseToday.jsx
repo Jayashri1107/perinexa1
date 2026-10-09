@@ -11,6 +11,8 @@ import { StateBadge } from '../../components/StateBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { formatMoney } from '../../utils/format.js';
 import { FLAG_LOOKS } from '../visits/visitFormat.js';
+import { FloorTag, wardParts } from '../../components/FloorTag.jsx';
+
 import { SLOT_LOOKS, clock, slotWhen } from './nursingFormat.js';
 import { ServiceDialog } from './ServiceDialog.jsx';
 
@@ -135,7 +137,7 @@ export function NurseToday() {
                     <span className="nt-due-time"><strong>{slotWhen(d.dueAt)}</strong></span>
                     <span className="nt-due-what">
                       <strong>{d.what}</strong>
-                      <span className="muted small block"><BedDouble size={12} aria-hidden /> {d.bed || '—'} · {d.patient.name}{d.instructions && ` · ${d.instructions}`}</span>
+                      <span className="muted small block"><BedDouble size={12} aria-hidden /> {d.bed || '—'} · {d.patient.name} <FloorTag floor={wardParts(d.ward).floor} />{d.instructions && ` · ${d.instructions}`}</span>
                     </span>
                     <StateBadge look={SLOT_LOOKS[d.state]} small />
                     <ArrowRight size={16} className="muted" aria-hidden />
@@ -159,7 +161,7 @@ export function NurseToday() {
               <ul className="plain-list rows">
                 {attention.map(({ p, why }) => (
                   <li key={p.id} className="nt-att">
-                    <Link to={`/hospital/inpatients/${p.id}?tab=care`}><strong>{p.bed || '—'} · {p.patient.name}</strong></Link>
+                    <span><Link to={`/hospital/inpatients/${p.id}?tab=care`}><strong>{p.bed || '—'} · {p.patient.name}</strong></Link> <FloorTag floor={wardParts(p.ward).floor} /></span>
                     <span className="ns-badges">{why.slice(0, 3).map((w) => <StateBadge key={w.look.word} look={w.look} small />)}</span>
                   </li>
                 ))}

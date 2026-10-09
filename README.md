@@ -116,6 +116,14 @@ Fake sample data only.
 - **Pharmacy → Prescriptions**: Waiting · Given today · **All given** (every prescription given, by patient name or
   number and dates, a page at a time – `GET /api/hospital/pharmacy/prescriptions/history`).
 
+**9 Oct 2026 (later still) – sign-in reliability, floor tags, nurse page heights**
+- The first sign-in sometimes did nothing and pages sometimes said "try again" until refreshed: the development website
+  found new libraries late (pages load on demand) and reloaded itself; and a request during a server restart got no
+  answer. Now `client/vite.config.js` prepares every page at start-up (`optimizeDeps`), and `api/http.js` quietly sends a
+  reading (and a sign-in) again after 0.4 s and 1.2 s when the server could not be reached – a change is never sent twice.
+- Beds show their floor as a small tag (`components/FloorTag.jsx`) on Booked beds, the nursing station, a nurse's Today and
+  the doctor's desk. A nurse's Today: both sides end together; long lists scroll inside their card.
+
 ### Who sees what (config.access)
 
 | Role | Menu |

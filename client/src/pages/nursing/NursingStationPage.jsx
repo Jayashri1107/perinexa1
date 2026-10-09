@@ -12,6 +12,8 @@ import { StatCard } from '../../components/StatCard.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
 import { formatDateTime } from '../../utils/format.js';
 import { FLAG_LOOKS } from '../visits/visitFormat.js';
+import { FloorTag, wardParts } from '../../components/FloorTag.jsx';
+
 
 const WARD_KEY = 'perinexa1.nursingWard';
 const readWard = () => {
@@ -55,7 +57,7 @@ function PatientCard({ p }) {
           <strong>{p.patient.name}</strong>
           <span className="muted small">{[p.patient.patientNumber, p.patient.age != null && `${p.patient.age} y`].filter(Boolean).join(' · ')}</span>
         </div>
-        <p className="muted small ns-line">{[p.ward, p.doctorName && `Dr ${p.doctorName.replace(/^Dr\.?\s*/i, '')}`].filter(Boolean).join(' · ')}</p>
+        <p className="muted small ns-line">{[wardParts(p.ward).name, p.doctorName && `Dr ${p.doctorName.replace(/^Dr\.?\s*/i, '')}`].filter(Boolean).join(' · ')} <FloorTag floor={wardParts(p.ward).floor} /></p>
         {p.reason && <p className="small ns-line">{p.reason}</p>}
         {p.patient.allergies && <p className="small ns-allergy"><TriangleAlert size={12} aria-hidden /> Allergies: {p.patient.allergies}</p>}
         <div className="ns-badges">

@@ -34,23 +34,43 @@ function buildUrl(path, query) {
   return url;
 }
 
+// The server was not reachable for a moment (restarting, a network blip, or the proxy answering for it): the request
+// never reached the app. Readings are sent again; a change only when the proxy says the app could not be reached (502,
+// 503, 504), so a change is never saved twice.
+const RETRY_WAIT_MS = [400, 1200];
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const unreachable = (res) => [502, 503, 504].includes(res.status) || (res.status === 500 && !(res.headers.get('content-type') ?? '').includes('application/json'));
+
 // raw: a File or Blob sent as it is (uploads), with `headers`; blob: the answer is a file, not JSON.
 async function request(method, path, { body, query, raw, headers, blob = false } = {}) {
   let res;
-  try {
-    res = await fetch(buildUrl(path, query), {
-      method,
-      credentials: 'same-origin',
-      headers: {
-        ...(body && { 'Content-Type': 'application/json' }),
-        ...(raw && { 'Content-Type': 'application/octet-stream' }),
-        ...headers,
-        ...(activeHospitalId && { 'X-Hospital-Id': activeHospitalId }),
-      },
-      body: raw ?? (body ? JSON.stringify(body) : undefined),
-    });
-  } catch {
-    throw new ApiError(0, { message: 'Cannot reach the server. Check that it is running.', code: 'NETWORK' });
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      res = await fetch(buildUrl(path, query), {
+        method,
+        credentials: 'same-origin',
+        headers: {
+          ...(body && { 'Content-Type': 'application/json' }),
+          ...(raw && { 'Content-Type': 'application/octet-stream' }),
+          ...headers,
+          ...(activeHospitalId && { 'X-Hospital-Id': activeHospitalId }),
+        },
+        body: raw ?? (body ? JSON.stringify(body) : undefined),
+      });
+    } catch {
+      // no answer at all: a reading is sent again (a change is not – it may have arrived before the line dropped)
+      if (method === 'GET' && attempt < RETRY_WAIT_MS.length) {
+        await wait(RETRY_WAIT_MS[attempt]);
+        continue;
+      }
+      throw new ApiError(0, { message: 'Cannot reach the server. Check your connection and try again.', code: 'NETWORK' });
+    }
+    // the proxy answered for an unreachable app: readings are sent again; changes only when they cannot have arrived
+    if (unreachable(res) && attempt < RETRY_WAIT_MS.length && (method === 'GET' || path === '/auth/login' || res.status !== 500)) {
+      await wait(RETRY_WAIT_MS[attempt]);
+      continue;
+    }
+    break;
   }
   if (blob && res.ok) return res.blob();
   const data = res.status === 204 ? null : await res.json().catch(() => null);

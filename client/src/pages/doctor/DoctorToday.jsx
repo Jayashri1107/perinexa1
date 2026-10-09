@@ -11,6 +11,8 @@ import { Loader } from '../../components/Loader.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { formatDateTime } from '../../utils/format.js';
+import { FloorTag, wardParts } from '../../components/FloorTag.jsx';
+
 import { whenText, whoText } from '../appointments/appointmentFormat.js';
 import { requestId } from '../visits/visitFormat.js';
 
@@ -116,7 +118,7 @@ export function DoctorToday() {
                 <tbody>
                   {desk.myPatients.map((p) => (
                     <tr key={p.id} className="clickable" onClick={() => navigate(`/hospital/inpatients/${p.id}`)}>
-                      <td className="desk-bed"><strong>{p.bed || '—'}</strong><span className="muted small block">{p.ward}</span></td>
+                      <td className="desk-bed"><strong>{p.bed || '—'}</strong><span className="muted small block">{wardParts(p.ward).name}</span><FloorTag floor={wardParts(p.ward).floor} /></td>
                       <td><Link to={`/hospital/inpatients/${p.id}`} onClick={(e) => e.stopPropagation()}><strong>{p.patient.name}</strong></Link><span className="muted small block">{[p.patient.patientNumber, p.patient.age != null && `${p.patient.age} y`].filter(Boolean).join(' · ')}</span>{p.patient.allergies && <span className="small block danger-text">Allergies: {p.patient.allergies}</span>}</td>
                       <td className="small">{p.diagnosis || '—'}</td>
                       <td>
@@ -177,7 +179,7 @@ export function DoctorToday() {
             <ul className="plain-list rows desk-scroll">
               {desk.myPatients.map((p) => (
                 <li key={p.id}>
-                  <span><strong>{p.bed || '—'} · {p.patient.name}</strong><span className="muted small block">{sinceText(p.lastRoundAt)}</span></span>
+                  <span><strong>{p.bed || '—'} · {p.patient.name}</strong> <FloorTag floor={wardParts(p.ward).floor} /><span className="muted small block">{sinceText(p.lastRoundAt)}</span></span>
                   <button type="button" className={`btn btn-sm ${p.roundDue ? 'btn-primary' : 'btn-ghost'}`} disabled={starting === p.id} onClick={() => startRound(p.id)}>
                     <NotebookPen size={14} aria-hidden /> {starting === p.id ? 'Opening…' : p.roundDue ? 'Write round note' : 'Add a note'}
                   </button>
