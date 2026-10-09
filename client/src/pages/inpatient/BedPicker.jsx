@@ -5,6 +5,7 @@ import { BedDouble } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { wardsApi } from '../../api/index.js';
 import { labelOf } from '../../utils/format.js';
+import { byFloor } from './inpatientFormat.js';
 
 export function BedPicker({ value, onChange, exceptStayId, error }) {
   const [data, setData] = useState(null);
@@ -24,25 +25,32 @@ export function BedPicker({ value, onChange, exceptStayId, error }) {
   return (
     <div className="bed-picker">
       <span className="field-label">Ward<span className="required" aria-hidden> *</span></span>
-      <div className="ward-cards" role="radiogroup" aria-label="Ward">
-        {data.items.map((w) => (
-          <button
-            key={w.id}
-            type="button"
-            role="radio"
-            aria-checked={w.id === value.wardId}
-            className={`ward-card${w.id === value.wardId ? ' on' : ''}${w.free === 0 ? ' full' : ''}`}
-            onClick={() => onChange({ wardId: w.id, bed: '' })}
-          >
-            <strong>{w.name}</strong>
-            <span className="muted small">{labelOf(data.kinds, w.kind)}</span>
-            <span className={`ward-free${w.free === 0 ? ' none' : ''}`}>{w.free === 0 ? 'Full' : `${w.free} of ${w.total} free`}</span>
-          </button>
+      <div role="radiogroup" aria-label="Ward">
+        {byFloor(data.items).map((g) => (
+          <div key={g.floor} className="floor-group">
+            <span className="floor-title small">{g.floor}</span>
+            <div className="ward-cards">
+              {g.items.map((w) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={w.id === value.wardId}
+                  className={`ward-card${w.id === value.wardId ? ' on' : ''}${w.free === 0 ? ' full' : ''}`}
+                  onClick={() => onChange({ wardId: w.id, bed: '' })}
+                >
+                  <strong>{w.name}</strong>
+                  <span className="muted small">{labelOf(data.kinds, w.kind)}</span>
+                  <span className={`ward-free${w.free === 0 ? ' none' : ''}`}>{w.free === 0 ? 'Full' : `${w.free} of ${w.total} free`}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
       {ward && (
         <>
-          <span className="field-label top-gap-sm">Bed in {ward.name}<span className="required" aria-hidden> *</span></span>
+          <span className="field-label top-gap-sm">Bed in {ward.name}{ward.floor && `, ${ward.floor}`}<span className="required" aria-hidden> *</span></span>
           <div className="bed-grid" role="radiogroup" aria-label={`Beds in ${ward.name}`}>
             {ward.beds.map((b) => (
               <button

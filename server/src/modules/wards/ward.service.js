@@ -12,13 +12,13 @@ const bedsOf = (prefix, count) => Array.from({ length: count }, (_, i) => ({ lab
 
 async function ensureStartingWards(hospitalId) {
   if (await Ward.exists({ hospitalId })) return;
-  const rows = config.wards.starting.map((w, i) => ({ hospitalId, name: w.name, kind: w.kind, beds: bedsOf(w.bedPrefix, w.beds), sortOrder: i }));
+  const rows = config.wards.starting.map((w, i) => ({ hospitalId, name: w.name, kind: w.kind, floor: w.floor ?? '', beds: bedsOf(w.bedPrefix, w.beds), sortOrder: i }));
   await Ward.insertMany(rows, { ordered: false }).catch((err) => {
     if (err.code !== 11000 && !err.writeErrors?.every((e) => e.code === 11000)) throw err;
   });
 }
 
-const wardView = (w) => ({ id: String(w._id), name: w.name, kind: w.kind, beds: w.beds.map((b) => ({ label: b.label, isActive: b.isActive })), isActive: w.isActive });
+const wardView = (w) => ({ id: String(w._id), name: w.name, kind: w.kind, floor: w.floor ?? '', beds: w.beds.map((b) => ({ label: b.label, isActive: b.isActive })), isActive: w.isActive });
 
 /** Every ward (for the hospital admin), active or not. */
 export async function listWards(hospitalId) {
@@ -50,7 +50,7 @@ export async function availability(req, { exceptStayId = null } = {}) {
           const p = booked.get(`${w._id}|${b.label}`);
           return { label: b.label, booked: booked.has(`${w._id}|${b.label}`), patient: p ? { id: String(p._id), name: p.name, patientNumber: p.patientNumber } : null };
         });
-      return { id: String(w._id), name: w.name, kind: w.kind, beds, total: beds.length, free: beds.filter((b) => !b.booked).length };
+      return { id: String(w._id), name: w.name, kind: w.kind, floor: w.floor ?? '', beds, total: beds.length, free: beds.filter((b) => !b.booked).length };
     }),
     kinds: config.wards.kinds,
   };
@@ -77,9 +77,12 @@ function cleanBeds(beds) {
   return beds;
 }
 
-export async function createWard(req, { name, kind, bedCount, bedPrefix }) {
+/** The ward as kept with a stay: its name and floor, e.g. "General ward (Ground floor)". */
+export const wardLabel = (ward) => (ward.floor ? `${ward.name} (${ward.floor})` : ward.name);
+
+export async function createWard(req, { name, kind, floor, bedCount, bedPrefix }) {
   const count = await Ward.countDocuments({ hospitalId: req.hospitalId });
-  const ward = await Ward.create({ hospitalId: req.hospitalId, name, kind, beds: bedsOf(bedPrefix, bedCount), sortOrder: count }).catch((err) => {
+  const ward = await Ward.create({ hospitalId: req.hospitalId, name, kind, floor, beds: bedsOf(bedPrefix, bedCount), sortOrder: count }).catch((err) => {
     if (err.code === 11000) throw fieldError('name', 'There is already a ward with this name.');
     throw err;
   });
@@ -87,7 +90,7 @@ export async function createWard(req, { name, kind, bedCount, bedPrefix }) {
   return { ward: wardView(ward) };
 }
 
-export async function updateWard(req, id, { name, kind, beds, isActive }) {
+export async function updateWard(req, id, { name, kind, floor, beds, isActive }) {
   const ward = await Ward.findOne({ hospitalId: req.hospitalId, _id: id });
   if (!ward) throw notFoundError('Ward');
   // A bed (or the ward) with a patient in it stays in use.
@@ -101,7 +104,7 @@ export async function updateWard(req, id, { name, kind, beds, isActive }) {
     const kept = ward.beds.filter((b) => !beds.some((x) => x.label === b.label)).map((b) => ({ label: b.label, isActive: false }));
     ward.beds = cleanBeds([...beds, ...kept]);
   }
-  ward.set({ ...(name !== undefined && { name }), ...(kind !== undefined && { kind }), ...(isActive !== undefined && { isActive }) });
+  ward.set({ ...(name !== undefined && { name }), ...(kind !== undefined && { kind }), ...(floor !== undefined && { floor }), ...(isActive !== undefined && { isActive }) });
   await ward.save().catch((err) => {
     if (err.code === 11000) throw fieldError('name', 'There is already a ward with this name.');
     throw err;

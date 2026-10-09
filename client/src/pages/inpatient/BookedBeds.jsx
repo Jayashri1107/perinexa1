@@ -10,7 +10,7 @@ export function bedCounts(beds) {
 }
 
 export function BookedBedsList({ beds }) {
-  const rows = (beds?.items ?? []).flatMap((w) => w.beds.filter((b) => b.booked).map((b) => ({ ward: w.name, ...b, key: `${w.id}|${b.label}` })));
+  const rows = (beds?.items ?? []).flatMap((w) => w.beds.filter((b) => b.booked).map((b) => ({ ward: w.floor ? `${w.name} · ${w.floor}` : w.name, ...b, key: `${w.id}|${b.label}` })));
   if (rows.length === 0) return <p className="muted">No beds booked – every bed is free.</p>;
   return (
     <ul className="plain-list booked-beds">

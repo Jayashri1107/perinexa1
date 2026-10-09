@@ -13,6 +13,7 @@ const wardSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 60 },
     kind: { type: String, enum: WARD_KINDS, required: true },
+    floor: { type: String, trim: true, maxlength: 30, default: '' }, // e.g. Ground floor, 2nd floor (owner, 9 Oct 2026)
     beds: { type: [bedSchema], default: [] },
     sortOrder: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },

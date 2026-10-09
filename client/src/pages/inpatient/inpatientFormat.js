@@ -124,3 +124,16 @@ export function vitalsText(v = {}) {
   for (const [k, l, unit] of VITAL_FIELDS) if (!k.startsWith('bp') && v[k] != null) parts.push(`${l} ${v[k]} ${unit}`);
   return parts.join(' · ');
 }
+
+// Wards grouped by floor (owner, 9 Oct 2026), floors in the order their first ward comes; wards without a floor last.
+export const NO_FLOOR = 'Floor not set';
+export function byFloor(wards) {
+  const groups = new Map();
+  for (const w of wards) {
+    const floor = w.floor || NO_FLOOR;
+    if (!groups.has(floor)) groups.set(floor, []);
+    groups.get(floor).push(w);
+  }
+  const list = [...groups].map(([floor, items]) => ({ floor, items }));
+  return [...list.filter((g) => g.floor !== NO_FLOOR), ...list.filter((g) => g.floor === NO_FLOOR)];
+}

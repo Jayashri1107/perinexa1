@@ -26,7 +26,7 @@ const admissionSchema = new mongoose.Schema(
     careType: { type: String, required: true },
     admittedAt: { type: Date, required: true },
     wardId: { type: ObjectId, ref: 'Ward', default: null }, // the ward (Hospital admin → Wards and beds); stays before 8 Oct 2026 have none
-    ward: { type: String, trim: true, maxlength: 60, default: '' }, // its name when admitted
+    ward: { type: String, trim: true, maxlength: 100, default: '' }, // its name (and floor) when admitted
     bed: { type: String, trim: true, maxlength: 30, default: '' },
     reason: { type: String, trim: true, maxlength: 300, default: '' },
     doctorId: { type: ObjectId, ref: 'User', default: null }, // her doctor when admitted

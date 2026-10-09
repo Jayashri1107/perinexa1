@@ -201,12 +201,12 @@
       { "key": "other", "label": "Other" }
     ],
     "starting": [
-      { "name": "General ward", "kind": "general", "beds": 10, "bedPrefix": "G" },
-      { "name": "Semi-private", "kind": "semi_private", "beds": 4, "bedPrefix": "S" },
-      { "name": "Private rooms", "kind": "private", "beds": 4, "bedPrefix": "P" },
-      { "name": "ICU", "kind": "icu", "beds": 4, "bedPrefix": "ICU-" },
-      { "name": "NICU", "kind": "nicu", "beds": 4, "bedPrefix": "N" },
-      { "name": "Labour room", "kind": "labour", "beds": 2, "bedPrefix": "L" }
+      { "name": "General ward", "floor": "Ground floor", "kind": "general", "beds": 10, "bedPrefix": "G" },
+      { "name": "Semi-private", "floor": "1st floor", "kind": "semi_private", "beds": 4, "bedPrefix": "S" },
+      { "name": "Private rooms", "floor": "1st floor", "kind": "private", "beds": 4, "bedPrefix": "P" },
+      { "name": "ICU", "floor": "2nd floor", "kind": "icu", "beds": 4, "bedPrefix": "ICU-" },
+      { "name": "NICU", "floor": "2nd floor", "kind": "nicu", "beds": 4, "bedPrefix": "N" },
+      { "name": "Labour room", "floor": "2nd floor", "kind": "labour", "beds": 2, "bedPrefix": "L" }
     ]
   },
   "notifications": {

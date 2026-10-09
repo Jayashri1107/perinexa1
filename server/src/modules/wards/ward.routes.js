@@ -10,17 +10,19 @@ import * as service from './ward.service.js';
 //  GET   /availability     active wards, each bed free or booked
 //  GET   /                 every ward (hospital admin)
 //  POST  /                 a new ward with a number of beds (hospital admin)
-//  PATCH /:id              name, kind, beds, in use or not (hospital admin)
+//  PATCH /:id              name, kind, floor, beds, in use or not (hospital admin)
 const router = Router();
 const adminOnly = requireRoles([config.adminRole]);
 
 const name = z.string().trim().min(2, 'Name the ward').max(60);
 const kind = z.enum(WARD_KINDS, 'Choose the kind of ward');
+const floor = z.string().trim().max(30, 'A floor is at most 30 letters');
 const bedLabel = z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{1,20}$/, 'A bed is 1–20 letters or digits, e.g. G1');
-const createBody = z.object({ name, kind, bedCount: z.coerce.number().int().min(1, 'At least 1 bed').max(200), bedPrefix: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{0,6}$/).default('') });
+const createBody = z.object({ name, kind, floor: floor.default(''), bedCount: z.coerce.number().int().min(1, 'At least 1 bed').max(200), bedPrefix: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{0,6}$/).default('') });
 const updateBody = z.object({
   name: name.optional(),
   kind: kind.optional(),
+  floor: floor.optional(),
   beds: z.array(z.object({ label: bedLabel, isActive: z.boolean().default(true) })).max(300).optional(),
   isActive: z.boolean().optional(),
 });

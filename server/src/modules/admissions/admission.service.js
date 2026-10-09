@@ -24,7 +24,7 @@ import { weeksOn } from '../visits/visit.service.js';
 import { Membership } from '../members/membership.model.js';
 import { notify, notifyRoles } from '../notifications/notification.service.js';
 import { User } from '../users/user.model.js';
-import { assertFreeBed } from '../wards/ward.service.js';
+import { assertFreeBed, wardLabel } from '../wards/ward.service.js';
 import { Admission, InpatientDocument, NursingEntry, SIGNED_BY } from './admission.model.js';
 import { DOC_CONTENT, dischargeMedicine } from './admission.validation.js';
 import { z } from 'zod';
@@ -265,7 +265,7 @@ export async function admit(req, body) {
     careType: patient.careType,
     admittedAt: body.admittedAt,
     wardId: ward._id,
-    ward: ward.name,
+    ward: wardLabel(ward),
     bed: body.bed,
     reason: body.reason,
     doctorId,
@@ -285,7 +285,7 @@ export async function moveBed(req, admissionId, { wardId, bed }) {
   const loaded = await loadStay(req, admissionId);
   if (loaded.stay.status !== 'admitted' || !canNurse(req, loaded.level)) throw new HttpError(403, 'You cannot change this stay.', 'FORBIDDEN');
   const ward = await assertFreeBed(req.hospitalId, wardId, bed, loaded.stay._id);
-  loaded.stay.set({ wardId: ward._id, ward: ward.name, bed });
+  loaded.stay.set({ wardId: ward._id, ward: wardLabel(ward), bed });
   await loaded.stay.save();
   await recordAudit(req, 'ADMISSION_UPDATED', { hospitalId: req.hospitalId, details: { admissionId, part: 'bed' } });
   return stayAnswer(req, loaded);

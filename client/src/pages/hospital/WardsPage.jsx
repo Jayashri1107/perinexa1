@@ -1,6 +1,6 @@
-// Wards and beds (hospital admin): each ward with its beds, how many are booked; add a ward, rename it, add beds, take
+// Wards and beds (hospital admin): the wards floor by floor, each with its beds, how many are booked; add a ward, rename it, add beds, take
 // a bed or a ward out of use. A bed with a patient in it stays in use; a bed is never deleted (old stays name it).
-import { Plus } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { wardsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
@@ -10,11 +10,13 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { SectionTabs } from '../../components/SectionTabs.jsx';
 import { HOSPITAL_ADMIN_TABS } from '../../config/navigation.js';
 import { labelOf } from '../../utils/format.js';
+import { byFloor } from '../inpatient/inpatientFormat.js';
 
-function WardDialog({ ward, kinds, onClose, onSaved }) {
+function WardDialog({ ward, kinds, floors, onClose, onSaved }) {
   const isNew = !ward;
   const [name, setName] = useState(ward?.name ?? '');
   const [kind, setKind] = useState(ward?.kind ?? kinds[0].key);
+  const [floor, setFloor] = useState(ward?.floor ?? '');
   const [beds, setBeds] = useState(ward?.beds ?? []);
   const [bedCount, setBedCount] = useState(isNew ? 4 : 1);
   const [bedPrefix, setBedPrefix] = useState('');
@@ -35,7 +37,7 @@ function WardDialog({ ward, kinds, onClose, onSaved }) {
     e.preventDefault();
     setError('');
     try {
-      const r = isNew ? await wardsApi.create({ name, kind, bedCount: Number(bedCount), bedPrefix }) : await wardsApi.update(ward.id, { name, kind, beds });
+      const r = isNew ? await wardsApi.create({ name, kind, floor, bedCount: Number(bedCount), bedPrefix }) : await wardsApi.update(ward.id, { name, kind, floor, beds });
       onSaved(r.ward);
     } catch (err) {
       setError(Object.values(err.fields ?? {})[0] ?? err.message);
@@ -51,6 +53,11 @@ function WardDialog({ ward, kinds, onClose, onSaved }) {
           <div className="form-field width-half">
             <label htmlFor="w-kind">Kind</label>
             <select id="w-kind" value={kind} onChange={(e) => setKind(e.target.value)}>{kinds.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}</select>
+          </div>
+          <div className="form-field width-half">
+            <label htmlFor="w-floor">Floor</label>
+            <input id="w-floor" list="w-floors" value={floor} maxLength={30} onChange={(e) => setFloor(e.target.value)} placeholder="For example Ground floor, 2nd floor" />
+            <datalist id="w-floors">{floors.map((f) => <option key={f} value={f} />)}</datalist>
           </div>
           <div className="form-field width-third"><label htmlFor="w-count">{isNew ? 'Number of beds' : 'Beds to add'}</label><input id="w-count" type="number" min="1" max="200" value={bedCount} onChange={(e) => setBedCount(e.target.value)} /></div>
           <div className="form-field width-third"><label htmlFor="w-prefix">Bed names start with</label><input id="w-prefix" value={bedPrefix} maxLength={6} onChange={(e) => setBedPrefix(e.target.value.toUpperCase())} placeholder="For example G → G1, G2…" /></div>
@@ -118,29 +125,34 @@ export function WardsPage() {
       <Alert type="error">{error}</Alert>
       <Alert type="success">{notice}</Alert>
       {!data && !error && <Loader />}
-      {data && (
-        <div className="occupancy">
-          {data.items.map((w) => {
-            const live = beds?.get(w.id);
-            const inUse = w.beds.filter((b) => b.isActive).length;
-            return (
-              <section key={w.id} className={`card${w.isActive ? '' : ' muted'}`}>
-                <h2>{w.name}</h2>
-                <p className="muted small">{labelOf(data.kinds, w.kind)}{w.isActive ? '' : ' · not in use'}</p>
-                <p>{inUse} beds{live ? ` · ${live.total - live.free} booked · ${live.free} free` : ''}</p>
-                <div className="row-actions">
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDialog(w)}>Change</button>
-                  <button type="button" className="btn btn-link btn-sm" onClick={() => toggleWard(w)}>{w.isActive ? 'Take out of use' : 'Put back in use'}</button>
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      )}
+      {data &&
+        byFloor(data.items).map((g) => (
+          <section key={g.floor} className="floor-group" aria-label={g.floor}>
+            <h2 className="floor-title"><Building2 size={16} aria-hidden /> {g.floor} <span className="muted small">{g.items.length} ward{g.items.length === 1 ? '' : 's'}</span></h2>
+            <div className="occupancy">
+              {g.items.map((w) => {
+                const live = beds?.get(w.id);
+                const inUse = w.beds.filter((b) => b.isActive).length;
+                return (
+                  <section key={w.id} className={`card${w.isActive ? '' : ' muted'}`}>
+                    <h3>{w.name}</h3>
+                    <p className="muted small">{labelOf(data.kinds, w.kind)}{w.isActive ? '' : ' · not in use'}</p>
+                    <p>{inUse} beds{live ? ` · ${live.total - live.free} booked · ${live.free} free` : ''}</p>
+                    <div className="row-actions">
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDialog(w)}>Change</button>
+                      <button type="button" className="btn btn-link btn-sm" onClick={() => toggleWard(w)}>{w.isActive ? 'Take out of use' : 'Put back in use'}</button>
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       {dialog && (
         <WardDialog
           ward={dialog === 'new' ? null : dialog}
           kinds={data.kinds}
+          floors={[...new Set(data.items.map((w) => w.floor).filter(Boolean))]}
           onClose={() => setDialog(null)}
           onSaved={(w) => {
             setDialog(null);
