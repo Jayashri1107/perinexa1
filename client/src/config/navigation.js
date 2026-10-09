@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarDays,
   ChartColumn,
+  ClipboardList,
   Database,
   DoorOpen,
   FlaskConical,
@@ -127,6 +128,8 @@ export const firstTab = (tabs, canAccess) => tabs.find((t) => canAccess(t.access
 export const HOSPITAL_NAVIGATION = [
   { to: '/hospital', label: 'Today', icon: CalendarCheck, end: true },
   { to: '/hospital/patients', label: 'Patients', icon: HeartPulse, access: 'patients' },
+  // The nurse's work (9 Oct 2026): who is in hospital and what is due now – doses, vital signs, IV fluids, tests, tasks
+  { to: '/hospital/nursing', label: 'Nursing station', icon: ClipboardList, access: 'patientsClinical' },
   // Reception's shortcut to the registration form (config.access.registrationMenu)
   { to: '/hospital/patients/new', label: 'New registration', icon: UserPlus, access: 'registrationMenu' },
   // Reception's admissions desk: who is in hospital, New admission

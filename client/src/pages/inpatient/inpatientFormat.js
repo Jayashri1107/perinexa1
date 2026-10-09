@@ -86,6 +86,9 @@ export const VITAL_FIELDS = [
   ['pulse', 'Pulse', '/min'],
   ['temperatureF', 'Temperature', '°F'],
   ['spo2', 'SpO₂', '%'],
+  ['respRate', 'Breathing rate', '/min'],
+  ['painScore', 'Pain score', '/10'],
+  ['glucoseMgDl', 'Blood sugar', 'mg/dl'],
 ];
 
 export const emptyBaby = () => ({ sex: '', weightGrams: '', apgar1: '', apgar5: '', outcome: '', stillbirthType: '', breastfedWithinHour: '', nicu: '', notes: '' });

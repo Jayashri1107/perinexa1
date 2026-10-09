@@ -151,7 +151,7 @@ async function orderView(req, order, { patient, level }) {
     },
     patient: patientView(patient),
     can: {
-      collect: isLab(req) && order.status === 'ordered',
+      collect: canCollect(req) && order.status === 'ordered',
       report: isLab(req) && order.status !== 'cancelled',
       review: canReview(req) && full && order.status === 'reported',
       cancel: open && (isLab(req) || (canOrder(req) && full)),
@@ -262,12 +262,15 @@ export async function bookByReception(req, body) {
 
 // ---------- The lab ----------
 
+const canCollect = (req) => has(req, access.labCollect);
+
 function assertLab(req) {
   if (!isLab(req)) throw new HttpError(403, 'Only lab staff can do this.', 'FORBIDDEN');
 }
 
 export async function collect(req, id) {
-  assertLab(req);
+  // lab staff and nurses (config.access.labCollect) mark the sample as taken
+  if (!canCollect(req)) throw new HttpError(403, 'Only lab staff or nurses can mark a sample as taken.', 'FORBIDDEN');
   const loaded = await loadOrder(req, id);
   if (loaded.order.status !== 'ordered') throw new HttpError(409, 'The sample has already been taken, or the order is closed.', 'NOT_ORDERED');
   loaded.order.set({ status: 'collected', collected: { by: req.user._id, at: new Date() } });

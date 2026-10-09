@@ -48,6 +48,7 @@ import dispensingRoutes from './dispensing/dispensing.routes.js';
 import medicalHistoryRoutes from './medicalHistory/medicalHistory.routes.js';
 import notificationRoutes from './notifications/notification.routes.js';
 import wardRoutes from './wards/ward.routes.js';
+import wardCareRoutes from './wardCare/wardCare.routes.js';
 
 const { access } = config;
 const HOSPITAL_ADMIN = [config.adminRole];
@@ -126,4 +127,6 @@ export const modules = [
   { path: '/hospital/notifications', access: 'hospital', router: notificationRoutes },
   // Wards and beds: free or booked (those who admit or move patients); kept by the hospital admin
   { path: '/hospital/wards', access: 'hospital', roles: access.wards, router: wardRoutes },
+  // The nurse's work (9 Oct 2026): the nursing station, doctors' orders, dose / IV / task charts, intake and output, handover
+  { path: '/hospital/ward-care', access: 'hospital', roles: access.patientsClinical, router: wardCareRoutes },
 ];

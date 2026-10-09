@@ -8,6 +8,7 @@ const keyLabel = z.looseObject({ key: z.string().min(1), label: z.string().min(1
 const roleList = z.array(z.string().min(1));
 const prefix = z.string().min(1).max(6);
 const digits = z.number().int().min(3).max(10);
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'a time like 08:00');
 
 const schema = z.object({
   app: z.object({
@@ -94,6 +95,7 @@ const schema = z.object({
     labOrder: roleList,
     labReport: roleList,
     labReview: roleList,
+    labCollect: roleList, // mark a lab sample as taken (lab staff and nurses)
     library: roleList,
     libraryEdit: roleList,
     libraryApprove: roleList,
@@ -115,6 +117,16 @@ const schema = z.object({
   wards: z.object({
     kinds: z.array(keyLabel).min(1),
     starting: z.array(z.object({ name: z.string().min(2).max(60), floor: z.string().max(30).default(''), kind: z.string().min(1), beds: z.number().int().min(1).max(200), bedPrefix: z.string().max(6) })),
+  }),
+  // The nurse's work (sample settings for the hospital to change): shifts, the times a 1-0-1 dose is given, when a dose
+  // counts as due (that many minutes before) or overdue (after), and how often vital signs are due.
+  nursing: z.object({
+    shifts: z.array(z.object({ key: z.string().min(1), label: z.string().min(1), start: hhmm })).min(1),
+    doseTimes: z.array(z.object({ key: z.string().min(1), label: z.string().min(1), time: hhmm })).min(1),
+    dueBeforeMinutes: z.number().int().min(0).max(240),
+    overdueAfterMinutes: z.number().int().min(0).max(480),
+    vitalsEveryHours: z.number().positive().max(24),
+    routes: z.array(z.string().min(1)).min(1),
   }),
   notifications: z.object({ listSize: z.number().int().min(5).max(200), keepDays: z.number().int().min(1).max(365) }),
   documents: z.object({

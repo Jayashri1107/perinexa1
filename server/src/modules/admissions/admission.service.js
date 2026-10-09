@@ -66,15 +66,15 @@ async function loadPatient(req, patientId) {
   return { patient, level };
 }
 
-async function loadStay(req, admissionId) {
+export async function loadStay(req, admissionId) {
   const stay = await Admission.findOne({ hospitalId: req.hospitalId, _id: admissionId });
   if (!stay) throw notFoundError('Stay');
   const { patient, level } = await loadPatient(req, stay.patientId);
   return { stay, patient, level };
 }
 
-const canWrite = (req, level) => level === 'full' && isPrescriber(req);
-const canNurse = (req, level) => level === 'full' || isNurse(req);
+export const canWrite = (req, level) => level === 'full' && isPrescriber(req);
+export const canNurse = (req, level) => level === 'full' || isNurse(req);
 
 // ---------- The ward list ----------
 
@@ -110,7 +110,7 @@ export async function inpatients(req) {
 }
 
 // The red flags of a stay: the latest nursing vitals and her recent lab results (approved rules only).
-async function stayFlags(req, stay, patient, rules) {
+export async function stayFlags(req, stay, patient, rules) {
   const [latest, labOrders] = await Promise.all([
     NursingEntry.findOne({ hospitalId: req.hospitalId, admissionId: stay._id, kind: 'vitals', cancelled: null }).sort({ at: -1 }).lean(),
     LabOrder.find({ hospitalId: req.hospitalId, patientId: patient._id, status: { $in: ['reported', 'reviewed'] }, 'reported.at': { $gte: stay.admittedAt } }).sort({ 'reported.at': -1 }).limit(20).lean(),
@@ -165,7 +165,7 @@ async function stayAnswer(req, { stay, patient, level }) {
     },
     patient: { id: String(patient._id), name: patient.name, patientNumber: patient.patientNumber, careType: patient.careType, allergies: patient.allergies ?? '', bloodGroup: patient.bloodGroup ?? '', sex: patient.sex, birthDate: patient.birthDate, birthDateApprox: patient.birthDateApprox },
     documents: docs.map(docView),
-    nursing: nursing.map((n) => ({ id: String(n._id), kind: n.kind, at: n.at, vitals: n.vitals, medicine: n.medicine, note: n.note, byName: n.byName, cancelled: n.cancelled, mine: String(n.by) === String(req.user._id) })),
+    nursing: nursing.map((n) => ({ id: String(n._id), kind: n.kind, at: n.at, vitals: n.vitals, medicine: n.medicine, orderId: n.orderId ? String(n.orderId) : null, dueAt: n.dueAt, outcome: n.outcome ?? '', reason: n.reason ?? '', iv: n.iv, io: n.io, note: n.note, byName: n.byName, cancelled: n.cancelled, mine: String(n.by) === String(req.user._id) })),
     redFlags: rules.length && open ? await stayFlags(req, stay, patient, rules) : [],
     rulesApproved: rules.length > 0,
     can: {

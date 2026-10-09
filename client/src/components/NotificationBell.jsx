@@ -2,7 +2,7 @@
 // minute. Clicking one marks it read and opens its page.
 // Each notification is its own row, and the list has a tab per kind with its own unread count (owner, 8 Oct 2026):
 // All · Appointments · Admissions · Discharges · Prescriptions · Lab · Billing – "Mark all as read" acts on the open tab.
-import { BedDouble, Bell, CalendarCheck, CalendarPlus, DoorOpen, FlaskConical, Pill, Receipt, UserCheck } from 'lucide-react';
+import { BedDouble, Bell, CalendarCheck, CalendarPlus, ClipboardList, DoorOpen, FlaskConical, Pill, Receipt, UserCheck } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationsApi } from '../api/index.js';
@@ -24,6 +24,7 @@ const KINDS = {
   FINAL_BILL: { icon: Receipt, tone: 'tone-amber' },
   PRESCRIPTION_SENT: { icon: Pill, tone: 'tone-teal' },
   LAB_BOOKED: { icon: FlaskConical, tone: 'tone-amber' },
+  CARE_ORDER: { icon: ClipboardList, tone: 'tone-blue' },
 };
 
 // The tabs: which kinds each holds ("All" holds every kind).
@@ -34,6 +35,7 @@ const GROUPS = [
   { key: 'discharges', label: 'Discharges', types: ['DISCHARGE_SOON', 'DISCHARGE_READY', 'TODAY_DISCHARGES'] },
   { key: 'prescriptions', label: 'Prescriptions', types: ['PRESCRIPTION_SENT'] },
   { key: 'lab', label: 'Lab', types: ['LAB_BOOKED'] },
+  { key: 'care', label: 'Orders', types: ['CARE_ORDER'] },
   { key: 'billing', label: 'Billing', types: ['FINAL_BILL'] },
 ];
 

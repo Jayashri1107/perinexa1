@@ -50,6 +50,26 @@ Fake sample data only.
 - The prescription opens in a box, one card per medicine, the dose as 1-0-1 buttons. Users & access → Type lists each
   staff position.
 
+**9 Oct 2026 – the nurse's work, wards on floors, phones**
+- Wards have a **floor**; Wards and beds and the bed picker group them by floor; a stay keeps "Ward (Floor)".
+- **Nursing station** (`/hospital/nursing`, doctors, RMOs, nurses): the patients in hospital in the chosen ward (remembered
+  in the browser) – bed, name, number, age, doctor, reason, allergies – with doses due / overdue, vital signs due, IV fluids
+  running or to start, tests waiting, abnormal results, care tasks due and red flags; totals on top; refreshed every
+  minute; most urgent first. Nurses see the same numbers on Today ("My ward now").
+- A stay opens on **Medicine and care charts** (`?tab=care`; the documents are the other tab): Medicines, IV fluids,
+  Vital signs (now also breathing rate, pain score, blood sugar), Tests, Tasks and notes, Intake and output (24-hour
+  totals), Shift handover (an automatic summary for the next shift and the handover note).
+- **Doctor's orders** (`wardCare/careOrder.model.js`): her doctor or an RMO writes a medicine (dose, route, food, times
+  – none for as needed), an IV fluid (fluid, volume, rate) or a care task (times); stops it with a reason; never changed
+  or deleted. Nurses are notified of new and stopped orders (bell → Orders).
+- **Charting** (`/api/hospital/ward-care`): a dose given, given late, refused, withheld or missed (all but given need a
+  reason; her doctor is notified when one is not given); a dose or task charted only once; IV started / paused /
+  resumed / completed / site checked with the volume given; intake and output; the handover. Entries are never
+  changed: "entered in error" with a reason. Every order, entry and opening is in the audit log.
+- What counts as due: `config.nursing` – shifts (sample 08:00 / 14:00 / 20:00), the dose times, due from 60 minutes
+  before, overdue 60 minutes after, vital signs every 4 hours. **Sample settings: the hospital decides them.**
+- Fixed: typing in the vital-sign boxes of the nursing chart removed every digit.
+
 ### Who sees what (config.access)
 
 | Role | Menu |
@@ -57,7 +77,7 @@ Fake sample data only.
 | Hospital admin | Today, Billing (all tabs), Pharmacy (no counter), Analytics (small numbers hidden), Hospital admin, My settings – no patient records |
 | Doctor | Today, Patients (own patients full, others read-only, emergency access), Appointments (book, own OPD timings), Calendar (with EDD / LMP), Lab (order and review for own patients), Analytics (exact, "my patients"), Clinic library (change and approve), My settings |
 | RMO | Today, Patients (all records), Appointments (look, mark seen), Calendar (with EDD / LMP), Lab (order and review), Clinic library (change, not approve), My settings |
-| Nurse | Today, Patients (read), Appointments (look, mark seen), Lab (read results), Clinic library (read; no prescription sets), My settings |
+| Nurse | Today (My ward now), **Nursing station**, Patients (read), Appointments (look, mark seen), Lab (read results, mark a sample as taken – `access.labCollect`), Clinic library (read; no prescription sets), My settings; on a stay: charts doses, IV fluids, care tasks, vital signs, intake/output, notes and the handover – never writes or changes an order |
 | Receptionist | Today, Patients (register, contact details, emergency contact, ID proof type + last 4), New registration, Appointments (book, move, cancel, walk-ins), Calendar (bookings only; reminders), Billing (no Monthly / Settings), My settings |
 | Lab staff | Today, Patients (name and number), Lab (take samples, enter and amend results – patients by name and number only), My settings |
 | Pharmacist | Today, Patients (contact), Pharmacy (everything but its settings), My settings |

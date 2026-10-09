@@ -5,7 +5,9 @@
 //    then signed (admission and round notes by a doctor or RMO; the others by a doctor). Signed: locked; corrections
 //    are added below. One written by mistake is marked "entered in error".
 //  - its nursing chart: vital signs, a medicine given, or a note, with who and when. Never changed; an entry made by
-//    mistake is marked "entered in error" with a reason.
+//    mistake is marked "entered in error" with a reason. Since 9 Oct 2026 also the nurse's work on the doctor's orders
+//    (wardCare/careOrder.model.js): a dose given or not, an IV fluid started / paused / completed, a care task done or
+//    not; intake and output; and the shift handover.
 // PC-PNDT: no fetal sex anywhere – a baby's sex is written only in the delivery note, after the birth.
 import mongoose from '../../db/mongoose.js';
 import { hospitalScoped } from '../../db/hospitalScoped.js';
@@ -16,7 +18,12 @@ const cancelledSchema = new mongoose.Schema({ reason: String, by: ObjectId, byNa
 export const DOC_KINDS = ['admission', 'round', 'delivery', 'operation', 'discharge'];
 // Who signs each kind of document.
 export const SIGNED_BY = { admission: ['doctor', 'rmo'], round: ['doctor', 'rmo'], delivery: ['doctor'], operation: ['doctor'], discharge: ['doctor'] };
-export const NURSING_KINDS = ['vitals', 'medicine', 'note'];
+export const NURSING_KINDS = ['vitals', 'medicine', 'note', 'dose', 'iv', 'task', 'io', 'handover'];
+// A dose of a medicine order: given (on time or late), or not given and why. A care task: done or not done.
+export const DOSE_OUTCOMES = ['given', 'late', 'refused', 'withheld', 'missed'];
+export const TASK_OUTCOMES = ['done', 'not_done'];
+// An IV fluid order: started, paused, resumed, completed (finished or stopped), or the site checked.
+export const IV_ACTIONS = ['started', 'paused', 'resumed', 'completed', 'site_check'];
 
 const admissionSchema = new mongoose.Schema(
   {
@@ -81,8 +88,16 @@ const nursingSchema = new mongoose.Schema(
     admissionId: { type: ObjectId, ref: 'Admission', required: true },
     kind: { type: String, enum: NURSING_KINDS, required: true },
     at: { type: Date, required: true },
-    vitals: { bpSystolic: Number, bpDiastolic: Number, pulse: Number, temperatureF: Number, spo2: Number },
+    vitals: { bpSystolic: Number, bpDiastolic: Number, pulse: Number, temperatureF: Number, spo2: Number, respRate: Number, painScore: Number, glucoseMgDl: Number },
     medicine: { drug: String, dose: String, route: String },
+    // work on a doctor's order (dose, iv, task): the order, the time it was due (dose and task), what happened, why
+    orderId: { type: ObjectId, ref: 'CareOrder', default: null },
+    dueAt: { type: Date, default: null },
+    outcome: { type: String, enum: ['', ...DOSE_OUTCOMES, ...TASK_OUTCOMES], default: '' },
+    reason: { type: String, trim: true, maxlength: 300, default: '' },
+    iv: { action: { type: String, enum: IV_ACTIONS }, site: String, volumeMl: Number },
+    // intake and output, in ml
+    io: { oralMl: Number, ivMl: Number, urineMl: Number, otherOutMl: Number },
     note: { type: String, default: '' },
     by: { type: ObjectId, ref: 'User', required: true },
     byName: { type: String, required: true },
@@ -93,5 +108,7 @@ const nursingSchema = new mongoose.Schema(
 );
 nursingSchema.plugin(hospitalScoped);
 nursingSchema.index({ hospitalId: 1, admissionId: 1, at: -1 });
+nursingSchema.index({ hospitalId: 1, admissionId: 1, kind: 1, at: -1 });
+nursingSchema.index({ hospitalId: 1, orderId: 1, dueAt: 1 });
 nursingSchema.index({ hospitalId: 1, clientRequestId: 1 }, { unique: true });
 export const NursingEntry = mongoose.model('NursingEntry', nursingSchema, 'nursing_entries');

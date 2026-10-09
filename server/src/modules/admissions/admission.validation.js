@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { objectId } from '../../core/validate.js';
 import { isoDate } from '../appointments/appointment.validation.js';
 import { rxItem } from '../visits/visit.validation.js';
-import { DOC_KINDS, NURSING_KINDS } from './admission.model.js';
+import { DOC_KINDS } from './admission.model.js';
 
 const text = (max = 2000) => z.string().trim().max(max, 'This is too long').default('');
 const when = z.coerce.date({ error: 'Choose the date and time' }).refine((d) => d <= new Date(Date.now() + 5 * 60000), 'This time is in the future');
@@ -12,8 +12,8 @@ const optNum = (min, max) => z.preprocess((v) => (v === '' || v === undefined ? 
 const choice = (values) => z.enum(['', ...values]).default('');
 
 const vitals = z
-  .object({ bpSystolic: optNum(50, 260), bpDiastolic: optNum(30, 160), pulse: optNum(30, 220), temperatureF: optNum(90, 110), spo2: optNum(50, 100) })
-  .default({ bpSystolic: null, bpDiastolic: null, pulse: null, temperatureF: null, spo2: null });
+  .object({ bpSystolic: optNum(50, 260), bpDiastolic: optNum(30, 160), pulse: optNum(30, 220), temperatureF: optNum(90, 110), spo2: optNum(50, 100), respRate: optNum(4, 80), painScore: optNum(0, 10), glucoseMgDl: optNum(20, 800) })
+  .default({ bpSystolic: null, bpDiastolic: null, pulse: null, temperatureF: null, spo2: null, respRate: null, painScore: null, glucoseMgDl: null });
 
 // A baby in the delivery note (written after the birth; its sex only here). Fields that do not fit the outcome are
 // dropped: the kind of stillbirth only for a stillbirth; breastfeeding and NICU only for a baby born alive.
@@ -129,7 +129,7 @@ export const additionBody = z.object({ text: z.string().trim().min(2).max(2000) 
 
 export const nursingBody = z
   .object({
-    kind: z.enum(NURSING_KINDS),
+    kind: z.enum(['vitals', 'medicine', 'note']), // the others through wardCare (they need an order)
     at: when,
     vitals: vitals.optional(),
     medicine: z.object({ drug: z.string().trim().min(2, 'Name the medicine').max(120), dose: text(60), route: text(30) }).optional(),

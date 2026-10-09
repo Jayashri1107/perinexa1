@@ -1,9 +1,10 @@
 // A stay in hospital (as in Perinexa's AdmissionPage): ward and bed, red flags from the nursing chart and recent lab
 // results, the ward documents (admission, rounds, delivery, operation, discharge card – draft, then signed), and the
-// nursing chart. Signing the discharge card discharges her.
-import { ArrowLeft, DoorOpen, Plus, Printer, Siren } from 'lucide-react';
+// nursing chart. Signing the discharge card discharges her. Since 9 Oct 2026 the stay opens on its medicine and care
+// charts (orders, doses, IV fluids, vital signs, tests, tasks, intake and output, handover – nursing/StayCare.jsx).
+import { ArrowLeft, ClipboardList, DoorOpen, FileText, Plus, Printer, Siren } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { admissionsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
@@ -15,6 +16,7 @@ import { FLAG_LOOKS, requestId } from '../visits/visitFormat.js';
 import { DocumentForm, DocumentView, fieldName } from './DocumentEditor.jsx';
 import { DischargeSummary } from './DischargeSummary.jsx';
 import { BedPicker } from './BedPicker.jsx';
+import { StayCare } from '../nursing/StayCare.jsx';
 import { KIND_LABELS, SIGNED_BY, VITAL_FIELDS, docLook, stayLook, toLocalInput, vitalsText } from './inpatientFormat.js';
 
 function Doc({ stayId, doc, can, onChanged, startEditing = false }) {
@@ -149,7 +151,7 @@ function NursingForm({ stayId, onChanged }) {
           {VITAL_FIELDS.map(([k, l, unit]) => (
             <label key={k} className={`vital-box${fields[`vitals.${k}`] ? ' has-error' : ''}`}>
               <span className="small muted">{l}</span>
-              <span className="vital-input"><input inputMode="decimal" value={vitals[k] ?? ''} onChange={(e) => setVitals((v) => ({ ...v, [k]: e.target.value.replace(/[^d.]/g, '') }))} /><span className="small muted">{unit}</span></span>
+              <span className="vital-input"><input inputMode="decimal" value={vitals[k] ?? ''} onChange={(e) => setVitals((v) => ({ ...v, [k]: e.target.value.replace(/[^\d.]/g, '') }))} /><span className="small muted">{unit}</span></span>
             </label>
           ))}
         </div>
@@ -204,6 +206,7 @@ export function AdmissionPage() {
   const [error, setError] = useState('');
   const [moving, setMoving] = useState(null);
   const [openDocId, setOpenDocId] = useState(null); // a document to open for writing (Discharge patient)
+  const [params, setParams] = useSearchParams();
 
   const load = useCallback(() => {
     admissionsApi.get(id).then(setData).catch((err) => setError(err.message));
@@ -213,6 +216,9 @@ export function AdmissionPage() {
   if (error && !data) return <Alert type="error">{error}</Alert>;
   if (!data) return <Loader />;
   const { stay, patient, documents, nursing, redFlags, can } = data;
+  // the medicine and care charts while she is in hospital; the documents after discharge (or when asked for)
+  const view = params.get('tab') ?? (stay.status === 'admitted' ? 'care' : 'documents');
+  const showView = (v) => setParams((p) => { p.set('tab', v); return p; }, { replace: true });
 
   const newDoc = async (kind) => {
     try {
@@ -230,6 +236,7 @@ export function AdmissionPage() {
   const discharge = async () => {
     const draft = dischargeCard ?? (await newDoc('discharge'))?.documents.find((d) => d.kind === 'discharge' && d.status === 'draft');
     if (draft) {
+      showView('documents');
       setOpenDocId(draft.id);
       setTimeout(() => document.getElementById('discharge-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     }
@@ -269,13 +276,21 @@ export function AdmissionPage() {
         </section>
       )}
 
-      {dischargeCard && (
+      <div className="segmented top-gap" role="tablist" aria-label="Stay">
+        <button type="button" role="tab" aria-selected={view === 'care'} className={view === 'care' ? 'on' : ''} onClick={() => showView('care')}><ClipboardList size={14} aria-hidden /> Medicine and care charts</button>
+        <button type="button" role="tab" aria-selected={view === 'documents'} className={view === 'documents' ? 'on' : ''} onClick={() => showView('documents')}><FileText size={14} aria-hidden /> Ward documents and nursing chart</button>
+      </div>
+
+      {view === 'care' && <div className="top-gap"><StayCare stayId={stay.id} /></div>}
+
+      {view === 'documents' && dischargeCard && (
         <div id="discharge-summary" className="discharge-layout top-gap">
           <DischargeSummary key={`${dischargeCard.id}-${dischargeCard.status}`} stayId={stay.id} stay={stay} patient={patient} doc={dischargeCard} can={can} onChanged={(r) => setData(r)} />
           <NursingReference nursing={nursing} redFlags={redFlags} />
         </div>
       )}
 
+      {view === 'documents' && (
       <div className="grid-2 top-gap stay-layout">
         <div className="stack">
           <div className="card-head">
@@ -320,6 +335,7 @@ export function AdmissionPage() {
           </ul>
         </section>
       </div>
+      )}
 
       {moving && (
         <Modal title="Change ward or bed" onClose={() => setMoving(null)} size="lg">

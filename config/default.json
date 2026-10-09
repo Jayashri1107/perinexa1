@@ -92,6 +92,7 @@
     "labOrder": ["doctor", "rmo"],
     "labReport": ["lab"],
     "labReview": ["doctor", "rmo"],
+    "labCollect": ["lab", "nurse"],
     "library": ["doctor", "rmo", "nurse"],
     "libraryEdit": ["doctor", "rmo"],
     "libraryApprove": ["doctor"],
@@ -208,6 +209,22 @@
       { "name": "NICU", "floor": "2nd floor", "kind": "nicu", "beds": 4, "bedPrefix": "N" },
       { "name": "Labour room", "floor": "2nd floor", "kind": "labour", "beds": 2, "bedPrefix": "L" }
     ]
+  },
+  "nursing": {
+    "shifts": [
+      { "key": "morning", "label": "Morning shift", "start": "08:00" },
+      { "key": "evening", "label": "Evening shift", "start": "14:00" },
+      { "key": "night", "label": "Night shift", "start": "20:00" }
+    ],
+    "doseTimes": [
+      { "key": "morning", "label": "Morning", "time": "08:00" },
+      { "key": "afternoon", "label": "Afternoon", "time": "14:00" },
+      { "key": "night", "label": "Night", "time": "20:00" }
+    ],
+    "dueBeforeMinutes": 60,
+    "overdueAfterMinutes": 60,
+    "vitalsEveryHours": 4,
+    "routes": ["Oral", "IV", "IM", "SC", "Inhaled", "Topical", "Rectal", "Vaginal", "Sublingual"]
   },
   "notifications": {
     "listSize": 30,

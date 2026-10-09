@@ -48,6 +48,7 @@ import { appointmentLook, whenText, whoText } from '../appointments/appointmentF
 import { BillingDesk } from '../billing/BillingDesk.jsx';
 import { BookedBedsCard, bedCounts } from '../inpatient/BookedBeds.jsx';
 import { InHospitalCard } from '../inpatient/InHospitalCard.jsx';
+import { NursingTodayCard } from '../nursing/NursingTodayCard.jsx';
 import { TodayBooking } from './TodayBooking.jsx';
 import { PrescriptionOrdersCard } from '../dispensing/PrescriptionOrdersCard.jsx';
 
@@ -226,6 +227,7 @@ export function TodayPage() {
                 )}
               </section>
             ),
+            roles.includes('nurse') && <NursingTodayCard key="nursing" />,
             canAccess('patientsClinical') && <InHospitalCard key="inhospital" />,
             today.doctor && (
               <section key="due" className="card">

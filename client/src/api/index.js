@@ -296,6 +296,15 @@ export const admissionsApi = {
   nursing: (id, data) => http.post(`${ADMISSIONS}/${id}/nursing`, data),
   cancelNursing: (id, entryId, reason) => http.post(`${ADMISSIONS}/${id}/nursing/${entryId}/cancel`, { reason }),
 };
+// The nurse's work (9 Oct 2026): the nursing station, a stay's orders and charts.
+const WARD_CARE = '/hospital/ward-care';
+export const wardCareApi = {
+  station: (query) => http.get(`${WARD_CARE}/station`, query),
+  stay: (id) => http.get(`${WARD_CARE}/stays/${id}`),
+  addOrder: (id, data) => http.post(`${WARD_CARE}/stays/${id}/orders`, data),
+  stopOrder: (id, orderId, reason) => http.post(`${WARD_CARE}/stays/${id}/orders/${orderId}/stop`, { reason }),
+  chart: (id, data) => http.post(`${WARD_CARE}/stays/${id}/chart`, data),
+};
 export const wardIssuesApi = {
   admitted: () => http.get(`${PHARMACY}/ward-issues/admitted`),
   issue: (data) => http.post(`${PHARMACY}/ward-issues`, data),
