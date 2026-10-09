@@ -76,6 +76,11 @@ export const AUDIT_ACTIONS = Object.freeze({
   // Lab (ids and test keys only – never results)
   LAB_ORDERED: 'Lab tests ordered',
   LAB_COLLECTED: 'Lab sample collected',
+  LAB_RECEIVED: 'Lab sample received in the lab',
+  LAB_PROCESSING: 'Lab test started',
+  LAB_SAMPLE_REJECTED: 'Lab sample rejected (new sample needed)',
+  LAB_QUERY: 'Lab asked the doctor about an order',
+  LAB_DASHBOARD_VIEWED: 'Lab overview opened',
   LAB_REPORTED: 'Lab results reported',
   LAB_AMENDED: 'Lab results amended',
   LAB_REVIEWED: 'Lab results reviewed',

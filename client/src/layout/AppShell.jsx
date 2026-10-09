@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Loader } from '../components/Loader.jsx';
 import { ProfileMenu } from '../components/ProfileMenu.jsx';
+import { ThemeMenu } from '../components/ThemeMenu.jsx';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logo from '../assets/brand/perinexa-logo.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
@@ -97,6 +98,7 @@ export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, 
         <header className="topbar">
           <div className="topbar-start">{topbarStart}</div>
           <div className="topbar-actions">
+            <ThemeMenu />
             {topbarActions}
             <ProfileMenu />
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => logout()}>

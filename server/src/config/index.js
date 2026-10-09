@@ -202,7 +202,7 @@ const schema = z.object({
     maxRangeDays: z.number().int().min(7).max(62),
   }),
   admissions: z.object({ admissionPrefix: prefix, numberDigits: digits }),
-  lab: z.object({ orderPrefix: prefix, numberDigits: digits, maxTestsPerOrder: z.number().int().min(1).max(100) }),
+  lab: z.object({ orderPrefix: prefix, samplePrefix: prefix, numberDigits: digits, maxTestsPerOrder: z.number().int().min(1).max(100), pendingListSize: z.number().int().min(5).max(100) }),
   library: z.object({ maxEntries: z.number().int().min(10).max(2000) }),
   appearance: z.object({ textSize: z.array(keyLabel).min(1), density: z.array(keyLabel).min(1), theme: z.array(keyLabel).min(1) }),
   seed: z.object({

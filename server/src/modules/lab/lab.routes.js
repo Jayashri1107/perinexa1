@@ -11,6 +11,12 @@ router.post('/orders', controller.create);
 router.get('/patient/:patientId', controller.forPatient);
 router.get('/orders/:id', controller.get);
 router.post('/orders/:id/collect', controller.collect);
+// sample tracking and the lab's overview (lab staff, 9 Oct 2026)
+router.get('/dashboard', controller.dashboard);
+router.post('/orders/:id/receive', controller.receive);
+router.post('/orders/:id/process', controller.process);
+router.post('/orders/:id/reject', controller.reject);
+router.post('/orders/:id/query', controller.query);
 router.put('/orders/:id/results', controller.results);
 router.post('/orders/:id/review', controller.review);
 router.post('/orders/:id/cancel', controller.cancel);

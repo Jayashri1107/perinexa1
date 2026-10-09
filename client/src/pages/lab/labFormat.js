@@ -1,5 +1,5 @@
 // Words and looks for lab orders and results.
-import { ArrowDown, ArrowUp, Ban, CircleCheck, ClipboardList, FileCheck2, TestTube, TriangleAlert } from 'lucide-react';
+import { ArrowDown, ArrowUp, Ban, CircleCheck, ClipboardList, FileCheck2, FlaskConical, PackageCheck, RotateCcw, TestTube, Truck, TriangleAlert } from 'lucide-react';
 
 const ORDER_LOOKS = {
   ordered: { tone: 'info', icon: ClipboardList, word: 'Ordered' },
@@ -9,6 +9,19 @@ const ORDER_LOOKS = {
   cancelled: { tone: 'inactive', icon: Ban, word: 'Cancelled' },
 };
 export const orderLook = (status) => ORDER_LOOKS[status] ?? ORDER_LOOKS.ordered;
+
+// Where an order is in the lab (owner, 9 Oct 2026): a new sample needed after a rejection, a sample on its way from the
+// ward, received and waiting, the test in progress, results waiting for the doctor's verification, finalized.
+export function stageLook(o) {
+  if (o.status === 'ordered' && o.recollect) return { tone: 'danger', icon: RotateCcw, word: 'New sample needed' };
+  if (o.status === 'ordered') return { tone: 'info', icon: ClipboardList, word: 'Sample to take' };
+  if (o.status === 'collected' && o.inProgress) return { tone: 'info', icon: FlaskConical, word: 'In progress' };
+  if (o.status === 'collected' && !o.received) return { tone: 'pending', icon: Truck, word: 'On its way to the lab' };
+  if (o.status === 'collected') return { tone: 'pending', icon: PackageCheck, word: 'Received – to start' };
+  if (o.status === 'reported') return { tone: 'pending', icon: FileCheck2, word: 'Awaiting verification' };
+  if (o.status === 'reviewed') return { tone: 'active', icon: CircleCheck, word: 'Finalized' };
+  return orderLook(o.status);
+}
 
 const FLAG_LOOKS = {
   low: { tone: 'danger', icon: ArrowDown, word: 'Low' },
@@ -20,11 +33,12 @@ export const flagLook = (flag) => FLAG_LOOKS[flag] ?? null;
 
 // The worklist's views (the server's ?view=), with the statuses each holds.
 export const LAB_VIEWS = [
-  { value: 'collect', label: 'Sample to take' },
-  { value: 'report', label: 'Results to enter' },
-  { value: 'review', label: 'To review' },
-  { value: 'done', label: 'Reviewed' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'collect', label: 'Requests', icon: ClipboardList },
+  { value: 'received', label: 'Sample tracking', icon: TestTube },
+  { value: 'processing', label: 'In progress', icon: FlaskConical },
+  { value: 'review', label: 'Awaiting verification', icon: FileCheck2 },
+  { value: 'done', label: 'Finalized', icon: CircleCheck },
+  { value: 'cancelled', label: 'Cancelled', icon: Ban },
 ];
 
 // The same flag the server works out, to show it while typing.

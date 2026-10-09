@@ -152,8 +152,10 @@
   },
   "lab": {
     "orderPrefix": "L-",
+    "samplePrefix": "S-",
     "numberDigits": 6,
-    "maxTestsPerOrder": 30
+    "maxTestsPerOrder": 30,
+    "pendingListSize": 15
   },
   "library": {
     "maxEntries": 300

@@ -36,7 +36,9 @@
   --sidebar-active-bg: rgba(255, 255, 255, 0.12);
   --sidebar-hover-bg: rgba(255, 255, 255, 0.07);
   --sidebar-active-text: #ffffff;
-  --sidebar-accent: #4fd6c8; /* the active item's marker and focus ring on the sidebar */
+  --sidebar-accent: #4fd6c8; /* the focus ring on the sidebar */
+  --sidebar-tile-active-bg: #ffffff; /* the active menu item's icon tile (owner, 9 Oct 2026: indigo theme, no green) */
+  --sidebar-tile-active-fg: #3b3fa6;
 
   /* sign-in page decoration */
   --auth-ring-teal: rgba(79, 214, 200, 0.1);
@@ -112,6 +114,8 @@
   --color-neutral-soft: #2a2e55;
 
   --sidebar-bg: #0c0e26;
+  --sidebar-tile-active-bg: #6d72ea;
+  --sidebar-tile-active-fg: #ffffff;
   --overlay: rgba(4, 5, 20, 0.7);
   --chart-grid: #2d3163;
   --chart-hover: rgba(255, 255, 255, 0.05);

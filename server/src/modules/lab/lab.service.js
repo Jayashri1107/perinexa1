@@ -9,7 +9,9 @@ import { containsText, escapeRegex, toObjectId } from '../../core/validate.js';
 import { nextNumber } from '../../db/counter.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { testPackageOptions } from '../library/library.service.js';
-import { notify } from '../notifications/notification.service.js';
+import { notify, notifyRoles } from '../notifications/notification.service.js';
+import { Admission } from '../admissions/admission.model.js';
+import { dayRange, todayLocal } from '../../core/dates.js';
 import { EmergencyAccess, Patient } from '../patients/patient.model.js';
 import { atLeast, listVisibility, recordLevel } from '../patients/patientAccess.js';
 import { User } from '../users/user.model.js';
@@ -22,12 +24,17 @@ const isLab = (req) => has(req, access.labReport);
 const canOrder = (req) => has(req, access.labOrder);
 const canReview = (req) => has(req, access.labReview);
 
-const VIEW_STATUSES = {
-  collect: ['ordered'],
-  report: ['ordered', 'collected'],
-  review: ['reported'],
-  done: ['reviewed'],
-  cancelled: ['cancelled'],
+// The worklist's views: requests (sample to take, or a new one after a rejection), sample tracking (taken, not started
+// yet – including those still on the way from the ward), in progress, results to enter (old view), awaiting the
+// doctor's verification, finalized (reviewed) and cancelled.
+const VIEW_MATCH = {
+  collect: { status: 'ordered' },
+  received: { status: 'collected', processing: null },
+  processing: { status: 'collected', processing: { $ne: null } },
+  report: { status: { $in: ['ordered', 'collected'] } },
+  review: { status: 'reported' },
+  done: { status: 'reviewed' },
+  cancelled: { status: 'cancelled' },
 };
 
 // ---------- Access ----------
@@ -60,7 +67,7 @@ export async function catalogue(req) {
 export async function listOrders(req, q) {
   if (!isLab(req) && !atLeast(maxLevel(req), 'clinicalRead')) throw new HttpError(403, 'You do not have permission to do this.', 'FORBIDDEN');
   const match = { hospitalId: toObjectId(req.hospitalId) };
-  if (q.view) match.status = { $in: VIEW_STATUSES[q.view] };
+  if (q.view) Object.assign(match, VIEW_MATCH[q.view]);
 
   const visibility = isLab(req) ? {} : listVisibility(req);
   const patientMatch = Object.fromEntries(
@@ -109,9 +116,19 @@ export async function listOrders(req, q) {
     orderedAt: o.ordered.at,
     orderedBy: o.orderedBy ?? '',
     reportedAt: o.reported?.at ?? null,
+    ...stageOf(o),
   }));
   return result;
 }
+
+// Where an order is in the lab (for its badge): a new sample needed, on the way from the ward, received, in progress.
+const stageOf = (o) => ({
+  recollect: Boolean(o.recollect),
+  sampleNumber: o.sample?.number ?? '',
+  received: Boolean(o.received),
+  inProgress: Boolean(o.processing),
+  queries: o.queries?.length ?? 0,
+});
 
 // The best level the person's roles give in general (for list permission only).
 function maxLevel(req) {
@@ -126,8 +143,8 @@ async function names(ids) {
 }
 
 async function orderView(req, order, { patient, level }) {
-  const stamps = ['ordered', 'collected', 'reported', 'reviewed', 'cancelled'];
-  const who = await names([...stamps.map((s) => order[s]?.by), ...order.amendments.map((a) => a.by)]);
+  const stamps = ['ordered', 'collected', 'received', 'processing', 'reported', 'reviewed', 'cancelled'];
+  const who = await names([...stamps.map((s) => order[s]?.by), ...order.amendments.map((a) => a.by), ...order.rejections.map((r) => r.by), ...order.queries.map((q) => q.by)]);
   const stamp = (s) => (order[s] ? { at: order[s].at, by: who.get(String(order[s].by)) ?? '', ...(s === 'cancelled' && { reason: order.cancelled.reason }) } : null);
   const open = ['ordered', 'collected'].includes(order.status);
   const full = level === 'full';
@@ -144,6 +161,12 @@ async function orderView(req, order, { patient, level }) {
       tests: order.tests.map((t) => ({ key: t.key, name: t.name, text: t.text, values: t.values.map((v) => ({ key: v.key, value: v.value, flag: v.flag })) })),
       ordered: stamp('ordered'),
       collected: stamp('collected'),
+      received: stamp('received'),
+      processing: stamp('processing'),
+      sample: order.sample ? { number: order.sample.number, types: order.sample.types } : null,
+      recollect: Boolean(order.recollect),
+      rejections: order.rejections.map((r) => ({ at: r.at, by: who.get(String(r.by)) ?? '', reason: r.reason, sampleNumber: r.sampleNumber })),
+      queries: order.queries.map((q) => ({ at: q.at, by: who.get(String(q.by)) ?? '', text: q.text })),
       reported: stamp('reported'),
       reviewed: stamp('reviewed'),
       cancelled: stamp('cancelled'),
@@ -152,6 +175,10 @@ async function orderView(req, order, { patient, level }) {
     patient: patientView(patient),
     can: {
       collect: canCollect(req) && order.status === 'ordered',
+      receive: isLab(req) && order.status === 'collected' && !order.received,
+      process: isLab(req) && order.status === 'collected' && !order.processing,
+      reject: isLab(req) && order.status === 'collected',
+      query: isLab(req) && ['ordered', 'collected'].includes(order.status),
       report: isLab(req) && order.status !== 'cancelled',
       review: canReview(req) && full && order.status === 'reported',
       cancel: open && (isLab(req) || (canOrder(req) && full)),
@@ -273,7 +300,17 @@ export async function collect(req, id) {
   if (!canCollect(req)) throw new HttpError(403, 'Only lab staff or nurses can mark a sample as taken.', 'FORBIDDEN');
   const loaded = await loadOrder(req, id);
   if (loaded.order.status !== 'ordered') throw new HttpError(409, 'The sample has already been taken, or the order is closed.', 'NOT_ORDERED');
-  loaded.order.set({ status: 'collected', collected: { by: req.user._id, at: new Date() } });
+  const now = new Date();
+  const types = [...new Set(loaded.order.tests.map((t) => testByKey.get(t.key)?.sample).filter(Boolean))];
+  loaded.order.set({
+    status: 'collected',
+    collected: { by: req.user._id, at: now },
+    sample: { number: await nextNumber(req.hospitalId, 'labSample', config.lab.samplePrefix, config.lab.numberDigits), types },
+    // taken by the lab: already in the lab; taken on the ward: received when it arrives
+    received: isLab(req) ? { by: req.user._id, at: now } : null,
+    processing: null,
+    recollect: false,
+  });
   await loaded.order.save();
   await recordAudit(req, 'LAB_COLLECTED', { hospitalId: req.hospitalId, details: { patientId: String(loaded.patient._id), orderNumber: loaded.order.orderNumber } });
   return orderView(req, loaded.order, loaded);
@@ -318,7 +355,115 @@ export async function saveResults(req, id, body) {
     hospitalId: req.hospitalId,
     details: { patientId: String(loaded.patient._id), orderNumber: order.orderNumber },
   });
+  // the doctor who ordered and her doctor hear the results are ready to verify – first, when a value is outside range
+  const outside = tests.flatMap((t) => t.values ?? []).filter((v) => isAbnormal(v.flag)).length;
+  await notify(req, doctorsOf(order, loaded.patient), {
+    type: 'LAB_REPORTED',
+    title: `${amending ? 'Lab results changed' : 'Lab results ready'}${outside ? ` – ${outside} outside range` : ''}`,
+    message: `${loaded.patient.name} (${loaded.patient.patientNumber}) · ${order.orderNumber} · ${order.tests.map((t) => t.name).join(', ')}`,
+    link: `/hospital/lab/orders/${order._id}`,
+  });
   return orderView(req, order, loaded);
+}
+
+// The doctor who ordered and the patient's doctor (each once).
+const doctorsOf = (order, patient) => [...new Set([order.ordered?.by, patient.assignedDoctorId].filter(Boolean).map(String))];
+
+// ---------- Sample tracking and processing (lab staff) ----------
+
+/** A sample taken on the ward has arrived in the lab. */
+export async function receive(req, id) {
+  assertLab(req);
+  const loaded = await loadOrder(req, id);
+  if (loaded.order.status !== 'collected' || loaded.order.received) throw new HttpError(409, 'There is no sample on its way for this order.', 'NOT_COLLECTED');
+  loaded.order.set({ received: { by: req.user._id, at: new Date() } });
+  await loaded.order.save();
+  await recordAudit(req, 'LAB_RECEIVED', { hospitalId: req.hospitalId, details: { orderNumber: loaded.order.orderNumber } });
+  return orderView(req, loaded.order, loaded);
+}
+
+/** The test is started on the sample (marked received now too, if it was not). */
+export async function startProcessing(req, id) {
+  assertLab(req);
+  const loaded = await loadOrder(req, id);
+  if (loaded.order.status !== 'collected' || loaded.order.processing) throw new HttpError(409, 'Take the sample first, or the test is already started.', 'NOT_READY');
+  const now = new Date();
+  loaded.order.set({ processing: { by: req.user._id, at: now }, ...(!loaded.order.received && { received: { by: req.user._id, at: now } }) });
+  await loaded.order.save();
+  await recordAudit(req, 'LAB_PROCESSING', { hospitalId: req.hospitalId, details: { orderNumber: loaded.order.orderNumber } });
+  return orderView(req, loaded.order, loaded);
+}
+
+/** The sample cannot be used (clotted, too little, wrong tube …): the order waits for a new sample; the doctors hear. */
+export async function rejectSample(req, id, reason) {
+  assertLab(req);
+  const loaded = await loadOrder(req, id);
+  const { order } = loaded;
+  if (order.status !== 'collected') throw new HttpError(409, 'Only a sample that was taken can be rejected.', 'NOT_COLLECTED');
+  order.rejections.push({ by: req.user._id, at: new Date(), reason, sampleNumber: order.sample?.number ?? '' });
+  order.set({ status: 'ordered', recollect: true, collected: null, received: null, processing: null, sample: null });
+  await order.save();
+  await recordAudit(req, 'LAB_SAMPLE_REJECTED', { hospitalId: req.hospitalId, details: { orderNumber: order.orderNumber } });
+  const message = `${loaded.patient.name} (${loaded.patient.patientNumber}) · ${order.orderNumber} · ${reason}`;
+  await notify(req, doctorsOf(order, loaded.patient), { type: 'LAB_SAMPLE_REJECTED', title: 'Lab sample rejected – new sample needed', message, link: `/hospital/lab/orders/${order._id}` });
+  // nurses take the new sample when she is in hospital
+  if (await Admission.exists({ hospitalId: req.hospitalId, patientId: loaded.patient._id, status: 'admitted' })) {
+    await notifyRoles(req, ['nurse'], { type: 'LAB_SAMPLE_REJECTED', title: 'New lab sample needed', message, link: `/hospital/lab/orders/${order._id}` });
+  }
+  return orderView(req, order, loaded);
+}
+
+/** The lab asks the ordering doctor about a request (missing information); the order itself does not change. */
+export async function askDoctor(req, id, text) {
+  assertLab(req);
+  const loaded = await loadOrder(req, id);
+  const { order } = loaded;
+  if (!['ordered', 'collected'].includes(order.status)) throw new HttpError(409, 'This order is no longer open.', 'NOT_OPEN');
+  order.queries.push({ by: req.user._id, at: new Date(), text });
+  await order.save();
+  await recordAudit(req, 'LAB_QUERY', { hospitalId: req.hospitalId, details: { orderNumber: order.orderNumber } });
+  await notify(req, doctorsOf(order, loaded.patient), { type: 'LAB_QUERY', title: 'The lab has a question', message: `${loaded.patient.name} (${loaded.patient.patientNumber}) · ${order.orderNumber} · ${text}`, link: `/hospital/lab/orders/${order._id}` });
+  return orderView(req, order, loaded);
+}
+
+// ---------- The lab's overview (lab staff's Today) ----------
+
+export async function dashboard(req) {
+  assertLab(req);
+  const hid = toObjectId(req.hospitalId);
+  const [start, end] = dayRange(todayLocal());
+  const count = (m) => LabOrder.countDocuments({ hospitalId: hid, ...m });
+  const [requests, recollect, onTheWay, samplesPending, inProgress, toVerify, urgentOpen, reportedToday, orderedToday, pending] = await Promise.all([
+    count({ status: 'ordered' }),
+    count({ status: 'ordered', recollect: true }),
+    count({ status: 'collected', received: null }),
+    count({ status: 'collected', processing: null }),
+    count({ status: 'collected', processing: { $ne: null } }),
+    count({ status: 'reported' }),
+    count({ status: { $in: ['ordered', 'collected'] }, urgent: true }),
+    count({ 'reported.at': { $gte: start, $lt: end } }),
+    count({ 'ordered.at': { $gte: start, $lt: end } }),
+    LabOrder.find({ hospitalId: hid, status: { $in: ['ordered', 'collected', 'reported'] } })
+      .sort({ urgent: -1, 'ordered.at': 1 })
+      .limit(config.lab.pendingListSize)
+      .lean(),
+  ]);
+  const patients = new Map((await Patient.find({ hospitalId: hid, _id: { $in: pending.map((o) => o.patientId) } }).select('name patientNumber').lean()).map((p) => [String(p._id), p]));
+  await recordAudit(req, 'LAB_DASHBOARD_VIEWED', { hospitalId: req.hospitalId, details: { pending: pending.length } });
+  return {
+    counts: { requests, recollect, onTheWay, samplesPending, inProgress, toVerify, urgentOpen, reportedToday, orderedToday },
+    pending: pending.map((o) => ({
+      id: String(o._id),
+      orderNumber: o.orderNumber,
+      status: o.status,
+      urgent: o.urgent,
+      orderedAt: o.ordered.at,
+      tests: o.tests.map((t) => t.name),
+      sampleTypes: [...new Set(o.tests.map((t) => testByKey.get(t.key)?.sample).filter(Boolean))],
+      patient: { name: patients.get(String(o.patientId))?.name ?? '', patientNumber: patients.get(String(o.patientId))?.patientNumber ?? '' },
+      ...stageOf(o),
+    })),
+  };
 }
 
 // ---------- Doctors ----------

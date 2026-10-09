@@ -81,6 +81,18 @@ Fake sample data only.
 - **Appearance**: Theme (Light, Dark, Match device), Text size and Spacing as compact choices with a live preview. The dark
   theme is in `styles/tokens.css` (`:root[data-theme='dark']`); printouts stay black on white.
 
+**9 Oct 2026 (evening) – the lab's overview and sample tracking, theme in the top bar**
+- **Lab staff's Today** (Laboratory overview): new test requests, samples pending (and on the way from the ward), tests in
+  progress, results awaiting the doctor's verification – each opens its Lab tab; urgent orders first in Pending lab work.
+- **Lab** has a tab per step: Requests · Sample tracking · In progress · Awaiting verification · Finalized · Cancelled.
+- **Sample tracking** (`labOrder.model.js`): a taken sample gets a number (`lab.samplePrefix`, S-) and its kinds from the
+  test list; taken on the ward it is "on its way" until the lab marks it **received**; **Start test**; **Reject sample**
+  (with the reason) sends the order back for a new sample and tells the doctors (and the nurses, if she is in hospital);
+  **Ask the doctor** sends a question without changing the order. Entering results tells the ordering doctor and her
+  doctor ("outside range" in the title). Lab staff cannot verify: the doctor or RMO marks results reviewed (final).
+- **Theme**: the sun / moon button beside the bell (Light, Dark, Match device); My settings keeps text size and spacing.
+- The active menu item is a white tile with an indigo icon (no light green); the nurse tiles use indigo too.
+
 ### Who sees what (config.access)
 
 | Role | Menu |

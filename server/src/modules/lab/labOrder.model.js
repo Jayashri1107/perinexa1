@@ -42,6 +42,15 @@ const labOrderSchema = new mongoose.Schema(
     labNote: { type: String, trim: true, maxlength: 1000, default: '' },
     ordered: { type: new mongoose.Schema({ by: { type: ObjectId, ref: 'User' }, at: Date }, { _id: false }), required: true },
     collected: stamp(),
+    // sample tracking (owner, 9 Oct 2026): its number and kinds (from the tests), when the lab received it (a sample taken
+    // on the ward arrives later), when the test was started, and samples rejected – the order then waits for a new sample
+    sample: { type: new mongoose.Schema({ number: String, types: [String] }, { _id: false }), default: null },
+    received: stamp(),
+    processing: stamp(),
+    recollect: { type: Boolean, default: false },
+    rejections: { type: [new mongoose.Schema({ by: { type: ObjectId, ref: 'User' }, at: Date, reason: String, sampleNumber: String }, { _id: false })], default: [] },
+    // questions the lab asked the ordering doctor about the request (missing information)
+    queries: { type: [new mongoose.Schema({ by: { type: ObjectId, ref: 'User' }, at: Date, text: String }, { _id: false })], default: [] },
     reported: stamp(),
     reviewed: stamp(),
     cancelled: {

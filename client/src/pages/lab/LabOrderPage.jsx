@@ -1,7 +1,8 @@
 // One lab order: its tests and results (with the flag of each value against the DRAFT reference range), who did
 // what and when, and the next step this person may take – take the sample, enter or change the results (a change
-// after the report needs a reason), review them, or cancel the order.
-import { ArrowLeft, Pencil, TestTube, Zap } from 'lucide-react';
+// after the report needs a reason), review them, or cancel the order. Sample tracking (owner, 9 Oct 2026): the sample's
+// number and kind, received in the lab, test started, a sample rejected (a new one is needed), and asking the doctor.
+import { ArrowLeft, FlaskConical, MessageCircleQuestion, PackageCheck, Pencil, RotateCcw, TestTube, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { labApi } from '../../api/index.js';
@@ -11,15 +12,23 @@ import { Modal } from '../../components/Modal.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
 import { formatDateTime } from '../../utils/format.js';
-import { flagFor, flagLook, orderLook } from './labFormat.js';
+import { flagFor, flagLook, stageLook } from './labFormat.js';
 
 const STEPS = [
   ['ordered', 'Ordered'],
   ['collected', 'Sample taken'],
-  ['reported', 'Results entered'],
-  ['reviewed', 'Reviewed'],
+  ['received', 'Received in the lab'],
+  ['processing', 'Test started'],
+  ['reported', 'Results entered – sent for verification'],
+  ['reviewed', 'Verified by the doctor'],
   ['cancelled', 'Cancelled'],
 ];
+
+// Reject a sample (with the reason) or ask the ordering doctor a question.
+const ASK = {
+  reject: { title: 'Reject the sample', label: 'Why it cannot be used', placeholder: 'e.g. Clotted, too little, wrong tube, not labelled', button: 'Reject – new sample needed', min: 3, help: 'The doctor (and the nurses, if she is in hospital) are told a new sample is needed.' },
+  query: { title: 'Ask the doctor', label: 'Your question', placeholder: 'e.g. Fasting or after food? Which antibiotic was given?', button: 'Send to the doctor', min: 5, help: 'The doctor who ordered is notified. The order itself does not change.' },
+};
 
 // The results form's values, from the order: { "<key>:<name>": { values: { field: value }, text } }.
 const idOf = (t) => `${t.key}:${t.key === 'other' ? t.name : ''}`;
@@ -151,6 +160,8 @@ export function LabOrderPage() {
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState(null); // 'reject' | 'query'
+  const [askText, setAskText] = useState('');
 
   const load = useCallback(() => {
     labApi.get(id).then(setData).catch((err) => setError(err.message));
@@ -171,6 +182,8 @@ export function LabOrderPage() {
     try {
       setData(await action());
       setCancelling(false);
+      setAsking(null);
+      setAskText('');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -192,10 +205,14 @@ export function LabOrderPage() {
         }
         actions={
           <>
-            <StateBadge look={orderLook(order.status)} />
+            <StateBadge look={stageLook({ ...order, received: Boolean(order.received), inProgress: Boolean(order.processing) })} />
             {order.urgent && <span className="badge badge-danger"><Zap size={14} aria-hidden /> Urgent</span>}
             {order.bookedByReception && <span className="badge badge-info">Booked by reception</span>}
-            {can.collect && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => act(() => labApi.collect(order.id))}><TestTube size={16} aria-hidden /> Sample taken</button>}
+            {can.collect && <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act(() => labApi.collect(order.id))}><TestTube size={16} aria-hidden /> {order.recollect ? 'New sample taken' : 'Sample taken'}</button>}
+            {can.receive && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => act(() => labApi.receive(order.id))}><PackageCheck size={16} aria-hidden /> Received in the lab</button>}
+            {can.process && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => act(() => labApi.process(order.id))}><FlaskConical size={16} aria-hidden /> Start test</button>}
+            {can.reject && <button type="button" className="btn btn-link btn-danger-text" onClick={() => setAsking('reject')}><RotateCcw size={16} aria-hidden /> Reject sample</button>}
+            {can.query && <button type="button" className="btn btn-link" onClick={() => setAsking('query')}><MessageCircleQuestion size={16} aria-hidden /> Ask the doctor</button>}
             {can.report && !editing && (
               <button type="button" className={amending ? 'btn btn-ghost' : 'btn btn-primary'} onClick={() => setEditing(true)}>
                 <Pencil size={16} aria-hidden /> {amending ? 'Change results' : 'Enter results'}
@@ -214,6 +231,7 @@ export function LabOrderPage() {
           <h2>Order</h2>
           <dl className="details wide">
             <dt>Tests</dt><dd>{order.tests.map((t) => t.name).join(', ')}</dd>
+            <dt>Sample</dt><dd>{order.sample ? <><strong>{order.sample.number}</strong>{order.sample.types.length > 0 && ` · ${order.sample.types.join(', ')}`}</> : order.recollect ? 'A new sample is needed' : 'Not taken yet'}</dd>
             {order.packages.length > 0 && (<><dt>Packages</dt><dd>{order.packages.map((p) => `${p.name}${p.approved ? '' : ' (DRAFT)'}`).join(', ')}</dd></>)}
             <dt>Note to the lab</dt><dd className="pre">{order.noteToLab || '—'}</dd>
             <dt>Lab remark</dt><dd className="pre">{order.labNote || '—'}</dd>
@@ -226,6 +244,18 @@ export function LabOrderPage() {
               <li key={k}>
                 <strong>{word}</strong> <span className="muted small">{formatDateTime(order[k].at)} · {order[k].by}</span>
                 {k === 'cancelled' && <span className="block small">{order.cancelled.reason}</span>}
+              </li>
+            ))}
+            {order.rejections.map((r) => (
+              <li key={`rej${r.at}`}>
+                <strong>Sample {r.sampleNumber} rejected</strong> <span className="muted small">{formatDateTime(r.at)} · {r.by}</span>
+                <span className="block small">{r.reason}</span>
+              </li>
+            ))}
+            {order.queries.map((q) => (
+              <li key={`q${q.at}`}>
+                <strong>Asked the doctor</strong> <span className="muted small">{formatDateTime(q.at)} · {q.by}</span>
+                <span className="block small">{q.text}</span>
               </li>
             ))}
             {order.amendments.map((a) => (
@@ -256,6 +286,27 @@ export function LabOrderPage() {
           </section>
         )}
       </div>
+
+      {asking && (
+        <Modal title={ASK[asking].title} onClose={() => setAsking(null)} size="sm">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              act(() => (asking === 'reject' ? labApi.reject(order.id, askText) : labApi.query(order.id, askText)));
+            }}
+          >
+            <div className="form-field">
+              <label htmlFor="ask-text">{ASK[asking].label}<span className="required" aria-hidden> *</span></label>
+              <textarea id="ask-text" rows={3} value={askText} maxLength={500} placeholder={ASK[asking].placeholder} onChange={(e) => setAskText(e.target.value)} />
+              <span className="field-help">{ASK[asking].help}</span>
+            </div>
+            <div className="modal-foot inline">
+              <button type="button" className="btn btn-ghost" onClick={() => setAsking(null)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={busy || askText.trim().length < ASK[asking].min}>{ASK[asking].button}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {cancelling && (
         <Modal title="Cancel the lab order" onClose={() => setCancelling(false)} size="sm">

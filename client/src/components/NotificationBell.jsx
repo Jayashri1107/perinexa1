@@ -26,6 +26,9 @@ const KINDS = {
   LAB_BOOKED: { icon: FlaskConical, tone: 'tone-amber' },
   CARE_ORDER: { icon: ClipboardList, tone: 'tone-blue' },
   SERVICE_TO_BILL: { icon: Receipt, tone: 'tone-amber' },
+  LAB_REPORTED: { icon: FlaskConical, tone: 'tone-blue' },
+  LAB_SAMPLE_REJECTED: { icon: FlaskConical, tone: 'tone-danger' },
+  LAB_QUERY: { icon: FlaskConical, tone: 'tone-amber' },
 };
 
 // The tabs: which kinds each holds ("All" holds every kind).
@@ -35,7 +38,7 @@ const GROUPS = [
   { key: 'admissions', label: 'Admissions', types: ['NEW_ADMISSION', 'TODAY_ADMISSIONS'] },
   { key: 'discharges', label: 'Discharges', types: ['DISCHARGE_SOON', 'DISCHARGE_READY', 'TODAY_DISCHARGES'] },
   { key: 'prescriptions', label: 'Prescriptions', types: ['PRESCRIPTION_SENT'] },
-  { key: 'lab', label: 'Lab', types: ['LAB_BOOKED'] },
+  { key: 'lab', label: 'Lab', types: ['LAB_BOOKED', 'LAB_REPORTED', 'LAB_SAMPLE_REJECTED', 'LAB_QUERY'] },
   { key: 'care', label: 'Orders', types: ['CARE_ORDER'] },
   { key: 'billing', label: 'Billing', types: ['FINAL_BILL', 'SERVICE_TO_BILL'] },
 ];

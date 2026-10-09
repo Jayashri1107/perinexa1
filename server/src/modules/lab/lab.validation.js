@@ -7,7 +7,7 @@ import { LAB_TESTS, OTHER_TEST } from './labTests.js';
 const { maxTestsPerOrder } = config.lab;
 const testKey = z.enum([...LAB_TESTS.map((t) => t.key)]);
 
-export const VIEWS = ['collect', 'report', 'review', 'done', 'cancelled'];
+export const VIEWS = ['collect', 'received', 'processing', 'report', 'review', 'done', 'cancelled'];
 
 export const orderListQuery = listQuery({
   sortFields: ['createdAt'],
@@ -48,3 +48,4 @@ export const resultsBody = z.object({
 });
 
 export const cancelBody = z.object({ reason: z.string().trim().min(3, 'Say why (at least 3 characters)').max(300) });
+export const queryBody = z.object({ text: z.string().trim().min(5, 'Write the question (at least 5 characters)').max(500) });

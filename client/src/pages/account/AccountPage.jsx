@@ -2,7 +2,7 @@
 // you work, in the middle at the top; then who you are (name, phone – the email is your login and stays as the
 // administrator set it), your password (changed in a pop-up), your professional details (doctors and RMOs: printed on
 // prescriptions) and how the website looks for you – theme, text size and spacing with a live preview, applied at once.
-import { AlignJustify, BriefcaseMedical, Camera, Check, Clock, Eye, KeyRound, Monitor, Moon, Palette, Pencil, Rows3, ShieldCheck, Sun, Trash2, Type, UserRound } from 'lucide-react';
+import { AlignJustify, BriefcaseMedical, Camera, Check, Clock, Eye, KeyRound, Palette, Pencil, Rows3, ShieldCheck, Trash2, Type, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { accountApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
@@ -59,11 +59,11 @@ function EditCard({ icon: Icon, title, description, fields, initial, save, view 
   );
 }
 
-// Appearance (owner, 9 Oct 2026): compact choices on the left – theme, text size, spacing, each with its symbol – and
+// Appearance (owner, 9 Oct 2026): compact choices on the left – text size and spacing, each with its symbol (the theme is
+// in the top bar) – and
 // on the right a live preview of a screen as it will look. A choice applies at once and is saved in the background.
 const SIZE_PX = { small: 13, standard: 16, large: 20 };
 const DENSITY_ICON = { comfortable: Rows3, compact: AlignJustify };
-const THEME_ICON = { light: Sun, dark: Moon, system: Monitor };
 
 function Choices({ label, icon: Icon, name, options, value, onChoose, render }) {
   return (
@@ -139,11 +139,10 @@ function AppearanceCard() {
         <h2><Palette size={18} aria-hidden /> Appearance</h2>
         {state.saving ? <span className="muted small">Saving…</span> : <Saved when={state.saved} />}
       </div>
-      <p className="muted small">Changes show at once and follow you on every computer.</p>
+      <p className="muted small">Changes show at once and follow you on every computer. The theme (light or dark) is the sun / moon button in the top bar.</p>
       <Alert type="error">{state.error}</Alert>
       <div className="look-layout">
         <div className="look-controls">
-          <Choices label="Theme" icon={Palette} name="theme" options={appearance.theme} value={prefs.theme} onChoose={choose} render={(o) => { const I = THEME_ICON[o.key] ?? Sun; return <I size={18} aria-hidden />; }} />
           <Choices label="Text size" icon={Type} name="textSize" options={sizes} value={prefs.textSize} onChoose={choose} render={(o) => <span className="look-aa" style={{ fontSize: SIZE_PX[o.key] ?? 16 }} aria-hidden>Aa</span>} />
           <Choices label="Spacing" icon={Rows3} name="density" options={appearance.density} value={prefs.density} onChoose={choose} render={(o) => { const I = DENSITY_ICON[o.key] ?? Rows3; return <I size={18} aria-hidden />; }} />
         </div>
