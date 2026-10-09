@@ -124,6 +124,16 @@ Fake sample data only.
 - Beds show their floor as a small tag (`components/FloorTag.jsx`) on Booked beds, the nursing station, a nurse's Today and
   the doctor's desk. A nurse's Today: both sides end together; long lists scroll inside their card.
 
+**9 Oct 2026 (evening) – motion and feedback across the website (plain CSS, no new library)**
+- `styles/motion.css` (timings in `tokens.css`: `--motion-fast`, `--motion`, `--motion-page`): pages fade in and rise a
+  little; clickable cards lift on hover; buttons ease and press in; pop-ups and menus fade and scale open; the active
+  menu item has a marker; error messages fade in; loading shows shimmering placeholder lines (`Loader`).
+- Dashboard numbers count up once (`components/CountUp.jsx`; plain whole numbers only; the real number always shows
+  within a second, also in a background tab).
+- Small slide-in notices (`components/Toast.jsx`, `toast('…')`) for payments, uploads, charting, orders, nursing
+  services and the profile photo. Clinical warnings are never toasts and never flash.
+- Everything stops moving when the device asks for reduced motion.
+
 ### Who sees what (config.access)
 
 | Role | Menu |

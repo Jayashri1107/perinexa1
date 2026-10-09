@@ -4,6 +4,7 @@ import { FileText, Upload } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { documentsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
+import { toast } from '../../components/Toast.jsx';
 import { Modal } from '../../components/Modal.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { formatDate, formatDateTime, labelOf } from '../../utils/format.js';
@@ -46,6 +47,7 @@ export function UploadDocumentModal({ patient, admissionId, defaultKind = '', on
     setSaving(true);
     try {
       const { document } = await documentsApi.upload(patient.id, file, { kind, title: title.trim(), documentDate, admissionId });
+      toast('Document uploaded');
       onUploaded(document);
     } catch (err) {
       setError(Object.values(err.fields ?? {})[0] ?? err.message);

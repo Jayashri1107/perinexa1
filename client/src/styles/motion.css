@@ -1,0 +1,104 @@
+/* Motion and feedback for the whole website (owner, 9 Oct 2026) – plain CSS, no library.
+ * Short and calm: pages fade in and rise a little, things you can click lift on hover, pop-ups and menus fade and
+ * scale open, loading shows placeholder lines, saved actions slide in a small notice. Clinical warnings never move or
+ * flash. Everything turns off when the device asks for reduced motion (at the end). Timings are in tokens.css. */
+
+/* ---- a page opening ---- */
+/* 'backwards': once it has played nothing stays on the page (a lasting transform would misplace pop-ups inside it) */
+.page-enter { animation: page-enter var(--motion-page) var(--ease-out) backwards; }
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- cards: every card eases its shadow and border; the ones you can click also lift a little ---- */
+.card { transition: box-shadow var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out); }
+.stat-card.is-link, .nt-tile, .lab-quick-item, .quick-action, .ns-patient, .svc-option, .nt-due-row, .desk-alert a, .ward-card, .look-choice, .bed-chip:not(.booked) {
+  transition: transform var(--motion) var(--ease-out), box-shadow var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out), background-color var(--motion) var(--ease-out);
+}
+.stat-card.is-link:hover, .nt-tile:hover, .lab-quick-item:hover, .quick-action:hover, .ns-patient:hover, .ward-card:hover, .bed-chip:not(.booked):hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--color-primary-soft);
+}
+.nt-due-row:hover, .svc-option:hover, .desk-alert a:hover { transform: translateX(2px); }
+
+/* ---- buttons and links: colour eases; a press sinks in slightly ---- */
+.btn, .icon-btn, .chip-toggle, .care-tabs button, .today-tabs button, .segmented button, .nav-link, .sb-tile, .tabs a, .profile-link, .theme-item {
+  transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease, border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, transform var(--motion-fast) ease;
+}
+.btn:active:not(:disabled), .icon-btn:active, .chip-toggle:active { transform: scale(0.97); }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 6px 16px var(--auth-button-shadow); }
+
+/* ---- the sidebar: labels fade while it folds; the active item has a marker on its left ---- */
+.sb-label { transition: opacity var(--motion) ease; }
+.shell.collapsed .sb-label { opacity: 0; }
+.nav-link { position: relative; }
+.nav-link.active::before {
+  content: ''; position: absolute; left: -4px; top: 50%; width: 4px; height: 22px; margin-top: -11px; border-radius: 0 4px 4px 0;
+  background: var(--sidebar-tile-active-bg); animation: marker-in var(--motion) var(--ease-out) both;
+}
+@keyframes marker-in { from { transform: scaleY(0); } }
+.nav-link:hover:not(.active) .sb-tile { transform: translateX(2px); }
+
+/* ---- pop-ups (dialogs) and menus ---- */
+.modal-backdrop { animation: fade-in var(--motion-fast) ease-out both; }
+.modal { animation: pop-in var(--motion) var(--ease-out) both; }
+.profile-card { animation: drop-in var(--motion-fast) var(--ease-out) both; transform-origin: top right; }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.97); } }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+
+/* ---- forms: the focus ring eases in; an error message fades in; a wrong field gets a soft red ring ---- */
+input, select, textarea { transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease; }
+.field-error, .alert { animation: fade-up var(--motion) var(--ease-out) both; }
+.form-field.has-error input, .form-field.has-error select, .form-field.has-error textarea, .vital-box.has-error input { box-shadow: 0 0 0 3px var(--color-danger-soft); }
+@keyframes fade-up { from { opacity: 0; transform: translateY(-3px); } }
+
+/* ---- loading: placeholder lines with a soft shimmer ---- */
+.skeleton { display: grid; gap: 10px; padding: var(--space-3) 0; }
+.skeleton-line {
+  height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--color-surface-muted) 0%, var(--color-border) 50%, var(--color-surface-muted) 100%);
+  background-size: 200% 100%; animation: shimmer 1.3s ease-in-out infinite;
+}
+.skeleton-line.w-40 { width: 40%; height: 16px; }
+.skeleton-line.w-60 { width: 60%; }
+.skeleton-line.w-75 { width: 75%; }
+.skeleton-line.w-90 { width: 90%; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* ---- small notices: bottom right, slide in, fade out on their own ---- */
+.toaster { position: fixed; right: 20px; bottom: 20px; z-index: 80; display: grid; gap: 8px; width: min(360px, calc(100vw - 32px)); pointer-events: none; }
+.toast {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px 12px 12px 14px;
+  border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-success); box-shadow: var(--shadow-lg); font-size: var(--text-sm); font-weight: 500; pointer-events: auto;
+  animation: toast-in var(--motion) var(--ease-out) both, toast-out var(--motion) ease-in 3.55s forwards;
+}
+.toast-success svg:first-child { color: var(--color-success); }
+.toast-info { border-left-color: var(--color-primary); }
+.toast-info svg:first-child { color: var(--color-primary); }
+.toast-error { border-left-color: var(--color-danger); }
+.toast-error svg:first-child { color: var(--color-danger); }
+.toast-close { border: 0; background: none; color: var(--color-text-muted); cursor: pointer; padding: 2px; border-radius: 4px; display: grid; }
+.toast-close:hover { color: var(--color-text); background: var(--color-surface-muted); }
+@keyframes toast-in { from { opacity: 0; transform: translateX(24px); } }
+@keyframes toast-out { to { opacity: 0; transform: translateX(24px); } }
+@media (max-width: 600px) { .toaster { right: 16px; left: 16px; bottom: 16px; width: auto; } }
+
+/* ---- the theme button: the symbol turns as it changes ---- */
+.theme-toggle svg { animation: spin-in var(--motion-page) var(--ease-out); }
+@keyframes spin-in { from { transform: rotate(-90deg) scale(0.6); opacity: 0; } }
+
+/* ---- reduced motion: no movement anywhere (colours still change) ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .toast { animation: none !important; }
+}

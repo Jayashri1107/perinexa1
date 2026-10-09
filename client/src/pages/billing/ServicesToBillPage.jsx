@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { billingServicesApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
+import { toast } from '../../components/Toast.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { SectionTabs } from '../../components/SectionTabs.jsx';
@@ -33,6 +34,7 @@ export function ServicesToBillPage() {
     try {
       const r = await billingServicesApi.bill(s.id);
       setNotice(r.bill);
+      toast(`Added to bill ${r.bill.billNumber}`);
       load();
     } catch (err) {
       setError(err.message);

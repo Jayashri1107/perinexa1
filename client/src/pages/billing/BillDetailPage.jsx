@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { billingSettingsApi, billsApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
+import { toast } from '../../components/Toast.jsx';
 import { DataTable } from '../../components/list/DataTable.jsx';
 import { FormModal } from '../../components/form/FormModal.jsx';
 import { Loader } from '../../components/Loader.jsx';
@@ -59,6 +60,7 @@ export function BillDetailPage() {
     setData(result);
     setDialog(null);
     setNotice(message);
+    toast(message);
   };
   const run = async (action) => {
     setError('');

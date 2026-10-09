@@ -109,7 +109,9 @@ export function AppShell({ navigation, brandSubtitle, sidebarFoot, topbarStart, 
         {banner}
         <main className="content" key={contentKey}>
           <Suspense fallback={<Loader />}>
-            <Outlet />
+            <div className="page-enter" key={pathname}>
+              <Outlet />
+            </div>
           </Suspense>
         </main>
       </div>

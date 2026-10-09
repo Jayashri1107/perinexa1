@@ -8,6 +8,7 @@ import { NotFoundPage } from './pages/NotFoundPage.jsx';
 import { LoginPage } from './pages/auth/LoginPage.jsx';
 import { Loader } from './components/Loader.jsx';
 import { ProtectedRoute } from './routes/ProtectedRoute.jsx';
+import { Toaster } from './components/Toast.jsx';
 
 // Each page is downloaded the first time it is opened, not all at once with the sign-in page – a much smaller first
 // download, which matters on phones and slow hospital connections.
@@ -278,6 +279,7 @@ export function App() {
               </Route>
             </Routes>
           </Suspense>
+          <Toaster />
         </BrowserRouter>
       </AuthProvider>
     </AppConfigProvider>

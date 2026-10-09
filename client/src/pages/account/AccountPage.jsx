@@ -6,6 +6,7 @@ import { AlignJustify, BriefcaseMedical, Camera, Check, Clock, Eye, KeyRound, Pa
 import { useEffect, useRef, useState } from 'react';
 import { accountApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
+import { toast } from '../../components/Toast.jsx';
 import { Avatar } from '../../components/Avatar.jsx';
 import { ChangePasswordDialog } from '../../components/ChangePasswordDialog.jsx';
 import { FormBuilder } from '../../components/form/FormBuilder.jsx';
@@ -174,7 +175,7 @@ function PhotoHero({ user, updateUser, children }) {
   const pick = (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (file) run(async () => accountApi.setPhoto(await shrinkPhoto(file)));
+    if (file) run(async () => { const r = await accountApi.setPhoto(await shrinkPhoto(file)); toast('Photo updated'); return r; });
   };
   const remove = () => {
     if (window.confirm('Remove your photo? Your initials are shown instead.')) run(() => accountApi.removePhoto());

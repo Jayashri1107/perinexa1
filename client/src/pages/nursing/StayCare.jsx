@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { admissionsApi, labApi, nursingServicesApi, wardCareApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
+import { toast } from '../../components/Toast.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { Modal } from '../../components/Modal.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
@@ -658,7 +659,7 @@ export function StayCare({ stayId }) {
   if (!data) return <Loader />;
   const can = data.can;
   const view = { ...data, stayId, reload: load };
-  const saved = (d) => { setData(d); setDialog(null); };
+  const saved = (d, message = 'Saved to the chart') => { setData(d); setDialog(null); toast(message); };
   const stop = async (o) => {
     const r = window.prompt(`Stop ${orderText(o)}? Why?`);
     if (!r || r.trim().length < 3) return;
@@ -739,7 +740,7 @@ export function StayCare({ stayId }) {
       {tab === 'services' && <ServicesTab data={view} onRecord={(after) => setDialog({ service: after })} />}
 
       {dialog?.service && <ServiceDialog patient={data.patient} onClose={() => setDialog(null)} onSaved={() => { dialog.service(); setDialog(null); }} />}
-      {dialog?.order && !dialog.chart && <OrderDialog stayId={stayId} type={dialog.order} onClose={() => setDialog(null)} onSaved={saved} />}
+      {dialog?.order && !dialog.chart && <OrderDialog stayId={stayId} type={dialog.order} onClose={() => setDialog(null)} onSaved={(d) => saved(d, 'Order saved – the nurses are told')} />}
       {dialog?.chart && (
         <ChartDialog
           stayId={stayId}

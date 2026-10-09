@@ -5,6 +5,7 @@ import { Minus, Plus, Search, Send, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { appointmentsApi, nursingServicesApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
+import { toast } from '../../components/Toast.jsx';
 import { Modal } from '../../components/Modal.jsx';
 import { PatientPicker } from '../../components/PatientPicker.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
@@ -41,6 +42,7 @@ export function ServiceDialog({ patient: fixedPatient = null, onClose, onSaved }
     setError('');
     try {
       const r = await nursingServicesApi.record({ patientId: patient.id, items: chosen.map((x) => ({ priceItemId: x.item.id, qty: x.qty })), givenAt: new Date(givenAt).toISOString(), note, clientRequestId: rid });
+      toast('Service sent to billing');
       onSaved(r.service);
     } catch (err) {
       setError(Object.values(err.fields ?? {})[0] ?? err.message);

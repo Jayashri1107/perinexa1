@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { nursingServicesApi, wardCareApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
+import { CountUp } from '../../components/CountUp.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -36,7 +37,7 @@ function Tile({ icon: Icon, label, value, hint, tone, to }) {
   return (
     <Link to={to} className={`nt-tile tone-${tone}`}>
       <span className="nt-tile-icon"><Icon size={18} aria-hidden /></span>
-      <span className="nt-tile-value">{value}</span>
+      <span className="nt-tile-value"><CountUp value={value} /></span>
       <span className="nt-tile-label">{label}</span>
       {hint && <span className="nt-tile-hint">{hint}</span>}
     </Link>
