@@ -1537,3 +1537,16 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .print-sheet.sheet-a4 .dc-label, .print-sheet.sheet-a4 .dc-head, .print-sheet.sheet-a4 .dc-colhead { color: #444; font-weight: 600; }
 .print-sheet.sheet-a4 .dc-fields, .print-sheet.sheet-a4 .dc-box, .print-sheet.sheet-a4 .dc-two, .print-sheet.sheet-a4 .dc-follow { border-color: #555; }
 .print-sheet.sheet-a4 .dc-value { border-bottom-color: #777; }
+
+/* every printed paper (A5 receipts, prescriptions … as well as A4): the same lettering and greys as the hospital's form */
+.print-sheet { font-family: 'Gill Sans MT', 'Gill Sans', Calibri, 'Segoe UI', Arial, sans-serif; }
+.print-head.lh-box { border: 1px solid #555; }
+.lh-logo { width: auto; height: auto; max-width: 92px; max-height: 66px; }
+.lh-name { color: #3d3d3d; font-weight: 700; letter-spacing: 0.04em; font-size: 15.5px; }
+.lh-line { color: #444; font-size: 8.5px; }
+.lh-title { background: #4a4a4a; }
+
+/* A4: the name and address at the paper form's sizes (the address in two centred lines) */
+.print-sheet.sheet-a4 .lh-name { font-size: 24px; }
+.print-sheet.sheet-a4 .lh-line { font-size: 11px; line-height: 1.35; max-width: 135mm; margin: 0 auto; }
+.print-sheet.sheet-a4 .lh-logo { max-width: 120px; max-height: 92px; }

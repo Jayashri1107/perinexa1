@@ -14,6 +14,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { SectionTabs } from '../../components/SectionTabs.jsx';
 import { HOSPITAL_ADMIN_TABS } from '../../config/navigation.js';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { HOSPITAL_SETTINGS_SECTIONS, sectionValues } from '../../forms/hospitalSettingsForms.js';
 import { useForm } from '../../hooks/useForm.js';
 import { formatDateTime, toOptions } from '../../utils/format.js';
@@ -48,6 +49,7 @@ function SectionForm({ section, settings, onSaved }) {
 
 // The logo printed on discharge cards, bills, receipts and prescriptions: upload, see it, remove it.
 function LogoCard({ logoVersion, onChanged }) {
+  const { activeHospitalId } = useAuth();
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -72,7 +74,7 @@ function LogoCard({ logoVersion, onChanged }) {
   return (
     <section className="card logo-card">
       <div className="logo-preview">
-        {logoVersion > 0 ? <img src={apiUrl(`/hospital/logo?v=${logoVersion}`)} alt="The hospital's logo" /> : <span className="muted small">No logo yet</span>}
+        {logoVersion > 0 ? <img src={apiUrl(`/hospital/logo?h=${activeHospitalId}&v=${logoVersion}`)} alt="The hospital's logo" /> : <span className="muted small">No logo yet</span>}
       </div>
       <div>
         <h2>Logo on printed papers</h2>

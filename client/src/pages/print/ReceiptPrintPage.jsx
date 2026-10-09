@@ -9,7 +9,7 @@ import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { amountInWords } from '../../utils/amountInWords.js';
 import { formatMoney, labelOf } from '../../utils/format.js';
 import { BillInfo, GeneratedBy } from './billPrintParts.jsx';
-import { Letterhead, PrintFrame } from './PrintFrame.jsx';
+import { DocTitle, Letterhead, PrintFrame } from './PrintFrame.jsx';
 
 export function ReceiptPrintPage() {
   const { billId, paymentId } = useParams();
@@ -34,7 +34,8 @@ export function ReceiptPrintPage() {
 
   return (
     <PrintFrame ready title={`Receipt_${x.receiptNumber}`} footer={data.letterhead?.footer}>
-      <Letterhead letterhead={data.letterhead} hospitalName={data.hospitalName} extra={<div className="print-doc">{refund ? 'REFUND RECEIPT' : 'PAYMENT RECEIPT'}</div>} />
+      <Letterhead letterhead={data.letterhead} hospitalName={data.hospitalName} />
+      <DocTitle right={<>Receipt no. <strong>{x.receiptNumber}</strong></>}>{refund ? 'REFUND RECEIPT' : 'PAYMENT RECEIPT'}</DocTitle>
       <BillInfo bill={bill} context={context} numberLabel="Receipt no." number={x.receiptNumber} date={x.createdAt} />
       <dl className="totals receipt-totals">
         <dt>Against bill</dt><dd>{bill.billNumber}</dd>

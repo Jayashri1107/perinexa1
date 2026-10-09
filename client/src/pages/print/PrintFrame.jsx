@@ -3,12 +3,15 @@
 import { Printer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../api/http.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 // The letterhead (owner, 9 Oct 2026, from the hospital's printed forms): a ruled box – the logo on the left, the name
 // large and bold, then the address, "Mob." and "E-mail" lines – all from Hospital admin → Print letterhead.
 export function Letterhead({ letterhead = {}, hospitalName, extra }) {
+  const { activeHospitalId } = useAuth();
   const [logoOk, setLogoOk] = useState(true);
-  const logo = letterhead.logoVersion > 0 && logoOk ? apiUrl(`/hospital/logo?v=${letterhead.logoVersion}`) : null;
+  // the hospital in the address too: each hospital's logo is its own in the browser's memory
+  const logo = letterhead.logoVersion > 0 && logoOk ? apiUrl(`/hospital/logo?h=${activeHospitalId}&v=${letterhead.logoVersion}`) : null;
   return (
     <>
       <header className="print-head lh-box">
