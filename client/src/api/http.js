@@ -71,6 +71,7 @@ export const http = {
   post: (path, body) => request('POST', path, { body }),
   patch: (path, body) => request('PATCH', path, { body }),
   put: (path, body) => request('PUT', path, { body }),
+  del: (path) => request('DELETE', path),
   // A file as the body; `headers` say what it is (header values are URI-encoded by the caller).
   upload: (path, file, headers) => request('POST', path, { raw: file, headers }),
   // A file from the server (as a Blob), e.g. a scanned document to show.

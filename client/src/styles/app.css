@@ -1268,3 +1268,45 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
   .care-actions { justify-content: stretch; }
   .care-actions .btn { flex: 1; }
 }
+
+/* ---------- My settings (9 Oct 2026): the photo in the middle at the top, picture tiles for Appearance ---------- */
+.avatar { overflow: hidden; }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-btn-wrap { padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; }
+.avatar-btn-wrap:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.avatar-btn-wrap:hover .avatar-btn, .avatar-btn-wrap[aria-expanded='true'] .avatar-btn { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-soft); }
+.profile-hero { flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-2); padding: var(--space-6) var(--space-4) var(--space-5); }
+.profile-hero h1 { margin: var(--space-2) 0 0; }
+.profile-chips { justify-content: center; margin-top: var(--space-3); }
+.photo-wrap { position: relative; }
+.photo-wrap.busy { opacity: 0.6; }
+.profile-hero .avatar-xl { width: 112px; height: 112px; font-size: 38px; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-primary-soft), var(--shadow); }
+.photo-camera {
+  position: absolute; right: 0; bottom: 4px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  border: 3px solid var(--color-surface); background: var(--color-primary); color: var(--color-primary-text); cursor: pointer; box-shadow: var(--shadow);
+}
+.photo-camera:hover:not(:disabled) { background: var(--color-primary-hover); }
+.photo-camera:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.settings-grid { align-items: start; }
+.settings-grid .span-all { grid-column: 1 / -1; }
+.settings-grid .card h2 { display: flex; align-items: center; gap: var(--space-2); }
+.appearance-label { display: flex; align-items: center; gap: var(--space-2); font-size: 15px; margin: var(--space-3) 0 var(--space-2); }
+.look-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--space-2); }
+.look-tile {
+  position: relative; display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 96px; padding: var(--space-3) var(--space-2);
+  border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); font: inherit; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.look-tile:hover { border-color: var(--color-primary); }
+.look-tile.on { border: 2px solid var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary); }
+.look-tile:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.look-sample { font-weight: 700; line-height: 1.1; }
+.look-name { font-weight: 600; font-size: var(--text-sm); }
+.look-hint { font-size: 12px; color: var(--color-text-muted); text-align: center; }
+.look-check { position: absolute; top: 8px; right: 8px; }
+@media (prefers-reduced-motion: reduce) { .look-tile { transition: none; } }
+@media (max-width: 600px) {
+  .look-tiles { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
+  .look-tile { min-height: 84px; padding: var(--space-2) 4px; }
+  .look-hint { display: none; }
+}

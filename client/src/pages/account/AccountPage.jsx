@@ -1,10 +1,12 @@
-// My settings, as a profile page: who you are (name, phone – the email is your login and stays as the administrator
-// set it), where you work and as what, your password (changed in a pop-up), your professional details (doctors and
-// RMOs: printed on prescriptions) and how the website looks for you – which changes at once, with no Save button.
-import { Check, KeyRound, Pencil, ShieldCheck } from 'lucide-react';
-import { useEffect, useState } from 'react';
+// My settings, as a profile page: the photo (the camera button changes it; owner, 9 Oct 2026), name, email and where
+// you work, in the middle at the top; then who you are (name, phone – the email is your login and stays as the
+// administrator set it), your password (changed in a pop-up), your professional details (doctors and RMOs: printed on
+// prescriptions) and how the website looks for you – chosen from picture tiles, applied at once, with no Save button.
+import { AlignJustify, BriefcaseMedical, Camera, Check, KeyRound, Palette, Pencil, Rows3, ShieldCheck, Trash2, Type, UserRound } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { accountApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
+import { Avatar } from '../../components/Avatar.jsx';
 import { ChangePasswordDialog } from '../../components/ChangePasswordDialog.jsx';
 import { FormBuilder } from '../../components/form/FormBuilder.jsx';
 import { Loader } from '../../components/Loader.jsx';
@@ -12,7 +14,8 @@ import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { professionalFields, professionalValues } from '../../forms/accountForms.js';
 import { useForm } from '../../hooks/useForm.js';
-import { formatDateTime, initialsOf } from '../../utils/format.js';
+import { formatDateTime } from '../../utils/format.js';
+import { shrinkPhoto } from '../../utils/shrinkPhoto.js';
 
 function Saved({ when }) {
   if (!when) return null;
@@ -20,7 +23,7 @@ function Saved({ when }) {
 }
 
 // A card with a read view and a form, saved with its own button.
-function EditCard({ title, description, fields, initial, save, view }) {
+function EditCard({ icon: Icon, title, description, fields, initial, save, view }) {
   const form = useForm(initial);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(null);
@@ -32,7 +35,7 @@ function EditCard({ title, description, fields, initial, save, view }) {
   return (
     <section className="card">
       <div className="card-head">
-        <h2>{title}</h2>
+        <h2>{Icon && <Icon size={18} aria-hidden />} {title}</h2>
         {!editing && (
           <span className="row-actions">
             <Saved when={saved} />
@@ -56,7 +59,12 @@ function EditCard({ title, description, fields, initial, save, view }) {
   );
 }
 
-// Appearance: each choice applies at once and is saved in the background.
+// Appearance: each choice is a tile with a picture of what it does – "Aa" at its size, rows apart or close together.
+// It applies at once and is saved in the background.
+const SIZE_PX = { small: 15, standard: 19, large: 24 };
+const DENSITY_ICON = { comfortable: Rows3, compact: AlignJustify };
+const DENSITY_HINT = { comfortable: 'More room between rows', compact: 'More rows on the screen' };
+
 function AppearanceCard() {
   const { appearance } = useAppConfig();
   const { user, updateUser } = useAuth();
@@ -78,33 +86,92 @@ function AppearanceCard() {
     }
   };
 
-  const groups = [
-    { label: 'Text size', name: 'textSize', options: appearance.textSize },
-    { label: 'Spacing', name: 'density', options: appearance.density },
-  ];
   const sizeLabel = appearance.textSize.find((o) => o.key === prefs.textSize)?.label ?? prefs.textSize;
+  const sizes = [...appearance.textSize].sort((x, y) => (SIZE_PX[x.key] ?? 19) - (SIZE_PX[y.key] ?? 19));
 
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Appearance</h2>
+        <h2><Palette size={18} aria-hidden /> Appearance</h2>
         {state.saving ? <span className="muted small">Saving…</span> : <Saved when={state.saved} />}
       </div>
       <p className="muted small">Changes show at once and follow you on every computer.</p>
       <Alert type="error">{state.error}</Alert>
-      {groups.map((g) => (
-        <div key={g.name} className="appearance-row">
-          <span className="appearance-label">{g.label}</span>
-          <div className="segmented" role="radiogroup" aria-label={g.label}>
-            {g.options.map((o) => (
-              <button key={o.key} type="button" role="radio" aria-checked={prefs[g.name] === o.key} className={prefs[g.name] === o.key ? 'on' : ''} onClick={() => choose(g.name, o.key)}>
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
+
+      <h3 className="appearance-label"><Type size={16} aria-hidden /> Text size</h3>
+      <div className="look-tiles" role="radiogroup" aria-label="Text size">
+        {sizes.map((o) => {
+          const on = prefs.textSize === o.key;
+          return (
+            <button key={o.key} type="button" role="radio" aria-checked={on} className={`look-tile${on ? ' on' : ''}`} onClick={() => choose('textSize', o.key)}>
+              <span className="look-sample" style={{ fontSize: SIZE_PX[o.key] ?? 19 }} aria-hidden>Aa</span>
+              <span className="look-name">{o.label}</span>
+              {on && <Check size={14} className="look-check" aria-hidden />}
+            </button>
+          );
+        })}
+      </div>
+
+      <h3 className="appearance-label top-gap"><Rows3 size={16} aria-hidden /> Spacing</h3>
+      <div className="look-tiles" role="radiogroup" aria-label="Spacing">
+        {appearance.density.map((o) => {
+          const on = prefs.density === o.key;
+          const Icon = DENSITY_ICON[o.key] ?? Rows3;
+          return (
+            <button key={o.key} type="button" role="radio" aria-checked={on} className={`look-tile${on ? ' on' : ''}`} onClick={() => choose('density', o.key)}>
+              <Icon size={26} className="look-sample" aria-hidden />
+              <span className="look-name">{o.label}</span>
+              {DENSITY_HINT[o.key] && <span className="look-hint">{DENSITY_HINT[o.key]}</span>}
+              {on && <Check size={14} className="look-check" aria-hidden />}
+            </button>
+          );
+        })}
+      </div>
       <p className="appearance-preview">This is how text looks at the “{sizeLabel}” size.</p>
+    </section>
+  );
+}
+
+// The photo in the middle at the top, with a camera button to change it (and Remove photo when there is one).
+function PhotoHero({ user, updateUser, children }) {
+  const input = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const run = async (action) => {
+    setBusy(true);
+    setError('');
+    try {
+      updateUser((await action()).user);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const pick = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) run(async () => accountApi.setPhoto(await shrinkPhoto(file)));
+  };
+  const remove = () => {
+    if (window.confirm('Remove your photo? Your initials are shown instead.')) run(() => accountApi.removePhoto());
+  };
+  const label = user.photoVersion ? 'Change your photo' : 'Add a photo';
+  return (
+    <section className="card profile-hero">
+      <div className={`photo-wrap${busy ? ' busy' : ''}`}>
+        <Avatar user={user} className="avatar-xl" />
+        <button type="button" className="photo-camera" onClick={() => input.current?.click()} disabled={busy} aria-label={label} title={label}>
+          <Camera size={18} aria-hidden />
+        </button>
+        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={pick} />
+      </div>
+      {busy && <p className="muted small">Saving the photo…</p>}
+      {error && <p className="field-error">{error}</p>}
+      {user.photoVersion > 0 && !busy && (
+        <button type="button" className="btn btn-link btn-sm btn-danger-text" onClick={remove}><Trash2 size={14} aria-hidden /> Remove photo</button>
+      )}
+      {children}
     </section>
   );
 }
@@ -127,20 +194,20 @@ export function AccountPage() {
 
   return (
     <>
-      <section className="card profile-hero">
-        <span className="avatar avatar-xl" aria-hidden>{initialsOf(user.name)}</span>
+      <PhotoHero user={user} updateUser={updateUser}>
         <div className="profile-hero-text">
           <h1>{user.name}</h1>
           <p className="muted">{user.email}{user.phone && ` · ${user.phone}`}</p>
-          <div className="chips top-gap-sm">
+          <div className="chips profile-chips">
             {role && <span className="pill pill-strong">{role}</span>}
-            {!user.isSuperAdmin && memberships.map((m) => <span key={m.hospital.id} className="pill">{m.hospital.name}: {m.roles.map(roleLabel).join(', ')}</span>)}
+            {!user.isSuperAdmin && memberships.map((m) => <span key={m.hospital.id} className="pill pill-strong">{m.hospital.name} · {m.roles.map(roleLabel).join(', ')}</span>)}
           </div>
         </div>
-      </section>
+      </PhotoHero>
 
-      <div className="grid-2 top-gap">
+      <div className="grid-2 top-gap settings-grid">
         <EditCard
+          icon={UserRound}
           title="Profile"
           description="Your name as others see it. Your email is your login; the administrator changes it."
           fields={[
@@ -169,10 +236,9 @@ export function AccountPage() {
           </button>
         </section>
 
-        <AppearanceCard />
-
         {isPrescriber && (
           <EditCard
+            icon={BriefcaseMedical}
             title="Professional details"
             description="Printed on your prescriptions."
             fields={professionalFields}
@@ -187,6 +253,10 @@ export function AccountPage() {
             }
           />
         )}
+
+        <div className={isPrescriber ? '' : 'span-all'}>
+          <AppearanceCard />
+        </div>
       </div>
       {changingPassword && <ChangePasswordDialog onClose={() => setChangingPassword(false)} />}
     </>

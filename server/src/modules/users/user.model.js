@@ -32,6 +32,8 @@ const userSchema = new mongoose.Schema(
       textSize: { type: String, enum: TEXT_SIZE_KEYS, default: TEXT_SIZE_KEYS[0] },
       density: { type: String, enum: DENSITY_KEYS, default: DENSITY_KEYS[0] },
     },
+    // 0 = no profile photo; raised at each change, so browsers fetch the new one (account/userPhoto.model.js)
+    photoVersion: { type: Number, default: 0 },
     createdBy: { type: ObjectId, ref: 'User', default: null },
   },
   {

@@ -17,3 +17,8 @@ export const appearanceBody = z.object({
   textSize: z.enum(TEXT_SIZE_KEYS, 'Choose a text size'),
   density: z.enum(DENSITY_KEYS, 'Choose the spacing'),
 });
+
+// A profile photo as a data URL (the website shrinks it first); what it really is, is checked from its bytes.
+export const photoBody = z.object({
+  image: z.string('Choose a photo').max(300_000, 'This photo is too large. Choose a smaller one.').regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, 'Choose a photo (JPEG, PNG or WebP).'),
+});

@@ -27,6 +27,8 @@ export const AUDIT_ACTIONS = Object.freeze({
   SETTINGS_UPDATED: 'Hospital settings changed',
   OPD_TIMINGS_UPDATED: 'OPD timings changed',
   PROFILE_UPDATED: 'Professional details changed',
+  PROFILE_PHOTO_CHANGED: 'Profile photo changed',
+  PROFILE_PHOTO_REMOVED: 'Profile photo removed',
   // Patients (ids and field names only – never medical details)
   PATIENT_REGISTERED: 'Patient registered',
   PATIENT_REGISTERED_ANYWAY: 'Patient registered despite a possible duplicate',

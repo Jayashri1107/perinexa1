@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppConfig } from '../context/AppConfigContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { initialsOf } from '../utils/format.js';
+import { Avatar } from './Avatar.jsx';
 import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
 
 export function ProfileMenu() {
@@ -33,13 +33,13 @@ export function ProfileMenu() {
 
   return (
     <div className="profile" ref={box}>
-      <button type="button" className="avatar avatar-btn" aria-haspopup="true" aria-expanded={open} aria-label={`Your profile: ${user.name}`} onClick={() => setOpen((o) => !o)}>
-        {initialsOf(user.name)}
+      <button type="button" className="avatar-btn-wrap" aria-haspopup="true" aria-expanded={open} aria-label={`Your profile: ${user.name}`} onClick={() => setOpen((o) => !o)}>
+        <Avatar user={user} className="avatar-btn" />
       </button>
       {open && (
         <div className="profile-card" role="dialog" aria-label="Your profile">
           <div className="profile-head">
-            <span className="avatar avatar-lg" aria-hidden>{initialsOf(user.name)}</span>
+            <Avatar user={user} className="avatar-lg" />
             <div>
               <strong className="block">{user.name}</strong>
               <span className="muted small block">{user.email}</span>
