@@ -33,6 +33,7 @@ import {
   Hourglass,
   IndianRupee,
   Undo2,
+  Syringe,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -49,6 +50,7 @@ import { BillingDesk } from '../billing/BillingDesk.jsx';
 import { BookedBedsCard, bedCounts } from '../inpatient/BookedBeds.jsx';
 import { InHospitalCard } from '../inpatient/InHospitalCard.jsx';
 import { NursingTodayCard } from '../nursing/NursingTodayCard.jsx';
+import { NurseToday } from '../nursing/NurseToday.jsx';
 import { TodayBooking } from './TodayBooking.jsx';
 import { PrescriptionOrdersCard } from '../dispensing/PrescriptionOrdersCard.jsx';
 
@@ -139,7 +141,14 @@ function saveArea(key) {
   }
 }
 
+// A nurse (and only a nurse) gets her own Today: what is due on her ward (owner, 9 Oct 2026).
 export function TodayPage() {
+  const { roles } = useAuth();
+  if (roles.length > 0 && roles.every((r) => r === 'nurse')) return <NurseToday />;
+  return <GeneralToday />;
+}
+
+function GeneralToday() {
   const { user, activeMembership, roles, canAccess, isHospitalAdmin } = useAuth();
   const { roleLabel } = useAppConfig();
   const [today, setToday] = useState(null);
@@ -181,6 +190,7 @@ export function TodayPage() {
             today.frontDesk && <StatCard key="walkins" icon={Footprints} to="/hospital/appointments" label="Walk-ins today" value={today.frontDesk.walkIns} hint="Came without an appointment" />,
             today.frontDesk && <StatCard key="inhospital" icon={BedDouble} to="/hospital/admissions" label="In hospital now" value={today.frontDesk.inHospital} hint={`${today.frontDesk.admittedToday} admitted · ${today.frontDesk.dischargedToday} discharged today`} tone="neutral" />,
             beds && bedTotals.total > 0 && <StatCard key="beds" icon={BedDouble} to="/hospital/admissions" label="Beds booked" value={`${bedTotals.booked} of ${bedTotals.total}`} hint={`${bedTotals.free} free`} tone={bedTotals.free === 0 ? 'danger' : 'primary'} />,
+            today.servicesToBill != null && <StatCard key="services" icon={Syringe} to="/hospital/billing/services" label="Nursing services to bill" value={today.servicesToBill} hint="Injections, dressings … from nurses" tone={today.servicesToBill ? 'warning' : 'neutral'} />,
             today.patients && <StatCard key="registered" icon={UserPlus} to={canAccess('patients') ? '/hospital/patients' : undefined} label="Registered today" value={today.patients.registeredToday} hint={`${plural(today.patients.active, 'patient')} under care`} />,
           ],
           cards: [

@@ -55,6 +55,8 @@ export const ADMIN_NAVIGATION = [
 export const BILLING_TABS = [
   { to: '/hospital/billing', label: 'Bills', end: true, access: 'billing' },
   { to: '/hospital/billing/unpaid', label: 'Unpaid', access: 'billing' },
+  // services nurses gave, waiting to go on a bill (9 Oct 2026)
+  { to: '/hospital/billing/services', label: 'Nursing services', access: 'billing' },
   { to: '/hospital/billing/daily', label: 'Daily summary', access: 'billing' },
   { to: '/hospital/billing/monthly', label: 'Monthly', access: 'billingReports' },
   { to: '/hospital/billing/price-list', label: 'Price list', access: 'billing' },

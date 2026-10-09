@@ -9,6 +9,15 @@ import { useAppConfig } from './AppConfigContext.jsx';
 const AuthContext = createContext(null);
 
 // Each person's appearance choices, applied to the whole page (styles/app.css reads these attributes).
+// The theme: light, dark, or as the device is set ("system" follows the device, also when it changes later).
+const darkQuery = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+let themeChoice = 'light';
+const applyTheme = () => {
+  const dark = themeChoice === 'dark' || (themeChoice === 'system' && darkQuery?.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+};
+darkQuery?.addEventListener?.('change', applyTheme);
+
 function applyAppearance(user) {
   const root = document.documentElement;
   const prefs = user?.preferences ?? {};
@@ -16,6 +25,8 @@ function applyAppearance(user) {
     if (prefs[key]) root.dataset[key] = prefs[key];
     else delete root.dataset[key];
   }
+  themeChoice = prefs.theme ?? 'light';
+  applyTheme();
 }
 
 export function AuthProvider({ children }) {

@@ -14,8 +14,9 @@ const lineSchema = new mongoose.Schema({
   qty: { type: Number, required: true, min: 1 },
   unitPrice: { type: Number, required: true, min: 0 },
   amount: { type: Number, required: true, min: 0 },
-  source: { type: String, enum: ['manual', 'pharmacy'], default: 'manual' },
-  sourceRef: { type: String, default: '' }, // e.g. the pharmacy invoice number
+  // manual: from the price list or written in; pharmacy: a counter sale; nursing: a service a nurse recorded
+  source: { type: String, enum: ['manual', 'pharmacy', 'nursing'], default: 'manual' },
+  sourceRef: { type: String, default: '' }, // e.g. the pharmacy invoice number, the nursing service number
   addedBy: { type: ObjectId, ref: 'User', default: null },
   addedAt: { type: Date, default: Date.now },
 });

@@ -299,6 +299,31 @@ export async function addPharmacyCharge(req, patientId, { invoiceNumber, amount 
   return bill.billNumber;
 }
 
+// Services a nurse gave (nursingServices module), at the price list's price when given: onto the bill chosen, or her
+// latest open bill, or a new one. Returns the bill.
+export async function addNursingService(req, patientId, { serviceNumber, items }, billId = null) {
+  let bill = billId
+    ? await Bill.findOne({ hospitalId: req.hospitalId, _id: billId, patientId, status: 'open' })
+    : await Bill.findOne({ hospitalId: req.hospitalId, patientId, status: 'open' }).sort({ createdAt: -1 });
+  if (billId && !bill) throw new HttpError(409, 'That bill is closed or not hers. Choose another.', 'BILL_CLOSED');
+  const isNew = !bill;
+  if (isNew) {
+    bill = new Bill({
+      hospitalId: req.hospitalId,
+      billNumber: await nextNumber(req.hospitalId, 'bill', billPrefix, numberDigits),
+      ...(await billHeader(req.hospitalId, patientId)),
+      createdBy: req.user._id,
+    });
+  }
+  for (const i of items) {
+    bill.lines.push({ priceItemId: i.priceItemId, code: i.code, name: i.name, group: i.group, qty: i.qty, unitPrice: i.unitPrice, amount: round2(i.unitPrice * i.qty), source: 'nursing', sourceRef: serviceNumber, addedBy: req.user._id });
+  }
+  recalculate(bill);
+  await bill.save();
+  await recordAudit(req, isNew ? 'BILL_CREATED' : 'BILL_UPDATED', { hospitalId: req.hospitalId, details: { billNumber: bill.billNumber, nursingService: serviceNumber, total: bill.total } });
+  return bill;
+}
+
 // A pharmacy return takes money off the line of that invoice.
 export async function reducePharmacyCharge(req, invoiceNumber, amount) {
   const bill = await Bill.findOne({ hospitalId: req.hospitalId, 'lines.sourceRef': invoiceNumber, status: { $ne: 'cancelled' } });

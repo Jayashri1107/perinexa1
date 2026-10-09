@@ -11,6 +11,7 @@ import { Patient } from '../patients/patient.model.js';
 import { alertCounts } from '../pharmacyReports/pharmacyReports.service.js';
 import { Sale } from '../sales/sale.model.js';
 import { Admission } from '../admissions/admission.model.js';
+import { waitingCount } from '../nursingServices/nursingService.service.js';
 import { Appointment } from '../appointments/appointment.model.js';
 import { utcDay } from '../appointments/slots.js';
 
@@ -193,7 +194,7 @@ export async function today(req) {
     lab: has(roles, access.lab),
     frontDesk: has(roles, access.registrationMenu),
   };
-  const [patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits, frontDesk] = await Promise.all([
+  const [patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits, frontDesk, servicesToBill] = await Promise.all([
     wants.patients ? patientSection(hid, start, end) : null,
     wants.doctor ? doctorSection(hid, req.user._id) : null,
     // a doctor's own appointments today: who is waiting, and who comes next
@@ -204,6 +205,8 @@ export async function today(req) {
     // visits of today this person started or that are her doctor's, not signed yet
     has(roles, config.prescriberRoles) ? unsignedToday(hid, req.user._id) : 0,
     wants.frontDesk ? frontDeskSection(hid, start, end) : null,
+    // services nurses gave, waiting to go on a bill (9 Oct 2026)
+    wants.billing ? waitingCount(hid) : null,
   ]);
-  return { date: todayLocal(), patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits, frontDesk };
+  return { date: todayLocal(), patients, doctor, appointments, lab, billing, pharmacy, unsignedVisits, frontDesk, servicesToBill };
 }

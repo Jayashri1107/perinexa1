@@ -1,8 +1,8 @@
 // My settings, as a profile page: the photo (the camera button changes it; owner, 9 Oct 2026), name, email and where
 // you work, in the middle at the top; then who you are (name, phone – the email is your login and stays as the
 // administrator set it), your password (changed in a pop-up), your professional details (doctors and RMOs: printed on
-// prescriptions) and how the website looks for you – chosen from picture tiles, applied at once, with no Save button.
-import { AlignJustify, BriefcaseMedical, Camera, Check, KeyRound, Palette, Pencil, Rows3, ShieldCheck, Trash2, Type, UserRound } from 'lucide-react';
+// prescriptions) and how the website looks for you – theme, text size and spacing with a live preview, applied at once.
+import { AlignJustify, BriefcaseMedical, Camera, Check, Clock, Eye, KeyRound, Monitor, Moon, Palette, Pencil, Rows3, ShieldCheck, Sun, Trash2, Type, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { accountApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
@@ -59,16 +59,62 @@ function EditCard({ icon: Icon, title, description, fields, initial, save, view 
   );
 }
 
-// Appearance: each choice is a tile with a picture of what it does – "Aa" at its size, rows apart or close together.
-// It applies at once and is saved in the background.
-const SIZE_PX = { small: 15, standard: 19, large: 24 };
+// Appearance (owner, 9 Oct 2026): compact choices on the left – theme, text size, spacing, each with its symbol – and
+// on the right a live preview of a screen as it will look. A choice applies at once and is saved in the background.
+const SIZE_PX = { small: 13, standard: 16, large: 20 };
 const DENSITY_ICON = { comfortable: Rows3, compact: AlignJustify };
-const DENSITY_HINT = { comfortable: 'More room between rows', compact: 'More rows on the screen' };
+const THEME_ICON = { light: Sun, dark: Moon, system: Monitor };
+
+function Choices({ label, icon: Icon, name, options, value, onChoose, render }) {
+  return (
+    <div className="look-group">
+      <span className="look-group-label"><Icon size={15} aria-hidden /> {label}</span>
+      <div className="look-choices" role="radiogroup" aria-label={label}>
+        {options.map((o) => {
+          const on = value === o.key;
+          return (
+            <button key={o.key} type="button" role="radio" aria-checked={on} className={`look-choice${on ? ' on' : ''}`} onClick={() => onChoose(name, o.key)}>
+              {render(o)}
+              <span>{o.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// A small screen in the chosen look: the menu bar, a card with a dose row, a badge and a button – the real colours,
+// text size and spacing, so the preview is exactly what the pages will look like. Sample words only.
+function LookPreview() {
+  return (
+    <div className="look-preview" aria-hidden>
+      <div className="lp-bar"><span className="lp-dot" /><span className="lp-line" /><span className="lp-line short" /></div>
+      <div className="lp-body">
+        <div className="lp-card">
+          <div className="lp-head"><strong>Today's doses</strong><span className="badge badge-info small"><Clock size={12} /> Due</span></div>
+          <table className="table lp-table">
+            <tbody>
+              <tr><td><strong>08:00</strong></td><td>Sample medicine</td><td className="muted">Bed G1</td></tr>
+              <tr><td><strong>14:00</strong></td><td>Sample dressing</td><td className="muted">Bed G2</td></tr>
+            </tbody>
+          </table>
+          <p className="muted lp-text">This is how text and rows will look.</p>
+          <div className="lp-actions"><span className="btn btn-primary btn-sm">Chart</span><span className="btn btn-ghost btn-sm">Later</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AppearanceCard() {
   const { appearance } = useAppConfig();
   const { user, updateUser } = useAuth();
-  const prefs = { textSize: user.preferences?.textSize ?? appearance.textSize[0].key, density: user.preferences?.density ?? appearance.density[0].key };
+  const prefs = {
+    textSize: user.preferences?.textSize ?? appearance.textSize[0].key,
+    density: user.preferences?.density ?? appearance.density[0].key,
+    theme: user.preferences?.theme ?? appearance.theme[0].key,
+  };
   const [state, setState] = useState({ saving: false, saved: null, error: '' });
 
   const choose = async (key, value) => {
@@ -85,9 +131,7 @@ function AppearanceCard() {
       setState({ saving: false, saved: null, error: err.message });
     }
   };
-
-  const sizeLabel = appearance.textSize.find((o) => o.key === prefs.textSize)?.label ?? prefs.textSize;
-  const sizes = [...appearance.textSize].sort((x, y) => (SIZE_PX[x.key] ?? 19) - (SIZE_PX[y.key] ?? 19));
+  const sizes = [...appearance.textSize].sort((x, y) => (SIZE_PX[x.key] ?? 16) - (SIZE_PX[y.key] ?? 16));
 
   return (
     <section className="card">
@@ -97,37 +141,17 @@ function AppearanceCard() {
       </div>
       <p className="muted small">Changes show at once and follow you on every computer.</p>
       <Alert type="error">{state.error}</Alert>
-
-      <h3 className="appearance-label"><Type size={16} aria-hidden /> Text size</h3>
-      <div className="look-tiles" role="radiogroup" aria-label="Text size">
-        {sizes.map((o) => {
-          const on = prefs.textSize === o.key;
-          return (
-            <button key={o.key} type="button" role="radio" aria-checked={on} className={`look-tile${on ? ' on' : ''}`} onClick={() => choose('textSize', o.key)}>
-              <span className="look-sample" style={{ fontSize: SIZE_PX[o.key] ?? 19 }} aria-hidden>Aa</span>
-              <span className="look-name">{o.label}</span>
-              {on && <Check size={14} className="look-check" aria-hidden />}
-            </button>
-          );
-        })}
+      <div className="look-layout">
+        <div className="look-controls">
+          <Choices label="Theme" icon={Palette} name="theme" options={appearance.theme} value={prefs.theme} onChoose={choose} render={(o) => { const I = THEME_ICON[o.key] ?? Sun; return <I size={18} aria-hidden />; }} />
+          <Choices label="Text size" icon={Type} name="textSize" options={sizes} value={prefs.textSize} onChoose={choose} render={(o) => <span className="look-aa" style={{ fontSize: SIZE_PX[o.key] ?? 16 }} aria-hidden>Aa</span>} />
+          <Choices label="Spacing" icon={Rows3} name="density" options={appearance.density} value={prefs.density} onChoose={choose} render={(o) => { const I = DENSITY_ICON[o.key] ?? Rows3; return <I size={18} aria-hidden />; }} />
+        </div>
+        <div className="look-preview-wrap">
+          <span className="look-group-label"><Eye size={15} aria-hidden /> Preview</span>
+          <LookPreview />
+        </div>
       </div>
-
-      <h3 className="appearance-label top-gap"><Rows3 size={16} aria-hidden /> Spacing</h3>
-      <div className="look-tiles" role="radiogroup" aria-label="Spacing">
-        {appearance.density.map((o) => {
-          const on = prefs.density === o.key;
-          const Icon = DENSITY_ICON[o.key] ?? Rows3;
-          return (
-            <button key={o.key} type="button" role="radio" aria-checked={on} className={`look-tile${on ? ' on' : ''}`} onClick={() => choose('density', o.key)}>
-              <Icon size={26} className="look-sample" aria-hidden />
-              <span className="look-name">{o.label}</span>
-              {DENSITY_HINT[o.key] && <span className="look-hint">{DENSITY_HINT[o.key]}</span>}
-              {on && <Check size={14} className="look-check" aria-hidden />}
-            </button>
-          );
-        })}
-      </div>
-      <p className="appearance-preview">This is how text looks at the “{sizeLabel}” size.</p>
     </section>
   );
 }
@@ -254,7 +278,7 @@ export function AccountPage() {
           />
         )}
 
-        <div className={isPrescriber ? '' : 'span-all'}>
+        <div className="span-all">
           <AppearanceCard />
         </div>
       </div>

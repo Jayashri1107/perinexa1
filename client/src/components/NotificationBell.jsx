@@ -25,6 +25,7 @@ const KINDS = {
   PRESCRIPTION_SENT: { icon: Pill, tone: 'tone-teal' },
   LAB_BOOKED: { icon: FlaskConical, tone: 'tone-amber' },
   CARE_ORDER: { icon: ClipboardList, tone: 'tone-blue' },
+  SERVICE_TO_BILL: { icon: Receipt, tone: 'tone-amber' },
 };
 
 // The tabs: which kinds each holds ("All" holds every kind).
@@ -36,7 +37,7 @@ const GROUPS = [
   { key: 'prescriptions', label: 'Prescriptions', types: ['PRESCRIPTION_SENT'] },
   { key: 'lab', label: 'Lab', types: ['LAB_BOOKED'] },
   { key: 'care', label: 'Orders', types: ['CARE_ORDER'] },
-  { key: 'billing', label: 'Billing', types: ['FINAL_BILL'] },
+  { key: 'billing', label: 'Billing', types: ['FINAL_BILL', 'SERVICE_TO_BILL'] },
 ];
 
 export function NotificationBell() {

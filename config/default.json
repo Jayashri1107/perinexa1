@@ -224,7 +224,12 @@
     "dueBeforeMinutes": 60,
     "overdueAfterMinutes": 60,
     "vitalsEveryHours": 4,
-    "routes": ["Oral", "IV", "IM", "SC", "Inhaled", "Topical", "Rectal", "Vaginal", "Sublingual"]
+    "routes": ["Oral", "IV", "IM", "SC", "Inhaled", "Topical", "Rectal", "Vaginal", "Sublingual"],
+    "serviceGroups": ["procedure", "inpatient", "other"],
+    "servicePrefix": "NS-",
+    "billServicesRoles": ["receptionist", "billing"],
+    "injectionRoutes": ["IV", "IM", "SC"],
+    "injectionPriceCode": "INJECTION"
   },
   "notifications": {
     "listSize": 30,
@@ -356,6 +361,11 @@
     "density": [
       { "key": "comfortable", "label": "Comfortable" },
       { "key": "compact", "label": "Compact" }
+    ],
+    "theme": [
+      { "key": "light", "label": "Light" },
+      { "key": "dark", "label": "Dark" },
+      { "key": "system", "label": "Match device" }
     ]
   },
   "seed": {

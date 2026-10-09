@@ -307,6 +307,18 @@ export const wardCareApi = {
   stopOrder: (id, orderId, reason) => http.post(`${WARD_CARE}/stays/${id}/orders/${orderId}/stop`, { reason }),
   chart: (id, data) => http.post(`${WARD_CARE}/stays/${id}/chart`, data),
 };
+// Services nurses give (9 Oct 2026): recorded on the patient, sent to the front desk, added to her bill there.
+export const nursingServicesApi = {
+  options: () => http.get('/hospital/nursing-services/options'),
+  mineToday: () => http.get('/hospital/nursing-services/mine-today'),
+  ofPatient: (patientId) => http.get(`/hospital/nursing-services/patient/${patientId}`),
+  record: (data) => http.post('/hospital/nursing-services', data),
+  cancel: (id, reason) => http.post(`/hospital/nursing-services/${id}/cancel`, { reason }),
+};
+export const billingServicesApi = {
+  queue: () => http.get(`${BILLING}/services`),
+  bill: (id, billId) => http.post(`${BILLING}/services/${id}/bill`, billId ? { billId } : {}),
+};
 export const wardIssuesApi = {
   admitted: () => http.get(`${PHARMACY}/ward-issues/admitted`),
   issue: (data) => http.post(`${PHARMACY}/ward-issues`, data),

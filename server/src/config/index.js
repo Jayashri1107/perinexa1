@@ -127,6 +127,13 @@ const schema = z.object({
     overdueAfterMinutes: z.number().int().min(0).max(480),
     vitalsEveryHours: z.number().positive().max(24),
     routes: z.array(z.string().min(1)).min(1),
+    // services a nurse records go to the bill (owner, 9 Oct 2026): the price list groups she chooses from, the number
+    // prefix, who is told to bill them, and the injection charge offered when she charts an injection
+    serviceGroups: z.array(z.string().min(1)).min(1),
+    servicePrefix: prefix,
+    billServicesRoles: roleList,
+    injectionRoutes: z.array(z.string().min(1)),
+    injectionPriceCode: z.string().min(1),
   }),
   notifications: z.object({ listSize: z.number().int().min(5).max(200), keepDays: z.number().int().min(1).max(365) }),
   documents: z.object({
@@ -197,7 +204,7 @@ const schema = z.object({
   admissions: z.object({ admissionPrefix: prefix, numberDigits: digits }),
   lab: z.object({ orderPrefix: prefix, numberDigits: digits, maxTestsPerOrder: z.number().int().min(1).max(100) }),
   library: z.object({ maxEntries: z.number().int().min(10).max(2000) }),
-  appearance: z.object({ textSize: z.array(keyLabel).min(1), density: z.array(keyLabel).min(1) }),
+  appearance: z.object({ textSize: z.array(keyLabel).min(1), density: z.array(keyLabel).min(1), theme: z.array(keyLabel).min(1) }),
   seed: z.object({
     superAdmin: z.object({ name: z.string(), email: z.string(), password: z.string() }),
     masterData: z.record(z.string(), z.array(z.object({ code: z.string(), name: z.string() }))),
@@ -238,6 +245,7 @@ export const LANGUAGE_KEYS = config.languages.map((l) => l.key);
 export const VISIT_TYPE_KEYS = config.opd.visitTypes.map((v) => v.key);
 export const TEXT_SIZE_KEYS = config.appearance.textSize.map((o) => o.key);
 export const DENSITY_KEYS = config.appearance.density.map((o) => o.key);
+export const THEME_KEYS = config.appearance.theme.map((o) => o.key);
 export const keysOf = (list) => list.map((o) => o.key);
 export const CARE_TYPE_KEYS = keysOf(config.patients.careTypes);
 export const SEX_KEYS = keysOf(config.patients.sexes);

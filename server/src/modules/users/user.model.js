@@ -1,5 +1,5 @@
 import mongoose from '../../db/mongoose.js';
-import { DENSITY_KEYS, TEXT_SIZE_KEYS } from '../../config/index.js';
+import { DENSITY_KEYS, TEXT_SIZE_KEYS, THEME_KEYS } from '../../config/index.js';
 
 const { ObjectId } = mongoose.Schema.Types;
 
@@ -31,6 +31,7 @@ const userSchema = new mongoose.Schema(
     preferences: {
       textSize: { type: String, enum: TEXT_SIZE_KEYS, default: TEXT_SIZE_KEYS[0] },
       density: { type: String, enum: DENSITY_KEYS, default: DENSITY_KEYS[0] },
+      theme: { type: String, enum: THEME_KEYS, default: THEME_KEYS[0] }, // light, dark, or as the device is set
     },
     // 0 = no profile photo; raised at each change, so browsers fetch the new one (account/userPhoto.model.js)
     photoVersion: { type: Number, default: 0 },

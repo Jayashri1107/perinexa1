@@ -70,6 +70,17 @@ Fake sample data only.
   before, overdue 60 minutes after, vital signs every 4 hours. **Sample settings: the hospital decides them.**
 - Fixed: typing in the vital-sign boxes of the nursing chart removed every digit.
 
+**9 Oct 2026 (later) – nurse services to billing, a nurse's Today, Appearance with themes**
+- **Services nurses give** (`/api/hospital/nursing-services`): on a patient (her stay's Services tab, or Today → Record a
+  service) the nurse picks injections, dressings, IV drips … from the price list (`config.nursing.serviceGroups`) with
+  how many; it is **sent to the front desk** (reception and billing are notified). Charting an IM / IV / SC dose offers
+  its injection charge (`injectionPriceCode`). Billing → **Nursing services**: "Add to bill" puts it on her open bill or a
+  new one (lines marked `source: 'nursing'` with the NS- number), once only; a waiting one can be cancelled by its nurse.
+- **A nurse's Today**: shift and ward, six count tiles, **Due now** (every dose and task due or overdue, opening the chart),
+  **Needs attention**, and **My services today**. Others keep their Today; reception's shows services waiting to bill.
+- **Appearance**: Theme (Light, Dark, Match device), Text size and Spacing as compact choices with a live preview. The dark
+  theme is in `styles/tokens.css` (`:root[data-theme='dark']`); printouts stay black on white.
+
 ### Who sees what (config.access)
 
 | Role | Menu |

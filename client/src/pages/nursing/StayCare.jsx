@@ -3,18 +3,19 @@
 // signs, Tests (since admission; nurses mark a sample as taken), Tasks and notes, Intake and output (24-hour totals)
 // and the Shift handover. Doctors and RMOs write and stop orders; nurses chart against them and never change them.
 // Nothing is changed or deleted: an entry made by mistake is marked "entered in error" with a reason.
-import { ClipboardList, Droplets, FlaskConical, HeartPulse, ListChecks, Pill, Plus, Repeat, Scale } from 'lucide-react';
+import { Ban, ClipboardList, Droplets, FlaskConical, HeartPulse, ListChecks, Pill, Plus, Receipt, Repeat, Scale, Send, Syringe } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { admissionsApi, labApi, wardCareApi } from '../../api/index.js';
+import { admissionsApi, labApi, nursingServicesApi, wardCareApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { Modal } from '../../components/Modal.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
-import { formatDateTime } from '../../utils/format.js';
+import { formatDateTime, formatMoney } from '../../utils/format.js';
 import { VITAL_FIELDS, toLocalInput, vitalsText } from '../inpatient/inpatientFormat.js';
 import { requestId } from '../visits/visitFormat.js';
+import { ServiceDialog } from './ServiceDialog.jsx';
 import { DOSE_CHOICES, IV_ACTION_WORDS, IV_LOOKS, IV_NEXT, LAB_LOOKS, ORDER_WORDS, SLOT_LOOKS, TASK_CHOICES, clock, needsReason, orderText, slotWhen } from './nursingFormat.js';
 
 const TABS = [
@@ -25,6 +26,7 @@ const TABS = [
   { key: 'tasks', label: 'Tasks and notes', icon: ListChecks },
   { key: 'io', label: 'Intake and output', icon: Scale },
   { key: 'handover', label: 'Shift handover', icon: Repeat },
+  { key: 'services', label: 'Services', icon: Syringe },
 ];
 const FOOD = ['', 'Before food', 'After food', 'With food', 'Empty stomach', 'At bedtime'];
 
@@ -122,7 +124,16 @@ function OrderDialog({ stayId, type, onClose, onSaved }) {
 
 // ---------- A nurse charts a dose, a task or an IV event ----------
 
-function ChartDialog({ stayId, title, kind, order, dueAt, ivAction, onClose, onSaved }) {
+function ChartDialog({ stayId, patientId, title, kind, order, dueAt, ivAction, onClose, onSaved }) {
+  const { nursing } = useAppConfig();
+  // an injection given: offer its charge for the bill (the price list item config.nursing.injectionPriceCode)
+  const [injection, setInjection] = useState(null);
+  const [billInjection, setBillInjection] = useState(true);
+  const isInjection = kind === 'dose' && nursing.injectionRoutes.includes(order.medicine?.route);
+  useEffect(() => {
+    if (!isInjection) return;
+    nursingServicesApi.options().then((r) => setInjection(r.items.find((i) => i.code === nursing.injectionPriceCode) ?? null)).catch(() => setInjection(null));
+  }, [isInjection, nursing.injectionPriceCode]);
   const choices = kind === 'dose' ? DOSE_CHOICES : kind === 'task' ? TASK_CHOICES : null;
   const [outcome, setOutcome] = useState(choices?.[0][0] ?? '');
   const [at, setAt] = useState(toLocalInput(new Date()));
@@ -149,7 +160,11 @@ function ChartDialog({ stayId, title, kind, order, dueAt, ivAction, onClose, onS
         ...(kind === 'iv' && { iv: { action: ivAction, site, volumeMl } }),
         clientRequestId: rid,
       };
-      onSaved(await wardCareApi.chart(stayId, body));
+      const saved = await wardCareApi.chart(stayId, body);
+      if (injection && billInjection && ['given', 'late'].includes(outcome)) {
+        await nursingServicesApi.record({ patientId, items: [{ priceItemId: injection.id, qty: 1 }], givenAt: new Date(at).toISOString(), note: orderText(order), clientRequestId: `${rid}-inj` });
+      }
+      onSaved(saved);
     } catch (err) {
       setError(fieldsText(err.fields) ?? err.message);
     } finally {
@@ -186,6 +201,12 @@ function ChartDialog({ stayId, title, kind, order, dueAt, ivAction, onClose, onS
           <div className="form-field width-full"><label htmlFor="c-note">{kind === 'iv' ? 'Site and observations' : 'Note'}</label><input id="c-note" value={note} maxLength={2000} onChange={(e) => setNote(e.target.value)} placeholder={kind === 'iv' ? 'e.g. No swelling or redness' : 'Optional'} /></div>
         </div>
         {needsReason(outcome) && kind === 'dose' && <p className="muted small">Her doctor is told when a dose is not given.</p>}
+        {injection && ['given', 'late'].includes(outcome) && (
+          <label className="chip-check top-gap-sm">
+            <input type="checkbox" checked={billInjection} onChange={(e) => setBillInjection(e.target.checked)} />
+            <Receipt size={14} aria-hidden /> Add “{injection.name}” ({formatMoney(injection.price)}) to her bill – sent to the front desk
+          </label>
+        )}
         <div className="modal-foot inline">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save to the chart'}</button>
@@ -566,6 +587,55 @@ function HandoverTab({ stayId, data, onChanged }) {
   );
 }
 
+function ServicesTab({ data, onRecord }) {
+  const [list, setList] = useState(null);
+  const [error, setError] = useState('');
+  const load = useCallback(() => {
+    nursingServicesApi.ofPatient(data.patient.id).then((r) => setList(r.items)).catch((err) => setError(err.message));
+  }, [data.patient.id]);
+  useEffect(load, [load, data]);
+  const LOOK = {
+    sent: { tone: 'pending', icon: Send, word: 'Sent to billing' },
+    billed: { tone: 'active', icon: Receipt, word: 'On the bill' },
+    cancelled: { tone: 'inactive', icon: Ban, word: 'Cancelled' },
+  };
+  const cancel = async (s) => {
+    const r = window.prompt('Why cancel this service?');
+    if (!r || r.trim().length < 3) return;
+    try {
+      await nursingServicesApi.cancel(s.id, r.trim());
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  return (
+    <>
+      {data.can.chart && (
+        <div className="care-actions"><button type="button" className="btn btn-primary btn-sm" onClick={() => onRecord(load)}><Plus size={14} aria-hidden /> Record a service</button></div>
+      )}
+      <p className="muted small">Injections, dressings, IV drips and other services she was given. Each is sent to the front desk and added to her bill there.</p>
+      <Alert type="error">{error}</Alert>
+      {!list && !error && <Loader />}
+      <ul className="plain-list rows">
+        {list?.length === 0 && <li className="muted">No services recorded yet.</li>}
+        {list?.map((s) => (
+          <li key={s.id} className={s.status === 'cancelled' ? 'struck' : ''}>
+            <span>
+              <strong>{s.items.map((i) => `${i.name}${i.qty > 1 ? ` × ${i.qty}` : ''}`).join(', ')}</strong> <span className="muted">{formatMoney(s.amount)}</span>
+              <span className="muted block small">{s.serviceNumber} · {formatDateTime(s.givenAt)} · {s.givenByName}{s.note && ` · ${s.note}`}{s.billed && ` · bill ${s.billed.billNumber}`}{s.cancelled && ` · ${s.cancelled.reason}`}</span>
+            </span>
+            <span className="row-actions">
+              <StateBadge look={LOOK[s.status]} small />
+              {s.status === 'sent' && data.can.chart && <button type="button" className="btn btn-link btn-sm" onClick={() => cancel(s)}>Cancel</button>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 // ---------- The charts ----------
 
 export function StayCare({ stayId }) {
@@ -666,11 +736,14 @@ export function StayCare({ stayId }) {
       )}
       {tab === 'io' && <IoTab stayId={stayId} data={view} onChanged={load} />}
       {tab === 'handover' && <HandoverTab stayId={stayId} data={view} onChanged={load} />}
+      {tab === 'services' && <ServicesTab data={view} onRecord={(after) => setDialog({ service: after })} />}
 
+      {dialog?.service && <ServiceDialog patient={data.patient} onClose={() => setDialog(null)} onSaved={() => { dialog.service(); setDialog(null); }} />}
       {dialog?.order && !dialog.chart && <OrderDialog stayId={stayId} type={dialog.order} onClose={() => setDialog(null)} onSaved={saved} />}
       {dialog?.chart && (
         <ChartDialog
           stayId={stayId}
+          patientId={data.patient.id}
           kind={dialog.chart}
           order={dialog.order}
           dueAt={dialog.dueAt}

@@ -183,6 +183,7 @@ export async function station(req, { wardId = null } = {}) {
   const vitalsAt = new Map(lastVitals.map((v) => [String(v._id), v]));
 
   const items = [];
+  const due = []; // every dose and task due or overdue now, for the nurse's Today
   for (const s of stays) {
     const p = pById.get(String(s.patientId));
     const mine = orders.filter((o) => String(o.admissionId) === String(s._id));
@@ -193,6 +194,10 @@ export async function station(req, { wardId = null } = {}) {
     const myLabs = labs.filter((l) => String(l.patientId) === String(s.patientId) && l.createdAt >= s.admittedAt);
     const last = vitalsAt.get(String(s._id));
     const flags = rules.length ? await stayFlags(req, s, p, rules) : [];
+    for (const x of slots.filter((y) => ['due', 'overdue'].includes(y.state))) {
+      const o = mine.find((y) => String(y._id) === x.orderId);
+      due.push({ stayId: String(s._id), patient: { name: p.name, patientNumber: p.patientNumber }, ward: s.ward, bed: s.bed, type: x.type, dueAt: x.dueAt, state: x.state, what: orderText(o), instructions: o.instructions });
+    }
     items.push({
       id: String(s._id),
       patient: { id: String(p._id), name: p.name, patientNumber: p.patientNumber, age: ageOf(p), sex: p.sex ?? '', allergies: p.allergies ?? '' },
@@ -221,6 +226,7 @@ export async function station(req, { wardId = null } = {}) {
     wards: wards.map((w) => ({ id: String(w._id), name: w.name, floor: w.floor ?? '', patients: readable.filter((s) => String(s.wardId) === String(w._id)).length })),
     totals: { patients: items.length, dosesDue: sum('dosesDue'), dosesOverdue: sum('dosesOverdue'), vitalsDue: sum('vitalsDue'), ivRunning: sum('ivRunning'), labPending: sum('labPending'), tasksDue: sum('tasksDue'), redFlags: items.filter((x) => x.redFlags.length).length },
     items,
+    due: due.sort((a, b) => a.dueAt - b.dueAt).slice(0, 50),
     settings: { vitalsEveryHours: nursing.vitalsEveryHours },
     rulesApproved: rules.length > 0,
   };
@@ -262,6 +268,7 @@ async function careAnswer(req, loaded) {
 
   return {
     shift,
+    patient: { id: String(loaded.patient._id), name: loaded.patient.name, patientNumber: loaded.patient.patientNumber },
     orders: orders.map((o) => ({ ...orderView(o), ...(o.type === 'iv' && { ivState: ivStateOf(o, entries) }) })),
     schedule: slots.map((x) => ({ ...x, entry: x.entry ? entryView(x.entry, req) : null })),
     // as-needed doses and IV events, newest first

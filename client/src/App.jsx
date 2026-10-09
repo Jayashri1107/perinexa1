@@ -37,6 +37,7 @@ const HospitalAuditPage = page(() => import('./pages/hospital/HospitalAuditPage.
 const HospitalSettingsPage = page(() => import('./pages/hospital/HospitalSettingsPage.jsx'), 'HospitalSettingsPage');
 const OpdScheduleEditorPage = page(() => import('./pages/hospital/OpdScheduleEditorPage.jsx'), 'OpdScheduleEditorPage');
 const OpdTimingsPage = page(() => import('./pages/hospital/OpdTimingsPage.jsx'), 'OpdTimingsPage');
+const ServicesToBillPage = page(() => import('./pages/billing/ServicesToBillPage.jsx'), 'ServicesToBillPage');
 const NursingStationPage = page(() => import('./pages/nursing/NursingStationPage.jsx'), 'NursingStationPage');
 const WardsPage = page(() => import('./pages/hospital/WardsPage.jsx'), 'WardsPage');
 const StaffPage = page(() => import('./pages/hospital/StaffPage.jsx'), 'StaffPage');
@@ -178,6 +179,7 @@ export function App() {
                     <Route path="billing/new" element={<NewBillPage />} />
                     <Route path="billing/bills/:id" element={<BillDetailPage />} />
                     <Route path="billing/unpaid" element={<UnpaidPage />} />
+                  <Route path="billing/services" element={<ServicesToBillPage />} />
                     <Route path="billing/daily" element={<DailySummaryPage />} />
                     <Route path="billing/price-list" element={<PriceListPage />} />
                   </Route>
