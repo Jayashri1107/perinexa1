@@ -796,14 +796,14 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .auth-forgot { padding: 0; font-weight: 600; }
 .auth-forgot-note { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--color-info-soft); color: var(--color-info); }
 .auth-safe { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text); }
-.auth-safe svg { color: var(--color-accent-strong); }
+.auth-safe svg { color: var(--color-primary); }
 /* a small icon inside a box (email, password) */
 .input-with-icon { position: relative; }
 .input-with-icon .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; z-index: 1; }
 .input-with-icon input { padding-left: 42px !important; }
 
 /* the right side: a soft teal panel with the logo in a ring of hospital icons */
-.auth-brand { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-5); padding: var(--space-6); background: var(--color-accent-soft); }
+.auth-brand { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-5); padding: var(--space-6); background: var(--color-primary-soft); }
 .auth-ring-wrap { position: relative; width: min(460px, 80%); aspect-ratio: 1; container-type: inline-size; }
 .auth-ring { position: absolute; inset: 0; animation: auth-turn 70s linear infinite; }
 .auth-ring::before { content: ''; position: absolute; inset: 9%; border-radius: 50%; border: 2px dashed var(--auth-ring-line); }
@@ -813,20 +813,20 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 }
 .auth-ring-icon {
   position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px;
-  background: var(--color-surface); color: var(--color-accent-strong); box-shadow: 0 6px 18px var(--auth-ring-shadow);
+  background: var(--color-surface); color: var(--color-primary); box-shadow: 0 6px 18px var(--auth-ring-shadow);
   animation: auth-pop 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both, auth-turn 70s linear infinite reverse;
   animation-delay: calc(var(--i) * 90ms + 0.2s), 0s;
 }
-.auth-ring-item:nth-child(3n + 2) .auth-ring-icon { color: var(--color-primary); }
+.auth-ring-item:nth-child(3n + 2) .auth-ring-icon { color: var(--color-info); }
 .auth-ring-item:nth-child(3n) .auth-ring-icon { color: var(--color-danger); }
 .auth-ring-centre {
   position: absolute; inset: 27%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   border-radius: 50%; background: var(--color-surface); box-shadow: 0 10px 40px var(--auth-ring-shadow);
   animation: auth-pop 0.6s cubic-bezier(0.3, 1.4, 0.5, 1) both;
 }
-.auth-ring-centre::after { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--color-accent); opacity: 0; animation: auth-pulse 3s ease-out 1.2s infinite; }
+.auth-ring-centre::after { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--color-primary); opacity: 0; animation: auth-pulse 3s ease-out 1.2s infinite; }
 .auth-ring-centre img { width: 62%; height: auto; }
-.auth-ring-centre span { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-accent-strong); }
+.auth-ring-centre span { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-primary); }
 .auth-brand-line { margin: 0; font-size: 18px; font-weight: 600; color: var(--color-text); }
 @keyframes auth-turn { to { transform: rotate(360deg); } }
 @keyframes auth-pop { from { opacity: 0; scale: 0.4; } }
@@ -1374,12 +1374,6 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 @media (prefers-reduced-motion: reduce) { .look-choice { transition: none; } }
 
 /* ---------- The theme button in the top bar; the lab's overview (9 Oct 2026) ---------- */
-.theme-menu { position: relative; }
-.theme-pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 40; min-width: 180px; padding: 6px; border-radius: var(--radius); background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-lg); display: grid; gap: 2px; }
-.theme-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--color-text); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
-.theme-item:hover, .theme-item:focus-visible { background: var(--color-primary-soft); outline: none; }
-.theme-item.on { color: var(--color-primary); font-weight: 600; }
-.theme-check { margin-left: auto; }
 .notif-icon.tone-danger { background: var(--color-danger-soft); color: var(--color-danger); }
 .lab-tabs { margin: 0 0 var(--space-4); }
 .lab-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -1400,11 +1394,10 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 /* ---------- The doctor's desk; the lab overview's rows; the sidebar colour the full height (9 Oct 2026) ---------- */
 /* the sidebar stays put while the page scrolls; its colour also runs down the whole page (full-page prints, short
    windows) */
-.shell { position: relative; }
-.shell::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: var(--sidebar-width); background: var(--sidebar-bg); }
-.shell.collapsed::before { width: 88px; }
-.shell > .main { position: relative; }
-@media (max-width: 820px) { .shell::before { display: none; } }
+.shell > .sidebar { margin: 12px 0 12px 12px; top: 12px; height: calc(100vh - 24px); border-radius: 22px; box-shadow: var(--shadow-lg); }
+@media (max-width: 820px) {
+  .shell > .sidebar { margin: 0; height: auto; border-radius: 0 0 22px 22px; box-shadow: var(--shadow); }
+}
 
 .desk-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-4); align-items: stretch; }
 .desk-row.desk-even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1438,3 +1431,23 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 }
 @media (max-width: 600px) { .lab-quick-row { grid-template-columns: 1fr; } }
 .desk-bed { width: 22%; min-width: 90px; }
+
+/* Pharmacy → Prescriptions → All given (9 Oct 2026) */
+.rxq-filters { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; margin-bottom: var(--space-3); }
+.rxq-filters .svc-search { flex: 1 1 240px; }
+.rxq-meds { flex: 1 1 200px; color: var(--color-text-muted); min-width: 0; }
+.rxq-pages { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-top: var(--space-3); flex-wrap: wrap; }
+.theme-toggle svg { transition: transform 0.25s ease; }
+.theme-toggle:hover svg { transform: rotate(20deg); }
+@media (prefers-reduced-motion: reduce) { .theme-toggle svg { transition: none; } }
+
+/* Today (9 Oct 2026): quick actions as one row across the page; the pharmacist's six quick actions */
+.quick-actions.quick-actions-row { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+.today-area .stat-grid { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+.today-block { margin-bottom: var(--space-4); }
+.pharm-quick { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1300px) { .pharm-quick { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .pharm-quick { grid-template-columns: 1fr; } }
+/* the billing desk: cards side by side share one height (no gaps under the shorter one) */
+.bd-grid { align-items: stretch; }
+.bd-grid > .card { display: flex; flex-direction: column; margin: 0; }

@@ -63,6 +63,20 @@ export async function forPharmacy(req, res) {
   res.json({ items: await service.prescriptionsForPharmacy(req, parse(patientParams, req.params).patientId) });
 }
 
+export async function pharmacyHistory(req, res) {
+  const q = parse(
+    z.object({
+      search: z.string().trim().max(100).default(''),
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      page: z.coerce.number().int().min(1).default(1),
+      limit: z.coerce.number().int().min(5).max(100).default(20),
+    }),
+    req.query,
+  );
+  res.json(await service.pharmacyHistory(req, q));
+}
+
 export async function pharmacyQueue(req, res) {
   res.json(await service.pharmacyQueue(req));
 }

@@ -283,6 +283,7 @@ export const dispensingApi = {
 };
 export const pharmacyPrescriptionsApi = {
   queue: () => http.get(`${PHARMACY}/prescriptions/queue`),
+  history: (query) => http.get(`${PHARMACY}/prescriptions/history`, query),
   markGiven: (visitId) => http.post(`${PHARMACY}/prescriptions/queue/${visitId}/given`),
   forPatient: (patientId) => http.get(`${PHARMACY}/prescriptions/${patientId}`),
 };

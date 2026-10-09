@@ -23,5 +23,7 @@ export default router;
 // one given, and a patient's latest prescriptions to sell from (medicines only).
 export const pharmacyPrescriptionRouter = Router();
 pharmacyPrescriptionRouter.get('/queue', controller.pharmacyQueue);
+// every prescription given, not only today's (9 Oct 2026)
+pharmacyPrescriptionRouter.get('/history', controller.pharmacyHistory);
 pharmacyPrescriptionRouter.post('/queue/:visitId/given', controller.markGiven);
 pharmacyPrescriptionRouter.get('/:patientId', controller.forPharmacy);

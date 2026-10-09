@@ -31,7 +31,8 @@ const userSchema = new mongoose.Schema(
     preferences: {
       textSize: { type: String, enum: TEXT_SIZE_KEYS, default: TEXT_SIZE_KEYS[0] },
       density: { type: String, enum: DENSITY_KEYS, default: DENSITY_KEYS[0] },
-      theme: { type: String, enum: THEME_KEYS, default: THEME_KEYS[0] }, // light, dark, or as the device is set
+      // light or dark (the top bar's button); 'system' (follow the device) is an older choice still read
+      theme: { type: String, enum: [...THEME_KEYS, 'system'], default: THEME_KEYS[0] },
     },
     // 0 = no profile photo; raised at each change, so browsers fetch the new one (account/userPhoto.model.js)
     photoVersion: { type: Number, default: 0 },

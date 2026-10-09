@@ -242,6 +242,7 @@ export async function createOrder(req, body) {
     hospitalId: req.hospitalId,
     details: { patientId: String(patient._id), orderNumber: order.orderNumber, tests: tests.map((t) => t.key) },
   });
+  await tellTheLab(req, order, patient, tests, `ordered by ${req.user.name}`);
   return orderView(req, order, { patient, level });
 }
 
@@ -276,6 +277,7 @@ export async function bookByReception(req, body) {
     hospitalId: req.hospitalId,
     details: { patientId: String(patient._id), orderNumber: order.orderNumber, tests: tests.map((t) => t.key), byReception: true },
   });
+  await tellTheLab(req, order, patient, tests, 'booked by reception');
   if (patient.assignedDoctorId) {
     await notify(req, [patient.assignedDoctorId], {
       type: 'LAB_BOOKED',
@@ -364,6 +366,16 @@ export async function saveResults(req, id, body) {
     link: `/hospital/lab/orders/${order._id}`,
   });
   return orderView(req, order, loaded);
+}
+
+// Lab staff hear of every new request (owner, 9 Oct 2026) – urgent ones say so.
+async function tellTheLab(req, order, patient, tests, how) {
+  await notifyRoles(req, config.access.labReport, {
+    type: 'LAB_BOOKED',
+    title: `${order.urgent ? 'URGENT – ' : ''}New lab request`,
+    message: `${patient.name} (${patient.patientNumber}) · ${tests.map((t) => t.name).join(', ')} · ${how}`.slice(0, 300),
+    link: `/hospital/lab/orders/${order._id}`,
+  });
 }
 
 // The doctor who ordered and the patient's doctor (each once).

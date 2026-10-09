@@ -366,8 +366,7 @@
     ],
     "theme": [
       { "key": "light", "label": "Light" },
-      { "key": "dark", "label": "Dark" },
-      { "key": "system", "label": "Match device" }
+      { "key": "dark", "label": "Dark" }
     ]
   },
   "seed": {

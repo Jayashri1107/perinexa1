@@ -53,6 +53,7 @@ import { NursingTodayCard } from '../nursing/NursingTodayCard.jsx';
 import { NurseToday } from '../nursing/NurseToday.jsx';
 import { LabToday } from '../lab/LabToday.jsx';
 import { DoctorToday } from '../doctor/DoctorToday.jsx';
+import { PharmacyToday } from '../pharmacy/PharmacyToday.jsx';
 import { TodayBooking } from './TodayBooking.jsx';
 import { PrescriptionOrdersCard } from '../dispensing/PrescriptionOrdersCard.jsx';
 
@@ -150,6 +151,7 @@ export function TodayPage() {
   if (roles.length > 0 && roles.every((r) => r === 'nurse')) return <NurseToday />;
   if (roles.length > 0 && roles.every((r) => r === 'lab')) return <LabToday />;
   if (roles.length > 0 && roles.every((r) => r === 'doctor' || r === 'rmo')) return <DoctorToday />;
+  if (roles.length > 0 && roles.every((r) => r === 'pharmacist')) return <PharmacyToday />;
   return <GeneralToday />;
 }
 
@@ -195,7 +197,6 @@ function GeneralToday() {
             today.frontDesk && <StatCard key="walkins" icon={Footprints} to="/hospital/appointments" label="Walk-ins today" value={today.frontDesk.walkIns} hint="Came without an appointment" />,
             today.frontDesk && <StatCard key="inhospital" icon={BedDouble} to="/hospital/admissions" label="In hospital now" value={today.frontDesk.inHospital} hint={`${today.frontDesk.admittedToday} admitted · ${today.frontDesk.dischargedToday} discharged today`} tone="neutral" />,
             beds && bedTotals.total > 0 && <StatCard key="beds" icon={BedDouble} to="/hospital/admissions" label="Beds booked" value={`${bedTotals.booked} of ${bedTotals.total}`} hint={`${bedTotals.free} free`} tone={bedTotals.free === 0 ? 'danger' : 'primary'} />,
-            today.servicesToBill != null && <StatCard key="services" icon={Syringe} to="/hospital/billing/services" label="Nursing services to bill" value={today.servicesToBill} hint="Injections, dressings … from nurses" tone={today.servicesToBill ? 'warning' : 'neutral'} />,
             today.patients && <StatCard key="registered" icon={UserPlus} to={canAccess('patients') ? '/hospital/patients' : undefined} label="Registered today" value={today.patients.registeredToday} hint={`${plural(today.patients.active, 'patient')} under care`} />,
           ],
           cards: [
@@ -269,6 +270,7 @@ function GeneralToday() {
             today.billing && <StatCard key="received" icon={Banknote} to="/hospital/billing/daily" label="Received today" value={formatMoney(today.billing.receivedToday)} hint={plural(today.billing.paymentsToday, 'payment')} tone="success" />,
             today.billing && <StatCard key="owed" icon={Hourglass} to="/hospital/billing/unpaid" label="Outstanding" value={formatMoney(today.billing.owed)} hint={plural(today.billing.unpaidBills, 'unpaid bill')} tone={today.billing.overdueBills ? 'danger' : 'warning'} />,
             today.billing && <StatCard key="refunds" icon={Undo2} to="/hospital/billing/daily" label="Refunds today" value={formatMoney(today.billing.refundedToday)} hint={plural(today.billing.refundsToday, 'refund')} tone="neutral" />,
+            today.servicesToBill != null && <StatCard key="services" icon={Syringe} to="/hospital/billing/services" label="Nursing services to bill" value={today.servicesToBill} hint="Injections, dressings … from nurses" tone={today.servicesToBill ? 'warning' : 'neutral'} />,
           ],
           // the billing desk: for the billing department and the hospital admin (reception keeps the numbers)
           cards: [today.billing && (roles.includes('billing') || isHospitalAdmin) && <BillingDesk key="desk" billing={today.billing} />],
@@ -349,48 +351,47 @@ function GeneralToday() {
 
       {today && (
         <>
-          <div className="grid-2 today-grid today-top">
-            <section className="card">
-              <div className="card-head">
-                <h2>Needs your attention {attention.length > 0 && <span className="rxq-count">{attention.length}</span>}</h2>
-              </div>
-              {attention.length === 0 ? (
-                <p className="all-clear"><CircleCheck size={18} aria-hidden /> All clear – nothing needs you right now.</p>
-              ) : (
-                <>
-                  <ul className="attention">
-                    {shownAttention.map((a) => (
-                      <li key={a.text} className={a.tone ? `attention-${a.tone}` : undefined}>
-                        <span className="attention-icon" aria-hidden><a.icon size={18} /></span>
-                        <span className="attention-text">
-                          <strong className="block">{a.text}</strong>
-                          <span className="muted small">{a.hint}</span>
-                        </span>
-                        <Link to={a.to} className="btn btn-ghost btn-sm">{a.action} <ArrowRight size={14} aria-hidden /></Link>
-                      </li>
-                    ))}
-                  </ul>
-                  {attention.length > 4 && (
-                    <button type="button" className="btn btn-link btn-sm top-gap-sm" onClick={() => setAllAttention((v) => !v)}>
-                      {allAttention ? 'Show fewer' : `Show all ${attention.length}`}
-                    </button>
-                  )}
-                </>
-              )}
-            </section>
+          <section className="card today-block">
+            <h2>Quick actions</h2>
+            <div className="quick-actions quick-actions-row">
+              {actions.map((a) => (
+                <Link key={a.label} to={a.to} className="quick-action">
+                  <span className="sb-tile" aria-hidden><a.icon size={18} /></span>
+                  <span>{a.label}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
 
-            <section className="card">
-              <h2>Quick actions</h2>
-              <div className="quick-actions">
-                {actions.map((a) => (
-                  <Link key={a.label} to={a.to} className="quick-action">
-                    <span className="sb-tile" aria-hidden><a.icon size={18} /></span>
-                    <span>{a.label}</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          </div>
+          <section className="card today-block">
+            <div className="card-head">
+              <h2>Needs your attention {attention.length > 0 && <span className="rxq-count">{attention.length}</span>}</h2>
+            </div>
+            {attention.length === 0 ? (
+              <p className="all-clear"><CircleCheck size={18} aria-hidden /> All clear – nothing needs you right now.</p>
+            ) : (
+              <>
+                <ul className="attention">
+                  {shownAttention.map((a) => (
+                    <li key={a.text} className={a.tone ? `attention-${a.tone}` : undefined}>
+                      <span className="attention-icon" aria-hidden><a.icon size={18} /></span>
+                      <span className="attention-text">
+                        <strong className="block">{a.text}</strong>
+                        <span className="muted small">{a.hint}</span>
+                      </span>
+                      <Link to={a.to} className="btn btn-ghost btn-sm">{a.action} <ArrowRight size={14} aria-hidden /></Link>
+                    </li>
+                  ))}
+                </ul>
+                {attention.length > 4 && (
+                  <button type="button" className="btn btn-link btn-sm top-gap-sm" onClick={() => setAllAttention((v) => !v)}>
+                    {allAttention ? 'Show fewer' : `Show all ${attention.length}`}
+                  </button>
+                )}
+              </>
+            )}
+          </section>
+
 
           {current && (
             <section className="today-area">

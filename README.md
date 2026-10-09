@@ -102,6 +102,20 @@ Fake sample data only.
 - The round note also holds **Follow-up plan** and **Handover**.
 - The lab overview is full width row by row (no empty columns); the sidebar's colour runs the whole page height.
 
+**9 Oct 2026 (late) – theme toggle, curved sidebar, pharmacist's Today, all prescriptions given**
+- **Theme**: the sun / moon button beside the bell switches light ↔ dark in one click (no menu; two themes).
+- **Sidebar**: a rounded panel with a small gap from the window's edges. The sign-in page uses the indigo theme (no
+  light green).
+- **Lab** staff are notified of every new request – ordered by a doctor or booked by reception ("URGENT –" first).
+- **New patient by voice** asks the date of birth (spoken years understood, e.g. "nineteen ninety five") and shows the
+  age; it asks the age only when the date of birth is not known.
+- **Today, general** (reception, billing): quick actions in one row, what needs attention across the page; "Nursing
+  services to bill" is under Billing; the billing desk's cards side by side share one height.
+- **Pharmacists' Today**: prescriptions waiting / given today, sales, low stock, expiring and expired; quick actions;
+  Waiting beside Given today; Running low beside Expiring.
+- **Pharmacy → Prescriptions**: Waiting · Given today · **All given** (every prescription given, by patient name or
+  number and dates, a page at a time – `GET /api/hospital/pharmacy/prescriptions/history`).
+
 ### Who sees what (config.access)
 
 | Role | Menu |

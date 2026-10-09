@@ -10,7 +10,7 @@
 import { config } from '../../config/index.js';
 import { dayRange, todayLocal } from '../../core/dates.js';
 import { HttpError, notFoundError } from '../../core/httpError.js';
-import { toObjectId } from '../../core/validate.js';
+import { containsText, escapeRegex, toObjectId } from '../../core/validate.js';
 import { Appointment } from '../appointments/appointment.model.js';
 import { utcDay } from '../appointments/slots.js';
 import { recordAudit } from '../audit/audit.service.js';
@@ -394,6 +394,38 @@ export async function pharmacyQueue(req) {
     };
   };
   return { waiting: waiting.map(row), givenToday: given.map(row) };
+}
+
+// Every prescription given (owner, 9 Oct 2026) – not only today's: newest first, a page at a time, found by the
+// patient's name or number and by the day it was given (on the hospital's clock).
+export async function pharmacyHistory(req, { search = '', from = null, to = null, page = 1, limit = 20 }) {
+  const hid = toObjectId(req.hospitalId);
+  const match = { hospitalId: hid, status: 'active', 'pharmacy.status': 'given' };
+  if (from || to) {
+    match['pharmacy.givenAt'] = {};
+    if (from) match['pharmacy.givenAt'].$gte = dayRange(from)[0];
+    if (to) match['pharmacy.givenAt'].$lt = dayRange(to)[1];
+  }
+  if (search.trim()) {
+    const found = await Patient.find({ hospitalId: hid, $or: [{ nameKey: containsText(search.trim()) }, { patientNumber: new RegExp(`^${escapeRegex(search.trim())}`, 'i') }] }).select('_id').limit(500).lean();
+    match.patientId = { $in: found.map((p) => p._id) };
+  }
+  const [total, rows] = await Promise.all([
+    Visit.countDocuments(match),
+    Visit.find(match).sort({ 'pharmacy.givenAt': -1 }).skip((page - 1) * limit).limit(limit).lean(),
+  ]);
+  const patients = await Patient.find({ hospitalId: hid, _id: { $in: rows.map((v) => v.patientId) } }).select('name patientNumber').lean();
+  const byId = new Map(patients.map((p) => [String(p._id), p]));
+  return {
+    items: rows.map((v) => {
+      const p = byId.get(String(v.patientId));
+      return { visitId: String(v._id), patient: { id: String(v.patientId), name: p?.name ?? '', patientNumber: p?.patientNumber ?? '' }, visitOn: dayIso(v.visitOn), doctor: v.prescription.byName, items: pharmacyItems(v), ...v.pharmacy };
+    }),
+    total,
+    page,
+    limit,
+    pages: Math.max(1, Math.ceil(total / limit)),
+  };
 }
 
 // The pharmacist gives it (sold at the counter, or given another way): it leaves the waiting list.
