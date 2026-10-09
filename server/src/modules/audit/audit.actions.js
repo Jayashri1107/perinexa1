@@ -109,6 +109,7 @@ export const AUDIT_ACTIONS = Object.freeze({
   NURSING_ENTRY: 'Nursing chart entry',
   NURSING_ENTRY_CANCELLED: 'Nursing chart entry marked as entered in error',
   NURSING_STATION_VIEWED: 'Nursing station opened',
+  DOCTOR_DESK_VIEWED: "Doctor's desk opened",
   CARE_CHART_VIEWED: 'Medicine and care charts opened',
   CARE_ORDER_ADDED: "Doctor's order written (medicine, IV fluid or care task)",
   CARE_ORDER_STOPPED: "Doctor's order stopped",

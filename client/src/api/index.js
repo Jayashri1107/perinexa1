@@ -84,6 +84,8 @@ export const auditApi = {
 };
 
 export const todayApi = { get: () => http.get('/hospital/today') };
+// The doctor's desk (9 Oct 2026): my patients, clinical alerts, pending reviews
+export const doctorDeskApi = { get: () => http.get('/hospital/doctor-desk') };
 
 export const platformAnalyticsApi = { get: () => http.get('/platform-analytics') };
 export const platformBillingApi = { get: () => http.get('/platform-billing') };

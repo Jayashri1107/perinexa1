@@ -308,7 +308,7 @@ export function AdmissionPage() {
           {documents.length === 0 && <p className="muted">No documents yet.</p>}
           {documents.filter((d) => d.kind !== 'discharge' || d.status === 'cancelled').map((d) => (
             <div key={d.id === openDocId ? `${d.id}-open` : d.id} id={`doc-${d.id}`}>
-              <Doc stayId={stay.id} doc={d} can={can} startEditing={d.id === openDocId} onChanged={(r) => setData(r)} />
+              <Doc stayId={stay.id} doc={d} can={can} startEditing={d.id === openDocId || d.id === params.get('open')} onChanged={(r) => setData(r)} />
             </div>
           ))}
         </div>

@@ -1396,3 +1396,45 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
   .lab-row { grid-template-columns: minmax(0, 1fr) auto; }
   .lab-row > svg:last-child { display: none; }
 }
+
+/* ---------- The doctor's desk; the lab overview's rows; the sidebar colour the full height (9 Oct 2026) ---------- */
+/* the sidebar stays put while the page scrolls; its colour also runs down the whole page (full-page prints, short
+   windows) */
+.shell { position: relative; }
+.shell::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: var(--sidebar-width); background: var(--sidebar-bg); }
+.shell.collapsed::before { width: 88px; }
+.shell > .main { position: relative; }
+@media (max-width: 820px) { .shell::before { display: none; } }
+
+.desk-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-4); align-items: stretch; }
+.desk-row.desk-even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.desk-card { display: flex; flex-direction: column; min-height: 0; max-height: 520px; }
+.desk-card > .card-head { flex-shrink: 0; }
+.desk-scroll { overflow-y: auto; min-height: 0; flex: 1 1 auto; margin: 0 calc(-1 * var(--space-2)); padding: 0 var(--space-2); }
+.desk-empty { flex: 1; display: grid; place-items: center; text-align: center; padding: var(--space-5) var(--space-3); border: 1px dashed var(--color-border); border-radius: var(--radius-sm); margin: 0; }
+.desk-table td { vertical-align: top; }
+.danger-text { color: var(--color-danger); font-weight: 600; }
+.desk-alerts { display: grid; gap: 6px; align-content: start; }
+.desk-alert a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-2); align-items: start; padding: 10px var(--space-3); border: 1px solid var(--color-border); border-left: 4px solid var(--color-warning); border-radius: var(--radius-sm); color: var(--color-text); text-decoration: none; }
+.desk-alert.urgent a { border-left-color: var(--color-danger); }
+.desk-alert a:hover { text-decoration: none; background: var(--color-primary-soft); }
+.desk-alert-icon { margin-top: 2px; color: var(--color-text-muted); }
+.desk-opd { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-2); }
+.desk-opd li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; padding: 8px var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.lab-quick-row { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 0; }
+.lab-quick-row .lab-quick-item { background: var(--color-surface); }
+.lab-quick-arrow { margin-left: auto; flex-shrink: 0; }
+.lab-empty { display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-5); border: 1px dashed var(--color-border); border-radius: var(--radius-sm); margin: 0; }
+.lab-pending { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.lab-steps { list-style: none; margin: var(--space-3) 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); counter-reset: step; }
+.lab-steps li { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--color-surface-muted); }
+.lab-steps svg { vertical-align: -2px; }
+@media (max-width: 1100px) {
+  .desk-row, .desk-row.desk-even { grid-template-columns: 1fr; }
+  .desk-card { max-height: none; }
+  .lab-quick-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lab-pending { grid-template-columns: 1fr; }
+  .lab-steps { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) { .lab-quick-row { grid-template-columns: 1fr; } }
+.desk-bed { width: 22%; min-width: 90px; }

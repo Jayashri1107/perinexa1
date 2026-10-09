@@ -49,6 +49,7 @@ import medicalHistoryRoutes from './medicalHistory/medicalHistory.routes.js';
 import notificationRoutes from './notifications/notification.routes.js';
 import wardRoutes from './wards/ward.routes.js';
 import wardCareRoutes from './wardCare/wardCare.routes.js';
+import doctorDeskRoutes from './doctorDesk/doctorDesk.routes.js';
 import nursingServiceRoutes, { billingServicesRouter } from './nursingServices/nursingService.routes.js';
 
 const { access } = config;
@@ -130,6 +131,8 @@ export const modules = [
   { path: '/hospital/wards', access: 'hospital', roles: access.wards, router: wardRoutes },
   // The nurse's work (9 Oct 2026): the nursing station, doctors' orders, dose / IV / task charts, intake and output, handover
   { path: '/hospital/ward-care', access: 'hospital', roles: access.patientsClinical, router: wardCareRoutes },
+  // The doctor's desk (9 Oct 2026): my patients, clinical alerts, pending reviews, ward rounds due
+  { path: '/hospital/doctor-desk', access: 'hospital', roles: config.prescriberRoles, router: doctorDeskRoutes },
   // Services nurses give (injection, dressing …), sent to the front desk and added to the bill (9 Oct 2026)
   { path: '/hospital/nursing-services', access: 'hospital', roles: access.patientsClinical, router: nursingServiceRoutes },
   { path: '/hospital/billing/services', access: 'hospital', roles: access.billing, router: billingServicesRouter },

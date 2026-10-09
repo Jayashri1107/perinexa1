@@ -1,6 +1,7 @@
 // Today for lab staff (owner, 9 Oct 2026): the laboratory's workload – new requests, samples waiting, tests in progress,
-// results awaiting the doctor's verification – as tiles that open the matching Lab tab; quick actions; and the pending
-// work, urgent first, then oldest. Every number comes from the lab orders.
+// results awaiting the doctor's verification – as tiles that open the matching Lab tab; quick actions in a row; the
+// pending work (urgent first, then oldest) across the page; and the steps of an order. Every number comes from the
+// lab orders. Each part is full width, so the page has no empty columns.
 import { AlertTriangle, ArrowRight, CircleCheck, ClipboardList, FileCheck2, FlaskConical, RotateCcw, TestTube, Truck, Zap } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -73,61 +74,56 @@ export function LabToday() {
         <Alert type="error"><Zap size={14} aria-hidden /> {c.urgentOpen === 1 ? '1 urgent order is still open – it is' : `${c.urgentOpen} urgent orders are still open – they are`} at the top of the list below.</Alert>
       )}
 
-      <div className="nt-grid">
-        <section className="card">
-          <div className="card-head">
-            <h2><AlertTriangle size={18} aria-hidden /> Pending lab work</h2>
-            <Link to="/hospital/lab" className="small">View all <ArrowRight size={12} aria-hidden /></Link>
-          </div>
-          {data.pending.length === 0 ? (
-            <p className="muted"><CircleCheck size={14} aria-hidden /> Nothing pending. All requests are done.</p>
-          ) : (
-            <ul className="plain-list nt-due">
-              {data.pending.map((o) => (
-                <li key={o.id}>
-                  <button type="button" className={`nt-due-row lab-row${o.urgent ? ' overdue' : ''}`} onClick={() => navigate(`/hospital/lab/orders/${o.id}`)}>
-                    <span className="nt-due-what">
-                      <strong>{o.patient.name}</strong> <span className="muted small">{o.patient.patientNumber} · {o.orderNumber}</span>
-                      <span className="small block">{o.tests.join(', ')}{o.sampleTypes.length > 0 && <span className="muted"> · {o.sampleTypes.join(', ')}</span>}</span>
-                      <span className="muted small block">Ordered {formatDateTime(o.orderedAt)}{o.sampleNumber && ` · sample ${o.sampleNumber}`}</span>
-                    </span>
-                    <span className="lab-row-badges">
-                      {o.urgent && <StateBadge look={{ tone: 'danger', icon: Zap, word: 'Urgent' }} small />}
-                      <StateBadge look={stageLook(o)} small />
-                    </span>
-                    <ArrowRight size={16} className="muted" aria-hidden />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      <nav className="lab-quick lab-quick-row" aria-label="Quick actions">
+        {QUICK.map(({ to, icon: Icon, label, hint }) => (
+          <Link key={to} to={to} className="lab-quick-item">
+            <span className="nt-tile-icon"><Icon size={18} aria-hidden /></span>
+            <span><strong className="block">{label}</strong><span className="muted small">{hint}</span></span>
+            <ArrowRight size={16} className="muted lab-quick-arrow" aria-hidden />
+          </Link>
+        ))}
+      </nav>
 
-        <div className="stack">
-          <section className="card">
-            <h2>Quick actions</h2>
-            <div className="lab-quick">
-              {QUICK.map(({ to, icon: Icon, label, hint }) => (
-                <Link key={to} to={to} className="lab-quick-item">
-                  <span className="nt-tile-icon"><Icon size={18} aria-hidden /></span>
-                  <span><strong className="block">{label}</strong><span className="muted small">{hint}</span></span>
-                </Link>
-              ))}
-            </div>
-          </section>
-          <section className="card">
-            <h2>How an order moves</h2>
-            <ol className="lab-flow small">
-              <li><ClipboardList size={14} aria-hidden /> A doctor orders the test</li>
-              <li><TestTube size={14} aria-hidden /> Sample taken (here or on the ward) and numbered</li>
-              <li><Truck size={14} aria-hidden /> Received in the lab, or rejected <RotateCcw size={12} aria-hidden /> for a new sample</li>
-              <li><FlaskConical size={14} aria-hidden /> Test started, results entered</li>
-              <li><FileCheck2 size={14} aria-hidden /> The doctor verifies – the report is final</li>
-            </ol>
-            <p className="muted small">The lab does not change what the doctor ordered: ask the doctor instead. Changes to reported results need a reason and keep the earlier results.</p>
-          </section>
+      <section className="card">
+        <div className="card-head">
+          <h2><AlertTriangle size={18} aria-hidden /> Pending lab work <span className="muted small">{data.pending.length}</span></h2>
+          <Link to="/hospital/lab" className="small">View all <ArrowRight size={12} aria-hidden /></Link>
         </div>
-      </div>
+        {data.pending.length === 0 ? (
+          <p className="muted lab-empty"><CircleCheck size={16} aria-hidden /> Nothing pending – every request is done. New requests from the doctors appear here.</p>
+        ) : (
+          <ul className="plain-list nt-due lab-pending">
+            {data.pending.map((o) => (
+              <li key={o.id}>
+                <button type="button" className={`nt-due-row lab-row${o.urgent ? ' overdue' : ''}`} onClick={() => navigate(`/hospital/lab/orders/${o.id}`)}>
+                  <span className="nt-due-what">
+                    <strong>{o.patient.name}</strong> <span className="muted small">{o.patient.patientNumber} · {o.orderNumber}</span>
+                    <span className="small block">{o.tests.join(', ')}{o.sampleTypes.length > 0 && <span className="muted"> · {o.sampleTypes.join(', ')}</span>}</span>
+                    <span className="muted small block">Ordered {formatDateTime(o.orderedAt)}{o.sampleNumber && ` · sample ${o.sampleNumber}`}</span>
+                  </span>
+                  <span className="lab-row-badges">
+                    {o.urgent && <StateBadge look={{ tone: 'danger', icon: Zap, word: 'Urgent' }} small />}
+                    <StateBadge look={stageLook(o)} small />
+                  </span>
+                  <ArrowRight size={16} className="muted" aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>How an order moves</h2>
+        <ol className="lab-steps">
+          <li><span className="nt-tile-icon"><ClipboardList size={16} aria-hidden /></span><span>A doctor orders the test</span></li>
+          <li><span className="nt-tile-icon"><TestTube size={16} aria-hidden /></span><span>Sample taken and numbered</span></li>
+          <li><span className="nt-tile-icon"><Truck size={16} aria-hidden /></span><span>Received in the lab – or rejected <RotateCcw size={12} aria-hidden /> for a new sample</span></li>
+          <li><span className="nt-tile-icon"><FlaskConical size={16} aria-hidden /></span><span>Test started, results entered</span></li>
+          <li><span className="nt-tile-icon"><FileCheck2 size={16} aria-hidden /></span><span>The doctor verifies – the report is final</span></li>
+        </ol>
+        <p className="muted small">The lab does not change what the doctor ordered: ask the doctor instead. Changes to reported results need a reason and keep the earlier results.</p>
+      </section>
     </div>
   );
 }

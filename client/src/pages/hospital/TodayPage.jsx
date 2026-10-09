@@ -52,6 +52,7 @@ import { InHospitalCard } from '../inpatient/InHospitalCard.jsx';
 import { NursingTodayCard } from '../nursing/NursingTodayCard.jsx';
 import { NurseToday } from '../nursing/NurseToday.jsx';
 import { LabToday } from '../lab/LabToday.jsx';
+import { DoctorToday } from '../doctor/DoctorToday.jsx';
 import { TodayBooking } from './TodayBooking.jsx';
 import { PrescriptionOrdersCard } from '../dispensing/PrescriptionOrdersCard.jsx';
 
@@ -142,11 +143,13 @@ function saveArea(key) {
   }
 }
 
-// A nurse gets her own Today (what is due on her ward), and lab staff the lab's overview (owner, 9 Oct 2026).
+// A nurse gets her own Today (what is due on her ward), lab staff the lab's overview, doctors and RMOs the doctor's desk
+// (owner, 9 Oct 2026).
 export function TodayPage() {
   const { roles } = useAuth();
   if (roles.length > 0 && roles.every((r) => r === 'nurse')) return <NurseToday />;
   if (roles.length > 0 && roles.every((r) => r === 'lab')) return <LabToday />;
+  if (roles.length > 0 && roles.every((r) => r === 'doctor' || r === 'rmo')) return <DoctorToday />;
   return <GeneralToday />;
 }
 

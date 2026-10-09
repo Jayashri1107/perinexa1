@@ -31,6 +31,9 @@ export const DOC_FIELDS = {
     { key: 'examination', label: 'Examination', type: 'area' },
     { key: 'assessment', label: 'Assessment', type: 'area' },
     { key: 'plan', label: 'Plan and orders', type: 'area' },
+    // owner, 9 Oct 2026
+    { key: 'followUp', label: 'Follow-up plan (when to review, what to watch)', type: 'area' },
+    { key: 'handover', label: 'Handover (for the next doctor and the nurses)', type: 'area' },
   ],
   delivery: [
     { key: 'deliveredAt', label: 'Date and time of delivery', type: 'datetime', required: true },

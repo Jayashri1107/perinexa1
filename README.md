@@ -93,6 +93,15 @@ Fake sample data only.
 - **Theme**: the sun / moon button beside the bell (Light, Dark, Match device); My settings keeps text size and spacing.
 - The active menu item is a white tile with an indigo icon (no light green); the nurse tiles use indigo too.
 
+**9 Oct 2026 (night) – the doctor's desk, a fuller lab overview**
+- **Doctors and RMOs' Today** (`/api/hospital/doctor-desk`): Patients under care, Reviews due, Reports to review, Pending
+  tasks; **My patients** in hospital (bed, ward, diagnosis from the admission note, allergies, round due, alerts) beside
+  **Clinical alerts** (red flags of the approved rules, results outside range not reviewed, doses not given in 24 hours,
+  rejected samples, the lab's questions); **Ward rounds** (Write round note opens a new round note) beside **Pending
+  reviews** (lab reports, ward documents to sign, OPD visits to sign); OPD today. An RMO sees everyone in hospital.
+- The round note also holds **Follow-up plan** and **Handover**.
+- The lab overview is full width row by row (no empty columns); the sidebar's colour runs the whole page height.
+
 ### Who sees what (config.access)
 
 | Role | Menu |

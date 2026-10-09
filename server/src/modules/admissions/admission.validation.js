@@ -44,7 +44,7 @@ export const dischargeMedicine = rxItem
 
 export const DOC_CONTENT = {
   admission: z.object({ reason: z.string().trim().min(2, 'Give the reason for admission').max(500), history: text(), vitals, examination: text(), provisionalDiagnosis: text(500), plan: text() }),
-  round: z.object({ at: when, complaints: text(), vitals, examination: text(), assessment: text(1000), plan: text() }),
+  round: z.object({ at: when, complaints: text(), vitals, examination: text(), assessment: text(1000), plan: text(), followUp: text(1000), handover: text(1000) }),
   delivery: z.object({
     deliveredAt: when,
     mode: z.enum(['normal', 'vacuum', 'forceps', 'lscs', 'other'], { error: 'Choose the mode of delivery' }),
