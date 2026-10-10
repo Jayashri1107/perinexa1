@@ -22,6 +22,7 @@ import { atLeast, recordLevel } from '../patients/patientAccess.js';
 import { notifyRoles } from '../notifications/notification.service.js';
 import { User } from '../users/user.model.js';
 import { medicineWarnings, needsReason } from './medicineSafety.js';
+import { medicineOptions } from '../medicines/medicine.service.js';
 import { evaluateRedFlags, redFlagFacts } from './redFlags.js';
 import { Visit } from './visit.model.js';
 
@@ -249,6 +250,33 @@ export async function saveDetails(req, patientId, visitId, { rev, ...data }) {
   if (data.nextVisitOn && data.nextVisitOn !== before) await bookNextVisit(req, patient, visit, data.nextVisitOn);
   await recordAudit(req, 'VISIT_UPDATED', { hospitalId: req.hospitalId, details: { patientId, visitId, part: 'details' } });
   return fullAnswer(req, loaded);
+}
+
+// ---------- Writing a prescription: medicine names and her last prescription (owner, 10 Oct 2026) ----------
+
+// The pharmacy's medicine forms as the prescription's forms.
+const RX_FORM_OF = { tablet: 'tab', capsule: 'cap', syrup: 'syrup', injection: 'inj', drops: 'drops', cream: 'cream', sachet: 'sachet', other: 'other' };
+
+// Medicine names from the hospital's medicine list, for the prescriber to pick (name, strength, form, in stock or not –
+// no prices or batches). A name not on the list can still be written by hand.
+export async function prescribeMedicines(req, search) {
+  if (!isPrescriber(req)) throw new HttpError(403, 'Doctors and RMOs write prescriptions.', 'FORBIDDEN');
+  const rows = await medicineOptions(req.hospitalId, search);
+  return { items: rows.map((m) => ({ id: m.id, name: m.name, strength: m.strength ?? '', form: RX_FORM_OF[m.form] ?? 'other', inStock: (m.available ?? 0) > 0 })) };
+}
+
+// Her latest earlier prescription (another visit, not entered in error), to copy as a starting point.
+export async function previousPrescription(req, patientId, visitId) {
+  const { visit, level } = await loadVisit(req, patientId, visitId);
+  if (!canDoClinical(req, level)) throw new HttpError(403, 'Her doctor or an RMO writes the prescription.', 'FORBIDDEN');
+  const prev = await Visit.findOne({ hospitalId: req.hospitalId, patientId, status: 'active', _id: { $ne: visit._id }, visitOn: { $lte: visit.visitOn }, 'prescription.items.0': { $exists: true } })
+    .sort({ visitOn: -1, createdAt: -1 })
+    .lean();
+  return {
+    visitOn: prev?.visitOn ?? null,
+    items: (prev?.prescription?.items ?? []).map(({ _id, ...i }) => i),
+    notes: prev?.prescription?.notes ?? '',
+  };
 }
 
 export async function savePrescription(req, patientId, visitId, { rev, items, notes, reasons }) {

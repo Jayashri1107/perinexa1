@@ -274,6 +274,8 @@ export const visitsApi = {
   addition: (patientId, visitId, text) => http.post(`${VISITS}/patient/${patientId}/${visitId}/additions`, { text }),
   sendToPharmacy: (patientId, visitId) => http.post(`${VISITS}/patient/${patientId}/${visitId}/send-to-pharmacy`),
   sets: (careType) => http.get(`${VISITS}/sets`, { careType }),
+  medicines: (search) => http.get(`${VISITS}/medicines`, { search }),
+  previousPrescription: (patientId, visitId) => http.get(`${VISITS}/patient/${patientId}/${visitId}/previous-prescription`),
 };
 // Giving a prescription: medicines, other charges, payment and the bill (the pharmacy and the front desk)
 const DISPENSING = '/hospital/dispensing';

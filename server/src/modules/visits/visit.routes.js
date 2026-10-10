@@ -6,9 +6,11 @@ import * as controller from './visit.controller.js';
 const router = Router();
 
 router.get('/sets', controller.sets);
+router.get('/medicines', controller.medicines);
 router.get('/patient/:patientId', controller.list);
 router.post('/patient/:patientId', controller.start);
 router.get('/patient/:patientId/:visitId', controller.get);
+router.get('/patient/:patientId/:visitId/previous-prescription', controller.previousPrescription);
 router.put('/patient/:patientId/:visitId/vitals', controller.vitals);
 router.put('/patient/:patientId/:visitId/details', controller.details);
 router.put('/patient/:patientId/:visitId/prescription', controller.prescription);

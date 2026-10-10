@@ -86,3 +86,12 @@ export async function markGiven(req, res) {
   await service.markGiven(req, visitId);
   res.json(await service.pharmacyQueue(req));
 }
+
+export async function medicines(req, res) {
+  res.json(await service.prescribeMedicines(req, parse(z.object({ search: z.string().trim().max(60).default('') }), req.query).search));
+}
+
+export async function previousPrescription(req, res) {
+  const { patientId, visitId } = ids(req);
+  res.json(await service.previousPrescription(req, patientId, visitId));
+}
