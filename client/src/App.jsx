@@ -9,10 +9,42 @@ import { LoginPage } from './pages/auth/LoginPage.jsx';
 import { Loader } from './components/Loader.jsx';
 import { ProtectedRoute } from './routes/ProtectedRoute.jsx';
 import { Toaster } from './components/Toast.jsx';
+import { PageErrorBoundary } from './components/PageErrorBoundary.jsx';
 
 // Each page is downloaded the first time it is opened, not all at once with the sign-in page – a much smaller first
 // download, which matters on phones and slow hospital connections.
-const page = (load, name) => lazy(() => load().then((m) => ({ default: m[name] })));
+// A download that fails (the server restarting, a new version of the website, a network blip) is tried once more; if
+// it fails again the whole page is reloaded once – at most every 30 seconds, so it never loops – and only then is the
+// error shown (PageErrorBoundary).
+const RELOADED_AT = 'p1:page-reloaded-at';
+async function loadPage(load) {
+  try {
+    return await load();
+  } catch (err) {
+    await new Promise((r) => setTimeout(r, 800));
+    try {
+      return await load();
+    } catch {
+      let last = 0;
+      try {
+        last = Number(sessionStorage.getItem(RELOADED_AT)) || 0;
+      } catch {
+        last = Date.now(); // no session storage: never reload by ourselves
+      }
+      if (Date.now() - last > 30_000) {
+        try {
+          sessionStorage.setItem(RELOADED_AT, String(Date.now()));
+        } catch {
+          /* reloading once is still right */
+        }
+        window.location.reload();
+        return new Promise(() => {}); // the page is going away
+      }
+      throw err;
+    }
+  }
+}
+const page = (load, name) => lazy(() => loadPage(load).then((m) => ({ default: m[name] })));
 const AccountPage = page(() => import('./pages/account/AccountPage.jsx'), 'AccountPage');
 const AnalyticsPage = page(() => import('./pages/analytics/AnalyticsPage.jsx'), 'AnalyticsPage');
 const DayPage = page(() => import('./pages/appointments/DayPage.jsx'), 'DayPage');
@@ -108,177 +140,179 @@ export function App() {
     <AppConfigProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Suspense fallback={<Loader />}>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
+          <PageErrorBoundary>
+            <Suspense fallback={<Loader />}>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
 
-              <Route element={<ProtectedRoute allowPasswordChange />}>
-                <Route path="/change-password" element={<ChangePasswordPage />} />
-              </Route>
-
-              {/* Signed in, but no active hospital access */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/workspace" element={<WorkspacePage />} />
-                <Route element={<PersonalLayout />}>
-                  <Route path="/account" element={<AccountPage />} />
+                <Route element={<ProtectedRoute allowPasswordChange />}>
+                  <Route path="/change-password" element={<ChangePasswordPage />} />
                 </Route>
-              </Route>
 
-              {/* Printouts (no menu) */}
-              <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
-                <Route path="/hospital/print/prescription/:patientId/:visitId" element={<PrescriptionPrintPage />} />
-                <Route path="/hospital/print/ward-document/:stayId/:docId" element={<WardDocumentPrintPage />} />
-              </Route>
-              <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
-                <Route path="/hospital/print/discharge-card/:cardId" element={<DischargeCardPrintPage />} />
-              </Route>
-              <Route element={<ProtectedRoute area="hospital" access="billing" />}>
-                <Route path="/hospital/print/bill/:id" element={<BillPrintPage />} />
-                <Route path="/hospital/print/receipt/:billId/:paymentId" element={<ReceiptPrintPage />} />
-              </Route>
-              <Route element={<ProtectedRoute area="hospital" access="dispense" />}>
-                <Route path="/hospital/print/prescription-bill/:billId" element={<PrescriptionBillPrintPage />} />
-              </Route>
-              <Route element={<ProtectedRoute area="hospital" access="pharmacy" />}>
-                <Route path="/hospital/print/sale/:id" element={<SaleInvoicePrintPage />} />
-                <Route path="/hospital/print/debit-note/:id" element={<DebitNotePrintPage />} />
-              </Route>
-
-              {/* Working in a hospital */}
-              <Route element={<ProtectedRoute area="hospital" />}>
-                <Route path="/hospital" element={<HospitalLayout />}>
-                  <Route index element={<TodayPage />} />
-                  {/* Give a prescription: medicines, other charges, payment, the bill (the pharmacy and the front desk) */}
-                  <Route element={<ProtectedRoute area="hospital" access="dispense" />}>
-                    <Route path="dispensing/:visitId" element={<GivePrescriptionPage />} />
+                {/* Signed in, but no active hospital access */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/workspace" element={<WorkspacePage />} />
+                  <Route element={<PersonalLayout />}>
+                    <Route path="/account" element={<AccountPage />} />
                   </Route>
-
-                  {/* Module 3 – patients */}
-                  <Route element={<ProtectedRoute area="hospital" access="patients" />}>
-                    <Route path="patients" element={<PatientsPage />} />
-                    <Route path="patients/:id" element={<PatientDetailPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
-                    <Route path="patients/:id/visits/:visitId" element={<VisitPage />} />
-                    <Route path="inpatients/:id" element={<AdmissionPage />} />
-                  <Route path="nursing" element={<NursingStationPage />} />
-                    <Route path="patients/:id/history" element={<MedicalHistoryPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
-                    <Route path="discharges" element={<DischargesPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="registrationMenu" />}>
-                    <Route path="admissions" element={<AdmissionsDeskPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="registerPatients" />}>
-                    <Route path="patients/new" element={<PatientRegisterPage />} />
-                  </Route>
-
-                  {/* Module 4 – billing */}
-                  <Route element={<ProtectedRoute area="hospital" access="billing" />}>
-                    <Route path="billing" element={<BillsPage />} />
-                    <Route path="billing/new" element={<NewBillPage />} />
-                    <Route path="billing/bills/:id" element={<BillDetailPage />} />
-                    <Route path="billing/unpaid" element={<UnpaidPage />} />
-                  <Route path="billing/services" element={<ServicesToBillPage />} />
-                    <Route path="billing/daily" element={<DailySummaryPage />} />
-                    <Route path="billing/price-list" element={<PriceListPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="billingReports" />}>
-                    <Route path="billing/monthly" element={<MonthlyPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="billingAdmin" />}>
-                    <Route path="billing/settings" element={<BillingSettingsPage />} />
-                  </Route>
-
-                  {/* Module 5 – pharmacy */}
-                  <Route element={<ProtectedRoute area="hospital" access="pharmacy" />}>
-                    <Route path="pharmacy" element={<PharmacyHome />} />
-                    <Route path="pharmacy/sales" element={<SalesPage />} />
-                    <Route path="pharmacy/sales/:id" element={<SaleDetailPage />} />
-                    <Route path="pharmacy/stock" element={<StockPage />} />
-                    <Route path="pharmacy/expiring" element={<ExpiringPage />} />
-                    <Route path="pharmacy/medicines" element={<MedicinesPage />} />
-                    <Route path="pharmacy/purchases" element={<PurchasesPage />} />
-                    <Route path="pharmacy/suppliers" element={<SuppliersPage />} />
-                    <Route path="pharmacy/orders" element={<OrdersPage />} />
-                    <Route path="pharmacy/orders/:id" element={<OrderPage />} />
-                    <Route path="pharmacy/supplier-returns" element={<SupplierReturnsPage />} />
-                    <Route path="pharmacy/reports" element={<PharmacyReportsPage />} />
-                    <Route path="pharmacy/settings" element={<PharmacySettingsPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="pharmacyCounter" />}>
-                    <Route path="pharmacy/purchases/new" element={<NewPurchasePage />} />
-                    <Route path="pharmacy/supplier-returns/new" element={<NewSupplierReturnPage />} />
-                    <Route path="pharmacy/ward" element={<IssueToWardPage />} />
-                    <Route path="pharmacy/prescriptions" element={<PrescriptionsQueuePage />} />
-                  </Route>
-
-                  {/* Module 6 – analytics */}
-                  <Route element={<ProtectedRoute area="hospital" access="analytics" />}>
-                    <Route path="analytics" element={<AnalyticsPage />} />
-                  </Route>
-
-                  {/* Module 7 – the doctor's work: appointments, calendar, lab, clinic library */}
-                  <Route element={<ProtectedRoute area="hospital" access="appointments" />}>
-                    <Route path="appointments" element={<DayPage />} />
-                    <Route path="appointments/needs-time" element={<NeedsTimePage />} />
-                    <Route path="appointments/timings" element={<TimingsPage />} />
-                    <Route path="appointments/timings/:doctorId" element={<DoctorTimingsPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="calendar" />}>
-                    <Route path="calendar" element={<CalendarPage />} />
-                    <Route path="calendar/reminders" element={<RemindersPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="lab" />}>
-                    <Route path="lab" element={<LabPage />} />
-                    <Route path="lab/orders/:id" element={<LabOrderPage />} />
-                  </Route>
-                  <Route element={<ProtectedRoute area="hospital" access="library" />}>
-                    <Route path="library" element={<LibraryListPage />} />
-                    <Route path="library/:kind" element={<LibraryListPage />} />
-                    <Route path="library/:kind/:id" element={<LibraryEntryPage />} />
-                  </Route>
-
-                  {/* Module 2 – hospital admin */}
-                  <Route element={<ProtectedRoute area="hospital" access="admin" />}>
-                    <Route path="admin" element={<AdminOverviewPage />} />
-                    <Route path="staff" element={<StaffPage />} />
-                    <Route path="opd-timings" element={<OpdTimingsPage />} />
-                    <Route path="wards" element={<WardsPage />} />
-                    <Route path="opd-timings/:doctorId" element={<OpdScheduleEditorPage />} />
-                    <Route path="settings" element={<Navigate to="/hospital/settings/_" replace />} />
-                    <Route path="settings/:section" element={<HospitalSettingsPage />} />
-                    <Route path="audit" element={<HospitalAuditPage />} />
-                  </Route>
-                  <Route path="*" element={<NotFoundPage home="/hospital" />} />
                 </Route>
-              </Route>
 
-              {/* Module 1 – main admin (super admin) */}
-              <Route element={<ProtectedRoute area="admin" />}>
-                <Route element={<AdminLayout />}>
-                  <Route index element={<DashboardPage />} />
-                  <Route path="hospitals" element={<HospitalsPage key="all" />} />
-                  <Route path="hospitals/new" element={<HospitalsPage key="new" startAdding />} />
-                  <Route path="hospitals/:id" element={<HospitalDetailPage />} />
-                  {/* Users & access tabs (as in Perinexa); key: each tab starts with its own filter */}
-                  <Route path="users" element={<UsersPage key="all" />} />
-                  <Route path="users/super-admins" element={<UsersPage key="super" preset={{ kind: 'superAdmin' }} />} />
-                  <Route path="users/staff" element={<UsersPage key="staff" preset={{ kind: 'staff' }} />} />
-                  <Route path="users/pending" element={<UsersPage key="pending" preset={{ status: 'pending' }} />} />
-                  <Route path="users/new" element={<UsersPage key="new" startAdding />} />
-                  <Route path="master-data" element={<Navigate to="/master-data/_" replace />} />
-                  <Route path="master-data/:type" element={<MasterDataPage />} />
-                  <Route path="analytics" element={<PlatformAnalyticsPage />} />
-                  <Route path="billing" element={<PlatformBillingPage />} />
-                  <Route path="pharmacy" element={<PlatformPharmacyPage />} />
-                  <Route path="audit" element={<AuditPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
+                {/* Printouts (no menu) */}
+                <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
+                  <Route path="/hospital/print/prescription/:patientId/:visitId" element={<PrescriptionPrintPage />} />
+                  <Route path="/hospital/print/ward-document/:stayId/:docId" element={<WardDocumentPrintPage />} />
                 </Route>
-              </Route>
-            </Routes>
-          </Suspense>
+                <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
+                  <Route path="/hospital/print/discharge-card/:cardId" element={<DischargeCardPrintPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="billing" />}>
+                  <Route path="/hospital/print/bill/:id" element={<BillPrintPage />} />
+                  <Route path="/hospital/print/receipt/:billId/:paymentId" element={<ReceiptPrintPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="dispense" />}>
+                  <Route path="/hospital/print/prescription-bill/:billId" element={<PrescriptionBillPrintPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="pharmacy" />}>
+                  <Route path="/hospital/print/sale/:id" element={<SaleInvoicePrintPage />} />
+                  <Route path="/hospital/print/debit-note/:id" element={<DebitNotePrintPage />} />
+                </Route>
+
+                {/* Working in a hospital */}
+                <Route element={<ProtectedRoute area="hospital" />}>
+                  <Route path="/hospital" element={<HospitalLayout />}>
+                    <Route index element={<TodayPage />} />
+                    {/* Give a prescription: medicines, other charges, payment, the bill (the pharmacy and the front desk) */}
+                    <Route element={<ProtectedRoute area="hospital" access="dispense" />}>
+                      <Route path="dispensing/:visitId" element={<GivePrescriptionPage />} />
+                    </Route>
+
+                    {/* Module 3 – patients */}
+                    <Route element={<ProtectedRoute area="hospital" access="patients" />}>
+                      <Route path="patients" element={<PatientsPage />} />
+                      <Route path="patients/:id" element={<PatientDetailPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
+                      <Route path="patients/:id/visits/:visitId" element={<VisitPage />} />
+                      <Route path="inpatients/:id" element={<AdmissionPage />} />
+                    <Route path="nursing" element={<NursingStationPage />} />
+                      <Route path="patients/:id/history" element={<MedicalHistoryPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
+                      <Route path="discharges" element={<DischargesPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="registrationMenu" />}>
+                      <Route path="admissions" element={<AdmissionsDeskPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="registerPatients" />}>
+                      <Route path="patients/new" element={<PatientRegisterPage />} />
+                    </Route>
+
+                    {/* Module 4 – billing */}
+                    <Route element={<ProtectedRoute area="hospital" access="billing" />}>
+                      <Route path="billing" element={<BillsPage />} />
+                      <Route path="billing/new" element={<NewBillPage />} />
+                      <Route path="billing/bills/:id" element={<BillDetailPage />} />
+                      <Route path="billing/unpaid" element={<UnpaidPage />} />
+                    <Route path="billing/services" element={<ServicesToBillPage />} />
+                      <Route path="billing/daily" element={<DailySummaryPage />} />
+                      <Route path="billing/price-list" element={<PriceListPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="billingReports" />}>
+                      <Route path="billing/monthly" element={<MonthlyPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="billingAdmin" />}>
+                      <Route path="billing/settings" element={<BillingSettingsPage />} />
+                    </Route>
+
+                    {/* Module 5 – pharmacy */}
+                    <Route element={<ProtectedRoute area="hospital" access="pharmacy" />}>
+                      <Route path="pharmacy" element={<PharmacyHome />} />
+                      <Route path="pharmacy/sales" element={<SalesPage />} />
+                      <Route path="pharmacy/sales/:id" element={<SaleDetailPage />} />
+                      <Route path="pharmacy/stock" element={<StockPage />} />
+                      <Route path="pharmacy/expiring" element={<ExpiringPage />} />
+                      <Route path="pharmacy/medicines" element={<MedicinesPage />} />
+                      <Route path="pharmacy/purchases" element={<PurchasesPage />} />
+                      <Route path="pharmacy/suppliers" element={<SuppliersPage />} />
+                      <Route path="pharmacy/orders" element={<OrdersPage />} />
+                      <Route path="pharmacy/orders/:id" element={<OrderPage />} />
+                      <Route path="pharmacy/supplier-returns" element={<SupplierReturnsPage />} />
+                      <Route path="pharmacy/reports" element={<PharmacyReportsPage />} />
+                      <Route path="pharmacy/settings" element={<PharmacySettingsPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="pharmacyCounter" />}>
+                      <Route path="pharmacy/purchases/new" element={<NewPurchasePage />} />
+                      <Route path="pharmacy/supplier-returns/new" element={<NewSupplierReturnPage />} />
+                      <Route path="pharmacy/ward" element={<IssueToWardPage />} />
+                      <Route path="pharmacy/prescriptions" element={<PrescriptionsQueuePage />} />
+                    </Route>
+
+                    {/* Module 6 – analytics */}
+                    <Route element={<ProtectedRoute area="hospital" access="analytics" />}>
+                      <Route path="analytics" element={<AnalyticsPage />} />
+                    </Route>
+
+                    {/* Module 7 – the doctor's work: appointments, calendar, lab, clinic library */}
+                    <Route element={<ProtectedRoute area="hospital" access="appointments" />}>
+                      <Route path="appointments" element={<DayPage />} />
+                      <Route path="appointments/needs-time" element={<NeedsTimePage />} />
+                      <Route path="appointments/timings" element={<TimingsPage />} />
+                      <Route path="appointments/timings/:doctorId" element={<DoctorTimingsPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="calendar" />}>
+                      <Route path="calendar" element={<CalendarPage />} />
+                      <Route path="calendar/reminders" element={<RemindersPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="lab" />}>
+                      <Route path="lab" element={<LabPage />} />
+                      <Route path="lab/orders/:id" element={<LabOrderPage />} />
+                    </Route>
+                    <Route element={<ProtectedRoute area="hospital" access="library" />}>
+                      <Route path="library" element={<LibraryListPage />} />
+                      <Route path="library/:kind" element={<LibraryListPage />} />
+                      <Route path="library/:kind/:id" element={<LibraryEntryPage />} />
+                    </Route>
+
+                    {/* Module 2 – hospital admin */}
+                    <Route element={<ProtectedRoute area="hospital" access="admin" />}>
+                      <Route path="admin" element={<AdminOverviewPage />} />
+                      <Route path="staff" element={<StaffPage />} />
+                      <Route path="opd-timings" element={<OpdTimingsPage />} />
+                      <Route path="wards" element={<WardsPage />} />
+                      <Route path="opd-timings/:doctorId" element={<OpdScheduleEditorPage />} />
+                      <Route path="settings" element={<Navigate to="/hospital/settings/_" replace />} />
+                      <Route path="settings/:section" element={<HospitalSettingsPage />} />
+                      <Route path="audit" element={<HospitalAuditPage />} />
+                    </Route>
+                    <Route path="*" element={<NotFoundPage home="/hospital" />} />
+                  </Route>
+                </Route>
+
+                {/* Module 1 – main admin (super admin) */}
+                <Route element={<ProtectedRoute area="admin" />}>
+                  <Route element={<AdminLayout />}>
+                    <Route index element={<DashboardPage />} />
+                    <Route path="hospitals" element={<HospitalsPage key="all" />} />
+                    <Route path="hospitals/new" element={<HospitalsPage key="new" startAdding />} />
+                    <Route path="hospitals/:id" element={<HospitalDetailPage />} />
+                    {/* Users & access tabs (as in Perinexa); key: each tab starts with its own filter */}
+                    <Route path="users" element={<UsersPage key="all" />} />
+                    <Route path="users/super-admins" element={<UsersPage key="super" preset={{ kind: 'superAdmin' }} />} />
+                    <Route path="users/staff" element={<UsersPage key="staff" preset={{ kind: 'staff' }} />} />
+                    <Route path="users/pending" element={<UsersPage key="pending" preset={{ status: 'pending' }} />} />
+                    <Route path="users/new" element={<UsersPage key="new" startAdding />} />
+                    <Route path="master-data" element={<Navigate to="/master-data/_" replace />} />
+                    <Route path="master-data/:type" element={<MasterDataPage />} />
+                    <Route path="analytics" element={<PlatformAnalyticsPage />} />
+                    <Route path="billing" element={<PlatformBillingPage />} />
+                    <Route path="pharmacy" element={<PlatformPharmacyPage />} />
+                    <Route path="audit" element={<AuditPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Route>
+                </Route>
+              </Routes>
+            </Suspense>
+          </PageErrorBoundary>
           <Toaster />
         </BrowserRouter>
       </AuthProvider>
