@@ -222,6 +222,7 @@ export const labApi = {
   dashboard: () => http.get(`${LAB}/dashboard`),
   results: (id, data) => http.put(`${LAB}/orders/${id}/results`, data),
   review: (id) => http.post(`${LAB}/orders/${id}/review`),
+  printReport: (id) => http.get(`${LAB}/orders/${id}/print`),
   cancel: (id, reason) => http.post(`${LAB}/orders/${id}/cancel`, { reason }),
 };
 // Reception books lab tests from Today
@@ -366,4 +367,14 @@ export const wardsApi = {
   list: () => http.get('/hospital/wards'),
   create: (data) => http.post('/hospital/wards', data),
   update: (id, data) => http.patch(`/hospital/wards/${id}`, data),
+};
+
+// A pregnancy's scans and vaccinations, the pregnancy card and the check-ups due (owner, 10 Oct 2026)
+const PREGNANCY = '/hospital/pregnancy';
+export const pregnancyApi = {
+  card: (patientId) => http.get(`${PREGNANCY}/patients/${patientId}`),
+  done: (patientId, key, data) => http.post(`${PREGNANCY}/patients/${patientId}/items/${encodeURIComponent(key)}/done`, data),
+  undo: (patientId, key, reason) => http.post(`${PREGNANCY}/patients/${patientId}/items/${encodeURIComponent(key)}/undo`, { reason }),
+  reminders: (from) => http.get(`${PREGNANCY}/reminders`, { from }),
+  reminderSent: (patientId, keys) => http.post(`${PREGNANCY}/reminders/${patientId}/sent`, { keys }),
 };

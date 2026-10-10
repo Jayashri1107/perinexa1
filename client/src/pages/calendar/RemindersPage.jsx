@@ -9,6 +9,7 @@ import { DataTable } from '../../components/list/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { SectionTabs } from '../../components/SectionTabs.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
+import { WhatsAppButton } from '../../components/WhatsAppButton.jsx';
 import { CALENDAR_TABS } from '../../config/navigation.js';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
 import { formatDateTime, todayInput } from '../../utils/format.js';
@@ -66,6 +67,7 @@ export function RemindersPage() {
       label: '',
       render: (a) => (
         <div className="row-actions">
+          <WhatsAppButton phone={phoneOf(a)} agreed text={a.message} small label="WhatsApp" />
           <CopyButton text={a.message} />
           {data.canSend && !a.reminderSentAt && <button type="button" className="btn btn-ghost btn-sm" onClick={() => markSent(a)}>Mark sent</button>}
         </div>

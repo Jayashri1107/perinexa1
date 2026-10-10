@@ -30,6 +30,7 @@ const itemSchema = new mongoose.Schema({
   done: nested({ on: { type: Date, required: true }, note: { type: String, maxlength: 500, default: '' }, ...actor }),
   notNeeded: nested({ reason: { type: String, enum: NOT_NEEDED_REASONS, required: true }, note: { type: String, maxlength: 300, default: '' }, ...actor }),
   forceInclude: nested({ reason: { type: String, required: true, maxlength: 300 }, ...actor }), // "only when" judged to apply
+  remindedAt: { type: Date, default: null }, // a check-up reminder was sent for this item (Calendar → Check-ups due)
 });
 
 const carePlanSchema = new mongoose.Schema(

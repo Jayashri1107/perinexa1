@@ -19,6 +19,7 @@ router.post('/orders/:id/reject', controller.reject);
 router.post('/orders/:id/query', controller.query);
 router.put('/orders/:id/results', controller.results);
 router.post('/orders/:id/review', controller.review);
+router.get('/orders/:id/print', controller.printReport);
 router.post('/orders/:id/cancel', controller.cancel);
 
 export default router;

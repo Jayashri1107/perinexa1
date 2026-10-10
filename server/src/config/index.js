@@ -95,6 +95,8 @@ const schema = z.object({
     labOrder: roleList,
     labReport: roleList,
     labReview: roleList,
+    labPrint: roleList,
+    pregnancyRecord: roleList,
     labCollect: roleList, // mark a lab sample as taken (lab staff and nurses)
     library: roleList,
     libraryEdit: roleList,

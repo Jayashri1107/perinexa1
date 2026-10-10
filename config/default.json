@@ -92,6 +92,8 @@
     "labOrder": ["doctor", "rmo"],
     "labReport": ["lab"],
     "labReview": ["doctor", "rmo"],
+    "labPrint": ["doctor", "rmo", "lab"],
+    "pregnancyRecord": ["doctor", "rmo", "nurse"],
     "labCollect": ["lab", "nurse"],
     "library": ["doctor", "rmo", "nurse"],
     "libraryEdit": ["doctor", "rmo"],

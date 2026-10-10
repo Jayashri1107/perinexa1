@@ -20,6 +20,10 @@ export async function get(req, res) {
   res.json(await service.getOrder(req, idOf(req)));
 }
 
+export async function printReport(req, res) {
+  res.json(await service.printReport(req, idOf(req)));
+}
+
 export async function create(req, res) {
   res.status(201).json(await service.createOrder(req, parse(orderBody, req.body)));
 }

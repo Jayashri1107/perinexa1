@@ -11,6 +11,9 @@ import { Loader } from '../../components/Loader.jsx';
 import { Modal } from '../../components/Modal.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { useAppConfig } from '../../context/AppConfigContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { WhatsAppButton } from '../../components/WhatsAppButton.jsx';
+import { billMessage } from '../../utils/whatsapp.js';
 import { cancelFields, discountFields, lineEditFields, paymentFields, refundFields } from '../../forms/billingForms.js';
 import { useForm } from '../../hooks/useForm.js';
 import { amountInWords } from '../../utils/amountInWords.js';
@@ -21,6 +24,7 @@ import { BillStatus } from './BillStatus.jsx';
 export function BillDetailPage() {
   const { id } = useParams();
   const { billing, patients: patientSettings } = useAppConfig();
+  const { activeMembership } = useAuth();
   const [data, setData] = useState(null);
   const [payee, setPayee] = useState(null);
   const [error, setError] = useState('');
@@ -147,6 +151,13 @@ export function BillDetailPage() {
           <>
             <BillStatus bill={bill} />
             <Link to={`/hospital/print/bill/${bill.id}`} target="_blank" className="btn btn-ghost"><Printer size={16} aria-hidden /> Print</Link>
+            {context?.contact && (
+              <WhatsAppButton
+                phone={context.contact.phone}
+                agreed={context.contact.consentMessages}
+                text={billMessage({ name: bill.patient?.name, hospital: activeMembership?.hospital?.name ?? '', billNumber: bill.billNumber })}
+              />
+            )}
             {open && bill.balance > 0 && (
               <button type="button" className="btn btn-primary" onClick={() => show('pay', { mode: billing.paymentModes[0].key, amount: bill.balance, reference: '' })}>
                 <IndianRupee size={16} aria-hidden /> Take payment

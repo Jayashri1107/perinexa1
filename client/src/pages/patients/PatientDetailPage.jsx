@@ -21,6 +21,7 @@ import { PatientAppointmentsCard } from './PatientAppointmentsCard.jsx';
 import { PatientLabCard } from './PatientLabCard.jsx';
 import { PatientStaysCard } from './PatientStaysCard.jsx';
 import { PatientVisitsCard } from './PatientVisitsCard.jsx';
+import { PatientPregnancyCard } from '../pregnancy/PatientPregnancyCard.jsx';
 
 const ACCESS_WORDS = {
   full: 'Full access',
@@ -163,6 +164,11 @@ export function PatientDetailPage() {
           </section>
         )}
       </div>
+
+      {/* Her pregnancy: scans and vaccinations, the pregnancy card (those who look after her clinically) */}
+      {clinical && canAccess('patientsClinical') && p.careType === 'antenatal' && (
+        <div className="top-gap"><PatientPregnancyCard patient={p} /></div>
+      )}
 
       {(canAccess('appointments') || clinical) && (
         <div className="grid-2 top-gap">

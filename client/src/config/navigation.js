@@ -104,6 +104,7 @@ export const APPOINTMENT_TABS = [
 export const CALENDAR_TABS = [
   { to: '/hospital/calendar', label: 'Calendar', end: true, access: 'calendar' },
   { to: '/hospital/calendar/reminders', label: 'Reminders', access: 'calendar' },
+  { to: '/hospital/calendar/checkups', label: 'Check-ups due', access: 'calendar' },
 ];
 
 // The clinic library (as in Perinexa): one item in the menu, a tab per kind. Prescription sets only for prescribers

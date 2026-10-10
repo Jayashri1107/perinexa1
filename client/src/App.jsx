@@ -56,6 +56,7 @@ const AuditPage = page(() => import('./pages/audit/AuditPage.jsx'), 'AuditPage')
 const ChangePasswordPage = page(() => import('./pages/auth/ChangePasswordPage.jsx'), 'ChangePasswordPage');
 const CalendarPage = page(() => import('./pages/calendar/CalendarPage.jsx'), 'CalendarPage');
 const RemindersPage = page(() => import('./pages/calendar/RemindersPage.jsx'), 'RemindersPage');
+const CheckupsPage = page(() => import('./pages/calendar/CheckupsPage.jsx'), 'CheckupsPage');
 const BillDetailPage = page(() => import('./pages/billing/BillDetailPage.jsx'), 'BillDetailPage');
 const BillingSettingsPage = page(() => import('./pages/billing/BillingSettingsPage.jsx'), 'BillingSettingsPage');
 const BillsPage = page(() => import('./pages/billing/BillsPage.jsx'), 'BillsPage');
@@ -113,6 +114,8 @@ const VisitPage = page(() => import('./pages/visits/VisitPage.jsx'), 'VisitPage'
 const AdmissionPage = page(() => import('./pages/inpatient/AdmissionPage.jsx'), 'AdmissionPage');
 const IssueToWardPage = page(() => import('./pages/pharmacy/IssueToWardPage.jsx'), 'IssueToWardPage');
 const WardDocumentPrintPage = page(() => import('./pages/print/WardDocumentPrintPage.jsx'), 'WardDocumentPrintPage');
+const LabReportPrintPage = page(() => import('./pages/print/LabReportPrintPage.jsx'), 'LabReportPrintPage');
+const PregnancyCardPrintPage = page(() => import('./pages/print/PregnancyCardPrintPage.jsx'), 'PregnancyCardPrintPage');
 const DischargeCardPrintPage = page(() => import('./pages/print/DischargeCardPrintPage.jsx'), 'DischargeCardPrintPage');
 const DischargesPage = page(() => import('./pages/documents/DischargesPage.jsx'), 'DischargesPage');
 const AdmissionsDeskPage = page(() => import('./pages/inpatient/AdmissionsDeskPage.jsx'), 'AdmissionsDeskPage');
@@ -161,6 +164,10 @@ export function App() {
                 <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
                   <Route path="/hospital/print/prescription/:patientId/:visitId" element={<PrescriptionPrintPage />} />
                   <Route path="/hospital/print/ward-document/:stayId/:docId" element={<WardDocumentPrintPage />} />
+                  <Route path="/hospital/print/pregnancy-card/:patientId" element={<PregnancyCardPrintPage />} />
+                </Route>
+                <Route element={<ProtectedRoute area="hospital" access="labPrint" />}>
+                  <Route path="/hospital/print/lab-report/:id" element={<LabReportPrintPage />} />
                 </Route>
                 <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
                   <Route path="/hospital/print/discharge-card/:cardId" element={<DischargeCardPrintPage />} />
@@ -262,6 +269,7 @@ export function App() {
                     <Route element={<ProtectedRoute area="hospital" access="calendar" />}>
                       <Route path="calendar" element={<CalendarPage />} />
                       <Route path="calendar/reminders" element={<RemindersPage />} />
+                      <Route path="calendar/checkups" element={<CheckupsPage />} />
                     </Route>
                     <Route element={<ProtectedRoute area="hospital" access="lab" />}>
                       <Route path="lab" element={<LabPage />} />

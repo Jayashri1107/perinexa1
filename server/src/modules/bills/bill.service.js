@@ -13,6 +13,7 @@ import { findActiveItems } from '../priceList/priceList.service.js';
 import { User } from '../users/user.model.js';
 import { Admission } from '../admissions/admission.model.js';
 import { Visit } from '../visits/visit.model.js';
+import { Patient } from '../patients/patient.model.js';
 import { Bill, Payment } from './bill.model.js';
 
 const { billPrefix, receiptPrefix, numberDigits, pharmacyGroup } = config.billing;
@@ -79,12 +80,14 @@ const assertNotBelowPaid = (bill) => {
 // made the bill.
 async function billContext(hospitalId, bill) {
   const at = bill.createdAt ?? new Date();
-  const [stay, creator, doctor] = await Promise.all([
+  const [stay, creator, doctor, current] = await Promise.all([
     Admission.findOne({ hospitalId, patientId: bill.patientId, admittedAt: { $lte: at }, $or: [{ dischargedAt: null }, { dischargedAt: { $gte: new Date(at.getTime() - 24 * 60 * 60 * 1000) } }] })
       .sort({ admittedAt: -1 })
       .lean(),
     bill.createdBy ? User.findById(bill.createdBy).select('name').lean() : null,
     bill.doctorId ? User.findById(bill.doctorId).select('name professional').lean() : null,
+    // her phone and whether she agreed to messages today (for "Send on WhatsApp"), not as at the time of the bill
+    Patient.findOne({ hospitalId, _id: bill.patientId }).select('phone consentMessages').lean(),
   ]);
   let visitOn = null;
   if (!stay) {
@@ -98,6 +101,7 @@ async function billContext(hospitalId, bill) {
     visitOn,
     doctor: doctor ? { name: doctor.name, qualification: doctor.professional?.qualification ?? '', registrationNumber: doctor.professional?.registrationNumber ?? '', council: doctor.professional?.council ?? '' } : null,
     createdByName: creator?.name ?? '',
+    contact: { phone: current?.phone ?? '', consentMessages: Boolean(current?.consentMessages) },
   };
 }
 

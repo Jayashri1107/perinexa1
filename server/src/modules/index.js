@@ -27,6 +27,7 @@ import memberRoutes from './members/member.routes.js';
 import metaRoutes from './meta/meta.routes.js';
 import opdTimingsRoutes from './opdTimings/opdTimings.routes.js';
 import patientRoutes from './patients/patient.routes.js';
+import pregnancyRoutes from './pregnancy/pregnancy.routes.js';
 import pharmacyReportRoutes from './pharmacyReports/pharmacyReports.routes.js';
 import pharmacySettingsRoutes from './pharmacySettings/pharmacySettings.routes.js';
 import platformAnalyticsRoutes from './platformAnalytics/platformAnalytics.routes.js';
@@ -114,6 +115,8 @@ export const modules = [
   // Reception books lab tests from Today (owner, 8 Oct 2026)
   { path: '/hospital/lab-bookings', access: 'hospital', roles: access.registrationMenu, router: labBookingRouter },
   { path: '/hospital/library', access: 'hospital', roles: access.library, router: libraryRoutes },
+  // A pregnancy's scans and vaccinations, the pregnancy card and the check-ups due (owner, 10 Oct 2026)
+  { path: '/hospital/pregnancy', access: 'hospital', roles: [...new Set([...access.patientsClinical, ...access.calendar])], router: pregnancyRoutes },
 
   // Module 8 – visits and prescriptions
   { path: '/hospital/visits', access: 'hospital', roles: access.patientsClinical, router: visitRoutes },

@@ -13,6 +13,7 @@ import { notify, notifyRoles } from '../notifications/notification.service.js';
 import { Admission } from '../admissions/admission.model.js';
 import { dayRange, todayLocal } from '../../core/dates.js';
 import { EmergencyAccess, Patient } from '../patients/patient.model.js';
+import { Hospital } from '../hospitals/hospital.model.js';
 import { atLeast, listVisibility, recordLevel } from '../patients/patientAccess.js';
 import { User } from '../users/user.model.js';
 import { LabOrder } from './labOrder.model.js';
@@ -23,6 +24,8 @@ const has = (req, list) => req.membership.roles.some((r) => list.includes(r));
 const isLab = (req) => has(req, access.labReport);
 const canOrder = (req) => has(req, access.labOrder);
 const canReview = (req) => has(req, access.labReview);
+// A finalized report is printed by the lab, or by her doctor or an RMO (full access to her record).
+const canPrint = (req, level) => has(req, access.labPrint) && (isLab(req) || level === 'full');
 
 // The worklist's views: requests (sample to take, or a new one after a rejection), sample tracking (taken, not started
 // yet – including those still on the way from the ward), in progress, results to enter (old view), awaiting the
@@ -53,7 +56,7 @@ async function patientAccess(req, patientId) {
   return { patient, level, canRead };
 }
 
-const patientView = (p) => ({ id: String(p._id), name: p.name, patientNumber: p.patientNumber, careType: p.careType, birthDate: p.birthDate, sex: p.sex });
+const patientView = (p) => ({ id: String(p._id), name: p.name, patientNumber: p.patientNumber, careType: p.careType, birthDate: p.birthDate, birthDateApprox: Boolean(p.birthDateApprox), sex: p.sex });
 
 // ---------- Catalogue ----------
 
@@ -173,6 +176,8 @@ async function orderView(req, order, { patient, level }) {
       amendments: order.amendments.map((a) => ({ at: a.at, by: who.get(String(a.by)) ?? '', reason: a.reason })),
     },
     patient: patientView(patient),
+    // her phone and whether she agreed to messages (for "Send on WhatsApp") – not for lab staff (name and number only)
+    contact: !isLab(req) && atLeast(level, 'contactRead') ? { phone: patient.phone ?? '', consentMessages: Boolean(patient.consentMessages) } : null,
     can: {
       collect: canCollect(req) && order.status === 'ordered',
       receive: isLab(req) && order.status === 'collected' && !order.received,
@@ -181,6 +186,8 @@ async function orderView(req, order, { patient, level }) {
       query: isLab(req) && ['ordered', 'collected'].includes(order.status),
       report: isLab(req) && order.status !== 'cancelled',
       review: canReview(req) && full && order.status === 'reported',
+      // the finalized report, printed for the patient by the lab, her doctor or an RMO
+      print: canPrint(req, level) && order.status === 'reviewed',
       cancel: open && (isLab(req) || (canOrder(req) && full)),
       openRecord: atLeast(level, 'basic') && !isLab(req),
     },
@@ -488,6 +495,25 @@ export async function review(req, id) {
   await loaded.order.save();
   await recordAudit(req, 'LAB_REVIEWED', { hospitalId: req.hospitalId, details: { patientId: String(loaded.patient._id), orderNumber: loaded.order.orderNumber } });
   return orderView(req, loaded.order, loaded);
+}
+
+// The finalized report for printing (the lab, her doctor or an RMO): the order as on screen, the hospital's letterhead and the
+// doctor who finalized it with their professional details. Only a finalized (reviewed) report is printed.
+export async function printReport(req, id) {
+  const loaded = await loadOrder(req, id);
+  if (!canPrint(req, loaded.level)) throw new HttpError(403, 'The lab, her doctor or an RMO prints the report.', 'FORBIDDEN');
+  if (loaded.order.status !== 'reviewed') throw new HttpError(409, 'The report can be printed once a doctor has finalized it.', 'NOT_FINALIZED');
+  const [view, hospital, verifier] = await Promise.all([
+    orderView(req, loaded.order, loaded),
+    Hospital.findById(req.hospitalId).select('name letterhead logoVersion').lean(),
+    User.findById(loaded.order.reviewed.by).select('name professional').lean(),
+  ]);
+  await recordAudit(req, 'LAB_REPORT_PRINTED', { hospitalId: req.hospitalId, details: { patientId: String(loaded.patient._id), orderNumber: loaded.order.orderNumber } });
+  return {
+    ...view,
+    print: { hospitalName: hospital?.name ?? '', letterhead: { ...(hospital?.letterhead ?? {}), logoVersion: hospital?.logoVersion ?? 0 } },
+    verifiedBy: verifier ? { name: verifier.name, ...(verifier.professional ?? {}) } : null,
+  };
 }
 
 export async function cancel(req, id, reason) {

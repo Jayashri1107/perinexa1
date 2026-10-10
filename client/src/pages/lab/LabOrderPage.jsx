@@ -2,7 +2,7 @@
 // what and when, and the next step this person may take – take the sample, enter or change the results (a change
 // after the report needs a reason), review them, or cancel the order. Sample tracking (owner, 9 Oct 2026): the sample's
 // number and kind, received in the lab, test started, a sample rejected (a new one is needed), and asking the doctor.
-import { ArrowLeft, FlaskConical, MessageCircleQuestion, PackageCheck, Pencil, RotateCcw, TestTube, Zap } from 'lucide-react';
+import { ArrowLeft, CircleCheck, FlaskConical, MessageCircleQuestion, PackageCheck, Pencil, Printer, RotateCcw, TestTube, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { labApi } from '../../api/index.js';
@@ -12,6 +12,9 @@ import { Modal } from '../../components/Modal.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { StateBadge } from '../../components/StateBadge.jsx';
 import { formatDateTime } from '../../utils/format.js';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { WhatsAppButton } from '../../components/WhatsAppButton.jsx';
+import { reportMessage } from '../../utils/whatsapp.js';
 import { flagFor, flagLook, stageLook } from './labFormat.js';
 
 const STEPS = [
@@ -20,7 +23,7 @@ const STEPS = [
   ['received', 'Received in the lab'],
   ['processing', 'Test started'],
   ['reported', 'Results entered – sent for verification'],
-  ['reviewed', 'Verified by the doctor'],
+  ['reviewed', 'Finalized by the doctor'],
   ['cancelled', 'Cancelled'],
 ];
 
@@ -162,6 +165,7 @@ export function LabOrderPage() {
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState(null); // 'reject' | 'query'
   const [askText, setAskText] = useState('');
+  const { activeMembership } = useAuth();
 
   const load = useCallback(() => {
     labApi.get(id).then(setData).catch((err) => setError(err.message));
@@ -218,7 +222,9 @@ export function LabOrderPage() {
                 <Pencil size={16} aria-hidden /> {amending ? 'Change results' : 'Enter results'}
               </button>
             )}
-            {can.review && <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act(() => labApi.review(order.id))}>Mark as reviewed</button>}
+            {can.review && <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act(() => labApi.review(order.id))}><CircleCheck size={16} aria-hidden /> Finalize report</button>}
+            {can.print && <Link to={`/hospital/print/lab-report/${order.id}`} target="_blank" className="btn btn-primary"><Printer size={16} aria-hidden /> Print report</Link>}
+            {can.print && data.contact && <WhatsAppButton phone={data.contact.phone} agreed={data.contact.consentMessages} text={reportMessage({ name: patient.name, hospital: activeMembership?.hospital?.name ?? '' })} />}
             {can.cancel && <button type="button" className="btn btn-link btn-danger-text" onClick={() => setCancelling(true)}>Cancel order</button>}
           </>
         }
