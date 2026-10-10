@@ -14,7 +14,8 @@ import { StateBadge } from '../../components/StateBadge.jsx';
 import { formatDateTime } from '../../utils/format.js';
 import { FLAG_LOOKS, requestId } from '../visits/visitFormat.js';
 import { DocumentForm, DocumentView, fieldName } from './DocumentEditor.jsx';
-import { DischargeSummary } from './DischargeSummary.jsx';
+import { DischargeSummary, summaryStatus } from './DischargeSummary.jsx';
+import { PrintPreviewModal } from '../../components/PrintPreviewModal.jsx';
 import { BedPicker } from './BedPicker.jsx';
 import { StayCare } from '../nursing/StayCare.jsx';
 import { KIND_LABELS, SIGNED_BY, VITAL_FIELDS, docLook, stayLook, toLocalInput, vitalsText } from './inpatientFormat.js';
@@ -205,7 +206,9 @@ export function AdmissionPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [moving, setMoving] = useState(null);
-  const [openDocId, setOpenDocId] = useState(null); // a document to open for writing (Discharge patient)
+  const [openDocId, setOpenDocId] = useState(null); // a ward document to open for writing
+  const [dischargeOpen, setDischargeOpen] = useState(false); // the discharge summary in a pop-up (owner, 10 Oct 2026)
+  const [cardPreview, setCardPreview] = useState(false); // the finalized discharge card, printable, in a pop-up
   const [params, setParams] = useSearchParams();
 
   const load = useCallback(() => {
@@ -230,16 +233,12 @@ export function AdmissionPage() {
       return null;
     }
   };
-  // Discharge patient: opens her discharge card for writing (a new one, or the draft already started). Signing it
-  // discharges her; reception then prints it from Discharges.
+  // Discharge patient: opens her discharge summary for writing in a pop-up (a new one, or the draft already started).
+  // Signing it discharges her; reception then prints it from Discharges.
   const dischargeCard = documents.find((d) => d.kind === 'discharge' && d.status !== 'cancelled');
   const discharge = async () => {
     const draft = dischargeCard ?? (await newDoc('discharge'))?.documents.find((d) => d.kind === 'discharge' && d.status === 'draft');
-    if (draft) {
-      showView('documents');
-      setOpenDocId(draft.id);
-      setTimeout(() => document.getElementById('discharge-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-    }
+    if (draft) setDischargeOpen(true);
   };
 
   return (
@@ -256,7 +255,7 @@ export function AdmissionPage() {
               <button type="button" className="btn btn-primary" onClick={discharge}><DoorOpen size={16} aria-hidden /> Discharge patient</button>
             )}
             {dischargeCard?.status === 'signed' && (
-              <a className="btn btn-primary" href={`/hospital/print/discharge-card/${dischargeCard.id}`} target="_blank" rel="noreferrer"><Printer size={16} aria-hidden /> Discharge summary</a>
+              <button type="button" className="btn btn-primary" onClick={() => setCardPreview(true)}><Printer size={16} aria-hidden /> Discharge summary</button>
             )}
           </>
         }
@@ -283,11 +282,26 @@ export function AdmissionPage() {
 
       {view === 'care' && <div className="top-gap"><StayCare stayId={stay.id} /></div>}
 
+      {/* The discharge summary: one line here; written, reviewed and finalized in a pop-up */}
       {view === 'documents' && dischargeCard && (
-        <div id="discharge-summary" className="discharge-layout top-gap">
-          <DischargeSummary key={`${dischargeCard.id}-${dischargeCard.status}`} stayId={stay.id} stay={stay} patient={patient} doc={dischargeCard} can={can} onChanged={(r) => setData(r)} />
-          <NursingReference nursing={nursing} redFlags={redFlags} />
-        </div>
+        <section id="discharge-summary" className="card top-gap appt-line">
+          <span><strong>Discharge summary</strong> <span className="muted small">{dischargeCard.createdByName ?? ''}</span></span>
+          <StateBadge look={summaryStatus(dischargeCard)} small />
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDischargeOpen(true)}>Open</button>
+        </section>
+      )}
+
+      {dischargeOpen && dischargeCard && (
+        <Modal title={`Discharge summary – ${patient.name} (${patient.patientNumber})`} onClose={() => setDischargeOpen(false)} size="full">
+          <div className="discharge-layout">
+            <DischargeSummary key={`${dischargeCard.id}-${dischargeCard.status}`} stayId={stay.id} stay={stay} patient={patient} doc={dischargeCard} can={can} onChanged={(r) => setData(r)} />
+            <NursingReference nursing={nursing} redFlags={redFlags} />
+          </div>
+        </Modal>
+      )}
+
+      {cardPreview && dischargeCard?.status === 'signed' && (
+        <PrintPreviewModal title={`Discharge card – ${patient.name} (${patient.patientNumber})`} src={`/hospital/print/discharge-card/${dischargeCard.id}`} onClose={() => setCardPreview(false)} />
       )}
 
       {view === 'documents' && (

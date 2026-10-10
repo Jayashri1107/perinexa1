@@ -289,6 +289,11 @@ select {
 .modal-sm { max-width: 440px; }
 .modal-md { max-width: 600px; }
 .modal-lg { max-width: 780px; }
+/* A printout shown in a pop-up (PrintPreviewModal): wide enough for an A4 sheet, the sheet scrolling inside. */
+.modal-xl { max-width: 980px; }
+.modal-full { max-width: min(1280px, 100%); }
+.print-actions.hidden { display: none; }
+.print-preview { display: block; width: 100%; height: 72vh; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border); }
 .modal-head h2 { margin: 0; }
 .modal-body { padding: var(--space-5); overflow-y: auto; }
@@ -1086,6 +1091,16 @@ button.profile-link { width: 100%; border: 0; background: none; font: inherit; c
 .rx-hint { margin: 0; }
 .rx-cards { display: flex; flex-direction: column; gap: var(--space-3); }
 .rx-card { padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface-muted); }
+/* a medicine is a card, top to bottom – not the side-by-side row every .plain-list item gets */
+.rx-cards .rx-card { display: block; padding: var(--space-4); }
+.rx-card-top { flex-wrap: wrap; }
+/* Dose / Food / For / Note: the label on the left, the choices beside it */
+.rx-card-grid { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-3) var(--space-3); align-items: center; margin-top: var(--space-3); }
+.rx-card-grid .rx-label { min-width: 0; }
+.rx-wide { width: 100%; }
+.rx-preview { margin: var(--space-3) 0 0; padding-top: var(--space-2); border-top: 1px dashed var(--color-border); font-size: var(--text-sm); font-weight: 600; }
+.rx-preview span { color: var(--color-text-muted); font-weight: 400; margin-right: 4px; }
+@media (max-width: 560px) { .rx-card-grid { grid-template-columns: 1fr; gap: 6px; } }
 .rx-card input, .rx-card select { padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; color: var(--color-text); }
 .rx-card > input { width: 100%; }
 .rx-card-top { display: flex; align-items: center; gap: var(--space-2); }

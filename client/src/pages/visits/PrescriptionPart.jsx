@@ -68,12 +68,12 @@ function MedicineCard({ it, i, set, remove, error }) {
         <button type="button" className="icon-btn" aria-label={`Remove medicine ${i + 1}`} onClick={remove}><Trash2 size={15} /></button>
       </div>
       {error && <span className="field-error block">{error}</span>}
-      <div className="rx-card-row">
+      <div className="rx-card-grid">
         <span className="rx-label">Dose</span>
-        <DoseCodes value={it.frequency} onChange={(f) => set('frequency', f)} n={i + 1} />
-      </div>
-      {it.frequency === 'custom' && <input className="top-gap-sm" aria-label={`How often in words, medicine ${i + 1}`} placeholder="How often, in words" value={it.frequencyText} onChange={(e) => set('frequencyText', e.target.value)} />}
-      <div className="rx-card-row rx-card-more">
+        <div>
+          <DoseCodes value={it.frequency} onChange={(f) => set('frequency', f)} n={i + 1} />
+          {it.frequency === 'custom' && <input className="rx-wide top-gap-sm" aria-label={`How often in words, medicine ${i + 1}`} placeholder="How often, in words" value={it.frequencyText} onChange={(e) => set('frequencyText', e.target.value)} />}
+        </div>
         <span className="rx-label">Food</span>
         <div className="dose-codes" role="group" aria-label={`Food, medicine ${i + 1}`}>
           {FOOD.map(([k, word]) => (
@@ -89,8 +89,10 @@ function MedicineCard({ it, i, set, remove, error }) {
           <input aria-label={`For how long, medicine ${i + 1}`} inputMode="numeric" placeholder="5" value={it.durationValue} onChange={(e) => set('durationValue', e.target.value)} />
           <select aria-label={`Unit, medicine ${i + 1}`} value={it.durationUnit} onChange={(e) => set('durationUnit', e.target.value)}>{Object.entries(DURATION_UNITS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         </span>
+        <span className="rx-label">Note</span>
+        <input className="rx-wide" aria-label={`Note, medicine ${i + 1}`} placeholder="Optional – e.g. with plenty of water" value={it.instructions} onChange={(e) => set('instructions', e.target.value)} />
       </div>
-      <input className="top-gap-sm" aria-label={`Note, medicine ${i + 1}`} placeholder="Note for her (optional) – e.g. with plenty of water" value={it.instructions} onChange={(e) => set('instructions', e.target.value)} />
+      {it.drug.trim() && <p className="rx-preview"><span>Prints as:</span> {rxLine(it)}</p>}
     </li>
   );
 }
@@ -237,8 +239,18 @@ export function PrescriptionPart({ visit, careType, checks, editable, canSend, s
       )}
 
       {draft && (
-        <Modal title="Prescription" onClose={closeDraft} size="lg">
-          <form onSubmit={submit} noValidate className="rx-box">
+        <Modal
+          title="Prescription"
+          onClose={closeDraft}
+          size="xl"
+          footer={
+            <>
+              <button type="button" className="btn btn-ghost" onClick={closeDraft}>Cancel</button>
+              <button type="submit" form="rx-form" className="btn btn-primary" disabled={saving}>{saving ? 'Checking…' : asking.length ? 'Save with these reasons' : 'Save prescription'}</button>
+            </>
+          }
+        >
+          <form id="rx-form" onSubmit={submit} noValidate className="rx-box">
             <Alert type="error">{error}</Alert>
             {asking.length > 0 && <Warnings warnings={asking} reasons={reasons} setReason={(k, v) => setReasons((r) => ({ ...r, [k]: v }))} asking />}
             {sets.length > 0 && (
@@ -250,7 +262,7 @@ export function PrescriptionPart({ visit, careType, checks, editable, canSend, s
                 </select>
               </label>
             )}
-            <p className="muted small rx-hint">Dose: morning – afternoon – night, e.g. 1-0-1 is one in the morning and one at night.</p>
+            <p className="muted small rx-hint">Dose is morning – afternoon – night: <strong>1-0-1</strong> is one in the morning and one at night.</p>
             {draft.items.length === 0 && <p className="muted">No medicines yet.</p>}
             <ol className="plain-list rx-cards">
               {draft.items.map((it, i) => (
@@ -268,10 +280,6 @@ export function PrescriptionPart({ visit, careType, checks, editable, canSend, s
             <div className="form-field top-gap-sm">
               <label htmlFor="rx-notes">Advice (printed under the medicines)</label>
               <textarea id="rx-notes" rows={2} maxLength={1000} value={draft.notes} onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))} />
-            </div>
-            <div className="modal-foot inline">
-              <button type="button" className="btn btn-ghost" onClick={closeDraft}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Checking…' : asking.length ? 'Save with these reasons' : 'Save prescription'}</button>
             </div>
           </form>
         </Modal>

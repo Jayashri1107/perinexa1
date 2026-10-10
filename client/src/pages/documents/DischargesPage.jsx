@@ -1,5 +1,5 @@
 // Discharges (reception, nurses, doctors): the patients discharged recently, each with her signed discharge card to
-// print or save as PDF, and a way to upload the scanned papers to her record.
+// open in a pop-up to read, print or save as PDF (owner, 10 Oct 2026), and a way to upload the scanned papers to her record.
 import { FileDown, Search, Upload } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { dischargesApi } from '../../api/index.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Loader } from '../../components/Loader.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { PrintPreviewModal } from '../../components/PrintPreviewModal.jsx';
 import { formatDate, formatDateTime } from '../../utils/format.js';
 import { UploadDocumentModal } from './PatientDocumentsCard.jsx';
 
@@ -17,6 +18,7 @@ export function DischargesPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [uploadFor, setUploadFor] = useState(null);
+  const [cardOf, setCardOf] = useState(null); // the discharge whose card is open in the pop-up
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(text.trim().length >= 2 ? text.trim() : ''), 300);
@@ -57,9 +59,9 @@ export function DischargesPage() {
                 </span>
               </span>
               <span className="row-actions">
-                <a className="btn btn-primary btn-sm" href={`/hospital/print/discharge-card/${d.id}`} target="_blank" rel="noreferrer">
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => setCardOf(d)}>
                   <FileDown size={14} aria-hidden /> Discharge card
-                </a>
+                </button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUploadFor(d)}>
                   <Upload size={14} aria-hidden /> Upload scan
                 </button>
@@ -68,6 +70,13 @@ export function DischargesPage() {
           ))}
         </ul>
       </section>
+      {cardOf && (
+        <PrintPreviewModal
+          title={`Discharge card – ${cardOf.patient.name} (${cardOf.patient.patientNumber})`}
+          src={`/hospital/print/discharge-card/${cardOf.id}`}
+          onClose={() => setCardOf(null)}
+        />
+      )}
       {uploadFor && (
         <UploadDocumentModal
           patient={uploadFor.patient}

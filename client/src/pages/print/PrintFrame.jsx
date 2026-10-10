@@ -41,8 +41,16 @@ export function DocTitle({ children, right }) {
   );
 }
 
+// Shown inside a pop-up (PrintPreviewModal) the page is a preview: no print dialog by itself, and the pop-up has the
+// Print and Close buttons.
+const embedded = typeof window !== 'undefined' && window.self !== window.top;
+
 export function PrintFrame({ ready, title, children, footer, size = 'A5' }) {
   useEffect(() => {
+    if (ready && embedded) {
+      document.title = title;
+      return undefined;
+    }
     if (ready) {
       document.title = title;
       const t = setTimeout(() => window.print(), 300);
@@ -53,7 +61,7 @@ export function PrintFrame({ ready, title, children, footer, size = 'A5' }) {
 
   return (
     <div className="print-page">
-      <div className="no-print print-actions">
+      <div className={`no-print print-actions${embedded ? ' hidden' : ''}`}>
         <button type="button" className="btn btn-primary" onClick={() => window.print()}><Printer size={16} aria-hidden /> Print</button>
         <button type="button" className="btn btn-ghost" onClick={() => window.close()}>Close</button>
       </div>
