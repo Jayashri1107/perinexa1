@@ -185,57 +185,42 @@
 .wl-row-body[hidden] { display: none; }
 
 /* ---------- Today: one calm, consistent dashboard (look only) ----------
-   Two groups – "At a glance" (the number cards) and "Today's lists" (the boxes) – with the same 24 px spacing,
-   16 px corners, subtle borders and shadows everywhere; every card and box in a row is the same height. Red stays for
-   urgent (high risk), amber for pending (to approve, to review) – the KPI tones already say which. */
-.td-page { gap: var(--space-6); }
-.td-page > .ai-card { margin: 0; border-radius: 16px; box-shadow: var(--shadow-card); }
+   Two groups – "At a glance" (the number cards) and "Today's lists" (the boxes) – with the same spacing, corners and
+   borders everywhere; every card and box in a row is the same height. */
+.td-page { gap: var(--space-4); }
+.td-page > .ai-card { margin: 0; }
 .td-group { display: flex; flex-direction: column; gap: var(--space-3); }
 .td-group-title {
-  margin: 0; color: var(--slate-600);
-  font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  margin: var(--space-2) 0 0; color: var(--slate-600);
+  font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
 }
-.td-page > .td-group-title { margin-bottom: calc(-1 * var(--space-3)); }
+.td-page > .td-group-title { margin-bottom: calc(-1 * var(--space-1)); }
 
-/* The date, apart from the title and the welcome line */
-.td-date {
-  display: inline-flex; align-items: center; gap: var(--space-1); margin-right: var(--space-3); padding: 2px var(--space-3);
-  border-radius: var(--radius-pill); background: var(--surface); border: 1px solid var(--card-border);
-  color: var(--ink); font-weight: 600; white-space: nowrap;
-}
-.td-date svg.lucide { width: 16px; height: 16px; color: var(--indigo-700); }
-
-/* The number cards: an even grid; label readable, number large, little empty space */
-.td-page .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); margin: 0; }
-.td-page .kpi { gap: var(--space-1); padding: var(--space-4) var(--space-6) var(--space-4); border-radius: 16px; box-shadow: var(--shadow-card); }
-.td-page .kpi > .pill { font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
-.td-page .kpi > .pill svg.lucide { width: 40px; height: 40px; padding: 10px; }
-.td-page .kpi-value { margin-top: var(--space-2); font-weight: 600; }
-.td-page .kpi-sub { margin-top: auto; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+/* The number cards: an even grid, each card the same height, the number and its words lined up */
+.td-page .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin: 0; }
+.td-page .kpi { gap: var(--space-2); padding: var(--space-4) var(--space-6) var(--space-6); border-radius: var(--radius-lg); }
+.td-page .kpi > .pill { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.td-page .kpi-value { margin-top: var(--space-1); }
+.td-page .kpi-sub { margin-top: auto; }
 .td-page a.kpi { transition: box-shadow 0.15s, border-color 0.15s, transform 0.15s; }
-.td-page a.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); border-color: var(--indigo-200); }
+.td-page a.kpi:hover { transform: translateY(-2px); }
 @media (prefers-reduced-motion: reduce) { .td-page a.kpi:hover { transform: none; } }
 
-/* The lists: equal-width boxes of one height per row; icon, name, count and arrow lined up; names in one line where
-   they fit, otherwise broken evenly */
-.td-page .td-sections { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); align-items: stretch; }
-.td-page .wl-fold {
-  display: flex; flex-direction: column; border: 1px solid var(--card-border); border-left: 4px solid var(--card-border);
-  border-radius: 16px; box-shadow: var(--shadow-card);
-}
+/* The lists: boxes of one height per row, one border style, the coloured edge only for a list with patients in it */
+.td-page .td-sections { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4); align-items: stretch; }
+.td-page .wl-fold { display: flex; flex-direction: column; border: 1px solid var(--card-border); border-left: 4px solid var(--card-border); border-radius: var(--radius-lg); }
 .td-page .wl-fold.has-items { border-left-color: var(--indigo-700); }
 .td-page .wl-fold:not(.is-open) .wl-fold-title { flex: 1 1 auto; display: flex; }
 .td-page .wl-fold-title button {
-  gap: var(--space-3); min-height: 68px; padding: var(--space-3) var(--space-4) var(--space-3) var(--space-4);
+  min-height: 72px; padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
   font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600;
 }
-.td-page .wl-fold-icon { box-sizing: border-box; width: 40px; height: 40px; padding: 10px; border-radius: 12px; background: var(--mist-100); }
+.td-page .wl-fold-icon { box-sizing: border-box; width: 40px; height: 40px; padding: 9px; border-radius: var(--radius-md); background: var(--mist-100); }
 .td-page .wl-fold.has-items .wl-fold-icon { background: var(--indigo-100); }
-.td-page .wl-fold-text { min-width: 0; text-wrap: balance; }
-.td-page .wl-fold-count { min-width: 32px; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; padding: 5px var(--space-2); }
-.td-page .wl-fold-chevron { width: 20px; height: 20px; }
-.td-page .wl-fold.is-open { border-left-color: var(--indigo-700); }
+.td-page .wl-fold-text { min-width: 0; overflow-wrap: anywhere; }
+.td-page .wl-fold-count { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; padding: 4px var(--space-2); }
+.td-page .wl-fold.is-open { box-shadow: var(--shadow-pop); }
 @media (max-width: 600px) {
   .td-page .td-sections { grid-template-columns: 1fr; }
-  .td-page .wl-fold-title button { min-height: 60px; }
+  .td-page .wl-fold-title button { min-height: 60px; padding-left: var(--space-4); }
 }

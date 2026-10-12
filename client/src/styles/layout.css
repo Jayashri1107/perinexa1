@@ -283,19 +283,13 @@
 .sb-foot { flex-shrink: 0; margin: 0; padding: var(--space-3) var(--space-2) 0; color: var(--indigo-200); font-size: var(--fs-label); line-height: var(--lh-label); }
 /* The menu scrolls smoothly inside the sidebar, without a visible scrollbar */
 .sb-nav {
-  min-height: 0; padding: 0; gap: var(--space-1); scroll-behavior: smooth; overscroll-behavior: contain;
+  min-height: 0; padding: 0; gap: 2px; scroll-behavior: smooth; overscroll-behavior: contain;
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .sb-nav::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) { .sb-nav { scroll-behavior: auto; } }
-/* Menu items: a little larger, one icon size, and the page you are on clearly marked (a light bar at its left
-   edge, the row lit, the label in bold) */
-.sb-link { position: relative; padding: 6px var(--space-2); font-size: 16px; line-height: 24px; font-weight: 500; }
-.sb-link.active { font-weight: 600; }
-.sb-link.active::before {
-  content: ''; position: absolute; left: -12px; top: 10px; bottom: 10px; width: 4px; border-radius: 0 4px 4px 0; background: var(--on-dark);
-}
-.sb-tile { width: 40px; height: 40px; border-radius: 12px; }
+.sb-link { padding: 6px var(--space-2); font-size: var(--fs-body); line-height: var(--lh-body); }
+.sb-tile { width: 40px; height: 40px; border-radius: 10px; }
 .sb-tile svg.lucide { width: 20px; height: 20px; }
 
 /* Folded: the 88 px icon rail – ☰ above the app icon */
@@ -304,24 +298,13 @@
 .pf-collapsed .sb-subtitle, .pf-collapsed .sb-foot { display: none; }
 .pf-collapsed .sb-nav { padding: 0; }
 .pf-collapsed .sb-link { padding: 6px 0; }
-.pf-collapsed .sb-link.active::before { left: -8px; }
-@media (max-width: 1023px) { .pf:not(.pf-mobile-open) .sb-link.active::before { left: -8px; } }
 
 /* The top bar */
 .pf-topbar {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-4);
-  margin: 12px 12px 0 var(--space-4); padding: var(--space-4) var(--space-6);
-  background: var(--surface); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow-card);
+  margin: 12px 12px 0 var(--space-4); padding: var(--space-3) var(--space-6);
+  background: var(--surface); border: 1px solid var(--card-border); border-radius: 18px; box-shadow: var(--shadow-card);
 }
-/* The page lines up with the top bar's edges (wide screens) */
-@media (min-width: 1024px) {
-  .pf-body .ph { padding-left: var(--space-4); padding-right: 12px; }
-  .pf-body div.ph { padding-top: var(--space-6); } /* the title; the line under it stays close */
-  .pf-body header.ph { padding-top: var(--space-1); }
-  .pf-body .pf-content { padding-left: var(--space-4); padding-right: 12px; }
-  .pf-body .pf-notice { padding-left: var(--space-4); padding-right: 12px; }
-}
-.ph-subtitle:has(.td-date) { display: flex; flex-wrap: wrap; align-items: center; row-gap: var(--space-1); }
 .pf-topbar-start { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 .pf-topbar-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2) var(--space-3); margin-left: auto; }
 .pf-topbar > .ps { order: 0; flex: 0 1 380px; min-width: 220px; }
@@ -340,13 +323,10 @@
 .ws-label { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
 .ws-name { color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ws-meta { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The hospital switch reads like the hospital's name, with a light outline to show it can be changed */
 .ws-switch select {
-  height: 36px; max-width: 320px; margin: 2px 0; padding: 0 var(--space-2); border: 1px solid var(--card-border); border-radius: var(--radius-md);
-  background: var(--mist-50); color: var(--ink); font: inherit; font-size: var(--fs-h3); font-weight: 600; cursor: pointer;
+  height: var(--control-height); max-width: 260px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--mist-100); color: var(--indigo-700); font: inherit; font-weight: 600;
 }
-.ws-switch select:hover:not(:disabled) { border-color: var(--indigo-200); }
-.ws-switch select:focus-visible { box-shadow: var(--focus-ring); outline: none; }
 .ws-error { display: flex; align-items: center; gap: var(--space-1); flex-basis: 100%; color: var(--status-high-fg); font-size: var(--fs-label); line-height: var(--lh-label); }
 .ws-error svg.lucide { width: 16px; height: 16px; }
 

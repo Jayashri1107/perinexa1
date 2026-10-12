@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Archive, Baby, BadgeCheck, BedDouble, FlaskConical, TestTube, CalendarClock, CalendarDays, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
+import { Archive, Baby, BadgeCheck, BedDouble, FlaskConical, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -250,18 +250,9 @@ export function TodayPage() {
       <PageHeader
         breadcrumbs={[{ label: 'Today' }]}
         title="Today"
-        subtitle={
-          <>
-            {day && (
-              <span className="td-date">
-                <CalendarDays aria-hidden="true" /> {formatDate(day)}
-              </span>
-            )}
-            <span>
-              {[`Welcome, ${user.name}`, canChooseScope ? (scope === 'mine' ? 'Your patients and unassigned patients' : 'All patients') : null].filter(Boolean).join(' · ')}
-            </span>
-          </>
-        }
+        subtitle={[day ? formatDate(day) : null, `Welcome, ${user.name}`, canChooseScope ? (scope === 'mine' ? 'Your patients and unassigned patients' : 'All patients') : null]
+          .filter(Boolean)
+          .join(' · ')}
         actions={
           <>
             {canChooseScope && (
