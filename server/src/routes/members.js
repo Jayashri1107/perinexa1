@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { Membership, TENANT_ROLES } from '../models/Membership.js';
-import { User } from '../models/User.js';
+import { User, canEditPlatform } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
@@ -69,6 +69,15 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
 
   const isSelf = (req, m) => req.user._id.equals(m.userId._id);
 
+  // A platform admin changes a hospital admin's access (adding one, their roles, deactivating, their details or
+  // password) only when a super admin gave them "Hospital admins' access" (owner's request, 12 Oct 2026).
+  function assertHospitalAdminRight(req, ...roleLists) {
+    if (!req.user.isPlatformAdmin || canEditPlatform(req.user, 'hospitalAdmins')) return;
+    if (roleLists.some((list) => list?.includes('admin'))) {
+      throw new HttpError(403, "Changing a hospital admin's access needs the super admin's permission (Hospital admins' access).", 'HOSPITAL_ADMIN_RIGHT');
+    }
+  }
+
   // A hospital must always keep at least one active admin.
   async function assertAnotherActiveAdmin(req, m) {
     const others = await Membership.countDocuments({
@@ -126,6 +135,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
   // temporary password. If they already have one (e.g. from another hospital), it is simply linked.
   router.post('/', async (req, res) => {
     const data = parse(addSchema, req.body);
+    assertHospitalAdminRight(req, data.roles);
     let user = await User.findOne({ email: data.email });
     let temporaryPassword = null;
 
@@ -173,6 +183,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     const m = await findMember(req);
     if (isSelf(req, m)) throw new HttpError(400, "You can't change your own roles.", 'SELF_ACTION');
     const from = [...m.roles];
+    assertHospitalAdminRight(req, from, newRoles);
     if (from.join() === newRoles.join()) return res.json({ member: toMember(m) });
     if (from.includes('admin') && !newRoles.includes('admin') && m.isActive) await assertAnotherActiveAdmin(req, m);
 
@@ -187,6 +198,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     const { isActive } = parse(z.object({ isActive: z.boolean('isActive must be true or false') }), req.body);
     const m = await findMember(req);
     if (isSelf(req, m)) throw new HttpError(400, "You can't deactivate or reactivate yourself.", 'SELF_ACTION');
+    assertHospitalAdminRight(req, m.roles);
     if (m.isActive === isActive) return res.json({ member: toMember(m) });
     if (!isActive && m.roles.includes('admin')) await assertAnotherActiveAdmin(req, m);
 
@@ -201,6 +213,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       const data = parse(editSchema, req.body);
       const m = await findMember(req);
       if (isSelf(req, m)) throw new HttpError(400, 'Ask a platform super admin to change your own details.', 'SELF_ACTION');
+      assertHospitalAdminRight(req, m.roles);
       await assertNotShared(req, m);
 
       const user = m.userId;
@@ -223,6 +236,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       if (isSelf(req, m)) {
         throw new HttpError(400, 'To change your own password, use "Change password" instead.', 'SELF_ACTION');
       }
+      assertHospitalAdminRight(req, m.roles);
       await assertNotShared(req, m);
 
       const user = await User.findById(m.userId._id);

@@ -54,8 +54,10 @@ export const PLATFORM_MODULES = [
     to: '/platform/users',
     tabs: [
       { label: 'All users', to: '/platform/users', end: true },
+      { label: 'Staff by role', to: '/platform/users/by-role', end: true },
       { label: 'Super admins', to: '/platform/users/super-admins', end: true },
       { label: 'Platform admins', to: '/platform/users/platform-admins', end: true },
+      { label: 'User permissions', to: '/platform/users/permissions', end: true },
       { label: 'Hospital staff', to: '/platform/users/staff', end: true },
       { label: 'Pending first login', to: '/platform/users/pending', end: true },
       { label: 'New account', to: '/platform/users/new', end: true },
@@ -344,7 +346,7 @@ export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.
 const PLATFORM_TAB_AREAS = { '/platform/hospitals/new': 'hospitals', '/platform/users/new': 'users' };
-export const PLATFORM_AREA_LABELS = { hospitals: 'Hospitals', users: 'User accounts', hospitalSetup: "Hospitals' setup" };
+export const PLATFORM_AREA_LABELS = { hospitals: 'Hospitals', users: 'User accounts', hospitalSetup: "Hospitals' setup", hospitalAdmins: "Hospital admins' access" };
 /** May this super admin or platform admin change this area? (session.platform from the server) */
 export const canEditArea = (platform, area) => platform?.role === 'superadmin' || Boolean(area && platform?.permissions?.includes(area));
 export const platformModules = (platform) =>

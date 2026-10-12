@@ -3,7 +3,7 @@ import { APPEARANCE_CHOICES, STANDARD_APPEARANCE } from '../utils/appearance.js'
 
 // What a platform admin may be allowed to change: hospitals (create, rename, activate), user accounts (not super
 // admins or platform admins) and each hospital's setup (staff, letterhead, patient messages, OPD timings, ABDM).
-export const PLATFORM_AREAS = ['hospitals', 'users', 'hospitalSetup'];
+export const PLATFORM_AREAS = ['hospitals', 'users', 'hospitalSetup', 'hospitalAdmins'];
 
 // A person's login account. It is shared across hospitals: what they may do in each hospital
 // is decided by their Membership there. Super admins manage the platform (hospitals and users)

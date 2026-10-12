@@ -5,7 +5,7 @@ import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, Avatar, Field, StatusPill, TemporaryPassword, formatDateTime, rolesLabel } from '../../components/ui.jsx';
+import { Alert, Avatar, Field, ROLE_LABELS, StatusPill, TemporaryPassword, formatDateTime, rolesLabel } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useListParams } from '../../hooks/useListParams.js';
 import { canEditArea, platformTabs } from '../../platform/modules.js';
@@ -65,7 +65,10 @@ export function UsersListPage({ variant = 'all' }) {
   const v = VARIANTS[variant];
   const navigate = useNavigate();
   const { user: me, platform } = useAuth();
-  const defaults = { search: '', status: '', type: '', sort: '-createdAt', page: 1, limit: 25 };
+  const defaults = { search: '', status: '', type: '', role: '', tenantId: '', sort: '-createdAt', page: 1, limit: 25 };
+  // Role and hospital filters (Staff by role opens this list with them): hospital staff only
+  const staffFilters = variant === 'all' || variant === 'staff';
+  const hospitals = useFetch(staffFilters ? '/platform/tenants' : null, { status: 'active', limit: 100, sort: 'name' });
   const [params, setParams, reset] = useListParams(defaults);
   const { data, error, loading } = useFetch('/platform/users', { ...params, ...v.fixed });
 
@@ -102,7 +105,7 @@ export function UsersListPage({ variant = 'all' }) {
     { key: 'createdAt', header: 'Created', sortKey: 'createdAt', sortFirst: 'desc', render: (u) => <DayAndTime value={u.createdAt} /> },
   ];
 
-  const filtered = params.search || params.status || params.type;
+  const filtered = params.search || params.status || params.type || params.role || params.tenantId;
 
   return (
     <>
@@ -157,6 +160,24 @@ export function UsersListPage({ variant = 'all' }) {
                     { value: 'inactive', label: 'Deactivated' },
                     { value: 'pending', label: 'Pending first login' },
                   ]}
+                />
+              )}
+              {staffFilters && (
+                <FilterSelect
+                  label="Role"
+                  value={params.role}
+                  onChange={(role) => setParams({ role })}
+                  allLabel="Any role"
+                  options={Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))}
+                />
+              )}
+              {staffFilters && (
+                <FilterSelect
+                  label="Hospital"
+                  value={params.tenantId}
+                  onChange={(tenantId) => setParams({ tenantId })}
+                  allLabel="All hospitals"
+                  options={(hospitals.data?.tenants ?? []).map((t) => ({ value: t.id, label: t.name }))}
                 />
               )}
               <ClearFilters show={Boolean(filtered)} onClick={reset} />

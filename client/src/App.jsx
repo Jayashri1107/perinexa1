@@ -48,6 +48,8 @@ import { OverviewPage } from './pages/platform/OverviewPage.jsx';
 import { HospitalNewPage, HospitalsListPage } from './pages/platform/HospitalsListPage.jsx';
 import { HospitalActivityTab, HospitalOverviewTab, HospitalStaffTab, HospitalWorkspace } from './pages/platform/HospitalWorkspace.jsx';
 import { UserNewPage, UsersListPage } from './pages/platform/UsersListPage.jsx';
+import { StaffByRolePage } from './pages/platform/StaffByRolePage.jsx';
+import { UserPermissionsPage } from './pages/platform/UserPermissionsPage.jsx';
 import { UserActivityTab, UserHospitalsTab, UserProfileTab, UserWorkspace } from './pages/platform/UserWorkspace.jsx';
 import { AuditPage } from './pages/platform/AuditPage.jsx';
 import { TemplatesPage } from './pages/careplans/TemplatesPage.jsx';
@@ -145,6 +147,8 @@ export function App() {
               </Route>
 
               <Route path="users" element={<UsersListPage key="all" variant="all" />} />
+              <Route path="users/by-role" element={<StaffByRolePage />} />
+              <Route path="users/permissions" element={<UserPermissionsPage />} />
               <Route path="users/super-admins" element={<UsersListPage key="superadmins" variant="superadmins" />} />
               <Route path="users/platform-admins" element={<UsersListPage key="platformadmins" variant="platformadmins" />} />
               <Route path="users/staff" element={<UsersListPage key="staff" variant="staff" />} />

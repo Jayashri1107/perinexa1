@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { Membership } from '../models/Membership.js';
+import { Membership, TENANT_ROLES } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
-import { PLATFORM_AREAS, User, isPlatformUser } from '../models/User.js';
+import { PLATFORM_AREAS, User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { escapeRegex, idParams, pageParams, paged, parse, sortParam, toMongoSort } from '../utils/validate.js';
+import { escapeRegex, idParams, objectId, pageParams, paged, parse, sortParam, toMongoSort } from '../utils/validate.js';
 import { generateTemporaryPassword, hashPassword } from '../utils/password.js';
 
 const name = z.string().trim().min(1, 'Name is required').max(100, 'Name is too long');
@@ -16,6 +16,9 @@ const listSchema = z.object({
   // "pending" = active accounts that haven't chosen their own password yet.
   status: z.enum(['active', 'inactive', 'pending']).optional(),
   type: z.enum(['superadmin', 'platformadmin', 'member']).optional(),
+  // Staff by role: people with this role (and / or working at this hospital) – an active place at an active hospital
+  role: z.enum(TENANT_ROLES).optional(),
+  tenantId: objectId.optional(),
   sort: sortParam(['name', 'email', 'createdAt', 'lastLoginAt'], '-createdAt'),
   ...pageParams,
 });
@@ -67,14 +70,25 @@ async function assertAnotherSuperAdmin(user) {
 
 const isSelf = (req, user) => req.user._id.equals(user._id);
 
+// The people with an active place (with this role, at this hospital) at a hospital that is active.
+async function staffIds({ role, tenantId } = {}) {
+  const tenants = await Tenant.find(tenantId ? { _id: tenantId, isActive: true } : { isActive: true }, { _id: 1 }).lean();
+  const match = { isActive: true, tenantId: { $in: tenants.map((t) => t._id) }, ...(role ? { roles: role } : {}) };
+  return Membership.distinct('userId', match);
+}
+
 // Platform admins may be given "users" (to manage hospital staff accounts), but never power over the platform's own
 // accounts: only a super admin creates, changes, deactivates or resets a super admin or a platform admin, and only a
 // super admin hands out those rights.
 function assertSuperAdmin(req) {
   if (!req.user.isSuperAdmin) throw new HttpError(403, 'Only a super admin can do this.', 'SUPER_ADMIN_ONLY');
 }
-function assertMayChange(req, user) {
+async function assertMayChange(req, user) {
   if (isPlatformUser(user)) assertSuperAdmin(req);
+  // A hospital admin's account: a platform admin also needs "Hospital admins' access"
+  if (req.user.isPlatformAdmin && !canEditPlatform(req.user, 'hospitalAdmins') && (await Membership.exists({ userId: user._id, roles: 'admin' }))) {
+    throw new HttpError(403, "Changing a hospital admin's access needs the super admin's permission (Hospital admins' access).", 'HOSPITAL_ADMIN_RIGHT');
+  }
 }
 
 export const platformUsersRouter = Router();
@@ -91,6 +105,7 @@ platformUsersRouter.get('/', async (req, res) => {
   if (q.type === 'superadmin') filter.isSuperAdmin = true;
   else if (q.type === 'platformadmin') filter.isPlatformAdmin = true;
   else if (q.type === 'member') Object.assign(filter, { isSuperAdmin: false, isPlatformAdmin: { $ne: true } });
+  if (q.role || q.tenantId) filter._id = { $in: await staffIds({ role: q.role, tenantId: q.tenantId }) };
 
   const [users, total] = await Promise.all([
     User.find(filter)
@@ -120,6 +135,15 @@ platformUsersRouter.post('/', async (req, res) => {
   res.status(201).json({ user: { ...user.toJSON(), hospitals: [] }, temporaryPassword });
 });
 
+// Staff by role (the platform's "Staff by role" page): how many people have each role across active hospitals –
+// or at one hospital – counted once per person (someone at two hospitals as a doctor is one doctor).
+platformUsersRouter.get('/role-counts', async (req, res) => {
+  const { tenantId } = parse(z.object({ tenantId: objectId.optional() }), req.query);
+  const counts = {};
+  for (const role of TENANT_ROLES) counts[role] = (await staffIds({ role, tenantId })).length;
+  res.json({ counts, people: (await staffIds({ tenantId })).length });
+});
+
 platformUsersRouter.get('/:id', async (req, res) => {
   const { id } = parse(idParams, req.params);
   const user = await findUserOr404(id);
@@ -131,7 +155,7 @@ platformUsersRouter.patch('/:id', async (req, res) => {
   const { id } = parse(idParams, req.params);
   const data = parse(updateSchema, req.body);
   const user = await findUserOr404(id);
-  assertMayChange(req, user);
+  await assertMayChange(req, user);
 
   const changes = {};
   for (const key of ['name', 'email']) {
@@ -159,7 +183,7 @@ platformUsersRouter.patch('/:id/status', async (req, res) => {
   const { id } = parse(idParams, req.params);
   const { isActive } = parse(z.object({ isActive: z.boolean('isActive must be true or false') }), req.body);
   const user = await findUserOr404(id);
-  assertMayChange(req, user);
+  await assertMayChange(req, user);
 
   if (isSelf(req, user)) throw new HttpError(400, "You can't deactivate or reactivate your own account.", 'SELF_ACTION');
   if (user.isActive === isActive) return res.json({ user });
@@ -200,7 +224,7 @@ platformUsersRouter.patch('/:id/super-admin', async (req, res) => {
 platformUsersRouter.post('/:id/reset-password', async (req, res) => {
   const { id } = parse(idParams, req.params);
   const user = await findUserOr404(id);
-  assertMayChange(req, user);
+  await assertMayChange(req, user);
   if (isSelf(req, user)) {
     throw new HttpError(400, 'To change your own password, use "Change password" instead.', 'SELF_ACTION');
   }

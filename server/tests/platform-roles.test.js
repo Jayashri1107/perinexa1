@@ -63,7 +63,11 @@ describe('platform pages', () => {
     expect((await s.agent.patch(`/api/platform/users/${superAdmin.id}/status`).send({ isActive: false })).status).toBe(403);
     const other = await platformAdmin();
     expect((await s.agent.patch(`/api/platform/users/${other.id}/platform-admin`).send({ isPlatformAdmin: true, permissions: ['users'] })).status).toBe(403);
-    expect((await s.agent.patch(`/api/platform/users/${doctor.id}`).send({ name: 'Dr. Renamed' })).status).toBe(200);
+    // A staff account that is not a hospital admin (a hospital admin's needs "Hospital admins' access" too)
+    const nurse = await createUser({ name: 'Nurse Asha' });
+    await addMember(nurse, hospital, 'nurse');
+    expect((await s.agent.patch(`/api/platform/users/${nurse.id}`).send({ name: 'Nurse Renamed' })).status).toBe(200);
+    expect((await s.agent.patch(`/api/platform/users/${doctor.id}`).send({ name: 'Dr. Renamed' })).body.error.code).toBe('HOSPITAL_ADMIN_RIGHT');
   });
 
   it('a hospital member is not a platform user', async () => {
@@ -184,5 +188,70 @@ describe('"Switch to your doctor account"', () => {
     expect((await s.agent.patch(`/api/platform/users/${doctor.id}/linked-account`).send({ email: owner.email })).body.error.code).toBe('NOT_PLATFORM');
     const v = await loginAs(viewer, { app });
     expect((await v.agent.patch(`/api/platform/users/${owner.id}/linked-account`).send({ email: doctor.email })).status).toBe(403);
+  });
+});
+
+describe("hospital admins' access (owner's request, 12 Oct 2026)", () => {
+  async function setupStaff() {
+    const nurse = await createUser({ name: 'Nurse Asha' });
+    await addMember(nurse, hospital, 'nurse');
+    const secondAdmin = await createUser({ name: 'Admin Two' });
+    await addMember(secondAdmin, hospital, 'admin');
+    return { nurse, secondAdmin };
+  }
+  const memberOf = async (s, user) => (await s.get('/api/tenant/members?limit=100')).body.members.find((m) => m.user.id === user.id);
+
+  it("a platform admin with the hospital's setup but without the right cannot touch a hospital admin", async () => {
+    const { nurse, secondAdmin } = await setupStaff();
+    const s = await loginAs(await platformAdmin(['hospitalSetup']), { app });
+    await openHospital(s, hospital);
+    const admin = await memberOf(s, secondAdmin);
+    for (const res of [
+      await s.patch(`/api/tenant/members/${admin.id}/roles`).send({ roles: ['doctor'] }),
+      await s.patch(`/api/tenant/members/${admin.id}/status`).send({ isActive: false }),
+      await s.post(`/api/tenant/members/${admin.id}/reset-password`),
+      await s.post('/api/tenant/members').send({ email: 'new.admin@example.com', name: 'New Admin', roles: ['admin'] }),
+    ]) {
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('HOSPITAL_ADMIN_RIGHT');
+    }
+    // Making the nurse an admin is a hospital admin's access too; other staff stay theirs to change
+    const n = await memberOf(s, nurse);
+    expect((await s.patch(`/api/tenant/members/${n.id}/roles`).send({ roles: ['nurse', 'admin'] })).body.error.code).toBe('HOSPITAL_ADMIN_RIGHT');
+    expect((await s.patch(`/api/tenant/members/${n.id}/roles`).send({ roles: ['nurse', 'receptionist'] })).status).toBe(200);
+  });
+
+  it('with the right given, a platform admin changes a hospital admin; a super admin always may', async () => {
+    const { secondAdmin } = await setupStaff();
+    const s = await loginAs(await platformAdmin(['hospitalSetup', 'hospitalAdmins']), { app });
+    await openHospital(s, hospital);
+    const admin = await memberOf(s, secondAdmin);
+    expect((await s.patch(`/api/tenant/members/${admin.id}/roles`).send({ roles: ['admin', 'doctor'] })).status).toBe(200);
+    const sa = await loginAs(superAdmin, { app });
+    await openHospital(sa, hospital);
+    expect((await sa.patch(`/api/tenant/members/${admin.id}/roles`).send({ roles: ['admin'] })).status).toBe(200);
+  });
+
+  it("on the platform's Users pages too: a hospital admin's account needs the right", async () => {
+    const { secondAdmin, nurse } = await setupStaff();
+    const s = await loginAs(await platformAdmin(['users']), { app });
+    expect((await s.agent.post(`/api/platform/users/${secondAdmin.id}/reset-password`)).body.error.code).toBe('HOSPITAL_ADMIN_RIGHT');
+    expect((await s.agent.post(`/api/platform/users/${nurse.id}/reset-password`)).status).toBe(200);
+  });
+});
+
+describe('staff by role', () => {
+  it('counts each role once per person across active hospitals, and lists them', async () => {
+    const beta = await createTenant('Beta Hospital');
+    await addMember(doctor, beta, 'doctor'); // the same doctor at two hospitals is one doctor
+    const reception = await createUser({ name: 'Reception Ravi' });
+    await addMember(reception, beta, 'receptionist');
+    const s = await loginAs(await platformAdmin(), { app });
+    const all = await s.agent.get('/api/platform/users/role-counts');
+    expect(all.status).toBe(200);
+    expect(all.body.counts).toMatchObject({ doctor: 1, admin: 1, receptionist: 1, pharmacist: 0, lab: 0, billing: 0 });
+    expect((await s.agent.get(`/api/platform/users/role-counts?tenantId=${hospital.id}`)).body.counts.receptionist).toBe(0);
+    const list = await s.agent.get('/api/platform/users?role=receptionist');
+    expect(list.body.users.map((u) => u.name)).toEqual(['Reception Ravi']);
   });
 });
