@@ -3,7 +3,6 @@
 // India. The sample patient's scan EDD is 1 Mar 2027, so she is 18 w 0 d today (day 0 = 25 May 2026).
 import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { seedDemo } from '../scripts/seed-demo.js';
 import { createApp } from '../src/app.js';
 import { syncPlan } from '../src/careplans/plansService.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
@@ -1357,43 +1356,6 @@ describe('30. regression', () => {
     expect((await planOf('drA', p)).today).toBe('2026-10-14T00:00:00.000Z');
   });
 
-  it('seed-demo stores date-only values and builds plans with an explicit booking date and fake results', async () => {
-    // A date other than the real one: every seed date must come from the clock when the seed runs.
-    vi.setSystemTime(new Date('2026-11-02T06:00:00Z'));
-    const { tenants } = await seedDemo('SamplePassw0rd!');
-    await seedDemo('SamplePassw0rd!'); // safe to run twice
-    const tenantId = tenants[0]._id;
-    const all = await Patient.find({ tenantId, careType: 'antenatal' });
-    // The inpatients demo (Rekha, admitted in labour) has a stay instead of a care plan
-    const inpatient = all.find((m) => m.fullName === 'Rekha Inpatient (Demo)');
-    expect(inpatient).toBeTruthy();
-    const { Admission } = await import('../src/models/Admission.js');
-    expect(await Admission.countDocuments({ tenantId, patientId: inpatient._id, status: 'admitted' })).toBe(1);
-    const mothers = all.filter((m) => m !== inpatient);
-    expect(mothers).toHaveLength(2);
-    for (const m of mothers) {
-      for (const v of [m.pregnancy.lmp, m.pregnancy.edd, m.pregnancy.effectiveEdd]) expect(isMidnight(v)).toBe(true);
-    }
-    const plans = await CarePlan.find({ tenantId });
-    expect(plans).toHaveLength(2);
-    for (const plan of plans) {
-      expect(isMidnight(plan.bookedOn)).toBe(true);
-      expect(isMidnight(plan.basis.edd)).toBe(true);
-      const doneItems = plan.items.filter((i) => i.state === 'done');
-      expect(doneItems.length).toBeGreaterThanOrEqual(4);
-      for (const i of doneItems) expect(i.done.on.getTime()).toBe(plan.bookedOn.getTime());
-      expect(doneItems.filter((i) => i.done.result).every((i) => i.done.result.includes('fake'))).toBe(true);
-      expect(plan.items.find((i) => i.key === 'lab_cbc').auto.phase).toBe('done');
-    }
-    const meera = mothers.find((m) => m.fullName.startsWith('Meera'));
-    const meeraPlan = plans.find((pl) => String(pl.patientId) === String(meera._id));
-    expect(iso(meeraPlan.bookedOn)).toBe(iso(new Date(meera.pregnancy.lmp.getTime() + 70 * 86_400_000))); // 10 w 0 d
-    expect(iso(meera.pregnancy.lmp)).toBe('2026-05-04'); // 26 weeks before 2 Nov 2026
-    const asha = mothers.find((m) => m.fullName.startsWith('Asha'));
-    const ashaPlan = plans.find((pl) => String(pl.patientId) === String(asha._id));
-    expect(iso(ashaPlan.bookedOn)).toBe(iso(new Date(asha.pregnancy.lmp.getTime() + 56 * 86_400_000))); // 8 w 0 d
-    expect(await AuditLog.countDocuments({ action: /^CARE_PLAN_/ })).toBe(0); // demo data is nobody's action
-  });
 });
 
 // ---------- 31. Failure and retry paths ----------

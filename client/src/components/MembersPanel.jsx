@@ -3,6 +3,7 @@ import { UserPlus, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { canEditArea } from '../platform/modules.js';
 import { useFetch } from '../hooks/useFetch.js';
 import { useListParams } from '../hooks/useListParams.js';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination } from './DataTable.jsx';
@@ -86,7 +87,10 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel }) {
  * - linkToUser: super admins get a link to the person's full account page
  */
 export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser = false, defaultRoles = ['doctor'], onChanged, title = 'Staff' }) {
-  const { user: me } = useAuth();
+  const { user: me, platform } = useAuth();
+  // New people are added by the super admin, or a platform admin given "User accounts" (owner, 12 Oct 2026) –
+  // a hospital's own admin sees and manages its staff but no longer adds people.
+  const canAdd = canEditArea(platform, 'users');
   const [params, setParams, reset] = useListParams(DEFAULTS);
   const { data, error: loadError, loading, reload } = useFetch(basePath, params);
   const [error, setError] = useState(null);
@@ -253,7 +257,7 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
       {confirmDialog}
       <div className="row-between section-header">
         <h2>{title}</h2>
-        {!showAdd && (
+        {!showAdd && canAdd && (
           <button type="button" className="btn btn-primary" onClick={() => setShowAdd(true)}>
             <UserPlus aria-hidden="true" /> Add person
           </button>
@@ -283,7 +287,7 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
         rows={data?.members}
         loading={loading}
         rowClassName={(m) => (m.isActive && m.user.isActive ? '' : 'row-inactive')}
-        emptyText={filtered ? 'No staff match these filters.' : 'No staff yet. Use "Add person" to add the first one.'}
+        emptyText={filtered ? 'No staff match these filters.' : canAdd ? 'No staff yet. Use "Add person" to add the first one.' : 'No staff yet. The super admin adds people to this hospital.'}
         toolbar={
           <>
             <SearchInput value={params.search} onChange={(search) => setParams({ search })} placeholder="Search by name or email…" label="Search staff" />

@@ -1,9 +1,26 @@
 // Loads settings from server/.env and checks they make sense before the app starts.
+import { randomBytes } from 'node:crypto';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)), quiet: true });
+const ENV_FILE = fileURLToPath(new URL('../.env', import.meta.url));
+dotenv.config({ path: ENV_FILE, quiet: true });
+
+// The secret key that signs sign-in sessions is never written in the code: on the first start of a development copy
+// (no JWT_SECRET yet) a long random one is made and kept in server/.env (never in git). In production it must be set.
+if (!process.env.JWT_SECRET && (process.env.NODE_ENV ?? 'development') === 'development') {
+  const secret = randomBytes(48).toString('base64url');
+  try {
+    const before = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, 'utf8') : '';
+    writeFileSync(ENV_FILE, `${before}${before && !before.endsWith('\n') ? '\n' : ''}# Made automatically on the first start – keep it secret, never share or commit it.\nJWT_SECRET=${secret}\n`);
+    console.log('ℹ️  A new secret key for sign-in sessions was made and saved in server/.env.');
+  } catch {
+    console.warn('⚠️  Could not save the new secret key in server/.env; sessions end when the server restarts.');
+  }
+  process.env.JWT_SECRET = secret;
+}
 
 // A time zone name the computer knows, e.g. "Asia/Kolkata".
 const isValidTimeZone = (timeZone) => {

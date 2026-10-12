@@ -135,6 +135,9 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
   // temporary password. If they already have one (e.g. from another hospital), it is simply linked.
   router.post('/', async (req, res) => {
     const data = parse(addSchema, req.body);
+    if (!canEditPlatform(req.user, 'users')) {
+      throw new HttpError(403, 'New people are added by the super admin (or an admin given "User accounts"). Ask the super admin.', 'ADD_PEOPLE_RIGHT');
+    }
     assertHospitalAdminRight(req, data.roles);
     let user = await User.findOne({ email: data.email });
     let temporaryPassword = null;

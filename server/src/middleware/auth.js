@@ -135,9 +135,13 @@ const VIEW_ONLY = 'View only: a super admin has not given you permission to chan
  */
 export const requirePlatform = (area) => (req, _res, next) => {
   if (!isPlatformUser(req.user)) throw new HttpError(403, 'You do not have permission to do this.', 'FORBIDDEN');
-  if (!READS.has(req.method) && !canEditPlatform(req.user, area)) throw new HttpError(403, VIEW_ONLY, 'VIEW_ONLY');
+  const needed = typeof area === 'function' ? area(req) : area;
+  if (!READS.has(req.method) && !canEditPlatform(req.user, needed)) throw new HttpError(403, VIEW_ONLY, 'VIEW_ONLY');
   next();
 };
+
+/** A hospital's staff (people, their roles and access) belong to "User accounts"; the rest of a hospital to its area. */
+export const staffOr = (area) => (req) => (/\/members(\/|$)/.test(req.originalUrl.split('?')[0]) ? 'users' : area);
 
 // Inside a hospital a platform user reaches its setup only – the pages under Hospital admin – and never anything
 // with patients in it (records, bills, the pharmacy, the calendar, analytics lists). Paths are relative to /api.
@@ -155,7 +159,7 @@ export function platformHospitalGuard(req, _res, next) {
   if (!PLATFORM_HOSPITAL_PATHS.some((rx) => rx.test(path))) {
     throw new HttpError(403, "Super admins and platform admins see a hospital's setup only – never its patients, bills or pharmacy.", 'PLATFORM_SETUP_ONLY');
   }
-  if (req.membership.readOnly && !READS.has(req.method)) throw new HttpError(403, VIEW_ONLY, 'VIEW_ONLY');
+  if (!READS.has(req.method) && !canEditPlatform(req.user, staffOr('hospitalSetup')(req))) throw new HttpError(403, VIEW_ONLY, 'VIEW_ONLY');
   next();
 }
 

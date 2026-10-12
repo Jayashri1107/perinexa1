@@ -47,7 +47,7 @@ You need Node LTS, npm, git and MongoDB Community Server (`mongod` on your PATH)
 npm install
 cp server/.env.example server/.env   # then fill in JWT_SECRET, SUPER_ADMIN_*, DEMO_PASSWORD
 npm run seed                         # the first super admin
-npm run seed:demo                    # fake demo hospitals, staff and patients
+the demo script (removed 12 Oct 2026)                    # fake demo hospitals, staff and patients
 npm run dev                          # http://localhost:5173 (API on :4000, Vite proxies /api)
 ```
 

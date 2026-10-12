@@ -1414,7 +1414,7 @@ export const mentionsFetalSex = (t) => Boolean(t) && (FETAL_SEX_WORDS.test(t) ||
 - **App wiring:** `req.now` middleware in `createApp`.
 - **Plans:** `careplans/plansService.js`; `routes/carePlans.js` (`Router({ mergeParams: true })`) mounted in `patients.js`; sync hooks (POST, PATCH, risk override, GET) and `carePlanSummary`.
 - **Access and audit:** `patientAccess` flags; audit actions, categories and whitelist; `dictationWords.js` uses the shared words.
-- **Seed and helpers:** `scripts/seed-demo.js` (date-only values; plans built with an explicit `bookedOn`; some booking items done with fake results); `helpers.js` `CarePlan.init()`.
+- **Seed and helpers:** the demo script (removed 12 Oct 2026) (date-only values; plans built with an explicit `bookedOn`; some booking items done with fake results); `helpers.js` `CarePlan.init()`.
 - API tests.
 
 ### Commit 3 – 'Feature 7 (3/3): care plan on the patient record'

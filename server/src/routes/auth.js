@@ -84,6 +84,14 @@ async function platformInfo(user, tenant) {
 
 const openHospitalSchema = z.object({ tenantId: objectId.nullable() });
 
+// The very first start: no super admin yet. The sign-in page then shows "Create the first super admin".
+const needsSetup = async () => !(await User.exists({ isSuperAdmin: true }));
+const setupSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(100, 'Name is too long'),
+  email: z.string().trim().toLowerCase().pipe(z.email('Please enter a valid email address').max(254)),
+  password: passwordSchema,
+});
+
 export function authRouter({ loginRateLimitMax }) {
   const router = Router();
 
@@ -130,6 +138,27 @@ export function authRouter({ loginRateLimitMax }) {
     await audit(req, 'LOGIN_SUCCESS', { actor: user, target: user, tenantId: activeTenantId });
     setAuthCookie(res, user, activeTenantId);
     res.json(sessionBody(user, memberships, activeTenantId, await platformInfo(user, null)));
+  });
+
+  // Is there a super admin yet? (No login needed: the sign-in page asks before anyone exists.)
+  router.get('/setup-status', async (_req, res) => {
+    res.json({ needsSetup: await needsSetup() });
+  });
+
+  // Creates the first super admin – refused as soon as one exists, so it can only ever be used once.
+  router.post('/setup', loginLimiter, async (req, res) => {
+    if (!(await needsSetup())) throw new HttpError(403, 'Perinexa already has a super admin. Please log in.', 'ALREADY_SET_UP');
+    const data = parse(setupSchema, req.body);
+    if (await User.exists({ email: data.email })) throw new HttpError(409, 'An account with this email already exists.', 'EMAIL_TAKEN');
+    const user = await User.create({
+      name: data.name,
+      email: data.email,
+      passwordHash: await hashPassword(data.password),
+      isSuperAdmin: true,
+      mustChangePassword: false, // they chose this password themselves
+    });
+    await audit(req, 'USER_CREATED', { actor: user, target: user, details: { name: user.name, superAdmin: true, firstSetup: true } });
+    res.status(201).json({ ok: true });
   });
 
   router.post('/logout', async (req, res) => {

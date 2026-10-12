@@ -54,7 +54,7 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
     Viewing and creating patients is recorded in the audit log (ids only, no personal details).
   - If the hospital is switched in another tab, the server refuses the stale request and the page refreshes.
   - 60 automatic tests (incl. hospital data isolation); tested by hand in the browser.
-  - `npm run seed:demo` creates fake demo hospitals, staff and patients. Local logins: `docs/TEST_ACCOUNTS.md`
+  - the demo script (removed 12 Oct 2026) creates fake demo hospitals, staff and patients. Local logins: `docs/TEST_ACCOUNTS.md`
     (not in git).
 
 - **Enterprise layout for every login (same design for all roles).**
@@ -91,7 +91,7 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
     RMO all; doctor own/unassigned full, others read-only + emergency note with reason (audited, can't be
     edited); nurse medical details without notes; reception identity only; lab name + number; admin-only no
     patient data. Sensitive records (infertility automatically, or marked by the treating doctor/RMO): medical
-    details only for treating doctor and RMOs. Demo staff added for every role (`npm run seed:demo`).
+    details only for treating doctor and RMOs. Demo staff added for every role (the demo script (removed 12 Oct 2026)).
 
   - ✅ Feature 5: care-plan template library (Care plans → Templates & protocols). Each hospital gets its own
     copy of the built-in antenatal DRAFT (44 items: visits, lab tests, scans, vaccinations, medicines, advice,
@@ -477,7 +477,7 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
       small server gaps that could have let a sex value be stored on a pregnancy record were closed.
     - Charts are drawn in the app (no new library), one colour per chart, each column chart with "Show as table".
       New colour "Chart grey" for "not recorded" rows (`docs/BRAND.md` → Charts and analytics).
-    - `npm run seed:demo` now adds about 60 more fake patients over the last 12 months to Sunrise General Hospital
+    - the demo script (removed 12 Oct 2026) now adds about 60 more fake patients over the last 12 months to Sunrise General Hospital
       (Demo), so the cards look real and the admin view is not all "fewer than 5".
     - **What the numbers can't say yet** (told to the owner):
       - There is no delivery record, so no caesarean rate, normal vs caesarean delivery, stillbirths, deaths, PPH or
@@ -506,7 +506,7 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
     Files: `server/src/analytics/` (roles, period, load, facts, visibility, registry, compute, publicCards, mask,
     adminView, listService, platformTotals, auditThrottle, sectionCache, metrics/*), `server/src/routes/analytics.js`,
     `platformAnalytics.js`; `client/src/pages/analytics/`, `client/src/components/charts/`,
-    `client/src/styles/pages-analytics.css`; `server/scripts/seed-demo.js`.
+    `client/src/styles/pages-analytics.css`; the demo script (removed 12 Oct 2026).
     Automatic tests (after joining main): server 630 (plus 4 performance tests that run only on request) and
     website 1,454, all passing. The screens were checked as a doctor, a hospital admin and the super admin at
     1366 × 768 and phone width with made-up numbers; the owner's own check in the browser is still to do ("How to
@@ -620,7 +620,7 @@ Agreed order (one step at a time, each tested and committed):
    - **Today**: doctors see **Waiting for your confirmation** (their own and unassigned patients); doctors, RMOs and
      nurses see **In hospital**.
    - Server: `routes/admissions.js`, `routes/inpatients.js`, `inpatient/docSchemas.js`; website: `pages/inpatient/`.
-   - Demo data (`npm run seed:demo`, owner runs it): Rekha Inpatient (Demo), admitted in labour, with a signed
+   - Demo data (the demo script (removed 12 Oct 2026), owner runs it): Rekha Inpatient (Demo), admitted in labour, with a signed
      admission note, a delivery note waiting for Dr. Riley Demo, and nursing-chart entries.
 2. ✅ **Care plans for every type of care** (not only pregnancy). Each has a **draft** standard template (Clinic
    library → Care plan templates) for the doctor to check and approve, with its sources:
@@ -1081,7 +1081,7 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
     seven, numbers only. **Overview → Not in this version** now points to this tab.
   - **Monthly report**: stillbirths are split into fresh and macerated, and a new part **Deaths (recorded on the
     records by a doctor)** has newborn and maternal deaths. For the same month the numbers match the Deliveries tab.
-  - `npm run seed:demo` now adds a confirmed delivery note for each of the 8 fake postnatal demo mothers (two sets
+  - the demo script (removed 12 Oct 2026) now adds a confirmed delivery note for each of the 8 fake postnatal demo mothers (two sets
     of twins, one stillborn twin) – no deaths, so no demo record is closed.
   - ⚠️ **DRAFT for the doctor to check and approve**: the PPH amounts (500 mL, 1,000 mL after a caesarean, none for
     "Other" – WHO 2012 and an older ACOG definition); fresh = died during labour, macerated = before labour; Apgar
@@ -1104,7 +1104,7 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
   - Files: `server/src/inpatient/docSchemas.js`, `models/Patient.js`, `patients/deathRules.js`, `deathService.js`,
     `routes/patientDeath.js`, `routes/patients.js`, `utils/patientAccess.js`, `utils/auditDetails.js`,
     `analytics/metrics/deliveries.js`, `analytics/facts.js`, `load.js`, `populations.js`, `roles.js`,
-    `reports/monthlyReport.js`, `patients/recordCopyView.js`, `scripts/seed-demo.js`, and the closed-record checks
+    `reports/monthlyReport.js`, `patients/recordCopyView.js`, the demo script (removed 12 Oct 2026), and the closed-record checks
     in the reminder, appointment, Today, worklist, lab, pharmacy, portal and AI routes; website:
     `pages/inpatient/deliveryOutcomes.js`, `DocumentPage.jsx`, `docFields.js`, `pages/patients/DeathDialogs.jsx`,
     `deathFormat.js`, `PatientDetailPage.jsx`, `PatientForm.jsx`, `PatientsPage.jsx`, `pages/analytics/*`,
@@ -1802,7 +1802,7 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
     (Forms 20/21), NDPS recognition (RMI), pharmacist – printed on invoices.
   - ⚠️ Before real use: drug licence and a registered pharmacist; narcotics only with RMI recognition and locked
     storage; the accountant to confirm GST on inpatient issues.
-  - Demo: `demo.pharmacist@example.com` (both demo hospitals; added to `npm run seed:demo`).
+  - Demo: a pharmacist's account (both demo hospitals; added to the demo script (removed 12 Oct 2026)).
   - Files: `server/src/pharmacy/`, `models/Pharmacy.js`, `routes/pharmacy.js`; website `pages/pharmacy/`,
     `styles/pages-pharmacy.css`. Tests: `server/tests/pharmacy.test.js`.
 - ✅ **Billing** (owner approved the plan on 3 Oct 2026 – `docs/BILLING_PLAN.md`). A new **Billing** item in the left
@@ -1969,7 +1969,7 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
     care); nothing is suggested automatically. No new
     consent form and no built-in prescription sets for it (four DRAFT sets built in October 2026 – see Next).
     Reminders and the portal never name it.
-  - Demo data (`npm run seed:demo`, owner runs it): Sample Loss 01–03 (Demo) – missed (medical management), ectopic
+  - Demo data (the demo script (removed 12 Oct 2026), owner runs it): Sample Loss 01–03 (Demo) – missed (medical management), ectopic
     in the tube (laparoscopy, O negative, anti-D given), incomplete (surgical evacuation).
   - Also fixed while doing this: (a) pregnancy dates are checked against today only when they change, so a record
     whose pregnancy ended (now postnatal or abortion care) with an LMP more than 45 weeks ago can be saved again –
@@ -2553,7 +2553,7 @@ pass (step 13).
    heading shows the baby's age.
 10. **Baby with no weight** (none at the visit, no birth weight): "No weight is recorded for this baby, so the doses
     are not checked."
-11. **Stock.** As `demo.pharmacist@example.com` → Pharmacy → **Medicines**: add "Dolo 650", generic "Paracetamol",
+11. **Stock.** As a pharmacist's account → Pharmacy → **Medicines**: add "Dolo 650", generic "Paracetamol",
     strength "650 mg", reorder level 20; **Purchases** → enter 100 tablets of it. Add "Labetalol", strength
     "100 mg", with no purchase.
 12. As the doctor, in a prescription: Paracetamol, strength "650 mg", tablet → after a moment **In the pharmacy**
@@ -2664,7 +2664,7 @@ Use made-up names and phone numbers only.
     marked as a duplicate** and **Duplicate marking undone** – record numbers and counts only, no name, no reason.
 
 ## How to test the pharmacy extras and billing extras (fake data only)
-Use made-up medicines, suppliers, numbers and patients only. Steps 1–9 as `demo.pharmacist@example.com` (Sunrise)
+Use made-up medicines, suppliers, numbers and patients only. Steps 1–9 as a pharmacist's account (Sunrise)
 unless a step says otherwise.
 1. **A barcode.** Pharmacy → Medicines → **Change** a medicine: set a reorder level above its stock, type a made-up
    barcode (e.g. 8901234567890) in **Barcodes on the pack**, press Enter, Save. Type the same barcode on another
@@ -2768,7 +2768,7 @@ Use made-up patients only. Steps 1–10 in the app; steps 11–13 in the Mac's T
 
 ## How to test delivery and newborn outcomes (fake data only)
 Use made-up patients only. Restart Perinexa with Start Perinexa.command first (the server changed).
-1. **Demo numbers.** Run `npm run seed:demo` once (fake data only – it adds a confirmed delivery note for each of the
+1. **Demo numbers.** Run the demo script (removed 12 Oct 2026) once (fake data only – it adds a confirmed delivery note for each of the
    8 fake postnatal mothers, and nothing more if run again). Log in as Dr. Riley Demo → **Analytics** → the new
    **Deliveries** tab (before Newborn). For the last 12 months: 8 deliveries, 11 babies born with 1 stillbirth, and
    1 heavy bleeding (older demo data can give a little less). Each card shows what it is counted out of and a "Not
@@ -3008,7 +3008,7 @@ connected to ABDM".
 2. The preview shows her name, number, doctor and booked appointments. Press **Print** (A5 paper).
 
 ## How to test the pharmacy (fake data only)
-1. Log in as `demo.pharmacist@example.com` (Sunrise) → **Pharmacy → Settings**: fill in made-up GSTIN and licence
+1. Log in as a pharmacist's account (Sunrise) → **Pharmacy → Settings**: fill in made-up GSTIN and licence
    numbers → Save. **Medicines** → *Add a medicine* (e.g. a folic acid tablet, GST 12 %, reorder level 30).
    **Suppliers** → *Add a supplier*. **Purchases** → *Enter a purchase*: two batches with different expiry months.
 2. **Sell** → find *Meera Testcase (Demo)* → *Use this prescription* → set the quantity → *Make the invoice*: the
@@ -3230,19 +3230,19 @@ Without a key, Brief me says "AI is not set up for this hospital yet".
 ## How to test Analytics (fake data only)
 Use only the fake demo data. Do not enter real patient information until the app has been reviewed by an
 experienced developer.
-1. Run `npm run seed:demo` once (it adds the analytics demo patients to Sunrise General Hospital (Demo)), start the
-   app and log in as Dr. Riley Demo (demo.doctor@example.com). Open **Analytics** → Overview. The six headline numbers
+1. Run the demo script (removed 12 Oct 2026) once (it adds the analytics demo patients to Sunrise General Hospital (Demo)), start the
+   app and log in as Dr. Riley Demo (a doctor's account). Open **Analytics** → Overview. The six headline numbers
    and the cards appear for the last 12 months. Under the filters, a line says how many sensitive records of other
    doctors are left out.
 2. Click **My patients**. The numbers get smaller, and the "Sex at birth" card (Newborn tab) says "Whole hospital".
 3. Open the **Pregnancy** tab and click **Third trimester**. A list opens with the patients behind that number, and a
-   note says that opening it is recorded. Then log in as Dana Demo-Admin (demo.admin@example.com) → **Audit log**: it
+   note says that opening it is recorded. Then log in as Dana Demo-Admin (a hospital admin's account) → **Audit log**: it
    shows "Patient list opened from Analytics".
 4. As Dana Demo-Admin, open **Analytics**. The periods are whole finished months ("Last month" … "Last 12 months"),
    small numbers read "fewer than 5", some other numbers read "Not shown" (in a very small hospital also some small
    numbers and zeros), numbers can't be clicked, there is no "My patients", and the condition-by-condition rows are
    not there.
-5. Log in as Rani Demo-RMO (demo.rmo@example.com) or Nico Demo-Nurse (demo.nurse@example.com), or as reception or lab
+5. Log in as Rani Demo-RMO (an RMO's account) or Nico Demo-Nurse (a nurse's account), or as reception or lab
    staff: there is no Analytics in the menu, and typing `/analytics` in the address bar shows "Analytics is for
    doctors and hospital admins."
 6. Log in as the super admin: **Analytics** shows all active hospitals together, with "By hospital" under each card
@@ -3316,7 +3316,7 @@ is saved, so Analytics does not work out 3,000 plans on each request.
    "Make it yours" if you like, and press **Save design**.
 
 ## How to test printing and PDFs (fake data only)
-1. Log in as Dr. Riley Demo (demo.doctor@example.com) and open **Patients → Meera Testcase (Demo) → Visits → the
+1. Log in as Dr. Riley Demo (a doctor's account) and open **Patients → Meera Testcase (Demo) → Visits → the
    29 Sep 2026 visit**. Press **Print or share** (top right, or next to Save visit at the bottom).
 2. The preview shows the prescription in your design and says how many pages it prints on. Press **Print** – it
    fits on one A4 page.
@@ -3330,11 +3330,11 @@ is saved, so Analytics does not work out 3,000 plans on each request.
    saved and the preview opens. Leave the lower BP number empty and press it again: it shows what to fix and
    prints nothing.
 6. A visit without medicines prints the visit summary straight away.
-7. As the demo hospital admin (demo.admin@example.com): the audit log shows "Prescription printed", "Prescription
+7. As the demo hospital admin (a hospital admin's account): the audit log shows "Prescription printed", "Prescription
    saved as PDF", "Visit summary printed" … with record numbers only.
 
 ## How to test voice entry on a visit (fake data only)
-1. In **Google Chrome**, log in as Dr. Riley Demo (demo.doctor@example.com) and open **Patients → Meera Testcase
+1. In **Google Chrome**, log in as Dr. Riley Demo (a doctor's account) and open **Patients → Meera Testcase
    (Demo) → Visits → the 29 Sep 2026 visit**. The **Voice entry** card is at the top of **Visit details**.
 2. Press **Start recording** (the first time, Chrome sets up speech recognition once and asks to use the
    microphone – choose Allow) and say: "BP one twenty by eighty, pulse eighty eight, weight sixty four kilo, fundal
@@ -3347,11 +3347,11 @@ is saved, so Analytics does not work out 3,000 plans on each request.
    said but not used, and no note is added twice.
 5. Check every field and press **Save visit** (it waits while recording). Without a microphone, type or paste the
    same sentence into the "What was said" box and press **Fill in the form**.
-6. A nurse (demo.nurse@example.com, at Lakeside Clinic (Demo)) sees the same card on a visit: only the vital signs
+6. A nurse (a nurse's account, at Lakeside Clinic (Demo)) sees the same card on a visit: only the vital signs
    are filled in, and the card says that the other details are left for a doctor or RMO.
 
 ## How to test Feature 8 in the browser (fake data only)
-1. Log in as Dr. Riley Demo (demo.doctor@example.com). **My account → Prescription design**: click a few of the 10
+1. Log in as Dr. Riley Demo (a doctor's account). **My account → Prescription design**: click a few of the 10
    designs and watch the preview; choose one, e.g. "Dose chart with symbols", pick a colour and
    "English + हिंदी (Hindi)", untick "Vital signs" under "What to print", and press **Save design**.
 2. **Patients → Meera Testcase (Demo) → Visits → New visit** (or open the 29 Sep 2026 visit already there).
@@ -3365,17 +3365,17 @@ is saved, so Analytics does not work out 3,000 plans on each request.
 4. **Print or share**: the preview is in your design with the Hindi words under the English. **Print** (A4 –
    or A5 for "Half page"), or **Download PDF**. For "Your own printed pad", set the top and bottom margins,
    print on plain paper and hold it against your pad.
-5. Log in as Dr. Sam Second (demo.doctor2@example.com), switch to Sunrise General Hospital (Demo) and open
+5. Log in as Dr. Sam Second (a second doctor's account), switch to Sunrise General Hospital (Demo) and open
    Meera's visit: everything is read-only, and Print uses Dr. Riley Demo's design and name.
-6. Log in as the demo nurse (demo.nurse@example.com, Lakeside Clinic), open an antenatal patient (e.g. Ritu
+6. Log in as the demo nurse (a nurse's account, Lakeside Clinic), open an antenatal patient (e.g. Ritu
    Reception Sample) → Visits → **New visit**: only the vital signs can be typed; Print says "Nothing to print yet"
    until a doctor writes the notes or the prescription.
-7. As the demo hospital admin (demo.admin@example.com): the audit log shows "Visit started", "Visit updated",
+7. As the demo hospital admin (a hospital admin's account): the audit log shows "Visit started", "Visit updated",
    "Prescription saved" and "Prescription printed" with record numbers only.
 Never enter real patient details – the app has not been reviewed for real use yet.
 
 ## How to test personal appearance in the browser
-1. Log in as anyone, e.g. Dr. Riley Demo (demo.doctor@example.com) → **My account → Appearance**.
+1. Log in as anyone, e.g. Dr. Riley Demo (a doctor's account) → **My account → Appearance**.
 2. Click **Ocean blue**: the menu, buttons and headings turn blue at once. Try **High contrast**.
 3. Text size **Extra large**, spacing **Compact**, font **Mukta**, animation **Off** – each shows at once; the line
    at the bottom says "Saved".
@@ -3386,7 +3386,7 @@ Never enter real patient details – the app has not been reviewed for real use 
 6. **Back to standard settings** undoes everything.
 
 ## How to test ready-made prescription sets (Feature 8b) in the browser (fake data only)
-1. Log in as Dr. Riley Demo (demo.doctor@example.com) → **Prescription sets** (left menu): 12 sets, all "Draft".
+1. Log in as Dr. Riley Demo (a doctor's account) → **Prescription sets** (left menu): 12 sets, all "Draft".
    Open "Anaemia in pregnancy (mild to moderate)": what it adds, and the notes for doctors with the guidance used.
 2. **Edit** it – for example change the advice – and **Save as new draft**: version 2, still a draft. **Approve**
    (tick the box after checking every medicine and dose): "Approved · v2".
@@ -3399,15 +3399,15 @@ Never enter real patient details – the app has not been reviewed for real use 
 4. Choose a draft set: the preview and the message say it is a draft – check every medicine and dose.
 5. On the Prescription tab, **Save as a set**: give it a name, keep "Antenatal", **Save as a set**. It appears in
    the library as a draft; open it to add tests or advice and approve it.
-6. As the demo RMO (demo.rmo@example.com): Prescription sets can be read and added to prescriptions, but there is
+6. As the demo RMO (an RMO's account): Prescription sets can be read and added to prescriptions, but there is
    no New set, Edit, Approve or "Save as a set". The demo nurse has no Prescription sets menu.
 7. As the demo hospital admin: Audit log → Access changes shows "Prescription set changed / approved" with the
    set's name and version.
 
 ## How to test Feature 7 in the browser (fake data only)
-0. Start the app (`npm run dev`) and run `npm run seed:demo` once, so the demo pregnancies get a care plan
+0. Start the app (`npm run dev`) and run the demo script (removed 12 Oct 2026) once, so the demo pregnancies get a care plan
    (patients that already have one are skipped). The demo logins are in `docs/TEST_ACCOUNTS.md`.
-1. Log in as the demo RMO (demo.rmo@example.com) and open an antenatal demo patient, for example
+1. Log in as the demo RMO (an RMO's account) and open an antenatal demo patient, for example
    Asha Sample (Demo).
    Check the "Care plan" card on the Overview, the Care plan tab, and that the due dates match the EDD. While the
    standard template is a draft, both show "Draft – not approved for clinical use"; once a doctor has approved it
@@ -3418,14 +3418,14 @@ Never enter real patient details – the app has not been reviewed for real use 
    "Recent automatic changes" explains why.
 4. Set the blood group to O negative: anti-D and ICT appear.
 5. The demo nurse works at Lakeside Clinic (Demo), which has no pregnancy yet. First, as Dr. Riley Demo
-   (demo.doctor@example.com, a doctor at Lakeside), switch to Lakeside and add a fake antenatal patient with an
-   LMP about 20 weeks ago. Then log in as the demo nurse (demo.nurse@example.com), switch to Lakeside and open
+   (a doctor's account, a doctor at Lakeside), switch to Lakeside and add a fake antenatal patient with an
+   LMP about 20 weeks ago. Then log in as the demo nurse (a nurse's account), switch to Lakeside and open
    her Care plan tab: view only, with no action buttons. As the demo receptionist
-   (demo.reception@example.com): no Care plan tab. As Dr. Sam Second (demo.doctor2@example.com), open
+   (a receptionist's account): no Care plan tab. As Dr. Sam Second (a second doctor's account), open
    Meera Testcase (Demo), who is assigned to Dr. Riley Demo: read-only.
 6. As a doctor, approve the standard template: the Draft banner goes away. Then edit only a risk rule: the Draft
    banner comes back with the risk-rules reason.
-7. As the demo hospital admin (demo.admin@example.com), open the audit log: only "Care plan …" entries with record
+7. As the demo hospital admin (a hospital admin's account), open the audit log: only "Care plan …" entries with record
    numbers, no medical details.
 Never enter real patient details – the app has not been reviewed for real use yet.
 
@@ -3442,7 +3442,7 @@ Never enter real patient details – the app has not been reviewed for real use 
 6. **Care plans → Templates**: the newborn template now has the three screening items (a new draft version to approve).
 
 ## How to test information forms (fake data only)
-1. As Dr. Riley Demo (demo.doctor@example.com): **Clinic library → Information forms** – 38 draft sheets. Open
+1. As Dr. Riley Demo (a doctor's account): **Clinic library → Information forms** – 38 draft sheets. Open
    "high blood pressure in pregnancy" and switch between English + मराठी and English + हिंदी.
 2. Open a made-up antenatal patient → **Edit details** → tick **Thyroid** under conditions → save. The top of the
    record now says "Information to give: low thyroid (hypothyroidism) in pregnancy".
@@ -3454,7 +3454,7 @@ Never enter real patient details – the app has not been reviewed for real use 
 6. **Record signed copy** works as for consent forms. The receptionist sees no Information given tab.
 
 ## How to test care-plan printing and consent forms in the browser (fake data only)
-1. Log in as the demo RMO (demo.rmo@example.com) and open Asha Sample (Demo) → **Care plan** → **Print**.
+1. Log in as the demo RMO (an RMO's account) and open Asha Sample (Demo) → **Care plan** → **Print**.
    - Patient copy → "Only some types" → tick only **Scans** → type some advice → **Preview**: a "Sonography (scan)
      schedule" with the dates and weeks of each scan and your advice. **Print** opens the computer's print window
      (choose A4; "Save as PDF" works too). Try **Visits** only for the visit schedule, and "Choose items" for one scan.
@@ -3465,7 +3465,7 @@ Never enter real patient details – the app has not been reviewed for real use 
 3. Back on Asha's record → **Consent forms** tab: "Suggested now" shows the HIV-test form (the HIV test is due).
    **Print** it: choose English + Marathi → Preview → Print. The printout appears under "Printed for this patient"
    with **Print again**.
-4. As Dr. Riley Demo (demo.doctor@example.com), open Meera Testcase (Demo) → Consent forms: the high-risk form
+4. As Dr. Riley Demo (a doctor's account), open Meera Testcase (Demo) → Consent forms: the high-risk form
    (with her risk reasons filled in) and the VBAC and caesarean forms are suggested. Print one in English + Hindi.
 5. As a doctor, open a form → **Edit**: type `{naav}` into a Marathi clause and save – it is refused ("Unknown
    blank"). **Approve** a form (only after reading it): it then prints without DRAFT. Editing makes it a draft again.
@@ -3489,6 +3489,6 @@ Or, from the project folder:
 
     npm run dev
 
-Then open http://localhost:5173. After updating to Feature 7, run `npm run seed:demo` once so the demo
+Then open http://localhost:5173. After updating to Feature 7, run the demo script (removed 12 Oct 2026) once so the demo
 pregnancies get a care plan. Logins are listed in `docs/TEST_ACCOUNTS.md` (super admin:
 `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` from `server/.env`; first login asks for a new password). Stop with Ctrl + C. Stop the database with `npm run db:stop`.

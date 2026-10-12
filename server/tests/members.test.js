@@ -21,6 +21,8 @@ let home;
 let other;
 let admin;
 let s; // the hospital admin's session (working in "home")
+let root; // a super admin's session: new people are added by the super admin (owner, 12 Oct 2026)
+const add = (body) => root.agent.post(`/api/platform/tenants/${home._id}/members`).send(body);
 
 beforeAll(connectTestDb);
 beforeEach(async () => {
@@ -30,6 +32,7 @@ beforeEach(async () => {
   admin = await createUser({ name: 'Home Admin' });
   await addMember(admin, home, 'admin');
   s = await loginAs(admin, { app });
+  root = await loginAs(await createSuperAdmin({ name: 'Root' }), { app });
 });
 afterAll(disconnectTestDb);
 
@@ -68,8 +71,14 @@ describe('listing members', () => {
 });
 
 describe('adding people', () => {
+  it("a hospital's own admin no longer adds people – the super admin does", async () => {
+    const res = await s.post('/api/tenant/members').send({ name: 'New Nurse', email: 'nurse.x@example.com', roles: ['nurse'] });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ADD_PEOPLE_RIGHT');
+  });
+
   it('creates a new account with a temporary password', async () => {
-    const res = await s.post('/api/tenant/members').send({ name: 'New Nurse', email: 'New.Nurse@example.com', roles: ['nurse'] });
+    const res = await add({ name: 'New Nurse', email: 'New.Nurse@example.com', roles: ['nurse'] });
     expect(res.status).toBe(201);
     expect(res.body.existingUser).toBe(false);
     expect(res.body.member).toMatchObject({ roles: ['nurse'], user: { email: 'new.nurse@example.com', mustChangePassword: true } });
@@ -80,7 +89,7 @@ describe('adding people', () => {
   it('links an existing account from another hospital without changing its password', async () => {
     const doc = await createUser({ email: 'doc@example.com' });
     await addMember(doc, other, 'doctor');
-    const res = await s.post('/api/tenant/members').send({ email: 'doc@example.com', roles: ['doctor'] });
+    const res = await add({ email: 'doc@example.com', roles: ['doctor'] });
     expect(res.status).toBe(201);
     expect(res.body.existingUser).toBe(true);
     expect(res.body.temporaryPassword).toBeNull();
@@ -89,14 +98,14 @@ describe('adding people', () => {
   });
 
   it('rejects duplicates, super admins and missing names', async () => {
-    const dup = await s.post('/api/tenant/members').send({ email: admin.email, roles: ['nurse'] });
+    const dup = await add({ email: admin.email, roles: ['nurse'] });
     expect(dup.status).toBe(409);
     const root = await createSuperAdmin();
-    expect((await s.post('/api/tenant/members').send({ email: root.email, roles: ['admin'] })).status).toBe(400);
-    const noName = await s.post('/api/tenant/members').send({ email: 'someone.new@example.com', roles: ['nurse'] });
+    expect((await add({ email: root.email, roles: ['admin'] })).status).toBe(400);
+    const noName = await add({ email: 'someone.new@example.com', roles: ['nurse'] });
     expect(noName.status).toBe(400);
     expect(noName.body.error.fields).toHaveProperty('name');
-    expect((await s.post('/api/tenant/members').send({ name: 'X', email: 'x@example.com', roles: ['surgeon'] })).status).toBe(400);
+    expect((await add({ name: 'X', email: 'x@example.com', roles: ['surgeon'] })).status).toBe(400);
   });
 });
 
@@ -141,14 +150,14 @@ describe('roles and status', () => {
 
 describe('several roles per person', () => {
   it('gives one person several roles, including the new RMO and lab roles', async () => {
-    const res = await s.post('/api/tenant/members').send({ name: 'Dr. Multi', email: 'multi@example.com', roles: ['doctor', 'admin', 'doctor'] });
+    const res = await add({ name: 'Dr. Multi', email: 'multi@example.com', roles: ['doctor', 'admin', 'doctor'] });
     expect(res.status).toBe(201);
     expect(res.body.member.roles).toEqual(['admin', 'doctor']); // duplicates removed, fixed order
-    const rmo = await s.post('/api/tenant/members').send({ name: 'Resident', email: 'rmo@example.com', roles: ['rmo'] });
+    const rmo = await add({ name: 'Resident', email: 'rmo@example.com', roles: ['rmo'] });
     expect(rmo.body.member.roles).toEqual(['rmo']);
-    const lab = await s.post('/api/tenant/members').send({ name: 'Lab Person', email: 'lab@example.com', roles: ['lab'] });
+    const lab = await add({ name: 'Lab Person', email: 'lab@example.com', roles: ['lab'] });
     expect(lab.body.member.roles).toEqual(['lab']);
-    expect((await s.post('/api/tenant/members').send({ name: 'None', email: 'none@example.com', roles: [] })).status).toBe(400);
+    expect((await add({ name: 'None', email: 'none@example.com', roles: [] })).status).toBe(400);
   });
 
   it('a doctor who is also admin can manage staff', async () => {
@@ -198,7 +207,7 @@ describe('account changes by a hospital admin', () => {
 
 describe('hospital audit log', () => {
   it('shows only this hospital\'s entries', async () => {
-    await s.post('/api/tenant/members').send({ name: 'Here', email: 'here@example.com', roles: ['nurse'] });
+    await add({ name: 'Here', email: 'here@example.com', roles: ['nurse'] });
     await AuditLog.create({ action: 'MEMBER_ADDED', tenantId: other._id, actorEmail: 'someone@else.com' });
     const res = await s.get('/api/tenant/audit-logs');
     expect(res.body.entries.length).toBeGreaterThan(0);

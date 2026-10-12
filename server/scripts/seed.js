@@ -1,9 +1,8 @@
-// Prepares the database:
-//  1. Upgrades data from the earlier single-hospital version (old "admin" users become super admins).
-//  2. Creates the first platform super admin from SUPER_ADMIN_NAME / SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD
-//     in server/.env. Safe to run more than once: it does nothing if that account already exists.
+// Prepares the database (safe to run more than once):
+//  1. Upgrades data from earlier versions, and makes sure every hospital has its standard care-plan templates.
+//  The first super admin is NOT made here: on the very first start the sign-in page asks for their name, email and
+//  password ("Create the first super admin") – nothing is kept in a settings file.
 import mongoose from 'mongoose';
-import { z } from 'zod';
 import { config } from '../src/config.js';
 import { User } from '../src/models/User.js';
 import { AuditLog } from '../src/models/AuditLog.js';
@@ -12,25 +11,6 @@ import { Tenant } from '../src/models/Tenant.js';
 import { Patient } from '../src/models/Patient.js';
 import { CarePlanTemplate } from '../src/models/CarePlanTemplate.js';
 import { ensureStandardTemplates, recalculateForTemplate } from '../src/careplans/templatesService.js';
-import { hashPassword, passwordSchema } from '../src/utils/password.js';
-
-const env = {
-  name: process.env.SUPER_ADMIN_NAME ?? process.env.ADMIN_NAME,
-  email: process.env.SUPER_ADMIN_EMAIL ?? process.env.ADMIN_EMAIL,
-  password: process.env.SUPER_ADMIN_PASSWORD ?? process.env.ADMIN_PASSWORD,
-};
-const schema = z.object({
-  name: z.string().trim().min(1, 'SUPER_ADMIN_NAME is required'),
-  email: z.string().trim().toLowerCase().pipe(z.email('SUPER_ADMIN_EMAIL must be a valid email')),
-  password: passwordSchema,
-});
-const parsed = schema.safeParse(env);
-if (!parsed.success) {
-  console.error('❌ Please fix these values in server/.env:');
-  for (const issue of parsed.error.issues) console.error(`   - ${issue.path.join('.')}: ${issue.message}`);
-  process.exit(1);
-}
-const { name, email, password } = parsed.data;
 
 await mongoose.connect(config.MONGO_URI);
 await Promise.all([User.init(), Tenant.init(), Membership.init()]);
@@ -90,30 +70,7 @@ for (const t of await Tenant.find({}, { _id: 1 })) {
   }
 }
 
-// 2. First super admin.
-const existing = await User.findOne({ email });
-if (existing) {
-  if (!existing.isSuperAdmin) {
-    console.log(`⚠️  ${email} exists but is not a super admin. Nothing changed; choose another SUPER_ADMIN_EMAIL.`);
-  } else {
-    console.log(`ℹ️  Super admin ${email} already exists. Nothing changed.`);
-  }
-} else {
-  const admin = await User.create({
-    name,
-    email,
-    passwordHash: await hashPassword(password),
-    isSuperAdmin: true,
-    mustChangePassword: true, // the password in .env is only for the very first login
-  });
-  await AuditLog.create({
-    action: 'USER_CREATED',
-    actorEmail: 'system (seed script)',
-    target: admin._id,
-    targetEmail: admin.email,
-    details: { name: admin.name, superAdmin: true },
-  });
-  console.log(`✅ Super admin created for ${email}. You'll be asked to change the password at first login.`);
-}
+// 2. The first super admin: made in the app on the first start.
+if (!(await User.exists({ isSuperAdmin: true }))) console.log('ℹ️  No super admin yet: start the app and open it – it asks you to create the first super admin.');
 
 await mongoose.disconnect();

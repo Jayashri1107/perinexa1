@@ -28,29 +28,31 @@ npm run db:stop
 You need Node.js (LTS), git and MongoDB Community Server installed.
 
 1. Download the building blocks: `npm install`
-2. Create your private settings file: copy `server/.env.example` to `server/.env`, then replace the
-   placeholder values (especially `JWT_SECRET`, `SUPER_ADMIN_PASSWORD` and `DEMO_PASSWORD`). Never share or commit `server/.env`.
-3. Create the first platform super admin: `npm run seed`
-4. Optional: create fake demo hospitals, staff and patients: `npm run seed:demo`
-5. Start the app: `npm run dev`, then log in with `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` from `server/.env`.
-   You'll be asked to choose a new password straight away.
+2. Create your private settings file: copy `server/.env.example` to `server/.env`. No password or secret key is
+   typed there: the secret key for login sessions is made automatically on the first start. Never share or commit
+   `server/.env`.
+3. Prepare the database: `npm run seed`
+4. Start the app: `npm run dev` and open it. On the very first start it asks you to **create the first super admin**
+   (your name, email and password). After that, the super admin creates every other account in the app.
 
 ## How hospitals (tenants) work
 
-- A **super admin** creates hospitals and tags people to them with a role (admin, doctor, nurse, receptionist).
-  Super admins manage the platform but cannot see patient data.
+- A **super admin** creates hospitals and every account, and tags people to hospitals with roles. Super admins
+  manage the platform and each hospital's setup, but cannot see patient data.
+- A **platform admin** sees what a super admin sees, view only; the super admin ticks what they may change
+  (Users & access → User permissions).
 - Each hospital's data is labelled with its `tenantId`, so hospitals never see each other's data.
 - One person can work at several hospitals; a dropdown at the top right lets them switch. Everything they add
   (e.g. patients) goes into the hospital currently selected.
-- A hospital's **admin** manages that hospital's staff and sees that hospital's audit log.
+- A hospital's **admin** manages that hospital's staff (new people are added by the super admin) and sees that
+  hospital's audit log.
 
 ## Other commands
 
 | Command | What it does |
 | --- | --- |
 | `npm test` | Runs the automatic checks for login and admin features (uses a separate test database). |
-| `npm run seed` | Creates the first super admin from `server/.env` (does nothing if it already exists). |
-| `npm run seed:demo` | Creates fake demo hospitals, staff and patients. |
+| `npm run seed` | Prepares the database (safe to run again). The first super admin is made in the app. |
 | `npm run db:start` / `npm run db:stop` | Starts / stops the local database. |
 | `npm run build` | Builds the website for production. |
 | `npm run export:hospital` | Takes one hospital's data out into a folder (server operator only – see below). |
@@ -90,7 +92,7 @@ server/   Node + Express + Mongoose – the "back office": stores data, checks l
   src/models/       What is stored (Tenant = hospital, User, Membership, Patient, AuditLog)
   src/routes/       The addresses the website talks to (/api/auth/…, /api/admin/…)
   src/middleware/   Checks run on every request (logged in? admin? errors)
-  scripts/seed.js   Creates the first admin
+  scripts/seed.js   Prepares the database
   tests/            Automatic checks
 client/   React (Vite) – the website you see in the browser
   src/pages/        One file per screen

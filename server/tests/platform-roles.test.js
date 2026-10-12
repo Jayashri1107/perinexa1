@@ -101,8 +101,8 @@ describe('giving platform admin rights', () => {
 
   it('a platform admin cannot be added to a hospital', async () => {
     const viewer = await platformAdmin();
-    const admin = await loginAs(doctor, { app });
-    const res = await admin.post('/api/tenant/members').send({ email: viewer.email, name: viewer.name, roles: ['doctor'] });
+    const s = await loginAs(superAdmin, { app });
+    const res = await s.agent.post(`/api/platform/tenants/${hospital.id}/members`).send({ email: viewer.email, name: viewer.name, roles: ['doctor'] });
     expect(res.status).toBe(400);
   });
 });
@@ -201,9 +201,9 @@ describe("hospital admins' access (owner's request, 12 Oct 2026)", () => {
   }
   const memberOf = async (s, user) => (await s.get('/api/tenant/members?limit=100')).body.members.find((m) => m.user.id === user.id);
 
-  it("a platform admin with the hospital's setup but without the right cannot touch a hospital admin", async () => {
+  it("a platform admin with \"User accounts\" but without the right cannot touch a hospital admin", async () => {
     const { nurse, secondAdmin } = await setupStaff();
-    const s = await loginAs(await platformAdmin(['hospitalSetup']), { app });
+    const s = await loginAs(await platformAdmin(['users']), { app });
     await openHospital(s, hospital);
     const admin = await memberOf(s, secondAdmin);
     for (const res of [
@@ -223,7 +223,7 @@ describe("hospital admins' access (owner's request, 12 Oct 2026)", () => {
 
   it('with the right given, a platform admin changes a hospital admin; a super admin always may', async () => {
     const { secondAdmin } = await setupStaff();
-    const s = await loginAs(await platformAdmin(['hospitalSetup', 'hospitalAdmins']), { app });
+    const s = await loginAs(await platformAdmin(['users', 'hospitalAdmins']), { app });
     await openHospital(s, hospital);
     const admin = await memberOf(s, secondAdmin);
     expect((await s.patch(`/api/tenant/members/${admin.id}/roles`).send({ roles: ['admin', 'doctor'] })).status).toBe(200);
@@ -253,5 +253,39 @@ describe('staff by role', () => {
     expect((await s.agent.get(`/api/platform/users/role-counts?tenantId=${hospital.id}`)).body.counts.receptionist).toBe(0);
     const list = await s.agent.get('/api/platform/users?role=receptionist');
     expect(list.body.users.map((u) => u.name)).toEqual(['Reception Ravi']);
+  });
+});
+
+describe("a hospital's staff need \"User accounts\"", () => {
+  it('a platform admin with only the hospital setup may change the letterhead but not the staff', async () => {
+    const nurse = await createUser({ name: 'Nurse Bina' });
+    await addMember(nurse, hospital, 'nurse');
+    const s = await loginAs(await platformAdmin(['hospitalSetup']), { app });
+    await openHospital(s, hospital);
+    expect((await s.put('/api/tenant/settings/letterhead').send({ name: 'Alpha' })).status).toBe(200);
+    const member = (await s.get('/api/tenant/members?limit=100')).body.members.find((m) => m.user.id === nurse.id);
+    expect((await s.patch(`/api/tenant/members/${member.id}/roles`).send({ roles: ['receptionist'] })).body.error.code).toBe('VIEW_ONLY');
+    expect((await s.agent.post(`/api/platform/tenants/${hospital.id}/members`).send({ email: 'new@example.com', name: 'New', roles: ['nurse'] })).status).toBe(403);
+  });
+});
+
+describe('the first super admin (first start)', () => {
+  it('is made on the sign-in page while there is none, and only then', async () => {
+    await resetTestDb();
+    expect((await request(app).get('/api/auth/setup-status')).body).toEqual({ needsSetup: true });
+    const weak = await request(app).post('/api/auth/setup').send({ name: 'Owner', email: 'owner@example.com', password: 'short' });
+    expect(weak.status).toBe(400);
+    const made = await request(app).post('/api/auth/setup').send({ name: 'Owner', email: 'Owner@Example.com', password: 'OwnerPassw0rd!' });
+    expect(made.status).toBe(201);
+    const owner = await User.findOne({ email: 'owner@example.com' });
+    expect(owner.isSuperAdmin).toBe(true);
+    expect(owner.mustChangePassword).toBe(false);
+    expect((await request(app).post('/api/auth/login').send({ email: 'owner@example.com', password: 'OwnerPassw0rd!' })).status).toBe(200);
+    // Once there is a super admin, nobody can make another one this way
+    expect((await request(app).get('/api/auth/setup-status')).body).toEqual({ needsSetup: false });
+    const again = await request(app).post('/api/auth/setup').send({ name: 'Intruder', email: 'intruder@example.com', password: 'IntruderPassw0rd!' });
+    expect(again.status).toBe(403);
+    expect(again.body.error.code).toBe('ALREADY_SET_UP');
+    expect(await User.exists({ email: 'intruder@example.com' })).toBeFalsy();
   });
 });

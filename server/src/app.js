@@ -47,6 +47,7 @@ import {
   requirePasswordChanged,
   platformHospitalGuard,
   requirePlatform,
+  staffOr,
   requireTenant,
   requireTenantRole,
 } from './middleware/auth.js';
@@ -119,7 +120,7 @@ export function createApp({
   // read everything and change only the areas a super admin gave them (requirePlatform).
   const platform = (area) => [...loggedIn, requirePlatform(area)];
   app.use('/api/platform/stats', ...platform(null), platformStatsRouter);
-  app.use('/api/platform/tenants', ...platform('hospitals'), platformTenantsRouter);
+  app.use('/api/platform/tenants', ...platform(staffOr('hospitals')), platformTenantsRouter);
   app.use('/api/platform/users', ...platform('users'), platformUsersRouter);
   app.use('/api/platform/audit-logs', ...platform(null), auditLogsRouter({ scope: 'platform' }));
   // Analytics totals per hospital and for all hospitals: numbers only, never a patient (analytics/platformTotals.js).
