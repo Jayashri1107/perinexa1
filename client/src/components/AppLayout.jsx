@@ -108,21 +108,23 @@ function Workspace() {
       </span>
       <div className="ws-text">
         <span className="ws-label">Working in</span>
-        <strong className="ws-name">{activeMembership.tenantName}</strong>
+        {/* Several hospitals: the switch itself shows the hospital (its name once, not twice) */}
+        {memberships.length > 1 ? (
+          <label className="ws-switch">
+            <span className="sr-only">Switch hospital</span>
+            <select value={activeTenantId ?? ''} onChange={(e) => choose(e.target.value)} disabled={busy}>
+              {memberships.map((m) => (
+                <option key={m.tenantId} value={m.tenantId}>
+                  {m.tenantName}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <strong className="ws-name">{activeMembership.tenantName}</strong>
+        )}
         <span className="ws-meta">{rolesLabel(activeMembership.roles)}</span>
       </div>
-      {memberships.length > 1 && (
-        <label className="ws-switch">
-          <span className="sr-only">Switch hospital</span>
-          <select value={activeTenantId ?? ''} onChange={(e) => choose(e.target.value)} disabled={busy}>
-            {memberships.map((m) => (
-              <option key={m.tenantId} value={m.tenantId}>
-                {m.tenantName}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       {error && (
         <span className="ws-error" role="alert">
           <CircleAlert aria-hidden="true" /> {error}
