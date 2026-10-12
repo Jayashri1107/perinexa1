@@ -274,7 +274,7 @@ export function TodayPage() {
           </>
         }
       />
-      <div className="pf-content wl-page">
+      <div className="pf-content wl-page td-page">
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
@@ -301,7 +301,14 @@ export function TodayPage() {
             intro="What to look at first in today's lists."
           />
         )}
-        {tiles.length > 0 && <div className="kpi-grid">{tiles}</div>}
+        {tiles.length > 0 && (
+          <section className="td-group" aria-labelledby="td-glance">
+            <h2 className="td-group-title" id="td-glance">
+              At a glance
+            </h2>
+            <div className="kpi-grid">{tiles}</div>
+          </section>
+        )}
         {loading && (
           <div className="card plan-loading" aria-busy="true">
             <span className="sr-only">Loading today's lists…</span>
@@ -313,6 +320,7 @@ export function TodayPage() {
         {(worklist.data?.cut || today.data?.cut) && <Alert type="warning">Some lists are cut short: there are more patients than one page can show.</Alert>}
 
         {/* The lists: boxes with a heading and a count, opened with a click */}
+        {(worklist.data || today.data || inpatients.data || labReview.data) && <h2 className="td-group-title">Today&apos;s lists</h2>}
         <div className="td-sections">
         {worklist.data && <RedFlagsSection data={worklist.data} />}
         {/* Inpatients (Version 2): documents waiting for this doctor's confirmation, and who is in hospital */}
