@@ -35,7 +35,7 @@ export function HospitalWorkspace() {
     setBusy(true);
     try {
       await openHospital(tenant.id);
-      navigate('/admin/staff');
+      navigate('/');
     } catch (err) {
       setActionError(err.message);
       setBusy(false);
@@ -97,7 +97,7 @@ export function HospitalWorkspace() {
           <>
             {tenant.isActive && (
               <button type="button" className="btn btn-secondary" onClick={openSetup} disabled={busy}>
-                {canEditArea(platform, 'hospitalSetup') ? 'Open hospital setup' : 'View hospital setup'}
+                Open this hospital
               </button>
             )}
             {canEditArea(platform, 'hospitals') && (

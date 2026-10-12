@@ -5,7 +5,7 @@ import { useAuth } from '../../auth/AuthContext.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { PLATFORM_AREA_LABELS, platformTabs } from '../../platform/modules.js';
+import { PLATFORM_AREA_LABELS, canEditArea, platformTabs } from '../../platform/modules.js';
 
 // User permissions (owner's request, 12 Oct 2026): one table of every platform admin and what each may change –
 // the super admin ticks and unticks, and makes someone a platform admin or takes it away. Platform admins can look.
@@ -135,6 +135,7 @@ export function UserPermissionsPage() {
           </dl>
         </section>
         <PermissionTable people={data?.users} loading={loading} editable={editable} onSaved={saved} />
+        <HospitalAdminRights editable={editable || canEditArea(platform, 'hospitalAdmins')} onSaved={setFlash} />
         {editable && (
           <form className="card" onSubmit={add} noValidate>
             <h2>Add a platform admin</h2>
@@ -206,6 +207,112 @@ function PermissionTableRow(props) {
         </td>
       ))}
       <td className="actions">{cells.actions}</td>
+    </tr>
+  );
+}
+
+// Hospital admins' rights over their staff (owner, 12 Oct 2026): every hospital admin, with a tick per right. Without a
+// right the hospital admin still sees the staff, and is told to ask the super admin.
+const ADMIN_RIGHT_LABELS = { resetPassword: 'Reset password', access: 'Remove / restore access', roles: 'Change roles', details: 'Edit name and email' };
+const ADMIN_RIGHTS = Object.keys(ADMIN_RIGHT_LABELS);
+
+function HospitalAdminRights({ editable, onSaved }) {
+  const { data, error, loading, reload } = useFetch('/platform/users/hospital-admins');
+  return (
+    <section className="dt-card">
+      <div className="card-head-plain">
+        <h2>Hospital admins' rights</h2>
+        <p className="hint">What each hospital's admin may do to its staff. Without a tick, they see the staff but are told they need your permission.</p>
+      </div>
+      <Alert type="error">{error}</Alert>
+      <div className="dt-wrap" aria-busy={loading}>
+        <table className="dt perm-table">
+          <caption className="sr-only">Hospital admins and their rights over the staff</caption>
+          <thead>
+            <tr>
+              <th scope="col">Hospital admin</th>
+              <th scope="col">Hospital</th>
+              {ADMIN_RIGHTS.map((r) => (
+                <th key={r} scope="col" className="perm-col">
+                  {ADMIN_RIGHT_LABELS[r]}
+                </th>
+              ))}
+              <th scope="col">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {(data?.admins ?? []).map((a) => (
+              <AdminRightsRow
+                key={`${a.memberId}:${a.adminRights.join()}`}
+                admin={a}
+                editable={editable}
+                onSaved={(m) => {
+                  onSaved(m);
+                  reload();
+                }}
+              />
+            ))}
+            {data && data.admins.length === 0 && (
+              <tr>
+                <td colSpan={ADMIN_RIGHTS.length + 3} className="dt-empty">
+                  No hospital admins yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function AdminRightsRow({ admin, editable, onSaved }) {
+  const [rights, setRights] = useState(admin.adminRights);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const changed = [...rights].sort().join() !== [...admin.adminRights].sort().join();
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/platform/tenants/${admin.tenantId}/members/${admin.memberId}/admin-rights`, { method: 'PATCH', body: { rights } });
+      onSaved(`Rights of ${admin.user.name} at ${admin.tenantName} saved.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <tr>
+      <td data-label="Hospital admin" className="wrap">
+        <strong>
+          <Link to={`/platform/users/${admin.user.id}`}>{admin.user.name}</Link>
+        </strong>
+        <div className="cell-sub">{admin.user.email}</div>
+        {error && <span className="field-error">{error}</span>}
+      </td>
+      <td data-label="Hospital">{admin.tenantName}</td>
+      {ADMIN_RIGHTS.map((r) => (
+        <td key={r} data-label={ADMIN_RIGHT_LABELS[r]} className="perm-col">
+          <input
+            type="checkbox"
+            aria-label={`${admin.user.name}, ${admin.tenantName}: ${ADMIN_RIGHT_LABELS[r]}`}
+            checked={rights.includes(r)}
+            disabled={!editable || busy}
+            onChange={() => setRights((list) => (list.includes(r) ? list.filter((x) => x !== r) : [...list, r]))}
+          />
+        </td>
+      ))}
+      <td className="actions">
+        {editable && (
+          <button type="button" className="btn btn-secondary btn-sm" disabled={busy || !changed} onClick={save}>
+            Save
+          </button>
+        )}
+      </td>
     </tr>
   );
 }

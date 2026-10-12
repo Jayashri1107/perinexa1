@@ -168,6 +168,26 @@ platformUsersRouter.post('/', async (req, res) => {
 
 // Staff by role (the platform's "Staff by role" page): how many people have each role across active hospitals –
 // or at one hospital – counted once per person (someone at two hospitals as a doctor is one doctor).
+// Every hospital admin (active place at an active hospital) with the rights the super admin gave them
+platformUsersRouter.get('/hospital-admins', async (_req, res) => {
+  const tenants = await Tenant.find({ isActive: true }, { name: 1 }).lean();
+  const names = new Map(tenants.map((t) => [String(t._id), t.name]));
+  const places = await Membership.find({ tenantId: { $in: tenants.map((t) => t._id) }, roles: 'admin', isActive: true }).populate('userId').lean();
+  res.json({
+    admins: places
+      .filter((m) => m.userId)
+      .map((m) => ({
+        memberId: String(m._id),
+        tenantId: String(m.tenantId),
+        tenantName: names.get(String(m.tenantId)),
+        roles: m.roles,
+        adminRights: m.adminRights ?? [],
+        user: { id: String(m.userId._id), name: m.userId.name, email: m.userId.email, isActive: m.userId.isActive },
+      }))
+      .sort((a, b) => a.tenantName.localeCompare(b.tenantName) || a.user.name.localeCompare(b.user.name)),
+  });
+});
+
 platformUsersRouter.get('/role-counts', async (req, res) => {
   const { tenantId } = parse(z.object({ tenantId: objectId.optional() }), req.query);
   const counts = {};

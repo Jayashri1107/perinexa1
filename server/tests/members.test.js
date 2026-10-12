@@ -30,11 +30,41 @@ beforeEach(async () => {
   home = await createTenant('Home Hospital');
   other = await createTenant('Other Hospital');
   admin = await createUser({ name: 'Home Admin' });
-  await addMember(admin, home, 'admin');
+  // The super admin gave this hospital admin every right over the staff (owner, 12 Oct 2026)
+  await addMember(admin, home, 'admin', { adminRights: ['resetPassword', 'access', 'roles', 'details'] });
   s = await loginAs(admin, { app });
   root = await loginAs(await createSuperAdmin({ name: 'Root' }), { app });
 });
 afterAll(disconnectTestDb);
+
+describe("a hospital admin's rights come from the super admin", () => {
+  it('without them the admin sees the staff but each change says a permission is needed', async () => {
+    const limited = await createUser({ name: 'Limited Admin' });
+    await addMember(limited, home, 'admin');
+    const nurse = await createUser({ name: 'Nurse N' });
+    const m = await addMember(nurse, home, 'nurse');
+    const l = await loginAs(limited, { app });
+    expect((await l.get('/api/tenant/members')).status).toBe(200);
+    for (const res of [
+      await l.post(`/api/tenant/members/${m._id}/reset-password`),
+      await l.patch(`/api/tenant/members/${m._id}/status`).send({ isActive: false }),
+      await l.patch(`/api/tenant/members/${m._id}/roles`).send({ roles: ['receptionist'] }),
+      await l.patch(`/api/tenant/members/${m._id}`).send({ name: 'Renamed' }),
+    ]) {
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('NEEDS_PERMISSION');
+      expect(res.body.error.message).toMatch(/super admin's permission/);
+    }
+    // The super admin gives one right; only that one then works
+    const root = await loginAs(await createSuperAdmin(), { app });
+    const placeOfLimited = await Membership.findOne({ userId: limited._id });
+    expect((await root.agent.patch(`/api/platform/tenants/${home._id}/members/${placeOfLimited._id}/admin-rights`).send({ rights: ['resetPassword'] })).status).toBe(200);
+    expect((await l.post(`/api/tenant/members/${m._id}/reset-password`)).status).toBe(200);
+    expect((await l.patch(`/api/tenant/members/${m._id}/status`).send({ isActive: false })).body.error.code).toBe('NEEDS_PERMISSION');
+    // A hospital admin cannot give rights, not even to themselves
+    expect((await l.patch(`/api/tenant/members/${placeOfLimited._id}/admin-rights`).send({ rights: ['access'] })).status).toBe(403);
+  });
+});
 
 describe('access', () => {
   it('is only for admins of the selected hospital', async () => {
@@ -133,7 +163,7 @@ describe('roles and status', () => {
 
     // A second admin can remove the first; the survivor is then the last admin and is protected.
     const second = await createUser();
-    await addMember(second, home, 'admin');
+    await addMember(second, home, 'admin', { adminRights: ['roles', 'access'] });
     const s2 = await loginAs(second, { app });
     expect((await s2.patch(`/api/tenant/members/${mine._id}/roles`).send({ roles: ['doctor'] })).status).toBe(200);
     expect(await Membership.countDocuments({ tenantId: home._id, roles: 'admin', isActive: true })).toBe(1);
@@ -171,7 +201,7 @@ describe('several roles per person', () => {
   it('keeps the last admin when roles change and records old and new roles', async () => {
     const m = await Membership.findOne({ userId: admin._id });
     const second = await createUser();
-    await addMember(second, home, ['admin', 'doctor']);
+    await addMember(second, home, ['admin', 'doctor'], { adminRights: ['roles'] });
     const s2 = await loginAs(second, { app });
     const res = await s2.patch(`/api/tenant/members/${m._id}/roles`).send({ roles: ['doctor', 'rmo'] });
     expect(res.body.member.roles).toEqual(['doctor', 'rmo']);

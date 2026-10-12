@@ -64,14 +64,12 @@ export function RequireSuperAdmin() {
 // Hospital pages: the person must be working in a hospital.
 export function RequireTenant({ children }) {
   const { isPlatform, activeTenantId, activeMembership } = useAuth();
-  const { pathname } = useLocation();
   if (isPlatform) {
-    // A super admin or platform admin sees a hospital's setup only (Hospital admin), never its patients.
-    if (activeMembership?.platform) return pathname.startsWith('/admin') ? (children ?? <Outlet />) : <Navigate to="/admin/staff" replace />;
+    // A super admin or platform admin who opened a hospital works there like its staff (owner, 12 Oct 2026)
+    if (activeMembership?.platform) return children ?? <Outlet />;
     return (
       <NotAllowed>
-        Super admin and platform admin accounts manage hospitals and users, but can't open patient data. To change a
-        hospital's setup, open it from Hospitals. To work with patients, use your hospital account.
+        To work in a hospital – its patients, appointments, lab, billing, pharmacy and setup – open it from Hospitals.
       </NotAllowed>
     );
   }
@@ -109,6 +107,6 @@ export function RequireCalendarRole() {
 // "/" sends super admins to the platform area and everyone else to their hospital dashboard.
 export function HomeRedirect({ children }) {
   const { isPlatform, activeMembership } = useAuth();
-  if (isPlatform) return <Navigate to={activeMembership?.platform ? '/admin/staff' : '/platform/overview'} replace />;
+  if (isPlatform && !activeMembership?.platform) return <Navigate to="/platform/overview" replace />;
   return children;
 }

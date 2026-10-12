@@ -6,7 +6,7 @@ import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { normalizeAppearance } from '../appearance.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
-import { ACCOUNT_MODULE, HOSPITAL_ADMIN, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
+import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
 import { PatientSearch } from './PatientSearch.jsx';
 import { IdleWarning } from './Layout.jsx';
 import { Alert, Avatar, rolesLabel } from './ui.jsx';
@@ -112,7 +112,7 @@ function Workspace() {
       <div className="ws-text">
         <span className="ws-label">Working in</span>
         <strong className="ws-name">{activeMembership.tenantName}</strong>
-        <span className="ws-meta">{activeMembership.platform ? 'Hospital setup only – its patients stay hidden' : rolesLabel(activeMembership.roles)}</span>
+        <span className="ws-meta">{activeMembership.platform ? 'Every role – records you open are audited' : rolesLabel(activeMembership.roles)}</span>
       </div>
       {memberships.length > 1 && (
         <label className="ws-switch">
@@ -239,10 +239,10 @@ export function AppLayout() {
 
   const locked = user.mustChangePassword; // only the password screen until they choose their own
   // "Find a patient" in the top bar: hospital staff who work with patient records.
-  const searchable = !locked && !isPlatform && canSeePatients(activeMembership?.roles ?? []);
+  const searchable = !locked && canSeePatients(activeMembership?.roles ?? []);
   // Super admins and platform admins: the platform menu, or – with a hospital's setup open – its Hospital admin pages only
   const inSetup = Boolean(activeMembership?.platform);
-  const modules = locked ? [] : isPlatform ? (inSetup ? [HOSPITAL_ADMIN] : platformModules(platform)) : hospitalModules(activeMembership?.roles);
+  const modules = locked ? [] : isPlatform && !inSetup ? platformModules(platform) : hospitalModules(activeMembership?.roles);
   const closeMobile = () => setMobileOpen(false);
   // Icon rail: folded by the person, or automatically on narrower screens (unless the full menu is open).
   const rail = !mobileOpen && (collapsed || railForced);
@@ -316,8 +316,9 @@ export function AppLayout() {
           {inSetup && (
             <div className="pf-notice">
               <Alert type="info" icon={Building2}>
-                You are in the setup of <strong>{activeMembership.tenantName}</strong> as the {platformRoleLabel(platform)?.toLowerCase()}
-                {activeMembership.readOnly ? ' – view only' : ''}. Its patients, bills and pharmacy stay hidden.{' '}
+                You are working in <strong>{activeMembership.tenantName}</strong> as the {platformRoleLabel(platform)?.toLowerCase()}
+                {platform?.role === 'platformadmin' ? ' – view only, apart from the setup you may change' : ''}. Every patient record you open is
+                recorded in its audit log.{' '}
                 <button type="button" className="btn btn-link btn-sm" onClick={backToPlatform}>
                   <ArrowLeft aria-hidden="true" /> Back to the platform
                 </button>

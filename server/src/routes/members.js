@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { Membership, TENANT_ROLES } from '../models/Membership.js';
-import { User, canEditPlatform } from '../models/User.js';
+import { ADMIN_RIGHTS, Membership, TENANT_ROLES } from '../models/Membership.js';
+import { User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
@@ -34,6 +34,7 @@ const toMember = (m, sharedUserIds = new Set()) => ({
   id: m._id.toString(),
   roles: m.roles,
   isActive: m.isActive,
+  adminRights: m.roles.includes('admin') ? [...(m.adminRights ?? [])] : [],
   createdAt: m.createdAt,
   user: m.userId.toJSON(),
   // Also works in another hospital: only a super admin may change their name, email or password.
@@ -69,6 +70,16 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
 
   const isSelf = (req, m) => req.user._id.equals(m.userId._id);
 
+  // A hospital's own admin changes its staff only as far as the super admin allowed (owner, 12 Oct 2026). Super admins
+  // and platform admins have their own rights (platform permissions).
+  const RIGHT_WORDS = { resetPassword: 'reset passwords', access: "remove or restore someone's access", roles: 'change roles', details: 'edit names and emails' };
+  function assertAdminRight(req, right) {
+    if (isPlatformUser(req.user)) return;
+    if (!req.membership?.adminRights?.includes(right)) {
+      throw new HttpError(403, `You need the super admin's permission to ${RIGHT_WORDS[right]}. Ask the super admin.`, 'NEEDS_PERMISSION');
+    }
+  }
+
   // A platform admin changes a hospital admin's access (adding one, their roles, deactivating, their details or
   // password) only when a super admin gave them "Hospital admins' access" (owner's request, 12 Oct 2026).
   function assertHospitalAdminRight(req, ...roleLists) {
@@ -100,6 +111,30 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       );
     }
   }
+
+  // How many people have each role here (active places), for the hospital admin's dashboard
+  router.get('/role-counts', async (req, res) => {
+    const counts = {};
+    for (const role of TENANT_ROLES) counts[role] = await Membership.countDocuments({ tenantId: req.scopeTenantId, isActive: true, roles: role });
+    res.json({ counts, people: await Membership.countDocuments({ tenantId: req.scopeTenantId, isActive: true }) });
+  });
+
+  // A hospital admin's rights (super admins, and platform admins given "Hospital admins' access")
+  router.patch('/:memberId/admin-rights', async (req, res) => {
+    if (!isPlatformUser(req.user) || !canEditPlatform(req.user, 'hospitalAdmins')) {
+      throw new HttpError(403, "Only the super admin gives a hospital admin's rights.", 'SUPER_ADMIN_ONLY');
+    }
+    const { rights } = parse(z.object({ rights: z.array(z.enum(ADMIN_RIGHTS)).max(ADMIN_RIGHTS.length) }), req.body);
+    const m = await findMember(req);
+    if (!m.roles.includes('admin')) throw new HttpError(400, 'This person is not a hospital admin here.', 'NOT_ADMIN');
+    const from = [...(m.adminRights ?? [])].sort();
+    const to = ADMIN_RIGHTS.filter((r) => rights.includes(r));
+    if (from.join() === [...to].sort().join()) return res.json({ member: toMember(m) });
+    m.adminRights = to;
+    await m.save();
+    await audit(req, 'MEMBER_ROLE_CHANGED', { target: m.userId, tenantId: req.scopeTenantId, details: { adminRights: { from, to } } });
+    res.json({ member: toMember(m) });
+  });
 
   router.get('/', async (req, res) => {
     const q = parse(listSchema, req.query);
@@ -185,6 +220,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     const { roles: newRoles } = parse(z.object({ roles }), req.body);
     const m = await findMember(req);
     if (isSelf(req, m)) throw new HttpError(400, "You can't change your own roles.", 'SELF_ACTION');
+    assertAdminRight(req, 'roles');
     const from = [...m.roles];
     assertHospitalAdminRight(req, from, newRoles);
     if (from.join() === newRoles.join()) return res.json({ member: toMember(m) });
@@ -201,6 +237,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     const { isActive } = parse(z.object({ isActive: z.boolean('isActive must be true or false') }), req.body);
     const m = await findMember(req);
     if (isSelf(req, m)) throw new HttpError(400, "You can't deactivate or reactivate yourself.", 'SELF_ACTION');
+    assertAdminRight(req, 'access');
     assertHospitalAdminRight(req, m.roles);
     if (m.isActive === isActive) return res.json({ member: toMember(m) });
     if (!isActive && m.roles.includes('admin')) await assertAnotherActiveAdmin(req, m);
@@ -216,6 +253,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       const data = parse(editSchema, req.body);
       const m = await findMember(req);
       if (isSelf(req, m)) throw new HttpError(400, 'Ask a platform super admin to change your own details.', 'SELF_ACTION');
+      assertAdminRight(req, 'details');
       assertHospitalAdminRight(req, m.roles);
       await assertNotShared(req, m);
 
@@ -239,6 +277,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       if (isSelf(req, m)) {
         throw new HttpError(400, 'To change your own password, use "Change password" instead.', 'SELF_ACTION');
       }
+      assertAdminRight(req, 'resetPassword');
       assertHospitalAdminRight(req, m.roles);
       await assertNotShared(req, m);
 

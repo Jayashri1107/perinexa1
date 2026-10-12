@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { Membership, hasRole } from '../models/Membership.js';
+import { Membership, TENANT_ROLES, hasRole } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
 import { User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { HttpError } from '../utils/httpError.js';
@@ -34,7 +34,8 @@ export function clearAuthCookie(res) {
 const platformMembership = (user, tenant) => ({
   userId: user._id,
   tenantId: tenant._id,
-  roles: ['admin'],
+  roles: [...TENANT_ROLES],
+  adminRights: [], // the hospital-admin rights are for hospital admins; platform users have their own (canEditPlatform)
   isActive: true,
   platform: true,
   readOnly: !canEditPlatform(user, 'hospitalSetup'),
@@ -152,12 +153,17 @@ const PLATFORM_HOSPITAL_PATHS = [
   /^\/abdm\/(settings|status)(\/|$)/,
 ];
 
-/** After requireTenant: a super admin or platform admin in a hospital – setup only, and view only without the right. */
+/**
+ * After requireTenant. A super admin in a hospital: everything, like its own staff (owner's decision, 12 Oct 2026 –
+ * every patient record opened is in the hospital's audit log). A platform admin: reads everything, and changes only
+ * the hospital's setup and staff, as far as a super admin allowed.
+ */
 export function platformHospitalGuard(req, _res, next) {
-  if (!req.membership?.platform) return next();
+  if (!req.membership?.platform || req.user.isSuperAdmin) return next();
+  if (READS.has(req.method)) return next();
   const path = req.originalUrl.split('?')[0].replace(/^\/api/, '');
   if (!PLATFORM_HOSPITAL_PATHS.some((rx) => rx.test(path))) {
-    throw new HttpError(403, "Super admins and platform admins see a hospital's setup only – never its patients, bills or pharmacy.", 'PLATFORM_SETUP_ONLY');
+    throw new HttpError(403, 'View only: a platform admin changes only a hospital\'s setup and staff, never its patients, bills or pharmacy.', 'VIEW_ONLY');
   }
   if (!READS.has(req.method) && !canEditPlatform(req.user, staffOr('hospitalSetup')(req))) throw new HttpError(403, VIEW_ONLY, 'VIEW_ONLY');
   next();

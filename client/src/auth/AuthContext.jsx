@@ -5,6 +5,9 @@ import { STANDARD_APPEARANCE, applyAppearance, forgetAppearance, normalizeAppear
 // The email the sign-in fills in once, after "Switch to your doctor account" (read and removed by LoginPage).
 export const LOGIN_EMAIL_KEY = 'perinexa:loginEmail';
 
+// A super admin or platform admin who opens a hospital works there with every role (owner, 12 Oct 2026)
+const ALL_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing'];
+
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
@@ -216,7 +219,7 @@ export function AuthProvider({ children }) {
   const activeMembership =
     memberships.find((m) => m.tenantId === activeTenantId) ??
     (platformHospital && platformHospital.tenantId === activeTenantId
-      ? { tenantId: platformHospital.tenantId, tenantName: platformHospital.tenantName, roles: ['admin'], platform: true, readOnly: platformHospital.readOnly }
+      ? { tenantId: platformHospital.tenantId, tenantName: platformHospital.tenantName, roles: ALL_ROLES, platform: true, readOnly: platformHospital.readOnly }
       : null);
 
   /** Super admins and platform admins: open a hospital's setup (tenantId), or go back to the platform (null). */

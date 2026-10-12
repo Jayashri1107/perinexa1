@@ -108,7 +108,7 @@ describe('giving platform admin rights', () => {
 });
 
 describe("a hospital's setup", () => {
-  it('a super admin opens a hospital: its setup yes, its patients, bills and pharmacy no', async () => {
+  it('a super admin opens a hospital fully, like its own staff; every patient record opened is in its audit log', async () => {
     const doc = await loginAs(doctor, { app });
     expect((await doc.post('/api/patients').send(samplePatient({ fullName: 'Asha' }))).status).toBe(201);
 
@@ -119,11 +119,15 @@ describe("a hospital's setup", () => {
     expect((await s.get('/api/tenant/members')).status).toBe(200);
     expect((await s.get('/api/tenant/settings/letterhead')).status).toBe(200);
     expect((await s.put('/api/tenant/settings/letterhead').send({ name: 'Alpha Hospital Pvt Ltd' })).status).toBe(200);
-    for (const url of ['/api/patients', '/api/billing/bills', '/api/pharmacy/medicines', '/api/today', '/api/calendar', '/api/analytics/overview']) {
+    // Owner's decision (12 Oct 2026, as in the earlier Perinexa1): patients, bills, pharmacy – everything
+    for (const url of ['/api/patients', '/api/billing/bills', '/api/pharmacy/medicines', '/api/today', '/api/calendar']) {
       const res = await s.get(url);
-      expect(res.status, url).toBe(403);
+      expect(res.status, url).toBe(200);
     }
-    expect((await s.get('/api/patients')).body.error.code).toBe('PLATFORM_SETUP_ONLY');
+    const list = (await s.get('/api/patients')).body.patients;
+    expect(list.map((p) => p.fullName)).toEqual(['Asha']);
+    expect((await s.get(`/api/patients/${list[0].id}`)).status).toBe(200);
+    expect(await AuditLog.exists({ action: 'PATIENT_VIEWED', tenantId: hospital._id, actor: superAdmin._id })).toBeTruthy();
     // The hospital's own audit log records that the super admin opened its setup
     expect(await AuditLog.exists({ action: 'TENANT_SWITCHED', tenantId: hospital._id, actor: superAdmin._id })).toBeTruthy();
   });
@@ -151,7 +155,11 @@ describe("a hospital's setup", () => {
     const editor = await loginAs(await platformAdmin(['hospitalSetup']), { app });
     await openHospital(editor, hospital);
     expect((await editor.put('/api/tenant/settings/letterhead').send({ name: 'Changed' })).status).toBe(200);
-    expect((await editor.get('/api/patients')).status).toBe(403);
+    // A platform admin looks at the patients but never changes them
+    expect((await editor.get('/api/patients')).status).toBe(200);
+    const noPatient = await editor.post('/api/patients').send(samplePatient({ fullName: 'Nope' }));
+    expect(noPatient.status).toBe(403);
+    expect(noPatient.body.error.code).toBe('VIEW_ONLY');
   });
 
   it('closing the setup goes back to the platform; hospital members cannot use this', async () => {

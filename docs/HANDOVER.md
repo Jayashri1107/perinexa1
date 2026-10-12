@@ -153,6 +153,12 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - **AI provider: OpenAI** (chosen 30 Sep 2026). The owner puts the key in `server/.env` themselves.
 - **Look and wording** follow `docs/BRAND.md`: colours only from `tokens.css`, a status is colour + icon + word, one
   primary button per screen, no exclamation marks or emoji, plain doctor-to-doctor wording.
+- **Super admin and platform admin (Perinexa1, 12 Oct 2026).** The first super admin is created on the first start
+  (no password in a settings file). A super admin may open any hospital and work there with every role, patient records
+  included (each record opened is in that hospital's audit log) – a deliberate change from "the super admin never sees
+  patient data". Platform admins see the same and change only what the super admin ticked (Users & access → User
+  permissions). Hospital admins reset passwords, remove access, change roles or edit staff details only with the super
+  admin's permission; new people are added by the super admin. Review this before real patient data.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

@@ -38,8 +38,11 @@ The owner hired a developer to take Perinexa to a commercial launch; she works w
   forms, patient wording) changes only with the owner's approval – the owner is a doctor. DRAFT stays marked DRAFT.
 - **Owner decisions** listed in `docs/HANDOVER.md` section 9 are not reversed without asking the owner.
 - **Never weaken**: hospital separation (`tenantScoped`; `aggregate()` needs its own `tenantId` match), need-to-know
-  record access, the audit log and its trimming, the fetal-sex protection, the neutral name for HIV tests, and the
-  super admin never seeing patient data.
+  record access, the audit log and its trimming, the fetal-sex protection and the neutral name for HIV tests.
+  Perinexa1 only (owner's decision, 12 Oct 2026, as in the earlier Perinexa1): a super admin may open a hospital and
+  work there with every role, patients included – every record opened is in that hospital's audit log; platform
+  admins look but change only what the super admin allowed; hospital admins change staff only with the super admin's
+  permission. Don't widen this further without asking the owner.
 - **Real patient data** only after the go-live checklist in the handover plan is complete – and never in a Claude chat,
   a test, a fixture or a developer's computer.
 

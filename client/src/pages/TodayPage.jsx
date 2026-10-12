@@ -38,6 +38,17 @@ import { CarePlanSection, FlagCountPill, PatientRow, RedFlagsSection, Section, V
 
 const has = (roles, list) => roles.some((r) => list.includes(r));
 
+// The hospital admin's dashboard: one tile per role (owner, 12 Oct 2026)
+const STAFF_ROLE_TILES = [
+  { role: 'doctor', label: 'Doctors' },
+  { role: 'rmo', label: 'RMOs' },
+  { role: 'nurse', label: 'Nurses' },
+  { role: 'receptionist', label: 'Receptionists' },
+  { role: 'lab', label: 'Lab' },
+  { role: 'pharmacist', label: 'Pharmacy' },
+  { role: 'billing', label: 'Accounts' },
+];
+
 function TodaysPatients({ rows, progress, showDoctor, canMark, onMark, onUndo, onSlip, busy }) {
   return (
     <Section id="td-patients" icon={Users} title="Today's patients" count={rows.length} empty="Nobody is booked for today, and no visit has been started yet.">
@@ -172,6 +183,8 @@ export function TodayPage() {
   // Overrides to review: the patients whose risk this doctor may override – their own and unassigned ones.
   const toReview = useFetch(isDoctor ? '/patients' : null, { limit: 1, risk: 'review', doctor: 'mine_or_unassigned' });
   const staff = useFetch(isAdmin ? '/tenant/members' : null, { limit: 1, status: 'active' });
+  // The hospital admin's dashboard: the staff by role
+  const roleCounts = useFetch(isAdmin ? '/tenant/members/role-counts' : null);
   // Drafts in the clinic library waiting for a doctor's approval (doctors approve)
   const library = useLibraryDrafts(isDoctor);
 
@@ -243,6 +256,11 @@ export function TodayPage() {
       />
     ),
     isAdmin && <KpiCard key="staff" label="Active staff" value={staff.data ? formatNumber(staff.data.total) : '—'} sub="People who can work here" to="/admin/staff" />,
+    ...(isAdmin && roleCounts.data
+      ? STAFF_ROLE_TILES.map((r) => (
+          <KpiCard key={`role-${r.role}`} label={r.label} value={formatNumber(roleCounts.data.counts[r.role] ?? 0)} sub={roleCounts.data.counts[r.role] ? 'Open the list' : 'Nobody yet'} to={`/admin/staff?role=${r.role}`} />
+        ))
+      : []),
   ].filter(Boolean);
 
   return (
