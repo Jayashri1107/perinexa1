@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Building2, ChevronsUpDown, CircleAlert, CircleHelp, LogOut, Menu, TriangleAlert, X } from 'lucide-react';
+import { Building2, CircleAlert, CircleHelp, KeyRound, LogOut, Menu, TriangleAlert, UserCog } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
@@ -9,17 +9,15 @@ import { CARE_TYPES } from '../pages/patients/patientFormat.js';
 import { ACCOUNT_MODULE, PLATFORM_MODULES, canSeePatients, hospitalModules } from '../platform/modules.js';
 import { PatientSearch } from './PatientSearch.jsx';
 import { IdleWarning } from './Layout.jsx';
-import { TitleSlotContext } from './PageHeader.jsx';
 import { Alert, Avatar, rolesLabel } from './ui.jsx';
 
 // The new-patient form (before anything is saved): /patients/new or /patients/new/<type of care>
 const REGISTERING = new RegExp(`^/patients/new(?:/(?:${CARE_TYPES.join('|')}))?/?$`);
 
-// Wide screens: the menu button in the title bar hides the whole sidebar and shows it again (remembered).
-const HIDDEN_KEY = 'perinexa:sidebarHidden';
-const readHidden = () => {
+const COLLAPSE_KEY = 'perinexa:sidebarCollapsed';
+const readCollapsed = () => {
   try {
-    return localStorage.getItem(HIDDEN_KEY) === '1';
+    return localStorage.getItem(COLLAPSE_KEY) === '1';
   } catch {
     return false;
   }
@@ -38,7 +36,22 @@ function useMediaQuery(query) {
   return matches;
 }
 
-// A menu item: a 48 px icon tile and the label (only the tile in the icon rail).
+/** Closes a pop-up on a click outside it or on Escape. */
+function useDismiss(open, setOpen, box) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => !box.current?.contains(e.target) && setOpen(false);
+    const onKey = (e) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, setOpen, box]);
+}
+
+// A menu item: an icon tile and the label (only the tile in the icon rail).
 function SideLink({ module, rail, onNavigate }) {
   const Icon = module.icon;
   const { pathname } = useLocation();
@@ -61,29 +74,22 @@ function SideLink({ module, rail, onNavigate }) {
   );
 }
 
-// The hospital the person is working in, at the top of the menu. People who work at more than one
-// hospital get a "Switch hospital" button that lists their other hospitals.
-function HospitalSwitcher({ rail, onExpand }) {
+// Top bar, left: the hospital being worked in ("Working in"), with a switch for people who work at more than one.
+function Workspace() {
   const { memberships, activeTenantId, activeMembership, switchTenant } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (rail) setOpen(false);
-  }, [rail]);
-
   if (!activeMembership) return null;
-  const others = memberships.filter((m) => m.tenantId !== activeTenantId);
 
   const choose = async (tenantId) => {
+    if (!tenantId || tenantId === activeTenantId) return;
     setBusy(true);
     setError(null);
     try {
       await switchTenant(tenantId);
-      setOpen(false);
       // A patient page from the previous hospital doesn't exist in the new one (a new-patient form stays).
       if (/^\/patients\/.+/.test(location.pathname) && !REGISTERING.test(location.pathname)) navigate('/patients');
       // Nor does a list of the previous hospital's patients from Analytics.
@@ -95,48 +101,32 @@ function HospitalSwitcher({ rail, onExpand }) {
     }
   };
 
-  const canExpand = rail && others.length > 0;
-  // The hospital being worked in (who is logged in is shown once, in the title bar).
   return (
-    <div className="sb-workspace-wrap">
-      <div className="sb-workspace" title={rail ? activeMembership.tenantName : undefined}>
-        <button
-          type="button"
-          className="sb-workspace-icon"
-          onClick={canExpand ? onExpand : undefined}
-          tabIndex={canExpand ? 0 : -1}
-          aria-label={canExpand ? 'Open the menu to switch hospital' : undefined}
-          aria-hidden={canExpand ? undefined : 'true'}
-        >
-          <Building2 />
-        </button>
-        <span className="sb-label sb-workspace-text">
-          <small>Hospital</small>
-          <strong className="sb-person">{activeMembership.tenantName}</strong>
-          {others.length > 0 && (
-            <button type="button" className="sb-switch-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)} disabled={busy}>
-              <ChevronsUpDown size={16} aria-hidden="true" /> {busy ? 'Switching…' : 'Switch hospital'}
-            </button>
-          )}
-          {error && (
-            <span className="sb-workspace-error" role="alert">
-              <CircleAlert aria-hidden="true" />
-              <span>{error}</span>
-            </span>
-          )}
-        </span>
+    <div className="ws" aria-label="The hospital you are working in">
+      <span className="ws-icon" aria-hidden="true">
+        <Building2 />
+      </span>
+      <div className="ws-text">
+        <span className="ws-label">Working in</span>
+        <strong className="ws-name">{activeMembership.tenantName}</strong>
+        <span className="ws-meta">{rolesLabel(activeMembership.roles)}</span>
       </div>
-      {open && (
-        <ul className="sb-switch-list" aria-label="Your other hospitals">
-          {others.map((m) => (
-            <li key={m.tenantId}>
-              <button type="button" onClick={() => choose(m.tenantId)} disabled={busy}>
-                <strong>{m.tenantName}</strong>
-                <span>{rolesLabel(m.roles)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+      {memberships.length > 1 && (
+        <label className="ws-switch">
+          <span className="sr-only">Switch hospital</span>
+          <select value={activeTenantId ?? ''} onChange={(e) => choose(e.target.value)} disabled={busy}>
+            {memberships.map((m) => (
+              <option key={m.tenantId} value={m.tenantId}>
+                {m.tenantName}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {error && (
+        <span className="ws-error" role="alert">
+          <CircleAlert aria-hidden="true" /> {error}
+        </span>
       )}
     </div>
   );
@@ -160,67 +150,65 @@ function HelpToggle() {
   );
 }
 
-/** Right of the title bar: who is logged in (photo, name, role – opens My settings) and Log out. */
-function UserMenu({ locked }) {
-  const { user, logout, activeMembership } = useAuth();
+// The profile circle beside "Log out": click it for the name, email and role, Change password and My settings.
+function ProfileMenu({ locked }) {
+  const { user, activeMembership } = useAuth();
+  const [open, setOpen] = useState(false);
+  const box = useRef(null);
+  useDismiss(open, setOpen, box);
   const role = user.isSuperAdmin ? 'Super admin' : activeMembership ? rolesLabel(activeMembership.roles) : null;
-  const chip = (
-    <>
-      <Avatar name={user.name} seed={user.email} />
-      <span className="pf-user-text">
-        <strong>{user.name}</strong>
-        {role && <span>{role}</span>}
-      </span>
-    </>
-  );
+
   return (
-    <div className="pf-user">
-      {locked ? (
-        <span className="pf-user-chip" title={user.name}>{chip}</span>
-      ) : (
-        <Link to={ACCOUNT_MODULE.to} className="pf-user-chip" title={`${user.name} – My settings`}>
-          {chip}
-        </Link>
-      )}
-      <button type="button" className="btn btn-secondary btn-sm pf-logout" onClick={() => logout('manual')}>
-        <LogOut aria-hidden="true" /> Log out
+    <div className="pm" ref={box}>
+      <button type="button" className="pm-btn" aria-haspopup="true" aria-expanded={open} aria-label={`Your profile: ${user.name}`} title={user.name} onClick={() => setOpen((o) => !o)}>
+        <Avatar name={user.name} seed={user.email} />
       </button>
+      {open && (
+        <div className="pm-card" role="dialog" aria-label="Your profile">
+          <div className="pm-head">
+            <Avatar name={user.name} seed={user.email} large />
+            <div className="pm-who">
+              <strong>{user.name}</strong>
+              <span>{user.email}</span>
+              {role && <span className="pill pm-role">{role}</span>}
+              {activeMembership && !user.isSuperAdmin && <span>{activeMembership.tenantName}</span>}
+            </div>
+          </div>
+          <Link to="/change-password" className="pm-link" onClick={() => setOpen(false)}>
+            <KeyRound aria-hidden="true" /> Change password
+          </Link>
+          {!locked && (
+            <Link to={ACCOUNT_MODULE.to} className="pm-link" onClick={() => setOpen(false)}>
+              <UserCog aria-hidden="true" /> My settings
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 /**
- * The layout for every login (brand guide page 7): main modules in the Night Indigo sidebar, with who is logged in
- * (and the hospital) below the logo; the screen title in the title bar; the page on the Mist canvas. Super admins see the platform modules;
- * hospital staff see their hospital's modules (based on their roles in the hospital selected in the menu).
+ * The layout for every login, in the Perinexa1 style: the sidebar with a ☰ button beside the logo that folds it into an
+ * icon rail (remembered in this browser), the hospital's name under the logo and the person's roles at its foot; a
+ * white top bar with the hospital being worked in on the left and Help, the profile circle and Log out on the right.
  */
 export function AppLayout() {
-  const { user, activeMembership, activeTenantId, tenantNotice, clearTenantNotice } = useAuth();
+  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice } = useAuth();
   const location = useLocation();
-  const [hidden, setHidden] = useState(readHidden);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [titleSlot, setTitleSlot] = useState(null);
   const railForced = useMediaQuery(RAIL_QUERY);
-  const closeBtnRef = useRef(null);
+  const toggleRef = useRef(null);
   const openedFrom = useRef(null);
-  const sbMenuBtnRef = useRef(null);
-  const barMenuBtnRef = useRef(null);
-  const toggledByButton = useRef(false);
-
-  // The menu button moves between the sidebar (shown) and the title bar (hidden): keep the keyboard focus on it.
-  useEffect(() => {
-    if (!toggledByButton.current) return;
-    toggledByButton.current = false;
-    (hidden ? barMenuBtnRef : sbMenuBtnRef).current?.focus();
-  }, [hidden]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(HIDDEN_KEY, hidden ? '1' : '0');
+      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
     } catch {
       /* not important if it can't be remembered */
     }
-  }, [hidden]);
+  }, [collapsed]);
 
   // Close the menu that opens over the page after navigating, or when the screen becomes wide again.
   useEffect(() => setMobileOpen(false), [location.pathname, railForced]);
@@ -230,7 +218,7 @@ export function AppLayout() {
   useEffect(() => {
     if (!mobileOpen) return undefined;
     openedFrom.current = document.activeElement;
-    closeBtnRef.current?.focus();
+    toggleRef.current?.focus();
     const onKey = (e) => e.key === 'Escape' && setMobileOpen(false);
     document.addEventListener('keydown', onKey);
     return () => {
@@ -241,78 +229,61 @@ export function AppLayout() {
   }, [mobileOpen]);
 
   const locked = user.mustChangePassword; // only the password screen until they choose their own
-  // "Find a patient" in the title bar: hospital staff who work with patient records.
+  // "Find a patient" in the top bar: hospital staff who work with patient records.
   const searchable = !locked && !user.isSuperAdmin && canSeePatients(activeMembership?.roles ?? []);
   const modules = locked ? [] : user.isSuperAdmin ? PLATFORM_MODULES : hospitalModules(activeMembership?.roles);
   const closeMobile = () => setMobileOpen(false);
-  // Icon rail on narrower screens (unless the full menu is open); on wide screens the sidebar is shown or hidden.
-  const rail = !mobileOpen && railForced;
-  const sidebarHidden = hidden && !railForced;
-  const expand = () => setMobileOpen(true);
-  const toggleMenu = () => {
-    if (railForced) return setMobileOpen((o) => !o);
-    toggledByButton.current = true;
-    return setHidden((h) => !h);
-  };
-  const menuOpen = railForced ? mobileOpen : !hidden;
+  // Icon rail: folded by the person, or automatically on narrower screens (unless the full menu is open).
+  const rail = !mobileOpen && (collapsed || railForced);
+  const toggleMenu = () => (railForced ? setMobileOpen((o) => !o) : setCollapsed((c) => !c));
+  const menuLabel = rail ? 'Expand menu' : 'Collapse menu';
+  const hospitalName = !user.isSuperAdmin ? activeMembership?.tenantName : null;
+  const foot = user.isSuperAdmin ? 'Super admin' : activeMembership ? rolesLabel(activeMembership.roles) : null;
 
   return (
-    <div className={`pf ${sidebarHidden ? 'pf-sb-hidden' : ''} ${mobileOpen ? 'pf-mobile-open' : ''}`}>
+    <div className={`pf ${collapsed ? 'pf-collapsed' : ''} ${mobileOpen ? 'pf-mobile-open' : ''}`}>
       <aside className="sb" id="main-menu" aria-label="Main navigation">
         <div className="sb-brand">
+          <button type="button" className="sb-toggle" onClick={toggleMenu} aria-label={menuLabel} title={menuLabel} aria-expanded={!rail} aria-controls="main-menu" ref={toggleRef}>
+            <Menu aria-hidden="true" />
+          </button>
           <Link to="/" onClick={closeMobile} aria-label="Perinexa – start page">
-            <img className="sb-logo" src={logoReversed} alt="Perinexa by Docvritta" width="184" height="45" />
-            <img className="sb-appicon" src={appIcon} alt="Perinexa" width="48" height="48" />
+            <img className="sb-logo" src={logoReversed} alt="Perinexa by Docvritta" width="150" height="37" />
+            <img className="sb-appicon" src={appIcon} alt="Perinexa" width="40" height="40" />
           </Link>
-          <button type="button" className="sb-menu-btn" onClick={toggleMenu} aria-label="Hide menu" title="Hide menu" aria-expanded="true" aria-controls="main-menu" ref={sbMenuBtnRef}>
-            <Menu size={24} />
-          </button>
-          <button type="button" className="sb-close" onClick={closeMobile} aria-label="Close menu" ref={closeBtnRef}>
-            <X size={24} />
-          </button>
         </div>
-
-        {!locked && !user.isSuperAdmin && activeMembership && <HospitalSwitcher rail={rail} onExpand={expand} />}
+        {hospitalName && <p className="sb-subtitle">{hospitalName}</p>}
 
         <nav className="sb-nav">
-          {modules.length > 0 && <p className="sb-section">{user.isSuperAdmin ? 'Platform' : 'Modules'}</p>}
           {modules.map((m) => (
             <SideLink key={m.key} module={m} rail={rail} onNavigate={closeMobile} />
           ))}
-          {!locked && (
-            <>
-              <p className="sb-section">Account</p>
-              <SideLink module={ACCOUNT_MODULE} rail={rail} onNavigate={closeMobile} />
-            </>
-          )}
+          {!locked && <SideLink module={ACCOUNT_MODULE} rail={rail} onNavigate={closeMobile} />}
         </nav>
+        {foot && <p className="sb-foot">{foot}</p>}
       </aside>
       <div className="sb-overlay" onClick={closeMobile} aria-hidden="true" />
 
       <div className="pf-body">
-        <div className="pf-titlebar">
-          <button
-            type="button"
-            className="icon-btn pf-menu-btn"
-            onClick={toggleMenu}
-            aria-label={menuOpen ? 'Hide menu' : 'Show menu'}
-            title={menuOpen ? 'Hide menu' : 'Show menu'}
-            aria-expanded={menuOpen}
-            aria-controls="main-menu"
-            ref={barMenuBtnRef}
-          >
-            <Menu size={24} />
-          </button>
-          <div className="pf-title-slot" ref={setTitleSlot} />
+        <header className="pf-topbar">
+          <div className="pf-topbar-start">
+            <button type="button" className="icon-btn pf-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen} aria-controls="main-menu">
+              <Menu size={24} />
+            </button>
+            {!user.isSuperAdmin && !locked && <Workspace />}
+          </div>
           {searchable && <PatientSearch key={activeTenantId} />}
-          <div className="pf-tools">
+          <div className="pf-topbar-actions">
             {!locked && <HelpToggle />}
             <span className="pf-env" role="note" title="Development version: use fake sample data only. Do not enter real patient information.">
               <TriangleAlert aria-hidden="true" /> Fake sample data only
             </span>
-            <UserMenu locked={locked} />
+            <ProfileMenu locked={locked} />
+            <button type="button" className="btn btn-sm pf-logout" onClick={() => logout('manual')}>
+              <LogOut aria-hidden="true" /> Log out
+            </button>
           </div>
-        </div>
+        </header>
         <main className="pf-main" id="main">
           {tenantNotice && (
             <div className="pf-notice">
@@ -322,9 +293,7 @@ export function AppLayout() {
             </div>
           )}
           {/* Re-create the page when the hospital changes, so no data from the previous hospital stays on screen. */}
-          <TitleSlotContext.Provider value={titleSlot}>
-            <Outlet key={activeTenantId ?? 'platform'} />
-          </TitleSlotContext.Provider>
+          <Outlet key={activeTenantId ?? 'platform'} />
         </main>
       </div>
       <IdleWarning />
