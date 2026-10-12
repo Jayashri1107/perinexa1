@@ -1,0 +1,709 @@
+{
+  "about": "Held-out voice cases (fake data), written by a separate author before any rule changes. Failures H05 and H19 guided the fixes in commit 48f050a, so this is a regression set, not an independent measure.",
+  "now": "2026-09-28T06:00:00Z",
+  "tz": "Asia/Kolkata",
+  "format": {
+    "now": "2026-09-28T06:00:00Z (11:30 in India); dates are read in Asia/Kolkata time",
+    "case": "{ id, region, careType, text, expected: { values, confirm?, questions?, notes?, noValue? }, why }",
+    "values": "Form paths that must be filled with exactly this value. Scalars: fullName, ageYears, phone (10 digits), address, motherName, pregnancy.lmp, pregnancy.scanEdd (YYYY-MM-DD), obstetric.gravida|para|living|abortions|previousCaesareans, obstetric.complicationsReviewed, medical.bloodGroup, medical.allergies, medical.heightCm, medical.weightKg, medical.conditionsReviewed, newborn.birthAt (local YYYY-MM-DDTHH:MM), newborn.birthWeightGrams, newborn.sex. Lists: medical.conditions and obstetric.pastComplications (tick-box keys, exact set); medical.otherConditions and notes (one case-insensitive regex per \"; \"-separated item, exact set). fullName, address, motherName and allergies compare ignoring case and punctuation; numbers compare as numbers; phone compares digits.",
+    "strict": "Any path filled that is not in values or confirm counts as WRONG (an extra tick, note, other condition or field).",
+    "confirm": "{ path: { value, ask } }: blood group and Rh heard by voice go to the confirmation card (plan 2.6, owner decision 9). Correct if the path is filled with value, or left empty with a question matching the regex ask. Filled with another value is WRONG.",
+    "questions": "Regexes (case-insensitive) that must each match one question (\"prompt | heard | option labels\"). Extra questions are allowed.",
+    "notes": "Regexes that must each match one message in notes (or corrections). Extra messages are allowed.",
+    "noValue": "Paths that must stay empty because the safe result is a question or note (documentation; any unexpected value is wrong anyway).",
+    "scoring": "correct = no wrong and everything expected present; safe miss = no wrong but something expected missing; wrong = any different or unexpected value."
+  },
+  "count": 40,
+  "cases": [
+    {
+      "id": "H01",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "patient name Rukhsana Qureshi age thirty one mobile nine eight two oh four five six seven one three LMP 14th July 2026 G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "fullName": "Rukhsana Qureshi",
+          "ageYears": "31",
+          "phone": "9820456713",
+          "pregnancy.lmp": "2026-07-14",
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "\"oh\" inside a phone number is 0"
+    },
+    {
+      "id": "H02",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "name Pallavi Gaikwad 24 years G to P1 L1 A hero LMP 2 by 8 by 2026 blood group be positive",
+      "expected": {
+        "values": {
+          "fullName": "Pallavi Gaikwad",
+          "ageYears": "24",
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "pregnancy.lmp": "2026-08-02"
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "B+",
+            "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+          }
+        }
+      },
+      "why": "G to, A hero, \"2 by 8 by 2026\", be positive"
+    },
+    {
+      "id": "H03",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "gravity 3 para 2 leaving 2 previous 2 else CS hypo tyroid on Thyronorm 75 mcg",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.previousCaesareans": "2",
+          "medical.conditions": [
+            "thyroid"
+          ]
+        }
+      },
+      "why": "gravity/leaving + number, \"else CS\", \"hypo tyroid\""
+    },
+    {
+      "id": "H04",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "HIV none reactive VDRL non reactive HBs ag negative blood group O positive",
+      "expected": {
+        "values": {
+          "notes": [
+            "^HIV non-reactive, VDRL non-reactive, HBsAg negative$"
+          ]
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "O+",
+            "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+          }
+        }
+      },
+      "why": "\"none reactive\" is non-reactive: nothing ticked; owner decision (29 Sep 2026): negative screening results are one note"
+    },
+    {
+      "id": "H05",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "HBsAg reactive referred to physician G1 P0 12 weeks LMP 6th July 2026",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "1",
+          "obstetric.para": "0",
+          "pregnancy.lmp": "2026-07-06"
+        },
+        "questions": [
+          "HBsAg|hepatitis|reactive"
+        ],
+        "noValue": [
+          "medical.conditions"
+        ]
+      },
+      "why": "a reactive result is never ticked without confirmation"
+    },
+    {
+      "id": "H06",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "name Deepika Rawat age 28 sorry 29 primi LMP 20 June 2026",
+      "expected": {
+        "values": {
+          "fullName": "Deepika Rawat",
+          "ageYears": "29",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0",
+          "obstetric.living": "0",
+          "obstetric.abortions": "0",
+          "obstetric.previousCaesareans": "0",
+          "pregnancy.lmp": "2026-06-20"
+        },
+        "notes": [
+          "correct|28.*29"
+        ]
+      },
+      "why": "self-correction with \"sorry\": later value wins, with a note"
+    },
+    {
+      "id": "H07",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "blood group A positive no sorry A negative anti D not given yet",
+      "expected": {
+        "values": {},
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "A-",
+            "ask": "\\bA\\s*(rh\\s*)?(-|neg)"
+          }
+        }
+      },
+      "why": "self-corrected blood group goes to the card as A negative; \"anti D not given\" is no note"
+    },
+    {
+      "id": "H08",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "LMP about 2 months back G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        },
+        "questions": [
+          "LMP|month|back"
+        ],
+        "noValue": [
+          "pregnancy.lmp"
+        ]
+      },
+      "why": "approximate LMP is a question, never a silent date"
+    },
+    {
+      "id": "H09",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "age ninety years G3 P2 L2 A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        },
+        "questions": [
+          "age|90|19"
+        ],
+        "noValue": [
+          "ageYears"
+        ]
+      },
+      "why": "teen/ty: 90 in antenatal care is asked"
+    },
+    {
+      "id": "H10",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "height one fifty eight weight fifty four kilo",
+      "expected": {
+        "values": {
+          "medical.heightCm": "158",
+          "medical.weightKg": "54"
+        }
+      },
+      "why": "Indian \"one fifty eight\" = 158 cm"
+    },
+    {
+      "id": "H11",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "height 5 3 weight 61 kg",
+      "expected": {
+        "values": {
+          "medical.weightKg": "61"
+        },
+        "confirm": {
+          "medical.heightCm": {
+            "value": "160",
+            "ask": "height|5 3|feet"
+          }
+        }
+      },
+      "why": "\"height 5 3\" is 5 ft 3 in or a question, never 53"
+    },
+    {
+      "id": "H12",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "known case of hyper tension on Labetalol 100 mg twice daily 20 weeks pregnant",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "hypertension"
+          ]
+        }
+      },
+      "why": "\"hyper tension\" joined"
+    },
+    {
+      "id": "H13",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "previous pregnancy eklampsia at 34 weeks G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.pastComplications": [
+            "pre_eclampsia"
+          ],
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "eklampsia spelling"
+    },
+    {
+      "id": "H14",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "no DM no HTN known case of asthma on inhalers allergic to sulfa drugs",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "asthma"
+          ],
+          "medical.allergies": "Sulfa drugs"
+        }
+      },
+      "why": "negations do not spill onto asthma"
+    },
+    {
+      "id": "H15",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "G3 P1 L1 A1 previous LSCS for non progress of labour allergic to ibuprofen weight 67 kg",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "1",
+          "obstetric.previousCaesareans": "1",
+          "medical.allergies": "Ibuprofen",
+          "medical.weightKg": "67"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "H16",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "known case of tired on tablets since 2 years G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        },
+        "questions": [
+          "thyroid"
+        ],
+        "noValue": [
+          "medical.conditions"
+        ]
+      },
+      "why": "real word \"tired\" with a clinical anchor: asked, never ticked"
+    },
+    {
+      "id": "H17",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "G2 P1 L1 A0 scan done baby is male as per scan LMP 1st June 2026",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "pregnancy.lmp": "2026-06-01"
+        },
+        "notes": [
+          "sex"
+        ]
+      },
+      "why": "PCPNDT: the sex words are removed with a note and fill nothing"
+    },
+    {
+      "id": "H18",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "address 7 Mango Tree Lane Wakad Pune name Shalini Pawar age 27",
+      "expected": {
+        "values": {
+          "address": "7 Mango Tree Lane Wakad Pune",
+          "fullName": "Shalini Pawar",
+          "ageYears": "27"
+        }
+      },
+      "why": "\"Tree\" in an address stays"
+    },
+    {
+      "id": "H19",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "husband Imran age 34 patient name Farheen Shaikh 26 years phone 70451 23987",
+      "expected": {
+        "values": {
+          "fullName": "Farheen Shaikh",
+          "ageYears": "26",
+          "phone": "7045123987"
+        }
+      },
+      "why": "the husband's age is not the patient's"
+    },
+    {
+      "id": "H20",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "wait 2 weeks for OGTT report G1 P0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "1",
+          "obstetric.para": "0"
+        }
+      },
+      "why": "\"wait 2 weeks\" is not a weight"
+    },
+    {
+      "id": "H21",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "L M P 9 8 2026 EDD by scan 16th May 2027",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-08-09",
+          "pregnancy.scanEdd": "2027-05-16"
+        }
+      },
+      "why": "spaced date after LMP; EDD matches LMP + 280"
+    },
+    {
+      "id": "H22",
+      "region": "Odisha",
+      "careType": "antenatal",
+      "text": "G 4 P 2 L 1 A 1 one baby expired at 2 days of life",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "4",
+          "obstetric.para": "2",
+          "obstetric.living": "1",
+          "obstetric.abortions": "1",
+          "obstetric.pastComplications": [
+            "stillbirth_or_neonatal_death"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "H23",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "sugar in pregnancy on diet control TSH normal",
+      "expected": {
+        "values": {
+          "notes": [
+            "gestational diabetes"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "H24",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "previous operation delivery 2019 now 30 weeks",
+      "expected": {
+        "values": {},
+        "questions": [
+          "caesarean|cesarean|operation"
+        ],
+        "noValue": [
+          "obstetric.previousCaesareans"
+        ]
+      },
+      "why": "owner decision 2: \"operation\" is asked"
+    },
+    {
+      "id": "H25",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "BP patient since 3 years on Amlodipine",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "hypertension"
+          ]
+        }
+      },
+      "why": "owner decision 1 (changed 29 Sep 2026): \"BP patient\" is high blood pressure, ticked"
+    },
+    {
+      "id": "H26",
+      "region": "Tamil Nadu",
+      "careType": "postnatal",
+      "text": "delivered yesterday by emergency LSCS for fetal distress G2 P2 L2 A0 blood group B negative anti D given",
+      "expected": {
+        "values": {
+          "notes": [
+            "caesarean",
+            "anti-?d"
+          ],
+          "obstetric.gravida": "2",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "B-",
+            "ask": "\\bB\\s*(rh\\s*)?(-|neg)"
+          }
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "H27",
+      "region": "Kerala",
+      "careType": "postnatal",
+      "text": "FTND with right mediolateral episiotomy on 26th September G1 P1 L1 A0",
+      "expected": {
+        "values": {
+          "notes": [
+            "normal vaginal delivery",
+            "episiotomy"
+          ],
+          "obstetric.gravida": "1",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "H28",
+      "region": "Tamil Nadu",
+      "careType": "newborn",
+      "text": "baby of Nandini Iyer born today at 8 40 am birth weight 3 kilo 150 grams baby boy",
+      "expected": {
+        "values": {
+          "fullName": "Baby of Nandini Iyer",
+          "motherName": "Nandini Iyer",
+          "newborn.birthAt": "2026-09-28T08:40",
+          "newborn.birthWeightGrams": "3150",
+          "newborn.sex": "male"
+        }
+      },
+      "why": "\"8 40 am\" and \"3 kilo 150 grams\""
+    },
+    {
+      "id": "H29",
+      "region": "urban",
+      "careType": "newborn",
+      "text": "mother name Tasneem Ansari baby delivered yesterday at 11 15 at night weight two thousand seven hundred grams female baby",
+      "expected": {
+        "values": {
+          "fullName": "Baby of Tasneem Ansari",
+          "motherName": "Tasneem Ansari",
+          "newborn.birthAt": "2026-09-27T23:15",
+          "newborn.birthWeightGrams": "2700",
+          "newborn.sex": "female"
+        }
+      },
+      "why": "\"at night\", \"two thousand seven hundred grams\""
+    },
+    {
+      "id": "H30",
+      "region": "Kerala",
+      "careType": "gynaecology",
+      "text": "name Leela Menon aged 46 post menopausal bleeding known diabetic on Glycomet fibroid uterus",
+      "expected": {
+        "values": {
+          "fullName": "Leela Menon",
+          "ageYears": "46",
+          "medical.conditions": [
+            "diabetes"
+          ],
+          "medical.otherConditions": [
+            "fibroid"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "H31",
+      "region": "urban",
+      "careType": "gynaecology",
+      "text": "PCOD with irregular cycles thyroid profile normal weight 72 kg height 1 55",
+      "expected": {
+        "values": {
+          "medical.otherConditions": [
+            "PCOS"
+          ],
+          "medical.weightKg": "72",
+          "medical.heightCm": "155"
+        }
+      },
+      "why": "a normal thyroid test is not thyroid disease"
+    },
+    {
+      "id": "H32",
+      "region": "Gujarat",
+      "careType": "infertility",
+      "text": "married for 6 years primary infertility husband semen analysis shows oligospermia AMH low",
+      "expected": {
+        "values": {
+          "medical.otherConditions": [
+            "male factor",
+            "ovarian reserve"
+          ]
+        }
+      },
+      "why": "\"married for 6 years\" is not an age"
+    },
+    {
+      "id": "H33",
+      "region": "Maharashtra",
+      "careType": "infertility",
+      "text": "name Sneha Kulkarni age 33 tubal block on HSG husband normal",
+      "expected": {
+        "values": {
+          "fullName": "Sneha Kulkarni",
+          "ageYears": "33",
+          "medical.otherConditions": [
+            "tubal block"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "H34",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "mobile 98 45 double 7 3 0 1 2",
+      "expected": {
+        "values": {
+          "phone": "9845773012"
+        }
+      },
+      "why": "digit groups with \"double\""
+    },
+    {
+      "id": "H35",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "phone 98765 4321 LMP 3rd August 2026",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-08-03"
+        },
+        "notes": [
+          "digit"
+        ],
+        "noValue": [
+          "phone"
+        ]
+      },
+      "why": "a 9-digit phone number is never saved"
+    },
+    {
+      "id": "H36",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "G2 P1 L1 A0 LMP 5th July only diabetes nil thyroid nil",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "pregnancy.lmp": "2026-07-05"
+        }
+      },
+      "why": "trailing \"only\"; \"diabetes nil\" ticks nothing"
+    },
+    {
+      "id": "H37",
+      "region": "Assam/North-East",
+      "careType": "antenatal",
+      "text": "twin pregnancy DCDA 18 weeks GDM on insulin",
+      "expected": {
+        "values": {
+          "notes": [
+            "twin",
+            "gestational diabetes"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "H38",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "G2 P1 L1 A0 previous baby had cleft lip VDRL non reactive",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "obstetric.pastComplications": [
+            "congenital_anomaly"
+          ],
+          "notes": [
+            "^VDRL non-reactive$"
+          ]
+        }
+      },
+      "why": "owner decision (29 Sep 2026): negative screening results are one note"
+    },
+    {
+      "id": "H39",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "age 32 matlab 23 G1 P0",
+      "expected": {
+        "values": {
+          "ageYears": "23",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0"
+        },
+        "notes": [
+          "correct|32.*23"
+        ]
+      },
+      "why": "\"matlab\" is a correction marker"
+    },
+    {
+      "id": "H40",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "name Asha Verma achha age 22 G1 P0 LMP 25th August 2026",
+      "expected": {
+        "values": {
+          "fullName": "Asha Verma",
+          "ageYears": "22",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0",
+          "pregnancy.lmp": "2026-08-25"
+        }
+      },
+      "why": "\"Asha\" after name is a name; \"achha\" is a filler"
+    }
+  ]
+}

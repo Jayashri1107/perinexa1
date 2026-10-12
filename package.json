@@ -1,18 +1,22 @@
 {
-  "name": "perinexa1",
+  "name": "perinexa",
   "private": true,
-  "type": "module",
-  "description": "Perinexa1 – hospital platform (MERN). Built module by module. Sample data only.",
+  "description": "Perinexa – medical web app (MERN). Sample data only.",
   "workspaces": [
     "server",
     "client"
   ],
   "scripts": {
+    "predev": "node scripts/db.mjs start",
     "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
-    "seed": "npm run seed -w server",
-    "prices:sample": "npm run prices:sample -w server",
-    "db:evaluate": "npm run evaluate -w server",
-    "build": "npm run build -w client"
+    "db:start": "node scripts/db.mjs start",
+    "db:stop": "node scripts/db.mjs stop",
+    "seed": "node scripts/db.mjs start && npm run seed -w server",
+    "pretest": "node scripts/db.mjs start",
+    "test": "npm test -w server && npm test -w client",
+    "build": "npm run build -w client",
+    "seed:demo": "node scripts/db.mjs start && npm run seed:demo -w server",
+    "export:hospital": "node scripts/db.mjs start && node server/scripts/export-hospital.js"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

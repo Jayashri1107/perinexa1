@@ -1,132 +1,203 @@
-/* Every colour, size and radius of the website. Change the look here, not in the components.
- * The palette is in the Perinexa family – a deep indigo with teal accents on a soft mist canvas – with its own shades
- * and font, so Perinexa1 looks related but not the same. */
+/*
+ * Perinexa brand tokens.
+ * Copied from the Perinexa Brand & UI Guidelines v1.0 (Sept 2026), page 11 "Token sheet", and the
+ * Perinexa design system in Claude (the source of truth). Every colour, radius and spacing value in the
+ * other stylesheets must come from a variable here – no raw colours anywhere else.
+ * Any new colour or component is added to the brand guide first, then here.
+ */
+
+/* Fonts are bundled with the app (for offline installs): Jost for the interface, Mukta for Devanagari. */
+@font-face { font-family: 'Jost'; font-style: normal; font-weight: 400; font-display: swap; src: url('../assets/fonts/Jost-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'Jost'; font-style: normal; font-weight: 500; font-display: swap; src: url('../assets/fonts/Jost-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'Jost'; font-style: normal; font-weight: 600; font-display: swap; src: url('../assets/fonts/Jost-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'Mukta'; font-style: normal; font-weight: 400; font-display: swap; src: url('../assets/fonts/Mukta-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'Mukta'; font-style: normal; font-weight: 600; font-display: swap; src: url('../assets/fonts/Mukta-SemiBold.woff2') format('woff2'); }
+
 :root {
-  --font: 'Plus Jakarta Sans', 'Mukta', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* ---- Token sheet (guide page 11) ---- */
+  --indigo-800: #221F6E; /* Night Indigo – sidebar */
+  --indigo-700: #302A78; /* Perinexa Indigo – primary buttons, active states, headings */
+  --indigo-600: #3A3490; /* Indigo Hover */
+  --indigo-200: #C9C7EE; /* Lavender – secondary text on indigo-800, avatars */
+  --indigo-100: #EDECFB; /* Lavender Wash – pastel icon tiles, neutral highlights */
+  --teal-500: #15B8A6;   /* Nexa Teal – accent fills only (scheduled / connected); text on it is indigo-800 */
+  --teal-700: #0A7064;   /* Deep Teal – teal text, links, icons; positive button with white label */
+  --teal-100: #D6F5F1;   /* Teal Wash – selected rows, positive highlights, avatars */
+  --mist-100: #E9EBF8;   /* Mist – page canvas (soft lavender-blue) */
+  --mist-50: #F5F6FD;    /* Mist Light – table headers, zebra rows */
+  --surface: #FFFFFF;    /* cards, panels, dropdowns, modals */
+  --card-border: #E4E6F4; /* the subtle 1 px edge of every card */
+  --ink: #211F5C;        /* primary text */
+  --slate-600: #5E6784;  /* secondary text */
+  --slate-300: #B8BFD0;  /* disabled controls and non-text decoration only */
+  --border: #D9DEEA;     /* Line */
 
-  --color-bg: #eceefa; /* mist canvas – a soft lavender-blue */
-  --color-surface: #ffffff;
-  --color-surface-muted: #f6f7fc;
-  --color-border: #dde1ee;
-  --color-text: #1d2150; /* indigo ink */
-  --color-text-muted: #5c6487;
+  --status-stable-fg: #0A6A52;
+  --status-stable-bg: #D3F4EA;
+  --status-admitted-fg: #5B2DB0;
+  --status-admitted-bg: #ECE4FB;
+  --status-due-fg: #125E88;
+  --status-due-bg: #DCEFF9;
+  --status-inactive-fg: #4B5371;
+  --status-inactive-bg: #ECEEF4;
+  --status-watch-fg: #8F4E07;
+  --status-watch-bg: #FDEFD6;
+  --status-high-fg: #B3261E;
+  --status-high-bg: #FDE3E0;
+  --status-high-solid: #C62D22; /* Alert Red – critical banners and destructive buttons only */
 
-  --color-primary: #3b3fa6; /* Perinexa1 indigo: buttons, active states, links */
-  --color-primary-hover: #2f3290;
-  --color-primary-soft: #e9e9fb;
-  --color-primary-text: #ffffff;
-
-  --color-accent: #13a99b; /* teal accent: highlights and charts */
-  --color-accent-strong: #0b7a70; /* teal text and icons on light backgrounds */
-  --color-accent-soft: #daf5f1;
-
-  --color-info: #1f68a8;
-  --color-info-soft: #e1eefa;
-  --color-success: #13795b;
-  --color-success-soft: #dcf4ea;
-  --color-warning: #95560a;
-  --color-warning-soft: #fcefd8;
-  --color-danger: #b42a20;
-  --color-danger-soft: #fce4e1;
-  --color-neutral: #4f5776;
-  --color-neutral-soft: #eceef5;
-
-  --sidebar-bg: #1e2163; /* night indigo */
-  --sidebar-text: #c7c9ef;
-  --sidebar-active-bg: rgba(255, 255, 255, 0.12);
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.07);
-  --sidebar-active-text: #ffffff;
-  --sidebar-accent: #4fd6c8; /* the focus ring on the sidebar */
-  --sidebar-tile-active-bg: #ffffff; /* the active menu item's icon tile (owner, 9 Oct 2026: indigo theme, no green) */
-  --sidebar-tile-active-fg: #3b3fa6;
-
-  /* sign-in page decoration */
-  --auth-ring-teal: rgba(79, 214, 200, 0.1);
-  --auth-button-shadow: rgba(59, 63, 166, 0.28);
-  --auth-orbit: rgba(59, 63, 166, 0.18);
-  --auth-panel: #23278a;                       /* the sign-in page's deep blue panel */
-  --auth-glass: rgba(255, 255, 255, 0.1);      /* glass tiles and chips on it */
-  --auth-glass-soft: rgba(255, 255, 255, 0.04);
-  --auth-glass-border: rgba(255, 255, 255, 0.22);
-  --auth-glass-shadow: rgba(10, 12, 60, 0.25);
-  --auth-heart: #ff8fb1;                       /* the heart tile */
-  --auth-ring-line: rgba(59, 63, 166, 0.25);   /* the dashed circle of the sign-in icon ring (indigo) */
-  --auth-ring-shadow: rgba(29, 33, 80, 0.14);   /* under its icons and the middle */
-
-  --overlay: rgba(23, 26, 82, 0.45);
-  --print-line: #999999;
-
-  --chart-1: #3b3fa6; /* the main series */
-  --chart-2: #13a99b; /* a second series (scheduled, or a comparison) */
-  --chart-grid: #e4e7f2;
-  --chart-hover: rgba(29, 33, 80, 0.05);
-
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 20px;
-  --shadow: 0 1px 2px rgba(29, 33, 80, 0.05), 0 6px 18px rgba(29, 33, 80, 0.06);
-  --shadow-hover: 0 10px 28px rgba(29, 33, 80, 0.1);
-  --shadow-lg: 0 18px 44px rgba(29, 33, 80, 0.18);
-  --focus-ring: 0 0 0 3px rgba(19, 169, 155, 0.35);
+  /* ---- Charts (Analytics, Feature 11). One series per chart; statuses stay in pills. ---- */
+  --chart-bar: var(--indigo-700);        /* the one series colour – follows the person's colour template */
+  --chart-scheduled: var(--teal-700);    /* future dates only (expected deliveries); teal means scheduled */
+  --chart-unknown: #838AA2;              /* "not recorded" rows – Chart grey, same in every template */
+  --chart-track: var(--mist-100);        /* meter track */
+  --chart-grid: var(--border);           /* gridlines, 1 px solid */
+  --chart-axis: var(--slate-600);        /* axis text */
 
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
 
-  --sidebar-width: 248px;
+  --radius-sm: 8px;    /* inputs */
+  --radius-md: 12px;   /* buttons, nav items, dropdowns */
+  --radius-lg: 24px;   /* every card: cards, KPI cards, table cards, panels */
+  --radius-xl: 28px;   /* dialogs and the sign-in card */
+  --radius-pill: 999px;
 
-  /* motion (owner, 9 Oct 2026; styles/motion.css): short and calm */
-  --motion-fast: 150ms;
-  --motion: 220ms;
-  --motion-page: 260ms;
-  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --text-sm: 13px;
-  --text: 14px;
-  --text-lg: 16px;
+  --shadow-card: 0 1px 2px rgba(34, 31, 110, 0.04), 0 8px 24px rgba(34, 31, 110, 0.06);
+  --shadow-pop: 0 16px 40px rgba(34, 31, 110, 0.14);
+
+  /* Something picked from a set of choices (an option card, a time slot, a chosen row or day): the same look everywhere */
+  --selected-bg: var(--teal-100);
+  --selected-edge: inset 0 0 0 1.5px var(--indigo-700);
+  --icon-tile-size: 44px; /* pastel icon containers on KPI cards */
+
+  --font-sans: 'Jost', 'Mukta', system-ui, sans-serif;
+  --font-deva: 'Mukta', 'Noto Sans Devanagari', sans-serif;
+
+  /* ---- Values the guide gives in words (pages 7–8), kept as tokens ---- */
+  --nav-row-active: #2F2C76;                   /* active navigation row */
+  --nav-tile: rgba(255, 255, 255, 0.12);       /* 48 px icon tile at 12% white */
+  --nav-row-hover: rgba(255, 255, 255, 0.06);
+  --nav-divider: rgba(255, 255, 255, 0.12);
+  --focus-ring: 0 0 0 3px rgba(21, 184, 166, 0.4); /* 3 px Nexa Teal at 40% */
+  --focus-ring-inset: inset 0 0 0 3px rgba(21, 184, 166, 0.4); /* the same ring drawn inside (scrolling tracks clip outside rings) */
+  --focus-ring-on-dark: 0 0 0 3px var(--teal-500); /* on Night Indigo the 40% ring is too faint, so full Nexa Teal */
+  --overlay: rgba(34, 31, 110, 0.45);          /* behind modals and the phone menu */
+  --on-dark: #FFFFFF;                          /* text on Night Indigo */
+  --on-solid: #FFFFFF;                         /* white labels on indigo, deep teal and Alert Red */
+  --print-ink: #000000;                        /* printed documents */
+
+  /* ---- Type scale (guide page 6): size / line height, times the person's text size ---- */
+  --text-scale: 1;     /* My settings → Appearance → Text size (0.9, 1, 1.125, 1.25); print sizes never change */
+  --fs-display: calc(40px * var(--text-scale));  --lh-display: calc(48px * var(--text-scale));  /* screen titles, 600 */
+  --fs-kpi: calc(48px * var(--text-scale));      --lh-kpi: calc(52px * var(--text-scale));      /* KPI numbers, 500 */
+  --fs-h1: calc(28px * var(--text-scale));       --lh-h1: calc(36px * var(--text-scale));       /* card titles, 600 */
+  --fs-h2: calc(22px * var(--text-scale));       --lh-h2: calc(30px * var(--text-scale));       /* section and panel headings, 600 */
+  --fs-h3: calc(18px * var(--text-scale));       --lh-h3: calc(26px * var(--text-scale));       /* nav labels, sub-headings, names in lists, 500 */
+  --fs-body: calc(15px * var(--text-scale));     --lh-body: calc(24px * var(--text-scale));     /* default text, table cells, form values, 400 */
+  --fs-label: calc(13px * var(--text-scale));    --lh-label: calc(18px * var(--text-scale));    /* buttons, pills, column headers, form labels, 500 */
+  --fs-caption: calc(12px * var(--text-scale));  --lh-caption: calc(16px * var(--text-scale));  /* timestamps, deltas, footnotes, 500 */
+  --fs-deva-body: calc(16px * var(--text-scale));    --lh-deva-body: calc(26px * var(--text-scale));
+  --fs-deva-heading: calc(22px * var(--text-scale)); --lh-deva-heading: calc(32px * var(--text-scale));
+
+  /* ---- Printed documents (A4 paper; sizes in points, as printers measure) ---- */
+  --print-sheet-width: 210mm;      /* A4 */
+  --print-sheet-margin: 12mm;      /* page margin – the printer's copy is in print.css @page (it can't read variables) */
+  --font-print: 'Jost', 'Mukta', system-ui, sans-serif; /* always the Perinexa font on paper, whatever font a person uses on screen */
+  --fs-print-body: 10.5pt;  --lh-print-body: 15pt;
+  --fs-print-small: 9pt;    --lh-print-small: 12.5pt;   /* labels, footers */
+  --fs-print-h2: 12pt;      --lh-print-h2: 16pt;        /* section headings */
+  --fs-print-h1: 15pt;      --lh-print-h1: 20pt;        /* document title, hospital name */
+  --fs-print-deva: 11.5pt;  --lh-print-deva: 17pt;      /* Hindi / Marathi: a little larger, with room for the matras */
+  --fs-print-large: 12.5pt;   /* prescriptions printed in "Large" text */
+  --fs-print-compact: 9.5pt;  /* half-page (A5) prescriptions */
+  --print-sheet-width-a5: 148mm;
+  --print-rule: var(--slate-300);  /* lines between rows on paper */
+
+  /* ---- Prescription accent colours: each doctor picks one for their printed prescriptions. Used only for
+     rules, headings, the ℞ and boxes – body text stays black. The tint is the light version for fills. ---- */
+  --rx-indigo: #302A78;   --rx-indigo-tint: #EEEDF8;
+  --rx-teal: #0A7064;     --rx-teal-tint: #E3F6F3;
+  --rx-maroon: #7A1F3D;   --rx-maroon-tint: #F7E8ED;
+  --rx-green: #2E6B34;    --rx-green-tint: #E7F2E8;
+  --rx-charcoal: #33333D; --rx-charcoal-tint: #EFEFF3;
+
+  /* ---- Layout (guide page 7) ---- */
+  --sidebar-width: 280px;
+  --rail-width: 88px;
+  --titlebar-height: 88px;
+  --control-height: 44px; /* buttons and the minimum click target */
+  --input-height: 48px;
+  --row-height: 72px;
+  --nav-tile-size: 48px;
 }
 
-/* Dark theme (My settings → Appearance, owner 9 Oct 2026): the same indigo and teal family on a night-indigo canvas.
- * Printouts stay black on white (they use their own colours). */
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --color-bg: #111330;
-  --color-surface: #1a1d42;
-  --color-surface-muted: #22264f;
-  --color-border: #31366b;
-  --color-text: #e8e9fb;
-  --color-text-muted: #a4a9d2;
-
-  --color-primary: #6d72ea;
-  --color-primary-hover: #8186f0;
-  --color-primary-soft: #292d66;
-  --color-primary-text: #ffffff;
-
-  --color-accent: #2fcfbe;
-  --color-accent-strong: #5fe0d2;
-  --color-accent-soft: #163f42;
-
-  --color-info: #86bdf0;
-  --color-info-soft: #18304d;
-  --color-success: #5fd3a3;
-  --color-success-soft: #133a2e;
-  --color-warning: #f1b866;
-  --color-warning-soft: #3d2f15;
-  --color-danger: #f4948b;
-  --color-danger-soft: #47201f;
-  --color-neutral: #b6bbdc;
-  --color-neutral-soft: #2a2e55;
-
-  --sidebar-bg: #0c0e26;
-  --sidebar-tile-active-bg: #6d72ea;
-  --sidebar-tile-active-fg: #ffffff;
-  --overlay: rgba(4, 5, 20, 0.7);
-  --chart-grid: #2d3163;
-  --chart-hover: rgba(255, 255, 255, 0.05);
-
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
-  --shadow-hover: 0 10px 28px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.5);
+/* ---- Personal look (My settings → Appearance) ----
+   Each person chooses; client/src/appearance.js sets data-* attributes on <html>. A colour template changes
+   only the Perinexa Indigo family (sidebar, primary buttons, headings, links, active states) and the canvas tint.
+   Status colours, the teal of what is scheduled or approved, and everything printed never change. Every template
+   keeps text at 4.5:1 or more (WCAG AA) – check new ones the same way. */
+:root {
+  /* The swatch shown for each template on the Appearance page */
+  --template-indigo: #302A78;
+  --template-blue: #1F4E8C;
+  --template-green: #2E6B34;
+  --template-plum: #6B1F5C;
+  --template-burgundy: #7A1F3D;
+  --template-slate: #3A4452;
+  --template-contrast: #000000;
 }
+:root[data-theme="blue"] {
+  --indigo-800: #13315C; --indigo-700: #1F4E8C; --indigo-600: #285C9E; --indigo-200: #C9DAF1;
+  --ink: #13294B; --mist-100: #E2E9F3; --mist-50: #F3F6FA; --nav-row-active: #1D3F70; --indigo-100: #E6EEF9; --card-border: #DDE5F0;
+  --overlay: rgba(19, 49, 92, 0.45); --shadow-card: 0 1px 2px rgba(19, 49, 92, 0.04), 0 8px 24px rgba(19, 49, 92, 0.06); --shadow-pop: 0 16px 40px rgba(19, 49, 92, 0.14);
+}
+:root[data-theme="green"] {
+  --indigo-800: #1C4222; --indigo-700: #2E6B34; --indigo-600: #347A3B; --indigo-200: #CDE6D0;
+  --ink: #1B3A1F; --mist-100: #E3ECE3; --mist-50: #F4F7F3; --nav-row-active: #285530; --indigo-100: #E7F2E8; --card-border: #DCE6DC;
+  --overlay: rgba(28, 66, 34, 0.45); --shadow-card: 0 1px 2px rgba(28, 66, 34, 0.04), 0 8px 24px rgba(28, 66, 34, 0.06); --shadow-pop: 0 16px 40px rgba(28, 66, 34, 0.14);
+}
+:root[data-theme="plum"] {
+  --indigo-800: #461339; --indigo-700: #6B1F5C; --indigo-600: #7C2A6C; --indigo-200: #EFCDE6;
+  --ink: #3D1236; --mist-100: #EEE4EC; --mist-50: #F9F4F8; --nav-row-active: #5A1A4D; --indigo-100: #F6E8F2; --card-border: #EBDDE7;
+  --overlay: rgba(70, 19, 57, 0.45); --shadow-card: 0 1px 2px rgba(70, 19, 57, 0.04), 0 8px 24px rgba(70, 19, 57, 0.06); --shadow-pop: 0 16px 40px rgba(70, 19, 57, 0.14);
+}
+:root[data-theme="burgundy"] {
+  --indigo-800: #4A1226; --indigo-700: #7A1F3D; --indigo-600: #8B2848; --indigo-200: #F1CCD8;
+  --ink: #431122; --mist-100: #F0E4E8; --mist-50: #FAF4F6; --nav-row-active: #631A33; --indigo-100: #F8E8EE; --card-border: #EDDDE3;
+  --overlay: rgba(74, 18, 38, 0.45); --shadow-card: 0 1px 2px rgba(74, 18, 38, 0.04), 0 8px 24px rgba(74, 18, 38, 0.06); --shadow-pop: 0 16px 40px rgba(74, 18, 38, 0.14);
+}
+:root[data-theme="slate"] {
+  --indigo-800: #252A33; --indigo-700: #3A4452; --indigo-600: #475364; --indigo-200: #D3D8E0;
+  --ink: #1F242C; --mist-100: #E6E8EC; --mist-50: #F5F6F8; --nav-row-active: #333A46; --indigo-100: #ECEEF1; --card-border: #E0E3E8;
+  --overlay: rgba(37, 42, 51, 0.5); --shadow-card: 0 1px 2px rgba(37, 42, 51, 0.04), 0 8px 24px rgba(37, 42, 51, 0.06); --shadow-pop: 0 16px 40px rgba(37, 42, 51, 0.14);
+}
+/* High contrast: black on white, darker secondary text, strong outlines instead of soft shadows */
+:root[data-theme="contrast"] {
+  --indigo-800: #000000; --indigo-700: #000000; --indigo-600: #333333; --indigo-200: #FFFFFF;
+  --ink: #000000; --slate-600: #3D3D3D; --slate-300: #767676; --border: #6F6F6F;
+  --mist-100: #EBEBEB; --mist-50: #F5F5F5; --nav-row-active: #3A3A3A; --nav-tile: rgba(255, 255, 255, 0.2);
+  --indigo-100: #FFFFFF; --card-border: #6F6F6F; --selected-edge: inset 0 0 0 2px #000000;
+  --nav-divider: rgba(255, 255, 255, 0.5); --overlay: rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 0 0 1px #6F6F6F; --shadow-pop: 0 0 0 2px #000000;
+}
+
+/* Text size: every screen text size and line height scales; spacing, click targets and printouts stay */
+:root[data-text-size="small"] { --text-scale: 0.9; }
+:root[data-text-size="large"] { --text-scale: 1.125; }
+:root[data-text-size="xlarge"] { --text-scale: 1.25; }
+
+/* Spacing: Compact fits more rows on the screen; click targets stay at least 44 px */
+:root[data-density="compact"] {
+  --space-3: 10px; --space-4: 12px; --space-6: 18px; --space-8: 24px; --space-12: 36px;
+  --row-height: 56px; --input-height: 44px; --titlebar-height: 72px;
+}
+
+/* Font: all bundled or already on the computer, so nothing is fetched from the internet */
+:root[data-font="mukta"] { --font-sans: 'Mukta', system-ui, sans-serif; }
+:root[data-font="system"] { --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Mukta', sans-serif; }

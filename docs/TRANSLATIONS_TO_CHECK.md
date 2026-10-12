@@ -1,0 +1,364 @@
+# Marathi and Hindi wording to check
+
+⚠️ **DRAFT.** Everything in Marathi and Hindi below was written by the software developer (an AI assistant) on 5 October 2026 and has **not** been checked by a fluent speaker. The medical words should also be checked by a doctor. Until then, the app says on the print preview and at the top of the portal that this wording is a draft.
+
+Where it is used – what the patient herself reads:
+
+- the **patient copy of the care plan** (Care plan tab → Print → Patient copy);
+- the **discharge card** (a stay → the discharge card → Print);
+- the **patient portal** (the address /portal) and the **paper with her portal code**.
+
+On paper the English is always printed, with the Marathi or Hindi under it (or after it, with " / ", for short labels), as on the prescriptions and the consent forms. Staff copies stay in English. What staff typed – advice, notes, the diagnosis, names, an item a doctor added or reworded – is never translated.
+
+How to check: read each line next to its English. Keep dates (`20 Oct 2026`), numbers in figures and words in capitals such as `HIV`, `Td`, `EDD` as they are. Write the corrected wording next to the line (or in a copy of this file) and give it to the developer: the wording lives in the file named in each section. The prescriptions’ own words (dose, how often, before or after food, how long) are listed in `docs/PRESCRIPTIONS.md`; the consent forms’ in `docs/CONSENT_FORMS.md`.
+
+In all: 99 care-plan items, and the fixed words of the three pages and the code paper.
+
+- [ ] Marathi checked by a fluent speaker (name, date): 
+- [ ] Hindi checked by a fluent speaker (name, date): 
+- [ ] Medical words checked by a doctor (name, date): 
+
+## 1. The built-in care-plan items
+
+File: `client/src/pages/careplans/itemTranslations.js`. Printed on the patient copy of the care plan (under the English) and shown in the patient portal. A line is used only while the item’s English wording is still exactly the one below; an item a doctor reworded or added is printed in English, as typed.
+
+The built-in pregnancy-loss template (the Abortion type of care, added to the app on 5 October 2026 alongside this work) has no Marathi or Hindi yet: its items print and show in the portal in English only, and the print preview counts them among the items printed in English only.
+
+### Pregnancy (antenatal)
+
+| Item | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `visit_booking` (visit) | First pregnancy check-up | गरोदरपणाची पहिली तपासणी | गर्भावस्था की पहली जाँच |
+| `visit_16` (visit) | Check-up at about 16 weeks | सुमारे 16 आठवड्यांची तपासणी | लगभग 16 हफ़्ते पर जाँच |
+| `visit_20` (visit) | Check-up at about 20 weeks | सुमारे 20 आठवड्यांची तपासणी | लगभग 20 हफ़्ते पर जाँच |
+| `visit_24` (visit) | Check-up at about 24–26 weeks | सुमारे 24–26 आठवड्यांची तपासणी | लगभग 24–26 हफ़्ते पर जाँच |
+| `visit_28` (visit) | Check-up at about 28–30 weeks | सुमारे 28–30 आठवड्यांची तपासणी | लगभग 28–30 हफ़्ते पर जाँच |
+| `visit_32` (visit) | Check-up at about 32 weeks | सुमारे 32 आठवड्यांची तपासणी | लगभग 32 हफ़्ते पर जाँच |
+| `visit_34` (visit) | Check-up at about 34 weeks | सुमारे 34 आठवड्यांची तपासणी | लगभग 34 हफ़्ते पर जाँच |
+| `visit_36` (visit) | Check-up at 36 weeks | 36 आठवड्यांची तपासणी | 36 हफ़्ते पर जाँच |
+| `visit_37` (visit) | Check-up at 37 weeks | 37 आठवड्यांची तपासणी | 37 हफ़्ते पर जाँच |
+| `visit_38` (visit) | Check-up at 38 weeks | 38 आठवड्यांची तपासणी | 38 हफ़्ते पर जाँच |
+| `visit_39` (visit) | Check-up at 39 weeks | 39 आठवड्यांची तपासणी | 39 हफ़्ते पर जाँच |
+| `visit_40` (visit) | Check-up at 40 weeks (due date) | 40 आठवड्यांची तपासणी (प्रसूतीची अंदाजे तारीख) | 40 हफ़्ते पर जाँच (प्रसव की अनुमानित तारीख़) |
+| `visit_41` (visit) | Check-up at 41 weeks if baby not yet born | बाळाचा जन्म अजून झाला नसल्यास 41 आठवड्यांची तपासणी | शिशु का जन्म अभी न हुआ हो तो 41 हफ़्ते पर जाँच |
+| `lab_cbc` (investigation) | Blood test (haemoglobin) | रक्त तपासणी (हिमोग्लोबिन) | ख़ून की जाँच (हीमोग्लोबिन) |
+| `lab_group` (investigation) | Blood group test | रक्तगटाची तपासणी | ब्लड ग्रुप की जाँच |
+| `lab_urine` (investigation) | Urine test | लघवीची तपासणी | पेशाब की जाँच |
+| `lab_ogtt1` (investigation) | Sugar test (glucose drink test) | साखरेची तपासणी (ग्लुकोजचे पाणी पिऊन) | शुगर की जाँच (ग्लूकोज़ का पानी पीकर) |
+| `lab_hiv` (investigation) | HIV test | एचआयव्ही (HIV) तपासणी | एचआईवी (HIV) की जाँच |
+| `lab_vdrl` (investigation) | Syphilis blood test | सिफिलीसची रक्त तपासणी | सिफ़लिस की ख़ून की जाँच |
+| `lab_hbsag` (investigation) | Hepatitis B blood test | हिपॅटायटिस बी ची रक्त तपासणी | हेपेटाइटिस बी की ख़ून की जाँच |
+| `lab_tsh` (investigation) | Thyroid blood test | थायरॉईडची रक्त तपासणी | थायरॉइड की ख़ून की जाँच |
+| `lab_ict1` (investigation) | Antibody blood test (Rh negative) | अँटिबॉडीची रक्त तपासणी (Rh निगेटिव्ह) | एंटीबॉडी की ख़ून की जाँच (Rh नेगेटिव) |
+| `lab_ogtt2` (investigation) | Repeat sugar test | साखरेची तपासणी पुन्हा | शुगर की जाँच दोबारा |
+| `lab_hb28` (investigation) | Repeat blood test (haemoglobin) | रक्त तपासणी पुन्हा (हिमोग्लोबिन) | ख़ून की जाँच दोबारा (हीमोग्लोबिन) |
+| `lab_ict28` (investigation) | Repeat antibody blood test | अँटिबॉडीची रक्त तपासणी पुन्हा | एंटीबॉडी की ख़ून की जाँच दोबारा |
+| `lab_hb36` (investigation) | Blood and urine tests before delivery | प्रसूतीपूर्वी रक्त व लघवीच्या तपासण्या | प्रसव से पहले ख़ून और पेशाब की जाँचें |
+| `scan_dating` (scan) | First ultrasound (to confirm dates) | पहिली सोनोग्राफी (तारखा निश्चित करण्यासाठी) | पहली सोनोग्राफ़ी (तारीख़ें पक्की करने के लिए) |
+| `scan_nt` (scan) | Ultrasound and blood test for baby’s health (11–13 weeks) | बाळाच्या आरोग्यासाठी सोनोग्राफी व रक्त तपासणी (11–13 आठवडे) | शिशु के स्वास्थ्य के लिए सोनोग्राफ़ी और ख़ून की जाँच (11–13 हफ़्ते) |
+| `scan_anomaly` (scan) | Detailed ultrasound of baby (18–20 weeks) | बाळाची सविस्तर सोनोग्राफी (18–20 आठवडे) | शिशु की विस्तृत सोनोग्राफ़ी (18–20 हफ़्ते) |
+| `scan_growth32` (scan) | Ultrasound to check baby’s growth | बाळाची वाढ तपासण्यासाठी सोनोग्राफी | शिशु की बढ़त जाँचने के लिए सोनोग्राफ़ी |
+| `scan_doppler` (scan) | Ultrasound with blood-flow check | रक्तप्रवाहाच्या तपासणीसह सोनोग्राफी | ख़ून के बहाव की जाँच के साथ सोनोग्राफ़ी |
+| `scan_twins_24` (scan) | Ultrasound to check growth (24 weeks) | वाढ तपासण्यासाठी सोनोग्राफी (24 आठवडे) | बढ़त जाँचने के लिए सोनोग्राफ़ी (24 हफ़्ते) |
+| `scan_twins_28` (scan) | Ultrasound to check growth (28 weeks) | वाढ तपासण्यासाठी सोनोग्राफी (28 आठवडे) | बढ़त जाँचने के लिए सोनोग्राफ़ी (28 हफ़्ते) |
+| `scan_growth_gdm` (scan) | Ultrasound to check baby’s growth (28–30 weeks) | बाळाची वाढ तपासण्यासाठी सोनोग्राफी (28–30 आठवडे) | शिशु की बढ़त जाँचने के लिए सोनोग्राफ़ी (28–30 हफ़्ते) |
+| `scan_twins_32` (scan) | Ultrasound to check growth (32 weeks) | वाढ तपासण्यासाठी सोनोग्राफी (32 आठवडे) | बढ़त जाँचने के लिए सोनोग्राफ़ी (32 हफ़्ते) |
+| `scan_placenta_32` (scan) | Follow-up ultrasound (32 weeks) | पुन्हा सोनोग्राफी (32 आठवडे) | दोबारा सोनोग्राफ़ी (32 हफ़्ते) |
+| `vacc_td1` (vaccination) | Tetanus (Td) injection – dose 1 | धनुर्वाताचे (Td) इंजेक्शन – डोस 1 | टिटनेस (Td) का इंजेक्शन – ख़ुराक 1 |
+| `vacc_td2` (vaccination) | Tetanus (Td) injection – dose 2 | धनुर्वाताचे (Td) इंजेक्शन – डोस 2 | टिटनेस (Td) का इंजेक्शन – ख़ुराक 2 |
+| `vacc_tdap` (vaccination) | Tdap injection (protects baby from whooping cough) | Tdap इंजेक्शन (बाळाचे डांग्या खोकल्यापासून संरक्षण करते) | Tdap इंजेक्शन (शिशु को काली खाँसी से बचाता है) |
+| `vacc_flu` (vaccination) | Flu injection (if in flu season) | फ्लूचे इंजेक्शन (फ्लूचा हंगाम असल्यास) | फ़्लू का इंजेक्शन (फ़्लू का मौसम हो तो) |
+| `anti_d` (vaccination) | Anti-D injection (Rh negative) | अँटी-डी इंजेक्शन (Rh निगेटिव्ह) | एंटी-डी इंजेक्शन (Rh नेगेटिव) |
+| `med_folic` (medication) | Folic acid tablet every day until 3 months | रोज फॉलिक ॲसिडची गोळी, 3 महिन्यांपर्यंत | रोज़ फ़ोलिक एसिड की गोली, 3 महीने तक |
+| `med_ifa` (medication) | Iron tablet every day from 4th month | गरोदरपणाच्या 4 थ्या महिन्यापासून रोज लोहाची (आयर्न) गोळी | गर्भावस्था के 4थे महीने से रोज़ आयरन की गोली |
+| `med_calcium` (medication) | Calcium tablets from 4th month | गरोदरपणाच्या 4 थ्या महिन्यापासून कॅल्शियमच्या गोळ्या | गर्भावस्था के 4थे महीने से कैल्शियम की गोलियाँ |
+| `med_deworm` (medication) | Deworming tablet (one dose) | जंतनाशक गोळी (एकच डोस) | पेट के कीड़ों की गोली (एक ख़ुराक) |
+| `adv_diet` (advice) | Eat a balanced diet, rest well, and keep taking your tablets | संतुलित आहार घ्या, पुरेशी विश्रांती घ्या आणि गोळ्या नियमित घेत राहा | संतुलित आहार लें, अच्छी तरह आराम करें और अपनी गोलियाँ लेती रहें |
+| `adv_danger` (advice) | Come to hospital at once for bleeding, severe headache, blurred vision, fits, fever, leaking water or reduced baby movements | रक्तस्राव, तीव्र डोकेदुखी, धूसर दिसणे, झटके, ताप, पाणी जाणे किंवा बाळाची हालचाल कमी झाल्यास लगेच रुग्णालयात या | ख़ून आना, तेज़ सिरदर्द, धुंधला दिखना, दौरे, बुख़ार, पानी जाना या शिशु की हलचल कम होने पर तुरंत अस्पताल आएँ |
+| `adv_fmc` (advice) | Count your baby’s movements every day | बाळाच्या हालचाली रोज मोजा | रोज़ अपने शिशु की हलचल गिनें |
+| `adv_birthplan` (advice) | Plan for delivery; learn about breastfeeding | प्रसूतीची तयारी करा; स्तनपानाबद्दल माहिती घ्या | प्रसव की तैयारी करें; स्तनपान के बारे में जानें |
+| `adv_twins_placentas` (advice) | Ask your doctor how often you need an ultrasound scan | सोनोग्राफी किती वेळा करायची ते तुमच्या डॉक्टरांना विचारा | सोनोग्राफ़ी कितनी बार करानी है, यह अपने डॉक्टर से पूछें |
+
+### After delivery (postnatal)
+
+| Item | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `pnc_day1` (visit) | Check-up on the day after delivery | प्रसूतीनंतरच्या दिवशी तपासणी | प्रसव के अगले दिन जाँच |
+| `pnc_day3` (visit) | Check-up about 3 days after delivery | प्रसूतीनंतर सुमारे 3 दिवसांनी तपासणी | प्रसव के लगभग 3 दिन बाद जाँच |
+| `pnc_wk1` (visit) | Check-up 1–2 weeks after delivery | प्रसूतीनंतर 1–2 आठवड्यांनी तपासणी | प्रसव के 1–2 हफ़्ते बाद जाँच |
+| `pnc_cs_wound` (visit) | Wound check about a week after the operation | ऑपरेशननंतर सुमारे एका आठवड्याने जखमेची (टाक्यांची) तपासणी | ऑपरेशन के लगभग एक हफ़्ते बाद घाव (टाँकों) की जाँच |
+| `pnc_wk6` (visit) | Check-up 6 weeks after delivery | प्रसूतीनंतर 6 आठवड्यांनी तपासणी | प्रसव के 6 हफ़्ते बाद जाँच |
+| `pnc_hb` (investigation) | Blood test for haemoglobin at 6 weeks | 6 आठवड्यांनी हिमोग्लोबिनसाठी रक्त तपासणी | 6 हफ़्ते पर हीमोग्लोबिन के लिए ख़ून की जाँच |
+| `pnc_bp` (visit) | Blood pressure check in the first week | पहिल्या आठवड्यात रक्तदाबाची तपासणी | पहले हफ़्ते में ब्लड प्रेशर की जाँच |
+| `pnc_sugar` (investigation) | Blood sugar test after delivery | प्रसूतीनंतर रक्तातील साखरेची तपासणी | प्रसव के बाद ख़ून में शुगर की जाँच |
+| `pnc_antid` (vaccination) | Anti-D injection soon after delivery | प्रसूतीनंतर लवकरात लवकर अँटी-डी इंजेक्शन | प्रसव के बाद जल्द से जल्द एंटी-डी इंजेक्शन |
+| `pnc_ifa` (medication) | Iron tablets every day for 6 months | 6 महिने रोज लोहाच्या (आयर्न) गोळ्या | 6 महीने तक रोज़ आयरन की गोलियाँ |
+| `pnc_calcium` (medication) | Calcium tablets every day for 6 months | 6 महिने रोज कॅल्शियमच्या गोळ्या | 6 महीने तक रोज़ कैल्शियम की गोलियाँ |
+| `pnc_adv_bf` (advice) | Give only breast milk for the first 6 months | पहिले 6 महिने बाळाला फक्त आईचे दूध द्या | पहले 6 महीने शिशु को सिर्फ़ माँ का दूध दें |
+| `pnc_adv_danger` (advice) | Come at once for heavy bleeding, fever, bad-smelling discharge, severe headache or breathlessness | जास्त रक्तस्राव, ताप, दुर्गंधीयुक्त स्राव, तीव्र डोकेदुखी किंवा धाप लागल्यास लगेच या | ज़्यादा ख़ून आना, बुख़ार, बदबूदार स्राव, तेज़ सिरदर्द या साँस फूलने पर तुरंत आएँ |
+| `pnc_adv_contra` (advice) | Talk about family planning | कुटुंब नियोजनाबद्दल चर्चा करा | परिवार नियोजन के बारे में बात करें |
+
+### Baby (newborn)
+
+| Item | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `nb_exam` (visit) | Baby’s first check-up | बाळाची पहिली तपासणी | शिशु की पहली जाँच |
+| `nb_check` (visit) | Baby check-up in the first week | पहिल्या आठवड्यात बाळाची तपासणी | पहले हफ़्ते में शिशु की जाँच |
+| `nb_lab_screening` (investigation) | Heel-prick blood test for the baby (after 2 days of age) | बाळाच्या टाचेतून रक्त घेऊन तपासणी (2 दिवसांनंतर) | शिशु की एड़ी से ख़ून लेकर जाँच (2 दिन की उम्र के बाद) |
+| `nb_cchd` (investigation) | Oxygen check on the baby's hand and foot | बाळाच्या हातावर व पायावर ऑक्सिजनची तपासणी | शिशु के हाथ और पैर पर ऑक्सीजन की जाँच |
+| `nb_hearing` (investigation) | Baby's hearing test | बाळाच्या ऐकण्याची तपासणी | शिशु की सुनने की जाँच |
+| `nb_vacc_birth` (vaccination) | Vaccines at birth: BCG, polio drops, Hepatitis B | जन्माच्या वेळच्या लसी: बीसीजी (BCG), पोलिओचे थेंब, हिपॅटायटिस बी | जन्म के समय के टीके: बीसीजी (BCG), पोलियो की बूँदें, हेपेटाइटिस बी |
+| `nb_vacc_6w` (vaccination) | Vaccines at 6 weeks | 6 आठवड्यांच्या लसी | 6 हफ़्ते पर टीके |
+| `nb_vacc_10w` (vaccination) | Vaccines at 10 weeks | 10 आठवड्यांच्या लसी | 10 हफ़्ते पर टीके |
+| `nb_vacc_14w` (vaccination) | Vaccines at 14 weeks | 14 आठवड्यांच्या लसी | 14 हफ़्ते पर टीके |
+| `nb_vacc_9m` (vaccination) | Vaccines at 9 months (measles–rubella) | 9 महिन्यांच्या लसी (गोवर–रुबेला) | 9 महीने पर टीके (खसरा–रूबेला) |
+| `nb_vita_1` (medication) | Vitamin A at 9 months | 9 महिन्यांचे झाल्यावर व्हिटॅमिन ए | 9 महीने पर विटामिन ए |
+| `nb_vacc_16m` (vaccination) | Vaccines at 16–24 months | 16–24 महिन्यांच्या लसी | 16–24 महीने पर टीके |
+| `nb_vita_2` (medication) | Vitamin A every 6 months till 5 years | 5 वर्षांपर्यंत दर 6 महिन्यांनी व्हिटॅमिन ए | 5 साल तक हर 6 महीने पर विटामिन ए |
+| `nb_vacc_5y` (vaccination) | Vaccine at 5–6 years | 5–6 वर्षांची लस | 5–6 साल पर टीका |
+| `nb_vacc_10y` (vaccination) | Vaccine at 10 years | 10 वर्षांची लस | 10 साल पर टीका |
+| `nb_vacc_16y` (vaccination) | Vaccine at 16 years | 16 वर्षांची लस | 16 साल पर टीका |
+| `nb_adv_bf` (advice) | Only breast milk for 6 months, keep the baby warm, keep the cord dry | 6 महिने फक्त आईचे दूध द्या, बाळाला उबदार ठेवा, नाळ कोरडी ठेवा | 6 महीने तक सिर्फ़ माँ का दूध दें, शिशु को गरम रखें, नाल को सूखा रखें |
+| `nb_adv_danger` (advice) | Come at once if the baby feeds poorly, breathes fast, is hot or cold, turns yellow or has fits | बाळ नीट दूध पीत नसल्यास, भरभर श्वास घेत असल्यास, अंग गरम किंवा थंड लागल्यास, पिवळे दिसू लागल्यास किंवा झटके आल्यास लगेच या | शिशु ठीक से दूध न पिए, तेज़ साँस ले, शरीर गरम या ठंडा लगे, पीला पड़ने लगे या दौरे आएँ तो तुरंत आएँ |
+
+### Gynaecology
+
+| Item | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `gyn_first` (visit) | First check-up | पहिली तपासणी | पहली जाँच |
+| `gyn_hb` (investigation) | Blood test for haemoglobin | हिमोग्लोबिनसाठी रक्त तपासणी | हीमोग्लोबिन के लिए ख़ून की जाँच |
+| `gyn_breast` (visit) | Breast examination | स्तनांची तपासणी | स्तनों की जाँच |
+| `gyn_cervix` (investigation) | Test for cervical cancer (if due) | गर्भाशयमुखाच्या कर्करोगाची तपासणी (करायची वेळ झाली असल्यास) | बच्चेदानी के मुँह के कैंसर की जाँच (समय हो गया हो तो) |
+| `gyn_review` (visit) | Come back with the reports | रिपोर्ट घेऊन पुन्हा या | रिपोर्ट लेकर दोबारा आएँ |
+| `gyn_annual` (visit) | Yearly check-up | वार्षिक तपासणी | सालाना जाँच |
+| `gyn_cervix_repeat` (investigation) | Repeat cervical cancer test | गर्भाशयमुखाच्या कर्करोगाची तपासणी पुन्हा | बच्चेदानी के मुँह के कैंसर की जाँच दोबारा |
+
+### Fertility (infertility)
+
+| Item | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `inf_first` (visit) | First fertility check-up (please come with your partner) | गर्भधारणेसाठी पहिली तपासणी (कृपया जोडीदारासोबत या) | गर्भधारण के लिए पहली जाँच (कृपया अपने साथी के साथ आएँ) |
+| `inf_folic` (medication) | Folic acid tablet every day | रोज फॉलिक ॲसिडची गोळी | रोज़ फ़ोलिक एसिड की गोली |
+| `inf_hormones` (investigation) | Blood tests on day 2–3 of the period | पाळीच्या 2 ऱ्या–3 ऱ्या दिवशी रक्ताच्या तपासण्या | माहवारी के 2रे–3रे दिन ख़ून की जाँचें |
+| `inf_tvs` (scan) | Scan early in the cycle | पाळीच्या सुरुवातीच्या दिवसांत सोनोग्राफी | माहवारी चक्र की शुरुआत में सोनोग्राफ़ी |
+| `inf_semen` (investigation) | Semen test for your partner | तुमच्या जोडीदाराची वीर्य तपासणी | आपके साथी के वीर्य की जाँच |
+| `inf_infections` (investigation) | Blood tests for both partners | दोघांच्याही रक्ताच्या तपासण्या | दोनों साथियों की ख़ून की जाँचें |
+| `inf_tubal` (investigation) | Test to check the tubes | नलिका (ट्यूब) तपासण्याची चाचणी | नलियों (ट्यूब) की जाँच |
+| `inf_review` (visit) | Come back with all the reports | सर्व रिपोर्ट घेऊन पुन्हा या | सारी रिपोर्ट लेकर दोबारा आएँ |
+| `inf_review_3m` (visit) | Check-up after 3 months | 3 महिन्यांनी तपासणी | 3 महीने बाद जाँच |
+| `inf_adv` (advice) | Healthy weight, no smoking or alcohol; your doctor explains the fertile days | वजन योग्य ठेवा, धूम्रपान व मद्यपान करू नका; गर्भधारणेसाठी योग्य दिवस तुमचे डॉक्टर समजावून सांगतील | वज़न सही रखें, धूम्रपान और शराब न लें; गर्भधारण के सही दिन आपके डॉक्टर समझाएँगे |
+
+## 2. The patient copy of the care plan
+
+File: `client/src/pages/patients/carePlanPrintFormat.js` (Care plan tab → Print → Patient copy → Preview → Language for the patient). Each line prints under its English, or after it with " / " for labels. The dates (`20 Oct 2026`) stay as they are.
+
+### Labels and types of item
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `name` | Name | नाव | नाम |
+| `age` | Age | वय | आयु |
+| `patientNo` | Patient no. | रुग्ण क्रमांक | रोगी क्रमांक |
+| `edd` | Due date (EDD) | प्रसूतीची अंदाजे तारीख (EDD) | प्रसव की अनुमानित तारीख़ (EDD) |
+| `weeksToday` | Weeks of pregnancy today | आज गरोदरपणाचे आठवडे | आज गर्भावस्था के हफ़्ते |
+| `doctor` | Doctor | डॉक्टर | डॉक्टर |
+| `planned` | What is planned | पुढे काय करायचे आहे | आगे क्या करना है |
+| `when` | When | केव्हा | कब |
+| `what` | What | काय | क्या |
+| `alreadyDone` | Already done | आधीच झालेले | जो हो चुका है |
+| `done` | Done | झाले | हुआ |
+| `advice` | Advice | सल्ला | सलाह |
+| `fromDoctor` | From your doctor | तुमच्या डॉक्टरांचा सल्ला | आपके डॉक्टर की सलाह |
+| type: `visit` | Check-up | तपासणी | जाँच |
+| type: `scan` | Ultrasound (sonography) | सोनोग्राफी | सोनोग्राफ़ी |
+| type: `investigation` | Test | चाचणी | टेस्ट |
+| type: `vaccination` | Injection | इंजेक्शन | इंजेक्शन |
+| type: `medication` | Medicine | औषध | दवा |
+| type: `advice` | Advice | सल्ला | सलाह |
+| day the plan counts from: `delivery` | Delivered | प्रसूतीची तारीख | प्रसव की तारीख़ |
+| day the plan counts from: `birth` | Born | जन्मतारीख | जन्म की तारीख़ |
+| day the plan counts from: `start` | Started | सुरू झाल्याची तारीख | शुरू होने की तारीख़ |
+| day the plan counts from: `loss` (pregnancy-loss care: the day she was seen – never names the loss) | Seen | तपासणीची तारीख | जाँच की तारीख़ |
+
+### Titles
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| title, antenatal | Pregnancy care plan | गरोदरपणातील काळजीची योजना | गर्भावस्था की देखभाल योजना |
+| title, postnatal | Care plan after delivery | प्रसूतीनंतरच्या काळजीची योजना | प्रसव के बाद की देखभाल योजना |
+| title, newborn | Baby’s care and vaccination plan | बाळाची काळजी व लसीकरणाची योजना | शिशु की देखभाल और टीकाकरण योजना |
+| title, gynaecology | Care plan | काळजीची योजना | देखभाल योजना |
+| title, infertility | Fertility care plan | गर्भधारणेसाठी काळजीची योजना | गर्भधारण के लिए देखभाल योजना |
+| title, abortion (pregnancy-loss care – never names the loss) | Follow-up care plan | पुढील काळजीची योजना | आगे की देखभाल की योजना |
+| title, any other type of care | Care plan | काळजीची योजना | देखभाल योजना |
+| title, visits only | Visit schedule | तपासण्यांचे वेळापत्रक | जाँचों की समय-सारिणी |
+| title, scans only | Sonography (scan) schedule | सोनोग्राफीचे वेळापत्रक | सोनोग्राफ़ी की समय-सारिणी |
+| title, visits and scans | Visit and scan schedule | तपासणी व सोनोग्राफीचे वेळापत्रक | जाँच और सोनोग्राफ़ी की समय-सारिणी |
+| title, some types | Pregnancy care plan: lab tests, vaccinations and medicines | गरोदरपणातील काळजीची योजना: प्रयोगशाळेतील चाचण्या, लसीकरण व औषधे | गर्भावस्था की देखभाल योजना: लैब टेस्ट, टीकाकरण और दवाइयाँ |
+| title, some types | Pregnancy care plan: check-ups, scans and advice | गरोदरपणातील काळजीची योजना: तपासण्या, सोनोग्राफी व सल्ला | गर्भावस्था की देखभाल योजना: जाँचें, सोनोग्राफ़ी और सलाह |
+| title, chosen items | Pregnancy care plan – selected items | गरोदरपणातील काळजीची योजना – निवडक बाबी | गर्भावस्था की देखभाल योजना – चुनी हुई बातें |
+
+### When, done, next check-up
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| weeks of an item (range) | 20–22 weeks | 20–22 आठवडे | 20–22 हफ़्ते |
+| weeks of an item (one week) | 36 weeks | 36 आठवडे | 36 हफ़्ते |
+| overdue item | As soon as possible | लवकरात लवकर | जल्द से जल्द |
+| overdue item, second line | was due by 20 Sep 2026 | 20 Sep 2026 पर्यंत करायचे होते | 20 Sep 2026 तक होना था |
+| timed after another item | From about 30 Oct 2026 | सुमारे 30 Oct 2026 पासून | लगभग 30 Oct 2026 से |
+| timed after another item, no estimate | Your doctor will tell you the date | तारीख तुमचे डॉक्टर सांगतील | तारीख़ आपके डॉक्टर बताएँगे |
+| done: visit | Attended 17 Sep 2026 | 17 Sep 2026 रोजी झाली | 17 Sep 2026 को हुई |
+| done: investigation | Done 17 Sep 2026 | 17 Sep 2026 रोजी झाली | 17 Sep 2026 को हुआ |
+| done: scan | Done 17 Sep 2026 | 17 Sep 2026 रोजी झाली | 17 Sep 2026 को हुई |
+| done: vaccination | Given 17 Sep 2026 | 17 Sep 2026 रोजी दिले | 17 Sep 2026 को दिया गया |
+| done: medication | Started 17 Sep 2026 | 17 Sep 2026 पासून सुरू | 17 Sep 2026 से शुरू |
+| done: advice | Given 17 Sep 2026 | 17 Sep 2026 रोजी दिला | 17 Sep 2026 को दी गई |
+| done: any other type | Done 17 Sep 2026 | 17 Sep 2026 रोजी झाले | 17 Sep 2026 को हुआ |
+| done elsewhere | Done 17 Sep 2026 (elsewhere) | 17 Sep 2026 रोजी झाली (इतर ठिकाणी) | 17 Sep 2026 को हुई (कहीं और) |
+| next check-up | Your next check-up: 12–26 Oct 2026. | तुमची पुढील तपासणी: 12–26 Oct 2026. | आपकी अगली जाँच: 12–26 Oct 2026। |
+| next check-up, overdue | Your next check-up is due now – please come as soon as possible. | तुमची पुढील तपासणी आता करायची आहे – कृपया लवकरात लवकर या. | आपकी अगली जाँच अभी होनी है – कृपया जल्द से जल्द आएँ। |
+| weeks of pregnancy today | 24 weeks 3 days | 24 आठवडे 3 दिवस | 24 हफ़्ते 3 दिन |
+| Draft band (after the English band) | Draft – not approved for clinical use | मसुदा – डॉक्टरांनी अजून मंजूर केलेले नाही. | ड्राफ़्ट – डॉक्टर ने अभी मंज़ूरी नहीं दी है। |
+
+### The note at the end of the copy
+
+For a pregnancy the English is the note every patient copy has printed so far, unchanged.
+
+**The English for the other types of care is new and needs the doctor's approval.** Until now every patient copy – a baby's, a gynaecology patient's and a pregnancy-loss patient's too – ended with the pregnancy note ("worked out from your due date … reduced movements of the baby"). Now the first sentence names the day the dates are worked out from, and the last sentence is:
+
+- after a delivery and for a baby: the patient words of the plan's own danger-sign advice item (`pnc_adv_danger`, `nb_adv_danger` – see their rows above), as the doctor's template has them. Nothing is kept here: when a doctor changes that item in the template, the note follows. In Marathi or Hindi it is that item's line above while its English is still the built-in one; otherwise the Marathi or Hindi ends with the general line below;
+- for any other care (gynaecology, fertility, pregnancy loss), or a plan without that item: the general line below – the same as the patient portal's (its row `emergency`).
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| antenatal | The dates are a guide worked out from your due date; your doctor may change them. Bring this sheet to every visit. Come to the hospital at once for bleeding, severe headache, blurred vision, fits, fever, leaking of water or reduced movements of the baby. | या तारखा तुमच्या प्रसूतीच्या अंदाजे तारखेवरून काढलेल्या आहेत; तुमचे डॉक्टर त्या बदलू शकतात. प्रत्येक तपासणीला हा कागद घेऊन या. रक्तस्राव, तीव्र डोकेदुखी, धूसर दिसणे, झटके, ताप, पाणी जाणे किंवा बाळाची हालचाल कमी झाल्यास लगेच रुग्णालयात या. | ये तारीख़ें आपकी प्रसव की अनुमानित तारीख़ से निकाली गई हैं; आपके डॉक्टर इन्हें बदल सकते हैं। हर जाँच पर यह काग़ज़ साथ लाएँ। ख़ून आना, तेज़ सिरदर्द, धुंधला दिखना, दौरे, बुख़ार, पानी जाना या शिशु की हलचल कम होने पर तुरंत अस्पताल आएँ। |
+| postnatal (then the danger signs) | The dates are a guide worked out from the day of delivery; your doctor may change them. Bring this sheet to every visit. | या तारखा प्रसूतीच्या दिवसावरून काढलेल्या आहेत; तुमचे डॉक्टर त्या बदलू शकतात. प्रत्येक तपासणीला हा कागद घेऊन या. | ये तारीख़ें प्रसव के दिन से निकाली गई हैं; आपके डॉक्टर इन्हें बदल सकते हैं। हर जाँच पर यह काग़ज़ साथ लाएँ। |
+| newborn (then the danger signs) | The dates are a guide worked out from the baby’s date of birth; your doctor may change them. Bring this sheet to every visit. | या तारखा बाळाच्या जन्मतारखेवरून काढलेल्या आहेत; तुमचे डॉक्टर त्या बदलू शकतात. प्रत्येक तपासणीला हा कागद घेऊन या. | ये तारीख़ें शिशु की जन्म की तारीख़ से निकाली गई हैं; आपके डॉक्टर इन्हें बदल सकते हैं। हर जाँच पर यह काग़ज़ साथ लाएँ। |
+| gynaecology, fertility and any other care (then the general line) | The dates are a guide worked out from the day this plan started; your doctor may change them. Bring this sheet to every visit. | या तारखा ही योजना सुरू झाल्याच्या दिवसावरून काढलेल्या आहेत; तुमचे डॉक्टर त्या बदलू शकतात. प्रत्येक तपासणीला हा कागद घेऊन या. | ये तारीख़ें इस योजना के शुरू होने के दिन से निकाली गई हैं; आपके डॉक्टर इन्हें बदल सकते हैं। हर जाँच पर यह काग़ज़ साथ लाएँ। |
+| the general line | In an emergency, go to the hospital straight away. | आणीबाणीच्या वेळी लगेच रुग्णालयात जा. | आपात स्थिति में तुरंत अस्पताल जाएँ। |
+
+### Her age (care-plan copy and discharge card)
+
+File: `client/src/components/print/printLanguage.js`.
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| a woman | 28 yrs | 28 वर्षे | 28 वर्ष |
+| a baby born today | Born today | आज जन्म | आज जन्म |
+| a baby, 1 day | 1 day old | 1 दिवसाचे | 1 दिन का |
+| a baby, 12 days | 12 days old | 12 दिवसांचे | 12 दिन का |
+| a baby, 60 days (in months from then) | 1 month old | 1 महिन्याचे | 1 महीने का |
+| a baby, 2 months | 2 months old | 2 महिन्यांचे | 2 महीने का |
+| a baby, 4 months | 4 months old | 4 महिन्यांचे | 4 महीने का |
+| the language choice | English | मराठी | हिंदी |
+
+## 3. The discharge card
+
+File: `client/src/pages/inpatient/dischargeWords.js` (a stay → Discharge card → Print → Language for the patient). A medicine’s dose, how often, before or after food and how long are printed with the prescriptions’ Marathi and Hindi words, which are listed in `docs/PRESCRIPTIONS.md` and are not repeated here. What the doctor wrote prints as typed.
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `title` | Discharge card | डिस्चार्ज कार्ड (रुग्णालयातून सुट्टी) | डिस्चार्ज कार्ड (अस्पताल से छुट्टी) |
+| `patient` | Patient | रुग्ण | रोगी |
+| `age` | Age | वय | आयु |
+| `patientNo` | Patient no. | रुग्ण क्रमांक | रोगी क्रमांक |
+| `admitted` | Admitted | दाखल झाल्याची वेळ | भर्ती का समय |
+| `discharged` | Discharged | सुट्टीची वेळ | छुट्टी का समय |
+| `wardBed` | Ward / bed | वॉर्ड व खाट | वार्ड और बिस्तर |
+| `bed` | Bed | खाट | बिस्तर |
+| `corrections` | Corrections and additions | दुरुस्त्या व भर | सुधार और जोड़ |
+| `notSigned` | Not signed yet. | अजून सही झालेली नाही. | अभी हस्ताक्षर नहीं हुए हैं। |
+| `draft` | DRAFT – not confirmed by a doctor yet. | मसुदा – डॉक्टरांनी अजून निश्चित केलेले नाही. | ड्राफ़्ट – डॉक्टर ने अभी पुष्टि नहीं की है। |
+| part: `dischargedAt` | Date and time of discharge | सुट्टीची तारीख व वेळ | छुट्टी की तारीख़ और समय |
+| part: `finalDiagnosis` | Final diagnosis | अंतिम निदान | अंतिम निदान |
+| part: `procedures` | Procedures and operations | केलेल्या प्रक्रिया व ऑपरेशन | की गई प्रक्रियाएँ और ऑपरेशन |
+| part: `course` | Course in hospital | रुग्णालयात असताना झालेले उपचार | अस्पताल में रहते हुए हुआ इलाज |
+| part: `conditionAtDischarge` | Condition at discharge | सुट्टीच्या वेळची प्रकृती | छुट्टी के समय की हालत |
+| part: `medicines` | Medicines on discharge | घरी घ्यायची औषधे | घर पर लेने की दवाइयाँ |
+| part: `advice` | Advice | सल्ला | सलाह |
+| part: `followUpOn` | Follow-up date | पुन्हा तपासणीची तारीख | दोबारा जाँच की तारीख़ |
+| part: `followUpNote` | Follow-up note | पुन्हा तपासणीबद्दल सूचना | दोबारा जाँच के बारे में निर्देश |
+
+## 4. The patient portal
+
+File: `client/src/pages/portal/portalWords.js` (the address /portal; the switch English · मराठी · हिंदी at the top). `{hospital}`, `{doctor}` and `{day and time}` are filled in by the app. "Draft note" shows at the top of the portal in Marathi and Hindi until the wording is checked (it can then be removed).
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `pageTitle` | Your care · Perinexa | तुमची काळजी · Perinexa | आपकी देखभाल · Perinexa |
+| `language` | Language | भाषा | भाषा |
+| `draftNote` (top of the portal) | (none – shown only in Marathi and Hindi) | मराठी शब्द अजून तपासले जात आहेत. काही समजले नाही तर English निवडा किंवा रुग्णालयाला फोन करा. | हिंदी शब्द अभी जाँचे जा रहे हैं। कुछ समझ न आए तो English चुनें या अस्पताल को फ़ोन करें। |
+| `loading` | Loading… | उघडत आहे… | खुल रहा है… |
+| `dismiss` | Dismiss message | संदेश बंद करा | संदेश बंद करें |
+| `signInTitle` | Your care at the hospital | रुग्णालयातील तुमची काळजी | अस्पताल में आपकी देखभाल |
+| `signInIntro` | Sign in with the code on the paper the hospital gave you. | रुग्णालयाने दिलेल्या कागदावरील कोड वापरून आत या. | अस्पताल ने जो काग़ज़ दिया है, उस पर लिखे कोड से अंदर आएँ। |
+| `code` | Code | कोड | कोड |
+| `codeHint` | e.g. ABCD-EFGH-JKLM | उदा. ABCD-EFGH-JKLM | जैसे ABCD-EFGH-JKLM |
+| `digits` | Last 4 digits of your mobile number | तुमच्या मोबाइल नंबरचे शेवटचे 4 अंक | आपके मोबाइल नंबर के आख़िरी 4 अंक |
+| `signingIn` | Signing in… | आत येत आहे… | अंदर आ रहे हैं… |
+| `signIn` | Sign in | आत या | अंदर आएँ |
+| `sharedDevice` | On a shared phone or computer, sign out when you finish. | इतरांसोबत वापरल्या जाणाऱ्या फोनवर किंवा संगणकावर, काम झाल्यावर बाहेर पडा. | साझा फ़ोन या कंप्यूटर पर, काम पूरा होने पर बाहर निकलें। |
+| `timedOut` | You were signed out after 15 minutes without use. | 15 मिनिटे वापर न झाल्याने तुम्ही बाहेर पडलात. | 15 मिनट तक इस्तेमाल न होने के कारण आपको बाहर कर दिया गया। |
+| `signedOut` | You are signed out. | तुम्ही बाहेर पडला आहात. | आप बाहर निकल चुके हैं। |
+| `signOut` | Sign out | बाहेर पडा | बाहर निकलें |
+| `nextAppointment` | Your next appointment | तुमची पुढील भेट | आपकी अगली मुलाक़ात |
+| `noAppointment` | No appointment is booked. | कोणतीही भेट ठरलेली नाही. | कोई मुलाक़ात तय नहीं है। |
+| `callToBook` | Please call the hospital to book one. | भेट ठरवण्यासाठी कृपया रुग्णालयाला फोन करा. | मुलाक़ात तय करने के लिए कृपया अस्पताल को फ़ोन करें। |
+| `comingUp` | Coming up in your care plan | तुमच्या काळजीच्या योजनेत पुढे | आपकी देखभाल योजना में आगे |
+| `checkUp` | Check-up | तपासणी | जाँच |
+| `nothingElse` | Nothing else is due in the next 8 weeks. | पुढील 8 आठवड्यांत दुसरे काही करायचे नाही. | अगले 8 हफ़्तों में और कुछ नहीं करना है। |
+| `doctorDecides` | Your doctor decides what is needed; dates may change at your next visit. | काय आवश्यक आहे ते तुमचे डॉक्टर ठरवतात; पुढील भेटीत तारखा बदलू शकतात. | क्या ज़रूरी है, यह आपके डॉक्टर तय करते हैं; अगली मुलाक़ात पर तारीख़ें बदल सकती हैं। |
+| `questions` | Questions, or need to change the date? | काही प्रश्न आहेत, किंवा तारीख बदलायची आहे? | कोई सवाल है, या तारीख़ बदलनी है? |
+| `call` | Call {hospital} | {hospital} ला फोन करा | {hospital} को फ़ोन करें |
+| `callJoin` (before the hospital’s phone number) | "on" | ":" | ":" |
+| `stop` (end of the sentence) | "." | "." | "।" |
+| `emergency` | In an emergency, go to the hospital straight away. | आणीबाणीच्या वेळी लगेच रुग्णालयात जा. | आपात स्थिति में तुरंत अस्पताल जाएँ। |
+| `item` | Item | बाब | बात |
+| `cancelling` | Cancelling… | रद्द करत आहे… | रद्द हो रहा है… |
+| `yesCancel` | Yes, cancel my appointment | हो, माझी भेट रद्द करा | हाँ, मेरी मुलाक़ात रद्द करें |
+| `keepIt` | Keep it | भेट ठेवा | मुलाक़ात रखें |
+| `cancelAppointment` | Cancel this appointment | ही भेट रद्द करा | यह मुलाक़ात रद्द करें |
+| `callToBookOnline` | To book an appointment, please call the hospital. | भेट ठरवण्यासाठी कृपया रुग्णालयाला फोन करा. | मुलाक़ात तय करने के लिए कृपया अस्पताल को फ़ोन करें। |
+| `bookWith` | Book an appointment with {doctor} | {doctor} यांची भेट ठरवा | {doctor} से मुलाक़ात तय करें |
+| `day` | Day | दिवस | दिन |
+| `noFreeTime` | No free time on this day. Please choose another day. | या दिवशी वेळ उपलब्ध नाही. कृपया दुसरा दिवस निवडा. | इस दिन कोई समय ख़ाली नहीं है। कृपया कोई और दिन चुनें। |
+| `time` | Time | वेळ | समय |
+| `booking` | Booking… | भेट ठरवत आहे… | मुलाक़ात तय हो रही है… |
+| `bookAt` | Book {day and time} | {day and time} ही भेट ठरवा | {day and time} की मुलाक़ात तय करें |
+| `book` | Book | भेट ठरवा | मुलाक़ात तय करें |
+| type: `investigation` | Test | चाचणी | टेस्ट |
+| type: `scan` | Scan | सोनोग्राफी | सोनोग्राफ़ी |
+| type: `vaccination` | Vaccination | लसीकरण | टीकाकरण |
+| type: `visit` | Check-up | तपासणी | जाँच |
+
+### Messages when something is refused or fails
+
+In English the server’s own sentence is shown (as before); in Marathi and Hindi the sentence below.
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `NETWORK` | Can't reach the hospital's server. Please try again later. | रुग्णालयाच्या सर्व्हरशी संपर्क होत नाही. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा. | अस्पताल के सर्वर से संपर्क नहीं हो पा रहा है। कृपया थोड़ी देर बाद फिर से कोशिश करें। |
+| `PORTAL_LOGIN_FAILED` | The code or the 4 digits are not right. Check the paper the hospital gave you, or call the hospital. | कोड किंवा 4 अंक बरोबर नाहीत. रुग्णालयाने दिलेला कागद तपासा, किंवा रुग्णालयाला फोन करा. | कोड या 4 अंक सही नहीं हैं। अस्पताल का दिया काग़ज़ देखें, या अस्पताल को फ़ोन करें। |
+| `PORTAL_LOCKED` | This code is locked for a while after wrong tries. Please call the hospital. | चुकीच्या प्रयत्नांमुळे हा कोड काही वेळासाठी बंद झाला आहे. कृपया रुग्णालयाला फोन करा. | ग़लत कोशिशों के कारण यह कोड कुछ समय के लिए बंद है। कृपया अस्पताल को फ़ोन करें। |
+| `RATE_LIMITED` | Too many tries. Please wait 15 minutes, or call the hospital. | खूप जास्त प्रयत्न झाले. कृपया 15 मिनिटे थांबा, किंवा रुग्णालयाला फोन करा. | बहुत ज़्यादा कोशिशें हो गईं। कृपया 15 मिनट रुकें, या अस्पताल को फ़ोन करें। |
+| `PORTAL_SIGNED_OUT` | Please sign in again. | कृपया पुन्हा आत या. | कृपया फिर से अंदर आएँ। |
+| `SLOT_TAKEN` | That time has just been taken. Please choose another time. | ही वेळ आत्ताच दुसऱ्या कोणी घेतली. कृपया दुसरी वेळ निवडा. | यह समय अभी-अभी किसी और ने ले लिया। कृपया कोई और समय चुनें। |
+| `BOOKING_OFF` | Online booking is not available. Please call the hospital. | ऑनलाइन भेट ठरवता येत नाही. कृपया रुग्णालयाला फोन करा. | ऑनलाइन मुलाक़ात तय नहीं हो सकती। कृपया अस्पताल को फ़ोन करें। |
+| `ALREADY_BOOKED` | You already have an appointment. To change it, call the hospital. | तुमची भेट आधीच ठरलेली आहे. ती बदलण्यासाठी रुग्णालयाला फोन करा. | आपकी मुलाक़ात पहले से तय है। उसे बदलने के लिए अस्पताल को फ़ोन करें। |
+| `NOT_CANCELLABLE` | This appointment cannot be cancelled here. Please call the hospital. | ही भेट इथे रद्द करता येत नाही. कृपया रुग्णालयाला फोन करा. | यह मुलाक़ात यहाँ रद्द नहीं हो सकती। कृपया अस्पताल को फ़ोन करें। |
+| `BOOKING_DAYS` | Please choose a day from tomorrow up to 30 days ahead. | कृपया उद्यापासून पुढील 30 दिवसांतील एखादा दिवस निवडा. | कृपया कल से अगले 30 दिनों में से कोई दिन चुनें। |
+| `OTHER` | (any other refusal) Something went wrong. Please try again. | काहीतरी चुकले. कृपया पुन्हा प्रयत्न करा, किंवा रुग्णालयाला फोन करा. | कुछ ग़लत हो गया। कृपया फिर से कोशिश करें, या अस्पताल को फ़ोन करें। |
+
+### The paper with her portal code
+
+File: `client/src/pages/portal/portalWords.js` (`PORTAL_SLIP_WORDS`; Patient → More → Reminders and portal → Make her code → Print it for her → Language for the patient).
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `title` | Your care at {hospital} – online | {hospital} मधील तुमची काळजी – ऑनलाइन | {hospital} में आपकी देखभाल – ऑनलाइन |
+| `title` (name of the hospital not set) | Your care at the hospital – online | रुग्णालयातील तुमची काळजी – ऑनलाइन | अस्पताल में आपकी देखभाल – ऑनलाइन |
+| `forWhom` | For | नाव | नाम |
+| `open` | Open {address} and sign in with: | {address} हा पत्ता उघडा आणि हे वापरून आत या: | {address} खोलें और इससे अंदर आएँ: |
+| `digits` | and the last 4 digits of your mobile number. You will see your next appointment and what is due in your care plan. | आणि तुमच्या मोबाइल नंबरचे शेवटचे 4 अंक. तुम्हाला तुमची पुढील भेट आणि तुमच्या काळजीच्या योजनेत पुढे काय करायचे आहे ते दिसेल. | और आपके मोबाइल नंबर के आख़िरी 4 अंक। आपको अपनी अगली मुलाक़ात और अपनी देखभाल योजना में आगे क्या करना है, यह दिखेगा। |
+| `keep` | Keep this paper safe. The code works for 90 days. If you lose it, ask the hospital for a new one – the old one then stops working. | हा कागद सांभाळून ठेवा. हा कोड 90 दिवस चालतो. कागद हरवल्यास रुग्णालयाकडून नवीन कोड घ्या – मग जुना कोड बंद होतो. | यह काग़ज़ सँभालकर रखें। यह कोड 90 दिन तक चलता है। काग़ज़ खो जाए तो अस्पताल से नया कोड लें – तब पुराना कोड बंद हो जाता है। |

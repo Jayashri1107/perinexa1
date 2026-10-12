@@ -1,0 +1,24 @@
+/*
+ * Perinexa styles, following the Perinexa Brand & UI Guidelines v1.0.
+ * tokens.css holds every colour, size and font; the other files use only those tokens.
+ */
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/components.css';
+@import './styles/layout.css';
+@import './styles/pages-patients.css';
+@import './styles/pages-careplans.css';
+@import './styles/pages-consents.css';
+@import './styles/pages-visits.css';
+@import './styles/pages-calendar.css';
+@import './styles/pages-platform.css';
+@import './styles/pages-analytics.css';
+@import './styles/pages-admin.css';
+@import './styles/pages-account.css';
+@import './styles/pages-smart.css';
+@import './styles/pages-lab.css';
+@import './styles/pages-appointments.css';
+@import './styles/pages-billing.css';
+@import './styles/pages-pharmacy.css';
+@import './styles/print.css';
+@import './styles/print-rx.css';

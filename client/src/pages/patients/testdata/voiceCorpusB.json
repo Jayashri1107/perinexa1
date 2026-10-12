@@ -1,0 +1,4118 @@
+{
+ "about": "Corpus B: clinical details (obstetric formula, caesareans, blood group, conditions, results, medicines), as Chrome writes them (fake data).",
+ "now": "2026-09-28T06:00:00Z",
+ "tz": "Asia/Kolkata",
+ "format": {
+  "case": "{ id, region, careType, text, tags?, expected: { values, confirm?, questions?, notes?, noValue?, allow? }, alt?, why? }",
+  "values": "Form paths that must be filled with exactly this value (see voiceRegions.json). A scalar given as a list is a list of acceptable answers. { \"match\": \"regex\" } compares with a case-insensitive regular expression.",
+  "confirm": "{ path: { value, ask } }: blood group, Rh and reactive/positive results go to the confirmation card. Correct if filled with value, or left empty with a question matching ask. A tick is written as its own path, e.g. \"medical.conditions.hiv\": { \"value\": true, \"ask\": \"HIV\" }.",
+  "allow": "Paths that may be filled or left empty (not scored).",
+  "alt": "Another acceptable expected result for an ambiguous case.",
+  "strict": "Any path filled that is not in values, confirm or allow counts as WRONG (an extra tick, note, other condition or field)."
+ },
+ "count": 302,
+ "cases": [
+  {
+   "id": "ob01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "ob02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "g2 p1 l1 a0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "ob03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G 2 P 1 L 1 A 0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "ob04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "g two p one l one a zero",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "ob05",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "G to P1 L1 A0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   },
+   "why": "\"two\" heard as \"to\""
+  },
+  {
+   "id": "ob06",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "gravida to para one living one abortion zero",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   },
+   "why": "\"two\" → \"to\""
+  },
+  {
+   "id": "ob07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "gravida 2 para 1 living 1 abortion 0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "ob08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "second gravida previous normal delivery",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2"
+    }
+   }
+  },
+  {
+   "id": "ob09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "primi",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "1",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "0"
+    }
+   }
+  },
+  {
+   "id": "ob10",
+   "region": "Marathi",
+   "careType": "antenatal",
+   "text": "prime gravida 24 weeks",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "1",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "0"
+    }
+   }
+  },
+  {
+   "id": "ob11",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "primy gravida",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "1",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "0"
+    }
+   }
+  },
+  {
+   "id": "ob12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G3 P1+1 L1",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "1"
+    }
+   }
+  },
+  {
+   "id": "ob13",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G3 P 1 plus 1 L1",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "1"
+    }
+   },
+   "why": "\"+\" said as \"plus\""
+  },
+  {
+   "id": "ob14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "para 2 living 2",
+   "expected": {
+    "values": {
+     "obstetric.para": "2",
+     "obstetric.living": "2"
+    }
+   }
+  },
+  {
+   "id": "ob15",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "para to living to",
+   "expected": {
+    "values": {
+     "obstetric.para": "2",
+     "obstetric.living": "2"
+    }
+   },
+   "why": "\"two\" → \"to\""
+  },
+  {
+   "id": "ob16",
+   "region": "Bengali",
+   "careType": "antenatal",
+   "text": "G for P3 L3 A0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "4",
+     "obstetric.para": "3",
+     "obstetric.living": "3",
+     "obstetric.abortions": "0"
+    }
+   },
+   "why": "\"four\" → \"for\""
+  },
+  {
+   "id": "ob17",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A nil",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "ob18",
+   "region": "Gujarati",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 AO",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   },
+   "why": "zero said as letter O"
+  },
+  {
+   "id": "ob19",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "ji 2 P1 L1 A0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   },
+   "why": "G pronounced \"jee\" → \"ji\""
+  },
+  {
+   "id": "ob20",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G2P1L1A0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "ob21",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "third gravida with 2 living children",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.living": "2"
+    }
+   }
+  },
+  {
+   "id": "ob22",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "2nd pregnancy",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2"
+    }
+   }
+  },
+  {
+   "id": "ob23",
+   "region": "Hinglish",
+   "careType": "antenatal",
+   "text": "doosri pregnancy hai pehli delivery normal thi",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2"
+    }
+   }
+  },
+  {
+   "id": "ob24",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "multigravida G4 P2 L2 A1",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "4",
+     "obstetric.para": "2",
+     "obstetric.living": "2",
+     "obstetric.abortions": "1"
+    }
+   }
+  },
+  {
+   "id": "ob25",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G3 P2 L2 A0 previous 2 LSCS",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "2",
+     "obstetric.living": "2",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "2"
+    }
+   }
+  },
+  {
+   "id": "ob26",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "h/o 2 missed abortions G3 P0 L0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "2"
+    }
+   },
+   "why": "\"missed\" between number and abortions"
+  },
+  {
+   "id": "ob27",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G3 P0 L0 A2 2 spontaneous abortions",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "2"
+    }
+   }
+  },
+  {
+   "id": "ob28",
+   "region": "Malayalam",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 primi para",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "ob29",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "para 1 living 1 1 abortion",
+   "expected": {
+    "values": {
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "1"
+    }
+   }
+  },
+  {
+   "id": "ob30",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G 2 P 1 L 1 A 0 L S C S",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "cs01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous LSCS",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   }
+  },
+  {
+   "id": "cs02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous l s c s",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   }
+  },
+  {
+   "id": "cs03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous L S C S 3 years back",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1",
+     "notes": [
+      "^Previous LSCS 3 years back$"
+     ]
+    }
+   },
+   "why": "owner decision (29 Sep 2026): a previous finding's \"N years back\" is a note"
+  },
+  {
+   "id": "cs04",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "previous Elsie s",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "LSCS → \"Elsie s\""
+  },
+  {
+   "id": "cs05",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "previous else CS",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "LSCS → \"else CS\""
+  },
+  {
+   "id": "cs06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous CS",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "CS short form"
+  },
+  {
+   "id": "cs07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous caesarean",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   }
+  },
+  {
+   "id": "cs08",
+   "region": "Bengali",
+   "careType": "antenatal",
+   "text": "previous Syrian",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "caesarean → \"Syrian\""
+  },
+  {
+   "id": "cs09",
+   "region": "Gujarati",
+   "careType": "antenatal",
+   "text": "previous sizerian",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "caesarean → \"sizerian\""
+  },
+  {
+   "id": "cs10",
+   "region": "Punjabi",
+   "careType": "antenatal",
+   "text": "previous season section",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "caesarean → \"season\""
+  },
+  {
+   "id": "cs11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous C section",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   }
+  },
+  {
+   "id": "cs12",
+   "region": "Telugu",
+   "careType": "antenatal",
+   "text": "previous see section",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "C → \"see\""
+  },
+  {
+   "id": "cs13",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous 2 LSCS",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "2"
+    }
+   }
+  },
+  {
+   "id": "cs14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "2 previous caesarean sections",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "2"
+    }
+   }
+  },
+  {
+   "id": "cs15",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous LSCS twice",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "2"
+    }
+   },
+   "why": "\"twice\""
+  },
+  {
+   "id": "cs16",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "precious LSCS",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "\"previous\" → \"precious\""
+  },
+  {
+   "id": "cs17",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "post LSCS",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   }
+  },
+  {
+   "id": "cs18",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous LSCS for fetal distress",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   }
+  },
+  {
+   "id": "cs19",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no previous LSCS",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "0"
+    }
+   }
+  },
+  {
+   "id": "cs20",
+   "region": "Kannada",
+   "careType": "antenatal",
+   "text": "previous LCS",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "why": "LSCS → \"LCS\""
+  },
+  {
+   "id": "cs21",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous cesarean section 2020",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   }
+  },
+  {
+   "id": "cs22",
+   "region": "Hinglish",
+   "careType": "antenatal",
+   "text": "pehli delivery LSCS thi",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   }
+  },
+  {
+   "id": "cs23",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous LSCS b positive",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    },
+    "questions": [
+     "Blood group B\\+"
+    ]
+   }
+  },
+  {
+   "id": "cs24",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous l s c s b positive",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    },
+    "questions": [
+     "Blood group B\\+"
+    ]
+   },
+   "why": "spelled letters run into the blood group letter"
+  },
+  {
+   "id": "cs25",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 previous l s c s a positive",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "1"
+    },
+    "questions": [
+     "Blood group A\\+"
+    ]
+   }
+  },
+  {
+   "id": "bg01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group B positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "B positive",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Blood group B\\+"
+    ]
+   }
+  },
+  {
+   "id": "bg03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "b +ve",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Blood group B\\+"
+    ]
+   }
+  },
+  {
+   "id": "bg04",
+   "region": "South",
+   "careType": "antenatal",
+   "text": "blood group bee positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   },
+   "why": "B → \"bee\""
+  },
+  {
+   "id": "bg05",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "blood group be positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   },
+   "why": "B → \"be\""
+  },
+  {
+   "id": "bg06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "o negative",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O-",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(-|neg)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group oh positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group 0 positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "0 negative",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O-",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(-|neg)"
+     }
+    }
+   },
+   "why": "O written as zero"
+  },
+  {
+   "id": "bg10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "Rh negative",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Which ABO"
+    ]
+   }
+  },
+  {
+   "id": "bg11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group A1 positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "A+",
+      "ask": "\\bA\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   },
+   "why": "Indian labs report A1/A2 subgroups"
+  },
+  {
+   "id": "bg12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group A B positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "AB+",
+      "ask": "\\bAB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg13",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "a b positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "AB+",
+      "ask": "\\bAB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   },
+   "why": "AB spelled out, no \"blood group\""
+  },
+  {
+   "id": "bg14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "O Rh negative ICT negative",
+   "expected": {
+    "values": {
+     "notes": [
+      "ICT negative"
+     ]
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O-",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(-|neg)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg15",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group B Rh positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg16",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group is O +ve",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg17",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "blood group bi positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   },
+   "why": "B → \"bi\""
+  },
+  {
+   "id": "bg18",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "hepatitis B negative HIV non reactive",
+   "expected": {
+    "values": {
+     "notes": [
+      "^HIV non-reactive$"
+     ]
+    }
+   },
+   "why": "owner decision (29 Sep 2026): negative screening results are one note"
+  },
+  {
+   "id": "bg19",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group O positive husband B negative",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg20",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "B negative blood group",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B-",
+      "ask": "\\bB\\s*(rh\\s*)?(-|neg)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg21",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group A1B positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "AB+",
+      "ask": "\\bAB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg22",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "blood group B+",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "bg23",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "blood group O positive Rh positive",
+   "expected": {
+    "values": {},
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "cd01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "hypothyroid on thyronorm 50",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd02",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "hypo tyroid on Thyronorm 50 mcg",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   },
+   "why": "th → t"
+  },
+  {
+   "id": "cd03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "hypo thyroid",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   },
+   "why": "split word"
+  },
+  {
+   "id": "cd04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "thyroid on thyronorm 50",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd05",
+   "region": "South",
+   "careType": "antenatal",
+   "text": "hypothyroidism on Thyro norm 75 mcg",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd06",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "Tyronorm 25",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   },
+   "why": "th → t in brand"
+  },
+  {
+   "id": "cd07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Eltroxin 50",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on L thyroxine 25 mcg",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd09",
+   "region": "Malayalam",
+   "careType": "antenatal",
+   "text": "hypo thyroidism",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "GDM on diet",
+   "expected": {
+    "values": {
+     "notes": [
+      "Gestational diabetes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "g d m on MNT",
+   "expected": {
+    "values": {
+     "notes": [
+      "Gestational diabetes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd12",
+   "region": "Marathi",
+   "careType": "antenatal",
+   "text": "G DM on insulin",
+   "expected": {
+    "values": {
+     "notes": [
+      "Gestational diabetes"
+     ]
+    }
+   },
+   "why": "GDM split \"G DM\""
+  },
+  {
+   "id": "cd13",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "jestational diabetes",
+   "expected": {
+    "values": {
+     "notes": [
+      "Gestational diabetes"
+     ]
+    }
+   },
+   "why": "g → j"
+  },
+  {
+   "id": "cd14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "GDM on metformin 500 BD",
+   "expected": {
+    "values": {
+     "notes": [
+      "Gestational diabetes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd15",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "PIH",
+   "expected": {
+    "values": {
+     "notes": [
+      "PIH"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd16",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "p i h on labetalol",
+   "expected": {
+    "values": {
+     "notes": [
+      "PIH"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd17",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "BP high",
+   "expected": {
+    "values": {},
+    "questions": [
+     "High blood pressure"
+    ]
+   },
+   "why": "Indian word order \"BP high\""
+  },
+  {
+   "id": "cd18",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "BP is high since 2 years on amlodipine",
+   "expected": {
+    "values": {},
+    "questions": [
+     "High blood pressure|amlodipine"
+    ]
+   }
+  },
+  {
+   "id": "cd19",
+   "region": "Hinglish",
+   "careType": "antenatal",
+   "text": "BP ki problem hai",
+   "expected": {
+    "values": {},
+    "questions": [
+     "High blood pressure"
+    ]
+   }
+  },
+  {
+   "id": "cd20",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "known hypertensive on labetalol 100 BD",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "hypertension"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd21",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "hyper tension",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "hypertension"
+     ]
+    }
+   },
+   "why": "split word"
+  },
+  {
+   "id": "cd22",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "h t n",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "hypertension"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd23",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "sugar patient on insulin",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Diabetes from before"
+    ]
+   }
+  },
+  {
+   "id": "cd24",
+   "region": "Hinglish",
+   "careType": "antenatal",
+   "text": "sugar ki bimari hai",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Diabetes from before"
+    ]
+   }
+  },
+  {
+   "id": "cd25",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "anemia",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "anaemia"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd26",
+   "region": "Bengali",
+   "careType": "antenatal",
+   "text": "animia",
+   "expected": {
+    "values": {},
+    "questions": [
+     "anaemia|anemia"
+    ]
+   },
+   "alt": {
+    "values": {
+     "medical.conditions": [
+      "anaemia"
+     ]
+    }
+   },
+   "why": "vowel shift"
+  },
+  {
+   "id": "cd27",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "moderate anaemia on iron sucrose",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "anaemia"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd28",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "Hb 8.5",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Hb 8.5"
+    ]
+   }
+  },
+  {
+   "id": "cd29",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "hemoglobin 9 point 2 grams",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Hb 9.2"
+    ]
+   }
+  },
+  {
+   "id": "cd30",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "asthmatic",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "asthma"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd31",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "asthma on inhaler",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "asthma"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd32",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "known case of Asma",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "asthma"
+     ]
+    }
+   },
+   "why": "asthma → \"Asma\" (a name)"
+  },
+  {
+   "id": "cd33",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "bronchial asthma on Budecort inhaler",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "asthma"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd34",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "heart disease",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "heart_disease"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd35",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "RHD with severe MS post BMV",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "heart_disease"
+     ]
+    }
+   },
+   "why": "MS already explained by RHD"
+  },
+  {
+   "id": "cd36",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "epilepsy on Levipil 500",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "epilepsy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd37",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "seizure disorder on Eptoin",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "epilepsy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd38",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "epilepsi",
+   "expected": {
+    "values": {},
+    "questions": [
+     "epilepsy"
+    ]
+   },
+   "alt": {
+    "values": {
+     "medical.conditions": [
+      "epilepsy"
+     ]
+    }
+   },
+   "why": "filling directly or asking are both fine"
+  },
+  {
+   "id": "cd39",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "TB",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "tuberculosis"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd40",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "t b treated in 2019",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "tuberculosis"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd41",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "pulmonary Koch's ATT completed",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "tuberculosis"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd42",
+   "region": "Bengali",
+   "careType": "antenatal",
+   "text": "history of TV took ATT",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "tuberculosis"
+     ]
+    }
+   },
+   "why": "b/v: TB → \"TV\"; ATT still says it"
+  },
+  {
+   "id": "cd43",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "PCOD",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "PCOS"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd44",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "p c o d on metformin",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "PCOS"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd45",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "PC OD",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "PCOS"
+     ]
+    }
+   },
+   "why": "PCOD split \"PC OD\""
+  },
+  {
+   "id": "cd46",
+   "region": "any",
+   "careType": "infertility",
+   "text": "PCOS",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "PCOS"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd47",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "fibroid uterus",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "Fibroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd48",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "fibroids 3 cm",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "Fibroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd49",
+   "region": "Hindi belt",
+   "careType": "gynaecology",
+   "text": "fibroid ki problem",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "Fibroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd50",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "diabetic on Glycomet",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "diabetes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd51",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "type 2 DM on insulin",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "diabetes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd52",
+   "region": "Bengali",
+   "careType": "gynaecology",
+   "text": "diabetis",
+   "expected": {
+    "values": {},
+    "questions": [
+     "diabetes"
+    ]
+   },
+   "alt": {
+    "values": {
+     "medical.conditions": [
+      "diabetes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd53",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "known case of diabetes mellitus",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "diabetes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd54",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "k c o DM",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "diabetes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd55",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "glyco met 500",
+   "expected": {
+    "values": {},
+    "questions": [
+     "metformin"
+    ]
+   },
+   "why": "brand split in two"
+  },
+  {
+   "id": "cd56",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "hypothyroid",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd57",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "hyperthyroid on Neomercazole",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd58",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "APLA on Ecosprin and Clexane",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "autoimmune"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd59",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "SLE on HCQ",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "autoimmune"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd60",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "jaundice in 2018",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "liver_disease"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd61",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "eplepsy on Levipil",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "epilepsy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd62",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "fits since childhood",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "epilepsy"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cd63",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "known case of hypothyroidism since 5 years on Thyronorm 75 mcg OD",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ng01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no DM no HTN",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "not a known case of DM HTN thyroid",
+   "expected": {
+    "values": {}
+   },
+   "why": "list without commas (speech)"
+  },
+  {
+   "id": "ng03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "not a known case of DM, HTN, thyroid",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no history of diabetes hypertension asthma",
+   "expected": {
+    "values": {}
+   },
+   "why": "list without commas"
+  },
+  {
+   "id": "ng05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no history of diabetes hypertension or asthma",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "non diabetic non hypertensive",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "past history nil",
+   "expected": {
+    "values": {
+     "medical.conditionsReviewed": true
+    }
+   }
+  },
+  {
+   "id": "ng08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "medical history nil",
+   "expected": {
+    "values": {
+     "medical.conditionsReviewed": true
+    }
+   }
+  },
+  {
+   "id": "ng09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no significant past medical history",
+   "expected": {
+    "values": {
+     "medical.conditionsReviewed": true
+    }
+   }
+  },
+  {
+   "id": "ng10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no comorbidities",
+   "expected": {
+    "values": {
+     "medical.conditionsReviewed": true
+    }
+   }
+  },
+  {
+   "id": "ng11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "DM nil HTN nil thyroid nil",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no DM no HTN thyroid on eltroxin",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ng13",
+   "region": "Hinglish",
+   "careType": "antenatal",
+   "text": "sugar nahi BP nahi thyroid nahi",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no h/o DM HTN TB asthma epilepsy",
+   "expected": {
+    "values": {}
+   },
+   "why": "case-sheet list, no commas"
+  },
+  {
+   "id": "ng15",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "nil significant",
+   "expected": {
+    "values": {
+     "medical.conditionsReviewed": true
+    }
+   }
+  },
+  {
+   "id": "ng16",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no known medical illness",
+   "expected": {
+    "values": {
+     "medical.conditionsReviewed": true
+    }
+   }
+  },
+  {
+   "id": "ng17",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "nondiabetic normotensive",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng18",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no thyroid problem no asthma",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng19",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "TB negative",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng20",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no bad obstetric history G2 P1 L1 A0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.complicationsReviewed": true
+    }
+   }
+  },
+  {
+   "id": "ng21",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no DM HTN",
+   "expected": {
+    "values": {}
+   },
+   "alt": {
+    "values": {},
+    "questions": [
+     "HTN"
+    ]
+   },
+   "why": "two short forms, one \"no\""
+  },
+  {
+   "id": "ng22",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "denies diabetes and hypertension",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ng23",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "not diabetic but hypothyroid on thyronorm",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "fh01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "family history of diabetes and hypertension",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "fh02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mother diabetic father hypertensive",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "fh03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "husband has TB",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "fh04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "family history of twins",
+   "expected": {
+    "values": {}
+   },
+   "why": "twins in the family is not this pregnancy"
+  },
+  {
+   "id": "fh05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mother had PIH",
+   "expected": {
+    "values": {}
+   },
+   "why": "PIH special is not family-checked"
+  },
+  {
+   "id": "fh06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mother diabetic she is hypothyroid on thyronorm",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   },
+   "why": "no comma between family and patient"
+  },
+  {
+   "id": "fh07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "family history of thyroid",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "fh08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "sister had GDM",
+   "expected": {
+    "values": {}
+   },
+   "why": "note-kind term not family-checked"
+  },
+  {
+   "id": "fh09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "father BP patient",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "fh10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mother sugar patient",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "fh11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "FH of DM",
+   "expected": {
+    "values": {}
+   },
+   "why": "FH short form for family history"
+  },
+  {
+   "id": "fh12",
+   "region": "Hinglish",
+   "careType": "antenatal",
+   "text": "mummy ko sugar hai",
+   "expected": {
+    "values": {}
+   },
+   "why": "\"mummy\" / \"papa\""
+  },
+  {
+   "id": "al01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergic to sulpha",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^Sulpha"
+     }
+    }
+   }
+  },
+  {
+   "id": "al02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergic to sulpha drugs",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^Sulpha"
+     }
+    }
+   }
+  },
+  {
+   "id": "al03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergic to penicillin GDM on diet",
+   "expected": {
+    "values": {
+     "notes": [
+      "Gestational diabetes"
+     ],
+     "medical.allergies": {
+      "match": "^Penicillin$"
+     }
+    }
+   },
+   "why": "no comma after the allergy"
+  },
+  {
+   "id": "al04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no known drug allergies",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^None known"
+     }
+    }
+   }
+  },
+  {
+   "id": "al05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "NKDA",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^None known"
+     }
+    }
+   }
+  },
+  {
+   "id": "al06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "drug allergy nil",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^None known"
+     }
+    }
+   }
+  },
+  {
+   "id": "al07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergic to sulpha no other illness",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^Sulpha$"
+     },
+     "medical.conditionsReviewed": true
+    }
+   }
+  },
+  {
+   "id": "al08",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "allergic to diclofenac PCOD",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "PCOS"
+     ],
+     "medical.allergies": {
+      "match": "^Diclofenac$"
+     }
+    }
+   }
+  },
+  {
+   "id": "al09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergic to ciprofloxacin and metronidazole",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^Ciprofloxacin and metronidazole"
+     }
+    }
+   }
+  },
+  {
+   "id": "al10",
+   "region": "South",
+   "careType": "antenatal",
+   "text": "allergic to sulfa asthmatic",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "asthma"
+     ],
+     "medical.allergies": {
+      "match": "^Sulfa$"
+     }
+    }
+   }
+  },
+  {
+   "id": "al11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergy to Brufen epileptic on Levipil",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "epilepsy"
+     ],
+     "medical.allergies": {
+      "match": "^Brufen$"
+     }
+    }
+   }
+  },
+  {
+   "id": "al12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no drug allergy",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^None known"
+     }
+    }
+   }
+  },
+  {
+   "id": "al13",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergic to penicillin TB treated",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "tuberculosis"
+     ],
+     "medical.allergies": {
+      "match": "^Penicillin$"
+     }
+    }
+   }
+  },
+  {
+   "id": "al14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergic to iron sucrose",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^Iron sucrose"
+     }
+    }
+   },
+   "why": "allergy to a drug that is also a term"
+  },
+  {
+   "id": "al15",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "allergies none",
+   "expected": {
+    "values": {
+     "medical.allergies": {
+      "match": "^None known"
+     }
+    }
+   }
+  },
+  {
+   "id": "md01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Susten 200 and Folvite",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "md02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Ecosprin 75",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "md03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on labetalol 100 mg BD",
+   "expected": {
+    "values": {},
+    "questions": [
+     "labetalol"
+    ]
+   }
+  },
+  {
+   "id": "md04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Nicardia retard",
+   "expected": {
+    "values": {},
+    "questions": [
+     "nicardia"
+    ]
+   }
+  },
+  {
+   "id": "md05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Glycomet 500",
+   "expected": {
+    "values": {},
+    "questions": [
+     "metformin"
+    ]
+   }
+  },
+  {
+   "id": "md06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Clexane 40",
+   "expected": {
+    "values": {},
+    "questions": [
+     "heparin"
+    ]
+   }
+  },
+  {
+   "id": "md07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Orofer XT and calcium",
+   "expected": {
+    "values": {}
+   },
+   "why": "brand suffix XT"
+  },
+  {
+   "id": "md08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Thyrox 50",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "md09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Aldomet 250 TDS",
+   "expected": {
+    "values": {},
+    "questions": [
+     "aldomet"
+    ]
+   }
+  },
+  {
+   "id": "md10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Duphaston SR",
+   "expected": {
+    "values": {}
+   },
+   "why": "brand suffix SR"
+  },
+  {
+   "id": "md11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "insulin",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Insulin for diabetes"
+    ]
+   }
+  },
+  {
+   "id": "md12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "PIH on Labebet",
+   "expected": {
+    "values": {
+     "notes": [
+      "PIH"
+     ]
+    }
+   }
+  },
+  {
+   "id": "md13",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Nicardia for preterm labour",
+   "expected": {
+    "values": {
+     "notes": [
+      "Preterm labour"
+     ]
+    }
+   },
+   "why": "reason said; preterm now"
+  },
+  {
+   "id": "md14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Lonopin 40 for APLA",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "autoimmune"
+     ]
+    }
+   }
+  },
+  {
+   "id": "md15",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "on Asthalin inhaler SOS",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "asthma"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous baby IUD at 32 weeks",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "stillbirth_or_neonatal_death"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous stillbirth",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "stillbirth_or_neonatal_death"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous still born baby",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "stillbirth_or_neonatal_death"
+     ]
+    }
+   },
+   "why": "stillborn split"
+  },
+  {
+   "id": "pp04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous preterm delivery at 34 weeks",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "preterm_birth"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous preterm at 34 weeks",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "preterm_birth"
+     ]
+    }
+   },
+   "why": "\"preterm\" alone"
+  },
+  {
+   "id": "pp06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous PPH",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "pph"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "last pregnancy pre-eclampsia",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "pre_eclampsia"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "PIH in previous pregnancy",
+   "expected": {
+    "values": {},
+    "questions": [
+     "pre-eclampsia"
+    ]
+   }
+  },
+  {
+   "id": "pp09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous baby low birth weight",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "low_birth_weight_baby"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous ectopic",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "ectopic"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous NND",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "stillbirth_or_neonatal_death"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous big baby",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "big_baby"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp13",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous baby with cleft lip",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "congenital_anomaly"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous pre eclamsia",
+   "expected": {
+    "values": {},
+    "questions": [
+     "eclampsia"
+    ]
+   },
+   "why": "misspelt: corrected by sound (Task 2b), or asked",
+   "alt": {
+    "values": {
+     "obstetric.pastComplications": [
+      "pre_eclampsia"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp15",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "eclampsia in first pregnancy",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "pre_eclampsia"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp16",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous baby died after birth",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "stillbirth_or_neonatal_death"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp17",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "fits in previous pregnancy",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Eclampsia, or epilepsy"
+    ]
+   }
+  },
+  {
+   "id": "pp18",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous IUGR baby",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "low_birth_weight_baby"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp19",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous Rh isoimmunisation",
+   "expected": {
+    "values": {
+     "obstetric.pastComplications": [
+      "rh_isoimmunisation"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pp20",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous abruption",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "Previous pregnancy.*abruption"
+     ]
+    }
+   },
+   "why": "APH term has no past meaning; should not be a note for this pregnancy"
+  },
+  {
+   "id": "pp21",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous pregnancy GDM",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "Previous pregnancy.*Gestational diabetes"
+     ]
+    }
+   },
+   "why": "previous GDM must not be written as this pregnancy"
+  },
+  {
+   "id": "tp01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "twins DCDA",
+   "expected": {
+    "values": {
+     "notes": [
+      "Twin"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "breech presentation",
+   "expected": {
+    "values": {
+     "notes": [
+      "Breech"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "placenta previa",
+   "expected": {
+    "values": {
+     "notes": [
+      "Placenta praevia"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "low lying placenta",
+   "expected": {
+    "values": {
+     "notes": [
+      "Placenta praevia"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "IVF conception precious pregnancy",
+   "expected": {
+    "values": {
+     "notes": [
+      "IVF",
+      "Precious"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "threatened abortion",
+   "expected": {
+    "values": {
+     "notes": [
+      "Threatened"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "hyperemesis",
+   "expected": {
+    "values": {
+     "notes": [
+      "Hyperemesis"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "oligo",
+   "expected": {
+    "values": {
+     "notes": [
+      "Oligohydramnios"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "cerclage done at 14 weeks",
+   "expected": {
+    "values": {
+     "notes": [
+      "cerclage"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "Shirodkar stitch",
+   "expected": {
+    "values": {
+     "notes": [
+      "cerclage"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp11",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "placenta praevia",
+   "expected": {
+    "values": {
+     "notes": [
+      "Placenta praevia"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tp12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "IUI conception",
+   "expected": {
+    "values": {
+     "notes": [
+      "IUI"
+     ]
+    }
+   }
+  },
+  {
+   "id": "hw01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "height 5 feet 2 inches",
+   "expected": {
+    "values": {
+     "medical.heightCm": "157.5"
+    }
+   }
+  },
+  {
+   "id": "hw02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "five feet two",
+   "expected": {
+    "values": {
+     "medical.heightCm": "157.5"
+    }
+   }
+  },
+  {
+   "id": "hw03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "height 5.2",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Height 5.2"
+    ]
+   }
+  },
+  {
+   "id": "hw04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "height 152 cm",
+   "expected": {
+    "values": {
+     "medical.heightCm": "152"
+    }
+   }
+  },
+  {
+   "id": "hw05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "152 cm",
+   "expected": {
+    "values": {
+     "medical.heightCm": "152"
+    }
+   }
+  },
+  {
+   "id": "hw06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "weight 58 kg",
+   "expected": {
+    "values": {
+     "medical.weightKg": "58"
+    }
+   }
+  },
+  {
+   "id": "hw07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "fifty eight kgs",
+   "expected": {
+    "values": {
+     "medical.weightKg": "58"
+    }
+   }
+  },
+  {
+   "id": "hw08",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "wait 58 kg",
+   "expected": {
+    "values": {
+     "medical.weightKg": "58"
+    }
+   },
+   "why": "weight → \"wait\""
+  },
+  {
+   "id": "hw09",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "wait 58",
+   "expected": {
+    "values": {
+     "medical.weightKg": "58"
+    }
+   },
+   "why": "weight → \"wait\", no unit"
+  },
+  {
+   "id": "hw10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "height 5 feet weight 62 kg",
+   "expected": {
+    "values": {
+     "medical.heightCm": "152.4",
+     "medical.weightKg": "62"
+    }
+   }
+  },
+  {
+   "id": "hw11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "5'2\" 58 kg",
+   "expected": {
+    "values": {
+     "medical.heightCm": "157.5",
+     "medical.weightKg": "58"
+    }
+   }
+  },
+  {
+   "id": "hw12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "height 1.52 metre",
+   "expected": {
+    "values": {
+     "medical.heightCm": "152"
+    }
+   }
+  },
+  {
+   "id": "hw13",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "weight 58.5 kg height 155 cm",
+   "expected": {
+    "values": {
+     "medical.heightCm": "155",
+     "medical.weightKg": "58.5"
+    }
+   }
+  },
+  {
+   "id": "hw14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "height five point two feet",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Height 5.2"
+    ]
+   }
+  },
+  {
+   "id": "hw15",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "weighing 62 kilos",
+   "expected": {
+    "values": {
+     "medical.weightKg": "62"
+    }
+   }
+  },
+  {
+   "id": "hw16",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "hight 150 cm",
+   "expected": {
+    "values": {
+     "medical.heightCm": "150"
+    }
+   }
+  },
+  {
+   "id": "hw17",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "height 5 ft 1 in",
+   "expected": {
+    "values": {
+     "medical.heightCm": "154.9"
+    }
+   }
+  },
+  {
+   "id": "hw18",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "58 kilo weight 152 height",
+   "expected": {
+    "values": {
+     "medical.heightCm": "152",
+     "medical.weightKg": "58"
+    }
+   }
+  },
+  {
+   "id": "hw19",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "fundal height 28 cm weight 60 kg",
+   "expected": {
+    "values": {
+     "medical.weightKg": "60"
+    }
+   }
+  },
+  {
+   "id": "hw20",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "wet 60 kg",
+   "expected": {
+    "values": {
+     "medical.weightKg": "60"
+    }
+   }
+  },
+  {
+   "id": "fu01",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 previous LSCS 3 years back blood group B positive hypothyroid on Thyronorm 50 no DM no HTN allergic to sulpha height 5 feet 2 inches weight 58 kg",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "1",
+     "medical.conditions": [
+      "thyroid"
+     ],
+     "medical.allergies": {
+      "match": "^Sulpha$"
+     },
+     "medical.heightCm": "157.5",
+     "medical.weightKg": "58",
+     "notes": [
+      "^Previous LSCS 3 years back$"
+     ]
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   },
+   "why": "owner decision (29 Sep 2026): a previous finding's \"N years back\" is a note"
+  },
+  {
+   "id": "fu02",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "gravida 3 para 2 living 2 previous 2 LSCS blood group O positive known case of hypo tyroid on thyronorm 75 GDM on diet weight 64 kg",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "2",
+     "obstetric.living": "2",
+     "obstetric.previousCaesareans": "2",
+     "medical.conditions": [
+      "thyroid"
+     ],
+     "notes": [
+      "Gestational diabetes"
+     ],
+     "medical.weightKg": "64"
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu03",
+   "region": "Bengali",
+   "careType": "antenatal",
+   "text": "primi 28 weeks blood group B negative ICT negative animia Hb 8.5 on iron sucrose no drug allergies height 150 cm",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "1",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "0",
+     "medical.conditions": [
+      "anaemia"
+     ],
+     "notes": [
+      "ICT negative"
+     ],
+     "medical.allergies": {
+      "match": "^None known"
+     },
+     "medical.heightCm": "150"
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B-",
+      "ask": "\\bB\\s*(rh\\s*)?(-|neg)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu04",
+   "region": "Marathi",
+   "careType": "antenatal",
+   "text": "second gravida previous normal delivery 4 years back PIH in previous pregnancy now BP normal blood group A positive",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "notes": [
+      "^Previous normal delivery 4 years back$"
+     ]
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "A+",
+      "ask": "\\bA\\s*(rh\\s*)?(\\+|pos)"
+     }
+    },
+    "questions": [
+     "pre-eclampsia"
+    ]
+   },
+   "why": "owner decision (29 Sep 2026): a previous finding's \"N years back\" is a note"
+  },
+  {
+   "id": "fu05",
+   "region": "Malayalam",
+   "careType": "antenatal",
+   "text": "G3 P1 L1 A1 previous LSCS for CPD one abortion blood group O negative asthmatic on inhaler allergic to penicillin",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "1",
+     "obstetric.previousCaesareans": "1",
+     "medical.conditions": [
+      "asthma"
+     ],
+     "notes": [
+      "CPD"
+     ],
+     "medical.allergies": {
+      "match": "^Penicillin$"
+     }
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O-",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(-|neg)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu06",
+   "region": "Punjabi",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 previous baby IUD at 34 weeks GDM on insulin BP high blood group B positive weight 72 kg",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.pastComplications": [
+      "stillbirth_or_neonatal_death"
+     ],
+     "notes": [
+      "Gestational diabetes"
+     ],
+     "medical.weightKg": "72"
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    },
+    "questions": [
+     "High blood pressure"
+    ]
+   }
+  },
+  {
+   "id": "fu07",
+   "region": "Telugu",
+   "careType": "antenatal",
+   "text": "G4 P2 L2 A1 previous 2 caesarean PCOD thyroid on Eltroxin 50 blood group AB positive family history of diabetes",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "4",
+     "obstetric.para": "2",
+     "obstetric.living": "2",
+     "obstetric.abortions": "1",
+     "obstetric.previousCaesareans": "2",
+     "medical.conditions": [
+      "thyroid"
+     ],
+     "medical.otherConditions": [
+      "PCOS"
+     ]
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "AB+",
+      "ask": "\\bAB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu08",
+   "region": "Gujarati",
+   "careType": "antenatal",
+   "text": "primi gravida 12 weeks not a known case of DM HTN thyroid asthma epilepsy TB no drug allergies blood group O positive",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "1",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "0",
+     "medical.allergies": {
+      "match": "^None known"
+     }
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu09",
+   "region": "Kannada",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 previous Elsie s 2 years back O positive hypothyroid on thyronorm 25 mcg",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "1",
+     "medical.conditions": [
+      "thyroid"
+     ],
+     "notes": [
+      "^Previous LSCS 2 years back$"
+     ]
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   },
+   "why": "owner decision (29 Sep 2026): a previous finding's \"N years back\" is a note"
+  },
+  {
+   "id": "fu10",
+   "region": "Hinglish",
+   "careType": "antenatal",
+   "text": "doosri pregnancy hai pehli delivery LSCS thi sugar nahi hai BP nahi hai thyroid hai Thyronorm 50 leti hai blood group B positive",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.previousCaesareans": "1",
+     "medical.conditions": [
+      "thyroid"
+     ]
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu11",
+   "region": "Odia",
+   "careType": "antenatal",
+   "text": "G3 P2 L2 A0 previous normal deliveries epileptic on Eptoin blood group B positive weight 50 kg height 148 cm",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "2",
+     "obstetric.living": "2",
+     "obstetric.abortions": "0",
+     "medical.conditions": [
+      "epilepsy"
+     ],
+     "medical.heightCm": "148",
+     "medical.weightKg": "50"
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu12",
+   "region": "Assamese",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 previous preterm delivery at 32 weeks anemia on IV iron blood group O positive allergic to sulpha",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "medical.conditions": [
+      "anaemia"
+     ],
+     "obstetric.pastComplications": [
+      "preterm_birth"
+     ],
+     "medical.allergies": {
+      "match": "^Sulpha$"
+     }
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu13",
+   "region": "Tamil",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 previous LSCS RHD with MS on penicillin prophylaxis blood group A positive",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "1",
+     "medical.conditions": [
+      "heart_disease"
+     ]
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "A+",
+      "ask": "\\bA\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu14",
+   "region": "Hindi belt",
+   "careType": "infertility",
+   "text": "infertility 5 years PCOS on letrozole husband oligospermia tubal block on right side",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "PCOS",
+      "Male factor",
+      "Tubal block"
+     ]
+    }
+   }
+  },
+  {
+   "id": "fu15",
+   "region": "Bengali",
+   "careType": "gynaecology",
+   "text": "post menopausal bleeding hypertensive on amlodipine diabetic on metformin fibroid uterus",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "hypertension",
+      "diabetes"
+     ],
+     "medical.otherConditions": [
+      "Fibroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "fu16",
+   "region": "any",
+   "careType": "postnatal",
+   "text": "G2 P1 L1 A0 previous LSCS delivered by LSCS today PPH blood group O positive",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "1",
+     "notes": [
+      "Delivered by caesarean",
+      "PPH"
+     ]
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu17",
+   "region": "Marathi",
+   "careType": "antenatal",
+   "text": "G3 P2 L2 A0 previous 2 normal deliveries allergic to sulpha drugs hypothyroid",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "3",
+     "obstetric.para": "2",
+     "obstetric.living": "2",
+     "obstetric.abortions": "0",
+     "medical.conditions": [
+      "thyroid"
+     ],
+     "medical.allergies": {
+      "match": "^Sulpha drugs$"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu18",
+   "region": "Kerala",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 previous sizerian blood group be positive weight 60 kg",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "1",
+     "medical.weightKg": "60"
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "B+",
+      "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "fu19",
+   "region": "Hindi belt",
+   "careType": "antenatal",
+   "text": "primi 32 weeks mother diabetic she is hypothyroid on thyronorm 50 BP normal",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "1",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "0",
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "fu20",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 previous LSCS allergic to penicillin GDM on metformin blood group O positive",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "1",
+     "notes": [
+      "Gestational diabetes"
+     ],
+     "medical.allergies": {
+      "match": "^Penicillin$"
+     }
+    },
+    "confirm": {
+     "medical.bloodGroup": {
+      "value": "O+",
+      "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+     }
+    }
+   }
+  },
+  {
+   "id": "ms01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "anomaly scan normal",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ms02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "NT scan normal double marker low risk",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ms03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient is comfortable",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ms04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "tablet Folvite 5 mg OD",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ms05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "OGTT normal TSH 2.5",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ms06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "sugar normal",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ms07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "BP 120 by 80",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "ms08",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "fetal heart rate 140 per minute",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "adv01",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "Asma Sheikh 28 years G2 P1 L1 A0",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0",
+     "fullName": "Asma Sheikh",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "adv02",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "precious pregnancy IVF conception",
+   "expected": {
+    "values": {
+     "notes": [
+      "Precious",
+      "IVF"
+     ]
+    }
+   }
+  },
+  {
+   "id": "adv03",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "severe MS B positive",
+   "expected": {
+    "values": {},
+    "questions": [
+     "Which does it mean",
+     "Blood group B\\+"
+    ]
+   }
+  },
+  {
+   "id": "adv04",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "wait 30 minutes and repeat BP",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "adv05",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "Ms Priya Sample 26 years primi",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "1",
+     "obstetric.para": "0",
+     "obstetric.living": "0",
+     "obstetric.abortions": "0",
+     "obstetric.previousCaesareans": "0",
+     "fullName": "Priya Sample",
+     "ageYears": "26"
+    }
+   }
+  },
+  {
+   "id": "adv06",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "season change cough and cold",
+   "expected": {
+    "values": {}
+   }
+  },
+  {
+   "id": "adv07",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "known case of hypothyroidism husband diabetic",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "adv08",
+   "region": "any",
+   "careType": "infertility",
+   "text": "husband oligospermia wife PCOS",
+   "expected": {
+    "values": {
+     "medical.otherConditions": [
+      "Male factor",
+      "PCOS"
+     ]
+    }
+   }
+  },
+  {
+   "id": "adv09",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no DM hypothyroid on thyronorm",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "adv10",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "no DM hypothyroid",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ]
+    }
+   },
+   "alt": {
+    "values": {},
+    "questions": [
+     "hypothyroid"
+    ]
+   },
+   "why": "ambiguous: must not silently drop the thyroid"
+  },
+  {
+   "id": "adv11",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "G2 P1 L1 A0 living for 3 years in Pune",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.para": "1",
+     "obstetric.living": "1",
+     "obstetric.abortions": "0"
+    }
+   }
+  },
+  {
+   "id": "adv12",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "Preeti Sample 30 years second gravida previous LSCS",
+   "expected": {
+    "values": {
+     "obstetric.gravida": "2",
+     "obstetric.previousCaesareans": "1",
+     "fullName": "Preeti Sample",
+     "ageYears": "30"
+    }
+   }
+  },
+  {
+   "id": "adv13",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "Kavita Sample aged 31 hypothyroid",
+   "expected": {
+    "values": {
+     "medical.conditions": [
+      "thyroid"
+     ],
+     "fullName": "Kavita Sample",
+     "ageYears": "31"
+    }
+   }
+  },
+  {
+   "id": "adv14",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "previous LSCS for twins",
+   "expected": {
+    "values": {
+     "obstetric.previousCaesareans": "1"
+    }
+   },
+   "alt": {
+    "values": {
+     "obstetric.previousCaesareans": "1",
+     "notes": [
+      "Twin"
+     ]
+    }
+   }
+  },
+  {
+   "id": "adv15",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "fibroid in mother",
+   "expected": {
+    "values": {}
+   }
+  }
+ ]
+}

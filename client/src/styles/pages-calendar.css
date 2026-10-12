@@ -1,0 +1,152 @@
+/* The calendar (docs/BRAND.md "Calendar event marks" and "Calendar month grid and day lists"). Tokens only.
+   Layout follows the calendar's own width (a container), not the window: the month's day panel sits beside the
+   grid from 980 px, and month cells turn compact under 560 px. */
+
+.cal-page { container: cal / inline-size; display: flex; flex-direction: column; gap: var(--space-4); }
+.cal-page > .alert { margin: 0; }
+
+/* ---------- Toolbar: two rows ---------- */
+.cal-toolbar { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-6); }
+.cal-toolbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
+.cal-nav { display: inline-flex; align-items: center; gap: var(--space-2); }
+.cal-nav .icon-btn svg.lucide { width: 20px; height: 20px; }
+.cal-title { flex: 1 1 auto; min-width: 0; margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cal-loading { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.cal-views { margin-left: auto; }
+.cal-types { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* A type toggle: a tick box, then the mark (colour + icon + word). "On" never relies on colour alone. */
+.cal-chip {
+  display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); padding: 0 var(--space-3) 0 var(--space-2);
+  border: 1px solid var(--card-border); border-radius: var(--radius-pill); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer;
+}
+.cal-chip:hover { border-color: var(--indigo-700); }
+.cal-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.cal-chip[aria-pressed='true'] { border-color: var(--indigo-700); }
+.cal-chip[aria-disabled='true'] { cursor: not-allowed; }
+.cal-chip-box { width: 18px; height: 18px; flex-shrink: 0; color: var(--slate-600); }
+.cal-chip[aria-pressed='true'] .cal-chip-box { color: var(--indigo-700); }
+/* An "off" type: the same mark in plain Slate, so the tick box and the word carry the state */
+.cal-chip[aria-pressed='false'] .cal-mark { background: var(--mist-50); color: var(--slate-600); box-shadow: inset 0 0 0 1px var(--border); }
+
+/* ---------- Event marks: types, not statuses (colour + icon + word) ---------- */
+.cal-mark-booked { background: var(--teal-100); color: var(--teal-700); }
+.cal-mark-plan { background: var(--surface); color: var(--teal-700); box-shadow: inset 0 0 0 1px var(--teal-700); }
+.cal-mark-edd { background: var(--status-admitted-bg); color: var(--status-admitted-fg); }
+.cal-mark-lmp { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--slate-600); }
+.cal-mark-compact { padding: var(--space-1); }
+
+/* ---------- Month: grid and the chosen day ---------- */
+.cal-month-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+@container cal (min-width: 980px) {
+  .cal-month-layout { grid-template-columns: minmax(0, 1fr) 360px; }
+}
+.cal-month { padding: var(--space-4); }
+.cal-grid { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.cal-grid-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; }
+.cal-colhead {
+  padding: var(--space-2); background: var(--mist-50); color: var(--slate-600);
+  font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; text-align: center;
+}
+.cal-colhead abbr { text-decoration: none; }
+.cal-cell { position: relative; background: var(--surface); min-width: 0; }
+.cal-cell-btn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); width: 100%;
+  min-height: var(--row-height); min-width: var(--control-height); padding: var(--space-1) var(--space-2) var(--space-2);
+  border: none; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.cal-cell-btn:hover { background: var(--mist-50); }
+.cal-cell-btn:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.cal-cell-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-1); width: 100%; }
+.cal-daynum { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; font-variant-numeric: tabular-nums; }
+.cal-cell-today-label { color: var(--teal-700); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; }
+.cal-counts { display: flex; flex-wrap: wrap; gap: 0 var(--space-2); max-width: 100%; }
+.cal-count {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.cal-count svg.lucide { width: 14px; height: 14px; }
+.cal-count-booked, .cal-count-plan { color: var(--teal-700); }
+.cal-count-edd { color: var(--status-admitted-fg); }
+.cal-count-lmp { color: var(--ink); }
+.cal-total { display: none; align-items: center; gap: var(--space-1); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; font-variant-numeric: tabular-nums; }
+.cal-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--teal-500); }
+
+/* Cell states: today (teal line + label), chosen (Teal Wash), outside the month (Mist Light, Slate number) */
+.cal-cell-today { box-shadow: inset 0 2px 0 var(--teal-500); }
+.cal-cell-out { background: var(--mist-50); }
+.cal-cell-out .cal-daynum { color: var(--slate-600); }
+.cal-cell-chosen, .cal-cell-chosen .cal-cell-btn:hover { background: var(--selected-bg); }
+.cal-cell-chosen { box-shadow: var(--selected-edge); }
+
+.cal-grid-loading { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--border); }
+.cal-cell-skeleton { display: block; height: var(--row-height); background: var(--mist-50); animation: pulse 1.2s ease-in-out infinite; }
+
+.cal-panel { padding: var(--space-4) var(--space-6); }
+.cal-panel-title { margin: 0 0 var(--space-3); font-weight: 600; }
+
+/* Phones: a cell shows its day number and the total, with a teal dot for a booked visit */
+@container cal (max-width: 559px) {
+  .cal-month { padding: var(--space-2); }
+  .cal-colhead { padding: var(--space-1) 0; }
+  .cal-cell-btn { min-height: var(--control-height); padding: var(--space-1); align-items: center; }
+  .cal-cell-head { justify-content: center; }
+  .cal-cell-today-label { display: none; }
+  /* Today on phone: the "Today" word does not fit a 44 px cell, so the number gets a Deep Teal ring (5.2:1 or more on white, Teal Wash and Mist) */
+  .cal-cell-today .cal-daynum { padding: 0 var(--space-1); border-radius: var(--radius-pill); box-shadow: 0 0 0 2px var(--teal-700); color: var(--teal-700); font-weight: 600; }
+  .cal-counts { display: none; }
+  .cal-total { display: inline-flex; }
+  .cal-panel { padding: var(--space-4); }
+}
+
+/* ---------- Day and week lists ---------- */
+.cal-week, .cal-day { display: flex; flex-direction: column; gap: var(--space-4); }
+.cal-day-section { padding: var(--space-4) var(--space-6); }
+.cal-day-section .dt-card { box-shadow: none; border-radius: 0; background: none; }
+.cal-day-section .dt-wrap { padding: 0; max-height: none; min-height: 0; }
+.cal-section-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); font-weight: 600; }
+.cal-subtitle { margin: var(--space-3) 0 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.cal-day-link { color: var(--ink); text-decoration: none; }
+.cal-day-link:hover { color: var(--indigo-700); text-decoration: underline; }
+.cal-today-label { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--teal-700); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.cal-today-label svg.lucide { width: 16px; height: 16px; }
+.cal-day-today { box-shadow: inset 0 2px 0 var(--teal-500), var(--shadow-card); }
+.cal-note { margin: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.cal-page > .cal-day > .cal-note { padding: 0 var(--space-2); }
+.cal-details { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; }
+.cal-line { display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.cal-pills { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.dt td.cal-col-patient { min-width: 200px; }
+/* Phones: stacked rows drop cells with nothing in them (no bare "Status" heading). Only when stacked: on a
+   desktop table, hiding a cell would shift the columns. (The same 720 px window as the stacking rule.) */
+@media (max-width: 720px) {
+  .cal-day-section .dt td:empty { display: none; }
+}
+
+/* The month's day panel: a plain list */
+.cal-day-compact { gap: var(--space-3); }
+.cal-day-section-compact { padding: 0; }
+.cal-list { list-style: none; margin: 0; padding: 0; }
+.cal-list li { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.cal-list li:last-child { border-bottom: none; }
+.cal-list .row-actions { justify-content: flex-start; }
+
+.cal-empty { display: flex; flex-direction: column; gap: var(--space-1); }
+.cal-empty p { margin: 0; }
+.cal-empty-compact { padding: var(--space-3) var(--space-1) 0; }
+
+@container cal (max-width: 559px) {
+  .cal-toolbar { padding: var(--space-4); }
+  .cal-title { flex-basis: 100%; order: -1; }
+  .cal-views { margin-left: 0; }
+  .cal-day-section { padding: var(--space-4); }
+}
+
+/* Calendar (simplified): boxes per kind of entry or per day, name-only rows (styles shared with Today). */
+.cal-page .wl-row-toggle .cal-mark { flex: none; }
+.cal-row-links { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.cal-page .wl-fold .cal-note { padding: var(--space-2) var(--space-6); margin: 0; }
+.cal-page .wl-fold .cal-subtitle { padding: var(--space-3) var(--space-6) 0; margin: 0; }
+.cal-page .wl-fold .cal-today-label { font-size: 0.8rem; }
+.cal-day-compact .wl-row-toggle, .cal-day-compact .wl-row-body { padding-left: var(--space-2); padding-right: var(--space-2); }
+.cal-show-label { align-self: center; font-weight: 600; color: var(--slate-600); margin-right: var(--space-1); }

@@ -1,133 +1,160 @@
-// Columns per month (or any category), one or two series on ONE axis (same unit). Hover or focus a month for its values.
-// Marks follow the chart rules: ≤ 24 px columns with a 4 px rounded top and a square base, a 2 px gap between the
-// columns of a group, hairline gridlines, round tick numbers; a legend whenever there are two series.
-// data: [{ label, values: [n, n?] }]  series: [{ label, color }]  format: number → text
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { formatCount, isExact } from '../../pages/analytics/analyticsFormat.js';
+import { niceTicks } from './niceTicks.js';
+import { ShowAsTable } from './ShowAsTable.jsx';
 
-// The chart is drawn at the width of its card and a fixed, compact height, so it never grows huge on a wide screen and
-// its text keeps one size.
-const DEFAULT_HEIGHT = 200;
-const PAD = { top: 12, right: 6, bottom: 28, left: 52 };
+// Sizes in screen pixels: the SVG's viewBox is the size of its box, so 1 unit is 1 px and text takes the
+// type tokens from CSS (the person's text size applies).
+const HEIGHT = 220;
+const PAD = { top: 24, right: 8, bottom: 32, left: 44 };
+const MAX_COL = 24; // column width at most
+const GAP = 2;
+const RADIUS = 4;
+const MIN_LABEL_PX = 60; // room for one x-axis label ("Nov 2025")
 
-// 0 … a round number above the maximum, in about 4 steps (1, 2, 2.5 or 5 × 10ⁿ). integer: counts never get 0.5.
-function niceTicks(max, integer) {
-  if (max <= 0) return [0, 1];
-  const rough = max / 4;
-  const pow = 10 ** Math.floor(Math.log10(rough));
-  let step = [1, 2, 2.5, 5, 10].map((m) => m * pow).find((s) => s >= rough);
-  if (integer) step = Math.max(1, Math.ceil(step));
-  const top = Math.ceil(max / step) * step;
-  return Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
+/** The width of an element, followed as it changes. */
+function useWidth() {
+  const ref = useRef(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    setWidth(el.clientWidth);
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width];
 }
 
-// A column with a rounded top and a square base.
-function column(x, y, w, h) {
-  if (h <= 0) return '';
-  const r = Math.min(4, w / 2, h);
+/** A column with a 4 px rounded top and a square base. */
+function columnPath(x, y, w, h) {
+  const r = Math.min(RADIUS, h, w / 2);
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 }
 
-const shortNumber = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 });
+/** The column a key moves the focus to (Left/Right one column, Home/End the first/last), or null for other keys. */
+export function nextColumn(key, current, n) {
+  const next = { ArrowRight: current + 1, ArrowLeft: current - 1, Home: 0, End: n - 1 }[key];
+  if (next === undefined || n < 1) return null;
+  return Math.min(Math.max(next, 0), n - 1);
+}
 
-// integer: the values are counts (whole numbers on the axis). empty: what to say when every value is 0.
-// A data item may carry texts: [string] – shown instead of the value (e.g. "fewer than 5" for a hidden small count,
-// drawn as 0).
-export function ColumnChart({ data, series, format = (n) => String(n), title, integer = false, empty = 'Nothing yet.', height = DEFAULT_HEIGHT }) {
-  const id = useId();
+/** "Babies registered per month of birth, Nov 2025 to Oct 2026: total 5, highest 2 in Jun 2026". */
+export function columnSummary(title, columns, total) {
+  if (!columns.length) return title;
+  const exact = columns.filter((c) => isExact(c.value));
+  const top = exact.reduce((a, c) => (c.value > (a?.value ?? -1) ? c : a), null);
+  const parts = [];
+  if (total !== undefined) parts.push(`total ${formatCount(total)}`);
+  if (top) parts.push(`highest ${formatCount(top.value)} in ${top.label}`);
+  if (exact.length < columns.length) parts.push(`${columns.length - exact.length} not shown as numbers`);
+  return `${title}, ${columns[0].label} to ${columns[columns.length - 1].label}${parts.length ? `: ${parts.join(', ')}` : ''}`;
+}
+
+/**
+ * Columns over time (or over the next weeks), one series. A column with no exact number (a hospital admin's
+ * "fewer than 5" or "Not shown") has no column: a small marker at the baseline, and the words in the tooltip and
+ * in the table. Always has "Show as table".
+ * Keyboard: one Tab stop (the svg is a group named by the summary); Left/Right/Home/End move between columns,
+ * each column an image named "label: value", with the same tooltip as on hover.
+ * columns: [{ key, label, value, href? }]. color: 'bar' | 'scheduled' (future dates). summary: the chart in words.
+ */
+export function ColumnChart({ columns, color = 'bar', summary, caption, labelHeader = 'Period', valueHeader = 'Number' }) {
+  const [ref, width] = useWidth();
   const [active, setActive] = useState(null);
-  const box = useRef(null);
-  const [W, setW] = useState(480);
-  const H = height;
-  useEffect(() => {
-    if (!box.current) return undefined;
-    const observer = new ResizeObserver(([entry]) => setW(Math.max(260, Math.round(entry.contentRect.width))));
-    observer.observe(box.current);
-    return () => observer.disconnect();
-  }, []);
-  const plotW = W - PAD.left - PAD.right;
-  const plotH = H - PAD.top - PAD.bottom;
-  const max = Math.max(0, ...data.flatMap((d) => d.values));
-  const valueText = (d, s) => d.texts?.[s] ?? format(d.values[s]);
-  if (max === 0) {
-    const hidden = data.some((d) => d.texts?.some(Boolean));
-    return (
-      <div className="chart" ref={box}>
-        <p className="chart-empty muted" style={{ minHeight: H }}>{hidden ? 'Each month is below 5 – hidden to protect privacy.' : empty}</p>
-      </div>
-    );
+  const [focusIdx, setFocusIdx] = useState(0);
+  const colRefs = useRef([]);
+  const n = columns.length;
+  // One Tab stop for the whole chart (roving tabindex); kept inside the columns when the period changes n.
+  const stop = Math.min(Math.max(focusIdx, 0), Math.max(0, n - 1));
+  function onKeyDown(e) {
+    const i = nextColumn(e.key, stop, n);
+    if (i === null) return;
+    e.preventDefault();
+    setFocusIdx(i);
+    colRefs.current[i]?.focus();
   }
-  const ticks = niceTicks(max, integer);
-  const top = ticks.at(-1);
-  const slot = plotW / Math.max(1, data.length);
-  const barW = Math.min(22, (slot * 0.6 - (series.length - 1) * 2) / series.length);
-  const groupW = barW * series.length + (series.length - 1) * 2;
-  const y = (v) => PAD.top + plotH - (v / top) * plotH;
-  // month labels: every other one when there are many – always including the latest
-  const labelled = (i) => slot >= 34 || (data.length - 1 - i) % 2 === 0;
+  const values = columns.map((c) => (isExact(c.value) ? c.value : 0));
+  const ticks = niceTicks(Math.max(0, ...values));
+  const yMax = ticks[ticks.length - 1];
+  const plotW = Math.max(0, width - PAD.left - PAD.right);
+  const plotH = HEIGHT - PAD.top - PAD.bottom;
+  const band = n ? plotW / n : 0;
+  const colW = Math.max(2, Math.min(MAX_COL, band - GAP));
+  const y = (v) => PAD.top + plotH - (v / yMax) * plotH;
+  const labelEvery = Math.max(1, Math.ceil(MIN_LABEL_PX / Math.max(band, 1)));
+  const highest = values.indexOf(Math.max(...values));
+  const direct = new Set([highest, n - 1].filter((i) => i >= 0 && isExact(columns[i].value) && columns[i].value > 0));
+  const tip = active !== null ? columns[active] : null;
 
   return (
-    <div className="chart" ref={box}>
-      {series.length > 1 && (
-        <ul className="chart-legend" aria-label="Legend">
-          {series.map((s) => (
-            <li key={s.label}>
-              <span className="chart-swatch" style={{ background: s.color }} aria-hidden />
-              {s.label}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="chart-plot">
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={`${id}-t`}>
-          <title id={`${id}-t`}>{title}</title>
-          {ticks.map((t) => (
-            <g key={t}>
-              <line className="chart-grid" x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} />
-              <text className="chart-tick" x={PAD.left - 8} y={y(t) + 4} textAnchor="end">{shortNumber.format(t)}</text>
+    <ShowAsTable rows={columns} caption={caption ?? summary} labelHeader={labelHeader} valueHeader={valueHeader}>
+      <div className="colchart" ref={ref}>
+        {width > 0 && (
+          <svg className={`colchart-svg colchart-${color}`} viewBox={`0 0 ${width} ${HEIGHT}`} width={width} height={HEIGHT} role="group" aria-label={summary} onKeyDown={onKeyDown}>
+            <g aria-hidden="true">
+              {ticks.map((t) => (
+                <g key={t} className="colchart-tick">
+                  <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} />
+                  <text x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end">
+                    {formatCount(t)}
+                  </text>
+                </g>
+              ))}
             </g>
-          ))}
-          {data.map((d, i) => {
-            const x0 = PAD.left + i * slot + (slot - groupW) / 2;
-            return (
-              <g key={d.label} className={active === i ? 'chart-col is-active' : 'chart-col'}>
-                {d.values.map((v, s) => (
-                  <path key={series[s].label} d={column(x0 + s * (barW + 2), y(v), barW, PAD.top + plotH - y(v))} fill={series[s].color} />
-                ))}
-                {labelled(i) && (
-                  <text className="chart-tick" x={PAD.left + i * slot + slot / 2} y={H - 8} textAnchor="middle">{d.label}</text>
-                )}
-                {/* the hit area is the whole month, not just the painted column */}
-                <rect
-                  className="chart-hit"
-                  x={PAD.left + i * slot}
-                  y={PAD.top}
-                  width={slot}
-                  height={plotH}
-                  tabIndex={0}
-                  aria-label={`${d.label}: ${d.values.map((_, s) => `${series[s].label} ${valueText(d, s)}`).join(', ')}`}
-                  onPointerEnter={() => setActive(i)}
-                  onPointerLeave={() => setActive(null)}
-                  onFocus={() => setActive(i)}
+            {columns.map((c, i) => {
+              const cx = PAD.left + i * band + band / 2;
+              const exact = isExact(c.value);
+              const h = exact && yMax > 0 ? (c.value / yMax) * plotH : 0;
+              return (
+                <g
+                  key={c.key}
+                  ref={(el) => {
+                    colRefs.current[i] = el;
+                  }}
+                  className={`colchart-col ${active === i ? 'is-active' : ''}`.trim()}
+                  role="img"
+                  aria-label={`${c.label}: ${formatCount(c.value)}`}
+                  tabIndex={i === stop ? 0 : -1}
+                  onMouseEnter={() => setActive(i)}
+                  onMouseLeave={() => setActive(null)}
+                  onFocus={() => {
+                    setActive(i);
+                    setFocusIdx(i);
+                  }}
                   onBlur={() => setActive(null)}
-                />
-              </g>
-            );
-          })}
-        </svg>
-        {active !== null && (
-          <div className="chart-tip" style={{ left: `${((PAD.left + active * slot + slot / 2) / W) * 100}%` }} role="status">
-            <div className="chart-tip-title">{data[active].label}</div>
-            {data[active].values.map((_, s) => (
-              <div key={series[s].label} className="chart-tip-row">
-                <span className="chart-key" style={{ background: series[s].color }} aria-hidden />
-                <strong>{valueText(data[active], s)}</strong> <span className="muted">{series[s].label}</span>
-              </div>
-            ))}
+                >
+                  <rect className="colchart-hit" x={PAD.left + i * band} y={PAD.top} width={band} height={plotH} />
+                  {exact && h > 0 && <path className="colchart-bar" d={columnPath(cx - colW / 2, PAD.top + plotH - h, colW, h)} />}
+                  {!exact && <rect className="colchart-masked" x={cx - colW / 2} y={PAD.top + plotH - 3} width={colW} height={3} />}
+                  {direct.has(i) && (
+                    <text className="colchart-direct" x={cx} y={PAD.top + plotH - h - 6} textAnchor="middle">
+                      {formatCount(c.value)}
+                    </text>
+                  )}
+                  {(i % labelEvery === 0 || i === n - 1) && (i === n - 1 || n - 1 - i >= labelEvery) && (
+                    <text className="colchart-xlabel" x={cx} y={HEIGHT - PAD.bottom + 18} textAnchor="middle">
+                      {c.label}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+            <line className="colchart-base" aria-hidden="true" x1={PAD.left} x2={width - PAD.right} y1={PAD.top + plotH} y2={PAD.top + plotH} />
+          </svg>
+        )}
+        {tip && (
+          <div
+            className="colchart-tip"
+            role="presentation"
+            style={{ left: `${Math.min(Math.max(PAD.left + active * band + band / 2, 60), Math.max(60, width - 60))}px` }}
+          >
+            {tip.label} · {formatCount(tip.value)}
           </div>
         )}
       </div>
-    </div>
+    </ShowAsTable>
   );
 }
-
-export const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)'];

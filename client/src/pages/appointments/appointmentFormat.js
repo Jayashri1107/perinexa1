@@ -1,49 +1,65 @@
-// Words and looks for appointments, shared by the Appointments pages, the calendar, Today and the patient record.
-import { Ban, CalendarClock, CircleCheck, CircleX, DoorOpen, Hourglass } from 'lucide-react';
-import { labelOf } from '../../utils/format.js';
+import { CalendarCheck, CalendarX2, Clock, Hash, UserCheck, UserX } from 'lucide-react';
 
-const LOOKS = {
-  booked: { tone: 'info', icon: CalendarClock, word: 'Booked' },
-  arrived: { tone: 'pending', icon: DoorOpen, word: 'Arrived' },
-  seen: { tone: 'active', icon: CircleCheck, word: 'Seen' },
-  cancelled: { tone: 'inactive', icon: Ban, word: 'Cancelled' },
-  no_show: { tone: 'danger', icon: CircleX, word: 'Did not come' },
+// Appointment booking (docs/APPOINTMENTS_PLAN.md): words, times and status looks shared by the Appointments page,
+// Today, the patient's Appointments tab and the calendar. Same lists as server/src/appointments/appointmentRules.js.
+
+export const BOOKING_ROLES = ['receptionist', 'doctor'];
+export const QUEUE_ROLES = ['receptionist', 'doctor', 'rmo', 'nurse'];
+export const VISIT_TYPES = ['new', 'follow_up', 'scan', 'other'];
+export const VISIT_TYPE_LABELS = { new: 'New', follow_up: 'Follow-up', scan: 'Scan', other: 'Other' };
+export const CANCEL_REASONS = [
+  { value: 'patient_asked', label: 'The patient asked' },
+  { value: 'doctor_leave', label: 'Doctor on leave' },
+  { value: 'other', label: 'Other reason' },
+];
+export const CANCEL_LABELS = {
+  patient_asked: 'patient asked',
+  doctor_leave: 'doctor on leave',
+  other: 'other reason',
+  next_visit_cleared: 'next visit removed',
+  visit_cancelled: 'visit cancelled',
+  arrival_undone: 'arrival undone',
+  record_closed: 'record closed', // cancelled by the app when a doctor closed the record (no message was sent)
 };
-export const appointmentLook = (a) => (a.needsTime && a.status === 'booked' ? { tone: 'pending', icon: Hourglass, word: 'Needs a time' } : LOOKS[a.status] ?? LOOKS.booked);
+export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Monday first, as on the calendar.
+export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-// "Asha Sample" or "Phone Caller (not registered)"
-export const whoText = (a) => a.patient?.name ?? (a.guest ? `${a.guest.name} (not registered)` : '—');
-export const phoneOf = (a) => a.patient?.phone || a.guest?.phone || '';
+/** "17:30" → "5:30 PM" (as patients read times). */
+export function timeLabel(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
 
-// "09:30" / "Token 4" / "No time yet"
-export const whenText = (a) => (a.kind === 'token' ? `Token ${a.token}` : a.start ?? 'No time yet');
+/** "10:30 AM", "Token 4" or "Time to be given". */
+export const whenLabel = (a) => (a.kind === 'token' ? `Token ${a.token}` : a.start ? timeLabel(a.start) : 'Time to be given');
 
-export const visitTypeText = (visitTypes, key) => labelOf(visitTypes, key);
+/** The status of an appointment as a pill: colour + icon + word. */
+export const STATUS_LOOK = {
+  booked: { tone: 'due', icon: CalendarCheck, label: 'Booked' },
+  arrived: { tone: 'stable', icon: UserCheck, label: 'Arrived' },
+  seen: { tone: 'inactive', icon: UserCheck, label: 'Seen' },
+  no_show: { tone: 'watch', icon: UserX, label: 'Did not come' },
+  cancelled: { tone: 'inactive', icon: CalendarX2, label: 'Cancelled' },
+};
+export const NEEDS_TIME_LOOK = { tone: 'watch', icon: Clock, label: 'Needs a time' };
+export const TOKEN_LOOK = { tone: 'neutral', icon: Hash, label: 'Walk-in' };
 
-// "2026-10-07" → "Wed, 7 Oct 2026" (the date itself, not the computer's time zone)
-export const dayText = (iso, options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) =>
-  iso ? new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`)) : '—';
+/** Who the appointment is for: the patient's name, or the name given on a quick booking. */
+export const whoLabel = (a) => a.patient?.fullName ?? a.guest?.name ?? 'Patient';
 
-// "2026-10-07" + n days
-export const addDaysIso = (iso, n) => new Date(new Date(`${iso}T00:00:00Z`).getTime() + n * 86400000).toISOString().slice(0, 10);
-
-const minutesOf = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
-
-// The times a visit of this length can start on a day (the server's day answer): every slot it takes must be free,
-// in a session, and not past. exceptId: an appointment being moved (its own slots count as free).
-export function freeStarts(day, minutes, slotMinutes, exceptId = null) {
-  if (!day) return [];
-  const slots = new Map(day.slots.map((s) => [s.start, s]));
-  const isFree = (s) => s && !s.past && s.appointments.every((a) => a.id === exceptId) && (!s.busyWith || s.busyWith.id === exceptId);
-  const steps = Math.max(1, Math.round(minutes / slotMinutes));
-  return day.slots
-    .filter((s) => {
-      for (let i = 0; i < steps; i += 1) {
-        const t = minutesOf(s.start) + i * slotMinutes;
-        const key = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
-        if (!isFree(slots.get(key))) return false;
-      }
-      return true;
-    })
-    .map((s) => s.start);
+/** "YYYY-MM-DD" n days later. */
+export function addDaysIso(iso, n) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+/** Day of the week (0 = Sunday) of a "YYYY-MM-DD" date. */
+export const weekdayOf = (iso) => new Date(`${iso}T00:00:00Z`).getUTCDay();
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "Tuesday 29 Sep 2026". */
+export function dayLabel(iso) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }

@@ -1,329 +1,325 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AppConfigProvider } from './context/AppConfigContext.jsx';
-import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import { AdminLayout } from './layout/AdminLayout.jsx';
-import { HospitalLayout } from './layout/HospitalLayout.jsx';
-import { NotFoundPage } from './pages/NotFoundPage.jsx';
-import { LoginPage } from './pages/auth/LoginPage.jsx';
-import { Loader } from './components/Loader.jsx';
-import { ProtectedRoute } from './routes/ProtectedRoute.jsx';
-import { Toaster } from './components/Toast.jsx';
-import { PageErrorBoundary } from './components/PageErrorBoundary.jsx';
+import { SearchX } from 'lucide-react';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import {
+  HomeRedirect,
+  RequireAuth,
+  RequireCalendarRole,
+  RequirePasswordChanged,
+  RequireSuperAdmin,
+  RequireTenant,
+  RequireTenantAdmin,
+  RequireTenantRole,
+} from './auth/guards.jsx';
+import { AppLayout } from './components/AppLayout.jsx';
+import { PageHeader } from './components/PageHeader.jsx';
+import { AccountPage } from './pages/AccountPage.jsx';
+import { LetterheadSettingsPage } from './pages/settings/LetterheadSettingsPage.jsx';
+import { PatientMessagesSettingsPage } from './pages/settings/PatientMessagesSettingsPage.jsx';
+import { RemindersPage } from './pages/reminders/RemindersPage.jsx';
+import { PortalPage } from './pages/portal/PortalPage.jsx';
+import { LoginPage } from './pages/LoginPage.jsx';
+import { ChangePasswordPage } from './pages/ChangePasswordPage.jsx';
+import { TodayPage } from './pages/TodayPage.jsx';
+import { CalendarPage } from './pages/calendar/CalendarPage.jsx';
+import { AppointmentsPage, NeedsTimePage } from './pages/appointments/AppointmentsPage.jsx';
+import { OpdTimingsPage } from './pages/appointments/OpdTimingsPage.jsx';
+import { DisplayPage } from './pages/appointments/DisplayPage.jsx';
+import { PatientAppointmentsTab } from './pages/appointments/PatientAppointmentsTab.jsx';
+import { BillPage } from './pages/billing/BillPage.jsx';
+import { PatientAbhaTab } from './pages/abdm/PatientAbhaTab.jsx';
+import { AbdmSettingsPage } from './pages/abdm/ScanShare.jsx';
+import { InvoicePage, InvoicesPage } from './pages/pharmacy/InvoicesPage.jsx';
+import { OrderFormPage, OrderPage, OrdersPage } from './pages/pharmacy/OrdersPage.jsx';
+import { MedicinesPage, NewPurchasePage, PurchasesPage, SuppliersPage } from './pages/pharmacy/PurchasesPage.jsx';
+import { PharmacySettingsPage, ReportsPage } from './pages/pharmacy/ReportsPage.jsx';
+import { SellPage } from './pages/pharmacy/SellPage.jsx';
+import { MedicineStockPage, StockPage } from './pages/pharmacy/StockPage.jsx';
+import { NewSupplierReturnPage, SupplierReturnPage, SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
+import { BillsPage } from './pages/billing/BillsPage.jsx';
+import { BillingSettingsPage } from './pages/billing/BillingExtras.jsx';
+import { DailySummaryPage, MonthlyPage, PatientBillsTab, PriceListPage, UnpaidPage } from './pages/billing/BillingReports.jsx';
+import { PatientsPage } from './pages/patients/PatientsPage.jsx';
+import { VoiceWordsPage } from './pages/VoiceWordsPage.jsx';
+import { NewPatientClinicalPage, PatientNewPage } from './pages/patients/PatientNewPage.jsx';
+import { PatientDetailPage, PatientEditTab, PatientOverviewTab } from './pages/patients/PatientDetailPage.jsx';
+import { PatientCarePlanTab } from './pages/patients/CarePlanTab.jsx';
+import { AuditCategoryRedirect, HospitalAuditLogPage, StaffPage } from './pages/admin/StaffPage.jsx';
+import { OverviewPage } from './pages/platform/OverviewPage.jsx';
+import { HospitalNewPage, HospitalsListPage } from './pages/platform/HospitalsListPage.jsx';
+import { HospitalActivityTab, HospitalOverviewTab, HospitalStaffTab, HospitalWorkspace } from './pages/platform/HospitalWorkspace.jsx';
+import { UserNewPage, UsersListPage } from './pages/platform/UsersListPage.jsx';
+import { UserActivityTab, UserHospitalsTab, UserProfileTab, UserWorkspace } from './pages/platform/UserWorkspace.jsx';
+import { AuditPage } from './pages/platform/AuditPage.jsx';
+import { TemplatesPage } from './pages/careplans/TemplatesPage.jsx';
+import { TemplateDetailPage } from './pages/careplans/TemplateDetailPage.jsx';
+import { TemplateEditPage } from './pages/careplans/TemplateEditPage.jsx';
+import { RedFlagRulesEditPage } from './pages/redflags/RedFlagRulesEditPage.jsx';
+import { RedFlagRulesPage } from './pages/redflags/RedFlagRulesPage.jsx';
+import { AskRecordsPage } from './pages/worklist/AskRecordsPage.jsx';
+import { MedicineSafetyEditPage } from './pages/medsafety/MedicineSafetyEditPage.jsx';
+import { MedicineSafetyPage } from './pages/medsafety/MedicineSafetyPage.jsx';
+import { ConsentFormsPage } from './pages/consents/ConsentFormsPage.jsx';
+import { ApprovalsPage } from './pages/library/ApprovalsPage.jsx';
+import { RiskRulesPage } from './pages/library/RiskRulesPage.jsx';
+import { ConsentFormDetailPage } from './pages/consents/ConsentFormDetailPage.jsx';
+import { ConsentFormEditPage } from './pages/consents/ConsentFormEditPage.jsx';
+import { PatientConsentsTab } from './pages/consents/PatientConsentsTab.jsx';
+import { PatientVisitsTab } from './pages/visits/PatientVisitsTab.jsx';
+import { PatientStaysTab } from './pages/inpatient/PatientStaysTab.jsx';
+import { AdmissionPage } from './pages/inpatient/AdmissionPage.jsx';
+import { LabOrderPage } from './pages/lab/LabOrderPage.jsx';
+import { LabWorklistPage } from './pages/lab/LabWorklistPage.jsx';
+import { PatientLabTab } from './pages/lab/PatientLabTab.jsx';
+import { DocumentPage } from './pages/inpatient/DocumentPage.jsx';
+import { PrescriptionDesignPage } from './pages/visits/PrescriptionDesignPage.jsx';
+import { PrescriptionSetsPage } from './pages/visits/PrescriptionSetsPage.jsx';
+import { TestPackagesPage } from './pages/lab/TestPackagesPage.jsx';
+import { TestPackagePage } from './pages/lab/TestPackagePage.jsx';
+import { TestPackageEditPage } from './pages/lab/TestPackageEditPage.jsx';
+import { PrescriptionSetPage } from './pages/visits/PrescriptionSetPage.jsx';
+import { PrescriptionSetEditPage } from './pages/visits/PrescriptionSetEditPage.jsx';
+import { VisitPage } from './pages/visits/VisitPage.jsx';
+import { AnalyticsListPage } from './pages/analytics/AnalyticsListPage.jsx';
+import { MonthlyReportPage } from './pages/analytics/MonthlyReportPage.jsx';
+import { ByDoctorPage } from './pages/analytics/ByDoctorPage.jsx';
+import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
+import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.jsx';
+import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
+import { APPOINTMENT_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES } from './platform/modules.js';
 
-// Each page is downloaded the first time it is opened, not all at once with the sign-in page – a much smaller first
-// download, which matters on phones and slow hospital connections.
-// A download that fails (the server restarting, a new version of the website, a network blip) is tried once more; if
-// it fails again the whole page is reloaded once – at most every 30 seconds, so it never loops – and only then is the
-// error shown (PageErrorBoundary).
-const RELOADED_AT = 'p1:page-reloaded-at';
-async function loadPage(load) {
-  try {
-    return await load();
-  } catch (err) {
-    await new Promise((r) => setTimeout(r, 800));
-    try {
-      return await load();
-    } catch {
-      let last = 0;
-      try {
-        last = Number(sessionStorage.getItem(RELOADED_AT)) || 0;
-      } catch {
-        last = Date.now(); // no session storage: never reload by ourselves
-      }
-      if (Date.now() - last > 30_000) {
-        try {
-          sessionStorage.setItem(RELOADED_AT, String(Date.now()));
-        } catch {
-          /* reloading once is still right */
-        }
-        window.location.reload();
-        return new Promise(() => {}); // the page is going away
-      }
-      throw err;
-    }
-  }
-}
-const page = (load, name) => lazy(() => loadPage(load).then((m) => ({ default: m[name] })));
-const AccountPage = page(() => import('./pages/account/AccountPage.jsx'), 'AccountPage');
-const AnalyticsPage = page(() => import('./pages/analytics/AnalyticsPage.jsx'), 'AnalyticsPage');
-const DayPage = page(() => import('./pages/appointments/DayPage.jsx'), 'DayPage');
-const NeedsTimePage = page(() => import('./pages/appointments/NeedsTimePage.jsx'), 'NeedsTimePage');
-const DoctorTimingsPage = page(() => import('./pages/appointments/TimingsPage.jsx'), 'DoctorTimingsPage');
-const TimingsPage = page(() => import('./pages/appointments/TimingsPage.jsx'), 'TimingsPage');
-const PlatformAnalyticsPage = page(() => import('./pages/analytics/PlatformAnalyticsPage.jsx'), 'PlatformAnalyticsPage');
-const AuditPage = page(() => import('./pages/audit/AuditPage.jsx'), 'AuditPage');
-const ChangePasswordPage = page(() => import('./pages/auth/ChangePasswordPage.jsx'), 'ChangePasswordPage');
-const CalendarPage = page(() => import('./pages/calendar/CalendarPage.jsx'), 'CalendarPage');
-const RemindersPage = page(() => import('./pages/calendar/RemindersPage.jsx'), 'RemindersPage');
-const CheckupsPage = page(() => import('./pages/calendar/CheckupsPage.jsx'), 'CheckupsPage');
-const BillDetailPage = page(() => import('./pages/billing/BillDetailPage.jsx'), 'BillDetailPage');
-const BillingSettingsPage = page(() => import('./pages/billing/BillingSettingsPage.jsx'), 'BillingSettingsPage');
-const BillsPage = page(() => import('./pages/billing/BillsPage.jsx'), 'BillsPage');
-const DailySummaryPage = page(() => import('./pages/billing/DailySummaryPage.jsx'), 'DailySummaryPage');
-const MonthlyPage = page(() => import('./pages/billing/MonthlyPage.jsx'), 'MonthlyPage');
-const NewBillPage = page(() => import('./pages/billing/NewBillPage.jsx'), 'NewBillPage');
-const PriceListPage = page(() => import('./pages/billing/PriceListPage.jsx'), 'PriceListPage');
-const UnpaidPage = page(() => import('./pages/billing/UnpaidPage.jsx'), 'UnpaidPage');
-const DashboardPage = page(() => import('./pages/dashboard/DashboardPage.jsx'), 'DashboardPage');
-const AdminOverviewPage = page(() => import('./pages/hospital/AdminOverviewPage.jsx'), 'AdminOverviewPage');
-const HospitalAuditPage = page(() => import('./pages/hospital/HospitalAuditPage.jsx'), 'HospitalAuditPage');
-const HospitalSettingsPage = page(() => import('./pages/hospital/HospitalSettingsPage.jsx'), 'HospitalSettingsPage');
-const OpdScheduleEditorPage = page(() => import('./pages/hospital/OpdScheduleEditorPage.jsx'), 'OpdScheduleEditorPage');
-const OpdTimingsPage = page(() => import('./pages/hospital/OpdTimingsPage.jsx'), 'OpdTimingsPage');
-const ServicesToBillPage = page(() => import('./pages/billing/ServicesToBillPage.jsx'), 'ServicesToBillPage');
-const NursingStationPage = page(() => import('./pages/nursing/NursingStationPage.jsx'), 'NursingStationPage');
-const WardsPage = page(() => import('./pages/hospital/WardsPage.jsx'), 'WardsPage');
-const StaffPage = page(() => import('./pages/hospital/StaffPage.jsx'), 'StaffPage');
-const TodayPage = page(() => import('./pages/hospital/TodayPage.jsx'), 'TodayPage');
-const HospitalDetailPage = page(() => import('./pages/hospitals/HospitalDetailPage.jsx'), 'HospitalDetailPage');
-const HospitalsPage = page(() => import('./pages/hospitals/HospitalsPage.jsx'), 'HospitalsPage');
-const LabOrderPage = page(() => import('./pages/lab/LabOrderPage.jsx'), 'LabOrderPage');
-const LabPage = page(() => import('./pages/lab/LabPage.jsx'), 'LabPage');
-const LibraryEntryPage = page(() => import('./pages/library/LibraryEntryPage.jsx'), 'LibraryEntryPage');
-const LibraryListPage = page(() => import('./pages/library/LibraryListPage.jsx'), 'LibraryListPage');
-const MasterDataPage = page(() => import('./pages/masterData/MasterDataPage.jsx'), 'MasterDataPage');
-const PatientDetailPage = page(() => import('./pages/patients/PatientDetailPage.jsx'), 'PatientDetailPage');
-const PatientRegisterPage = page(() => import('./pages/patients/PatientRegisterPage.jsx'), 'PatientRegisterPage');
-const PatientsPage = page(() => import('./pages/patients/PatientsPage.jsx'), 'PatientsPage');
-const MedicinesPage = page(() => import('./pages/pharmacy/MedicinesPage.jsx'), 'MedicinesPage');
-const NewPurchasePage = page(() => import('./pages/pharmacy/NewPurchasePage.jsx'), 'NewPurchasePage');
-const NewSupplierReturnPage = page(() => import('./pages/pharmacy/NewSupplierReturnPage.jsx'), 'NewSupplierReturnPage');
-const OrderPage = page(() => import('./pages/pharmacy/OrderPage.jsx'), 'OrderPage');
-const OrdersPage = page(() => import('./pages/pharmacy/OrdersPage.jsx'), 'OrdersPage');
-const PharmacyReportsPage = page(() => import('./pages/pharmacy/PharmacyReportsPage.jsx'), 'PharmacyReportsPage');
-const PharmacySettingsPage = page(() => import('./pages/pharmacy/PharmacySettingsPage.jsx'), 'PharmacySettingsPage');
-const PrescriptionsQueuePage = page(() => import('./pages/pharmacy/PrescriptionsQueuePage.jsx'), 'PrescriptionsQueuePage');
-const PurchasesPage = page(() => import('./pages/pharmacy/PurchasesPage.jsx'), 'PurchasesPage');
-const SaleDetailPage = page(() => import('./pages/pharmacy/SaleDetailPage.jsx'), 'SaleDetailPage');
-const SalesPage = page(() => import('./pages/pharmacy/SalesPage.jsx'), 'SalesPage');
-const SellPage = page(() => import('./pages/pharmacy/SellPage.jsx'), 'SellPage');
-const StockPage = page(() => import('./pages/pharmacy/StockPage.jsx'), 'StockPage');
-const ExpiringPage = page(() => import('./pages/pharmacy/ExpiringPage.jsx'), 'ExpiringPage');
-const SupplierReturnsPage = page(() => import('./pages/pharmacy/SupplierReturnsPage.jsx'), 'SupplierReturnsPage');
-const SuppliersPage = page(() => import('./pages/pharmacy/SuppliersPage.jsx'), 'SuppliersPage');
-const PlatformBillingPage = page(() => import('./pages/platform/PlatformBillingPage.jsx'), 'PlatformBillingPage');
-const PlatformPharmacyPage = page(() => import('./pages/platform/PlatformPharmacyPage.jsx'), 'PlatformPharmacyPage');
-const BillPrintPage = page(() => import('./pages/print/BillPrintPage.jsx'), 'BillPrintPage');
-const ReceiptPrintPage = page(() => import('./pages/print/ReceiptPrintPage.jsx'), 'ReceiptPrintPage');
-const DebitNotePrintPage = page(() => import('./pages/print/DebitNotePrintPage.jsx'), 'DebitNotePrintPage');
-const PrescriptionPrintPage = page(() => import('./pages/print/PrescriptionPrintPage.jsx'), 'PrescriptionPrintPage');
-const PrescriptionBillPrintPage = page(() => import('./pages/print/PrescriptionBillPrintPage.jsx'), 'PrescriptionBillPrintPage');
-const GivePrescriptionPage = page(() => import('./pages/dispensing/GivePrescriptionPage.jsx'), 'GivePrescriptionPage');
-const VisitPage = page(() => import('./pages/visits/VisitPage.jsx'), 'VisitPage');
-const AdmissionPage = page(() => import('./pages/inpatient/AdmissionPage.jsx'), 'AdmissionPage');
-const IssueToWardPage = page(() => import('./pages/pharmacy/IssueToWardPage.jsx'), 'IssueToWardPage');
-const WardDocumentPrintPage = page(() => import('./pages/print/WardDocumentPrintPage.jsx'), 'WardDocumentPrintPage');
-const LabReportPrintPage = page(() => import('./pages/print/LabReportPrintPage.jsx'), 'LabReportPrintPage');
-const PregnancyCardPrintPage = page(() => import('./pages/print/PregnancyCardPrintPage.jsx'), 'PregnancyCardPrintPage');
-const DischargeCardPrintPage = page(() => import('./pages/print/DischargeCardPrintPage.jsx'), 'DischargeCardPrintPage');
-const DischargesPage = page(() => import('./pages/documents/DischargesPage.jsx'), 'DischargesPage');
-const AdmissionsDeskPage = page(() => import('./pages/inpatient/AdmissionsDeskPage.jsx'), 'AdmissionsDeskPage');
-const MedicalHistoryPage = page(() => import('./pages/patients/MedicalHistoryPage.jsx'), 'MedicalHistoryPage');
-const SaleInvoicePrintPage = page(() => import('./pages/print/SaleInvoicePrintPage.jsx'), 'SaleInvoicePrintPage');
-const UsersPage = page(() => import('./pages/users/UsersPage.jsx'), 'UsersPage');
-const WorkspacePage = page(() => import('./pages/workspace/WorkspacePage.jsx'), 'WorkspacePage');
-
-// Pages for everyone (My settings) sit in the frame that fits the person.
-function PersonalLayout() {
-  const { user, activeHospitalId } = useAuth();
-  if (user.isSuperAdmin) return <AdminLayout />;
-  if (activeHospitalId) return <HospitalLayout />;
-  return <Navigate to="/workspace" replace />;
+// Unknown address: the title in the title bar, then a short message and the way back.
+// Old Registers links (removed 2 Oct 2026) go to the monthly report in Analytics, keeping ?month=… so a bookmarked month still opens.
+function RegistersRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: '/analytics/report', search }} replace />;
 }
 
-// The pharmacy's first page: the counter for the pharmacist, the sales for the others.
-function PharmacyHome() {
-  const { canAccess } = useAuth();
-  return canAccess('pharmacyCounter') ? <SellPage /> : <Navigate to="/hospital/pharmacy/stock" replace />;
+function NotFound() {
+  return (
+    <>
+      <PageHeader title="Page not found" />
+      <div className="pf-content">
+        <section className="card narrow acc-message">
+          <span className="acc-message-icon" aria-hidden="true">
+            <SearchX />
+          </span>
+          <p>There is no page at this address. Check the address, or go back to the start page.</p>
+          <Link to="/" className="btn btn-primary">
+            Go to the start page
+          </Link>
+        </section>
+      </div>
+    </>
+  );
 }
 
 export function App() {
   return (
-    <AppConfigProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <PageErrorBoundary>
-            <Suspense fallback={<Loader />}>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      {/* The patient portal (Version 2): its own sign-in with a code, no staff login */}
+      <Route path="/portal" element={<PortalPage />} />
+      {/* The waiting-room screen: no login, a secret in the address, tokens and times only */}
+      <Route path="/display/:key" element={<DisplayPage />} />
+      <Route element={<RequireAuth />}>
+        <Route element={<AppLayout />}>
+          <Route path="/change-password" element={<ChangePasswordPage />} />
+          <Route element={<RequirePasswordChanged />}>
+            <Route path="account" element={<AccountPage />} />
+            {/* Professional details and Appearance are sections of My settings now */}
+            <Route path="account/professional" element={<Navigate to="/account" replace />} />
+            <Route path="account/voice-words" element={<VoiceWordsPage />} />
+            <Route path="account/prescription-design" element={<PrescriptionDesignPage />} />
+            <Route path="account/appearance" element={<Navigate to="/account" replace />} />
+            {/* Platform area: super admins only */}
+            <Route path="platform" element={<RequireSuperAdmin />}>
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<OverviewPage />} />
 
-                <Route element={<ProtectedRoute allowPasswordChange />}>
-                  <Route path="/change-password" element={<ChangePasswordPage />} />
+              <Route path="hospitals" element={<HospitalsListPage />} />
+              <Route path="hospitals/new" element={<HospitalNewPage />} />
+              <Route path="hospitals/:id" element={<HospitalWorkspace />}>
+                <Route index element={<HospitalOverviewTab />} />
+                <Route path="staff" element={<HospitalStaffTab />} />
+                <Route path="activity" element={<HospitalActivityTab />} />
+              </Route>
+
+              <Route path="users" element={<UsersListPage key="all" variant="all" />} />
+              <Route path="users/super-admins" element={<UsersListPage key="superadmins" variant="superadmins" />} />
+              <Route path="users/staff" element={<UsersListPage key="staff" variant="staff" />} />
+              <Route path="users/pending" element={<UsersListPage key="pending" variant="pending" />} />
+              <Route path="users/new" element={<UserNewPage />} />
+              <Route path="users/:id" element={<UserWorkspace />}>
+                <Route index element={<UserProfileTab />} />
+                <Route path="hospitals" element={<UserHospitalsTab />} />
+                <Route path="activity" element={<UserActivityTab />} />
+              </Route>
+
+              <Route path="analytics" element={<AnalyticsPage key="overview" section="overview" platform />} />
+              <Route path="analytics/:section" element={<AnalyticsSectionRoute platform />} />
+
+              {/* One page; the old addresses of its event groups open it with that Type chosen */}
+              <Route path="audit" element={<AuditPage />} />
+              {['security', 'access', 'sessions', 'patients'].map((c) => (
+                <Route key={c} path={`audit/${c}`} element={<AuditCategoryRedirect to="/platform/audit" category={c} />} />
+              ))}
+
+              <Route path="account" element={<Navigate to="/account" replace />} />
+            </Route>
+
+            {/* Hospital area: everything here uses the hospital selected at the top of the left menu */}
+            <Route
+              index
+              element={
+                <HomeRedirect>
+                  <RequireTenant>
+                    <TodayPage />
+                  </RequireTenant>
+                </HomeRedirect>
+              }
+            />
+            <Route element={<RequireTenant />}>
+              <Route path="patients" element={<PatientsPage />} />
+              <Route path="patients/new" element={<PatientNewPage />} />
+              <Route path="patients/new/:careType" element={<PatientNewPage />} />
+              <Route path="patients/new/:id/clinical" element={<NewPatientClinicalPage />} />
+              <Route path="patients/:id" element={<PatientDetailPage />}>
+                <Route index element={<PatientOverviewTab />} />
+                <Route path="care-plan" element={<PatientCarePlanTab />} />
+                <Route path="visits" element={<PatientVisitsTab />} />
+                <Route path="visits/:visitId" element={<VisitPage />} />
+                <Route path="appointments" element={<PatientAppointmentsTab />} />
+                <Route path="bills" element={<PatientBillsTab />} />
+                <Route path="abha" element={<PatientAbhaTab />} />
+                <Route path="consents" element={<PatientConsentsTab />} />
+                <Route path="information" element={<PatientConsentsTab kind="information" key="information" />} />
+                <Route path="stays" element={<PatientStaysTab />} />
+                <Route path="stays/:admissionId" element={<AdmissionPage />} />
+                <Route path="stays/:admissionId/docs/:docId" element={<DocumentPage />} />
+                <Route path="lab" element={<PatientLabTab />} />
+                <Route path="lab/:orderId" element={<LabOrderPage />} />
+                <Route path="edit" element={<PatientEditTab />} />
+              </Route>
+              <Route path="lab" element={<RequireTenantRole roles={LAB_ROLES} message="The lab module is for the lab, doctors, RMOs and nurses." />}>
+                <Route index element={<LabWorklistPage />} />
+                <Route path="orders/:orderId" element={<LabOrderPage />} />
+              </Route>
+              {/* The registers were removed on 2 Oct 2026; old links go to the monthly report in Analytics. */}
+              <Route path="registers/*" element={<RegistersRedirect />} />
+              <Route path="appointments" element={<RequireTenantRole roles={APPOINTMENT_ROLES} message="Appointments are for reception, doctors, RMOs and nurses." />}>
+                <Route index element={<AppointmentsPage />} />
+                <Route path="needs-time" element={<NeedsTimePage />} />
+                <Route path="timings" element={<OpdTimingsPage />} />
+              </Route>
+              <Route path="pharmacy" element={<RequireTenantRole roles={PHARMACY_MODULE_ROLES} message="The pharmacy is for pharmacists and the hospital admin." />}>
+                <Route element={<RequireTenantRole roles={['pharmacist']} message="Selling and issuing medicines is for the pharmacist." />}>
+                  <Route index element={<SellPage key="sale" kind="sale" />} />
+                  <Route path="issue" element={<SellPage key="issue" kind="issue" />} />
+                  <Route path="purchases/new" element={<NewPurchasePage />} />
+                  <Route path="supplier-returns/new" element={<NewSupplierReturnPage />} />
                 </Route>
-
-                {/* Signed in, but no active hospital access */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/workspace" element={<WorkspacePage />} />
-                  <Route element={<PersonalLayout />}>
-                    <Route path="/account" element={<AccountPage />} />
-                  </Route>
+                <Route path="invoices" element={<InvoicesPage />} />
+                <Route path="invoices/:id" element={<InvoicePage />} />
+                <Route path="stock" element={<StockPage />} />
+                <Route path="stock/:id" element={<MedicineStockPage />} />
+                <Route path="purchases" element={<PurchasesPage />} />
+                {/* Purchase orders (the pharmacist or the hospital admin) and returns to a supplier */}
+                <Route path="orders" element={<OrdersPage />} />
+                <Route path="orders/new" element={<OrderFormPage key="new" />} />
+                <Route path="orders/:id" element={<OrderPage />} />
+                <Route path="orders/:id/edit" element={<OrderFormPage key="edit" />} />
+                <Route path="supplier-returns" element={<SupplierReturnsPage />} />
+                <Route path="supplier-returns/:id" element={<SupplierReturnPage />} />
+                <Route path="medicines" element={<MedicinesPage />} />
+                <Route path="suppliers" element={<SuppliersPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+                <Route path="settings" element={<PharmacySettingsPage />} />
+              </Route>
+              <Route path="billing" element={<RequireTenantRole roles={BILLING_MODULE_ROLES} message="Billing is for reception, the billing department and the hospital admin." />}>
+                <Route index element={<BillsPage />} />
+                <Route path="bills/:id" element={<BillPage />} />
+                <Route path="unpaid" element={<UnpaidPage />} />
+                <Route path="daily" element={<DailySummaryPage />} />
+                <Route path="prices" element={<PriceListPage />} />
+                <Route path="monthly" element={<RequireTenantRole roles={['admin', 'billing']} message="The monthly report is for the hospital admin and the billing department." />}>
+                  <Route index element={<MonthlyPage />} />
                 </Route>
-
-                {/* Printouts (no menu) */}
-                <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
-                  <Route path="/hospital/print/prescription/:patientId/:visitId" element={<PrescriptionPrintPage />} />
-                  <Route path="/hospital/print/ward-document/:stayId/:docId" element={<WardDocumentPrintPage />} />
-                  <Route path="/hospital/print/pregnancy-card/:patientId" element={<PregnancyCardPrintPage />} />
+                {/* The hospital's UPI ID and payee name, for the UPI payment link of a bill */}
+                <Route path="settings" element={<RequireTenantRole roles={['admin']} message="The billing settings are kept by the hospital admin." />}>
+                  <Route index element={<BillingSettingsPage />} />
                 </Route>
-                <Route element={<ProtectedRoute area="hospital" access="labPrint" />}>
-                  <Route path="/hospital/print/lab-report/:id" element={<LabReportPrintPage />} />
+              </Route>
+              <Route path="calendar" element={<RequireCalendarRole />}>
+                <Route index element={<CalendarPage />} />
+                <Route path="reminders" element={<RemindersPage />} />
+              </Route>
+              <Route
+                path="analytics"
+                element={<RequireTenantRole roles={ANALYTICS_ROLES} message="Analytics is for doctors and hospital admins. Ask your hospital admin if you need it." />}
+              >
+                <Route index element={<AnalyticsPage key="overview" section="overview" />} />
+                <Route path="list" element={<RequireTenantRole roles={DRILLDOWN_ROLES} message="Patient lists are only for doctors." />}>
+                  <Route index element={<AnalyticsListPage />} />
                 </Route>
-                <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
-                  <Route path="/hospital/print/discharge-card/:cardId" element={<DischargeCardPrintPage />} />
+                {/* The monthly report (HMIS order), doctors only – moved here from Registers on 2 Oct 2026 */}
+                <Route path="report" element={<RequireTenantRole roles={['doctor']} message="The monthly report is for doctors." />}>
+                  <Route index element={<MonthlyReportPage />} />
                 </Route>
-                <Route element={<ProtectedRoute area="hospital" access="billing" />}>
-                  <Route path="/hospital/print/bill/:id" element={<BillPrintPage />} />
-                  <Route path="/hospital/print/receipt/:billId/:paymentId" element={<ReceiptPrintPage />} />
+                {/* Numbers per doctor, doctors only (4 Oct 2026) */}
+                <Route path="doctors" element={<RequireTenantRole roles={['doctor']} message="The numbers per doctor are for doctors." />}>
+                  <Route index element={<ByDoctorPage />} />
                 </Route>
-                <Route element={<ProtectedRoute area="hospital" access="dispense" />}>
-                  <Route path="/hospital/print/prescription-bill/:billId" element={<PrescriptionBillPrintPage />} />
-                </Route>
-                <Route element={<ProtectedRoute area="hospital" access="pharmacy" />}>
-                  <Route path="/hospital/print/sale/:id" element={<SaleInvoicePrintPage />} />
-                  <Route path="/hospital/print/debit-note/:id" element={<DebitNotePrintPage />} />
-                </Route>
-
-                {/* Working in a hospital */}
-                <Route element={<ProtectedRoute area="hospital" />}>
-                  <Route path="/hospital" element={<HospitalLayout />}>
-                    <Route index element={<TodayPage />} />
-                    {/* Give a prescription: medicines, other charges, payment, the bill (the pharmacy and the front desk) */}
-                    <Route element={<ProtectedRoute area="hospital" access="dispense" />}>
-                      <Route path="dispensing/:visitId" element={<GivePrescriptionPage />} />
-                    </Route>
-
-                    {/* Module 3 – patients */}
-                    <Route element={<ProtectedRoute area="hospital" access="patients" />}>
-                      <Route path="patients" element={<PatientsPage />} />
-                      <Route path="patients/:id" element={<PatientDetailPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="patientsClinical" />}>
-                      <Route path="patients/:id/visits/:visitId" element={<VisitPage />} />
-                      <Route path="inpatients/:id" element={<AdmissionPage />} />
-                    <Route path="nursing" element={<NursingStationPage />} />
-                      <Route path="patients/:id/history" element={<MedicalHistoryPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="dischargeCards" />}>
-                      <Route path="discharges" element={<DischargesPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="registrationMenu" />}>
-                      <Route path="admissions" element={<AdmissionsDeskPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="registerPatients" />}>
-                      <Route path="patients/new" element={<PatientRegisterPage />} />
-                    </Route>
-
-                    {/* Module 4 – billing */}
-                    <Route element={<ProtectedRoute area="hospital" access="billing" />}>
-                      <Route path="billing" element={<BillsPage />} />
-                      <Route path="billing/new" element={<NewBillPage />} />
-                      <Route path="billing/bills/:id" element={<BillDetailPage />} />
-                      <Route path="billing/unpaid" element={<UnpaidPage />} />
-                    <Route path="billing/services" element={<ServicesToBillPage />} />
-                      <Route path="billing/daily" element={<DailySummaryPage />} />
-                      <Route path="billing/price-list" element={<PriceListPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="billingReports" />}>
-                      <Route path="billing/monthly" element={<MonthlyPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="billingAdmin" />}>
-                      <Route path="billing/settings" element={<BillingSettingsPage />} />
-                    </Route>
-
-                    {/* Module 5 – pharmacy */}
-                    <Route element={<ProtectedRoute area="hospital" access="pharmacy" />}>
-                      <Route path="pharmacy" element={<PharmacyHome />} />
-                      <Route path="pharmacy/sales" element={<SalesPage />} />
-                      <Route path="pharmacy/sales/:id" element={<SaleDetailPage />} />
-                      <Route path="pharmacy/stock" element={<StockPage />} />
-                      <Route path="pharmacy/expiring" element={<ExpiringPage />} />
-                      <Route path="pharmacy/medicines" element={<MedicinesPage />} />
-                      <Route path="pharmacy/purchases" element={<PurchasesPage />} />
-                      <Route path="pharmacy/suppliers" element={<SuppliersPage />} />
-                      <Route path="pharmacy/orders" element={<OrdersPage />} />
-                      <Route path="pharmacy/orders/:id" element={<OrderPage />} />
-                      <Route path="pharmacy/supplier-returns" element={<SupplierReturnsPage />} />
-                      <Route path="pharmacy/reports" element={<PharmacyReportsPage />} />
-                      <Route path="pharmacy/settings" element={<PharmacySettingsPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="pharmacyCounter" />}>
-                      <Route path="pharmacy/purchases/new" element={<NewPurchasePage />} />
-                      <Route path="pharmacy/supplier-returns/new" element={<NewSupplierReturnPage />} />
-                      <Route path="pharmacy/ward" element={<IssueToWardPage />} />
-                      <Route path="pharmacy/prescriptions" element={<PrescriptionsQueuePage />} />
-                    </Route>
-
-                    {/* Module 6 – analytics */}
-                    <Route element={<ProtectedRoute area="hospital" access="analytics" />}>
-                      <Route path="analytics" element={<AnalyticsPage />} />
-                    </Route>
-
-                    {/* Module 7 – the doctor's work: appointments, calendar, lab, clinic library */}
-                    <Route element={<ProtectedRoute area="hospital" access="appointments" />}>
-                      <Route path="appointments" element={<DayPage />} />
-                      <Route path="appointments/needs-time" element={<NeedsTimePage />} />
-                      <Route path="appointments/timings" element={<TimingsPage />} />
-                      <Route path="appointments/timings/:doctorId" element={<DoctorTimingsPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="calendar" />}>
-                      <Route path="calendar" element={<CalendarPage />} />
-                      <Route path="calendar/reminders" element={<RemindersPage />} />
-                      <Route path="calendar/checkups" element={<CheckupsPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="lab" />}>
-                      <Route path="lab" element={<LabPage />} />
-                      <Route path="lab/orders/:id" element={<LabOrderPage />} />
-                    </Route>
-                    <Route element={<ProtectedRoute area="hospital" access="library" />}>
-                      <Route path="library" element={<LibraryListPage />} />
-                      <Route path="library/:kind" element={<LibraryListPage />} />
-                      <Route path="library/:kind/:id" element={<LibraryEntryPage />} />
-                    </Route>
-
-                    {/* Module 2 – hospital admin */}
-                    <Route element={<ProtectedRoute area="hospital" access="admin" />}>
-                      <Route path="admin" element={<AdminOverviewPage />} />
-                      <Route path="staff" element={<StaffPage />} />
-                      <Route path="opd-timings" element={<OpdTimingsPage />} />
-                      <Route path="wards" element={<WardsPage />} />
-                      <Route path="opd-timings/:doctorId" element={<OpdScheduleEditorPage />} />
-                      <Route path="settings" element={<Navigate to="/hospital/settings/_" replace />} />
-                      <Route path="settings/:section" element={<HospitalSettingsPage />} />
-                      <Route path="audit" element={<HospitalAuditPage />} />
-                    </Route>
-                    <Route path="*" element={<NotFoundPage home="/hospital" />} />
-                  </Route>
-                </Route>
-
-                {/* Module 1 – main admin (super admin) */}
-                <Route element={<ProtectedRoute area="admin" />}>
-                  <Route element={<AdminLayout />}>
-                    <Route index element={<DashboardPage />} />
-                    <Route path="hospitals" element={<HospitalsPage key="all" />} />
-                    <Route path="hospitals/new" element={<HospitalsPage key="new" startAdding />} />
-                    <Route path="hospitals/:id" element={<HospitalDetailPage />} />
-                    {/* Users & access tabs (as in Perinexa); key: each tab starts with its own filter */}
-                    <Route path="users" element={<UsersPage key="all" />} />
-                    <Route path="users/super-admins" element={<UsersPage key="super" preset={{ kind: 'superAdmin' }} />} />
-                    <Route path="users/staff" element={<UsersPage key="staff" preset={{ kind: 'staff' }} />} />
-                    <Route path="users/pending" element={<UsersPage key="pending" preset={{ status: 'pending' }} />} />
-                    <Route path="users/new" element={<UsersPage key="new" startAdding />} />
-                    <Route path="master-data" element={<Navigate to="/master-data/_" replace />} />
-                    <Route path="master-data/:type" element={<MasterDataPage />} />
-                    <Route path="analytics" element={<PlatformAnalyticsPage />} />
-                    <Route path="billing" element={<PlatformBillingPage />} />
-                    <Route path="pharmacy" element={<PlatformPharmacyPage />} />
-                    <Route path="audit" element={<AuditPage />} />
-                    <Route path="*" element={<NotFoundPage />} />
-                  </Route>
-                </Route>
-              </Routes>
-            </Suspense>
-          </PageErrorBoundary>
-          <Toaster />
-        </BrowserRouter>
-      </AuthProvider>
-    </AppConfigProvider>
+                <Route path=":section" element={<AnalyticsSectionRoute />} />
+              </Route>
+              <Route path="care-plans" element={<Navigate to="/care-plans/templates" replace />} />
+              <Route path="care-plans/templates" element={<TemplatesPage />} />
+              <Route path="care-plans/templates/:id" element={<TemplateDetailPage />} />
+              <Route path="care-plans/templates/:id/edit" element={<TemplateEditPage />} />
+              <Route path="care-plans/red-flags" element={<RedFlagRulesPage />} />
+              <Route path="care-plans/red-flags/edit" element={<RedFlagRulesEditPage />} />
+              {/* The worklist is on the Today page now; "Ask your records" is a Patients tab */}
+              <Route path="worklist" element={<Navigate to="/" replace />} />
+              <Route path="worklist/ask" element={<Navigate to="/analytics/ask" replace />} />
+              <Route path="patients/ask" element={<Navigate to="/analytics/ask" replace />} />
+              {/* Ask your records: under Analytics, for doctors, RMOs and nurses (RMOs and nurses have only this tab there) */}
+              <Route path="analytics/ask" element={<RequireTenantRole roles={['doctor', 'rmo', 'nurse']} message="Asking the records is for doctors, RMOs and nurses." />}>
+                <Route index element={<AskRecordsPage />} />
+              </Route>
+              <Route path="medicine-safety" element={<MedicineSafetyPage />} />
+              <Route path="medicine-safety/edit" element={<MedicineSafetyEditPage />} />
+              <Route path="library/approvals" element={<ApprovalsPage />} />
+              <Route path="clinical-rules/risk" element={<RiskRulesPage />} />
+              <Route path="consent-forms" element={<ConsentFormsPage />} />
+              <Route path="consent-forms/:id" element={<ConsentFormDetailPage />} />
+              <Route path="consent-forms/:id/edit" element={<ConsentFormEditPage />} />
+              <Route path="information-forms" element={<ConsentFormsPage kind="information" key="information" />} />
+              <Route path="information-forms/:id" element={<ConsentFormDetailPage kind="information" />} />
+              <Route path="information-forms/:id/edit" element={<ConsentFormEditPage kind="information" />} />
+              <Route path="test-packages" element={<TestPackagesPage />} />
+              <Route path="test-packages/new" element={<TestPackageEditPage key="new" />} />
+              <Route path="test-packages/:id" element={<TestPackagePage />} />
+              <Route path="test-packages/:id/edit" element={<TestPackageEditPage key="edit" />} />
+              <Route path="prescription-sets" element={<PrescriptionSetsPage />} />
+              <Route path="prescription-sets/new" element={<PrescriptionSetEditPage key="new" />} />
+              <Route path="prescription-sets/:id" element={<PrescriptionSetPage />} />
+              <Route path="prescription-sets/:id/edit" element={<PrescriptionSetEditPage key="edit" />} />
+              <Route path="admin" element={<RequireTenantAdmin />}>
+                <Route index element={<Navigate to="staff" replace />} />
+                <Route path="staff" element={<StaffPage />} />
+                <Route path="settings" element={<LetterheadSettingsPage />} />
+                <Route path="messages" element={<PatientMessagesSettingsPage />} />
+                <Route path="opd-timings" element={<OpdTimingsPage admin />} />
+                <Route path="abdm" element={<AbdmSettingsPage />} />
+                <Route path="audit-log" element={<HospitalAuditLogPage />} />
+                {['security', 'access', 'sessions', 'patients'].map((c) => (
+                  <Route key={c} path={`audit-log/${c}`} element={<AuditCategoryRedirect to="/admin/audit-log" category={c} />} />
+                ))}
+              </Route>
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Route>
+      </Route>
+    </Routes>
   );
 }

@@ -1,0 +1,70 @@
+/* The lab module (Version 2): the worklist, an order with its results, and the order dialog. */
+.lab-lists { margin-bottom: var(--space-4); }
+.lab-stamps { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0; }
+.lab-stamps dt { color: var(--slate-600); }
+.lab-stamps dd { margin: 0; }
+.lab-test + .lab-test { margin-top: var(--space-4); }
+.lab-test h3 { margin: 0 0 var(--space-2); }
+.lab-values { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.lab-values th:nth-child(1) { width: 30%; }
+.lab-values th:nth-child(2) { width: 30%; }
+.lab-values th, .lab-values td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); vertical-align: middle; }
+.lab-values thead th { background: var(--mist-50); font-weight: 500; }
+.lab-values tbody th { font-weight: 400; background: none; font-size: inherit; color: var(--ink); text-transform: none; letter-spacing: normal; }
+.lab-value-row { display: flex; gap: var(--space-2); align-items: center; }
+.lab-value-row input { flex: 1 1 auto; min-width: 0; }
+.lab-value-row select { flex: 0 0 auto; width: auto; }
+.lab-form .fieldset { margin-bottom: var(--space-4); }
+.lab-choose { display: grid; gap: var(--space-3); max-height: 50vh; overflow-y: auto; margin-bottom: var(--space-3); }
+@media (max-width: 600px) {
+  .lab-stamps { grid-template-columns: 1fr; }
+  .lab-values th, .lab-values td { padding: var(--space-2); }
+}
+
+/* Toolbar (reminders, monthly report). */
+.reg-toolbar { align-items: flex-end; gap: var(--space-3); margin: var(--space-3) 0; }
+.reg-toolbar .field { margin: 0; }
+
+/* The monthly report (Version 2). */
+.rep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-4); align-items: start; }
+.rep-section h2 { margin-top: 0; }
+.rep-table { width: 100%; border-collapse: collapse; }
+.rep-table th, .rep-table td { padding: var(--space-1) 0; border-bottom: 1px solid var(--border); text-align: left; font-weight: 400; }
+.rep-table td { text-align: right; width: 5em; }
+.rep-sub th { padding-left: var(--space-4); color: var(--slate-600); }
+.rep-charts-title { margin: var(--space-4) 0 var(--space-2); }
+.rep-charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-4); }
+.rep-charts h3 { margin-top: 0; }
+@media (max-width: 600px) { .rep-grid, .rep-charts { grid-template-columns: 1fr; } }
+
+/* Reminders and the patient portal (Version 2). */
+.rem-text { margin: var(--space-1) 0; padding: var(--space-2) var(--space-3); background: var(--mist-50); border-radius: var(--radius-sm); }
+.portal-page { max-width: 560px; margin: 0 auto; padding: var(--space-4); min-height: 100vh; }
+.portal-logo { height: 40px; margin: var(--space-4) 0; }
+.portal-stack { display: grid; gap: var(--space-4); }
+.portal-card h1, .portal-card h2 { margin-top: 0; }
+.portal-card h2 { display: flex; gap: var(--space-2); align-items: center; }
+.portal-card .btn-primary { width: 100%; }
+.portal-big { font-size: 1.5em; font-weight: 600; margin: 0; }
+.portal-list { padding-left: var(--space-4); }
+.portal-list li + li { margin-top: var(--space-2); }
+.portal-slip-code { font-size: 1.4em; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+/* The logo and the language switch (English, मराठी, हिंदी) at the top of the portal */
+.portal-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin: var(--space-4) 0; }
+.portal-top .portal-logo { margin: 0; }
+.portal-page > .portal-draft { margin: 0 0 var(--space-4); }
+/* The portal in Marathi or Hindi (lang on the page sets Mukta for everything, base.css): headings, the big date
+   and the hints keep their own sizes, with room for the matras */
+.portal-page:lang(mr) h1, .portal-page:lang(hi) h1,
+.portal-page:lang(mr) .portal-big, .portal-page:lang(hi) .portal-big { font-size: var(--fs-deva-heading); line-height: var(--lh-deva-heading); }
+.portal-page:lang(mr) h2, .portal-page:lang(hi) h2, .portal-page:lang(mr) h3, .portal-page:lang(hi) h3 { font-size: var(--fs-h3); line-height: var(--lh-deva-body); }
+.portal-page:lang(mr) .hint, .portal-page:lang(hi) .hint { font-size: var(--fs-label); line-height: var(--lh-body); }
+
+/* Baby test packages in the order form */
+.lab-packages .lab-package-list { display: grid; gap: var(--space-2); }
+.lab-package .check { align-items: flex-start; }
+.lab-package-sub { display: block; }
+.portal-booking { margin-top: var(--space-4); display: grid; gap: var(--space-3); }
+.portal-booking h3 { margin: 0; display: flex; gap: var(--space-2); align-items: center; }
+.portal-times { border: 0; margin: 0; padding: 0; }
+.portal-time-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }

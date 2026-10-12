@@ -1,6 +1,11 @@
 node_modules/
+.env
+.env.local
 dist/
-# Real settings and secrets for this computer – never commit
-config/local.json
-*.log
+coverage/
 .DS_Store
+*.log
+.mongo-data/
+
+# Local list of test logins (contains passwords) – never commit
+docs/TEST_ACCOUNTS.md

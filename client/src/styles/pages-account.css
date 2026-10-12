@@ -1,0 +1,81 @@
+/* My settings, password and professional details screens; access and not-found messages. Tokens only. */
+
+/* Form buttons: one row below the last field */
+.acc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-6); }
+
+/* Professional details: the form card, with the print preview in a 360 px right rail.
+   Below 1280 px the rail folds under the form. */
+.acc-with-rail { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--space-6); align-items: start; max-width: 1120px; }
+.acc-print-sample {
+  padding: var(--space-6) var(--space-4); background: var(--surface); color: var(--print-ink);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.acc-print-sample .lh-sign { margin-top: 0; }
+@media (max-width: 1279px) { .acc-with-rail { grid-template-columns: minmax(0, 1fr); max-width: 760px; } }
+
+/* Page not found, not allowed, no hospital: an icon tile, a short message and the way back */
+.acc-message { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); }
+.acc-message > p { margin: 0; }
+.acc-message-icon {
+  display: grid; place-items: center; width: var(--nav-tile-size); height: var(--nav-tile-size);
+  border-radius: var(--radius-md); background: var(--mist-100); color: var(--indigo-700);
+}
+.acc-message-icon svg.lucide { width: 24px; height: 24px; }
+
+/* Loading spinner: a Line-coloured track so it still shows on the Mist canvas */
+.acc-loading .spinner { border-color: var(--border); border-top-color: var(--teal-500); }
+
+/* My settings → Voice words */
+.voice-words .card { margin-bottom: var(--space-6); max-width: 1120px; }
+.voice-word-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.voice-word-list li:last-child { border-bottom: none; }
+.voice-word-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.voice-known { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-3) var(--space-6); margin: var(--space-4) 0; }
+.voice-known div { padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
+.voice-known dt { margin-bottom: var(--space-1); font-weight: 500; color: var(--ink); }
+.voice-known dd { margin: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.voice-asked { margin: 0; padding-left: var(--space-6); color: var(--slate-600); }
+.voice-asked li { margin-bottom: var(--space-1); }
+
+/* My settings → Appearance: one row per setting – the words on the left, the choices on the right */
+.appearance { max-width: 1120px; }
+.appearance-eyebrow { margin: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.appearance h2 { margin: 0 0 var(--space-4); }
+.appearance > .alert { margin: 0 0 var(--space-4); }
+.appearance-row { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: var(--space-3) var(--space-8); align-items: start; padding: var(--space-6) 0; border-top: 1px solid var(--border); }
+.appearance-row-title { display: block; margin: 0; color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; }
+.appearance-row-text .hint { margin: var(--space-1) 0 0; }
+.appearance-row-control { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); min-width: 0; }
+.appearance-row-control select { width: 100%; max-width: 520px; }
+/* Colour templates: a round swatch with its name; the chosen one is framed */
+.appearance-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: var(--space-2); width: 100%; }
+.appearance-swatch {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-2);
+  border: 2px solid transparent; border-radius: var(--radius-md); cursor: pointer; text-align: center;
+}
+.appearance-swatch:hover { background: var(--mist-50); }
+.appearance-swatch.checked { border-color: var(--indigo-700); background: var(--mist-50); }
+.appearance-swatch:focus-within { box-shadow: var(--focus-ring); }
+.appearance-swatch-name { color: var(--ink); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.appearance-dot { width: var(--control-height); height: var(--control-height); border-radius: var(--radius-pill); box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px var(--border); }
+.appearance-dot-indigo { background: var(--template-indigo); }
+.appearance-dot-blue { background: var(--template-blue); }
+.appearance-dot-green { background: var(--template-green); }
+.appearance-dot-plum { background: var(--template-plum); }
+.appearance-dot-burgundy { background: var(--template-burgundy); }
+.appearance-dot-slate { background: var(--template-slate); }
+.appearance-dot-contrast { background: var(--template-contrast); }
+/* How text looks in the chosen font and size */
+.appearance-sample { width: 100%; max-width: 720px; padding: var(--space-3) var(--space-4); border: 1px dashed var(--slate-300); border-radius: var(--radius-sm); color: var(--ink); }
+.appearance-sample p { margin: 0; }
+.appearance-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--border); }
+.appearance-foot .hint { margin: 0; }
+@media (max-width: 860px) { .appearance-row { grid-template-columns: minmax(0, 1fr); } }
+/* On a phone the choices wrap into two columns instead of hiding off the edge */
+@media (max-width: 480px) {
+  .appearance-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; border-radius: var(--radius-lg); }
+  .appearance-choices button { justify-content: center; border-radius: var(--radius-md); }
+}
+/* My settings: password, professional details and appearance stacked on one page */
+.acc-settings { display: flex; flex-direction: column; gap: var(--space-6); }
+.acc-settings > .card, .acc-settings > form.card { margin-bottom: 0; }

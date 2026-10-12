@@ -1,0 +1,261 @@
+{
+  "about": "Mishearings of OBGY words by Indian English accents (plan 4.3, from the accent research's list of 63 realistic mishears; fake data, no patient details). Each word heard should become the word meant, or be left as heard – never another word.",
+  "format": {
+    "case": "{ heard, meant }"
+  },
+  "count": 63,
+  "cases": [
+    {
+      "heard": "tyroid",
+      "meant": "thyroid"
+    },
+    {
+      "heard": "thairoid",
+      "meant": "thyroid"
+    },
+    {
+      "heard": "eclamsia",
+      "meant": "eclampsia"
+    },
+    {
+      "heard": "eklampsia",
+      "meant": "eclampsia"
+    },
+    {
+      "heard": "sizerian",
+      "meant": "caesarean"
+    },
+    {
+      "heard": "sezarian",
+      "meant": "caesarean"
+    },
+    {
+      "heard": "cesarian",
+      "meant": "caesarean"
+    },
+    {
+      "heard": "sizarian",
+      "meant": "caesarean"
+    },
+    {
+      "heard": "grevida",
+      "meant": "gravida"
+    },
+    {
+      "heard": "animia",
+      "meant": "anaemia"
+    },
+    {
+      "heard": "enemia",
+      "meant": "anaemia"
+    },
+    {
+      "heard": "diabitis",
+      "meant": "diabetes"
+    },
+    {
+      "heard": "hypertention",
+      "meant": "hypertension"
+    },
+    {
+      "heard": "epilepsi",
+      "meant": "epilepsy"
+    },
+    {
+      "heard": "astma",
+      "meant": "asthma"
+    },
+    {
+      "heard": "tuberclosis",
+      "meant": "tuberculosis"
+    },
+    {
+      "heard": "oligohydramnious",
+      "meant": "oligohydramnios"
+    },
+    {
+      "heard": "polihydramnios",
+      "meant": "polyhydramnios"
+    },
+    {
+      "heard": "privia",
+      "meant": "praevia"
+    },
+    {
+      "heard": "heemoglobin",
+      "meant": "haemoglobin"
+    },
+    {
+      "heard": "aborsion",
+      "meant": "abortion"
+    },
+    {
+      "heard": "preeclamsia",
+      "meant": "preeclampsia"
+    },
+    {
+      "heard": "misscarriage",
+      "meant": "miscarriage"
+    },
+    {
+      "heard": "ectopik",
+      "meant": "ectopic"
+    },
+    {
+      "heard": "fibroyd",
+      "meant": "fibroid"
+    },
+    {
+      "heard": "endometriosys",
+      "meant": "endometriosis"
+    },
+    {
+      "heard": "hyperemisis",
+      "meant": "hyperemesis"
+    },
+    {
+      "heard": "sirklage",
+      "meant": "cerclage"
+    },
+    {
+      "heard": "sirodkar",
+      "meant": "shirodkar"
+    },
+    {
+      "heard": "labetolol",
+      "meant": "labetalol"
+    },
+    {
+      "heard": "nifedipin",
+      "meant": "nifedipine"
+    },
+    {
+      "heard": "metformine",
+      "meant": "metformin"
+    },
+    {
+      "heard": "wentouse",
+      "meant": "ventouse"
+    },
+    {
+      "heard": "bentouse",
+      "meant": "ventouse"
+    },
+    {
+      "heard": "istillbirth",
+      "meant": "stillbirth"
+    },
+    {
+      "heard": "talassemia",
+      "meant": "thalassemia"
+    },
+    {
+      "heard": "jaundis",
+      "meant": "jaundice"
+    },
+    {
+      "heard": "sifilis",
+      "meant": "syphilis"
+    },
+    {
+      "heard": "hepataitis",
+      "meant": "hepatitis"
+    },
+    {
+      "heard": "levothyroxin",
+      "meant": "levothyroxine"
+    },
+    {
+      "heard": "tyronorm",
+      "meant": "thyronorm"
+    },
+    {
+      "heard": "eltroxine",
+      "meant": "eltroxin"
+    },
+    {
+      "heard": "hypotyroid",
+      "meant": "hypothyroid"
+    },
+    {
+      "heard": "hypotyroidism",
+      "meant": "hypothyroidism"
+    },
+    {
+      "heard": "oligohydraminos",
+      "meant": "oligohydramnios"
+    },
+    {
+      "heard": "macrosomiya",
+      "meant": "macrosomia"
+    },
+    {
+      "heard": "isickle",
+      "meant": "sickle"
+    },
+    {
+      "heard": "cholestesis",
+      "meant": "cholestasis"
+    },
+    {
+      "heard": "thrombophilya",
+      "meant": "thrombophilia"
+    },
+    {
+      "heard": "lupas",
+      "meant": "lupus"
+    },
+    {
+      "heard": "myomektomy",
+      "meant": "myomectomy"
+    },
+    {
+      "heard": "histerectomy",
+      "meant": "hysterectomy"
+    },
+    {
+      "heard": "tubektomy",
+      "meant": "tubectomy"
+    },
+    {
+      "heard": "sterlisation",
+      "meant": "sterilisation"
+    },
+    {
+      "heard": "pyelonefritis",
+      "meant": "pyelonephritis"
+    },
+    {
+      "heard": "azoosphermia",
+      "meant": "azoospermia"
+    },
+    {
+      "heard": "schizophrenia",
+      "meant": "schizophrenia"
+    },
+    {
+      "heard": "episiotomi",
+      "meant": "episiotomy"
+    },
+    {
+      "heard": "encirclage",
+      "meant": "encirclage"
+    },
+    {
+      "heard": "cardiomyopathi",
+      "meant": "cardiomyopathy"
+    },
+    {
+      "heard": "tetralogi",
+      "meant": "tetralogy"
+    },
+    {
+      "heard": "anensephaly",
+      "meant": "anencephaly"
+    },
+    {
+      "heard": "hydrosefalus",
+      "meant": "hydrocephalus"
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+/* The pharmacy: selling, prescriptions, purchases, stock and the printed tax invoice. Tokens only (docs/BRAND.md). */
+
+.ph-finder { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+.ph-rx { padding: var(--space-3); border-radius: var(--radius-md); }
+.ph-rx.is-chosen { background: var(--selected-bg); box-shadow: var(--selected-edge); }
+.ph-rx-items { margin: var(--space-2) 0 0; padding-left: var(--space-6); }
+.ph-rx-seen { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.ph-lines select { max-width: 340px; }
+.ph-num { width: 90px; text-align: right; }
+.ph-pu-lines input { height: calc(var(--input-height) - 8px); min-width: 0; }
+.ph-pu-lines input[type='month'] { width: 150px; }
+/* Eight columns on a laptop: the batch box keeps room for a batch number, the medicine's name keeps room to read */
+@media (min-width: 641px) {
+  .bill-lines.ph-pu-lines th, .bill-lines.ph-pu-lines td { padding-left: var(--space-2); padding-right: var(--space-2); }
+}
+.ph-pu-lines .ph-num { width: 80px; }
+.ph-pu-lines .ph-batch { width: 120px; }
+.bill-search-plain { flex: 1 1 260px; }
+.ph-register-page + .ph-register-page { margin-top: var(--space-6); }
+.ph-register-page h3 { margin: 0 0 var(--space-2); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.ph-register { font-size: var(--fs-label); line-height: var(--lh-label); }
+
+/* The printed tax invoice and credit note (A5) */
+.ph-doc-head { text-align: center; border-bottom: 1px solid var(--print-ink); padding-bottom: 2mm; margin-bottom: 2mm; }
+.ph-doc-head .lh-name { font-weight: 600; font-size: var(--fs-print-h1); }
+.ph-doc-lines th, .ph-doc-lines td { font-size: var(--fs-print-small); padding: 1mm 1.5mm; }
+.pdoc .ph-register th, .pdoc .ph-register td { font-size: var(--fs-print-small); padding: 1mm 1.5mm; border-bottom: 1px solid var(--print-rule); }
+.ph-finder .bill-search { flex: none; }
+
+/* Pharmacy extras: finding by name and by barcode side by side, orders, returns to a supplier, the e-invoice card */
+.ph-find { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-2) var(--space-6); align-items: start; margin-bottom: var(--space-3); }
+.ph-find .ph-finder { margin-bottom: 0; }
+.ph-barcode { display: flex; flex-direction: column; gap: var(--space-2); }
+.ph-barcode-row { display: flex; gap: var(--space-2); align-items: center; }
+.ph-barcode-row .bill-search { flex: 1 1 auto; min-width: 0; }
+.ph-barcode .hint, .ph-barcode .field-error { margin: 0; }
+.ph-toolbar-scan { flex: 1 1 320px; max-width: 520px; }
+.ph-stock-toolbar { align-items: flex-start; }
+.ph-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); list-style: none; margin: 0 0 var(--space-2); padding: 0; }
+.ph-chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 0 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); font-variant-numeric: tabular-nums; }
+.ph-chip .icon-btn { border-color: transparent; background: none; border-radius: var(--radius-pill); }
+.ph-line-note { display: block; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.ph-order-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: 0; }
+.ph-order-facts dt { color: var(--slate-600); }
+.ph-order-facts dd { margin: 0; }
+.ph-order-facts + .hint { margin-top: var(--space-3); }
+.ph-unit { display: inline-block; min-width: 9ch; text-align: left; color: var(--slate-600); }
+.ph-actions { margin-top: var(--space-4); }
+.ph-under-heading { margin: 0 0 var(--space-3); }
+.ph-return-lines input.ph-num { height: calc(var(--input-height) - 8px); }
+.ph-return-lines tr.is-chosen td { background: var(--selected-bg); }
+.ph-buyer { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.ph-buyer .form-grid { margin-top: var(--space-3); }
+.ph-einvoice ul { margin: var(--space-2) 0 var(--space-3); padding-left: var(--space-6); }
+.ph-einvoice li + li { margin-top: var(--space-1); }
+@media (max-width: 860px) { .ph-find { grid-template-columns: minmax(0, 1fr); } }
+
+/* The printed purchase order and debit note (A4) */
+.ph-doc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-bottom: 4mm; }
+.ph-doc-parties h2 { font-size: var(--fs-print-small); font-weight: 400; margin: 0 0 1mm; }
+.ph-doc-parties strong { display: block; }
+.ph-doc-note { margin: 0 0 3mm; }
+/* .pdoc in front: the plain-table look (components.css) would otherwise give each of the ten columns 16px a side and
+   push the Amount column off the A4 sheet */
+.pdoc .ph-doc-wide th, .pdoc .ph-doc-wide td { padding: 1mm; }
+.ph-doc-wide .num { white-space: nowrap; }
+.ph-doc-wide td span { display: block; white-space: nowrap; }
+.ph-doc-wide td:first-child { min-width: 34mm; }
+
+/* ABDM (ABHA) */
+.abha-compare th[scope='row'] { width: 90px; color: var(--slate-600); font-weight: 500; }
+.abha-consent { align-items: flex-start; margin: var(--space-3) 0; line-height: var(--lh-body); }
+.abha-consent input { margin-top: 4px; flex-shrink: 0; }
+.abha-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: var(--space-3) 0; }
+.abha-facts dt { color: var(--slate-600); }
+.abha-facts dd { margin: 0; }
+.abha-card { max-width: 100%; }
+/* M2: her records in ABHA, the consents, what is never shared, the FHIR documents received (practice) */
+.abha-records td:first-child:has(input) { width: 40px; }
+.abha-records .pill + .hint { margin-top: var(--space-1); }
+/* On a phone each record is a card: a record that cannot be chosen has no tick box, and no empty line for it */
+@media (max-width: 720px) { .abha-records td:empty { display: none; } }
+.abha-never { margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.abha-never h3 { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.abha-never h3 svg { width: 16px; height: 16px; color: var(--slate-600); }
+.abha-never ul, .abha-transfers { margin: var(--space-2) 0 0; padding-left: var(--space-6); }
+.abha-never li, .abha-transfers li { margin-top: var(--space-1); }
+.abha-consents { list-style: none; margin: 0; padding: 0; }
+.abha-consents > li { padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.abha-consents > li:last-child { border-bottom: 0; }
+.abha-fhir { margin-top: var(--space-2); }
+.abha-fhir summary { cursor: pointer; }
+.abha-fhir pre { max-height: 320px; overflow: auto; margin: var(--space-2) 0 0; padding: var(--space-3); background: var(--mist-50); border-radius: var(--radius-sm); font-size: var(--fs-caption); line-height: var(--lh-caption); white-space: pre; }
+.abha-address { overflow-wrap: anywhere; }
+/* M3: her records from other hospitals – the list, the requests, the read-only document */
+.abha-inline-icon { width: 14px; height: 14px; vertical-align: -2px; color: var(--slate-600); }
+.abha-fetched td:first-child { white-space: nowrap; }
+.abha-fetched .pill { margin-top: var(--space-1); }
+.abha-hospital { font-weight: 500; }
+.abha-practice-row { margin-top: var(--space-2); align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.abha-doc-section { margin-top: var(--space-4); }
+.abha-doc-section h3 { margin: 0 0 var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.abha-doc-lines { margin: 0; padding-left: var(--space-6); }
+.abha-doc-lines li { margin-top: var(--space-1); overflow-wrap: anywhere; }
+.abha-doc-lines li.abha-doc-sub { margin-left: var(--space-6); list-style-type: circle; }
+.abha-withheld { display: block; color: var(--status-watch-fg); font-size: var(--fs-label); line-height: var(--lh-label); }

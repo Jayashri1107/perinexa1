@@ -1,23 +1,28 @@
 {
-  "name": "perinexa1-server",
+  "name": "perinexa-server",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "seed": "node scripts/seed.js",
-    "prices:sample": "node scripts/sample-prices.js",
-    "evaluate": "node scripts/evaluate-queries.js"
+    "test": "vitest run",
+    "seed:demo": "node scripts/seed-demo.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.2",
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.0",
+    "vitest": "^5.0.2"
   }
 }

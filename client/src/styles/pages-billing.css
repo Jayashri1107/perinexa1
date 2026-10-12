@@ -1,0 +1,95 @@
+/* Billing: the bills list, one bill, the reports, the price list and the printed bill and receipts. Tokens only
+   (docs/BRAND.md); status = colour + icon + word (StatusPill). */
+
+.bill-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.bill-page > .alert { margin: 0; }
+.bill-section h2 { margin: 0 0 var(--space-3); font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.bill-wide { overflow-x: auto; }
+.bill-row-cancelled td { color: var(--slate-600); text-decoration: line-through; }
+.bill-row-cancelled td .status-pill, .bill-row-cancelled td button { text-decoration: none; }
+
+/* The list's toolbar: search and day */
+.bill-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
+.bill-search { position: relative; flex: 1 1 260px; display: flex; }
+.bill-search svg.lucide { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--slate-600); }
+.bill-search input { padding-left: calc(var(--space-3) * 2 + 18px); }
+
+/* One bill: items and sums */
+.bill-lines, .bill-sums, .bill-report, .bill-prices { width: 100%; border-collapse: collapse; }
+.bill-lines th, .bill-lines td, .bill-report th, .bill-report td, .bill-prices th, .bill-prices td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.bill-lines thead th, .bill-report thead th, .bill-prices thead th { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); font-weight: 500; }
+.bill-lines .num, .bill-report .num, .bill-prices .num, .bill-sums td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bill-line-from { font-size: var(--fs-label); }
+.bill-sums { max-width: 460px; margin: var(--space-4) 0 0 auto; }
+.bill-sums th, .bill-sums td { padding: var(--space-1) var(--space-3); text-align: left; font-weight: 400; }
+.bill-sums td { text-align: right; }
+.bill-sums .bill-balance th, .bill-sums .bill-balance td { font-weight: 600; font-size: var(--fs-h3); line-height: var(--lh-h3); border-top: 2px solid var(--ink); padding-top: var(--space-2); }
+.bill-payment { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.bill-cancel { color: var(--status-high-fg); }
+.bill-net { font-size: var(--fs-h3); line-height: var(--lh-h3); margin: 0 0 var(--space-4); }
+
+/* Insurance or scheme details on a bill, and the UPI payment link */
+.bill-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3) var(--space-4); margin: var(--space-2) 0 var(--space-3); }
+.bill-facts > div { min-width: 0; }
+.bill-facts dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); font-weight: 500; }
+.bill-facts dd { margin: 0; overflow-wrap: anywhere; }
+.bill-subhead { margin: var(--space-4) 0 var(--space-3); font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.bill-earlier { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3); background: var(--mist-50); border-radius: var(--radius-sm); }
+.bill-upi-text { width: 100%; resize: vertical; }
+.bill-section.narrow > .alert { margin: 0 0 var(--space-4); }
+.bill-section.narrow > .btn { margin-top: var(--space-4); }
+
+/* Reports */
+.bill-report { margin-bottom: var(--space-6); }
+.bill-report caption { text-align: left; font-weight: 600; margin-bottom: var(--space-2); }
+.bill-report-total th, .bill-report-total td { font-weight: 600; border-top: 2px solid var(--ink); }
+
+/* The price list */
+.bill-prices input { height: calc(var(--input-height) - 8px); }
+.bill-price-input { width: 120px; text-align: right; }
+.bill-price-actions { white-space: nowrap; text-align: right; width: 210px; }
+
+@media (max-width: 640px) {
+  .bill-lines thead { display: none; }
+  .bill-lines tr { display: grid; grid-template-columns: 1fr auto; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+  .bill-lines td { border: 0; padding: var(--space-1) 0; }
+  .bill-lines td[data-label='Qty'], .bill-lines td[data-label='Rate'] { display: none; }
+  .bill-prices thead { display: none; }
+  .bill-prices tr { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+  .bill-prices td { border: 0; padding: 0; }
+}
+
+/* ---------- Printed bill, receipt, daily summary ---------- */
+.bill-doc .pdoc-title { margin: 3mm 0; }
+.bill-doc-head { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+.bill-doc-head th { text-align: left; font-weight: 400; color: var(--print-ink); font-size: var(--fs-print-small); padding: 1mm 2mm 1mm 0; white-space: nowrap; }
+.bill-doc-head td { font-weight: 600; padding: 1mm 4mm 1mm 0; }
+.bill-doc-lines { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
+.bill-doc-lines th, .bill-doc-lines td { border-bottom: 1px solid var(--print-rule); padding: 1.5mm 2mm; text-align: left; }
+.bill-doc-lines .num { text-align: right; font-variant-numeric: tabular-nums; }
+.bill-doc-sums { margin: 0 0 3mm auto; border-collapse: collapse; min-width: 55%; }
+.bill-doc-sums th { text-align: left; font-weight: 400; padding: 0.8mm 4mm 0.8mm 0; }
+.bill-doc-sums td { text-align: right; font-variant-numeric: tabular-nums; padding: 0.8mm 0; }
+.bill-doc-balance th, .bill-doc-balance td { font-weight: 600; border-top: 1px solid var(--print-ink); padding-top: 1.5mm; }
+.bill-doc-receipt { margin: 4mm 0; }
+.bill-doc .bill-report th, .bill-doc .bill-report td { border-bottom: 1px solid var(--print-rule); padding: 1.2mm 2mm; }
+.bill-sign { margin-top: 12mm; }
+/* The claim form and the PM-JAY claim sheet (A4): the part for the doctor is an empty box with lines to write on.
+   Its tables are print tables (.ptable): black on white with thin rules, the sums at the right. */
+.claim-doc .pdoc-title { margin: 3mm 0 1mm; }
+.claim-doc .claim-note { text-align: center; margin-bottom: 2mm; }
+.claim-doc h2 { margin: 2.5mm 0 0.5mm; }
+.claim-doc .pdoc-facts { margin-bottom: 0; padding: 1mm 0; row-gap: 1mm; }
+.claim-doc .claim-summary { break-inside: avoid; } /* the heading, the groups and the sums stay on one page */
+.claim-doc .pdoc-facts .claim-span2 { grid-column: span 2; }
+.claim-doc .pdoc-facts .pdoc-line { min-width: 30mm; }
+.claim-doc .claim-table { margin-bottom: 2mm; }
+.claim-doc .claim-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.claim-doc .claim-doctor { margin: 4mm 0 3mm; padding-bottom: 4mm; }
+.claim-doc .claim-doctor .pdoc-sig-line { margin-top: 7mm; }
+.claim-doc .pdoc-sigs { margin-top: 0; }
+.claim-sign-row { display: grid; grid-template-columns: 2fr 1fr; gap: 0 6mm; }
+/* Plain heading and sums tables on paper (no shading or boxes from the general print table look) */
+.pdoc .bill-doc-head th, .pdoc .bill-doc-head td, .pdoc .bill-doc-sums th, .pdoc .bill-doc-sums td { background: none; border: 0; }
+.pdoc .bill-doc-sums .bill-doc-balance th, .pdoc .bill-doc-sums .bill-doc-balance td { border-top: 1px solid var(--print-ink); }
+.bill-sums th, .bill-sums td { background: none; border: 0; }

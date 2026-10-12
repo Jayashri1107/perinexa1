@@ -1,221 +1,224 @@
-// The calendar (as in Perinexa): booked appointments, due dates (EDD) and last periods (LMP) by day, week and month.
-// Reception sees bookings only; doctors and RMOs also see pregnancy dates of the records they may read. Doctors choose
-// My patients or All patients. The view, day and choices are kept in the address, so a reload stays on them.
-import { Baby, CalendarClock, ChevronLeft, ChevronRight, Droplet } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { calendarApi } from '../../api/index.js';
-import { Alert } from '../../components/Alert.jsx';
+import { useCallback, useEffect, useRef } from 'react';
+import { Lock } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { DataTable } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { SectionTabs } from '../../components/SectionTabs.jsx';
-import { StateBadge } from '../../components/StateBadge.jsx';
-import { CALENDAR_TABS } from '../../config/navigation.js';
-import { useAppConfig } from '../../context/AppConfigContext.jsx';
-import { addDaysIso, appointmentLook, dayText } from '../appointments/appointmentFormat.js';
+import { Alert } from '../../components/ui.jsx';
+import { useFetch } from '../../hooks/useFetch.js';
+import { useListParams } from '../../hooks/useListParams.js';
+import { AiBriefCard } from '../ai/AiBriefCard.jsx';
+import { calendarBriefBody } from '../ai/briefParts.js';
+import { firstOfMonth, panelDayTitle, parseIso, rangeTitle, sameMonth, stepDate } from './calendarDates.js';
+import {
+  CALENDAR_VIEWS,
+  allowedTypesFor,
+  defaultScopeFor,
+  isReceptionOnly,
+  parseScope,
+  parseTypes,
+  personLevel,
+  serializeTypes,
+  subtitleFor,
+  todayParams,
+} from './calendarFormat.js';
+import { CalendarToolbar } from './CalendarToolbar.jsx';
+import { DayView, EmptyCard } from './DayView.jsx';
+import { MonthView } from './MonthView.jsx';
+import { WeekView } from './WeekView.jsx';
 
-export const TYPE_LOOKS = {
-  booked: { tone: 'info', icon: CalendarClock, word: 'Booked' },
-  edd: { tone: 'pending', icon: Baby, word: 'Due date' },
-  lmp: { tone: 'inactive', icon: Droplet, word: 'LMP' },
-};
-const VIEWS = [
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-];
+// The calendar: booked next visits, care-plan visits, EDD and LMP by day, week and month (GET /api/calendar).
+// The server owns the hospital's today, the range and who sees what; this page never reads the computer's
+// clock – it steps from the day in the server's answer. View, day, types and patients are kept in the address.
 
-const dow = (iso) => new Date(`${iso}T00:00:00Z`).getUTCDay();
-const weekStart = (iso, startsOn) => addDaysIso(iso, -((dow(iso) - startsOn + 7) % 7));
-const monthOf = (iso) => iso.slice(0, 7);
-const firstOfMonth = (iso) => `${monthOf(iso)}-01`;
-const lastOfMonth = (iso) => {
-  const [y, m] = iso.split('-').map(Number);
-  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
-};
-const todayLocalIso = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const STALE_MS = 5 * 60 * 1000; // back on the tab after this long: load again (a screen left open past midnight)
 
-// The days shown for a view (a month as whole weeks).
-function rangeOf(view, date, startsOn) {
-  if (view === 'day') return [date, date];
-  if (view === 'week') {
-    const from = weekStart(date, startsOn);
-    return [from, addDaysIso(from, 6)];
-  }
-  const from = weekStart(firstOfMonth(date), startsOn);
-  const lastWeek = weekStart(lastOfMonth(date), startsOn);
-  return [from, addDaysIso(lastWeek, 6)];
-}
-const daysBetween = (from, to) => {
-  const out = [];
-  for (let d = from; d <= to; d = addDaysIso(d, 1)) out.push(d);
-  return out;
-};
-const stepOf = (view, date, n) => {
-  if (view === 'day') return addDaysIso(date, n);
-  if (view === 'week') return addDaysIso(date, 7 * n);
-  const [y, m] = date.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 10);
-};
-const titleOf = (view, from, to, date) => {
-  if (view === 'day') return dayText(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  if (view === 'week') return `${dayText(from, { day: 'numeric', month: 'short' })} – ${dayText(to, { day: 'numeric', month: 'short', year: 'numeric' })}`;
-  return dayText(date, { month: 'long', year: 'numeric' });
-};
-
-function EventLine({ e, compact }) {
-  const look = e.type === 'booked' ? appointmentLook({ status: e.status }) : TYPE_LOOKS[e.type];
-  const Icon = TYPE_LOOKS[e.type].icon;
-  const name = e.patient.id ? <Link to={`/hospital/patients/${e.patient.id}`}>{e.patient.name}</Link> : e.patient.name;
-  return (
-    <div className={`cal-event cal-${e.type}`}>
-      <Icon size={13} aria-hidden />
-      <span className="cal-event-text">
-        {e.type === 'booked' && <strong>{e.start ?? (e.token ? `Token ${e.token}` : 'No time')} </strong>}
-        {e.type !== 'booked' && <strong>{TYPE_LOOKS[e.type].word} </strong>}
-        {name}
-        {!compact && e.type === 'booked' && <span className="muted"> · {e.doctor}</span>}
-        {!compact && e.type === 'lmp' && e.ga && <span className="muted"> · now {e.ga.weeks} weeks {e.ga.days} days</span>}
-      </span>
-      {!compact && e.type === 'booked' && <StateBadge look={look} small />}
-    </div>
-  );
+function Placeholder() {
+  const columns = [
+    { key: 'patient', header: 'Patient' },
+    { key: 'details', header: 'Details' },
+    { key: 'status', header: 'Status' },
+  ];
+  return <DataTable caption="Calendar entries" columns={columns} rows={undefined} loading />;
 }
 
 export function CalendarPage() {
-  const { calendar: settings } = useAppConfig();
-  const [params, setParams] = useSearchParams();
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { activeMembership } = useAuth();
+  const location = useLocation();
+  const roles = activeMembership?.roles ?? [];
+  const level = personLevel(roles);
+  const allowed = allowedTypesFor(roles);
+  const roleScope = defaultScopeFor(roles);
+  const defaultView = isReceptionOnly(roles) ? 'day' : 'week';
+  const [params, setParams] = useListParams({ view: defaultView, date: '', types: '', scope: '' });
 
-  const view = params.get('view') || 'month';
-  const date = params.get('date') || todayLocalIso();
-  const scope = params.get('scope') || 'mine';
-  const types = params.get('types') || '';
-  const set = (next) => setParams({ view, date, scope, ...(types && { types }), ...next }, { replace: true });
-  const [from, to] = useMemo(() => rangeOf(view, date, settings.weekStartsOn), [view, date, settings.weekStartsOn]);
+  const view = CALENDAR_VIEWS.includes(params.view) ? params.view : null; // an unknown view is sent as it is: the server explains
+  const types = parseTypes(params.types, allowed);
+  const typesParam = serializeTypes(types, allowed);
+  // Patients: only a doctor has the switch; a copied scope=mine for anyone else is ignored (as types are).
+  const scopeParam = parseScope(params.scope, roles);
+  const monthKey = params.date && parseIso(params.date) ? firstOfMonth(params.date) : params.date;
 
+  // Day and week: the entries. Month: the counts of the month (the chosen day's entries come from `panel`).
+  const main = useFetch('/calendar', { view: params.view, date: view === 'month' ? monthKey : params.date, types: typesParam, scope: scopeParam });
+  const panel = useFetch(view === 'month' ? '/calendar' : null, { view: 'day', date: params.date, types: typesParam, scope: scopeParam });
+  const { reload: reloadMain } = main;
+  const { reload: reloadPanel } = panel;
+
+  // Nothing from an answer is shown while there is an error (e.g. after a role or hospital change).
+  const failed = main.error ? main : view === 'month' && panel.error ? panel : null;
+  const answer = !failed && main.data?.view === view ? main.data : null;
+  // The day everything steps from: the one in the address, else the server's today (never the computer's clock).
+  // (While a new answer loads, an older one counts only when it was for today.)
+  const resolved = params.date || (answer && (!main.loading || answer.date === answer.today) ? answer.date : null);
+  const chosen = view === 'month' ? resolved : null;
+  // The grid shows counts only for the chosen day's month. While another month loads (‹ ›, Page Up/Down, arrows
+  // past the edge, an outside day, Today) it shows skeleton cells, never an older month under the new title.
+  const monthAnswer = view === 'month' && answer && sameMonth(answer.date, chosen) ? answer : null;
+  const panelAnswer = !failed && chosen && panel.data?.view === 'day' && panel.data.date === chosen ? panel.data : null;
+
+  // Coming back to the tab after a while (e.g. the next morning): load again, so Today moves.
+  const lastLoad = useRef(performance.now());
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    calendarApi
-      .events({ from, to, scope, types })
-      .then((d) => {
-        if (cancelled) return;
-        setData(d);
-        setError('');
-      })
-      .catch((err) => !cancelled && setError(err.message))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
+    if (main.data) lastLoad.current = performance.now();
+  }, [main.data]);
+  const reloadAll = useCallback(() => {
+    reloadMain();
+    reloadPanel();
+  }, [reloadMain, reloadPanel]);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || performance.now() - lastLoad.current <= STALE_MS) return;
+      lastLoad.current = performance.now();
+      reloadAll();
     };
-  }, [from, to, scope, types]);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [reloadAll]);
 
-  const byDay = useMemo(() => {
-    const map = new Map();
-    for (const e of data?.events ?? []) map.set(e.date, [...(map.get(e.date) ?? []), e]);
-    return map;
-  }, [data]);
+  const scope = answer?.scope ?? (scopeParam || roleScope);
+  const canChooseScope = answer?.canChooseScope ?? roles.includes('doctor');
+  const setScope = (s) => setParams({ scope: s === roleScope ? '' : s });
+  const onShowAll = canChooseScope ? () => setScope('all') : undefined;
+  // After a 400: clear the day, and a view or patients value the server cannot use (valid choices stay).
+  const goToToday = () => setParams(todayParams(params, roles));
 
-  const shown = data?.types ?? [];
-  const toggleType = (t) => {
-    const on = shown.includes(t);
-    if (on && shown.length === 1) return; // at least one kind stays shown
-    const next = data.allowed.filter((x) => (x === t ? !on : shown.includes(x)));
-    set({ types: next.join(',') });
+  const title = !view
+    ? ''
+    : view === 'month'
+      ? chosen
+        ? rangeTitle('month', null, null, chosen)
+        : ''
+      : answer
+        ? rangeTitle(view, answer.from, answer.to, answer.date)
+        : '';
+
+  // The address of a day's day view, keeping the types and patients chosen.
+  const dayHref = (date) => {
+    const sp = new URLSearchParams(location.search);
+    if (defaultView === 'day') sp.delete('view');
+    else sp.set('view', 'day');
+    sp.set('date', date);
+    return `/calendar?${sp}`;
   };
-  const today = data?.today ?? todayLocalIso();
-  const days = daysBetween(from, to);
-  const weekdays = days.slice(0, 7).map((d) => dayText(d, { weekday: 'short' }));
+
+  const incomplete = answer?.countsIncomplete || panelAnswer?.countsIncomplete;
+  const pending = Math.max(answer?.plansPending ?? 0, panelAnswer?.plansPending ?? 0);
+
+  let body = null;
+  if (failed) {
+    if (failed.status === 403) {
+      body = (
+        <section className="card narrow acc-message">
+          <span className="acc-message-icon" aria-hidden="true">
+            <Lock />
+          </span>
+          <p>{failed.error}</p>
+        </section>
+      );
+    } else if (failed.status === 400) {
+      body = (
+        <Alert type="error">
+          {failed.error}{' '}
+          <button type="button" className="btn btn-link plan-inline-link" onClick={goToToday}>
+            Go to today
+          </button>
+        </Alert>
+      );
+    } else {
+      body = (
+        <Alert type="error">
+          The calendar could not be loaded.{' '}
+          <button type="button" className="btn btn-link plan-inline-link" onClick={reloadAll}>
+            Try again
+          </button>
+        </Alert>
+      );
+    }
+  } else if (view === 'month') {
+    body = (
+      <MonthView
+        data={monthAnswer}
+        chosen={chosen}
+        level={level}
+        onChoose={(date) => setParams({ date })}
+        onShowAll={onShowAll}
+        panelTitle={chosen ? panelDayTitle(chosen, answer?.today) : 'Chosen day'}
+        panelBusy={panel.loading}
+        panel={panelAnswer ? <DayView data={panelAnswer} level={level} compact onShowAll={onShowAll} /> : <p className="cal-note">Loading…</p>}
+      />
+    );
+  } else if (view === 'week') {
+    body = !answer ? (
+      <Placeholder />
+    ) : answer.events.length === 0 ? (
+      <EmptyCard scope={answer.scope} onShowAll={onShowAll}>
+        Nothing this week.
+      </EmptyCard>
+    ) : (
+      <WeekView data={answer} level={level} dayHref={dayHref} />
+    );
+  } else if (view === 'day') {
+    body = answer ? <DayView data={answer} loading={main.loading} level={level} onShowAll={onShowAll} /> : <Placeholder />;
+  }
 
   return (
     <>
-      <PageHeader title="Calendar" subtitle="Booked visits, due dates and last periods, by day, week and month." />
-      <SectionTabs tabs={CALENDAR_TABS} label="Calendar" />
-
-      <section className="card cal-toolbar" aria-label="Calendar controls">
-        <div className="cal-row">
-          <div className="day-nav">
-            <button type="button" className="icon-btn" aria-label={`Previous ${view}`} onClick={() => set({ date: stepOf(view, date, -1) })}><ChevronLeft size={18} /></button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => set({ date: today })}>Today</button>
-            <button type="button" className="icon-btn" aria-label={`Next ${view}`} onClick={() => set({ date: stepOf(view, date, 1) })}><ChevronRight size={18} /></button>
-          </div>
-          <h2 className="day-title" aria-live="polite">
-            {titleOf(view, from, to, date)}
-            {loading && <span className="muted small"> Loading…</span>}
-          </h2>
-          <div className="segmented" role="group" aria-label="View">
-            {VIEWS.map((v) => (
-              <button key={v.value} type="button" className={view === v.value ? 'on' : ''} aria-pressed={view === v.value} onClick={() => set({ view: v.value })}>{v.label}</button>
-            ))}
-          </div>
-        </div>
-        {data && (
-          <div className="cal-row">
-            {data.canChooseScope && (
-              <div className="segmented" role="group" aria-label="Whose patients">
-                <button type="button" className={data.scope === 'mine' ? 'on' : ''} aria-pressed={data.scope === 'mine'} onClick={() => set({ scope: 'mine' })}>My patients</button>
-                <button type="button" className={data.scope === 'all' ? 'on' : ''} aria-pressed={data.scope === 'all'} onClick={() => set({ scope: 'all' })}>All patients</button>
-              </div>
-            )}
-            <div className="chips" role="group" aria-label="Show">
-              {data.allowed.map((t) => {
-                const Icon = TYPE_LOOKS[t].icon;
-                const on = shown.includes(t);
-                return (
-                  <button key={t} type="button" className={`chip-toggle cal-${t}${on ? ' on' : ''}`} aria-pressed={on} onClick={() => toggleType(t)}>
-                    <Icon size={13} aria-hidden /> {TYPE_LOOKS[t].word}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      <PageHeader breadcrumbs={[{ label: 'Calendar' }]} title="Calendar" documentTitle="Calendar" subtitle={subtitleFor(level, scope)} />
+      <div className="pf-content cal-page">
+        {failed?.status !== 403 && (
+          <CalendarToolbar
+            view={view ?? defaultView}
+            onView={(v) => setParams({ view: v })}
+            title={title}
+            loading={main.loading}
+            canStep={Boolean(view && resolved && parseIso(resolved))}
+            onStep={(dir) => setParams({ date: stepDate(view, resolved, dir) })}
+            onToday={() => setParams({ date: '' })}
+            canChooseScope={canChooseScope}
+            scope={scope}
+            onScope={setScope}
+            allowed={allowed}
+            types={types}
+            onTypes={(list) => setParams({ types: serializeTypes(list, allowed) })}
+            level={level}
+          />
         )}
-      </section>
-
-      <Alert type="error">{error}</Alert>
-      {data?.incomplete && <Alert type="info">There are more entries than can be shown at once. Choose a shorter view.</Alert>}
-
-      {view === 'month' && (
-        <section className="card cal-month" aria-label="Month">
-          {weekdays.map((w) => <div key={w} className="cal-weekday">{w}</div>)}
-          {days.map((d) => {
-            const list = byDay.get(d) ?? [];
-            return (
-              <div key={d} className={`cal-cell${monthOf(d) !== monthOf(date) ? ' other-month' : ''}${d === today ? ' today' : ''}`}>
-                <button type="button" className="cal-daynum" onClick={() => set({ view: 'day', date: d })} aria-label={`Open ${dayText(d)}`}>{Number(d.slice(8))}</button>
-                {list.slice(0, 3).map((e) => <EventLine key={e.id} e={e} compact />)}
-                {list.length > 3 && (
-                  <button type="button" className="btn btn-link btn-sm" onClick={() => set({ view: 'day', date: d })}>+{list.length - 3} more</button>
-                )}
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-      {view === 'week' && (
-        <section className="cal-week">
-          {days.map((d) => (
-            <div key={d} className={`card cal-weekday-col${d === today ? ' today' : ''}`}>
-              <button type="button" className="cal-daynum wide" onClick={() => set({ view: 'day', date: d })}>{dayText(d, { weekday: 'short', day: 'numeric', month: 'short' })}</button>
-              {(byDay.get(d) ?? []).length === 0 && <p className="muted small">Nothing</p>}
-              {(byDay.get(d) ?? []).map((e) => <EventLine key={e.id} e={e} compact />)}
-            </div>
-          ))}
-        </section>
-      )}
-
-      {view === 'day' && (
-        <section className="card">
-          {(byDay.get(date) ?? []).length === 0 && <p className="muted">Nothing on this day.</p>}
-          {(byDay.get(date) ?? []).map((e) => <EventLine key={e.id} e={e} />)}
-        </section>
-      )}
+        {!failed && incomplete && (
+          <Alert type="warning">There are too many entries to count them all. Counts and lists may be incomplete – open a week or a day.</Alert>
+        )}
+        {!failed && pending > 0 && <Alert type="info">Some care plans are being updated – reload in a minute.</Alert>}
+        {/* The AI brief of the dates shown (doctors and RMOs): the same view, day, types and patients */}
+        {!failed && view && level === 'clinical' && (
+          <AiBriefCard
+            endpoint="/ai/brief/calendar"
+            body={calendarBriefBody({ view, date: view === 'month' ? chosen : resolved, types: typesParam, scope: scopeParam })}
+            resetKey={`${view}:${view === 'month' ? (chosen ?? '').slice(0, 7) : (resolved ?? '')}:${typesParam}:${scopeParam}`}
+            intro="What to look at in these dates."
+          />
+        )}
+        {body}
+      </div>
     </>
   );
 }

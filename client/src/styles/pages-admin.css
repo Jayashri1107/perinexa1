@@ -1,0 +1,73 @@
+/* Hospital admin pages (staff, audit log, print settings) and shared admin panels. Tokens only. */
+
+.add-form { margin-bottom: var(--space-6); }
+.add-form h2 { margin-bottom: var(--space-1); }
+.add-form .hint { margin-bottom: var(--space-4); }
+.add-form-actions { margin-top: var(--space-2); }
+.tag-form h3 { margin: var(--space-2) 0; }
+.tag-form label { display: block; }
+.row-link { cursor: pointer; }
+.row-link:hover td { background: var(--mist-50); }
+
+/* ---------- Patient messages: several switches in one card – room above each next heading and the Save button ---------- */
+.msg-settings h2:not(:first-child) { margin-top: var(--space-6); }
+.msg-settings > .row:last-child { margin-top: var(--space-6); }
+
+/* ---------- Staff list (hospital Staff page and the super admin's hospital workspace) ---------- */
+/* The panel's heading sits at the top of the page body, not 32 px below it. */
+.members-panel > .section-header { margin-top: 0; }
+/* Notes under a name: 13 px text; account states are pills (colour + icon + word). */
+.member-notes { align-items: center; gap: var(--space-1) var(--space-3); margin-top: var(--space-1); }
+/* The "Access" toggle lines up with the 48 px filter boxes next to it. */
+.members-panel .dt-filter .segmented { height: var(--input-height); align-self: flex-start; }
+
+/* ---------- Print letterhead: settings form and paper preview ---------- */
+/* Form and preview side by side on wide screens (preview at least 360 px); the preview folds under the form below 1280 px. */
+.letterhead-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 1.1fr); gap: var(--space-8); align-items: start; }
+.letterhead-preview { position: sticky; top: var(--space-6); }
+.letterhead-preview > .hint { margin: 0 0 var(--space-4); }
+.load-error > .alert:last-child { margin-bottom: 0; }
+@media (max-width: 1279px) {
+  .letterhead-layout { grid-template-columns: minmax(0, 1fr); }
+  .letterhead-preview { position: static; }
+}
+
+/*
+ * The printed page. Print-friendly: dark text on white, Jost (Mukta for Devanagari names and addresses),
+ * Perinexa Indigo only for the rule and the mark. Inside a card it is a bordered sheet, not another card.
+ */
+.paper {
+  padding: var(--space-8); background: var(--surface); color: var(--print-ink);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-family: var(--font-sans); font-size: var(--fs-body); line-height: var(--lh-body);
+}
+.paper-preview { min-height: 420px; display: flex; flex-direction: column; }
+.paper-body { flex: 1; padding: var(--space-6) 0; }
+.paper-placeholder { margin: 0; color: var(--slate-600); }
+
+.lh { display: flex; align-items: flex-start; gap: var(--space-4); padding-bottom: var(--space-3); border-bottom: 2px solid var(--indigo-700); }
+.lh-mark {
+  flex-shrink: 0; display: grid; place-items: center; width: var(--control-height); height: var(--control-height);
+  border-radius: var(--radius-md); background: var(--indigo-700); color: var(--on-solid);
+}
+.lh-mark svg.lucide { width: 24px; height: 24px; }
+.lh-text { flex: 1; min-width: 0; }
+.lh-name { color: var(--ink); font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 600; overflow-wrap: anywhere; }
+.lh-tagline { color: var(--print-ink); font-size: var(--fs-body); line-height: var(--lh-body); }
+.lh-line { color: var(--print-ink); font-size: var(--fs-label); line-height: var(--lh-label); white-space: pre-line; overflow-wrap: anywhere; }
+.lh-reg { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lh-footer {
+  margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--border);
+  color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; text-align: center;
+}
+
+/* Doctor's signature block (also shown on the Professional details page) */
+.lh-sign { margin-left: auto; margin-top: var(--space-4); min-width: 220px; text-align: right; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.lh-sign-line { width: 200px; margin: 0 0 var(--space-2) auto; border-top: 1px solid var(--ink); }
+.lh-sign-name { display: block; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 500; }
+
+@media (max-width: 520px) {
+  .paper { padding: var(--space-4); }
+  .lh { flex-wrap: wrap; }
+  .lh-reg { white-space: normal; }
+}

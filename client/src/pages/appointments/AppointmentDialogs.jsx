@@ -1,318 +1,426 @@
-// The appointment dialogs: book (a registered patient or a quick booking), move, cancel, link a quick booking to
-// her record, and a walk-in token. Times offered are only the free ones, worked out from the doctor's day.
 import { useEffect, useState } from 'react';
-import { appointmentsApi } from '../../api/index.js';
-import { Alert } from '../../components/Alert.jsx';
-import { Modal } from '../../components/Modal.jsx';
-import { PatientPicker } from '../../components/PatientPicker.jsx';
-import { useAppConfig } from '../../context/AppConfigContext.jsx';
-import { toOptions } from '../../utils/format.js';
-import { dayText, freeStarts } from './appointmentFormat.js';
+import { CalendarCheck, IndianRupee, Search, TriangleAlert, UserPlus } from 'lucide-react';
+import { api } from '../../api.js';
+import { Alert, Field, useDialogFocus } from '../../components/ui.jsx';
+import { useFetch } from '../../hooks/useFetch.js';
+import { rupees } from '../billing/billingFormat.js';
+import { CANCEL_REASONS, VISIT_TYPES, VISIT_TYPE_LABELS, dayLabel, timeLabel, whenLabel, whoLabel } from './appointmentFormat.js';
 
-function Select({ id, label, value, onChange, options, placeholder, error, required, width = 'full' }) {
+// The booking dialogs of appointment booking: Book (a registered patient, or a quick booking with name and phone),
+// Move (another day, time or doctor – also giving a "needs a time" booking its time) and Cancel. A warning the
+// server can be talked past (slot already taken, a second booking that day) is shown with "Book anyway".
+
+function Modal({ id, title, onClose, wide = false, children }) {
+  const ref = useDialogFocus(onClose);
   return (
-    <div className={`form-field width-${width}${error ? ' has-error' : ''}`}>
-      <label htmlFor={id}>
-        {label}
-        {required && <span className="required" aria-hidden> *</span>}
-      </label>
-      <select id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      {error && <span className="field-error">{error}</span>}
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} tabIndex={-1} className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
+        <h2 id={`${id}-title`}>{title}</h2>
+        {children}
+      </div>
     </div>
   );
 }
 
-function Field({ id, label, error, children, required, width = 'full' }) {
-  return (
-    <div className={`form-field width-${width}${error ? ' has-error' : ''}`}>
-      <label htmlFor={id}>
-        {label}
-        {required && <span className="required" aria-hidden> *</span>}
-      </label>
-      {children}
-      {error && <span className="field-error">{error}</span>}
-    </div>
-  );
-}
-
-// The free times of one doctor's day for a visit type (reloaded when any of them changes).
-function useFreeTimes(doctorId, date, visitType, exceptId) {
-  const { opd } = useAppConfig();
-  const [state, setState] = useState({ times: [], day: null, loading: false });
-  useEffect(() => {
-    if (!doctorId || !date) return undefined;
-    let cancelled = false;
-    setState((s) => ({ ...s, loading: true }));
-    appointmentsApi
-      .day(doctorId, date)
-      .then((day) => !cancelled && setState({ day, loading: false, times: freeStarts(day, day.lengths[visitType] ?? opd.slotMinutes, opd.slotMinutes, exceptId) }))
-      .catch(() => !cancelled && setState({ times: [], day: null, loading: false }));
-    return () => {
-      cancelled = true;
-    };
-  }, [doctorId, date, visitType, exceptId, opd.slotMinutes]);
-  return state;
-}
-
-// The free times of the day as buttons, by part of the day, for a visit of this length. allowNone: book with no time
-// yet (reception gives it one later, under "Needs a time").
-const PARTS = [
-  ['Morning', (m) => m < 12 * 60],
-  ['Afternoon', (m) => m >= 12 * 60 && m < 17 * 60],
-  ['Evening', (m) => m >= 17 * 60],
-];
-const minutesOfTime = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
-
-function TimeChoice({ free, value, onChange, visitLabel, allowNone = false, error }) {
-  const minutes = free.day?.lengths?.[visitLabel?.key];
-  const note = dayNote(free.day);
-  return (
-    <div className={`form-field${error ? ' has-error' : ''}`}>
-      <span className="field-label">
-        Time<span className="required" aria-hidden> *</span>
-        {minutes ? <span className="muted"> – free times for a {visitLabel.label.toLowerCase()} visit ({minutes} minutes)</span> : null}
-      </span>
-      {free.loading && <span className="muted small">Loading the doctor’s free times…</span>}
-      {!free.loading && note && <span className="muted small">{note}</span>}
-      {!free.loading && !note && free.times.length === 0 && <span className="muted small">No free time left that day. Choose another day{allowNone ? ', or book without a time' : ''}.</span>}
-      {!free.loading &&
-        PARTS.map(([label, fits]) => {
-          const times = free.times.filter((t) => fits(minutesOfTime(t)));
-          if (!times.length) return null;
-          return (
-            <div key={label} className="time-part">
-              <span className="muted small">{label}</span>
-              <div className="time-chips" role="group" aria-label={`${label} times`}>
-                {times.map((t) => (
-                  <button key={t} type="button" className={`time-chip${value === t ? ' on' : ''}`} aria-pressed={value === t} onClick={() => onChange(t)}>{t}</button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      {allowNone && (
-        <label className="inline-check small">
-          <input type="checkbox" checked={value === 'none'} onChange={(e) => onChange(e.target.checked ? 'none' : '')} />
-          Book without a time – reception gives it one later (it shows under “Needs a time”)
-        </label>
-      )}
-      {error && <span className="field-error">{error}</span>}
-    </div>
-  );
-}
-
-function dayNote(day) {
-  if (!day) return '';
-  if (day.leave) return 'The doctor is on leave that day.';
-  if (!day.hasTimings) return 'This doctor has no OPD timings yet.';
-  if (!day.sessions.length) return 'The doctor has no OPD that day.';
-  return '';
-}
-
-// Runs a save; on "she already has an appointment that day" asks once and saves again with confirm.
-function useSave(onDone) {
-  const [state, setState] = useState({ saving: false, error: '', fields: {}, confirm: '' });
-  const run = async (action, data) => {
-    setState({ saving: true, error: '', fields: {}, confirm: '' });
+/** Sends a booking or a move; a confirmable warning (409) waits for "Book anyway". */
+function useSend(send) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [warning, setWarning] = useState(null);
+  const run = async (confirm = false) => {
+    setBusy(true);
+    setError(null);
     try {
-      onDone(await action(data));
+      await send(confirm);
+      setWarning(null);
     } catch (err) {
-      if (err.code === 'ALREADY_BOOKED') setState({ saving: false, error: '', fields: {}, confirm: err.message, retry: () => run(action, { ...data, confirm: true }) });
-      else setState({ saving: false, error: err.message, fields: err.fields ?? {}, confirm: '' });
+      if (err.status === 409 && ['SLOT_TAKEN', 'ALREADY_BOOKED'].includes(err.code)) setWarning(err.message);
+      else setError(err.message);
+    } finally {
+      setBusy(false);
     }
   };
-  return { ...state, run };
+  return { busy, error, warning, run };
 }
 
-function Foot({ onClose, saving, label, disabled }) {
+function WarningBox({ warning, busy, onConfirm, confirmLabel }) {
+  if (!warning) return null;
   return (
-    <div className="modal-foot inline">
-      <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-      <button type="submit" className="btn btn-primary" disabled={saving || disabled}>{saving ? 'Saving…' : label}</button>
+    <div className="appt-warning" role="alert">
+      <p>
+        <TriangleAlert aria-hidden="true" /> {warning}
+      </p>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={onConfirm} disabled={busy}>
+        {confirmLabel}
+      </button>
     </div>
   );
 }
 
-function ConfirmAgain({ save }) {
-  if (!save.confirm) return null;
-  return (
-    <Alert type="info">
-      {save.confirm}{' '}
-      <button type="button" className="btn btn-link" onClick={save.retry}>Book anyway</button>
-    </Alert>
-  );
-}
-
-export function BookDialog({ doctors, initial, onClose, onDone }) {
-  const { opd } = useAppConfig();
-  const [patient, setPatient] = useState(initial.patient ?? null);
-  const [quick, setQuick] = useState(false);
-  const [guest, setGuest] = useState({ name: '', phone: '' });
-  const [doctorId, setDoctorId] = useState(doctors.some((d) => d.id === initial.doctorId) ? initial.doctorId : doctors[0]?.id ?? '');
-  const [date, setDate] = useState(initial.date);
-  const [visitType, setVisitType] = useState(initial.visitType ?? opd.visitTypes[0].key);
-  const [start, setStart] = useState(initial.start ?? '');
-  const free = useFreeTimes(doctorId, date, visitType, null);
-  const save = useSave((r) => onDone(r.appointment));
-
+/** Finding a registered patient by name, phone or patient number (the same search as the Patients page). */
+export function PatientFinder({ onPick }) {
+  const [text, setText] = useState('');
+  const [result, setResult] = useState(null);
+  const term = text.trim();
   useEffect(() => {
-    if (start && start !== 'none' && !free.loading && free.day && !free.times.includes(start)) setStart('');
-  }, [free, start]);
+    if (term.length < 2) {
+      setResult(null);
+      return undefined;
+    }
+    let current = true;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api('/patients', { query: { search: term, doctor: 'all', limit: 8, sort: 'fullName' } });
+        if (current) setResult({ patients: res.patients });
+      } catch (err) {
+        if (current) setResult({ error: err.message });
+      }
+    }, 250);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [term]);
+  return (
+    <div className="appt-finder">
+      <Field label="Find the patient" id="appt-find" hint="Name, phone number or patient number">
+        <input id="appt-find" type="search" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" autoFocus />
+      </Field>
+      {result?.error && <Alert type="error">{result.error}</Alert>}
+      {result?.patients && (
+        <ul className="appt-pick-list" aria-label="Patients found">
+          {result.patients.length === 0 && <li className="muted">No patient found. Use "New patient" for someone not registered yet.</li>}
+          {result.patients.map((p) => (
+            <li key={p.id}>
+              <button type="button" className="appt-pick" onClick={() => onPick(p)}>
+                <strong>{p.fullName}</strong>
+                <span className="muted">
+                  {p.mrn}
+                  {p.phone ? ` · ${p.phone}` : ''}
+                  {p.assignedDoctorName ? ` · ${p.assignedDoctorName}` : ''}
+                  {/* Found only by its own patient number: it takes nothing new, so the main record is named */}
+                  {p.duplicateOf ? ` · Duplicate of ${p.duplicateOf.mrn} – choose ${p.duplicateOf.mrn} instead` : ''}
+                  {/* Closed (never said why): it takes no appointment */}
+                  {p.closed ? ' · Record closed – takes no appointment' : ''}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
-  const submit = (e) => {
-    e.preventDefault();
-    save.run(appointmentsApi.book, {
-      doctorId,
-      date,
-      visitType,
-      start: start === 'none' ? null : start || undefined,
-      ...(quick ? { guest } : { patientId: patient?.id }),
-    });
-  };
+/** Book a time slot: doctor, day and time are chosen on the page; here the patient and the visit type. */
+export function BookDialog({ doctor, date, start, patient: preset = null, lengths = null, onClose, onBooked }) {
+  const [mode, setMode] = useState(preset ? 'patient' : 'find'); // find | patient | guest
+  const [patient, setPatient] = useState(preset);
+  const [guest, setGuest] = useState({ name: '', phone: '' });
+  const [visitType, setVisitType] = useState('follow_up');
+  const send = useSend(async (confirm) => {
+    const body = { doctorId: doctor.id, date, start, visitType, confirm, ...(mode === 'guest' ? { guest } : { patientId: patient.id }) };
+    const { appointment } = await api('/appointments', { method: 'POST', body });
+    onBooked(appointment);
+  });
+  const ready = mode === 'guest' ? guest.name.trim().length >= 2 && guest.phone.trim().length >= 6 : mode === 'patient' && patient;
 
   return (
-    <Modal title="Book an appointment" onClose={onClose} size="lg">
-      <form onSubmit={submit} noValidate>
-        <div className="form-grid">
-          <Alert type="error">{save.error}</Alert>
-          <ConfirmAgain save={save} />
-          <div className="form-field">
-            <div className="segmented" role="group" aria-label="Who">
-              <button type="button" className={quick ? '' : 'on'} aria-pressed={!quick} onClick={() => setQuick(false)}>Registered patient</button>
-              <button type="button" className={quick ? 'on' : ''} aria-pressed={quick} onClick={() => setQuick(true)}>Quick booking (not registered yet)</button>
-            </div>
-          </div>
-          {quick ? (
-            <>
-              <Field id="guest-name" label="Her name" required width="half" error={save.fields['guest.name']}>
-                <input id="guest-name" value={guest.name} onChange={(e) => setGuest((g) => ({ ...g, name: e.target.value }))} />
-              </Field>
-              <Field id="guest-phone" label="Phone" required width="half" error={save.fields['guest.phone']}>
-                <input id="guest-phone" type="tel" value={guest.phone} onChange={(e) => setGuest((g) => ({ ...g, phone: e.target.value }))} />
-              </Field>
-            </>
-          ) : (
-            <PatientPicker search={appointmentsApi.patients} value={patient} onChange={setPatient} error={save.fields.patientId} />
+    <Modal id="appt-book" title="Book an appointment" onClose={onClose} wide>
+      <p className="appt-when">
+        <CalendarCheck aria-hidden="true" /> {dayLabel(date)} · {timeLabel(start)} · {doctor.name}
+      </p>
+      <Alert type="error">{send.error}</Alert>
+      {mode !== 'patient' && (
+        <div className="segmented" role="group" aria-label="Who is it for">
+          <button type="button" aria-pressed={mode === 'find'} onClick={() => setMode('find')}>
+            <Search aria-hidden="true" /> Registered patient
+          </button>
+          <button
+            type="button"
+            aria-pressed={mode === 'guest'}
+            onClick={() => {
+              setMode('guest');
+              setVisitType('new');
+            }}
+          >
+            <UserPlus aria-hidden="true" /> New patient
+          </button>
+        </div>
+      )}
+      {mode === 'find' && (
+        <PatientFinder
+          onPick={(p) => {
+            setPatient(p);
+            setMode('patient');
+            setVisitType('follow_up');
+          }}
+        />
+      )}
+      {mode === 'patient' && patient && (
+        <div className="appt-chosen">
+          <strong>{patient.fullName}</strong>
+          <span className="muted">
+            {patient.mrn}
+            {patient.phone ? ` · ${patient.phone}` : ''}
+          </span>
+          {!preset && (
+            <button type="button" className="btn btn-link btn-sm" onClick={() => setMode('find')}>
+              Choose someone else
+            </button>
           )}
-          <Select id="book-doctor" label="Doctor" required value={doctorId} onChange={setDoctorId} placeholder="Choose…" options={doctors.map((d) => ({ value: d.id, label: d.name }))} error={save.fields.doctorId} />
-          <Field id="book-date" label="Day" required width="half" error={save.fields.date}>
-            <input id="book-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </Field>
-          <Select id="book-type" label="Visit" required value={visitType} onChange={setVisitType} options={toOptions(opd.visitTypes)} width="half" error={save.fields.visitType} />
-          {date && <p className="muted small span-2">{dayText(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>}
-          <TimeChoice free={free} value={start} onChange={setStart} visitLabel={opd.visitTypes.find((v) => v.key === visitType)} allowNone error={save.fields.start} />
         </div>
-        <Foot onClose={onClose} saving={save.saving} label="Book" disabled={!start} />
-      </form>
-    </Modal>
-  );
-}
-
-export function MoveDialog({ appointment, doctors, onClose, onDone }) {
-  const { opd } = useAppConfig();
-  const [doctorId, setDoctorId] = useState(appointment.doctor.id);
-  const [date, setDate] = useState(appointment.date);
-  const [visitType, setVisitType] = useState(appointment.visitType);
-  const [start, setStart] = useState('');
-  const free = useFreeTimes(doctorId, date, visitType, appointment.id);
-  const save = useSave((r) => onDone(r.appointment));
-
-  const submit = (e) => {
-    e.preventDefault();
-    save.run((data) => appointmentsApi.move(appointment.id, data), { doctorId, date, start, visitType });
-  };
-  return (
-    <Modal title={appointment.needsTime ? 'Give a time' : 'Move the appointment'} onClose={onClose}>
-      <form onSubmit={submit} noValidate>
-        <div className="form-grid">
-          <Alert type="error">{save.error}</Alert>
-          <ConfirmAgain save={save} />
-          <Select id="move-doctor" label="Doctor" required value={doctorId} onChange={setDoctorId} options={doctors.map((d) => ({ value: d.id, label: d.name }))} error={save.fields.doctorId} />
-          <Field id="move-date" label="Day" required width="half" error={save.fields.date}>
-            <input id="move-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      )}
+      {mode === 'guest' && (
+        <div className="form-grid appt-guest">
+          <Field label="Her name" id="appt-guest-name">
+            <input id="appt-guest-name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} maxLength={150} autoFocus />
           </Field>
-          <Select id="move-type" label="Visit" value={visitType} onChange={setVisitType} options={toOptions(opd.visitTypes)} width="half" />
-          <TimeChoice free={free} value={start} onChange={setStart} visitLabel={opd.visitTypes.find((v) => v.key === visitType)} error={save.fields.start} />
-        </div>
-        <Foot onClose={onClose} saving={save.saving} label="Save" disabled={!start} />
-      </form>
-    </Modal>
-  );
-}
-
-export function CancelDialog({ appointment, onClose, onDone }) {
-  const { appointments } = useAppConfig();
-  const [reason, setReason] = useState('');
-  const [note, setNote] = useState('');
-  const save = useSave((r) => onDone(r.appointment));
-  const submit = (e) => {
-    e.preventDefault();
-    save.run((data) => appointmentsApi.cancel(appointment.id, data), { reason, note });
-  };
-  return (
-    <Modal title="Cancel the appointment" onClose={onClose} size="sm">
-      <form onSubmit={submit} noValidate>
-        <div className="form-grid">
-          <Alert type="error">{save.error}</Alert>
-          <Select id="cancel-reason" label="Why" required value={reason} onChange={setReason} placeholder="Choose…" options={toOptions(appointments.cancelReasons)} error={save.fields.reason} />
-          <Field id="cancel-note" label="Note (optional)" error={save.fields.note}>
-            <input id="cancel-note" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} />
+          <Field label="Phone number" id="appt-guest-phone" hint="Full registration when she arrives">
+            <input id="appt-guest-phone" type="tel" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} maxLength={30} />
           </Field>
         </div>
-        <Foot onClose={onClose} saving={save.saving} label="Cancel appointment" disabled={!reason} />
-      </form>
+      )}
+      {(mode === 'patient' || mode === 'guest') && (
+        <Field
+          label="Visit type"
+          id="appt-type"
+          hint={lengths?.[visitType] > 10 ? `Takes ${lengths[visitType]} minutes with ${doctor.name}: the times that follow are kept free too.` : 'No medical details here – reception sees this.'}
+          keepHint={lengths?.[visitType] > 10}
+        >
+          <select id="appt-type" value={visitType} onChange={(e) => setVisitType(e.target.value)}>
+            {VISIT_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {VISIT_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      <WarningBox warning={send.warning} busy={send.busy} onConfirm={() => send.run(true)} confirmLabel="Book anyway" />
+      <div className="row">
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!ready || send.busy || Boolean(send.warning)}
+          onClick={() => send.run(false)}
+        >
+          <CalendarCheck aria-hidden="true" /> {send.busy ? 'Booking…' : 'Book'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
     </Modal>
   );
 }
 
-// A quick booking → the patient she was registered as.
-export function LinkDialog({ appointment, onClose, onDone }) {
-  const [patient, setPatient] = useState(null);
-  const save = useSave((r) => onDone(r.appointment));
-  const submit = (e) => {
-    e.preventDefault();
-    save.run(() => appointmentsApi.link(appointment.id, patient.id));
-  };
+/** The free slots of a doctor's day, to choose one (Move, and giving a time). */
+function SlotChooser({ doctorId, date, value, onChange, exceptId }) {
+  const day = useFetch(doctorId && date ? '/appointments/day' : null, { doctorId, date });
+  if (!doctorId || !date) return null;
+  if (day.error) return <Alert type="error">{day.error}</Alert>;
+  if (!day.data) return <p className="muted" aria-busy="true">Loading the times…</p>;
+  const d = day.data;
+  if (d.leave) return <Alert type="warning">{d.doctor.name} is on leave that day.</Alert>;
+  if (!d.slots.length) return <Alert type="warning">{d.hasTimings ? `${d.doctor.name} has no OPD that day.` : `${d.doctor.name} has not set OPD timings yet.`}</Alert>;
   return (
-    <Modal title={`Link ${appointment.guest?.name ?? 'the booking'} to her record`} onClose={onClose}>
-      <form onSubmit={submit} noValidate>
-        <div className="form-grid">
-          <Alert type="error">{save.error}</Alert>
-          <p className="muted small span-2">Register her under Patients first if she is new. Phone given: {appointment.guest?.phone}.</p>
-          <PatientPicker search={appointmentsApi.patients} value={patient} onChange={setPatient} error={save.fields.patientId} />
-        </div>
-        <Foot onClose={onClose} saving={save.saving} label="Link" disabled={!patient} />
-      </form>
+    <fieldset className="appt-slot-choices">
+      <legend>Time</legend>
+      <div className="appt-slot-grid">
+        {d.slots.map((s) => {
+          const others = s.appointments.filter((a) => a.id !== exceptId);
+          const busy = s.busyWith && s.busyWith.id !== exceptId ? s.busyWith : null;
+          const taken = others.length > 0 || Boolean(busy);
+          return (
+            <button
+              key={s.start}
+              type="button"
+              className={`appt-slot-choice ${taken ? 'is-taken' : ''}`}
+              aria-pressed={value === s.start}
+              disabled={s.past}
+              onClick={() => onChange(s.start)}
+              title={taken ? `Booked: ${others.length ? others.map(whoLabel).join(', ') : busy.name || 'another patient'}` : 'Free'}
+            >
+              {timeLabel(s.start)}
+              {taken && <span className="sr-only"> (booked)</span>}
+            </button>
+          );
+        })}
+      </div>
+      <p className="hint">Greyed-out times have passed. Times with a line are already booked (you will be asked before double booking).</p>
+    </fieldset>
+  );
+}
+
+/** Move an appointment, or give a "needs a time" booking its time. */
+export function MoveDialog({ appointment: a, doctors, today, onClose, onMoved }) {
+  const [doctorId, setDoctorId] = useState(a.doctor.id);
+  const [date, setDate] = useState(a.date >= today ? a.date : today);
+  const [start, setStart] = useState(null);
+  const send = useSend(async (confirm) => {
+    const { appointment } = await api(`/appointments/${a.id}/move`, { method: 'POST', body: { doctorId, date, start, confirm } });
+    onMoved(appointment);
+  });
+  return (
+    <Modal id="appt-move" title={a.needsTime ? `Give ${whoLabel(a)} a time` : `Move ${whoLabel(a)}'s appointment`} onClose={onClose} wide>
+      <p className="muted">
+        Now: {dayLabel(a.date)} · {whenLabel(a)} · {a.doctor.name}
+      </p>
+      <Alert type="error">{send.error}</Alert>
+      <div className="form-grid">
+        <Field label="Doctor" id="appt-move-doctor">
+          <select
+            id="appt-move-doctor"
+            value={doctorId}
+            onChange={(e) => {
+              setDoctorId(e.target.value);
+              setStart(null);
+            }}
+          >
+            {doctors.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Day" id="appt-move-date">
+          <input
+            id="appt-move-date"
+            type="date"
+            min={today}
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setStart(null);
+            }}
+          />
+        </Field>
+      </div>
+      <SlotChooser doctorId={doctorId} date={date} value={start} onChange={setStart} exceptId={a.id} />
+      <WarningBox warning={send.warning} busy={send.busy} onConfirm={() => send.run(true)} confirmLabel="Book anyway" />
+      <div className="row">
+        <button type="button" className="btn btn-primary" disabled={!start || send.busy || Boolean(send.warning)} onClick={() => send.run(false)}>
+          <CalendarCheck aria-hidden="true" /> {send.busy ? 'Saving…' : a.needsTime ? 'Book this time' : 'Move here'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
     </Modal>
   );
 }
 
-// A walk-in: she gets the next token number of the doctor's day and joins the waiting list.
-export function WalkInDialog({ doctors, doctorId: initialDoctor, onClose, onDone }) {
-  const [patient, setPatient] = useState(null);
-  // only a doctor on the list (never an id the list does not have)
-  const [doctorId, setDoctorId] = useState(doctors.some((d) => d.id === initialDoctor) ? initialDoctor : doctors[0]?.id ?? '');
-  const save = useSave((r) => onDone(r.appointment));
-  const submit = (e) => {
-    e.preventDefault();
-    save.run(() => appointmentsApi.token(doctorId, patient.id));
+/**
+ * Take the consultation fee for an appointment in advance (reception): the price from the price list, paid in full.
+ * It goes on her bill of that day with a receipt; her visit then adds no second consultation.
+ */
+export function FeeDialog({ appointment: a, onClose, onTaken }) {
+  const fee = useFetch(`/appointments/${a.id}/fee`);
+  const [mode, setMode] = useState('cash');
+  const [reference, setReference] = useState('');
+  const [scheme, setScheme] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [fields, setFields] = useState({}); // what the server says under a box (e.g. a word that may not be on a bill)
+  const take = async () => {
+    setBusy(true);
+    setError(null);
+    setFields({});
+    try {
+      const out = await api(`/appointments/${a.id}/fee`, { method: 'POST', body: { mode, reference: mode === 'cash' ? '' : reference.trim(), scheme: mode === 'insurance' ? scheme.trim() : '' } });
+      onTaken(out);
+    } catch (err) {
+      setError(err.message);
+      setFields(err.fields ?? {});
+      setBusy(false);
+    }
   };
   return (
-    <Modal title="Walk-in: give a token" onClose={onClose}>
-      <form onSubmit={submit} noValidate>
-        <div className="form-grid">
-          <Alert type="error">{save.error}</Alert>
-          <PatientPicker search={appointmentsApi.patients} value={patient} onChange={setPatient} error={save.fields.patientId} />
-          <Select id="walkin-doctor" label="Doctor" required value={doctorId} onChange={setDoctorId} placeholder="Choose…" options={doctors.map((d) => ({ value: d.id, label: d.name }))} error={save.fields.doctorId} />
-          <p className="muted small span-2">She is marked as arrived today and waits for this doctor.</p>
-        </div>
-        <Foot onClose={onClose} saving={save.saving} label="Give token" disabled={!patient || !doctorId} />
-      </form>
+    <Modal id="appt-fee" title={`Take the fee from ${whoLabel(a)}`} onClose={onClose}>
+      <p>
+        {dayLabel(a.date)} · {whenLabel(a)} · {a.doctor.name}
+      </p>
+      <Alert type="error">{fee.error ?? error}</Alert>
+      {fee.data && (
+        <>
+          <p className="appt-fee-amount">
+            {fee.data.name}: <strong className="tabular">{rupees(fee.data.amountPaise)}</strong>
+          </p>
+          <Field label="Paid by" id="appt-fee-mode">
+            <select id="appt-fee-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
+              {fee.data.modes.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {mode === 'insurance' && (
+            <Field label="Insurance company or scheme" id="appt-fee-scheme" error={fields.scheme}>
+              <input id="appt-fee-scheme" value={scheme} maxLength={80} onChange={(e) => setScheme(e.target.value)} />
+            </Field>
+          )}
+          {mode !== 'cash' && (
+            <Field label={mode === 'insurance' ? 'Claim number (optional)' : 'Reference number (optional)'} id="appt-fee-ref" error={fields.reference}>
+              <input id="appt-fee-ref" value={reference} maxLength={80} onChange={(e) => setReference(e.target.value)} />
+            </Field>
+          )}
+          <p className="hint">The consultation goes on her bill of that day, paid, with a receipt. If the appointment is cancelled, the bill shows the money as due back.</p>
+        </>
+      )}
+      <div className="row">
+        <button type="button" className="btn btn-primary" disabled={!fee.data || busy} onClick={take}>
+          <IndianRupee aria-hidden="true" /> {busy ? 'Saving…' : 'Fee received'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/** Cancel an appointment, with the reason. */
+export function CancelDialog({ appointment: a, onClose, onCancelled }) {
+  const [reason, setReason] = useState('patient_asked');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const cancel = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { appointment } = await api(`/appointments/${a.id}/cancel`, { method: 'POST', body: { reason } });
+      onCancelled(appointment);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal id="appt-cancel" title={`Cancel ${whoLabel(a)}'s appointment`} onClose={onClose}>
+      <p>
+        {dayLabel(a.date)} · {whenLabel(a)} · {a.doctor.name}
+      </p>
+      <Alert type="error">{error}</Alert>
+      <fieldset className="appt-reasons">
+        <legend>Why</legend>
+        {CANCEL_REASONS.map((r) => (
+          <label key={r.value} className="appt-reason">
+            <input type="radio" name="appt-reason" value={r.value} checked={reason === r.value} onChange={() => setReason(r.value)} /> {r.label}
+          </label>
+        ))}
+      </fieldset>
+      {a.patient && <p className="hint">If she agreed to messages, she is told by SMS or WhatsApp.</p>}
+      <div className="row">
+        <button type="button" className="btn btn-danger" onClick={cancel} disabled={busy}>
+          {busy ? 'Cancelling…' : 'Cancel the appointment'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose} autoFocus>
+          Keep it
+        </button>
+      </div>
     </Modal>
   );
 }

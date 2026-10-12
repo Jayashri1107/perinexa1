@@ -1,0 +1,186 @@
+/*
+ * Printed documents (care-plan copies, consent forms): the print preview on screen and the A4 page on paper.
+ * Paper is print-friendly: black text on white, Jost (Mukta for Hindi and Marathi), thin grey rules, and
+ * colour only where it carries meaning (the teal "next check-up" box, the Draft band – each with an icon
+ * and words, so they read the same in black and white). Tokens only, except @page (see below).
+ */
+
+/* ---------- Print preview: the document over the whole app, with Print and Close ---------- */
+/* Under dialogs (z-index 100), so the "Are you still there?" warning stays on top. */
+.pv {
+  position: fixed; inset: 0; z-index: 90; overflow-y: auto;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-6);
+  padding: 0 var(--space-4) var(--space-12); background: var(--mist-100);
+}
+.pv-bar {
+  position: sticky; top: 0; z-index: 1; flex-shrink: 0; width: 100%; max-width: calc(var(--print-sheet-width) + 2 * var(--space-6));
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-6);
+  margin-top: var(--space-4); padding: var(--space-4) var(--space-6);
+  background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+}
+.pv-bar h2 { margin: 0; }
+.pv-bar .hint { margin: var(--space-1) 0 0; }
+.pv-bar .row { margin: 0; }
+.pv-bar-text { flex: 1 1 320px; min-width: 0; }
+.pv-bar .pv-controls { margin-top: var(--space-3); }
+/* The language of a printout the patient takes home (patient copy of the care plan, discharge card) */
+.pv-lang { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-top: var(--space-3); }
+.pv-lang-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--ink); }
+.pv-actions { flex-wrap: wrap; }
+.pv-bar .alert { flex-basis: 100%; margin: 0; }
+.pv-ask { flex-basis: 100%; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--mist-50); }
+.pv-ask p { margin: 0 0 var(--space-2); }
+/* The sheet: A4 width with the page margin around the text; narrower screens scroll it sideways. It never
+   shrinks to the screen's height (the whole preview scrolls, not the sheet). */
+.pv-sheet {
+  flex-shrink: 0; width: 100%; max-width: var(--print-sheet-width); overflow-x: auto;
+  padding: var(--print-sheet-margin); background: var(--surface); box-shadow: var(--shadow-card);
+}
+.pv-sheet-a5 { max-width: var(--print-sheet-width-a5); }
+
+/* ---------- The document ---------- */
+.pdoc {
+  color: var(--print-ink); font-family: var(--font-print); font-size: var(--fs-print-body); line-height: var(--lh-print-body);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; /* keep the letterhead mark and the Draft band */
+}
+.pdoc :lang(hi), .pdoc :lang(mr) { font-family: var(--font-deva); font-size: var(--fs-print-deva); line-height: var(--lh-print-deva); }
+.pdoc h1, .pdoc h2, .pdoc h3 { color: var(--print-ink); }
+.pdoc h1 { margin: var(--space-4) 0 var(--space-2); font-size: var(--fs-print-h1); line-height: var(--lh-print-h1); font-weight: 600; }
+.pdoc h2 { margin: var(--space-4) 0 var(--space-2); font-size: var(--fs-print-h2); line-height: var(--lh-print-h2); font-weight: 600; break-after: avoid; }
+.pdoc p { margin: 0 0 var(--space-2); }
+.pdoc svg.lucide { width: 14px; height: 14px; }
+
+/* The letterhead at print sizes */
+.pdoc .lh { padding-bottom: var(--space-2); }
+.pdoc .lh-mark { width: 36px; height: 36px; }
+.pdoc .lh-mark svg.lucide { width: 20px; height: 20px; }
+.pdoc .lh-name { color: var(--print-ink); font-size: var(--fs-print-h1); line-height: var(--lh-print-h1); }
+.pdoc .lh-tagline { font-size: var(--fs-print-body); line-height: var(--lh-print-body); }
+.pdoc .lh-line, .pdoc .lh-reg, .pdoc .lh-footer { font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.pdoc .lh-footer { color: var(--print-ink); }
+.pdoc .lh-sign { color: var(--print-ink); font-size: var(--fs-print-small); line-height: var(--lh-print-small); margin-top: var(--space-8); break-inside: avoid; }
+.pdoc .lh-sign-name { font-size: var(--fs-print-body); line-height: var(--lh-print-body); }
+
+/* The frame: its header (the Draft band) and footer (patient and print details) repeat on every page. */
+.pframe { width: 100%; border-collapse: collapse; }
+.pframe > thead > tr > td, .pframe > tbody > tr > td, .pframe > tfoot > tr > td { padding: 0; border: none; vertical-align: top; }
+.pframe > tfoot > tr > td { padding-top: var(--space-4); }
+.pdoc-foot {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--space-4);
+  padding-top: var(--space-1); border-top: 1px solid var(--print-rule);
+  font-size: var(--fs-print-small); line-height: var(--lh-print-small);
+}
+.pdoc-draft {
+  display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); padding: var(--space-1) var(--space-3);
+  border: 2px solid var(--status-watch-fg); border-radius: var(--radius-sm); color: var(--print-ink); font-weight: 600;
+}
+.pdoc-draft svg.lucide { color: var(--status-watch-fg); }
+
+/* Title and the patient's details under the letterhead */
+.pdoc-title { text-align: center; }
+.pdoc-facts {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--print-rule); border-bottom: 1px solid var(--print-rule);
+}
+.pdoc-facts > div { min-width: 0; }
+.pdoc-facts dt { font-size: var(--fs-print-small); line-height: var(--lh-print-small); color: var(--slate-600); }
+.pdoc-facts dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.pdoc-facts .pdoc-wide { grid-column: 1 / -1; }
+
+/* Tables of items */
+.ptable.pdoc-table { width: 100%; border-collapse: collapse; margin: 0 0 var(--space-4); }
+.pdoc-table th, .pdoc-table td { padding: var(--space-1) var(--space-2); text-align: left; vertical-align: top; border-bottom: 1px solid var(--print-rule); }
+.pdoc-table th { font-size: var(--fs-print-small); line-height: var(--lh-print-small); font-weight: 600; border-bottom: 1.5px solid var(--print-ink); }
+.pdoc-table tr { break-inside: avoid; }
+.pdoc-table .pdoc-group td { padding-top: var(--space-3); font-weight: 600; border-bottom: 1.5px solid var(--print-ink); }
+.pdoc-table .pdoc-col-when { width: 23%; }
+.pdoc-table .pdoc-col-status { width: 22%; }
+.pdoc-table .pdoc-col-details { width: 28%; }
+.pdoc-kind { display: block; font-size: var(--fs-print-small); line-height: var(--lh-print-small); color: var(--slate-600); }
+.pdoc-sub { display: block; font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+/* A line in Marathi or Hindi under its English (patient copy, discharge card) */
+.pdoc-block { display: block; }
+.pdoc-kind :lang(mr), .pdoc-kind :lang(hi), .pdoc-sub:lang(mr), .pdoc-sub:lang(hi), .pdoc-small :lang(mr), .pdoc-small :lang(hi), .pdoc-table th :lang(mr), .pdoc-table th :lang(hi), .pdoc-facts dt :lang(mr), .pdoc-facts dt :lang(hi) {
+  font-size: var(--fs-print-small); line-height: var(--lh-print-small);
+}
+.pdoc-note:lang(mr), .pdoc-note:lang(hi) { font-size: var(--fs-print-small); line-height: var(--lh-print-deva); }
+.pdoc-tabular { font-variant-numeric: tabular-nums; }
+
+/* The next check-up (teal marks what is scheduled) and boxed advice */
+.pdoc-next {
+  display: flex; align-items: flex-start; gap: var(--space-2); margin: 0 0 var(--space-4); padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--teal-700); border-radius: var(--radius-sm); break-inside: avoid;
+}
+.pdoc-next svg.lucide { margin-top: 2px; color: var(--teal-700); }
+.pdoc-box { margin: 0 0 var(--space-4); padding: var(--space-2) var(--space-3); border: 1px solid var(--print-rule); border-radius: var(--radius-sm); break-inside: avoid; }
+.pdoc-box h2 { margin-top: 0; }
+.pdoc-list { margin: 0; padding-left: var(--space-6); }
+.pdoc-list li + li { margin-top: var(--space-1); }
+.pdoc-note { font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+
+/* ---------- Consent forms: English and Marathi / Hindi side by side ---------- */
+.pdoc p.pdoc-title-2 { margin: 0 0 var(--space-3); font-size: var(--fs-print-h2); line-height: var(--lh-print-deva); font-weight: 600; }
+.ptable.pdoc-clauses { width: 100%; border-collapse: collapse; margin: 0 0 var(--space-4); }
+.pdoc-clauses td { padding: var(--space-1) var(--space-2); text-align: left; vertical-align: top; border-bottom: 1px solid var(--print-rule); }
+.pdoc-clauses tr { break-inside: avoid; }
+.pdoc-clauses .pdoc-num { width: 7mm; padding-left: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pdoc-clauses.pdoc-two td:not(.pdoc-num) { width: 48%; }
+/* Filled-in values (names, numbers, what the doctor typed) look the same in both columns */
+.pdoc-clauses td:lang(mr) strong, .pdoc-clauses td:lang(hi) strong { font-family: var(--font-print); font-size: var(--fs-print-body); }
+/* A blank to fill in by hand */
+.pdoc-line { display: inline-block; min-width: 40mm; border-bottom: 1px solid var(--print-ink); }
+.pdoc-line::after { content: '\00a0'; }
+/* Who signs: boxes two by two; the parent's and the interpreter's run the full width */
+.pdoc-sigs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); margin-top: var(--space-4); }
+.pdoc-sig { padding: var(--space-2) var(--space-3) var(--space-3); border: 1px solid var(--print-rule); border-radius: var(--radius-sm); break-inside: avoid; }
+.pdoc-sig-wide { grid-column: 1 / -1; }
+.pdoc-sig-wide .pdoc-sig-lines { display: grid; grid-template-columns: repeat(auto-fit, minmax(75mm, 1fr)); gap: 0 var(--space-4); }
+.pdoc-nowrap { white-space: nowrap; }
+.pdoc h2.pdoc-sig-title { margin: 0; font-size: var(--fs-print-body); line-height: var(--lh-print-body); }
+.pdoc-sig-line { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 var(--space-2); margin-top: var(--space-4); }
+.pdoc-sig-label { font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.pdoc-sig-label :lang(hi), .pdoc-sig-label :lang(mr) { font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.pdoc-sig-value { flex: 1 1 auto; }
+.pdoc-sig-fill { flex: 1 1 30mm; min-width: 30mm; border-bottom: 1px solid var(--print-ink); }
+.pdoc-sig-fill::after { content: '\00a0'; }
+
+/* ---------- Copy of a patient's whole record: parts under ruled headings, entries in thin boxes ---------- */
+/* (a heading is never cut from the rule under it at the end of a page) */
+.rc-doc h2.rc-heading { margin: var(--space-6) 0 var(--space-2); padding-bottom: var(--space-1); border-bottom: 1.5px solid var(--print-ink); break-inside: avoid; }
+.rc-doc h3 { margin: var(--space-3) 0 var(--space-1); font-size: var(--fs-print-body); line-height: var(--lh-print-body); font-weight: 600; break-after: avoid; break-inside: avoid; }
+.rc-doc .pdoc-details { margin: 0 0 var(--space-2); }
+.rc-doc .pdoc-details > div:last-child { border-bottom: none; }
+.rc-entry { margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--print-rule); border-radius: var(--radius-sm); }
+.rc-entry h3 { margin-top: 0; }
+.rc-entry > :last-child { margin-bottom: 0; }
+.rc-status { font-weight: 400; }
+.rc-none { color: var(--slate-600); }
+.rc-sub { margin: var(--space-2) 0 var(--space-1); font-size: var(--fs-print-small); line-height: var(--lh-print-small); font-weight: 600; break-after: avoid; }
+.rc-plan, .rc-stay { margin: 0 0 var(--space-4); }
+.rc-table td:first-child { white-space: nowrap; }
+.rc-doc p.rc-end { margin-top: var(--space-6); text-align: center; }
+
+/* ---------- Printing: only the document ---------- */
+@media print {
+  /* Browsers can't read CSS variables in @page: this is --print-sheet-margin on A4. */
+  @page { size: A4; margin: 12mm; }
+  body.pv-open { background: var(--surface); }
+  body.pv-open #root { display: none !important; }
+  body.pv-open .pv { position: static; display: block; overflow: visible; padding: 0; background: none; }
+  body.pv-open .pv-bar { display: none !important; }
+  body.pv-open .pv-sheet { max-width: none; overflow: visible; padding: 0 !important; box-shadow: none; }
+}
+
+/* ---------- Preview on small screens (paper always keeps the A4 layout) ---------- */
+@media screen and (max-width: 720px) {
+  .pv { padding: 0 var(--space-2) var(--space-8); gap: var(--space-4); }
+  .pv-bar { padding: var(--space-4); }
+  .pv-sheet { padding: var(--space-4); }
+  .pdoc-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* On a phone the two languages stack; paper always keeps them side by side */
+  .pdoc-clauses.pdoc-two tr { display: grid; grid-template-columns: 7mm minmax(0, 1fr); border-bottom: 1px solid var(--print-rule); }
+  .pdoc-clauses.pdoc-two td { display: block; border-bottom: none; }
+  .pdoc-clauses.pdoc-two td:not(.pdoc-num) { width: auto; }
+  .pdoc-clauses.pdoc-two td:last-child { grid-column: 2; }
+  .pdoc-sigs { grid-template-columns: minmax(0, 1fr); }
+}

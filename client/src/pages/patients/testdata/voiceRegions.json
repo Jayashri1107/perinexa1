@@ -1,0 +1,1499 @@
+{
+  "about": "Regional voice cases: 8 per variety of Indian English (fake data).",
+  "now": "2026-09-28T06:00:00Z",
+  "tz": "Asia/Kolkata",
+  "format": {
+    "now": "2026-09-28T06:00:00Z (11:30 in India); dates are read in Asia/Kolkata time",
+    "case": "{ id, region, careType, text, expected: { values, confirm?, questions?, notes?, noValue? }, why }",
+    "values": "Form paths that must be filled with exactly this value. Scalars: fullName, ageYears, phone (10 digits), address, motherName, pregnancy.lmp, pregnancy.scanEdd (YYYY-MM-DD), obstetric.gravida|para|living|abortions|previousCaesareans, obstetric.complicationsReviewed, medical.bloodGroup, medical.allergies, medical.heightCm, medical.weightKg, medical.conditionsReviewed, newborn.birthAt (local YYYY-MM-DDTHH:MM), newborn.birthWeightGrams, newborn.sex. Lists: medical.conditions and obstetric.pastComplications (tick-box keys, exact set); medical.otherConditions and notes (one case-insensitive regex per \"; \"-separated item, exact set). fullName, address, motherName and allergies compare ignoring case and punctuation; numbers compare as numbers; phone compares digits.",
+    "strict": "Any path filled that is not in values or confirm counts as WRONG (an extra tick, note, other condition or field).",
+    "confirm": "{ path: { value, ask } }: blood group and Rh heard by voice go to the confirmation card (plan 2.6, owner decision 9). Correct if the path is filled with value, or left empty with a question matching the regex ask. Filled with another value is WRONG.",
+    "questions": "Regexes (case-insensitive) that must each match one question (\"prompt | heard | option labels\"). Extra questions are allowed.",
+    "notes": "Regexes that must each match one message in notes (or corrections). Extra messages are allowed.",
+    "noValue": "Paths that must stay empty because the safe result is a question or note (documentation; any unexpected value is wrong anyway).",
+    "scoring": "correct = no wrong and everything expected present; safe miss = no wrong but something expected missing; wrong = any different or unexpected value."
+  },
+  "count": 96,
+  "cases": [
+    {
+      "id": "HB01",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "naam Sunaina Mishra pachees saal ki hai G1 P0",
+      "expected": {
+        "values": {
+          "fullName": "Sunaina Mishra",
+          "ageYears": "25",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0"
+        }
+      },
+      "why": "naam = name; pachees saal = 25 years"
+    },
+    {
+      "id": "HB02",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "G tree P do L do A hero LMP 10 by 7 by 2026",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0",
+          "pregnancy.lmp": "2026-07-10"
+        }
+      },
+      "why": "tree, do, hero in the formula; \"10 by 7 by 2026\""
+    },
+    {
+      "id": "HB03",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "G3 P1 L0 A1 previous is still birth at 36 weeks",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "1",
+          "obstetric.living": "0",
+          "obstetric.abortions": "1",
+          "obstetric.pastComplications": [
+            "stillbirth_or_neonatal_death"
+          ]
+        }
+      },
+      "why": "vowel before s-cluster: \"is still birth\""
+    },
+    {
+      "id": "HB04",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "blood group be positive BDRL non reactive HIV non reactive",
+      "expected": {
+        "values": {
+          "notes": [
+            "^VDRL non-reactive, HIV non-reactive$"
+          ]
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "B+",
+            "ask": "\\bB\\s*(rh\\s*)?(\\+|pos)"
+          }
+        }
+      },
+      "why": "be positive; BDRL = VDRL (Bihar v→b); owner decision (29 Sep 2026): negative screening results are one note"
+    },
+    {
+      "id": "HB05",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "BP ki problem hai 2 saal se tablets le rahi hai",
+      "expected": {
+        "values": {},
+        "questions": [
+          "blood pressure|hypertension|\\bBP\\b"
+        ],
+        "noValue": [
+          "medical.conditions",
+          "ageYears"
+        ]
+      },
+      "why": "owner decision 1: BP as an illness is asked"
+    },
+    {
+      "id": "HB06",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "LMP do mahine pehle G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        },
+        "questions": [
+          "LMP|month|mahine"
+        ],
+        "noValue": [
+          "pregnancy.lmp"
+        ]
+      },
+      "why": "approximate date in Hindi is asked"
+    },
+    {
+      "id": "HB07",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "sau Kiran Yadav 31 saal mobile nine eight three five zero double one four seven two",
+      "expected": {
+        "values": {
+          "fullName": "Kiran Yadav",
+          "ageYears": "31",
+          "phone": "9835011472"
+        }
+      },
+      "why": "title \"sau\" dropped"
+    },
+    {
+      "id": "HB08",
+      "region": "Hindi belt",
+      "careType": "antenatal",
+      "text": "Sirodkar stitch put at 14 weeks G2 P0 L0 A1 previous miss carriage at 18 weeks",
+      "expected": {
+        "values": {
+          "notes": [
+            "cerclage"
+          ],
+          "obstetric.gravida": "2",
+          "obstetric.para": "0",
+          "obstetric.living": "0",
+          "obstetric.abortions": "1"
+        }
+      },
+      "why": "sh→s: Sirodkar"
+    },
+    {
+      "id": "PB01",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "patient name Harpreet Kaur age 27 husband Gurdeep Singh G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "fullName": "Harpreet Kaur",
+          "ageYears": "27",
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "husband's name is not the patient's"
+    },
+    {
+      "id": "PB02",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "gravida teen para do living do",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2"
+        }
+      },
+      "why": "teen/do inside the formula"
+    },
+    {
+      "id": "PB03",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "is scan shows placenta pravia G3 P2 L2 A0 28 weeks",
+      "expected": {
+        "values": {
+          "notes": [
+            "praevia|previa"
+          ],
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "prothesis \"is scan\"; \"pravia\""
+    },
+    {
+      "id": "PB04",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "age seventy G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        },
+        "questions": [
+          "age|70|17"
+        ],
+        "noValue": [
+          "ageYears"
+        ]
+      },
+      "why": "teen/ty: seventy in pregnancy is asked"
+    },
+    {
+      "id": "PB05",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "height five feet three inches weight sixty two kilo",
+      "expected": {
+        "values": {
+          "medical.heightCm": "160",
+          "medical.weightKg": "62"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "PB06",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "known case of hyper tension since 3 years",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "hypertension"
+          ]
+        }
+      },
+      "why": "split word \"hyper tension\"; \"since 3 years\" is not an age"
+    },
+    {
+      "id": "PB07",
+      "region": "Punjab",
+      "careType": "antenatal",
+      "text": "LMP 4th July 2026 POG sixty weeks",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-07-04"
+        },
+        "questions": [
+          "week|60|16"
+        ]
+      },
+      "why": "teen/ty: 60 weeks is asked"
+    },
+    {
+      "id": "PB08",
+      "region": "Punjab",
+      "careType": "gynaecology",
+      "text": "name Simran Gill aged 38 heavy periods since 6 months fibroids seen on is scan",
+      "expected": {
+        "values": {
+          "fullName": "Simran Gill",
+          "ageYears": "38",
+          "medical.otherConditions": [
+            "fibroid"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "GJ01",
+      "region": "Gujarat",
+      "careType": "gynaecology",
+      "text": "pibroid uterus with menorrhagia aged 42",
+      "expected": {
+        "values": {
+          "medical.otherConditions": [
+            "fibroid"
+          ],
+          "ageYears": "42"
+        }
+      },
+      "why": "f→p: pibroid"
+    },
+    {
+      "id": "GJ02",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "Mrs Hetal Patel age 26 years resident of Maninagar Ahmedabad mobile 97245 double one zero three eight",
+      "expected": {
+        "values": {
+          "fullName": "Hetal Patel",
+          "ageYears": "26",
+          "address": "Maninagar Ahmedabad",
+          "phone": "9724511038"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "GJ03",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "G2 P1 L1 A jero previous sezarian 2021",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "obstetric.previousCaesareans": "1"
+        }
+      },
+      "why": "z→j: jero; sezarian"
+    },
+    {
+      "id": "GJ04",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "group A negative anti D given at 28 weeks ICT negative",
+      "expected": {
+        "values": {
+          "notes": [
+            "anti-?d",
+            "ICT negative"
+          ]
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "A-",
+            "ask": "\\bA\\s*(rh\\s*)?(-|neg)"
+          }
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "GJ05",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "G tran P be L be A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "Gujarati tran = 3, be = 2 inside the formula"
+    },
+    {
+      "id": "GJ06",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "known case of hypothyroid on Thyrox 50 pholic acid started",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "thyroid"
+          ]
+        }
+      },
+      "why": "pholic acid ticks nothing"
+    },
+    {
+      "id": "GJ07",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "shugar in pregnancy on diet",
+      "expected": {
+        "values": {
+          "notes": [
+            "gestational diabetes"
+          ]
+        }
+      },
+      "why": "s→sh hyper-correction"
+    },
+    {
+      "id": "GJ08",
+      "region": "Gujarat",
+      "careType": "antenatal",
+      "text": "LMP 12 7 2026 ok theek hai G1 P0",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-07-12",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0"
+        }
+      },
+      "why": "spaced date; \"theek hai\" filler"
+    },
+    {
+      "id": "MH01",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "para don living don gravida 3 abortion 0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "Marathi don = 2 inside the formula"
+    },
+    {
+      "id": "MH02",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "name Varsha Jadhav age 24 address flat 12 B wing Sai Krupa society Andheri east",
+      "expected": {
+        "values": {
+          "fullName": "Varsha Jadhav",
+          "ageYears": "24",
+          "address": "Flat 12 B Wing Sai Krupa Society Andheri East"
+        }
+      },
+      "why": "Varsha is a name, never \"years\""
+    },
+    {
+      "id": "MH03",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "LMP 10 March 2026 POG 28 veeks",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-03-10"
+        }
+      },
+      "why": "v/w: veeks"
+    },
+    {
+      "id": "MH04",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "hypo tyroid on thyronorm 25 G2 P1 L1 A0 previous normal delivery",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "thyroid"
+          ],
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "MH05",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "LMP 5 by 8 by 2026 haan theek hai G1 P0",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-08-05",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "MH06",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "Sau Madhuri Shinde 29 years resident of Dombivli east",
+      "expected": {
+        "values": {
+          "fullName": "Madhuri Shinde",
+          "ageYears": "29",
+          "address": "Dombivli East"
+        }
+      },
+      "why": "title \"Sau\" dropped"
+    },
+    {
+      "id": "MH07",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "gravida 2 para 1 living 1 previous LSCS wet 58 kg",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.previousCaesareans": "1",
+          "medical.weightKg": "58"
+        }
+      },
+      "why": "\"wet 58 kg\" = weight"
+    },
+    {
+      "id": "MH08",
+      "region": "Maharashtra",
+      "careType": "antenatal",
+      "text": "address sector 17 Vashi Navi Mumbai name Rohini Patil age 30",
+      "expected": {
+        "values": {
+          "address": "Sector 17 Vashi Navi Mumbai",
+          "fullName": "Rohini Patil",
+          "ageYears": "30"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "WB01",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "prebious LSCS G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "obstetric.previousCaesareans": "1"
+        }
+      },
+      "why": "v→b: prebious"
+    },
+    {
+      "id": "WB02",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "history of shiphilis treated in 2022 VDRL non reactive now",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "syphilis"
+          ],
+          "notes": [
+            "^VDRL non-reactive$"
+          ]
+        }
+      },
+      "why": "s→sh: shiphilis; the current test is non-reactive; owner decision (29 Sep 2026): negative screening results are one note"
+    },
+    {
+      "id": "WB03",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "mobile nine eight three one seben four five six two zero",
+      "expected": {
+        "values": {
+          "phone": "9831745620"
+        }
+      },
+      "why": "seben = 7"
+    },
+    {
+      "id": "WB04",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "para dui living dui gravida 3 abortion jiro",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "Bengali dui = 2; jiro = 0"
+    },
+    {
+      "id": "WB05",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "previous pregnancy eclamshia G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.pastComplications": [
+            "pre_eclampsia"
+          ],
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "WB06",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "group B are H negative indirect Coombs negative",
+      "expected": {
+        "values": {
+          "notes": [
+            "ICT negative|coombs"
+          ]
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "B-",
+            "ask": "\\bB\\s*(rh\\s*)?(-|neg)"
+          }
+        }
+      },
+      "why": "\"are H\" = Rh"
+    },
+    {
+      "id": "WB07",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "name Mousumi Banerjee age 27 resident of Salt Lake Kolkata",
+      "expected": {
+        "values": {
+          "fullName": "Mousumi Banerjee",
+          "ageYears": "27",
+          "address": "Salt Lake Kolkata"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "WB08",
+      "region": "Bengal",
+      "careType": "antenatal",
+      "text": "enemia Hb 8 point 5 on iron sucrose",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "anaemia"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "OD01",
+      "region": "Odisha",
+      "careType": "antenatal",
+      "text": "HIV non reactive BDRL non reactive HBsAg negative blood group AB positive",
+      "expected": {
+        "values": {
+          "notes": [
+            "^HIV non-reactive, VDRL non-reactive, HBsAg negative$"
+          ]
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "AB+",
+            "ask": "\\bAB\\s*(rh\\s*)?(\\+|pos)"
+          }
+        }
+      },
+      "why": "BDRL; all non-reactive; owner decision (29 Sep 2026): negative screening results are one note"
+    },
+    {
+      "id": "OD02",
+      "region": "Odisha",
+      "careType": "antenatal",
+      "text": "Sirodkar stitch in situ 20 weeks",
+      "expected": {
+        "values": {
+          "notes": [
+            "cerclage"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "OD03",
+      "region": "Odisha",
+      "careType": "antenatal",
+      "text": "gravida tini para dui living dui abortion 0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "Odia tini = 3, dui = 2"
+    },
+    {
+      "id": "OD04",
+      "region": "Odisha",
+      "careType": "antenatal",
+      "text": "name Subhashree Mohanty age 25 address Bapuji Nagar Bhubaneswar",
+      "expected": {
+        "values": {
+          "fullName": "Subhashree Mohanty",
+          "ageYears": "25",
+          "address": "Bapuji Nagar Bhubaneswar"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "OD05",
+      "region": "Odisha",
+      "careType": "antenatal",
+      "text": "known case of diabitis on insulin before pregnancy",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "diabetes"
+          ]
+        }
+      },
+      "why": "diabitis"
+    },
+    {
+      "id": "OD06",
+      "region": "Odisha",
+      "careType": "antenatal",
+      "text": "G2 P0 L0 abortion eka at 8 weeks",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "0",
+          "obstetric.living": "0",
+          "obstetric.abortions": "1"
+        }
+      },
+      "why": "Odia eka = 1 after abortion"
+    },
+    {
+      "id": "OD07",
+      "region": "Odisha",
+      "careType": "antenatal",
+      "text": "bomiting since 3 days hyperemesis admitted",
+      "expected": {
+        "values": {
+          "notes": [
+            "hyperemesis"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "OD08",
+      "region": "Odisha",
+      "careType": "postnatal",
+      "text": "delivered by LSCS on 25th September for CPD blood group O positive",
+      "expected": {
+        "values": {
+          "notes": [
+            "caesarean",
+            "CPD"
+          ]
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "O+",
+            "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+          }
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "NE01",
+      "region": "Assam/North-East",
+      "careType": "antenatal",
+      "text": "history of zondis 2 years back G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "liver_disease"
+          ],
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "j→z: zondis = jaundice"
+    },
+    {
+      "id": "NE02",
+      "region": "Assam/North-East",
+      "careType": "antenatal",
+      "text": "grabida 2 para 1 living 1",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1"
+        }
+      },
+      "why": "v→b: grabida"
+    },
+    {
+      "id": "NE03",
+      "region": "Assam/North-East",
+      "careType": "gynaecology",
+      "text": "fibloid uterus aged 40",
+      "expected": {
+        "values": {
+          "medical.otherConditions": [
+            "fibroid"
+          ],
+          "ageYears": "40"
+        }
+      },
+      "why": "r/l: fibloid"
+    },
+    {
+      "id": "NE04",
+      "region": "Assam/North-East",
+      "careType": "antenatal",
+      "text": "name Lal rem ruati age 30 resident of Aizawl",
+      "expected": {
+        "values": {
+          "fullName": "Lal Rem Ruati",
+          "ageYears": "30",
+          "address": "Aizawl"
+        }
+      },
+      "why": "a split Mizo name is kept as said"
+    },
+    {
+      "id": "NE05",
+      "region": "Assam/North-East",
+      "careType": "antenatal",
+      "text": "LMP 5th Augus 2026 G1 P0",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-08-05",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0"
+        }
+      },
+      "why": "dropped final consonant: Augus"
+    },
+    {
+      "id": "NE06",
+      "region": "Assam/North-East",
+      "careType": "antenatal",
+      "text": "blood group A are H negative anti D given at 28 week",
+      "expected": {
+        "values": {
+          "notes": [
+            "anti-?d"
+          ]
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "A-",
+            "ask": "\\bA\\s*(rh\\s*)?(-|neg)"
+          }
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "NE07",
+      "region": "Assam/North-East",
+      "careType": "antenatal",
+      "text": "polic acid tablets hypothyroid on Eltroxin 25",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "thyroid"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "NE08",
+      "region": "Assam/North-East",
+      "careType": "antenatal",
+      "text": "previous see section in 2020 G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "obstetric.previousCaesareans": "1"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "TN01",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "CDM on diet G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        },
+        "questions": [
+          "GDM|gestational"
+        ],
+        "noValue": [
+          "notes"
+        ]
+      },
+      "why": "close short form: CDM is asked, never filled"
+    },
+    {
+      "id": "TN02",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "kravida 3 bara 2 living 2",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2"
+        }
+      },
+      "why": "g→k, p→b"
+    },
+    {
+      "id": "TN03",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "previous L S C yes 3 years back",
+      "expected": {
+        "values": {
+          "obstetric.previousCaesareans": "1",
+          "notes": [
+            "^Previous LSCS 3 years back$"
+          ]
+        }
+      },
+      "why": "S said \"yes\"; owner decision (29 Sep 2026): a previous finding's \"N years back\" is a note"
+    },
+    {
+      "id": "TN04",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "DCDA twins you 22 weeks",
+      "expected": {
+        "values": {
+          "notes": [
+            "twin"
+          ]
+        }
+      },
+      "why": "final -u heard as \"you\""
+    },
+    {
+      "id": "TN05",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "mobile nine four four four zero pive one two three eight",
+      "expected": {
+        "values": {
+          "phone": "9444051238"
+        }
+      },
+      "why": "pive = 5"
+    },
+    {
+      "id": "TN06",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "name R Kavitha age 29 G1 P0",
+      "expected": {
+        "values": {
+          "fullName": "R Kavitha",
+          "ageYears": "29",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0"
+        }
+      },
+      "why": "an initial is never decoded as Rh"
+    },
+    {
+      "id": "TN07",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "LMP yeleven July 2026",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-07-11"
+        }
+      },
+      "why": "yeleven = 11"
+    },
+    {
+      "id": "TN08",
+      "region": "Tamil Nadu",
+      "careType": "antenatal",
+      "text": "para rendu living rendu gravida 3 abortion 0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "Tamil rendu = 2 inside the formula"
+    },
+    {
+      "id": "AP01",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "G2 P1 L1 A0 previous LSCS you",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "obstetric.previousCaesareans": "1"
+        }
+      },
+      "why": "final -u heard as \"you\""
+    },
+    {
+      "id": "AP02",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "previous sijerian 2 years back",
+      "expected": {
+        "values": {
+          "obstetric.previousCaesareans": "1",
+          "notes": [
+            "^Previous caesarean 2 years back$"
+          ]
+        }
+      },
+      "why": "owner decision (29 Sep 2026): a previous finding's \"N years back\" is a note"
+    },
+    {
+      "id": "AP03",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "h/o zaundice in 2019 G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "liver_disease"
+          ],
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "j↔z"
+    },
+    {
+      "id": "AP04",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "gravida moodu para rendu living rendu",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2"
+        }
+      },
+      "why": "Telugu moodu = 3, rendu = 2"
+    },
+    {
+      "id": "AP05",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "hypo thairoid on Thyronorm 50 mcg",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "thyroid"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "AP06",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "gravida tree para 2 living 2 abortion 0",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "AP07",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "name Sunitha Reddy aged 23 resident of Kukatpally Hyderabad",
+      "expected": {
+        "values": {
+          "fullName": "Sunitha Reddy",
+          "ageYears": "23",
+          "address": "Kukatpally Hyderabad"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "AP08",
+      "region": "Andhra/Telangana",
+      "careType": "antenatal",
+      "text": "G D yem on metformin",
+      "expected": {
+        "values": {
+          "notes": [
+            "gestational diabetes"
+          ]
+        }
+      },
+      "why": "M said \"yem\" beside real letters"
+    },
+    {
+      "id": "KA01",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "yeddie 12 January 2027 by scan",
+      "expected": {
+        "values": {
+          "pregnancy.scanEdd": "2027-01-12"
+        }
+      },
+      "why": "EDD said \"yeddie\""
+    },
+    {
+      "id": "KA02",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "gravida 3 para eradu living eradu",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2"
+        }
+      },
+      "why": "Kannada eradu = 2"
+    },
+    {
+      "id": "KA03",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "age 26 only G1 P0 LMP 2nd August 2026",
+      "expected": {
+        "values": {
+          "ageYears": "26",
+          "obstetric.gravida": "1",
+          "obstetric.para": "0",
+          "pregnancy.lmp": "2026-08-02"
+        }
+      },
+      "why": "trailing \"only\""
+    },
+    {
+      "id": "KA04",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "G3 P1 L1 a portion 1",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "1"
+        }
+      },
+      "why": "\"a portion\" = abortion"
+    },
+    {
+      "id": "KA05",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "name Pavithra Gowda age 28 address Vijayanagar Mysore",
+      "expected": {
+        "values": {
+          "fullName": "Pavithra Gowda",
+          "ageYears": "28",
+          "address": "Vijayanagar Mysore"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "KA06",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "gravida mooru para 2 living 2",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2"
+        }
+      },
+      "why": "Kannada mooru = 3"
+    },
+    {
+      "id": "KA07",
+      "region": "Karnataka",
+      "careType": "gynaecology",
+      "text": "ovarian cyst right side aged 35 known asthmatic",
+      "expected": {
+        "values": {
+          "medical.otherConditions": [
+            "ovarian cyst"
+          ],
+          "ageYears": "35",
+          "medical.conditions": [
+            "asthma"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "KA08",
+      "region": "Karnataka",
+      "careType": "antenatal",
+      "text": "E double D 20 February 2027 as per dating scan",
+      "expected": {
+        "values": {
+          "pregnancy.scanEdd": "2027-02-20"
+        }
+      },
+      "why": "\"E double D\""
+    },
+    {
+      "id": "KL01",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "name K P Sreeja age 32 G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "fullName": "K P Sreeja",
+          "ageYears": "32",
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "initials are never decoded"
+    },
+    {
+      "id": "KL02",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "mobile nine four four seven zero yeight one two three four",
+      "expected": {
+        "values": {
+          "phone": "9447081234"
+        }
+      },
+      "why": "yeight = 8 in a phone number"
+    },
+    {
+      "id": "KL03",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "para randu living randu gravida 3",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2"
+        }
+      },
+      "why": "Malayalam randu = 2"
+    },
+    {
+      "id": "KL04",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "DCDA twins you IVF conception",
+      "expected": {
+        "values": {
+          "notes": [
+            "twin",
+            "IVF"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "KL05",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "address Pattom Thiruvananthapuram name Anjali Nair age 27",
+      "expected": {
+        "values": {
+          "address": "Pattom Thiruvananthapuram",
+          "fullName": "Anjali Nair",
+          "ageYears": "27"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "KL06",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "tyroid problem on Eltroxin",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "thyroid"
+          ]
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "KL07",
+      "region": "Kerala",
+      "careType": "antenatal",
+      "text": "oligo hydramnios AFI 6 at 34 weeks",
+      "expected": {
+        "values": {
+          "notes": [
+            "oligohydramnios"
+          ]
+        }
+      },
+      "why": "never polyhydramnios"
+    },
+    {
+      "id": "KL08",
+      "region": "Kerala",
+      "careType": "postnatal",
+      "text": "wentouse delivery yesterday G1 P1 L1 A0",
+      "expected": {
+        "values": {
+          "notes": [
+            "instrumental"
+          ],
+          "obstetric.gravida": "1",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        }
+      },
+      "why": "v/w: wentouse"
+    },
+    {
+      "id": "UR01",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "G2P1L1A0 previous LS CS 2019",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0",
+          "obstetric.previousCaesareans": "1"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "UR02",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "mobile 9 8 nought 2 3 4 5 6 7 1",
+      "expected": {
+        "values": {
+          "phone": "9802345671"
+        }
+      },
+      "why": "\"nought\" = 0 in a phone number"
+    },
+    {
+      "id": "UR03",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "LMP 12 by 7 EDD 18th April 2027 as per dating scan",
+      "expected": {
+        "values": {
+          "pregnancy.lmp": "2026-07-12",
+          "pregnancy.scanEdd": "2027-04-18"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "UR04",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "age 32 I mean 33 G2 P1 L1 A0",
+      "expected": {
+        "values": {
+          "ageYears": "33",
+          "obstetric.gravida": "2",
+          "obstetric.para": "1",
+          "obstetric.living": "1",
+          "obstetric.abortions": "0"
+        },
+        "notes": [
+          "correct|32.*33"
+        ]
+      },
+      "why": ""
+    },
+    {
+      "id": "UR05",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "HBsAg known reactive",
+      "expected": {
+        "values": {},
+        "questions": [
+          "HBsAg|hepatitis|reactive"
+        ],
+        "noValue": [
+          "medical.conditions"
+        ]
+      },
+      "why": "\"known reactive\" is asked"
+    },
+    {
+      "id": "UR06",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "allergic to cefixime and dust",
+      "expected": {
+        "values": {
+          "medical.allergies": "Cefixime and dust"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "UR07",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "primi OG TT normal at 24 weeks",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "1",
+          "obstetric.para": "0",
+          "obstetric.living": "0",
+          "obstetric.abortions": "0",
+          "obstetric.previousCaesareans": "0"
+        }
+      },
+      "why": ""
+    },
+    {
+      "id": "UR08",
+      "region": "urban",
+      "careType": "antenatal",
+      "text": "known case of asthma on Budecort inhaler blood group O positive",
+      "expected": {
+        "values": {
+          "medical.conditions": [
+            "asthma"
+          ]
+        },
+        "confirm": {
+          "medical.bloodGroup": {
+            "value": "O+",
+            "ask": "\\b(O|0)\\s*(rh\\s*)?(\\+|pos)"
+          }
+        }
+      },
+      "why": ""
+    }
+  ]
+}

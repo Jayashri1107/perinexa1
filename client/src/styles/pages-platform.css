@@ -1,0 +1,52 @@
+/* Super admin workspace, hospital admin pages and print settings. Tokens only. */
+
+/* ---------- Platform overview ---------- */
+/* KPI labels are pills; let a long label wrap instead of running out of a narrow card. */
+.plat-kpis .kpi .pill { max-width: 100%; white-space: normal; }
+/* Five KPI cards: one row on wide screens, 3 + 2 on laptops; the kit's 2 and 1 columns below that. */
+@media (min-width: 1280px) { .plat-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1101px) and (max-width: 1279px) { .plat-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* Recent activity is the main card; "Needs attention" is a 360 px rail on the right. The rail is first in the
+   page, so below 1280 px (one column) it stays above the activity feed. */
+.plat-overview { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--space-6); align-items: start; }
+.plat-main-panel { grid-column: 1; grid-row: 1; }
+.plat-rail { grid-column: 2; grid-row: 1; }
+@media (max-width: 1279px) {
+  .plat-overview { grid-template-columns: minmax(0, 1fr); }
+  .plat-main-panel, .plat-rail { grid-column: auto; grid-row: auto; }
+}
+
+/* "Full audit log", "All hospitals": tertiary links with a 44 px click target */
+.plat-more { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--control-height); white-space: nowrap; }
+.plat-more svg.lucide { width: 18px; height: 18px; }
+
+/* Activity rows: event tag, who / what, time */
+.activity-list .pill { flex-shrink: 0; }
+.activity-list time { flex-shrink: 0; }
+.activity-text svg.lucide { width: 14px; height: 14px; vertical-align: -2px; }
+
+/* Needs-attention rows: icon, name, status pill, action */
+.plat-attention-item { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); min-width: 0; }
+.plat-attention-item > svg.lucide { width: 20px; height: 20px; }
+/* Hospital names in the rail and in tables: a 44 px click target */
+.plat-attention-item > a, .plat-name-link { display: inline-flex; align-items: center; min-height: var(--control-height); }
+.attention-list .pill svg.lucide { color: inherit; } /* the status pill keeps its own icon colour */
+.attention-list .btn { flex-shrink: 0; }
+
+/* ---------- Lists ---------- */
+.plat-name-link { font-weight: 500; }
+/* A status pill under a name (e.g. "Must change password"): keep it pill-sized in the name column */
+.plat-name-pill { align-self: flex-start; margin-top: var(--space-1); }
+
+/* ---------- Workspaces (one hospital, one account) ---------- */
+.plat-back { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); font-weight: 500; }
+.plat-back svg.lucide { width: 20px; height: 20px; }
+/* A neutral note on a white card, with an info icon */
+.plat-note { display: flex; align-items: flex-start; gap: var(--space-3); }
+.plat-note > svg.lucide { width: 24px; height: 24px; color: var(--slate-600); }
+.plat-note p { margin: 0; }
+
+/* Users list: hospital chips wrap so the table fits 1366 px */
+.dt td.plat-access-cell { white-space: normal; min-width: 160px; max-width: 190px; }
+.dt .plat-name-pill { white-space: normal; max-width: 150px; }

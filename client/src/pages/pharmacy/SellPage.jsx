@@ -1,197 +1,407 @@
-// The counter: sell medicines to a registered patient (paid here or on her hospital bill) or to a walk-in buyer.
-import { Lock, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { salesApi } from '../../api/index.js';
-import { Alert } from '../../components/Alert.jsx';
-import { PatientPicker } from '../../components/PatientPicker.jsx';
-import { useAppConfig } from '../../context/AppConfigContext.jsx';
-import { formatMoney, labelOf } from '../../utils/format.js';
-import { FromPrescription } from './FromPrescription.jsx';
-import { MedicineSearch } from './MedicineSearch.jsx';
-import { PharmacyFrame } from './PharmacyFrame.jsx';
+import { BedDouble, ClipboardList, Receipt, Trash2, UserPlus, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Alert, Field } from '../../components/ui.jsx';
+import { useFetch } from '../../hooks/useFetch.js';
+import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
+import { dayLabel } from '../appointments/appointmentFormat.js';
+import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
+import { CONTROLLED, FREQUENCY_WORDS, MODE_LABELS, einvoiceHsnOk, expiryLabel, medicineLabel, scannedForList } from './pharmacyFormat.js';
+import { FindMedicine, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
-const EMPTY = { patient: null, customerName: '', doctorName: '', lines: [], discount: '', discountReason: '', payTo: 'counter', mode: '', reference: '' };
+// Pharmacy → Sell (counter) and → Issue to ward (kind 'issue', admitted patients only): choose the patient (or a
+// walk-in customer at the counter), take medicines from her prescription or find them on the stock list, choose
+// quantities (batches: the earliest-expiring first unless one is chosen), then make the GST tax invoice. A registered
+// patient's invoice goes on her hospital bill; a walk-in pays here. A walk-in sale may be to a business that gives its
+// GSTIN (its details go on the tax invoice, and the hospital admin can download an e-invoice file for it).
 
-export function SellPage() {
-  const { pharmacy, billing } = useAppConfig();
+const NEEDS_RX = ['H', 'H1', 'X', 'narcotic'];
+
+function BatchPicker({ line, onChange }) {
+  const res = useFetch(`/pharmacy/medicines/${line.medicine.id}/batches`);
+  const batches = res.data?.batches ?? [];
+  return (
+    <select aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
+      <option value="">Earliest expiry first</option>
+      {batches.map((b) => (
+        <option key={b.id} value={b.id}>
+          {b.batch} · exp {expiryLabel(b.expiry)} · {b.qtyLeft} left · MRP {money(b.mrpPaise)}
+          {b.daysLeft <= (res.data?.warnDays ?? 30) ? ' · expires soon' : ''}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function Prescriptions({ patientId, onUse, chosenVisit }) {
+  const res = useFetch(`/pharmacy/patients/${patientId}/prescriptions`);
+  if (res.error) return <Alert type="error">{res.error}</Alert>;
+  if (!res.data) return <p className="muted">Loading her prescriptions…</p>;
+  // A record marked as a duplicate takes no sale: the pharmacist is sent to her main record, where the
+  // prescriptions written on this record can be chosen too
+  if (res.data.patient?.duplicateOf) {
+    return (
+      <Alert type="warning">
+        This record ({res.data.patient.mrn}) is marked as a duplicate of {res.data.patient.duplicateOf.mrn} and takes no new sale. Press "Choose someone else" and find{' '}
+        {res.data.patient.duplicateOf.mrn}: her prescriptions written on this record are listed there too.
+      </Alert>
+    );
+  }
+  // A closed record takes no counter sale (never said why)
+  if (res.data.patient?.closed) {
+    return <Alert type="info">This record ({res.data.patient.mrn}) is closed and takes no new sale at the counter. Press "Choose someone else".</Alert>;
+  }
+  if (!res.data.prescriptions.length) return <p className="muted">No prescriptions in Perinexa. Add medicines from the stock list below.</p>;
+  return (
+    <ul className="appt-lines">
+      {res.data.prescriptions.map((rx) => (
+        <li key={rx.visitId} className={chosenVisit === rx.visitId ? 'ph-rx is-chosen' : 'ph-rx'}>
+          <div className="row-between">
+            <strong>
+              {dayLabel(rx.date)}
+              {rx.doctor ? ` · ${rx.doctor.name}${rx.doctor.reg ? ` (Reg. ${rx.doctor.reg})` : ''}` : ''}
+              {/* Written on a record that was marked as a duplicate of hers: the paper carries that number */}
+              {rx.fromRecord ? ` · written on her earlier record ${rx.fromRecord}` : ''}
+            </strong>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onUse(rx)}>
+              <ClipboardList aria-hidden="true" /> {chosenVisit === rx.visitId ? 'Using this one' : 'Use this prescription'}
+            </button>
+          </div>
+          <ul className="ph-rx-items">
+            {rx.items.map((it) => (
+              <li key={it.id}>
+                {it.drug} {it.strength} – {it.dose} {FREQUENCY_WORDS[it.frequency] || it.frequencyText}
+                {it.durationValue ? `, ${it.durationValue} ${it.durationUnit}` : ''}
+                <span className="muted"> · {it.matches.length ? `on the list: ${it.matches.map((m) => `${m.name} (${m.inStock})`).join(', ')}` : 'not on the stock list'}</span>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * A walk-in sale to a business that gives its GSTIN: a tick box, then the business's name, GSTIN, address, town and
+ * PIN code. The state is read from the GSTIN's first two digits. Never for a patient.
+ */
+export function BusinessBuyerFields({ business, setBusiness, buyer, setBuyer, errors = {} }) {
+  const buyerState = gstinState(buyer.gstin);
+  const gstinError = buyer.gstin.trim() && cleanGstin(buyer.gstin).length >= 15 ? gstinProblem(buyer.gstin) : null;
+  return (
+    <div className="ph-buyer">
+      <label className="appt-reason">
+        <input type="checkbox" checked={business} onChange={(e) => setBusiness(e.target.checked)} /> The buyer is a business that gives its GSTIN
+      </label>
+      <p className="hint">Only for a business – another hospital, a clinic or a chemist – that wants its GSTIN on the tax invoice. Never for a patient: sales to patients need no GSTIN and no e-invoice.</p>
+      {business && (
+        <div className="form-grid">
+          <Field label="Business name (as on its GST certificate)" id="ph-buyer-name" error={errors['buyer.name']}>
+            <input id="ph-buyer-name" value={buyer.name} maxLength={100} onChange={(e) => setBuyer({ ...buyer, name: e.target.value })} />
+          </Field>
+          <Field
+            label="GSTIN"
+            id="ph-buyer-gstin"
+            error={errors['buyer.gstin'] ?? gstinError}
+            keepHint
+            hint={buyerState ? `State: ${buyerState.name} (${buyerState.code}) – read from the GSTIN.` : '15 characters, for example 27ABCDE1234F1Z0. The state is read from it.'}
+          >
+            <input id="ph-buyer-gstin" value={buyer.gstin} maxLength={20} autoComplete="off" spellCheck={false} onChange={(e) => setBuyer({ ...buyer, gstin: e.target.value.toUpperCase() })} />
+          </Field>
+          <Field label="Address" id="ph-buyer-address" error={errors['buyer.address']}>
+            <input id="ph-buyer-address" value={buyer.address} maxLength={200} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} />
+          </Field>
+          <Field label="City or town" id="ph-buyer-place" error={errors['buyer.place']}>
+            <input id="ph-buyer-place" value={buyer.place} maxLength={50} onChange={(e) => setBuyer({ ...buyer, place: e.target.value })} />
+          </Field>
+          <Field label="PIN code" id="ph-buyer-pin" error={errors['buyer.pin']}>
+            <input id="ph-buyer-pin" inputMode="numeric" value={buyer.pin} maxLength={6} onChange={(e) => setBuyer({ ...buyer, pin: e.target.value })} />
+          </Field>
+        </div>
+      )}
+    </div>
+  );
+}
+/**
+ * A sale to a business may need an e-invoice, and the e-invoice portal takes HSN codes of 6 or 8 digits only: said
+ * before the invoice is made, naming the medicines whose code is shorter or missing. It never stops the sale.
+ */
+export function ShortHsnWarning({ medicines }) {
+  const short = [...new Set(medicines.filter((m) => !einvoiceHsnOk(m.hsn)).map((m) => m.name))];
+  if (!short.length) return null;
+  return (
+    <Alert type="warning">
+      The e-invoice portal takes an HSN code of 6 or 8 digits. {short.join(', ')} {short.length === 1 ? 'has' : 'have'} a shorter code or none. If this business needs an e-invoice, write the longer code under Medicines. The invoice can be made
+      now and the code changed afterwards.
+    </Alert>
+  );
+}
+/** Is everything needed about the business buyer filled in (the server checks again)? */
+export const buyerComplete = (buyer) => buyer.name.trim().length >= 3 && Boolean(gstinState(buyer.gstin)) && buyer.address.trim().length >= 3 && buyer.place.trim().length >= 3 && /^[1-9]\d{5}$/.test(buyer.pin.trim());
+
+export function SellPage({ kind = 'sale' }) {
   const navigate = useNavigate();
-  // Opened from the Prescriptions tab: her, and the prescription the doctor sent (its medicines are put on the sale)
-  const from = useLocation().state;
-  const [visitId, setVisitId] = useState(from?.visitId ?? null);
-  const [sale, setSale] = useState({ ...EMPTY, patient: from?.patient ?? null, mode: billing.paymentModes[0].key });
-  const [errors, setErrors] = useState({});
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const issue = kind === 'issue';
+  const inpatients = useFetch(issue ? '/pharmacy/inpatients' : null);
+  const [who, setWho] = useState(issue ? 'inpatient' : 'patient'); // patient | walkin | inpatient
+  const [patient, setPatient] = useState(null);
+  const [customer, setCustomer] = useState({ name: '', phone: '' });
+  const [visitId, setVisitId] = useState(null);
+  const [doctor, setDoctor] = useState({ name: '', reg: '' });
+  const [rxSeen, setRxSeen] = useState(false);
+  const [lines, setLines] = useState([]); // { key, medicine, qty, batchId }
+  const [discount, setDiscount] = useState('');
+  const [discountReason, setDiscountReason] = useState('');
+  const [mode, setMode] = useState('cash');
+  const [reference, setReference] = useState('');
+  const [business, setBusiness] = useState(false);
+  const [buyer, setBuyer] = useState({ name: '', gstin: '', address: '', place: '', pin: '' });
+  const s = useSend((res) => navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } }));
 
-  const set = (patch) => setSale((s) => ({ ...s, ...patch }));
-  const registerSchedules = pharmacy.schedules.filter((s) => s.register).map((s) => s.key);
-  const needsRegister = sale.lines.some((l) => registerSchedules.includes(l.schedule));
-  const subtotal = sale.lines.reduce((n, l) => n + l.mrp * (Number(l.qty) || 0), 0);
-  const total = Math.max(0, subtotal - (Number(sale.discount) || 0));
-  const needsReference = billing.paymentModes.find((m) => m.key === sale.mode)?.needsReference;
-
-  const addLine = (m) => {
-    if (sale.lines.some((l) => l.medicineId === m.id)) return;
-    set({ lines: [...sale.lines, { medicineId: m.id, name: `${m.name} ${m.strength ?? ''}`.trim(), schedule: m.schedule, available: m.available, mrp: m.mrp, qty: 1 }] });
-  };
-  // from her prescription: each medicine found on the stock list, once. These lines are the doctor's (owner, 8 Oct
-  // 2026): locked – no removing, no changing the quantity; the pharmacist only adds more medicines below them.
-  const usePrescription = (found, doctor) =>
-    setSale((s) => {
-      const lines = s.lines.filter((l) => !l.fromRx); // another prescription replaces the earlier one's lines
-      for (const { medicine: m, qty } of found) {
-        const same = lines.findIndex((l) => l.medicineId === m.id);
-        if (same >= 0) lines.splice(same, 1); // added by hand before: now the doctor's line
-        lines.unshift({ medicineId: m.id, name: `${m.name} ${m.strength ?? ''}`.trim(), schedule: m.schedule, available: m.available, mrp: m.mrp, qty: Math.min(qty, m.available), fromRx: true });
-      }
-      return { ...s, lines, doctorName: s.doctorName || doctor || '' };
-    });
-  const updateLine = (i, qty) => set({ lines: sale.lines.map((l, j) => (j === i ? { ...l, qty } : l)) });
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setErrors({});
-    setError('');
-    setSaving(true);
-    try {
-      const { sale: done } = await salesApi.create({
-        patientId: sale.patient?.id,
-        visitId: sale.patient ? visitId ?? undefined : undefined,
-        customerName: sale.patient ? '' : sale.customerName,
-        doctorName: sale.doctorName,
-        lines: sale.lines.map((l) => ({ medicineId: l.medicineId, qty: Number(l.qty) })),
-        discount: { amount: Number(sale.discount) || 0, reason: sale.discountReason },
-        payTo: sale.payTo,
-        mode: sale.payTo === 'counter' ? sale.mode : undefined,
-        reference: sale.reference,
-      });
-      navigate(`/hospital/pharmacy/sales/${done.id}`);
-    } catch (err) {
-      setErrors(err.fields ?? {});
-      setError(err.message);
-    } finally {
-      setSaving(false);
+  const addMedicine = (m, qty = 1) => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null }]));
+  const useRx = (rx) => {
+    setVisitId(rx.visitId);
+    setRxSeen(false);
+    setDoctor(rx.doctor ?? { name: '', reg: '' });
+    for (const it of rx.items) {
+      const best = it.matches.find((m) => m.inStock > 0) ?? it.matches[0];
+      if (best) addMedicine(best, it.suggestedQty ?? 1);
     }
+  };
+  const reset = () => {
+    setPatient(null);
+    setVisitId(null);
+    setLines([]);
+    setDoctor({ name: '', reg: '' });
+    setRxSeen(false);
+  };
+  // A scanned (or typed) barcode: the medicine goes on the list like one found by name
+  const scan = (m) => {
+    const out = scannedForList(m, lines.some((l) => l.medicine.id === m.id));
+    if (out.add) addMedicine(m);
+    return out.said;
+  };
+  const isBusiness = who === 'walkin' && business;
+  const buyerOk = buyerComplete(buyer);
+
+  const needsRx = lines.some((l) => NEEDS_RX.includes(l.medicine.schedule));
+  const controlled = lines.some((l) => CONTROLLED.includes(l.medicine.schedule));
+  const pct = discount === '' ? 0 : Number(discount);
+  const qtyOk = lines.length > 0 && lines.every((l) => /^\d+$/.test(l.qty) && Number(l.qty) > 0);
+  const whoOk = who === 'walkin' ? customer.name.trim().length >= 2 : Boolean(patient);
+  const ready = qtyOk && whoOk && (!isBusiness || buyerOk) && (pct === 0 || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100;
+
+  const submit = () => {
+    const body = {
+      kind,
+      ...(who === 'walkin' ? { customer: { name: customer.name.trim(), phone: customer.phone.trim() }, payment: { mode, reference: reference.trim() } } : { patientId: patient.id }),
+      ...(isBusiness ? { buyer: { name: buyer.name.trim(), gstin: cleanGstin(buyer.gstin), address: buyer.address.trim(), place: buyer.place.trim(), pin: buyer.pin.trim() } } : {}),
+      ...(visitId ? { visitId } : {}),
+      ...(!visitId && (doctor.name.trim() || doctor.reg.trim()) ? { doctor: { name: doctor.name.trim(), reg: doctor.reg.trim() } } : {}),
+      rxSeen: !visitId && rxSeen,
+      lines: lines.map((l) => ({ medicineId: l.medicine.id, qty: Number(l.qty), ...(l.batchId ? { batchId: l.batchId } : {}) })),
+      discountPercent: pct,
+      discountReason: discountReason.trim(),
+    };
+    s.send('/pharmacy/invoices', body);
   };
 
   return (
-    <PharmacyFrame subtitle="Sell at the counter. The earliest-expiring batch is used first; expired stock cannot be sold.">
-      <form onSubmit={submit} noValidate>
-        <Alert type="error">{error}</Alert>
-        <div className="grid-2">
-          <section className="card">
-            <h2>Buyer</h2>
-            <PatientPicker
-              search={salesApi.patients}
-              value={sale.patient}
-              onChange={(p) => {
-                const other = p?.id !== sale.patient?.id;
-                if (other) setVisitId(null); // another patient: not that prescription any more
-                set({ patient: p, payTo: p ? sale.payTo : 'counter', ...(other && { lines: sale.lines.filter((l) => !l.fromRx) }) });
-              }}
-              label="Registered patient (optional)"
-              error={errors.customerName}
-            />
-            {sale.patient && <FromPrescription patientId={sale.patient.id} onUse={usePrescription} autoUseVisitId={visitId} onUsed={setVisitId} />}
-            {!sale.patient && (
-              <div className="form-field">
-                <label htmlFor="customer">Or the buyer's name</label>
-                <input id="customer" value={sale.customerName} onChange={(e) => set({ customerName: e.target.value })} />
-              </div>
-            )}
-            <div className={`form-field top-gap${errors.doctorName ? ' has-error' : ''}`}>
-              <label htmlFor="doctor">Prescribing doctor{needsRegister && <span className="required"> *</span>}</label>
-              <input id="doctor" value={sale.doctorName} onChange={(e) => set({ doctorName: e.target.value })} />
-              {errors.doctorName ? <span className="field-error">{errors.doctorName}</span> : needsRegister && <span className="field-help">Needed for H1, X and narcotic medicines (register).</span>}
-            </div>
-          </section>
+    <>
+      <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'Sell at the counter'} crumb={issue ? 'Issue to ward' : 'Sell'} />
+      <div className="pf-content bill-page">
+        <Alert type="error" onClose={() => s.setError(null)}>
+          {s.error}
+        </Alert>
 
-          <section className="card">
-            <h2>Payment</h2>
-            <div className="form-field">
-              <span className="field-label">Paid</span>
-              <div className="checkbox-group">
-                <label className={`chip-check${sale.payTo === 'counter' ? ' checked' : ''}`}>
-                  <input type="radio" name="payTo" checked={sale.payTo === 'counter'} onChange={() => set({ payTo: 'counter' })} /> At the counter
-                </label>
-                <label className={`chip-check${sale.payTo === 'bill' ? ' checked' : ''}`}>
-                  <input type="radio" name="payTo" disabled={!sale.patient} checked={sale.payTo === 'bill'} onChange={() => set({ payTo: 'bill' })} /> On her hospital bill
-                </label>
-              </div>
+        <section className="card bill-section" aria-labelledby="ph-who">
+          <h2 id="ph-who">{issue ? 'Admitted patient' : 'Who is it for'}</h2>
+          {!issue && !patient && (
+            <div className="segmented" role="group" aria-label="Who is it for">
+              <button type="button" aria-pressed={who === 'patient'} onClick={() => setWho('patient')}>
+                <Users aria-hidden="true" /> Registered patient
+              </button>
+              <button
+                type="button"
+                aria-pressed={who === 'walkin'}
+                onClick={() => {
+                  setWho('walkin');
+                  reset();
+                }}
+              >
+                <UserPlus aria-hidden="true" /> Walk-in customer
+              </button>
             </div>
-            {sale.payTo === 'counter' && (
-              <div className="form-grid top-gap">
-                <div className="form-field width-half">
-                  <label htmlFor="mode">Mode</label>
-                  <select id="mode" value={sale.mode} onChange={(e) => set({ mode: e.target.value })}>
-                    {billing.paymentModes.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-                  </select>
-                </div>
-                {needsReference && (
-                  <div className={`form-field width-half${errors.reference ? ' has-error' : ''}`}>
-                    <label htmlFor="reference">Reference</label>
-                    <input id="reference" value={sale.reference} onChange={(e) => set({ reference: e.target.value })} />
-                  </div>
-                )}
+          )}
+          {who === 'patient' && !patient && <PatientFinder onPick={setPatient} />}
+          {who === 'inpatient' && !patient && (
+            <>
+              {inpatients.error && <Alert type="error">{inpatients.error}</Alert>}
+              {inpatients.data && !inpatients.data.inpatients.length && <p className="muted">Nobody is admitted.</p>}
+              <ul className="appt-pick-list">
+                {(inpatients.data?.inpatients ?? []).map((x) => (
+                  <li key={x.patient.id}>
+                    <button type="button" className="appt-pick" onClick={() => setPatient(x.patient)}>
+                      <strong>
+                        <BedDouble aria-hidden="true" /> {x.patient.fullName}
+                      </strong>
+                      <span className="muted">
+                        {x.patient.mrn} · {x.ward || 'Ward not given'}
+                        {x.bed ? `, bed ${x.bed}` : ''}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {patient && (
+            <div className="appt-chosen">
+              <strong>{patient.fullName}</strong>
+              <span className="muted">
+                {patient.mrn}
+                {patient.phone ? ` · ${patient.phone}` : ''}
+              </span>
+              <button type="button" className="btn btn-link btn-sm" onClick={reset}>
+                Choose someone else
+              </button>
+            </div>
+          )}
+          {who === 'walkin' && (
+            <>
+              <div className="form-grid">
+                <Field label={business ? 'Name of the person collecting' : "Customer's name"} id="ph-cust-name" error={s.fields['customer.name']}>
+                  <input id="ph-cust-name" value={customer.name} maxLength={150} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
+                </Field>
+                <Field label="Phone (optional)" id="ph-cust-phone">
+                  <input id="ph-cust-phone" type="tel" value={customer.phone} maxLength={30} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
+                </Field>
               </div>
-            )}
-          </section>
-        </div>
+              <BusinessBuyerFields business={business} setBusiness={setBusiness} buyer={buyer} setBuyer={setBuyer} errors={s.fields} />
+            </>
+          )}
+        </section>
 
-        <section className="card top-gap">
-          <h2>Medicines</h2>
-          <MedicineSearch onPick={addLine} />
-          {sale.lines.length > 0 && (
-            <div className="table-wrap top-gap">
-              <table className="table">
+        {patient && (
+          <section className="card bill-section" aria-labelledby="ph-rx">
+            <h2 id="ph-rx">Her prescriptions</h2>
+            <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} />
+          </section>
+        )}
+
+        {(patient || who === 'walkin') && (
+          <section className="card bill-section" aria-labelledby="ph-lines">
+            <h2 id="ph-lines">Medicines</h2>
+            <FindMedicine onPick={(m) => addMedicine(m)} onScan={scan} />
+            {lines.length > 0 && (
+              <table className="bill-lines ph-lines">
                 <thead>
-                  <tr><th>Medicine</th><th className="num">In stock</th><th className="num">Qty</th><th className="num">MRP</th><th className="num">Amount</th><th /></tr>
+                  <tr>
+                    <th scope="col">Medicine</th>
+                    <th scope="col">Batch</th>
+                    <th scope="col" className="num">
+                      Quantity
+                    </th>
+                    <th scope="col">
+                      <span className="sr-only">Remove</span>
+                    </th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {sale.lines.map((l, i) => (
-                    <tr key={l.medicineId} className={l.fromRx ? 'rx-locked' : undefined}>
+                  {lines.map((l) => (
+                    <tr key={l.key}>
+                      <td data-label="Medicine">
+                        {medicineLabel(l.medicine)} <ScheduleMark schedule={l.medicine.schedule} />
+                        <span className="muted"> · {l.medicine.inStock} in stock</span>
+                      </td>
+                      <td data-label="Batch">
+                        <BatchPicker line={l} onChange={(batchId) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, batchId } : x)))} />
+                      </td>
+                      <td data-label="Quantity" className="num">
+                        <input className="bill-price-input" inputMode="numeric" aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, qty: e.target.value } : x)))} />
+                      </td>
                       <td>
-                        {l.name} {l.schedule !== pharmacy.schedules[0].key && <span className="badge badge-pending small">{labelOf(pharmacy.schedules, l.schedule)}</span>}
-                        {l.fromRx && <span className="badge badge-info small"><Lock size={11} aria-hidden /> Prescribed</span>}
-                      </td>
-                      <td className="num">{l.available}</td>
-                      <td className="num">
-                        {l.fromRx ? (
-                          <strong title="From the doctor's prescription – cannot be changed here">{l.qty}</strong>
-                        ) : (
-                          <input className="qty" type="number" min="1" max={l.available} aria-label={`Quantity of ${l.name}`} value={l.qty} onChange={(e) => updateLine(i, e.target.value)} />
-                        )}
-                      </td>
-                      <td className="num">{formatMoney(l.mrp)}</td>
-                      <td className="num">{formatMoney(l.mrp * (Number(l.qty) || 0))}</td>
-                      <td className="actions">
-                        {!l.fromRx && <button type="button" className="icon-btn" aria-label={`Remove ${l.name}`} onClick={() => set({ lines: sale.lines.filter((_, j) => j !== i) })}><Trash2 size={15} /></button>}
+                        <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
+                          <Trash2 aria-hidden="true" />
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-          <div className="form-grid top-gap">
-            <div className="form-field width-third">
-              <label htmlFor="discount">Discount (₹)</label>
-              <input id="discount" type="number" min="0" value={sale.discount} onChange={(e) => set({ discount: e.target.value })} />
-            </div>
-            {Number(sale.discount) > 0 && (
-              <div className={`form-field width-two-thirds${errors['discount.reason'] ? ' has-error' : ''}`}>
-                <label htmlFor="discountReason">Reason for the discount</label>
-                <input id="discountReason" value={sale.discountReason} onChange={(e) => set({ discountReason: e.target.value })} />
+            )}
+            {isBusiness && <ShortHsnWarning medicines={lines.map((l) => l.medicine)} />}
+            {!visitId && (needsRx || who === 'walkin') && (
+              <div className="ph-rx-seen">
+                <p className="hint">{controlled ? 'A narcotic or Schedule X medicine: the doctor’s registration number is required, and it is given only to a registered patient.' : needsRx ? 'A prescription medicine: write the doctor’s name and tick that you saw the prescription.' : 'If there is a prescription, write the doctor’s name.'}</p>
+                <div className="form-grid">
+                  <Field label="Doctor's name" id="ph-doc-name">
+                    <input id="ph-doc-name" value={doctor.name} maxLength={150} onChange={(e) => setDoctor({ ...doctor, name: e.target.value })} />
+                  </Field>
+                  <Field label="Registration number" id="ph-doc-reg">
+                    <input id="ph-doc-reg" value={doctor.reg} maxLength={60} onChange={(e) => setDoctor({ ...doctor, reg: e.target.value })} />
+                  </Field>
+                </div>
+                <label className="appt-reason">
+                  <input type="checkbox" checked={rxSeen} onChange={(e) => setRxSeen(e.target.checked)} /> I have seen the prescription
+                </label>
               </div>
             )}
-          </div>
-          <div className="form-actions">
-            <span>Estimated total: <strong>{formatMoney(total)}</strong> <span className="muted small">(MRP may differ by batch)</span></span>
-            <button type="submit" className="btn btn-primary" disabled={saving || sale.lines.length === 0}>{saving ? 'Selling…' : 'Sell and make invoice'}</button>
-          </div>
-        </section>
-      </form>
-    </PharmacyFrame>
+            {visitId && (
+              <p className="hint">
+                From her Perinexa prescription{doctor.name ? ` by ${doctor.name}` : ''}
+                {doctor.reg ? ` (Reg. ${doctor.reg})` : ''}.
+              </p>
+            )}
+          </section>
+        )}
+
+        {lines.length > 0 && (
+          <section className="card bill-section" aria-labelledby="ph-pay">
+            <h2 id="ph-pay">{who === 'walkin' ? 'Payment' : 'Discount'}</h2>
+            <div className="form-grid">
+              <Field label="Discount (%) – optional" id="ph-disc" error={s.fields.discountPercent}>
+                <input id="ph-disc" inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+              </Field>
+              {pct > 0 && (
+                <Field label="Reason for the discount" id="ph-disc-reason" error={s.fields.discountReason}>
+                  <input id="ph-disc-reason" value={discountReason} maxLength={200} onChange={(e) => setDiscountReason(e.target.value)} />
+                </Field>
+              )}
+              {who === 'walkin' && (
+                <>
+                  <Field label="Paid by" id="ph-mode">
+                    <select id="ph-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
+                      {Object.entries(MODE_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  {mode !== 'cash' && (
+                    <Field label="Reference (optional)" id="ph-ref">
+                      <input id="ph-ref" value={reference} maxLength={80} onChange={(e) => setReference(e.target.value)} />
+                    </Field>
+                  )}
+                </>
+              )}
+            </div>
+            <p className="hint">
+              {who === 'walkin'
+                ? 'The customer pays the invoice total here.'
+                : issue
+                  ? 'The invoice goes on her stay’s bill.'
+                  : 'The invoice goes on her hospital bill; she pays at the billing desk.'}{' '}
+              Prices are the batch MRP (GST included).
+            </p>
+            <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={submit}>
+              <Receipt aria-hidden="true" /> {s.busy ? 'Making the invoice…' : issue ? 'Issue and make the invoice' : 'Make the invoice'}
+            </button>
+          </section>
+        )}
+      </div>
+    </>
   );
 }

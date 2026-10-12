@@ -1,0 +1,315 @@
+/* Patients: patient list, registration / edit form, patient page, risk card. Tokens only. */
+
+/* ---------- Patient list ---------- */
+/* Name in a list row: Ink, underlined Indigo on hover (the whole row opens the patient too) */
+.patient-name { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+.patient-name a { color: var(--ink); text-decoration: none; }
+.patient-name a:hover { color: var(--indigo-700); text-decoration: underline; }
+/* Gestation "28 w 3 d" */
+.ga-value { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* The risk pill and its markers may wrap onto a second line */
+.dt td.risk-cell { white-space: normal; min-width: 140px; max-width: 200px; }
+.dt td.wrap-cell { white-space: normal; min-width: 120px; max-width: 180px; }
+
+/* ---------- Registration / edit form ---------- */
+.form-page { max-width: 1100px; }
+/* New patient: voice entry beside the form on a wide screen – what is said on the left, the fields filling in on the
+   right. The voice card stays in view while the form scrolls (and scrolls itself when its lists are long). */
+@media (min-width: 1200px) {
+  .form-page.form-page-voice { max-width: 1480px; }
+  .pf-voice-layout { display: grid; grid-template-columns: minmax(340px, 2fr) minmax(0, 3fr); gap: var(--space-6); align-items: start; }
+  .pf-voice-side { position: sticky; top: var(--space-4); max-height: calc(100vh - 2 * var(--space-4)); overflow-y: auto; border-radius: var(--radius-lg); scrollbar-width: thin; }
+  .pf-voice-side .voice-card { margin-bottom: 0; }
+  .pf-voice-side #dictation { min-height: 9em; }
+}
+.form-section { margin-bottom: var(--space-6); }
+.form-section h2 { margin-bottom: var(--space-4); }
+/* A hint right under the heading (e.g. Delivery and breastfeeding): room before the fields */
+.form-section > .hint + .form-grid { margin-top: var(--space-3); }
+/* A section that is a <fieldset> (so it can be locked as a whole) looks like the other white cards;
+   locked fields show the disabled input style instead of fading the card. */
+.patient-form fieldset.form-section { border: none; margin: 0 0 var(--space-6); padding: var(--space-6); min-width: 0; }
+.patient-form fieldset.form-section:disabled { background: var(--surface); }
+/* Groups of tick boxes inside a section: legend as a sub-heading */
+.patient-form .fieldset { margin-top: var(--space-2); }
+.patient-form .fieldset legend { margin-bottom: var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 500; color: var(--ink); }
+
+/* Columns keep their width even when only one field is shown (the type of care before the other fields
+   appear, a newborn's blood group), instead of one field stretching across the card */
+.patient-form .form-grid-fill { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+/* A baby's care after birth: wider columns, so "Discharged from the unit on (optional)" stays on one line (its date
+   lines up with the others) and "Breast milk and other milk (partial)" is not cut off when chosen */
+.pf-after-birth-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+/* Registration steps: 1 Patient information, 2 Clinical details. The current step is Perinexa Indigo;
+   a saved step shows the check icon and "Saved as …" in the positive status colours. */
+.reg-steps { display: flex; align-items: center; gap: var(--space-4); margin: 0 0 var(--space-6); padding: var(--space-4) var(--space-6); list-style: none; }
+.reg-step { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.reg-step + .reg-step::before { content: ''; flex: none; width: var(--space-12); height: 2px; margin-right: var(--space-1); border-radius: var(--radius-pill); background: var(--border); }
+.reg-step-mark {
+  display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border); background: var(--surface); color: var(--slate-600);
+  font-size: var(--fs-label); line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.reg-step-mark svg.lucide { width: 18px; height: 18px; }
+.reg-step-current .reg-step-mark { background: var(--indigo-700); border-color: var(--indigo-700); color: var(--on-solid); }
+.reg-step-done .reg-step-mark { background: var(--status-stable-bg); border-color: var(--status-stable-bg); color: var(--status-stable-fg); }
+.reg-step-text { display: flex; flex-direction: column; min-width: 0; }
+.reg-step-text strong { font-weight: 500; color: var(--ink); }
+.reg-step-next .reg-step-text strong { color: var(--slate-600); }
+.reg-step-done .reg-step-text .t-caption { color: var(--status-stable-fg); }
+@media (max-width: 719px) {
+  .reg-steps { flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
+  .reg-step + .reg-step::before { display: none; }
+}
+
+/* Type of care, when /patients/new is opened without one */
+.care-type-list li a { display: flex; align-items: center; min-height: var(--control-height); padding: 0 var(--space-2); border-bottom: 1px solid var(--border); }
+.care-type-list li:last-child a { border-bottom: none; }
+
+/* ---------- Voice entry ---------- */
+.voice-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.voice-head h2 { margin-bottom: 0; }
+.voice-intro { margin: var(--space-1) 0 var(--space-4); }
+.voice-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-4); }
+.voice-controls .hint { margin: 0; max-width: 70ch; }
+.voice-summary .alert { margin-top: 0; }
+.voice-found { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.voice-notes { margin: var(--space-2) 0 0; padding-left: var(--space-6); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+/* A field filled from what was said, until it is changed by hand: amber edge + "From voice – check" (caution colours) */
+.patient-form .voice-filled:is(input, select, textarea) { border-color: var(--status-watch-fg); box-shadow: inset 3px 0 0 var(--status-watch-fg); }
+.patient-form .voice-filled:is(input, select, textarea):focus { border-color: var(--teal-700); box-shadow: var(--focus-ring), inset 3px 0 0 var(--status-watch-fg); }
+.patient-form label.voice-filled { background: var(--status-watch-bg); border-radius: var(--radius-sm); }
+.voice-mark, .voice-tag {
+  display: inline-flex; align-items: center; gap: var(--space-1); color: var(--status-watch-fg);
+  font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500;
+}
+.voice-mark { margin-top: var(--space-1); }
+.voice-tag { margin-left: var(--space-2); }
+.voice-mark svg.lucide, .voice-tag svg.lucide { width: 14px; height: 14px; }
+/* Questions: "“PIH” – in a previous pregnancy, or in this one?" with the choices as buttons */
+.voice-questions, .voice-unused { margin-top: var(--space-4); }
+.voice-questions h3, .voice-unused h3 { margin: 0 0 var(--space-2); }
+.voice-questions > ul, .voice-unused > ul { margin: 0; padding: 0; list-style: none; }
+.voice-question { padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.voice-question:last-child { border-bottom: none; }
+.voice-question p { margin: 0 0 var(--space-2); }
+.voice-options, .voice-teach { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.voice-teach { flex: 1 1 100%; min-width: 0; }
+.voice-teach select { flex: 1 1 240px; width: auto; min-width: 0; max-width: 100%; }
+.voice-remember { min-height: 0; margin-top: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.voice-unused li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); padding: var(--space-1) 0; }
+.voice-unused .hint { margin: 0 0 var(--space-2); }
+/* Recording status next to the title (colour + icon + word); "Starting" and "Finishing" show a turning loader */
+.voice-status { display: inline-flex; min-height: var(--space-6); }
+.voice-turning { animation: spin 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .voice-turning { animation: none; } }
+.voice-masked { margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
+/* "Microphone and speech settings", "Tips for clear dictation": tertiary links that open, 44 px targets */
+.voice-more { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-2); }
+.voice-more summary {
+  display: inline-flex; align-items: center; min-height: var(--control-height); padding: 0 var(--space-2); margin-left: calc(-1 * var(--space-2));
+  border-radius: var(--radius-md); cursor: pointer; color: var(--indigo-700);
+  font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
+}
+.voice-more summary:hover { color: var(--indigo-600); background: var(--mist-50); }
+.voice-more details > .hint { margin: 0 0 var(--space-2); max-width: 70ch; }
+.voice-tips { margin: 0 0 var(--space-2); padding-left: var(--space-6); max-width: 70ch; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.voice-tips li + li { margin-top: var(--space-1); }
+/* The results card: blood group and results heard by voice, filled in only once confirmed (caution edge + triangle,
+   as the Draft band) */
+.voice-confirm { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-left: 3px solid var(--status-watch-fg); border-radius: var(--radius-lg); }
+.voice-confirm h3 { display: flex; align-items: center; gap: var(--space-2); }
+.voice-confirm h3 svg.lucide { width: 20px; height: 20px; flex-shrink: 0; color: var(--status-watch-fg); }
+.voice-more-questions { margin-top: var(--space-3); }
+/* "Words corrected": 'sizerian' → caesarean, with Undo */
+.voice-corrections { margin-top: var(--space-4); }
+.voice-corrections h3 { margin: 0 0 var(--space-1); }
+.voice-corrections .hint { margin: 0 0 var(--space-2); max-width: 70ch; }
+.voice-corrections > ul { margin: 0; padding: 0; list-style: none; }
+.voice-corrections li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-height: var(--control-height); overflow-wrap: anywhere; }
+/* The microphone choice, inside "Microphone and speech settings" */
+.voice-mic { max-width: 420px; }
+.voice-mic select { max-width: 100%; }
+/* Next to Register / Save while recording: the recording's status and Stop, above the buttons */
+.sticky-actions .voice-save-wait { margin: 0; }
+.sticky-actions .voice-bar {
+  display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3);
+  padding-bottom: var(--space-3); border-bottom: 1px solid var(--border);
+}
+
+/* Worked-out values (EDD, gestation) */
+.calc-row {
+  display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md); background: var(--mist-50); border: 1px solid var(--border); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+/* "None of these" / "No known conditions" */
+.check-none { margin-top: var(--space-2); padding: 0 var(--space-3); border-radius: var(--radius-sm); background: var(--mist-50); border: 1px solid var(--border); }
+
+/* Mother of a newborn: the picked patient and the search results show initials avatars */
+.patient-form .picked { justify-content: space-between; padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); }
+.patient-form .picked .avatar, .patient-form .pick-list .avatar { width: 32px; height: 32px; }
+.patient-form .pick-list .name-cell-text strong { font-weight: 500; }
+
+/* ---------- Notes that are not a status (access, fake-data reminder): Mist Light panel ---------- */
+.alert-patient-note { background: var(--mist-50); border: 1px solid var(--border); }
+.alert-patient-note .alert-icon { color: var(--indigo-700); }
+
+/* ---------- Patient page ---------- */
+/* The filter label's width setting (flex-basis) would become a height in this column: keep it its natural size */
+/* Overview on one screen: care plan + risk side by side, then pregnancy / obstetric / medical in one row; compact spacing */
+.patient-overview { display: flex; flex-direction: column; gap: var(--space-4); }
+.ov-row { display: grid; gap: var(--space-4); align-items: stretch; }
+.ov-top { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+.ov-facts { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.ov-facts:empty { display: none; }
+.ov-row > .card-wide { grid-column: auto; }
+.patient-overview .card { padding: var(--space-4) var(--space-6); }
+.patient-overview .card > h2 { margin-bottom: var(--space-2); }
+.patient-overview .details { margin: 0; }
+.patient-overview .details > div { grid-template-columns: 130px minmax(0, 1fr); gap: var(--space-2); padding: var(--space-1) 0; }
+.patient-overview .details dd { font-variant-numeric: tabular-nums; }
+.patient-overview .ga-value { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.patient-overview .reason-list li { padding: var(--space-1) 0; }
+.patient-overview .plan-top li { min-height: 0; }
+@media (max-width: 520px) {
+  .ov-top { grid-template-columns: 1fr; }
+}
+.baby-list li { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.baby-list li:last-child { border-bottom: none; }
+.note-list .note-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.pf-message .btn-link { margin-left: calc(-1 * var(--space-2)); }
+
+/* ---------- Risk level: status pill + markers, and the risk card ---------- */
+.risk-badge-wrap { display: inline-flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
+.risk-marker { padding-left: var(--space-2); padding-right: var(--space-2); }
+/* Left edge in the status colour of the level shown */
+.risk-card { border-left: 6px solid var(--border); }
+.risk-border-high { border-left-color: var(--status-high-fg); }
+.risk-border-moderate { border-left-color: var(--status-watch-fg); }
+.risk-border-low { border-left-color: var(--status-stable-fg); }
+.risk-border-incomplete { border-left-color: var(--status-watch-fg); }
+.risk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.risk-head h2 { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.risk-head h2 svg.lucide { width: 24px; height: 24px; color: var(--indigo-700); }
+.risk-level-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.reason-list { margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.reason-list li { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.reason-list li:last-child { border-bottom: none; }
+.reason-label { font-weight: 500; }
+.risk-card .risk-head { align-items: center; margin-bottom: var(--space-2); }
+.risk-card .risk-head h2 { margin: 0; }
+.risk-none { margin: var(--space-2) 0 0; }
+.risk-missing { margin: var(--space-2) 0 0; }
+/* Findings in this pregnancy: on the Overview's Pregnancy card, and their tick boxes on the edit form */
+.pf-findings { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.pf-findings h3 { margin: 0 0 var(--space-1); }
+.pf-finding-list li { padding: var(--space-1) 0; }
+.pf-finding-none { margin: 0; }
+.pf-findings .hint { margin: var(--space-2) 0 0; }
+/* Findings of a pregnancy loss (the patient form, the visit page): groups of fields under a small heading */
+.lf-block { margin: var(--space-2) 0 var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.lf-block h3 { margin: 0 0 var(--space-1); }
+.lf-block > .hint { margin: 0 0 var(--space-3); }
+.lf-group { margin-bottom: var(--space-2); }
+/* The groups keep the same column widths, so a group with one field ("Signs of rupture") is one column wide, not a whole row */
+.lf-group .form-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.lf-group .hint { margin: 0 0 var(--space-2); }
+.lf-actions { margin-top: var(--space-2); }
+.pf-finding-by { display: block; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.pf-finding-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.pf-finding-check { align-items: flex-start; padding: var(--space-2) 0; }
+.pf-finding-check input { margin-top: calc((var(--lh-body) - 18px) / 2); }
+/* "More details": explanations and guidance, closed by default */
+.risk-more { margin-top: var(--space-2); }
+.risk-more-body { padding-top: var(--space-1); }
+.risk-more-body > p { margin: 0 0 var(--space-2); }
+.risk-more-body h3 { margin: var(--space-3) 0 0; }
+.risk-more-body .override-box { margin: var(--space-2) 0; }
+.risk-more-body .override-box .btn-link { margin-left: calc(-1 * var(--space-2)); }
+
+/* Doctor's override */
+.override-box { margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--mist-50); border: 1px solid var(--border); color: var(--ink); }
+.override-outdated { background: var(--status-watch-bg); border-color: var(--status-watch-bg); }
+.override-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+.override-box .t-caption { margin-top: var(--space-1); }
+.override-warning { display: flex; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-2); color: var(--status-watch-fg); font-weight: 500; }
+.override-warning svg.lucide { width: 16px; height: 16px; margin-top: 4px; }
+
+/* Override dialog: level choices as option cards showing the status pill */
+.risk-choice { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.risk-option {
+  display: inline-flex; align-items: center; gap: var(--space-3); min-height: var(--control-height); padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); cursor: pointer;
+}
+.risk-option:hover { border-color: var(--indigo-700); }
+.risk-option.checked { border-color: var(--indigo-700); background: var(--teal-100); box-shadow: inset 0 0 0 1px var(--indigo-700); }
+
+/* Also used on the care-plan template page */
+.risk-rules-hint { margin-bottom: var(--space-3); }
+
+/* Override history: the summary is a tertiary link with a 44 px target */
+.override-history { margin-top: var(--space-3); }
+.override-history summary {
+  display: inline-flex; align-items: center; min-height: var(--control-height); padding: 0 var(--space-2); margin-left: calc(-1 * var(--space-2));
+  border-radius: var(--radius-md); cursor: pointer; color: var(--indigo-700);
+  font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
+}
+.override-history summary:hover { color: var(--indigo-600); background: var(--mist-50); }
+.override-history ul { list-style: none; margin: var(--space-1) 0 0; padding: 0; }
+.override-history li { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.override-history li:last-child { border-bottom: none; }
+.override-history .t-caption { margin-top: var(--space-1); }
+
+/* Safety strip: allergies, blood group and EDD at the top of every screen of a patient's record */
+.safety-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
+.safety-strip .safety-allergy { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.patient-form .allergy-field { margin-bottom: var(--space-4); max-width: 640px; }
+/* Voice entry folded into one button until opened (VoiceEntry.jsx: DictateButton) */
+.voice-folded { display: flex; justify-content: flex-end; margin-bottom: var(--space-4); }
+.voice-head .voice-hide { margin-left: auto; }
+/* Overview: the latest visit in short */
+.ov-last-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-2); }
+.ov-last-head h2 { margin: 0; }
+.ov-last-head .btn-link { margin-left: auto; }
+/* Patients list: risk and red flags side by side */
+.pt-risk { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+
+/* The Patients list (simplified): quick choices in view, a plain summary, few columns. */
+.pt-quick { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-bottom: var(--space-3); }
+/* Quick filters are pills: white with a subtle edge, the active one solid indigo */
+.pt-quick .btn { border-radius: var(--radius-pill); border-color: var(--card-border); background: var(--surface); color: var(--ink); padding: 0 var(--space-4); }
+.pt-quick .btn:hover:not(:disabled) { border-color: var(--indigo-700); color: var(--indigo-700); }
+.pt-quick .btn[aria-pressed='true'], .pt-quick .btn[aria-pressed='true']:hover { background: var(--indigo-700); border-color: var(--indigo-700); color: var(--on-solid); }
+.pt-summary { margin: 0 0 var(--space-3); color: var(--slate-600); }
+.pt-name a { font-size: 1.05rem; font-weight: 700; }
+.pt-now { font-weight: 500; }
+
+/* ---------- Duplicate records ---------- */
+/* "She may already be registered" (registration): each matching record on a row – who, why it matches, open it */
+.match-list { margin: var(--space-4) 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.match-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3); }
+.match-row + .match-row { border-top: 1px solid var(--border); }
+.match-row .name-cell { flex: 1 1 240px; }
+.match-row .name-cell-text { overflow-wrap: anywhere; }
+.match-fact { display: inline-block; max-width: 100%; }
+.match-why { margin-top: var(--space-1); }
+/* The banner on a record marked as a duplicate: who marked it and why on a line of their own, then "Undo" */
+.dup-meta { display: block; margin-top: var(--space-1); color: var(--slate-600); overflow-wrap: anywhere; }
+.dup-undo { margin-top: var(--space-2); }
+/* "Mark as a duplicate": room between the explanation and the first field; the main record that was chosen, with
+   "Change" at the right */
+.dup-intro { margin-bottom: var(--space-4); }
+.dup-picked { justify-content: space-between; padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); }
+.dup-picked .avatar, .modal .pick-list .avatar { width: 32px; height: 32px; }
+/* What only the duplicate has (an allergy, a blood group, a care plan …): one fact on a line, then what to do */
+.dup-left { display: block; margin-top: var(--space-2); overflow-wrap: anywhere; }
+.dup-left-list { margin: var(--space-2) 0 0; padding-left: var(--space-4); overflow-wrap: anywhere; }
+.dup-picked ~ .alert { margin: var(--space-2) 0 0; }
+/* A record closed after a death: a quiet banner – the grey status ("Died on …" or "Record closed"), then the words,
+   then "Undo" for the doctor of the record. The status sits on a line of its own on a narrow screen. */
+.closed-banner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+/* (the status keeps its own width: only the words grow – a wide grey pill squeezed them before) */
+.closed-banner > .pill { flex: none; }
+.closed-banner-text { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+.closed-banner .dup-undo { margin-top: 0; }

@@ -1,0 +1,4682 @@
+{
+ "about": "Corpus A: patient information, numbers and dates, as Chrome writes what Indian doctors and receptionists say (fake data).",
+ "now": "2026-09-28T06:00:00Z",
+ "tz": "Asia/Kolkata",
+ "format": {
+  "case": "{ id, region, careType, text, tags?, expected: { values, confirm?, questions?, notes?, noValue?, allow? }, alt?, why? }",
+  "values": "Form paths that must be filled with exactly this value (see voiceRegions.json). A scalar given as a list is a list of acceptable answers. { \"match\": \"regex\" } compares with a case-insensitive regular expression.",
+  "confirm": "{ path: { value, ask } }: blood group, Rh and reactive/positive results go to the confirmation card. Correct if filled with value, or left empty with a question matching ask. A tick is written as its own path, e.g. \"medical.conditions.hiv\": { \"value\": true, \"ask\": \"HIV\" }.",
+  "allow": "Paths that may be filled or left empty (not scored).",
+  "alt": "Another acceptable expected result for an ambiguous case.",
+  "strict": "Any path filled that is not in values, confirm or allow counts as WRONG (an extra tick, note, other condition or field).",
+  "scope": "Corpus A was written for the patient-information fields only, so \"strict\" applies to the paths in strictPaths (and every tick); other clinical details said in a case, and the suggested mother (motherName, which only offers a search), are not scored."
+ },
+ "strictPaths": [
+  "fullName",
+  "ageYears",
+  "phone",
+  "address",
+  "pregnancy.lmp",
+  "pregnancy.scanEdd",
+  "newborn.birthAt",
+  "newborn.birthWeightGrams",
+  "newborn.sex",
+  "medical.conditions",
+  "obstetric.pastComplications"
+ ],
+ "count": 267,
+ "cases": [
+  {
+   "id": "A001",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 28 phone 98765 43210 lives in kothrud pune",
+   "tags": [
+    "phone",
+    "digits"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "address": "Kothrud Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A002",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma aged 31 mobile number 9876543210 address gandhi nagar nagpur",
+   "tags": [
+    "phone",
+    "digits"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "31",
+     "address": "Gandhi Nagar Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A003",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mrs lakshmi narayanan 26 years contact number nine eight seven six five four three two one zero resident of anna nagar chennai",
+   "tags": [
+    "phone",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "26",
+     "address": "Anna Nagar Chennai",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A004",
+   "region": "hindi-belt/bengali/tamil",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age 24 phone no nine eight seven six five four tree two one zero address salt lake sector 2 kolkata",
+   "tags": [
+    "phone",
+    "accent:th->t",
+    "region:hindi-belt/bengali/tamil"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "24",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A005",
+   "region": "gujarati/bengali/odia",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 28 phone nine eight seven six five four three two one jero lives in kothrud pune",
+   "tags": [
+    "phone",
+    "accent:z->j",
+    "region:gujarati/bengali/odia"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "address": "Kothrud Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A006",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma aged 31 mobile number nine eight seven six five four three two one oh address gandhi nagar nagpur",
+   "tags": [
+    "phone",
+    "oh-for-zero"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "31",
+     "address": "Gandhi Nagar Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A007",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mrs lakshmi narayanan 26 years contact number nine eight double seven six five four three two one resident of anna nagar chennai",
+   "tags": [
+    "phone",
+    "double"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "26",
+     "address": "Anna Nagar Chennai",
+     "phone": "98776 54321"
+    }
+   }
+  },
+  {
+   "id": "A008",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age 24 phone no nine eight seven triple five four three two one address salt lake sector 2 kolkata",
+   "tags": [
+    "phone",
+    "triple"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "24",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": "98755 54321"
+    }
+   }
+  },
+  {
+   "id": "A009",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 28 phone ninety eight seventy six fifty four thirty two ten lives in kothrud pune",
+   "tags": [
+    "phone",
+    "digit-pairs"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "address": "Kothrud Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A010",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma aged 31 mobile number ninety eight seven six five forty three two ten address gandhi nagar nagpur",
+   "tags": [
+    "phone",
+    "digit-pairs-mixed"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "31",
+     "address": "Gandhi Nagar Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A011",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mrs lakshmi narayanan 26 years contact number double nine eight seven six five four three two one resident of anna nagar chennai",
+   "tags": [
+    "phone",
+    "double"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "26",
+     "address": "Anna Nagar Chennai",
+     "phone": "99876 54321"
+    }
+   }
+  },
+  {
+   "id": "A012",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age 24 phone no plus nine one nine eight seven six five four three two one zero address salt lake sector 2 kolkata",
+   "tags": [
+    "phone",
+    "plus-91-words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "24",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": "+91 98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A013",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 28 phone +91 98765 43210 lives in kothrud pune",
+   "tags": [
+    "phone",
+    "plus-91-digits"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "address": "Kothrud Pune",
+     "phone": "+91 98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A014",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma aged 31 mobile number zero nine eight seven six five four three two one zero address gandhi nagar nagpur",
+   "tags": [
+    "phone",
+    "trunk-0"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "31",
+     "address": "Gandhi Nagar Nagpur",
+     "phone": [
+      "98765 43210",
+      "09876543210"
+     ]
+    }
+   }
+  },
+  {
+   "id": "A015",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mrs lakshmi narayanan 26 years contact number (987) 654-3210 resident of anna nagar chennai",
+   "tags": [
+    "phone",
+    "en-US-format-fallback"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "26",
+     "address": "Anna Nagar Chennai",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A016",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age 24 phone no 987-654-3210 address salt lake sector 2 kolkata",
+   "tags": [
+    "phone",
+    "en-US-format-fallback"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "24",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A017",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 28 phone 9876 543 210 lives in kothrud pune",
+   "tags": [
+    "phone",
+    "digits-grouped"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "address": "Kothrud Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A018",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma aged 31 mobile number nine eight seven six five, four three two one zero address gandhi nagar nagpur",
+   "tags": [
+    "phone",
+    "comma-in-number"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "31",
+     "address": "Gandhi Nagar Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A019",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mrs lakshmi narayanan 26 years contact number nine eight seven six five for three two one zero resident of anna nagar chennai",
+   "tags": [
+    "phone",
+    "homophone:for=4"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "26",
+     "address": "Anna Nagar Chennai",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A020",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age 24 phone no nine eight seven six five four three to one zero address salt lake sector 2 kolkata",
+   "tags": [
+    "phone",
+    "homophone:to=2"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "24",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A021",
+   "region": "tamil/malayali",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 28 phone nine eight seven six fife four three two one zero lives in kothrud pune",
+   "tags": [
+    "phone",
+    "accent:v->f",
+    "region:tamil/malayali"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "address": "Kothrud Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A022",
+   "region": "gujarati/marathi/bengali",
+   "careType": "antenatal",
+   "text": "name priya sharma aged 31 mobile number nine eight sewen six five four three two one zero address gandhi nagar nagpur",
+   "tags": [
+    "phone",
+    "accent:v->w",
+    "region:gujarati/marathi/bengali"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "31",
+     "address": "Gandhi Nagar Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A023",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mrs lakshmi narayanan 26 years contact number six three double oh one two three four five six resident of anna nagar chennai",
+   "tags": [
+    "phone",
+    "double-oh"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "26",
+     "address": "Anna Nagar Chennai",
+     "phone": "63001 23456"
+    }
+   }
+  },
+  {
+   "id": "A024",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age 24 phone no nine eight seven six five four three two one nought address salt lake sector 2 kolkata",
+   "tags": [
+    "phone",
+    "nought"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "24",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A025",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 28 phone nine eight seven six five four tree too one jero lives in kothrud pune",
+   "tags": [
+    "phone",
+    "accent:mixed"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "address": "Kothrud Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A026",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma aged 31 mobile number ninety-eight seventy-six fifty-four thirty-two ten address gandhi nagar nagpur",
+   "tags": [
+    "phone",
+    "digit-pairs-hyphen"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "31",
+     "address": "Gandhi Nagar Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A027",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mrs lakshmi narayanan 26 years contact number 98 765 432 10 resident of anna nagar chennai",
+   "tags": [
+    "phone",
+    "digits-grouped"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "26",
+     "address": "Anna Nagar Chennai",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A028",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age 24 phone no nine eight seven six five four three two one zero address salt lake sector 2 kolkata",
+   "tags": [
+    "phone",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "24",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A029",
+   "region": "bengali/assamese",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 28 phone nine eight seven six five four three two one sero lives in kothrud pune",
+   "tags": [
+    "phone",
+    "accent:z->s",
+    "region:bengali/assamese"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "address": "Kothrud Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A030",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma aged 31 mobile number nine eight seven six five four three two won zero address gandhi nagar nagpur",
+   "tags": [
+    "phone",
+    "homophone:won=1"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "31",
+     "address": "Gandhi Nagar Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A031",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "mrs lakshmi narayanan 26 years contact number nine ate seven six five four three two one zero resident of anna nagar chennai",
+   "tags": [
+    "phone",
+    "homophone:ate=8"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "26",
+     "address": "Anna Nagar Chennai",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A032",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age 24 phone no nine eight seven six five four three two one double zero address salt lake sector 2 kolkata",
+   "tags": [
+    "phone",
+    "over-long"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "24",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": [
+      "98765 43210",
+      "98765 43210 0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "A033",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "sunita devi 28 years 9876543210 lives in wakad pune",
+   "tags": [
+    "phone",
+    "no-keyword"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "phone": "98765 43210",
+     "address": "Wakad Pune"
+    }
+   }
+  },
+  {
+   "id": "A034",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name anita rao age 30 whatsapp number 98765 43210",
+   "tags": [
+    "phone",
+    "whatsapp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anita Rao",
+     "ageYears": "30",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A035",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name anita rao age 30 husband number nine eight seven six five four three two one zero",
+   "tags": [
+    "phone",
+    "husband-number"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anita Rao",
+     "ageYears": "30",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A036",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name anita rao age 30 number hai nine eight seven six five four three two one zero",
+   "tags": [
+    "phone",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anita Rao",
+     "ageYears": "30",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A037",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name anita rao age 30 phone number is nine eight seven six five four three two one zero address baner pune 411045",
+   "tags": [
+    "phone",
+    "pincode"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anita Rao",
+     "ageYears": "30",
+     "phone": "98765 43210",
+     "address": "Baner Pune 411045"
+    }
+   }
+  },
+  {
+   "id": "A038",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name anita rao age 30 address baner pune 411045 9876543210",
+   "tags": [
+    "phone",
+    "pincode-before-number"
+   ],
+   "expected": {
+    "values": {
+     "address": "Baner Pune 411045",
+     "fullName": "Anita Rao",
+     "ageYears": "30",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A039",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age 28 phone 98765 43210",
+   "tags": [
+    "age"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A040",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil aged twenty eight phone 98765 43210",
+   "tags": [
+    "age",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A041",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil 28 years phone 98765 43210",
+   "tags": [
+    "age"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A042",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil twenty eight years old phone 98765 43210",
+   "tags": [
+    "age",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A043",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil 28 saal phone 98765 43210",
+   "tags": [
+    "age",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A044",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil umar 28 saal phone 98765 43210",
+   "tags": [
+    "age",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A045",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age tirty two phone 98765 43210",
+   "tags": [
+    "age",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "32",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A046",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age twenty tree phone 98765 43210",
+   "tags": [
+    "age",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "23",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A047",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age 28 yrs phone 98765 43210",
+   "tags": [
+    "age"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A048",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil 28 year female phone 98765 43210",
+   "tags": [
+    "age"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A049",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age is twenty-eight phone 98765 43210",
+   "tags": [
+    "age",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A050",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil she is 28 years phone 98765 43210",
+   "tags": [
+    "age"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A051",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age hai 28 phone 98765 43210",
+   "tags": [
+    "age",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A052",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age thirty one phone 98765 43210",
+   "tags": [
+    "age",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "31",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A053",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age: 31 phone 98765 43210",
+   "tags": [
+    "age"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "31",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A054",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil nineteen years phone 98765 43210",
+   "tags": [
+    "age",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "19",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A055",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil she's thirty two phone 98765 43210",
+   "tags": [
+    "age",
+    "no-unit"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "32",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A056",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil 32 years of age phone 98765 43210",
+   "tags": [
+    "age"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "32",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A057",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age twenty-eight year phone 98765 43210",
+   "tags": [
+    "age",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A058",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil umar tees saal phone 98765 43210",
+   "tags": [
+    "age",
+    "hindi-number"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "30",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A059",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age fourty phone 98765 43210",
+   "tags": [
+    "age",
+    "spelling"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "40",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A060",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age tirty phone 98765 43210",
+   "tags": [
+    "age",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "30",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A061",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age twenty fife phone 98765 43210",
+   "tags": [
+    "age",
+    "accent:v->f"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "25",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A062",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age twenty sewen phone 98765 43210",
+   "tags": [
+    "age",
+    "accent:v->w"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "27",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A063",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age ji 26 phone 98765 43210",
+   "tags": [
+    "age",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "26",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A064",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name kavita patil age achha 26 years phone 98765 43210",
+   "tags": [
+    "age",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "26",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A065",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "patient name sunita devi age 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A066",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name is Priya Sharma age 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A067",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "Mrs Kavita Patil age 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A068",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "Smt. Lakshmi Narayanan age 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A069",
+   "region": "hindi-belt",
+   "careType": "gynaecology",
+   "text": "shrimati rekha yadav age 28",
+   "tags": [
+    "name",
+    "region:hindi-belt"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Rekha Yadav",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A070",
+   "region": "hindi-belt",
+   "careType": "gynaecology",
+   "text": "shreemati rekha yadav age 28",
+   "tags": [
+    "name",
+    "spelling",
+    "region:hindi-belt"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Rekha Yadav",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A071",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "kumari pooja singh age 19",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Singh",
+     "ageYears": "19"
+    }
+   }
+  },
+  {
+   "id": "A072",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "patient ka naam anjali gupta hai age 28",
+   "tags": [
+    "name",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anjali Gupta",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A073",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "naam meena kumari age 28",
+   "tags": [
+    "name",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Kumari",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A074",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name sunita ji age 28",
+   "tags": [
+    "name",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A075",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name haan sunita devi age 28",
+   "tags": [
+    "name",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A076",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "sunita devi 28 years",
+   "tags": [
+    "name",
+    "lead-name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A077",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "Fatima Sheikh, 28 years",
+   "tags": [
+    "name",
+    "lead-name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Fatima Sheikh",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A078",
+   "region": "gujarati",
+   "careType": "gynaecology",
+   "text": "name hetal ben patel age 28",
+   "tags": [
+    "name",
+    "region:gujarati"
+   ],
+   "expected": {
+    "values": {
+     "fullName": [
+      "Hetal Ben Patel",
+      "Hetalben Patel"
+     ],
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A079",
+   "region": "marathi",
+   "careType": "gynaecology",
+   "text": "sau kavita joshi age 28",
+   "tags": [
+    "name",
+    "region:marathi",
+    "honorific-sau"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Joshi",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A080",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name rukhsana begum age 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Rukhsana Begum",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A081",
+   "region": "punjabi",
+   "careType": "gynaecology",
+   "text": "name gurpreet kaur age 28",
+   "tags": [
+    "name",
+    "region:punjabi"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Gurpreet Kaur",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A082",
+   "region": "malayali",
+   "careType": "gynaecology",
+   "text": "name sreelakshmi nair age 28",
+   "tags": [
+    "name",
+    "region:malayali"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sreelakshmi Nair",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A083",
+   "region": "parsi",
+   "careType": "gynaecology",
+   "text": "name nergis doctor age 28",
+   "tags": [
+    "name",
+    "surname-is-keyword",
+    "region:parsi"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Nergis Doctor",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A084",
+   "region": "parsi",
+   "careType": "gynaecology",
+   "text": "name roshni contractor age 28",
+   "tags": [
+    "name",
+    "region:parsi"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Roshni Contractor",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A085",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name Ms Ayesha Khan age 28",
+   "tags": [
+    "name",
+    "honorific-in-name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Ayesha Khan",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A086",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "misses anita rao age 28",
+   "tags": [
+    "name",
+    "honorific-misses"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anita Rao",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A087",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name priya achha age 28",
+   "tags": [
+    "name",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A088",
+   "region": "tamil",
+   "careType": "gynaecology",
+   "text": "name selvi murugan age 28",
+   "tags": [
+    "name",
+    "region:tamil"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Selvi Murugan",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A089",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name mehrunnisa age 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Mehrunnisa",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A090",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name is anita and age is 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anita",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A091",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "patient name is anita wife of suresh kumar age 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anita",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A092",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name bharati para age 28",
+   "tags": [
+    "name",
+    "surname-is-keyword"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Bharati Para",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A093",
+   "region": "marathi",
+   "careType": "gynaecology",
+   "text": "name savitri bai age 28",
+   "tags": [
+    "name",
+    "region:marathi"
+   ],
+   "expected": {
+    "values": {
+     "fullName": [
+      "Savitri Bai",
+      "Savitribai"
+     ],
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A094",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name, uh, sunita devi age 28",
+   "tags": [
+    "name",
+    "filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A095",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name Sunita. Age 28",
+   "tags": [
+    "name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A096",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "patient name kumari pooja age 19",
+   "tags": [
+    "name",
+    "honorific-in-name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja",
+     "ageYears": "19"
+    }
+   }
+  },
+  {
+   "id": "A097",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name mrs sunita devi age 28",
+   "tags": [
+    "name",
+    "honorific-in-name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28"
+    }
+   }
+  },
+  {
+   "id": "A098",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name sister mary joseph age 40",
+   "tags": [
+    "name",
+    "honorific-sister"
+   ],
+   "expected": {
+    "values": {
+     "fullName": [
+      "Mary Joseph",
+      "Sister Mary Joseph"
+     ],
+     "ageYears": "40"
+    }
+   }
+  },
+  {
+   "id": "A099",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address flat 302 sai darshan apartment kothrud pune phone 98765 43210",
+   "tags": [
+    "address"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Flat 302 Sai Darshan Apartment Kothrud Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A100",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address house number 45 gandhi nagar near hanuman mandir nagpur phone 98765 43210",
+   "tags": [
+    "address"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "House Number 45 Gandhi Nagar Near Hanuman Mandir Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A101",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 lives in wakad pune phone 98765 43210",
+   "tags": [
+    "address"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Wakad Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A102",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 resident of andheri east mumbai phone 98765 43210",
+   "tags": [
+    "address"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Andheri East Mumbai",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A103",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address 12 MG road bangalore phone 98765 43210",
+   "tags": [
+    "address"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "12 MG Road Bangalore",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A104",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address near iskool, shivaji nagar, pune phone 98765 43210",
+   "tags": [
+    "address",
+    "accent:prothetic-i"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": [
+      "Near School, Shivaji Nagar, Pune",
+      "Near Iskool, Shivaji Nagar, Pune"
+     ],
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A105",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address near is cool shivaji nagar pune phone 98765 43210",
+   "tags": [
+    "address",
+    "accent:prothetic-i"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": [
+      "Near School Shivaji Nagar Pune",
+      "Near Is Cool Shivaji Nagar Pune"
+     ],
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A106",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address near Dr Ambedkar chowk nagpur phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword-in-address:dr"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Near Dr Ambedkar Chowk Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A107",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address near doctor ambedkar chowk nagpur phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword-in-address:doctor"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Near Doctor Ambedkar Chowk Nagpur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A108",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address village khed taluka rajgurunagar district pune phone 98765 43210",
+   "tags": [
+    "address",
+    "rural"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Village Khed Taluka Rajgurunagar District Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A109",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 village khed taluka rajgurunagar district pune phone 98765 43210",
+   "tags": [
+    "address",
+    "rural",
+    "no-keyword"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Village Khed Taluka Rajgurunagar District Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A110",
+   "region": "bengali",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address ghosh para kolkata phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword-in-address:para",
+    "region:bengali"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Ghosh Para Kolkata",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A111",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address opposite blood bank civil lines jaipur phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword-in-address:blood"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Opposite Blood Bank Civil Lines Jaipur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A112",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address sector 15 rohini delhi pin code 1 1 0 0 8 5 phone 98765 43210",
+   "tags": [
+    "address",
+    "pincode-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": [
+      "Sector 15 Rohini Delhi Pin Code 110085",
+      "Sector 15 Rohini Delhi 110085"
+     ],
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A113",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address sector 15 rohini delhi pin code one one zero zero eight five phone 98765 43210",
+   "tags": [
+    "address",
+    "pincode-words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": [
+      "Sector 15 Rohini Delhi Pin Code 110085",
+      "Sector 15 Rohini Delhi 110085"
+     ],
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A114",
+   "region": "telugu",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address H No 4-5-67 himayatnagar hyderabad phone 98765 43210",
+   "tags": [
+    "address",
+    "region:telugu"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "H No 4-5-67 Himayatnagar Hyderabad",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A115",
+   "region": "tamil",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address door number 12 anna nagar chennai 600040 phone 98765 43210",
+   "tags": [
+    "address",
+    "region:tamil"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Door Number 12 Anna Nagar Chennai 600040",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A116",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 staying at salt lake sector 2 kolkata phone 98765 43210",
+   "tags": [
+    "address"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Salt Lake Sector 2 Kolkata",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A117",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address mother dairy road patparganj delhi phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword-in-address:mother"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Mother Dairy Road Patparganj Delhi",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A118",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 residence at wakad pune phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword:residence"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Wakad Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A119",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address flat number two zero three sai heights baner phone 98765 43210",
+   "tags": [
+    "address",
+    "number-said-digit-by-digit"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Flat Number 203 Sai Heights Baner",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A120",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address plot no 7 sector 21 kharghar navi mumbai phone 98765 43210",
+   "tags": [
+    "address"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Plot No 7 Sector 21 Kharghar Navi Mumbai",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A121",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address 14/2 nehru colony dehradun phone 98765 43210",
+   "tags": [
+    "address"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "14/2 Nehru Colony Dehradun",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A122",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address MES married quarters pune cantonment phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword-in-address:married"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "MES Married Quarters Pune Cantonment",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A123",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address haan wakad pune phone 98765 43210",
+   "tags": [
+    "address",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Wakad Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A124",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address is ward number tree, sadar bazaar, raipur phone 98765 43210",
+   "tags": [
+    "address",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Ward Number 3, Sadar Bazaar, Raipur",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A125",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address near sai scan centre aundh pune phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword-in-address:scan"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Near Sai Scan Centre Aundh Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A126",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address old age home road kochi phone 98765 43210",
+   "tags": [
+    "address",
+    "keyword-in-address:age"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Old Age Home Road Kochi",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A127",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 pune mein rehti hai phone 98765 43210",
+   "tags": [
+    "address",
+    "hinglish",
+    "no-keyword"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A128",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name reena das age 27 address wakad pune achha phone 98765 43210",
+   "tags": [
+    "address",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Reena Das",
+     "ageYears": "27",
+     "address": "Wakad Pune",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A129",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP 12th July 2026 phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A130",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP twelfth of July phone 98765 43210",
+   "tags": [
+    "lmp",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A131",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP 12 July phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A132",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 last period was on 5th August phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-08-05",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A133",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP 12/07/2026 phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A134",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP 12-7-26 phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A135",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP twelve seven twenty twenty six phone 98765 43210",
+   "tags": [
+    "lmp",
+    "day-month-spaced",
+    "year-twenty-twenty"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A136",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP 12 7 2026 phone 98765 43210",
+   "tags": [
+    "lmp",
+    "day-month-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A137",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP 5 8 2026 phone 98765 43210",
+   "tags": [
+    "lmp",
+    "day-month-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-08-05",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A138",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP twelve July twenty twenty six phone 98765 43210",
+   "tags": [
+    "lmp",
+    "year-twenty-twenty"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A139",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP 12th July twenty twenty six phone 98765 43210",
+   "tags": [
+    "lmp",
+    "year-twenty-twenty"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A140",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP July twelve phone 98765 43210",
+   "tags": [
+    "lmp",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A141",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP July 12th 2026 phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A142",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP first of August phone 98765 43210",
+   "tags": [
+    "lmp",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-08-01",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A143",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP twenty first June phone 98765 43210",
+   "tags": [
+    "lmp",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-06-21",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A144",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP twenty one June phone 98765 43210",
+   "tags": [
+    "lmp",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-06-21",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A145",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP jully 12 phone 98765 43210",
+   "tags": [
+    "lmp",
+    "month-misheard"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A146",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP 12 jully phone 98765 43210",
+   "tags": [
+    "lmp",
+    "month-misheard"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A147",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP 3rd agust phone 98765 43210",
+   "tags": [
+    "lmp",
+    "month-misheard"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-08-03",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A148",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP 15 febuary phone 98765 43210",
+   "tags": [
+    "lmp",
+    "month-misheard"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-02-15",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A149",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 L M P 12 July phone 98765 43210",
+   "tags": [
+    "lmp",
+    "letters"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A150",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 el em pee 12 July phone 98765 43210",
+   "tags": [
+    "lmp",
+    "letters-as-words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A151",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP haan 12 July phone 98765 43210",
+   "tags": [
+    "lmp",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A152",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP ka date 12 July phone 98765 43210",
+   "tags": [
+    "lmp",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A153",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 last menstrual period twelfth July phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A154",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP was on the 12th of July phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A155",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP 12.7.2026 phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A156",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP tirteenth July phone 98765 43210",
+   "tags": [
+    "lmp",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-13",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A157",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP twenty tree June phone 98765 43210",
+   "tags": [
+    "lmp",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-06-23",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A158",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 last MC 5th August phone 98765 43210",
+   "tags": [
+    "lmp",
+    "keyword:MC"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-08-05",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A159",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP 5/8 phone 98765 43210",
+   "tags": [
+    "lmp",
+    "no-year-numeric"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-08-05",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A160",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP thirtieth June phone 98765 43210",
+   "tags": [
+    "lmp",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-06-30",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A161",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP 30 6 26 phone 98765 43210",
+   "tags": [
+    "lmp",
+    "day-month-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-06-30",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A162",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP around 10th July phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-10",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A163",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP is 10th Jul phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-10",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A164",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP 10th of July 2026 phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-10",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A165",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP janvary 20 phone 98765 43210",
+   "tags": [
+    "lmp",
+    "month-misheard",
+    "accent:v"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-01-20",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A166",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 LMP 2nd septembar phone 98765 43210",
+   "tags": [
+    "lmp",
+    "month-misheard"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-09-02",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A167",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP date 12 July phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A168",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 LMP 12th July two thousand twenty six phone 98765 43210",
+   "tags": [
+    "lmp",
+    "year-two-thousand"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A169",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 last menses 1st August phone 98765 43210",
+   "tags": [
+    "lmp"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-08-01",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A170",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 LMP 12 tarikh July phone 98765 43210",
+   "tags": [
+    "lmp",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A171",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 EDD by scan 15th March 2027",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-03-15"
+    }
+   }
+  },
+  {
+   "id": "A172",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 scan EDD 15 March 2027",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-03-15"
+    }
+   }
+  },
+  {
+   "id": "A173",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 EDD as per dating scan 15/03/2027",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-03-15"
+    }
+   }
+  },
+  {
+   "id": "A174",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 USG EDD fifteenth march",
+   "tags": [
+    "edd",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-03-15"
+    }
+   }
+  },
+  {
+   "id": "A175",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 EDD by USG 15 3 2027",
+   "tags": [
+    "edd",
+    "day-month-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-03-15"
+    }
+   }
+  },
+  {
+   "id": "A176",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 EDD by scan fifteenth march twenty twenty seven",
+   "tags": [
+    "edd",
+    "year-twenty-twenty"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-03-15"
+    }
+   }
+  },
+  {
+   "id": "A177",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 corrected EDD 3rd Feb 2027",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-02-03"
+    }
+   }
+  },
+  {
+   "id": "A178",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 C E D D 3rd Feb",
+   "tags": [
+    "edd",
+    "letters"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-02-03"
+    }
+   }
+  },
+  {
+   "id": "A179",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 EDD by scan 3 feb",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-02-03"
+    }
+   }
+  },
+  {
+   "id": "A180",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 EDD by scan 3 febuary 2027",
+   "tags": [
+    "edd",
+    "month-misheard"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-02-03"
+    }
+   }
+  },
+  {
+   "id": "A181",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 EDD as per NT scan 20th Jan 2027",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A182",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 EDD according to early scan 20th Jan 2027",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A183",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 EDD by sonography 20 Jan",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A184",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 E D D by scan 20 January",
+   "tags": [
+    "edd",
+    "letters"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A185",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 EDD by scan twentieth janvary",
+   "tags": [
+    "edd",
+    "month-misheard",
+    "accent:v"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A186",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 EDD by scan haan 20 January",
+   "tags": [
+    "edd",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A187",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 dating scan EDD is 20/1/27",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A188",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 EDD 20 jan by scan",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A189",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 due date by scan 20 Jan 2027",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A190",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 EDD by scan 20th Jan 27",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-20"
+    }
+   }
+  },
+  {
+   "id": "A191",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 EDD by scan twenty tree December",
+   "tags": [
+    "edd",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2026-12-23"
+    }
+   }
+  },
+  {
+   "id": "A192",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 EDD by scan 23 12 26",
+   "tags": [
+    "edd",
+    "day-month-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2026-12-23"
+    }
+   }
+  },
+  {
+   "id": "A193",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 ee dee dee by scan 23rd December",
+   "tags": [
+    "edd",
+    "letters-as-words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2026-12-23"
+    }
+   }
+  },
+  {
+   "id": "A194",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name pooja reddy age 25 EDD by scan 23rd of December twenty twenty six",
+   "tags": [
+    "edd",
+    "year-twenty-twenty"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2026-12-23"
+    }
+   }
+  },
+  {
+   "id": "A195",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name meena iyer age 25 EDD by USG 5th Jan",
+   "tags": [
+    "edd"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2027-01-05"
+    }
+   }
+  },
+  {
+   "id": "A196",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name farzana khan age 25 EDD by scan 23 12",
+   "tags": [
+    "edd",
+    "no-year-numeric",
+    "day-month-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "25",
+     "pregnancy.scanEdd": "2026-12-23"
+    }
+   }
+  },
+  {
+   "id": "A197",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita sharma born today at 10:30 am weight 2.8 kg",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita Sharma",
+     "motherName": "Sunita Sharma",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A198",
+   "region": "any",
+   "careType": "newborn",
+   "text": "B O sunita sharma born today at 9:15 am weight 2.8 kg",
+   "tags": [
+    "newborn",
+    "b/o-spoken"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita Sharma",
+     "motherName": "Sunita Sharma",
+     "newborn.birthAt": "2026-09-28T09:15",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A199",
+   "region": "any",
+   "careType": "newborn",
+   "text": "bee oh sunita sharma born today at 9:15 am weight 2.8 kg",
+   "tags": [
+    "newborn",
+    "b/o-spoken"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita Sharma",
+     "motherName": "Sunita Sharma",
+     "newborn.birthAt": "2026-09-28T09:15",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A200",
+   "region": "any",
+   "careType": "newborn",
+   "text": "B/O Sunita Sharma born today at 9:15 am weight 2.8 kg",
+   "tags": [
+    "newborn",
+    "typed"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita Sharma",
+     "motherName": "Sunita Sharma",
+     "newborn.birthAt": "2026-09-28T09:15",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A201",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha yadav born today at ten thirty am birth weight two point eight kg",
+   "tags": [
+    "newborn",
+    "time-words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha Yadav",
+     "motherName": "Rekha Yadav",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A202",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha delivered yesterday at 11 pm weight 3 kg",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha",
+     "motherName": "Rekha",
+     "newborn.birthAt": "2026-09-27T23:00",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A203",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha born 27th September at 11:40 pm weight 2 kg 900 grams",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha",
+     "newborn.birthAt": "2026-09-27T23:40",
+     "newborn.birthWeightGrams": "2900"
+    }
+   }
+  },
+  {
+   "id": "A204",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha born today at 1030 hours weight 3 kg",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A205",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha born today at ten thirty hours weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A206",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha time of birth 9 45 am weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha",
+     "newborn.birthAt": "2026-09-28T09:45",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A207",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha born today morning 9 o'clock weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-oclock"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha",
+     "newborn.birthAt": "2026-09-28T09:00",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A208",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha born today at 4 in the morning weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-in-the-morning"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha",
+     "newborn.birthAt": "2026-09-28T04:00",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A209",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of anita born today at 8:20 am birth weight two thousand eight hundred grams",
+   "tags": [
+    "newborn",
+    "weight-thousand"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anita",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A210",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of anita born today at 8:20 am birth weight twenty eight hundred grams",
+   "tags": [
+    "newborn",
+    "weight-hundreds"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anita",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A211",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of anita born today at 8:20 am birth weight 2 kilo 800",
+   "tags": [
+    "newborn",
+    "weight-kilo-no-grams"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anita",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A212",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of anita born today at 8:20 am birth weight tree kg",
+   "tags": [
+    "newborn",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anita",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A213",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of anita born today at 8:20 am birth weight two point tree kg",
+   "tags": [
+    "newborn",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anita",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "2300"
+    }
+   }
+  },
+  {
+   "id": "A214",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of anita born today at 8:20 am birth weight 2.85 kg",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anita",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "2850"
+    }
+   }
+  },
+  {
+   "id": "A215",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of anita born today at 8:20 am birth weight two decimal eight kg",
+   "tags": [
+    "newborn",
+    "decimal"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anita",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A216",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of mother anjali gupta born today at 8:20 am weight 3 kg",
+   "tags": [
+    "newborn",
+    "baby-of-mother"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anjali Gupta",
+     "motherName": "Anjali Gupta",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A217",
+   "region": "any",
+   "careType": "newborn",
+   "text": "mother's name anjali gupta baby born today 8:20 am weight 3 kg",
+   "tags": [
+    "newborn",
+    "mothers-name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Anjali Gupta",
+     "motherName": "Anjali Gupta",
+     "newborn.birthAt": "2026-09-28T08:20",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A218",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of fatima born today at 7:05 am 3.2 kg",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Fatima",
+     "newborn.birthAt": "2026-09-28T07:05",
+     "newborn.birthWeightGrams": "3200"
+    }
+   }
+  },
+  {
+   "id": "A219",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of rekha born on 25 9 2026 at 10 pm weight 3 kg",
+   "tags": [
+    "newborn",
+    "day-month-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Rekha",
+     "newborn.birthAt": "2026-09-25T22:00",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A220",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of priya DOB 26th September TOB 2:30 pm BW 2.6 kg",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Priya",
+     "newborn.birthAt": "2026-09-26T14:30",
+     "newborn.birthWeightGrams": "2600"
+    }
+   }
+  },
+  {
+   "id": "A221",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of priya born today subah 9 baje weight 3 kg",
+   "tags": [
+    "newborn",
+    "hinglish"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Priya",
+     "newborn.birthAt": "2026-09-28T09:00",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A222",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of nirmala born at 3 45 pm yesterday weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Nirmala",
+     "newborn.birthAt": "2026-09-27T15:45",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A223",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of lakshmi born today at 9.20 a.m. weight 2.9 kgs",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Lakshmi",
+     "newborn.birthAt": "2026-09-28T09:20",
+     "newborn.birthWeightGrams": "2900"
+    }
+   }
+  },
+  {
+   "id": "A224",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of shrimati lakshmi iyer born today at 9:20 am weight 2.9 kg",
+   "tags": [
+    "newborn",
+    "honorific"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Lakshmi Iyer",
+     "motherName": "Lakshmi Iyer",
+     "newborn.birthAt": "2026-09-28T09:20",
+     "newborn.birthWeightGrams": "2900"
+    }
+   }
+  },
+  {
+   "id": "A225",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of mrs. lakshmi iyer born today at 9:20 am weight 2.9 kg",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Lakshmi Iyer",
+     "motherName": "Lakshmi Iyer",
+     "newborn.birthAt": "2026-09-28T09:20",
+     "newborn.birthWeightGrams": "2900"
+    }
+   }
+  },
+  {
+   "id": "A226",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby off lakshmi iyer born today at 9:20 am weight 2.9 kg",
+   "tags": [
+    "newborn",
+    "homophone:off"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Lakshmi Iyer",
+     "motherName": "Lakshmi Iyer",
+     "newborn.birthAt": "2026-09-28T09:20",
+     "newborn.birthWeightGrams": "2900"
+    }
+   }
+  },
+  {
+   "id": "A227",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita ji born today at 9:20 am weight 2.9 kg",
+   "tags": [
+    "newborn",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "motherName": "Sunita",
+     "newborn.birthAt": "2026-09-28T09:20",
+     "newborn.birthWeightGrams": "2900"
+    }
+   }
+  },
+  {
+   "id": "A228",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at 10 30 weight 2.9 kg",
+   "tags": [
+    "newborn",
+    "time-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "2900"
+    }
+   }
+  },
+  {
+   "id": "A229",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at 10:30 weight 2800 gm",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A230",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at 10:30 weight two kg eight hundred gram",
+   "tags": [
+    "newborn",
+    "words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A231",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at 10:30 weight 2 kilo 800 grams",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "2800"
+    }
+   }
+  },
+  {
+   "id": "A232",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at 10:30 weight tree point two kg",
+   "tags": [
+    "newborn",
+    "accent:th->t"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "3200"
+    }
+   }
+  },
+  {
+   "id": "A233",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at 10:30 a m weight 3 kg",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T10:30",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A234",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at ten fifteen in the morning weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-words"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T10:15",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A235",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born yesterday night at 11 20 weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-27T23:20",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A236",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at quarter past nine weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-quarter"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T09:15",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A237",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at half past eight weight 3 kg",
+   "tags": [
+    "newborn",
+    "time-half-past"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T08:30",
+     "newborn.birthWeightGrams": "3000"
+    }
+   }
+  },
+  {
+   "id": "A238",
+   "region": "any",
+   "careType": "newborn",
+   "text": "baby of sunita born today at 9:20 am weight 2 kg 800 g phone nine eight seven six five four three two one zero",
+   "tags": [
+    "newborn"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Baby of Sunita",
+     "newborn.birthAt": "2026-09-28T09:20",
+     "newborn.birthWeightGrams": "2800",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A239",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "haan patient name sunita devi age 28 saal phone nine eight seven six five four three two one zero address kothrud pune LMP 12th July 2026",
+   "tags": [
+    "full",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "phone": "98765 43210",
+     "address": "Kothrud Pune",
+     "pregnancy.lmp": "2026-07-12"
+    }
+   }
+  },
+  {
+   "id": "A240",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "achha so patient is mrs kavita patil 26 years old mobile 98765 43210 lives in wakad pune LMP 5th August",
+   "tags": [
+    "full",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Kavita Patil",
+     "ageYears": "26",
+     "phone": "98765 43210",
+     "address": "Wakad Pune",
+     "pregnancy.lmp": "2026-08-05"
+    }
+   }
+  },
+  {
+   "id": "A241",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name lakshmi narayanan age tirty phone nine eight seven six five four tree two one jero address anna nagar chennai LMP 1st August",
+   "tags": [
+    "full",
+    "accent:tamil"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Lakshmi Narayanan",
+     "ageYears": "30",
+     "phone": "98765 43210",
+     "address": "Anna Nagar Chennai",
+     "pregnancy.lmp": "2026-08-01"
+    }
+   }
+  },
+  {
+   "id": "A242",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name moumita ghosh age twenty fife mobile nine eight sewen six five four three two one zero address salt lake kolkata LMP twelfth July",
+   "tags": [
+    "full",
+    "accent:bengali"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Moumita Ghosh",
+     "ageYears": "25",
+     "phone": "98765 43210",
+     "address": "Salt Lake Kolkata",
+     "pregnancy.lmp": "2026-07-12"
+    }
+   }
+  },
+  {
+   "id": "A243",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name hetal patel age 24 phone double nine eight seven six five four three two one address navrangpura ahmedabad LMP 12 7 2026",
+   "tags": [
+    "full",
+    "accent:gujarati"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Hetal Patel",
+     "ageYears": "24",
+     "phone": "99876 54321",
+     "address": "Navrangpura Ahmedabad",
+     "pregnancy.lmp": "2026-07-12"
+    }
+   }
+  },
+  {
+   "id": "A244",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name gurpreet kaur age 29 phone ninety eight seventy six fifty four thirty two ten address model town ludhiana LMP 12th July twenty twenty six EDD by scan 18th April 2027",
+   "tags": [
+    "full",
+    "accent:punjabi"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Gurpreet Kaur",
+     "ageYears": "29",
+     "phone": "98765 43210",
+     "address": "Model Town Ludhiana",
+     "pregnancy.lmp": "2026-07-12",
+     "pregnancy.scanEdd": "2027-04-18"
+    }
+   }
+  },
+  {
+   "id": "A245",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name sreelakshmi nair age 27 phone plus nine one nine eight seven six five four three two one zero address kakkanad kochi LMP July 12th",
+   "tags": [
+    "full",
+    "accent:malayali"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sreelakshmi Nair",
+     "ageYears": "27",
+     "phone": "+91 98765 43210",
+     "address": "Kakkanad Kochi",
+     "pregnancy.lmp": "2026-07-12"
+    }
+   }
+  },
+  {
+   "id": "A246",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name pooja reddy age 23 years mobile number 9 8 7 6 5 4 3 2 1 0 address banjara hills hyderabad LMP 3rd August",
+   "tags": [
+    "full",
+    "accent:telugu"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Pooja Reddy",
+     "ageYears": "23",
+     "phone": "98765 43210",
+     "address": "Banjara Hills Hyderabad",
+     "pregnancy.lmp": "2026-08-03"
+    }
+   }
+  },
+  {
+   "id": "A247",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "smt rekha yadav 31 saal ki hai phone 98765 43210 village khed district pune LMP 20 June",
+   "tags": [
+    "full",
+    "hinglish",
+    "rural"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Rekha Yadav",
+     "ageYears": "31",
+     "phone": "98765 43210",
+     "address": "Village Khed District Pune",
+     "pregnancy.lmp": "2026-06-20"
+    }
+   }
+  },
+  {
+   "id": "A248",
+   "region": "any",
+   "careType": "postnatal",
+   "text": "name farzana khan age 32 phone 98765 43210 address mohammed ali road mumbai postnatal delivered on 20th September",
+   "tags": [
+    "full"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Farzana Khan",
+     "ageYears": "32",
+     "phone": "98765 43210",
+     "address": "Mohammed Ali Road Mumbai"
+    }
+   }
+  },
+  {
+   "id": "A249",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name anita rao age 34 phone 98765 43210 address jayanagar bangalore LMP 12th July",
+   "tags": [
+    "full",
+    "lmp-not-for-gynae"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Anita Rao",
+     "ageYears": "34",
+     "phone": "98765 43210",
+     "address": "Jayanagar Bangalore"
+    }
+   }
+  },
+  {
+   "id": "A250",
+   "region": "any",
+   "careType": "infertility",
+   "text": "name meena iyer age 33 married for 6 years phone 98765 43210 address adyar chennai",
+   "tags": [
+    "full"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Meena Iyer",
+     "ageYears": "33",
+     "phone": "98765 43210",
+     "address": "Adyar Chennai"
+    }
+   }
+  },
+  {
+   "id": "A251",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "okay patient name is priya sharma, age 28, phone number 98765-43210, address flat 12, sai krupa society, baner, pune. LMP 12th July 2026. EDD by scan 18th April 2027.",
+   "tags": [
+    "full",
+    "punctuated"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "28",
+     "phone": "98765 43210",
+     "address": "Flat 12, Sai Krupa Society, Baner, Pune",
+     "pregnancy.lmp": "2026-07-12",
+     "pregnancy.scanEdd": "2027-04-18"
+    }
+   }
+  },
+  {
+   "id": "A252",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "Name Priya Sharma Age 28 Phone 98765 43210 Address Baner Pune Lmp 12th July",
+   "tags": [
+    "full",
+    "odd-capitalisation"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "28",
+     "phone": "98765 43210",
+     "address": "Baner Pune",
+     "pregnancy.lmp": "2026-07-12"
+    }
+   }
+  },
+  {
+   "id": "A253",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma age 28 phone 98765 43210 address baner pune last MC 12th july",
+   "tags": [
+    "full",
+    "keyword:MC"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "28",
+     "phone": "98765 43210",
+     "address": "Baner Pune",
+     "pregnancy.lmp": "2026-07-12"
+    }
+   }
+  },
+  {
+   "id": "A254",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name priya sharma age 28 LMP 12th July phone 98765 43210 G2 P1 L1 previous LSCS",
+   "tags": [
+    "full"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Priya Sharma",
+     "ageYears": "28",
+     "phone": "98765 43210",
+     "pregnancy.lmp": "2026-07-12"
+    }
+   }
+  },
+  {
+   "id": "A255",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name sunita devi age 28 phone nine eight seven six five four three two one zero she is from nashik",
+   "tags": [
+    "full",
+    "address-from"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "phone": "98765 43210",
+     "address": [
+      "Nashik",
+      null
+     ]
+    }
+   }
+  },
+  {
+   "id": "A256",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name sunita devi age 28 hb 10.5 weight 62 kg LMP 12 July",
+   "tags": [
+    "full",
+    "no-phone-false-positive"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "pregnancy.lmp": "2026-07-12"
+    },
+    "noValue": [
+     "phone"
+    ]
+   }
+  },
+  {
+   "id": "A257",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name sunita devi age 28 married since 2019 LMP 12 July phone 98765 43210",
+   "tags": [
+    "full"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A258",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name sunita devi 2 years married age 26 LMP 12 July",
+   "tags": [
+    "full",
+    "age-false-positive"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "26",
+     "pregnancy.lmp": "2026-07-12"
+    }
+   }
+  },
+  {
+   "id": "A259",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name sunita devi LMP twelve seven phone nine eight seven six five four three two one zero age 26",
+   "tags": [
+    "full",
+    "day-month-spaced"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "26",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A260",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "name sunita devi age 26 phone 98765 43210 LMP 12 July EDD 18 April by dating scan",
+   "tags": [
+    "full"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "26",
+     "pregnancy.lmp": "2026-07-12",
+     "phone": "98765 43210",
+     "pregnancy.scanEdd": "2027-04-18"
+    }
+   }
+  },
+  {
+   "id": "A261",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "sunita devi aged 26 from kothrud pune phone 98765 43210",
+   "tags": [
+    "full",
+    "address-from"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "26",
+     "phone": "98765 43210",
+     "address": [
+      "Kothrud Pune",
+      null
+     ]
+    }
+   }
+  },
+  {
+   "id": "A262",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 26 phone 98765 43210 address kothrud pune thank you",
+   "tags": [
+    "full",
+    "trailing-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "26",
+     "phone": "98765 43210",
+     "address": "Kothrud Pune"
+    }
+   }
+  },
+  {
+   "id": "A263",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name sunita devi age 26 phone 98765 43210 address kothrud pune ji",
+   "tags": [
+    "full",
+    "hinglish-filler"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "26",
+     "phone": "98765 43210",
+     "address": "Kothrud Pune"
+    }
+   }
+  },
+  {
+   "id": "A264",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "husband name ramesh kumar patient name sunita devi age 28 phone 98765 43210",
+   "tags": [
+    "full",
+    "husband-name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A265",
+   "region": "any",
+   "careType": "antenatal",
+   "text": "patient name sunita devi husband's name ramesh age 28 phone 98765 43210",
+   "tags": [
+    "full",
+    "husband-name"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "phone": "98765 43210"
+    }
+   }
+  },
+  {
+   "id": "A266",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name sunita devi age 28 landline 020 2456 7890",
+   "tags": [
+    "full",
+    "phone",
+    "landline"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28",
+     "phone": [
+      "020 2456 7890",
+      "02024567890"
+     ]
+    }
+   }
+  },
+  {
+   "id": "A267",
+   "region": "any",
+   "careType": "gynaecology",
+   "text": "name sunita devi age 28 phone 98765 432",
+   "tags": [
+    "full",
+    "phone",
+    "partial-number-must-not-fill"
+   ],
+   "expected": {
+    "values": {
+     "fullName": "Sunita Devi",
+     "ageYears": "28"
+    },
+    "noValue": [
+     "phone"
+    ]
+   }
+  }
+ ]
+}

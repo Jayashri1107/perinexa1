@@ -1,0 +1,185 @@
+/* ---------- Smart features: red flags and today's worklist ---------- */
+
+/* Red flags card (patient Overview, visit page): left edge in the status colour, like the risk card */
+.rf-card { border-left: 6px solid var(--status-watch-fg); }
+.rf-card-urgent { border-left-color: var(--status-high-fg); }
+.rf-card-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin-bottom: var(--space-2); }
+.rf-card-head h2 { display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.rf-card-head h2 svg.lucide { width: 24px; height: 24px; color: var(--status-high-fg); }
+.rf-list { list-style: none; margin: 0; padding: 0; }
+.rf-list li { display: flex; align-items: flex-start; gap: var(--space-2) var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.rf-list li:last-child { border-bottom: none; }
+.rf-list .pill { flex-shrink: 0; }
+.rf-text { min-width: 0; }
+.rf-message { display: block; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); margin-top: 2px; }
+/* Where and when the value was recorded (a link to it), and the rule that raised the flag */
+.rf-from a { color: inherit; text-decoration: underline; }
+.rf-from a:hover, .rf-from a:focus-visible { color: var(--indigo-700); }
+.rf-rule { display: block; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; margin-top: 2px; }
+.rf-note { margin: var(--space-2) 0 0; }
+.rf-more { margin-top: var(--space-1); }
+.rf-more summary { cursor: pointer; color: var(--indigo-700); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; min-height: var(--control-height); display: inline-flex; align-items: center; }
+.rf-more .hint { margin: 0; }
+.vs-page > .rf-card { margin-bottom: var(--space-4); }
+
+/* Rule editor: one check per line */
+.rf-checks-title { margin: var(--space-4) 0 var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.rf-check { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 var(--space-3); padding: var(--space-2) var(--space-3) 0; margin-bottom: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
+.rf-check > * { flex: 1 1 160px; }
+.rf-check .rf-check-remove { flex: 0 0 auto; margin-bottom: var(--space-4); }
+.rf-choices { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); border: none; padding: 0; margin: 0 0 var(--space-3); }
+.rf-choices legend { width: 100%; font-size: var(--fs-label); font-weight: 500; color: var(--slate-600); margin-bottom: var(--space-1); padding: 0; }
+.rf-add-check { margin: 0 0 var(--space-3) calc(-1 * var(--space-2)); }
+/* Which types of care a rule applies to, and the edit page's choice of which rules to list */
+.rf-applies { margin-bottom: var(--space-4); }
+/* Seven buttons with long names: a little less padding so they fit on one line on a laptop screen, and a second line
+   on a narrower one – never a button hidden past the edge (the corners stay those of one line of buttons). */
+.rf-show { flex-wrap: wrap; border-radius: calc(var(--control-height) / 2 + 1px); margin-bottom: var(--space-3); }
+.segmented.rf-show button { padding: 0 var(--space-3); }
+
+/* Worklist */
+.wl-page { display: flex; flex-direction: column; gap: var(--space-6); }
+.wl-section .panel-header h2 { display: flex; align-items: center; gap: var(--space-2); }
+.wl-section .panel-header h2 svg.lucide { width: 20px; height: 20px; color: var(--indigo-700); }
+.wl-section > .rf-note { padding: 0 var(--space-6) var(--space-4); }
+/* The same note inside a box that opens with a click (the Today page's lists): in line with the rows above it */
+.wl-fold .rf-note { padding: 0 var(--space-6) var(--space-4); }
+.wl-list { list-style: none; margin: 0; padding: 0; }
+.wl-list > li { padding: var(--space-3) var(--space-6); border-bottom: 1px solid var(--border); }
+.wl-list > li:last-child { border-bottom: none; }
+.wl-row-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+.wl-who { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-3); min-width: 0; }
+.wl-when { font-size: var(--fs-label); line-height: var(--lh-label); }
+.wl-counts { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
+.wl-list .rf-list { margin-top: var(--space-1); }
+.wl-list .rf-list li { padding: var(--space-1) 0; border-bottom: none; }
+.wl-items { margin: var(--space-2) 0 0; padding-left: var(--space-6); font-size: var(--fs-label); line-height: var(--lh-label); }
+.wl-list .plan-next { margin: var(--space-2) 0 0; }
+.wl-footnote { display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.wl-footnote svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
+@media (max-width: 640px) {
+  .wl-list > li { padding: var(--space-3) var(--space-4); }
+  .wl-section > .rf-note, .wl-fold .rf-note { padding: 0 var(--space-4) var(--space-4); }
+}
+
+/* Medicine safety on the prescription */
+.ms-panel { margin: var(--space-3) 0 var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-left: 6px solid var(--status-watch-fg); border-radius: var(--radius-md); background: var(--surface); }
+.ms-panel-high { border-left-color: var(--status-high-fg); }
+.ms-panel h3 { margin: 0 0 var(--space-1); }
+.ms-ok { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-2) 0 var(--space-3); }
+.ms-ok svg.lucide { width: 16px; height: 16px; color: var(--status-stable-fg); flex-shrink: 0; }
+/* What the list could not check (no entries of that kind, or no weight for a baby): an icon and plain words */
+.ms-missing { display: flex; align-items: flex-start; gap: var(--space-2); margin: var(--space-2) 0 var(--space-3); max-width: 120ch; }
+.ms-missing svg.lucide { width: 16px; height: 16px; margin-top: 2px; color: var(--status-watch-fg); flex-shrink: 0; }
+/* The list editor: room for a longer unit after the number ("mg/kg", "days") */
+.cp-unit-input.ms-unit-wide input { padding-right: calc(var(--space-12) + var(--space-4)); }
+/* What the dose check does not do: always shown under the warnings */
+.ms-dose-note { margin: var(--space-2) 0 var(--space-3); max-width: 120ch; }
+
+/* Reminder dialog, and the links under the care plan card */
+.rm-langs { margin-bottom: var(--space-3); }
+.rm-text { width: 100%; font-family: inherit; line-height: var(--lh-body); }
+.plan-card-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); margin-left: calc(-1 * var(--space-2)); }
+.plan-card-links .plan-open { margin-left: 0; }
+
+/* AI features: summary card, translation, report reading, letters, risk check, asking the records */
+.ai-card { border-left: 6px solid var(--indigo-700); }
+.vs-page > .ai-card { margin-bottom: var(--space-4); }
+.ai-card-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-2); }
+.ai-card-head h2 { display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.ai-card-head h2 svg.lucide { width: 22px; height: 22px; color: var(--indigo-700); }
+.ai-points { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
+.ai-points li { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-1) 0; }
+.ai-points li::before { content: ''; width: 6px; height: 6px; margin-top: 10px; border-radius: var(--radius-pill); background: var(--slate-600); flex-shrink: 0; }
+.ai-points li:has(.pill)::before { display: none; }
+.ai-points .pill { flex-shrink: 0; }
+.ai-missing { margin: 0 0 var(--space-2); }
+/* The AI brief (Today, Calendar, a patient's page): the patients it names link to their record */
+.ai-brief .ai-brief-name { font-weight: 600; }
+.ai-brief > .hint:last-child { margin-bottom: 0; }
+/* Until asked: one slim line – heading, what it covers, the button */
+.ai-brief-idle { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.ai-brief-idle .ai-card-head { margin-bottom: 0; }
+.ai-brief-intro { flex: 1 1 16rem; margin: 0; }
+.vs-ai-links { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); margin: calc(-1 * var(--space-2)) 0 var(--space-3) calc(-1 * var(--space-2)); }
+.ai-source { margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); background: var(--mist-50); border-left: 3px solid var(--border); border-radius: var(--radius-md); }
+.rr-table { margin: var(--space-2) 0; }
+.ai-risk { margin-top: var(--space-2); }
+.ai-risk > .btn-link { margin-left: calc(-1 * var(--space-2)); }
+.ai-risk-list { list-style: none; margin: 0; padding: 0; }
+.ai-risk-list li { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--border); }
+.ai-letter-date { text-align: right; margin: var(--space-4) 0 var(--space-2); }
+.ai-letter-subject { font-size: var(--fs-h3); line-height: var(--lh-h3); margin: 0 0 var(--space-3); }
+.ai-letter-body { margin-bottom: var(--space-6); }
+.ask-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.ask-form .field-label { display: block; margin-bottom: var(--space-1); }
+.ask-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.ask-row input { flex: 1 1 280px; }
+.ask-examples { display: flex; flex-wrap: wrap; gap: 0 var(--space-2); margin: var(--space-2) 0 0 calc(-1 * var(--space-2)); }
+.ask-form .hint { margin: var(--space-2) 0 0; }
+.inline-icon { width: 14px; height: 14px; vertical-align: -2px; }
+
+/* Voice entry: "Ask AI where these belong" */
+.voice-ai-help { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-2) 0; }
+.voice-ai-help .hint { margin: 0; }
+.voice-ai-suggestions { margin: var(--space-2) 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-left: 4px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--surface); }
+.voice-ai-suggestions h4 { margin: 0 0 var(--space-1); }
+.voice-ai-suggestions ul { list-style: none; margin: 0; padding: 0; }
+.voice-ai-suggestions li { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-3); padding: var(--space-1) 0; border-bottom: 1px solid var(--border); }
+.voice-ai-suggestions li:last-child { border-bottom: none; }
+.voice-ai-actions { display: inline-flex; gap: var(--space-1); }
+.voice-use-said { margin-left: var(--space-2); }
+
+/* The AI check before printing */
+.aic-list { margin: var(--space-2) 0 var(--space-3); }
+/* Going ahead despite a warning: the reason under the warning, and the saved reasons with the prescription */
+/* The text takes the row's width, so every "Reason for going ahead" box is the same width whatever the warning's length */
+.ms-panel .rf-text { flex: 1 1 auto; }
+.ms-panel .rf-text .field { margin-top: var(--space-2); max-width: 520px; }
+.ms-reasons { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.ms-reasons h3 { margin: 0 0 var(--space-2); font-size: var(--fs-body); }
+
+/* Today: each list is a box with its heading and count; a click opens it (and it takes the full width). */
+.td-sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4); align-items: start; }
+.td-sections > .wl-fold.is-open { grid-column: 1 / -1; }
+.wl-fold { border: 1px solid var(--border); }
+.wl-fold.has-items { border-left: 4px solid var(--indigo-700); }
+.wl-fold-title { margin: 0; }
+.wl-fold-title button {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 72px;
+  padding: var(--space-4) var(--space-5, 20px); background: none; border: 0; cursor: pointer; text-align: left;
+  font: inherit; font-size: 1.25rem; font-weight: 600; color: var(--ink);
+}
+.wl-fold-title button:hover { background: var(--mist-50); }
+.wl-fold-title button:focus-visible { box-shadow: var(--focus-ring-inset); outline: none; }
+.wl-fold-icon { width: 24px; height: 24px; flex: none; color: var(--indigo-700); }
+.wl-fold-text { flex: 1 1 auto; }
+.wl-fold-count { flex: none; min-width: 2.2em; padding: 2px var(--space-2); border-radius: var(--radius-pill); text-align: center; font-size: 1rem; background: var(--mist-100); color: var(--slate-600); }
+.wl-fold.has-items .wl-fold-count { background: var(--indigo-700); color: var(--on-solid); }
+.wl-fold-chevron { width: 22px; height: 22px; flex: none; color: var(--slate-600); transition: transform 0.15s; }
+.wl-fold.is-open .wl-fold-chevron { transform: rotate(180deg); }
+.wl-fold.is-open .wl-fold-title { border-bottom: 1px solid var(--border); }
+@media (prefers-reduced-motion: reduce) { .wl-fold-chevron { transition: none; } }
+@media (max-width: 600px) { .td-sections { grid-template-columns: 1fr; } .wl-fold-title button { font-size: 1.125rem; min-height: 60px; } }
+
+/* Today: one patient per row – only her name, in bold; a click shows the rest. */
+.wl-list > .wl-row { padding: 0; }
+.wl-row-toggle {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 52px;
+  padding: var(--space-3) var(--space-6); background: none; border: 0; cursor: pointer; text-align: left; font: inherit; color: var(--ink);
+}
+.wl-row-toggle:hover { background: var(--mist-50); }
+.wl-row-toggle:focus-visible { box-shadow: var(--focus-ring-inset); outline: none; }
+.wl-row-name { flex: 1 1 auto; font-size: 1.125rem; font-weight: 700; }
+.wl-row-chevron { width: 20px; height: 20px; flex: none; color: var(--slate-600); transition: transform 0.15s; }
+.wl-row.is-open .wl-row-chevron { transform: rotate(180deg); }
+.wl-row.is-open > .wl-row-toggle { background: var(--mist-50); }
+.wl-row-body { display: grid; gap: var(--space-2); padding: var(--space-2) var(--space-6) var(--space-4); }
+.wl-row-body > p { margin: 0; }
+.wl-row-facts { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.wl-row-open { justify-self: start; padding-left: 0; }
+/* A phone number in an opened row (the call lists, Vaccinations overdue): at the left, in line with the text above it */
+.wl-row-body > a.btn-link { justify-self: start; padding-left: 0; }
+@media (prefers-reduced-motion: reduce) { .wl-row-chevron { transition: none; } }
+@media (max-width: 600px) { .wl-row-toggle, .wl-row-body { padding-left: var(--space-4); padding-right: var(--space-4); } }
+.wl-row-body[hidden] { display: none; }

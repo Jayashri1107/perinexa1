@@ -1,0 +1,263 @@
+/*
+ * App frame (guide page 7): 280 px Night Indigo sidebar with the reversed logo and 48 px icon tiles,
+ * an 88 px title bar (screen title + user), and everything the user works on on white cards over Mist.
+ * Under 1024 px the sidebar becomes an 88 px icon rail; on phones it slides in from the left.
+ */
+
+.pf { display: flex; min-height: 100vh; background: var(--mist-100); }
+
+/* ---------- Sidebar ---------- */
+.sb {
+  position: sticky; top: 0; z-index: 40; flex-shrink: 0; width: var(--sidebar-width); height: 100vh;
+  display: flex; flex-direction: column; background: var(--indigo-800); color: var(--indigo-200);
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0; transition: width 0.18s ease;
+}
+.sb-brand { position: relative; display: flex; align-items: center; min-height: var(--titlebar-height); padding: var(--space-6) var(--space-6) var(--space-4); }
+.sb-brand a { display: block; border-radius: var(--radius-md); }
+.sb-logo { display: block; width: 184px; height: auto; } /* at least 160 px with "by Docvritta" */
+.sb-appicon { display: none; width: var(--nav-tile-size); height: var(--nav-tile-size); border-radius: var(--radius-md); }
+.sb-close {
+  display: none; margin-left: auto; width: var(--control-height); height: var(--control-height); place-items: center;
+  border: 1px solid var(--nav-divider); border-radius: var(--radius-md); background: none; color: var(--on-dark); cursor: pointer;
+}
+.sb-nav { flex: 1; overflow-y: auto; padding: var(--space-2) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); scrollbar-width: thin; }
+.sb-section {
+  margin: var(--space-4) var(--space-3) var(--space-1); color: var(--indigo-200);
+  font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.sb-section:first-child { margin-top: var(--space-1); }
+.sb-link {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-1); border: none; border-radius: var(--radius-md);
+  background: none; color: var(--indigo-200); font: inherit; font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 500;
+  text-align: left; text-decoration: none; white-space: nowrap; cursor: pointer;
+}
+.sb-tile { display: grid; place-items: center; flex-shrink: 0; width: var(--nav-tile-size); height: var(--nav-tile-size); border-radius: var(--radius-md); background: var(--nav-tile); color: var(--on-dark); }
+.sb-tile svg.lucide { width: 24px; height: 24px; }
+.sb-link:hover { background: var(--nav-row-hover); color: var(--on-dark); }
+.sb-link.active { background: var(--nav-row-active); color: var(--on-dark); }
+.sb-link.active .sb-tile { background: var(--surface); color: var(--indigo-700); }
+.sb-link:focus-visible, .sb-close:focus-visible, .sb-brand a:focus-visible { box-shadow: var(--focus-ring-on-dark); }
+.sb-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sb-footer { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4) var(--space-6); border-top: 1px solid var(--nav-divider); }
+
+/* The hospital being worked in (hospital staff) */
+.sb-workspace-wrap { margin: var(--space-2) var(--space-4) var(--space-2); } /* keeps the logo's clear space */
+.sb-workspace { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); background: var(--nav-tile); }
+.sb-workspace-icon {
+  display: grid; place-items: center; flex-shrink: 0; width: var(--control-height); height: var(--control-height); padding: 0;
+  border: none; border-radius: var(--radius-md); background: var(--nav-tile); color: var(--on-dark); cursor: default;
+}
+.sb-workspace-text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; overflow: visible; }
+.sb-workspace-text small { color: var(--indigo-200); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.sb-workspace-text strong { color: var(--on-dark); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 500; overflow-wrap: anywhere; white-space: normal; }
+.sb-workspace-role { color: var(--indigo-200); font-size: var(--fs-label); line-height: var(--lh-label); }
+.sb-workspace-text strong.sb-person { font-weight: 600; }
+.sb-workspace-hospital { display: flex; align-items: flex-start; gap: var(--space-1); margin-top: var(--space-1); color: var(--on-dark); font-size: var(--fs-label); line-height: var(--lh-label); overflow-wrap: anywhere; }
+.sb-workspace-hospital svg.lucide { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; color: var(--indigo-200); }
+.sb-workspace-icon .avatar { width: 100%; height: 100%; }
+.sb-workspace-error { display: flex; align-items: flex-start; gap: var(--space-1); color: var(--on-dark); font-size: var(--fs-label); line-height: var(--lh-label); }
+.sb-workspace-error svg.lucide { width: 16px; height: 16px; margin-top: 1px; }
+.sb-switch-btn {
+  display: inline-flex; align-items: center; gap: var(--space-1); align-self: flex-start; margin-top: var(--space-2);
+  min-height: var(--control-height); padding: 0 var(--space-3); border: 1px solid var(--indigo-200); border-radius: var(--radius-md);
+  background: none; color: var(--on-dark); font: inherit; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; cursor: pointer;
+}
+.sb-switch-btn:hover:not(:disabled) { background: var(--nav-row-hover); }
+.sb-switch-list { list-style: none; margin: var(--space-2) 0 0; padding: var(--space-1); max-height: 280px; overflow-y: auto; border-radius: var(--radius-md); background: var(--nav-row-active); }
+.sb-switch-list button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: var(--control-height); padding: var(--space-2) var(--space-3);
+  border: none; border-radius: var(--radius-sm); background: none; color: var(--indigo-200); font: inherit; text-align: left; cursor: pointer;
+}
+.sb-switch-list button:hover:not(:disabled) { background: var(--nav-row-hover); }
+.sb-switch-list strong { color: var(--on-dark); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 500; overflow-wrap: anywhere; }
+.sb-switch-list span { font-size: var(--fs-label); line-height: var(--lh-label); }
+.sb-switch-btn:focus-visible, .sb-switch-list button:focus-visible, button.sb-workspace-icon:focus-visible { box-shadow: var(--focus-ring-on-dark); }
+.sb-overlay { display: none; }
+
+/* Icon rail (collapsed by the user, or automatically under 1024 px) */
+.pf-collapsed .sb { width: var(--rail-width); }
+.pf-collapsed .sb-label, .pf-collapsed .sb-section, .pf-collapsed .sb-logo { display: none; }
+.pf-collapsed .sb-appicon { display: block; }
+.pf-collapsed .sb-brand { justify-content: center; padding: var(--space-6) 0 var(--space-4); }
+.pf-collapsed .sb-nav, .pf-collapsed .sb-footer { padding-left: var(--space-4); padding-right: var(--space-4); }
+.pf-collapsed .sb-link { justify-content: center; padding: var(--space-1) 0; }
+.pf-collapsed .sb-workspace-wrap { margin-left: var(--space-4); margin-right: var(--space-4); }
+.pf-collapsed .sb-workspace { justify-content: center; padding: 0; background: none; }
+.pf-collapsed button.sb-workspace-icon[tabindex='0'] { cursor: pointer; }
+
+/* ---------- Right side: title bar + content ---------- */
+.pf-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pf-titlebar { display: flex; align-items: center; gap: var(--space-4); min-height: var(--titlebar-height); padding: var(--space-4) var(--space-8) 0; }
+.pf-title-slot { flex: 1; min-width: 0; }
+.pf-menu-btn { display: none; }
+.pf-env {
+  display: inline-flex; align-items: center; gap: var(--space-1); flex-shrink: 0; padding: 3px var(--space-3); border-radius: var(--radius-pill);
+  background: var(--status-watch-bg); color: var(--status-watch-fg); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; white-space: nowrap;
+}
+.pf-env svg.lucide { width: 14px; height: 14px; }
+.pf-main { flex: 1; min-width: 0; }
+.pf-notice { padding: var(--space-4) var(--space-8) 0; }
+.pf-notice .alert { margin-bottom: 0; }
+.pf-content { padding: var(--space-6) var(--space-8) var(--space-12); max-width: 1600px; }
+.pf-main > .card.narrow, .pf-main > .center-page { margin: var(--space-6) var(--space-8); }
+
+/* ---------- Page header: title (in the title bar), subtitle, actions, sub-module tabs ---------- */
+.ph-crumbs ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: 0 0 2px; padding: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.ph-crumbs li { display: inline-flex; align-items: center; gap: var(--space-1); }
+.ph-crumbs svg.lucide { width: 14px; height: 14px; }
+/* Breadcrumb links: Deep Teal and underlined (so they differ from plain crumbs), with a 44 px tall hit area */
+.ph-crumbs a { position: relative; display: inline-block; color: var(--teal-700); text-decoration: underline; text-underline-offset: 2px; }
+.ph-crumbs a::before { content: ''; position: absolute; inset: calc((var(--lh-label) - var(--control-height)) / 2) 0; }
+.ph-crumbs a:hover { color: var(--indigo-700); text-decoration: underline; }
+.ph-crumbs [aria-current] { color: var(--ink); }
+.ph-title.ph-title-long { font-size: var(--fs-h1); line-height: var(--lh-h1); }
+.ph-crumbs [aria-current] { max-width: 48ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
+.ph-badges { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.ph-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin: 0; color: var(--ink); font-size: var(--fs-display); line-height: var(--lh-display); font-weight: 600; overflow-wrap: anywhere; }
+.ph { padding: var(--space-2) var(--space-8) 0; }
+.ph-main { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.ph-main:empty { display: none; }
+.ph-subtitle { margin: 0; max-width: 80ch; color: var(--slate-600); }
+.ph-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-left: auto; align-items: flex-end; }
+.ph-actions .dt-filter select { min-width: 180px; }
+.ph-tabs { margin-top: var(--space-4); }
+/* The second row: the sections of the current tab (e.g. Knowledge base → Care plans → Red-flag rules), lighter than the
+   tabs above it – underlined, in the page's own colours */
+.ph-subtabs { display: flex; flex-wrap: wrap; gap: 0 var(--space-6); margin-top: var(--space-3); border-bottom: 1px solid var(--border); }
+.ph-subtabs a {
+  display: inline-flex; align-items: center; min-height: var(--control-height); padding: 0 var(--space-1); margin-bottom: -1px;
+  border-bottom: 2px solid transparent; color: var(--slate-600); font-weight: 500; text-decoration: none;
+}
+.ph-subtabs a:hover { color: var(--indigo-700); }
+.ph-subtabs a.active { border-bottom-color: var(--indigo-700); color: var(--indigo-700); }
+.ph-subtabs a:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+
+/* ---------- Login and first password screens ---------- */
+/* Sign-in: an indigo panel with a rounded right edge holds the white form card; the right side (photo or
+   Mist panel) runs underneath the rounded edge. Both share one grid cell row so they can overlap. */
+.auth-page { min-height: 100vh; display: flex; flex-direction: column; background: var(--mist-100); }
+.auth { flex: 1; display: grid; grid-template-columns: minmax(460px, 46%) 1fr; }
+.auth-main {
+  grid-column: 1; grid-row: 1; z-index: 1; display: flex; align-items: center; justify-content: center;
+  padding: var(--space-12) var(--space-8); background: var(--indigo-700);
+  border-radius: 0 calc(var(--radius-xl) * 2) calc(var(--radius-xl) * 2) 0;
+}
+.auth-card { width: 100%; max-width: 420px; padding: var(--space-12) var(--space-8) var(--space-8); background: var(--surface); border-radius: var(--radius-xl); box-shadow: var(--shadow-pop); }
+.auth-card h1 { margin: 0 0 var(--space-6); text-align: center; font-size: var(--fs-h1); line-height: var(--lh-h1); }
+.auth-card-logo { display: none; width: 200px; height: auto; margin: 0 auto var(--space-6); }
+.auth-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-top: var(--space-6); }
+.auth-actions .btn { min-width: 120px; }
+.auth-actions .hint { margin: 0; text-align: right; max-width: 22ch; }
+.auth-side { grid-column: 1 / -1; grid-row: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: var(--space-12) var(--space-12) var(--space-12) calc(46% + var(--space-12)); color: var(--slate-600); }
+.auth-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% center; }
+.auth.has-photo .auth-side::before { content: ''; position: absolute; inset: 0; background: var(--overlay); }
+.auth-logo { position: absolute; top: var(--space-8); right: var(--space-8); z-index: 1; width: 200px; height: auto; }
+.auth-side-text { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--space-4); }
+.auth-side h2 { color: var(--ink); font-size: var(--fs-display); line-height: var(--lh-display); max-width: 14ch; margin: 0; }
+.auth-side p { max-width: 42ch; margin: 0; }
+.auth.has-photo .auth-side { color: var(--indigo-200); }
+.auth.has-photo .auth-side h2 { color: var(--on-dark); }
+.auth-banner { display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--status-watch-bg); color: var(--status-watch-fg); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; text-align: center; }
+.auth-banner svg.lucide { width: 16px; height: 16px; }
+.center-page { min-height: 70vh; display: grid; place-items: center; padding: var(--space-4); }
+
+/* ---------- Tablets: sidebar becomes an 88 px icon rail; the full menu opens over the page ---------- */
+@media (max-width: 1023px) {
+  .pf .sb { width: var(--rail-width); }
+  .pf .sb-label, .pf .sb-section, .pf .sb-logo { display: none; }
+  .pf .sb-appicon { display: block; }
+  .pf .sb-brand { justify-content: center; padding: var(--space-6) 0 var(--space-4); }
+  .pf .sb-link { justify-content: center; padding: var(--space-1) 0; }
+  .pf .sb-workspace { justify-content: center; padding: 0; background: none; }
+  .pf .sb-switch-list { display: none; }
+  .pf button.sb-workspace-icon[tabindex='0'] { cursor: pointer; }
+  /* The full menu, opened over the page */
+  .pf-mobile-open .sb { position: fixed; left: 0; top: 0; width: var(--sidebar-width); box-shadow: var(--shadow-pop); }
+  .pf-mobile-open .sb-label, .pf-mobile-open .sb-section, .pf-mobile-open .sb-logo { display: revert; }
+  .pf-mobile-open .sb-label { display: block; }
+  .pf-mobile-open .sb-workspace-text { display: flex; }
+  .pf-mobile-open .sb-appicon { display: none; }
+  .pf-mobile-open .sb-brand { justify-content: flex-start; padding: var(--space-6) var(--space-4) var(--space-4) var(--space-6); }
+  .pf-mobile-open .sb-logo { width: 160px; } /* the guide's minimum, leaving clear space before the close button */
+  .pf-mobile-open .sb-link { justify-content: flex-start; padding: var(--space-1); }
+  .pf-mobile-open .sb-workspace { justify-content: flex-start; padding: var(--space-3); background: var(--nav-tile); }
+  .pf-mobile-open .sb-switch-list { display: block; }
+  .pf-mobile-open .sb-close { display: inline-grid; }
+  .pf-mobile-open .sb-overlay { display: block; position: fixed; inset: 0; z-index: 35; background: var(--overlay); }
+  .pf-mobile-open .pf-body { margin-left: var(--rail-width); }
+  .pf-titlebar, .ph { padding-left: var(--space-6); padding-right: var(--space-6); }
+  .pf-content { padding: var(--space-6) var(--space-6) var(--space-12); }
+  .pf-notice { padding-left: var(--space-6); padding-right: var(--space-6); }
+  .pf-main > .card.narrow, .pf-main > .center-page { margin: var(--space-6); }
+  .auth { grid-template-columns: 1fr; }
+  .auth-main { border-radius: 0; }
+  .auth-side { display: none; }
+  .auth-card-logo { display: block; }
+}
+
+/* ---------- Phones: no rail; a menu button opens the full menu ---------- */
+@media (max-width: 719px) {
+  /* Closed: off screen AND hidden, so its links aren't in the keyboard order */
+  .pf .sb { position: fixed; left: 0; top: 0; width: var(--sidebar-width); transform: translateX(-100%); visibility: hidden; transition: transform 0.2s ease, visibility 0s linear 0.2s; box-shadow: none; }
+  .pf-mobile-open .sb { transform: none; visibility: visible; transition: transform 0.2s ease; box-shadow: var(--shadow-pop); }
+  .pf-mobile-open .pf-body { margin-left: 0; }
+  .pf-menu-btn { display: inline-grid; }
+  .pf .sb-collapse { display: none; } /* the menu has its own close button on phones */
+  .pf-titlebar { flex-wrap: wrap; min-height: 0; padding: var(--space-4) var(--space-4) 0; gap: var(--space-3); }
+  .pf-env { order: 2; margin-left: auto; }
+  .pf-title-slot { order: 4; flex-basis: 100%; }
+  .ph-title { font-size: var(--fs-h1); line-height: var(--lh-h1); }
+  .ph { padding: var(--space-2) var(--space-4) 0; }
+  .pf-content { padding: var(--space-4) var(--space-4) var(--space-12); }
+  .pf-notice { padding: var(--space-4) var(--space-4) 0; }
+  .pf-main > .card.narrow, .pf-main > .center-page { margin: var(--space-4); }
+  .auth-main { align-items: flex-start; padding: var(--space-6) var(--space-4); }
+  .auth-card { padding: var(--space-8) var(--space-4) var(--space-6); }
+  .auth-card-logo { width: 160px; }
+  .auth-actions { flex-direction: column; align-items: stretch; }
+  .auth-actions .hint { text-align: center; max-width: none; }
+}
+
+/* ---------- "Find a patient" in the title bar (components/PatientSearch.jsx) ---------- */
+.ps { position: relative; flex: 0 1 380px; min-width: 200px; }
+.ps-icon { position: absolute; left: var(--space-4); top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--slate-600); pointer-events: none; }
+.ps-input {
+  width: 100%; height: var(--control-height); padding: 0 var(--space-12) 0 calc(var(--space-4) + 26px);
+  border: 1px solid var(--card-border); border-radius: var(--radius-pill); background: var(--surface); color: var(--ink); font: inherit;
+  box-shadow: var(--shadow-card);
+}
+.ps-input::placeholder { color: var(--slate-600); }
+.ps-input:focus-visible { border-color: var(--teal-700); box-shadow: var(--focus-ring); }
+.ps-key {
+  position: absolute; right: var(--space-4); top: 50%; transform: translateY(-50%); padding: 0 6px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-family: inherit; background: var(--mist-50);
+}
+.ps-pop {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40; min-width: 320px; max-height: 70vh; overflow: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-pop);
+}
+.ps-list { list-style: none; margin: 0; padding: var(--space-1) 0; }
+.ps-opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--space-3); align-items: center; padding: var(--space-2) var(--space-4); cursor: pointer; }
+.ps-opt.is-active { background: var(--mist-100); }
+.ps-name { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; overflow-wrap: anywhere; }
+.ps-lock { width: 14px; height: 14px; color: var(--slate-600); flex-shrink: 0; }
+.ps-sub { grid-column: 1; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.ps-opt .pill { grid-column: 2; grid-row: 1 / span 2; }
+.ps-note { margin: 0; padding: var(--space-3) var(--space-4); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); border-top: 1px solid var(--border); }
+.ps-list + .ps-note { border-top: 1px solid var(--border); }
+.ps-pop > .ps-note:first-child { border-top: none; }
+@media (max-width: 719px) {
+  .ps { order: 3; flex: 1 1 100%; min-width: 0; }
+  .ps-pop { min-width: 0; }
+  .ps-key { display: none; }
+}
+.pf-help { flex-shrink: 0; }
+.pf-help.is-on { background: var(--mist-100); }
+@media (max-width: 719px) { .pf-help { order: 2; } }
+/* Up to wide screens: the search box gets its own line under the title, so the title is never squeezed */
+@media (max-width: 1439px) {
+  .pf-titlebar { flex-wrap: wrap; }
+  .pf-title-slot { flex: 1 1 280px; }
+  .ps { order: 3; flex: 1 1 100%; max-width: 560px; }
+}

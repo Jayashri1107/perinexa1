@@ -1,0 +1,174 @@
+/*
+ * Printed prescriptions: the 10 designs (Feature 8). Paper rules as in print.css – black text on white, thin
+ * grey rules. The doctor's accent colour (--rx-* tokens) is used only for rules, headings, the ℞ and boxes,
+ * never for body text, so every design reads the same in black and white. Sizes are in em, so the doctor's
+ * text size (standard or large) and the half page scale everything together.
+ */
+
+/* ---------- Size, accent, Devanagari ---------- */
+.pdoc.rx { font-size: var(--fs-print-body); line-height: 1.45; }
+.pdoc.rx.rx-size-large { font-size: var(--fs-print-large); }
+.pdoc.rx.rx-a5 { font-size: var(--fs-print-compact); }
+.pdoc.rx.rx-a5.rx-size-large { font-size: var(--fs-print-body); }
+.pdoc.rx :lang(mr), .pdoc.rx :lang(hi) { font-size: 1.05em; line-height: 1.5; }
+.rx-accent-indigo { --rx-accent: var(--rx-indigo); --rx-tint: var(--rx-indigo-tint); }
+.rx-accent-teal { --rx-accent: var(--rx-teal); --rx-tint: var(--rx-teal-tint); }
+.rx-accent-maroon { --rx-accent: var(--rx-maroon); --rx-tint: var(--rx-maroon-tint); }
+.rx-accent-green { --rx-accent: var(--rx-green); --rx-tint: var(--rx-green-tint); }
+.rx-accent-charcoal { --rx-accent: var(--rx-charcoal); --rx-tint: var(--rx-charcoal-tint); }
+
+/* ---------- Parts every design uses ---------- */
+.rx .rx-small { font-size: 0.86em; line-height: 1.4; }
+.rx .rx-strong { font-weight: 600; }
+.rx .rx-block { display: block; }
+.rx .rx-pre { white-space: pre-line; }
+.rx .rx-muted { color: var(--slate-600); }
+.rx .rx-accent-text { color: var(--rx-accent); }
+.rx .rx-line { margin: 0.25em 0 0; }
+.rx .rx-line b, .rx .rx-patient b { font-weight: 600; }
+.rx svg.lucide { width: 1.1em; height: 1.1em; vertical-align: -0.15em; }
+
+.rx-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5em; padding-bottom: 0.6em; border-bottom: 2px solid var(--rx-accent); }
+.rx-doctor-name { color: var(--rx-accent); font-size: 1.45em; line-height: 1.2; font-weight: 600; }
+.rx-clinic { text-align: right; }
+.rx-clinic-name { font-size: 1.2em; line-height: 1.3; font-weight: 600; }
+.rx-patient { display: flex; flex-wrap: wrap; gap: 0.2em 1.6em; padding: 0.5em 0; border-bottom: 1px solid var(--print-rule); }
+.rx-findings { padding: 0.3em 0 0.4em; border-bottom: 1px solid var(--print-rule); }
+
+.rx-rx { display: flex; align-items: flex-start; gap: 0.6em; margin-top: 0.8em; }
+.rx-symbol { color: var(--rx-accent); font-size: 2.2em; line-height: 1; font-weight: 600; }
+.rx-meds { flex: 1; margin: 0; padding-left: 1.4em; }
+.rx-med { margin: 0 0 0.6em; padding-left: 0.2em; break-inside: avoid; }
+.rx .rx-med-name { font-weight: 600; letter-spacing: 0.01em; }
+.rx .rx-med-note { font-style: italic; }
+
+.rx-section { margin-top: 0.8em; break-inside: avoid; }
+.rx-section p { margin: 0.1em 0 0; }
+.rx-section-title { color: var(--rx-accent); font-weight: 600; }
+.rx-next { margin-top: 0.9em; padding: 0.5em 0.8em; border: 1.5px solid var(--rx-accent); border-radius: var(--radius-sm); break-inside: avoid; }
+.rx-next-date { color: var(--print-ink); }
+.rx-due { margin-top: 0.3em; }
+.rx-due-list { margin: 0.2em 0 0; padding-left: 1.4em; }
+.rx-due-list li { break-inside: avoid; }
+/* Four or more items: two columns across the page (not in a narrower box, nor on A5), so the page fits */
+.rx:not(.rx-a5):not(.rx-two_column):not(.rx-side_band) .rx-due-cols { columns: 2; column-gap: 1.6em; }
+.rx-pair .rx-due-cols { columns: auto; }
+/* A very long box may go over a page; its heading stays with the first items */
+.rx-next.rx-next-long { break-inside: auto; }
+.rx-next-long .rx-section-title { break-after: avoid; }
+
+/* The signature never stands alone on a page: when it does not fit, the block before it goes over with it. */
+.rx-sign-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5em; margin-top: 2.4em; break-inside: avoid; break-before: avoid; }
+.rx-footnote { font-size: 0.86em; max-width: 60%; }
+.rx-sign { min-width: 15em; text-align: right; }
+.rx-sign-line { margin: 0 0 0.3em auto; width: 13em; border-top: 1px solid var(--print-ink); }
+
+/* Label / value boxes (patient details, vitals, pregnancy) */
+.rx-patient-box, .rx-preg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.3em 1em; margin: 0.6em 0 0; padding: 0.5em 0.8em; border: 1px solid var(--print-rule); border-radius: var(--radius-sm); }
+.rx-patient-box dt, .rx-preg dt { font-size: 0.8em; color: var(--slate-600); }
+.rx-patient-box dd, .rx-preg dd { margin: 0; font-weight: 600; }
+.rx-boxes { display: flex; flex-wrap: wrap; gap: 0.4em; margin-top: 0.6em; }
+.rx-box { display: flex; flex-direction: column; min-width: 5.5em; padding: 0.25em 0.6em; border: 1px solid var(--print-rule); border-radius: var(--radius-sm); }
+.rx-box-label { font-size: 0.8em; color: var(--slate-600); }
+.rx-box-value { font-weight: 600; }
+
+/* Tables (medicine table, dose chart). Always .ptable.rx-table: the "Medicine table" design's page is .rx-table too. */
+.ptable.rx-table, .ptable.rx-chart { width: 100%; margin-top: 0.8em; border-collapse: collapse; }
+.ptable.rx-table th, .ptable.rx-table td, .ptable.rx-chart th, .ptable.rx-chart td { padding: 0.35em 0.5em; text-align: left; vertical-align: top; border: 1px solid var(--print-rule); }
+.ptable.rx-table th, .ptable.rx-chart th { background: var(--rx-tint); font-size: 0.86em; font-weight: 600; }
+.ptable.rx-table tr, .ptable.rx-chart tr { break-inside: avoid; }
+.rx-col-no { width: 2em; text-align: center !important; }
+.rx-nowrap { white-space: nowrap; }
+
+/* ---------- 1 Classic Rx pad: doctor left, clinic right (the parts above) ---------- */
+
+/* ---------- 2 Hospital letterhead ---------- */
+.rx-head-centre { justify-content: center; border-bottom: 3px double var(--rx-accent); }
+.rx-clinic-centre { text-align: center; }
+.rx-clinic-centre .rx-clinic-name { color: var(--rx-accent); font-size: 1.6em; }
+.rx-doctor-line { margin: 0.5em 0 0; text-align: center; }
+.rx-title { margin: 0.9em 0 0; text-align: center; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; color: var(--rx-accent); }
+.rx-lh-footer { margin: 1em 0 0; padding-top: 0.4em; border-top: 1px solid var(--print-rule); text-align: center; font-size: 0.86em; }
+
+/* ---------- 3 Two columns: notes left, medicines right ---------- */
+.rx-cols { display: grid; grid-template-columns: 34% minmax(0, 1fr); gap: 0 1em; margin-top: 0.4em; }
+.rx-col-notes { padding: 0.4em 1em 0 0; border-right: 2px solid var(--rx-accent); }
+.rx-col-notes section + section { margin-top: 0.6em; }
+.rx-col-notes p { margin: 0.1em 0 0; }
+.rx-col-title { color: var(--rx-accent); font-size: 0.86em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.rx-col-main .rx-rx { margin-top: 0.4em; }
+
+/* ---------- 4 Medicine table ---------- */
+.rx-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1.2em; align-items: start; }
+
+/* ---------- 5 Dose chart with symbols ---------- */
+.ptable.rx-chart th.rx-chart-slot { text-align: center; }
+.ptable.rx-chart th.rx-chart-slot svg.lucide { display: block; margin: 0 auto 0.1em; width: 1.5em; height: 1.5em; color: var(--rx-accent); }
+.ptable.rx-chart td.rx-chart-dose { text-align: center; vertical-align: middle; font-size: 1.3em; font-weight: 600; }
+.ptable.rx-chart td.rx-chart-words { text-align: center; vertical-align: middle; }
+.ptable.rx-chart .rx-chart-med { width: 30%; }
+
+/* ---------- 6 Side band ---------- */
+.rx-band-layout { display: grid; grid-template-columns: 50mm minmax(0, 1fr); gap: 0 1.2em; }
+.rx-band { padding: 0.8em; background: var(--rx-tint); border-left: 4px solid var(--rx-accent); border-radius: var(--radius-sm); }
+.rx-band .rx-doctor-name { font-size: 1.25em; }
+.rx-band-list { margin: 0.6em 0; padding-left: 1.1em; font-size: 0.86em; }
+.rx-band p { margin: 0.6em 0 0; }
+.rx-band-clinic { padding-bottom: 0.5em; border-bottom: 2px solid var(--rx-accent); }
+
+/* ---------- 7 Pregnancy card ---------- */
+.rx-preg { background: var(--rx-tint); border-color: var(--rx-accent); }
+.rx-pregnancy .rx-boxes { margin-top: 0.5em; }
+
+/* ---------- 8 Your own printed pad: only the content; the margins leave room for the pad's own print ---------- */
+.rx-preprinted .rx-patient { border-top: 1px solid var(--print-rule); }
+
+/* ---------- 9 Half page (A5) ---------- */
+.rx-head-one { align-items: baseline; flex-wrap: wrap; gap: 0.2em 1em; padding-bottom: 0.4em; }
+.rx-a5 .rx-sign-row { margin-top: 1.6em; }
+.rx-a5 .rx-med { margin-bottom: 0.4em; }
+
+/* ---------- 10 Modern minimal ---------- */
+.rx-head-min { align-items: flex-start; border-bottom: 1px solid var(--print-rule); }
+.rx-clinic-min { text-align: left; }
+.rx-clinic-min .rx-clinic-name { color: var(--rx-accent); text-transform: uppercase; letter-spacing: 0.08em; font-size: 1em; }
+.rx-minimal .rx-doctor { text-align: right; }
+.rx-min-patient { padding: 0.8em 0 0.5em; }
+.rx-min-name { font-size: 1.5em; line-height: 1.25; font-weight: 600; }
+.rx-min-label { margin-top: 1em; color: var(--rx-accent); font-size: 0.8em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
+.rx-min-meds { margin: 0.3em 0 0; padding: 0; list-style: none; }
+.rx-min-meds > li { padding: 0.5em 0; border-bottom: 1px solid var(--print-rule); break-inside: avoid; }
+.rx-chips { display: flex; flex-wrap: wrap; gap: 0.3em; margin-top: 0.25em; }
+.rx-chip { padding: 0.05em 0.6em; border: 1px solid var(--rx-accent); border-radius: var(--radius-pill); font-size: 0.9em; }
+.rx-minimal .rx-findings { border-bottom: none; }
+
+/* ---------- The visit summary (no medicines given): its title under the patient's details ---------- */
+.rx .rx-summary-title { margin: 0.7em 0 0.2em; }
+/* Spaced-out capitals are for English only: letter spacing breaks up Marathi and Hindi letters */
+.rx .rx-title :lang(mr), .rx .rx-title :lang(hi) { letter-spacing: normal; }
+
+/* ---------- Fitted on fewer pages (the preview decides): first the parts closer together (pv-tight), then also the
+   text about 6% smaller (pv-tighter) – only when that saves a page ---------- */
+.pv-tighter .pdoc.rx .pframe > tbody { font-size: 0.94em; }
+.pv-tight .pdoc.rx { line-height: 1.35; }
+.pv-tight .rx .rx-line { margin-top: 0.15em; }
+.pv-tight .rx-patient { padding: 0.35em 0; }
+.pv-tight .rx-findings { padding: 0.2em 0 0.3em; }
+.pv-tight .rx-rx { margin-top: 0.5em; }
+.pv-tight .rx-med { margin-bottom: 0.35em; }
+.pv-tight .rx-section { margin-top: 0.5em; }
+.pv-tight .rx-next { margin-top: 0.6em; padding: 0.35em 0.7em; }
+.pv-tight .rx-sign-row { margin-top: 1.6em; }
+.pv-tight .rx-min-meds > li { padding: 0.35em 0; }
+.pv-tight .rx .rx-title { margin-top: 0.6em; }
+
+/* ---------- The preview on a phone (paper keeps its layout) ---------- */
+@media screen and (max-width: 720px) {
+  .rx-head { flex-direction: column; gap: 0.6em; }
+  .rx-clinic { text-align: left; }
+  .rx-cols, .rx-band-layout, .rx-pair { grid-template-columns: minmax(0, 1fr); }
+  .rx-col-notes { border-right: none; border-bottom: 2px solid var(--rx-accent); padding: 0 0 0.6em; }
+  .rx-patient-box, .rx-preg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* Allergies: always printed with the patient's details */
+.rx .rx-allergies b { font-weight: 700; }

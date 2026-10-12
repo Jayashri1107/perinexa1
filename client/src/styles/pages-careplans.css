@@ -1,0 +1,286 @@
+/* Care plans: template library, template page, template editor, and a patient's care plan. Tokens only. */
+
+/* ---------- Template library (list) ---------- */
+.dt td.cp-col-name { white-space: normal; min-width: 200px; max-width: 360px; }
+.cp-template-link { font-weight: 500; }
+/* Kind: whose protocol it is, with "My default" (or "Default – not in use") below it */
+.cp-kind-cell { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+
+/* ---------- Template page ---------- */
+.template-meta { margin-bottom: var(--space-6); }
+.template-meta p + p { margin-top: var(--space-2); }
+.cp-meta-label { font-weight: 500; color: var(--ink); }
+
+/* Each stage of pregnancy (and the risk rules) is a white table card with its own h2 heading */
+.stage { margin-bottom: var(--space-6); }
+.stage-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-4);
+}
+.stage-title { margin: 0; }
+.stage-head .hint { flex-basis: 100%; max-width: 90ch; margin: 0; }
+.stage-table { overflow-x: auto; padding: 0 var(--space-6) var(--space-2); }
+.stage-empty { margin-bottom: var(--space-6); }
+/* Column widths (instead of inline styles) */
+.dt th.cp-col-when { width: 150px; }
+.dt th.cp-col-type { width: 170px; }
+.dt th.cp-col-for { width: 200px; }
+.dt th.cp-col-checks { width: 280px; }
+.dt th.cp-col-level { width: 130px; }
+
+/* "Patients' plans" and "Your default" cards on a template's page: a line of words, then the one action */
+.cp-use-card { margin-bottom: var(--space-6); }
+.cp-use-card h2 { margin: 0 0 var(--space-2); }
+.cp-use-card p { margin: 0 0 var(--space-3); max-width: 90ch; }
+.cp-use-card p:last-child { margin-bottom: 0; }
+.cp-use-card .row { margin-top: var(--space-3); }
+/* The "Update all plans" preview: the counts, then what to check afterwards */
+.cp-update-list { margin: 0 0 var(--space-4); padding-left: var(--space-6); }
+.cp-update-list li + li { margin-top: var(--space-1); }
+
+/* Approve dialog: Cancel (tertiary), then the confirm button, on the right */
+.cp-dialog-actions { justify-content: flex-end; }
+
+/* ---------- Template editor ---------- */
+.cp-section-hint { max-width: 90ch; margin: 0 0 var(--space-4); }
+/* The offer of newer built-in draft content on a template's page: what would be added, and the button */
+.cp-offer-list { margin-top: var(--space-2); }
+.cp-offer-list summary { cursor: pointer; font-weight: 500; }
+.cp-offer-list ul { margin: var(--space-2) 0 0; padding-left: var(--space-6); }
+.cp-offer-actions { margin-top: var(--space-3); }
+.item-editor { margin-bottom: var(--space-4); }
+/* A card with a problem: Alert Red edge plus the "Check this item" error text in its heading */
+.item-editor-error { box-shadow: inset 0 0 0 2px var(--status-high-fg), var(--shadow-card); }
+.item-editor-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.item-editor-title { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
+.item-editor-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+/* Remove: Alert Red icon, destructive tint on hover */
+.icon-btn.icon-danger { color: var(--status-high-fg); }
+.icon-btn.icon-danger:hover:not(:disabled) { background: var(--status-high-bg); border-color: var(--status-high-solid); color: var(--status-high-solid); }
+/* Move/remove icons match the kit's icon buttons (16 px); the kit sizes icons only inside .btn */
+.item-editor-head .icon-btn svg.lucide { width: 16px; height: 16px; }
+/* "Check this item": field-error look (red text + circle icon), sitting level in the heading */
+.cp-editor-error { margin: 0; }
+.cp-editor-error svg.lucide { width: 16px; height: 16px; }
+
+.item-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 var(--space-4); }
+.item-grid .span-2 { grid-column: span 2; }
+/* An error shown in the grid without its own field (e.g. timing "At first visit"): level with the inputs */
+.item-grid .cp-grid-error { align-self: end; min-height: var(--input-height); margin: 0 0 var(--space-4); }
+
+/* Week inputs show their unit inside the box: "12 w" */
+.cp-unit-input { position: relative; display: block; }
+.cp-unit-input input { padding-right: var(--space-8); font-variant-numeric: tabular-nums; }
+.cp-unit { position: absolute; top: 50%; right: var(--space-3); transform: translateY(-50%); color: var(--slate-600); pointer-events: none; }
+
+/* ---------- A patient's care plan: Overview card and Care plan tab ---------- */
+.plan-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2) var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.plan-card-head h2 { display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.plan-card-head h2 svg.lucide { width: 24px; height: 24px; color: var(--indigo-700); }
+/* Approval: the pill, and for a draft the sentence in words next to it (never only a colour) */
+.plan-approval { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+.plan-draft-label { color: var(--status-watch-fg); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+/* The summary card on the Care plan tab: one tabular line of dates and where the plan comes from */
+.plan-summary { margin-bottom: var(--space-6); }
+.plan-summary-facts { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); font-variant-numeric: tabular-nums; }
+.plan-summary-links { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0 0 calc(-1 * var(--space-2)); }
+.plan-state-line { margin: 0 0 var(--space-2); }
+/* Counts: status pills (only above zero) and "Done 9 of 44" in plain text */
+.plan-counts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-2) 0 var(--space-3); }
+.plan-done-count { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+/* Next visit: teal marks what is scheduled */
+.plan-next { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0 0 var(--space-3); color: var(--teal-700); font-weight: 500; }
+.plan-next svg.lucide { width: 18px; height: 18px; flex-shrink: 0; margin-top: 3px; }
+/* Overview card: Overdue, Due now and Needs decision are buttons that open their list below */
+.plan-count-btn { display: inline-flex; padding: 0; border: none; background: none; border-radius: var(--radius-pill); cursor: pointer; font: inherit; }
+.plan-count-btn .pill { box-shadow: inset 0 0 0 1px transparent; transition: box-shadow 0.15s; }
+.plan-count-btn:hover .pill, .plan-count-btn.is-open .pill { box-shadow: inset 0 0 0 1px currentColor; }
+.plan-count-btn:focus-visible { outline: 2px solid var(--indigo-700); outline-offset: 2px; }
+.plan-count-chevron { width: 14px; height: 14px; margin-left: 2px; transition: transform 0.15s; }
+.plan-count-btn.is-open .plan-count-chevron { transform: rotate(180deg); }
+.plan-drop { margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
+.plan-drop > p { margin: var(--space-1) 0; }
+.plan-drop .plan-top { margin: 0; }
+.plan-drop-actions { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); margin-left: auto; }
+/* Items listed on the Overview card */
+.plan-top { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
+.plan-top li { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-3); min-height: var(--control-height); padding: var(--space-1) 0; border-bottom: 1px solid var(--border); }
+.plan-top li:last-child { border-bottom: none; }
+.plan-top-name { flex: 1 1 160px; min-width: 0; font-weight: 500; }
+.plan-top-date { font-size: var(--fs-label); line-height: var(--lh-label); }
+.plan-open { margin-left: calc(-1 * var(--space-2)); }
+/* Loading: skeleton rows */
+.plan-loading { display: grid; gap: var(--space-3); }
+.plan-skeleton { display: block; height: 20px; border-radius: var(--radius-sm); background: var(--mist-100); animation: pulse 1.2s ease-in-out infinite; }
+.plan-skeleton:first-of-type { width: 40%; height: 28px; }
+
+/* Items table: a group heading row ("Needs a decision", stages in the All view) */
+.dt .plan-group-row td {
+  height: auto; padding: var(--space-4) var(--space-3) var(--space-2); background: var(--surface);
+  color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; white-space: normal;
+}
+.dt tbody tr.plan-group-row:hover td { background: var(--surface); }
+/* Today divider row (docs/BRAND.md): a 2 px Nexa Teal line with the Deep Teal label "Today · 18 w 0 d" */
+.dt .plan-today-row td {
+  height: auto; padding: var(--space-1) var(--space-3); border-top: 2px solid var(--teal-500); border-bottom: none; background: none;
+  color: var(--teal-700); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.dt tbody tr.plan-today-row:hover td { background: none; }
+.plan-today-label { display: inline-flex; align-items: center; gap: var(--space-1); }
+.plan-today-label svg.lucide { width: 16px; height: 16px; }
+
+/* ---------- Care plan tab ---------- */
+.plan-tab > .card, .plan-tab > .dt-card { margin-bottom: var(--space-6); }
+.plan-hint { margin: 0 0 var(--space-4); max-width: 90ch; }
+/* The items table takes focus when the row that had it moved out of view (after a change) */
+.plan-items:focus { outline: none; }
+.plan-items:focus-visible { box-shadow: var(--focus-ring), var(--shadow-card); }
+/* After a plan-level change removed the button that had focus, focus goes to the plan heading or the "no plan" card */
+#plan-summary-title:focus, #plan-none:focus { outline: none; }
+#plan-summary-title:focus-visible, #plan-none:focus-visible { box-shadow: var(--focus-ring); }
+.plan-alert-actions { margin-top: var(--space-2); }
+/* A tertiary button inside a line of text (Undo, Review changes, Try again): looks like a word in the sentence,
+   keeps the 44 px minimum width of .btn and gets a 44 px tall click area from an invisible layer (like .plan-item-name) */
+.btn-link.plan-inline-link { position: relative; min-height: 0; padding: 0 var(--space-1); vertical-align: baseline; }
+.btn-link.plan-inline-link::before { content: ''; position: absolute; inset: calc((var(--lh-label) - var(--control-height)) / 2) 0; }
+/* A link inside an alert sentence ("Add in Edit details"): the same invisible 44 px tall touch area */
+.plan-inline-hit { position: relative; }
+.plan-inline-hit::before { content: ''; position: absolute; inset: calc((var(--lh-body) - var(--control-height)) / 2) 0; }
+.plan-error-list { margin: var(--space-1) 0 0; padding-left: var(--space-6); }
+/* Count chips: a status pill inside a 44 px button that filters the table; the chosen one gets an edge */
+.plan-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-1); margin: var(--space-1) 0 0 calc(-1 * var(--space-1)); }
+.plan-chip {
+  display: inline-flex; align-items: center; min-height: var(--control-height); padding: 0 var(--space-1);
+  border: none; border-radius: var(--radius-pill); background: none; font: inherit; cursor: pointer;
+}
+.plan-chip:hover .pill { box-shadow: inset 0 0 0 1px currentColor; }
+.plan-chip[aria-pressed='true'] .pill { box-shadow: inset 0 0 0 2px currentColor; }
+.plan-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* Toolbar: views, type, then Print and Add item on the right */
+.plan-toolbar { align-items: flex-end; }
+.plan-toolbar-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-left: auto; }
+.plan-filter-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: 0; padding: 0 var(--space-6) var(--space-2); }
+/* No scrolling box around the table, so a row's More menu can open past its edge */
+.plan-table-wrap { padding: 0 var(--space-6) var(--space-4); }
+.dt.plan-table td { white-space: normal; vertical-align: top; padding-top: var(--space-4); padding-bottom: var(--space-4); height: 56px; }
+.dt.plan-table th.plan-col-when { width: 170px; }
+.dt.plan-table th.plan-col-status { width: 210px; }
+.dt.plan-table th.plan-col-actions { width: 1%; }
+.dt.plan-table td.plan-cell-actions { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+/* Dates of what is scheduled (due or upcoming) in Deep Teal with the calendar icon */
+.plan-when-dates { display: flex; align-items: center; gap: var(--space-1); margin-top: 2px; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.plan-when-dates.plan-scheduled { color: var(--teal-700); }
+.plan-when-dates svg.lucide { width: 14px; height: 14px; flex-shrink: 0; }
+.plan-item-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+/* The item's name opens its details: Ink text, underlined Indigo on hover, with a 44 px tall click area */
+.plan-item-name {
+  position: relative; padding: 0; border: none; background: none; font: inherit; font-weight: 500; color: var(--ink);
+  text-align: left; cursor: pointer; border-radius: var(--radius-sm);
+}
+.plan-item-name::before { content: ''; position: absolute; inset: calc((var(--lh-body) - var(--control-height)) / 2) 0; }
+.plan-item-name:hover { color: var(--indigo-700); text-decoration: underline; text-underline-offset: 3px; }
+.plan-item-name:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.plan-markers { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-1); }
+/* A long marker or status ("Included by Dr …") wraps inside its pill instead of widening the whole table */
+.dt.plan-table .plan-markers .pill, .dt.plan-table .plan-cell-status .pill { white-space: normal; }
+.plan-status-note { display: block; margin-top: var(--space-1); }
+/* Wide enough for "Mark done" and "More" side by side */
+.plan-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); min-width: 220px; max-width: 300px; margin-left: auto; }
+/* Folded sections under the table: the summary is a tertiary link with a 44 px target */
+.plan-folded { margin-bottom: var(--space-4); padding: var(--space-2) var(--space-6); }
+.plan-folded summary {
+  display: flex; align-items: center; gap: var(--space-1); min-height: var(--control-height); cursor: pointer; border-radius: var(--radius-md);
+  color: var(--indigo-700); font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
+}
+.plan-folded summary:hover { color: var(--indigo-600); }
+.plan-folded summary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.plan-folded[open] summary { margin-bottom: var(--space-2); }
+.plan-folded-body { padding-bottom: var(--space-4); }
+.plan-section h2 { margin-bottom: var(--space-3); }
+/* Plan history and an item's history: avatar, what happened, who and when */
+.plan-log li { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.plan-log li:last-child { border-bottom: none; }
+.plan-log strong { font-weight: 500; } /* an item's history: what happened */
+.plan-earlier li { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--space-1); min-height: var(--control-height); border-bottom: 1px solid var(--border); }
+.plan-earlier li:last-child { border-bottom: none; }
+
+/* ---------- Care plan dialogs ---------- */
+.plan-dialog-item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0 0 var(--space-4); }
+.plan-dialog-sub { margin: var(--space-4) 0 var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 500; }
+.plan-picks { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 var(--space-4); }
+.plan-picks .btn[aria-pressed='true'] { background: var(--selected-bg); box-shadow: var(--selected-edge); }
+/* Live gestation readout for chosen dates: "20 w 1 d – 20 w 6 d" */
+.plan-readout { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin: 0 0 var(--space-4); color: var(--teal-700); font-weight: 500; }
+.plan-readout-warn { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--status-watch-fg); font-size: var(--fs-label); line-height: var(--lh-label); }
+.plan-readout-warn svg.lucide { width: 16px; height: 16px; }
+.plan-dialog .details > div { grid-template-columns: 160px minmax(0, 1fr); }
+.plan-details-flags { margin: var(--space-2) 0 var(--space-4); }
+.plan-details-flags .hint { margin: var(--space-2) 0; }
+.plan-protocol-option { margin-bottom: var(--space-2); }
+.plan-protocol-option .row { margin-top: var(--space-1); }
+.plan-preview-list { margin: 0; padding-left: var(--space-6); }
+.plan-preview-list li { padding: 2px 0; }
+
+/* Tablet, iPad landscape and small laptops (the 4-column table needs about 790 px next to the full sidebar) and
+   phone: each item becomes a card – item on top, then when and status side by side, then the actions */
+@media (max-width: 1180px) {
+  .plan-table thead { display: none; }
+  .dt.plan-table, .dt.plan-table tbody { display: block; width: 100%; }
+  .dt.plan-table tr { display: block; }
+  .dt.plan-table tr.plan-item-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'item item' 'when status' 'actions actions';
+    gap: var(--space-2) var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--border);
+  }
+  .dt.plan-table tr.plan-item-row td { display: block; height: auto; padding: 0; border: none; }
+  .dt.plan-table td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+  .dt.plan-table td.plan-cell-item::before { display: none; }
+  .plan-cell-item { grid-area: item; }
+  .plan-cell-when { grid-area: when; }
+  .plan-cell-status { grid-area: status; }
+  .dt.plan-table td.plan-cell-actions { grid-area: actions; text-align: left; }
+  .plan-actions { position: relative; justify-content: flex-start; max-width: none; min-width: 0; margin-left: 0; }
+  /* The More menu opens under the row's buttons from the card's left edge, so it never runs off a narrow screen */
+  .plan-actions .menu-button { position: static; }
+  .plan-actions .menu-end .menu-list { left: 0; right: auto; max-width: 100%; }
+  .dt.plan-table tr.plan-group-row td, .dt.plan-table tr.plan-today-row td { display: block; width: 100%; }
+}
+@media (max-width: 720px) {
+  .plan-table-wrap { padding: 0 var(--space-4) var(--space-4); }
+  .plan-filter-line { padding: 0 var(--space-4) var(--space-2); }
+  .plan-folded { padding: var(--space-2) var(--space-4); }
+  .plan-toolbar-actions { margin-left: 0; }
+  .dt.plan-table tr.plan-item-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'item' 'when' 'status' 'actions'; padding: var(--space-3) 0; }
+  .plan-dialog .details > div { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 1100px) { .item-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 719px) {
+  .item-grid { grid-template-columns: 1fr; }
+  .item-grid .span-2 { grid-column: auto; }
+  .item-editor { padding: var(--space-4); }
+  .stage-head { padding: var(--space-4); }
+  .stage-table { padding: 0; }
+}
+/* Same width as the stacked data tables: the group and Today rows stay full-width lines between the item cards */
+@media (max-width: 720px) {
+  .dt tr.plan-group-row, .dt tr.plan-today-row { padding: 0; }
+  .dt .plan-today-row td { padding: var(--space-1) var(--space-4); }
+  .dt .plan-group-row td { padding: var(--space-4) var(--space-4) var(--space-1); }
+}
+
+/* ---------- Print dialog (Feature 9) ---------- */
+.print-option { margin-bottom: var(--space-2); }
+/* Types or items under their choice, indented like a sub-list */
+.print-sub { margin: 0 0 var(--space-2) var(--space-6); }
+.print-choose { max-height: 320px; overflow-y: auto; padding: 0 var(--space-3) var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.print-choose .check { align-items: flex-start; padding: var(--space-2) 0; }
+.print-choose .check input { margin-top: calc((var(--lh-body) - 18px) / 2); }
+.print-choose-head { margin: var(--space-3) 0 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+@media (max-width: 720px) { .print-sub { margin-left: 0; } }
+/* Care plan tab: notes that need no action, folded into one box */
+.plan-notes summary { display: flex; align-items: center; gap: var(--space-2); }
+.plan-notes summary svg.lucide { width: 18px; height: 18px; }
+.plan-notes-list { margin: var(--space-3) 0 0; padding-left: var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); }
+/* Clinic library → To approve */
+.ap-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.ap-list li:last-child { border-bottom: none; }

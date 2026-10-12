@@ -1,337 +1,643 @@
-// One lab order: its tests and results (with the flag of each value against the DRAFT reference range), who did
-// what and when, and the next step this person may take – take the sample, enter or change the results (a change
-// after the report needs a reason), review them, or cancel the order. Sample tracking (owner, 9 Oct 2026): the sample's
-// number and kind, received in the lab, test started, a sample rejected (a new one is needed), and asking the doctor.
-import { ArrowLeft, CircleCheck, FlaskConical, MessageCircleQuestion, PackageCheck, Pencil, Printer, RotateCcw, TestTube, Zap } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { labApi } from '../../api/index.js';
-import { Alert } from '../../components/Alert.jsx';
-import { Loader } from '../../components/Loader.jsx';
-import { Modal } from '../../components/Modal.jsx';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, CircleCheck, FileText, Paperclip, Siren, TestTube, Upload } from 'lucide-react';
+import { Link, useOutletContext, useParams } from 'react-router-dom';
+import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { StateBadge } from '../../components/StateBadge.jsx';
-import { formatDateTime } from '../../utils/format.js';
-import { useAuth } from '../../context/AuthContext.jsx';
-import { WhatsAppButton } from '../../components/WhatsAppButton.jsx';
-import { reportMessage } from '../../utils/whatsapp.js';
-import { flagFor, flagLook, stageLook } from './labFormat.js';
+import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
+import { useFetch } from '../../hooks/useFetch.js';
+import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
+import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
+import {
+  FILE_TYPES,
+  FLAG_LOOK,
+  FLAG_OPTIONS,
+  MAX_FILE_BYTES,
+  fileSize,
+  fileUrl,
+  flagFor,
+  formFromOrder,
+  orderLook,
+  packageNames,
+  readAsBase64,
+  resultLine,
+  testDef,
+  testsFromForm,
+} from './labFormat.js';
 
-const STEPS = [
-  ['ordered', 'Ordered'],
-  ['collected', 'Sample taken'],
-  ['received', 'Received in the lab'],
-  ['processing', 'Test started'],
-  ['reported', 'Results entered – sent for verification'],
-  ['reviewed', 'Finalized by the doctor'],
-  ['cancelled', 'Cancelled'],
-];
+// One lab order (Version 2, lab module) – in the Lab module (/lab/orders/:orderId) and on the patient record
+// (/patients/:id/lab/:orderId). The lab marks the sample taken, enters the results (or attaches the report) and
+// reports them; a doctor reviews them. A change after the report needs a reason and goes back to the doctor.
+// Lab staff see only the patient's name, number and age, the tests and the doctor's note to the lab.
 
-// Reject a sample (with the reason) or ask the ordering doctor a question.
-const ASK = {
-  reject: { title: 'Reject the sample', label: 'Why it cannot be used', placeholder: 'e.g. Clotted, too little, wrong tube, not labelled', button: 'Reject – new sample needed', min: 3, help: 'The doctor (and the nurses, if she is in hospital) are told a new sample is needed.' },
-  query: { title: 'Ask the doctor', label: 'Your question', placeholder: 'e.g. Fasting or after food? Which antibiotic was given?', button: 'Send to the doctor', min: 5, help: 'The doctor who ordered is notified. The order itself does not change.' },
-};
-
-// The results form's values, from the order: { "<key>:<name>": { values: { field: value }, text } }.
-const idOf = (t) => `${t.key}:${t.key === 'other' ? t.name : ''}`;
-const formOf = (order) => Object.fromEntries(order.tests.map((t) => [idOf(t), { values: Object.fromEntries(t.values.map((v) => [v.key, v.value])), text: t.text }]));
-
-function ResultsTable({ order, defs }) {
+function FlagPill({ flag }) {
+  const look = FLAG_LOOK[flag];
+  if (!look) return null;
   return (
-    <div className="table-wrap">
-      <table className="table">
-        <thead>
-          <tr><th>Test</th><th>Result</th><th>Flag</th><th>Reference (DRAFT)</th></tr>
-        </thead>
-        <tbody>
-          {order.tests.map((t) => {
-            const def = defs.get(t.key);
-            const fields = (def?.fields ?? []).filter((f) => f.type !== 'text');
-            const rows = fields.length ? fields : [null];
-            return rows.map((f, i) => {
-              const v = f && t.values.find((x) => x.key === f.key);
-              return (
-                <tr key={`${idOf(t)}-${f?.key ?? 'text'}`}>
-                  {i === 0 && <td rowSpan={rows.length + (t.text && fields.length ? 1 : 0)}><strong>{t.name}</strong></td>}
-                  <td>{f ? (<>{f.name !== t.name && <span className="muted">{f.name}: </span>}{v?.value ? `${v.value}${f.unit ? ` ${f.unit}` : ''}` : '—'}</>) : t.text || '—'}</td>
-                  <td>{v?.flag && flagLook(v.flag) ? <StateBadge look={flagLook(v.flag)} small /> : ''}</td>
-                  <td className="muted small">{f?.range || (f?.type === 'choice' && f.abnormal?.length ? `Flagged: ${f.abnormal.join(', ')}` : '')}</td>
-                </tr>
-              );
-            }).concat(t.text && fields.length ? [<tr key={`${idOf(t)}-note`}><td colSpan={3} className="small"><span className="muted">Comment: </span>{t.text}</td></tr>] : []);
-          })}
-        </tbody>
-      </table>
+    <StatusPill tone={look.tone} icon={look.icon}>
+      {look.word}
+    </StatusPill>
+  );
+}
+
+/** The results, read only: one table per test, with the reference values. */
+function ResultsView({ order, catalogue }) {
+  return (
+    <div className="lab-results">
+      {order.tests.map((t, i) => {
+        const def = testDef(catalogue, t.key);
+        const values = t.values.filter((v) => v.value !== '');
+        return (
+          <div key={`${t.key}-${i}`} className="lab-test">
+            <h3>{t.name}</h3>
+            {values.length > 0 && (
+              <table className="lab-values">
+                <thead>
+                  <tr>
+                    <th scope="col">Test</th>
+                    <th scope="col">Result</th>
+                    <th scope="col">Usual range</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {values.map((v) => {
+                    const f = def?.fields.find((x) => x.key === v.key);
+                    return (
+                      <tr key={v.key}>
+                        <th scope="row">{f?.name ?? v.key}</th>
+                        <td>
+                          <strong className="tabular">{v.value}</strong> {f?.unit ?? ''} <FlagPill flag={v.flag} />
+                        </td>
+                        <td className="muted">{f?.range ?? ''}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+            {t.text && <p className="pre-line">{t.text}</p>}
+            {!values.length && !t.text && <p className="muted">No result typed{order.files.length ? ' – see the report file' : ''}.</p>}
+          </div>
+        );
+      })}
+      {order.labNote && (
+        <p>
+          <span className="muted">Lab remark: </span>
+          {order.labNote}
+        </p>
+      )}
     </div>
   );
 }
 
-function ResultsForm({ order, defs, amending, onCancel, onSaved }) {
-  const [form, setForm] = useState(() => formOf(order));
+/** Entering or changing the results. amending: they were reported already (a reason is needed). */
+function ResultsForm({ order, catalogue, pcpndt, amending, primary, onSaved, onCancel }) {
+  const [form, setForm] = useState(() => formFromOrder(order));
   const [labNote, setLabNote] = useState(order.labNote ?? '');
   const [reason, setReason] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
-  const [saving, setSaving] = useState(false);
-  const setValue = (id, key, value) => setForm((f) => ({ ...f, [id]: { ...f[id], values: { ...f[id].values, [key]: value } } }));
-  const setText = (id, value) => setForm((f) => ({ ...f, [id]: { ...f[id], text: value } }));
+  const [saving, setSaving] = useState(null); // 'save' | 'report'
 
-  const save = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
+  const setValue = (i, f, value) =>
+    setForm((cur) =>
+      cur.map((e, j) => {
+        if (j !== i) return e;
+        const before = e.values[f.key] ?? {};
+        // The flag follows the value until someone chooses it
+        const flag = before.flagChosen ? before.flag : flagFor(f, value);
+        return { ...e, values: { ...e.values, [f.key]: { ...before, value, flag } } };
+      }),
+    );
+  const setFlag = (i, f, flag) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, values: { ...e.values, [f.key]: { ...(e.values[f.key] ?? { value: '' }), flag, flagChosen: true } } } : e)));
+  const setText = (i, text) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, text } : e)));
+
+  const send = async (report) => {
+    const texts = [labNote, reason, ...form.flatMap((e) => [e.text, ...Object.values(e.values).map((v) => v.value)])];
+    if (pcpndt && texts.some((t) => mentionsFetalSex(t))) {
+      setError(PCPNDT_MESSAGE);
+      return;
+    }
+    if (amending && reason.trim().length < 5) {
+      setFields({ reason: 'Write why the results are changed.' });
+      return;
+    }
+    setSaving(report ? 'report' : 'save');
+    setError(null);
+    setFields({});
     try {
-      const tests = order.tests.map((t) => ({ key: t.key, name: t.name, values: form[idOf(t)].values, text: form[idOf(t)].text }));
-      onSaved(await labApi.results(order.id, { tests, labNote, reason }));
+      const res = await api(`/lab/orders/${order.id}/results`, { method: 'PUT', body: { rev: order.rev, tests: testsFromForm(order, form, catalogue), labNote: labNote.trim(), report, reason: reason.trim() } });
+      onSaved(res.order, report || amending ? 'Results reported. The doctor sees them for review.' : 'Results saved – not reported yet.');
     } catch (err) {
       setError(err.message);
       setFields(err.fields ?? {});
-    } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
   return (
-    <form className="card" onSubmit={save} noValidate>
-      <h2>{amending ? 'Change the results' : 'Enter the results'}</h2>
+    <form
+      className="lab-form"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        send(true);
+      }}
+    >
       <Alert type="error">{error}</Alert>
-      <div className="results-form">
-        {order.tests.map((t) => {
-          const id = idOf(t);
-          const def = defs.get(t.key);
-          return (
-            <fieldset key={id} className="result-test">
-              <legend>{t.name}</legend>
-              {(def?.fields ?? []).filter((f) => f.type !== 'text').map((f) => {
-                const value = form[id].values[f.key] ?? '';
-                const look = flagLook(flagFor(f, value));
-                const inputId = `r-${id}-${f.key}`;
+      {order.tests.map((t, i) => {
+        const def = testDef(catalogue, t.key);
+        const entry = form[i];
+        return (
+          <fieldset key={`${t.key}-${i}`} className="fieldset lab-test">
+            <legend>{t.name}</legend>
+            {fields[`tests.${i}`] && <p className="field-error">{fields[`tests.${i}`]}</p>}
+            <div className="form-grid">
+              {(def?.fields ?? []).map((f) => {
+                const id = `lab-${i}-${f.key}`;
+                const v = entry.values[f.key] ?? { value: '', flag: '' };
+                if (f.type === 'choice') {
+                  return (
+                    <Field key={f.key} label={f.name} id={id} error={fields[`tests.${i}.${f.key}`]}>
+                      <select id={id} value={v.value} onChange={(e) => setValue(i, f, e.target.value)}>
+                        <option value="">—</option>
+                        {f.options.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                      <FlagPill flag={v.flag} />
+                    </Field>
+                  );
+                }
+                if (f.type === 'text') {
+                  return (
+                    <Field key={f.key} label={f.name} id={id} error={fields[`tests.${i}.${f.key}`]}>
+                      <input id={id} value={v.value} maxLength={100} onChange={(e) => setValue(i, f, e.target.value)} />
+                    </Field>
+                  );
+                }
                 return (
-                  <div key={f.key} className={`form-field result-field${fields[`${t.key}.${f.key}`] ? ' has-error' : ''}`}>
-                    <label htmlFor={inputId}>{f.name}{f.unit ? ` (${f.unit})` : ''}</label>
-                    <div className="result-input">
-                      {f.type === 'choice' ? (
-                        <select id={inputId} value={value} onChange={(e) => setValue(id, f.key, e.target.value)}>
-                          <option value="">Not done</option>
-                          {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      ) : (
-                        <input id={inputId} inputMode="decimal" value={value} onChange={(e) => setValue(id, f.key, e.target.value)} />
-                      )}
-                      {look && value !== '' && <StateBadge look={look} small />}
-                    </div>
-                    {f.range && <span className="field-help">{f.range}</span>}
-                  </div>
+                  <Field key={f.key} label={`${f.name}${f.unit ? ` (${f.unit})` : ''}`} id={id} error={fields[`tests.${i}.${f.key}`]} hint={f.range ? `Usual: ${f.range}` : undefined} keepHint>
+                    <span className="lab-value-row">
+                      <input id={id} className="tabular" inputMode="decimal" value={v.value} maxLength={20} onChange={(e) => setValue(i, f, e.target.value)} />
+                      <select aria-label={`Flag for ${f.name}`} value={v.flag ?? ''} onChange={(e) => setFlag(i, f, e.target.value)}>
+                        {FLAG_OPTIONS.map(([k, w]) => (
+                          <option key={k} value={k}>
+                            {w}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+                  </Field>
                 );
               })}
-              <div className="form-field">
-                <label htmlFor={`r-${id}-text`}>{t.key === 'other' || !def?.fields?.some((f) => f.type !== 'text') ? 'Result' : 'Comment (optional)'}</label>
-                <textarea id={`r-${id}-text`} rows={2} value={form[id].text} maxLength={2000} onChange={(e) => setText(id, e.target.value)} />
-              </div>
-            </fieldset>
-          );
-        })}
-      </div>
-      <div className="form-grid top-gap-sm">
-        <div className="form-field">
-          <label htmlFor="lab-note">Remark on the report (optional)</label>
-          <textarea id="lab-note" rows={2} value={labNote} maxLength={1000} onChange={(e) => setLabNote(e.target.value)} />
-        </div>
-        {amending && (
-          <div className={`form-field${fields.reason ? ' has-error' : ''}`}>
-            <label htmlFor="amend-reason">Why the results are changed<span className="required" aria-hidden> *</span></label>
-            <input id="amend-reason" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} />
-            <span className="field-help">The earlier results are kept, and the doctor reviews the change.</span>
-          </div>
+            </div>
+            <Field label={def ? 'Comment on this test (optional)' : 'Result'} id={`lab-${i}-text`} error={fields[`tests.${i}.text`]}>
+              {def ? (
+                <input id={`lab-${i}-text`} maxLength={2000} value={entry.text} onChange={(e) => setText(i, e.target.value)} />
+              ) : (
+                <textarea id={`lab-${i}-text`} rows={3} maxLength={2000} value={entry.text} onChange={(e) => setText(i, e.target.value)} />
+              )}
+            </Field>
+          </fieldset>
+        );
+      })}
+      <Field label="Lab remark (optional)" id="lab-note" error={fields.labNote}>
+        <input id="lab-note" maxLength={1000} value={labNote} onChange={(e) => setLabNote(e.target.value)} />
+      </Field>
+      {amending && (
+        <Field label="Why are the results changed?" id="lab-reason" error={fields.reason}>
+          <input id="lab-reason" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      )}
+      <div className="row">
+        <button type="submit" className={`btn ${primary ? 'btn-primary' : 'btn-secondary'}`} disabled={Boolean(saving)}>
+          <FileText aria-hidden="true" /> {saving === 'report' ? 'Reporting…' : amending ? 'Save the change' : 'Report results'}
+        </button>
+        {!amending && (
+          <button type="button" className="btn btn-secondary" disabled={Boolean(saving)} onClick={() => send(false)}>
+            {saving === 'save' ? 'Saving…' : 'Save for later'}
+          </button>
+        )}
+        {onCancel && (
+          <button type="button" className="btn btn-link" onClick={onCancel}>
+            Cancel
+          </button>
         )}
       </div>
-      <div className="modal-foot inline">
-        <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save results'}</button>
+    </form>
+  );
+}
+
+function Files({ order, pcpndt, onSaved }) {
+  const input = useRef(null);
+  const [error, setError] = useState(null);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState(false); // after the report: the reason is asked first
+  const amending = ['reported', 'reviewed'].includes(order.status);
+  const canAdd = order.access.canReport && order.files.length < 5;
+  const choose = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!FILE_TYPES.includes(file.type)) return setError('Choose a PDF or a photo (JPEG, PNG or WebP).');
+    if (file.size > MAX_FILE_BYTES) return setError('The file is too large (at most 5 MB).');
+    if (amending && reason.trim().length < 5) return setError('The results were reported already: write why the file is added, then choose it.');
+    if (pcpndt && mentionsFetalSex(reason)) return setError(PCPNDT_MESSAGE);
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await readAsBase64(file);
+      const res = await api(`/lab/orders/${order.id}/files`, { method: 'POST', body: { fileName: file.name, mediaType: file.type, data, reason: reason.trim() } });
+      setReason('');
+      setAsking(false);
+      onSaved(res.order, `Report file added: ${file.name}.`);
+    } catch (err) {
+      setError(err.fields?.file ?? err.fields?.reason ?? err.message);
+    } finally {
+      setBusy(false);
+    }
+    return undefined;
+  };
+  if (!order.files.length && !canAdd) return null;
+  return (
+    <section className="card" aria-labelledby="lab-files-title">
+      <h2 id="lab-files-title">
+        <Paperclip aria-hidden="true" /> Report files
+      </h2>
+      <Alert type="error">{error}</Alert>
+      {order.files.length > 0 ? (
+        <ul className="plain-list">
+          {order.files.map((f) => (
+            <li key={f.id}>
+              <a href={fileUrl(order, f)} target="_blank" rel="noopener noreferrer">
+                {f.fileName}
+              </a>{' '}
+              <span className="muted">
+                · {fileSize(f.size)} · {f.byName}, {formatDateTime(f.at)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">No report file yet.</p>
+      )}
+      {canAdd && (
+        <>
+          {amending && asking && (
+            <Field label="Why is a file added after the report?" id="lab-file-reason">
+              <input id="lab-file-reason" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+            </Field>
+          )}
+          <input ref={input} type="file" accept={FILE_TYPES.join(',')} className="sr-only" onChange={choose} tabIndex={-1} aria-hidden="true" />
+          <div className="row">
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => (amending && !asking ? setAsking(true) : input.current?.click())}>
+              <Upload aria-hidden="true" /> {busy ? 'Uploading…' : amending && asking ? 'Choose the file' : 'Attach the report (PDF or photo)'}
+            </button>
+            {asking && (
+              <button type="button" className="btn btn-link" onClick={() => setAsking(false)}>
+                Cancel
+              </button>
+            )}
+          </div>
+          {(!amending || asking) && <p className="hint">At most 5 MB. Use only fake sample reports until the app has been reviewed.</p>}
+        </>
+      )}
+    </section>
+  );
+}
+
+function CancelDialog({ order, onDone, onCancel }) {
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const ref = useDialogFocus(onCancel);
+  const save = async (e) => {
+    e.preventDefault();
+    if (reason.trim().length < 5) return setError('Write why the order is cancelled.');
+    setSaving(true);
+    try {
+      const res = await api(`/lab/orders/${order.id}/cancel`, { method: 'POST', body: { rev: order.rev, reason: reason.trim() } });
+      onDone(res.order);
+    } catch (err) {
+      setError(err.message);
+      setSaving(false);
+    }
+    return undefined;
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="lab-cancel-title" onSubmit={save} noValidate>
+        <h2 id="lab-cancel-title">Cancel this order?</h2>
+        <p>The order stays in the record, marked cancelled with your name and the reason.</p>
+        <Field label="Reason" id="lab-cancel-reason" error={error}>
+          <input id="lab-cancel-reason" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+        </Field>
+        <div className="row">
+          <button type="submit" className="btn btn-danger" disabled={saving}>
+            {saving ? 'Cancelling…' : 'Cancel the order'}
+          </button>
+          <button type="button" className="btn btn-link" onClick={onCancel}>
+            Keep it
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Review({ order, onSaved }) {
+  const [comment, setComment] = useState('');
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const save = async (e) => {
+    e.preventDefault();
+    if (order.abnormal && comment.trim().length < 3) return setError('A result is outside the usual range: write what was done about it.');
+    if (mentionsFetalSex(comment)) return setError(PCPNDT_MESSAGE);
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await api(`/lab/orders/${order.id}/review`, { method: 'POST', body: { rev: order.rev, comment: comment.trim() } });
+      // A reviewed haemoglobin counts for the risk level (the lowest Hb of this pregnancy)
+      onSaved(res.order, `Reviewed.${res.planChanged ? ' The matching care-plan items are marked done.' : ''}${res.riskChanged ? ' Her risk level changed with this result – see her Overview.' : ''}`);
+    } catch (err) {
+      setError(err.fields?.comment ?? err.message);
+      setSaving(false);
+    }
+    return undefined;
+  };
+  return (
+    <form className="card" onSubmit={save} noValidate aria-labelledby="lab-review-title">
+      <h2 id="lab-review-title">Your review</h2>
+      <Field label={order.abnormal ? 'What was done about the result' : 'Comment (optional)'} id="lab-review-comment" error={error}>
+        <textarea id="lab-review-comment" rows={2} maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} />
+      </Field>
+      <div className="row">
+        <button type="submit" className="btn btn-primary" disabled={saving}>
+          <CircleCheck aria-hidden="true" /> {saving ? 'Saving…' : 'Mark reviewed'}
+        </button>
       </div>
     </form>
   );
 }
 
 export function LabOrderPage() {
-  const { id } = useParams();
-  const [data, setData] = useState(null);
-  const [catalogue, setCatalogue] = useState(null);
-  const [error, setError] = useState('');
-  const [editing, setEditing] = useState(false);
+  const outlet = useOutletContext();
+  const inRecord = Boolean(outlet?.patient);
+  const { orderId } = useParams();
+  const { data, error, reload: refetch } = useFetch(`/lab/orders/${orderId}`);
+  const [current, setCurrent] = useState(null); // the order as the latest change answered (until the next load)
+  useEffect(() => setCurrent(null), [orderId]);
+  const [notice, setNotice] = useState(null);
+  const [changing, setChanging] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
-  const [asking, setAsking] = useState(null); // 'reject' | 'query'
-  const [askText, setAskText] = useState('');
-  const { activeMembership } = useAuth();
+  const [actionError, setActionError] = useState(null);
 
-  const load = useCallback(() => {
-    labApi.get(id).then(setData).catch((err) => setError(err.message));
-  }, [id]);
-  useEffect(load, [load]);
-  useEffect(() => {
-    labApi.catalogue().then(setCatalogue).catch((err) => setError(err.message));
-  }, []);
-  const defs = useMemo(() => new Map((catalogue?.tests ?? []).map((t) => [t.key, t])), [catalogue]);
+  const order = current ?? data?.order;
+  const reload = () => {
+    setCurrent(null);
+    refetch();
+  };
+  const catalogue = data?.catalogue;
+  const back = inRecord ? `/patients/${outlet.patient.id}/lab` : '/lab';
+  const header = !inRecord && (
+    <PageHeader breadcrumbs={[{ label: 'Lab', to: '/lab' }, { label: 'Lab order' }]} title={order ? order.patient.fullName : 'Lab order'} documentTitle="Lab order" />
+  );
+  if (error && !order) {
+    return (
+      <>
+        {header}
+        <div className="pf-content">
+          <Alert type="error">{error}</Alert>
+          <Link to={back}>Back</Link>
+        </div>
+      </>
+    );
+  }
+  if (!order) {
+    return (
+      <>
+        {header}
+        <div className="pf-content">
+          <p className="muted">Loading…</p>
+        </div>
+      </>
+    );
+  }
 
-  if (error && !data) return <Alert type="error">{error}</Alert>;
-  if (!data || !catalogue) return <Loader />;
-  const { order, patient, can } = data;
-
-  const act = async (action) => {
+  const saved = (next, message) => {
+    setCurrent({ ...next, patient: order.patient });
+    setNotice(message);
+    setChanging(false);
+    setActionError(null);
+    if (inRecord) outlet.reload?.();
+  };
+  const collect = async () => {
     setBusy(true);
-    setError('');
     try {
-      setData(await action());
-      setCancelling(false);
-      setAsking(null);
-      setAskText('');
+      saved((await api(`/lab/orders/${order.id}/collect`, { method: 'POST', body: { rev: order.rev } })).order, 'Sample marked taken.');
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
+      if (err.status === 409) reload();
     } finally {
       setBusy(false);
     }
   };
 
-  const amending = ['reported', 'reviewed'].includes(order.status);
+  const look = orderLook(order);
+  const a = order.access;
+  const pcpndt = order.patient.careType !== 'newborn';
+  const open = ['ordered', 'collected'].includes(order.status);
+  const done = ['reported', 'reviewed'].includes(order.status);
+  // One primary button: review, else "sample taken", else reporting
+  const primaryReport = !a.canReview && !a.canCollect;
+
   return (
     <>
-      <PageHeader
-        back={<Link to="/hospital/lab" className="back-link"><ArrowLeft size={16} aria-hidden /> Lab</Link>}
-        title={`${order.orderNumber} · ${patient.name}`}
-        subtitle={
-          <>
-            {patient.patientNumber}
-            {can.openRecord && (<> · <Link to={`/hospital/patients/${patient.id}`}>Open her record</Link></>)}
-          </>
-        }
-        actions={
-          <>
-            <StateBadge look={stageLook({ ...order, received: Boolean(order.received), inProgress: Boolean(order.processing) })} />
-            {order.urgent && <span className="badge badge-danger"><Zap size={14} aria-hidden /> Urgent</span>}
-            {order.bookedByReception && <span className="badge badge-info">Booked by reception</span>}
-            {can.collect && <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act(() => labApi.collect(order.id))}><TestTube size={16} aria-hidden /> {order.recollect ? 'New sample taken' : 'Sample taken'}</button>}
-            {can.receive && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => act(() => labApi.receive(order.id))}><PackageCheck size={16} aria-hidden /> Received in the lab</button>}
-            {can.process && <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => act(() => labApi.process(order.id))}><FlaskConical size={16} aria-hidden /> Start test</button>}
-            {can.reject && <button type="button" className="btn btn-link btn-danger-text" onClick={() => setAsking('reject')}><RotateCcw size={16} aria-hidden /> Reject sample</button>}
-            {can.query && <button type="button" className="btn btn-link" onClick={() => setAsking('query')}><MessageCircleQuestion size={16} aria-hidden /> Ask the doctor</button>}
-            {can.report && !editing && (
-              <button type="button" className={amending ? 'btn btn-ghost' : 'btn btn-primary'} onClick={() => setEditing(true)}>
-                <Pencil size={16} aria-hidden /> {amending ? 'Change results' : 'Enter results'}
-              </button>
+      {header}
+      <div className={inRecord ? 'vs-tab' : 'pf-content'}>
+        <Link to={back} className="btn btn-link btn-sm">
+          <ArrowLeft aria-hidden="true" /> {inRecord ? 'All lab orders' : 'Lab worklist'}
+        </Link>
+        <Alert type="success" onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+        <Alert type="error">{actionError}</Alert>
+
+        <section className="card" aria-labelledby="lab-order-title">
+          <div className="plan-card-head">
+            <h2 id="lab-order-title">
+              <TestTube aria-hidden="true" /> {order.tests.map((t) => t.name).join(', ')}
+            </h2>
+            <span className="wl-counts">
+              {order.urgent && (
+                <StatusPill tone="high" icon={Siren}>
+                  Urgent
+                </StatusPill>
+              )}
+              <StatusPill tone={look.tone} icon={look.icon}>
+                {look.word}
+              </StatusPill>
+            </span>
+          </div>
+          {!inRecord && (
+            <p>
+              <strong>{order.patient.fullName}</strong>{' '}
+              <span className="muted tabular">
+                · {order.patient.mrn}
+                {order.patient.age != null ? ` · ${order.patient.age} yrs` : ''} · {CARE_TYPE_SHORT[order.patient.careType] ?? order.patient.careType}
+              </span>
+            </p>
+          )}
+          <dl className="lab-stamps">
+            <dt>Ordered</dt>
+            <dd>
+              {order.ordered.byName}, {formatDateTime(order.ordered.at)}
+            </dd>
+            {order.collected && (
+              <>
+                <dt>Sample taken</dt>
+                <dd>
+                  {order.collected.byName}, {formatDateTime(order.collected.at)}
+                </dd>
+              </>
             )}
-            {can.review && <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act(() => labApi.review(order.id))}><CircleCheck size={16} aria-hidden /> Finalize report</button>}
-            {can.print && <Link to={`/hospital/print/lab-report/${order.id}`} target="_blank" className="btn btn-primary"><Printer size={16} aria-hidden /> Print report</Link>}
-            {can.print && data.contact && <WhatsAppButton phone={data.contact.phone} agreed={data.contact.consentMessages} text={reportMessage({ name: patient.name, hospital: activeMembership?.hospital?.name ?? '' })} />}
-            {can.cancel && <button type="button" className="btn btn-link btn-danger-text" onClick={() => setCancelling(true)}>Cancel order</button>}
-          </>
-        }
-      />
-      <Alert type="error">{error}</Alert>
-      {catalogue.note && <p className="muted small">{catalogue.note}</p>}
-
-      <div className="grid-2">
-        <section className="card">
-          <h2>Order</h2>
-          <dl className="details wide">
-            <dt>Tests</dt><dd>{order.tests.map((t) => t.name).join(', ')}</dd>
-            <dt>Sample</dt><dd>{order.sample ? <><strong>{order.sample.number}</strong>{order.sample.types.length > 0 && ` · ${order.sample.types.join(', ')}`}</> : order.recollect ? 'A new sample is needed' : 'Not taken yet'}</dd>
-            {order.packages.length > 0 && (<><dt>Packages</dt><dd>{order.packages.map((p) => `${p.name}${p.approved ? '' : ' (DRAFT)'}`).join(', ')}</dd></>)}
-            <dt>Note to the lab</dt><dd className="pre">{order.noteToLab || '—'}</dd>
-            <dt>Lab remark</dt><dd className="pre">{order.labNote || '—'}</dd>
+            {order.reported && (
+              <>
+                <dt>Reported</dt>
+                <dd>
+                  {order.reported.byName}, {formatDateTime(order.reported.at)}
+                </dd>
+              </>
+            )}
+            {order.reviewed && (
+              <>
+                <dt>Reviewed</dt>
+                <dd>
+                  {order.reviewed.byName}, {formatDateTime(order.reviewed.at)}
+                  {order.reviewed.comment ? ` – ${order.reviewed.comment}` : ''}
+                </dd>
+              </>
+            )}
+            {order.cancelled && (
+              <>
+                <dt>Cancelled</dt>
+                <dd>
+                  {order.cancelled.byName}, {formatDateTime(order.cancelled.at)} – {order.cancelled.reason}
+                </dd>
+              </>
+            )}
           </dl>
+          {order.packages?.length > 0 && (
+            <p>
+              <span className="muted">Package: </span>
+              {packageNames(order.packages)}
+            </p>
+          )}
+          {order.noteToLab && (
+            <p>
+              <span className="muted">Note to the lab: </span>
+              {order.noteToLab}
+            </p>
+          )}
+          {(a.canCollect || a.canCancel) && (
+            <div className="row">
+              {a.canCollect && (
+                <button type="button" className={`btn ${a.canReview ? 'btn-secondary' : 'btn-primary'}`} disabled={busy} onClick={collect}>
+                  <TestTube aria-hidden="true" /> {busy ? 'Saving…' : 'Mark sample taken'}
+                </button>
+              )}
+              {a.canCancel && (
+                <button type="button" className="btn btn-link" onClick={() => setCancelling(true)}>
+                  Cancel the order
+                </button>
+              )}
+            </div>
+          )}
         </section>
-        <section className="card">
-          <h2>Steps</h2>
-          <ul className="steps">
-            {STEPS.filter(([k]) => order[k]).map(([k, word]) => (
-              <li key={k}>
-                <strong>{word}</strong> <span className="muted small">{formatDateTime(order[k].at)} · {order[k].by}</span>
-                {k === 'cancelled' && <span className="block small">{order.cancelled.reason}</span>}
-              </li>
-            ))}
-            {order.rejections.map((r) => (
-              <li key={`rej${r.at}`}>
-                <strong>Sample {r.sampleNumber} rejected</strong> <span className="muted small">{formatDateTime(r.at)} · {r.by}</span>
-                <span className="block small">{r.reason}</span>
-              </li>
-            ))}
-            {order.queries.map((q) => (
-              <li key={`q${q.at}`}>
-                <strong>Asked the doctor</strong> <span className="muted small">{formatDateTime(q.at)} · {q.by}</span>
-                <span className="block small">{q.text}</span>
-              </li>
-            ))}
-            {order.amendments.map((a) => (
-              <li key={a.at}>
-                <strong>Results changed</strong> <span className="muted small">{formatDateTime(a.at)} · {a.by}</span>
-                <span className="block small">{a.reason}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
 
-      <div className="top-gap">
-        {editing ? (
-          <ResultsForm
-            order={order}
-            defs={defs}
-            amending={amending}
-            onCancel={() => setEditing(false)}
-            onSaved={(d) => {
-              setData(d);
-              setEditing(false);
-            }}
-          />
-        ) : (
-          <section className="card list-panel">
-            <ResultsTable order={order} defs={defs} />
+        {order.status !== 'cancelled' && (
+          <section className="card" aria-labelledby="lab-results-title">
+            <div className="plan-card-head">
+              <h2 id="lab-results-title">Results</h2>
+              {order.abnormal && done && (
+                <StatusPill tone="high" icon={FLAG_LOOK.abnormal.icon}>
+                  Outside the usual range
+                </StatusPill>
+              )}
+            </div>
+            {a.canReport && (open || changing) ? (
+              <ResultsForm
+                order={order}
+                catalogue={catalogue}
+                pcpndt={pcpndt}
+                amending={done}
+                primary={primaryReport}
+                onSaved={saved}
+                onCancel={changing ? () => setChanging(false) : null}
+              />
+            ) : done ? (
+              <>
+                <ResultsView order={order} catalogue={catalogue} />
+                {a.canReport && (
+                  <div className="row">
+                    <button type="button" className="btn btn-secondary" onClick={() => setChanging(true)}>
+                      Change the results
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="muted">Waiting for the lab.</p>
+            )}
+            {order.lastSaved && open && <p className="hint">Last saved by {order.lastSaved.byName}, {formatDateTime(order.lastSaved.at)} – not reported yet.</p>}
+          </section>
+        )}
+
+        {a.canReview && <Review order={order} onSaved={saved} />}
+
+        {order.status !== 'cancelled' && <Files order={order} pcpndt={pcpndt} onSaved={saved} />}
+
+        {order.amendments.length > 0 && (
+          <section className="card" aria-labelledby="lab-changes-title">
+            <h2 id="lab-changes-title">Changes after the report ({order.amendments.length})</h2>
+            <ul className="plain-list">
+              {order.amendments
+                .slice()
+                .reverse()
+                .map((m, i) => (
+                  <li key={`${m.at}-${i}`}>
+                    <strong>{m.byName}</strong>, {formatDateTime(m.at)} – {m.reason}
+                    {m.tests && (
+                      <details>
+                        <summary>Results before this change{m.reviewedByName ? ` (reviewed by ${m.reviewedByName})` : ''}</summary>
+                        <ul>
+                          {m.tests.map((t, j) => (
+                            <li key={`${t.key}-${j}`}>
+                              {t.name}: {resultLine(t, catalogue) || '—'}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </li>
+                ))}
+            </ul>
           </section>
         )}
       </div>
-
-      {asking && (
-        <Modal title={ASK[asking].title} onClose={() => setAsking(null)} size="sm">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              act(() => (asking === 'reject' ? labApi.reject(order.id, askText) : labApi.query(order.id, askText)));
-            }}
-          >
-            <div className="form-field">
-              <label htmlFor="ask-text">{ASK[asking].label}<span className="required" aria-hidden> *</span></label>
-              <textarea id="ask-text" rows={3} value={askText} maxLength={500} placeholder={ASK[asking].placeholder} onChange={(e) => setAskText(e.target.value)} />
-              <span className="field-help">{ASK[asking].help}</span>
-            </div>
-            <div className="modal-foot inline">
-              <button type="button" className="btn btn-ghost" onClick={() => setAsking(null)}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={busy || askText.trim().length < ASK[asking].min}>{ASK[asking].button}</button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
       {cancelling && (
-        <Modal title="Cancel the lab order" onClose={() => setCancelling(false)} size="sm">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              act(() => labApi.cancel(order.id, reason));
-            }}
-          >
-            <div className="form-field">
-              <label htmlFor="cancel-reason">Why<span className="required" aria-hidden> *</span></label>
-              <input id="cancel-reason" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} />
-            </div>
-            <div className="modal-foot inline">
-              <button type="button" className="btn btn-ghost" onClick={() => setCancelling(false)}>Keep the order</button>
-              <button type="submit" className="btn btn-primary" disabled={busy || reason.trim().length < 3}>Cancel order</button>
-            </div>
-          </form>
-        </Modal>
+        <CancelDialog
+          order={order}
+          onCancel={() => setCancelling(false)}
+          onDone={(next) => {
+            setCancelling(false);
+            saved(next, 'Order cancelled.');
+          }}
+        />
       )}
     </>
   );

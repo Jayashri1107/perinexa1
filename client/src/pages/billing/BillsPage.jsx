@@ -1,80 +1,135 @@
-import { Plus, Printer } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, FilePlus2, Search } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { billsApi } from '../../api/index.js';
-import { ListPanel } from '../../components/list/ListPanel.jsx';
-import { BillStatus } from './BillStatus.jsx';
-import { usePagedList } from '../../hooks/usePagedList.js';
-import { formatDateTime, formatMoney } from '../../utils/format.js';
-import { BillingFrame } from './BillingFrame.jsx';
+import { api } from '../../api.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { DataTable } from '../../components/DataTable.jsx';
+import { PageHeader } from '../../components/PageHeader.jsx';
+import { Alert, StatusPill, useDebounced, useDialogFocus } from '../../components/ui.jsx';
+import { useFetch } from '../../hooks/useFetch.js';
+import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
+import { addDaysIso, dayLabel } from '../appointments/appointmentFormat.js';
+import { KIND_LABELS, STATUS_LOOK, billingTabs, rupees } from './billingFormat.js';
 
-const STATUS_FILTER = {
-  name: 'status',
-  label: 'Status',
-  options: [
-    { value: 'open', label: 'Open' },
-    { value: 'unpaid', label: 'Unpaid' },
-    { value: 'partial', label: 'Part paid' },
-    { value: 'overdue', label: 'Overdue' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'refund_due', label: 'Refund due' },
-    { value: 'cancelled', label: 'Cancelled' },
-  ],
-};
+// Billing → Bills (docs/BILLING_PLAN.md): a day's bills (outpatient bills of the day, and stays still open), or the
+// bills matching a search (name, phone, patient or bill number). "New bill" opens today's bill for a patient (e.g. a
+// scan with no visit). Charges from visits, lab orders and stays appear by themselves.
+
+export function BillStatus({ status }) {
+  const look = STATUS_LOOK[status];
+  if (!look) return null;
+  return (
+    <StatusPill tone={look.tone} icon={look.icon}>
+      {look.label}
+    </StatusPill>
+  );
+}
+
+export const billColumns = ({ showPatient = true } = {}) => [
+  { key: 'number', header: 'Bill', render: (b) => <span className="tabular">{b.number}</span> },
+  { key: 'date', header: 'Date', render: (b) => dayLabel(b.date) },
+  ...(showPatient ? [{ key: 'patient', header: 'Patient', render: (b) => (b.patient ? <span>{b.patient.fullName} <span className="muted tabular">{b.patient.mrn}</span></span> : '') }] : []),
+  { key: 'kind', header: 'Type', render: (b) => `${KIND_LABELS[b.kind]}${b.stay?.inHospital ? ' (in hospital)' : ''}` },
+  { key: 'total', header: 'Total', align: 'right', render: (b) => <span className="tabular">{rupees(b.total)}</span> },
+  { key: 'paid', header: 'Paid', align: 'right', render: (b) => <span className="tabular">{rupees(b.paid)}</span> },
+  { key: 'balance', header: 'Balance', align: 'right', render: (b) => <strong className="tabular">{rupees(b.balance)}</strong> },
+  { key: 'status', header: 'Status', render: (b) => <BillStatus status={b.status} /> },
+];
+
+function NewBillDialog({ onClose, onOpened }) {
+  const ref = useDialogFocus(onClose);
+  const [error, setError] = useState(null);
+  const open = async (p) => {
+    setError(null);
+    try {
+      const { bill } = await api('/billing/bills', { method: 'POST', body: { patientId: p.id } });
+      onOpened(bill);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="nb-title">
+        <h2 id="nb-title">New bill</h2>
+        <p>Opens the patient's bill for today (or her stay's bill while she is in hospital), to add items such as a scan.</p>
+        <Alert type="error">{error}</Alert>
+        <PatientFinder onPick={open} />
+        <div className="row">
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function BillsPage() {
+  const { activeMembership } = useAuth();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const patientId = params.get('patientId');
-  // ?status=overdue (from Today's "View overdue") opens the list with that filter chosen
-  const status = STATUS_FILTER.options.some((o) => o.value === params.get('status')) ? params.get('status') : null;
-  const list = usePagedList(billsApi.list, { ...(patientId && { patientId }), ...(status && { status }) });
-
-  const columns = [
-    { key: 'billNumber', label: 'Bill', className: 'nowrap', render: (b) => <strong>{b.billNumber}</strong> },
-    { key: 'createdAt', label: 'Date', className: 'nowrap', render: (b) => formatDateTime(b.createdAt) },
-    { key: 'patient', label: 'Patient', render: (b) => (<>{b.patient?.name}<span className="muted block small">{b.patient?.patientNumber}</span></>) },
-    { key: 'total', label: 'Total', className: 'num', render: (b) => formatMoney(b.total) },
-    { key: 'paid', label: 'Paid', className: 'num', render: (b) => formatMoney((b.paid ?? 0) - (b.refunded ?? 0)) },
-    { key: 'balance', label: 'Balance', className: 'num', render: (b) => formatMoney(b.balance) },
-    { key: 'status', label: 'Status', render: (b) => <BillStatus bill={b} /> },
-    {
-      key: 'print',
-      label: '',
-      className: 'actions',
-      // Opens the printed bill in a new tab (the row itself still opens the bill)
-      render: (b) => (
-        <a
-          href={`/hospital/print/bill/${b.id}`}
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-ghost btn-sm"
-          aria-label={`Print bill ${b.billNumber}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Printer size={14} aria-hidden /> Print
-        </a>
-      ),
-    },
-  ];
+  const [params, setParams] = useSearchParams();
+  const [text, setText] = useState('');
+  const search = useDebounced(text.trim(), 300);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date') : undefined;
+  const list = useFetch('/billing/bills', search.length >= 2 ? { search } : { date });
+  const [creating, setCreating] = useState(false);
+  const day = list.data?.date ?? date;
+  const today = list.data?.today;
+  const go = (d) => setParams(d && d !== today ? { date: d } : {}, { replace: true });
+  const rows = list.data?.bills;
+  const owed = (rows ?? []).filter((b) => b.status !== 'cancelled' && b.balance > 0).reduce((s, b) => s + b.balance, 0);
 
   return (
-    <BillingFrame
-      subtitle={patientId ? 'Patient account: all her bills, with what was billed, paid and is still due' : 'All bills, newest first. A patient can have several bills.'}
-      actions={
-        <button type="button" className="btn btn-primary" onClick={() => navigate(`/hospital/billing/new${patientId ? `?patientId=${patientId}` : ''}`)}>
-          <Plus size={16} aria-hidden /> New bill
-        </button>
-      }
-    >
-      {list.summary && list.summary.bills > 0 && (
-        <dl className="totals bills-summary">
-          <dt>{list.summary.bills} {list.summary.bills === 1 ? 'bill' : 'bills'} (cancelled left out)</dt><dd></dd>
-          <dt>Total billed</dt><dd>{formatMoney(list.summary.total)}</dd>
-          <dt>Paid</dt><dd>{formatMoney(list.summary.paid)}</dd>
-          <dt><strong>Balance to collect</strong></dt><dd><strong>{formatMoney(list.summary.balance)}</strong></dd>
-        </dl>
-      )}
-      <ListPanel list={list} columns={columns} filters={[STATUS_FILTER]} searchPlaceholder="Bill number or patient" emptyText="No bills yet." onRowClick={(b) => navigate(`/hospital/billing/bills/${b.id}`)} />
-    </BillingFrame>
+    <>
+      <PageHeader
+        breadcrumbs={[{ label: 'Billing' }]}
+        title="Billing"
+        subtitle={search.length >= 2 ? `Bills matching "${search}"` : day ? dayLabel(day) : undefined}
+        tabs={billingTabs(activeMembership.roles)}
+        actions={
+          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+            <FilePlus2 aria-hidden="true" /> New bill
+          </button>
+        }
+      />
+      <div className="pf-content bill-page">
+        {list.error && <Alert type="error">{list.error}</Alert>}
+        <DataTable
+          caption="Bills"
+          columns={billColumns()}
+          rows={rows}
+          loading={list.loading}
+          onRowClick={(b) => navigate(`/billing/bills/${b.id}`)}
+          rowClassName={(b) => (b.status === 'cancelled' ? 'bill-row-cancelled' : '')}
+          emptyText={search.length >= 2 ? 'No bills match.' : 'No bills on this day.'}
+          toolbar={
+            <div className="bill-toolbar">
+              <label className="bill-search">
+                <Search aria-hidden="true" />
+                <span className="sr-only">Find a bill</span>
+                <input type="search" placeholder="Name, phone, patient or bill number" value={text} onChange={(e) => setText(e.target.value)} />
+              </label>
+              {search.length < 2 && day && (
+                <div className="appt-daynav" role="group" aria-label="Day">
+                  <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, -1))} aria-label="Previous day">
+                    <ChevronLeft aria-hidden="true" />
+                  </button>
+                  <input type="date" aria-label="Day" value={day} onChange={(e) => e.target.value && go(e.target.value)} />
+                  <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, 1))} aria-label="Next day">
+                    <ChevronRight aria-hidden="true" />
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => go(today)} disabled={day === today}>
+                    Today
+                  </button>
+                </div>
+              )}
+              {rows && owed > 0 && <span className="muted">Still to collect on this list: {rupees(owed)}</span>}
+            </div>
+          }
+        />
+      </div>
+      {creating && <NewBillDialog onClose={() => setCreating(false)} onOpened={(b) => navigate(`/billing/bills/${b.id}`)} />}
+    </>
   );
 }

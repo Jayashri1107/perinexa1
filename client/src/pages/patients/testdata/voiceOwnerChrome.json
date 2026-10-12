@@ -1,0 +1,177 @@
+{
+  "about": "What the owner's real Google Chrome wrote on 29 Sep 2026 (made-up sentences read aloud, fake data), with what the app should do after the owner's decisions of that day. A regression set: every case must be correct.",
+  "now": "2026-09-29T05:30:00Z",
+  "tz": "Asia/Kolkata",
+  "format": {
+    "now": "2026-09-29T05:30:00Z (11:00 in India); dates are read in Asia/Kolkata time",
+    "case": "{ id, careType, text (exactly what Chrome wrote), said (what was read aloud), expected, why }",
+    "expected": "values, confirm, questions and notes as in voiceCorpusB.json (strict: anything else filled is wrong). Also noQuestions: regexes no question may match; corrections: [{ heard, to }] that must be listed; unused: the parts listed as not understood, exactly."
+  },
+  "cases": [
+    {
+      "id": "OC01",
+      "careType": "antenatal",
+      "text": "Gravida 3 para 2 living to abortion zero known case of hypothyroid on Thyronorm 50",
+      "said": "Gravida three, para two, living two, abortion zero. Known case of hypothyroid on Thyronorm fifty.",
+      "expected": {
+        "values": {
+          "obstetric.gravida": "3",
+          "obstetric.para": "2",
+          "obstetric.living": "2",
+          "obstetric.abortions": "0",
+          "medical.conditions": [
+            "thyroid"
+          ]
+        },
+        "unused": []
+      },
+      "why": "owner: filled OK (\"living to\" is living 2)"
+    },
+    {
+      "id": "OC02",
+      "careType": "antenatal",
+      "text": "Previous LSCS five years back now 28 weeks",
+      "said": "Previous L S C S five years back, now twenty eight weeks.",
+      "expected": {
+        "values": {
+          "obstetric.previousCaesareans": "1",
+          "notes": [
+            "^Previous LSCS 5 years back$"
+          ]
+        },
+        "questions": [
+          "^LMP about 17 Mar 2026 \\(said: “now 28 weeks”\\) – is that right\\?"
+        ],
+        "unused": []
+      },
+      "why": "owner: \"5 years back now 28 weeks\" was not understood. The years go into a note with the finding; the weeks give an LMP that is asked about, never filled"
+    },
+    {
+      "id": "OC03",
+      "careType": "antenatal",
+      "text": "Blood group Rh negative NTD given at 28 weeks",
+      "said": "Blood group O, R H negative. Anti D given at twenty eight weeks.",
+      "expected": {
+        "values": {
+          "notes": [
+            "^Anti-D given at 28 weeks$"
+          ]
+        },
+        "questions": [
+          "^Which ABO group\\?"
+        ],
+        "noQuestions": [
+          "previous pregnancy, or in this one"
+        ],
+        "corrections": [
+          {
+            "heard": "NTD",
+            "to": "anti-D"
+          }
+        ],
+        "unused": []
+      },
+      "why": "owner: anti-D given at 28 weeks was not filled. Chrome wrote \"NTD\" for \"anti D\" (and lost the O)"
+    },
+    {
+      "id": "OC04",
+      "careType": "antenatal",
+      "text": "Mobile 98450 double seven eight one two",
+      "said": "Mobile nine eight four five zero, double seven, eight one two.",
+      "expected": {
+        "values": {
+          "phone": "9845077812"
+        },
+        "unused": []
+      },
+      "why": "owner: OK"
+    },
+    {
+      "id": "OC05",
+      "careType": "antenatal",
+      "text": "Height 152 weight 58 kilo",
+      "said": "Height one fifty two, weight fifty eight kilo.",
+      "expected": {
+        "values": {
+          "medical.heightCm": "152",
+          "medical.weightKg": "58"
+        },
+        "unused": []
+      },
+      "why": "owner: OK"
+    },
+    {
+      "id": "OC06",
+      "careType": "antenatal",
+      "text": "Pregnancy",
+      "said": "Naam Kavita Sample, pachees saal, pehli pregnancy.",
+      "expected": {
+        "values": {},
+        "unused": []
+      },
+      "why": "owner: Hindi not picked up. Chrome wrote no Hindi word, so there is nothing to read; the Tips say to say these in English"
+    },
+    {
+      "id": "OC07",
+      "careType": "antenatal",
+      "text": "Hiv non-reactive hbs AG non-reactive vdrl non-reactive",
+      "said": "HIV non-reactive, HBsAg non-reactive, VDRL non-reactive.",
+      "expected": {
+        "values": {
+          "notes": [
+            "^HIV non-reactive, HBsAg non-reactive, VDRL non-reactive$"
+          ]
+        },
+        "noQuestions": [
+          "."
+        ],
+        "unused": []
+      },
+      "why": "owner: not able to fill. Negative screening results are one note; nothing ticked, nothing asked"
+    },
+    {
+      "id": "OC08",
+      "careType": "antenatal",
+      "text": "Hbs AG reactive",
+      "said": "HBsAg reactive.",
+      "expected": {
+        "values": {},
+        "confirm": {
+          "medical.conditions.hepatitis_b": {
+            "value": true,
+            "ask": "HBsAg reactive \\(positive\\) – is that right\\?"
+          }
+        },
+        "unused": []
+      },
+      "why": "owner: OK (asked to confirm)"
+    },
+    {
+      "id": "OC09",
+      "careType": "antenatal",
+      "text": "Age 26 sorry 27",
+      "said": "Age twenty six, sorry, twenty seven.",
+      "expected": {
+        "values": {
+          "ageYears": "27"
+        },
+        "unused": []
+      },
+      "why": "owner: OK"
+    },
+    {
+      "id": "OC10",
+      "careType": "antenatal",
+      "text": "LMP two months back",
+      "said": "LMP two months back.",
+      "expected": {
+        "values": {},
+        "questions": [
+          "^LMP about 29 Jul 2026 \\(said: “2 months back”\\)"
+        ],
+        "unused": []
+      },
+      "why": "owner: OK (asked)"
+    }
+  ]
+}

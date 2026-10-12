@@ -1,0 +1,220 @@
+/* Visits and prescriptions (Feature 8): the Visits tab, a visit's two tabs, and My settings → Prescription
+   design. Tokens only. The printed designs themselves are in print-rx.css. */
+
+/* ---------- The Visits tab ---------- */
+.vs-tab, .vs-page, .vs-form { display: flex; flex-direction: column; gap: var(--space-6); }
+.vs-tab > .alert, .vs-page > .alert, .vs-form > .alert { margin: 0; }
+.vs-intro { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
+.vs-intro-icon {
+  flex-shrink: 0; display: grid; place-items: center; width: var(--control-height); height: var(--control-height);
+  border-radius: var(--radius-md); background: var(--mist-50); color: var(--indigo-700);
+}
+.vs-intro-icon svg.lucide { width: 22px; height: 22px; }
+.vs-intro-text { flex: 1 1 320px; }
+.vs-intro-text h2 { margin: 0; }
+.vs-intro-text .hint { margin: 0; }
+.dt td.vs-col-wrap { white-space: normal; min-width: 180px; }
+
+/* ---------- One visit ---------- */
+.vs-visit-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2) var(--space-3); margin: calc(-1 * var(--space-2)) 0 var(--space-2) calc(-1 * var(--space-2)); }
+.vs-visit-top .row { margin: 0; }
+.vs-visit-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); }
+.vs-visit-title h2 { margin: 0; }
+.vs-ga { color: var(--slate-600); font-weight: 500; }
+.vs-visit-head > .hint { margin: var(--space-1) 0 0; }
+.vs-tabs { margin-top: var(--space-4); }
+
+/* "Suggested for her record": a finding of this pregnancy the saved vital signs suggest (the doctor confirms) */
+.vs-offer { border-left: 6px solid var(--status-watch-fg); }
+.vs-offer h2 { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); }
+.vs-offer h2 svg.lucide { width: 24px; height: 24px; color: var(--indigo-700); }
+.vs-offer-row p { margin: 0 0 var(--space-3); }
+.vs-offer-row .hint { margin: var(--space-2) 0 0; }
+/* Findings of a pregnancy loss, recorded from the visit page onto her record */
+.vs-findings-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-2); }
+.vs-findings-head h2 { display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.vs-findings-head h2 svg.lucide { width: 24px; height: 24px; color: var(--indigo-700); }
+.vs-findings > .hint { margin: 0 0 var(--space-3); }
+
+.vs-section h2 { margin-bottom: var(--space-1); }
+.vs-section > .hint { margin: 0 0 var(--space-4); }
+.vs-byline { margin: 0 0 var(--space-4); }
+.vs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 var(--space-4); }
+.vs-bp { grid-column: span 2; }
+.vs-bp-inputs { display: flex; align-items: center; gap: var(--space-2); }
+.vs-bp-inputs input { flex: 1; min-width: 0; }
+.vs-notes-grid { gap: 0 var(--space-6); }
+.vs-shown-list { display: grid; gap: var(--space-3); }
+.vs-shown { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--space-3); }
+.vs-shown-label { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-body); font-weight: 500; }
+.vs-shown-label svg.lucide { width: 14px; height: 14px; }
+.vs-quick { margin-top: calc(-1 * var(--space-2)); }
+/* Voice entry (registration's card, pages-patients.css): a field filled from what was said, until it is changed by hand –
+   amber edge + "From voice – check" (caution colours) */
+.vs-form > .voice-card { margin-bottom: 0; }
+.vs-form .voice-filled:is(input, select, textarea) { border-color: var(--status-watch-fg); box-shadow: inset 3px 0 0 var(--status-watch-fg); }
+.vs-form .voice-filled:is(input, select, textarea):focus { border-color: var(--teal-700); box-shadow: var(--focus-ring), inset 3px 0 0 var(--status-watch-fg); }
+.vs-plan-list li { padding: var(--space-1) 0; }
+.vs-plan-item { align-items: flex-start; padding: var(--space-1) 0; }
+.vs-plan-item input { margin-top: calc((var(--lh-body) - 18px) / 2); }
+.vs-plan-item svg.lucide { width: 16px; height: 16px; vertical-align: -3px; color: var(--slate-600); }
+.vs-late { margin-top: var(--space-2); }
+.vs-late summary { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--control-height); cursor: pointer; color: var(--indigo-700); font-weight: 500; }
+.vs-late summary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* Prescription */
+.vs-section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: var(--space-3) var(--space-4); }
+.vs-section-head h2 { margin-bottom: var(--space-1); }
+.vs-rx-row { margin-bottom: var(--space-4); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.vs-rx-row .item-editor-head { margin-bottom: var(--space-3); }
+.vs-rx-row .item-editor-head .icon-btn svg.lucide { width: 16px; height: 16px; }
+.vs-rx-preview { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+.vs-rx-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 var(--space-4); }
+.vs-span-2 { grid-column: span 2; }
+.vs-usual { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: calc(-1 * var(--space-3)) 0 var(--space-3); }
+.vs-usual svg.lucide { width: 14px; height: 14px; }
+.vs-duration-inputs { display: flex; gap: var(--space-2); }
+.vs-duration-inputs input { flex: none; width: 5em; }
+.vs-duration-inputs select { flex: 1; min-width: 0; }
+.vs-rx-read { margin: 0; padding-left: var(--space-6); }
+.vs-rx-read li { margin-bottom: var(--space-3); }
+.vs-rx-line { display: block; }
+
+@media (max-width: 1100px) {
+  .vs-rx-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .vs-rx-grid { grid-template-columns: minmax(0, 1fr); }
+  .vs-span-2, .vs-bp { grid-column: auto; }
+  .vs-shown { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+
+/* ---------- My settings → Prescription design ---------- */
+.rxd { display: flex; flex-direction: column; gap: var(--space-6); }
+.rxd > .alert { margin: 0; }
+.rxd-section h2 { margin-bottom: var(--space-1); }
+.rxd-section > .hint { margin: 0 0 var(--space-4); }
+.rxd-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.rxd-card {
+  display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);
+}
+.rxd-card:hover { border-color: var(--indigo-700); }
+.rxd-card.checked { border-color: var(--indigo-700); box-shadow: inset 0 0 0 1px var(--indigo-700); }
+.rxd-card:focus-within { box-shadow: var(--focus-ring); }
+/* The whole page, scaled down to about a quarter (A5 at the same scale, so it looks as small as it is) */
+.rxd-thumb { display: flex; justify-content: center; align-items: flex-start; height: calc(297mm * 0.26 + 2 * var(--space-3)); padding: var(--space-3); border-bottom: 1px solid var(--border); background: var(--mist-50); overflow: hidden; }
+.rxd-thumb-frame { display: block; flex-shrink: 0; width: calc(210mm * 0.26); height: calc(297mm * 0.26); overflow: hidden; background: var(--surface); box-shadow: var(--shadow-card); }
+.rxd-thumb-frame.rxd-a5 { width: calc(148mm * 0.26); height: calc(210mm * 0.26); }
+.rxd-thumb-sheet {
+  display: block; position: relative; width: var(--print-sheet-width); height: 297mm; padding: var(--print-sheet-margin); overflow: hidden;
+  transform: scale(0.26); transform-origin: top left; pointer-events: none;
+}
+.rxd-thumb-sheet.rxd-a5 { width: var(--print-sheet-width-a5); height: 210mm; padding: 8mm; }
+.rxd-card-open { flex-basis: 100%; justify-content: flex-start; margin-top: var(--space-1); padding-left: 0; padding-right: 0; }
+/* The whole page at the size it prints (over the page, like the print preview) */
+.pv-sheet.rxd-full-sheet { display: block; position: relative; min-height: 297mm; }
+.pv-sheet.rxd-full-sheet.rxd-a5 { max-width: var(--print-sheet-width-a5); min-height: 210mm; padding: 8mm; }
+/* Your own printed pad: grey bands where the pad's print is; the page's sides keep their margin */
+.rxd-pad { padding-top: 0 !important; padding-bottom: 0 !important; }
+.rxd-pad-band-bottom { position: absolute; left: 0; right: 0; bottom: 0; margin: 0 !important; }
+.rxd-card-text { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); padding: var(--space-3) var(--space-4) var(--space-4); }
+.rxd-card-text strong { font-weight: 500; }
+.rxd-card-text small { flex-basis: 100%; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.rxd-card.checked .rxd-card-text { background: var(--teal-100); }
+
+.rxd-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--space-6); align-items: start; }
+.rxd-swatches { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); }
+.rxd-swatch-dot { width: 22px; height: 22px; border-radius: var(--radius-pill); background: var(--rx-accent); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--border); }
+.rxd-preview { position: sticky; top: var(--space-6); max-height: calc(100vh - 2 * var(--space-6)); overflow: auto; }
+.rxd-preview > .hint { margin: 0 0 var(--space-4); }
+/* The preview sheet at about three quarters of its size, so a whole A4 width fits next to the choices */
+.paper.rxd-paper { max-width: var(--print-sheet-width); padding: var(--print-sheet-margin); zoom: 0.74; }
+.paper.rxd-paper.rxd-paper-a5 { max-width: var(--print-sheet-width-a5); padding: 8mm; zoom: 1; }
+.paper.rxd-paper.rxd-paper-pad { padding-top: 0; padding-bottom: 0; }
+.rxd-pad-band { display: block; margin: 0 calc(-1 * var(--print-sheet-margin)); background: var(--mist-100); }
+@media (max-width: 1279px) {
+  .rxd-layout { grid-template-columns: minmax(0, 1fr); }
+  .rxd-preview { position: static; max-height: none; }
+}
+@media (max-width: 720px) {
+  .paper.rxd-paper { zoom: 0.46; }
+}
+
+/* ---------- Ready-made prescription sets (Feature 8b) ---------- */
+/* On the Prescription tab */
+.vs-rx-actions { justify-content: flex-end; }
+.modal.rxs-picker { max-width: 1040px; }
+.rxs-picker > .hint { margin: 0 0 var(--space-4); }
+.rxs-picker-body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--space-6); align-items: start; }
+.rxs-list { max-height: 52vh; overflow-y: auto; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.rxs-group { margin: var(--space-3) var(--space-3) var(--space-1); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.rxs-group:first-child { margin-top: var(--space-1); }
+.rxs-option { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); cursor: pointer; }
+.rxs-option:hover { background: var(--mist-50); }
+.rxs-option.checked { background: var(--selected-bg); box-shadow: var(--selected-edge); }
+.rxs-option input { margin-top: calc((var(--lh-body) - 18px) / 2); }
+.rxs-option-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rxs-option-name { font-weight: 500; }
+.rxs-option-meds { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); overflow-wrap: anywhere; }
+.rxs-option-text .row { margin-top: var(--space-1); }
+.rxs-preview { max-height: 60vh; overflow-y: auto; }
+.rxs-preview-title { margin: 0 0 var(--space-2); }
+.rxs-preview > .alert { margin: 0 0 var(--space-3); }
+.rxs-preview-empty { padding: var(--space-8) 0; text-align: center; }
+/* What a set holds (picker, a set's page) */
+.rxs-contents .rxs-sub, .rxs-preview .rxs-sub { margin: var(--space-4) 0 var(--space-1); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.rxs-contents .rxs-sub:first-child { margin-top: 0; }
+.rxs-contents p { margin: 0; }
+.rxs-replaces { color: var(--indigo-700); font-size: var(--fs-label); line-height: var(--lh-label); }
+.rxs-contents .rxs-details-note { margin: var(--space-4) 0 0; }
+/* The library and a set's page */
+.dt td.rxs-col-name { white-space: normal; min-width: 240px; max-width: 460px; }
+.dt td.rxs-col-wrap { white-space: normal; }
+.rxs-meta { margin-bottom: var(--space-6); }
+.rxs-meta .details { margin: 0; }
+.rxs-what h2 { margin-bottom: var(--space-1); }
+.rxs-what > .hint { margin: 0 0 var(--space-4); }
+.rxs-editor .card + .card { margin-top: var(--space-6); }
+@media (max-width: 860px) {
+  .rxs-picker-body { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  /* The list keeps its own short scroll, so the chosen set and the button are close by */
+  .rxs-list { max-height: 34vh; }
+  .rxs-preview { max-height: none; }
+}
+
+/* Signed visits: corrections and additions below the visit, and its history (VisitSignature.jsx) */
+.vs-additions h2 { margin-bottom: var(--space-3); }
+.vs-addition-list { list-style: none; margin: 0 0 var(--space-4); padding: 0; }
+.vs-addition-list li { padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.vs-addition-list li:last-child { border-bottom: none; }
+.vs-addition-list p { margin: 0; }
+.vs-history summary { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; font-weight: 500; }
+.vs-history summary svg.lucide { width: 18px; height: 18px; }
+.vs-history-list { margin: var(--space-3) 0 0; padding-left: var(--space-6); }
+.vs-history-list li { padding: var(--space-1) 0; }
+
+/* Values outside the usual range, as typed (vitalLimits.js) */
+.vs-flags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-4); }
+.vs-flags-title { font-weight: 500; font-size: var(--fs-label); line-height: var(--lh-label); }
+.vs-flags .pill { white-space: normal; }
+/* A medicine row: Route and Instructions folded until needed */
+.vs-rx-more { display: flex; align-items: flex-end; }
+
+/* Inpatients (Version 2): a stay, its documents and the nursing chart */
+.ip-doc-list li, .ip-chart-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+.ip-doc-list li:last-child, .ip-chart-list li:last-child { border-bottom: none; }
+.ip-doc-list li.is-cancelled, .ip-chart-list li.is-cancelled { opacity: 0.6; }
+.ip-chart h2 { display: flex; align-items: center; gap: var(--space-2); }
+.ip-chart-form { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
+.ip-chart-form .btn { align-self: flex-start; }
+.ip-chart-list { list-style: none; margin: 0; padding: 0; }
+.ip-cancel { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ip-place { align-items: flex-end; }
+.ip-form { display: flex; flex-direction: column; gap: var(--space-2); }
+.ip-baby { padding: var(--space-3); margin-bottom: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.pill-link { text-decoration: none; }
+.pdoc-details > div { display: grid; grid-template-columns: 42mm minmax(0, 1fr); gap: var(--space-3); padding: var(--space-1) 0; border-bottom: 1px solid var(--print-rule); break-inside: avoid; }
+.pdoc-details dt { font-weight: 600; }
+.pdoc-details dd { margin: 0; }
+.pdoc-small { font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
