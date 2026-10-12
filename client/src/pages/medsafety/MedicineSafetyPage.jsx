@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../../auth/guards.jsx';
+import { Paged } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -208,6 +209,8 @@ export function MedicineSafetyPage() {
                 <span className="muted tabular">{countText(entries.length, 'entry', 'entries')}</span>
                 <p className="hint">{g.about}</p>
               </header>
+              <Paged rows={entries} label="entries" initial={5} sizes={[5, 10, 25]}>
+                {(shown) => (
               <div className="stage-table">
                 <table className="dt">
                   <thead>
@@ -238,7 +241,7 @@ export function MedicineSafetyPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {entries.map((e) => (
+                    {shown.map((e) => (
                       <tr key={e.key}>
                         <td data-label="Medicine" className="wrap">
                           <span className="strong-name">{e.label}</span>
@@ -279,6 +282,8 @@ export function MedicineSafetyPage() {
                   </tbody>
                 </table>
               </div>
+                )}
+              </Paged>
             </section>
           );
         })}

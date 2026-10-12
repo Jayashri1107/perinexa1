@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../../auth/guards.jsx';
+import { Paged } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -201,6 +202,8 @@ export function RedFlagRulesPage() {
               </h2>
               <span className="muted tabular">{countText(g.rules.length, 'rule', 'rules')}</span>
             </header>
+            <Paged rows={g.rules} label="rules" initial={5} sizes={[5, 10, 25]}>
+              {(shown) => (
             <div className="stage-table">
               <table className="dt">
                 <thead>
@@ -215,7 +218,7 @@ export function RedFlagRulesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {g.rules.map((r) => (
+                  {shown.map((r) => (
                     <tr key={r.key}>
                       <td data-label="Red flag" className="wrap">
                         <span className="strong-name">{r.label}</span>
@@ -240,6 +243,8 @@ export function RedFlagRulesPage() {
                 </tbody>
               </table>
             </div>
+              )}
+            </Paged>
           </section>
         ))}
         {notCovered.length > 0 && rs.rules.length > 0 && (

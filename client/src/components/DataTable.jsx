@@ -105,6 +105,47 @@ export function DataTable({
   );
 }
 
+/**
+ * A list already on the screen, shown a page at a time: { shown, pager } – shown: the rows of the page,
+ * pager: the "Showing … · Rows per page · Page" bar (null when everything fits on one page).
+ */
+export function usePagedRows(rows, { initial = 10, sizes = [10, 25, 50], label = 'items' } = {}) {
+  const [limit, setLimit] = useState(initial);
+  const [page, setPage] = useState(1);
+  const list = rows ?? [];
+  const totalPages = Math.max(1, Math.ceil(list.length / limit));
+  const current = Math.min(page, totalPages);
+  const shown = rows ? list.slice((current - 1) * limit, current * limit) : rows;
+  const pager =
+    list.length > sizes[0] ? (
+      <TablePagination
+        page={current}
+        totalPages={totalPages}
+        total={list.length}
+        limit={limit}
+        label={label}
+        sizes={sizes}
+        onPage={setPage}
+        onLimit={(n) => {
+          setLimit(n);
+          setPage(1);
+        }}
+      />
+    ) : null;
+  return { shown, pager };
+}
+
+/** usePagedRows for a list drawn inside a loop: children(shown) draws the page, the page bar follows it. */
+export function Paged({ rows, label, initial, sizes, children }) {
+  const { shown, pager } = usePagedRows(rows, { label, ...(initial ? { initial } : {}), ...(sizes ? { sizes } : {}) });
+  return (
+    <>
+      {children(shown)}
+      {pager}
+    </>
+  );
+}
+
 // "Showing 26–50 of 1,234 · Rows per page [25] · « ‹ Page [2] of 50 › »"
 export function TablePagination({ page, totalPages, total, limit, onPage, onLimit, label = 'items', sizes = [10, 25, 50, 100] }) {
   const [pageInput, setPageInput] = useState(String(page));

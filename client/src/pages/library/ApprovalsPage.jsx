@@ -1,6 +1,8 @@
 import { CircleCheck, FileSignature, FlaskConical, Info, ListChecks, Pill, ShieldAlert, Siren } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { TablePagination } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill, formatDateTime, hasRole } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -92,6 +94,12 @@ export function ApprovalsPage() {
   const { activeMembership } = useAuth();
   const isDoctor = hasRole(activeMembership, 'doctor');
   const { drafts, loading, error } = useLibraryDrafts(isDoctor);
+  // A long list is shown a page at a time (the list itself is unchanged).
+  const [limit, setLimit] = useState(10);
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(drafts.length / limit));
+  const current = Math.min(page, totalPages);
+  const shown = drafts.slice((current - 1) * limit, current * limit);
   return (
     <>
       <PageHeader
@@ -120,7 +128,7 @@ export function ApprovalsPage() {
             )}
             {drafts.length > 0 && (
               <ul className="plain-list ap-list">
-                {drafts.map((d) => {
+                {shown.map((d) => {
                   const look = KIND_LOOK[d.kind];
                   return (
                     <li key={d.key}>
@@ -140,6 +148,21 @@ export function ApprovalsPage() {
                   );
                 })}
               </ul>
+            )}
+            {drafts.length > 10 && (
+              <TablePagination
+                page={current}
+                totalPages={totalPages}
+                total={drafts.length}
+                limit={limit}
+                label="drafts"
+                sizes={[10, 25, 50]}
+                onPage={setPage}
+                onLimit={(n) => {
+                  setLimit(n);
+                  setPage(1);
+                }}
+              />
             )}
           </section>
         )}

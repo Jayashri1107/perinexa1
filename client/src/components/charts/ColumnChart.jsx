@@ -5,7 +5,10 @@ import { ShowAsTable } from './ShowAsTable.jsx';
 
 // Sizes in screen pixels: the SVG's viewBox is the size of its box, so 1 unit is 1 px and text takes the
 // type tokens from CSS (the person's text size applies).
-const HEIGHT = 220;
+// The chart is a little lower on a narrow card and never taller than 200 px, so it fits its card.
+const MIN_HEIGHT = 150;
+const MAX_HEIGHT = 200;
+const chartHeight = (width) => Math.round(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, width * 0.32)));
 const PAD = { top: 24, right: 8, bottom: 32, left: 44 };
 const MAX_COL = 24; // column width at most
 const GAP = 2;
@@ -80,6 +83,7 @@ export function ColumnChart({ columns, color = 'bar', summary, caption, labelHea
   const ticks = niceTicks(Math.max(0, ...values));
   const yMax = ticks[ticks.length - 1];
   const plotW = Math.max(0, width - PAD.left - PAD.right);
+  const HEIGHT = chartHeight(width);
   const plotH = HEIGHT - PAD.top - PAD.bottom;
   const band = n ? plotW / n : 0;
   const colW = Math.max(2, Math.min(MAX_COL, band - GAP));

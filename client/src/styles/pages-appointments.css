@@ -148,3 +148,38 @@
 .wr-waiting { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); color: var(--slate-600); }
 .wr-note { font-size: var(--fs-h1); line-height: var(--lh-h1); color: var(--slate-600); }
 .wr-foot { margin-top: auto; font-size: var(--fs-h3); line-height: var(--lh-h3); color: var(--slate-600); }
+
+/* ---------- Perinexa1: the day as small cards (look only) ----------
+   Each time is a small card in a grid – the time and Book on top, "Free" under it; a booked time takes the whole row
+   so the patient, the visit and the actions stay readable. Tighter toolbar and sections. */
+.appt-page { gap: var(--space-3); }
+.appt-page > .card { padding: var(--space-4); }
+.appt-toolbar { gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-4); align-items: flex-end; }
+.appt-toolbar-field { flex: 0 1 280px; }
+.appt-section h2 { margin-bottom: var(--space-1); }
+.appt-section > .hint { margin: 0 0 var(--space-2); }
+
+.appt-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2); margin-top: var(--space-2); }
+.appt-slot {
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'time action' 'body body'; gap: 2px var(--space-2); align-items: center;
+  min-height: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface);
+}
+.appt-slot:first-child { border-top: 1px solid var(--card-border); }
+.appt-slot > .appt-slot-time { grid-area: time; }
+.appt-slot > .appt-slot-body { grid-area: body; min-width: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+.appt-slot > .btn { grid-area: action; min-height: 32px; padding: 0 var(--space-2); }
+.appt-slot > .btn svg.lucide { width: 16px; height: 16px; }
+.appt-slot.is-free:not(.is-past):hover { border-color: var(--indigo-200); box-shadow: var(--shadow-card); }
+.appt-slot.is-past { background: var(--mist-50); border-color: transparent; }
+/* A booked time: the whole row, time | patient | action */
+.appt-slot.is-booked {
+  grid-column: 1 / -1; grid-template-columns: 88px minmax(0, 1fr) auto; grid-template-areas: 'time body action'; align-items: start;
+  border-left: 4px solid var(--indigo-700); padding: var(--space-3) var(--space-4);
+}
+.appt-slot.is-booked > .appt-slot-body { font-size: var(--fs-body); line-height: var(--lh-body); }
+@media (max-width: 560px) {
+  .appt-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .appt-slot { grid-template-columns: minmax(0, 1fr) auto; }
+  .appt-slot > .btn { grid-column: auto; justify-self: end; }
+  .appt-slot.is-booked { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'time action' 'body body'; }
+}

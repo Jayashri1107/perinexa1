@@ -190,3 +190,34 @@
 
 .an-doctor-when { display: block; font-weight: 400; }
 .an-doctor-table tbody th { min-width: 200px; }
+
+/* ---------- Perinexa1: tighter analytics (look only) ----------
+   Less padding and lower rows, so a card shows its numbers without a long scroll; cards side by side from 760 px of
+   content; headings one step smaller. */
+.an-filters { margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); gap: var(--space-3) var(--space-6); }
+.an-page .an-headline { gap: var(--space-3); }
+.an-page .an-headline .kpi { padding: var(--space-3) var(--space-4); gap: var(--space-1); }
+.an-page .an-headline .kpi-value { font-size: var(--fs-h1); line-height: var(--lh-h1); }
+.an-group-head { margin: var(--space-2) 0 var(--space-3); }
+.an-group-title { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.an-grid { gap: var(--space-4); margin-bottom: var(--space-4); }
+@container (min-width: 760px) {
+  .an-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .an-wide { grid-column: 1 / -1; }
+}
+.an-card-head { padding: var(--space-3) var(--space-4); }
+.an-card-head h2 { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.an-card-body { gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+.an-card-notes { padding: 0 var(--space-4) var(--space-3); }
+.barlist-label { height: 36px; }
+.meter, .meter-link, .an-fact, .an-fact-link { min-height: 36px; }
+/* A wide card with a bar list and a graph: the two side by side (the graph on the right), anything else full width */
+@container (min-width: 760px) {
+  .an-wide .an-card-body:has(> table.barlist):has(> .an-show-table) {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-flow: row dense; gap: var(--space-2) var(--space-6); align-items: start;
+  }
+  .an-wide .an-card-body:has(> table.barlist):has(> .an-show-table) > * { grid-column: 1 / -1; }
+  .an-wide .an-card-body:has(> table.barlist):has(> .an-show-table) > table.barlist,
+  .an-wide .an-card-body:has(> table.barlist):has(> .an-show-table) > .an-facts { grid-column: 1; }
+  .an-wide .an-card-body:has(> table.barlist):has(> .an-show-table) > .an-show-table { grid-column: 2; grid-row: span 2; }
+}

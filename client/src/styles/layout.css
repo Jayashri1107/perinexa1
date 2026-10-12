@@ -98,7 +98,7 @@
 .pf-main { flex: 1; min-width: 0; }
 .pf-notice { padding: var(--space-4) var(--space-8) 0; }
 .pf-notice .alert { margin-bottom: 0; }
-.pf-content { padding: var(--space-6) var(--space-8) var(--space-12); max-width: 1600px; }
+.pf-content { padding: var(--space-4) var(--space-8) var(--space-8); max-width: 1600px; }
 .pf-main > .card.narrow, .pf-main > .center-page { margin: var(--space-6) var(--space-8); }
 
 /* ---------- Page header: title (in the title bar), subtitle, actions, sub-module tabs ---------- */

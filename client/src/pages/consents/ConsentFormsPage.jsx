@@ -3,7 +3,7 @@ import { CircleMinus, FilePlus2, TriangleAlert } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { DataTable } from '../../components/DataTable.jsx';
+import { DataTable, usePagedRows } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -84,6 +84,8 @@ export function ConsentFormsPage({ kind = 'consent' }) {
 
   const forms = data?.forms.filter((f) => (f.kind ?? 'consent') === kind);
   const anyDraft = forms?.some((f) => f.isActive && f.status === 'draft');
+  // A long list is shown a page at a time
+  const paged = usePagedRows(forms, { label: 'forms' });
 
   return (
     <>
@@ -115,7 +117,8 @@ export function ConsentFormsPage({ kind = 'consent' }) {
         <DataTable
           caption={W.plural}
           columns={columns}
-          rows={forms}
+          rows={paged.shown}
+          footer={paged.pager}
           loading={loading}
           onRowClick={(f) => navigate(`${W.base}/${f.id}`)}
           rowClassName={(f) => (f.isActive ? '' : 'row-inactive')}

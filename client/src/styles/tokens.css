@@ -133,7 +133,7 @@
   --titlebar-height: 88px;
   --control-height: 44px; /* buttons and the minimum click target */
   --input-height: 48px;
-  --row-height: 72px;
+  --row-height: 56px;
   --nav-tile-size: 48px;
 }
 
@@ -195,7 +195,7 @@
 /* Spacing: Compact fits more rows on the screen; click targets stay at least 44 px */
 :root[data-density="compact"] {
   --space-3: 10px; --space-4: 12px; --space-6: 18px; --space-8: 24px; --space-12: 36px;
-  --row-height: 56px; --input-height: 44px; --titlebar-height: 72px;
+  --row-height: 48px; --input-height: 44px; --titlebar-height: 72px;
 }
 
 /* Font: all bundled or already on the computer, so nothing is fetched from the internet */
