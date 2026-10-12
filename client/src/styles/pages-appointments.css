@@ -183,18 +183,26 @@
 .appt-slot.is-past { background: var(--mist-50); border-color: transparent; }
 .appt-slot.is-past .appt-slot-body { color: var(--slate-600); }
 
-/* A booked time: the whole row – time | patient, status and actions | Add */
+/* A booked time: a card like the others, two columns wide – the time and Add on top, then the patient, then
+   Booked, Move and Cancel as small buttons. The cards beside it keep their own height. */
+.appt-slots { align-items: start; }
 .appt-slot.is-booked {
-  grid-column: 1 / -1; grid-template-columns: 96px minmax(0, 1fr) auto; grid-template-areas: 'time body action'; align-items: center;
-  gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-4); border-left: 4px solid var(--indigo-700); background: var(--surface);
+  grid-column: span 2; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'time action' 'body body'; align-items: center;
+  gap: var(--space-1) var(--space-2); padding: var(--space-2) var(--space-3); border-left: 4px solid var(--indigo-700); background: var(--surface);
 }
-.appt-slot.is-booked > .appt-slot-body { font-size: var(--fs-body); line-height: var(--lh-body); }
-.appt-slot.is-booked > .btn { min-height: var(--control-height); }
-.appt-slot.is-booked .appt-line-actions .btn { min-height: 36px; }
+.appt-slot.is-booked > .appt-slot-body { font-size: var(--fs-label); line-height: var(--lh-label); }
+.appt-slot.is-booked > .btn { min-height: 32px; }
+.appt-slot.is-booked .appt-line { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.appt-slot.is-booked .appt-line-who { gap: 0; }
+.appt-slot.is-booked .appt-line-who > :first-child { font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.appt-slot.is-booked .appt-line-who .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.appt-slot.is-booked .appt-line-actions { gap: var(--space-1) var(--space-2); }
+.appt-slot.is-booked .appt-line-actions .btn { min-height: 30px; padding: 0 var(--space-2); font-size: var(--fs-label); }
+.appt-slot.is-booked .appt-line-actions .pill { font-size: var(--fs-caption); }
 
 @media (max-width: 560px) {
   .appt-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .appt-slot > .btn { grid-column: auto; justify-self: end; }
-  .appt-slot.is-booked { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'time action' 'body body'; }
+  .appt-slot.is-booked { grid-column: 1 / -1; }
   .appt-daynav { flex-wrap: wrap; }
 }
