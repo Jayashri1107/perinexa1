@@ -289,3 +289,37 @@ describe('the first super admin (first start)', () => {
     expect(await User.exists({ email: 'intruder@example.com' })).toBeFalsy();
   });
 });
+
+describe('a new account with its hospital and roles in one step (as in the earlier Perinexa1)', () => {
+  it('a super admin makes a receptionist of a hospital in one go', async () => {
+    const s = await loginAs(superAdmin, { app });
+    const res = await s.agent.post('/api/platform/users').send({ accountType: 'staff', name: 'Rita', email: 'rita@example.com', tenantId: hospital.id, roles: ['receptionist'] });
+    expect(res.status).toBe(201);
+    expect(res.body.temporaryPassword).toBeTruthy();
+    expect(res.body.user.hospitals).toEqual([expect.objectContaining({ tenantId: hospital.id, roles: ['receptionist'], isActive: true })]);
+    expect(await AuditLog.exists({ action: 'MEMBER_ADDED', tenantId: hospital._id })).toBeTruthy();
+    // Roles are needed with a hospital
+    expect((await s.agent.post('/api/platform/users').send({ accountType: 'staff', name: 'X', email: 'x@example.com', tenantId: hospital.id, roles: [] })).status).toBe(400);
+  });
+
+  it('a platform admin with "User accounts" makes staff, but a hospital admin only with that right, and never a super admin', async () => {
+    const s = await loginAs(await platformAdmin(['users']), { app });
+    expect((await s.agent.post('/api/platform/users').send({ name: 'Lab', email: 'lab1@example.com', tenantId: hospital.id, roles: ['lab'] })).status).toBe(201);
+    const admin = await s.agent.post('/api/platform/users').send({ name: 'Boss', email: 'boss1@example.com', tenantId: hospital.id, roles: ['admin'] });
+    expect(admin.body.error.code).toBe('HOSPITAL_ADMIN_RIGHT');
+    expect(await User.exists({ email: 'boss1@example.com' })).toBeFalsy(); // nothing made half-way
+    expect((await s.agent.post('/api/platform/users').send({ accountType: 'superAdmin', name: 'S', email: 's1@example.com' })).status).toBe(403);
+    expect((await s.agent.post('/api/platform/users').send({ accountType: 'platformAdmin', name: 'P', email: 'p1@example.com' })).status).toBe(403);
+    const viewer = await loginAs(await platformAdmin(), { app });
+    expect((await viewer.agent.post('/api/platform/users').send({ name: 'No', email: 'no@example.com', tenantId: hospital.id, roles: ['lab'] })).status).toBe(403);
+  });
+
+  it('a super admin makes a platform admin account directly (view only to start)', async () => {
+    const s = await loginAs(superAdmin, { app });
+    const res = await s.agent.post('/api/platform/users').send({ accountType: 'platformAdmin', name: 'Viewer Two', email: 'viewer2@example.com' });
+    expect(res.status).toBe(201);
+    const made = await User.findOne({ email: 'viewer2@example.com' });
+    expect(made.isPlatformAdmin).toBe(true);
+    expect([...made.platformPermissions]).toEqual([]);
+  });
+});

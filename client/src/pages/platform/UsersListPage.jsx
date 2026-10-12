@@ -5,10 +5,10 @@ import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, Avatar, Field, ROLE_LABELS, StatusPill, TemporaryPassword, formatDateTime, rolesLabel } from '../../components/ui.jsx';
+import { Alert, Avatar, Field, ROLE_LABELS, RolePicker, StatusPill, TemporaryPassword, formatDateTime, rolesLabel } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useListParams } from '../../hooks/useListParams.js';
-import { canEditArea, platformTabs } from '../../platform/modules.js';
+import { STAFF_ROLE_PAGES, canEditArea, platformTabs } from '../../platform/modules.js';
 
 const crumbs = [{ label: 'Users & access', to: '/platform/users' }];
 
@@ -61,13 +61,17 @@ function DayAndTime({ value }) {
   );
 }
 
-export function UsersListPage({ variant = 'all' }) {
-  const v = VARIANTS[variant];
+export function UsersListPage({ variant = 'all', role = null }) {
+  // A Staff page: the people with one role, in every hospital or the one chosen
+  const rolePage = role ? STAFF_ROLE_PAGES.find((r) => r.role === role) : null;
+  const v = rolePage
+    ? { title: rolePage.label, fixed: { role, type: 'member' }, empty: `No ${rolePage.label.toLowerCase()} match these filters.`, note: `${rolePage.label} working at the hospitals – each person once, with every hospital they work at.` }
+    : VARIANTS[variant];
   const navigate = useNavigate();
   const { user: me, platform } = useAuth();
   const defaults = { search: '', status: '', type: '', role: '', tenantId: '', sort: '-createdAt', page: 1, limit: 25 };
   // Role and hospital filters (Staff by role opens this list with them): hospital staff only
-  const staffFilters = variant === 'all' || variant === 'staff';
+  const staffFilters = variant === 'all' || variant === 'staff' || Boolean(rolePage);
   const hospitals = useFetch(staffFilters ? '/platform/tenants' : null, { status: 'active', limit: 100, sort: 'name' });
   const [params, setParams, reset] = useListParams(defaults);
   const { data, error, loading } = useFetch('/platform/users', { ...params, ...v.fixed });
@@ -110,10 +114,10 @@ export function UsersListPage({ variant = 'all' }) {
   return (
     <>
       <PageHeader
-        breadcrumbs={[...crumbs, { label: v.title }]}
+        breadcrumbs={rolePage ? [{ label: 'Staff', to: '/platform/staff' }, { label: v.title }] : [...crumbs, { label: v.title }]}
         title={v.title}
         subtitle={v.note ?? 'Every account on the platform. One account can work at several hospitals.'}
-        tabs={platformTabs('users', platform)}
+        tabs={platformTabs(rolePage ? 'staff' : 'users', platform)}
         actions={
           canEditArea(platform, 'users') && (
             <Link to="/platform/users/new" className="btn btn-primary">
@@ -162,7 +166,7 @@ export function UsersListPage({ variant = 'all' }) {
                   ]}
                 />
               )}
-              {staffFilters && (
+              {staffFilters && !rolePage && (
                 <FilterSelect
                   label="Role"
                   value={params.role}
@@ -202,29 +206,41 @@ export function UsersListPage({ variant = 'all' }) {
   );
 }
 
+// A new account, as in the earlier Perinexa1: the type of account, the name and email, and for hospital staff the
+// hospital and the roles there – all in one step. Super admins and platform admins only a super admin makes.
 export function UserNewPage() {
   const { platform } = useAuth();
-  const [form, setForm] = useState({ name: '', email: '', isSuperAdmin: false });
+  const isSuper = platform?.role === 'superadmin';
+  const empty = { accountType: 'staff', name: '', email: '', tenantId: '', roles: [] };
+  const [form, setForm] = useState(empty);
+  const hospitals = useFetch('/platform/tenants', { status: 'active', limit: 100, sort: 'name' });
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState(null);
+  const staff = form.accountType === 'staff';
+  // A platform admin without "Hospital admins' access" is not offered the hospital admin role
+  const without = canEditArea(platform, 'hospitalAdmins') ? [] : ['admin'];
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setFieldErrors({});
+    if (staff && !form.tenantId) return setFieldErrors({ tenantId: 'Choose the hospital' });
+    if (staff && !form.roles.length) return setFieldErrors({ roles: 'Choose at least one role' });
     setSubmitting(true);
     try {
-      const res = await api('/platform/users', { method: 'POST', body: form });
-      setCreated({ id: res.user.id, name: res.user.name, email: res.user.email, password: res.temporaryPassword });
-      setForm({ name: '', email: '', isSuperAdmin: false });
+      const body = staff ? form : { accountType: form.accountType, name: form.name, email: form.email };
+      const res = await api('/platform/users', { method: 'POST', body });
+      setCreated({ id: res.user.id, name: res.user.name, email: res.user.email, password: res.temporaryPassword, hospitals: res.user.hospitals });
+      setForm({ ...empty, accountType: form.accountType, tenantId: form.tenantId });
     } catch (err) {
       setError(err.message);
-      setFieldErrors(err.fields);
+      setFieldErrors(err.fields ?? {});
     } finally {
       setSubmitting(false);
     }
+    return undefined;
   };
 
   return (
@@ -235,22 +251,25 @@ export function UserNewPage() {
           <>
             <TemporaryPassword email={created.email} password={created.password} onClose={() => setCreated(null)} />
             <p className="row">
-              <Link to={`/platform/users/${created.id}/hospitals`} className="btn btn-primary">
-                Tag {created.name} to hospitals <ArrowRight aria-hidden="true" />
-              </Link>
               <Link to={`/platform/users/${created.id}`} className="btn btn-secondary">
-                Open account
+                Open {created.name}'s account <ArrowRight aria-hidden="true" />
               </Link>
+              {created.hospitals?.length > 0 && <span className="muted">{created.hospitals.map((h) => `${h.tenantName} · ${rolesLabel(h.roles)}`).join(', ')}</span>}
             </p>
           </>
         )}
         <form className="card form-card" onSubmit={onSubmit} noValidate>
           <h2>Account details</h2>
-          <p className="hint help">
-            Tip: to add hospital staff, it's quickest to open the hospital and use "Add person" on its Staff tab. Use this form
-            for another super admin, or for someone you'll tag to hospitals afterwards.
-          </p>
           <Alert type="error">{error}</Alert>
+          {isSuper && (
+            <Field label="Type of account" id="new-type">
+              <select id="new-type" value={form.accountType} onChange={(e) => setForm({ ...form, accountType: e.target.value })}>
+                <option value="staff">Hospital staff</option>
+                <option value="platformAdmin">Platform admin (sees everything, changes what you allow)</option>
+                <option value="superAdmin">Super admin (whole platform, never patient data)</option>
+              </select>
+            </Field>
+          )}
           <div className="form-grid">
             <Field label="Full name" id="new-name" error={fieldErrors.name}>
               <input id="new-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={100} autoFocus />
@@ -259,18 +278,29 @@ export function UserNewPage() {
               <input id="new-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} />
             </Field>
           </div>
-          {platform?.role === 'superadmin' && (
-          <label className="checkbox">
-            <input type="checkbox" checked={form.isSuperAdmin} onChange={(e) => setForm({ ...form, isSuperAdmin: e.target.checked })} />
-            <span>
-              <strong>Super admin</strong>{' '}
-              <span className="muted">— manages hospitals and users; cannot see patient data or be tagged to hospitals.</span>
-            </span>
-          </label>
+          {staff && (
+            <>
+              <Field label="Hospital" id="new-hospital" error={fieldErrors.tenantId}>
+                <select id="new-hospital" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: e.target.value })}>
+                  <option value="">Choose the hospital…</option>
+                  {(hospitals.data?.tenants ?? []).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <fieldset className="fieldset">
+                <legend>Roles in this hospital</legend>
+                {fieldErrors.roles && <p className="field-error">{fieldErrors.roles}</p>}
+                <RolePicker value={form.roles} onChange={(roles) => setForm({ ...form, roles })} idPrefix="new-role" without={without} />
+              </fieldset>
+              <p className="hint">Someone who works at several hospitals: add the other hospitals later on their account (Hospital access).</p>
+            </>
           )}
+          {form.accountType === 'platformAdmin' && <p className="hint">A new platform admin starts view only; tick what they may change under User permissions.</p>}
           <div className="row">
-            {/* One primary per screen: once an account is created, "Tag … to hospitals" above is the next step. */}
-            <button type="submit" className={`btn ${created ? 'btn-secondary' : 'btn-primary'}`} disabled={submitting}>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
               {submitting ? 'Creating…' : 'Create account'}
             </button>
             <Link to="/platform/users" className="btn btn-link">

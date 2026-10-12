@@ -22,7 +22,19 @@ const listSchema = z.object({
   sort: sortParam(['name', 'email', 'createdAt', 'lastLoginAt'], '-createdAt'),
   ...pageParams,
 });
-const createSchema = z.object({ name, email, isSuperAdmin: z.boolean().default(false) });
+// A new account (as in the earlier Perinexa1): hospital staff are made with their hospital and roles in one step;
+// a super admin or a platform admin (view only to start) only by a super admin.
+const createSchema = z
+  .object({
+    name,
+    email,
+    isSuperAdmin: z.boolean().default(false),
+    accountType: z.enum(['staff', 'superAdmin', 'platformAdmin']).optional(),
+    tenantId: objectId.optional(),
+    roles: z.array(z.enum(TENANT_ROLES)).max(TENANT_ROLES.length).optional(),
+  })
+  .transform((d) => ({ ...d, accountType: d.accountType ?? (d.isSuperAdmin ? 'superAdmin' : 'staff') }))
+  .refine((d) => d.accountType !== 'staff' || !d.tenantId || d.roles?.length, { path: ['roles'], message: 'Choose at least one role' });
 const professional = z.object({
   qualification: z.string().trim().max(150).default(''),
   registrationNumber: z.string().trim().max(60).default(''),
@@ -123,16 +135,35 @@ platformUsersRouter.get('/', async (req, res) => {
 
 platformUsersRouter.post('/', async (req, res) => {
   const data = parse(createSchema, req.body);
-  if (data.isSuperAdmin) assertSuperAdmin(req);
+  if (data.accountType !== 'staff') assertSuperAdmin(req);
+  // Staff with a hospital: check the hospital and the rights first, so nothing is made half-way
+  let tenant = null;
+  const roles = data.accountType === 'staff' && data.tenantId ? TENANT_ROLES.filter((r) => data.roles.includes(r)) : [];
+  if (roles.length) {
+    tenant = await Tenant.findOne({ _id: data.tenantId, isActive: true });
+    if (!tenant) throw new HttpError(404, 'This hospital does not exist or is deactivated.', 'NOT_FOUND');
+    if (roles.includes('admin') && req.user.isPlatformAdmin && !canEditPlatform(req.user, 'hospitalAdmins')) {
+      throw new HttpError(403, "Making a hospital admin needs the super admin's permission (Hospital admins' access).", 'HOSPITAL_ADMIN_RIGHT');
+    }
+  }
+  if (await User.exists({ email: data.email })) throw new HttpError(409, 'An account with this email already exists.', 'EMAIL_TAKEN');
   const temporaryPassword = generateTemporaryPassword();
   const user = await User.create({
-    ...data,
+    name: data.name,
+    email: data.email,
+    isSuperAdmin: data.accountType === 'superAdmin',
+    isPlatformAdmin: data.accountType === 'platformAdmin',
     passwordHash: await hashPassword(temporaryPassword),
     mustChangePassword: true,
   });
-  await audit(req, 'USER_CREATED', { target: user, details: { name: user.name, superAdmin: user.isSuperAdmin } });
+  await audit(req, 'USER_CREATED', { target: user, details: { name: user.name, superAdmin: user.isSuperAdmin, platformAdmin: user.isPlatformAdmin } });
+  if (tenant) {
+    await Membership.create({ tenantId: tenant._id, userId: user._id, roles, createdBy: req.user._id });
+    await audit(req, 'MEMBER_ADDED', { target: user, tenantId: tenant._id, details: { roles } });
+  }
+  const hospitals = await hospitalsFor([user._id]);
   // The temporary password is shown once and is never stored in readable form.
-  res.status(201).json({ user: { ...user.toJSON(), hospitals: [] }, temporaryPassword });
+  res.status(201).json({ user: { ...user.toJSON(), hospitals: hospitals.get(user._id.toString()) ?? [] }, temporaryPassword });
 });
 
 // Staff by role (the platform's "Staff by role" page): how many people have each role across active hospitals –

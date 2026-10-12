@@ -87,7 +87,7 @@ import { ByDoctorPage } from './pages/analytics/ByDoctorPage.jsx';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
 import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 
 // Unknown address: the title in the title bar, then a short message and the way back.
 // Old Registers links (removed 2 Oct 2026) go to the monthly report in Analytics, keeping ?month=… so a bookmarked month still opens.
@@ -147,7 +147,11 @@ export function App() {
               </Route>
 
               <Route path="users" element={<UsersListPage key="all" variant="all" />} />
-              <Route path="users/by-role" element={<StaffByRolePage />} />
+              <Route path="users/by-role" element={<Navigate to="/platform/staff" replace />} />
+              <Route path="staff" element={<StaffByRolePage />} />
+              {STAFF_ROLE_PAGES.map((r) => (
+                <Route key={r.role} path={`staff/${r.role}`} element={<UsersListPage key={`role-${r.role}`} variant="role" role={r.role} />} />
+              ))}
               <Route path="users/permissions" element={<UserPermissionsPage />} />
               <Route path="users/super-admins" element={<UsersListPage key="superadmins" variant="superadmins" />} />
               <Route path="users/platform-admins" element={<UsersListPage key="platformadmins" variant="platformadmins" />} />

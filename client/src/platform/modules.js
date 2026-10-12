@@ -1,4 +1,4 @@
-import { Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, Settings, ShieldCheck, Siren, UserCog, Users } from 'lucide-react';
+import { Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -20,6 +20,18 @@ function analyticsModuleTabs(base) {
     { label: 'Newborn', to: `${base}/newborn`, end: true },
   ];
 }
+
+// The super admin's Staff pages: one per role, across every hospital (Pharmacy = pharmacists, Accounts = billing).
+export const STAFF_ROLE_PAGES = [
+  { role: 'doctor', label: 'Doctors' },
+  { role: 'rmo', label: 'RMOs' },
+  { role: 'nurse', label: 'Nurses' },
+  { role: 'receptionist', label: 'Receptionists' },
+  { role: 'lab', label: 'Lab' },
+  { role: 'pharmacist', label: 'Pharmacy' },
+  { role: 'billing', label: 'Accounts' },
+  { role: 'admin', label: 'Hospital admins' },
+];
 
 // Platform super admins.
 export const PLATFORM_MODULES = [
@@ -54,13 +66,22 @@ export const PLATFORM_MODULES = [
     to: '/platform/users',
     tabs: [
       { label: 'All users', to: '/platform/users', end: true },
-      { label: 'Staff by role', to: '/platform/users/by-role', end: true },
       { label: 'Super admins', to: '/platform/users/super-admins', end: true },
       { label: 'Platform admins', to: '/platform/users/platform-admins', end: true },
       { label: 'User permissions', to: '/platform/users/permissions', end: true },
       { label: 'Hospital staff', to: '/platform/users/staff', end: true },
       { label: 'Pending first login', to: '/platform/users/pending', end: true },
       { label: 'New account', to: '/platform/users/new', end: true },
+    ],
+  },
+  {
+    key: 'staff',
+    label: 'Staff',
+    icon: Stethoscope,
+    to: '/platform/staff',
+    tabs: [
+      { label: 'By role', to: '/platform/staff', end: true },
+      ...STAFF_ROLE_PAGES.map((r) => ({ label: r.label, to: `/platform/staff/${r.role}`, end: true })),
     ],
   },
   {

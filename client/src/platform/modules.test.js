@@ -76,7 +76,7 @@ describe('the left menu by role', () => {
   });
 
   it('the super admin has the platform Analytics as the second item', () => {
-    expect(PLATFORM_MODULES.map((m) => m.label)).toEqual(['Overview', 'Analytics', 'Hospitals', 'Users & access', 'Audit & compliance']);
+    expect(PLATFORM_MODULES.map((m) => m.label)).toEqual(['Overview', 'Analytics', 'Hospitals', 'Users & access', 'Staff', 'Audit & compliance']);
     expect(moduleByKey('platform-analytics').to).toBe('/platform/analytics');
     expect(moduleByKey('analytics').to).toBe('/analytics');
   });

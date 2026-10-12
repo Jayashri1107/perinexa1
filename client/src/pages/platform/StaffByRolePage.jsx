@@ -15,8 +15,8 @@ const ROLE_CARDS = [
   { role: 'rmo', label: 'RMOs', icon: Activity },
   { role: 'nurse', label: 'Nurses', icon: HeartPulse },
   { role: 'receptionist', label: 'Receptionists', icon: ConciergeBell },
-  { role: 'pharmacist', label: 'Pharmacists', icon: Pill },
-  { role: 'billing', label: 'Billing / accountants', icon: Receipt },
+  { role: 'pharmacist', label: 'Pharmacy', icon: Pill },
+  { role: 'billing', label: 'Accounts (billing)', icon: Receipt },
   { role: 'lab', label: 'Lab staff', icon: FlaskConical },
   { role: 'admin', label: 'Hospital admins', icon: Settings },
 ];
@@ -27,15 +27,15 @@ export function StaffByRolePage() {
   const hospitals = useFetch('/platform/tenants', { status: 'active', limit: 100, sort: 'name' });
   const { data, error } = useFetch('/platform/users/role-counts', params.tenantId ? { tenantId: params.tenantId } : {});
   const hospitalName = hospitals.data?.tenants?.find((t) => t.id === params.tenantId)?.name;
-  const listLink = (role) => `/platform/users/staff?role=${role}${params.tenantId ? `&tenantId=${params.tenantId}` : ''}`;
+  const listLink = (role) => `/platform/staff/${role}${params.tenantId ? `?tenantId=${params.tenantId}` : ''}`;
 
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Users & access', to: '/platform/users' }, { label: 'Staff by role' }]}
-        title="Staff by role"
+        breadcrumbs={[{ label: 'Staff' }]}
+        title="Staff"
         subtitle={`${hospitalName ?? 'All hospitals'} · ${data ? `${formatNumber(data.people)} people working` : '…'}. A person with two roles counts in both.`}
-        tabs={platformTabs('users', platform)}
+        tabs={platformTabs('staff', platform)}
         actions={
           <FilterSelect
             label="Hospital"

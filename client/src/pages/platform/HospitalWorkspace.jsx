@@ -8,7 +8,8 @@ import { AuditLogView } from '../../components/AuditLogView.jsx';
 import { formatNumber } from '../../components/DataTable.jsx';
 import { MembersPanel } from '../../components/MembersPanel.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, Field, StatusPill, formatDateTime, useConfirm } from '../../components/ui.jsx';
+import { Alert, Field, KpiCard, StatusPill, formatDateTime, useConfirm } from '../../components/ui.jsx';
+import { STAFF_ROLE_PAGES } from '../../platform/modules.js';
 import { FullPageSpinner } from '../../auth/guards.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 
@@ -193,7 +194,41 @@ export function HospitalOverviewTab() {
         </dl>
         <p className="hint help">Patient records are only visible to this hospital's staff, not to super admins.</p>
       </section>
+      <HospitalAtAGlance tenant={tenant} />
     </div>
+  );
+}
+
+// Everything about one hospital on its Overview (owner, 12 Oct 2026): its staff by role – each card opens the Staff
+// tab with that role – and links to its numbers (Analytics: whole months, numbers only, never a patient) and its
+// activity. The super admin never sees its patients.
+function HospitalAtAGlance({ tenant }) {
+  const { data, error } = useFetch('/platform/users/role-counts', { tenantId: tenant.id });
+  const base = `/platform/hospitals/${tenant.id}`;
+  return (
+    <section className="card card-wide">
+      <h2>Staff by role</h2>
+      <Alert type="error">{error}</Alert>
+      <div className="kpi-grid">
+        {STAFF_ROLE_PAGES.map((r) => (
+          <KpiCard
+            key={r.role}
+            to={`${base}/staff?role=${r.role}`}
+            label={r.label}
+            value={data ? formatNumber(data.counts[r.role] ?? 0) : '—'}
+            sub={data?.counts[r.role] ? 'Open the list' : 'Nobody yet'}
+          />
+        ))}
+      </div>
+      <p className="row">
+        <Link to={`/platform/analytics?hospital=${tenant.id}`} className="btn btn-secondary btn-sm">
+          This hospital's numbers (Analytics)
+        </Link>
+        <Link to={`${base}/activity`} className="btn btn-link btn-sm">
+          Its activity
+        </Link>
+      </p>
+    </section>
   );
 }
 

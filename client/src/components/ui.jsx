@@ -356,11 +356,11 @@ export function RoleBadges({ roles }) {
 }
 
 // Tick one or more roles.
-export function RolePicker({ value, onChange, idPrefix = 'role', disabled = false }) {
+export function RolePicker({ value, onChange, idPrefix = 'role', disabled = false, without = [] }) {
   const toggle = (r) => onChange(value.includes(r) ? value.filter((x) => x !== r) : ROLES.filter((x) => x === r || value.includes(x)));
   return (
     <div className="role-picker" role="group">
-      {ROLES.map((r) => (
+      {ROLES.filter((r) => !without.includes(r)).map((r) => (
         <label key={r} className={`role-option ${value.includes(r) ? 'checked' : ''}`} htmlFor={`${idPrefix}-${r}`}>
           <input id={`${idPrefix}-${r}`} type="checkbox" checked={value.includes(r)} onChange={() => toggle(r)} disabled={disabled} />
           <span>
