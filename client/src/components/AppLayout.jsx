@@ -64,7 +64,7 @@ function SideLink({ module, rail, onNavigate }) {
 // The hospital the person is working in, at the top of the menu. People who work at more than one
 // hospital get a "Switch hospital" button that lists their other hospitals.
 function HospitalSwitcher({ rail, onExpand }) {
-  const { user, memberships, activeTenantId, activeMembership, switchTenant } = useAuth();
+  const { memberships, activeTenantId, activeMembership, switchTenant } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -96,11 +96,10 @@ function HospitalSwitcher({ rail, onExpand }) {
   };
 
   const canExpand = rail && others.length > 0;
-  const role = rolesLabel(activeMembership.roles);
-  // Who is logged in and where: shown only here, below the logo (not in the title bar or page headers).
+  // The hospital being worked in (who is logged in is shown once, in the title bar).
   return (
     <div className="sb-workspace-wrap">
-      <div className="sb-workspace" title={rail ? `${user.name} · ${role} · ${activeMembership.tenantName}` : undefined}>
+      <div className="sb-workspace" title={rail ? activeMembership.tenantName : undefined}>
         <button
           type="button"
           className="sb-workspace-icon"
@@ -109,15 +108,11 @@ function HospitalSwitcher({ rail, onExpand }) {
           aria-label={canExpand ? 'Open the menu to switch hospital' : undefined}
           aria-hidden={canExpand ? undefined : 'true'}
         >
-          <Avatar name={user.name} seed={user.email} />
+          <Building2 />
         </button>
         <span className="sb-label sb-workspace-text">
-          <strong className="sb-person">{user.name}</strong>
-          <span className="sb-workspace-role">{role}</span>
-          <span className="sb-workspace-hospital">
-            <Building2 aria-hidden="true" />
-            <span>{activeMembership.tenantName}</span>
-          </span>
+          <small>Hospital</small>
+          <strong className="sb-person">{activeMembership.tenantName}</strong>
           {others.length > 0 && (
             <button type="button" className="sb-switch-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)} disabled={busy}>
               <ChevronsUpDown size={16} aria-hidden="true" /> {busy ? 'Switching…' : 'Switch hospital'}
@@ -143,25 +138,6 @@ function HospitalSwitcher({ rail, onExpand }) {
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-// Below the logo for a super admin (or anyone not working in a hospital yet): who is logged in.
-function PersonCard({ rail }) {
-  const { user } = useAuth();
-  const role = user.isSuperAdmin ? 'Super admin' : user.email;
-  return (
-    <div className="sb-workspace-wrap">
-      <div className="sb-workspace" title={rail ? `${user.name} · ${role}` : undefined}>
-        <span className="sb-workspace-icon" aria-hidden="true">
-          <Avatar name={user.name} seed={user.email} />
-        </span>
-        <span className="sb-label sb-workspace-text">
-          <strong className="sb-person">{user.name}</strong>
-          <span className="sb-workspace-role">{role}</span>
-        </span>
-      </div>
     </div>
   );
 }
@@ -227,6 +203,16 @@ export function AppLayout() {
   const railForced = useMediaQuery(RAIL_QUERY);
   const closeBtnRef = useRef(null);
   const openedFrom = useRef(null);
+  const sbMenuBtnRef = useRef(null);
+  const barMenuBtnRef = useRef(null);
+  const toggledByButton = useRef(false);
+
+  // The menu button moves between the sidebar (shown) and the title bar (hidden): keep the keyboard focus on it.
+  useEffect(() => {
+    if (!toggledByButton.current) return;
+    toggledByButton.current = false;
+    (hidden ? barMenuBtnRef : sbMenuBtnRef).current?.focus();
+  }, [hidden]);
 
   useEffect(() => {
     try {
@@ -263,7 +249,11 @@ export function AppLayout() {
   const rail = !mobileOpen && railForced;
   const sidebarHidden = hidden && !railForced;
   const expand = () => setMobileOpen(true);
-  const toggleMenu = () => (railForced ? setMobileOpen((o) => !o) : setHidden((h) => !h));
+  const toggleMenu = () => {
+    if (railForced) return setMobileOpen((o) => !o);
+    toggledByButton.current = true;
+    return setHidden((h) => !h);
+  };
   const menuOpen = railForced ? mobileOpen : !hidden;
 
   return (
@@ -274,12 +264,15 @@ export function AppLayout() {
             <img className="sb-logo" src={logoReversed} alt="Perinexa by Docvritta" width="184" height="45" />
             <img className="sb-appicon" src={appIcon} alt="Perinexa" width="48" height="48" />
           </Link>
+          <button type="button" className="sb-menu-btn" onClick={toggleMenu} aria-label="Hide menu" title="Hide menu" aria-expanded="true" aria-controls="main-menu" ref={sbMenuBtnRef}>
+            <Menu size={24} />
+          </button>
           <button type="button" className="sb-close" onClick={closeMobile} aria-label="Close menu" ref={closeBtnRef}>
             <X size={24} />
           </button>
         </div>
 
-        {!locked && !user.isSuperAdmin && activeMembership ? <HospitalSwitcher rail={rail} onExpand={expand} /> : <PersonCard rail={rail} />}
+        {!locked && !user.isSuperAdmin && activeMembership && <HospitalSwitcher rail={rail} onExpand={expand} />}
 
         <nav className="sb-nav">
           {modules.length > 0 && <p className="sb-section">{user.isSuperAdmin ? 'Platform' : 'Modules'}</p>}
@@ -306,16 +299,19 @@ export function AppLayout() {
             title={menuOpen ? 'Hide menu' : 'Show menu'}
             aria-expanded={menuOpen}
             aria-controls="main-menu"
+            ref={barMenuBtnRef}
           >
             <Menu size={24} />
           </button>
           <div className="pf-title-slot" ref={setTitleSlot} />
           {searchable && <PatientSearch key={activeTenantId} />}
-          {!locked && <HelpToggle />}
-          <span className="pf-env" role="note" title="Development version: use fake sample data only. Do not enter real patient information.">
-            <TriangleAlert aria-hidden="true" /> Fake sample data only
-          </span>
-          <UserMenu locked={locked} />
+          <div className="pf-tools">
+            {!locked && <HelpToggle />}
+            <span className="pf-env" role="note" title="Development version: use fake sample data only. Do not enter real patient information.">
+              <TriangleAlert aria-hidden="true" /> Fake sample data only
+            </span>
+            <UserMenu locked={locked} />
+          </div>
         </div>
         <main className="pf-main" id="main">
           {tenantNotice && (

@@ -91,9 +91,22 @@
 
 /* ---------- Right side: title bar + content ---------- */
 .pf-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.pf-titlebar { display: flex; align-items: center; gap: var(--space-4); min-height: var(--titlebar-height); padding: var(--space-4) var(--space-8) 0; }
-.pf-title-slot { flex: 1; min-width: 0; }
-.pf-menu-btn { display: inline-grid; flex-shrink: 0; }
+/* One row: [menu button when the sidebar is closed] Title ......... Help · Fake data · Doctor · Log out.
+   The title keeps its own width (never squeezed onto two lines); if the row is too narrow, the tools wrap below. */
+.pf-titlebar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); min-height: var(--titlebar-height); padding: var(--space-4) var(--space-8) 0; }
+.pf-title-slot { flex: 1 1 auto; min-width: 0; }
+.pf-tools { display: flex; align-items: center; gap: var(--space-3); margin-left: auto; flex-shrink: 0; }
+.pf-menu-btn { display: none; flex-shrink: 0; }
+.pf-sb-hidden .pf-menu-btn { display: inline-grid; } /* the sidebar is closed: its button waits here */
+
+/* The menu button in the sidebar, beside the logo (wide screens) */
+.sb-menu-btn {
+  display: inline-grid; place-items: center; flex-shrink: 0; margin-left: auto; width: var(--control-height); height: var(--control-height); padding: 0;
+  border: 1px solid var(--nav-divider); border-radius: var(--radius-md); background: none; color: var(--on-dark); cursor: pointer;
+}
+.sb-menu-btn:hover { background: var(--nav-row-hover); }
+.sb-menu-btn:focus-visible { box-shadow: var(--focus-ring-on-dark); outline: none; }
+.sb-workspace-icon svg.lucide { width: 22px; height: 22px; }
 
 /* Who is logged in (opens My settings) and Log out, at the right of the title bar */
 .pf-user { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
@@ -202,6 +215,8 @@ a.pf-user-chip:focus-visible { box-shadow: var(--focus-ring); outline: none; }
   .pf-mobile-open .sb-workspace { justify-content: flex-start; padding: var(--space-3); background: var(--nav-tile); }
   .pf-mobile-open .sb-switch-list { display: block; }
   .pf-mobile-open .sb-close { display: inline-grid; }
+  .pf .sb-menu-btn { display: none; } /* tablets and phones: the menu button is in the title bar */
+  .pf .pf-menu-btn { display: inline-grid; }
   .pf-mobile-open .sb-overlay { display: block; position: fixed; inset: 0; z-index: 35; background: var(--overlay); }
   .pf-mobile-open .pf-body { margin-left: var(--rail-width); }
   .pf-titlebar, .ph { padding-left: var(--space-6); padding-right: var(--space-6); }
@@ -221,9 +236,8 @@ a.pf-user-chip:focus-visible { box-shadow: var(--focus-ring); outline: none; }
   .pf-mobile-open .sb { transform: none; visibility: visible; transition: transform 0.2s ease; box-shadow: var(--shadow-pop); }
   .pf-mobile-open .pf-body { margin-left: 0; }
   .pf-titlebar { flex-wrap: wrap; min-height: 0; padding: var(--space-4) var(--space-4) 0; gap: var(--space-3); }
-  .pf-env { order: 2; margin-left: auto; }
-  .pf-user { order: 2; }
-  .pf-user-text { display: none; } /* phones: only the photo; the name is in the menu */
+  .pf-tools { order: 2; flex: 1 1 0; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+  .pf-user-text { display: none; } /* phones: only the photo */
   .pf-user-chip { padding: 0; }
   .pf-title-slot { order: 4; flex-basis: 100%; }
   .ph-title { font-size: var(--fs-h1); line-height: var(--lh-h1); }
@@ -273,17 +287,13 @@ a.pf-user-chip:focus-visible { box-shadow: var(--focus-ring); outline: none; }
 }
 .pf-help { flex-shrink: 0; }
 .pf-help.is-on { background: var(--mist-100); }
-@media (max-width: 719px) { .pf-help { order: 2; } }
-/* Up to wide screens: the search box gets its own line under the title, so the title is never squeezed */
-@media (max-width: 1439px) {
-  .pf-titlebar { flex-wrap: wrap; }
-  .pf-title-slot { flex: 1 1 280px; }
-  .ps { order: 3; flex: 1 1 100%; max-width: 560px; }
+/* Up to very wide screens: the search box gets its own line under the title, so the title is never squeezed */
+@media (max-width: 1679px) {
+  /* 560 px wide, and the rest of the line kept empty so it always starts a line of its own */
+  .ps { order: 3; flex: 0 1 560px; margin-right: max(0px, calc(100% - 560px)); }
 }
-/* Small laptops and tablets: the photo only (the name shows on hover and in the menu) */
+/* Small laptops and tablets: the photo only (the name shows on hover) */
 @media (max-width: 1279px) {
-  .pf-titlebar { column-gap: var(--space-3); }
-  .pf-title-slot { flex-basis: 120px; }
   .pf-user-text { display: none; }
   .pf-user-chip { padding: 0; }
 }
