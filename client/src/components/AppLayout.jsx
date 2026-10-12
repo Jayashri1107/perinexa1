@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Building2, ChevronsUpDown, CircleAlert, CircleHelp, LogOut, Menu, PanelLeftClose, PanelLeftOpen, TriangleAlert, X } from 'lucide-react';
+import { Building2, ChevronsUpDown, CircleAlert, CircleHelp, LogOut, Menu, TriangleAlert, X } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
@@ -15,10 +15,11 @@ import { Alert, Avatar, rolesLabel } from './ui.jsx';
 // The new-patient form (before anything is saved): /patients/new or /patients/new/<type of care>
 const REGISTERING = new RegExp(`^/patients/new(?:/(?:${CARE_TYPES.join('|')}))?/?$`);
 
-const COLLAPSE_KEY = 'perinexa:sidebarCollapsed';
-const readCollapsed = () => {
+// Wide screens: the menu button in the title bar hides the whole sidebar and shows it again (remembered).
+const HIDDEN_KEY = 'perinexa:sidebarHidden';
+const readHidden = () => {
   try {
-    return localStorage.getItem(COLLAPSE_KEY) === '1';
+    return localStorage.getItem(HIDDEN_KEY) === '1';
   } catch {
     return false;
   }
@@ -183,15 +184,44 @@ function HelpToggle() {
   );
 }
 
+/** Right of the title bar: who is logged in (photo, name, role – opens My settings) and Log out. */
+function UserMenu({ locked }) {
+  const { user, logout, activeMembership } = useAuth();
+  const role = user.isSuperAdmin ? 'Super admin' : activeMembership ? rolesLabel(activeMembership.roles) : null;
+  const chip = (
+    <>
+      <Avatar name={user.name} seed={user.email} />
+      <span className="pf-user-text">
+        <strong>{user.name}</strong>
+        {role && <span>{role}</span>}
+      </span>
+    </>
+  );
+  return (
+    <div className="pf-user">
+      {locked ? (
+        <span className="pf-user-chip" title={user.name}>{chip}</span>
+      ) : (
+        <Link to={ACCOUNT_MODULE.to} className="pf-user-chip" title={`${user.name} – My settings`}>
+          {chip}
+        </Link>
+      )}
+      <button type="button" className="btn btn-secondary btn-sm pf-logout" onClick={() => logout('manual')}>
+        <LogOut aria-hidden="true" /> Log out
+      </button>
+    </div>
+  );
+}
+
 /**
  * The layout for every login (brand guide page 7): main modules in the Night Indigo sidebar, with who is logged in
  * (and the hospital) below the logo; the screen title in the title bar; the page on the Mist canvas. Super admins see the platform modules;
  * hospital staff see their hospital's modules (based on their roles in the hospital selected in the menu).
  */
 export function AppLayout() {
-  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice } = useAuth();
+  const { user, activeMembership, activeTenantId, tenantNotice, clearTenantNotice } = useAuth();
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [hidden, setHidden] = useState(readHidden);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [titleSlot, setTitleSlot] = useState(null);
   const railForced = useMediaQuery(RAIL_QUERY);
@@ -200,11 +230,11 @@ export function AppLayout() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+      localStorage.setItem(HIDDEN_KEY, hidden ? '1' : '0');
     } catch {
       /* not important if it can't be remembered */
     }
-  }, [collapsed]);
+  }, [hidden]);
 
   // Close the menu that opens over the page after navigating, or when the screen becomes wide again.
   useEffect(() => setMobileOpen(false), [location.pathname, railForced]);
@@ -229,13 +259,15 @@ export function AppLayout() {
   const searchable = !locked && !user.isSuperAdmin && canSeePatients(activeMembership?.roles ?? []);
   const modules = locked ? [] : user.isSuperAdmin ? PLATFORM_MODULES : hospitalModules(activeMembership?.roles);
   const closeMobile = () => setMobileOpen(false);
-  // Icon rail: collapsed by the person, or automatically on narrower screens (unless the full menu is open).
-  const rail = !mobileOpen && (collapsed || railForced);
-  const expand = () => (railForced ? setMobileOpen(true) : setCollapsed(false));
-  const toggleCollapse = () => (railForced ? setMobileOpen((o) => !o) : setCollapsed((c) => !c));
+  // Icon rail on narrower screens (unless the full menu is open); on wide screens the sidebar is shown or hidden.
+  const rail = !mobileOpen && railForced;
+  const sidebarHidden = hidden && !railForced;
+  const expand = () => setMobileOpen(true);
+  const toggleMenu = () => (railForced ? setMobileOpen((o) => !o) : setHidden((h) => !h));
+  const menuOpen = railForced ? mobileOpen : !hidden;
 
   return (
-    <div className={`pf ${collapsed ? 'pf-collapsed' : ''} ${mobileOpen ? 'pf-mobile-open' : ''}`}>
+    <div className={`pf ${sidebarHidden ? 'pf-sb-hidden' : ''} ${mobileOpen ? 'pf-mobile-open' : ''}`}>
       <aside className="sb" id="main-menu" aria-label="Main navigation">
         <div className="sb-brand">
           <Link to="/" onClick={closeMobile} aria-label="Perinexa – start page">
@@ -261,33 +293,20 @@ export function AppLayout() {
             </>
           )}
         </nav>
-
-        <div className="sb-footer">
-          <button type="button" className="sb-link" onClick={() => logout('manual')} title={rail ? 'Log out' : undefined} aria-label={rail ? 'Log out' : undefined}>
-            <span className="sb-tile" aria-hidden="true">
-              <LogOut />
-            </span>
-            <span className="sb-label">Log out</span>
-          </button>
-          <button
-            type="button"
-            className="sb-link sb-collapse"
-            onClick={toggleCollapse}
-            aria-label={rail ? 'Expand menu' : 'Collapse menu'}
-            title={rail ? 'Expand menu' : undefined}
-          >
-            <span className="sb-tile" aria-hidden="true">
-              {rail ? <PanelLeftOpen /> : <PanelLeftClose />}
-            </span>
-            <span className="sb-label">Collapse menu</span>
-          </button>
-        </div>
       </aside>
       <div className="sb-overlay" onClick={closeMobile} aria-hidden="true" />
 
       <div className="pf-body">
         <div className="pf-titlebar">
-          <button type="button" className="icon-btn pf-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen} aria-controls="main-menu">
+          <button
+            type="button"
+            className="icon-btn pf-menu-btn"
+            onClick={toggleMenu}
+            aria-label={menuOpen ? 'Hide menu' : 'Show menu'}
+            title={menuOpen ? 'Hide menu' : 'Show menu'}
+            aria-expanded={menuOpen}
+            aria-controls="main-menu"
+          >
             <Menu size={24} />
           </button>
           <div className="pf-title-slot" ref={setTitleSlot} />
@@ -296,6 +315,7 @@ export function AppLayout() {
           <span className="pf-env" role="note" title="Development version: use fake sample data only. Do not enter real patient information.">
             <TriangleAlert aria-hidden="true" /> Fake sample data only
           </span>
+          <UserMenu locked={locked} />
         </div>
         <main className="pf-main" id="main">
           {tenantNotice && (

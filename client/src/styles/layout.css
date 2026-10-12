@@ -20,7 +20,13 @@
   display: none; margin-left: auto; width: var(--control-height); height: var(--control-height); place-items: center;
   border: 1px solid var(--nav-divider); border-radius: var(--radius-md); background: none; color: var(--on-dark); cursor: pointer;
 }
-.sb-nav { flex: 1; overflow-y: auto; padding: var(--space-2) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); scrollbar-width: thin; }
+/* The menu scrolls smoothly, without a visible scrollbar */
+.sb-nav {
+  flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-2) var(--space-4) var(--space-6); display: flex; flex-direction: column; gap: var(--space-1);
+  scroll-behavior: smooth; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none;
+}
+.sb-nav::-webkit-scrollbar, .sb-switch-list::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) { .sb-nav { scroll-behavior: auto; } }
 .sb-section {
   margin: var(--space-4) var(--space-3) var(--space-1); color: var(--indigo-200);
   font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
@@ -38,7 +44,6 @@
 .sb-link.active .sb-tile { background: var(--surface); color: var(--indigo-700); }
 .sb-link:focus-visible, .sb-close:focus-visible, .sb-brand a:focus-visible { box-shadow: var(--focus-ring-on-dark); }
 .sb-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.sb-footer { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4) var(--space-6); border-top: 1px solid var(--nav-divider); }
 
 /* The hospital being worked in (hospital staff) */
 .sb-workspace-wrap { margin: var(--space-2) var(--space-4) var(--space-2); } /* keeps the logo's clear space */
@@ -63,7 +68,7 @@
   background: none; color: var(--on-dark); font: inherit; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; cursor: pointer;
 }
 .sb-switch-btn:hover:not(:disabled) { background: var(--nav-row-hover); }
-.sb-switch-list { list-style: none; margin: var(--space-2) 0 0; padding: var(--space-1); max-height: 280px; overflow-y: auto; border-radius: var(--radius-md); background: var(--nav-row-active); }
+.sb-switch-list { list-style: none; margin: var(--space-2) 0 0; padding: var(--space-1); max-height: 280px; overflow-y: auto; scroll-behavior: smooth; scrollbar-width: none; border-radius: var(--radius-md); background: var(--nav-row-active); }
 .sb-switch-list button {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: var(--control-height); padding: var(--space-2) var(--space-3);
   border: none; border-radius: var(--radius-sm); background: none; color: var(--indigo-200); font: inherit; text-align: left; cursor: pointer;
@@ -74,22 +79,35 @@
 .sb-switch-btn:focus-visible, .sb-switch-list button:focus-visible, button.sb-workspace-icon:focus-visible { box-shadow: var(--focus-ring-on-dark); }
 .sb-overlay { display: none; }
 
-/* Icon rail (collapsed by the user, or automatically under 1024 px) */
-.pf-collapsed .sb { width: var(--rail-width); }
-.pf-collapsed .sb-label, .pf-collapsed .sb-section, .pf-collapsed .sb-logo { display: none; }
-.pf-collapsed .sb-appicon { display: block; }
-.pf-collapsed .sb-brand { justify-content: center; padding: var(--space-6) 0 var(--space-4); }
-.pf-collapsed .sb-nav, .pf-collapsed .sb-footer { padding-left: var(--space-4); padding-right: var(--space-4); }
-.pf-collapsed .sb-link { justify-content: center; padding: var(--space-1) 0; }
-.pf-collapsed .sb-workspace-wrap { margin-left: var(--space-4); margin-right: var(--space-4); }
-.pf-collapsed .sb-workspace { justify-content: center; padding: 0; background: none; }
-.pf-collapsed button.sb-workspace-icon[tabindex='0'] { cursor: pointer; }
+/* Wide screens: the menu button in the title bar slides the whole sidebar away and back.
+   Hidden: no width AND invisible, so its links aren't in the keyboard order. */
+@media (min-width: 1024px) {
+  .pf .sb { transition: margin-left 0.25s ease, visibility 0s linear 0s; }
+  .pf-sb-hidden .sb { margin-left: calc(-1 * var(--sidebar-width)); visibility: hidden; transition: margin-left 0.25s ease, visibility 0s linear 0.25s; }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .pf .sb, .pf-sb-hidden .sb { transition: none; }
+}
 
 /* ---------- Right side: title bar + content ---------- */
 .pf-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .pf-titlebar { display: flex; align-items: center; gap: var(--space-4); min-height: var(--titlebar-height); padding: var(--space-4) var(--space-8) 0; }
 .pf-title-slot { flex: 1; min-width: 0; }
-.pf-menu-btn { display: none; }
+.pf-menu-btn { display: inline-grid; flex-shrink: 0; }
+
+/* Who is logged in (opens My settings) and Log out, at the right of the title bar */
+.pf-user { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
+.pf-user-chip {
+  display: flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 260px; padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border-radius: var(--radius-pill); color: var(--ink); text-decoration: none;
+}
+a.pf-user-chip:hover { background: var(--mist-50); }
+a.pf-user-chip:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.pf-user-chip .avatar { flex-shrink: 0; }
+.pf-user-text { display: flex; flex-direction: column; min-width: 0; }
+.pf-user-text strong { font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-user-text span { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-logout { flex-shrink: 0; }
 .pf-env {
   display: inline-flex; align-items: center; gap: var(--space-1); flex-shrink: 0; padding: 3px var(--space-3); border-radius: var(--radius-pill);
   background: var(--status-watch-bg); color: var(--status-watch-fg); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; white-space: nowrap;
@@ -202,10 +220,11 @@
   .pf .sb { position: fixed; left: 0; top: 0; width: var(--sidebar-width); transform: translateX(-100%); visibility: hidden; transition: transform 0.2s ease, visibility 0s linear 0.2s; box-shadow: none; }
   .pf-mobile-open .sb { transform: none; visibility: visible; transition: transform 0.2s ease; box-shadow: var(--shadow-pop); }
   .pf-mobile-open .pf-body { margin-left: 0; }
-  .pf-menu-btn { display: inline-grid; }
-  .pf .sb-collapse { display: none; } /* the menu has its own close button on phones */
   .pf-titlebar { flex-wrap: wrap; min-height: 0; padding: var(--space-4) var(--space-4) 0; gap: var(--space-3); }
   .pf-env { order: 2; margin-left: auto; }
+  .pf-user { order: 2; }
+  .pf-user-text { display: none; } /* phones: only the photo; the name is in the menu */
+  .pf-user-chip { padding: 0; }
   .pf-title-slot { order: 4; flex-basis: 100%; }
   .ph-title { font-size: var(--fs-h1); line-height: var(--lh-h1); }
   .ph { padding: var(--space-2) var(--space-4) 0; }
@@ -260,4 +279,11 @@
   .pf-titlebar { flex-wrap: wrap; }
   .pf-title-slot { flex: 1 1 280px; }
   .ps { order: 3; flex: 1 1 100%; max-width: 560px; }
+}
+/* Small laptops and tablets: the photo only (the name shows on hover and in the menu) */
+@media (max-width: 1279px) {
+  .pf-titlebar { column-gap: var(--space-3); }
+  .pf-title-slot { flex-basis: 120px; }
+  .pf-user-text { display: none; }
+  .pf-user-chip { padding: 0; }
 }
