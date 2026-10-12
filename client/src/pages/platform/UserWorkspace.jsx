@@ -10,6 +10,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { RolesDialog } from '../../components/RolesDialog.jsx';
 import { Alert, Avatar, Field, RoleBadges, RolePicker, StatusPill, TemporaryPassword, formatDateTime, rolesLabel, useConfirm } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
+import { PLATFORM_AREA_LABELS, canEditArea } from '../../platform/modules.js';
 
 // An account's status: colour + icon + word.
 const AccountStatus = ({ active }) =>
@@ -18,8 +19,9 @@ const AccountStatus = ({ active }) =>
 // One person's account, with tabs: Profile, Hospital access, Activity.
 export function UserWorkspace() {
   const { id } = useParams();
-  const { user: me } = useAuth();
+  const { user: me, platform } = useAuth();
   const isSelf = id === me.id;
+  const viewerIsSuper = platform?.role === 'superadmin';
   const { data, error, reload } = useFetch(`/platform/users/${id}`);
   const [flash, setFlash] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -95,6 +97,9 @@ export function UserWorkspace() {
       },
     );
 
+  // Super admins change any account; a platform admin with "users" only hospital staff accounts.
+  const targetIsPlatform = user.isSuperAdmin || user.isPlatformAdmin;
+  const canManage = viewerIsSuper || (canEditArea(platform, 'users') && !targetIsPlatform);
   const base = `/platform/users/${id}`;
   return (
     <>
@@ -112,22 +117,27 @@ export function UserWorkspace() {
           <>
             {isSelf && <span className="muted t-label">(you)</span>}
             {user.isSuperAdmin && <StatusPill tone="brand">Super admin</StatusPill>}
+            {user.isPlatformAdmin && <StatusPill tone="brand">Platform admin</StatusPill>}
             <AccountStatus active={user.isActive} />
           </>
         }
         subtitle={`${user.email} · last login ${formatDateTime(user.lastLoginAt)}`}
         actions={
-          <>
-            <button type="button" className="btn btn-secondary" onClick={resetPassword} disabled={busy || isSelf}>
-              Reset password
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={toggleSuperAdmin} disabled={busy || isSelf}>
-              {user.isSuperAdmin ? 'Remove super admin' : 'Make super admin'}
-            </button>
-            <button type="button" className={`btn ${user.isActive ? 'btn-danger' : 'btn-secondary'}`} onClick={toggleActive} disabled={busy || isSelf}>
-              {user.isActive ? 'Deactivate' : 'Reactivate'}
-            </button>
-          </>
+          canManage && (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={resetPassword} disabled={busy || isSelf}>
+                Reset password
+              </button>
+              {viewerIsSuper && !user.isPlatformAdmin && (
+                <button type="button" className="btn btn-secondary" onClick={toggleSuperAdmin} disabled={busy || isSelf}>
+                  {user.isSuperAdmin ? 'Remove super admin' : 'Make super admin'}
+                </button>
+              )}
+              <button type="button" className={`btn ${user.isActive ? 'btn-danger' : 'btn-secondary'}`} onClick={toggleActive} disabled={busy || isSelf}>
+                {user.isActive ? 'Deactivate' : 'Reactivate'}
+              </button>
+            </>
+          )
         }
         tabs={[
           { label: 'Profile', to: base, end: true },
@@ -143,14 +153,14 @@ export function UserWorkspace() {
           {actionError}
         </Alert>
         {tempPassword && <TemporaryPassword {...tempPassword} onClose={() => setTempPassword(null)} />}
-        <Outlet context={{ user, reload }} />
+        <Outlet context={{ user, reload, canManage, viewerIsSuper, isSelf }} />
       </div>
     </>
   );
 }
 
 export function UserProfileTab() {
-  const { user, reload } = useOutletContext();
+  const { user, reload, canManage, viewerIsSuper, isSelf } = useOutletContext();
   const emptyPro = { qualification: '', registrationNumber: '', council: '' };
   const [form, setForm] = useState({ name: user.name, email: user.email, professional: { ...emptyPro, ...(user.professional ?? {}) } });
   const pro = { ...emptyPro, ...(user.professional ?? {}) };
@@ -196,7 +206,7 @@ export function UserProfileTab() {
         <Field label="Email" id="email" error={fieldErrors.email}>
           <input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} />
         </Field>
-        {!user.isSuperAdmin && (
+        {!user.isSuperAdmin && !user.isPlatformAdmin && (
           <fieldset className="fieldset">
             <legend>Professional details</legend>
             <Field label="Qualification" id="pro-qualification">
@@ -212,16 +222,18 @@ export function UserProfileTab() {
             </div>
           </fieldset>
         )}
-        <button type="submit" className="btn btn-primary" disabled={busy || (form.name === user.name && form.email === user.email && !proChanged)}>
-          Save changes
-        </button>
+        {canManage && (
+          <button type="submit" className="btn btn-primary" disabled={busy || (form.name === user.name && form.email === user.email && !proChanged)}>
+            Save changes
+          </button>
+        )}
       </form>
       <section className="card">
         <h2>Key facts</h2>
         <dl className="details">
           <div>
             <dt>Type</dt>
-            <dd>{user.isSuperAdmin ? 'Super admin' : 'Hospital staff'}</dd>
+            <dd>{user.isSuperAdmin ? 'Super admin' : user.isPlatformAdmin ? 'Platform admin' : 'Hospital staff'}</dd>
           </div>
           <div>
             <dt>Status</dt>
@@ -247,13 +259,15 @@ export function UserProfileTab() {
           </div>
         </dl>
       </section>
+      {user.hospitals.length === 0 && <PlatformAccessCard user={user} reload={reload} editable={viewerIsSuper && !isSelf} />}
+      {(user.isSuperAdmin || user.isPlatformAdmin) && <LinkedAccountCard user={user} reload={reload} editable={viewerIsSuper} />}
     </div>
   );
 }
 
 export function UserHospitalsTab() {
   const { user, reload } = useOutletContext();
-  const hospitals = useFetch(user.isSuperAdmin ? null : '/platform/tenants', { status: 'active', limit: 100, sort: 'name' });
+  const hospitals = useFetch(user.isSuperAdmin || user.isPlatformAdmin ? null : '/platform/tenants', { status: 'active', limit: 100, sort: 'name' });
   const [tag, setTag] = useState({ tenantId: '', roles: ['doctor'] });
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
@@ -261,11 +275,11 @@ export function UserHospitalsTab() {
   const [busy, setBusy] = useState(false);
   const [confirm, confirmDialog] = useConfirm();
 
-  if (user.isSuperAdmin) {
+  if (user.isSuperAdmin || user.isPlatformAdmin) {
     return (
       <div className="card plat-note">
         <Info aria-hidden="true" />
-        <p>Super admins are not tagged to hospitals, so they can't see patient data.</p>
+        <p>Super admins and platform admins are not tagged to hospitals, so they can't see patient data.</p>
       </div>
     );
   }
@@ -418,4 +432,127 @@ export function UserHospitalsTab() {
 export function UserActivityTab() {
   const { user } = useOutletContext();
   return <AuditLogView endpoint="/platform/audit-logs" userId={user.id} showHospital />;
+}
+
+// Platform access (super admins change it): a platform admin sees what a super admin sees, view only, and may change
+// the ticked areas. Shown only for an account with no hospital: hospital staff need a separate account for this.
+function PlatformAccessCard({ user, reload, editable }) {
+  const [on, setOn] = useState(Boolean(user.isPlatformAdmin));
+  const [areas, setAreas] = useState(user.platformPermissions ?? []);
+  const [error, setError] = useState(null);
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (user.isSuperAdmin) return null;
+  const changed = on !== Boolean(user.isPlatformAdmin) || [...areas].sort().join() !== [...(user.platformPermissions ?? [])].sort().join();
+  const toggleArea = (a) => setAreas((list) => (list.includes(a) ? list.filter((x) => x !== a) : [...list, a]));
+  const save = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSaved(false);
+    setBusy(true);
+    try {
+      await api(`/platform/users/${user.id}/platform-admin`, { method: 'PATCH', body: { isPlatformAdmin: on, permissions: on ? areas : [] } });
+      setSaved(true);
+      reload();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="card" onSubmit={save} noValidate>
+      <h2>Platform access</h2>
+      <p className="hint">
+        A platform admin sees every hospital and every account, like a super admin – never patient records – and can only look, apart from the areas
+        ticked below.
+      </p>
+      <Alert type="success">{saved && 'Platform access saved. It applies from their next sign-in.'}</Alert>
+      <Alert type="error">{error}</Alert>
+      <label className="checkbox">
+        <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} disabled={!editable || busy} />
+        <span>
+          <strong>Platform admin</strong> <span className="muted">— view only, apart from the areas ticked below</span>
+        </span>
+      </label>
+      {on && (
+        <fieldset className="fieldset">
+          <legend>May change</legend>
+          {Object.entries(PLATFORM_AREA_LABELS).map(([area, label]) => (
+            <label key={area} className="checkbox">
+              <input type="checkbox" checked={areas.includes(area)} onChange={() => toggleArea(area)} disabled={!editable || busy} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </fieldset>
+      )}
+      {editable && (
+        <button type="submit" className="btn btn-secondary" disabled={busy || !changed}>
+          Save platform access
+        </button>
+      )}
+    </form>
+  );
+}
+
+// "Switch to your doctor account": the person's own hospital account. The switch signs them out and opens the sign-in
+// with this email; the password is still asked.
+function LinkedAccountCard({ user, reload, editable }) {
+  const { data } = useFetch(user.linkedAccountId ? `/platform/users/${user.linkedAccountId}` : null);
+  const linked = user.linkedAccountId ? data?.user : null;
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const save = async (value) => {
+    setError(null);
+    setBusy(true);
+    try {
+      await api(`/platform/users/${user.id}/linked-account`, { method: 'PATCH', body: { email: value } });
+      setEmail('');
+      reload();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card">
+      <h2>Doctor account of the same person</h2>
+      <p className="hint">
+        Shows {user.name} a "Switch to your doctor account" button. It signs them out here and opens the sign-in with that email – the doctor password
+        is still asked.
+      </p>
+      <Alert type="error">{error}</Alert>
+      {user.linkedAccountId ? (
+        <p>
+          Linked: <strong>{linked ? `${linked.name} (${linked.email})` : '…'}</strong>
+        </p>
+      ) : (
+        <p className="muted">No hospital account linked.</p>
+      )}
+      {editable && (
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (email.trim()) save(email.trim());
+          }}
+          noValidate
+        >
+          <Field label="Email of their hospital account" id="linked-email">
+            <input id="linked-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} placeholder="name@example.com" />
+          </Field>
+          <button type="submit" className="btn btn-secondary" disabled={busy || !email.trim()}>
+            Link
+          </button>
+          {user.linkedAccountId && (
+            <button type="button" className="btn btn-link" onClick={() => save(null)} disabled={busy}>
+              Remove link
+            </button>
+          )}
+        </form>
+      )}
+    </section>
+  );
 }

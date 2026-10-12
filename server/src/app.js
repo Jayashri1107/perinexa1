@@ -45,7 +45,8 @@ import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
   requireAuth,
   requirePasswordChanged,
-  requireSuperAdmin,
+  platformHospitalGuard,
+  requirePlatform,
   requireTenant,
   requireTenantRole,
 } from './middleware/auth.js';
@@ -114,17 +115,19 @@ export function createApp({
   // A person's own settings that don't belong to a hospital.
   app.use('/api/me/dictation-words', ...loggedIn, dictationWordsRouter);
 
-  // Platform (super admin only): hospitals, all user accounts, full audit log.
-  const superAdmin = [...loggedIn, requireSuperAdmin];
-  app.use('/api/platform/stats', ...superAdmin, platformStatsRouter);
-  app.use('/api/platform/tenants', ...superAdmin, platformTenantsRouter);
-  app.use('/api/platform/users', ...superAdmin, platformUsersRouter);
-  app.use('/api/platform/audit-logs', ...superAdmin, auditLogsRouter({ scope: 'platform' }));
+  // Platform: hospitals, all user accounts, full audit log. Super admins read and change everything; platform admins
+  // read everything and change only the areas a super admin gave them (requirePlatform).
+  const platform = (area) => [...loggedIn, requirePlatform(area)];
+  app.use('/api/platform/stats', ...platform(null), platformStatsRouter);
+  app.use('/api/platform/tenants', ...platform('hospitals'), platformTenantsRouter);
+  app.use('/api/platform/users', ...platform('users'), platformUsersRouter);
+  app.use('/api/platform/audit-logs', ...platform(null), auditLogsRouter({ scope: 'platform' }));
   // Analytics totals per hospital and for all hospitals: numbers only, never a patient (analytics/platformTotals.js).
-  app.use('/api/platform/analytics', ...superAdmin, platformAnalyticsRouter);
+  app.use('/api/platform/analytics', ...platform(null), platformAnalyticsRouter);
 
   // Hospital data: always limited to the hospital selected in the session.
-  const inTenant = [...loggedIn, requireTenant];
+  // A super admin or platform admin in a hospital reaches its setup only (platformHospitalGuard).
+  const inTenant = [...loggedIn, requireTenant, platformHospitalGuard];
   const tenantAdmin = [...inTenant, requireTenantRole('admin')];
   app.use('/api/tenant/members', ...tenantAdmin, membersRouter({ resolveTenantId: (req) => req.tenantId, allowAccountChanges: true }));
   app.use('/api/tenant/audit-logs', ...tenantAdmin, auditLogsRouter({ scope: 'tenant' }));

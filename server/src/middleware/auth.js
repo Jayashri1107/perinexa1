@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
-import { User } from '../models/User.js';
+import { User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { HttpError } from '../utils/httpError.js';
 
 export const COOKIE_NAME = 'perinexa_session';
@@ -28,9 +28,25 @@ export function clearAuthCookie(res) {
   res.clearCookie(COOKIE_NAME, cookieOptions());
 }
 
+// A super admin or platform admin opening a hospital's setup: not a member, but the hospital admin's role there, marked
+// `platform` so platformHospitalGuard lets them reach the setup only (never patients, bills, the pharmacy counter …).
+// `readOnly`: a platform admin who was not given "hospitalSetup" may look but not change.
+const platformMembership = (user, tenant) => ({
+  userId: user._id,
+  tenantId: tenant._id,
+  roles: ['admin'],
+  isActive: true,
+  platform: true,
+  readOnly: !canEditPlatform(user, 'hospitalSetup'),
+});
+
 // The person's active membership in a hospital, or null if they don't (or no longer) have access there.
 export async function findActiveMembership(user, tenantId) {
-  if (!tenantId || user.isSuperAdmin) return null;
+  if (!tenantId) return null;
+  if (isPlatformUser(user)) {
+    const tenant = await Tenant.findOne({ _id: tenantId, isActive: true });
+    return tenant ? { membership: platformMembership(user, tenant), tenant } : null;
+  }
   const [membership, tenant] = await Promise.all([
     Membership.findOne({ userId: user._id, tenantId, isActive: true }),
     Tenant.findOne({ _id: tenantId, isActive: true }),
@@ -40,7 +56,7 @@ export async function findActiveMembership(user, tenantId) {
 
 // All hospitals the person can currently work in, sorted by name.
 export async function listActiveMemberships(user) {
-  if (user.isSuperAdmin) return [];
+  if (isPlatformUser(user)) return [];
   const memberships = await Membership.find({ userId: user._id, isActive: true }).lean();
   const tenants = await Tenant.find({ _id: { $in: memberships.map((m) => m.tenantId) }, isActive: true })
     .sort({ name: 1 })
@@ -107,6 +123,39 @@ export function requirePasswordChanged(req, _res, next) {
 
 export function requireSuperAdmin(req, _res, next) {
   if (!req.user.isSuperAdmin) throw new HttpError(403, 'You do not have permission to do this.', 'FORBIDDEN');
+  next();
+}
+
+const READS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const VIEW_ONLY = 'View only: a super admin has not given you permission to change this.';
+
+/**
+ * Platform pages: super admins and platform admins may read; a change needs a super admin, or a platform admin who
+ * was given this area (area null: super admins only).
+ */
+export const requirePlatform = (area) => (req, _res, next) => {
+  if (!isPlatformUser(req.user)) throw new HttpError(403, 'You do not have permission to do this.', 'FORBIDDEN');
+  if (!READS.has(req.method) && !canEditPlatform(req.user, area)) throw new HttpError(403, VIEW_ONLY, 'VIEW_ONLY');
+  next();
+};
+
+// Inside a hospital a platform user reaches its setup only – the pages under Hospital admin – and never anything
+// with patients in it (records, bills, the pharmacy, the calendar, analytics lists). Paths are relative to /api.
+const PLATFORM_HOSPITAL_PATHS = [
+  /^\/tenant\/(members|audit-logs|settings|doctors)(\/|$)/,
+  /^\/appointments\/(doctors|timings)(\/|$)/,
+  /^\/reminders\/settings(\/|$)/,
+  /^\/abdm\/(settings|status)(\/|$)/,
+];
+
+/** After requireTenant: a super admin or platform admin in a hospital – setup only, and view only without the right. */
+export function platformHospitalGuard(req, _res, next) {
+  if (!req.membership?.platform) return next();
+  const path = req.originalUrl.split('?')[0].replace(/^\/api/, '');
+  if (!PLATFORM_HOSPITAL_PATHS.some((rx) => rx.test(path))) {
+    throw new HttpError(403, "Super admins and platform admins see a hospital's setup only – never its patients, bills or pharmacy.", 'PLATFORM_SETUP_ONLY');
+  }
+  if (req.membership.readOnly && !READS.has(req.method)) throw new HttpError(403, VIEW_ONLY, 'VIEW_ONLY');
   next();
 }
 

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { Membership } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
-import { User } from '../models/User.js';
+import { PLATFORM_AREAS, User, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, idParams, pageParams, paged, parse, sortParam, toMongoSort } from '../utils/validate.js';
@@ -15,7 +15,7 @@ const listSchema = z.object({
   search: z.string().trim().max(100).default(''),
   // "pending" = active accounts that haven't chosen their own password yet.
   status: z.enum(['active', 'inactive', 'pending']).optional(),
-  type: z.enum(['superadmin', 'member']).optional(),
+  type: z.enum(['superadmin', 'platformadmin', 'member']).optional(),
   sort: sortParam(['name', 'email', 'createdAt', 'lastLoginAt'], '-createdAt'),
   ...pageParams,
 });
@@ -67,6 +67,16 @@ async function assertAnotherSuperAdmin(user) {
 
 const isSelf = (req, user) => req.user._id.equals(user._id);
 
+// Platform admins may be given "users" (to manage hospital staff accounts), but never power over the platform's own
+// accounts: only a super admin creates, changes, deactivates or resets a super admin or a platform admin, and only a
+// super admin hands out those rights.
+function assertSuperAdmin(req) {
+  if (!req.user.isSuperAdmin) throw new HttpError(403, 'Only a super admin can do this.', 'SUPER_ADMIN_ONLY');
+}
+function assertMayChange(req, user) {
+  if (isPlatformUser(user)) assertSuperAdmin(req);
+}
+
 export const platformUsersRouter = Router();
 
 platformUsersRouter.get('/', async (req, res) => {
@@ -78,7 +88,9 @@ platformUsersRouter.get('/', async (req, res) => {
   }
   if (q.status === 'pending') Object.assign(filter, { isActive: true, mustChangePassword: true });
   else if (q.status) filter.isActive = q.status === 'active';
-  if (q.type) filter.isSuperAdmin = q.type === 'superadmin';
+  if (q.type === 'superadmin') filter.isSuperAdmin = true;
+  else if (q.type === 'platformadmin') filter.isPlatformAdmin = true;
+  else if (q.type === 'member') Object.assign(filter, { isSuperAdmin: false, isPlatformAdmin: { $ne: true } });
 
   const [users, total] = await Promise.all([
     User.find(filter)
@@ -96,6 +108,7 @@ platformUsersRouter.get('/', async (req, res) => {
 
 platformUsersRouter.post('/', async (req, res) => {
   const data = parse(createSchema, req.body);
+  if (data.isSuperAdmin) assertSuperAdmin(req);
   const temporaryPassword = generateTemporaryPassword();
   const user = await User.create({
     ...data,
@@ -118,6 +131,7 @@ platformUsersRouter.patch('/:id', async (req, res) => {
   const { id } = parse(idParams, req.params);
   const data = parse(updateSchema, req.body);
   const user = await findUserOr404(id);
+  assertMayChange(req, user);
 
   const changes = {};
   for (const key of ['name', 'email']) {
@@ -145,6 +159,7 @@ platformUsersRouter.patch('/:id/status', async (req, res) => {
   const { id } = parse(idParams, req.params);
   const { isActive } = parse(z.object({ isActive: z.boolean('isActive must be true or false') }), req.body);
   const user = await findUserOr404(id);
+  assertMayChange(req, user);
 
   if (isSelf(req, user)) throw new HttpError(400, "You can't deactivate or reactivate your own account.", 'SELF_ACTION');
   if (user.isActive === isActive) return res.json({ user });
@@ -159,6 +174,7 @@ platformUsersRouter.patch('/:id/status', async (req, res) => {
 
 platformUsersRouter.patch('/:id/super-admin', async (req, res) => {
   const { id } = parse(idParams, req.params);
+  assertSuperAdmin(req);
   const { isSuperAdmin } = parse(z.object({ isSuperAdmin: z.boolean('isSuperAdmin must be true or false') }), req.body);
   const user = await findUserOr404(id);
 
@@ -174,6 +190,7 @@ platformUsersRouter.patch('/:id/super-admin', async (req, res) => {
   if (!isSuperAdmin && user.isActive) await assertAnotherSuperAdmin(user);
 
   user.isSuperAdmin = isSuperAdmin;
+  if (isSuperAdmin) Object.assign(user, { isPlatformAdmin: false, platformPermissions: [] }); // a super admin has every right
   user.tokenVersion += 1; // their permissions changed: start a fresh session
   await user.save();
   await audit(req, isSuperAdmin ? 'SUPER_ADMIN_GRANTED' : 'SUPER_ADMIN_REVOKED', { target: user });
@@ -183,6 +200,7 @@ platformUsersRouter.patch('/:id/super-admin', async (req, res) => {
 platformUsersRouter.post('/:id/reset-password', async (req, res) => {
   const { id } = parse(idParams, req.params);
   const user = await findUserOr404(id);
+  assertMayChange(req, user);
   if (isSelf(req, user)) {
     throw new HttpError(400, 'To change your own password, use "Change password" instead.', 'SELF_ACTION');
   }
@@ -194,4 +212,62 @@ platformUsersRouter.post('/:id/reset-password', async (req, res) => {
   await user.save();
   await audit(req, 'PASSWORD_RESET', { target: user });
   res.json({ user, temporaryPassword });
+});
+
+// A platform admin (super admins only): sees what a super admin sees, view only, and may change the ticked areas.
+// Like a super admin, a platform admin is never a member of a hospital.
+const platformAdminSchema = z.object({
+  isPlatformAdmin: z.boolean('isPlatformAdmin must be true or false'),
+  permissions: z.array(z.enum(PLATFORM_AREAS)).max(PLATFORM_AREAS.length).default([]),
+});
+platformUsersRouter.patch('/:id/platform-admin', async (req, res) => {
+  assertSuperAdmin(req);
+  const { id } = parse(idParams, req.params);
+  const { isPlatformAdmin, permissions } = parse(platformAdminSchema, req.body);
+  const user = await findUserOr404(id);
+  if (isSelf(req, user)) throw new HttpError(400, "You can't change your own platform rights.", 'SELF_ACTION');
+  if (user.isSuperAdmin) throw new HttpError(400, 'A super admin already has every right. Remove super admin first.', 'IS_SUPER_ADMIN');
+  if (isPlatformAdmin && !user.isPlatformAdmin && (await Membership.exists({ userId: user._id }))) {
+    throw new HttpError(
+      400,
+      'This person is tagged to one or more hospitals. Platform admins must use a separate account with no hospital access.',
+      'HAS_MEMBERSHIPS',
+    );
+  }
+  const nextPermissions = isPlatformAdmin ? [...new Set(permissions)].sort() : [];
+  const before = { isPlatformAdmin: Boolean(user.isPlatformAdmin), permissions: [...(user.platformPermissions ?? [])].sort() };
+  if (before.isPlatformAdmin === isPlatformAdmin && before.permissions.join() === nextPermissions.join()) return res.json({ user });
+  user.isPlatformAdmin = isPlatformAdmin;
+  user.platformPermissions = nextPermissions;
+  if (!isPlatformAdmin) user.linkedAccountId = null;
+  user.tokenVersion += 1; // their permissions changed: start a fresh session
+  await user.save();
+  await audit(req, 'PLATFORM_ADMIN_CHANGED', { target: user, details: { from: before, to: { isPlatformAdmin, permissions: nextPermissions } } });
+  res.json({ user });
+});
+
+// "Switch to your doctor account" (super admins only set it): a super admin's or platform admin's own hospital account,
+// by its email. The switch signs the person out and opens the sign-in with this email – the password is still asked.
+const linkSchema = z.object({ email: email.nullable() });
+platformUsersRouter.patch('/:id/linked-account', async (req, res) => {
+  assertSuperAdmin(req);
+  const { id } = parse(idParams, req.params);
+  const { email: linkedEmail } = parse(linkSchema, req.body);
+  const user = await findUserOr404(id);
+  if (!isPlatformUser(user)) throw new HttpError(400, 'Only a super admin or a platform admin can have a linked hospital account.', 'NOT_PLATFORM');
+  let linked = null;
+  if (linkedEmail) {
+    linked = await User.findOne({ email: linkedEmail });
+    if (!linked) throw new HttpError(404, 'No account with this email.', 'NOT_FOUND');
+    if (linked._id.equals(user._id) || isPlatformUser(linked)) {
+      throw new HttpError(400, "Choose the person's hospital account (a doctor, say) – not a super admin or platform admin account.", 'NOT_HOSPITAL_ACCOUNT');
+    }
+  }
+  const from = user.linkedAccountId ? String(user.linkedAccountId) : null;
+  const to = linked ? String(linked._id) : null;
+  if (from === to) return res.json({ user });
+  user.linkedAccountId = linked?._id ?? null;
+  await user.save();
+  await audit(req, 'LINKED_ACCOUNT_CHANGED', { target: user, details: { linked: Boolean(linked), linkedEmail: linked?.email ?? null } });
+  res.json({ user });
 });

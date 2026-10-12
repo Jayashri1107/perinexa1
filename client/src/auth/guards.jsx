@@ -54,21 +54,24 @@ export function RequirePasswordChanged() {
   return <Outlet />;
 }
 
-// Platform pages: super admins only.
+// Platform pages: super admins and platform admins (platform admins view only, apart from the areas given to them).
 export function RequireSuperAdmin() {
-  const { user } = useAuth();
-  if (!user.isSuperAdmin) return <NotAllowed>This page is only for super admin accounts. If you think this is a mistake, contact your administrator.</NotAllowed>;
+  const { isPlatform } = useAuth();
+  if (!isPlatform) return <NotAllowed>This page is only for super admin and platform admin accounts. If you think this is a mistake, contact your administrator.</NotAllowed>;
   return <Outlet />;
 }
 
 // Hospital pages: the person must be working in a hospital.
 export function RequireTenant({ children }) {
-  const { user, activeTenantId } = useAuth();
-  if (user.isSuperAdmin) {
+  const { isPlatform, activeTenantId, activeMembership } = useAuth();
+  const { pathname } = useLocation();
+  if (isPlatform) {
+    // A super admin or platform admin sees a hospital's setup only (Hospital admin), never its patients.
+    if (activeMembership?.platform) return pathname.startsWith('/admin') ? (children ?? <Outlet />) : <Navigate to="/admin/staff" replace />;
     return (
       <NotAllowed>
-        Super admin accounts manage hospitals and users, but can't open patient data. To work inside a hospital, use a
-        separate staff account that is tagged to that hospital.
+        Super admin and platform admin accounts manage hospitals and users, but can't open patient data. To change a
+        hospital's setup, open it from Hospitals. To work with patients, use your hospital account.
       </NotAllowed>
     );
   }
@@ -105,7 +108,7 @@ export function RequireCalendarRole() {
 
 // "/" sends super admins to the platform area and everyone else to their hospital dashboard.
 export function HomeRedirect({ children }) {
-  const { user } = useAuth();
-  if (user.isSuperAdmin) return <Navigate to="/platform/overview" replace />;
+  const { isPlatform, activeMembership } = useAuth();
+  if (isPlatform) return <Navigate to={activeMembership?.platform ? '/admin/staff' : '/platform/overview'} replace />;
   return children;
 }

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Building2, CircleAlert, CircleHelp, KeyRound, LogOut, Menu, TriangleAlert, UserCog } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Menu, TriangleAlert, UserCog } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { normalizeAppearance } from '../appearance.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
-import { ACCOUNT_MODULE, PLATFORM_MODULES, canSeePatients, hospitalModules } from '../platform/modules.js';
+import { ACCOUNT_MODULE, HOSPITAL_ADMIN, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
 import { PatientSearch } from './PatientSearch.jsx';
 import { IdleWarning } from './Layout.jsx';
 import { Alert, Avatar, rolesLabel } from './ui.jsx';
@@ -50,6 +50,9 @@ function useDismiss(open, setOpen, box) {
     };
   }, [open, setOpen, box]);
 }
+
+/** "Super admin" or "Platform admin" (null for hospital staff). */
+const platformRoleLabel = (platform) => (platform?.role === 'superadmin' ? 'Super admin' : platform?.role === 'platformadmin' ? 'Platform admin' : null);
 
 // A menu item: an icon tile and the label (only the tile in the icon rail).
 function SideLink({ module, rail, onNavigate }) {
@@ -109,7 +112,7 @@ function Workspace() {
       <div className="ws-text">
         <span className="ws-label">Working in</span>
         <strong className="ws-name">{activeMembership.tenantName}</strong>
-        <span className="ws-meta">{rolesLabel(activeMembership.roles)}</span>
+        <span className="ws-meta">{activeMembership.platform ? 'Hospital setup only – its patients stay hidden' : rolesLabel(activeMembership.roles)}</span>
       </div>
       {memberships.length > 1 && (
         <label className="ws-switch">
@@ -152,11 +155,11 @@ function HelpToggle() {
 
 // The profile circle beside "Log out": click it for the name, email and role, Change password and My settings.
 function ProfileMenu({ locked }) {
-  const { user, activeMembership } = useAuth();
+  const { user, activeMembership, platform, switchToLinkedAccount } = useAuth();
   const [open, setOpen] = useState(false);
   const box = useRef(null);
   useDismiss(open, setOpen, box);
-  const role = user.isSuperAdmin ? 'Super admin' : activeMembership ? rolesLabel(activeMembership.roles) : null;
+  const role = platformRoleLabel(platform) ?? (activeMembership ? rolesLabel(activeMembership.roles) : null);
 
   return (
     <div className="pm" ref={box}>
@@ -171,7 +174,7 @@ function ProfileMenu({ locked }) {
               <strong>{user.name}</strong>
               <span>{user.email}</span>
               {role && <span className="pill pm-role">{role}</span>}
-              {activeMembership && !user.isSuperAdmin && <span>{activeMembership.tenantName}</span>}
+              {activeMembership && <span>{activeMembership.platform ? `Setup of ${activeMembership.tenantName}` : activeMembership.tenantName}</span>}
             </div>
           </div>
           <Link to="/change-password" className="pm-link" onClick={() => setOpen(false)}>
@@ -181,6 +184,11 @@ function ProfileMenu({ locked }) {
             <Link to={ACCOUNT_MODULE.to} className="pm-link" onClick={() => setOpen(false)}>
               <UserCog aria-hidden="true" /> My settings
             </Link>
+          )}
+          {platform?.linkedAccount && (
+            <button type="button" className="pm-link" onClick={switchToLinkedAccount}>
+              <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
+            </button>
           )}
         </div>
       )}
@@ -194,7 +202,8 @@ function ProfileMenu({ locked }) {
  * white top bar with the hospital being worked in on the left and Help, the profile circle and Log out on the right.
  */
 export function AppLayout() {
-  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice } = useAuth();
+  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice, isPlatform, platform, openHospital, switchToLinkedAccount } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -230,15 +239,24 @@ export function AppLayout() {
 
   const locked = user.mustChangePassword; // only the password screen until they choose their own
   // "Find a patient" in the top bar: hospital staff who work with patient records.
-  const searchable = !locked && !user.isSuperAdmin && canSeePatients(activeMembership?.roles ?? []);
-  const modules = locked ? [] : user.isSuperAdmin ? PLATFORM_MODULES : hospitalModules(activeMembership?.roles);
+  const searchable = !locked && !isPlatform && canSeePatients(activeMembership?.roles ?? []);
+  // Super admins and platform admins: the platform menu, or – with a hospital's setup open – its Hospital admin pages only
+  const inSetup = Boolean(activeMembership?.platform);
+  const modules = locked ? [] : isPlatform ? (inSetup ? [HOSPITAL_ADMIN] : platformModules(platform)) : hospitalModules(activeMembership?.roles);
   const closeMobile = () => setMobileOpen(false);
   // Icon rail: folded by the person, or automatically on narrower screens (unless the full menu is open).
   const rail = !mobileOpen && (collapsed || railForced);
   const toggleMenu = () => (railForced ? setMobileOpen((o) => !o) : setCollapsed((c) => !c));
   const menuLabel = rail ? 'Expand menu' : 'Collapse menu';
-  const hospitalName = !user.isSuperAdmin ? activeMembership?.tenantName : null;
-  const foot = user.isSuperAdmin ? 'Super admin' : activeMembership ? rolesLabel(activeMembership.roles) : null;
+  const hospitalName = activeMembership?.tenantName ?? null;
+  const foot = platformRoleLabel(platform) ?? (activeMembership ? rolesLabel(activeMembership.roles) : null);
+  // A platform admin changes only the areas a super admin gave them
+  const viewOnly = platform?.role === 'platformadmin';
+  const allowed = (platform?.permissions ?? []).map((a) => PLATFORM_AREA_LABELS[a]).join(', ');
+  const backToPlatform = async () => {
+    await openHospital(null);
+    navigate('/platform/hospitals');
+  };
 
   return (
     <div className={`pf ${collapsed ? 'pf-collapsed' : ''} ${mobileOpen ? 'pf-mobile-open' : ''}`}>
@@ -270,10 +288,20 @@ export function AppLayout() {
             <button type="button" className="icon-btn pf-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu" aria-expanded={mobileOpen} aria-controls="main-menu">
               <Menu size={24} />
             </button>
-            {!user.isSuperAdmin && !locked && <Workspace />}
+            {(!isPlatform || inSetup) && !locked && <Workspace />}
           </div>
           {searchable && <PatientSearch key={activeTenantId} />}
           <div className="pf-topbar-actions">
+            {platform?.linkedAccount && !locked && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={switchToLinkedAccount} title={`Sign out here and sign in as ${platform.linkedAccount.email}`}>
+                <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
+              </button>
+            )}
+            {viewOnly && (
+              <span className="pill pf-viewonly" title={allowed ? `You may change: ${allowed}. Everything else is view only.` : 'You can look at everything but change nothing.'}>
+                <Eye aria-hidden="true" /> View only{allowed ? ' (mostly)' : ''}
+              </span>
+            )}
             {!locked && <HelpToggle />}
             <span className="pf-env" role="note" title="Development version: use fake sample data only. Do not enter real patient information.">
               <TriangleAlert aria-hidden="true" /> Fake sample data only
@@ -285,6 +313,17 @@ export function AppLayout() {
           </div>
         </header>
         <main className="pf-main" id="main">
+          {inSetup && (
+            <div className="pf-notice">
+              <Alert type="info" icon={Building2}>
+                You are in the setup of <strong>{activeMembership.tenantName}</strong> as the {platformRoleLabel(platform)?.toLowerCase()}
+                {activeMembership.readOnly ? ' – view only' : ''}. Its patients, bills and pharmacy stay hidden.{' '}
+                <button type="button" className="btn btn-link btn-sm" onClick={backToPlatform}>
+                  <ArrowLeft aria-hidden="true" /> Back to the platform
+                </button>
+              </Alert>
+            </div>
+          )}
           {tenantNotice && (
             <div className="pf-notice">
               <Alert type="warning" onClose={clearTenantNotice}>

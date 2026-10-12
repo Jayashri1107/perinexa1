@@ -3,7 +3,8 @@ import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
-import { User } from '../models/User.js';
+import { Tenant } from '../models/Tenant.js';
+import { PLATFORM_AREAS, User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -58,12 +59,30 @@ const appearanceSchema = z
 const INVALID_LOGIN = 'Invalid email or password.';
 
 // What the website needs to know about the logged-in person.
-const sessionBody = (user, memberships, activeTenantId) => ({
+const sessionBody = (user, memberships, activeTenantId, platform = null) => ({
   user,
   memberships,
   activeTenantId,
+  ...(platform ? { platform } : {}),
   sessionTimeoutMinutes: config.SESSION_TIMEOUT_MINUTES,
 });
+
+/**
+ * For a super admin or platform admin: their role, what they may change, the hospital whose setup is open (if any)
+ * and their linked hospital account ("Switch to your doctor account"). Null for everyone else.
+ */
+async function platformInfo(user, tenant) {
+  if (!isPlatformUser(user)) return null;
+  const linked = user.linkedAccountId ? await User.findById(user.linkedAccountId) : null;
+  return {
+    role: user.isSuperAdmin ? 'superadmin' : 'platformadmin',
+    permissions: user.isSuperAdmin ? PLATFORM_AREAS : [...(user.platformPermissions ?? [])],
+    hospital: tenant ? { tenantId: String(tenant._id), tenantName: tenant.name, readOnly: !canEditPlatform(user, 'hospitalSetup') } : null,
+    linkedAccount: linked?.isActive && !isPlatformUser(linked) ? { email: linked.email, name: linked.name } : null,
+  };
+}
+
+const openHospitalSchema = z.object({ tenantId: objectId.nullable() });
 
 export function authRouter({ loginRateLimitMax }) {
   const router = Router();
@@ -110,7 +129,7 @@ export function authRouter({ loginRateLimitMax }) {
     await user.save();
     await audit(req, 'LOGIN_SUCCESS', { actor: user, target: user, tenantId: activeTenantId });
     setAuthCookie(res, user, activeTenantId);
-    res.json(sessionBody(user, memberships, activeTenantId));
+    res.json(sessionBody(user, memberships, activeTenantId, await platformInfo(user, null)));
   });
 
   router.post('/logout', async (req, res) => {
@@ -141,12 +160,30 @@ export function authRouter({ loginRateLimitMax }) {
       activeTenantId = pickTenant(memberships, req.user.lastTenantId);
       setAuthCookie(res, req.user, activeTenantId);
     }
-    res.json(sessionBody(req.user, memberships, activeTenantId));
+    res.json(sessionBody(req.user, memberships, activeTenantId, await platformInfo(req.user, req.tenant)));
+  });
+
+  // A super admin or platform admin opens a hospital's setup (Hospital admin pages only – never its patients), or
+  // closes it again (tenantId null). Recorded in the audit log like any change of hospital.
+  router.post('/open-hospital', requireAuth, async (req, res) => {
+    if (!isPlatformUser(req.user)) throw new HttpError(403, 'You do not have permission to do this.', 'FORBIDDEN');
+    if (req.user.mustChangePassword) throw new HttpError(403, 'You must change your password before continuing.', 'PASSWORD_CHANGE_REQUIRED');
+    const { tenantId } = parse(openHospitalSchema, req.body);
+    const tenant = tenantId ? await Tenant.findOne({ _id: tenantId, isActive: true }) : null;
+    if (tenantId && !tenant) throw new HttpError(404, 'This hospital does not exist or is deactivated.', 'NOT_FOUND');
+    const from = req.tenantId ? String(req.tenantId) : null;
+    if (from !== tenantId) {
+      await audit(req, 'TENANT_SWITCHED', { tenantId: tenant?._id ?? req.tenantId ?? null, details: { from, to: tenantId, platform: true } });
+    }
+    setAuthCookie(res, req.user, tenant?._id ?? null);
+    res.json(sessionBody(req.user, [], tenantId, await platformInfo(req.user, tenant)));
   });
 
   // Choose which hospital to work in. Everything created afterwards goes into that hospital.
   router.post('/switch-tenant', requireAuth, async (req, res) => {
     const { tenantId } = parse(switchSchema, req.body);
+    // Super admins and platform admins are not members of a hospital: they open its setup with /open-hospital.
+    if (isPlatformUser(req.user)) throw new HttpError(403, "You don't have access to this hospital.", 'FORBIDDEN');
     const found = await findActiveMembership(req.user, tenantId);
     if (!found) throw new HttpError(403, "You don't have access to this hospital.", 'FORBIDDEN');
 

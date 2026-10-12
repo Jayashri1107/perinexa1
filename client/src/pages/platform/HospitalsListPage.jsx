@@ -7,12 +7,14 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useListParams } from '../../hooks/useListParams.js';
-import { moduleByKey } from '../../platform/modules.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { canEditArea, platformTabs } from '../../platform/modules.js';
 
 const DEFAULTS = { search: '', status: '', sort: 'name', page: 1, limit: 25 };
 const crumbs = [{ label: 'Hospitals', to: '/platform/hospitals' }];
 
 export function HospitalsListPage() {
+  const { platform } = useAuth();
   const navigate = useNavigate();
   const [params, setParams, reset] = useListParams(DEFAULTS);
   const { data, error, loading } = useFetch('/platform/tenants', params);
@@ -44,11 +46,13 @@ export function HospitalsListPage() {
         breadcrumbs={crumbs}
         title="Hospitals"
         help="Each hospital's data is kept completely separate from the others."
-        tabs={moduleByKey('hospitals').tabs}
+        tabs={platformTabs('hospitals', platform)}
         actions={
-          <Link to="/platform/hospitals/new" className="btn btn-primary">
-            <Plus aria-hidden="true" /> New hospital
-          </Link>
+          canEditArea(platform, 'hospitals') && (
+            <Link to="/platform/hospitals/new" className="btn btn-primary">
+              <Plus aria-hidden="true" /> New hospital
+            </Link>
+          )
         }
       />
       <div className="pf-content">
@@ -99,6 +103,7 @@ export function HospitalsListPage() {
 }
 
 export function HospitalNewPage() {
+  const { platform } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [error, setError] = useState(null);
@@ -122,7 +127,7 @@ export function HospitalNewPage() {
 
   return (
     <>
-      <PageHeader breadcrumbs={[...crumbs, { label: 'New hospital' }]} title="New hospital" tabs={moduleByKey('hospitals').tabs} />
+      <PageHeader breadcrumbs={[...crumbs, { label: 'New hospital' }]} title="New hospital" tabs={platformTabs('hospitals', platform)} />
       <div className="pf-content">
         <form className="card form-card" onSubmit={onSubmit} noValidate>
           <h2>Hospital details</h2>

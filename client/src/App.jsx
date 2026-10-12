@@ -146,6 +146,7 @@ export function App() {
 
               <Route path="users" element={<UsersListPage key="all" variant="all" />} />
               <Route path="users/super-admins" element={<UsersListPage key="superadmins" variant="superadmins" />} />
+              <Route path="users/platform-admins" element={<UsersListPage key="platformadmins" variant="platformadmins" />} />
               <Route path="users/staff" element={<UsersListPage key="staff" variant="staff" />} />
               <Route path="users/pending" element={<UsersListPage key="pending" variant="pending" />} />
               <Route path="users/new" element={<UserNewPage />} />

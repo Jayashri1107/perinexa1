@@ -2,6 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { api, setActiveTenant, setSessionEndedHandler, setTenantMismatchHandler } from '../api.js';
 import { STANDARD_APPEARANCE, applyAppearance, forgetAppearance, normalizeAppearance, rememberAppearance } from '../appearance.js';
 
+// The email the sign-in fills in once, after "Switch to your doctor account" (read and removed by LoginPage).
+export const LOGIN_EMAIL_KEY = 'perinexa:loginEmail';
+
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
@@ -28,6 +31,8 @@ const writeLastActivity = (t) => {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [memberships, setMemberships] = useState([]);
+  // Super admins and platform admins: role, rights, the hospital whose setup is open, the linked hospital account
+  const [platform, setPlatform] = useState(null);
   const [activeTenantId, setActiveTenantId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeoutMinutes, setTimeoutMinutes] = useState(30);
@@ -40,6 +45,7 @@ export function AuthProvider({ children }) {
     setActiveTenant(data.activeTenantId);
     setUser(data.user);
     setMemberships(data.memberships ?? []);
+    setPlatform(data.platform ?? null);
     setActiveTenantId(data.activeTenantId ?? null);
     if (data.sessionTimeoutMinutes) setTimeoutMinutes(data.sessionTimeoutMinutes);
   }, []);
@@ -48,6 +54,7 @@ export function AuthProvider({ children }) {
     setActiveTenant(null);
     setUser(null);
     setMemberships([]);
+    setPlatform(null);
     setActiveTenantId(null);
     setSecondsLeft(null);
     setTenantNotice(null);
@@ -204,7 +211,33 @@ export function AuthProvider({ children }) {
     api('/auth/me').catch(() => {});
   };
 
-  const activeMembership = memberships.find((m) => m.tenantId === activeTenantId) ?? null;
+  // A super admin or platform admin who opened a hospital's setup works there as its admin (setup pages only)
+  const platformHospital = platform?.hospital ?? null;
+  const activeMembership =
+    memberships.find((m) => m.tenantId === activeTenantId) ??
+    (platformHospital && platformHospital.tenantId === activeTenantId
+      ? { tenantId: platformHospital.tenantId, tenantName: platformHospital.tenantName, roles: ['admin'], platform: true, readOnly: platformHospital.readOnly }
+      : null);
+
+  /** Super admins and platform admins: open a hospital's setup (tenantId), or go back to the platform (null). */
+  const openHospital = async (tenantId) => {
+    const data = await api('/auth/open-hospital', { method: 'POST', body: { tenantId } });
+    applySession(data);
+    setTenantNotice(null);
+    channel.current?.postMessage({ type: 'tenant', tenantId });
+  };
+
+  /** "Switch to your doctor account": sign out here, then the sign-in opens with that account's email filled in. */
+  const switchToLinkedAccount = async () => {
+    const email = platform?.linkedAccount?.email;
+    if (!email) return;
+    try {
+      sessionStorage.setItem(LOGIN_EMAIL_KEY, email);
+    } catch {
+      /* the email is simply not filled in */
+    }
+    await logout('switch');
+  };
 
   const value = {
     user,
@@ -220,6 +253,10 @@ export function AuthProvider({ children }) {
     activeTenantId,
     activeMembership,
     switchTenant,
+    platform,
+    isPlatform: Boolean(user?.isSuperAdmin || user?.isPlatformAdmin),
+    openHospital,
+    switchToLinkedAccount,
     saveAppearance,
     tenantNotice,
     clearTenantNotice: () => setTenantNotice(null),

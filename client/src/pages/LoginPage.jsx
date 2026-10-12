@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/brand/perinexa-logo.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
-import { useAuth } from '../auth/AuthContext.jsx';
+import { LOGIN_EMAIL_KEY, useAuth } from '../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../auth/guards.jsx';
 import { SampleDataBanner } from '../components/Layout.jsx';
 import { Alert, Field } from '../components/ui.jsx';
@@ -17,13 +17,25 @@ const REASONS = {
   idle: { type: 'warning', text: 'You were logged out automatically after a period of inactivity. Log in again to continue.' },
   expired: { type: 'warning', text: 'Your session has ended. Log in again to continue.' },
   manual: { type: 'success', text: 'You have been logged out.' },
+  switch: { type: 'info', text: 'You have been logged out of the platform account. Enter the password of your doctor account to continue.' },
 };
+
+// After "Switch to your doctor account": that account's email, filled in once.
+function takeSwitchEmail() {
+  try {
+    const email = sessionStorage.getItem(LOGIN_EMAIL_KEY) ?? '';
+    sessionStorage.removeItem(LOGIN_EMAIL_KEY);
+    return email;
+  } catch {
+    return '';
+  }
+}
 
 export function LoginPage() {
   const { user, loading, login, logoutReason, timeoutMinutes } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(takeSwitchEmail);
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});

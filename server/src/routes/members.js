@@ -83,7 +83,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
   }
 
   async function assertNotShared(req, m) {
-    if (m.userId.isSuperAdmin || (await otherTenantUserIds(req.scopeTenantId, [m.userId._id])).size) {
+    if (m.userId.isSuperAdmin || m.userId.isPlatformAdmin || (await otherTenantUserIds(req.scopeTenantId, [m.userId._id])).size) {
       throw new HttpError(
         403,
         'This person also works at another hospital, so only a platform super admin can change their account details or password.',
@@ -130,8 +130,8 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     let temporaryPassword = null;
 
     if (user) {
-      if (user.isSuperAdmin) {
-        throw new HttpError(400, 'Platform super admins cannot be added to a hospital. Use a separate account.', 'SUPER_ADMIN');
+      if (user.isSuperAdmin || user.isPlatformAdmin) {
+        throw new HttpError(400, 'Platform super admins and platform admins cannot be added to a hospital. Use a separate account.', 'SUPER_ADMIN');
       }
       const existing = await Membership.findOne({ tenantId: req.scopeTenantId, userId: user._id });
       if (existing) {

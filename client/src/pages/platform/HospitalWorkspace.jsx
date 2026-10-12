@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Link, Outlet, useLocation, useOutletContext, useParams } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { canEditArea } from '../../platform/modules.js';
 import { AuditLogView } from '../../components/AuditLogView.jsx';
 import { formatNumber } from '../../components/DataTable.jsx';
 import { MembersPanel } from '../../components/MembersPanel.jsx';
@@ -23,7 +25,21 @@ export function HospitalWorkspace() {
   const [actionError, setActionError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [confirm, confirmDialog] = useConfirm();
+  const { platform, openHospital } = useAuth();
+  const navigate = useNavigate();
   const tenant = data?.tenant;
+  // Its setup (Hospital admin pages – never its patients); a platform admin without "Hospitals' setup" only looks
+  const openSetup = async () => {
+    setActionError(null);
+    setBusy(true);
+    try {
+      await openHospital(tenant.id);
+      navigate('/admin/staff');
+    } catch (err) {
+      setActionError(err.message);
+      setBusy(false);
+    }
+  };
 
   if (error && !tenant) {
     return (
@@ -77,9 +93,18 @@ export function HospitalWorkspace() {
         badges={<TenantStatus active={tenant.isActive} />}
         subtitle={`${formatNumber(tenant.members)} active staff · ${formatNumber(tenant.admins)} ${tenant.admins === 1 ? 'admin' : 'admins'} · created ${formatDateTime(tenant.createdAt)}`}
         actions={
-          <button type="button" className={`btn ${tenant.isActive ? 'btn-danger' : 'btn-secondary'}`} onClick={toggleActive} disabled={busy}>
-            {tenant.isActive ? 'Deactivate hospital' : 'Reactivate hospital'}
-          </button>
+          <>
+            {tenant.isActive && (
+              <button type="button" className="btn btn-secondary" onClick={openSetup} disabled={busy}>
+                {canEditArea(platform, 'hospitalSetup') ? 'Open hospital setup' : 'View hospital setup'}
+              </button>
+            )}
+            {canEditArea(platform, 'hospitals') && (
+              <button type="button" className={`btn ${tenant.isActive ? 'btn-danger' : 'btn-secondary'}`} onClick={toggleActive} disabled={busy}>
+                {tenant.isActive ? 'Deactivate hospital' : 'Reactivate hospital'}
+              </button>
+            )}
+          </>
         }
         tabs={[
           { label: 'Overview', to: base, end: true },

@@ -61,8 +61,9 @@ export function auditLogsRouter({ scope }) {
     const names = new Map(tenants.map((t) => [t._id.toString(), t.name]));
 
     res.json({
-      // Medical details trimmed; on the platform also every patient key (utils/auditDetails.js).
-      entries: entries.map((e) => auditEntryJSON(e, names, { scope })),
+      // Medical details trimmed; on the platform also every patient key (utils/auditDetails.js) – and so for a super
+      // admin or platform admin reading a hospital's own log: they never see which patient an entry was about.
+      entries: entries.map((e) => auditEntryJSON(e, names, { scope: req.membership?.platform ? 'platform' : scope })),
       // The choices for the action filter: actions of removed features are left out (their old entries still show).
       actions: (q.category ? AUDIT_CATEGORIES[q.category] : AUDIT_ACTIONS).filter((a) => !RETIRED_AUDIT_ACTIONS.has(a)),
       ...paged(q, total),

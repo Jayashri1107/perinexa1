@@ -55,6 +55,7 @@ export const PLATFORM_MODULES = [
     tabs: [
       { label: 'All users', to: '/platform/users', end: true },
       { label: 'Super admins', to: '/platform/users/super-admins', end: true },
+      { label: 'Platform admins', to: '/platform/users/platform-admins', end: true },
       { label: 'Hospital staff', to: '/platform/users/staff', end: true },
       { label: 'Pending first login', to: '/platform/users/pending', end: true },
       { label: 'New account', to: '/platform/users/new', end: true },
@@ -266,7 +267,7 @@ export const knowledgeSections = (key) => HOSPITAL_KNOWLEDGE.tabs.find((t) => t.
 export const KNOWLEDGE_CRUMB = { label: 'Clinic library', to: HOSPITAL_KNOWLEDGE.to };
 
 // Hospital admins: staff, the audit log and the print letterhead, under one item in the left menu.
-const HOSPITAL_ADMIN = {
+export const HOSPITAL_ADMIN = {
   key: 'hospital-admin',
   label: 'Hospital admin',
   icon: Settings,
@@ -340,3 +341,12 @@ export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRE
 
 const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_LAB, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
+
+// Platform admins see every platform page; a tab that only makes something new shows when they may change that area.
+const PLATFORM_TAB_AREAS = { '/platform/hospitals/new': 'hospitals', '/platform/users/new': 'users' };
+export const PLATFORM_AREA_LABELS = { hospitals: 'Hospitals', users: 'User accounts', hospitalSetup: "Hospitals' setup" };
+/** May this super admin or platform admin change this area? (session.platform from the server) */
+export const canEditArea = (platform, area) => platform?.role === 'superadmin' || Boolean(area && platform?.permissions?.includes(area));
+export const platformModules = (platform) =>
+  PLATFORM_MODULES.map((m) => ({ ...m, tabs: m.tabs.filter((t) => !PLATFORM_TAB_AREAS[t.to] || canEditArea(platform, PLATFORM_TAB_AREAS[t.to])) }));
+export const platformTabs = (key, platform) => platformModules(platform).find((m) => m.key === key)?.tabs ?? [];
