@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BadgePercent, Ban, FileText, Link2, Plus, Printer, RotateCcw, Wallet } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { MenuButton } from '../../components/MenuButton.jsx';
@@ -364,7 +364,8 @@ export function BillPage() {
   const res = useFetch(`/billing/bills/${id}`);
   const [bill, setBill] = useState(null);
   // add | pay | refund | discount | cancel | insurance | upi | { remove: line }; ?pay=1 (Take payment on the Bills list) opens pay
-  const [dialog, setDialog] = useState(() => (new URLSearchParams(window.location.search).get('pay') === '1' ? 'pay' : null));
+  const { search: query } = useLocation();
+  const [dialog, setDialog] = useState(() => (new URLSearchParams(query).get('pay') === '1' ? 'pay' : null));
   const [printing, setPrinting] = useState(null); // { receipt? } | { claim: 'claim' | 'pmjay' }
   const [flash, setFlash] = useState(null);
   const b = bill ?? res.data?.bill;
