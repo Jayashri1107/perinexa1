@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, Hash, IndianRupee, Plane } from 'lucide-react';
+import { CalendarCheck, CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, Hash, IndianRupee, Plane, Settings, UserCheck } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, StatusPill } from '../../components/ui.jsx';
+import { Alert, KpiCard, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
-import { BookDialog, CancelDialog, FeeDialog, MoveDialog } from './AppointmentDialogs.jsx';
+import { BookDialog, CancelDialog, FeeDialog, MoveDialog, NewAppointmentDialog } from './AppointmentDialogs.jsx';
 import { NEEDS_TIME_LOOK, STATUS_LOOK, VISIT_TYPE_LABELS, addDaysIso, dayLabel, timeLabel, whenLabel, whoLabel } from './appointmentFormat.js';
 
 // Appointment booking (docs/APPOINTMENTS_PLAN.md): one doctor's day in 10-minute slots. Reception and doctors click
@@ -13,10 +13,10 @@ import { NEEDS_TIME_LOOK, STATUS_LOOK, VISIT_TYPE_LABELS, addDaysIso, dayLabel, 
 // and nurses can look. The doctor and day are in the address (?doctor=…&date=…), so a page can be shared or reloaded.
 
 export const appointmentTabs = (canBook) => [
-  { label: 'Day', to: '/appointments', end: true },
+  { label: 'Schedule', to: '/appointments', end: true },
   { label: 'Month', to: '/appointments/month', end: true },
   { label: 'Needs a time', to: '/appointments/needs-time', end: true },
-  ...(canBook !== false ? [{ label: 'OPD timings', to: '/appointments/timings', end: true }] : []),
+  ...(canBook !== false ? [{ label: 'OPD settings', to: '/appointments/timings', end: true }] : []),
 ];
 
 /** One booking in a list: who, visit type, status, and Move / Cancel. */
@@ -151,11 +151,19 @@ export function AppointmentsPage() {
   const dialogs = useAppointmentDialogs({ doctors, today, onDone: day.reload });
   // A patient chosen elsewhere to book (her record's "Book an appointment")
   const forPatient = location.state?.bookFor ?? null;
+  const needsTime = useFetch('/appointments/needs-time');
+  // the New appointment dialog – open at once when a patient's record sent her here to book
+  const [choosing, setChoosing] = useState(Boolean(location.state?.bookFor));
 
   const go = (next) => setParams({ ...(doctorId ? { doctor: doctorId } : {}), ...next }, { replace: true });
   const d = day.data;
   const canBook = Boolean(info?.canBook && d?.canBook);
   const doctor = doctors.find((x) => x.id === doctorId);
+  // The numbers above the schedule: this doctor's chosen day, and every next visit still waiting for a time
+  const booked = d ? [...d.slots.flatMap((s) => s.appointments), ...d.other] : [];
+  const live = booked.filter((a) => ['booked', 'arrived'].includes(a.status)).length;
+  const seen = [...booked, ...(d?.tokens ?? [])].filter((a) => a.status === 'seen').length;
+  const free = d ? d.slots.filter((s) => !s.past && !s.appointments.length && !s.busyWith).length : 0;
 
   return (
     <>
@@ -164,6 +172,13 @@ export function AppointmentsPage() {
         title="Appointments"
         subtitle={[doctor?.name, date ? dayLabel(date) : null].filter(Boolean).join(' · ')}
         tabs={appointmentTabs(info?.canBook)}
+        actions={
+          info?.canBook && doctors.length > 0 ? (
+            <button type="button" className="btn btn-primary" onClick={() => setChoosing(true)}>
+              <CalendarPlus aria-hidden="true" /> New appointment
+            </button>
+          ) : null
+        }
       />
       <div className="pf-content appt-page">
         <Alert type="success" onClose={dialogs.clearFlash}>
@@ -198,15 +213,42 @@ export function AppointmentsPage() {
                 Today
               </button>
             </div>
+            {d && (
+              <p className="appt-hours">
+                <Clock aria-hidden="true" />
+                {!d.hasTimings ? 'No OPD timings yet' : d.leave ? 'On leave this day' : d.sessions.length ? `OPD ${d.sessions.map((s) => `${timeLabel(s.from)}–${timeLabel(s.to)}`).join(', ')}` : 'No OPD this day'}
+              </p>
+            )}
           </div>
         )}
 
+        {d && d.hasTimings && (
+          <div className="kpi-grid appt-kpis">
+            <KpiCard tone={live ? 'due' : 'neutral'} icon={CalendarCheck} label={date === today ? 'Booked today' : 'Booked'} value={live} sub={`${doctor?.name ?? ''} · ${free} free time${free === 1 ? '' : 's'} left`} />
+            <KpiCard to="/appointments/needs-time" tone={needsTime.data?.appointments.length ? 'watch' : 'neutral'} icon={Clock} label="Needs a time" value={needsTime.data ? needsTime.data.appointments.length : '—'} sub="Next visits waiting for a time" />
+            <KpiCard tone="neutral" icon={UserCheck} label="Seen" value={seen} sub={`${d.tokens.length} walk-in${d.tokens.length === 1 ? '' : 's'} this day`} />
+          </div>
+        )}
         {day.error && <Alert type="error">{day.error}</Alert>}
         {d && !d.hasTimings && (
-          <Alert type="warning">
-            {d.doctor.name} has not set OPD timings yet, so there are no times to book.{' '}
-            {doctor?.canEditTimings && <Link to={`/appointments/timings?doctor=${d.doctor.id}`}>Set the OPD timings</Link>}
-          </Alert>
+          <section className="card appt-setup">
+            <span className="appt-setup-icon" aria-hidden="true">
+              <Settings />
+            </span>
+            <div>
+              <h2>OPD timings not set for {d.doctor.name}</h2>
+              <p className="muted">The working days, consultation hours and leave days decide which times can be booked. Until they are set, there is nothing to book for this doctor.</p>
+              {doctor?.canEditTimings ? (
+                <Link to={`/appointments/timings?doctor=${d.doctor.id}`} className="btn btn-secondary">
+                  <Settings aria-hidden="true" /> Set the OPD timings
+                </Link>
+              ) : (
+                <p>
+                  <strong>Ask {d.doctor.name} or the hospital admin</strong> to set them in Appointments → OPD settings. Walk-in tokens still work on the Today page.
+                </p>
+              )}
+            </div>
+          </section>
         )}
         {d?.leave && (
           <Alert type="warning" icon={Plane}>
@@ -288,6 +330,19 @@ export function AppointmentsPage() {
         )}
       </div>
       {dialogs.element}
+      {choosing && doctors.length > 0 && today && (
+        <NewAppointmentDialog
+          doctors={doctors}
+          today={today}
+          doctorId={doctorId}
+          date={date}
+          onClose={() => setChoosing(false)}
+          onChosen={(c) => {
+            setChoosing(false);
+            dialogs.book(c.doctor, c.date, c.start, forPatient, c.lengths);
+          }}
+        />
+      )}
     </>
   );
 }

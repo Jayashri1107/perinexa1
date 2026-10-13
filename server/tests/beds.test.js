@@ -151,6 +151,10 @@ describe('the bed board', () => {
     const summary = await (await as('reception')).get('/api/beds?summary=1');
     expect(summary.body).toEqual({ counts: { total: 3, occupied: 1, free: 2 } });
     expect(await AuditLog.countDocuments({ action: 'BEDS_VIEWED' })).toBe(1);
+    // The free beds alone (admitting from a patient's record)
+    const free = await (await as('reception')).get('/api/beds?free=1');
+    expect(free.body.beds.map((b) => b.label)).toEqual(['General ward · G1', 'General ward · G10']);
+    expect(await AuditLog.countDocuments({ action: 'BEDS_VIEWED' })).toBe(1);
   });
 
   it('reception never sees the reason on a sensitive record or one typed by a clinician; the doctor does', async () => {

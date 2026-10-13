@@ -424,3 +424,59 @@ export function CancelDialog({ appointment: a, onClose, onCancelled }) {
     </Modal>
   );
 }
+
+/**
+ * New appointment (the page's main button, owner 13 Oct 2026): choose the doctor and the day, then one of the free
+ * times; the booking itself (patient, visit type) is the Book dialog. Doctors without OPD timings are named as such.
+ */
+export function NewAppointmentDialog({ doctors, today, doctorId: firstDoctor, date: firstDate, onClose, onChosen }) {
+  const [doctorId, setDoctorId] = useState(firstDoctor ?? doctors[0]?.id ?? '');
+  const [date, setDate] = useState(firstDate && firstDate >= today ? firstDate : today);
+  const day = useFetch(doctorId && date ? '/appointments/day' : null, { doctorId, date });
+  const d = day.data?.doctor?.id === doctorId && day.data?.date === date ? day.data : null;
+  const free = d ? d.slots.filter((s) => !s.past && !s.appointments.length && !s.busyWith) : [];
+  const doctor = doctors.find((x) => x.id === doctorId);
+  return (
+    <Modal id="appt-new" title="New appointment" onClose={onClose} wide>
+      <div className="form-grid">
+        <Field label="Doctor" id="appt-new-doctor">
+          <select id="appt-new-doctor" value={doctorId} onChange={(e) => setDoctorId(e.target.value)} autoFocus>
+            {doctors.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+                {x.hasTimings ? '' : ' (no OPD timings yet)'}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Day" id="appt-new-date">
+          <input id="appt-new-date" type="date" value={date} min={today} onChange={(e) => e.target.value && setDate(e.target.value)} />
+        </Field>
+      </div>
+      <Alert type="error">{day.error}</Alert>
+      {!d && !day.error && <p className="muted">Looking for free times…</p>}
+      {d && !d.hasTimings && <Alert type="warning">{doctor?.name ?? 'This doctor'} has not set OPD timings yet, so there are no times to book.</Alert>}
+      {d?.leave && <Alert type="warning">{d.doctor.name} is on leave on this day.</Alert>}
+      {d && d.hasTimings && !d.leave && !d.slots.length && <Alert type="info">{d.doctor.name} has no OPD on this day. Choose another day.</Alert>}
+      {d && d.slots.length > 0 && (
+        <>
+          <p className="field-label">
+            {free.length ? `Free times (${free.length})` : 'No free time left on this day – choose another day.'}
+          </p>
+          <div className="appt-free-times" role="group" aria-label="Free times">
+            {free.map((s) => (
+              <button key={s.start} type="button" className="btn btn-secondary btn-sm" onClick={() => onChosen({ doctor: d.doctor, date: d.date, start: s.start, lengths: d.lengths })}>
+                {timeLabel(s.start)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="row">
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}

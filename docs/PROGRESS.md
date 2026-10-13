@@ -3531,6 +3531,26 @@ appear only for the chosen day, from the same data as the Day tab.
    the leave day shows "Leave". Book two fake patients on one day (Day tab) and cancel one: the month shows
    "1 booked · 1 cancelled" and one slot fewer free. Click the day: both are listed on the left.
 
+## Appointments layout; booking and admitting from a patient's record (owner, 13 Oct 2026)
+Branch `appointments-layout` (after `appointments-month`).
+- Tabs renamed: **Schedule** (was Day), Month, Needs a time, **OPD settings** (was OPD timings).
+- **New appointment** (main button, reception and doctors): choose the doctor and day, then one of the free times;
+  the patient and visit type are chosen as before (registered patient, or a quick booking with name and phone).
+- Above the times: **Booked** (this doctor, this day, with the free times left), **Needs a time** (opens that list) and
+  **Seen**, with the walk-ins of the day. The doctor's OPD hours for the day show beside the day controls.
+- **OPD timings not set**: a box saying so, with "Set the OPD timings" for the doctor or the hospital admin – and for
+  reception, who to ask (the owner's rule stays: each doctor sets their own timings, or the hospital admin).
+- **Patient record**: reception has **Book appointment** and **Admit** beside More; doctors and RMOs who may write her
+  record have them in More. Book opens Appointments with New appointment ready for her; Admit chooses a free bed
+  (`/api/beds?free=1`: free beds only, no names) and prints the admission slip.
+
+### How to test (fake data only)
+1. As the receptionist: Appointments → **New appointment** → a doctor with OPD timings → a day → a free time → find a
+   fake patient → Book. The confirmation shows at the top; the Booked number goes up.
+2. Choose a doctor without timings: the "OPD timings not set" box says whom to ask.
+3. Open a fake patient → **Admit** → choose a free bed and a reason → Admit; the slip opens. **Book appointment** opens
+   the New appointment dialog for her.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

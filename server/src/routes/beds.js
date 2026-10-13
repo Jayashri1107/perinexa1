@@ -17,7 +17,7 @@ import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
 
 // Beds and admission at the desk (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): /api/beds.
-//  - GET  /?summary=1  only the counts (no names, not audited);
+//  - GET  /?summary=1  only the counts; /?free=1 only the free beds (no names, not audited);
 //  - GET  /            the bed board: each ward's beds, free or occupied (name, patient number, doctor, since, and
 //                      the reason as inpatient/beds.js reasonFor allows) – reception, doctors, RMOs, nurses; audited
 //                      with counts only;
@@ -67,6 +67,13 @@ async function assertFree(req, bed) {
 bedsRouter.get('/', async (req, res) => {
   assertRole(req, BOARD_ROLES, 'The bed board is for reception, doctors, RMOs and nurses.');
   const tenantId = req.tenantId;
+  // ?free=1: the free beds only, for admitting from a patient's record – no names, so not audited
+  if (req.query.free === '1') {
+    const [beds, taken] = await Promise.all([Bed.find({ tenantId, active: true }).lean(), Admission.find({ tenantId, status: 'admitted', bedId: { $ne: null } }, { bedId: 1 }).lean()]);
+    const occupied = new Set(taken.map((a) => String(a.bedId)));
+    const free = byWard(beds.filter((b) => !occupied.has(String(b._id))));
+    return res.json({ beds: free.flatMap(({ ward, beds: list }) => list.map((b) => ({ id: String(b._id), ward, name: b.name, label: `${ward} · ${b.name}` }))) });
+  }
   // ?summary=1: the counts only (reception's Today page) – no names, so not audited
   if (req.query.summary === '1') {
     const [inUse, occupied] = await Promise.all([Bed.countDocuments({ tenantId, active: true }), Admission.countDocuments({ tenantId, status: 'admitted', bedId: { $ne: null } })]);

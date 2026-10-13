@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, BadgeCheck, BedDouble, Copy, Eye, FileText, Files, IdCard, Lock, MessageCircle, MoreHorizontal, Pencil, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
+import { Archive, BadgeCheck, BedDouble, CalendarPlus, Copy, Eye, FileText, Files, IdCard, Lock, MessageCircle, MoreHorizontal, Pencil, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PatientCard } from '../appointments/PatientCard.jsx';
+import { AdmissionSlip, AdmitDialog } from '../beds/BedBoardPage.jsx';
 import { FullPageSpinner } from '../../auth/guards.jsx';
 import { MenuButton } from '../../components/MenuButton.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -181,6 +182,8 @@ export function PatientDetailPage() {
   const [changingDoctor, setChangingDoctor] = useState(false);
   const [messaging, setMessaging] = useState(false);
   const [printingCard, setPrintingCard] = useState(false); // the patient card (reception)
+  const [admitting, setAdmitting] = useState(false); // admit to a free bed (reception, her doctor, RMOs)
+  const [admissionSlip, setAdmissionSlip] = useState(null);
   const [markingDuplicate, setMarkingDuplicate] = useState(false); // "Mark as a duplicate" (her doctor or an RMO)
   const [undoingDuplicate, setUndoingDuplicate] = useState(false);
   const [copyingRecord, setCopyingRecord] = useState(false); // "Copy of the whole record" (her doctor or an RMO)
@@ -275,7 +278,17 @@ export function PatientDetailPage() {
         : null
     : null;
   const editInMenu = canEdit && !onEditTab && Boolean(visitButton);
+  // Booking and admitting from her record (owner, 13 Oct 2026): buttons beside More for reception, in More for doctors
+  // and RMOs. Not for a record marked as a duplicate or closed; admitting not while she is in hospital (the server
+  // checks that too – reception does not see her current stay).
+  const isReception = hasRole(activeMembership, 'receptionist');
+  const open = !patient.duplicateOf && !patient.closed;
+  const canBookHere = open && hasRole(activeMembership, 'receptionist', 'doctor');
+  const canAdmitHere = open && !patient.currentAdmission && (isReception || (a.canEditClinical && hasRole(activeMembership, 'doctor', 'rmo')));
+  const bookHere = () => navigate('/appointments', { state: { bookFor: { id: patient.id, fullName: patient.fullName, mrn: patient.mrn, phone: patient.phone ?? '' } } });
   const more = [
+    ...(!isReception && canBookHere ? [{ label: 'Book an appointment', icon: CalendarPlus, onSelect: bookHere }] : []),
+    ...(!isReception && canAdmitHere ? [{ label: 'Admit to a bed', icon: BedDouble, onSelect: () => setAdmitting(true) }] : []),
     ...(editInMenu ? [{ label: 'Edit details', icon: Pencil, onSelect: () => navigate(`${base}/edit`) }] : []),
     ...(a.canAssign ? [{ label: 'Change doctor', icon: UserRound, onSelect: () => setChangingDoctor(true) }] : []),
     ...(a.canMarkSensitive ? [{ label: patient.sensitive ? 'Remove sensitive marking' : 'Mark sensitive', icon: Lock, onSelect: () => setConfirmSensitive(true) }] : []),
@@ -356,6 +369,16 @@ export function PatientDetailPage() {
         actions={
           <>
             {more.length > 0 && <MenuButton className="btn btn-secondary" icon={MoreHorizontal} label="More" items={more} align="end" ariaLabel="More actions for this patient" />}
+            {isReception && canAdmitHere && (
+              <button type="button" className="btn btn-secondary" onClick={() => setAdmitting(true)}>
+                <BedDouble aria-hidden="true" /> Admit
+              </button>
+            )}
+            {isReception && canBookHere && (
+              <button type="button" className="btn btn-secondary" onClick={bookHere}>
+                <CalendarPlus aria-hidden="true" /> Book appointment
+              </button>
+            )}
             {visitButton?.kind === 'open' && (
               <Link to={visitButton.to} className={`btn ${onEditTab ? 'btn-secondary' : 'btn-primary'}`}>
                 <Stethoscope aria-hidden="true" /> Open today's visit
@@ -489,6 +512,19 @@ export function PatientDetailPage() {
       )}
       {writingLetter && <LetterDialog patient={patient} onClose={() => setWritingLetter(false)} />}
       {printingCard && <PatientCard patient={patient} onClose={() => setPrintingCard(false)} />}
+      {admitting && (
+        <AdmitDialog
+          patient={patient}
+          onClose={() => setAdmitting(false)}
+          onAdmitted={(info) => {
+            setAdmitting(false);
+            setFlash(`${patient.fullName} is admitted to ${info.ward} · ${info.bed}.`);
+            setAdmissionSlip(info);
+            reload();
+          }}
+        />
+      )}
+      {admissionSlip && <AdmissionSlip info={admissionSlip} onClose={() => setAdmissionSlip(null)} />}
       {copyingRecord && <RecordCopy patient={patient} onClose={() => setCopyingRecord(false)} />}
       {messaging && (
         <PatientMessagesDialog

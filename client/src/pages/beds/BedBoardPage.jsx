@@ -199,8 +199,14 @@ function Occupant({ stay, canBill, onMove, moveLabel = 'Move' }) {
   );
 }
 
-function AdmitDialog({ bed, onClose, onAdmitted }) {
-  const [patient, setPatient] = useState(null);
+/**
+ * Admit a patient: to the bed clicked on the board (bed), or – from her record (patient) – to a free bed chosen here.
+ */
+export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, onClose, onAdmitted }) {
+  const [patient, setPatient] = useState(preset);
+  const freeList = useFetch(fixedBed ? null : '/beds', { free: '1' });
+  const [bedId, setBedId] = useState('');
+  const bed = fixedBed ?? freeList.data?.beds.find((b) => b.id === (bedId || freeList.data.beds[0]?.id)) ?? null;
   const [form, setForm] = useState({ reasonCode: 'labour', reasonNote: '', admittedAt: nowLocal() });
   const [clientRequestId] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
@@ -228,8 +234,25 @@ function AdmitDialog({ bed, onClose, onAdmitted }) {
   return (
     <Modal id="bed-admit" title="Admit a patient" onClose={onClose}>
       <p className="appt-when">
-        <BedDouble aria-hidden="true" /> {bed.ward} · {bed.name}
+        <BedDouble aria-hidden="true" /> {fixedBed ? `${fixedBed.ward} · ${fixedBed.name}` : 'Choose a free bed'}
       </p>
+      {!fixedBed && (
+        <>
+          <Alert type="error">{freeList.error}</Alert>
+          {freeList.data && freeList.data.beds.length === 0 && <Alert type="warning">There is no free bed. Free a bed first, or ask the hospital admin to add beds (Hospital admin → Beds).</Alert>}
+          {freeList.data?.beds.length > 0 && (
+            <Field label="Bed" id="bed-pick">
+              <select id="bed-pick" value={bed?.id ?? ''} onChange={(e) => setBedId(e.target.value)}>
+                {freeList.data.beds.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+        </>
+      )}
       <Alert type="error">{error}</Alert>
       {!patient && <PatientFinder onPick={setPatient} />}
       {patient && (
@@ -240,9 +263,11 @@ function AdmitDialog({ bed, onClose, onAdmitted }) {
               {patient.mrn}
               {patient.assignedDoctorName ? ` · ${patient.assignedDoctorName}` : ''}
             </span>
-            <button type="button" className="btn btn-link btn-sm" onClick={() => setPatient(null)}>
-              Choose someone else
-            </button>
+            {!preset && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setPatient(null)}>
+                Choose someone else
+              </button>
+            )}
           </div>
           {blocked && <Alert type="warning">{patient.duplicateOf ? `This record is a duplicate: choose ${patient.duplicateOf.mrn} instead.` : 'This record is closed: it takes no admission.'}</Alert>}
           <div className="form-grid">
@@ -266,7 +291,7 @@ function AdmitDialog({ bed, onClose, onAdmitted }) {
         </>
       )}
       <div className="row">
-        <button type="button" className="btn btn-primary" disabled={!patient || blocked || busy} onClick={send}>
+        <button type="button" className="btn btn-primary" disabled={!patient || !bed || blocked || busy} onClick={send}>
           <LogIn aria-hidden="true" /> {busy ? 'Admitting…' : 'Admit'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
@@ -319,7 +344,7 @@ function MoveDialog({ stay, from, beds, onClose, onMoved }) {
 }
 
 /** The admission slip: hospital, patient, doctor, ward, bed and date – nothing medical. */
-function AdmissionSlip({ info, onClose }) {
+export function AdmissionSlip({ info, onClose }) {
   const lh = useFetch('/tenant/settings/letterhead');
   return (
     <PrintPreview title="Admission slip – print preview" hint="For the patient and the ward. It has no medical details." page={{ size: 'A5', margin: '10mm' }} onClose={onClose}>
