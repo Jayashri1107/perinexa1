@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Admission } from '../models/Admission.js';
 import { ClinicalDocument } from '../models/ClinicalDocument.js';
+import { NursingEntry } from '../models/NursingEntry.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { User } from '../models/User.js';
@@ -62,6 +63,15 @@ export async function inpatientsFor(req) {
   const shown = stays.filter((s) => visible.has(String(s.patientId)));
   // Red flags of the patients in hospital (only patients whose medical details this person may see are here)
   const flagged = await redFlagsForPatients(planCtx(req), shown.map((s) => visible.get(String(s.patientId))));
+  // The nursing chart's latest vitals and medicine given per stay (entries in error left out) – times only, for the
+  // nurse's Today (owner, 13 Oct 2026). aggregate() has its own tenantId match (tenantScoped does not cover it).
+  const latest = shown.length
+    ? await NursingEntry.aggregate([
+        { $match: { tenantId, admissionId: { $in: shown.map((s) => s._id) }, kind: { $in: ['vitals', 'medicine'] }, cancelled: null } },
+        { $group: { _id: { admissionId: '$admissionId', kind: '$kind' }, at: { $max: '$at' } } },
+      ])
+    : [];
+  const lastAt = (stayId, kind) => latest.find((l) => String(l._id.admissionId) === String(stayId) && l._id.kind === kind)?.at ?? null;
   const admitted = shown.map((s) => ({
     patient: who(visible.get(String(s.patientId))),
     admissionId: String(s._id),
@@ -69,6 +79,8 @@ export async function inpatientsFor(req) {
     ward: s.ward ?? '',
     bed: s.bed ?? '',
     drafts: drafts.filter((d) => String(d.admissionId) === String(s._id)).length,
+    lastVitalsAt: lastAt(s._id, 'vitals'),
+    lastMedicineAt: lastAt(s._id, 'medicine'),
     redFlags: flagged.byPatient.get(String(s.patientId))?.flags ?? [],
     // No rule applies to her type of care: nothing was checked ("no flags" would be read as "nothing wrong")
     redFlagsChecked: !flagged.notChecked.has(String(s.patientId)),

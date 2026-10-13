@@ -13,6 +13,7 @@ import { rupees } from './billing/billingFormat.js';
 import { ScanShareSection } from './abdm/ScanShare.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyToday } from './pharmacy/PharmacyToday.jsx';
+import { NurseToday, VITALS_DUE_HOURS, vitalsDue } from './inpatient/NurseToday.jsx';
 import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
 import { AiBriefCard } from './ai/AiBriefCard.jsx';
 import { useLibraryDrafts } from './library/ApprovalsPage.jsx';
@@ -360,6 +361,7 @@ export function TodayPage() {
             <div className="kpi-grid">{tiles}</div>
           </section>
         )}
+        {roles.includes('nurse') && <NurseToday inpatients={inpatients.data} />}
         {roles.includes('pharmacist') && <PharmacyToday />}
         {isBillingDesk && <BillingToday />}
         {isReception && (
@@ -440,7 +442,17 @@ export function TodayPage() {
                   patient={s.patient}
                   to={`/patients/${s.patient.id}/stays/${s.admissionId}`}
                   openLabel="Open the stay"
-                  marker={<FlagCountPill flags={s.redFlags} />}
+                  marker={
+                    <>
+                      <FlagCountPill flags={s.redFlags} />
+                      {/* Seen without opening the row (owner, 13 Oct 2026) */}
+                      {vitalsDue(s) && (
+                        <StatusPill tone="watch" icon={Clock} title={`No vitals recorded in the last ${VITALS_DUE_HOURS} hours`}>
+                          Vitals due
+                        </StatusPill>
+                      )}
+                    </>
+                  }
                 >
                   <div className="wl-row-head">
                     <span className="wl-counts">
@@ -458,7 +470,11 @@ export function TodayPage() {
                       )}
                     </span>
                   </div>
-                  <p className="hint">Admitted {formatDateTime(s.admittedAt)}</p>
+                  <p className="hint">
+                    Admitted {formatDateTime(s.admittedAt)} ·{' '}
+                    {s.lastVitalsAt ? `last vitals ${formatDateTime(s.lastVitalsAt)}` : 'no vitals recorded yet'}
+                    {s.lastMedicineAt ? ` · last medicine given ${formatDateTime(s.lastMedicineAt)}` : ''}
+                  </p>
                   {s.redFlags?.length > 0 && <RedFlagItems flags={s.redFlags} brief patientId={s.patient.id} />}
                   {/* No rule for her type of care: say that nothing was checked, never leave it looking like "no red flags" */}
                   {s.redFlagsChecked === false && <p className="hint">{notCheckedCareText(s.redFlagsCareType ?? s.patient.careType, s.redFlagsWorkupOnly)}</p>}
