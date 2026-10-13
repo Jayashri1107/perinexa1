@@ -134,11 +134,12 @@ export function HospitalWorkspace() {
 // its staff by role, its numbers and activity – and its staff list underneath. The super admin never sees its patients.
 export function HospitalOverviewTab() {
   const { tenant, reload } = useOutletContext();
+  const [changes, setChanges] = useState(0); // a change in the staff list counts the roles again
   return (
     <>
       <div className="hw-cards">
         <HospitalDetails tenant={tenant} reload={reload} />
-        <StaffByRole tenant={tenant} />
+        <StaffByRole key={changes} tenant={tenant} />
         <section className="card hw-card">
           <h2>Numbers and activity</h2>
           <p className="muted">Whole months, numbers only – never a patient.</p>
@@ -158,7 +159,10 @@ export function HospitalOverviewTab() {
           basePath={`/platform/tenants/${tenant.id}/members`}
           linkToUser
           defaultRoles={tenant.admins === 0 ? ['admin'] : ['doctor']}
-          onChanged={reload}
+          onChanged={() => {
+            setChanges((n) => n + 1);
+            reload();
+          }}
         />
       </div>
     </>

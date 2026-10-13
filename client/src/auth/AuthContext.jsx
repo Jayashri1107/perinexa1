@@ -233,9 +233,23 @@ export function AuthProvider({ children }) {
   /** "Switch to your doctor account": sign out here, then the sign-in opens with that account's email filled in. */
   // Switch to the linked doctor account with its own password (owner, 13 Oct 2026): signed in at once, this browser
   // then works as the doctor. Without a password: logged out with the doctor's email filled in on the login page.
-  const switchToLinkedAccount = async (password) => {
-    const email = platform?.linkedAccount?.email;
+  // A super admin with no linked account yet gives the doctor account's email the first time (owner, 13 Oct 2026): it
+  // is linked, then signed in with its own password; a wrong password removes the link again (they are still signed in
+  // here, so the link can be undone).
+  const switchToLinkedAccount = async (password, firstEmail = null) => {
+    const linkedEmail = platform?.linkedAccount?.email;
+    const email = linkedEmail ?? firstEmail;
     if (!email) return;
+    if (!linkedEmail) {
+      await api(`/platform/users/${user.id}/linked-account`, { method: 'PATCH', body: { email } });
+      try {
+        await login(email, password);
+      } catch (err) {
+        await api(`/platform/users/${user.id}/linked-account`, { method: 'PATCH', body: { email: null } }).catch(() => {});
+        throw err;
+      }
+      return;
+    }
     if (password) {
       await login(email, password);
       return;

@@ -200,7 +200,7 @@ function ProfileMenu({ locked, onSwitch }) {
               <UserCog aria-hidden="true" /> My settings
             </Link>
           )}
-          {platform?.linkedAccount && (
+          {canSwitch(user, platform) && (
             <button
               type="button"
               className="pm-link"
@@ -316,8 +316,13 @@ export function AppLayout() {
           </div>
           {searchable && <PatientSearch key={activeTenantId} />}
           <div className="pf-topbar-actions">
-            {platform?.linkedAccount && !locked && (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSwitching(true)} title={`Switch to ${platform.linkedAccount.email} – asks for its password`}>
+            {canSwitch(user, platform) && !locked && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setSwitching(true)}
+                title={platform?.linkedAccount ? `Switch to ${platform.linkedAccount.email} – asks for its password` : 'Sign in to your doctor account with its own password'}
+              >
                 <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
               </button>
             )}
@@ -358,7 +363,7 @@ export function AppLayout() {
         </main>
       </div>
       <IdleWarning />
-      {switching && platform?.linkedAccount && <SwitchAccountDialog email={platform.linkedAccount.email} onClose={() => setSwitching(false)} />}
+      {switching && canSwitch(user, platform) && <SwitchAccountDialog email={platform?.linkedAccount?.email ?? null} onClose={() => setSwitching(false)} />}
     </div>
   );
 }
@@ -367,11 +372,16 @@ export function AppLayout() {
  * Switch to the linked doctor account (super admins and platform admins who are also doctors): its password is asked
  * here and it is signed in at once – this browser then works as the doctor. Logging in is audited as for any login.
  */
+// Who sees "Switch to your doctor account": anyone with a linked doctor account, and every super admin – who gives the
+// doctor account's email the first time (owner, 13 Oct 2026).
+const canSwitch = (user, platform) => Boolean(platform?.linkedAccount || user?.isSuperAdmin);
+
 function SwitchAccountDialog({ email, onClose }) {
   const { switchToLinkedAccount } = useAuth();
   const navigate = useNavigate();
   const ref = useDialogFocus(onClose);
   const [password, setPassword] = useState('');
+  const [firstEmail, setFirstEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const submit = async (e) => {
@@ -379,10 +389,10 @@ function SwitchAccountDialog({ email, onClose }) {
     setBusy(true);
     setError(null);
     try {
-      await switchToLinkedAccount(password);
+      await switchToLinkedAccount(password, email ? null : firstEmail.trim());
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.status === 401 || err.status === 400 ? 'That password is not right for your doctor account.' : err.message);
+      setError(err.code === 'INVALID_LOGIN' ? 'That email and password do not match your doctor account.' : err.message);
       setBusy(false);
     }
   };
@@ -390,15 +400,24 @@ function SwitchAccountDialog({ email, onClose }) {
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="switch-title" onSubmit={submit} noValidate>
         <h2 id="switch-title">Switch to your doctor account</h2>
-        <p>
-          You will work as <strong>{email}</strong>. Type that account's password.
-        </p>
+        {email ? (
+          <p>
+            You will work as <strong>{email}</strong>. Type that account's password.
+          </p>
+        ) : (
+          <p>Type the email and password of your doctor account. It is remembered for the next switch; the password is asked every time.</p>
+        )}
         <Alert type="error">{error}</Alert>
+        {!email && (
+          <Field label="Email of your doctor account" id="switch-email">
+            <input id="switch-email" type="email" autoComplete="username" value={firstEmail} onChange={(e) => setFirstEmail(e.target.value)} maxLength={254} autoFocus />
+          </Field>
+        )}
         <Field label="Password of your doctor account" id="switch-password">
-          <input id="switch-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+          <input id="switch-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus={Boolean(email)} />
         </Field>
         <div className="row">
-          <button type="submit" className="btn btn-primary" disabled={!password || busy}>
+          <button type="submit" className="btn btn-primary" disabled={!password || (!email && !firstEmail.trim()) || busy}>
             <ArrowLeftRight aria-hidden="true" /> {busy ? 'Switching…' : 'Switch'}
           </button>
           <button type="button" className="btn btn-link" onClick={onClose}>
