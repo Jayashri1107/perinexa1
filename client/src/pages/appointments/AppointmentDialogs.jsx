@@ -224,34 +224,62 @@ function SlotChooser({ doctorId, date, value, onChange, exceptId }) {
   const d = day.data;
   if (d.leave) return <Alert type="warning">{d.doctor.name} is on leave that day.</Alert>;
   if (!d.slots.length) return <Alert type="warning">{d.hasTimings ? `${d.doctor.name} has no OPD that day.` : `${d.doctor.name} has not set OPD timings yet.`}</Alert>;
+  // By part of the day, so a time is easy to find; times that have passed are left out.
+  const open = d.slots.filter((s) => !s.past);
+  const passed = d.slots.length - open.length;
+  const groups = DAY_PARTS.map((p) => ({ ...p, slots: open.filter((s) => p.fits(minutesOf(s.start))) })).filter((g) => g.slots.length);
+  const takenBy = (s) => {
+    const others = s.appointments.filter((a) => a.id !== exceptId);
+    const busy = s.busyWith && s.busyWith.id !== exceptId ? s.busyWith : null;
+    return others.length || busy ? (others.length ? others.map(whoLabel).join(', ') : busy.name || 'another patient') : null;
+  };
   return (
     <fieldset className="appt-slot-choices">
       <legend>Time</legend>
-      <div className="appt-slot-grid">
-        {d.slots.map((s) => {
-          const others = s.appointments.filter((a) => a.id !== exceptId);
-          const busy = s.busyWith && s.busyWith.id !== exceptId ? s.busyWith : null;
-          const taken = others.length > 0 || Boolean(busy);
-          return (
-            <button
-              key={s.start}
-              type="button"
-              className={`appt-slot-choice ${taken ? 'is-taken' : ''}`}
-              aria-pressed={value === s.start}
-              disabled={s.past}
-              onClick={() => onChange(s.start)}
-              title={taken ? `Booked: ${others.length ? others.map(whoLabel).join(', ') : busy.name || 'another patient'}` : 'Free'}
-            >
-              {timeLabel(s.start)}
-              {taken && <span className="sr-only"> (booked)</span>}
-            </button>
-          );
-        })}
-      </div>
-      <p className="hint">Greyed-out times have passed. Times with a line are already booked (you will be asked before double booking).</p>
+      {groups.length === 0 && <p className="hint">Every time of this day has passed. Choose another day.</p>}
+      {groups.map((g) => {
+        const free = g.slots.filter((s) => !takenBy(s)).length;
+        return (
+          <div key={g.key} className="appt-slot-part">
+            <p className="appt-slot-part-title">
+              {g.label} <span className="muted">· {free} free</span>
+            </p>
+            <div className="appt-slot-grid" role="group" aria-label={`${g.label} times`}>
+              {g.slots.map((s) => {
+                const who = takenBy(s);
+                return (
+                  <button
+                    key={s.start}
+                    type="button"
+                    className={`appt-slot-choice ${who ? 'is-taken' : ''}`}
+                    aria-pressed={value === s.start}
+                    onClick={() => onChange(s.start)}
+                    title={who ? `Booked: ${who}` : 'Free'}
+                  >
+                    {timeLabel(s.start)}
+                    {who && <span className="sr-only"> (booked)</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      <p className="hint">
+        Times with a line are already booked (you will be asked before double booking).
+        {passed > 0 && ` ${passed} time${passed === 1 ? ' has' : 's have'} already passed today and ${passed === 1 ? 'is' : 'are'} not shown.`}
+      </p>
     </fieldset>
   );
 }
+
+// Parts of the day for the time chooser (minutes after midnight on the hospital's clock).
+const DAY_PARTS = [
+  { key: 'morning', label: 'Morning', fits: (m) => m < 12 * 60 },
+  { key: 'afternoon', label: 'Afternoon', fits: (m) => m >= 12 * 60 && m < 17 * 60 },
+  { key: 'evening', label: 'Evening', fits: (m) => m >= 17 * 60 },
+];
+const minutesOf = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
 /** Move an appointment, or give a "needs a time" booking its time. */
 export function MoveDialog({ appointment: a, doctors, today, onClose, onMoved }) {

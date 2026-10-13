@@ -377,3 +377,6 @@
   .pf-topbar > .ps { order: 3; flex: 1 1 100%; min-width: 0; margin-right: 0; }
   .ws-switch select { max-width: 180px; }
 }
+
+/* Remember my email (sign-in) */
+.auth-remember { min-height: 0; margin-top: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }

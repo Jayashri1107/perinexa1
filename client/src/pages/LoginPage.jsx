@@ -31,11 +31,32 @@ function takeSwitchEmail() {
   }
 }
 
+// "Remember my email on this computer": only the email, in this browser (never the password). Browser storage may be
+// blocked (private windows): then nothing is remembered and the box simply starts empty.
+const REMEMBER_KEY = 'perinexa1:rememberedEmail';
+function rememberedEmail() {
+  try {
+    return localStorage.getItem(REMEMBER_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+function keepEmail(value) {
+  try {
+    if (value) localStorage.setItem(REMEMBER_KEY, value);
+    else localStorage.removeItem(REMEMBER_KEY);
+  } catch {
+    /* not remembered – fine */
+  }
+}
+
 export function LoginPage() {
   const { user, loading, login, logoutReason, timeoutMinutes } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState(takeSwitchEmail);
+  const [remembered] = useState(rememberedEmail);
+  const [remember, setRemember] = useState(Boolean(remembered));
+  const [email, setEmail] = useState(() => takeSwitchEmail() || remembered);
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -58,6 +79,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       const loggedIn = await login(email, password);
+      keepEmail(remember ? email.trim() : '');
       const from = location.state?.from?.pathname || '/';
       navigate(loggedIn.mustChangePassword ? '/change-password' : from, { replace: true });
     } catch (err) {
@@ -97,7 +119,7 @@ export function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                autoFocus
+                autoFocus={!email}
               />
             </Field>
             <Field label="Password" id="password" error={fieldErrors.password}>
@@ -108,8 +130,13 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoFocus={Boolean(email)}
               />
             </Field>
+            <label className="check auth-remember" htmlFor="remember-email">
+              <input id="remember-email" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              Remember my email on this computer
+            </label>
             <div className="auth-actions">
               <button type="submit" className="btn btn-primary" disabled={submitting}>
                 {submitting ? 'Logging in…' : 'Log in'}

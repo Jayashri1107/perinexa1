@@ -7,8 +7,9 @@ import { Alert, Field } from '../components/ui.jsx';
 
 // Change password. Shown on its own at /change-password (first login with a temporary password, so it
 // puts its own title in the title bar), or as the "Password" tab of My settings (embedded: My settings's
-// header is already on the screen, so the card gets a card title instead).
-export function ChangePasswordPage({ embedded = false }) {
+// header is already on the screen, so the card gets a card title instead), or in a pop-up from the profile menu
+// (onClose: the pop-up's Cancel, then Done once the password is changed).
+export function ChangePasswordPage({ embedded = false, onClose = null }) {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const forced = user.mustChangePassword;
@@ -67,9 +68,20 @@ export function ChangePasswordPage({ embedded = false }) {
         <input id="confirmPassword" type="password" autoComplete="new-password" value={form.confirmPassword} onChange={update('confirmPassword')} required />
       </Field>
       <div className="acc-actions">
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Saving…' : 'Change password'}
-        </button>
+        {success && onClose ? (
+          <button type="button" className="btn btn-primary" onClick={onClose}>
+            Done
+          </button>
+        ) : (
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting ? 'Saving…' : 'Change password'}
+          </button>
+        )}
+        {onClose && !success && (
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Cancel
+          </button>
+        )}
       </div>
     </form>
   );

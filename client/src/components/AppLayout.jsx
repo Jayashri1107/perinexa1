@@ -7,6 +7,7 @@ import { normalizeAppearance } from '../appearance.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
 import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
+import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
 import { PatientSearch } from './PatientSearch.jsx';
 import { IdleWarning } from './Layout.jsx';
 import { Alert, Avatar, Field, rolesLabel, useDialogFocus } from './ui.jsx';
@@ -157,6 +158,7 @@ function HelpToggle() {
 function ProfileMenu({ locked, onSwitch }) {
   const { user, activeMembership, platform } = useAuth();
   const [open, setOpen] = useState(false);
+  const [changing, setChanging] = useState(false); // Change password, in a pop-up
   const box = useRef(null);
   useDismiss(open, setOpen, box);
   const role = platformRoleLabel(platform) ?? (activeMembership ? rolesLabel(activeMembership.roles) : null);
@@ -177,9 +179,22 @@ function ProfileMenu({ locked, onSwitch }) {
               {activeMembership && <span>{activeMembership.platform ? `Setup of ${activeMembership.tenantName}` : activeMembership.tenantName}</span>}
             </div>
           </div>
-          <Link to="/change-password" className="pm-link" onClick={() => setOpen(false)}>
-            <KeyRound aria-hidden="true" /> Change password
-          </Link>
+          {locked ? (
+            <Link to="/change-password" className="pm-link" onClick={() => setOpen(false)}>
+              <KeyRound aria-hidden="true" /> Change password
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className="pm-link"
+              onClick={() => {
+                setOpen(false);
+                setChanging(true);
+              }}
+            >
+              <KeyRound aria-hidden="true" /> Change password
+            </button>
+          )}
           {!locked && (
             <Link to={ACCOUNT_MODULE.to} className="pm-link" onClick={() => setOpen(false)}>
               <UserCog aria-hidden="true" /> My settings
@@ -199,6 +214,7 @@ function ProfileMenu({ locked, onSwitch }) {
           )}
         </div>
       )}
+      {changing && <ChangePasswordDialog onClose={() => setChanging(false)} />}
     </div>
   );
 }

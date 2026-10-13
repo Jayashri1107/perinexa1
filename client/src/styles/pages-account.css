@@ -178,3 +178,7 @@
   .prof-photo-row { gap: var(--space-4); }
   .prof-photo-row .avatar { width: 96px; height: 96px; }
 }
+
+/* Change password in a pop-up (profile menu): the form card sits flat inside the dialog */
+.pw-dialog { width: min(480px, calc(100vw - 2 * var(--space-4))); }
+.pw-dialog .acc-card { box-shadow: none; border: 0; padding: 0; margin: 0; background: transparent; }
