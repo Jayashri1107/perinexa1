@@ -149,6 +149,10 @@
   --sidebar-end: #171A52;                      /* the foot of the sidebar's gradient */
   --nav-row-active: rgba(255, 255, 255, 0.12); --nav-row-hover: rgba(255, 255, 255, 0.07); --nav-tile: rgba(255, 255, 255, 0.07);
   --nav-accent: #4FD6C8;                       /* the chosen menu item's tile, on the dark sidebar */
+  --auth-glow-teal: rgba(79, 214, 200, 0.28);  /* the soft lights on the sign-in panel */
+  --auth-glow-indigo: rgba(124, 128, 230, 0.35);
+  --auth-tile: rgba(255, 255, 255, 0.07);      /* feature tiles on the sign-in panel */
+  --auth-tile-edge: rgba(255, 255, 255, 0.12);
   --focus-ring: 0 0 0 3px rgba(19, 169, 155, 0.35);
   --focus-ring-inset: inset 0 0 0 3px rgba(19, 169, 155, 0.35);
   --focus-ring-on-dark: 0 0 0 2px var(--nav-accent);

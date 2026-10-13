@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ArrowRight, BedDouble, CalendarClock, FlaskConical, Lock, ShieldCheck } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/brand/perinexa-logo.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
@@ -6,12 +7,6 @@ import { api } from '../api.js';
 import { LOGIN_EMAIL_KEY, useAuth } from '../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../auth/guards.jsx';
 import { Alert, Field } from '../components/ui.jsx';
-
-// Optional photo for the right-hand side. Drop a licensed photo at client/src/assets/brand/login-photo.jpg
-// (or .jpeg / .png / .webp); without one the side shows the plain Mist panel.
-const photo = Object.values(
-  import.meta.glob('../assets/brand/login-photo.{jpg,jpeg,png,webp}', { eager: true, import: 'default' }),
-)[0];
 
 const REASONS = {
   idle: { type: 'warning', text: 'You were logged out automatically after a period of inactivity. Log in again to continue.' },
@@ -95,66 +90,92 @@ export function LoginPage() {
   const reasonText = logoutReason === 'idle' ? reason.text.replace('a period of', `${timeoutMinutes} minutes of`) : reason?.text;
 
   return (
-    <div className="auth-page">
-      <div className={photo ? 'auth has-photo' : 'auth'}>
-        <main className="auth-main">
-          {needsSetup ? (
-            <FirstSuperAdminForm
-              onDone={async (account) => {
-                const loggedIn = await login(account.email, account.password);
-                navigate(loggedIn.mustChangePassword ? '/change-password' : '/', { replace: true });
-              }}
-            />
-          ) : (
-          <form className="auth-card" onSubmit={onSubmit} noValidate>
-            <img className="auth-card-logo" src={logo} alt="Perinexa by Docvritta" width="200" height="49" />
-            <h1>Log in</h1>
-            {reason && !error && <Alert type={reason.type}>{reasonText}</Alert>}
-            <Alert type="error">{error}</Alert>
-            <Field label="Email" id="email" error={fieldErrors.email}>
-              <input
-                id="email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoFocus={!email}
-              />
-            </Field>
-            <Field label="Password" id="password" error={fieldErrors.password}>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoFocus={Boolean(email)}
-              />
-            </Field>
-            <label className="check auth-remember" htmlFor="remember-email">
-              <input id="remember-email" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-              Remember my email on this computer
-            </label>
-            <div className="auth-actions">
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? 'Logging in…' : 'Log in'}
-              </button>
-              <p className="hint">Forgot your password? Ask your administrator.</p>
-            </div>
-          </form>
-          )}
-        </main>
-        <aside className="auth-side" aria-label="About Perinexa">
-          {photo && <img className="auth-photo" src={photo} alt="" />}
-          <img className="auth-logo" src={photo ? logoReversed : logo} alt="Perinexa by Docvritta" width="200" height="49" />
-          <div className="auth-side-text">
-            <h2>One clear plan for every pregnancy.</h2>
-            <p>Decision support for obstetric teams: registration from the LMP with EDD and gestation, care-plan templates and risk flags. The consultant decides.</p>
-          </div>
-        </aside>
-      </div>
+    <AuthFrame>
+      {needsSetup ? (
+        <FirstSuperAdminForm
+          onDone={async (account) => {
+            const loggedIn = await login(account.email, account.password);
+            navigate(loggedIn.mustChangePassword ? '/change-password' : '/', { replace: true });
+          }}
+        />
+      ) : (
+        <form onSubmit={onSubmit} noValidate>
+          <header className="auth1-head">
+            <h1>{remembered ? 'Welcome back' : 'Sign in'}</h1>
+            <p className="muted">Use the email and password your administrator gave you.</p>
+          </header>
+          {reason && !error && <Alert type={reason.type}>{reasonText}</Alert>}
+          <Alert type="error">{error}</Alert>
+          <Field label="Email" id="email" error={fieldErrors.email}>
+            <input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus={!email} />
+          </Field>
+          <Field label="Password" id="password" error={fieldErrors.password}>
+            <input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus={Boolean(email)} />
+          </Field>
+          <label className="check auth-remember" htmlFor="remember-email">
+            <input id="remember-email" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+            Remember my email on this computer
+          </label>
+          <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={submitting}>
+            {submitting ? (
+              'Signing in…'
+            ) : (
+              <>
+                Sign in <ArrowRight aria-hidden="true" />
+              </>
+            )}
+          </button>
+          <p className="auth1-foot">
+            <Lock aria-hidden="true" /> Forgot your password? Ask your hospital administrator to reset it.
+          </p>
+        </form>
+      )}
+    </AuthFrame>
+  );
+}
+
+// The sign-in frame as in Perinexa1 of 7 Oct (owner, 13 Oct 2026): an indigo panel on the left with the logo, a headline
+// and what Perinexa does; the form card on the right. Below 960 px only the card, with the logo above it.
+const AUTH_POINTS = [
+  { icon: CalendarClock, title: 'OPD and appointments', text: 'Doctors’ days, walk-ins, visits and prescriptions.' },
+  { icon: BedDouble, title: 'Wards and inpatients', text: 'Admissions, nursing chart and discharge cards.' },
+  { icon: FlaskConical, title: 'Lab and pharmacy', text: 'Orders, results, stock and issue to ward.' },
+  { icon: ShieldCheck, title: 'Private by design', text: 'Need-to-know access, and every action recorded.' },
+];
+
+function AuthFrame({ children }) {
+  return (
+    <div className="auth1">
+      <aside className="auth1-brand" aria-label="About Perinexa">
+        <span className="auth1-glow auth1-glow-1" aria-hidden="true" />
+        <span className="auth1-glow auth1-glow-2" aria-hidden="true" />
+        <img className="auth1-brand-logo" src={logoReversed} alt="Perinexa by Docvritta" width="190" height="46" />
+        <div className="auth1-brand-body">
+          <span className="auth1-kicker">Hospital workspace</span>
+          <h2>Every patient, every ward, one calm workspace.</h2>
+          <p>OPD, wards, lab, pharmacy and billing for all your branches – each person sees only what their work needs.</p>
+          <ul className="auth1-points">
+            {AUTH_POINTS.map(({ icon: Icon, title, text }) => (
+              <li key={title}>
+                <span className="auth1-point-icon" aria-hidden="true">
+                  <Icon />
+                </span>
+                <span>
+                  <strong>{title}</strong>
+                  <span>{text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="auth1-brand-foot">© {new Date().getFullYear()} Perinexa by Docvritta</p>
+      </aside>
+      <main className="auth1-main">
+        <div className="auth1-panel">
+          <img className="auth1-mobile-logo" src={logo} alt="Perinexa by Docvritta" width="170" height="42" />
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
@@ -190,10 +211,11 @@ function FirstSuperAdminForm({ onDone }) {
   };
 
   return (
-    <form className="auth-card" onSubmit={submit} noValidate>
-      <img className="auth-card-logo" src={logo} alt="Perinexa by Docvritta" width="200" height="49" />
-      <h1>Create the first super admin</h1>
-      <p className="hint">Perinexa has no super admin yet. This account manages every hospital and every user account. It never sees patient records.</p>
+    <form onSubmit={submit} noValidate>
+      <header className="auth1-head">
+        <h1>Create the first super admin</h1>
+        <p className="muted">Perinexa has no super admin yet. This account manages every hospital and every user account. It never sees patient records.</p>
+      </header>
       <Alert type="error">{error}</Alert>
       <Field label="Full name" id="setup-name" error={fieldErrors.name}>
         <input id="setup-name" value={form.name} onChange={set('name')} maxLength={100} autoComplete="name" required autoFocus />
@@ -207,11 +229,9 @@ function FirstSuperAdminForm({ onDone }) {
       <Field label="Repeat the password" id="setup-repeat" error={fieldErrors.repeat}>
         <input id="setup-repeat" type="password" value={form.repeat} onChange={set('repeat')} autoComplete="new-password" required />
       </Field>
-      <div className="auth-actions">
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create super admin'}
-        </button>
-      </div>
+      <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={submitting}>
+        {submitting ? 'Creating…' : 'Create super admin'}
+      </button>
     </form>
   );
 }
