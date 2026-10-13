@@ -14,6 +14,11 @@ const admissionSchema = new mongoose.Schema(
     ward: { type: String, trim: true, maxlength: 60, default: '' },
     bed: { type: String, trim: true, maxlength: 30, default: '' },
     reason: { type: String, trim: true, maxlength: 300, default: '' },
+    // A bed from the hospital's list (models/Bed.js), when one was chosen; ward and bed above then hold its names.
+    // Older stays, and stays admitted without the list, have only the typed ward and bed.
+    bedId: { type: ObjectId, ref: 'Bed', default: null },
+    // Admitted at the desk (reception): the reason chosen from the short list (inpatient/beds.js REASONS)
+    reasonCode: { type: String, default: null },
     status: { type: String, enum: ['admitted', 'discharged'], default: 'admitted' },
     dischargedAt: { type: Date, default: null },
     admittedBy: { type: ObjectId, ref: 'User', required: true },
@@ -29,5 +34,7 @@ admissionSchema.index({ tenantId: 1, status: 1 });
 admissionSchema.index({ tenantId: 1, clientRequestId: 1 }, { unique: true });
 // At most one current stay per patient
 admissionSchema.index({ tenantId: 1, patientId: 1 }, { unique: true, partialFilterExpression: { status: 'admitted' }, name: 'one_current_stay' });
+// At most one current stay per bed
+admissionSchema.index({ tenantId: 1, bedId: 1 }, { unique: true, partialFilterExpression: { status: 'admitted', bedId: { $type: 'objectId' } }, name: 'one_patient_per_bed' });
 
 export const Admission = mongoose.model('Admission', admissionSchema);

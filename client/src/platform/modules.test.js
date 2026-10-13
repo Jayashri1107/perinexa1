@@ -34,6 +34,14 @@ describe('the Clinic library', () => {
   });
 });
 
+describe('Beds', () => {
+  it('the bed board is for reception, doctors, RMOs and nurses; the admin sets up beds under Hospital admin', () => {
+    for (const roles of [['receptionist'], ['doctor'], ['rmo'], ['nurse']]) expect(menu(roles), roles[0]).toContain('Beds');
+    for (const roles of [['lab'], ['pharmacist'], ['admin'], ['billing']]) expect(menu(roles), roles[0]).not.toContain('Beds');
+    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toContain('Beds');
+  });
+});
+
 describe('My settings and Hospital admin', () => {
   it('My settings shows Prescription design to prescribers and Voice words to those who dictate', async () => {
     const { accountTabs, isPrescriber } = await import('./modules.js');
@@ -47,7 +55,7 @@ describe('My settings and Hospital admin', () => {
     expect(isPrescriber([{ roles: ['admin'] }])).toBe(false);
   });
   it('Hospital admin holds Staff, Audit log and Print letterhead', () => {
-    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'ABDM']);
+    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'Beds', 'ABDM']);
     expect(moduleByKey('appointments').tabs.map((t) => t.label)).toEqual(['Day', 'Needs a time', 'OPD timings']);
     expect(moduleByKey('registers')).toBeUndefined(); // the registers were removed on 2 Oct 2026
     expect(moduleByKey('analytics').tabs.map((t) => t.label)).not.toContain('Monthly report'); // a doctors-only tab, added on the page itself
@@ -57,12 +65,12 @@ describe('My settings and Hospital admin', () => {
 
 describe('the left menu by role', () => {
   it('Analytics for doctors and hospital admins only; Appointments for reception, doctors, RMOs and nurses; Calendar for doctors, RMOs and reception; Billing for reception and admins; Pharmacy for pharmacists and admins (exact lists pin the order too)', () => {
-    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Analytics', 'Clinic library']);
+    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Lab', 'Analytics', 'Clinic library']);
     expect(menu(['admin'])).toEqual(['Today', 'Billing', 'Pharmacy', 'Analytics', 'Hospital admin']);
-    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Billing', 'Pharmacy', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
-    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Analytics', 'Clinic library']); // Analytics: only Ask your records
-    expect(menu(['nurse'])).toEqual(['Today', 'Patients', 'Appointments', 'Lab', 'Analytics', 'Clinic library']);
-    expect(menu(['receptionist'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Billing']);
+    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Lab', 'Billing', 'Pharmacy', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
+    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Lab', 'Analytics', 'Clinic library']); // Analytics: only Ask your records
+    expect(menu(['nurse'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Analytics', 'Clinic library']);
+    expect(menu(['receptionist'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Billing']);
     expect(menu(['lab'])).toEqual(['Today', 'Patients', 'Lab']);
     expect(menu(['pharmacist'])).toEqual(['Today', 'Patients', 'Pharmacy']);
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists

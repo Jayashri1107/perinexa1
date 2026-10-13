@@ -1,4 +1,4 @@
-import { Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
+import { BedDouble, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -302,8 +302,19 @@ export const HOSPITAL_ADMIN = {
     { label: 'Print letterhead', to: '/admin/settings', end: true },
     { label: 'Patient messages', to: '/admin/messages', end: true },
     { label: 'OPD timings', to: '/admin/opd-timings', end: true },
+    { label: 'Beds', to: '/admin/beds', end: true },
     { label: 'ABDM', to: '/admin/abdm', end: true },
   ],
+};
+
+// Beds (owner, 13 Oct 2026): the bed board and admitting at the desk. Same list as server/src/inpatient/beds.js.
+export const BED_ROLES = ['receptionist', 'doctor', 'rmo', 'nurse'];
+const HOSPITAL_BEDS = {
+  key: 'beds',
+  label: 'Beds',
+  icon: BedDouble,
+  to: '/beds',
+  tabs: [{ label: 'Bed board', to: '/beds', end: true }],
 };
 
 // Roles that work with patient records, and those that may register new patients.
@@ -329,6 +340,7 @@ export function hospitalModules(roles = []) {
   if (canSeePatients(roles)) modules.push(HOSPITAL_PATIENTS);
   if (canSeeAppointments(roles)) modules.push(HOSPITAL_APPOINTMENTS);
   if (canSeeCalendar(roles)) modules.push(HOSPITAL_CALENDAR);
+  if (any(roles, BED_ROLES)) modules.push(HOSPITAL_BEDS);
   if (any(roles, LAB_ROLES)) modules.push(HOSPITAL_LAB);
   if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);
   if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: roles.includes('pharmacist') ? '/pharmacy' : '/pharmacy/stock' });
@@ -362,7 +374,7 @@ export const accountTabs = (memberships = []) => {
 /** Doctors and RMOs (anywhere): their professional details print on prescriptions. */
 export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRESCRIBER_ROLES);
 
-const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_LAB, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
+const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.

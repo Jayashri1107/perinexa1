@@ -66,6 +66,8 @@ export const AUDIT_LABELS = {
   APPOINTMENT_LINKED: 'Quick booking linked to a record',
   TOKEN_GIVEN: 'Walk-in token given',
   OPD_TIMINGS_CHANGED: 'OPD timings changed',
+  BEDS_ADDED: 'Beds added',
+  BED_UPDATED: 'Bed changed',
   PATIENT_CARD_PRINTED: 'Patient card printed',
   // Billing
   BILL_VIEWED: 'Bill opened',
@@ -133,6 +135,8 @@ export const AUDIT_LABELS = {
   ADMISSION_VIEWED: 'Stay opened',
   ADMISSION_CREATED: 'Patient admitted',
   ADMISSION_UPDATED: 'Ward or bed changed',
+  ADMISSION_BED_CHANGED: 'Moved to another bed',
+  BEDS_VIEWED: 'Bed board viewed',
   PATIENT_DISCHARGED: 'Patient discharged',
   DOCUMENT_CREATED: 'Inpatient document started',
   DOCUMENT_VIEWED: 'Inpatient document opened',
@@ -315,6 +319,8 @@ export const AUDIT_TONES = {
   ADMISSION_VIEWED: 'patient',
   ADMISSION_CREATED: 'patient',
   ADMISSION_UPDATED: 'patient',
+  ADMISSION_BED_CHANGED: 'patient',
+  BEDS_VIEWED: 'patient',
   PATIENT_DISCHARGED: 'patient',
   DOCUMENT_CREATED: 'patient',
   DOCUMENT_VIEWED: 'patient',
@@ -727,6 +733,12 @@ export function describeAudit(entry) {
       return d.date ?? '';
     case 'TOKEN_GIVEN':
       return d.token ? `Token ${d.token}` : '';
+    case 'BEDS_ADDED':
+      return `${d.count ?? 0} bed${d.count === 1 ? '' : 's'}${d.ward ? ` in ${d.ward}` : ''}`;
+    case 'BED_UPDATED':
+      return d.active === false ? 'Taken out of use' : '';
+    case 'BEDS_VIEWED':
+      return `${d.occupied ?? 0} bed${d.occupied === 1 ? '' : 's'} occupied`;
     case 'OPD_TIMINGS_CHANGED':
       return `${d.days ?? 0} day${d.days === 1 ? '' : 's'} a week${d.leave ? ` · ${d.leave} leave entr${d.leave === 1 ? 'y' : 'ies'}` : ''}`;
     case 'PATIENT_VIEWED':
@@ -804,6 +816,7 @@ export function describeAudit(entry) {
     case 'ADMISSION_VIEWED':
     case 'ADMISSION_CREATED':
     case 'ADMISSION_UPDATED':
+    case 'ADMISSION_BED_CHANGED':
     case 'PATIENT_DISCHARGED':
     case 'DOCUMENT_CREATED':
     case 'DOCUMENT_VIEWED':

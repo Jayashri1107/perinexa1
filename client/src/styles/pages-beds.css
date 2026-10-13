@@ -1,0 +1,43 @@
+/* Beds (owner, 13 Oct 2026): the bed board and Hospital admin → Beds. Tokens only. */
+.beds-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.beds-page > .alert { margin: 0; }
+
+/* The three numbers at the top */
+.beds-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-3); }
+.beds-count {
+  display: flex; align-items: baseline; gap: var(--space-2); padding: var(--space-3) var(--space-4);
+  background: var(--surface); border: 1px solid var(--card-border); border-left: 4px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  color: var(--slate-600);
+}
+.beds-count.is-free { border-left-color: var(--status-stable-fg); }
+.beds-count.is-occupied { border-left-color: var(--indigo-700); }
+.beds-count-n { color: var(--ink); font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 600; }
+
+.beds-empty { display: flex; align-items: flex-start; gap: var(--space-4); }
+.beds-empty > svg.lucide { width: 32px; height: 32px; color: var(--indigo-700); }
+.beds-empty h2 { margin-bottom: var(--space-1); }
+.beds-empty p { margin: 0; }
+
+/* A ward: its name, how many beds are free, and the beds as tiles */
+.beds-ward { padding: var(--space-4); }
+.beds-ward-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
+.beds-ward-head h2 { margin: 0; }
+.beds-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
+.bed {
+  display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--space-3);
+  border: 1px solid var(--border); border-top: 4px solid var(--border); border-radius: var(--radius-md); background: var(--surface);
+}
+.bed.is-free { border-top-color: var(--status-stable-fg); }
+.bed.is-occupied { border-top-color: var(--indigo-700); background: var(--mist-50); }
+.bed.is-off { border-style: dashed; border-top-style: solid; color: var(--slate-600); }
+.bed-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.bed-name { color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); overflow-wrap: anywhere; }
+.bed-action { align-self: flex-start; }
+.bed-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+.bed-patient { color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.bed-patient:hover { color: var(--indigo-700); text-decoration: underline; }
+.bed-reason { margin-top: var(--space-1); color: var(--ink); }
+.bed-actions { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); margin-top: var(--space-1); }
+.bed-actions .btn { padding-left: 0; padding-right: 0; }
+.beds-add .form-grid { max-width: 760px; }
+@media (max-width: 480px) { .beds-grid { grid-template-columns: 1fr; } }

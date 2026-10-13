@@ -3473,6 +3473,33 @@ Never enter real patient details – the app has not been reviewed for real use 
 7. As the demo hospital admin: Settings → Print letterhead → "Second language on consent forms". The audit log
    shows "Care plan printed" and "Consent form printed" with record numbers only (never which form).
 
+## Beds and admission at the desk (owner, 13 Oct 2026 – feature freeze lifted for this by the owner)
+Built on branch `reception-admission` (after `look-header-profile`), not merged into main until the developer has read it.
+- **Hospital admin → Beds**: wards and their beds (a range like G1-G10, or names with commas). A bed is never deleted,
+  only taken out of use (not while someone is in it). The admin sees free / occupied, never who.
+- **Beds** in the left menu (reception, doctors, RMOs, nurses): each ward's beds – Free, Occupied (name, patient
+  number, doctor, since when) or Not in use – with the counts at the top. Reading it is audited with counts only.
+- **Admit here** on a free bed (reception, the patient's doctor, RMOs): find the patient, choose the reason from a short
+  list (Labour, Caesarean section – planned, Observation, Other surgery, Newborn care, Other) with an optional note,
+  and the time. The stay is the same as one started from her record: the RMO writes the admission notes, the stay's
+  bill opens with this ward's bed charge, a doctor's discharge card ends it and frees the bed. An admission slip
+  (no medical details) prints after admitting.
+- **Move** (reception, nurses, her doctor, RMOs): to another free bed. Patients admitted from their record with a typed
+  ward and bed are listed under the wards with "Move to a bed".
+- **Reason**: reception sees only a reason chosen at the desk, never on a sensitive record or the Abortion type of
+  care (owner's choice, limited as in the plan); doctors, RMOs and nurses who may see her details see it as written.
+- Not in this step: splitting the bed charge between wards after a move (the first ward's price stays, as before for a
+  changed ward); renaming a bed does not rename it on stays already open.
+
+### How to test (fake data only)
+1. As the hospital admin: Hospital admin → **Beds** → Ward "General ward", Beds "G1-G4" → Add beds. Take G4 out of use.
+2. As the receptionist: **Beds** → G1 → **Admit here** → find a fake patient → reason "Labour", note "sent from the
+   OPD" → Admit. The admission slip opens; print or close it. G1 shows her as Occupied; the counts change.
+3. Try to admit another fake patient: only free beds offer "Admit here". Use **Move** to put the first patient in G2.
+4. As her doctor: open her record → Stays: the stay shows "General ward · G2" and the reason. Billing → her stay bill
+   has the bed charge (if a bed price is in the price list).
+5. Hospital admin → Audit log: "Patient admitted", "Moved to another bed", "Bed board viewed" – ids and counts only.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

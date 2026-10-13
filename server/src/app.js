@@ -28,6 +28,7 @@ import { pharmacyStockRouter } from './routes/pharmacyStock.js';
 import { abdmPublicRouter, abdmRouter } from './routes/abdm.js';
 import { beforePushBody } from './routes/abdmFetch.js';
 import { inpatientsRouter } from './routes/inpatients.js';
+import { bedsRouter } from './routes/beds.js';
 import { labRouter } from './routes/lab.js';
 import { reminderOutboxRouter } from './routes/reminderOutbox.js';
 import { portalRouter } from './routes/portal.js';
@@ -150,6 +151,8 @@ export function createApp({
   app.use('/api/pharmacy-stock', ...inTenant, pharmacyStockRouter);
   app.use('/api/abdm', ...inTenant, abdmRouter);
   app.use('/api/inpatients', ...inTenant, inpatientsRouter);
+  // Beds and admission at the desk (routes/beds.js)
+  app.use('/api/beds', ...inTenant, bedsRouter);
   app.use('/api/lab', ...inTenant, labRouter);
   app.use('/api/reminders', ...inTenant, reminderOutboxRouter);
   app.use('/api/medicine-safety', ...inTenant, medicineSafetyRouter);

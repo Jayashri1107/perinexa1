@@ -23,6 +23,8 @@ import { TodayPage } from './pages/TodayPage.jsx';
 import { CalendarPage } from './pages/calendar/CalendarPage.jsx';
 import { AppointmentsPage, NeedsTimePage } from './pages/appointments/AppointmentsPage.jsx';
 import { OpdTimingsPage } from './pages/appointments/OpdTimingsPage.jsx';
+import { BedBoardPage } from './pages/beds/BedBoardPage.jsx';
+import { BedSetupPage } from './pages/beds/BedSetupPage.jsx';
 import { DisplayPage } from './pages/appointments/DisplayPage.jsx';
 import { PatientAppointmentsTab } from './pages/appointments/PatientAppointmentsTab.jsx';
 import { BillPage } from './pages/billing/BillPage.jsx';
@@ -87,7 +89,7 @@ import { ByDoctorPage } from './pages/analytics/ByDoctorPage.jsx';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
 import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 
 // Unknown address: the title in the title bar, then a short message and the way back.
 // Old Registers links (removed 2 Oct 2026) go to the monthly report in Analytics, keeping ?month=… so a bookmarked month still opens.
@@ -215,6 +217,9 @@ export function App() {
               </Route>
               {/* The registers were removed on 2 Oct 2026; old links go to the monthly report in Analytics. */}
               <Route path="registers/*" element={<RegistersRedirect />} />
+              <Route path="beds" element={<RequireTenantRole roles={BED_ROLES} message="The bed board is for reception, doctors, RMOs and nurses." />}>
+                <Route index element={<BedBoardPage />} />
+              </Route>
               <Route path="appointments" element={<RequireTenantRole roles={APPOINTMENT_ROLES} message="Appointments are for reception, doctors, RMOs and nurses." />}>
                 <Route index element={<AppointmentsPage />} />
                 <Route path="needs-time" element={<NeedsTimePage />} />
@@ -318,6 +323,7 @@ export function App() {
                 <Route path="settings" element={<LetterheadSettingsPage />} />
                 <Route path="messages" element={<PatientMessagesSettingsPage />} />
                 <Route path="opd-timings" element={<OpdTimingsPage admin />} />
+                <Route path="beds" element={<BedSetupPage />} />
                 <Route path="abdm" element={<AbdmSettingsPage />} />
                 <Route path="audit-log" element={<HospitalAuditLogPage />} />
                 {['security', 'access', 'sessions', 'patients'].map((c) => (
