@@ -323,3 +323,33 @@
 .pt-dates label { display: flex; flex-direction: column; gap: 2px; }
 .pt-dates input { height: var(--control-height); }
 .pt-empty { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2) var(--space-3); }
+
+/* New patient (owner, 13 Oct 2026): the type of care as cards with an icon and a line on what each is for */
+.care-type-cards { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); margin: var(--space-3) 0 0; padding: 0; }
+.care-type-card {
+  display: flex; align-items: center; gap: var(--space-4); height: 100%; padding: var(--space-4);
+  background: var(--surface); border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  color: var(--ink); text-decoration: none; transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.care-type-card:hover { transform: translateY(-2px); border-color: var(--indigo-700); box-shadow: var(--shadow-hover); color: var(--ink); }
+.care-type-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (prefers-reduced-motion: reduce) { .care-type-card:hover { transform: none; } }
+.care-type-icon { display: grid; place-items: center; flex-shrink: 0; width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
+.care-type-icon svg.lucide { width: 24px; height: 24px; }
+.care-type-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.care-type-text strong { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; }
+.care-type-text span { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.care-type-go { flex-shrink: 0; width: 20px; height: 20px; color: var(--slate-600); }
+
+/* The patient's details in small groups, each with its own heading and a line between them */
+.pf-group { padding: var(--space-4) 0; }
+.pf-group + .pf-group { border-top: 1px solid var(--border); }
+.pf-group:last-child { padding-bottom: 0; }
+.pf-group-title {
+  margin: 0 0 var(--space-3); color: var(--slate-600);
+  font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.pf-group .field { margin-bottom: var(--space-2); }
+.pf-contact-grid { grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr); }
+.pf-contact-grid textarea { min-height: var(--input-height); resize: vertical; }
+@media (max-width: 720px) { .pf-contact-grid { grid-template-columns: minmax(0, 1fr); } }

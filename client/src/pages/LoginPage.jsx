@@ -201,7 +201,7 @@ function FirstSuperAdminForm({ onDone }) {
       <Field label="Email" id="setup-email" error={fieldErrors.email}>
         <input id="setup-email" type="email" value={form.email} onChange={set('email')} maxLength={254} autoComplete="username" required />
       </Field>
-      <Field label="Password" id="setup-password" error={fieldErrors.password} hint="At least 12 characters, with at least one letter and one number." keepHint>
+      <Field label="Password" id="setup-password" error={fieldErrors.password} hint="At least 8 characters, with at least one letter and one number." keepHint>
         <input id="setup-password" type="password" value={form.password} onChange={set('password')} autoComplete="new-password" required />
       </Field>
       <Field label="Repeat the password" id="setup-repeat" error={fieldErrors.repeat}>

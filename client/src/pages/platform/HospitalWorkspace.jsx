@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { Link, Navigate, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { canEditArea } from '../../platform/modules.js';
@@ -8,7 +8,7 @@ import { AuditLogView } from '../../components/AuditLogView.jsx';
 import { formatNumber } from '../../components/DataTable.jsx';
 import { MembersPanel } from '../../components/MembersPanel.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, Field, KpiCard, StatusPill, formatDateTime, useConfirm } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill, formatDateTime, useConfirm } from '../../components/ui.jsx';
 import { STAFF_ROLE_PAGES } from '../../platform/modules.js';
 import { FullPageSpinner } from '../../auth/guards.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -17,7 +17,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 const TenantStatus = ({ active }) =>
   active ? <StatusPill tone="stable">Active</StatusPill> : <StatusPill tone="inactive">Deactivated</StatusPill>;
 
-// One hospital, with its own tabs: Overview, Staff, Activity.
+// One hospital, with two tabs: the hospital and its staff, and its activity.
 export function HospitalWorkspace() {
   const { id } = useParams();
   const location = useLocation();
@@ -108,8 +108,7 @@ export function HospitalWorkspace() {
           </>
         }
         tabs={[
-          { label: 'Overview', to: base, end: true },
-          { label: 'Staff', to: `${base}/staff`, end: true },
+          { label: 'Hospital and staff', to: base, end: true },
           { label: 'Activity', to: `${base}/activity`, end: true },
         ]}
       />
@@ -122,7 +121,7 @@ export function HospitalWorkspace() {
         </Alert>
         {tenant.admins === 0 && tenant.isActive && (
           <Alert type="warning">
-            <strong>This hospital has no admin yet.</strong> Go to <Link to={`${base}/staff`}>Staff</Link>, choose "Add person" and tick the role "Hospital admin".
+            <strong>This hospital has no admin yet.</strong> In the staff list below, choose "Add person" and tick the role "Hospital admin".
           </Alert>
         )}
         <Outlet context={{ tenant, reload }} />
@@ -131,8 +130,43 @@ export function HospitalWorkspace() {
   );
 }
 
+// One hospital on one page, as in Perinexa1 of 7 Oct (owner, 13 Oct 2026): three cards side by side – its details,
+// its staff by role, its numbers and activity – and its staff list underneath. The super admin never sees its patients.
 export function HospitalOverviewTab() {
   const { tenant, reload } = useOutletContext();
+  return (
+    <>
+      <div className="hw-cards">
+        <HospitalDetails tenant={tenant} reload={reload} />
+        <StaffByRole tenant={tenant} />
+        <section className="card hw-card">
+          <h2>Numbers and activity</h2>
+          <p className="muted">Whole months, numbers only – never a patient.</p>
+          <ul className="hw-links">
+            <li>
+              <Link to={`/platform/analytics?hospital=${tenant.id}`}>This hospital's numbers (Analytics)</Link>
+            </li>
+            <li>
+              <Link to={`/platform/hospitals/${tenant.id}/activity`}>Its activity (who did what, and when)</Link>
+            </li>
+          </ul>
+          <p className="hint help">Patient records are only visible to this hospital's staff, not to super admins.</p>
+        </section>
+      </div>
+      <div id="staff" className="hw-staff">
+        <MembersPanel
+          basePath={`/platform/tenants/${tenant.id}/members`}
+          linkToUser
+          defaultRoles={tenant.admins === 0 ? ['admin'] : ['doctor']}
+          onChanged={reload}
+        />
+      </div>
+    </>
+  );
+}
+
+// Its details: the name (changed here) and the key facts.
+function HospitalDetails({ tenant, reload }) {
   const [name, setName] = useState(tenant.name);
   const [error, setError] = useState(null);
   const [saved, setSaved] = useState(false);
@@ -155,93 +189,68 @@ export function HospitalOverviewTab() {
   };
 
   return (
-    <div className="two-col">
-      <form className="card" onSubmit={save} noValidate>
-        <h2>Hospital details</h2>
-        <Alert type="success">{saved && 'Name saved.'}</Alert>
-        <Field label="Hospital name" id="tenant-name" error={error}>
+    <form className="card hw-card" onSubmit={save} noValidate>
+      <h2>Hospital details</h2>
+      <Alert type="success">{saved && 'Name saved.'}</Alert>
+      <Field label="Hospital name" id="tenant-name" error={error}>
+        <div className="hw-name">
           <input id="tenant-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={150} />
-        </Field>
-        <button type="submit" className="btn btn-primary" disabled={busy || name.trim() === tenant.name || !name.trim()}>
-          Save name
-        </button>
-      </form>
-      <section className="card">
-        <h2>Key facts</h2>
-        <dl className="details">
-          <div>
-            <dt>Status</dt>
-            <dd>
-              <TenantStatus active={tenant.isActive} />
-            </dd>
-          </div>
-          <div>
-            <dt>Active staff</dt>
-            <dd className="tabular">{formatNumber(tenant.members)}</dd>
-          </div>
-          <div>
-            <dt>Admins</dt>
-            <dd className="tabular">{formatNumber(tenant.admins)}</dd>
-          </div>
-          <div>
-            <dt>Created</dt>
-            <dd className="tabular">{formatDateTime(tenant.createdAt)}</dd>
-          </div>
-          <div>
-            <dt>Hospital ID</dt>
-            <dd className="mono muted">{tenant.id}</dd>
-          </div>
-        </dl>
-        <p className="hint help">Patient records are only visible to this hospital's staff, not to super admins.</p>
-      </section>
-      <HospitalAtAGlance tenant={tenant} />
-    </div>
+          <button type="submit" className="btn btn-secondary" disabled={busy || name.trim() === tenant.name || !name.trim()}>
+            Save
+          </button>
+        </div>
+      </Field>
+      <dl className="hw-facts">
+        <dt>Status</dt>
+        <dd>
+          <TenantStatus active={tenant.isActive} />
+        </dd>
+        <dt>Active staff</dt>
+        <dd className="tabular">{formatNumber(tenant.members)}</dd>
+        <dt>Admins</dt>
+        <dd className="tabular">{formatNumber(tenant.admins)}</dd>
+        <dt>Created</dt>
+        <dd className="tabular">{formatDateTime(tenant.createdAt)}</dd>
+        <dt>Hospital ID</dt>
+        <dd className="mono muted">{tenant.id}</dd>
+      </dl>
+    </form>
   );
 }
 
-// Everything about one hospital on its Overview (owner, 12 Oct 2026): its staff by role – each card opens the Staff
-// tab with that role – and links to its numbers (Analytics: whole months, numbers only, never a patient) and its
-// activity. The super admin never sees its patients.
-function HospitalAtAGlance({ tenant }) {
+// Its staff by role: one row per role with the count; a row filters the staff list below to that role.
+function StaffByRole({ tenant }) {
   const { data, error } = useFetch('/platform/users/role-counts', { tenantId: tenant.id });
-  const base = `/platform/hospitals/${tenant.id}`;
+  const [, setSearchParams] = useSearchParams();
+  const show = (role) => {
+    setSearchParams({ role });
+    document.getElementById('staff')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   return (
-    <section className="card card-wide">
+    <section className="card hw-card">
       <h2>Staff by role</h2>
       <Alert type="error">{error}</Alert>
-      <div className="kpi-grid">
-        {STAFF_ROLE_PAGES.map((r) => (
-          <KpiCard
-            key={r.role}
-            to={`${base}/staff?role=${r.role}`}
-            label={r.label}
-            value={data ? formatNumber(data.counts[r.role] ?? 0) : '—'}
-            sub={data?.counts[r.role] ? 'Open the list' : 'Nobody yet'}
-          />
-        ))}
-      </div>
-      <p className="row">
-        <Link to={`/platform/analytics?hospital=${tenant.id}`} className="btn btn-secondary btn-sm">
-          This hospital's numbers (Analytics)
-        </Link>
-        <Link to={`${base}/activity`} className="btn btn-link btn-sm">
-          Its activity
-        </Link>
-      </p>
+      <ul className="hw-roles">
+        {STAFF_ROLE_PAGES.map((r) => {
+          const count = data ? (data.counts[r.role] ?? 0) : null;
+          return (
+            <li key={r.role}>
+              <button type="button" onClick={() => show(r.role)} disabled={!count}>
+                <span>{r.label}</span>
+                <strong className="tabular">{count === null ? '—' : formatNumber(count)}</strong>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
 
+// The old Staff tab's address (new hospitals open it): the staff list is on the hospital's own page now.
 export function HospitalStaffTab() {
-  const { tenant, reload } = useOutletContext();
-  return (
-    <MembersPanel
-      basePath={`/platform/tenants/${tenant.id}/members`}
-      linkToUser
-      defaultRoles={tenant.admins === 0 ? ['admin'] : ['doctor']}
-      onChanged={reload}
-    />
-  );
+  const location = useLocation();
+  return <Navigate to={{ pathname: location.pathname.replace(/\/staff\/?$/, ''), search: location.search }} replace />;
 }
 
 export function HospitalActivityTab() {

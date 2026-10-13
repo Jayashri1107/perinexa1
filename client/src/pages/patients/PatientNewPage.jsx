@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check } from 'lucide-react';
+import { Baby, Check, ChevronRight, HeartHandshake, HeartPulse, Flower2, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -10,7 +10,10 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { canRegisterPatients, patientTabs } from '../../platform/modules.js';
 import { PatientForm } from './PatientForm.jsx';
 import { PossibleMatchesDialog } from './PossibleMatchesDialog.jsx';
-import { CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, ageText } from './patientFormat.js';
+import { CARE_TYPE_HINTS, CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, ageText } from './patientFormat.js';
+
+// An icon for each type of care on the chooser
+const CARE_TYPE_ICONS = { antenatal: HeartPulse, postnatal: Users, infertility: Flower2, gynaecology: Stethoscope, abortion: HeartHandshake, newborn: Baby };
 
 // Registering a patient: the type of care is chosen from the "New patient" menu, then two pages – 1 the patient's
 // details, saved first (the patient gets a number), then 2 the clinical details, only for those who may enter
@@ -190,16 +193,27 @@ export function PatientNewPage() {
       <div className="pf-content form-page form-page-voice">
         {!allowed && <div className="card narrow">Only reception, doctors and RMOs can register patients.</div>}
         {allowed && !careType && (
-          <section className="card narrow">
-            <h2>Type of care</h2>
-            <ul className="plain-list care-type-list">
-              {NEW_PATIENT_LINKS.map((l) => (
-                <li key={l.to}>
-                  <Link to={l.to} state={booking ? { fromBooking: booking } : fromAbha ? { fromScanShare: fromAbha } : undefined}>
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
+          // Cards, each with an icon and a line on what it is for (owner, 13 Oct 2026)
+          <section aria-labelledby="care-type-title">
+            <h2 id="care-type-title">Choose the type of care</h2>
+            <ul className="care-type-cards">
+              {NEW_PATIENT_LINKS.map((l) => {
+                const Icon = CARE_TYPE_ICONS[l.type] ?? UserPlus;
+                return (
+                  <li key={l.to}>
+                    <Link to={l.to} className="care-type-card" state={booking ? { fromBooking: booking } : fromAbha ? { fromScanShare: fromAbha } : undefined}>
+                      <span className="care-type-icon" aria-hidden="true">
+                        <Icon />
+                      </span>
+                      <span className="care-type-text">
+                        <strong>{l.label}</strong>
+                        <span>{CARE_TYPE_HINTS[l.type]}</span>
+                      </span>
+                      <ChevronRight className="care-type-go" aria-hidden="true" />
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}

@@ -30,7 +30,7 @@ export const CARE_TYPE_HINTS = {
 };
 export const CARE_TYPES = Object.keys(CARE_TYPE_LABELS);
 // The "New patient" menu: registering starts by choosing the type of care.
-export const NEW_PATIENT_LINKS = CARE_TYPES.map((t) => ({ label: CARE_TYPE_LABELS[t], to: `/patients/new/${t}` }));
+export const NEW_PATIENT_LINKS = CARE_TYPES.map((t) => ({ type: t, label: CARE_TYPE_LABELS[t], to: `/patients/new/${t}` }));
 
 export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 

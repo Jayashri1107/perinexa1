@@ -61,7 +61,7 @@ export function ChangePasswordPage({ embedded = false, onClose = null }) {
       <Field label={forced ? 'Temporary (current) password' : 'Current password'} id="currentPassword" error={fieldErrors.currentPassword}>
         <input id="currentPassword" type="password" autoComplete="current-password" value={form.currentPassword} onChange={update('currentPassword')} required autoFocus={!embedded} />
       </Field>
-      <Field label="New password" id="newPassword" error={fieldErrors.newPassword} hint="At least 12 characters, with at least one letter and one number." keepHint>
+      <Field label="New password" id="newPassword" error={fieldErrors.newPassword} hint="At least 8 characters, with at least one letter and one number." keepHint>
         <input id="newPassword" type="password" autoComplete="new-password" value={form.newPassword} onChange={update('newPassword')} required />
       </Field>
       <Field label="Repeat new password" id="confirmPassword" error={fieldErrors.confirmPassword}>

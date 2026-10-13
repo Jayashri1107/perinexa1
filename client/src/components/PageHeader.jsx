@@ -66,13 +66,19 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
   const inSection = (t) => [t.activeFor ?? []].flat().some((p) => pathname === p || pathname.startsWith(`${p}/`));
   return (
     <>
-      {slot ? createPortal(heading, slot) : <div className="ph">{heading}</div>}
-      {(subtitle || help || actions || showTabs || showSubtabs) && (
+      {slot && createPortal(heading, slot)}
+      {(!slot || subtitle || help || actions || showTabs || showSubtabs) && (
         <header className="ph">
-          {(subtitle || help || actions) && (
-            <div className="ph-main">
-              {subtitle && <p className="ph-subtitle">{subtitle}</p>}
-              {help && <p className="ph-subtitle help">{help}</p>}
+          {/* One row (owner, 13 Oct 2026): the title with its subtitle on the left, the buttons on the right */}
+          {(!slot || subtitle || help || actions) && (
+            <div className={slot ? 'ph-main' : 'ph-main ph-top'}>
+              {(!slot || subtitle || help) && (
+                <div className="ph-text">
+                  {!slot && heading}
+                  {subtitle && <p className="ph-subtitle">{subtitle}</p>}
+                  {help && <p className="ph-subtitle help">{help}</p>}
+                </div>
+              )}
               {actions && <div className="ph-actions">{actions}</div>}
             </div>
           )}

@@ -91,3 +91,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--indigo-700); box
 .modal { border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); }
 .pm-card { border-radius: var(--radius-lg); }
 .pm-link:hover { background: var(--indigo-100); }
+
+/* ---------- Page header: the title (and its subtitle) on the left, the buttons on the right, in one row ---------- */
+.ph-top { align-items: center; }
+.ph-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 320px; min-width: 0; }
+.ph-text .ph-subtitle { margin: 0; }

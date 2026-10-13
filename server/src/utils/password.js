@@ -7,7 +7,7 @@ const BCRYPT_ROUNDS = process.env.NODE_ENV === 'test' ? 4 : 12;
 
 export const passwordSchema = z
   .string()
-  .min(12, 'Password must be at least 12 characters')
+  .min(8, 'Password must be at least 8 characters')
   .max(128, 'Password must be at most 128 characters')
   .regex(/[A-Za-z]/, 'Password must contain at least one letter')
   .regex(/[0-9]/, 'Password must contain at least one number');

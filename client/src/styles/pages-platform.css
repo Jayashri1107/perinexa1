@@ -50,3 +50,28 @@
 /* Users list: hospital chips wrap so the table fits 1366 px */
 .dt td.plat-access-cell { white-space: normal; min-width: 160px; max-width: 190px; }
 .dt .plat-name-pill { white-space: normal; max-width: 150px; }
+
+/* ---------- One hospital (as in Perinexa1 of 7 Oct): three cards side by side, the staff list underneath ---------- */
+.hw-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); align-items: stretch; margin-bottom: var(--space-6); }
+@media (max-width: 1100px) { .hw-cards { grid-template-columns: 1fr; } }
+.hw-card { display: flex; flex-direction: column; padding: var(--space-6); }
+.hw-card h2 { margin-bottom: var(--space-3); }
+.hw-card .field { margin-bottom: var(--space-3); }
+.hw-card .help { margin: auto 0 0; padding-top: var(--space-3); }
+.hw-name { display: flex; gap: var(--space-2); }
+.hw-name input { flex: 1; min-width: 0; }
+.hw-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: 0; }
+.hw-facts dt { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-body); }
+.hw-facts dd { margin: 0; overflow-wrap: anywhere; }
+.hw-roles, .hw-links { list-style: none; margin: 0; padding: 0; }
+.hw-roles li + li { border-top: 1px solid var(--border); }
+.hw-roles button {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--control-height);
+  padding: 0 var(--space-2); border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.hw-roles button:hover:not(:disabled) { background: var(--mist-50); color: var(--indigo-700); }
+.hw-roles button:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.hw-roles button:disabled { cursor: default; color: var(--slate-600); }
+.hw-links li { padding: var(--space-2) 0; }
+.hw-links li + li { border-top: 1px solid var(--border); }
+.hw-staff { scroll-margin-top: var(--space-4); }

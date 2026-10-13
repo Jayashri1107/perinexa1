@@ -182,3 +182,20 @@
 /* Change password in a pop-up (profile menu): the form card sits flat inside the dialog */
 .pw-dialog { width: min(480px, calc(100vw - 2 * var(--space-4))); }
 .pw-dialog .acc-card { box-shadow: none; border: 0; padding: 0; margin: 0; background: transparent; }
+
+/* My profile → Account: the photo in the middle, a camera button on the circle, the name and role under it */
+.prof-hero { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-bottom: var(--space-6); border-bottom: 1px solid var(--border); text-align: center; }
+.prof-hero p { margin: 0; }
+.prof-hero-photo { position: relative; margin-bottom: var(--space-2); }
+.prof-hero-photo .avatar { width: 120px; height: 120px; border-radius: 50%; font-size: var(--fs-display); box-shadow: 0 0 0 4px var(--surface), 0 0 0 5px var(--card-border); }
+.prof-camera {
+  position: absolute; right: 2px; bottom: 2px; display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
+  border: 3px solid var(--surface); border-radius: 50%; background: var(--indigo-700); color: var(--on-solid); cursor: pointer;
+}
+.prof-camera svg.lucide { width: 18px; height: 18px; }
+.prof-camera:hover:not(:disabled) { background: var(--indigo-600); }
+.prof-camera:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.prof-camera:disabled { background: var(--slate-300); cursor: not-allowed; }
+.prof-hero-name { color: var(--ink); font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 700; overflow-wrap: anywhere; }
+.prof-hero-role { color: var(--slate-600); font-weight: 500; }
+.prof-hero .hint { margin-top: var(--space-2); }

@@ -131,20 +131,30 @@ function AccountCard() {
 
   return (
     <section className="card prof-account" aria-label="Your account">
-      <div className="prof-photo-row">
-        <Avatar name={user.name} seed={user.email} photo={user.photo} />
-        <div className="prof-photo-actions">
-          <div className="prof-photo-buttons">
-            <button type="button" className="btn btn-primary" onClick={() => input.current?.click()} disabled={Boolean(busy)}>
-              <Camera aria-hidden="true" /> {busy === 'photo' ? 'Saving…' : 'Upload new photo'}
-            </button>
-            <button type="button" className="btn btn-secondary prof-reset" onClick={() => savePhoto(null)} disabled={!user.photo || Boolean(busy)}>
-              Reset
-            </button>
-          </div>
-          <p className="muted">Allowed JPG, PNG or WebP. Max size of 800 KB.</p>
-          <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={choose} tabIndex={-1} aria-hidden="true" />
+      {/* The photo in the middle (owner, 13 Oct 2026): the camera on the circle changes it; the name and role under it */}
+      <div className="prof-hero">
+        <div className="prof-hero-photo">
+          <Avatar name={user.name} seed={user.email} photo={user.photo} />
+          <button
+            type="button"
+            className="prof-camera"
+            onClick={() => input.current?.click()}
+            disabled={Boolean(busy)}
+            aria-label={user.photo ? 'Change your photo' : 'Add a photo'}
+            title={user.photo ? 'Change your photo' : 'Add a photo'}
+          >
+            <Camera aria-hidden="true" />
+          </button>
         </div>
+        <p className="prof-hero-name">{user.name}</p>
+        {role && <p className="prof-hero-role">{role}</p>}
+        <p className="hint">{busy === 'photo' ? 'Saving the photo…' : 'JPG, PNG or WebP, up to 800 KB. Only you see your photo.'}</p>
+        {user.photo && (
+          <button type="button" className="btn btn-link btn-sm" onClick={() => savePhoto(null)} disabled={Boolean(busy)}>
+            Remove photo
+          </button>
+        )}
+        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={choose} tabIndex={-1} aria-hidden="true" />
       </div>
 
       <form onSubmit={save} noValidate>
@@ -246,7 +256,7 @@ function PasswordCard() {
       </Alert>
       <Alert type="error">{error}</Alert>
       <div className="prof-grid">
-        {box('currentPassword', 'Current password', 'current-password', 'At least 12 characters, with at least one letter and one number.')}
+        {box('currentPassword', 'Current password', 'current-password', 'At least 8 characters, with at least one letter and one number.')}
         {box('newPassword', 'New password', 'new-password')}
         {box('confirmPassword', 'Confirm new password', 'new-password')}
       </div>

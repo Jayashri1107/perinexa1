@@ -588,76 +588,99 @@ export function PatientForm({
               <h2>{isNewborn ? 'Baby' : 'Patient'}</h2>
               {/* Abortion care: a threatened miscarriage belongs under antenatal care (the pregnancy-loss section says it too) */}
               {type === 'abortion' && !showLoss && <p className="hint">{THREATENED_HINT}</p>}
-              <div className={isEdit ? 'form-grid form-grid-fill' : 'form-grid'}>
-                {/* Editing a record: the type of care can be changed here. Registering: it was chosen from the New patient menu. */}
-                {isEdit && (
-                  <Field label="Type of care" id="careType" error={fe('careType')} hint={CARE_TYPE_HINTS[type]}>
-                    <select id="careType" value={type} onChange={setCareType}>
-                      {CARE_TYPES.map((t) => (
-                        <option key={t} value={t} disabled={(t === 'newborn') !== (patient.careType === 'newborn')}>
-                          {CARE_TYPE_LABELS[t]}
-                        </option>
-                      ))}
-                    </select>
+              {/* In small groups (owner, 13 Oct 2026): who she is, how to reach her, someone to call, the ID seen, her doctor */}
+              <div className="pf-group">
+                <h3 className="pf-group-title">Basic details</h3>
+                <div className={isEdit ? 'form-grid form-grid-fill' : 'form-grid'}>
+                  {/* Editing a record: the type of care can be changed here. Registering: it was chosen from the New patient menu. */}
+                  {isEdit && (
+                    <Field label="Type of care" id="careType" error={fe('careType')} hint={CARE_TYPE_HINTS[type]}>
+                      <select id="careType" value={type} onChange={setCareType}>
+                        {CARE_TYPES.map((t) => (
+                          <option key={t} value={t} disabled={(t === 'newborn') !== (patient.careType === 'newborn')}>
+                            {CARE_TYPE_LABELS[t]}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
+                  <Field label="Full name" id="fullName" error={fe('fullName')} hint={isNewborn ? 'e.g. "Baby of Asha Sample"' : undefined}>
+                    <input id="fullName" className={vc('fullName')} value={v.fullName} onChange={set('fullName')} maxLength={150} placeholder={isNewborn ? undefined : 'First and last name'} />
+                    {vm('fullName')}
                   </Field>
-                )}
-                <Field label="Full name" id="fullName" error={fe('fullName')} hint={isNewborn ? 'e.g. "Baby of Asha Sample"' : undefined}>
-                  <input id="fullName" className={vc('fullName')} value={v.fullName} onChange={set('fullName')} maxLength={150} />
-                  {vm('fullName')}
-                </Field>
-                {!isNewborn && (
-                  <Field label="Age (years)" id="ageYears" error={fe('ageYears')}>
-                    <input id="ageYears" className={vc('ageYears')} inputMode="numeric" value={v.ageYears} onChange={set('ageYears')} maxLength={3} />
-                    {vm('ageYears')}
-                  </Field>
-                )}
-                <Field label={isNewborn ? "Parent's phone" : 'Phone'} id="phone" error={fe('phone')}>
-                  <input id="phone" className={vc('phone')} type="tel" value={v.phone} onChange={set('phone')} maxLength={30} />
-                  {vm('phone')}
-                </Field>
+                  {!isNewborn && (
+                    <Field label="Age (years)" id="ageYears" error={fe('ageYears')}>
+                      <input id="ageYears" className={vc('ageYears')} inputMode="numeric" value={v.ageYears} onChange={set('ageYears')} maxLength={3} placeholder="e.g. 28" />
+                      {vm('ageYears')}
+                    </Field>
+                  )}
+                </div>
               </div>
-              <Field label="Address" id="address" error={fe('address')}>
-                <textarea id="address" className={vc('address')} rows={2} value={v.address} onChange={set('address')} maxLength={300} />
-                {vm('address')}
-              </Field>
-              {!isNewborn && (
-                <div className="form-grid">
-                  <Field label="Emergency contact" id="ecName" error={fe('emergencyContact.name')} hint="A relative or attendant to call">
-                    <input id="ecName" value={v.emergencyContact.name} onChange={setIn('emergencyContact', 'name')} maxLength={100} />
+              <div className="pf-group">
+                <h3 className="pf-group-title">Contact</h3>
+                <div className="form-grid pf-contact-grid">
+                  <Field label={isNewborn ? "Parent's phone" : 'Phone'} id="phone" error={fe('phone')}>
+                    <input id="phone" className={vc('phone')} type="tel" value={v.phone} onChange={set('phone')} maxLength={30} placeholder="10-digit mobile number" />
+                    {vm('phone')}
                   </Field>
-                  <Field label="Relation" id="ecRelation" error={fe('emergencyContact.relation')} hint="For example husband, mother">
-                    <input id="ecRelation" value={v.emergencyContact.relation} onChange={setIn('emergencyContact', 'relation')} maxLength={50} />
-                  </Field>
-                  <Field label="Emergency contact phone" id="ecPhone" error={fe('emergencyContact.phone')}>
-                    <input id="ecPhone" type="tel" value={v.emergencyContact.phone} onChange={setIn('emergencyContact', 'phone')} maxLength={30} />
-                  </Field>
-                  <Field label="ID proof seen" id="idKind" error={fe('idProof.kind')}>
-                    <select id="idKind" value={v.idProof.kind} onChange={setIn('idProof', 'kind')}>
-                      <option value="">None noted</option>
-                      {ID_PROOF_OPTIONS.map(([k, label]) => (
-                        <option key={k} value={k}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Last 4 of the ID number" id="idLast4" error={fe('idProof.last4')} hint="Only the last 4 – never the whole number">
-                    <input id="idLast4" value={v.idProof.last4} onChange={setIn('idProof', 'last4')} maxLength={4} autoComplete="off" />
+                  <Field label="Address" id="address" error={fe('address')}>
+                    <textarea id="address" className={vc('address')} rows={2} value={v.address} onChange={set('address')} maxLength={300} placeholder="House, street, village or town" />
+                    {vm('address')}
                   </Field>
                 </div>
+              </div>
+              {!isNewborn && (
+                <div className="pf-group">
+                  <h3 className="pf-group-title">Emergency contact</h3>
+                  <div className="form-grid">
+                    <Field label="Contact name" id="ecName" error={fe('emergencyContact.name')} hint="A relative or attendant to call">
+                      <input id="ecName" value={v.emergencyContact.name} onChange={setIn('emergencyContact', 'name')} maxLength={100} />
+                    </Field>
+                    <Field label="Relation" id="ecRelation" error={fe('emergencyContact.relation')} hint="For example husband, mother">
+                      <input id="ecRelation" value={v.emergencyContact.relation} onChange={setIn('emergencyContact', 'relation')} maxLength={50} />
+                    </Field>
+                    <Field label="Contact phone" id="ecPhone" error={fe('emergencyContact.phone')}>
+                      <input id="ecPhone" type="tel" value={v.emergencyContact.phone} onChange={setIn('emergencyContact', 'phone')} maxLength={30} />
+                    </Field>
+                  </div>
+                </div>
               )}
-              {!isEdit && (
-                <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={doctorHint}>
-                  <select id="assignedDoctor" value={v.assignedDoctor} onChange={set('assignedDoctor')}>
-                    <option value="">Not assigned yet</option>
-                    {(doctors.data?.doctors ?? []).map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                        {d.qualification ? ` (${d.qualification})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+              {(!isNewborn || !isEdit) && (
+                <div className="pf-group">
+                  <h3 className="pf-group-title">{isNewborn ? 'Doctor' : isEdit ? 'ID proof' : 'ID proof and doctor'}</h3>
+                  <div className="form-grid">
+                    {!isNewborn && (
+                      <>
+                        <Field label="ID proof seen" id="idKind" error={fe('idProof.kind')}>
+                          <select id="idKind" value={v.idProof.kind} onChange={setIn('idProof', 'kind')}>
+                            <option value="">None noted</option>
+                            {ID_PROOF_OPTIONS.map(([k, label]) => (
+                              <option key={k} value={k}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        <Field label="Last 4 of the ID number" id="idLast4" error={fe('idProof.last4')} hint="Only the last 4 – never the whole number">
+                          <input id="idLast4" value={v.idProof.last4} onChange={setIn('idProof', 'last4')} maxLength={4} autoComplete="off" />
+                        </Field>
+                      </>
+                    )}
+                    {!isEdit && (
+                      <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={doctorHint}>
+                        <select id="assignedDoctor" value={v.assignedDoctor} onChange={set('assignedDoctor')}>
+                          <option value="">Not assigned yet</option>
+                          {(doctors.data?.doctors ?? []).map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.name}
+                              {d.qualification ? ` (${d.qualification})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
+                  </div>
+                </div>
               )}
             </fieldset>
           )}
