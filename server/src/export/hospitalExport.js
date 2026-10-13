@@ -37,6 +37,7 @@ import { AbdmConsent } from '../models/AbdmConsent.js';
 import { AbdmFetchRequest } from '../models/AbdmFetchRequest.js';
 import { AbdmTransfer } from '../models/AbdmTransfer.js';
 import { Admission } from '../models/Admission.js';
+import { Bed } from '../models/Bed.js';
 import { Appointment } from '../models/Appointment.js';
 import { Arrival } from '../models/Arrival.js';
 import { AuditLog } from '../models/AuditLog.js';
@@ -123,6 +124,7 @@ export const KINDS = [
   { file: 'settings-red-flag-rules.json', model: RedFlagRuleSet, what: 'Settings: the red flag rules.' },
   { file: 'settings-medicine-safety.json', model: MedicineSafetyList, what: 'Settings: the medicine safety list (pregnancy and breastfeeding warnings).' },
   { file: 'settings-opd-timings.json', model: OpdSchedule, what: 'Settings: each doctor\'s OPD timings and days on leave.' },
+  { file: 'settings-beds.json', model: Bed, what: 'Settings: the wards and their beds (in use or not).' },
 ];
 
 /** Written field by field (not from KINDS): the hospital itself, its staff and the list of stored files. */
