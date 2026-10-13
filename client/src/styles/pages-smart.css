@@ -227,3 +227,19 @@
 
 /* Reception's quick actions under the number cards (owner, 13 Oct 2026) */
 .td-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* The billing department's Today: today's bills in a compact table */
+.bt-recent { padding: var(--space-4) var(--space-6); }
+.bt-recent-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+.bt-recent-head h2 { margin: 0; }
+.bt-table-wrap { overflow-x: auto; }
+.bt-table { width: 100%; border-collapse: collapse; }
+.bt-table th {
+  padding: var(--space-2) var(--space-3); background: var(--mist-50); color: var(--slate-600); text-align: left; white-space: nowrap;
+  font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.bt-table td { padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); vertical-align: middle; }
+.bt-table .num { text-align: right; white-space: nowrap; }
+.bt-table tbody tr { cursor: pointer; }
+.bt-table tbody tr:hover td { background: var(--mist-50); }
+.bt-sub { display: block; font-size: var(--fs-label); line-height: var(--lh-label); }

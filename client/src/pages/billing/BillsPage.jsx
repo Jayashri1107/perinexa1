@@ -73,7 +73,7 @@ export function BillsPage() {
   const search = useDebounced(text.trim(), 300);
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date') : undefined;
   const list = useFetch('/billing/bills', search.length >= 2 ? { search } : { date });
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(() => new URLSearchParams(window.location.search).get('new') === '1'); // ?new=1: from Today's "New bill"
   const day = list.data?.date ?? date;
   const today = list.data?.today;
   const go = (d) => setParams(d && d !== today ? { date: d } : {}, { replace: true });
