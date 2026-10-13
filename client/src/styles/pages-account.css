@@ -156,3 +156,25 @@
   .prof-card-head { flex-wrap: wrap; }
   .prof-card-action { margin-left: 0; }
 }
+
+/* My profile → Account, Materio-style (owner, 13 Oct 2026): the square photo with its buttons, then the details as
+   outlined fields in two columns, Save changes / Reset below */
+.prof-account { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-6); }
+.prof-account > form { display: flex; flex-direction: column; gap: var(--space-4); }
+.prof-account > form > .alert { margin: 0; }
+.prof-photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6); }
+.prof-photo-row .avatar { width: 120px; height: 120px; border-radius: var(--radius-lg); font-size: var(--fs-display); box-shadow: none; }
+.prof-photo-actions { display: flex; flex-direction: column; gap: var(--space-3); }
+.prof-photo-actions p { margin: 0; }
+.prof-photo-buttons { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.prof-reset { border-color: var(--status-high-fg); color: var(--status-high-fg); }
+.prof-reset:hover:not(:disabled) { background: var(--status-high-bg); color: var(--status-high-fg); }
+.prof-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-6); }
+.prof-form-grid .field { margin-bottom: var(--space-2); }
+.prof-form-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+@media (max-width: 720px) {
+  .prof-account { padding: var(--space-4); }
+  .prof-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .prof-photo-row { gap: var(--space-4); }
+  .prof-photo-row .avatar { width: 96px; height: 96px; }
+}

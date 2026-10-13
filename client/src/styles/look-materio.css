@@ -1,0 +1,46 @@
+/*
+ * The Materio look (owner, 13 Oct 2026 – "change the UI as in the photo"), in Perinexa's own colours and fonts:
+ *  - form fields with the label sitting on the field's border (outlined fields);
+ *  - page tabs as an underline instead of pills;
+ *  - softer cards.
+ * Loaded after the other screen styles so it applies everywhere; tokens only. Print styles are untouched.
+ */
+
+/* ---------- Outlined fields: the label on the border ----------
+   Only a field whose label is followed directly by a box (input, select, textarea, or the password box with its eye):
+   fields holding choices, checkboxes or several controls keep the label above. */
+.field:has(> label + input:not([type='checkbox']):not([type='radio']):not([type='file']), > label + select, > label + textarea, > label + .prof-pw) {
+  --field-fill: var(--surface);
+  position: relative; padding-top: 9px;
+}
+.field:has(> label + input[readonly], > label + input:disabled, > label + select:disabled, > label + textarea:disabled) { --field-fill: var(--mist-50); }
+.field:has(> label + input:not([type='checkbox']):not([type='radio']):not([type='file']), > label + select, > label + textarea, > label + .prof-pw) > label {
+  position: absolute; top: 0; left: 10px; z-index: 1; max-width: calc(100% - 20px); margin: 0; padding: 0 5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  /* the card above the border, the field's own fill below it */
+  background: linear-gradient(to bottom, var(--surface) 50%, var(--field-fill) 50%);
+  color: var(--slate-600); font-size: var(--fs-caption); line-height: 18px; font-weight: 500; pointer-events: none;
+}
+.field:focus-within > label { color: var(--teal-700); }
+.field.has-error > label { color: var(--status-high-fg); }
+input, select, textarea { border-radius: var(--radius-md); border-color: var(--slate-300); }
+input:hover:not(:disabled):not([readonly]):not(:focus), select:hover:not(:disabled):not(:focus), textarea:hover:not(:disabled):not(:focus) { border-color: var(--slate-600); }
+input:focus, select:focus, textarea:focus { border-color: var(--teal-700); box-shadow: 0 0 0 1px var(--teal-700); }
+.field.has-error input, .field.has-error select, .field.has-error textarea { border-color: var(--status-high-fg); }
+
+/* ---------- Page tabs: an underline, with the chosen tab in Perinexa Indigo ---------- */
+.ph-tabs.segmented, .prof-tabs {
+  display: flex; gap: var(--space-1) var(--space-4); padding: 0; background: none; border: 0; border-bottom: 1px solid var(--border);
+  border-radius: 0; box-shadow: none;
+}
+.ph-tabs.segmented a, .ph-tabs.segmented button, .prof-tabs > button, .prof-tabs > a {
+  flex: 0 0 auto; min-height: var(--control-height); margin-bottom: -1px; padding: 0 var(--space-3);
+  border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--slate-600); font-weight: 500;
+}
+.ph-tabs.segmented a:hover, .ph-tabs.segmented button:hover, .prof-tabs > button:hover, .prof-tabs > a:hover { background: var(--mist-50); color: var(--indigo-700); }
+.ph-tabs.segmented a.active, .ph-tabs.segmented button[aria-pressed='true'], .prof-tabs > button.active {
+  background: none; color: var(--indigo-700); border-bottom-color: var(--indigo-700);
+}
+
+/* ---------- Softer cards ---------- */
+.card, .panel { border-radius: var(--radius-lg); }

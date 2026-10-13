@@ -3588,6 +3588,18 @@ Branch `patients-quick-actions` (after `profile-and-switch`).
 2. More filters → Registered from today: only today's registrations.
 3. New patient → fill in a fake patient → **Save and register another**: the confirmation shows above an empty form.
 
+## The Materio look (owner, 13 Oct 2026)
+Branch `materio-look` (after `patients-quick-actions`). The look of the Materio admin template, in Perinexa's own
+colours and fonts – no new library (`client/src/styles/look-materio.css`, loaded after the other screen styles):
+- **Outlined fields**: the label sits on the field's border (on every form where a label is followed by one box);
+  fields with choices or checkboxes keep the label above.
+- **Underline tabs** on every page instead of pills (the chosen tab in Perinexa Indigo).
+- **My profile → Account** as in Materio: the photo with **Upload new photo** and **Reset** ("Allowed JPG, PNG or WebP.
+  Max size of 800 KB"), then the details in two columns (name, email, phone, Employee ID, role, hospital, department,
+  join date) with **Save changes** and **Reset**. Security, Appearance and Accessibility are the other tabs.
+- Note: this page has two filled buttons (Upload new photo, Save changes), as in the owner's picture – an exception
+  to "one primary button per screen" (docs/BRAND.md).
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.
