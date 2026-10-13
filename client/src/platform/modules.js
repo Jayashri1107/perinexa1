@@ -151,6 +151,7 @@ const HOSPITAL_APPOINTMENTS = {
   to: '/appointments',
   tabs: [
     { label: 'Day', to: '/appointments', end: true },
+    { label: 'Month', to: '/appointments/month', end: true },
     { label: 'Needs a time', to: '/appointments/needs-time', end: true },
     { label: 'OPD timings', to: '/appointments/timings', end: true },
   ],

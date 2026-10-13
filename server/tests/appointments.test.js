@@ -554,3 +554,38 @@ describe('the consultation fee taken when booking', () => {
     expect((await takeFee('reception', quick.id)).body.error.code).toBe('NOT_REGISTERED');
   });
 });
+
+describe("a doctor's month (the slot calendar, 13 Oct 2026)", () => {
+  const month = async (who, doctor, m) => (await as(who)).get(`/api/appointments/month?doctorId=${id(doctor)}&month=${m}`);
+
+  it('each day: the sessions with free and taken slots, leave days, and counts – never a name', async () => {
+    await setWeek('drA', [{ from: '2026-10-06', to: '2026-10-06', note: 'Conference' }]);
+    const p = await register('Month Mother');
+    const q = await register('Second Month Mother');
+    expect((await book('reception', { doctorId: id('drA'), date: '2026-10-05', start: '10:00', patientId: p.id })).status).toBe(201);
+    const second = await book('reception', { doctorId: id('drA'), date: '2026-10-05', start: '10:30', patientId: q.id });
+    expect(second.status).toBe(201);
+    expect((await (await as('reception')).post(`/api/appointments/${second.body.appointment.id}/cancel`).send({ reason: 'patient_asked' })).status).toBe(200);
+
+    const res = await month('reception', 'drA', '2026-10');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ month: '2026-10', hasTimings: true, slotMinutes: 10 });
+    expect(res.body.days).toHaveLength(31);
+    const oct5 = res.body.days.find((d) => d.date === '2026-10-05'); // a Monday
+    expect(oct5.sessions).toEqual([
+      { from: '10:00', to: '13:00', slots: 18, taken: 1 },
+      { from: '17:00', to: '20:00', slots: 18, taken: 0 },
+    ]);
+    expect(oct5.counts).toMatchObject({ booked: 1, cancelled: 1, seen: 0 });
+    expect(res.body.days.find((d) => d.date === '2026-10-06')).toMatchObject({ leave: true, sessions: [] });
+    expect(res.body.days.find((d) => d.date === '2026-10-04').sessions).toEqual([]); // Sunday: no OPD
+    expect(JSON.stringify(res.body.days)).not.toContain('Month Mother');
+  });
+
+  it('for hospital staff only; a month must be YYYY-MM', async () => {
+    await setWeek('drA');
+    expect((await month('lab', 'drA', '2026-10')).status).toBe(403);
+    expect((await month('reception', 'drA', '2026-13')).status).toBe(400);
+    expect((await month('nurse', 'drA', '2026-10')).status).toBe(200);
+  });
+});

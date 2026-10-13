@@ -56,7 +56,7 @@ describe('My settings and Hospital admin', () => {
   });
   it('Hospital admin holds Staff, Audit log and Print letterhead', () => {
     expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'Beds', 'ABDM']);
-    expect(moduleByKey('appointments').tabs.map((t) => t.label)).toEqual(['Day', 'Needs a time', 'OPD timings']);
+    expect(moduleByKey('appointments').tabs.map((t) => t.label)).toEqual(['Day', 'Month', 'Needs a time', 'OPD timings']);
     expect(moduleByKey('registers')).toBeUndefined(); // the registers were removed on 2 Oct 2026
     expect(moduleByKey('analytics').tabs.map((t) => t.label)).not.toContain('Monthly report'); // a doctors-only tab, added on the page itself
     expect(moduleByKey('lab').label).toBe('Lab');

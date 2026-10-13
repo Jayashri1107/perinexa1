@@ -23,6 +23,7 @@ import { TodayPage } from './pages/TodayPage.jsx';
 import { CalendarPage } from './pages/calendar/CalendarPage.jsx';
 import { AppointmentsPage, NeedsTimePage } from './pages/appointments/AppointmentsPage.jsx';
 import { OpdTimingsPage } from './pages/appointments/OpdTimingsPage.jsx';
+import { AppointmentsMonthPage } from './pages/appointments/AppointmentsMonthPage.jsx';
 import { BedBoardPage } from './pages/beds/BedBoardPage.jsx';
 import { BedSetupPage } from './pages/beds/BedSetupPage.jsx';
 import { DisplayPage } from './pages/appointments/DisplayPage.jsx';
@@ -222,6 +223,7 @@ export function App() {
               </Route>
               <Route path="appointments" element={<RequireTenantRole roles={APPOINTMENT_ROLES} message="Appointments are for reception, doctors, RMOs and nurses." />}>
                 <Route index element={<AppointmentsPage />} />
+                <Route path="month" element={<AppointmentsMonthPage />} />
                 <Route path="needs-time" element={<NeedsTimePage />} />
                 <Route path="timings" element={<OpdTimingsPage />} />
               </Route>

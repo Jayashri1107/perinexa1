@@ -3517,6 +3517,20 @@ Branch `reception-today-cards` (after `reception-admission`). For logins with th
 2. Mark a fake patient with an unpaid bill as arrived: she appears under "Payments to collect"; take the payment on
    her bill and come back – she is gone and "Collected today" has gone up.
 
+## Appointments → Month: the slot calendar (owner, 13 Oct 2026)
+Branch `appointments-month` (after `reception-today-cards`). A new **Month** tab in Appointments (reception, doctors,
+RMOs, nurses): one doctor's month, Sunday first. Each day shows the doctor's OPD sessions as chips – "10:00–13:00 · 13
+free" in teal, or "Full" in grey – leave days, and a line like "2 booked · 1 seen · 1 cancelled". Click a day: on the
+left, that day's sessions (taken/total) and its bookings with their status, and "Open this day to book" (the Day tab,
+where booking, moving and cancelling already work). The month has counts only (`GET /api/appointments/month`); names
+appear only for the chosen day, from the same data as the Day tab.
+
+### How to test (fake data only)
+1. A doctor sets OPD timings (Appointments → OPD timings) with a leave day this month.
+2. As the receptionist: Appointments → **Month** → choose that doctor: weekdays show their sessions with free slots;
+   the leave day shows "Leave". Book two fake patients on one day (Day tab) and cancel one: the month shows
+   "1 booked · 1 cancelled" and one slot fewer free. Click the day: both are listed on the left.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

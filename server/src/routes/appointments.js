@@ -11,6 +11,7 @@ import {
   linkPatient,
   moveSlot,
   placeWaitingNextVisits,
+  statesFor,
   statusOf,
   viewsOf,
 } from '../appointments/appointmentService.js';
@@ -34,6 +35,8 @@ import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
 //  - GET  /api/appointments/timings/:doctorId  a doctor's OPD timings and leave; PUT changes them (the doctor
 //                                              themself, or a hospital admin)
 //  - GET  /api/appointments/day                one doctor's day: the slots, who is booked, the walk-in tokens
+//  - GET  /api/appointments/month              one doctor's month: each day's sessions with free / taken slots, and
+//                                              how many were booked, seen and cancelled (counts only, no names)
 //  - GET  /api/appointments/needs-time         next visits the app could not place – reception gives them a time
 //  - GET  /api/appointments/queue              today's waiting list of each doctor, in the order to call them
 //  - GET  /api/appointments/patient/:patientId a patient's appointments (her record's Appointments tab)
@@ -181,6 +184,44 @@ appointmentsRouter.get('/day', async (req, res) => {
     slotMinutes: SLOT_MINUTES,
     lengths: Object.fromEntries(VISIT_TYPES.map((t) => [t, lengthFor(schedule, t)])),
   });
+});
+
+// ---------- A doctor's month (owner, 13 Oct 2026: the slot calendar) ----------
+
+const monthQuery = z.object({ doctorId: objectId, month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Month as YYYY-MM') }).strict();
+
+appointmentsRouter.get('/month', async (req, res) => {
+  if (!hasRole(req.membership, ...QUEUE_ROLES)) throw forbidden('Appointments are for hospital staff.');
+  const q = parse(monthQuery, req.query);
+  const doctor = await hospitalDoctor(req.tenantId, q.doctorId);
+  const [y, m] = q.month.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const next = new Date(Date.UTC(y, m, 1));
+  const today = hospitalToday(req.now);
+  const schedule = await OpdSchedule.findOne({ tenantId: req.tenantId, doctorId: q.doctorId }).lean();
+  const appts = await Appointment.find({ tenantId: req.tenantId, doctorId: q.doctorId, on: { $gte: first, $lt: next } }, { on: 1, start: 1, minutes: 1, kind: 1, status: 1, patientId: 1 }).lean();
+  const states = await statesFor(req.tenantId, appts.filter((a) => a.status === 'booked'));
+  const days = [];
+  for (let d = first; d < next; d = new Date(d.getTime() + 86400000)) {
+    const key = isoDay(d);
+    const mine = appts.filter((a) => isoDay(a.on) === key);
+    const booked = mine.filter((a) => a.status === 'booked');
+    const taken = new Set(booked.filter((a) => a.kind === 'slot' && a.start).flatMap((a) => coveredStarts(a.start, a.minutes ?? SLOT_MINUTES)));
+    const onLeave = schedule ? leaveOn(schedule, d) : null;
+    const sessions = onLeave || !schedule ? [] : sessionsOn(schedule, d);
+    const count = (status) => booked.filter((a) => statusOf(a, a.patientId ? states.get(`${a.patientId}:${key}`) : null, today) === status).length;
+    days.push({
+      date: key,
+      past: d < today,
+      leave: Boolean(onLeave),
+      sessions: sessions.map((s) => {
+        const starts = slotStarts([s]);
+        return { from: s.from, to: s.to, slots: starts.length, taken: starts.filter((t) => taken.has(t)).length };
+      }),
+      counts: { booked: count('booked') + count('arrived'), seen: count('seen'), noShow: count('no_show'), cancelled: mine.filter((a) => a.status === 'cancelled').length, tokens: booked.filter((a) => a.kind === 'token').length },
+    });
+  }
+  res.json({ doctor, month: q.month, today: isoDay(today), hasTimings: Boolean(schedule?.week?.some((w) => w.sessions?.length)), slotMinutes: SLOT_MINUTES, days });
 });
 
 // ---------- Needs a time ----------

@@ -14,6 +14,7 @@ import { NEEDS_TIME_LOOK, STATUS_LOOK, VISIT_TYPE_LABELS, addDaysIso, dayLabel, 
 
 export const appointmentTabs = (canBook) => [
   { label: 'Day', to: '/appointments', end: true },
+  { label: 'Month', to: '/appointments/month', end: true },
   { label: 'Needs a time', to: '/appointments/needs-time', end: true },
   ...(canBook !== false ? [{ label: 'OPD timings', to: '/appointments/timings', end: true }] : []),
 ];
