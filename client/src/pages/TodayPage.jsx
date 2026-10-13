@@ -9,10 +9,10 @@ import { PageHeader } from '../components/PageHeader.jsx';
 import { Alert, KpiCard, StatusPill, formatDate, formatDateTime, formatTime, hasRole } from '../components/ui.jsx';
 import { useFetch } from '../hooks/useFetch.js';
 import { CARE_PLAN_ROLES, canBookAppointments, canRegisterPatients, canSeeAppointments, canSeeCalendar } from '../platform/modules.js';
-import { PharmacyTodayNotice } from './pharmacy/pharmacyUi.jsx';
 import { rupees } from './billing/billingFormat.js';
 import { ScanShareSection } from './abdm/ScanShare.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
+import { PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
 import { AiBriefCard } from './ai/AiBriefCard.jsx';
 import { useLibraryDrafts } from './library/ApprovalsPage.jsx';
@@ -344,7 +344,6 @@ export function TodayPage() {
           </Alert>
         )}
         {canBookAppointments(roles) && <NeedsTimeNotice />}
-        {roles.includes('pharmacist') && <PharmacyTodayNotice />}
         {canBrief && (
           <AiBriefCard
             endpoint="/ai/brief/today"
@@ -361,6 +360,7 @@ export function TodayPage() {
             <div className="kpi-grid">{tiles}</div>
           </section>
         )}
+        {roles.includes('pharmacist') && <PharmacyToday />}
         {isBillingDesk && <BillingToday />}
         {isReception && (
           <nav className="td-quick" aria-label="Quick actions">

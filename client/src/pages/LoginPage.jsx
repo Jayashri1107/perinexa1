@@ -6,6 +6,7 @@ import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { api } from '../api.js';
 import { LOGIN_EMAIL_KEY, useAuth } from '../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../auth/guards.jsx';
+import { PasswordInput } from '../components/PasswordInput.jsx';
 import { Alert, Field } from '../components/ui.jsx';
 
 const REASONS = {
@@ -110,7 +111,7 @@ export function LoginPage() {
             <input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus={!email} />
           </Field>
           <Field label="Password" id="password" error={fieldErrors.password}>
-            <input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus={Boolean(email)} />
+            <PasswordInput id="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus={Boolean(email)} />
           </Field>
           <label className="check auth-remember" htmlFor="remember-email">
             <input id="remember-email" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
@@ -224,10 +225,10 @@ function FirstSuperAdminForm({ onDone }) {
         <input id="setup-email" type="email" value={form.email} onChange={set('email')} maxLength={254} autoComplete="username" required />
       </Field>
       <Field label="Password" id="setup-password" error={fieldErrors.password} hint="At least 8 characters, with at least one letter and one number." keepHint>
-        <input id="setup-password" type="password" value={form.password} onChange={set('password')} autoComplete="new-password" required />
+        <PasswordInput id="setup-password" value={form.password} onChange={set('password')} autoComplete="new-password" required />
       </Field>
       <Field label="Repeat the password" id="setup-repeat" error={fieldErrors.repeat}>
-        <input id="setup-repeat" type="password" value={form.repeat} onChange={set('repeat')} autoComplete="new-password" required />
+        <PasswordInput id="setup-repeat" value={form.repeat} onChange={set('repeat')} autoComplete="new-password" required />
       </Field>
       <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={submitting}>
         {submitting ? 'Creating…' : 'Create super admin'}

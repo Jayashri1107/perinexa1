@@ -10,6 +10,7 @@ import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, 
 import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
 import { PatientSearch } from './PatientSearch.jsx';
 import { IdleWarning } from './Layout.jsx';
+import { PasswordInput } from './PasswordInput.jsx';
 import { Alert, Avatar, Field, rolesLabel, useDialogFocus } from './ui.jsx';
 
 // The new-patient form (before anything is saved): /patients/new or /patients/new/<type of care>
@@ -414,7 +415,7 @@ function SwitchAccountDialog({ email, onClose }) {
           </Field>
         )}
         <Field label="Password of your doctor account" id="switch-password">
-          <input id="switch-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus={Boolean(email)} />
+          <PasswordInput id="switch-password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus={Boolean(email)} />
         </Field>
         <div className="row">
           <button type="submit" className="btn btn-primary" disabled={!password || (!email && !firstEmail.trim()) || busy}>

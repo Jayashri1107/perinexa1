@@ -155,3 +155,4 @@ input:focus, select:focus, textarea:focus { border-color: var(--indigo-700); box
   .auth1-main { background: linear-gradient(180deg, var(--indigo-100), var(--mist-100) 40%); }
 }
 @media (max-width: 480px) { .auth1-panel { padding: 28px 20px; } }
+.auth1-panel .pw-box input { padding-right: 48px; }

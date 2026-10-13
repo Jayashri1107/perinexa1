@@ -435,3 +435,14 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .advanced-fields summary { cursor: pointer; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
 .advanced-fields-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-3) var(--space-4); margin-top: var(--space-2); }
 @media (max-width: 719px) { .advanced-fields-body { grid-template-columns: minmax(0, 1fr); } }
+
+/* A password box with an eye button that shows or hides what was typed */
+.pw-box { position: relative; display: block; }
+.pw-box input { width: 100%; padding-right: 48px; }
+.pw-eye {
+  position: absolute; right: 2px; top: 50%; transform: translateY(-50%); display: grid; place-items: center;
+  width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--radius-sm); background: none; color: var(--slate-600); cursor: pointer;
+}
+.pw-eye:hover { color: var(--indigo-700); background: var(--mist-50); }
+.pw-eye:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pw-eye svg.lucide { width: 18px; height: 18px; }

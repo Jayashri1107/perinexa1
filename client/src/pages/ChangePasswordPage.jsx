@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
+import { PasswordInput } from '../components/PasswordInput.jsx';
 import { Alert, Field } from '../components/ui.jsx';
 
 // Change password. Shown on its own at /change-password (first login with a temporary password, so it
@@ -59,13 +60,13 @@ export function ChangePasswordPage({ embedded = false, onClose = null }) {
       <Alert type="success">{success}</Alert>
       <Alert type="error">{error}</Alert>
       <Field label={forced ? 'Temporary (current) password' : 'Current password'} id="currentPassword" error={fieldErrors.currentPassword}>
-        <input id="currentPassword" type="password" autoComplete="current-password" value={form.currentPassword} onChange={update('currentPassword')} required autoFocus={!embedded} />
+        <PasswordInput id="currentPassword" autoComplete="current-password" value={form.currentPassword} onChange={update('currentPassword')} required autoFocus={!embedded} />
       </Field>
       <Field label="New password" id="newPassword" error={fieldErrors.newPassword} hint="At least 8 characters, with at least one letter and one number." keepHint>
-        <input id="newPassword" type="password" autoComplete="new-password" value={form.newPassword} onChange={update('newPassword')} required />
+        <PasswordInput id="newPassword" autoComplete="new-password" value={form.newPassword} onChange={update('newPassword')} required />
       </Field>
       <Field label="Repeat new password" id="confirmPassword" error={fieldErrors.confirmPassword}>
-        <input id="confirmPassword" type="password" autoComplete="new-password" value={form.confirmPassword} onChange={update('confirmPassword')} required />
+        <PasswordInput id="confirmPassword" autoComplete="new-password" value={form.confirmPassword} onChange={update('confirmPassword')} required />
       </Field>
       <div className="acc-actions">
         {success && onClose ? (

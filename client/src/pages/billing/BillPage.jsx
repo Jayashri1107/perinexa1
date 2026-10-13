@@ -60,6 +60,14 @@ function AddItemDialog({ bill, onClose, onDone }) {
           </select>
         </Field>
       </div>
+      {/* Medicines come from the pharmacy stock (owner, 13 Oct 2026): sold there, they come onto this bill by themselves */}
+      {(groupFilter === 'medicine' || item?.group === 'medicine') && (
+        <Alert type="info">
+          Medicines from the hospital pharmacy come onto this bill by themselves: the pharmacist scans or finds them in Pharmacy → Sell (or Issue to ward
+          for an admitted patient), where the stock, batch and expiry are checked, and the pharmacy invoice is added here. Use this item only for a
+          medicine that did not come from the pharmacy – it does not take anything from the stock.
+        </Alert>
+      )}
       <div className="form-grid">
         <Field label="Quantity" id="bill-add-qty">
           <input id="bill-add-qty" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />
