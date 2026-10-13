@@ -38,11 +38,11 @@ describe('My settings and Hospital admin', () => {
   it('My settings shows Prescription design to prescribers and Voice words to those who dictate', async () => {
     const { accountTabs, isPrescriber } = await import('./modules.js');
     const tabs = (...roleSets) => accountTabs(roleSets.map((roles) => ({ roles }))).map((t) => t.label);
-    expect(tabs(['doctor'])).toEqual(['My settings', 'Prescription design', 'Voice words']);
-    expect(tabs(['nurse'])).toEqual(['My settings', 'Voice words']);
-    expect(tabs(['receptionist'])).toEqual(['My settings', 'Voice words']);
-    expect(tabs(['lab'])).toEqual(['My settings']);
-    expect(tabs()).toEqual(['My settings']); // super admin
+    expect(tabs(['doctor'])).toEqual(['Profile', 'Prescription design', 'Voice words']);
+    expect(tabs(['nurse'])).toEqual(['Profile', 'Voice words']);
+    expect(tabs(['receptionist'])).toEqual(['Profile', 'Voice words']);
+    expect(tabs(['lab'])).toEqual(['Profile']);
+    expect(tabs()).toEqual(['Profile']); // super admin
     expect(tabs(['nurse'], ['rmo'])).toContain('Prescription design'); // an RMO in another hospital
     expect(isPrescriber([{ roles: ['admin'] }])).toBe(false);
   });

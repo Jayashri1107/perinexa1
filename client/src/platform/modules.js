@@ -347,7 +347,7 @@ export const ACCOUNT_MODULE = {
   to: '/account',
   tabs: [
     // Password, professional details (doctors and RMOs) and appearance, on one page
-    { label: 'My settings', to: '/account', end: true },
+    { label: 'Profile', to: '/account', end: true },
     { label: 'Prescription design', to: '/account/prescription-design', end: true, roles: PRESCRIBER_ROLES },
     { label: 'Voice words', to: '/account/voice-words', end: true, roles: ['doctor', 'rmo', 'nurse', 'receptionist'] },
   ],

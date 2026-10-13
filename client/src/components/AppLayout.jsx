@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Menu, TriangleAlert, UserCog } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Menu, UserCog } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
@@ -303,9 +303,6 @@ export function AppLayout() {
               </span>
             )}
             {!locked && <HelpToggle />}
-            <span className="pf-env" role="note" title="Development version: use fake sample data only. Do not enter real patient information.">
-              <TriangleAlert aria-hidden="true" /> Fake sample data only
-            </span>
             <ProfileMenu locked={locked} />
             <button type="button" className="btn btn-sm pf-logout" onClick={() => logout('manual')}>
               <LogOut aria-hidden="true" /> Log out

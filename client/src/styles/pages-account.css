@@ -76,6 +76,37 @@
   .appearance-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; border-radius: var(--radius-lg); }
   .appearance-choices button { justify-content: center; border-radius: var(--radius-md); }
 }
-/* My settings: password, professional details and appearance stacked on one page */
-.acc-settings { display: flex; flex-direction: column; gap: var(--space-6); }
+/* My profile: who you are on the left (sticky), the sections on the right – like the profile page of most apps */
+.acc-profile { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--space-6); align-items: start; max-width: 1240px; }
+.acc-id { position: sticky; top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
+.acc-id-head { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.acc-id-head .avatar { flex-shrink: 0; width: 56px; height: 56px; font-size: var(--fs-h2); }
+.acc-id-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.acc-id-who strong { color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); overflow-wrap: anywhere; }
+.acc-id-line { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); overflow-wrap: anywhere; }
+.acc-id-line svg.lucide { width: 14px; height: 14px; }
+.acc-id-facts { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: var(--space-3) 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.acc-id-facts dt { display: flex; align-items: center; gap: var(--space-1); color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+.acc-id-facts dt svg.lucide { width: 16px; height: 16px; color: var(--indigo-700); }
+.acc-id-facts dd { margin: 2px 0 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.acc-id-nav { display: flex; flex-direction: column; gap: 2px; }
+.acc-id-nav a {
+  display: flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); padding: 0 var(--space-3);
+  border-radius: var(--radius-md); color: var(--ink); font-weight: 500; text-decoration: none;
+}
+.acc-id-nav a svg.lucide { width: 18px; height: 18px; color: var(--indigo-700); }
+.acc-id-nav a:hover { background: var(--mist-100); color: var(--indigo-700); }
+.acc-sections { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.acc-sections > .card, .acc-sections .acc-with-rail, .acc-sections .appearance { max-width: none; scroll-margin-top: var(--space-4); }
+.acc-sections .card h2 { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.acc-card .field, .acc-card .acc-actions { max-width: 480px; }
+.acc-sections .acc-with-rail { grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4); }
+.acc-sections .appearance-row { grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: var(--space-2) var(--space-6); padding: var(--space-4) 0; }
+@media (max-width: 1279px) { .acc-sections .acc-with-rail { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 960px) {
+  .acc-profile { grid-template-columns: minmax(0, 1fr); }
+  .acc-id { position: static; }
+  .acc-id-nav { flex-direction: row; flex-wrap: wrap; }
+}
+@media (max-width: 860px) { .acc-sections .appearance-row { grid-template-columns: minmax(0, 1fr); } }
 .acc-settings > .card, .acc-settings > form.card { margin-bottom: 0; }

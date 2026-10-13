@@ -5,7 +5,6 @@ import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { api } from '../api.js';
 import { LOGIN_EMAIL_KEY, useAuth } from '../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../auth/guards.jsx';
-import { SampleDataBanner } from '../components/Layout.jsx';
 import { Alert, Field } from '../components/ui.jsx';
 
 // Optional photo for the right-hand side. Drop a licensed photo at client/src/assets/brand/login-photo.jpg
@@ -75,7 +74,6 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
-      <SampleDataBanner />
       <div className={photo ? 'auth has-photo' : 'auth'}>
         <main className="auth-main">
           {needsSetup ? (

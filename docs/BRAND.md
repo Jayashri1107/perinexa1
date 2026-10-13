@@ -23,7 +23,7 @@ those rules, the logos and the fonts is the **Perinexa design system** in Claude
 4. **A status is always colour + icon + word**: `<StatusPill tone="stable|due|admitted|watch|high|inactive">`.
    Risk: High-risk (high), Moderate-risk (watch), Low-risk (stable), Incomplete (inactive). Roles and types are neutral tags.
 5. **Teal marks what is scheduled or connected** (visits, reminders, due dates) – never decoration. White text never on Nexa Teal.
-6. **Type scale**: screen title 40 px, card titles 22 px, body 15 px, labels 13 px; nothing smaller than 13 px except 12 px captions.
+6. **Type scale**: screen title 28 px, card titles 22 px, section headings 18 px, body 15 px, labels 13 px; nothing smaller than 13 px except 12 px captions. (Owner, 13 Oct 2026: smaller titles and tighter spacing – 40 px titles were too large.)
 7. **People in lists get initials avatars** – never photos (privacy, DPDP Act).
 8. **Voice: doctor to doctor.** Short, specific, clinical. No exclamation marks, no emoji. Errors say what to fix.
    Decision support: the consultant decides. Only claim features that exist.

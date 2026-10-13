@@ -58,9 +58,9 @@
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-12: 48px;
+  --space-6: 20px;
+  --space-8: 28px;
+  --space-12: 40px;
 
   --radius-sm: 8px;    /* inputs */
   --radius-md: 12px;   /* buttons, nav items, dropdowns */
@@ -94,12 +94,12 @@
 
   /* ---- Type scale (guide page 6): size / line height, times the person's text size ---- */
   --text-scale: 1;     /* My settings → Appearance → Text size (0.9, 1, 1.125, 1.25); print sizes never change */
-  --fs-display: calc(40px * var(--text-scale));  --lh-display: calc(48px * var(--text-scale));  /* screen titles, 600 */
-  --fs-kpi: calc(48px * var(--text-scale));      --lh-kpi: calc(52px * var(--text-scale));      /* KPI numbers, 500 */
-  --fs-h1: calc(28px * var(--text-scale));       --lh-h1: calc(36px * var(--text-scale));       /* card titles, 600 */
-  --fs-h2: calc(22px * var(--text-scale));       --lh-h2: calc(30px * var(--text-scale));       /* section and panel headings, 600 */
-  --fs-h3: calc(18px * var(--text-scale));       --lh-h3: calc(26px * var(--text-scale));       /* nav labels, sub-headings, names in lists, 500 */
-  --fs-body: calc(15px * var(--text-scale));     --lh-body: calc(24px * var(--text-scale));     /* default text, table cells, form values, 400 */
+  --fs-display: calc(28px * var(--text-scale));  --lh-display: calc(36px * var(--text-scale));  /* screen titles, 600 */
+  --fs-kpi: calc(34px * var(--text-scale));      --lh-kpi: calc(40px * var(--text-scale));      /* KPI numbers, 500 */
+  --fs-h1: calc(22px * var(--text-scale));       --lh-h1: calc(30px * var(--text-scale));       /* card titles, 600 */
+  --fs-h2: calc(18px * var(--text-scale));       --lh-h2: calc(26px * var(--text-scale));       /* section and panel headings, 600 */
+  --fs-h3: calc(16px * var(--text-scale));       --lh-h3: calc(24px * var(--text-scale));       /* nav labels, sub-headings, names in lists, 500 */
+  --fs-body: calc(15px * var(--text-scale));     --lh-body: calc(22px * var(--text-scale));     /* default text, table cells, form values, 400 */
   --fs-label: calc(13px * var(--text-scale));    --lh-label: calc(18px * var(--text-scale));    /* buttons, pills, column headers, form labels, 500 */
   --fs-caption: calc(12px * var(--text-scale));  --lh-caption: calc(16px * var(--text-scale));  /* timestamps, deltas, footnotes, 500 */
   --fs-deva-body: calc(16px * var(--text-scale));    --lh-deva-body: calc(26px * var(--text-scale));
@@ -130,10 +130,10 @@
   /* ---- Layout (guide page 7) ---- */
   --sidebar-width: 280px;
   --rail-width: 88px;
-  --titlebar-height: 88px;
+  --titlebar-height: 64px;
   --control-height: 44px; /* buttons and the minimum click target */
-  --input-height: 48px;
-  --row-height: 56px;
+  --input-height: 44px;
+  --row-height: 52px;
   --nav-tile-size: 48px;
 }
 
@@ -194,8 +194,8 @@
 
 /* Spacing: Compact fits more rows on the screen; click targets stay at least 44 px */
 :root[data-density="compact"] {
-  --space-3: 10px; --space-4: 12px; --space-6: 18px; --space-8: 24px; --space-12: 36px;
-  --row-height: 48px; --input-height: 44px; --titlebar-height: 72px;
+  --space-3: 10px; --space-4: 12px; --space-6: 16px; --space-8: 20px; --space-12: 32px;
+  --row-height: 44px; --input-height: 44px; --titlebar-height: 56px;
 }
 
 /* Font: all bundled or already on the computer, so nothing is fetched from the internet */

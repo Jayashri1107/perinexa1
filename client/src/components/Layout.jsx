@@ -1,19 +1,7 @@
-import { TriangleAlert } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useDialogFocus } from './ui.jsx';
 
 // Pieces shared by the login page and the main app layout (AppLayout.jsx).
-
-export function SampleDataBanner() {
-  return (
-    <div className="auth-banner" role="note">
-      <TriangleAlert aria-hidden="true" />
-      <span>
-        Development version – use <strong>fake sample data only</strong>. Do not enter real patient information.
-      </span>
-    </div>
-  );
-}
 
 export function IdleWarning() {
   const { secondsLeft } = useAuth();

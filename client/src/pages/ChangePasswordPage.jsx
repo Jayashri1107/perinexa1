@@ -50,7 +50,7 @@ export function ChangePasswordPage({ embedded = false }) {
   const title = forced ? 'Choose a new password' : 'Change password';
 
   const card = (
-    <form className="card narrow" onSubmit={onSubmit} noValidate>
+    <form className={embedded ? 'card acc-card' : 'card narrow'} id={embedded ? 'password' : undefined} onSubmit={onSubmit} noValidate>
       {embedded && <h2>{title}</h2>}
       {forced && (
         <Alert type="info">For your security, please replace the temporary password with one only you know before continuing.</Alert>
@@ -58,7 +58,7 @@ export function ChangePasswordPage({ embedded = false }) {
       <Alert type="success">{success}</Alert>
       <Alert type="error">{error}</Alert>
       <Field label={forced ? 'Temporary (current) password' : 'Current password'} id="currentPassword" error={fieldErrors.currentPassword}>
-        <input id="currentPassword" type="password" autoComplete="current-password" value={form.currentPassword} onChange={update('currentPassword')} required autoFocus />
+        <input id="currentPassword" type="password" autoComplete="current-password" value={form.currentPassword} onChange={update('currentPassword')} required autoFocus={!embedded} />
       </Field>
       <Field label="New password" id="newPassword" error={fieldErrors.newPassword} hint="At least 12 characters, with at least one letter and one number." keepHint>
         <input id="newPassword" type="password" autoComplete="new-password" value={form.newPassword} onChange={update('newPassword')} required />

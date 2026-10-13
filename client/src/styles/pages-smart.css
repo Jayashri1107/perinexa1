@@ -140,27 +140,27 @@
 .ms-reasons h3 { margin: 0 0 var(--space-2); font-size: var(--fs-body); }
 
 /* Today: each list is a box with its heading and count; a click opens it (and it takes the full width). */
-.td-sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4); align-items: start; }
+.td-sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-3); align-items: start; }
 .td-sections > .wl-fold.is-open { grid-column: 1 / -1; }
 .wl-fold { border: 1px solid var(--border); }
 .wl-fold.has-items { border-left: 4px solid var(--indigo-700); }
 .wl-fold-title { margin: 0; }
 .wl-fold-title button {
-  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 72px;
-  padding: var(--space-4) var(--space-5, 20px); background: none; border: 0; cursor: pointer; text-align: left;
-  font: inherit; font-size: 1.25rem; font-weight: 600; color: var(--ink);
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 56px;
+  padding: var(--space-2) var(--space-4); background: none; border: 0; cursor: pointer; text-align: left;
+  font: inherit; font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; color: var(--ink);
 }
 .wl-fold-title button:hover { background: var(--mist-50); }
 .wl-fold-title button:focus-visible { box-shadow: var(--focus-ring-inset); outline: none; }
-.wl-fold-icon { width: 24px; height: 24px; flex: none; color: var(--indigo-700); }
+.wl-fold-icon { width: 20px; height: 20px; flex: none; color: var(--indigo-700); }
 .wl-fold-text { flex: 1 1 auto; }
-.wl-fold-count { flex: none; min-width: 2.2em; padding: 2px var(--space-2); border-radius: var(--radius-pill); text-align: center; font-size: 1rem; background: var(--mist-100); color: var(--slate-600); }
+.wl-fold-count { flex: none; min-width: 2.2em; padding: 2px var(--space-2); border-radius: var(--radius-pill); text-align: center; font-size: var(--fs-label); line-height: var(--lh-label); background: var(--mist-100); color: var(--slate-600); }
 .wl-fold.has-items .wl-fold-count { background: var(--indigo-700); color: var(--on-solid); }
 .wl-fold-chevron { width: 22px; height: 22px; flex: none; color: var(--slate-600); transition: transform 0.15s; }
 .wl-fold.is-open .wl-fold-chevron { transform: rotate(180deg); }
 .wl-fold.is-open .wl-fold-title { border-bottom: 1px solid var(--border); }
 @media (prefers-reduced-motion: reduce) { .wl-fold-chevron { transition: none; } }
-@media (max-width: 600px) { .td-sections { grid-template-columns: 1fr; } .wl-fold-title button { font-size: 1.125rem; min-height: 60px; } }
+@media (max-width: 600px) { .td-sections { grid-template-columns: 1fr; } .wl-fold-title button { min-height: 52px; } }
 
 /* Today: one patient per row – only her name, in bold; a click shows the rest. */
 .wl-list > .wl-row { padding: 0; }
@@ -198,7 +198,7 @@
 
 /* The number cards: an even grid, each card the same height, the number and its words lined up */
 .td-page .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin: 0; }
-.td-page .kpi { gap: var(--space-2); padding: var(--space-4) var(--space-6) var(--space-6); border-radius: var(--radius-lg); }
+.td-page .kpi { gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); }
 .td-page .kpi > .pill { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
 .td-page .kpi-value { margin-top: var(--space-1); }
 .td-page .kpi-sub { margin-top: auto; }
@@ -207,20 +207,20 @@
 @media (prefers-reduced-motion: reduce) { .td-page a.kpi:hover { transform: none; } }
 
 /* The lists: boxes of one height per row, one border style, the coloured edge only for a list with patients in it */
-.td-page .td-sections { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4); align-items: stretch; }
+.td-page .td-sections { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-3); align-items: stretch; }
 .td-page .wl-fold { display: flex; flex-direction: column; border: 1px solid var(--card-border); border-left: 4px solid var(--card-border); border-radius: var(--radius-lg); }
 .td-page .wl-fold.has-items { border-left-color: var(--indigo-700); }
 .td-page .wl-fold:not(.is-open) .wl-fold-title { flex: 1 1 auto; display: flex; }
 .td-page .wl-fold-title button {
-  min-height: 72px; padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
+  min-height: 60px; padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
   font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600;
 }
-.td-page .wl-fold-icon { box-sizing: border-box; width: 40px; height: 40px; padding: 9px; border-radius: var(--radius-md); background: var(--mist-100); }
+.td-page .wl-fold-icon { box-sizing: border-box; width: 36px; height: 36px; padding: 8px; border-radius: var(--radius-md); background: var(--mist-100); }
 .td-page .wl-fold.has-items .wl-fold-icon { background: var(--indigo-100); }
 .td-page .wl-fold-text { min-width: 0; overflow-wrap: anywhere; }
 .td-page .wl-fold-count { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; padding: 4px var(--space-2); }
 .td-page .wl-fold.is-open { box-shadow: var(--shadow-pop); }
 @media (max-width: 600px) {
   .td-page .td-sections { grid-template-columns: 1fr; }
-  .td-page .wl-fold-title button { min-height: 60px; padding-left: var(--space-4); }
+  .td-page .wl-fold-title button { min-height: 56px; padding-left: var(--space-3); }
 }
