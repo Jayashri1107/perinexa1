@@ -22,6 +22,11 @@ const userSchema = new mongoose.Schema(
     // A super admin's or platform admin's own hospital account (the same person as a doctor, say): "Switch to your
     // doctor account" signs them out and opens the sign-in with that account's email – its password is still asked.
     linkedAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // My profile (owner, 13 Oct 2026): the person's own work phone, staff number and photo – staff details, never a
+    // patient's. The photo is a small JPEG/PNG/WebP made in the browser (a data URL, at most about 90 KB).
+    phone: { type: String, trim: true, maxlength: 30, default: '' },
+    employeeId: { type: String, trim: true, maxlength: 30, default: '' },
+    photo: { type: String, default: null, maxlength: 120000 },
     // Printed under a doctor's / RMO's name on prescriptions. Belongs to the person, not the hospital.
     professional: {
       qualification: { type: String, trim: true, maxlength: 150, default: '' }, // e.g. "MBBS, MS (OBGY)"

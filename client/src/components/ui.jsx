@@ -160,7 +160,10 @@ export const initials = (name = '') =>
 // Lavender or Teal Wash, chosen from the name so the same person always gets the same colour.
 const avatarTone = (seed = '') => ([...seed].reduce((n, c) => n + c.charCodeAt(0), 0) % 2 === 0 ? '' : 'avatar-teal');
 
-export function Avatar({ name, seed, large = false }) {
+// photo: only the logged-in person's own picture, on their profile and their profile circle (owner, 13 Oct 2026) –
+// lists keep initials (docs/BRAND.md rule 7).
+export function Avatar({ name, seed, large = false, photo = null }) {
+  if (photo) return <img className={`avatar avatar-photo ${large ? 'avatar-lg' : ''}`.trim()} src={photo} alt="" aria-hidden="true" />;
   return (
     <span className={`avatar ${avatarTone(seed ?? name)} ${large ? 'avatar-lg' : ''}`.trim()} aria-hidden="true">
       {initials(name)}

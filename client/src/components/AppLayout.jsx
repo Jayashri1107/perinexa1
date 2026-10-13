@@ -9,7 +9,7 @@ import { CARE_TYPES } from '../pages/patients/patientFormat.js';
 import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
 import { PatientSearch } from './PatientSearch.jsx';
 import { IdleWarning } from './Layout.jsx';
-import { Alert, Avatar, rolesLabel } from './ui.jsx';
+import { Alert, Avatar, Field, rolesLabel, useDialogFocus } from './ui.jsx';
 
 // The new-patient form (before anything is saved): /patients/new or /patients/new/<type of care>
 const REGISTERING = new RegExp(`^/patients/new(?:/(?:${CARE_TYPES.join('|')}))?/?$`);
@@ -154,8 +154,8 @@ function HelpToggle() {
 }
 
 // The profile circle beside "Log out": click it for the name, email and role, Change password and My settings.
-function ProfileMenu({ locked }) {
-  const { user, activeMembership, platform, switchToLinkedAccount } = useAuth();
+function ProfileMenu({ locked, onSwitch }) {
+  const { user, activeMembership, platform } = useAuth();
   const [open, setOpen] = useState(false);
   const box = useRef(null);
   useDismiss(open, setOpen, box);
@@ -164,12 +164,12 @@ function ProfileMenu({ locked }) {
   return (
     <div className="pm" ref={box}>
       <button type="button" className="pm-btn" aria-haspopup="true" aria-expanded={open} aria-label={`Your profile: ${user.name}`} title={user.name} onClick={() => setOpen((o) => !o)}>
-        <Avatar name={user.name} seed={user.email} />
+        <Avatar name={user.name} seed={user.email} photo={user.photo} />
       </button>
       {open && (
         <div className="pm-card" role="dialog" aria-label="Your profile">
           <div className="pm-head">
-            <Avatar name={user.name} seed={user.email} large />
+            <Avatar name={user.name} seed={user.email} photo={user.photo} large />
             <div className="pm-who">
               <strong>{user.name}</strong>
               <span>{user.email}</span>
@@ -186,7 +186,14 @@ function ProfileMenu({ locked }) {
             </Link>
           )}
           {platform?.linkedAccount && (
-            <button type="button" className="pm-link" onClick={switchToLinkedAccount}>
+            <button
+              type="button"
+              className="pm-link"
+              onClick={() => {
+                setOpen(false);
+                onSwitch();
+              }}
+            >
               <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
             </button>
           )}
@@ -202,7 +209,8 @@ function ProfileMenu({ locked }) {
  * white top bar with the hospital being worked in on the left and Help, the profile circle and Log out on the right.
  */
 export function AppLayout() {
-  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice, isPlatform, platform, openHospital, switchToLinkedAccount } = useAuth();
+  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice, isPlatform, platform, openHospital } = useAuth();
+  const [switching, setSwitching] = useState(false); // Switch to your doctor account (asks for its password)
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(readCollapsed);
@@ -293,7 +301,7 @@ export function AppLayout() {
           {searchable && <PatientSearch key={activeTenantId} />}
           <div className="pf-topbar-actions">
             {platform?.linkedAccount && !locked && (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={switchToLinkedAccount} title={`Sign out here and sign in as ${platform.linkedAccount.email}`}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSwitching(true)} title={`Switch to ${platform.linkedAccount.email} – asks for its password`}>
                 <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
               </button>
             )}
@@ -303,7 +311,7 @@ export function AppLayout() {
               </span>
             )}
             {!locked && <HelpToggle />}
-            <ProfileMenu locked={locked} />
+            <ProfileMenu locked={locked} onSwitch={() => setSwitching(true)} />
             <button type="button" className="btn btn-sm pf-logout" onClick={() => logout('manual')}>
               <LogOut aria-hidden="true" /> Log out
             </button>
@@ -334,6 +342,54 @@ export function AppLayout() {
         </main>
       </div>
       <IdleWarning />
+      {switching && platform?.linkedAccount && <SwitchAccountDialog email={platform.linkedAccount.email} onClose={() => setSwitching(false)} />}
+    </div>
+  );
+}
+
+/**
+ * Switch to the linked doctor account (super admins and platform admins who are also doctors): its password is asked
+ * here and it is signed in at once – this browser then works as the doctor. Logging in is audited as for any login.
+ */
+function SwitchAccountDialog({ email, onClose }) {
+  const { switchToLinkedAccount } = useAuth();
+  const navigate = useNavigate();
+  const ref = useDialogFocus(onClose);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await switchToLinkedAccount(password);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err.status === 401 || err.status === 400 ? 'That password is not right for your doctor account.' : err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="switch-title" onSubmit={submit} noValidate>
+        <h2 id="switch-title">Switch to your doctor account</h2>
+        <p>
+          You will work as <strong>{email}</strong>. Type that account's password.
+        </p>
+        <Alert type="error">{error}</Alert>
+        <Field label="Password of your doctor account" id="switch-password">
+          <input id="switch-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+        </Field>
+        <div className="row">
+          <button type="submit" className="btn btn-primary" disabled={!password || busy}>
+            <ArrowLeftRight aria-hidden="true" /> {busy ? 'Switching…' : 'Switch'}
+          </button>
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

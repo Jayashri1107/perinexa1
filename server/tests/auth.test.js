@@ -32,7 +32,7 @@ describe('POST /api/auth/login', () => {
     expect(res.status).toBe(200);
     expect(res.body.user.email).toBe(user.email);
     expect(res.body.activeTenantId).toBe(tenant._id.toString());
-    expect(res.body.memberships).toEqual([{ tenantId: tenant._id.toString(), tenantName: tenant.name, roles: ['nurse'] }]);
+    expect(res.body.memberships).toEqual([{ tenantId: tenant._id.toString(), tenantName: tenant.name, roles: ['nurse'], joinedAt: expect.any(String) }]);
     const cookie = res.headers['set-cookie'].find((c) => c.startsWith(`${COOKIE_NAME}=`));
     expect(cookie).toMatch(/HttpOnly/);
     expect(cookie).toMatch(/SameSite=Strict/);

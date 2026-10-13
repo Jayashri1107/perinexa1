@@ -231,9 +231,15 @@ export function AuthProvider({ children }) {
   };
 
   /** "Switch to your doctor account": sign out here, then the sign-in opens with that account's email filled in. */
-  const switchToLinkedAccount = async () => {
+  // Switch to the linked doctor account with its own password (owner, 13 Oct 2026): signed in at once, this browser
+  // then works as the doctor. Without a password: logged out with the doctor's email filled in on the login page.
+  const switchToLinkedAccount = async (password) => {
     const email = platform?.linkedAccount?.email;
     if (!email) return;
+    if (password) {
+      await login(email, password);
+      return;
+    }
     try {
       sessionStorage.setItem(LOGIN_EMAIL_KEY, email);
     } catch {

@@ -3551,6 +3551,27 @@ Branch `appointments-layout` (after `appointments-month`).
 3. Open a fake patient → **Admit** → choose a free bed and a reason → Admit; the slip opens. **Book appointment** opens
    the New appointment dialog for her.
 
+## My profile page and switching to the doctor account (owner, 13 Oct 2026)
+Branch `profile-and-switch` (after `appointments-layout`).
+- **My profile**: a card with the person's photo (camera button to add or change it; "Remove photo"), name, role,
+  hospital, email and phone; Employee ID, Department (from the roles), Join date (the day added to this hospital) and
+  Status. Tabs: **Profile** (personal information – Edit changes name, phone and Employee ID; the email is the login
+  and only the super admin changes it – professional details for doctors and RMOs, change password, account
+  information, danger zone), **Security**, **Appearance** (colours, spacing) and **Accessibility** (font, text size,
+  explanations, animation). Prescription design and Voice words are links at the end of the tabs.
+- The photo is made small in the browser (256 px JPEG) and kept with the account (`PUT /api/auth/me/photo`); it is
+  shown only to the person themself – on this page and in their profile circle. Lists keep initials (BRAND.md rule 7).
+- **Log out from all devices**: logging out already ends every session of the account (the session version goes up),
+  so the button logs out after a confirmation.
+- **Switch to your doctor account** (super admin or platform admin with a linked doctor account): asks for the doctor
+  account's password and signs in as the doctor at once (audited as that account's login).
+
+### How to test (fake data only)
+1. As any login: My settings → add a photo, Edit → phone and Employee ID → Save details; the card shows them.
+2. Change the password on the Profile tab; try the Appearance and Accessibility tabs.
+3. As a super admin with a linked doctor account: profile circle → Switch to your doctor account → type the doctor
+   account's password → you are on the doctor's Today page. A wrong password says so and keeps you as super admin.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

@@ -66,6 +66,7 @@ export async function listActiveMemberships(user) {
     tenantId: t._id.toString(),
     tenantName: t.name,
     roles: memberships.find((m) => m.tenantId.equals(t._id)).roles,
+    joinedAt: memberships.find((m) => m.tenantId.equals(t._id)).createdAt ?? null, // shown on My profile
   }));
 }
 

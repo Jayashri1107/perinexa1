@@ -43,6 +43,18 @@ const professionalSchema = z.object({
   council: z.string().trim().max(120, 'Council name is too long').default(''),
 });
 
+// My profile: name, work phone and staff number (the email is the login: changed by the super admin only).
+const detailsSchema = z
+  .object({
+    name: z.string().trim().min(2, 'Write your name').max(100, 'The name is too long'),
+    phone: z.string().trim().max(30, 'The phone number is too long').regex(/^[\d+\-\s()]*$/, 'Only digits, spaces, + - ( )').default(''),
+    employeeId: z.string().trim().max(30, 'The staff number is too long').default(''),
+  })
+  .strict();
+const photoSchema = z
+  .object({ photo: z.string().max(120000, 'The photo is too large').regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, 'Choose a JPEG, PNG or WebP picture').nullable() })
+  .strict();
+
 const APPEARANCE_WORDS = { theme: 'a colour template', font: 'a font', textSize: 'a text size', density: 'the spacing', motion: 'whether things move', help: 'whether explanations are shown' };
 const appearanceSchema = z
   .object(
@@ -238,6 +250,28 @@ export function authRouter({ loginRateLimitMax }) {
     req.user.professional = data;
     await req.user.save();
     if (Object.keys(changes).length) await audit(req, 'PROFILE_UPDATED', { target: req.user, details: { changes } });
+    res.json({ user: req.user });
+  });
+
+  // My profile: name, work phone, staff number. In the audit log with what changed (staff details, never a patient's).
+  router.put('/me/details', requireAuth, async (req, res) => {
+    if (req.user.mustChangePassword) throw new HttpError(403, 'You must change your password before continuing.', 'PASSWORD_CHANGE_REQUIRED');
+    const data = parse(detailsSchema, req.body);
+    const changes = {};
+    for (const k of Object.keys(data)) if ((req.user[k] ?? '') !== data[k]) changes[k] = { from: req.user[k] ?? '', to: data[k] };
+    Object.assign(req.user, data);
+    await req.user.save();
+    if (Object.keys(changes).length) await audit(req, 'PROFILE_UPDATED', { target: req.user, details: { changes } });
+    res.json({ user: req.user });
+  });
+
+  // My profile: the person's photo (or none). Audited as a change, without the picture.
+  router.put('/me/photo', requireAuth, async (req, res) => {
+    if (req.user.mustChangePassword) throw new HttpError(403, 'You must change your password before continuing.', 'PASSWORD_CHANGE_REQUIRED');
+    const { photo } = parse(photoSchema, req.body);
+    req.user.photo = photo;
+    await req.user.save();
+    await audit(req, 'PROFILE_UPDATED', { target: req.user, details: { changes: { photo: photo ? 'changed' : 'removed' } } });
     res.json({ user: req.user });
   });
 

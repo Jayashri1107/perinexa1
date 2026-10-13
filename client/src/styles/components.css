@@ -162,6 +162,7 @@ input[type='date'], input[type='datetime-local'] { font-variant-numeric: tabular
 }
 .avatar-teal { background: var(--teal-100); color: var(--teal-700); }
 .avatar-lg { width: 44px; height: 44px; }
+.avatar-photo { object-fit: cover; padding: 0; background: var(--mist-100); }
 .name-cell { display: inline-flex; align-items: center; gap: var(--space-3); min-width: 0; }
 .name-cell-text { display: flex; flex-direction: column; min-width: 0; }
 .name-cell-text strong { font-weight: 500; color: var(--ink); }

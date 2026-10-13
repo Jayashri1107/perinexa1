@@ -41,7 +41,10 @@ function Choices({ labelledBy, options, value, onChoose }) {
 }
 
 // My settings → Appearance: how the screens look for this person, on every computer.
-export function AppearanceSection() {
+// part: 'appearance' (colours, spacing) or 'accessibility' (font, text size, explanations, animation) – the two tabs of
+// My profile; without it, every setting in one card.
+export function AppearanceSection({ part = null }) {
+  const shows = (p) => !part || part === p;
   const { user, saveAppearance } = useAuth();
   const look = normalizeAppearance(user.preferences?.appearance);
   const [status, setStatus] = useState(null); // 'saving' | 'saved' | { error }
@@ -62,15 +65,16 @@ export function AppearanceSection() {
 
   return (
     <>
-        <section className="card appearance" id="appearance" aria-labelledby="appearance-title">
+        <section className="card appearance" id={part ?? 'appearance'} aria-labelledby={`${part ?? 'appearance'}-title`}>
           <p className="appearance-eyebrow">For you, on every computer</p>
-          <h2 id="appearance-title">Appearance</h2>
+          <h2 id={`${part ?? 'appearance'}-title`}>{part === 'accessibility' ? 'Accessibility' : 'Appearance'}</h2>
           {status?.error && (
             <Alert type="error" onClose={() => setStatus(null)}>
               {status.error}
             </Alert>
           )}
 
+          {shows('appearance') && (
           <Row id="appearance-theme" title="Colour template" hint="Changes the colours of the screen for you. Status colours (such as High-risk) and printouts stay the same.">
             <div className="appearance-swatches" role="radiogroup" aria-labelledby="appearance-theme">
               {THEMES.map((t) => (
@@ -82,7 +86,9 @@ export function AppearanceSection() {
               ))}
             </div>
           </Row>
+          )}
 
+          {shows('accessibility') && (
           <Row id="appearance-font-title" labelFor="appearance-font" title="Font" hint="Every font comes with Perinexa or with this computer, so nothing is fetched from the internet.">
             <select id="appearance-font" value={look.font} onChange={(e) => choose('font', e.target.value)}>
               {FONTS.map((f) => (
@@ -98,22 +104,31 @@ export function AppearanceSection() {
               </p>
             </div>
           </Row>
+          )}
 
+          {shows('accessibility') && (
           <Row id="appearance-size" title="Text size" hint="Makes the text on the screen larger or smaller. Printouts stay the same size.">
             <Choices labelledBy="appearance-size" options={TEXT_SIZES} value={look.textSize} onChoose={(v) => choose('textSize', v)} />
           </Row>
+          )}
 
+          {shows('appearance') && (
           <Row id="appearance-density" title="Spacing" hint="Compact fits more rows on the screen.">
             <Choices labelledBy="appearance-density" options={DENSITIES} value={look.density} onChoose={(v) => choose('density', v)} />
           </Row>
+          )}
 
+          {shows('accessibility') && (
           <Row id="appearance-help" title="Explanations" hint="How-to texts under fields and on pages. Safety notes, warnings and what was recorded are always shown. Also switched with Help at the top of every screen.">
             <Choices labelledBy="appearance-help" options={HELP} value={look.help} onChoose={(v) => choose('help', v)} />
           </Row>
+          )}
 
+          {shows('accessibility') && (
           <Row id="appearance-motion" title="Animation" hint="Switch off on slow computers, or if movement on the screen is distracting.">
             <Choices labelledBy="appearance-motion" options={MOTIONS} value={look.motion} onChoose={(v) => choose('motion', v)} />
           </Row>
+          )}
 
           <div className="appearance-foot">
             <button type="button" className="btn btn-link" onClick={() => save({ ...STANDARD_APPEARANCE })} disabled={isStandard(look)}>
