@@ -1,0 +1,93 @@
+/*
+ * The Perinexa1 look (owner, 13 Oct 2026: "UI same as the older perinexa1, don't change what anything does"), as the
+ * app looked on 7 Oct 2026. The colours, font and sizes are in tokens.css ("The Perinexa1 look"); this file gives the
+ * frame and the common parts their old shapes. Loaded after every screen style, so new screens get the same look.
+ * Tokens only; print styles are untouched.
+ */
+
+/* ---------- The sidebar: full height, a night-indigo gradient, the chosen item's tile in teal ---------- */
+.sb {
+  margin: 0; top: 0; height: 100vh; border-radius: 0; box-shadow: none;
+  padding: var(--space-4) var(--space-3);
+  background: linear-gradient(180deg, var(--indigo-800) 0%, var(--sidebar-end) 100%);
+}
+.sb-link { gap: var(--space-3); padding: 6px var(--space-2); border-radius: var(--radius-sm); color: var(--indigo-200); font-weight: 500; }
+.sb-link:hover { background: var(--nav-row-hover); color: var(--on-dark); }
+.sb-link:hover .sb-tile { background: var(--nav-row-active); color: var(--on-dark); }
+.sb-link.active { background: var(--nav-row-active); color: var(--on-dark); }
+.sb-link.active .sb-tile { background: var(--nav-accent); color: var(--indigo-800); }
+.sb-tile { width: var(--nav-tile-size); height: var(--nav-tile-size); border-radius: 10px; background: var(--nav-tile); color: var(--indigo-200); }
+.sb-tile svg.lucide { width: 20px; height: 20px; }
+.pf-collapsed .sb-link.active, .pf-collapsed .sb-link:hover { background: transparent; }
+@media (max-width: 1023px) {
+  .pf .sb { margin: 0; top: 0; height: 100vh; border-radius: 0; }
+  .pf-mobile-open .sb { border-radius: 0; }
+}
+
+/* ---------- The top bar: a plain white strip with a line under it ---------- */
+.pf-topbar {
+  margin: 0; padding: var(--space-3) var(--space-8);
+  border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none;
+}
+.pf-topbar > .ps .ps-input { border-radius: var(--radius-sm); }
+.ws-icon { border-radius: var(--radius-sm); background: var(--indigo-100); }
+.ws-switch select { border-radius: var(--radius-sm); background: var(--indigo-100); color: var(--ink); }
+@media (max-width: 1023px) { .pf-topbar { margin: 0; padding: var(--space-3) var(--space-4); } }
+@media (max-width: 719px) { .pf-topbar { margin: 0; } }
+
+/* ---------- Page titles and spacing ---------- */
+.ph { padding: var(--space-6) var(--space-8) 0; }
+.ph-title { font-weight: 700; }
+.pf-notice { padding: var(--space-4) var(--space-8) 0; }
+.pf-content { padding: var(--space-6) var(--space-8) var(--space-8); }
+@media (max-width: 719px) {
+  .ph { padding: var(--space-4) var(--space-4) 0; }
+  .pf-notice { padding: var(--space-4) var(--space-4) 0; }
+  .pf-content { padding: var(--space-4); }
+}
+
+/* ---------- Cards: a thin edge, 18 px corners and a soft shadow that deepens on hover ---------- */
+.card, .panel, .dt-card, .kpi { border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.card, .panel { transition: box-shadow 0.15s ease; }
+.card:hover, .panel:hover { box-shadow: var(--shadow-hover); }
+a.kpi, .card-link { transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
+a.kpi:hover, .card-link:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--indigo-700); }
+@media (prefers-reduced-motion: reduce) { a.kpi:hover, .card-link:hover { transform: none; } }
+
+/* ---------- Buttons ---------- */
+.btn { border-radius: var(--radius-sm); font-weight: 600; }
+
+/* ---------- Form fields: a bold label above a plain box ---------- */
+.field > label, .field-label, .fieldset legend { font-weight: 600; }
+input, select, textarea { border-radius: var(--radius-sm); border-color: var(--border); }
+input:focus, select:focus, textarea:focus { border-color: var(--indigo-700); box-shadow: 0 0 0 3px var(--indigo-100); }
+.field.has-error input, .field.has-error select, .field.has-error textarea { border-color: var(--status-high-fg); }
+
+/* ---------- Tables: small capital headings on a pale band ---------- */
+.dt thead th {
+  font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.dt tbody tr:hover td { background: var(--mist-50); }
+
+/* ---------- Tabs: an underline, the chosen tab in indigo ---------- */
+.ph-tabs.segmented, .prof-tabs {
+  display: flex; gap: var(--space-1); padding: 0; background: none; border: 0; border-bottom: 1px solid var(--border);
+  border-radius: 0; box-shadow: none;
+}
+.ph-tabs.segmented a, .ph-tabs.segmented button, .prof-tabs > button, .prof-tabs > a {
+  flex: 0 0 auto; min-height: var(--control-height); margin-bottom: -1px; padding: 0 var(--space-4);
+  border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--slate-600); font-weight: 500;
+}
+.ph-tabs.segmented a:hover, .ph-tabs.segmented button:hover, .prof-tabs > button:hover, .prof-tabs > a:hover { background: none; color: var(--ink); }
+.ph-tabs.segmented a.active, .ph-tabs.segmented button[aria-pressed='true'], .prof-tabs > button.active {
+  background: none; color: var(--indigo-700); border-bottom-color: var(--indigo-700);
+}
+
+/* ---------- Pills and status words ---------- */
+.pill { font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; }
+
+/* ---------- Pop-ups ---------- */
+.modal { border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); }
+.pm-card { border-radius: var(--radius-lg); }
+.pm-link:hover { background: var(--indigo-100); }
