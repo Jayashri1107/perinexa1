@@ -6,6 +6,7 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "seed": "node scripts/seed.js",
+    "sample:pharmacy": "node scripts/sample-pharmacy.js",
     "test": "vitest run"
   },
   "dependencies": {
