@@ -224,3 +224,6 @@
   .td-page .td-sections { grid-template-columns: 1fr; }
   .td-page .wl-fold-title button { min-height: 56px; padding-left: var(--space-3); }
 }
+
+/* Reception's quick actions under the number cards (owner, 13 Oct 2026) */
+.td-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); }

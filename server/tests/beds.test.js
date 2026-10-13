@@ -147,6 +147,10 @@ describe('the bed board', () => {
     const audit = await AuditLog.findOne({ action: 'BEDS_VIEWED' }).lean();
     expect(audit.details).toEqual({ occupied: 1, withoutBed: 0 });
     expect((await board('lab')).status).toBe(403);
+    // The counts alone (reception's Today page): no names, not audited
+    const summary = await (await as('reception')).get('/api/beds?summary=1');
+    expect(summary.body).toEqual({ counts: { total: 3, occupied: 1, free: 2 } });
+    expect(await AuditLog.countDocuments({ action: 'BEDS_VIEWED' })).toBe(1);
   });
 
   it('reception never sees the reason on a sensitive record or one typed by a clinician; the doctor does', async () => {

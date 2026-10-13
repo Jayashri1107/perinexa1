@@ -3500,6 +3500,23 @@ Built on branch `reception-admission` (after `look-header-profile`), not merged 
    has the bed charge (if a bed price is in the price list).
 5. Hospital admin → Audit log: "Patient admitted", "Moved to another bed", "Bed board viewed" – ids and counts only.
 
+## Reception's Today: number cards, quick actions, payments to collect (owner, 13 Oct 2026)
+Branch `reception-today-cards` (after `reception-admission`). For logins with the receptionist role:
+- **Number cards**: Today's patients (arrived · expected), Calls to make (due, overdue, babies – not booked), Collected
+  today (from the Daily summary), Free beds, To collect (unpaid bills). A card opens its list: the first two open the
+  box further down Today, the others open Billing or Beds. All from the database – nothing made up.
+- **Quick actions** under the cards: Book an appointment, Admit to a bed, Bills and payments (New patient and Walk-in
+  token stay at the top right).
+- **Payments to collect** (the pending-payment alert): unpaid bills of patients who are here today, and of stays that
+  have ended without the bill being settled, most owed first; each opens the bill. A stay still going is settled at
+  discharge, so it is not listed.
+- The Free beds card reads only the counts (`/api/beds?summary=1`: no names, not audited).
+
+### How to test (fake data only)
+1. As the receptionist, open Today: five cards above the lists. Click "Calls to make": the call list opens below.
+2. Mark a fake patient with an unpaid bill as arrived: she appears under "Payments to collect"; take the payment on
+   her bill and come back – she is gone and "Collected today" has gone up.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

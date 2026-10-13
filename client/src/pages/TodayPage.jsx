@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Archive, Baby, BadgeCheck, BedDouble, FlaskConical, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, FlaskConical, PhoneCall, Receipt, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -19,6 +19,7 @@ import { KIND_LABELS } from './inpatient/inpatientFormat.js';
 import { FLAG_LOOK, testNames } from './lab/labFormat.js';
 import { NEW_PATIENT_LINKS } from './patients/patientFormat.js';
 import { ReminderDialog } from './reminders/ReminderDialog.jsx';
+import { paymentsToCollect, receptionCounts } from './todayReception.js';
 import { RedFlagItems, RedFlagRulesNote } from './redflags/RedFlagList.jsx';
 import { notCheckedCareText } from './redflags/redFlagFormat.js';
 import { CarePlanSection, FlagCountPill, PatientRow, RedFlagsSection, Section, VaccinationsOverdueSection, VisitProgress, VisitsTodaySection } from './worklist/WorklistSections.jsx';
@@ -152,6 +153,19 @@ export function TodayPage() {
   const { user, activeMembership } = useAuth();
   const roles = activeMembership.roles;
   const location = useLocation();
+  // A number card opens its list further down the page (e.g. "/#td-overdue"): open the box and bring it into view.
+  useEffect(() => {
+    const id = location.hash.slice(1);
+    if (!id) return undefined;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (el.getAttribute('aria-expanded') === 'false') el.click();
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.focus({ preventScroll: true });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [location.hash, location.key]);
   const [flash, setFlash] = useState(location.state?.flash ?? null);
   const [params, setParams] = useSearchParams();
   const [reminding, setReminding] = useState(null);
@@ -174,7 +188,11 @@ export function TodayPage() {
   const labReview = useFetch(isDoctor ? '/lab/to-review' : null);
   const labWork = useFetch(roles.includes('lab') ? '/lab/worklist' : null);
   // The billing department: unpaid bills and the money owed
-  const unpaid = useFetch(roles.includes('billing') ? '/billing/reports/unpaid' : null);
+  // and reception (the "To collect" card and the payments to collect now)
+  const isReception = roles.includes('receptionist');
+  const unpaid = useFetch(has(roles, ['billing', 'receptionist']) ? '/billing/reports/unpaid' : null);
+  const collected = useFetch(isReception ? '/billing/reports/daily' : null);
+  const beds = useFetch(isReception ? '/beds' : null, { summary: '1' });
   const today = useFetch(appointments ? '/today' : null, query);
 
   const seesRisk = clinicalWork;
@@ -221,8 +239,22 @@ export function TodayPage() {
     }
   };
 
+  const counts = receptionCounts(today.data);
+  const collect = isReception && unpaid.data && today.data ? paymentsToCollect(unpaid.data.bills, today.data.patients) : [];
   const tiles = [
-    unpaid.data && <KpiCard key="unpaid" to="/billing/unpaid" tone={unpaid.data.bills.length ? 'watch' : 'neutral'} icon={Wallet} label="Unpaid bills" value={formatNumber(unpaid.data.bills.length)} sub={unpaid.data.owed ? `${rupees(unpaid.data.owed)} owed` : 'Nothing owed'} />,
+    isReception && today.data && (
+      <KpiCard key="r-patients" to="/#td-patients" tone={counts.expected ? 'due' : 'neutral'} icon={Users} label="Today's patients" value={formatNumber(counts.patients)} sub={`${counts.arrived} arrived · ${counts.expected} expected`} />
+    ),
+    isReception && today.data && (
+      <KpiCard key="r-calls" to={`/#${counts.callsList}`} tone={counts.calls ? 'watch' : 'neutral'} icon={PhoneCall} label="Calls to make" value={formatNumber(counts.calls)} sub="Due, overdue and babies – not booked" />
+    ),
+    isReception && collected.data && (
+      <KpiCard key="r-collected" to="/billing/daily" tone="neutral" icon={Banknote} label="Collected today" value={rupees(collected.data.totals.net)} textValue sub={`${collected.data.payments.length} payment${collected.data.payments.length === 1 ? '' : 's'} and refunds`} />
+    ),
+    isReception && beds.data && (
+      <KpiCard key="r-beds" to="/beds" tone={beds.data.counts.total && !beds.data.counts.free ? 'watch' : 'neutral'} icon={BedDouble} label="Free beds" value={formatNumber(beds.data.counts.free)} sub={beds.data.counts.total ? `of ${beds.data.counts.total} beds` : 'No beds set up yet'} />
+    ),
+    unpaid.data && <KpiCard key="unpaid" to="/billing/unpaid" tone={unpaid.data.bills.length ? 'watch' : 'neutral'} icon={Wallet} label={isReception ? 'To collect' : 'Unpaid bills'} value={formatNumber(unpaid.data.bills.length)} sub={unpaid.data.owed ? `${rupees(unpaid.data.owed)} owed` : 'Nothing owed'} />,
     labWork.data && <KpiCard key="lab-collect" to="/lab" tone={labWork.data.counts.collect ? 'due' : 'neutral'} icon={TestTube} label="Samples to take" value={formatNumber(labWork.data.counts.collect)} sub="Lab orders waiting for a sample" />,
     labWork.data && <KpiCard key="lab-report" to="/lab?list=report" tone={labWork.data.counts.report ? 'due' : 'neutral'} icon={FlaskConical} label="Results to enter" value={formatNumber(labWork.data.counts.report)} sub="Samples taken, results not reported" />,
     seesRisk && (
@@ -326,6 +358,19 @@ export function TodayPage() {
             </h2>
             <div className="kpi-grid">{tiles}</div>
           </section>
+        )}
+        {isReception && (
+          <nav className="td-quick" aria-label="Quick actions">
+            <Link to="/appointments" className="btn btn-secondary btn-sm">
+              <CalendarPlus aria-hidden="true" /> Book an appointment
+            </Link>
+            <Link to="/beds" className="btn btn-secondary btn-sm">
+              <BedDouble aria-hidden="true" /> Admit to a bed
+            </Link>
+            <Link to="/billing" className="btn btn-secondary btn-sm">
+              <Receipt aria-hidden="true" /> Bills and payments
+            </Link>
+          </nav>
         )}
         {loading && (
           <div className="card plan-loading" aria-busy="true">
@@ -432,6 +477,30 @@ export function TodayPage() {
             onUndo={(p) => arrival('DELETE', p)}
             onSlip={setSlip}
           />
+        )}
+        {/* Reception: bills to settle now – a patient here today, or a stay that has ended (owner, 13 Oct 2026) */}
+        {isReception && unpaid.data && today.data && (
+          <Section id="td-collect" icon={Wallet} title="Payments to collect" count={collect.length} empty="Nothing to collect now: nobody here today or discharged owes money.">
+            <ul className="wl-list">
+              {collect.map(({ bill, why }) => (
+                <PatientRow
+                  key={bill.id}
+                  patient={bill.patient}
+                  to={`/billing/bills/${bill.id}`}
+                  openLabel="Open the bill"
+                  marker={
+                    <StatusPill tone="watch" icon={Wallet}>
+                      {rupees(bill.balance)} to pay
+                    </StatusPill>
+                  }
+                >
+                  <p className="hint">
+                    Bill {bill.number} · {why === 'discharged' ? `Discharged${bill.stay?.dischargedAt ? ` ${formatDate(bill.stay.dischargedAt)}` : ''} – the bill is not settled` : 'Here today'}
+                  </p>
+                </PatientRow>
+              ))}
+            </ul>
+          </Section>
         )}
         {has(roles, ['receptionist', 'doctor', 'rmo']) && <ScanShareSection />}
         {today.data?.guests && <QuickBookingsSection guests={today.data.guests} canRegister={canRegisterPatients(roles)} />}

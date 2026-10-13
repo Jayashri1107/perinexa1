@@ -17,6 +17,7 @@ import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
 
 // Beds and admission at the desk (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): /api/beds.
+//  - GET  /?summary=1  only the counts (no names, not audited);
 //  - GET  /            the bed board: each ward's beds, free or occupied (name, patient number, doctor, since, and
 //                      the reason as inpatient/beds.js reasonFor allows) – reception, doctors, RMOs, nurses; audited
 //                      with counts only;
@@ -66,6 +67,11 @@ async function assertFree(req, bed) {
 bedsRouter.get('/', async (req, res) => {
   assertRole(req, BOARD_ROLES, 'The bed board is for reception, doctors, RMOs and nurses.');
   const tenantId = req.tenantId;
+  // ?summary=1: the counts only (reception's Today page) – no names, so not audited
+  if (req.query.summary === '1') {
+    const [inUse, occupied] = await Promise.all([Bed.countDocuments({ tenantId, active: true }), Admission.countDocuments({ tenantId, status: 'admitted', bedId: { $ne: null } })]);
+    return res.json({ counts: { total: inUse, occupied, free: Math.max(0, inUse - occupied) } });
+  }
   const [beds, stays] = await Promise.all([Bed.find({ tenantId }).lean(), Admission.find({ tenantId, status: 'admitted' }).sort({ admittedAt: 1 }).limit(1000).lean()]);
   const patients = stays.length ? await Patient.find({ tenantId, _id: { $in: stays.map((s) => s.patientId) } }) : [];
   const byId = new Map(patients.map((p) => [String(p._id), p]));
