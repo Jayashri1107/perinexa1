@@ -508,6 +508,12 @@ const paymentView = (p) => ({
   byName: p.byName ?? '',
 });
 
+/** The bill's latest payment, deposit or refund (by time), or null. */
+function lastPayment(b) {
+  const last = (b.payments ?? []).reduce((a, p) => (!a || (p.at && p.at > a.at) ? p : a), null);
+  return last ? { at: last.at, mode: last.mode, kind: last.kind } : null;
+}
+
 /** One bill as the website gets it; `full` adds the lines and payments. */
 export function billView(b, { patients, stays }, { full = true } = {}) {
   const p = patients.get(String(b.patientId));
@@ -527,6 +533,7 @@ export function billView(b, { patients, stays }, { full = true } = {}) {
     discountInfo: b.discount?.paise ? { mode: b.discount.mode, value: b.discount.value, reason: b.discount.reason ?? '', byName: b.discount.byName ?? '' } : null,
     cancelled: b.status === 'cancelled' && b.cancelled ? { reason: b.cancelled.reason ?? '', byName: b.cancelled.byName ?? '', at: b.cancelled.at ?? null } : null,
     insurer: b.insurance?.insurer ?? '', // who the claim is with (lists); every detail only with the full bill
+    lastPayment: lastPayment(b), // the latest money in or out, for lists: when, how and what kind (null: none yet)
     ...(full ? { lines: (b.lines ?? []).map(lineView), payments: (b.payments ?? []).map(paymentView), insurance: insuranceView(b.insurance) } : {}),
   };
 }

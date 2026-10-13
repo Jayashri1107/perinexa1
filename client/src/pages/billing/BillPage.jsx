@@ -363,7 +363,8 @@ export function BillPage() {
   const { activeMembership } = useAuth();
   const res = useFetch(`/billing/bills/${id}`);
   const [bill, setBill] = useState(null);
-  const [dialog, setDialog] = useState(null); // add | pay | refund | discount | cancel | insurance | upi | { remove: line }
+  // add | pay | refund | discount | cancel | insurance | upi | { remove: line }; ?pay=1 (Take payment on the Bills list) opens pay
+  const [dialog, setDialog] = useState(() => (new URLSearchParams(window.location.search).get('pay') === '1' ? 'pay' : null));
   const [printing, setPrinting] = useState(null); // { receipt? } | { claim: 'claim' | 'pmjay' }
   const [flash, setFlash] = useState(null);
   const b = bill ?? res.data?.bill;

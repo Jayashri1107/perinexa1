@@ -93,3 +93,10 @@
 .pdoc .bill-doc-head th, .pdoc .bill-doc-head td, .pdoc .bill-doc-sums th, .pdoc .bill-doc-sums td { background: none; border: 0; }
 .pdoc .bill-doc-sums .bill-doc-balance th, .pdoc .bill-doc-sums .bill-doc-balance td { border-top: 1px solid var(--print-ink); }
 .bill-sums th, .bill-sums td { background: none; border: 0; }
+
+/* Bills list (owner, 13 Oct 2026): type and status filters, the last payment, and Take payment on each row */
+.bill-filter { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.bill-filter select { width: auto; min-width: 150px; }
+.bill-last { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
+.bill-last .muted { font-size: var(--fs-label); line-height: var(--lh-label); }
+.bill-pay { white-space: nowrap; }

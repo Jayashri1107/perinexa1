@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, FilePlus2, Search } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, FilePlus2, Search, Wallet } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, StatusPill, useDebounced, useDialogFocus } from '../../components/ui.jsx';
+import { Alert, StatusPill, formatDateTime, useDebounced, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { addDaysIso, dayLabel } from '../appointments/appointmentFormat.js';
-import { KIND_LABELS, STATUS_LOOK, billingTabs, rupees } from './billingFormat.js';
+import { KIND_LABELS, MODE_LABELS, PAYMENT_KIND_LABELS, STATUS_LOOK, billingTabs, rupees, takeMoneyLabel } from './billingFormat.js';
 
 // Billing → Bills (docs/BILLING_PLAN.md): a day's bills (outpatient bills of the day, and stays still open), or the
 // bills matching a search (name, phone, patient or bill number). "New bill" opens today's bill for a patient (e.g. a
@@ -34,6 +34,50 @@ export const billColumns = ({ showPatient = true } = {}) => [
   { key: 'paid', header: 'Paid', align: 'right', render: (b) => <span className="tabular">{rupees(b.paid)}</span> },
   { key: 'balance', header: 'Balance', align: 'right', render: (b) => <strong className="tabular">{rupees(b.balance)}</strong> },
   { key: 'status', header: 'Status', render: (b) => <BillStatus status={b.status} /> },
+  // The latest money in or out: when, and how (owner, 13 Oct 2026)
+  {
+    key: 'lastPayment',
+    header: 'Last payment',
+    render: (b) =>
+      b.lastPayment ? (
+        <span className="bill-last">
+          <span className="tabular">{formatDateTime(b.lastPayment.at)}</span>
+          <span className="muted">
+            {MODE_LABELS[b.lastPayment.mode] ?? b.lastPayment.mode}
+            {b.lastPayment.kind !== 'payment' ? ` · ${PAYMENT_KIND_LABELS[b.lastPayment.kind]}` : ''}
+          </span>
+        </span>
+      ) : (
+        <span className="muted">None yet</span>
+      ),
+  },
+  // Take the money straight from the list: opens the bill with its payment box
+  {
+    key: 'actions',
+    header: <span className="sr-only">Actions</span>,
+    render: (b) =>
+      b.status !== 'cancelled' && b.balance > 0 ? (
+        <Link to={`/billing/bills/${b.id}?pay=1`} className="btn btn-secondary btn-sm bill-pay" onClick={(e) => e.stopPropagation()}>
+          <Wallet aria-hidden="true" /> {takeMoneyLabel(b)}
+          <span className="sr-only"> for bill {b.number}</span>
+        </Link>
+      ) : null,
+  },
+];
+
+// Quick filters on the list: the type of bill and where its money stands
+const KIND_FILTERS = [
+  ['', 'All bills'],
+  ['opd', 'Outpatient (OPD)'],
+  ['ipd', 'Inpatient (IPD)'],
+];
+const STATUS_FILTERS = [
+  ['', 'Any status'],
+  ['unpaid', 'Unpaid'],
+  ['part_paid', 'Part paid'],
+  ['paid', 'Paid'],
+  ['refund_due', 'Money to give back'],
+  ['cancelled', 'Cancelled'],
 ];
 
 function NewBillDialog({ onClose, onOpened }) {
@@ -76,8 +120,22 @@ export function BillsPage() {
   const [creating, setCreating] = useState(() => new URLSearchParams(window.location.search).get('new') === '1'); // ?new=1: from Today's "New bill"
   const day = list.data?.date ?? date;
   const today = list.data?.today;
-  const go = (d) => setParams(d && d !== today ? { date: d } : {}, { replace: true });
-  const rows = list.data?.bills;
+  const go = (d) => {
+    const next = new URLSearchParams(params);
+    if (d && d !== today) next.set('date', d);
+    else next.delete('date');
+    setParams(next, { replace: true });
+  };
+  const kind = KIND_FILTERS.some(([k]) => k && k === params.get('kind')) ? params.get('kind') : '';
+  const status = STATUS_FILTERS.some(([k]) => k && k === params.get('status')) ? params.get('status') : '';
+  const setFilter = (key, value) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setParams(next, { replace: true });
+  };
+  const all = list.data?.bills;
+  const rows = all?.filter((b) => (!kind || b.kind === kind) && (!status || b.status === status));
   const owed = (rows ?? []).filter((b) => b.status !== 'cancelled' && b.balance > 0).reduce((s, b) => s + b.balance, 0);
 
   return (
@@ -102,7 +160,20 @@ export function BillsPage() {
           loading={list.loading}
           onRowClick={(b) => navigate(`/billing/bills/${b.id}`)}
           rowClassName={(b) => (b.status === 'cancelled' ? 'bill-row-cancelled' : '')}
-          emptyText={search.length >= 2 ? 'No bills match.' : 'No bills on this day.'}
+          emptyText={
+            kind || status ? (
+              <span>
+                No bills match these filters.{' '}
+                <button type="button" className="btn btn-link btn-sm" onClick={() => setParams(date ? { date } : {}, { replace: true })}>
+                  Show all bills
+                </button>
+              </span>
+            ) : search.length >= 2 ? (
+              'No bills match.'
+            ) : (
+              'No bills on this day. Bills appear here when a visit, lab test or stay is charged, or with "New bill".'
+            )
+          }
           toolbar={
             <div className="bill-toolbar">
               <label className="bill-search">
@@ -124,6 +195,26 @@ export function BillsPage() {
                   </button>
                 </div>
               )}
+              <label className="bill-filter">
+                <span>Type</span>
+                <select value={kind} onChange={(e) => setFilter('kind', e.target.value)}>
+                  {KIND_FILTERS.map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="bill-filter">
+                <span>Status</span>
+                <select value={status} onChange={(e) => setFilter('status', e.target.value)}>
+                  {STATUS_FILTERS.map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {rows && owed > 0 && <span className="muted">Still to collect on this list: {rupees(owed)}</span>}
             </div>
           }
