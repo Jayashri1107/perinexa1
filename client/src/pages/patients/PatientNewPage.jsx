@@ -80,6 +80,9 @@ export function PatientNewPage() {
   const dictatedClinical = useRef(null);
   // "She may already be registered": the matching records, and the details that were about to be saved
   const [matches, setMatches] = useState(null); // { list, total, payload } | null
+  // "Save and register another" (owner, 13 Oct 2026): a fresh form for the next patient, with what was saved above it
+  const [round, setRound] = useState(0);
+  const [savedNote, setSavedNote] = useState(null);
   const [choosing, setChoosing] = useState(null); // the choice being carried out: 'register', or the id of the record being opened
   const [matchError, setMatchError] = useState(null);
 
@@ -94,17 +97,17 @@ export function PatientNewPage() {
   const clinicalStep = (v) => roles.includes('rmo') || (roles.includes('doctor') && (!v.assignedDoctor || v.assignedDoctor === user.id));
 
   // Saves the patient's details. Records with the same phone number or name: nothing is saved – the warning opens.
-  const save = async (payload) => {
+  const save = async (payload, { another = false } = {}) => {
     let patient;
     try {
       ({ patient } = await api('/patients', { method: 'POST', body: payload }));
     } catch (err) {
       if (err.code !== 'POSSIBLE_MATCHES') throw err; // the form shows every other problem
       setMatchError(null);
-      setMatches({ list: err.matches ?? [], total: err.total ?? 0, payload });
+      setMatches({ list: err.matches ?? [], total: err.total ?? 0, payload, another });
       return;
     }
-    await afterRegistered(patient);
+    await afterRegistered(patient, another);
   };
 
   // "Register as a new patient anyway": the same details again, with the explicit confirmation.
@@ -113,7 +116,7 @@ export function PatientNewPage() {
     setMatchError(null);
     try {
       const { patient } = await api('/patients', { method: 'POST', body: { ...matches.payload, registerAnyway: true } });
-      await afterRegistered(patient);
+      await afterRegistered(patient, matches.another);
     } catch (err) {
       setMatchError(err.fields && Object.keys(err.fields).length ? `${err.message} Go back to the form to correct them.` : err.message);
       setChoosing(null);
@@ -138,7 +141,7 @@ export function PatientNewPage() {
   };
 
   // After she is saved: her ABHA or quick booking joins the new record, then page 2 (or her record).
-  const afterRegistered = async (patient) => {
+  const afterRegistered = async (patient, another = false) => {
     let registered = `${patient.fullName} was registered in ${activeMembership.tenantName} as ${patient.mrn}.`;
     if (fromAbha) {
       try {
@@ -155,6 +158,15 @@ export function PatientNewPage() {
       } catch (err) {
         registered += ` Her appointment could not be added to her record (${err.message}) – book her again on the Appointments page.`;
       }
+    }
+    if (another && !patient.access.canEditClinical && !booking && !fromAbha) {
+      setMatches(null);
+      setChoosing(null);
+      dictatedClinical.current = null;
+      setSavedNote(`${registered} ${clinicalDetailsBy(patient)} will add the clinical details. The form is ready for the next patient.`);
+      setRound((r) => r + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
     if (patient.access.canEditClinical) {
       if (dictatedClinical.current) carriedOver.set(patient.id, dictatedClinical.current);
@@ -194,6 +206,9 @@ export function PatientNewPage() {
         {allowed && careType && (
           <>
             {clinical && <RegistrationSteps step={1} careType={careType} />}
+            <Alert type="success" onClose={() => setSavedNote(null)}>
+              {savedNote}
+            </Alert>
             {fromAbha && <Alert type="info">Registering {fromAbha.name} from Scan & Share (ABHA). Her ABHA is linked once she is saved.</Alert>}
             {booking && (
               <Alert type="info">
@@ -201,12 +216,13 @@ export function PatientNewPage() {
               </Alert>
             )}
             <PatientForm
-              key={booking?.id ?? fromAbha?.id ?? 'new'}
+              key={booking?.id ?? fromAbha?.id ?? `new-${round}`}
               prefill={booking ? { fullName: booking.name, phone: booking.phone, assignedDoctor: booking.doctorId ?? '' } : fromAbha ? { fullName: fromAbha.name, phone: fromAbha.phone ?? '', ageYears: fromAbha.age ?? '' } : null}
               careType={careType}
               part="info"
               onSubmit={save}
               submitLabel="Register patient"
+              anotherLabel={booking || fromAbha ? null : 'Save and register another'}
               access={{ canEditIdentity: true, canEditNewborn: true, canEditClinical: clinical }}
               clinicalStep={clinicalStep}
               cancelTo="/patients"

@@ -313,3 +313,13 @@
 .closed-banner > .pill { flex: none; }
 .closed-banner-text { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
 .closed-banner .dup-undo { margin-top: 0; }
+
+/* Patients list (owner, 13 Oct 2026): reception's quick actions on each row, the Registered dates under More
+   filters, and the empty list with its way forward */
+.pt-actions-cell { width: 1%; white-space: nowrap; }
+.pt-actions { display: inline-flex; gap: 2px; }
+.pt-actions .icon-btn svg.lucide { width: 18px; height: 18px; }
+.pt-dates { display: inline-flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
+.pt-dates label { display: flex; flex-direction: column; gap: 2px; }
+.pt-dates input { height: var(--control-height); }
+.pt-empty { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2) var(--space-3); }

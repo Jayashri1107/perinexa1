@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { nextNumber } from '../models/Counter.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { PatientNote } from '../models/PatientNote.js';
-import { hospitalToday, sameDay, toHospitalDate } from '../careplans/dates.js';
+import { addDays, hospitalDayStart, hospitalToday, sameDay, toHospitalDate } from '../careplans/dates.js';
 import {
   ANTI_D,
   ECTOPIC_SITES,
@@ -423,6 +423,9 @@ const listSchema = z.object({
   // Records marked as a duplicate of another are left out. Doctors and RMOs may list them too ("include") or
   // only them ("only").
   duplicates: z.enum(['include', 'only']).optional(),
+  // Registered on or after / on or before these days (owner, 13 Oct 2026: More filters → Registered)
+  registeredFrom: requiredDateOnly('Registered from').optional(),
+  registeredTo: requiredDateOnly('Registered to').optional(),
   sort: sortParam(['mrn', 'fullName', 'createdAt', 'pregnancy.effectiveEdd', 'lastVisitOn'], '-createdAt'),
   ...pageParams,
 });
@@ -555,6 +558,12 @@ patientsRouter.get('/', async (req, res) => {
   const q = parse(listSchema, req.query);
   const filter = { tenantId: req.tenantId };
   if (q.careType) filter.careType = q.careType;
+  if (q.registeredFrom || q.registeredTo) {
+    filter.createdAt = {
+      ...(q.registeredFrom ? { $gte: hospitalDayStart(q.registeredFrom) } : {}),
+      ...(q.registeredTo ? { $lt: hospitalDayStart(addDays(q.registeredTo, 1)) } : {}),
+    };
+  }
   if (q.doctor === 'me') filter.assignedDoctor = req.user._id;
   else if (q.doctor === 'mine_or_unassigned') filter.assignedDoctor = { $in: [req.user._id, null] };
   else if (q.doctor === 'unassigned') filter.assignedDoctor = null;

@@ -304,6 +304,8 @@ function MotherPicker({ value, initial, onChange, error, suggest }) {
  *   on a narrow one
  * - dictated: details said on the previous page ({ values, paths, found }), filled in and marked "From voice"
  * - onDictatedClinical(details | null): registration – clinical details said on this page, for the next page
+ * - anotherLabel: registration without a clinical page – a second button ("Save and register another"); onSubmit
+ *   then gets { another: true } as its second argument when it was pressed
  */
 export function PatientForm({
   patient,
@@ -319,7 +321,9 @@ export function PatientForm({
   dictated,
   onDictatedClinical,
   prefill = null, // a new patient's details already known (a quick booking: name, phone, doctor)
+  anotherLabel = null,
 }) {
+  const another = useRef(false); // which save button was pressed
   const isEdit = Boolean(patient);
   const showInfo = part !== 'clinical';
   const showClinical = part !== 'info';
@@ -508,7 +512,7 @@ export function PatientForm({
     }
     setSubmitting(true);
     try {
-      await onSubmit(toPayload({ ...v, careType: type }, isEdit, access, part, loaded));
+      await onSubmit(toPayload({ ...v, careType: type }, isEdit, access, part, loaded), { another: another.current });
     } catch (err) {
       setError(err.message);
       setFieldErrors(err.fields ?? {});
@@ -1028,9 +1032,14 @@ export function PatientForm({
               )}
               <div className="sticky-actions">
                 {recording && <VoiceBar status={voiceStatus} onStop={() => voiceControl.current?.stop()} />}
-                <button type="submit" className="btn btn-primary" disabled={submitting || recording} aria-describedby={recording ? 'save-wait' : undefined}>
+                <button type="submit" className="btn btn-primary" disabled={submitting || recording} aria-describedby={recording ? 'save-wait' : undefined} onClick={() => (another.current = false)}>
                   {submitting ? 'Saving…' : continues ? 'Save and continue' : submitLabel}
                 </button>
+                {anotherLabel && !continues && (
+                  <button type="submit" className="btn btn-secondary" disabled={submitting || recording} onClick={() => (another.current = true)}>
+                    {anotherLabel}
+                  </button>
+                )}
                 {recording && (
                   <span id="save-wait" className="hint voice-save-wait">
                     Stop recording before saving.

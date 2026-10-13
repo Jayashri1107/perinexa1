@@ -3572,6 +3572,22 @@ Branch `profile-and-switch` (after `appointments-layout`).
 3. As a super admin with a linked doctor account: profile circle → Switch to your doctor account → type the doctor
    account's password → you are on the doctor's Today page. A wrong password says so and keeps you as super admin.
 
+## Patients list and registration: quick actions, registered dates, empty lists, register another (13 Oct 2026)
+Branch `patients-quick-actions` (after `profile-and-switch`).
+- **Quick actions on each row (reception)**: Call (opens the phone), Book appointment (New appointment ready for her),
+  Admit (choose a free bed; slip). Not on a record marked as a duplicate or closed.
+- **More filters → Registered from / to** (`registeredFrom`, `registeredTo` on `GET /api/patients`, hospital days,
+  both days included).
+- **Empty list**: "No patients match these filters" with Clear the filters; a hospital with no patients yet offers
+  "Register the first patient".
+- **Save and register another** on the New patient form (when no clinical page follows, i.e. reception): saved, the
+  confirmation shows, and a fresh form is ready for the next patient.
+
+### How to test (fake data only)
+1. As the receptionist: Patients → each row has Call, Book appointment and Admit; try Book and Admit.
+2. More filters → Registered from today: only today's registrations.
+3. New patient → fill in a fake patient → **Save and register another**: the confirmation shows above an empty form.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

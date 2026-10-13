@@ -1,4 +1,4 @@
-import { Archive, Copy, Lock, Siren, SlidersHorizontal, TriangleAlert, UserPlus } from 'lucide-react';
+import { Archive, BedDouble, CalendarPlus, Copy, Lock, Phone, Siren, SlidersHorizontal, TriangleAlert, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -12,6 +12,7 @@ import { canRegisterPatients } from '../../platform/modules.js';
 import { NEW_PATIENT_LINKS, ageText, careNowText, sinceText } from './patientFormat.js';
 import { RiskBadge } from './RiskCard.jsx';
 import { RISK_SHORT } from './riskFormat.js';
+import { AdmissionSlip, AdmitDialog } from '../beds/BedBoardPage.jsx';
 
 // What was typed in the search box is kept here – not in the page address, where it would stay in the browser's
 // history – so going back to the list keeps it. Only for the same person and hospital; gone after a reload.
@@ -26,12 +27,12 @@ export function PatientsPage() {
   const defaultDoctor = isDoctor && !hasRole(activeMembership, 'rmo') ? 'me' : 'all';
   // Clinical staff: the most recently seen first; reception: the most recently registered first
   const clinicalList = hasRole(activeMembership, 'doctor', 'rmo', 'nurse');
-  const [params, setParams, resetParams] = useListParams({ careType: '', doctor: defaultDoctor, risk: '', duplicates: '', sort: clinicalList ? '-lastVisitOn' : '-createdAt', page: 1, limit: 25 });
+  const [params, setParams, resetParams] = useListParams({ careType: '', doctor: defaultDoctor, risk: '', duplicates: '', registeredFrom: '', registeredTo: '', sort: clinicalList ? '-lastVisitOn' : '-createdAt', page: 1, limit: 25 });
   // Records marked as a duplicate of another are left out of the list; doctors and RMOs may show them
   const seesDuplicates = hasRole(activeMembership, 'doctor', 'rmo');
   const duplicates = seesDuplicates && ['include', 'only'].includes(params.duplicates) ? params.duplicates : '';
   // Under "More filters": a particular doctor, a risk other than "high" (the quick choices cover the rest), duplicates
-  const moreFilters = [!['me', 'all'].includes(params.doctor) && params.doctor !== defaultDoctor, params.risk && params.risk !== 'high', duplicates].filter(Boolean).length;
+  const moreFilters = [!['me', 'all'].includes(params.doctor) && params.doctor !== defaultDoctor, params.risk && params.risk !== 'high', duplicates, params.registeredFrom || params.registeredTo].filter(Boolean).length;
   const [showFilters, setShowFilters] = useState(false);
   const searchKey = `${user.id}:${activeMembership.tenantId}`;
   const [search, setSearchText] = useState(() => (lastSearch.key === searchKey ? lastSearch.text : ''));
@@ -53,6 +54,10 @@ export function PatientsPage() {
     setAddressParams(next, { replace: true });
   }, [addressParams, setAddressParams]);
   const seesRisk = hasRole(activeMembership, 'doctor', 'rmo', 'nurse');
+  const isReception = hasRole(activeMembership, 'receptionist');
+  const [admitting, setAdmitting] = useState(null); // the patient being admitted from her row
+  const [admittedSlip, setAdmittedSlip] = useState(null);
+  const [notice, setNotice] = useState(null);
   const { data, error, loading } = useFetch('/patients', { ...params, duplicates, search });
   const doctors = useFetch('/tenant/doctors');
   const canRegister = canRegisterPatients(roles);
@@ -158,6 +163,32 @@ export function PatientsPage() {
     ...(params.doctor === 'me'
       ? []
       : [{ key: 'doctor', header: 'Doctor', className: 'wrap-cell', render: (p) => p.assignedDoctorName ?? <span className="muted">Not assigned</span> }]),
+    // Reception: call, book and admit from the row (owner, 13 Oct 2026) – not for a duplicate or a closed record
+    ...(isReception
+      ? [
+          {
+            key: 'actions',
+            header: <span className="sr-only">Quick actions</span>,
+            className: 'pt-actions-cell',
+            render: (p) =>
+              p.duplicateOf || p.closed ? null : (
+                <span className="pt-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                  {p.phone && (
+                    <a className="icon-btn" href={`tel:${p.phone.replace(/\s+/g, '')}`} aria-label={`Call ${p.fullName}`} title="Call">
+                      <Phone aria-hidden="true" />
+                    </a>
+                  )}
+                  <button type="button" className="icon-btn" aria-label={`Book an appointment for ${p.fullName}`} title="Book appointment" onClick={() => navigate('/appointments', { state: { bookFor: { id: p.id, fullName: p.fullName, mrn: p.mrn, phone: p.phone ?? '' } } })}>
+                    <CalendarPlus aria-hidden="true" />
+                  </button>
+                  <button type="button" className="icon-btn" aria-label={`Admit ${p.fullName}`} title="Admit" onClick={() => setAdmitting(p)}>
+                    <BedDouble aria-hidden="true" />
+                  </button>
+                </span>
+              ),
+          },
+        ]
+      : []),
   ];
 
   // Quick choices, always in view (one click each); the rest under "More filters"
@@ -197,7 +228,7 @@ export function PatientsPage() {
     { value: 'unassigned', label: 'Not assigned' },
     ...(doctors.data?.doctors ?? []).map((d) => ({ value: d.id, label: d.name })),
   ];
-  const filtered = search || params.careType || params.risk || duplicates || params.doctor !== defaultDoctor;
+  const filtered = search || params.careType || params.risk || duplicates || params.registeredFrom || params.registeredTo || params.doctor !== defaultDoctor;
 
   return (
     <>
@@ -213,6 +244,9 @@ export function PatientsPage() {
       />
       <div className="pf-content">
         <Alert type="error">{error}</Alert>
+        <Alert type="success" onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
         <div className="pt-quick">
           {isDoctor && (
             <div className="segmented" role="group" aria-label="Whose patients">
@@ -246,7 +280,21 @@ export function PatientsPage() {
           sort={params.sort}
           onSort={(sort) => setParams({ sort })}
           onRowClick={(p) => navigate(`/patients/${p.id}`)}
-          emptyText={filtered ? 'No patients match these filters.' : 'No patients in this hospital yet.'}
+          emptyText={
+            filtered ? (
+              <span className="pt-empty">
+                No patients match these filters.{' '}
+                <button type="button" className="btn btn-link btn-sm" onClick={reset}>
+                  Clear the filters
+                </button>
+              </span>
+            ) : (
+              <span className="pt-empty">
+                No patients in this hospital yet.
+                {canRegister && <MenuButton className="btn btn-secondary btn-sm" icon={UserPlus} label="Register the first patient" items={NEW_PATIENT_LINKS} />}
+              </span>
+            )
+          }
           toolbar={
             <>
               <SearchInput value={search} onChange={setSearch} placeholder="Name, phone or patient no.…" label="Search patients" />
@@ -269,6 +317,16 @@ export function PatientsPage() {
                   ]}
                 />
               )}
+              <span className="pt-dates" role="group" aria-label="Registered">
+                <label>
+                  <span className="field-label">Registered from</span>
+                  <input type="date" value={params.registeredFrom} max={params.registeredTo || undefined} onChange={(e) => setParams({ registeredFrom: e.target.value })} />
+                </label>
+                <label>
+                  <span className="field-label">to</span>
+                  <input type="date" value={params.registeredTo} min={params.registeredFrom || undefined} onChange={(e) => setParams({ registeredTo: e.target.value })} />
+                </label>
+              </span>
               {seesDuplicates && (
                 <FilterSelect
                   label="Duplicates"
@@ -301,6 +359,18 @@ export function PatientsPage() {
           }
         />
       </div>
+      {admitting && (
+        <AdmitDialog
+          patient={admitting}
+          onClose={() => setAdmitting(null)}
+          onAdmitted={(info) => {
+            setAdmitting(null);
+            setNotice(`${info.patient.fullName} is admitted to ${info.ward} · ${info.bed}.`);
+            setAdmittedSlip(info);
+          }}
+        />
+      )}
+      {admittedSlip && <AdmissionSlip info={admittedSlip} onClose={() => setAdmittedSlip(null)} />}
     </>
   );
 }
