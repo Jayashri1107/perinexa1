@@ -17,7 +17,7 @@ const GUIDE = {
   beds: 'The bed board: which beds are free or occupied, admitting at the desk and moving a patient.',
   lab: 'Tests ordered, samples collected and results entered. Results outside the range are marked in colour, with an icon and a word.',
   billing: 'Bills, payments and receipts. A bill can be printed or shared as a PDF.',
-  pharmacy: 'Prescriptions to give out, the stock and supplier returns.',
+  pharmacy: 'Sell or issue to a ward: choose the patient and her prescription comes up. Also the stock, purchases and supplier returns.',
   analytics: 'Counts and charts for the hospital, and “Ask your records” to search the records in plain words.',
   knowledge: 'The clinic library: care-plan templates, consent forms, test packages and prescription sets. A doctor approves each one before it is used.',
   'hospital-admin': 'Staff, roles, beds and the hospital’s settings. Deactivate a person instead of deleting them.',
