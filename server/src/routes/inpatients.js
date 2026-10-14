@@ -12,6 +12,7 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { isClosed } from '../patients/deathRules.js';
+import { addDays, hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 
 // The hospital's inpatients today (Version 2): GET /api/inpatients – for doctors, RMOs and nurses, only patients
 // whose medical details they may see:
@@ -72,6 +73,24 @@ export async function inpatientsFor(req) {
       ])
     : [];
   const lastAt = (stayId, kind) => latest.find((l) => String(l._id.admissionId) === String(stayId) && l._id.kind === kind)?.at ?? null;
+
+  // The ward round (owner, 13 Oct 2026): which stays have an admission note, and a round note today; who came in and
+  // who went home today; and the handover notes and escalations of the last 24 hours (patients this person may see).
+  const now = req.now ?? new Date();
+  const today = hospitalToday(now);
+  const [dayStart, dayEnd] = [hospitalDayStart(today), hospitalDayStart(addDays(today, 1))];
+  const stayIds = shown.map((s) => s._id);
+  const notes = stayIds.length
+    ? await ClinicalDocument.find({ tenantId, admissionId: { $in: stayIds }, kind: { $in: ['admission', 'round'] }, status: { $ne: 'cancelled' } }, { admissionId: 1, kind: 1, createdAt: 1 }).lean()
+    : [];
+  const hasNote = (stayId, kind, since = null) => notes.some((d) => String(d.admissionId) === String(stayId) && d.kind === kind && (!since || d.createdAt >= since));
+  const dischargedToday = await Admission.countDocuments({ tenantId, status: 'discharged', dischargedAt: { $gte: dayStart, $lt: dayEnd } });
+  const recent = stayIds.length
+    ? await NursingEntry.find({ tenantId, admissionId: { $in: stayIds }, kind: { $in: ['handover', 'escalation'] }, cancelled: null, at: { $gte: new Date(now.getTime() - 24 * 3_600_000) } })
+        .sort({ at: -1 })
+        .limit(100)
+        .lean()
+    : [];
   const admitted = shown.map((s) => ({
     patient: who(visible.get(String(s.patientId))),
     admissionId: String(s._id),
@@ -81,6 +100,9 @@ export async function inpatientsFor(req) {
     drafts: drafts.filter((d) => String(d.admissionId) === String(s._id)).length,
     lastVitalsAt: lastAt(s._id, 'vitals'),
     lastMedicineAt: lastAt(s._id, 'medicine'),
+    hasAdmissionNote: hasNote(s._id, 'admission'),
+    roundNoteToday: hasNote(s._id, 'round', dayStart),
+    admittedToday: s.admittedAt >= dayStart && s.admittedAt < dayEnd,
     redFlags: flagged.byPatient.get(String(s.patientId))?.flags ?? [],
     // No rule applies to her type of care: nothing was checked ("no flags" would be read as "nothing wrong")
     redFlagsChecked: !flagged.notChecked.has(String(s.patientId)),
@@ -94,5 +116,21 @@ export async function inpatientsFor(req) {
         .sort((a, b) => a.createdAt - b.createdAt)
         .map((d) => ({ patient: who(visible.get(String(d.patientId))), admissionId: String(d.admissionId), documentId: String(d._id), kind: d.kind, writtenBy: d.savedByName ?? d.createdByName, at: d.savedAt ?? d.createdAt }))
     : null;
-  return { admitted, toConfirm, rules: flagged.rules };
+  const stayOf = new Map(shown.map((s) => [String(s._id), s]));
+  const handovers = recent.map((e) => {
+    const s = stayOf.get(String(e.admissionId));
+    return {
+      id: String(e._id),
+      kind: e.kind,
+      at: e.at,
+      note: e.note ?? '',
+      escalatedTo: e.kind === 'escalation' ? (e.escalatedTo ?? '') : '',
+      byName: e.byName,
+      patient: who(visible.get(String(e.patientId))),
+      admissionId: String(e.admissionId),
+      ward: s?.ward ?? '',
+      bed: s?.bed ?? '',
+    };
+  });
+  return { admitted, toConfirm, rules: flagged.rules, dischargedToday, handovers };
 }

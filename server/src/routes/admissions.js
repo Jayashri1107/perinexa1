@@ -415,6 +415,7 @@ admissionsRouter.post('/:admissionId/nursing', async (req, res) => {
     at,
     ...(body.kind === 'vitals' ? { vitals: body.vitals } : {}),
     ...(body.kind === 'medicine' ? { medicine: body.medicine } : {}),
+    ...(body.kind === 'escalation' ? { escalatedTo: body.escalatedTo } : {}),
     note: body.note,
     by: req.user._id,
     byName: req.user.name,

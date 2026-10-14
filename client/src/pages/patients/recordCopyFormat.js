@@ -456,13 +456,13 @@ export function documentBlock(d) {
   };
 }
 
-const NURSING_KINDS = { vitals: 'Vital signs', medicine: 'Medicine given', note: 'Note' };
+const NURSING_KINDS = { vitals: 'Vital signs', medicine: 'Medicine given', note: 'Note', handover: 'Handover note', escalation: 'Told the consultant' };
 /** The nursing chart as table rows [time, kind, what, by whom]. */
 export const nursingRows = (entries) =>
   (entries ?? []).map((e) => {
     const what = e.enteredInError
       ? `Entered in error${e.enteredInError.byName ? ` (marked by ${e.enteredInError.byName})` : ''} – not copied`
-      : [e.kind === 'vitals' ? vitalsLine(e.vitals) : '', e.kind === 'medicine' ? [e.medicine?.drug, e.medicine?.dose, e.medicine?.route].filter(Boolean).join(' · ') : '', e.note].filter(Boolean).join(' – ');
+      : [e.kind === 'vitals' ? vitalsLine(e.vitals) : '', e.kind === 'medicine' ? [e.medicine?.drug, e.medicine?.dose, e.medicine?.route].filter(Boolean).join(' · ') : '', e.kind === 'escalation' && e.escalatedTo ? `Told ${e.escalatedTo}` : '', e.note].filter(Boolean).join(' – ');
     return { key: e.id, cells: [formatDateTime(e.at), NURSING_KINDS[e.kind] ?? e.kind, what, e.enteredInError ? '' : (e.byName ?? '')] };
   });
 

@@ -37,6 +37,7 @@ export const entryView = (e) => ({
   vitals: e.kind === 'vitals' ? { bpSystolic: e.vitals?.bpSystolic ?? null, bpDiastolic: e.vitals?.bpDiastolic ?? null, pulse: e.vitals?.pulse ?? null, temperatureF: e.vitals?.temperatureF ?? null, spo2: e.vitals?.spo2 ?? null } : null,
   medicine: e.kind === 'medicine' ? { drug: e.medicine?.drug ?? '', dose: e.medicine?.dose ?? '', route: e.medicine?.route ?? '' } : null,
   note: e.note ?? '',
+  escalatedTo: e.kind === 'escalation' ? (e.escalatedTo ?? '') : '',
   byName: e.byName,
   cancelled: e.cancelled ? { reason: e.cancelled.reason, byName: e.cancelled.byName, at: e.cancelled.at } : null,
 });

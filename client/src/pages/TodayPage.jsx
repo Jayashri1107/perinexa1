@@ -13,7 +13,7 @@ import { rupees } from './billing/billingFormat.js';
 import { ScanShareSection } from './abdm/ScanShare.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyToday } from './pharmacy/PharmacyToday.jsx';
-import { NurseToday, VITALS_DUE_HOURS, vitalsDue } from './inpatient/NurseToday.jsx';
+import { HandoverList, VITALS_DUE_HOURS, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
 import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
 import { AiBriefCard } from './ai/AiBriefCard.jsx';
 import { useLibraryDrafts } from './library/ApprovalsPage.jsx';
@@ -192,7 +192,10 @@ export function TodayPage() {
   // The billing department: unpaid bills and the money owed
   // and reception (the "To collect" card and the payments to collect now)
   const isReception = roles.includes('receptionist');
-  const isBillingDesk = roles.includes('billing'); // the billing department's own cards and today's bills (BillingToday)
+  const isBillingDesk = roles.includes('billing');
+  // An RMO who is not also a doctor or receptionist (owner, 13 Oct 2026): the ward round instead of the front desk's
+  // jobs – no Scan & Share, walk-in tokens, babies' vaccination calls or calendar link
+  const rmoOnly = roles.includes('rmo') && !has(roles, ['doctor', 'receptionist']); // the billing department's own cards and today's bills (BillingToday)
   const unpaid = useFetch(has(roles, ['billing', 'receptionist']) ? '/billing/reports/unpaid' : null);
   const collected = useFetch(isReception ? '/billing/reports/daily' : null);
   const beds = useFetch(isReception ? '/beds' : null, { summary: '1' });
@@ -318,7 +321,7 @@ export function TodayPage() {
                 </button>
               </div>
             )}
-            {today.data?.canMarkArrived && canSeeAppointments(roles) && (
+            {today.data?.canMarkArrived && canSeeAppointments(roles) && !rmoOnly && (
               <button type="button" className="btn btn-secondary" onClick={() => setArriving({ patient: null })}>
                 <Hash aria-hidden="true" /> Walk-in token
               </button>
@@ -361,7 +364,8 @@ export function TodayPage() {
             <div className="kpi-grid">{tiles}</div>
           </section>
         )}
-        {roles.includes('nurse') && <NurseToday inpatients={inpatients.data} />}
+        {(roles.includes('nurse') || roles.includes('rmo')) && <WardToday inpatients={inpatients.data} rmo={roles.includes('rmo')} />}
+        {clinicalWork && inpatients.data && <HandoverList inpatients={inpatients.data} />}
         {roles.includes('pharmacist') && <PharmacyToday />}
         {isBillingDesk && <BillingToday />}
         {isReception && (
@@ -521,7 +525,7 @@ export function TodayPage() {
             </ul>
           </Section>
         )}
-        {has(roles, ['receptionist', 'doctor', 'rmo']) && <ScanShareSection />}
+        {has(roles, ['receptionist', 'doctor']) && <ScanShareSection />}
         {today.data?.guests && <QuickBookingsSection guests={today.data.guests} canRegister={canRegisterPatients(roles)} />}
         {/* Nurses: who arrived and is waiting for her visit to be started, then the visits started today */}
         {!appointments && worklist.data?.waiting?.length > 0 && (
@@ -557,13 +561,13 @@ export function TodayPage() {
           <CallList id="td-babies" icon={Baby} title="Babies due – not booked" rows={today.data.babiesDue} empty="No babies to call." line={babyDueLine} note={babiesDueNote(today.data.babiesDue)} />
         )}
         {worklist.data && <CarePlanSection data={worklist.data} onRemind={setReminding} />}
-        {worklist.data && <VaccinationsOverdueSection data={worklist.data} />}
+        {worklist.data && !rmoOnly && <VaccinationsOverdueSection data={worklist.data} />}
         </div>
 
         {(worklist.data || today.data) && (
           <p className="hint wl-footnote">
             <ClipboardList aria-hidden="true" /> A reminder list: it shows only what was recorded in Perinexa.{' '}
-            {appointments && (
+            {appointments && !rmoOnly && (
               <Link to="/calendar" className="btn btn-link btn-sm">
                 Open the calendar
               </Link>

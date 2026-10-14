@@ -16,12 +16,13 @@ import { DOCTOR_CONFIRMS, KIND_LABELS, ONE_PER_STAY, docStatusLook, docTime, fro
 // While she is in hospital the page shows her red flags: the latest vital signs on the chart are checked against the
 // hospital's rules for her type of care, with her lab results (the card follows each new chart entry).
 
-const NURSING_WORDS = { vitals: 'Vital signs', medicine: 'Medicine given', note: 'Note' };
+// handover: for the next shift; escalation: the consultant (or the doctor on call) was told (owner, 13 Oct 2026)
+const NURSING_WORDS = { vitals: 'Vital signs', medicine: 'Medicine given', note: 'Note', handover: 'Handover note', escalation: 'Told the consultant' };
 // The stay's red flags as one text, to see whether a chart entry changed them
 const flagKeys = (redFlags) => (redFlags?.flags ?? []).map((f) => `${f.key}:${f.detail}`).join('|');
 
 function NursingChart({ patient, page, onSaved }) {
-  const blank = { kind: 'vitals', at: '', bpSystolic: '', bpDiastolic: '', pulse: '', temperatureF: '', spo2: '', drug: '', dose: '', route: '', note: '' };
+  const blank = { kind: 'vitals', at: '', bpSystolic: '', bpDiastolic: '', pulse: '', temperatureF: '', spo2: '', drug: '', dose: '', route: '', note: '', escalatedTo: '' };
   const [form, setForm] = useState(blank);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
@@ -33,7 +34,7 @@ function NursingChart({ patient, page, onSaved }) {
 
   const add = async (e) => {
     e.preventDefault();
-    if (patient.careType !== 'newborn' && ['note', 'drug', 'dose', 'route'].some((k) => mentionsFetalSex(form[k]))) return setFields({ note: PCPNDT_MESSAGE });
+    if (patient.careType !== 'newborn' && ['note', 'drug', 'dose', 'route', 'escalatedTo'].some((k) => mentionsFetalSex(form[k]))) return setFields({ note: PCPNDT_MESSAGE });
     setSaving(true);
     setError(null);
     setFields({});
@@ -43,6 +44,7 @@ function NursingChart({ patient, page, onSaved }) {
       at: fromLocalInput(form.at),
       ...(form.kind === 'vitals' ? { vitals: { bpSystolic: form.bpSystolic, bpDiastolic: form.bpDiastolic, pulse: form.pulse, temperatureF: form.temperatureF, spo2: form.spo2 } } : {}),
       ...(form.kind === 'medicine' ? { medicine: { drug: form.drug, dose: form.dose, route: form.route } } : {}),
+      ...(form.kind === 'escalation' ? { escalatedTo: form.escalatedTo } : {}),
       note: form.note,
     };
     try {
@@ -121,7 +123,16 @@ function NursingChart({ patient, page, onSaved }) {
                 </Field>
               </>
             )}
-            <Field label={form.kind === 'note' ? 'Note' : 'Note (optional)'} id="nc-note" error={fields.note}>
+            {form.kind === 'escalation' && (
+              <Field label="Told whom" id="nc-to" error={fields.escalatedTo} hint="The consultant or the doctor on call, e.g. Dr Sample" keepHint>
+                <input id="nc-to" value={form.escalatedTo} maxLength={100} onChange={set('escalatedTo')} />
+              </Field>
+            )}
+            <Field
+              label={{ note: 'Note', handover: 'For the next shift', escalation: 'Why, and what was decided' }[form.kind] ?? 'Note (optional)'}
+              id="nc-note"
+              error={fields.note}
+            >
               <input id="nc-note" value={form.note} maxLength={1000} onChange={set('note')} />
             </Field>
             <Field label="Time (empty: now)" id="nc-at" error={fields.at}>
@@ -144,7 +155,8 @@ function NursingChart({ patient, page, onSaved }) {
               <span>
                 {e.kind === 'vitals' && vitalsLine(e.vitals)}
                 {e.kind === 'medicine' && [e.medicine.drug, e.medicine.dose, e.medicine.route].filter(Boolean).join(' · ')}
-                {e.note && `${e.kind === 'note' ? '' : ' – '}${e.note}`}
+                {e.kind === 'escalation' && e.escalatedTo && `Told ${e.escalatedTo}`}
+                {e.note && `${['note', 'handover'].includes(e.kind) ? '' : ' – '}${e.note}`}
               </span>
               <span className="muted">{e.byName}</span>
               {e.cancelled ? (

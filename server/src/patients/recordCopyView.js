@@ -280,7 +280,7 @@ export function documentForCopy(d) {
 /** `e`: entryView(entry) of the nursing chart. */
 export function nursingEntryForCopy(e) {
   if (e.cancelled) return { id: e.id, kind: e.kind, at: e.at, enteredInError: stamp(e.cancelled) };
-  return { id: e.id, kind: e.kind, at: e.at, vitals: e.vitals ?? null, medicine: e.medicine ?? null, note: e.note ?? '', byName: e.byName ?? null };
+  return { id: e.id, kind: e.kind, at: e.at, vitals: e.vitals ?? null, medicine: e.medicine ?? null, note: e.note ?? '', ...(e.kind === 'escalation' ? { escalatedTo: e.escalatedTo ?? '' } : {}), byName: e.byName ?? null };
 }
 
 /** `a`: admissionView(stay), with its documents and nursing chart entries (already made for the copy, oldest first). */

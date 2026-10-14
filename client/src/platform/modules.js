@@ -340,7 +340,9 @@ export function hospitalModules(roles = []) {
   const modules = [HOSPITAL_TODAY];
   if (canSeePatients(roles)) modules.push(HOSPITAL_PATIENTS);
   if (canSeeAppointments(roles)) modules.push(HOSPITAL_APPOINTMENTS);
-  if (canSeeCalendar(roles)) modules.push(HOSPITAL_CALENDAR);
+  // An RMO alone does not get the calendar in the menu (follow-up reminders and booking are front-desk work – owner,
+  // 13 Oct 2026); their Today still lists today's patients and who is waiting.
+  if (canSeeCalendar(roles) && !(roles.includes('rmo') && !any(roles, ['doctor', 'receptionist']))) modules.push(HOSPITAL_CALENDAR);
   if (any(roles, BED_ROLES)) modules.push(HOSPITAL_BEDS);
   if (any(roles, LAB_ROLES)) modules.push(HOSPITAL_LAB);
   if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);

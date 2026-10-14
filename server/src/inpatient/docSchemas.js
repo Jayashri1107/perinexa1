@@ -63,7 +63,9 @@ function tidyBaby(b) {
   return out;
 }
 export const ANAESTHESIA = ['spinal', 'epidural', 'general', 'local', 'other'];
-export const NURSING_KINDS = ['vitals', 'medicine', 'note'];
+// handover: a note for the next shift; escalation: the consultant (or the doctor on call) was told – whom, and why
+// (owner, 13 Oct 2026). Both stay on the stay's chart with who and when, like every entry.
+export const NURSING_KINDS = ['vitals', 'medicine', 'note', 'handover', 'escalation'];
 
 const emptyToNull = (v) => (v === '' || v === undefined ? null : v);
 const num = (label, min, max) =>
@@ -231,6 +233,7 @@ export function nursingSchema({ pcpndt = true } = {}) {
         .strict()
         .default({}),
       note: t('Note', 1000),
+      escalatedTo: t('Told whom', 100),
     })
     .strict()
     .superRefine((e, ctx) => {
@@ -241,5 +244,8 @@ export function nursingSchema({ pcpndt = true } = {}) {
       if ((v.bpSystolic == null) !== (v.bpDiastolic == null)) ctx.addIssue({ code: 'custom', path: ['vitals', 'bpSystolic'], message: 'Enter both blood pressure numbers' });
       if (e.kind === 'medicine' && !e.medicine.drug) ctx.addIssue({ code: 'custom', path: ['medicine', 'drug'], message: 'Enter the medicine given' });
       if (e.kind === 'note' && !e.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Write the note' });
+      if (e.kind === 'handover' && !e.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Write what the next shift needs to know' });
+      if (e.kind === 'escalation' && !e.escalatedTo) ctx.addIssue({ code: 'custom', path: ['escalatedTo'], message: 'Write whom you told' });
+      if (e.kind === 'escalation' && !e.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Write why, and what was decided' });
     });
 }

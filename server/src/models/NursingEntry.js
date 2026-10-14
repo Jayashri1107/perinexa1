@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 import { tenantScoped } from '../utils/tenantScope.js';
 import { NURSING_KINDS } from '../inpatient/docSchemas.js';
 
-// The nursing chart of a stay (Version 2): vital signs, a medicine given, or a note – with who and when. Never
+// The nursing chart of a stay (Version 2): vital signs, a medicine given, a note, a handover note for the next shift, or
+// an escalation (the consultant was told) – with who and when. Never
 // changed: an entry made by mistake is marked "entered in error" with a reason.
 
 const { ObjectId } = mongoose.Schema.Types;
@@ -15,6 +16,7 @@ const entrySchema = new mongoose.Schema(
     vitals: { bpSystolic: Number, bpDiastolic: Number, pulse: Number, temperatureF: Number, spo2: Number },
     medicine: { drug: String, dose: String, route: String },
     note: { type: String, default: '' },
+    escalatedTo: { type: String, default: '' }, // escalation: whom the nurse or RMO told
     by: { type: ObjectId, ref: 'User', required: true },
     byName: { type: String, required: true },
     cancelled: {

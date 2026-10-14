@@ -68,7 +68,8 @@ describe('the left menu by role', () => {
     expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Lab', 'Analytics', 'Clinic library']);
     expect(menu(['admin'])).toEqual(['Today', 'Billing', 'Pharmacy', 'Analytics', 'Hospital admin']);
     expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Lab', 'Billing', 'Pharmacy', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
-    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Lab', 'Analytics', 'Clinic library']); // Analytics: only Ask your records
+    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Analytics', 'Clinic library']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
+    expect(menu(['rmo', 'doctor'])).toContain('Calendar');
     expect(menu(['nurse'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Analytics', 'Clinic library']);
     expect(menu(['receptionist'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Billing']);
     expect(menu(['lab'])).toEqual(['Today', 'Patients', 'Lab']);
