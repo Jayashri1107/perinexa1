@@ -301,7 +301,11 @@ export function AppLayout() {
             <img className="sb-appicon" src={appIcon} alt="Perinexa" width="40" height="40" />
           </Link>
         </div>
-        {hospitalName && <p className="sb-subtitle">{hospitalName}</p>}
+        {hospitalName && (
+          <p className="sb-subtitle" title={hospitalName}>
+            <Building2 aria-hidden="true" /> <span>{hospitalName}</span>
+          </p>
+        )}
 
         <nav className="sb-nav">
           {modules.map((m) => (
@@ -309,7 +313,15 @@ export function AppLayout() {
           ))}
           {!locked && <SideLink module={ACCOUNT_MODULE} rail={rail} onNavigate={closeMobile} />}
         </nav>
-        {foot && <p className="sb-foot">{foot}</p>}
+        {foot && (
+          <div className="sb-foot" title={`${user.name} · ${foot}`}>
+            <Avatar name={user.name} seed={user.email} photo={user.photo} />
+            <span className="sb-foot-text">
+              <strong>{user.name}</strong>
+              <span>{foot}</span>
+            </span>
+          </div>
+        )}
       </aside>
       <div className="sb-overlay" onClick={closeMobile} aria-hidden="true" />
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Building2, CalendarDays, ChartColumn, FlaskConical, Headset, HeartPulse, History, Lock, Pill, Receipt, ShieldCheck, Stethoscope, UserCog, Users } from 'lucide-react';
 import { Link, Navigate, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -8,7 +8,7 @@ import { AuditLogView } from '../../components/AuditLogView.jsx';
 import { formatNumber } from '../../components/DataTable.jsx';
 import { MembersPanel } from '../../components/MembersPanel.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, Field, StatusPill, formatDateTime, useConfirm } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill, formatDate, formatDateTime, useConfirm } from '../../components/ui.jsx';
 import { STAFF_ROLE_PAGES } from '../../platform/modules.js';
 import { FullPageSpinner } from '../../auth/guards.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -130,29 +130,55 @@ export function HospitalWorkspace() {
   );
 }
 
-// One hospital on one page, as in Perinexa1 of 7 Oct (owner, 13 Oct 2026): three cards side by side – its details,
-// its staff by role, its numbers and activity – and its staff list underneath. The super admin never sees its patients.
+// One hospital on one page (owner, 14 Oct 2026 redesign): its numbers at the top, then its details beside its staff by
+// role, a strip with the privacy rule and its numbers and activity, and its staff list underneath. The super admin
+// never sees its patients.
+const ROLE_ICONS = { doctor: Stethoscope, rmo: UserCog, nurse: HeartPulse, receptionist: Headset, lab: FlaskConical, pharmacist: Pill, billing: Receipt, admin: ShieldCheck };
+
 export function HospitalOverviewTab() {
   const { tenant, reload } = useOutletContext();
-  const [changes, setChanges] = useState(0); // a change in the staff list counts the roles again
+  const roles = useFetch('/platform/users/role-counts', { tenantId: tenant.id });
+  const doctors = roles.data ? (roles.data.counts.doctor ?? 0) : null;
   return (
     <>
+      <div className="hw-stats" role="list" aria-label="This hospital in numbers">
+        {[
+          ['staff', Users, 'Active staff', formatNumber(tenant.members)],
+          ['admins', ShieldCheck, 'Hospital admins', formatNumber(tenant.admins)],
+          ['doctors', Stethoscope, 'Doctors', doctors === null ? '—' : formatNumber(doctors)],
+          ['created', CalendarDays, 'Created on', formatDate(tenant.createdAt)],
+        ].map(([key, Icon, label, value]) => (
+          <div key={key} className={`card hw-stat is-${key}`} role="listitem">
+            <span className="hw-stat-icon" aria-hidden="true">
+              <Icon />
+            </span>
+            <span className="hw-stat-text">
+              <span>{label}</span>
+              <strong className="tabular">{value}</strong>
+            </span>
+          </div>
+        ))}
+      </div>
       <div className="hw-cards">
         <HospitalDetails tenant={tenant} reload={reload} />
-        <StaffByRole key={changes} tenant={tenant} />
-        <section className="card hw-card">
-          <h2>Numbers and activity</h2>
-          <p className="muted">Whole months, numbers only – never a patient.</p>
-          <ul className="hw-links">
-            <li>
-              <Link to={`/platform/analytics?hospital=${tenant.id}`}>This hospital's numbers (Analytics)</Link>
-            </li>
-            <li>
-              <Link to={`/platform/hospitals/${tenant.id}/activity`}>Its activity (who did what, and when)</Link>
-            </li>
-          </ul>
-          <p className="hint help">Patient records are only visible to this hospital's staff, not to super admins.</p>
-        </section>
+        <StaffByRole counts={roles.data?.counts ?? null} error={roles.error} />
+      </div>
+      <div className="card hw-privacy">
+        <span className="hw-privacy-icon" aria-hidden="true">
+          <Lock />
+        </span>
+        <p>
+          <strong>Patient records are only visible to this hospital's staff</strong>
+          <span className="muted">Super admins see numbers only – whole months, never a patient.</span>
+        </p>
+        <div className="hw-privacy-links">
+          <Link to={`/platform/analytics?hospital=${tenant.id}`} className="btn btn-secondary btn-sm">
+            <ChartColumn aria-hidden="true" /> Numbers (Analytics)
+          </Link>
+          <Link to={`/platform/hospitals/${tenant.id}/activity`} className="btn btn-secondary btn-sm">
+            <History aria-hidden="true" /> Activity log
+          </Link>
+        </div>
       </div>
       <div id="staff" className="hw-staff">
         <MembersPanel
@@ -160,7 +186,7 @@ export function HospitalOverviewTab() {
           linkToUser
           defaultRoles={tenant.admins === 0 ? ['admin'] : ['doctor']}
           onChanged={() => {
-            setChanges((n) => n + 1);
+            roles.reload(); // a change in the staff list counts the roles again
             reload();
           }}
         />
@@ -194,7 +220,9 @@ function HospitalDetails({ tenant, reload }) {
 
   return (
     <form className="card hw-card" onSubmit={save} noValidate>
-      <h2>Hospital details</h2>
+      <h2>
+        <Building2 aria-hidden="true" /> Hospital details
+      </h2>
       <Alert type="success">{saved && 'Name saved.'}</Alert>
       <Field label="Hospital name" id="tenant-name" error={error}>
         <div className="hw-name">
@@ -205,26 +233,35 @@ function HospitalDetails({ tenant, reload }) {
         </div>
       </Field>
       <dl className="hw-facts">
-        <dt>Status</dt>
-        <dd>
-          <TenantStatus active={tenant.isActive} />
-        </dd>
-        <dt>Active staff</dt>
-        <dd className="tabular">{formatNumber(tenant.members)}</dd>
-        <dt>Admins</dt>
-        <dd className="tabular">{formatNumber(tenant.admins)}</dd>
-        <dt>Created</dt>
-        <dd className="tabular">{formatDateTime(tenant.createdAt)}</dd>
-        <dt>Hospital ID</dt>
-        <dd className="mono muted">{tenant.id}</dd>
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <TenantStatus active={tenant.isActive} />
+          </dd>
+        </div>
+        <div>
+          <dt>Created</dt>
+          <dd className="tabular">{formatDateTime(tenant.createdAt)}</dd>
+        </div>
+        <div>
+          <dt>Active staff</dt>
+          <dd className="tabular">{formatNumber(tenant.members)}</dd>
+        </div>
+        <div>
+          <dt>Admins</dt>
+          <dd className="tabular">{formatNumber(tenant.admins)}</dd>
+        </div>
+        <div className="hw-facts-wide">
+          <dt>Hospital ID</dt>
+          <dd className="mono muted">{tenant.id}</dd>
+        </div>
       </dl>
     </form>
   );
 }
 
-// Its staff by role: one row per role with the count; a row filters the staff list below to that role.
-function StaffByRole({ tenant }) {
-  const { data, error } = useFetch('/platform/users/role-counts', { tenantId: tenant.id });
+// Its staff by role: a tile per role with its count; a tile filters the staff list below to that role.
+function StaffByRole({ counts, error }) {
   const [, setSearchParams] = useSearchParams();
   const show = (role) => {
     setSearchParams({ role });
@@ -232,15 +269,21 @@ function StaffByRole({ tenant }) {
   };
   return (
     <section className="card hw-card">
-      <h2>Staff by role</h2>
+      <h2>
+        <Users aria-hidden="true" /> Staff by role
+      </h2>
       <Alert type="error">{error}</Alert>
       <ul className="hw-roles">
         {STAFF_ROLE_PAGES.map((r) => {
-          const count = data ? (data.counts[r.role] ?? 0) : null;
+          const count = counts ? (counts[r.role] ?? 0) : null;
+          const Icon = ROLE_ICONS[r.role] ?? Users;
           return (
             <li key={r.role}>
-              <button type="button" onClick={() => show(r.role)} disabled={!count}>
-                <span>{r.label}</span>
+              <button type="button" onClick={() => show(r.role)} disabled={!count} title={count ? `Show the ${r.label.toLowerCase()} below` : undefined}>
+                <span className="hw-role-icon" aria-hidden="true">
+                  <Icon />
+                </span>
+                <span className="hw-role-label">{r.label}</span>
                 <strong className="tabular">{count === null ? '—' : formatNumber(count)}</strong>
               </button>
             </li>

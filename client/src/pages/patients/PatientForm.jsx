@@ -49,6 +49,22 @@ export const ID_PROOF_OPTIONS = [
   ['other', 'Other'],
 ];
 
+// Who pays (same keys as server/src/models/Patient.js PAYER_TYPES), and what the payer's name is called
+export const PAYER_OPTIONS = [
+  ['self', 'She pays herself'],
+  ['insurance', 'Insurance or TPA'],
+  ['govt_scheme', 'Government scheme (e.g. PM-JAY, JSY)'],
+  ['corporate', 'Employer (corporate)'],
+];
+export const PAYER_NAME_LABELS = { insurance: 'Insurer or TPA', govt_scheme: 'Scheme', corporate: 'Employer' };
+// Suggested in the State box (any other spelling can still be typed)
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands', 'Chandigarh',
+  'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
+];
+
 // Form values are kept as text (what the inputs show) and converted when saving.
 function initialValues(p) {
   return {
@@ -57,6 +73,11 @@ function initialValues(p) {
     ageYears: str(p?.currentAge ?? p?.ageYears),
     phone: p?.phone ?? '',
     address: p?.address ?? '',
+    pinCode: p?.pinCode ?? '',
+    city: p?.city ?? '',
+    state: p?.state ?? '',
+    referredBy: p?.referredBy ?? '',
+    payer: { type: p?.payer?.type ?? '', name: p?.payer?.name ?? '', number: p?.payer?.number ?? '' },
     emergencyContact: { name: p?.emergencyContact?.name ?? '', relation: p?.emergencyContact?.relation ?? '', phone: p?.emergencyContact?.phone ?? '' },
     idProof: { kind: p?.idProof?.kind ?? '', last4: p?.idProof?.last4 ?? '' },
     assignedDoctor: p?.assignedDoctor ?? '',
@@ -125,11 +146,23 @@ export function toPayload(v, isEdit, access, part, loaded = null) {
   const isNewborn = v.careType === 'newborn';
   const payload = {};
   if (part !== 'clinical') {
-    Object.assign(payload, { careType: v.careType, fullName: v.fullName, phone: v.phone, address: v.address });
+    Object.assign(payload, {
+      careType: v.careType,
+      fullName: v.fullName,
+      phone: v.phone,
+      address: v.address,
+      pinCode: v.pinCode,
+      city: v.city,
+      state: v.state,
+      referredBy: v.referredBy,
+      // the insurer and number only when someone other than she pays
+      payer: v.payer && (v.payer.type && v.payer.type !== 'self' ? v.payer : { type: v.payer.type, name: '', number: '' }),
+    });
+    for (const k of ['pinCode', 'city', 'state', 'referredBy', 'payer']) if (payload[k] === undefined) delete payload[k];
     if (!isNewborn) Object.assign(payload, { ageYears: v.ageYears, emergencyContact: v.emergencyContact, idProof: v.idProof });
     if (isNewborn && access.canEditNewborn) payload.newborn = { ...v.newborn, birthAt: v.newborn.birthAt ? new Date(v.newborn.birthAt).toISOString() : '' };
     if (!access.canEditIdentity) {
-      for (const k of ['careType', 'fullName', 'phone', 'address', 'ageYears', 'emergencyContact', 'idProof']) delete payload[k];
+      for (const k of ['careType', 'fullName', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'ageYears', 'emergencyContact', 'idProof']) delete payload[k];
     }
     if (!isEdit) payload.assignedDoctor = v.assignedDoctor;
   }
@@ -627,6 +660,50 @@ export function PatientForm({
                     <textarea id="address" className={vc('address')} rows={2} value={v.address} onChange={set('address')} maxLength={300} placeholder="House, street, village or town" />
                     {vm('address')}
                   </Field>
+                </div>
+                <div className="form-grid pf-place-grid">
+                  <Field label="PIN code" id="pinCode" error={fe('pinCode')}>
+                    <input id="pinCode" inputMode="numeric" value={v.pinCode} onChange={(e) => set('pinCode')({ target: { value: e.target.value.replace(/\D/g, '').slice(0, 6) } })} maxLength={6} placeholder="6 digits" />
+                  </Field>
+                  <Field label="City, town or village" id="city" error={fe('city')}>
+                    <input id="city" value={v.city} onChange={set('city')} maxLength={60} />
+                  </Field>
+                  <Field label="State" id="state" error={fe('state')}>
+                    <input id="state" value={v.state} onChange={set('state')} maxLength={60} list="pf-states" />
+                    <datalist id="pf-states">
+                      {INDIAN_STATES.map((st) => (
+                        <option key={st} value={st} />
+                      ))}
+                    </datalist>
+                  </Field>
+                </div>
+              </div>
+              <div className="pf-group">
+                <h3 className="pf-group-title">Referral and payment</h3>
+                <div className="form-grid">
+                  <Field label="Referred by (optional)" id="referredBy" error={fe('referredBy')} hint="A doctor, clinic, ASHA worker or another hospital">
+                    <input id="referredBy" value={v.referredBy} onChange={set('referredBy')} maxLength={100} />
+                  </Field>
+                  <Field label="Who pays" id="payerType" error={fe('payer.type')}>
+                    <select id="payerType" value={v.payer.type} onChange={setIn('payer', 'type')}>
+                      <option value="">Not noted</option>
+                      {PAYER_OPTIONS.map(([k, label]) => (
+                        <option key={k} value={k}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  {v.payer.type && v.payer.type !== 'self' && (
+                    <>
+                      <Field label={PAYER_NAME_LABELS[v.payer.type]} id="payerName" error={fe('payer.name')}>
+                        <input id="payerName" value={v.payer.name} onChange={setIn('payer', 'name')} maxLength={100} />
+                      </Field>
+                      <Field label="Card or policy number" id="payerNumber" error={fe('payer.number')} hint="For the bill and the claim">
+                        <input id="payerNumber" value={v.payer.number} onChange={setIn('payer', 'number')} maxLength={40} autoComplete="off" />
+                      </Field>
+                    </>
+                  )}
                 </div>
               </div>
               {!isNewborn && (

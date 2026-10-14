@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ArrowLeft, BedDouble, CircleCheck, CircleMinus, FilePlus2, HeartPulse } from 'lucide-react';
+import { ArrowLeft, BedDouble, CircleCheck, CircleMinus, FilePlus2, HeartPulse, Scale, Siren } from 'lucide-react';
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { MenuButton } from '../../components/MenuButton.jsx';
@@ -246,6 +246,21 @@ export function AdmissionPage() {
           ) : (
             <StatusPill tone="stable" icon={CircleCheck}>
               Discharged {formatDateTime(a.dischargedAt)}
+            </StatusPill>
+          )}
+          {a.admissionType === 'emergency' && (
+            <StatusPill tone="watch" icon={Siren}>
+              Emergency admission
+            </StatusPill>
+          )}
+          {a.admissionType === 'day_care' && (
+            <StatusPill tone="neutral" icon={BedDouble}>
+              Day care
+            </StatusPill>
+          )}
+          {a.mlc && (
+            <StatusPill tone="high" icon={Scale}>
+              Medico-legal case
             </StatusPill>
           )}
         </div>

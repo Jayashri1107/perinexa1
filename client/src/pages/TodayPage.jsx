@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, FlaskConical, PhoneCall, Receipt, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
+import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, DoorOpen, FlaskConical, PhoneCall, Receipt, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { formatNumber } from '../components/DataTable.jsx';
 import { MenuButton } from '../components/MenuButton.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
-import { Alert, KpiCard, StatusPill, formatDate, formatDateTime, formatTime, hasRole } from '../components/ui.jsx';
+import { Alert, KpiCard, StatusPill, formatDate, formatDateTime, formatTime } from '../components/ui.jsx';
 import { useFetch } from '../hooks/useFetch.js';
-import { CARE_PLAN_ROLES, canBookAppointments, canRegisterPatients, canSeeAppointments, canSeeCalendar } from '../platform/modules.js';
+import { CARE_PLAN_ROLES, canBookAppointments, canRegisterPatients, canSeeAppointments, canSeeCalendar, hospitalModules } from '../platform/modules.js';
 import { rupees } from './billing/billingFormat.js';
 import { ScanShareSection } from './abdm/ScanShare.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
@@ -21,7 +21,7 @@ import { KIND_LABELS } from './inpatient/inpatientFormat.js';
 import { FLAG_LOOK, testNames } from './lab/labFormat.js';
 import { NEW_PATIENT_LINKS } from './patients/patientFormat.js';
 import { ReminderDialog } from './reminders/ReminderDialog.jsx';
-import { DoctorsToday, TomorrowCalls } from './appointments/DeskToday.jsx';
+import { DischargesSection, DoctorsToday, TomorrowCalls } from './appointments/DeskToday.jsx';
 import { paymentsToCollect, receptionCounts } from './todayReception.js';
 import { RedFlagItems, RedFlagRulesNote } from './redflags/RedFlagList.jsx';
 import { notCheckedCareText } from './redflags/redFlagFormat.js';
@@ -152,9 +152,188 @@ export const babiesDueNote = (rows = []) =>
     rows.some((r) => r.draft) ? ' "Draft schedule": the date comes from a schedule no doctor has approved yet – ask the doctor before calling.' : ''
   }`;
 
+// Someone with many roles here (a super admin working in a hospital has every role): the day as a short Overview,
+// or one role's full Today at a time (owner, 14 Oct 2026: "too much is displayed"). Others see their own Today.
+const LENSES = [
+  { key: 'overview', label: 'Overview', roles: null },
+  { key: 'reception', label: 'Reception', roles: ['receptionist'] },
+  { key: 'doctor', label: 'Doctor', roles: ['doctor'] },
+  { key: 'ward', label: 'Ward (RMO and nurses)', roles: ['rmo', 'nurse'] },
+  { key: 'lab', label: 'Lab', roles: ['lab'] },
+  { key: 'pharmacy', label: 'Pharmacy', roles: ['pharmacist'] },
+  { key: 'billing', label: 'Billing', roles: ['billing'] },
+  { key: 'admin', label: 'Admin', roles: ['admin'] },
+];
+/** The views this person may choose (a role view only for roles they have), or [] when they have few roles. */
+export function lensesFor(roles = []) {
+  const views = LENSES.filter((l) => !l.roles || l.roles.some((r) => roles.includes(r)));
+  return views.length > 3 ? views : [];
+}
+
 export function TodayPage() {
-  const { user, activeMembership } = useAuth();
-  const roles = activeMembership.roles;
+  const { activeMembership } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const all = activeMembership.roles;
+  const lenses = lensesFor(all);
+  // A hospital admin with no other role (no patient data): the Overview, in numbers only
+  if (!lenses.length && all.includes('admin') && !all.some((r) => ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing'].includes(r))) {
+    return <OverviewToday roles={all} />;
+  }
+  if (!lenses.length) return <RoleToday roles={all} />;
+  const lens = lenses.find((l) => l.key === params.get('view')) ?? lenses[0];
+  const choose = (key) => setParams(key === 'overview' ? {} : { view: key }, { replace: true });
+  const bar = (
+    <div className="td-lens" role="group" aria-label="Show the day as">
+      <span className="td-lens-label">Show the day as</span>
+      <div className="segmented">
+        {lenses.map((l) => (
+          <button key={l.key} type="button" aria-pressed={l.key === lens.key} onClick={() => choose(l.key)}>
+            {l.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  if (!lens.roles) return <OverviewToday roles={all} lensBar={bar} />;
+  return <RoleToday key={lens.key} roles={lens.roles.filter((r) => all.includes(r))} lensBar={bar} />;
+}
+
+/**
+ * The Overview: the hospital's day in a few numbers, which doctors are in, the staff by role and the way to each area.
+ * For a hospital admin (no patient data) every number comes without a name (the server sends counts only).
+ */
+function OverviewToday({ roles, lensBar = null }) {
+  const { user } = useAuth();
+  const front = canSeeCalendar(roles); // doctors, RMOs, reception: today's list itself
+  const isAdmin = roles.includes('admin');
+  const today = useFetch(front ? '/today' : null);
+  const beds = useFetch('/beds', { summary: '1' });
+  const stays = useFetch('/beds/desk');
+  const collected = useFetch('/billing/reports/daily');
+  const unpaid = useFetch('/billing/reports/unpaid');
+  const staff = useFetch(isAdmin ? '/tenant/members' : null, { limit: 1, status: 'active' });
+  const roleCounts = useFetch(isAdmin ? '/tenant/members/role-counts' : null);
+  const desk = useFetch('/appointments/desk');
+  // Today's patients: from today's list, or (hospital admin) added up from each doctor's counts
+  const doctors = desk.data?.doctors ?? [];
+  const counts = today.data
+    ? receptionCounts(today.data)
+    : desk.data
+      ? (() => {
+          const sum = (k) => doctors.reduce((n, d) => n + (d[k] ?? 0), 0);
+          return { patients: sum('expected') + sum('waiting') + sum('seen'), arrived: sum('waiting') + sum('seen'), expected: sum('expected') };
+        })()
+      : null;
+  const going = stays.data ? (stays.data.goingHomeCount ?? stays.data.goingHome.length) : 0;
+  const gone = stays.data ? (stays.data.dischargedTodayCount ?? stays.data.dischargedToday.length) : 0;
+  const day = today.data?.today ?? desk.data?.today;
+  const areas = hospitalModules(roles).filter((m) => m.key !== 'today');
+  return (
+    <>
+      <PageHeader breadcrumbs={[{ label: 'Today' }]} title="Today" subtitle={[day ? formatDate(day) : null, `Welcome, ${user.name}`].filter(Boolean).join(' · ')} />
+      <div className="pf-content wl-page td-page">
+        {lensBar}
+        <section className="td-group" aria-labelledby="td-glance">
+          <h2 className="td-group-title" id="td-glance">
+            At a glance
+          </h2>
+          <div className="kpi-grid kpi-grid-5">
+            <KpiCard
+              to={front ? '/?view=reception' : '/appointments'}
+              tone={counts?.expected ? 'due' : 'neutral'}
+              icon={Users}
+              label="Today's patients"
+              value={counts ? formatNumber(counts.patients) : '—'}
+              sub={counts ? `${counts.arrived} arrived · ${counts.expected} expected` : ''}
+            />
+            <KpiCard
+              to={beds.data ? '/beds' : undefined}
+              tone="neutral"
+              icon={BedDouble}
+              label="In hospital"
+              value={stays.data ? formatNumber(stays.data.inHospital) : '—'}
+              sub={beds.data ? (beds.data.counts.total ? `${beds.data.counts.free} of ${beds.data.counts.total} beds free · ${stays.data?.admittedToday ?? 0} admitted today` : 'No beds set up yet') : ''}
+            />
+            <KpiCard
+              to={front ? '/?view=reception#td-discharges' : undefined}
+              tone={going ? 'due' : 'neutral'}
+              icon={DoorOpen}
+              label="Discharges"
+              value={stays.data ? formatNumber(going + gone) : '—'}
+              sub={stays.data ? `${going} being discharged · ${gone} went home` : ''}
+            />
+            <KpiCard
+              to="/billing/daily"
+              tone={unpaid.data?.bills.length ? 'watch' : 'neutral'}
+              icon={Banknote}
+              label="Money today"
+              value={collected.data ? rupees(collected.data.totals.net) : '—'}
+              textValue
+              sub={unpaid.data ? `collected · ${unpaid.data.owed ? `${rupees(unpaid.data.owed)} to collect` : 'nothing to collect'}` : ''}
+            />
+            {isAdmin && (
+              <KpiCard to="/admin/staff" tone="neutral" icon={UserCheck} label="Active staff" value={staff.data ? formatNumber(staff.data.total) : '—'} sub="People who can work here" />
+            )}
+          </div>
+        </section>
+        {doctors.length > 0 && <DoctorsToday doctors={doctors} linkNames={canSeeAppointments(roles)} />}
+        {isAdmin && roleCounts.data && (
+          <section className="td-group" aria-labelledby="td-staff">
+            <h2 className="td-group-title" id="td-staff">
+              Staff by role
+            </h2>
+            <ul className="td-staff">
+              {STAFF_ROLE_TILES.map((r) => {
+                const n = roleCounts.data.counts[r.role] ?? 0;
+                return (
+                  <li key={r.role}>
+                    <Link to={`/admin/staff?role=${r.role}`} className={`card td-staff-tile${n ? '' : ' is-none'}`}>
+                      <strong className="tabular">{formatNumber(n)}</strong>
+                      <span>{r.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+        <section className="td-group" aria-labelledby="td-areas">
+          <h2 className="td-group-title" id="td-areas">
+            Go to
+          </h2>
+          <ul className="td-areas">
+            {areas.map((m) => {
+              const Icon = m.icon;
+              return (
+                <li key={m.key}>
+                  <Link to={m.to} className="card td-area">
+                    <span className="td-area-icon" aria-hidden="true">
+                      <Icon />
+                    </span>
+                    <span>{m.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+        {lensBar ? (
+          <p className="hint wl-footnote">
+            <ClipboardList aria-hidden="true" /> For one role's full lists – waiting patients, calls, the ward, the lab – choose it above.
+          </p>
+        ) : (
+          <p className="hint wl-footnote">
+            <ClipboardList aria-hidden="true" /> Numbers only: patient records are seen by the staff who care for the patients.
+          </p>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Today for the given roles (all of the person's roles, or the one view chosen above). */
+function RoleToday({ roles, lensBar = null }) {
+  const { user } = useAuth();
   const location = useLocation();
   // A number card opens its list further down the page (e.g. "/#td-overdue"): open the box and bring it into view.
   useEffect(() => {
@@ -180,7 +359,7 @@ export function TodayPage() {
   const asked = ['mine', 'all'].includes(params.get('scope')) ? params.get('scope') : undefined;
   const query = asked ? { scope: asked } : {};
 
-  const isDoctor = hasRole(activeMembership, 'doctor');
+  const isDoctor = roles.includes('doctor');
   const isAdmin = roles.includes('admin');
   const canBrief = has(roles, ['doctor', 'rmo']); // the AI brief: doctors and RMOs
   const clinicalWork = has(roles, CARE_PLAN_ROLES); // doctors, RMOs, nurses: the worklist
@@ -202,6 +381,8 @@ export function TodayPage() {
   const beds = useFetch(isReception ? '/beds' : null, { summary: '1' });
   // The front desk's day: which doctors are in today, and tomorrow's bookings to confirm (owner, 14 Oct 2026)
   const desk = useFetch(isReception ? '/appointments/desk' : null);
+  // …and the stays: in hospital, admitted today, going home, discharged today
+  const stays = useFetch(isReception ? '/beds/desk' : null);
   const today = useFetch(appointments ? '/today' : null, query);
 
   const seesRisk = clinicalWork;
@@ -217,7 +398,12 @@ export function TodayPage() {
 
   const scope = today.data?.scope ?? worklist.data?.scope ?? asked;
   const canChooseScope = Boolean(today.data?.canChooseScope ?? worklist.data?.canChooseScope);
-  const setScope = (s) => setParams(s === (isDoctor && !roles.includes('rmo') ? 'mine' : 'all') ? {} : { scope: s }, { replace: true });
+  // (the view chosen above stays)
+  const setScope = (s) => {
+    const view = params.get('view');
+    const next = s === (isDoctor && !roles.includes('rmo') ? 'mine' : 'all') ? {} : { scope: s };
+    setParams(view ? { ...next, view } : next, { replace: true });
+  };
   const day = today.data?.today ?? worklist.data?.today;
   const progress = new Map((worklist.data?.seenToday ?? []).map((v) => [v.visitId, v]));
   const loading = (clinicalWork && !worklist.data && !worklist.error) || (appointments && !today.data && !today.error);
@@ -271,7 +457,23 @@ export function TodayPage() {
       />
     ),
     isReception && beds.data && (
-      <KpiCard key="r-beds" to="/beds" tone={beds.data.counts.total && !beds.data.counts.free ? 'watch' : 'neutral'} icon={BedDouble} label="Free beds" value={formatNumber(beds.data.counts.free)} sub={beds.data.counts.total ? `of ${beds.data.counts.total} beds` : 'No beds set up yet'} />
+      <KpiCard key="r-beds" to="/beds" tone={beds.data.counts.total && !beds.data.counts.free ? 'watch' : 'neutral'} icon={BedDouble} label="Free beds" value={formatNumber(beds.data.counts.free)} sub={
+          beds.data.counts.total
+            ? `of ${beds.data.counts.total} beds${stays.data ? ` · ${stays.data.inHospital} in hospital, ${stays.data.admittedToday} admitted today` : ''}`
+            : 'No beds set up yet'
+        }
+      />
+    ),
+    isReception && stays.data && (
+      <KpiCard
+        key="r-discharges"
+        to="/#td-discharges"
+        tone={stays.data.goingHome.length ? 'due' : 'neutral'}
+        icon={DoorOpen}
+        label="Discharges"
+        value={formatNumber(stays.data.goingHome.length + stays.data.dischargedToday.length)}
+        sub={`${stays.data.goingHome.length} being discharged · ${stays.data.dischargedToday.length} went home today`}
+      />
     ),
     unpaid.data && !isBillingDesk && !isReception && <KpiCard key="unpaid" to="/billing/unpaid" tone={unpaid.data.bills.length ? 'watch' : 'neutral'} icon={Wallet} label="Unpaid bills" value={formatNumber(unpaid.data.bills.length)} sub={unpaid.data.owed ? `${rupees(unpaid.data.owed)} owed` : 'Nothing owed'} />,
     labWork.data && <KpiCard key="lab-collect" to="/lab" tone={labWork.data.counts.collect ? 'due' : 'neutral'} icon={TestTube} label="Samples to take" value={formatNumber(labWork.data.counts.collect)} sub="Lab orders waiting for a sample" />,
@@ -344,6 +546,7 @@ export function TodayPage() {
         }
       />
       <div className="pf-content wl-page td-page">
+        {lensBar}
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
@@ -374,7 +577,7 @@ export function TodayPage() {
             <h2 className="td-group-title" id="td-glance">
               At a glance
             </h2>
-            <div className="kpi-grid">{tiles}</div>
+            <div className={`kpi-grid${tiles.length === 5 ? ' kpi-grid-5' : ''}`}>{tiles}</div>
           </section>
         )}
         {(roles.includes('nurse') || roles.includes('rmo')) && <WardToday inpatients={inpatients.data} rmo={roles.includes('rmo')} />}
@@ -388,6 +591,9 @@ export function TodayPage() {
             </Link>
             <Link to="/beds" className="btn btn-secondary btn-sm">
               <BedDouble aria-hidden="true" /> Admit to a bed
+            </Link>
+            <Link to="/#td-discharges" className="btn btn-secondary btn-sm">
+              <DoorOpen aria-hidden="true" /> Discharges
             </Link>
             <Link to="/billing" className="btn btn-secondary btn-sm">
               <Receipt aria-hidden="true" /> Bills and payments
@@ -539,6 +745,7 @@ export function TodayPage() {
             </ul>
           </Section>
         )}
+        {isReception && stays.data && <DischargesSection desk={stays.data} bills={unpaid.data?.bills} />}
         {isReception && desk.data && <TomorrowCalls list={desk.data.tomorrowList} tomorrow={desk.data.tomorrow} />}
         {has(roles, ['receptionist', 'doctor']) && <ScanShareSection />}
         {today.data?.guests && <QuickBookingsSection guests={today.data.guests} canRegister={canRegisterPatients(roles)} />}

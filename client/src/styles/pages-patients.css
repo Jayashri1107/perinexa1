@@ -353,3 +353,6 @@
 .pf-contact-grid { grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr); }
 .pf-contact-grid textarea { min-height: var(--input-height); resize: vertical; }
 @media (max-width: 720px) { .pf-contact-grid { grid-template-columns: minmax(0, 1fr); } }
+/* PIN code, city and state under the address (owner, 14 Oct 2026) */
+.pf-place-grid { grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) minmax(0, 2fr); margin-top: var(--space-3); }
+@media (max-width: 720px) { .pf-place-grid { grid-template-columns: minmax(0, 1fr); } }

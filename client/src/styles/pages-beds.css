@@ -41,3 +41,72 @@
 .bed-actions .btn { padding-left: 0; padding-right: 0; }
 .beds-add .form-grid { max-width: 760px; }
 @media (max-width: 480px) { .beds-grid { grid-template-columns: 1fr; } }
+
+/* The bed board as a dashboard (owner, 14 Oct 2026): four number cards with icon tiles, a filter bar, wards that fold,
+   and bed cards with a coloured top edge – occupied in the admitted colour, available in the stable colour */
+.beds-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+.beds-stat { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-6); }
+.beds-stat-icon { display: grid; place-items: center; flex-shrink: 0; width: 52px; height: 52px; border-radius: 14px; background: var(--indigo-100); color: var(--indigo-700); }
+.beds-stat-icon svg.lucide { width: 26px; height: 26px; }
+.beds-stat-text { display: grid; color: var(--slate-600); }
+.beds-stat-text strong { color: var(--ink); font-size: var(--fs-h1); line-height: var(--lh-h1); }
+.beds-stat.is-occupied .beds-stat-icon { background: var(--status-admitted-bg); color: var(--status-admitted-fg); }
+.beds-stat.is-occupied strong { color: var(--status-admitted-fg); }
+.beds-stat.is-free .beds-stat-icon { background: var(--status-stable-bg); color: var(--status-stable-fg); }
+.beds-stat.is-off .beds-stat-icon { background: var(--status-inactive-bg); color: var(--status-inactive-fg); }
+.beds-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3) var(--space-4); padding: var(--space-3) var(--space-4); }
+.beds-search { position: relative; flex: 1 1 280px; display: flex; align-items: center; }
+.beds-search svg.lucide { position: absolute; left: 12px; width: 18px; height: 18px; color: var(--slate-600); pointer-events: none; }
+.beds-search input { width: 100%; height: var(--control-height); padding: 0 var(--space-3) 0 38px; }
+.beds-register { margin-left: auto; }
+.beds-ward { padding: 0; overflow: hidden; }
+.beds-ward-head { align-items: center; justify-content: flex-start; margin: 0; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
+.beds-ward-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--indigo-100); color: var(--indigo-700); }
+.beds-ward-icon svg.lucide { width: 20px; height: 20px; }
+.beds-ward-head h2 { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.beds-ward-counts { font-size: var(--fs-label); }
+.beds-fold { margin-left: auto; }
+.beds-ward .beds-grid { padding: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.bed { border-radius: var(--radius-lg); border-top-width: 4px; box-shadow: var(--shadow-card); }
+.bed.is-occupied { border-top-color: var(--status-admitted-fg); background: var(--status-admitted-bg); }
+.bed.is-free { border-top-color: var(--status-stable-fg); }
+.bed-head { align-items: flex-start; }
+.bed-title { display: grid; min-width: 0; }
+.bed-ward { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.bed-picture { align-self: center; width: 40px; height: 40px; margin: var(--space-2) 0; color: var(--indigo-200); }
+.bed.is-off .bed-picture { color: var(--border); }
+.bed-action { align-self: stretch; justify-content: center; }
+.bed-stay { color: var(--ink); font-weight: 600; }
+@media (max-width: 1100px) { .beds-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .beds-stats { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+  .beds-stat { padding: var(--space-3); gap: var(--space-3); }
+  .beds-stat-icon { width: 40px; height: 40px; }
+  .beds-register { flex: 1 1 100%; }
+}
+
+/* Compact cards (owner, 14 Oct 2026: "the page goes too big"): more beds on a row, less padding, a small Admit button */
+.beds-page { gap: var(--space-3); }
+.beds-stats { gap: var(--space-3); }
+.beds-stat { padding: var(--space-3) var(--space-4); gap: var(--space-3); }
+.beds-stat-icon { width: 40px; height: 40px; border-radius: 12px; }
+.beds-stat-icon svg.lucide { width: 20px; height: 20px; }
+.beds-stat-text { font-size: var(--fs-label); line-height: var(--lh-label); }
+.beds-stat-text strong { font-size: var(--fs-h2, 22px); line-height: 1.2; }
+.beds-ward-head { padding: var(--space-2) var(--space-4); }
+.beds-ward-icon { width: 32px; height: 32px; border-radius: 10px; }
+.beds-ward-icon svg.lucide { width: 16px; height: 16px; }
+.beds-ward .beds-grid { padding: var(--space-3); gap: var(--space-2); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.bed { gap: var(--space-1); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); border-top-width: 3px; }
+.bed-name { font-size: var(--fs-body); line-height: var(--lh-body); }
+.bed-head .pill { padding: 1px 8px; }
+.bed-picture { width: 24px; height: 24px; margin: 2px 0; }
+.bed-action { align-self: center; min-height: 30px; padding: 0 var(--space-3); font-size: var(--fs-label); }
+.bed-who { gap: 0; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.bed-patient { font-size: var(--fs-label); line-height: var(--lh-label); }
+.bed-reason { margin-top: 2px; }
+.bed-actions { gap: 0 var(--space-2); margin-top: 2px; }
+.bed-actions .btn { min-height: 26px; font-size: var(--fs-caption); }
+.bed-actions .btn svg.lucide { width: 14px; height: 14px; }
+/* An occupied bed is as wide as two on a wide screen, so her details stay readable */
+@media (min-width: 900px) { .bed.is-occupied { grid-column: span 2; } }

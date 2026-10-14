@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, BedDouble, CalendarClock, FlaskConical, Lock, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Baby, BedDouble, CalendarClock, Check, FlaskConical, HeartPulse, Lock, Pill, Receipt, ShieldCheck, Stethoscope, Syringe } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/brand/perinexa-logo.png';
-import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
+import appIcon from '../assets/brand/perinexa-app-icon.png';
 import { api } from '../api.js';
 import { LOGIN_EMAIL_KEY, useAuth } from '../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../auth/guards.jsx';
@@ -137,46 +137,46 @@ export function LoginPage() {
 
 // The sign-in frame as in Perinexa1 of 7 Oct (owner, 13 Oct 2026): an indigo panel on the left with the logo, a headline
 // and what Perinexa does; the form card on the right. Below 960 px only the card, with the logo above it.
-const AUTH_POINTS = [
-  { icon: CalendarClock, title: 'OPD and appointments', text: 'Doctors’ days, walk-ins, visits and prescriptions.' },
-  { icon: BedDouble, title: 'Wards and inpatients', text: 'Admissions, nursing chart and discharge cards.' },
-  { icon: FlaskConical, title: 'Lab and pharmacy', text: 'Orders, results, stock and issue to ward.' },
-  { icon: ShieldCheck, title: 'Private by design', text: 'Need-to-know access, and every action recorded.' },
-];
+// The ring of hospital work around the logo, on the light side of the sign-in card (owner, 14 Oct 2026)
+const AUTH_ICONS = [Stethoscope, HeartPulse, Baby, CalendarClock, BedDouble, FlaskConical, Pill, Syringe, Receipt, ShieldCheck];
+const AUTH_POINTS = ['OPD and appointments', 'Wards and inpatients', 'Lab, pharmacy and billing', 'Private by design'];
 
 function AuthFrame({ children }) {
   return (
-    <div className="auth1">
-      <aside className="auth1-brand" aria-label="About Perinexa">
-        <span className="auth1-glow auth1-glow-1" aria-hidden="true" />
-        <span className="auth1-glow auth1-glow-2" aria-hidden="true" />
-        <img className="auth1-brand-logo" src={logoReversed} alt="Perinexa by Docvritta" width="190" height="46" />
-        <div className="auth1-brand-body">
-          <span className="auth1-kicker">Hospital workspace</span>
-          <h2>Every patient, every ward, one calm workspace.</h2>
-          <p>OPD, wards, lab, pharmacy and billing for all your branches – each person sees only what their work needs.</p>
-          <ul className="auth1-points">
-            {AUTH_POINTS.map(({ icon: Icon, title, text }) => (
-              <li key={title}>
-                <span className="auth1-point-icon" aria-hidden="true">
+    <div className="auth2">
+      <p className="auth2-title" aria-hidden="true">
+        Perinexa <span>Hospital sign-in</span>
+      </p>
+      <div className="auth2-card">
+        <main className="auth2-form">
+          <img className="auth2-logo" src={logo} alt="Perinexa by Docvritta" width="170" height="42" />
+          {children}
+        </main>
+        <aside className="auth2-art" aria-label="About Perinexa">
+          <div className="auth2-orbit" aria-hidden="true">
+            <ul>
+              {AUTH_ICONS.map((Icon, i) => (
+                <li key={i} style={{ '--i': i, '--n': AUTH_ICONS.length }}>
                   <Icon />
-                </span>
-                <span>
-                  <strong>{title}</strong>
-                  <span>{text}</span>
-                </span>
+                </li>
+              ))}
+            </ul>
+            <div className="auth2-centre">
+              <img src={appIcon} alt="" width="56" height="56" />
+              <strong>Perinexa</strong>
+              <span>Hospital workspace</span>
+            </div>
+          </div>
+          <ul className="auth2-points">
+            {AUTH_POINTS.map((t) => (
+              <li key={t}>
+                <Check aria-hidden="true" /> {t}
               </li>
             ))}
           </ul>
-        </div>
-        <p className="auth1-brand-foot">© {new Date().getFullYear()} Perinexa by Docvritta</p>
-      </aside>
-      <main className="auth1-main">
-        <div className="auth1-panel">
-          <img className="auth1-mobile-logo" src={logo} alt="Perinexa by Docvritta" width="170" height="42" />
-          {children}
-        </div>
-      </main>
+        </aside>
+      </div>
+      <p className="auth2-foot">© {new Date().getFullYear()} Perinexa by Docvritta</p>
     </div>
   );
 }

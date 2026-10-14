@@ -9,6 +9,10 @@ import { LOSS_FINDING_VIA, MAX_LOSS_FINDING_ENTRIES, lossFindingsView } from '..
 // The ID proofs reception may note at registration (type + last 4 characters only).
 export const ID_PROOF_TYPES = ['aadhaar', 'voter_id', 'pan', 'driving_licence', 'passport', 'ration_card', 'other'];
 
+// Who pays (owner, 14 Oct 2026): herself, an insurance company or TPA, a government scheme (e.g. PM-JAY, JSY), or an
+// employer.
+export const PAYER_TYPES = ['self', 'insurance', 'govt_scheme', 'corporate'];
+
 // What kind of OBGY care the patient is registered for. New types go at the END (analytics cell codes and
 // list links follow this order; the website's menu has its own order).
 export const CARE_TYPES = ['antenatal', 'postnatal', 'infertility', 'gynaecology', 'newborn', 'abortion'];
@@ -124,6 +128,17 @@ const patientSchema = new mongoose.Schema(
       name: { type: String, trim: true, maxlength: 100, default: '' },
       relation: { type: String, trim: true, maxlength: 50, default: '' },
       phone: { type: String, trim: true, maxlength: 30, default: '' },
+    },
+    // The address's PIN code, city and state (owner, 14 Oct 2026 – as other hospitals' registration asks)
+    pinCode: { type: String, trim: true, maxlength: 6, default: '' },
+    city: { type: String, trim: true, maxlength: 60, default: '' },
+    state: { type: String, trim: true, maxlength: 60, default: '' },
+    // Who sent her (a doctor, a clinic, an ASHA worker …) and who pays: for the bill and an insurance claim
+    referredBy: { type: String, trim: true, maxlength: 100, default: '' },
+    payer: {
+      type: { type: String, enum: [...PAYER_TYPES, ''], default: '' },
+      name: { type: String, trim: true, maxlength: 100, default: '' }, // the insurer / TPA, scheme or employer
+      number: { type: String, trim: true, maxlength: 40, default: '' }, // the card or policy number
     },
     // The ID proof reception saw: its type and only the last 4 characters of its number – never a whole Aadhaar
     // (or other ID) number.

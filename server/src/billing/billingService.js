@@ -438,7 +438,7 @@ export async function claimForm(req, bill) {
   const tenantId = req.tenantId;
   const [tenant, patient, stay] = await Promise.all([
     Tenant.findById(tenantId, { name: 1, letterhead: 1 }).lean(),
-    Patient.findOne({ tenantId, _id: bill.patientId }, { fullName: 1, mrn: 1, phone: 1, address: 1, ageYears: 1, ageRecordedOn: 1, createdAt: 1, careType: 1, assignedDoctor: 1, sensitive: 1, 'newborn.birthAt': 1 }).lean(),
+    Patient.findOne({ tenantId, _id: bill.patientId }, { fullName: 1, mrn: 1, phone: 1, address: 1, city: 1, state: 1, pinCode: 1, ageYears: 1, ageRecordedOn: 1, createdAt: 1, careType: 1, assignedDoctor: 1, sensitive: 1, 'newborn.birthAt': 1 }).lean(),
     bill.admissionId ? Admission.findOne({ tenantId, _id: bill.admissionId }, { admittedAt: 1, dischargedAt: 1, admittedBy: 1 }).lean() : null,
   ]);
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
@@ -456,7 +456,8 @@ export async function claimForm(req, bill) {
       phone: patient.phone ?? '',
       age: baby === false && may.has('currentAge') ? currentAge(patient, req.now ?? new Date()) : null,
       bornOn: baby === true && may.has('newborn') && patient.newborn?.birthAt ? isoDay(toHospitalDate(patient.newborn.birthAt)) : null,
-      address: may.has('address') ? (patient.address ?? '') : null,
+      // with the city, state and PIN code (owner, 14 Oct 2026)
+      address: may.has('address') ? [patient.address, patient.city, [patient.state, patient.pinCode].filter(Boolean).join(' ')].filter(Boolean).join(', ') : null,
       baby,
     },
     doctor: doctor ? { name: doctor.name, qualification: doctor.professional?.qualification ?? '', registrationNumber: doctor.professional?.registrationNumber ?? '', council: doctor.professional?.council ?? '' } : null,

@@ -19,6 +19,10 @@ const admissionSchema = new mongoose.Schema(
     bedId: { type: ObjectId, ref: 'Bed', default: null },
     // Admitted at the desk (reception): the reason chosen from the short list (inpatient/beds.js REASONS)
     reasonCode: { type: String, default: null },
+    // Planned, emergency or day care, and whether it is a medico-legal case (owner, 14 Oct 2026 – as other hospitals'
+    // admission and insurance forms ask). Not set on older stays.
+    admissionType: { type: String, enum: ['planned', 'emergency', 'day_care', null], default: null },
+    mlc: { type: Boolean, default: false },
     status: { type: String, enum: ['admitted', 'discharged'], default: 'admitted' },
     dischargedAt: { type: Date, default: null },
     admittedBy: { type: ObjectId, ref: 'User', required: true },

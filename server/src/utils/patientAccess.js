@@ -10,7 +10,8 @@
 // - Lab staff: name and patient number only.
 // - Pharmacist: name, patient number, phone and doctor (the medicines prescribed come through the pharmacy routes),
 //   and whether the record is closed (no counter sale).
-// - Billing department: name, patient number, phone and doctor, to find her bills and call about unpaid ones.
+// - Billing department: name, patient number, phone, doctor and who pays, to find her bills, call about unpaid ones and
+//   claim from an insurer or scheme.
 // - Everyone but lab staff sees whether a record is closed after a death – never why or when (clinical details).
 // - Hospital admin (with no clinical role): no patient data.
 // A person with several roles gets everything any of their roles allows.
@@ -38,6 +39,11 @@ const IDENTITY_FIELDS = [
   'address',
   'emergencyContact',
   'idProof',
+  'pinCode',
+  'city',
+  'state',
+  'referredBy',
+  'payer',
   'assignedDoctor',
   'assignedDoctorName',
   'sensitive',
@@ -82,7 +88,7 @@ const CLINICAL_FIELDS = [
 const NOTES_FIELDS = ['notes'];
 
 // Field groups that can be edited
-export const IDENTITY_EDIT = ['careType', 'fullName', 'ageYears', 'phone', 'address', 'emergencyContact', 'idProof'];
+export const IDENTITY_EDIT = ['careType', 'fullName', 'ageYears', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'emergencyContact', 'idProof'];
 export const NEWBORN_EDIT = ['newborn'];
 // delivery: a delivery at another hospital (no delivery note here), so the postnatal plan can start from it.
 // postnatal: whether she is breastfeeding (postnatal patients).
@@ -140,7 +146,8 @@ function forRole(role, patient, userId) {
     case 'pharmacist':
       return { ...NONE, view: [...LAB_FIELDS, 'closed', 'phone', 'assignedDoctor', 'assignedDoctorName'] };
     case 'billing':
-      return { ...NONE, view: [...LAB_FIELDS, 'closed', 'phone', 'assignedDoctor', 'assignedDoctorName'] };
+      // payer: who pays and the card or policy number, for the bill and an insurance claim (owner, 14 Oct 2026)
+      return { ...NONE, view: [...LAB_FIELDS, 'closed', 'phone', 'payer', 'assignedDoctor', 'assignedDoctorName'] };
     default:
       return NONE;
   }

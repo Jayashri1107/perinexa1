@@ -28,7 +28,7 @@ import { OVERRIDE_LEVELS } from '../careplans/risk.js';
 import { carePlanSummaryFor, planCtx, syncPlanSafely } from '../careplans/plansService.js';
 import { redFlagsForPatient, redFlagsForPatients } from '../redflags/redFlagService.js';
 import { applyCurrentRisk, ensureStandardTemplates, refreshDueRisks, riskTemplateFor } from '../careplans/templatesService.js';
-import { BLOOD_GROUPS, BREASTFEEDING, CARE_TYPES, CONDITIONS, FEEDING_AT_DISCHARGE, NEWBORN_SEX, NICU_ADMITTED, ID_PROOF_TYPES, PAST_COMPLICATIONS, Patient, currentAge } from '../models/Patient.js';
+import { BLOOD_GROUPS, BREASTFEEDING, CARE_TYPES, CONDITIONS, FEEDING_AT_DISCHARGE, NEWBORN_SEX, NICU_ADMITTED, ID_PROOF_TYPES, PAST_COMPLICATIONS, PAYER_TYPES, Patient, currentAge } from '../models/Patient.js';
 import { PREGNANCY_FINDINGS, currentFindings, setFinding, setFindings, suggestedFindings } from '../patients/pregnancyFindings.js';
 import { endLossFindings, setLossFindings } from '../patients/lossFindings.js';
 import { NOT_DUPLICATE, ONLY_DUPLICATES, isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
@@ -93,6 +93,19 @@ const identity = {
       phone: text('Emergency contact phone', 30).regex(/^[0-9+()\-\s]*$/, 'Phone can only contain numbers, spaces, +, ( ) and -').default(''),
     })
     .default({ name: '', relation: '', phone: '' }),
+  // The address's PIN code, city and state; who referred her; who pays (owner, 14 Oct 2026). All optional.
+  pinCode: z.string().trim().regex(/^(\d{6})?$/, 'A PIN code has 6 digits').default(''),
+  city: text('City', 60).regex(/^[^\p{Cc}]*$/u, 'City has a character that cannot be saved.').default(''),
+  state: text('State', 60).regex(/^[^\p{Cc}]*$/u, 'State has a character that cannot be saved.').default(''),
+  referredBy: text('Referred by', 100).regex(/^[^\p{Cc}]*$/u, 'Referred by has a character that cannot be saved.').default(''),
+  payer: z
+    .object({
+      type: z.enum([...PAYER_TYPES, ''], 'Please choose who pays').default(''),
+      name: text('Insurer, scheme or employer', 100).regex(/^[^\p{Cc}]*$/u, 'This name has a character that cannot be saved.').default(''),
+      number: z.string().trim().regex(/^[0-9A-Za-z/\-\s]{0,40}$/, 'Type the card or policy number with letters, digits, / and - only').default(''),
+    })
+    .default({ type: '', name: '', number: '' })
+    .refine((v) => v.type || (!v.name && !v.number), { message: 'Choose who pays', path: ['type'] }),
   // Only the last 4 characters of the ID's number: a whole Aadhaar (or other ID) number is never stored.
   idProof: z
     .object({
@@ -397,6 +410,11 @@ const updateSchema = z.object({
   address: identity.address.optional(),
   emergencyContact: identity.emergencyContact.optional(),
   idProof: identity.idProof.optional(),
+  pinCode: identity.pinCode.optional(),
+  city: identity.city.optional(),
+  state: identity.state.optional(),
+  referredBy: identity.referredBy.optional(),
+  payer: identity.payer.optional(),
   ageYears: z.preprocess(emptyToNull, z.union([z.null(), z.coerce.number().int().min(10, 'Please check the age').max(120, 'Please check the age')])).optional(),
   pregnancy: pregnancySchema.optional(),
   obstetric: obstetricSchema.optional(),
@@ -902,7 +920,7 @@ patientsRouter.patch('/:id', async (req, res) => {
   if (data.newborn?.mother && data.newborn.mother === patient._id.toString()) {
     throw new HttpError(400, 'A patient cannot be their own mother.', 'VALIDATION');
   }
-  for (const key of ['careType', 'fullName', 'phone', 'address', 'emergencyContact', 'idProof', 'notes']) if (data[key] !== undefined) patient[key] = data[key];
+  for (const key of ['careType', 'fullName', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'emergencyContact', 'idProof', 'notes']) if (data[key] !== undefined) patient[key] = data[key];
   // Only a genuinely different age resets the date it was recorded on – otherwise every save (the form always
   // sends the age) would stop the age from ever increasing, and age-based risk rules would never apply.
   const ageChanged = data.ageYears !== undefined && data.ageYears !== currentAge(patient);

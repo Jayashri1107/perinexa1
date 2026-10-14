@@ -8,6 +8,8 @@ export const admissionView = (a) => ({
   ward: a.ward ?? '',
   bed: a.bed ?? '',
   reason: a.reason ?? '',
+  admissionType: a.admissionType ?? null,
+  mlc: Boolean(a.mlc),
   status: a.status,
   dischargedAt: a.dischargedAt ?? null,
   admittedByName: a.admittedByName,

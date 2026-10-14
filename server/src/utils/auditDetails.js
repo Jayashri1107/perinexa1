@@ -38,7 +38,7 @@ const VISIT_ACTIONS = new Set([
 ]);
 // Inpatient stays, documents and the nursing chart (Version 2): ids and the kind of document only – never what was written.
 // language: 'mr' | 'hi' for a discharge card printed with Marathi or Hindi.
-const INPATIENT_ACTIONS = new Set(['ADMISSIONS_VIEWED', 'ADMISSION_VIEWED', 'ADMISSION_CREATED', 'ADMISSION_UPDATED', 'ADMISSION_BED_CHANGED', 'BEDS_VIEWED', 'PATIENT_DISCHARGED', 'DOCUMENT_CREATED', 'DOCUMENT_VIEWED', 'DOCUMENT_UPDATED', 'DOCUMENT_SIGNED', 'DOCUMENT_ADDITION_ADDED', 'DOCUMENT_CANCELLED', 'DOCUMENT_PRINTED', 'NURSING_ENTRY_ADDED', 'NURSING_ENTRY_CANCELLED']);
+const INPATIENT_ACTIONS = new Set(['ADMISSIONS_VIEWED', 'ADMISSION_VIEWED', 'ADMISSION_CREATED', 'ADMISSION_UPDATED', 'ADMISSION_BED_CHANGED', 'BEDS_VIEWED', 'DISCHARGES_VIEWED', 'PATIENT_DISCHARGED', 'DOCUMENT_CREATED', 'DOCUMENT_VIEWED', 'DOCUMENT_UPDATED', 'DOCUMENT_SIGNED', 'DOCUMENT_ADDITION_ADDED', 'DOCUMENT_CANCELLED', 'DOCUMENT_PRINTED', 'NURSING_ENTRY_ADDED', 'NURSING_ENTRY_CANCELLED']);
 // Beds (13 Oct 2026): bed ids, "bed board" for an admission from the board, and the counts on the board.
 const INPATIENT_DETAIL_FIELDS = ['patientId', 'mrn', 'admissionId', 'documentId', 'entryId', 'kind', 'access', 'language', 'bedId', 'fromBedId', 'toBedId', 'via', 'occupied', 'withoutBed'];
 

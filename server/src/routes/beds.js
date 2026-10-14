@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { billAdmitted } from '../billing/hooks.js';
 import { BOARD_ROLES, REASON_CODES, SETUP_ROLES, mayAdmit, mayMoveBed, reasonFor, reasonText } from '../inpatient/beds.js';
 import { admissionView } from '../inpatient/inpatientView.js';
+import { hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 import { Admission } from '../models/Admission.js';
+import { ClinicalDocument } from '../models/ClinicalDocument.js';
 import { Bed } from '../models/Bed.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
@@ -65,7 +67,9 @@ async function assertFree(req, bed) {
 // ---------- The bed board ----------
 
 bedsRouter.get('/', async (req, res) => {
-  assertRole(req, BOARD_ROLES, 'The bed board is for reception, doctors, RMOs and nurses.');
+  // The hospital admin's Today (owner, 14 Oct 2026): the counts only (?summary=1) – never who is in a bed
+  const countsOnly = req.query.summary === '1' && hasRole(req.membership, ...SETUP_ROLES);
+  if (!countsOnly) assertRole(req, BOARD_ROLES, 'The bed board is for reception, doctors, RMOs and nurses.');
   const tenantId = req.tenantId;
   // ?free=1: the free beds only, for admitting from a patient's record – no names, so not audited
   if (req.query.free === '1') {
@@ -115,6 +119,56 @@ bedsRouter.get('/', async (req, res) => {
   });
 });
 
+// ---------- The front desk's stays (owner, 14 Oct 2026) ----------
+// Reception's Today: how many are in hospital and were admitted today, who is going home (a discharge card being
+// written – the doctor confirms it, which ends the stay and frees the bed) and who went home today. Names and beds
+// only, never the card's contents. Audited, as the bed board is.
+bedsRouter.get('/desk', async (req, res) => {
+  // The hospital admin (no patient data): numbers only – how many are in, admitted, going home and went home today
+  const numbersOnly = !hasRole(req.membership, ...BOARD_ROLES) && hasRole(req.membership, ...SETUP_ROLES);
+  if (!numbersOnly) assertRole(req, BOARD_ROLES, 'The bed board is for reception, doctors, RMOs and nurses.');
+  const tenantId = req.tenantId;
+  const now = req.now ?? new Date();
+  const dayStart = hospitalDayStart(hospitalToday(now));
+  const [inHospital, gone] = await Promise.all([
+    Admission.find({ tenantId, status: 'admitted' }, { patientId: 1, ward: 1, bed: 1, admittedAt: 1 }).limit(1000).lean(),
+    Admission.find({ tenantId, status: 'discharged', dischargedAt: { $gte: dayStart } }, { patientId: 1, ward: 1, bed: 1, dischargedAt: 1, dischargedByName: 1 }).sort({ dischargedAt: 1 }).lean(),
+  ]);
+  const drafts = inHospital.length
+    ? await ClinicalDocument.find({ tenantId, kind: 'discharge', status: 'draft', admissionId: { $in: inHospital.map((s) => s._id) } }, { admissionId: 1, createdAt: 1 }).lean()
+    : [];
+  const writing = new Map(drafts.map((d) => [String(d.admissionId), d.createdAt]));
+  const going = inHospital.filter((s) => writing.has(String(s._id)));
+  if (numbersOnly) {
+    return res.json({
+      inHospital: inHospital.length,
+      admittedToday: inHospital.filter((s) => s.admittedAt >= dayStart).length,
+      goingHomeCount: going.length,
+      dischargedTodayCount: gone.length,
+      goingHome: [],
+      dischargedToday: [],
+      numbersOnly: true,
+    });
+  }
+  const ids = [...going, ...gone].map((s) => s.patientId);
+  const patients = new Map((ids.length ? await Patient.find({ tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const who = (s) => {
+    const p = patients.get(String(s.patientId));
+    return p ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn } : null;
+  };
+  const goingHome = going.map((s) => ({ stayId: String(s._id), patient: who(s), ward: s.ward, bed: s.bed, cardStarted: writing.get(String(s._id)) })).filter((x) => x.patient);
+  const dischargedToday = gone.map((s) => ({ stayId: String(s._id), patient: who(s), ward: s.ward, bed: s.bed, dischargedAt: s.dischargedAt, byName: s.dischargedByName ?? '' })).filter((x) => x.patient);
+  if (goingHome.length || dischargedToday.length) await audit(req, 'DISCHARGES_VIEWED', { details: { goingHome: goingHome.length, dischargedToday: dischargedToday.length } });
+  res.json({
+    inHospital: inHospital.length,
+    admittedToday: inHospital.filter((s) => s.admittedAt >= dayStart).length,
+    goingHomeCount: goingHome.length,
+    dischargedTodayCount: dischargedToday.length,
+    goingHome,
+    dischargedToday,
+  });
+});
+
 // ---------- Admit at the desk ----------
 
 const admitSchema = z
@@ -124,6 +178,8 @@ const admitSchema = z
     admittedAt: z.preprocess((v) => (v === '' ? undefined : v), z.iso.datetime('Please enter the date and time of admission').optional()),
     reasonCode: z.enum(REASON_CODES, 'Choose the reason for admission'),
     reasonNote: safeText('Note', 120).default(''),
+    admissionType: z.enum(['planned', 'emergency', 'day_care'], 'Choose planned, emergency or day care').default('planned'),
+    mlc: z.boolean().default(false),
   })
   .strict()
   .superRefine((b, ctx) => {
@@ -159,6 +215,8 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
       bedId: bed._id,
       reason: reasonText(body.reasonCode, body.reasonNote),
       reasonCode: body.reasonCode,
+      admissionType: body.admissionType,
+      mlc: body.mlc,
       admittedBy: req.user._id,
       admittedByName: req.user.name,
       clientRequestId: body.clientRequestId,

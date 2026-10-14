@@ -191,7 +191,9 @@ appointmentsRouter.get('/day', async (req, res) => {
 // tomorrow's bookings with a phone number, to call and confirm. The same views as the day schedule (not audited, as
 // /day is not).
 appointmentsRouter.get('/desk', async (req, res) => {
-  if (!hasRole(req.membership, ...QUEUE_ROLES)) throw forbidden('Appointments are for hospital staff.');
+  // The hospital admin (no patient data): each doctor's OPD today and the counts only – not tomorrow's list
+  const countsOnly = !hasRole(req.membership, ...QUEUE_ROLES) && hasRole(req.membership, 'admin');
+  if (!countsOnly && !hasRole(req.membership, ...QUEUE_ROLES)) throw forbidden('Appointments are for hospital staff.');
   const today = hospitalToday(req.now);
   const tomorrow = addDays(today, 1);
   const [doctors, schedules, todayAppts, tomorrowAppts] = await Promise.all([
@@ -218,6 +220,7 @@ appointmentsRouter.get('/desk', async (req, res) => {
       seen: count('seen'),
     };
   });
+  if (countsOnly) return res.json({ today: isoDay(today), tomorrow: isoDay(tomorrow), doctors: desk, tomorrowList: [], countsOnly: true });
   const tomorrowViews = await viewsOf(req.tenantId, tomorrowAppts, today);
   res.json({ today: isoDay(today), tomorrow: isoDay(tomorrow), doctors: desk, tomorrowList: tomorrowViews });
 });

@@ -611,3 +611,16 @@ describe("the front desk's day (owner, 14 Oct 2026)", () => {
     expect((await (await as('lab')).get('/api/appointments/desk')).status).toBe(403);
   });
 });
+
+describe("the hospital admin's Today (owner, 14 Oct 2026): numbers only", () => {
+  it("gets each doctor's OPD today and the counts, but not tomorrow's list", async () => {
+    await setWeek('drA');
+    const p = await register('Admin Counted Mother');
+    expect((await book('reception', { doctorId: id('drA'), date: '2026-09-29', start: '10:00', patientId: p.id })).status).toBe(201);
+    const res = await (await as('admin')).get('/api/appointments/desk');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.doctors[0]).toMatchObject({ name: 'Sample drA', hasTimings: true });
+    expect(res.body.tomorrowList).toEqual([]);
+    expect(JSON.stringify(res.body)).not.toMatch(/Admin Counted Mother/);
+  });
+});

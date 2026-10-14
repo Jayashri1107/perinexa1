@@ -19,6 +19,47 @@
 .sb-tile { width: var(--nav-tile-size); height: var(--nav-tile-size); border-radius: 10px; background: var(--nav-tile); color: var(--indigo-200); }
 .sb-tile svg.lucide { width: 20px; height: 20px; }
 .pf-collapsed .sb-link.active, .pf-collapsed .sb-link:hover { background: transparent; }
+/* A friendlier menu (owner, 14 Oct 2026): the hospital as a small card, the items in groups with a heading, slimmer rows,
+   the chosen one a soft pill with a teal mark on its left, and who is signed in as a card at the foot */
+.sb { overflow: hidden; }
+.sb::before {
+  content: ''; position: absolute; z-index: -1; width: 260px; height: 260px; right: -140px; top: -120px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, var(--auth-glow-teal), transparent 65%);
+}
+.sb-subtitle {
+  display: flex; align-items: center; gap: var(--space-2); margin: 0 var(--space-1) var(--space-3); padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--auth-tile-edge); border-radius: 12px; background: var(--auth-tile); color: var(--on-dark); font-weight: 600;
+}
+.sb-subtitle svg.lucide { flex-shrink: 0; width: 16px; height: 16px; color: var(--nav-accent); }
+.sb-subtitle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-nav { gap: 2px; padding: 0 var(--space-1); }
+.sb-group { display: flex; flex-direction: column; gap: 2px; }
+.sb-group + .sb-group { margin-top: var(--space-3); }
+.sb .sb-section { margin: 0 var(--space-2) var(--space-1); color: var(--indigo-200); opacity: 0.7; font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.1em; }
+.sb-link { position: relative; padding: 5px var(--space-2); border-radius: 12px; }
+.sb-link .sb-tile { width: 36px; height: 36px; border-radius: 10px; background: transparent; }
+.sb-link:hover .sb-tile { background: var(--nav-tile); }
+.sb-link.active { background: var(--nav-row-active); box-shadow: inset 0 0 0 1px var(--auth-tile-edge); }
+.sb-link.active::before { content: ''; position: absolute; left: -4px; top: 10px; bottom: 10px; width: 4px; border-radius: 0 4px 4px 0; background: var(--nav-accent); }
+.sb-link.active .sb-label { font-weight: 600; }
+.sb-foot {
+  display: flex; align-items: center; gap: var(--space-3); margin: var(--space-3) var(--space-1) 0; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--auth-tile-edge); border-radius: 12px; background: var(--auth-tile);
+}
+.sb-foot .avatar { flex-shrink: 0; width: 34px; height: 34px; font-size: 13px; }
+.sb-foot-text { display: grid; min-width: 0; line-height: 1.3; }
+.sb-foot-text strong { overflow: hidden; color: var(--on-dark); font-size: var(--fs-label); text-overflow: ellipsis; white-space: nowrap; }
+.sb-foot-text span { overflow: hidden; color: var(--indigo-200); font-size: var(--fs-caption); text-overflow: ellipsis; white-space: nowrap; }
+/* The icon rail: the headings become thin lines, the cards show only their icon */
+.pf-collapsed .sb .sb-section { height: 1px; margin: var(--space-1) var(--space-3) var(--space-2); overflow: hidden; color: transparent; background: var(--nav-divider); }
+.pf-collapsed .sb-subtitle span, .pf-collapsed .sb-foot-text { display: none; }
+.pf-collapsed .sb-subtitle, .pf-collapsed .sb-foot { justify-content: center; padding: var(--space-2); }
+.pf-collapsed .sb-link.active::before { left: 0; }
+@media (max-width: 1023px) {
+  .pf:not(.pf-mobile-open) .sb .sb-section { height: 1px; margin: var(--space-1) var(--space-3) var(--space-2); overflow: hidden; color: transparent; background: var(--nav-divider); }
+  .pf:not(.pf-mobile-open) .sb-foot { display: none; }
+  .pf-mobile-open .sb-subtitle, .pf-mobile-open .sb-foot { display: flex; }
+}
 @media (max-width: 1023px) {
   .pf .sb { margin: 0; top: 0; height: 100vh; border-radius: 0; }
   .pf-mobile-open .sb { border-radius: 0; }
@@ -97,48 +138,72 @@ input:focus, select:focus, textarea:focus { border-color: var(--indigo-700); box
 .ph-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 320px; min-width: 0; }
 .ph-text .ph-subtitle { margin: 0; }
 
-/* ---------- Sign-in (as on 7 Oct): an indigo panel with what Perinexa does, the form card on the right ---------- */
-.auth1 { min-height: 100vh; display: grid; grid-template-columns: minmax(400px, 45%) 1fr; background: var(--mist-100); }
-.auth1-brand {
-  position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-8);
-  padding: 44px 52px; color: var(--indigo-200);
-  background: linear-gradient(160deg, var(--indigo-800) 0%, var(--sidebar-end) 100%);
+/* ---------- Sign-in (owner, 14 Oct 2026): a two-tone page – Night Indigo on the left, Mist on the right – with the name
+   across both halves, and one card: the form on white, and on Teal Wash the ring of hospital work around the logo ---------- */
+.auth2 {
+  position: relative; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-5, 20px); padding: var(--space-6) var(--space-4);
+  background: linear-gradient(90deg, var(--indigo-800) 0 50%, var(--mist-100) 50% 100%);
 }
-.auth1-glow { position: absolute; border-radius: 50%; filter: blur(8px); pointer-events: none; }
-.auth1-glow-1 { width: 380px; height: 380px; right: -120px; top: -110px; background: radial-gradient(circle, var(--auth-glow-teal), transparent 65%); }
-.auth1-glow-2 { width: 440px; height: 440px; left: -160px; bottom: -160px; background: radial-gradient(circle, var(--auth-glow-indigo), transparent 65%); }
-.auth1-brand-logo { position: relative; z-index: 1; align-self: flex-start; width: auto; height: 46px; }
-.auth1-brand-body { position: relative; z-index: 1; max-width: 470px; margin: auto 0; }
-.auth1-kicker {
-  display: inline-block; margin-bottom: var(--space-4); padding: 4px 12px; border: 1px solid var(--auth-tile-edge); border-radius: var(--radius-pill);
-  color: var(--nav-accent); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+/* The name: white over the indigo half, indigo over the light half */
+.auth2-title {
+  margin: 0; display: flex; flex-direction: column; align-items: center; font-size: clamp(40px, 5.5vw, 68px); line-height: 1; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase; color: transparent;
+  background: linear-gradient(90deg, var(--on-dark) 0 50vw, var(--indigo-800) 50vw 100vw); background-attachment: fixed;
+  -webkit-background-clip: text; background-clip: text;
 }
-.auth1-brand h2 { margin: 0 0 var(--space-4); color: var(--on-dark); font-size: 32px; line-height: 1.22; font-weight: 700; letter-spacing: -0.015em; }
-.auth1-brand-body > p { margin: 0 0 var(--space-8); font-size: 15px; line-height: 1.6; }
-.auth1-points { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: 0; }
-.auth1-points li {
-  display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3);
-  border: 1px solid var(--auth-tile-edge); border-radius: 12px; background: var(--auth-tile);
-  font-size: var(--fs-label); line-height: var(--lh-label);
+.auth2-title span { margin-top: var(--space-2); font-size: clamp(13px, 1.4vw, 18px); letter-spacing: 0.3em; font-weight: 600; }
+.auth2-card {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: 100%; max-width: 960px; overflow: hidden;
+  background: var(--surface); border-radius: 24px; box-shadow: var(--shadow-pop);
 }
-.auth1-points strong { display: block; margin-bottom: 2px; color: var(--on-dark); font-size: var(--fs-body); line-height: var(--lh-body); }
-.auth1-point-icon { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px; background: var(--auth-tile-edge); color: var(--nav-accent); }
-.auth1-point-icon svg.lucide { width: 18px; height: 18px; }
-.auth1-brand-foot { position: relative; z-index: 1; margin: 0; font-size: var(--fs-caption); opacity: 0.75; }
-
-.auth1-main { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4); padding: var(--space-8) var(--space-4); }
-.auth1-panel {
-  width: 100%; max-width: 420px; padding: 40px 36px;
-  background: var(--surface); border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+.auth2-form { display: flex; flex-direction: column; justify-content: center; padding: 48px 52px; }
+.auth2-logo { width: auto; height: 40px; margin: 0 auto var(--space-6); }
+.auth2-form .auth1-head { text-align: center; }
+.auth2-form .alert { margin-bottom: var(--space-4); }
+.auth2-form input:not([type='checkbox']) { height: 46px; padding: 0 14px; border-radius: 10px; font-size: 15px; }
+.auth2-form input:not([type='checkbox']):focus { box-shadow: var(--focus-ring); }
+.auth2-form .auth-remember { margin-top: 0; }
+.auth2-form .pw-box input { padding-right: 48px; }
+.auth2-art {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-6); padding: 40px 32px;
+  background: var(--teal-100);
 }
-.auth1-mobile-logo { display: none; width: auto; height: 40px; margin-bottom: var(--space-6); }
+/* Ten tiles on a circle (each turned to its place, then turned back so the icon stands upright) */
+.auth2-orbit { position: relative; width: 300px; height: 300px; }
+.auth2-orbit ul { position: absolute; inset: 0; list-style: none; margin: 0; padding: 0; }
+.auth2-orbit li {
+  position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  border-radius: 14px; background: var(--surface); color: var(--indigo-700); box-shadow: var(--shadow-card);
+  transform: rotate(calc(var(--i) * 360deg / var(--n))) translate(122px) rotate(calc(var(--i) * -360deg / var(--n)));
+}
+.auth2-orbit li:nth-child(even) { color: var(--teal-700); }
+.auth2-orbit li svg.lucide { width: 20px; height: 20px; }
+.auth2-centre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
+.auth2-centre img { width: 56px; height: 56px; margin-bottom: var(--space-2); border-radius: 16px; }
+.auth2-centre strong { color: var(--indigo-800); font-size: 20px; line-height: 1.2; letter-spacing: 0.06em; text-transform: uppercase; }
+.auth2-centre span { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.auth2-points { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); margin: 0; padding: 0; color: var(--ink); font-size: var(--fs-label); line-height: var(--lh-label); }
+.auth2-points li { display: flex; align-items: center; gap: var(--space-2); }
+.auth2-points svg.lucide { flex-shrink: 0; width: 16px; height: 16px; color: var(--teal-700); }
+.auth2-foot { margin: 0; color: var(--slate-600); font-size: var(--fs-caption); }
+@media (prefers-reduced-motion: no-preference) {
+  .auth2-orbit ul { animation: auth2-turn 80s linear infinite; }
+  .auth2-orbit li svg { animation: auth2-turn 80s linear infinite reverse; }
+}
+@keyframes auth2-turn { to { transform: rotate(360deg); } }
+/* Tablets and phones: the form alone on the card, the page indigo at the top */
+@media (max-width: 860px) {
+  .auth2 { background: linear-gradient(180deg, var(--indigo-800) 0 220px, var(--mist-100) 220px 100%); justify-content: flex-start; }
+  .auth2-title { color: var(--on-dark); background: none; -webkit-background-clip: border-box; background-clip: border-box; }
+  .auth2-card { grid-template-columns: 1fr; max-width: 460px; }
+  .auth2-art { display: none; }
+}
+@media (max-width: 480px) { .auth2-form { padding: 32px 22px; } }
+/* The form's heading, button and footer (kept from 7 Oct) */
 .auth1-head { margin-bottom: var(--space-6); }
 .auth1-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
 .auth1-head p { margin: 6px 0 0; line-height: 1.5; }
-.auth1-panel .alert { margin-bottom: var(--space-4); }
-.auth1-panel input:not([type='checkbox']) { height: 46px; padding: 0 14px; border-radius: 10px; font-size: 15px; }
-.auth1-panel input:not([type='checkbox']):focus { box-shadow: var(--focus-ring); }
-.auth1-panel .auth-remember { margin-top: 0; }
 .auth1-submit { min-height: 48px; margin-top: var(--space-6); border-radius: 10px; font-size: 15px; }
 .auth1-submit svg.lucide { width: 18px; height: 18px; }
 .auth1-foot {
@@ -147,12 +212,24 @@ input:focus, select:focus, textarea:focus { border-color: var(--indigo-700); box
 }
 .auth1-foot svg.lucide { flex-shrink: 0; width: 14px; height: 14px; }
 
-@media (max-width: 1100px) { .auth1-points { grid-template-columns: 1fr; } }
-@media (max-width: 960px) {
-  .auth1 { grid-template-columns: 1fr; }
-  .auth1-brand { display: none; }
-  .auth1-mobile-logo { display: block; }
-  .auth1-main { background: linear-gradient(180deg, var(--indigo-100), var(--mist-100) 40%); }
+/* Phones (owner, 14 Oct 2026): every tab in view (they wrap instead of hiding off-screen), the page's buttons on their
+   own row, and the profile card as wide as the screen */
+@media (max-width: 719px) {
+  .ph-tabs.segmented, .prof-tabs { flex-wrap: wrap; overflow: visible; row-gap: 0; }
+  .ph-tabs.segmented a, .ph-tabs.segmented button, .prof-tabs > button, .prof-tabs > a { padding: 0 var(--space-3); }
+  .ph-subtabs { gap: 0 var(--space-4); }
+  .ph-actions { flex: 1 1 100%; margin-left: 0; }
+  .ph-actions > .btn, .ph-actions > .menu-button { flex: 1 1 auto; }
+  .pm-card { position: fixed; left: 8px; right: 8px; top: 64px; width: auto; max-height: calc(100vh - 80px); overflow-y: auto; }
+  .pf-content { padding: var(--space-4) var(--space-3) var(--space-6); }
 }
-@media (max-width: 480px) { .auth1-panel { padding: 28px 20px; } }
-.auth1-panel .pw-box input { padding-right: 48px; }
+/* Tablets: a little less padding around the page */
+@media (min-width: 720px) and (max-width: 1023px) {
+  .pf-content { padding: var(--space-4) var(--space-4) var(--space-6); }
+}
+
+/* The sidebar's column runs the whole length of a long page (the menu itself stays pinned at the top while scrolling) */
+.pf { --sb-column: var(--sidebar-width); background: linear-gradient(90deg, var(--sidebar-end) 0 var(--sb-column), var(--mist-100) var(--sb-column)); }
+.pf-collapsed { --sb-column: var(--rail-width); }
+@media (max-width: 1023px) { .pf { --sb-column: var(--rail-width); } }
+@media (max-width: 719px) { .pf { --sb-column: 0px; } }

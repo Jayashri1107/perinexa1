@@ -197,3 +197,62 @@ describe('moving to another bed', () => {
     expect(await AuditLog.countDocuments({ action: 'ADMISSION_BED_CHANGED' })).toBe(1);
   });
 });
+
+describe("the front desk's stays (owner, 14 Oct 2026)", () => {
+  it('counts who is in and admitted today, lists who is going home (a discharge card being written) and who went home today', async () => {
+    const { Admission } = await import('../src/models/Admission.js');
+    const { ClinicalDocument } = await import('../src/models/ClinicalDocument.js');
+    const beds = await setUpBeds();
+    const staying = await register('Staying Mother');
+    const going = await register('Going Mother');
+    const gone = await register('Gone Mother');
+    for (const [bed, p] of [[beds.G1, staying], [beds.G2, going], [beds.G10, gone]]) expect((await admit('reception', bed, p)).status).toBe(201);
+    const stayOf = async (p) => Admission.findOne({ tenantId: hospital._id, patientId: p.id, status: 'admitted' });
+    const goingStay = await stayOf(going);
+    await ClinicalDocument.create({ tenantId: hospital._id, patientId: goingStay.patientId, admissionId: goingStay._id, kind: 'discharge', createdBy: people.drA._id, createdByName: 'Sample drA', clientRequestId: randomUUID() });
+    const goneStay = await stayOf(gone);
+    await Admission.updateOne({ tenantId: hospital._id, _id: goneStay._id }, { $set: { status: 'discharged', dischargedAt: NOW, dischargedByName: 'Sample drA' } });
+
+    const res = await (await as('reception')).get('/api/beds/desk');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ inHospital: 2, admittedToday: 2 });
+    expect(res.body.goingHome.map((x) => [x.patient.fullName, x.ward, x.bed])).toEqual([['Going Mother', 'General ward', 'G2']]);
+    expect(res.body.dischargedToday.map((x) => [x.patient.fullName, x.bed, x.byName])).toEqual([['Gone Mother', 'G10', 'Sample drA']]);
+    expect(JSON.stringify(res.body)).not.toMatch(/content|reason/); // names and beds only
+    expect(await AuditLog.countDocuments({ action: 'DISCHARGES_VIEWED' })).toBe(1);
+    expect((await (await as('lab')).get('/api/beds/desk')).status).toBe(403);
+  });
+});
+
+describe('admission type and medico-legal case (owner, 14 Oct 2026)', () => {
+  it('are saved with the stay (planned and not MLC unless chosen), and a wrong type is refused', async () => {
+    const { Admission } = await import('../src/models/Admission.js');
+    const beds = await setUpBeds();
+    const planned = await register('Planned Mother');
+    const emergency = await register('Emergency Mother');
+    expect((await admit('reception', beds.G1, planned)).status).toBe(201);
+    expect((await admit('reception', beds.G2, emergency, { admissionType: 'emergency', mlc: true })).status).toBe(201);
+    const stay = async (p) => Admission.findOne({ tenantId: hospital._id, patientId: p.id, status: 'admitted' }).lean();
+    expect(await stay(planned)).toMatchObject({ admissionType: 'planned', mlc: false });
+    expect(await stay(emergency)).toMatchObject({ admissionType: 'emergency', mlc: true });
+    const bad = await admit('reception', beds.G10, await register('Wrong Mother'), { admissionType: 'urgent' });
+    expect(bad.status).toBe(400);
+  });
+});
+
+describe("the hospital admin's Today (owner, 14 Oct 2026): numbers only", () => {
+  it('gets the bed counts and the stay counts, never a name, and still not the bed board', async () => {
+    const beds = await setUpBeds();
+    const p = await register('Counted Mother');
+    expect((await admit('reception', beds.G1, p)).status).toBe(201);
+    const summary = await (await as('admin')).get('/api/beds?summary=1');
+    expect(summary.status).toBe(200);
+    expect(summary.body.counts).toMatchObject({ total: 3, occupied: 1, free: 2 });
+    const desk = await (await as('admin')).get('/api/beds/desk');
+    expect(desk.status).toBe(200);
+    expect(desk.body).toMatchObject({ inHospital: 1, admittedToday: 1, goingHomeCount: 0, dischargedTodayCount: 0, goingHome: [], dischargedToday: [], numbersOnly: true });
+    expect(JSON.stringify(desk.body)).not.toMatch(/Counted Mother/);
+    expect((await board('admin')).status).toBe(403);
+    expect((await (await as('admin')).get('/api/beds?free=1')).status).toBe(403);
+  });
+});

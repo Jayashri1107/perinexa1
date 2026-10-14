@@ -137,6 +137,7 @@ export const AUDIT_LABELS = {
   ADMISSION_UPDATED: 'Ward or bed changed',
   ADMISSION_BED_CHANGED: 'Moved to another bed',
   BEDS_VIEWED: 'Bed board viewed',
+  DISCHARGES_VIEWED: 'Discharges viewed (Today)',
   PATIENT_DISCHARGED: 'Patient discharged',
   DOCUMENT_CREATED: 'Inpatient document started',
   DOCUMENT_VIEWED: 'Inpatient document opened',
@@ -321,6 +322,7 @@ export const AUDIT_TONES = {
   ADMISSION_UPDATED: 'patient',
   ADMISSION_BED_CHANGED: 'patient',
   BEDS_VIEWED: 'patient',
+  DISCHARGES_VIEWED: 'patient',
   PATIENT_DISCHARGED: 'patient',
   DOCUMENT_CREATED: 'patient',
   DOCUMENT_VIEWED: 'patient',
@@ -739,6 +741,8 @@ export function describeAudit(entry) {
       return d.active === false ? 'Taken out of use' : '';
     case 'BEDS_VIEWED':
       return `${d.occupied ?? 0} bed${d.occupied === 1 ? '' : 's'} occupied`;
+    case 'DISCHARGES_VIEWED':
+      return `${d.goingHome ?? 0} going home · ${d.dischargedToday ?? 0} went home today`;
     case 'OPD_TIMINGS_CHANGED':
       return `${d.days ?? 0} day${d.days === 1 ? '' : 's'} a week${d.leave ? ` · ${d.leave} leave entr${d.leave === 1 ? 'y' : 'ies'}` : ''}`;
     case 'PATIENT_VIEWED':
