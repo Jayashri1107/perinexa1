@@ -72,6 +72,8 @@ import {
   planTitle,
   sinceText,
   windowText,
+  SOON_DAYS,
+  splitSoon,
 } from './carePlanFormat.js';
 import { canEditItem } from './customItemFormat.js';
 import { CARE_TYPE_SHORT } from './patientFormat.js';
@@ -623,6 +625,7 @@ export function PatientCarePlanTab() {
   const [notice, setNotice] = useState(null); // { type: 'success' | 'warning' | 'error', text, undoItemId? }
   const [dialog, setDialog] = useState(null); // { type, item?, options? }
   const [starting, setStarting] = useState(false);
+  const [showLater, setShowLater] = useState(false); // To do: the items after the next 6 weeks, folded
   const [printing, setPrinting] = useState(null); // { step: 'dialog' | 'preview', options } (Feature 9)
   const [confirm, confirmDialog] = useConfirm();
   const plan = changed ?? data?.plan ?? null;
@@ -847,7 +850,10 @@ export function PatientCarePlanTab() {
 
   const filter = STATUS_FILTERS[list.status] ? list.status : '';
   const view = PLAN_VIEWS.some((v) => v.key === list.view) ? list.view : 'todo';
-  const rows = planRows(plan, { view, kind: list.kind, status: filter });
+  const allRows = planRows(plan, { view, kind: list.kind, status: filter });
+  // To do shows the next 6 weeks; what comes later is one click away (a list of the whole pregnancy was too long)
+  const soon = view === 'todo' && !filter && !showLater ? splitSoon(allRows, plan) : { shown: allRows, later: [] };
+  const rows = soon.shown;
   const folded = view === 'todo' && !filter ? foldedItems(plan, { kind: list.kind }) : null;
   const setFilter = (status) => setList(status ? { status, view: STATUS_FILTERS[status].view } : { status: '' });
   const viewLabel = PLAN_VIEWS.find((v) => v.key === view).label;
@@ -930,6 +936,21 @@ export function PatientCarePlanTab() {
         )}
         <div className="plan-table-wrap" aria-busy={loading}>
           <ItemsTable plan={plan} patient={patient} rows={rows} caption={`Care plan items: ${viewLabel}`} emptyText={emptyText} onAction={onAction} />
+          {soon.later.length > 0 && (
+            <p className="plan-later">
+              {soon.later.length} more {soon.later.length === 1 ? 'item comes' : 'items come'} after the next {SOON_DAYS / 7} weeks.{' '}
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowLater(true)}>
+                Show {soon.later.length} later {soon.later.length === 1 ? 'item' : 'items'}
+              </button>
+            </p>
+          )}
+          {showLater && view === 'todo' && !filter && (
+            <p className="plan-later">
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setShowLater(false)}>
+                Show only the next {SOON_DAYS / 7} weeks
+              </button>
+            </p>
+          )}
         </div>
       </section>
 

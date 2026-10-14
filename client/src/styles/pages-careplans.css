@@ -284,3 +284,12 @@
 /* Clinic library → To approve */
 .ap-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
 .ap-list li:last-child { border-bottom: none; }
+
+/* A shorter list (owner, 14 Oct 2026): tighter rows, a row's buttons on one line, the later items one click away */
+@media (min-width: 900px) {
+  .dt.plan-table td { padding-top: var(--space-3); padding-bottom: var(--space-3); height: auto; }
+  .dt.plan-table td.plan-cell-actions { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+  .plan-actions { flex-wrap: nowrap; min-width: 0; max-width: none; }
+  .plan-actions .btn { white-space: nowrap; }
+}
+.plan-later { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 0; color: var(--slate-600); }

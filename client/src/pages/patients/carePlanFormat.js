@@ -597,6 +597,22 @@ export function planRows(plan, { view = 'todo', kind = '', status = '' } = {}) {
   return rows;
 }
 
+export const SOON_DAYS = 42; // the To do list shows the next 6 weeks; the rest folds (owner, 14 Oct 2026)
+
+/**
+ * The To do rows cut at `days` after today: { shown, later } – later: the item rows starting after that (never one that
+ * needs a decision). A group heading left with nothing under it goes too.
+ */
+export function splitSoon(rows, plan, days = SOON_DAYS) {
+  const limit = time(plan?.today) + days * 86_400_000;
+  const later = rows.filter((r) => r.type === 'item' && !r.decision && time(startOf(r.item)) > limit);
+  if (!later.length) return { shown: rows, later: [] };
+  const hidden = new Set(later);
+  const kept = rows.filter((r) => !hidden.has(r));
+  const shown = kept.filter((r, i) => r.type === 'item' || kept.slice(i + 1).some((x) => x.type === 'item'));
+  return { shown, later };
+}
+
 /** Open items for the folded sections under the To do table: { missed, notApplicable, lapsed }, each by date. */
 export function foldedItems(plan, { kind = '' } = {}) {
   const open = (plan.items ?? []).filter((it) => itemState(it) === 'open' && (!kind || it.kind === kind));
