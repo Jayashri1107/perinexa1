@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { CalendarCheck, CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, Hash, IndianRupee, Plane, Settings, UserCheck } from 'lucide-react';
+import { CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, IndianRupee, Plane, Plus, Settings, UserCheck } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, KpiCard, StatusPill } from '../../components/ui.jsx';
+import { Alert, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
 import { BookDialog, CancelDialog, FeeDialog, MoveDialog, NewAppointmentDialog } from './AppointmentDialogs.jsx';
-import { NEEDS_TIME_LOOK, STATUS_LOOK, VISIT_TYPE_LABELS, addDaysIso, dayLabel, timeLabel, whenLabel, whoLabel } from './appointmentFormat.js';
+import { NEEDS_TIME_LOOK, STATUS_LOOK, VISIT_TYPE_LABELS, addDaysIso, dayLabel, dayList, firstName, slotGroups, timeLabel, whenLabel, whoLabel } from './appointmentFormat.js';
 
 // Appointment booking (docs/APPOINTMENTS_PLAN.md): one doctor's day in 10-minute slots. Reception and doctors click
 // a free time to book (a registered patient, or a new one with name and phone), and move or cancel bookings. RMOs
@@ -164,6 +164,10 @@ export function AppointmentsPage() {
   const live = booked.filter((a) => ['booked', 'arrived'].includes(a.status)).length;
   const seen = [...booked, ...(d?.tokens ?? [])].filter((a) => a.status === 'seen').length;
   const free = d ? d.slots.filter((s) => !s.past && !s.appointments.length && !s.busyWith).length : 0;
+  // The day at a glance: the times by part of the day, and everyone on the day in order (walk-ins and bookings
+  // without a time included), the next one marked
+  const groups = slotGroups(d?.slots);
+  const people = dayList(d);
 
   return (
     <>
@@ -223,11 +227,22 @@ export function AppointmentsPage() {
         )}
 
         {d && d.hasTimings && (
-          <div className="kpi-grid appt-kpis">
-            <KpiCard tone={live ? 'due' : 'neutral'} icon={CalendarCheck} label={date === today ? 'Booked today' : 'Booked'} value={live} sub={`${doctor?.name ?? ''} · ${free} free time${free === 1 ? '' : 's'} left`} />
-            <KpiCard to="/appointments/needs-time" tone={needsTime.data?.appointments.length ? 'watch' : 'neutral'} icon={Clock} label="Needs a time" value={needsTime.data ? needsTime.data.appointments.length : '—'} sub="Next visits waiting for a time" />
-            <KpiCard tone="neutral" icon={UserCheck} label="Seen" value={seen} sub={`${d.tokens.length} walk-in${d.tokens.length === 1 ? '' : 's'} this day`} />
-          </div>
+          <p className="appt-summary" role="status">
+            <span>
+              <strong>{live}</strong> booked
+            </span>
+            <span>
+              <strong>{free}</strong> free
+            </span>
+            <span>
+              <strong>{seen}</strong> seen
+            </span>
+            {needsTime.data?.appointments.length > 0 && (
+              <Link to="/appointments/needs-time">
+                <strong>{needsTime.data.appointments.length}</strong> {needsTime.data.appointments.length === 1 ? 'needs' : 'need'} a time
+              </Link>
+            )}
+          </p>
         )}
         {day.error && <Alert type="error">{day.error}</Alert>}
         {d && !d.hasTimings && (
@@ -257,76 +272,80 @@ export function AppointmentsPage() {
         )}
         {d && d.hasTimings && !d.leave && !d.slots.length && <Alert type="info">{d.doctor.name} has no OPD on this day.</Alert>}
 
-        {d && d.other.length > 0 && (
-          <section className="card appt-section" aria-labelledby="appt-other-title">
-            <h2 id="appt-other-title">
-              <Clock aria-hidden="true" /> To give a time
-            </h2>
-            <p className="hint">Booked for this day without a time (e.g. from a next visit while the doctor was on leave), or at a time no longer in the OPD timings.</p>
-            <ul className="appt-lines">
-              {d.other.map((a) => (
-                <li key={a.id}>
-                  <AppointmentLine a={a} canBook={canBook} onMove={dialogs.move} onCancel={dialogs.cancel} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {d && d.slots.length > 0 && (
-          <section className="card appt-section" aria-labelledby="appt-slots-title">
-            <h2 id="appt-slots-title">
-              <CalendarClock aria-hidden="true" /> Times
-              <span className="muted appt-count">
-                {d.slots.filter((s) => s.appointments.length || s.busyWith).length} of {d.slots.length} booked
-              </span>
-            </h2>
-            {d.sessions.length > 0 && <p className="hint">OPD: {d.sessions.map((s) => `${timeLabel(s.from)} – ${timeLabel(s.to)}`).join(', ')} · {d.slotMinutes}-minute slots</p>}
-            <ol className="appt-slots">
-              {d.slots.map((s) => (
-                <li key={s.start} className={`appt-slot ${s.past ? 'is-past' : ''} ${s.appointments.length || s.busyWith ? 'is-booked' : 'is-free'}`}>
-                  <span className="appt-slot-time">{timeLabel(s.start)}</span>
-                  <div className="appt-slot-body">
-                    {s.appointments.map((a) => (
-                      <AppointmentLine key={a.id} a={a} canBook={canBook} onMove={dialogs.move} onCancel={dialogs.cancel} onFee={d.canTakeFee ? dialogs.fee : null} />
-                    ))}
-                    {s.busyWith && (
-                      <span className="muted">
-                        Taken – the {timeLabel(s.busyWith.start)} visit{s.busyWith.name ? ` of ${s.busyWith.name}` : ''} is still going on
-                      </span>
-                    )}
-                    {!s.appointments.length && !s.busyWith && (s.past ? <span className="muted">Free (passed)</span> : <span className="muted">Free</span>)}
+        {d && (d.slots.length > 0 || people.list.length > 0) && (
+          <div className="appt-day">
+            {d.slots.length > 0 && (
+              <section className="card appt-section appt-times" aria-labelledby="appt-slots-title">
+                <h2 id="appt-slots-title">
+                  <CalendarClock aria-hidden="true" /> Times
+                  <span className="muted appt-count">{d.slotMinutes}-minute slots</span>
+                </h2>
+                {groups.map((g) => (
+                  <div key={g.label} className="appt-part">
+                    <h3>{g.label}</h3>
+                    <ul className="appt-chips">
+                      {g.slots.map((s) => {
+                        const taken = s.appointments.length > 0 || Boolean(s.busyWith);
+                        const bookHere = () => dialogs.book(d.doctor, d.date, s.start, forPatient, d.lengths);
+                        return (
+                          <li key={s.start} className={`appt-chip ${taken ? 'is-booked' : 'is-free'} ${s.past ? 'is-past' : ''}`}>
+                            {!taken ? (
+                              canBook && !s.past ? (
+                                <button type="button" className="appt-chip-main" onClick={bookHere} aria-label={`Book ${timeLabel(s.start)}`}>
+                                  <span className="appt-chip-time">{timeLabel(s.start)}</span>
+                                  <span className="appt-chip-who">Free</span>
+                                </button>
+                              ) : (
+                                <span className="appt-chip-main">
+                                  <span className="appt-chip-time">{timeLabel(s.start)}</span>
+                                  <span className="appt-chip-who">Free</span>
+                                </span>
+                              )
+                            ) : (
+                              <span className="appt-chip-main" title={s.appointments.map(whoLabel).join(', ') || 'Taken by the visit before'}>
+                                <span className="appt-chip-time">{timeLabel(s.start)}</span>
+                                <span className="appt-chip-who">{s.appointments.length ? s.appointments.map(firstName).join(', ') : 'Taken'}</span>
+                              </span>
+                            )}
+                            {taken && canBook && !s.past && (
+                              <button type="button" className="appt-chip-add" onClick={bookHere} aria-label={`Add another booking at ${timeLabel(s.start)}`} title="Add another booking">
+                                <Plus aria-hidden="true" />
+                              </button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
-                  {canBook && !s.past && (
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${s.appointments.length || s.busyWith ? 'btn-link' : 'btn-secondary'}`}
-                      onClick={() => dialogs.book(d.doctor, d.date, s.start, forPatient, d.lengths)}
-                      aria-label={`Book ${timeLabel(s.start)}${s.appointments.length ? ' (already booked)' : ''}`}
-                    >
-                      <CalendarPlus aria-hidden="true" /> {s.appointments.length || s.busyWith ? 'Add' : 'Book'}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
-
-        {d && d.tokens.length > 0 && (
-          <section className="card appt-section" aria-labelledby="appt-tokens-title">
-            <h2 id="appt-tokens-title">
-              <Hash aria-hidden="true" /> Walk-ins
-            </h2>
-            <ul className="appt-lines">
-              {d.tokens.map((a) => (
-                <li key={a.id} className="appt-token-row">
-                  <span className="appt-slot-time">Token {a.token}</span>
-                  <AppointmentLine a={a} canBook={false} />
-                </li>
-              ))}
-            </ul>
-          </section>
+                ))}
+                {!groups.length && <p className="muted">Every time of this day has passed.</p>}
+              </section>
+            )}
+            <section className="card appt-section appt-people" aria-labelledby="appt-people-title">
+              <h2 id="appt-people-title">
+                <UserCheck aria-hidden="true" /> {date === today && doctorId === info?.me ? 'My patients today' : `Patients on ${dayLabel(date)}`}
+              </h2>
+              {people.list.length === 0 ? (
+                <p className="muted">No one booked yet.</p>
+              ) : (
+                <ul className="appt-lines">
+                  {people.list.map((a) => (
+                    <li key={a.id} className={`appt-token-row ${a === people.next ? 'is-next' : ''}`}>
+                      <span className="appt-slot-time">{whenLabel(a)}</span>
+                      <div className="appt-person">
+                        {a === people.next && (
+                          <StatusPill tone="brand" icon={ChevronRight}>
+                            Next
+                          </StatusPill>
+                        )}
+                        <AppointmentLine a={a} canBook={canBook && a.kind !== 'token'} onMove={dialogs.move} onCancel={dialogs.cancel} onFee={d.canTakeFee ? dialogs.fee : null} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         )}
       </div>
       {dialogs.element}

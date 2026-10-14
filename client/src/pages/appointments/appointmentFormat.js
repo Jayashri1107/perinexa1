@@ -63,3 +63,39 @@ export function dayLabel(iso) {
   const d = new Date(`${iso}T00:00:00Z`);
   return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
+
+// ---------- The doctor's day at a glance (owner, 14 Oct 2026) ----------
+
+const PART_OF_DAY = (hhmm) => (hhmm < '12:00' ? 'Morning' : hhmm < '16:00' ? 'Afternoon' : 'Evening');
+
+/** The day's slots by part of the day, past free slots left out: [{ label, slots }]. */
+export function slotGroups(slots) {
+  const groups = [];
+  for (const s of slots ?? []) {
+    if (s.past && !s.appointments.length && !s.busyWith) continue;
+    const label = PART_OF_DAY(s.start);
+    if (groups.at(-1)?.label !== label) groups.push({ label, slots: [] });
+    groups.at(-1).slots.push(s);
+  }
+  return groups;
+}
+
+const DONE = new Set(['seen', 'no_show', 'cancelled']);
+
+/**
+ * Everyone on the day, in order: the slot bookings by time, then walk-ins by token, then the bookings still
+ * without a time. next: the first one not seen yet (arrived first, then booked).
+ */
+export function dayList(day) {
+  if (!day) return { list: [], next: null };
+  const slotted = (day.slots ?? []).flatMap((s) => s.appointments.map((a) => ({ a, key: `${a.start ?? s.start}|0|${a.id}` })));
+  const tokens = (day.tokens ?? []).map((a) => ({ a, key: `${a.start ?? '99:99'}|1|${String(a.token).padStart(4, '0')}` }));
+  const other = (day.other ?? []).map((a) => ({ a, key: `99:99|2|${a.id}` }));
+  const list = [...slotted, ...tokens, ...other].sort((x, y) => x.key.localeCompare(y.key)).map((x) => x.a);
+  const open = list.filter((a) => !DONE.has(a.status));
+  const next = open.find((a) => a.status === 'arrived') ?? open.find((a) => a.status === 'booked') ?? null;
+  return { list, next };
+}
+
+/** "Sanjana" from "Sanjana Sample" (a slot shows the first name only). */
+export const firstName = (a) => whoLabel(a).split(/\s+/)[0];

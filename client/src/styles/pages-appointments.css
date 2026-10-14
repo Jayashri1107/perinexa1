@@ -280,3 +280,31 @@
 .appt-slot-part + .appt-slot-part { margin-top: var(--space-3); }
 .appt-slot-part-title { margin: 0 0 var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
 .appt-slot-choices .appt-slot-grid { max-height: none; }
+
+/* The doctor's day at a glance (owner, 14 Oct 2026): one summary line, the times as a grid of buttons by part of the
+   day, and everyone on the day beside it with the next one marked */
+.appt-summary { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); margin: 0; color: var(--slate-600); }
+.appt-summary strong { color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.appt-summary a { color: var(--indigo-700); }
+.appt-day { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+@media (min-width: 1200px) { .appt-day { grid-template-columns: minmax(0, 1fr) minmax(360px, 440px); } }
+.appt-part + .appt-part { margin-top: var(--space-4); }
+.appt-part h3 { margin: var(--space-2) 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.appt-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.appt-chip { position: relative; display: flex; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.appt-chip-main { display: grid; gap: 2px; flex: 1 1 auto; min-width: 0; padding: var(--space-2) var(--space-3); border: 0; border-radius: inherit; background: none; color: inherit; font: inherit; text-align: left; }
+button.appt-chip-main { cursor: pointer; }
+button.appt-chip-main:hover { background: var(--mist-50); }
+button.appt-chip-main:focus-visible, .appt-chip-add:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.appt-chip-time { font-weight: 600; font-variant-numeric: tabular-nums; }
+.appt-chip-who { overflow: hidden; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); text-overflow: ellipsis; white-space: nowrap; }
+.appt-chip.is-free .appt-chip-time { color: var(--teal-700); }
+.appt-chip.is-booked { border-color: var(--indigo-200); background: var(--indigo-100); }
+.appt-chip.is-booked .appt-chip-who { color: var(--ink); font-weight: 600; }
+.appt-chip.is-past { opacity: 0.6; }
+.appt-chip-add { display: grid; place-items: center; width: 32px; border: 0; border-left: 1px solid var(--indigo-200); border-radius: 0 var(--radius-md) var(--radius-md) 0; background: none; color: var(--indigo-700); cursor: pointer; }
+.appt-chip-add svg.lucide { width: 16px; height: 16px; }
+.appt-chip-add:hover { background: var(--surface); }
+.appt-person { display: grid; gap: var(--space-1); flex: 1 1 auto; min-width: 0; justify-items: start; }
+.appt-person .appt-line { width: 100%; }
+.appt-people .appt-token-row.is-next { margin: 0 calc(-1 * var(--space-3)); padding-left: var(--space-3); padding-right: var(--space-3); border-radius: var(--radius-md); background: var(--selected-bg); box-shadow: var(--selected-edge); }
