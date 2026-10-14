@@ -589,3 +589,25 @@ describe("a doctor's month (the slot calendar, 13 Oct 2026)", () => {
     expect((await month('nurse', 'drA', '2026-10')).status).toBe(200);
   });
 });
+
+describe("the front desk's day (owner, 14 Oct 2026)", () => {
+  it("lists each doctor's OPD today (hours, leave, counts) and tomorrow's bookings to confirm, with a phone", async () => {
+    await setWeek('drA');
+    await setWeek('drB', [{ from: '2026-09-28', to: '2026-09-30', note: 'Conference' }]);
+    const today = await register('Today Mother');
+    const tomorrow = await register('Tomorrow Mother', { phone: '+91 91234 56780' });
+    expect((await book('reception', { doctorId: id('drA'), date: '2026-09-28', start: '12:00', patientId: today.id })).status).toBe(201);
+    expect((await book('reception', { doctorId: id('drA'), date: '2026-09-29', start: '10:00', patientId: tomorrow.id })).status).toBe(201);
+
+    const res = await (await as('reception')).get('/api/appointments/desk');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ today: '2026-09-28', tomorrow: '2026-09-29' });
+    const [a, b] = res.body.doctors;
+    expect(a).toMatchObject({ name: 'Sample drA', hasTimings: true, leave: null, expected: 1, waiting: 0, seen: 0 });
+    expect(a.sessions).toEqual([{ from: '10:00', to: '13:00' }, { from: '17:00', to: '20:00' }]);
+    expect(b).toMatchObject({ name: 'Sample drB', sessions: [], leave: { to: '2026-09-30', note: 'Conference' }, expected: 0 });
+    expect(res.body.tomorrowList.map((x) => [x.start, x.patient.fullName, x.patient.phone, x.doctor.name])).toEqual([['10:00', 'Tomorrow Mother', expect.stringContaining('91234'), 'Sample drA']]);
+
+    expect((await (await as('lab')).get('/api/appointments/desk')).status).toBe(403);
+  });
+});

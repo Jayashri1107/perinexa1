@@ -21,6 +21,7 @@ import { KIND_LABELS } from './inpatient/inpatientFormat.js';
 import { FLAG_LOOK, testNames } from './lab/labFormat.js';
 import { NEW_PATIENT_LINKS } from './patients/patientFormat.js';
 import { ReminderDialog } from './reminders/ReminderDialog.jsx';
+import { DoctorsToday, TomorrowCalls } from './appointments/DeskToday.jsx';
 import { paymentsToCollect, receptionCounts } from './todayReception.js';
 import { RedFlagItems, RedFlagRulesNote } from './redflags/RedFlagList.jsx';
 import { notCheckedCareText } from './redflags/redFlagFormat.js';
@@ -199,6 +200,8 @@ export function TodayPage() {
   const unpaid = useFetch(has(roles, ['billing', 'receptionist']) ? '/billing/reports/unpaid' : null);
   const collected = useFetch(isReception ? '/billing/reports/daily' : null);
   const beds = useFetch(isReception ? '/beds' : null, { summary: '1' });
+  // The front desk's day: which doctors are in today, and tomorrow's bookings to confirm (owner, 14 Oct 2026)
+  const desk = useFetch(isReception ? '/appointments/desk' : null);
   const today = useFetch(appointments ? '/today' : null, query);
 
   const seesRisk = clinicalWork;
@@ -254,13 +257,23 @@ export function TodayPage() {
     isReception && today.data && (
       <KpiCard key="r-calls" to={`/#${counts.callsList}`} tone={counts.calls ? 'watch' : 'neutral'} icon={PhoneCall} label="Calls to make" value={formatNumber(counts.calls)} sub="Due, overdue and babies – not booked" />
     ),
-    isReception && !isBillingDesk && collected.data && (
-      <KpiCard key="r-collected" to="/billing/daily" tone="neutral" icon={Banknote} label="Collected today" value={rupees(collected.data.totals.net)} textValue sub={`${collected.data.payments.length} payment${collected.data.payments.length === 1 ? '' : 's'} and refunds`} />
+    // Money today: what came in and what is still owed, in one card (owner, 14 Oct 2026)
+    isReception && !isBillingDesk && collected.data && unpaid.data && (
+      <KpiCard
+        key="r-money"
+        to={unpaid.data.bills.length ? '/billing/unpaid' : '/billing/daily'}
+        tone={unpaid.data.bills.length ? 'watch' : 'neutral'}
+        icon={Banknote}
+        label="Money today"
+        value={rupees(collected.data.totals.net)}
+        textValue
+        sub={`collected · ${unpaid.data.owed ? `${rupees(unpaid.data.owed)} to collect (${unpaid.data.bills.length} bill${unpaid.data.bills.length === 1 ? '' : 's'})` : 'nothing to collect'}`}
+      />
     ),
     isReception && beds.data && (
       <KpiCard key="r-beds" to="/beds" tone={beds.data.counts.total && !beds.data.counts.free ? 'watch' : 'neutral'} icon={BedDouble} label="Free beds" value={formatNumber(beds.data.counts.free)} sub={beds.data.counts.total ? `of ${beds.data.counts.total} beds` : 'No beds set up yet'} />
     ),
-    unpaid.data && !isBillingDesk && <KpiCard key="unpaid" to="/billing/unpaid" tone={unpaid.data.bills.length ? 'watch' : 'neutral'} icon={Wallet} label={isReception ? 'To collect' : 'Unpaid bills'} value={formatNumber(unpaid.data.bills.length)} sub={unpaid.data.owed ? `${rupees(unpaid.data.owed)} owed` : 'Nothing owed'} />,
+    unpaid.data && !isBillingDesk && !isReception && <KpiCard key="unpaid" to="/billing/unpaid" tone={unpaid.data.bills.length ? 'watch' : 'neutral'} icon={Wallet} label="Unpaid bills" value={formatNumber(unpaid.data.bills.length)} sub={unpaid.data.owed ? `${rupees(unpaid.data.owed)} owed` : 'Nothing owed'} />,
     labWork.data && <KpiCard key="lab-collect" to="/lab" tone={labWork.data.counts.collect ? 'due' : 'neutral'} icon={TestTube} label="Samples to take" value={formatNumber(labWork.data.counts.collect)} sub="Lab orders waiting for a sample" />,
     labWork.data && <KpiCard key="lab-report" to="/lab?list=report" tone={labWork.data.counts.report ? 'due' : 'neutral'} icon={FlaskConical} label="Results to enter" value={formatNumber(labWork.data.counts.report)} sub="Samples taken, results not reported" />,
     seesRisk && (
@@ -381,6 +394,7 @@ export function TodayPage() {
             </Link>
           </nav>
         )}
+        {isReception && desk.data && <DoctorsToday doctors={desk.data.doctors} />}
         {loading && (
           <div className="card plan-loading" aria-busy="true">
             <span className="sr-only">Loading today's lists…</span>
@@ -525,6 +539,7 @@ export function TodayPage() {
             </ul>
           </Section>
         )}
+        {isReception && desk.data && <TomorrowCalls list={desk.data.tomorrowList} tomorrow={desk.data.tomorrow} />}
         {has(roles, ['receptionist', 'doctor']) && <ScanShareSection />}
         {today.data?.guests && <QuickBookingsSection guests={today.data.guests} canRegister={canRegisterPatients(roles)} />}
         {/* Nurses: who arrived and is waiting for her visit to be started, then the visits started today */}

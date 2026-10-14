@@ -256,3 +256,23 @@
 .ward-handover-text { min-width: 0; overflow-wrap: anywhere; }
 .ward-handover-note { display: block; color: var(--ink); }
 @media (max-width: 720px) { .ward-handover-list li { grid-template-columns: minmax(0, 1fr); } }
+
+/* The front desk's day (owner, 14 Oct 2026): which doctors are in today, and tomorrow's bookings to confirm */
+.desk-doctors h2 { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.desk-doctors h2 svg.lucide { width: 20px; height: 20px; color: var(--indigo-700); }
+.desk-doctors ul { margin: 0; padding: 0; list-style: none; }
+.desk-doctors li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-2) var(--space-4); align-items: center; padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.desk-doctors li:first-child { border-top: 0; }
+.desk-doctor-who { display: grid; gap: 2px; min-width: 0; }
+.desk-doctor-who .muted { font-size: var(--fs-label); line-height: var(--lh-label); }
+.desk-doctor-counts { display: flex; gap: var(--space-4); color: var(--slate-600); white-space: nowrap; }
+.desk-doctor-counts strong { color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.desk-call { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border); }
+.desk-call:first-child { border-top: 0; }
+.desk-call-who { display: grid; gap: 2px; min-width: 0; }
+@media (max-width: 720px) {
+  .desk-doctors li { grid-template-columns: minmax(0, 1fr) auto; }
+  .desk-doctor-counts { grid-column: 1 / -1; }
+  .desk-call { grid-template-columns: 64px minmax(0, 1fr); }
+  .desk-call > .btn, .desk-call > .muted:last-child { grid-column: 2; justify-self: start; }
+}

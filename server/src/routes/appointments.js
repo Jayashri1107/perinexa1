@@ -18,7 +18,7 @@ import {
 import { coveredStarts, hospitalMinutes, leaveOn, lengthFor, sessionsOn, slotCheck, slotStarts, timetableProblems, waitingOrder } from '../appointments/slots.js';
 import { MODE_LABELS, PAYMENT_MODES } from '../billing/billingRules.js';
 import { appointmentFeeItem, takeAppointmentFee } from '../billing/billingService.js';
-import { daysBetween, hospitalToday, isoDay, utcDay } from '../careplans/dates.js';
+import { addDays, daysBetween, hospitalToday, isoDay, utcDay } from '../careplans/dates.js';
 import { Appointment } from '../models/Appointment.js';
 import { hasRole } from '../models/Membership.js';
 import { OpdSchedule } from '../models/OpdSchedule.js';
@@ -184,6 +184,42 @@ appointmentsRouter.get('/day', async (req, res) => {
     slotMinutes: SLOT_MINUTES,
     lengths: Object.fromEntries(VISIT_TYPES.map((t) => [t, lengthFor(schedule, t)])),
   });
+});
+
+// ---------- The front desk's day (owner, 14 Oct 2026) ----------
+// Reception's Today: each doctor's OPD today (hours, leave, how many booked / arrived / seen / waiting), and
+// tomorrow's bookings with a phone number, to call and confirm. The same views as the day schedule (not audited, as
+// /day is not).
+appointmentsRouter.get('/desk', async (req, res) => {
+  if (!hasRole(req.membership, ...QUEUE_ROLES)) throw forbidden('Appointments are for hospital staff.');
+  const today = hospitalToday(req.now);
+  const tomorrow = addDays(today, 1);
+  const [doctors, schedules, todayAppts, tomorrowAppts] = await Promise.all([
+    hospitalDoctors(req.tenantId),
+    OpdSchedule.find({ tenantId: req.tenantId }).lean(),
+    Appointment.find({ tenantId: req.tenantId, on: today, status: 'booked' }).lean(),
+    Appointment.find({ tenantId: req.tenantId, on: tomorrow, status: 'booked', kind: 'slot' }).sort({ start: 1, createdAt: 1 }).lean(),
+  ]);
+  const todayViews = await viewsOf(req.tenantId, todayAppts, today);
+  const scheduleOf = new Map(schedules.map((s) => [String(s.doctorId), s]));
+  const desk = doctors.map((d) => {
+    const schedule = scheduleOf.get(d.id) ?? null;
+    const onLeave = leaveOn(schedule, today);
+    const mine = todayViews.filter((v) => v.doctor?.id === d.id);
+    const count = (status) => mine.filter((v) => v.status === status).length;
+    return {
+      id: d.id,
+      name: d.name,
+      hasTimings: Boolean(schedule?.week?.some((w) => w.sessions?.length)),
+      sessions: onLeave ? [] : sessionsOn(schedule, today).map((s) => ({ from: s.from, to: s.to })),
+      leave: onLeave ? { to: isoDay(onLeave.to), note: onLeave.note ?? '' } : null,
+      expected: count('booked'),
+      waiting: count('arrived'),
+      seen: count('seen'),
+    };
+  });
+  const tomorrowViews = await viewsOf(req.tenantId, tomorrowAppts, today);
+  res.json({ today: isoDay(today), tomorrow: isoDay(tomorrow), doctors: desk, tomorrowList: tomorrowViews });
 });
 
 // ---------- A doctor's month (owner, 13 Oct 2026: the slot calendar) ----------
