@@ -3,6 +3,7 @@ import { ArrowRight, Baby, BedDouble, CalendarClock, Check, FlaskConical, HeartP
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/brand/perinexa-logo.png';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
+import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { api } from '../api.js';
 import { LOGIN_EMAIL_KEY, useAuth } from '../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../auth/guards.jsx';
@@ -144,15 +145,9 @@ const AUTH_POINTS = ['OPD and appointments', 'Wards and inpatients', 'Lab, pharm
 function AuthFrame({ children }) {
   return (
     <div className="auth2">
-      <p className="auth2-title" aria-hidden="true">
-        Perinexa <span>Hospital sign-in</span>
-      </p>
       <div className="auth2-card">
-        <main className="auth2-form">
-          <img className="auth2-logo" src={logo} alt="Perinexa by Docvritta" width="170" height="42" />
-          {children}
-        </main>
         <aside className="auth2-art" aria-label="About Perinexa">
+          <img className="auth2-art-logo" src={logoReversed} alt="Perinexa by Docvritta" width="150" height="37" />
           <div className="auth2-orbit" aria-hidden="true">
             <ul>
               {AUTH_ICONS.map((Icon, i) => (
@@ -163,8 +158,7 @@ function AuthFrame({ children }) {
             </ul>
             <div className="auth2-centre">
               <img src={appIcon} alt="" width="56" height="56" />
-              <strong>Perinexa</strong>
-              <span>Hospital workspace</span>
+              <strong>Hospital workspace</strong>
             </div>
           </div>
           <ul className="auth2-points">
@@ -174,9 +168,13 @@ function AuthFrame({ children }) {
               </li>
             ))}
           </ul>
+          <p className="auth2-foot">© {new Date().getFullYear()} Perinexa by Docvritta</p>
         </aside>
+        <main className="auth2-form">
+          <img className="auth2-logo" src={logo} alt="Perinexa by Docvritta" width="170" height="42" />
+          {children}
+        </main>
       </div>
-      <p className="auth2-foot">© {new Date().getFullYear()} Perinexa by Docvritta</p>
     </div>
   );
 }
