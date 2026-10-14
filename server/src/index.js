@@ -1,3 +1,6 @@
+import { writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import mongoose from 'mongoose';
 import { config } from './config.js';
 import { createApp } from './app.js';
@@ -10,8 +13,18 @@ import { ReminderMessage } from './models/ReminderMessage.js';
 import { Tenant } from './models/Tenant.js';
 import { runReminders } from './reminders/reminderService.js';
 
+// A hosted database with its own CA certificate (docs/DEPLOY.md): the certificate is written to a private temporary
+// file, which the database driver reads.
+function databaseOptions() {
+  if (!config.MONGO_CA_CERT.trim()) return {};
+  const file = path.join(os.tmpdir(), 'perinexa-mongo-ca.pem');
+  // (a certificate pasted on one line keeps its line breaks as "\n")
+  writeFileSync(file, config.MONGO_CA_CERT.replace(/\\n/g, '\n'), { mode: 0o600 });
+  return { tls: true, tlsCAFile: file };
+}
+
 try {
-  await mongoose.connect(config.MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+  await mongoose.connect(config.MONGO_URI, { serverSelectionTimeoutMS: 5000, ...databaseOptions() });
 } catch (err) {
   console.error('\n❌ Could not connect to the database. Is MongoDB running? Try: npm run db:start\n');
   console.error(err.message);

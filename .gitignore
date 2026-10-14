@@ -9,3 +9,6 @@ coverage/
 
 # Local list of test logins (contains passwords) – never commit
 docs/TEST_ACCOUNTS.md
+
+# Local settings of this computer – never commit
+config/

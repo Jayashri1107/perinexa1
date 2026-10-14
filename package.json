@@ -15,7 +15,11 @@
     "pretest": "node scripts/db.mjs start",
     "test": "npm test -w server && npm test -w client",
     "build": "npm run build -w client",
+    "start": "npm start -w server",
     "export:hospital": "node scripts/db.mjs start && node server/scripts/export-hospital.js"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

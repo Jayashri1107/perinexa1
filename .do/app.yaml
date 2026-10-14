@@ -1,0 +1,59 @@
+# DigitalOcean App Platform: Perinexa as one web service in Bangalore, with a Managed MongoDB cluster in the same
+# region. See docs/DEPLOY.md. FAKE SAMPLE DATA ONLY until the go-live checklist in docs/HANDOVER.md is complete.
+#
+# Before using this file:
+#  - change "repo" below if the code is in another GitHub repository;
+#  - create the Managed MongoDB cluster "perinexa-db" (MongoDB, region BLR1) first – App Platform links to it;
+#  - set JWT_SECRET in the App's settings (Settings → App-Level Environment Variables → Edit, tick "Encrypt").
+name: perinexa
+region: blr
+
+services:
+  - name: web
+    github:
+      repo: Jayashri1107/perinexa1
+      branch: main
+      deploy_on_push: true
+    environment_slug: node-js
+    # The website is built into client/dist; the server delivers it (server/src/app.js)
+    build_command: npm ci --include=dev && npm run build
+    run_command: npm start
+    http_port: 8080
+    # ONE copy only: some parts assume a single server (docs/HANDOVER.md section 7)
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    health_check:
+      http_path: /api/health
+    envs:
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+      - key: API_PORT
+        value: "8080"
+        scope: RUN_TIME
+      - key: TRUST_PROXY
+        value: "1"
+        scope: RUN_TIME
+      - key: HOSPITAL_TIME_ZONE
+        value: Asia/Kolkata
+        scope: RUN_TIME
+      - key: CLIENT_URL
+        value: ${APP_URL}
+        scope: RUN_TIME
+      - key: MONGO_URI
+        value: ${db.DATABASE_URL}
+        scope: RUN_TIME
+      - key: MONGO_CA_CERT
+        value: ${db.CA_CERT}
+        scope: RUN_TIME
+      # JWT_SECRET: set it in the App's settings as an encrypted variable – never in this file.
+      # Outside services stay off until their agreements are done (docs/HANDOVER.md section 8): no OPENAI_API_KEY,
+      # no Twilio / WhatsApp keys; ABDM_MODE stays "practice" (its default).
+
+databases:
+  - name: db
+    engine: MONGODB
+    production: true
+    cluster_name: perinexa-db
+    db_name: perinexa
+    db_user: perinexa

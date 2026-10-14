@@ -36,6 +36,12 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().positive().default(4000),
   MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
+  // A hosted database's own CA certificate (the PEM text, e.g. DigitalOcean Managed MongoDB's CA_CERT): the connection
+  // is then checked against it. Empty: no extra certificate (a local database, or one with a public certificate).
+  MONGO_CA_CERT: z.string().default(''),
+  // Behind a hosting service's load balancer (e.g. DigitalOcean App Platform): how many proxies to trust, so the
+  // sign-in limits see each visitor's own address. 0 (default): the app is reached directly.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),
   CLIENT_URL: z.url().default('http://localhost:5173'),
   SESSION_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),

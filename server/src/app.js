@@ -66,6 +66,7 @@ export function createApp({
   platformAnalyticsCacheMs = config.ANALYTICS_PLATFORM_CACHE_SECONDS * 1000,
 } = {}) {
   const app = express();
+  if (config.TRUST_PROXY) app.set('trust proxy', config.TRUST_PROXY); // behind a load balancer (docs/DEPLOY.md)
   app.locals.analyticsCacheMs = analyticsCacheMs;
   app.locals.platformAnalyticsCacheMs = platformAnalyticsCacheMs;
 
