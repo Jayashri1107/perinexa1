@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Menu, UserCog } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, UserCog } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
-import { normalizeAppearance } from '../appearance.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
 import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
@@ -137,21 +136,12 @@ function Workspace() {
   );
 }
 
-/** "Help": shows or hides the explanations on every screen (saved with the person's appearance). */
-function HelpToggle() {
-  const { user, saveAppearance } = useAuth();
-  const look = normalizeAppearance(user.preferences?.appearance);
-  const shown = look.help === 'shown';
+/** "Help": opens the Help page (how to use Perinexa; the explanations on every screen are switched on there). */
+function HelpLink() {
   return (
-    <button
-      type="button"
-      className={`btn btn-secondary btn-sm pf-help${shown ? ' is-on' : ''}`}
-      aria-pressed={shown}
-      title={shown ? 'Hide the explanations on the screens' : 'Show explanations on the screens'}
-      onClick={() => saveAppearance({ ...look, help: shown ? 'hidden' : 'shown' }).catch(() => {})}
-    >
+    <NavLink to="/help" className={({ isActive }) => `btn btn-secondary btn-sm pf-help${isActive ? ' is-on' : ''}`} title="How to use Perinexa">
       <CircleHelp aria-hidden="true" /> Help
-    </button>
+    </NavLink>
   );
 }
 
@@ -174,45 +164,61 @@ function ProfileMenu({ locked, onSwitch }) {
           <div className="pm-head">
             <Avatar name={user.name} seed={user.email} photo={user.photo} large />
             <div className="pm-who">
-              <strong>{user.name}</strong>
-              <span>{user.email}</span>
+              <strong className="pm-name">{user.name}</strong>
               {role && <span className="pill pm-role">{role}</span>}
-              {activeMembership && <span>{activeMembership.platform ? `Setup of ${activeMembership.tenantName}` : activeMembership.tenantName}</span>}
             </div>
           </div>
-          {locked ? (
-            <Link to="/change-password" className="pm-link" onClick={() => setOpen(false)}>
-              <KeyRound aria-hidden="true" /> Change password
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className="pm-link"
-              onClick={() => {
-                setOpen(false);
-                setChanging(true);
-              }}
-            >
-              <KeyRound aria-hidden="true" /> Change password
-            </button>
-          )}
-          {!locked && (
-            <Link to={ACCOUNT_MODULE.to} className="pm-link" onClick={() => setOpen(false)}>
-              <UserCog aria-hidden="true" /> My settings
-            </Link>
-          )}
-          {canSwitch(user, platform) && (
-            <button
-              type="button"
-              className="pm-link"
-              onClick={() => {
-                setOpen(false);
-                onSwitch();
-              }}
-            >
-              <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
-            </button>
-          )}
+          <dl className="pm-details">
+            <div>
+              <dt>
+                <Mail aria-hidden="true" /> Email
+              </dt>
+              <dd>{user.email}</dd>
+            </div>
+            {activeMembership && (
+              <div>
+                <dt>
+                  <Building2 aria-hidden="true" /> {activeMembership.platform ? 'Setting up' : 'Hospital'}
+                </dt>
+                <dd>{activeMembership.tenantName}</dd>
+              </div>
+            )}
+          </dl>
+          <div className="pm-links">
+            {locked ? (
+              <Link to="/change-password" className="pm-link" onClick={() => setOpen(false)}>
+                <KeyRound aria-hidden="true" /> Change password
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="pm-link"
+                onClick={() => {
+                  setOpen(false);
+                  setChanging(true);
+                }}
+              >
+                <KeyRound aria-hidden="true" /> Change password
+              </button>
+            )}
+            {!locked && (
+              <Link to={ACCOUNT_MODULE.to} className="pm-link" onClick={() => setOpen(false)}>
+                <UserCog aria-hidden="true" /> My settings
+              </Link>
+            )}
+            {canSwitch(user, platform) && (
+              <button
+                type="button"
+                className="pm-link"
+                onClick={() => {
+                  setOpen(false);
+                  onSwitch();
+                }}
+              >
+                <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
+              </button>
+            )}
+          </div>
         </div>
       )}
       {changing && <ChangePasswordDialog onClose={() => setChanging(false)} />}
@@ -332,7 +338,7 @@ export function AppLayout() {
                 <Eye aria-hidden="true" /> View only{allowed ? ' (mostly)' : ''}
               </span>
             )}
-            {!locked && <HelpToggle />}
+            {!locked && <HelpLink />}
             <ProfileMenu locked={locked} onSwitch={() => setSwitching(true)} />
             <button type="button" className="btn btn-sm pf-logout" onClick={() => logout('manual')}>
               <LogOut aria-hidden="true" /> Log out

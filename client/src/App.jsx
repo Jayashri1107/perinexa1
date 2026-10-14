@@ -13,6 +13,7 @@ import {
 import { AppLayout } from './components/AppLayout.jsx';
 import { PageHeader } from './components/PageHeader.jsx';
 import { AccountPage } from './pages/AccountPage.jsx';
+import { HelpPage } from './pages/HelpPage.jsx';
 import { LetterheadSettingsPage } from './pages/settings/LetterheadSettingsPage.jsx';
 import { PatientMessagesSettingsPage } from './pages/settings/PatientMessagesSettingsPage.jsx';
 import { RemindersPage } from './pages/reminders/RemindersPage.jsx';
@@ -131,6 +132,7 @@ export function App() {
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route element={<RequirePasswordChanged />}>
             <Route path="account" element={<AccountPage />} />
+            <Route path="help" element={<HelpPage />} />
             {/* Professional details and Appearance are sections of My settings now */}
             <Route path="account/professional" element={<Navigate to="/account" replace />} />
             <Route path="account/voice-words" element={<VoiceWordsPage />} />

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { askAI, transcribe } from '../ai/openai.js';
+import { aiEnabled, askAI, transcribe } from '../ai/openai.js';
 import { FORM_FIELDS, checkSuggestions, fieldList, suggestionSchema } from '../ai/understand.js';
 import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { addDays, hospitalToday } from '../careplans/dates.js';
@@ -198,6 +198,9 @@ const transcribeSchema = z.object({
   mediaType: z.string().transform((t) => t.split(';')[0].trim()).pipe(z.enum(AUDIO_TYPES, 'This recording format is not supported')),
   data: z.string().min(100, 'The recording is empty').max(12_000_000, 'The recording is too long – at most about 5 minutes'),
 });
+
+// Voice entry asks this before recording: Start recording uses AI dictation when AI is set up (owner, 14 Oct 2026).
+aiAskRouter.get('/status', (_req, res) => res.json({ enabled: aiEnabled() }));
 
 aiAskRouter.post('/transcribe', async (req, res) => {
   if (!hasRole(req.membership, 'doctor', 'rmo', 'nurse', 'receptionist')) throw forbidden('Voice entry is not part of your role.');

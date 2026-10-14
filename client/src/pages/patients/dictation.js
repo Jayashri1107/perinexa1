@@ -583,6 +583,11 @@ export function answerToResult(question, value, careType) {
   return finish(f);
 }
 
+// Words before why she came: "came (here) for/with", "c/o", "complaints of", "reason for visit", or "for" (only
+// starting a part of the sentence or straight after another detail: see extractPatientDetails)
+const VISIT_REASON =
+  /(?:\b(?:has\s+)?(?:came|comes|come|coming|visited|presented|presents|is\s+here|here)\s+(?:here\s+|today\s+)?(?:for|with)|\bc\/o|\b(?:chief\s+)?complain(?:s|ts?|ing)\s+(?:of|about)|\breason\s+(?:for|of)\s+(?:the\s+)?visit\s*(?:is|:|-)?|\bfor(?=\s+(?:the\s+|a\s+|her\s+)?[a-z]{3,}))\s+/gi;
+
 // ---------- Individual details (each returns what it found and where in the text) ----------
 // A newborn's mother: "baby of Asha …", "baby of mother Asha …", "mother('s) name Asha …"
 const MOTHER_OF_BABY = /\bbaby\s+of\s+(?:mother\s+)?([^\n]+)/i;
@@ -609,11 +614,18 @@ function findName(s, careType) {
     // a title – but "MS" in capitals is mitral stenosis
     tryAt([...s.matchAll(/\b(?:mrs|ms|miss|misses|smt|shrimati|shreemati|sau|sou|kumari|km)\.?\s+(?!carriage)([^\n]+)/gi)].find((m) => !/^MS\b/.test(m[0])), 1); // not "miss carriage"
   if (found) return found;
-  // "Asha Sample, 28 years …" / "Asha Sample age 28 …" at the start
-  const lead = s.match(/^\s*(?:patient\s+)?([a-z][a-z'.-]*(?:\s+[a-z][a-z'.-]*){1,3}?)(?=\s*[,.]|\s+(?:is\s+(?:a\s+)?)?(?:age|aged)\b|\s+(?:is\s+(?:a\s+)?)?\d{1,3}[\s-]*(?:years?|yrs?|y\b|\/f\b))/i);
+  // "Asha Sample, 28 years …" / "Asha Sample age 28 …" / "Asha Sample came for …" at the start ("Register …", "New
+  // patient …" said first is left out). One word is a name only when written with a capital ("Sanjana, age 29").
+  const lead = s.match(
+    /^\s*(?:(?:register(?:ing)?|new\s+patient|add)\s*[,:-]?\s+)?(?:patient\s+)?([a-z][a-z'.-]*(?:\s+[a-z][a-z'.-]*){0,3}?)(?=\s*[,.]|\s+(?:is\s+(?:a\s+)?)?(?:age|aged)\b|\s+(?:is\s+(?:a\s+)?)?\d{1,3}[\s-]*(?:years?|yrs?|y\b|\/f\b)|\s+(?:has\s+)?(?:came|comes|come|visited|presented|presents)\b|\s+(?:is\s+)?here\s+for\b)/i,
+  );
   if (!lead) return null;
   const words = lead[1].split(/\s+/);
   const byComma = /^\s*[,.]/.test(s.slice(lead.index + lead[0].length));
+  // One word ("Sanjana, age 29", "Sanjana came for …"), never before an age alone: "Anamika 28 years" may be "anaemic"
+  const after = s.slice(lead.index + lead[0].length);
+  const oneWordOk = /^\s*,|^\s+(?:has\s+)?(?:came|comes|come|visited|presented|presents|(?:is\s+)?here\s+for)\b/i.test(after);
+  if (words.length === 1 && (!/^[A-Z][a-z]/.test(words[0]) || words[0].length < 3 || !oneWordOk)) return null;
   if (words.some((w) => NOT_NAME.has(w.toLowerCase()) || SHORT_FORMS.has(w.toUpperCase()) || COMMON_WORDS.has(w.toLowerCase()) || TERM_WORDS.has(w.toLowerCase()))) return null;
   if (/^\s*\d{1,3}\s*(?:years?|yrs?)\s+(?:back|ago|before)\b/i.test(s.slice(lead.index + lead[0].length))) return null; // "previous LSCS 3 years back"
   if (byComma && !words.every((w) => /^[A-Z]/.test(w))) return null; // only capitalised words before a comma
@@ -1473,12 +1485,12 @@ function screeningAfter(s, end) {
 const SCREENING_PAST_AFTER =
   /^[\s,]*(?:(?:(?:in|during|at|of)\s+(?:the\s+|her\s+)?)?(?:previous|prior|last|earlier|past|1st|2nd|3rd|first|second|third)\s+(?:pregnanc(?:y|ies)|deliver(?:y|ies)|time|baby|child|issue|anc|visit)|earlier|before|previously|in\s+the\s+past|last\s+time)\b/i;
 
-// Weeks of pregnancy: "POG 28 weeks", "period of gestation 28+3 weeks", "now 28 weeks 3 days", "28 weeks pregnant", "28
+// Weeks of pregnancy: "POG 28 weeks", "pregnant for 28 weeks", "period of gestation 28+3 weeks", "now 28 weeks 3 days", "28 weeks pregnant", "28
 // weeks running", "28 weeks by dates" – never "anti-D given at 28 weeks" or "follow up after 2 weeks". [1]: the word
 // before, [2] or [5]: the weeks, [3], [4], [6] or [7]: the days, [8]: the word after.
 const DAYS_AFTER = String.raw`(?:\s*,?\s*(?:and\s+)?([0-6])\s*(?:days?|d)\b)?`;
 const WEEKS_SAID = new RegExp(
-  String.raw`\b(pog|period\s+of\s+gestation|gestational\s+age|ga|now)\s*(?:is|of|:)?\s*(\d{1,2})\s*(?:\+\s*(\d)\s*)?(?:weeks?|wks?|w)\b` + DAYS_AFTER +
+  String.raw`\b(pog|period\s+of\s+gestation|gestational\s+age|ga|now|pregnant\s+(?:for|since)|pregnancy\s+of)\s*(?:is|of|:)?\s*(\d{1,2})\s*(?:\+\s*(\d)\s*)?(?:weeks?|wks?|w)\b` + DAYS_AFTER +
     String.raw`|(?<!\b(?:at|after|in|for|since|within|every|till|until|from|before|by|of|than)\s+)\b(\d{1,2})\s*(?:\+\s*(\d)\s*)?(?:weeks?|wks?)` + DAYS_AFTER +
     String.raw`\s*(pog|pregnant|of\s+pregnancy|of\s+gestation|gestation|now|running|by\s+dates)\b`,
   'gi',
@@ -1748,6 +1760,8 @@ export function extractPatientDetails(text, { careType, now = new Date(), words 
         return got && { name: got.name, start: m.index, end: m.index + m[0].length - m[1].length + got.length };
       })()
     : null;
+  const identityEnds = []; // where her name and age end (a plain "for" after them starts why she came)
+  if (name) identityEnds.push(s.slice(0, name.end).replace(/\s+$/, '').length);
   if (name || motherMatch) {
     put(f, 'fullName', name?.name ?? `Baby of ${motherMatch.name}`);
     for (const got of [name, motherMatch]) if (got) use(got.start, got.end);
@@ -1762,6 +1776,7 @@ export function extractPatientDetails(text, { careType, now = new Date(), words 
     }
     if (age && age.age >= 10 && age.age <= 120) {
       put(f, 'ageYears', String(age.age));
+      identityEnds.push(s.slice(0, age.end).replace(/\s+$/, '').length);
       use(age.start, age.end + (s.slice(age.end).match(/^\s+of\s+age\b/i)?.[0].length ?? 0)); // "32 years of age"
       const teens = [...cleanup(text).matchAll(TEEN_WORDS)].map((m) => SMALL[m[1].toLowerCase()]);
       heard.age = { value: age.age, teen: teens.includes(age.age), text: s.slice(age.start, age.end), at: age.start };
@@ -2450,6 +2465,35 @@ export function extractPatientDetails(text, { careType, now = new Date(), words 
       const fixedMeaning = Boolean(result.meaning) && !close.term.now && !close.term.result && !close.term.delivery && !maybeName;
       ask({ key: m[0].toLowerCase(), remember: fixedMeaning, prompt: `Did you mean “${close.word}”?`, options }, m[0], start);
     }
+  }
+
+  // Why she came ("came for pregnancy treatment", "c/o pain abdomen", "For the pregnancy treatment" at the start of a
+  // sentence): the words nothing else was taken from, up to the end of that part, go to the notes. Never a word about
+  // the baby's sex, never inside a name.
+  for (const m of s.matchAll(VISIT_REASON)) {
+    const from = m.index + m[0].length;
+    if (isUsed(m.index, from) || inName(m.index, from)) continue;
+    // A plain "for": only at the start of a part of the sentence or straight after her name or age ("28 years for …"),
+    // not "fever for 2 days" or "previous LSCS for fetal distress"
+    if (/^for\s/i.test(m[0])) {
+      const before = s.slice(0, m.index).replace(/\s+$/, '');
+      if (before && !/[,.;\n]$/.test(before) && !identityEnds.includes(before.length)) continue;
+    }
+    let end = from;
+    for (const w of s.slice(from).matchAll(/[^\s,.;\n]+|[,.;\n]/g)) {
+      const a = from + w.index;
+      const b = a + w[0].length;
+      if (/^[,.;\n]$/.test(w[0]) || isUsed(a, b) || inName(a, b) || mentionsFetalSex(w[0])) break;
+      end = b;
+    }
+    const reason = tidy(s.slice(from, end).replace(/\s+/g, ' ')).replace(/^(?:the|a|an|her|his)\s+/i, '');
+    // Never anything about the baby's sex (PCPNDT): nothing is taken from a part of the sentence that mentions it
+    const stop = s.slice(from).search(/[,.;\n]/);
+    const clause = s.slice(from, stop < 0 ? s.length : from + stop);
+    if (saysFetalSex(clause) || mentionsFetalSex(clause)) continue;
+    if (reason.length < 3 || onlyLinkWords(reason) || saysFetalSex(reason) || mentionsFetalSex(reason)) continue;
+    use(m.index, end);
+    put(f, 'notes', `Reason for visit: ${reason}`.slice(0, 200), false, m.index);
   }
 
   // What nothing was taken from: runs of 2 or more words inside one part of a sentence (plan G5.10), so they are listed

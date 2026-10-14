@@ -150,3 +150,8 @@
 .cal-page .wl-fold .cal-today-label { font-size: 0.8rem; }
 .cal-day-compact .wl-row-toggle, .cal-day-compact .wl-row-body { padding-left: var(--space-2); padding-right: var(--space-2); }
 .cal-show-label { align-self: center; font-weight: 600; color: var(--slate-600); margin-right: var(--space-1); }
+
+/* Beside the month: the chosen day, then what is coming up in the next 7 days */
+.cal-side { display: grid; gap: var(--space-4); align-content: start; min-width: 0; }
+.cal-upcoming-day + .cal-upcoming-day { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.cal-upcoming-day h4 { margin: 0 0 var(--space-2); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }

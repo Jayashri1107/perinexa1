@@ -56,7 +56,7 @@ function Cell({ day, chosen, tabbable, today, level, onChoose, onKey }) {
  * onChoose(date): choose another day (moves to its month when it is outside). panel: the chosen day's entries.
  * panelBusy: the chosen day's entries are loading (aria-busy on the panel; the title's live region stays quiet).
  */
-export function MonthView({ data, chosen, level, onChoose, panelTitle, panel, panelBusy, onShowAll }) {
+export function MonthView({ data, chosen, level, onChoose, panelTitle, panel, panelBusy, onShowAll, upcoming = null }) {
   const gridRef = useRef(null);
   const wantFocus = useRef(false);
   const days = data?.days ?? [];
@@ -127,10 +127,13 @@ export function MonthView({ data, chosen, level, onChoose, panelTitle, panel, pa
           </EmptyCard>
         )}
       </section>
-      <section className="card cal-panel" aria-label={panelTitle} aria-busy={panelBusy || undefined}>
-        <h3 className="cal-panel-title">{panelTitle}</h3>
-        {panel}
-      </section>
+      <div className="cal-side">
+        <section className="card cal-panel" aria-label={panelTitle} aria-busy={panelBusy || undefined}>
+          <h3 className="cal-panel-title">{panelTitle}</h3>
+          {panel}
+        </section>
+        {upcoming}
+      </div>
     </div>
   );
 }

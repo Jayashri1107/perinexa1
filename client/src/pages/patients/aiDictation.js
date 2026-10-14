@@ -36,7 +36,13 @@ export async function startAiRecording({ deviceId = '', onAutoStop } = {}) {
       resolve(new Blob(chunks, { type: rec.mimeType || mimeType || 'audio/webm' }));
     };
   });
+  // Started only when the recorder says so (then "Listening" shows): nothing said before that is lost unnoticed
+  const started = new Promise((resolve) => {
+    rec.onstart = resolve;
+    setTimeout(resolve, 2000);
+  });
   rec.start(1000);
+  await started;
   const timer = setTimeout(() => {
     if (rec.state !== 'inactive') {
       rec.stop();

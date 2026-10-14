@@ -310,6 +310,8 @@ export const HOSPITAL_ADMIN = {
 
 // Beds (owner, 13 Oct 2026): the bed board and admitting at the desk. Same list as server/src/inpatient/beds.js.
 export const BED_ROLES = ['receptionist', 'doctor', 'rmo', 'nurse'];
+// Not in a doctor's menu (owner, 14 Oct 2026): doctors still see the free beds when admitting from a patient's page.
+export const BED_MENU_ROLES = ['receptionist', 'rmo', 'nurse'];
 const HOSPITAL_BEDS = {
   key: 'beds',
   label: 'Beds',
@@ -343,7 +345,7 @@ export function hospitalModules(roles = []) {
   // An RMO alone does not get the calendar in the menu (follow-up reminders and booking are front-desk work – owner,
   // 13 Oct 2026); their Today still lists today's patients and who is waiting.
   if (canSeeCalendar(roles) && !(roles.includes('rmo') && !any(roles, ['doctor', 'receptionist']))) modules.push(HOSPITAL_CALENDAR);
-  if (any(roles, BED_ROLES)) modules.push(HOSPITAL_BEDS);
+  if (any(roles, BED_MENU_ROLES)) modules.push(HOSPITAL_BEDS);
   if (any(roles, LAB_ROLES)) modules.push(HOSPITAL_LAB);
   if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);
   if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: roles.includes('pharmacist') ? '/pharmacy' : '/pharmacy/stock' });

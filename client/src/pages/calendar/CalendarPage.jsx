@@ -9,7 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { useListParams } from '../../hooks/useListParams.js';
 import { AiBriefCard } from '../ai/AiBriefCard.jsx';
 import { calendarBriefBody } from '../ai/briefParts.js';
-import { firstOfMonth, panelDayTitle, parseIso, rangeTitle, sameMonth, stepDate } from './calendarDates.js';
+import { addDaysIso, firstOfMonth, panelDayTitle, parseIso, rangeTitle, sameMonth, stepDate } from './calendarDates.js';
 import {
   CALENDAR_VIEWS,
   allowedTypesFor,
@@ -25,6 +25,7 @@ import {
 import { CalendarToolbar } from './CalendarToolbar.jsx';
 import { DayView, EmptyCard } from './DayView.jsx';
 import { MonthView } from './MonthView.jsx';
+import { Upcoming } from './Upcoming.jsx';
 import { WeekView } from './WeekView.jsx';
 
 // The calendar: booked next visits, care-plan visits, EDD and LMP by day, week and month (GET /api/calendar).
@@ -49,7 +50,8 @@ export function CalendarPage() {
   const level = personLevel(roles);
   const allowed = allowedTypesFor(roles);
   const roleScope = defaultScopeFor(roles);
-  const defaultView = isReceptionOnly(roles) ? 'day' : 'week';
+  // Month first (owner, 14 Oct 2026): the month and what is coming up, side by side; reception opens on today
+  const defaultView = isReceptionOnly(roles) ? 'day' : 'month';
   const [params, setParams] = useListParams({ view: defaultView, date: '', types: '', scope: '' });
 
   const view = CALENDAR_VIEWS.includes(params.view) ? params.view : null; // an unknown view is sent as it is: the server explains
@@ -62,6 +64,11 @@ export function CalendarPage() {
   // Day and week: the entries. Month: the counts of the month (the chosen day's entries come from `panel`).
   const main = useFetch('/calendar', { view: params.view, date: view === 'month' ? monthKey : params.date, types: typesParam, scope: scopeParam });
   const panel = useFetch(view === 'month' ? '/calendar' : null, { view: 'day', date: params.date, types: typesParam, scope: scopeParam });
+  // Coming up (beside the month): this week and the next, from the server's today
+  const today = main.data?.today ?? null;
+  const showUpcoming = view === 'month' && Boolean(today);
+  const upNow = useFetch(showUpcoming ? '/calendar' : null, { view: 'week', date: today, types: typesParam, scope: scopeParam });
+  const upNext = useFetch(showUpcoming ? '/calendar' : null, { view: 'week', date: today ? addDaysIso(today, 7) : '', types: typesParam, scope: scopeParam });
   const { reload: reloadMain } = main;
   const { reload: reloadPanel } = panel;
 
@@ -82,10 +89,14 @@ export function CalendarPage() {
   useEffect(() => {
     if (main.data) lastLoad.current = performance.now();
   }, [main.data]);
+  const { reload: reloadUpNow } = upNow;
+  const { reload: reloadUpNext } = upNext;
   const reloadAll = useCallback(() => {
     reloadMain();
     reloadPanel();
-  }, [reloadMain, reloadPanel]);
+    reloadUpNow();
+    reloadUpNext();
+  }, [reloadMain, reloadPanel, reloadUpNow, reloadUpNext]);
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible' || performance.now() - lastLoad.current <= STALE_MS) return;
@@ -166,6 +177,18 @@ export function CalendarPage() {
         panelTitle={chosen ? panelDayTitle(chosen, answer?.today) : 'Chosen day'}
         panelBusy={panel.loading}
         panel={panelAnswer ? <DayView data={panelAnswer} level={level} compact onShowAll={onShowAll} /> : <p className="cal-note">Loading…</p>}
+        upcoming={
+          showUpcoming && (
+            <Upcoming
+              answers={[upNow.data, upNext.data].filter((a) => a?.view === 'week')}
+              today={today}
+              loading={upNow.loading || upNext.loading}
+              patientsOf={(id) => upNow.data?.patients?.[id] ?? upNext.data?.patients?.[id] ?? null}
+              showDoctor={scope === 'all'}
+              weekHref={`/calendar?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), view: 'week', date: today })}`}
+            />
+          )
+        }
       />
     );
   } else if (view === 'week') {

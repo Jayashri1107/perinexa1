@@ -35,6 +35,17 @@ const SETUP_NOTE_MS = 3 * 1000; // set-up taking longer than this: it is downloa
 const SETUP_SLOW_MS = 90 * 1000;
 const SETUP_POLL_MS = 5 * 1000;
 const MIC_KEY = 'perinexa.voice.microphone'; // the chosen microphone's ID, in this browser only
+const AUTO_FILL_MS = 1000; // typing in the box: the form is filled in this long after the last key
+
+// "Ask AI where these belong" by itself (after Fill in the form or a recording): never her name or a number that
+// could be her phone. Each word of the name read from the text, and every run of 5 or more digits, is blanked.
+const escapeRx = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const withoutIdentity = (part, name) =>
+  String(name ?? '')
+    .split(/\s+/)
+    .filter((w) => w.length > 1)
+    .reduce((t, w) => t.replace(new RegExp(`\\b${escapeRx(w)}\\b`, 'gi'), '…'), part)
+    .replace(/\d[\d\s-]{3,}\d/g, '…');
 
 // The chosen microphone. Browser storage can be switched off (or blocked): then Chrome's default is used.
 const savedMic = () => {
@@ -75,7 +86,7 @@ const PHASES = {
 };
 const MUTED = { tone: 'due', icon: MicOff, label: 'Microphone muted' };
 const PAUSED = { tone: 'due', icon: Pause, label: 'Paused' };
-const AI_RECORDING = { tone: 'brand', icon: Mic, label: 'Recording for AI' };
+const AI_RECORDING = { tone: 'brand', icon: Mic, label: 'Listening – speak now' };
 const AI_WRITING = { tone: 'inactive', icon: Turning, label: 'AI is writing it down' };
 
 // The status while recording (colour + icon + word). micAllowed: the microphone is already allowed, so Chrome is not
@@ -132,6 +143,10 @@ const INTRO =
   'Say the details and they are filled in below for you to check. Speech is turned into text on this computer: nothing is sent anywhere or ' +
   'kept. Perinexa includes corrections for common Indian English pronunciations of medical words, numbers and dates, asks when it is not ' +
   'sure, and remembers your own corrections.';
+// With AI set up, Start recording sends the recording to OpenAI: the card says so instead of "on this computer".
+const AI_INTRO =
+  'Say the details in your own words and they are filled in below for you to check. The recording is written down by AI (OpenAI) when you ' +
+  'press Stop; nothing is kept. Perinexa asks when it is not sure and remembers your own corrections.';
 const NOTE_TO = [{ key: 'notes', label: 'Add to notes' }];
 
 // Adds what an answer filled in to a list shown, without repeating what is already there
@@ -305,7 +320,8 @@ export function VoiceEntry({
   const [mics, setMics] = useState([]);
   const [micId, setMicId] = useState(savedMic);
   const [muted, setMuted] = useState(false);
-  const [aiPhase, setAiPhase] = useState('idle'); // AI dictation: 'idle' | 'recording' | 'writing'
+  const [aiPhase, setAiPhase] = useState('idle'); // AI dictation: 'idle' | 'starting' | 'recording' | 'writing'
+  const [aiOn, setAiOn] = useState(false); // AI is set up: Start recording uses AI dictation (owner, 14 Oct 2026)
   const [aiHelp, setAiHelp] = useState(null); // "Ask AI where these belong": { busy, items: [{ part, text, label, meaning }] }
   const aiRec = useRef(null);
   const answered = useRef(new Set()); // questions answered on this form (questionKey)
@@ -319,11 +335,14 @@ export function VoiceEntry({
   const fromPregnancy = useRef(false); // the text in the box began in pregnancy care
   const latest = useRef({}); // what the recording's callbacks use, kept up to date
   const lastRead = useRef(null); // the latest reading of the text (for "Use what was said")
+  const typed = useRef(false); // the box was typed in since it was last read
 
   // Filled from speech (`voice`): results and blood group go to the confirmation card. In a pregnancy (antenatal or
   // abortion care), anything said about the baby's sex is taken out of the box first (PCPNDT). The whole text is read each time; questions
   // already answered are not asked again, and answers given stay in the list. keep: words left as heard (Undo).
-  const fill = (source, keep = kept) => {
+  // ai: also ask AI about the parts not understood – only when her name was read from the text (so it can be blanked;
+  // an unread name could be in those parts), and never in typing pauses.
+  const fill = (source, keep = kept, { ai = false } = {}) => {
     let said = source;
     if (careType === 'antenatal' || careType === 'abortion') {
       const cut = withoutFetalSex(source);
@@ -349,6 +368,9 @@ export function VoiceEntry({
     });
     setAllQuestions(false);
     setAiHelp(null);
+    const name = result.values?.fullName;
+    const parts = next.unused.filter((u) => !u.sex && !noted.current.has(u.text));
+    if (ai && name && parts.length) askAiAbout(parts, { name, quiet: true });
   };
   const recording = phase !== 'idle' || aiPhase !== 'idle';
   const micAllowed = mics.some((m) => m.label); // Chrome names the microphones only once one is allowed
@@ -407,6 +429,9 @@ export function VoiceEntry({
   useEffect(() => {
     alive.current = true;
     if (Recognition) checkSpeech(Recognition).then((s) => alive.current && showCheck(s));
+    api('/ai/status')
+      .then((res) => alive.current && setAiOn(Boolean(res.enabled)))
+      .catch(() => {}); // unknown: Chrome's on-device recording, as before
     api('/me/dictation-words')
       .then((res) => alive.current && setWords(res.words))
       .catch(() => {}); // without them, voice entry still works (it just asks more)
@@ -468,8 +493,18 @@ export function VoiceEntry({
     onBusy?.(recording);
   }, [recording, onBusy]);
 
+  // Typing in the box: the form is filled in a moment after the last key (by Perinexa's own reader only)
   useEffect(() => {
-    const shown = aiPhase === 'recording' ? 'listening' : aiPhase === 'writing' ? 'finishing' : phase;
+    if (!typed.current || recording || !text.trim()) return undefined;
+    const timer = setTimeout(() => {
+      typed.current = false;
+      latest.current.fill(latest.current.text);
+    }, AUTO_FILL_MS);
+    return () => clearTimeout(timer);
+  }, [text, recording]);
+
+  useEffect(() => {
+    const shown = aiPhase === 'starting' ? 'starting' : aiPhase === 'recording' ? 'listening' : aiPhase === 'writing' ? 'finishing' : phase;
     onStatus?.(recording ? { phase: shown, muted, micAllowed } : null);
   }, [recording, phase, aiPhase, muted, micAllowed, onStatus]);
 
@@ -579,7 +614,7 @@ export function VoiceEntry({
           });
         } else if (reason !== 'stopped') setError(endMessage(reason, cause));
         // Filled in once, when the recording ends (for the type of care chosen now)
-        if (said.trim() && said !== startedWith.current) latest.current.fill(said);
+        if (said.trim() && said !== startedWith.current) latest.current.fill(said, undefined, { ai: true });
       },
     });
     session.current = recorder;
@@ -594,9 +629,15 @@ export function VoiceEntry({
     setPaused(null);
     setCleared(false);
     setSexRemoved(false);
-    setAiPhase('recording');
+    setAiPhase('starting'); // "Listening" only once the recorder has really started
     try {
-      aiRec.current = await startAiRecording({ deviceId: latest.current.micId, onAutoStop: () => latest.current.finishAi?.() });
+      const rec = await startAiRecording({ deviceId: latest.current.micId, onAutoStop: () => latest.current.finishAi?.() });
+      if (!alive.current) {
+        rec.abort();
+        return;
+      }
+      aiRec.current = rec;
+      setAiPhase('recording');
       refreshMics();
     } catch (err) {
       aiRec.current = null;
@@ -618,7 +659,7 @@ export function VoiceEntry({
       }
       const all = [latest.current.text.trim(), said].filter(Boolean).join(' ');
       setText(all);
-      latest.current.fill(all);
+      latest.current.fill(all, undefined, { ai: true });
     } catch (err) {
       if (alive.current) setError(err.message);
     } finally {
@@ -651,18 +692,20 @@ export function VoiceEntry({
 
   // "Ask AI where these belong": only the parts not understood are sent (never one about the baby's sex); each
   // suggestion is filled in only when the person taps Yes – as an answer to a question.
-  const askAiAbout = async (parts) => {
+  // name / quiet: asked by itself after filling in – the name is blanked, and nothing is shown if AI can't help
+  const askAiAbout = async (parts, { name = '', quiet = false } = {}) => {
     setAiHelp({ busy: true, items: [] });
-    setError(null);
+    if (!quiet) setError(null);
     try {
-      const res = await api('/ai/understand', { method: 'POST', body: { form: aiForm, careType, parts: parts.map((u) => u.note || u.text) } });
+      const sent = parts.map((u) => withoutIdentity(u.note || u.text, name));
+      const res = await api('/ai/understand', { method: 'POST', body: { form: aiForm, careType, parts: sent } });
       const items = res.suggestions
         .map((s) => ({ ...s, unused: parts[s.part], meaning: aiMeaning(s) }))
         .filter((s) => s.meaning && s.unused);
-      setAiHelp({ busy: false, items, none: items.length === 0 });
+      setAiHelp({ busy: false, items, none: !quiet && items.length === 0 });
     } catch (err) {
       setAiHelp(null);
-      setError(err.message);
+      if (!quiet) setError(err.message);
     }
   };
   const acceptAi = (item) => {
@@ -733,7 +776,9 @@ export function VoiceEntry({
   const nothing = summary && !summary.here.length && !summary.later.length && !questions.length && !notChanged.length;
   const pickMic = mics.length > 1 && micAllowed; // the choice only when there is one to make
   const pill =
-    aiPhase === 'recording'
+    aiPhase === 'starting'
+      ? PHASES.starting
+      : aiPhase === 'recording'
       ? AI_RECORDING
       : aiPhase === 'writing'
         ? AI_WRITING
@@ -742,13 +787,14 @@ export function VoiceEntry({
           : paused
             ? PAUSED
             : null;
-  const cannot =
-    speech.status === 'unsupported'
+  const cannot = aiOn
+    ? null // AI dictation records in any browser that can record
+    : speech.status === 'unsupported'
       ? (ERROR_MESSAGES[speech.reason] ?? ERROR_MESSAGES['old-chrome'])
       : speech.status === 'unavailable'
         ? ERROR_MESSAGES.unavailable
         : null;
-  const note = setupNote ?? (speech.status === 'needs-setup' && !recording ? 'first' : null);
+  const note = setupNote ?? (speech.status === 'needs-setup' && !recording && !aiOn ? 'first' : null);
 
   return (
     <section className="card form-section voice-card" aria-labelledby="voice-title">
@@ -767,12 +813,16 @@ export function VoiceEntry({
           </button>
         )}
       </div>
-      <p className="hint help voice-intro">{intro}</p>
+      <p className="hint help voice-intro">{aiOn && intro === INTRO ? AI_INTRO : intro}</p>
 
       <div className="voice-controls">
         {recording ? (
-          <button type="button" className="btn btn-secondary" onClick={pressStop} disabled={phase === 'finishing' || aiPhase === 'writing'}>
+          <button type="button" className="btn btn-secondary" onClick={pressStop} disabled={phase === 'finishing' || aiPhase === 'starting' || aiPhase === 'writing'}>
             <Square aria-hidden="true" /> Stop recording
+          </button>
+        ) : aiOn ? (
+          <button type="button" className="btn btn-secondary" onClick={startAi}>
+            <Mic aria-hidden="true" /> Start recording
           </button>
         ) : speech.status === 'ready' ? (
           <button type="button" className="btn btn-secondary" onClick={start}>
@@ -787,17 +837,18 @@ export function VoiceEntry({
             <Turning aria-hidden="true" /> Getting speech recognition ready…
           </button>
         ) : null}
-        {!recording && (
-          <button type="button" className="btn btn-secondary" onClick={startAi}>
-            <Sparkles aria-hidden="true" /> AI dictation
+        {!recording && aiOn && speech.status === 'ready' && (
+          <button type="button" className="btn btn-link btn-sm" onClick={start}>
+            Record on this computer instead
           </button>
         )}
-        {!recording && (
+        {!recording && aiOn && (
           <p className="hint voice-ai-note">
-            AI dictation hears Indian-English medical words better: the recording is sent to OpenAI to be written down (nothing is kept). Say clinical
-            details only – not her name, phone or address – and use fake patients until the app is reviewed.
+            Start recording uses AI: say everything in your own words, press Stop, and every detail is filled in for you to check. The whole recording
+            (including any name or phone said) is sent to OpenAI to be written down; nothing is kept. Use fake patients only until the app is reviewed.
           </p>
         )}
+        {recording && aiPhase === 'recording' && <p className="hint">Speak normally – the whole recording is written down when you press Stop.</p>}
         {note && <p className="hint">{SETUP_NOTES[note]}</p>}
         {phase === 'asking-mic' && !micAllowed && <p className="hint">Chrome is asking to use the microphone. Choose Allow.</p>}
         {recording && noWords && phase === 'listening' && (
@@ -825,13 +876,35 @@ export function VoiceEntry({
       <Field
         label="What was said"
         id="dictation"
-        hint={recording ? 'Stop recording to correct the text. The form is filled in when you press Stop.' : `You can also type or correct it here. For example: ${example}`}
+        hint={
+          recording
+            ? 'Stop recording to correct the text. The form is filled in when you press Stop.'
+            : `You can also type or correct it here – the form is filled in as you type. For example: ${example}`
+        }
       >
-        <textarea id="dictation" rows={3} value={text} onChange={(e) => setText(e.target.value)} readOnly={recording} maxLength={5000} />
+        <textarea
+          id="dictation"
+          rows={3}
+          value={text}
+          onChange={(e) => {
+            typed.current = true;
+            setText(e.target.value);
+          }}
+          readOnly={recording}
+          maxLength={5000}
+        />
       </Field>
       {text.includes('*') && <p className="hint voice-masked">{MASKED_WORDS_NOTE}</p>}
       <div className="voice-controls">
-        <button type="button" className="btn btn-secondary" onClick={() => fill(text)} disabled={recording || !text.trim()}>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => {
+            typed.current = false;
+            fill(text, kept, { ai: true });
+          }}
+          disabled={recording || !text.trim()}
+        >
           Fill in the form
         </button>
       </div>

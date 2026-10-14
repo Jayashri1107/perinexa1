@@ -1,0 +1,132 @@
+import { CircleHelp, Mic, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { normalizeAppearance } from '../appearance.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { PageHeader } from '../components/PageHeader.jsx';
+import { ACCOUNT_MODULE, hospitalModules, platformModules } from '../platform/modules.js';
+
+// "Help" in the top bar (owner, 14 Oct 2026): how to use Perinexa, in one page. Each person sees the guide for the
+// menu items they have; the explanations on every screen are switched on or off here.
+
+const GUIDE = {
+  today: 'Your work for today at a glance: who is waiting, appointments, results and tasks. Click a card to open the list behind it.',
+  patients:
+    'Find a patient by name, phone or patient number, or press New patient. A new patient is saved in two steps: patient information first, then the clinical details.',
+  appointments: 'Book a 10-minute slot for a doctor, see the day’s list and the next visits that still need a time.',
+  calendar: 'The month with the day’s appointments, visits and tasks beside it. Click a day to see its list.',
+  beds: 'The bed board: which beds are free or occupied, admitting at the desk and moving a patient.',
+  lab: 'Tests ordered, samples collected and results entered. Results outside the range are marked in colour, with an icon and a word.',
+  billing: 'Bills, payments and receipts. A bill can be printed or shared as a PDF.',
+  pharmacy: 'Prescriptions to give out, the stock and supplier returns.',
+  analytics: 'Counts and charts for the hospital, and “Ask your records” to search the records in plain words.',
+  knowledge: 'The clinic library: care-plan templates, consent forms, test packages and prescription sets. A doctor approves each one before it is used.',
+  'hospital-admin': 'Staff, roles, beds and the hospital’s settings. Deactivate a person instead of deleting them.',
+};
+
+const BASICS = [
+  'The left menu shows only what your role needs. ☰ folds it into icons.',
+  '“Working in” at the top shows the hospital you are in. If you work at more than one, switch it there.',
+  'Find a patient from any screen with the search box at the top (press / to jump to it).',
+  'Click your initial (top right) for your details, Change password and My settings.',
+  'After 30 minutes without use you are logged out, to keep patient records safe. Unsaved typing is lost.',
+];
+
+const SAFETY = [
+  'This is a development version: use fake sample patients only, never real patient information.',
+  'Anything marked “From voice” or suggested by AI must be checked before you save it.',
+  'The baby’s sex is never recorded during a pregnancy (PCPNDT).',
+  'Every record you open is written in the audit log.',
+  'Forgot your password? Ask your hospital administrator to reset it.',
+];
+
+const VOICE = [
+  'On a new patient or a visit, open Voice entry and press Start recording.',
+  'Speak normally; say each detail with its name, for example “age 28, LMP 12 July”.',
+  'Press Stop. The whole recording is written down by AI and the details are filled in below for you to check.',
+  'You can also type in the box: the form fills in a moment after you stop typing.',
+  'Parts that were not understood are listed; enter them by hand or press Ask AI where these belong.',
+];
+
+function List({ items }) {
+  return (
+    <ul className="help-list">
+      {items.map((t) => (
+        <li key={t}>{t}</li>
+      ))}
+    </ul>
+  );
+}
+
+export function HelpPage() {
+  const { user, saveAppearance, activeMembership, isPlatform, platform } = useAuth();
+  const look = normalizeAppearance(user.preferences?.appearance);
+  const shown = look.help === 'shown';
+  const inSetup = Boolean(activeMembership?.platform);
+  const modules = isPlatform && !inSetup ? platformModules(platform) : hospitalModules(activeMembership?.roles);
+  const guided = modules.filter((m) => GUIDE[m.key]);
+
+  return (
+    <div className="help-page">
+      <PageHeader title="Help" subtitle="How to use Perinexa" />
+
+      <section className="card help-card" aria-labelledby="help-basics">
+        <h2 id="help-basics">
+          <CircleHelp aria-hidden="true" /> Getting around
+        </h2>
+        <List items={BASICS} />
+      </section>
+
+      {guided.length > 0 && (
+        <section className="card help-card" aria-labelledby="help-menu">
+          <h2 id="help-menu">Your menu</h2>
+          <dl className="help-modules">
+            {guided.map((m) => {
+              const Icon = m.icon;
+              return (
+                <div key={m.key}>
+                  <dt>
+                    <Link to={m.to}>
+                      <Icon aria-hidden="true" /> {m.label}
+                    </Link>
+                  </dt>
+                  <dd>{GUIDE[m.key]}</dd>
+                </div>
+              );
+            })}
+            <div>
+              <dt>
+                <Link to={ACCOUNT_MODULE.to}>
+                  <ACCOUNT_MODULE.icon aria-hidden="true" /> {ACCOUNT_MODULE.label}
+                </Link>
+              </dt>
+              <dd>Your profile, password, appearance and your own voice words.</dd>
+            </div>
+          </dl>
+        </section>
+      )}
+
+      <section className="card help-card" aria-labelledby="help-voice">
+        <h2 id="help-voice">
+          <Mic aria-hidden="true" /> Voice entry
+        </h2>
+        <List items={VOICE} />
+      </section>
+
+      <section className="card help-card" aria-labelledby="help-safety">
+        <h2 id="help-safety">
+          <ShieldCheck aria-hidden="true" /> Safety rules
+        </h2>
+        <List items={SAFETY} />
+      </section>
+
+      <section className="card help-card" aria-labelledby="help-explain">
+        <h2 id="help-explain">Explanations on every screen</h2>
+        <p className="hint">Short explanations under headings and fields. Useful while learning; switch them off when you know the screens.</p>
+        <label className="check">
+          <input type="checkbox" checked={shown} onChange={() => saveAppearance({ ...look, help: shown ? 'hidden' : 'shown' }).catch(() => {})} /> Show
+          explanations on the screens
+        </label>
+      </section>
+    </div>
+  );
+}

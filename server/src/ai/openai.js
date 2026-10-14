@@ -125,7 +125,7 @@ export async function transcribe(req, { audio, mediaType, feature = 'dictation' 
     });
   } catch (err) {
     console.error('AI transcription failed', err?.name ?? err);
-    throw new HttpError(502, "The AI service couldn't be reached. Please try again, or use Start recording.", 'AI_FAILED');
+    throw new HttpError(502, "The AI service couldn't be reached. Please try again, or use Record on this computer instead.", 'AI_FAILED');
   }
   const data = await res.json().catch(() => null);
   if (!res.ok) {

@@ -637,10 +637,12 @@ describe('questions, and each doctor’s own words', () => {
   });
 
   it('lists what it did not understand – but never offers the baby’s sex for the notes in a pregnancy', () => {
-    const r = read('Asha Sample, 28 years, complains of white discharge, baby is a boy');
+    const r = read('Asha Sample, 28 years, complains of white discharge, baby is a boy, mild pallor noted');
+    // why she came goes to the notes (owner, 14 Oct 2026); the baby's sex never does
+    expect(r.values.notes).toBe('Reason for visit: white discharge');
     expect(r.unused).toMatchObject([
-      { text: 'complains of white discharge', canNote: true },
       { text: 'baby is a boy', canNote: false, sex: true },
+      { text: 'mild pallor noted', canNote: true },
     ]);
   });
 
