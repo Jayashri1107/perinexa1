@@ -323,6 +323,8 @@ File: `client/src/pages/portal/portalWords.js` (the address /portal; the switch 
 | `bookWith` | Book an appointment with {doctor} | {doctor} यांची भेट ठरवा | {doctor} से मुलाक़ात तय करें |
 | `day` | Day | दिवस | दिन |
 | `noFreeTime` | No free time on this day. Please choose another day. | या दिवशी वेळ उपलब्ध नाही. कृपया दुसरा दिवस निवडा. | इस दिन कोई समय ख़ाली नहीं है। कृपया कोई और दिन चुनें। |
+| `doctorOnLeave` (added 15 Oct 2026) | {doctor} is on leave: {dates}. No bookings on these days. | {doctor} रजेवर आहेत: {dates}. या दिवसांत भेट ठरवता येणार नाही. | {doctor} छुट्टी पर हैं: {dates}। इन दिनों मुलाक़ात तय नहीं हो सकती। |
+| `onLeaveDay` (added 15 Oct 2026) | {doctor} is on leave on this day. Please choose another day. | {doctor} या दिवशी रजेवर आहेत. कृपया दुसरा दिवस निवडा. | {doctor} इस दिन छुट्टी पर हैं। कृपया कोई और दिन चुनें। |
 | `time` | Time | वेळ | समय |
 | `booking` | Booking… | भेट ठरवत आहे… | मुलाक़ात तय हो रही है… |
 | `bookAt` | Book {day and time} | {day and time} ही भेट ठरवा | {day and time} की मुलाक़ात तय करें |

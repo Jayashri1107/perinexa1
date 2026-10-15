@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarCheck, IndianRupee, Search, TriangleAlert, UserPlus } from 'lucide-react';
 import { api } from '../../api.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { canRegisterPatients } from '../../platform/modules.js';
 import { Alert, Field, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
@@ -118,9 +121,20 @@ export function BookDialog({ doctor, date, start, patient: preset = null, length
   const [patient, setPatient] = useState(preset);
   const [guest, setGuest] = useState({ name: '', phone: '' });
   const [visitType, setVisitType] = useState('follow_up');
+  const navigate = useNavigate();
+  const { activeMembership } = useAuth();
+  const canRegister = canRegisterPatients(activeMembership?.roles ?? []);
   const send = useSend(async (confirm) => {
     const body = { doctorId: doctor.id, date, start, visitType, confirm, ...(mode === 'guest' ? { guest } : { patientId: patient.id }) };
     const { appointment } = await api('/appointments', { method: 'POST', body });
+    if (mode === 'guest' && canRegister) {
+      // A new patient: the time is kept, then her full registration form opens with the name, phone and doctor
+      // filled in; once she is saved the appointment joins her record (the same as "Register" on Today).
+      navigate(`/patients/new?appointment=${appointment.id}`, {
+        state: { fromBooking: { id: appointment.id, name: guest.name.trim(), phone: guest.phone.trim(), doctorId: doctor.id } },
+      });
+      return;
+    }
     onBooked(appointment);
   });
   const ready = mode === 'guest' ? guest.name.trim().length >= 2 && guest.phone.trim().length >= 6 : mode === 'patient' && patient;
@@ -176,7 +190,7 @@ export function BookDialog({ doctor, date, start, patient: preset = null, length
           <Field label="Her name" id="appt-guest-name">
             <input id="appt-guest-name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} maxLength={150} autoFocus />
           </Field>
-          <Field label="Phone number" id="appt-guest-phone" hint="Full registration when she arrives">
+          <Field label="Phone number" id="appt-guest-phone" hint={canRegister ? 'Next, her full registration form opens to fill in all her details.' : 'Reception registers her in full.'}>
             <input id="appt-guest-phone" type="tel" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} maxLength={30} />
           </Field>
         </div>
@@ -205,7 +219,7 @@ export function BookDialog({ doctor, date, start, patient: preset = null, length
           disabled={!ready || send.busy || Boolean(send.warning)}
           onClick={() => send.run(false)}
         >
-          <CalendarCheck aria-hidden="true" /> {send.busy ? 'Booking…' : 'Book'}
+          <CalendarCheck aria-hidden="true" /> {send.busy ? 'Booking…' : mode === 'guest' && canRegister ? 'Book and register' : 'Book'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
           Cancel

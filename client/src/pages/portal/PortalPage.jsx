@@ -63,15 +63,18 @@ function Booking({ booking, onChanged, lang }) {
   const [confirming, setConfirming] = useState(false);
   const errorText = error ? portalError(error, lang, { booking: true }) : null;
 
+  const [dayOnLeave, setDayOnLeave] = useState(false);
   const chooseDay = async (value) => {
     setDate(value);
     setStart('');
     setTimes(null);
+    setDayOnLeave(false);
     setError(null);
     if (!value) return;
     try {
       const res = await portal(`/booking/times?date=${value}`);
       setTimes(res.times);
+      setDayOnLeave(Boolean(res.onLeave));
     } catch (err) {
       setError(err);
     }
@@ -123,10 +126,13 @@ function Booking({ booking, onChanged, lang }) {
         <CalendarPlus aria-hidden="true" /> {w.bookWith(booking.doctorName)}
       </h3>
       <Alert type="error">{errorText}</Alert>
+      {booking.leave?.length > 0 && (
+        <Alert type="warning">{w.doctorOnLeave(booking.doctorName, booking.leave.map((l) => when(l.from, l.to)).join(', '))}</Alert>
+      )}
       <Field label={w.day} id="portal-book-day">
         <input id="portal-book-day" type="date" value={date} min={booking.from} max={booking.to} onChange={(e) => chooseDay(e.target.value)} />
       </Field>
-      {date && times && times.length === 0 && <p>{w.noFreeTime}</p>}
+      {date && times && times.length === 0 && <p>{dayOnLeave ? w.onLeaveDay(booking.doctorName) : w.noFreeTime}</p>}
       {date && times && times.length > 0 && (
         <fieldset className="portal-times">
           <legend>{w.time}</legend>
