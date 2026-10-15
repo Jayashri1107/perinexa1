@@ -9,7 +9,7 @@ import { Alert, Field, StatusPill, hasRole, useDialogFocus } from '../../compone
 import { useFetch } from '../../hooks/useFetch.js';
 import { accountTabs } from '../../platform/modules.js';
 import { RxDocument } from './RxDocument.jsx';
-import { ACCENT_NAMES, DESIGNS, LANGUAGE_CHOICES, RX_ACCENTS, RX_DESIGNS, RX_SHOW, SHOW_LABELS } from './rxFormat.js';
+import { ACCENT_NAMES, DESIGNS, LANGUAGE_CHOICES, RX_ACCENTS, RX_DESIGNS, RX_LABELS, RX_SHOW, RX_TITLES, SHOW_LABELS } from './rxFormat.js';
 import { SAMPLE } from './rxSample.js';
 
 // My settings → Prescription design (doctors and RMOs): choose one of the 10 designs for your printed
@@ -115,6 +115,26 @@ function DesignPreview({ form, index, onIndex, onChoose, onClose, letterhead, us
   );
 }
 
+const FONT_CHOICES = [
+  ['standard', 'Perinexa (standard)'],
+  ['sans', 'Plain (Arial)'],
+  ['serif', 'Classic serif (Georgia)'],
+];
+const SPACING_CHOICES = [
+  ['compact', 'Compact'],
+  ['standard', 'Standard'],
+  ['relaxed', 'Relaxed'],
+];
+const TITLE_LABELS = {
+  medicines: 'Medicines (Minimal design)',
+  instructions: 'Instructions',
+  tests: 'Tests advised',
+  advice: 'Advice',
+  nextVisit: 'Next visit',
+};
+// An empty number box: null (as the design prints it)
+const orNull = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
+
 export function PrescriptionDesignPage() {
   const { user, activeMembership, memberships } = useAuth();
   const prescriber = hasRole(activeMembership, 'doctor', 'rmo');
@@ -185,7 +205,15 @@ export function PrescriptionDesignPage() {
       const { saved: _s, ...body } = form;
       const res = await api('/prescription-design', {
         method: 'PUT',
-        body: { ...body, marginTopMm: Number(body.marginTopMm) || 0, marginBottomMm: Number(body.marginBottomMm) || 0 },
+        body: {
+          ...body,
+          marginTopMm: Number(body.marginTopMm) || 0,
+          marginBottomMm: Number(body.marginBottomMm) || 0,
+          bodyPt: orNull(body.bodyPt),
+          medicinePt: orNull(body.medicinePt),
+          doctorPt: orNull(body.doctorPt),
+          marginSideMm: orNull(body.marginSideMm),
+        },
       });
       setForm(res.design);
       setSaved(true);
@@ -344,6 +372,61 @@ export function PrescriptionDesignPage() {
             <Field label="Footer note (optional)" id="rxd-footer" error={fieldErrors.footerNote} hint="e.g. Please bring this prescription on your next visit.">
               <input id="rxd-footer" value={form.footerNote} maxLength={200} onChange={(e) => set({ footerNote: e.target.value })} />
             </Field>
+            <fieldset className="fieldset rxd-fine">
+              <legend>Fine-tune (optional)</legend>
+              <p className="hint help">Leave a box empty to print it as the design does.</p>
+              <div className="form-grid">
+                <fieldset className="fieldset">
+                  <legend>Font</legend>
+                  {FONT_CHOICES.map(([k, label]) => (
+                    <label key={k} className="check" htmlFor={`rxd-font-${k}`}>
+                      <input id={`rxd-font-${k}`} type="radio" name="rxd-font" checked={(form.font ?? 'standard') === k} onChange={() => set({ font: k })} />
+                      <span className={`rxd-font-${k}`}>{label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <fieldset className="fieldset">
+                  <legend>Space between lines</legend>
+                  {SPACING_CHOICES.map(([k, label]) => (
+                    <label key={k} className="check" htmlFor={`rxd-lines-${k}`}>
+                      <input id={`rxd-lines-${k}`} type="radio" name="rxd-lines" checked={(form.lineSpacing ?? 'standard') === k} onChange={() => set({ lineSpacing: k })} />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              </div>
+              <div className="form-grid">
+                <Field label="Text size (pt)" id="rxd-body-pt" error={fieldErrors.bodyPt} hint="8 to 16. Replaces Standard or Large.">
+                  <input id="rxd-body-pt" type="number" min={8} max={16} step={0.5} value={form.bodyPt ?? ''} onChange={(e) => set({ bodyPt: e.target.value })} />
+                </Field>
+                <Field label="Medicine names (pt)" id="rxd-med-pt" error={fieldErrors.medicinePt} hint="8 to 20">
+                  <input id="rxd-med-pt" type="number" min={8} max={20} step={0.5} value={form.medicinePt ?? ''} onChange={(e) => set({ medicinePt: e.target.value })} />
+                </Field>
+                <Field label="Your name at the top (pt)" id="rxd-doctor-pt" error={fieldErrors.doctorPt} hint="10 to 30">
+                  <input id="rxd-doctor-pt" type="number" min={10} max={30} step={0.5} value={form.doctorPt ?? ''} onChange={(e) => set({ doctorPt: e.target.value })} />
+                </Field>
+                <Field label="Left and right margins (mm)" id="rxd-side" error={fieldErrors.marginSideMm} hint="0 to 40. Used when printing.">
+                  <input id="rxd-side" type="number" min={0} max={40} value={form.marginSideMm ?? ''} onChange={(e) => set({ marginSideMm: e.target.value })} />
+                </Field>
+              </div>
+            </fieldset>
+            <fieldset className="fieldset">
+              <legend>Section titles (optional)</legend>
+              <p className="hint help">Your own words are printed as you write them, in place of the usual title (and its Marathi or Hindi words).</p>
+              <div className="form-grid">
+                {RX_TITLES.map((k) => (
+                  <Field key={k} label={TITLE_LABELS[k]} id={`rxd-title-${k}`} error={fieldErrors[`titles.${k}`]}>
+                    <input
+                      id={`rxd-title-${k}`}
+                      value={form.titles?.[k] ?? ''}
+                      maxLength={40}
+                      placeholder={RX_LABELS[k].en}
+                      onChange={(e) => set({ titles: { ...form.titles, [k]: e.target.value } })}
+                    />
+                  </Field>
+                ))}
+              </div>
+            </fieldset>
             {form.design === 'preprinted' && (
               <div className="form-grid">
                 <Field label="Space for your pad's printed header (mm)" id="rxd-top" error={fieldErrors.marginTopMm}>
@@ -372,7 +455,7 @@ export function PrescriptionDesignPage() {
 
         <div className="sticky-actions">
           <span className="grow">
-            Chosen: <strong>{DESIGNS[form.design].name}</strong> · {ACCENT_NAMES[form.accent]} · {form.textSize === 'large' ? 'large text' : 'standard text'} · {halfPage ? 'A5' : form.paper}
+            Chosen: <strong>{DESIGNS[form.design].name}</strong> · {ACCENT_NAMES[form.accent]} · {form.bodyPt ? `${form.bodyPt} pt text` : form.textSize === 'large' ? 'large text' : 'standard text'} · {halfPage ? 'A5' : form.paper}
           </span>
           <button type="submit" className="btn btn-primary" disabled={busy}>
             <Save aria-hidden="true" /> {busy ? 'Saving…' : 'Save design'}

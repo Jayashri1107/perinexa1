@@ -94,6 +94,8 @@
 .rxd > .alert { margin: 0; }
 .rxd-section h2 { margin-bottom: var(--space-1); }
 .rxd-section > .hint { margin: 0 0 var(--space-4); }
+.rxd-font-sans { font-family: var(--font-print-sans); }
+.rxd-font-serif { font-family: var(--font-print-serif); }
 .rxd-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
 .rxd-card {
   display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
@@ -144,6 +146,8 @@
 /* ---------- Ready-made prescription sets (Feature 8b) ---------- */
 /* On the Prescription tab */
 .vs-rx-actions { justify-content: flex-end; }
+.rx-dictation { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); max-width: 100%; }
+.rx-dictation .hint { margin: 0; flex-basis: 100%; }
 .modal.rxs-picker { max-width: 1040px; }
 .rxs-picker > .hint { margin: 0 0 var(--space-4); }
 .rxs-picker-body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--space-6); align-items: start; }

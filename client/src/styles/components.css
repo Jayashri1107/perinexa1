@@ -36,6 +36,12 @@
 .icon-btn:hover:not(:disabled) { background: var(--mist-50); border-color: var(--indigo-700); }
 .icon-btn:disabled { background: var(--mist-50); color: var(--slate-300); cursor: not-allowed; }
 
+/* "i" button with a note that opens below it */
+.info-toggle { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.info-toggle-btn { border-color: transparent; border-radius: var(--radius-pill); color: var(--indigo-700); }
+.info-toggle-btn svg.lucide { width: 18px; height: 18px; }
+.info-toggle-text { flex-basis: 100%; margin: 0; max-width: 70ch; }
+
 /* ---------- Forms: inputs 48 px, radius-sm, 1 px Line border, teal focus ring ---------- */
 .field { margin-bottom: var(--space-4); min-width: 0; }
 .field > label, .field-label {

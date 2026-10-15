@@ -109,6 +109,8 @@
   --print-sheet-width: 210mm;      /* A4 */
   --print-sheet-margin: 12mm;      /* page margin – the printer's copy is in print.css @page (it can't read variables) */
   --font-print: 'Jost', 'Mukta', system-ui, sans-serif; /* always the Perinexa font on paper, whatever font a person uses on screen */
+  --font-print-sans: Arial, Helvetica, 'Mukta', sans-serif; /* a prescription's "Plain" font (Prescription design) */
+  --font-print-serif: Georgia, 'Times New Roman', 'Mukta', serif; /* a prescription's "Classic serif" font */
   --fs-print-body: 10.5pt;  --lh-print-body: 15pt;
   --fs-print-small: 9pt;    --lh-print-small: 12.5pt;   /* labels, footers */
   --fs-print-h2: 12pt;      --lh-print-h2: 16pt;        /* section headings */

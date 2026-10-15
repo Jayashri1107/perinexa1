@@ -311,6 +311,31 @@ describe('Ask AI where these belong', () => {
   });
 });
 
+describe('Dictated medicines (Prescription tab)', () => {
+  it('turns the words into rows from the fixed lists; doctors and RMOs only', async () => {
+    fakeOpenAI();
+    answer = {
+      medicines: [
+        { drug: 'Folic acid', form: 'tab', strength: '5 mg', dose: '1', frequency: '1-0-0', frequencyText: 'ignored', timing: 'after_food', route: '', durationValue: 30, durationUnit: 'days', instructions: '' },
+        { drug: 'Iron syrup', form: 'potion', strength: '', dose: '10 ml', frequency: 'hourly', frequencyText: 'every hour', timing: 'soon', route: 'oral', durationValue: 900, durationUnit: 'days', instructions: '' },
+        { drug: '', form: 'tab', strength: '', dose: '', frequency: 'sos', frequencyText: '', timing: '', route: '', durationValue: null, durationUnit: '', instructions: '' },
+        { drug: 'Vitamin D', form: 'cap', strength: '', dose: '', frequency: 'weekly', frequencyText: '', timing: '', route: '', durationValue: null, durationUnit: '', instructions: 'it is a boy' },
+      ],
+      notes: 'Drink plenty of water',
+    };
+    const res = await (await as('rmo')).post('/api/ai/medicines').send({ text: 'folic acid 5 mg once a day for 30 days, iron syrup 10 ml every hour' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.medicines).toEqual([
+      { drug: 'Folic acid', form: 'tab', strength: '5 mg', dose: '1', frequency: '1-0-0', frequencyText: '', timing: 'after_food', route: '', durationValue: 30, durationUnit: 'days', instructions: '' },
+      { drug: 'Iron syrup', form: 'tab', strength: '', dose: '10 ml', frequency: 'custom', frequencyText: 'every hour', timing: '', route: 'oral', durationValue: null, durationUnit: 'days', instructions: '' },
+    ]);
+    expect(res.body.notes).toBe('Drink plenty of water');
+    expect(JSON.stringify(sent[0].body.messages)).toContain('folic acid 5 mg');
+    expect((await (await as('nurse')).post('/api/ai/medicines').send({ text: 'folic acid' })).status).toBe(403);
+    expect((await (await as('drA')).post('/api/ai/medicines').send({ text: '' })).status).toBe(400);
+  });
+});
+
 describe('the AI check before printing', () => {
   const FOLIC = { drug: 'Folic acid', form: 'tab', strength: '5 mg', dose: '1', frequency: '1-0-0', timing: 'after_food', durationValue: 30, durationUnit: 'days' };
   async function visitWithRx(p, items = [FOLIC]) {
