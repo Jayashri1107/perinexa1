@@ -272,9 +272,9 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
  * bottom of every printed page (browsers repeat a table's header and footer rows), so a loose page still says
  * whose it is and that it is a draft. footer null: no footer (e.g. on a doctor's own pre-printed pad).
  */
-export function PrintDocument({ draft, footer, className = '', children }) {
+export function PrintDocument({ draft, footer, className = '', style, children }) {
   return (
-    <div className={`pdoc ${className}`.trim()}>
+    <div className={`pdoc ${className}`.trim()} style={style}>
       <table className="ptable pframe">
         {draft && (
           <thead>

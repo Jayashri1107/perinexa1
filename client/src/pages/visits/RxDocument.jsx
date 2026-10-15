@@ -34,7 +34,9 @@ const weekday = (d) => new Date(d).toLocaleDateString('en-GB', { weekday: 'short
 const gaText = (ga) => (ga ? `${ga.weeks} w ${ga.days} d` : '');
 
 /** "Advice / सल्ला" – a patient-facing label, with the translation when the design prints one. */
-function Bi({ label, lang }) {
+// own: the doctor's own words for this title (Prescription design → Section titles) – printed as written, instead.
+function Bi({ label, lang, own }) {
+  if (own?.trim()) return <>{own.trim()}</>;
   return (
     <>
       {label.en}
@@ -355,7 +357,7 @@ function RxNotes({ visit, d, summary }) {
   return (
     <section className="rx-section">
       <div className="rx-section-title">
-        <Bi label={RX_LABELS.instructions} lang={d.language} />
+        <Bi label={RX_LABELS.instructions} lang={d.language} own={d.titles?.instructions} />
       </div>
       <p className="rx-pre">{visit.notes}</p>
     </section>
@@ -368,7 +370,7 @@ function Tests({ visit, d }) {
   return (
     <section className="rx-section">
       <div className="rx-section-title">
-        <Bi label={RX_LABELS.tests} lang={d.language} />
+        <Bi label={RX_LABELS.tests} lang={d.language} own={d.titles?.tests} />
       </div>
       <p className="rx-pre">{t}</p>
     </section>
@@ -381,7 +383,7 @@ function Advice({ visit, d }) {
   return (
     <section className="rx-section">
       <div className="rx-section-title">
-        <Bi label={RX_LABELS.advice} lang={d.language} />
+        <Bi label={RX_LABELS.advice} lang={d.language} own={d.titles?.advice} />
       </div>
       <p className="rx-pre">{a}</p>
     </section>
@@ -396,7 +398,7 @@ function NextVisit({ visit, d, nextDue, planLabel, boxed = true }) {
   return (
     <section className={[boxed ? 'rx-next' : 'rx-section', long ? 'rx-next-long' : ''].filter(Boolean).join(' ')}>
       <div className="rx-section-title">
-        <CalendarDays aria-hidden="true" /> <Bi label={RX_LABELS.nextVisit} lang={d.language} />
+        <CalendarDays aria-hidden="true" /> <Bi label={RX_LABELS.nextVisit} lang={d.language} own={d.titles?.nextVisit} />
         {det.nextVisitOn && (
           <span className="rx-next-date">
             : {weekday(det.nextVisitOn)}, {formatDate(det.nextVisitOn)}
@@ -779,7 +781,7 @@ function Minimal(c) {
       <Findings {...c} />
       {!c.summary && (
         <div className="rx-min-label">
-          <Bi label={RX_LABELS.medicines} lang={lang} />
+          <Bi label={RX_LABELS.medicines} lang={lang} own={c.d.titles?.medicines} />
         </div>
       )}
       {c.summary ? null : c.visit.items?.length ? (
@@ -832,16 +834,37 @@ const LAYOUTS = {
 
 /** The printed page for the paper and margins of a design (PrintPreview's `page`). */
 export function rxPage(d) {
-  if (d.design === 'preprinted') return { size: d.paper, margin: `${d.marginTopMm}mm 12mm ${d.marginBottomMm}mm 12mm` };
-  if (d.design === 'half_page' || d.paper === 'A5') return { size: 'A5', margin: '8mm' };
-  return null;
+  const side = d.marginSideMm ?? null; // null: the design's own side margins
+  if (d.design === 'preprinted') return { size: d.paper, margin: `${d.marginTopMm}mm ${side ?? 12}mm ${d.marginBottomMm}mm ${side ?? 12}mm` };
+  if (d.design === 'half_page' || d.paper === 'A5') return { size: 'A5', margin: side === null ? '8mm' : `8mm ${side}mm` };
+  return side === null ? null : { size: 'A4', margin: `12mm ${side}mm` };
+}
+
+/** The doctor's fine-tuning as print styles: sizes in points (null: as the design prints it). */
+export function rxStyle(d) {
+  const style = {};
+  if (d.bodyPt) style.fontSize = `${d.bodyPt}pt`;
+  if (d.medicinePt) style['--rx-med-size'] = `${d.medicinePt}pt`;
+  if (d.doctorPt) style['--rx-doctor-size'] = `${d.doctorPt}pt`;
+  return style;
 }
 
 export function RxDocument({ design: d, letterhead, doctor, patient, visit, pregnancy = null, nextDue = [], planLabel = null, printedAt, printedByName, copy = 'prescription' }) {
   const Layout = LAYOUTS[d.design] ?? Classic;
   const a5 = d.design === 'half_page' || d.paper === 'A5';
   const summary = copy === 'summary';
-  const className = ['rx', `rx-${d.design}`, `rx-accent-${d.accent}`, `rx-size-${d.textSize}`, a5 ? 'rx-a5' : '', summary ? 'rx-summary' : ''].filter(Boolean).join(' ');
+  const className = [
+    'rx',
+    `rx-${d.design}`,
+    `rx-accent-${d.accent}`,
+    `rx-size-${d.textSize}`,
+    d.font && d.font !== 'standard' ? `rx-font-${d.font}` : '',
+    d.lineSpacing && d.lineSpacing !== 'standard' ? `rx-lines-${d.lineSpacing}` : '',
+    a5 ? 'rx-a5' : '',
+    summary ? 'rx-summary' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   // On every page, also on a pre-printed pad (above the pad's own footer): a second page names the patient too.
   const footer = (
     <>
@@ -855,7 +878,7 @@ export function RxDocument({ design: d, letterhead, doctor, patient, visit, preg
     </>
   );
   return (
-    <PrintDocument footer={footer} className={className}>
+    <PrintDocument footer={footer} className={className} style={rxStyle(d)}>
       <Layout d={d} letterhead={letterhead} doctor={doctor} patient={patient} visit={visit} pregnancy={pregnancy} nextDue={nextDue} planLabel={planLabel} summary={summary} />
     </PrintDocument>
   );

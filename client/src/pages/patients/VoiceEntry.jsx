@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AudioLines, ChevronUp, Download, Loader, Mic, MicOff, Pause, Sparkles, Square, TriangleAlert, Undo2 } from 'lucide-react';
 import { api } from '../../api.js';
-import { Alert, Field, StatusPill } from '../../components/ui.jsx';
+import { Alert, Field, InfoToggle, StatusPill } from '../../components/ui.jsx';
 import { startAiRecording, transcribeRecording } from './aiDictation.js';
 import { answerToResult, extractPatientDetails, suggestionMeaning, isValueMeaning, onlyLinkWords, questionKey, questionsToShow, withoutFetalSex } from './dictation.js';
 import { hearingPhrases, isBlockedLearned } from './obgyTerms.js';
@@ -843,10 +843,10 @@ export function VoiceEntry({
           </button>
         )}
         {!recording && aiOn && (
-          <p className="hint voice-ai-note">
+          <InfoToggle label="About AI recording">
             Start recording uses AI: say everything in your own words, press Stop, and every detail is filled in for you to check. The whole recording
             (including any name or phone said) is sent to OpenAI to be written down; nothing is kept. Use fake patients only until the app is reviewed.
-          </p>
+          </InfoToggle>
         )}
         {recording && aiPhase === 'recording' && <p className="hint">Speak normally – the whole recording is written down when you press Stop.</p>}
         {note && <p className="hint">{SETUP_NOTES[note]}</p>}

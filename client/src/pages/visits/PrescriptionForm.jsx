@@ -11,6 +11,7 @@ import { MedSafetyPill, MedicineSafetyPanel } from '../medsafety/MedicineSafetyP
 import { babyAgeText, babyOnVisit, breastfeedingOnVisit, medicineWarnings, needsReason, notCovered, pregnancyOnVisit } from '../medsafety/medSafety.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { MedicineRows } from './MedicineRows.jsx';
+import { RxDictation } from './RxDictation.jsx';
 import { MEDICINES } from './medicines.js';
 import { instructionLine, medicineName } from './rxFormat.js';
 import { addSet, emptyRow, isBlankRow, rowProblems, sameRows, toItem, toRow } from './rxRows.js';
@@ -193,6 +194,30 @@ export function PrescriptionForm({
     );
   };
 
+  // "Start recording" (AI): the dictated medicines are added like a set – same medicine replaced, others at the end.
+  const addDictated = ({ items, notes: said }) => {
+    if (!items.length && !said) {
+      setSetNotice({ type: 'warning', text: 'No medicines were understood in the recording. Please try again, or type them.' });
+      return;
+    }
+    const result = addSet({ rows: filled, notes }, { items, notes: said });
+    if (result.rows.length > 40) {
+      setSetNotice({ type: 'warning', text: 'The recorded medicines were not added: a prescription can have at most 40 medicines.' });
+      return;
+    }
+    setRows(result.rows.length ? result.rows : [emptyRow()]);
+    setNotes(result.notes);
+    setFields({});
+    const parts = [
+      result.added.length > 0 && `${result.added.length} ${result.added.length === 1 ? 'medicine' : 'medicines'} added`,
+      result.replaced.length > 0 && `${listWords(result.replaced)} replaced`,
+    ].filter(Boolean);
+    setSetNotice({
+      type: 'warning',
+      text: `From your recording: ${parts.join('; ') || 'nothing added'}.${said ? ' General instructions were added below.' : ''} Written by AI – check every medicine, dose and duration, then save.`,
+    });
+  };
+
   // What must be fixed before saving (or saving as a set): the same checks as the server.
   // Empty rows are dropped first, so the highlighted rows match what is checked.
   const problems = () => {
@@ -317,6 +342,7 @@ export function PrescriptionForm({
               <p className="hint vs-byline">{rx.byName ? `Last saved by ${rx.byName} · ${formatDateTime(rx.at)}` : 'Not saved yet.'}</p>
             </div>
             <div className="row vs-rx-actions">
+              <RxDictation onMedicines={addDictated} onError={setError} disabled={rows.length >= 40} />
               {prev && (
                 <button type="button" className="btn btn-secondary" onClick={copyPrevious}>
                   <Copy aria-hidden="true" /> Copy from {formatDate(prev.visitOn)}

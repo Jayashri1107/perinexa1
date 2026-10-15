@@ -16,6 +16,7 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { parse } from '../utils/validate.js';
+import { RX_DURATION_UNITS, RX_FORMS, RX_FREQUENCIES, RX_ROUTES, RX_TIMINGS } from '../visits/rxCodes.js';
 
 // "Ask your records" (Smart features, step 9): /api/ai/ask. A doctor, RMO or nurse types a question in
 // plain words ("high-risk patients over 36 weeks", "who missed the anomaly scan"). Only the QUESTION goes
@@ -240,4 +241,89 @@ aiAskRouter.post('/understand', async (req, res) => {
   });
   const suggestions = checkSuggestions(answer.suggestions, { form, parts: sendable, today, careType }).filter((s) => sendable[s.part]);
   res.json({ suggestions });
+});
+
+// "Start recording" on the Prescription tab: the medicines the doctor dictated (already written down by
+// /ai/transcribe) → prescription rows from the fixed lists, for the doctor to check before saving. Doctors and
+// RMOs only (they write prescriptions). Never a dose the doctor did not say; nothing about the baby's sex. Nothing is kept.
+const medicinesSchema = z.object({ text: z.string().trim().min(1, 'Nothing was said').max(6000, 'The dictation is too long') });
+const str = (max) => ({ type: 'string', maxLength: max });
+const MEDICINE_ANSWER = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['medicines', 'notes'],
+  properties: {
+    medicines: {
+      type: 'array',
+      maxItems: 40,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['drug', 'form', 'strength', 'dose', 'frequency', 'frequencyText', 'timing', 'route', 'durationValue', 'durationUnit', 'instructions'],
+        properties: {
+          drug: str(120),
+          form: { type: 'string', enum: RX_FORMS },
+          strength: str(40),
+          dose: str(40),
+          frequency: { type: 'string', enum: RX_FREQUENCIES },
+          frequencyText: str(60),
+          timing: { type: 'string', enum: RX_TIMINGS },
+          route: { type: 'string', enum: RX_ROUTES },
+          durationValue: nullable('integer'),
+          durationUnit: { type: 'string', enum: RX_DURATION_UNITS },
+          instructions: str(200),
+        },
+      },
+    },
+    notes: str(500),
+  },
+};
+const clip = (v, max) => String(v ?? '').trim().slice(0, max);
+const oneOf = (v, list, fallback = '') => (list.includes(v) ? v : fallback);
+
+/** The AI's medicines, checked against the fixed lists (exported for tests). */
+export function checkMedicines(answer) {
+  const medicines = (Array.isArray(answer?.medicines) ? answer.medicines : [])
+    .map((m) => {
+      const frequency = oneOf(m?.frequency, RX_FREQUENCIES, 'custom');
+      const days = Number.isInteger(m?.durationValue) && m.durationValue >= 1 && m.durationValue <= 365 ? m.durationValue : null;
+      return {
+        drug: clip(m?.drug, 120),
+        form: oneOf(m?.form, RX_FORMS, 'tab'),
+        strength: clip(m?.strength, 40),
+        dose: clip(m?.dose, 40),
+        frequency,
+        frequencyText: frequency === 'custom' ? clip(m?.frequencyText, 60) : '',
+        timing: oneOf(m?.timing, RX_TIMINGS),
+        route: oneOf(m?.route, RX_ROUTES),
+        durationValue: days,
+        durationUnit: oneOf(m?.durationUnit, RX_DURATION_UNITS),
+        instructions: clip(m?.instructions, 200),
+      };
+    })
+    .filter((m) => m.drug && !mentionsFetalSex(JSON.stringify(m)))
+    .slice(0, 40);
+  const notes = clip(answer?.notes, 500);
+  return { medicines, notes: mentionsFetalSex(notes) ? '' : notes };
+}
+
+aiAskRouter.post('/medicines', async (req, res) => {
+  if (!hasRole(req.membership, 'doctor', 'rmo')) throw forbidden('Only doctors and RMOs write prescriptions.');
+  const { text } = parse(medicinesSchema, req.body);
+  const answer = await askAI(req, {
+    feature: 'dictated_medicines',
+    fast: true,
+    maxTokens: 4000,
+    instructions: [
+      'A doctor in India dictated the medicines of a prescription. Turn what was said into prescription rows, one per medicine, in the order said.',
+      'drug: the medicine name as said (generic or brand), tidied, in English. form: tab, cap, syrup, inj and so on from the list ("other" if unsure).',
+      'frequency in the Indian style morning-afternoon-night: "once a day"/"OD" → 1-0-0 (0-0-1 if said at night), "twice a day"/"BD" → 1-0-1, "thrice"/"TDS" → 1-1-1, "QID" → 1-1-1-1, "SOS"/"as needed" → sos, "stat" → stat; anything else → custom with the words in frequencyText.',
+      'durationValue with durationUnit (days, weeks, months), or till_delivery / continue with durationValue null. timing: after_food, before_food, with_food, empty_stomach, bedtime, or "".',
+      'Rules: only what was clearly said – never guess or add a dose, strength, frequency or duration that was not said (leave it "" or null). Never add a medicine that was not said.',
+      'notes: general instructions for the patient that are not about one medicine (else ""). Never write a name, phone number, or anything about the sex of a fetus or baby.',
+    ].join('\n'),
+    content: text,
+    schema: MEDICINE_ANSWER,
+  });
+  res.json(checkMedicines(answer));
 });

@@ -5,6 +5,24 @@ import { Link } from 'react-router-dom';
 // Messages carry an icon as well as colour (brand guide: never colour alone).
 const ALERT_ICONS = { error: CircleAlert, critical: CircleAlert, success: CircleCheck, warning: TriangleAlert, info: Info };
 
+/** An "i" button that shows or hides a note below it (label: what the screen reader says, e.g. "About AI recording"). */
+export function InfoToggle({ label, children }) {
+  const [open, setOpen] = useState(false);
+  const id = useRef(`info-${Math.random().toString(36).slice(2, 9)}`).current;
+  return (
+    <span className="info-toggle">
+      <button type="button" className="icon-btn info-toggle-btn" aria-label={label} title={label} aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)}>
+        <Info aria-hidden="true" />
+      </button>
+      {open && (
+        <span id={id} className="hint info-toggle-text" role="note">
+          {children}
+        </span>
+      )}
+    </span>
+  );
+}
+
 // closeLabel: what a screen reader says for the close button (the patient portal says it in her language).
 export function Alert({ type = 'info', children, onClose, icon, closeLabel = 'Dismiss message' }) {
   if (!children) return null;

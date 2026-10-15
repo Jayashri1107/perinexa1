@@ -20,6 +20,13 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   `docs/BRAND.md` → "Dashboard look". Tests on Windows: 4 server tests (hospital export, a file scan in analytics) fail
   on Windows with or without this change (they were written on the Mac); the voice-entry corpus test sometimes fails
   when the whole suite runs at once and passes on its own.
+- **Prescription extras (15 Oct 2026, branch `rx-ai-design`, not merged yet – an exception to the feature freeze
+  the owner asked for):** (1) the AI recording note on voice entry is now behind an ⓘ button; (2) the Prescription tab
+  has "Start recording" (AI, only when the OpenAI key is set, doctors and RMOs): say the medicines, press Stop, and
+  each one is added as a row to check – `POST /api/ai/medicines`, rows checked against the fixed lists, nothing kept;
+  (3) Prescription design → "Fine-tune": font (Perinexa, Arial, Georgia), text / medicine-name / doctor-name sizes in
+  points, line spacing, left and right margins, and the doctor's own section titles. Still to do: several
+  prescriptions per visit (changes the visit model, pharmacy sales, ABDM records, signing – planned separately).
 
 ## Done
 - Project rules saved in `CLAUDE.md`.

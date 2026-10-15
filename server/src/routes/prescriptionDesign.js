@@ -6,13 +6,17 @@ import { Visit } from '../models/Visit.js';
 import { HttpError } from '../utils/httpError.js';
 import { parse } from '../utils/validate.js';
 import { DESIGN_FIELDS, designFor, designView } from '../visits/designs.js';
-import { RX_ACCENTS, RX_DESIGNS, RX_SHOW } from '../visits/rxCodes.js';
+import { RX_ACCENTS, RX_DESIGNS, RX_FONTS, RX_LINE_SPACINGS, RX_SHOW, RX_TITLES } from '../visits/rxCodes.js';
 
 // /api/prescription-design: the logged-in doctor's (or RMO's) own print design at this hospital, and the
 // medicines they prescribed most (for quick entry). Only people who write prescriptions.
 
 const PRESCRIBERS = ['doctor', 'rmo'];
 const words = (label, max) => z.string().trim().max(max, `${label} is too long (at most ${max} characters)`).default('');
+
+// A size or margin left empty (null) prints as the design does.
+const optional = (label, min, max, unit) =>
+  z.number('Enter a number').min(min, `${label}: at least ${min} ${unit}`).max(max, `${label}: at most ${max} ${unit}`).nullable().default(null);
 
 const designSchema = z
   .object({
@@ -28,6 +32,16 @@ const designSchema = z
     footerNote: words('Footer note', 200),
     marginTopMm: z.number('Enter a number').int('Whole millimetres only').min(0, 'At least 0').max(120, 'At most 120 mm'),
     marginBottomMm: z.number('Enter a number').int('Whole millimetres only').min(0, 'At least 0').max(80, 'At most 80 mm'),
+    font: z.enum(RX_FONTS, 'Choose a font').default('standard'),
+    bodyPt: optional('Text size', 8, 16, 'pt'),
+    medicinePt: optional('Medicine name size', 8, 20, 'pt'),
+    doctorPt: optional("Doctor's name size", 10, 30, 'pt'),
+    lineSpacing: z.enum(RX_LINE_SPACINGS, 'Choose the line spacing').default('standard'),
+    marginSideMm: optional('Side margins', 0, 40, 'mm').refine((v) => v === null || Number.isInteger(v), 'Whole millimetres only'),
+    titles: z
+      .object(Object.fromEntries(RX_TITLES.map((k) => [k, words('A section title', 40)])))
+      .strict()
+      .default(() => Object.fromEntries(RX_TITLES.map((k) => [k, '']))),
   })
   .strict();
 
@@ -49,7 +63,7 @@ prescriptionDesignRouter.put('/', async (req, res) => {
   const save = () =>
     PrescriptionDesign.findOneAndUpdate(
       { tenantId: req.tenantId, userId: req.user._id },
-      { $set: Object.fromEntries([...DESIGN_FIELDS, 'show'].map((k) => [k, data[k]])) },
+      { $set: Object.fromEntries([...DESIGN_FIELDS, 'show', 'titles'].map((k) => [k, data[k]])) },
       { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true, runValidators: true, lean: true },
     );
   // Two first saves at the same moment: the second one finds the first and updates it.

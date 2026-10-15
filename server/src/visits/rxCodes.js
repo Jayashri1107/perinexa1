@@ -32,5 +32,11 @@ export const OEDEMA_GRADES = ['', 'none', 'mild', 'moderate', 'severe'];
 export const RX_DESIGNS = ['classic', 'letterhead', 'two_column', 'table', 'dose_chart', 'side_band', 'pregnancy', 'preprinted', 'half_page', 'minimal'];
 /** Accent colours (print tokens --rx-* in the website's tokens.css). */
 export const RX_ACCENTS = ['indigo', 'teal', 'maroon', 'green', 'charcoal'];
+/** Print fonts: the Perinexa font, or a plain sans-serif or serif one. */
+export const RX_FONTS = ['standard', 'sans', 'serif'];
+/** Space between lines on the printed prescription. */
+export const RX_LINE_SPACINGS = ['compact', 'standard', 'relaxed'];
+/** Section titles a doctor may write in their own words (empty: the printed words in English and the chosen language). */
+export const RX_TITLES = ['medicines', 'instructions', 'tests', 'advice', 'nextVisit'];
 /** Parts of the visit the doctor can choose to print or leave out. The private note is never printed. */
 export const RX_SHOW = ['vitals', 'complaints', 'examination', 'diagnosis', 'investigations', 'advice', 'nextVisit', 'planItems', 'pregnancy', 'signature', 'rxSymbol'];

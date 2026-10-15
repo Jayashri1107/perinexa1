@@ -395,6 +395,20 @@ describe('the print design', () => {
     expect(res.body.prescriber.design).toMatchObject({ design: 'half_page', accent: 'teal', saved: true });
   });
 
+  it('keeps the fine-tuning: font, sizes in points, line spacing, side margins and own section titles', async () => {
+    const d = await as('drA');
+    const fine = { font: 'serif', bodyPt: 11.5, medicinePt: 13, doctorPt: 20, lineSpacing: 'relaxed', marginSideMm: 18, titles: { medicines: 'Rx', instructions: '', tests: 'Investigations', advice: 'Diet & advice', nextVisit: 'Review' } };
+    const saved = await d.put('/api/prescription-design').send({ ...DESIGN, ...fine });
+    expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+    expect(saved.body.design).toMatchObject(fine);
+    // left out: as the design prints it
+    const plain = await d.put('/api/prescription-design').send(DESIGN);
+    expect(plain.body.design).toMatchObject({ font: 'standard', bodyPt: null, lineSpacing: 'standard', marginSideMm: null, titles: { tests: '' } });
+    for (const bad of [{ bodyPt: 40 }, { font: 'comic' }, { marginSideMm: 5.5 }, { titles: { ...fine.titles, advice: 'x'.repeat(41) } }, { titles: { other: 'x' } }]) {
+      expect((await d.put('/api/prescription-design').send({ ...DESIGN, ...bad })).status, JSON.stringify(bad)).toBe(400);
+    }
+  });
+
   it("offers the prescriber's own recent medicines, as they last wrote them", async () => {
     const p = await register();
     const a = await newVisit('drA', p, { visitOn: '2026-09-01' });
@@ -423,6 +437,9 @@ describe('the website uses the same codes', () => {
     expect(website.RX_DESIGNS).toEqual(rx.RX_DESIGNS);
     expect(website.RX_ACCENTS).toEqual(rx.RX_ACCENTS);
     expect(website.RX_SHOW).toEqual(rx.RX_SHOW);
+    expect(website.RX_FONTS).toEqual(rx.RX_FONTS);
+    expect(website.RX_LINE_SPACINGS).toEqual(rx.RX_LINE_SPACINGS);
+    expect(website.RX_TITLES).toEqual(rx.RX_TITLES);
   });
 });
 

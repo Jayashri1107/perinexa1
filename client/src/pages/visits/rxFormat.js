@@ -16,6 +16,9 @@ export const FETAL_MOVEMENTS = ['', 'present', 'reduced', 'absent'];
 export const OEDEMA_GRADES = ['', 'none', 'mild', 'moderate', 'severe'];
 export const RX_DESIGNS = ['classic', 'letterhead', 'two_column', 'table', 'dose_chart', 'side_band', 'pregnancy', 'preprinted', 'half_page', 'minimal'];
 export const RX_ACCENTS = ['indigo', 'teal', 'maroon', 'green', 'charcoal'];
+export const RX_FONTS = ['standard', 'sans', 'serif'];
+export const RX_LINE_SPACINGS = ['compact', 'standard', 'relaxed'];
+export const RX_TITLES = ['medicines', 'instructions', 'tests', 'advice', 'nextVisit'];
 export const RX_SHOW = ['vitals', 'complaints', 'examination', 'diagnosis', 'investigations', 'advice', 'nextVisit', 'planItems', 'pregnancy', 'signature', 'rxSymbol'];
 
 // ---------- Words on screen ----------
