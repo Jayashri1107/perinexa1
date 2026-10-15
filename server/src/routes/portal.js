@@ -1,6 +1,7 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
-import { bookSlot, cancelAppointment, freeStarts, hospitalDoctors, nextAppointment } from '../appointments/appointmentService.js';
+import { bookSlot, cancelAppointment, freeStarts, hospitalDoctors, nextAppointment, scheduleOf } from '../appointments/appointmentService.js';
+import { leaveOn } from '../appointments/slots.js';
 import { Appointment } from '../models/Appointment.js';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
@@ -236,11 +237,22 @@ async function bookingState(req, res) {
 const upcomingView = (a, today) =>
   a ? { date: isoDay(a.on), start: a.start ?? null, online: a.source === 'portal', canCancel: a.source === 'portal' && utcDay(a.on) > today } : null;
 
+// Her doctor's leave in the days she can book: dates only – never the doctor's note (it can be private).
+async function doctorLeave(s) {
+  if (!s.enabled || !s.doctor) return [];
+  const schedule = await scheduleOf(s.access.tenantId, s.doctor.id);
+  return (schedule?.leave ?? [])
+    .filter((l) => utcDay(l.to) >= s.from && utcDay(l.from) <= s.to)
+    .sort((a, b) => utcDay(a.from) - utcDay(b.from))
+    .map((l) => ({ from: isoDay(l.from), to: isoDay(l.to) }));
+}
+
 portalRouter.get('/booking', async (req, res) => {
   const s = await bookingState(req, res);
   res.json({
     enabled: s.enabled,
     doctorName: s.doctor?.name ?? null,
+    leave: await doctorLeave(s),
     upcoming: upcomingView(s.upcoming, s.today),
     from: isoDay(s.from),
     to: isoDay(s.to),
@@ -253,7 +265,8 @@ portalRouter.get('/booking/times', async (req, res) => {
   const { date } = parse(z.object({ date: requiredDateOnly('Date') }).strict(), req.query);
   if (!s.enabled || !s.doctor) throw new HttpError(409, 'Online booking is not available. Please call the hospital.', 'BOOKING_OFF');
   if (date < s.from || date > s.to) throw new HttpError(400, `Please choose a day from tomorrow up to ${BOOK_DAYS_AHEAD} days ahead.`, 'VALIDATION');
-  res.json({ date: isoDay(date), times: await freeStarts(s.access.tenantId, s.doctor.id, date, { now: req.now }) });
+  const onLeave = Boolean(leaveOn(await scheduleOf(s.access.tenantId, s.doctor.id), date));
+  res.json({ date: isoDay(date), onLeave, times: onLeave ? [] : await freeStarts(s.access.tenantId, s.doctor.id, date, { now: req.now }) });
 });
 
 portalRouter.post('/booking', async (req, res) => {

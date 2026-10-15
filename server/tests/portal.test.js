@@ -228,6 +228,22 @@ describe('booking her own appointment in the portal', () => {
     expect(await AuditLog.countDocuments({ action: { $in: ['PORTAL_APPOINTMENT_BOOKED', 'PORTAL_APPOINTMENT_CANCELLED'] }, actor: null })).toBe(2);
   });
 
+  it("shows her doctor's leave in the booking days – dates only, never the doctor's note", async () => {
+    await settings({ portalBooking: true });
+    const leave = [
+      { from: '2026-10-07', to: '2026-10-09', note: 'Family wedding' },
+      { from: '2026-09-01', to: '2026-09-05', note: 'past' }, // before the booking days
+    ];
+    const set = await (await as('drA')).put(`/api/appointments/timings/${people.drA._id}`).send({ week: WEEK, leave });
+    expect(set.status, JSON.stringify(set.body)).toBe(200);
+    const her = await signedIn(await register());
+    const booking = (await her.get('/api/portal/booking')).body;
+    expect(booking.leave).toEqual([{ from: '2026-10-07', to: '2026-10-09' }]);
+    expect(JSON.stringify(booking)).not.toContain('wedding');
+    expect((await her.get('/api/portal/booking/times?date=2026-10-08')).body).toEqual({ date: '2026-10-08', onLeave: true, times: [] });
+    expect((await her.get('/api/portal/booking/times?date=2026-10-05')).body.onLeave).toBe(false);
+  });
+
   it('a booking made by the hospital cannot be cancelled online; without a doctor or a session nothing is offered', async () => {
     await settings({ portalBooking: true });
     await (await as('drA')).put(`/api/appointments/timings/${people.drA._id}`).send({ week: WEEK, leave: [] });

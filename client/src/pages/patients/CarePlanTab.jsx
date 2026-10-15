@@ -27,6 +27,7 @@ import { useListParams } from '../../hooks/useListParams.js';
 import { ITEM_KIND_ICONS, ITEM_KIND_LABELS, ITEM_KINDS } from '../careplans/templateFormat.js';
 import { NextVisitLine, PlanApproval } from './CarePlanCard.jsx';
 import { CarePlanPrintPreview, PrintPlanDialog } from './CarePlanPrint.jsx';
+import { hasContent, patientCopy } from './carePlanPrintFormat.js';
 import {
   AddItemDialog,
   BookingDateDialog,
@@ -850,6 +851,13 @@ export function PatientCarePlanTab() {
 
   const filter = STATUS_FILTERS[list.status] ? list.status : '';
   const view = PLAN_VIEWS.some((v) => v.key === list.view) ? list.view : 'todo';
+  // Print: with a type chosen in "Type" (e.g. Visits), the patient copy of that type opens straight away – no
+  // questions. Otherwise (or when nothing of that type is still to come) the print dialog asks what to print.
+  const startPrint = () => {
+    const options = { copy: 'patient', scope: 'kinds', kinds: [list.kind], ids: [], includeDone: false, advice: '' };
+    const direct = list.kind && plan.status === 'active' && !plan.eddReview && hasContent(patientCopy(plan, options));
+    setPrinting(direct ? { step: 'preview', options } : { step: 'dialog', options: list.kind ? options : null });
+  };
   const allRows = planRows(plan, { view, kind: list.kind, status: filter });
   // To do shows the next 6 weeks; what comes later is one click away (a list of the whole pregnancy was too long)
   const soon = view === 'todo' && !filter && !showLater ? splitSoon(allRows, plan) : { shown: allRows, later: [] };
@@ -916,7 +924,7 @@ export function PatientCarePlanTab() {
             </select>
           </label>
           <div className="plan-toolbar-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setPrinting({ step: 'dialog', options: null })}>
+            <button type="button" className="btn btn-secondary" onClick={startPrint}>
               <Printer aria-hidden="true" /> Print
             </button>
             {plan.canChangePlan && (
