@@ -417,7 +417,7 @@ export function VoiceEntry({
     });
   };
   const showCheck = (s) => {
-    console.info(`voice: model ${s.status}`);
+    if (import.meta.env.DEV) console.info(`voice: model ${s.status}`); // the live site prints nothing in the console
     setSpeech(s);
     if (s.status === 'setting-up') watchSetup(s.lang, null);
   };

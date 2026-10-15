@@ -108,6 +108,19 @@ if (!parsed.success) {
 
 const env = parsed.data;
 
+// On the live server a setting that would weaken sign-in stops the start, so it is seen at once (docs/DEPLOY.md).
+if (env.NODE_ENV === 'production') {
+  const unsafe = [];
+  if (!env.CLIENT_URL.startsWith('https://')) unsafe.push('CLIENT_URL must be the https:// address of the website');
+  if (env.COOKIE_SECURE === 'false') unsafe.push('COOKIE_SECURE=false sends the sign-in cookie without HTTPS – remove it');
+  if (unsafe.length) {
+    console.error('\n❌ Unsafe settings for production:');
+    for (const problem of unsafe) console.error(`   - ${problem}`);
+    console.error('');
+    process.exit(1);
+  }
+}
+
 export const config = {
   ...env,
   isProduction: env.NODE_ENV === 'production',

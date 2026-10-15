@@ -81,7 +81,7 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
           if (alive) setMade({ key: docKey, blob });
         }
       } catch (err) {
-        console.warn(`print: ${err?.message}`); // Print still works; Download PDF tries again and says why it can't
+        if (import.meta.env.DEV) console.warn(`print: ${err?.message}`); // Print still works; Download PDF tries again and says why it can't
         if (alive) setMade({ key: docKey, failed: true });
       }
     })();
