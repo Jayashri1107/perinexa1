@@ -40,9 +40,9 @@ const SAFETY = [
 ];
 
 const VOICE = [
-  'On a new patient or a visit, open Voice entry and press Start recording.',
+  'On a new patient or a visit, open Voice entry and press Start recording (speech is turned into text on this computer) or AI dictation.',
   'Speak normally; say each detail with its name, for example “age 28, LMP 12 July”.',
-  'Press Stop. The whole recording is written down by AI and the details are filled in below for you to check.',
+  'Press Stop. The details are filled in below for you to check. With AI dictation the whole recording is written down by AI (OpenAI) – the i button says more.',
   'You can also type in the box: the form fills in a moment after you stop typing.',
   'Parts that were not understood are listed; enter them by hand or press Ask AI where these belong.',
 ];
