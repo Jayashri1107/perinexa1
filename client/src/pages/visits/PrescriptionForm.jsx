@@ -194,7 +194,7 @@ export function PrescriptionForm({
     );
   };
 
-  // "Start recording" (AI): the dictated medicines are added like a set – same medicine replaced, others at the end.
+  // "AI dictation": the dictated medicines are added like a set – same medicine replaced, others at the end.
   const addDictated = ({ items, notes: said }) => {
     if (!items.length && !said) {
       setSetNotice({ type: 'warning', text: 'No medicines were understood in the recording. Please try again, or type them.' });

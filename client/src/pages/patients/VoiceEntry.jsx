@@ -143,10 +143,6 @@ const INTRO =
   'Say the details and they are filled in below for you to check. Speech is turned into text on this computer: nothing is sent anywhere or ' +
   'kept. Perinexa includes corrections for common Indian English pronunciations of medical words, numbers and dates, asks when it is not ' +
   'sure, and remembers your own corrections.';
-// With AI set up, Start recording sends the recording to OpenAI: the card says so instead of "on this computer".
-const AI_INTRO =
-  'Say the details in your own words and they are filled in below for you to check. The recording is written down by AI (OpenAI) when you ' +
-  'press Stop; nothing is kept. Perinexa asks when it is not sure and remembers your own corrections.';
 const NOTE_TO = [{ key: 'notes', label: 'Add to notes' }];
 
 // Adds what an answer filled in to a list shown, without repeating what is already there
@@ -321,7 +317,7 @@ export function VoiceEntry({
   const [micId, setMicId] = useState(savedMic);
   const [muted, setMuted] = useState(false);
   const [aiPhase, setAiPhase] = useState('idle'); // AI dictation: 'idle' | 'starting' | 'recording' | 'writing'
-  const [aiOn, setAiOn] = useState(false); // AI is set up: Start recording uses AI dictation (owner, 14 Oct 2026)
+  const [aiOn, setAiOn] = useState(false); // AI is set up: the AI dictation button shows beside Start recording (owner, 15 Oct 2026)
   const [aiHelp, setAiHelp] = useState(null); // "Ask AI where these belong": { busy, items: [{ part, text, label, meaning }] }
   const aiRec = useRef(null);
   const answered = useRef(new Set()); // questions answered on this form (questionKey)
@@ -787,14 +783,13 @@ export function VoiceEntry({
           : paused
             ? PAUSED
             : null;
-  const cannot = aiOn
-    ? null // AI dictation records in any browser that can record
-    : speech.status === 'unsupported'
+  // Without on-device speech, the AI dictation button still records (it works in any browser that can record)
+  const cannot = speech.status === 'unsupported'
       ? (ERROR_MESSAGES[speech.reason] ?? ERROR_MESSAGES['old-chrome'])
       : speech.status === 'unavailable'
         ? ERROR_MESSAGES.unavailable
         : null;
-  const note = setupNote ?? (speech.status === 'needs-setup' && !recording && !aiOn ? 'first' : null);
+  const note = setupNote ?? (speech.status === 'needs-setup' && !recording ? 'first' : null);
 
   return (
     <section className="card form-section voice-card" aria-labelledby="voice-title">
@@ -813,16 +808,12 @@ export function VoiceEntry({
           </button>
         )}
       </div>
-      <p className="hint help voice-intro">{aiOn && intro === INTRO ? AI_INTRO : intro}</p>
+      <p className="hint help voice-intro">{intro}</p>
 
       <div className="voice-controls">
         {recording ? (
           <button type="button" className="btn btn-secondary" onClick={pressStop} disabled={phase === 'finishing' || aiPhase === 'starting' || aiPhase === 'writing'}>
             <Square aria-hidden="true" /> Stop recording
-          </button>
-        ) : aiOn ? (
-          <button type="button" className="btn btn-secondary" onClick={startAi}>
-            <Mic aria-hidden="true" /> Start recording
           </button>
         ) : speech.status === 'ready' ? (
           <button type="button" className="btn btn-secondary" onClick={start}>
@@ -837,14 +828,14 @@ export function VoiceEntry({
             <Turning aria-hidden="true" /> Getting speech recognition ready…
           </button>
         ) : null}
-        {!recording && aiOn && speech.status === 'ready' && (
-          <button type="button" className="btn btn-link btn-sm" onClick={start}>
-            Record on this computer instead
+        {!recording && aiOn && (
+          <button type="button" className="btn btn-secondary" onClick={startAi}>
+            <Sparkles aria-hidden="true" /> AI dictation
           </button>
         )}
         {!recording && aiOn && (
-          <InfoToggle label="About AI recording">
-            Start recording uses AI: say everything in your own words, press Stop, and every detail is filled in for you to check. The whole recording
+          <InfoToggle label="About AI dictation">
+            AI dictation: say everything in your own words, press Stop, and every detail is filled in for you to check. The whole recording
             (including any name or phone said) is sent to OpenAI to be written down; nothing is kept. Use fake patients only until the app is reviewed.
           </InfoToggle>
         )}

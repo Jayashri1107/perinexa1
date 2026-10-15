@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader, Mic, Square } from 'lucide-react';
+import { Loader, Sparkles, Square } from 'lucide-react';
 import { api } from '../../api.js';
 import { InfoToggle } from '../../components/ui.jsx';
 import { startAiRecording, transcribeRecording } from '../patients/aiDictation.js';
 
-// "Start recording" on the Prescription tab (AI dictation, only when AI is set up): the doctor says the medicines,
+// "AI dictation" on the Prescription tab (AI dictation, only when AI is set up): the doctor says the medicines,
 // presses Stop, the recording is written down (/ai/transcribe) and turned into rows (/ai/medicines). The rows are
 // handed to onMedicines({ items, notes }) to be added to the form for the doctor to check – never saved by themselves.
 
@@ -67,14 +67,14 @@ export function RxDictation({ onMedicines, onError, disabled }) {
         </button>
       ) : (
         <button type="button" className="btn btn-secondary" onClick={start} disabled={disabled || phase !== 'idle'}>
-          {phase === 'idle' ? <Mic aria-hidden="true" /> : <Loader aria-hidden="true" className="voice-turning" />}
-          {phase === 'writing' ? ' Writing down…' : phase === 'starting' ? ' Starting…' : ' Start recording'}
+          {phase === 'idle' ? <Sparkles aria-hidden="true" /> : <Loader aria-hidden="true" className="voice-turning" />}
+          {phase === 'writing' ? ' Writing down…' : phase === 'starting' ? ' Starting…' : ' AI dictation'}
         </button>
       )}
       {phase === 'recording' && <p className="hint">Say each medicine with its strength, dose, how often and for how long – then press Stop.</p>}
       {phase === 'idle' && (
-        <InfoToggle label="About AI recording">
-          Start recording uses AI: say the medicines in your own words, press Stop, and each one is added as a row for you to check. The whole
+        <InfoToggle label="About AI dictation">
+          AI dictation: say the medicines in your own words, press Stop, and each one is added as a row for you to check. The whole
           recording (including any name said) is sent to OpenAI to be written down; nothing is kept. Use fake patients only until the app is reviewed.
         </InfoToggle>
       )}
