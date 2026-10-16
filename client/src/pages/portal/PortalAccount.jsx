@@ -1,27 +1,27 @@
 import { useState } from 'react';
-import { KeyRound, LogIn, UserPlus } from 'lucide-react';
+import { KeyRound, LogIn, Mail, Smartphone, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PasswordInput } from '../../components/PasswordInput.jsx';
 import { Alert, Field } from '../../components/ui.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
 import { portalError, portalWords } from './portalWords.js';
 
-// The hospital's own portal page (/portal/h/<code>, docs/PATIENT_SIGNUP_PLAN.md): sign in with ABHA, or sign up with
-// ABHA – both with an OTP from ABDM to her mobile. Sign-up only puts her in reception's list; she can sign in once
-// the hospital has confirmed her. No Aadhaar card or number is asked for. Patients with a paper code sign in on
-// /portal as before.
+// A patient's own account on the hospital's portal (owner, 16 Oct 2026 – docs/PATIENT_ACCOUNTS_PLAN.md): Sign in with
+// mobile number + OTP or email + password, or Sign up (name, age, mobile, email, password) – the registration then
+// waits for reception to approve it. Shown on the sign-in page (Patient) and on the hospital's portal address.
+// Patients with a paper code sign in on /portal as before.
 
-const HINTS = ['abha-number', 'abha-address', 'mobile'];
+/** A refusal in her language; a pending or rejected registration is a notice, not an error. */
+function Refusal({ error, lang }) {
+  if (!error) return null;
+  const notice = ['ACCOUNT_PENDING', 'ACCOUNT_REJECTED'].includes(error.code);
+  return <Alert type={notice ? 'warning' : 'error'}>{portalError(error, lang, { account: true })}</Alert>;
+}
 
-/** Her ABHA as she knows it, then the OTP. Calls onVerified(answer of the verify step) once ABDM accepted the OTP. */
-function OtpSteps({ hospitalKey, purpose, lang, onVerified, children }) {
-  const w = accountWords(lang);
-  const [hint, setHint] = useState('abha-number');
-  const [value, setValue] = useState('');
-  const [sent, setSent] = useState(null); // { id, sentTo, practiceOtp? }
-  const [otp, setOtp] = useState('');
-  const [error, setError] = useState(null);
+function useStep() {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
   const run = async (fn) => {
     setBusy(true);
     setError(null);
@@ -29,74 +29,62 @@ function OtpSteps({ hospitalKey, purpose, lang, onVerified, children }) {
       await fn();
     } catch (err) {
       setError(err);
-      if (err.code === 'EXPIRED') setSent(null);
     } finally {
       setBusy(false);
     }
   };
-  const send = (e) => {
-    e.preventDefault();
-    run(async () => {
-      setSent(await portal(`/h/${hospitalKey}/otp`, { method: 'POST', body: { purpose, hint, value } }));
-      setOtp('');
-    });
-  };
-  const verify = (e) => {
-    e.preventDefault();
-    run(async () => onVerified(await portal(`/h/${hospitalKey}/${purpose}/verify`, { method: 'POST', body: { id: sent.id, otp } })));
-  };
-  const labels = { 'abha-number': w.abhaNumber, 'abha-address': w.abhaAddress, mobile: w.mobile };
-  const hints = { 'abha-number': w.abhaNumberHint, 'abha-address': w.abhaAddressHint, mobile: w.mobileHint };
-  const errorText = error ? portalError(error, lang, { account: true }) : null;
+  return { busy, error, run, setError };
+}
 
+function OtpSignIn({ hospitalKey, otpMode, lang, onSignedIn }) {
+  const w = accountWords(lang);
+  const [mobile, setMobile] = useState('');
+  const [sent, setSent] = useState(null); // { sentTo, practiceOtp? }
+  const [otp, setOtp] = useState('');
+  const step = useStep();
+  if (otpMode === 'off') return <Alert type="info">{w.otpOff}</Alert>;
   if (!sent) {
     return (
-      <form onSubmit={send} noValidate>
-        {children}
-        <Alert type="error">{errorText}</Alert>
-        <div className="segmented portal-abha-kind" role="group" aria-label={w.abhaNumber}>
-          {HINTS.map((h) => (
-            <button
-              key={h}
-              type="button"
-              aria-pressed={hint === h}
-              onClick={() => {
-                setHint(h);
-                setValue('');
-              }}
-            >
-              {labels[h]}
-            </button>
-          ))}
-        </div>
-        <Field label={labels[hint]} id={`portal-${purpose}-value`} hint={hints[hint]} keepHint>
-          <input
-            id={`portal-${purpose}-value`}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            inputMode={hint === 'abha-address' ? 'email' : 'numeric'}
-            autoComplete="off"
-            autoCapitalize="none"
-            maxLength={60}
-          />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          step.run(async () => {
+            setSent(await portal(`/h/${hospitalKey}/otp`, { method: 'POST', body: { mobile } }));
+            setOtp('');
+          });
+        }}
+        noValidate
+      >
+        <Refusal error={step.error} lang={lang} />
+        <Field label={w.mobile} id="portal-mobile" hint={w.mobileHint}>
+          <input id="portal-mobile" type="tel" inputMode="numeric" autoComplete="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} maxLength={20} />
         </Field>
-        <button type="submit" className="btn btn-primary" disabled={busy || value.trim().length < 3}>
-          {busy ? w.sendingOtp : w.sendOtp}
+        <button type="submit" className="btn btn-primary" disabled={step.busy || mobile.replace(/\D/g, '').length < 10}>
+          {step.busy ? w.sendingOtp : w.sendOtp}
         </button>
       </form>
     );
   }
   return (
-    <form onSubmit={verify} noValidate>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        step.run(async () => {
+          await portal(`/h/${hospitalKey}/otp/verify`, { method: 'POST', body: { mobile, otp } });
+          onSignedIn();
+        });
+      }}
+      noValidate
+    >
       <p>{w.otpSentTo(sent.sentTo)}</p>
       {sent.practiceOtp && <Alert type="info">{w.practiceOtp(sent.practiceOtp)}</Alert>}
-      <Alert type="error">{errorText}</Alert>
-      <Field label={w.otp} id={`portal-${purpose}-otp`}>
-        <input id={`portal-${purpose}-otp`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
+      <Refusal error={step.error} lang={lang} />
+      <Field label={w.otp} id="portal-otp">
+        <input id="portal-otp" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
       </Field>
       <div className="row">
-        <button type="submit" className="btn btn-primary" disabled={busy || otp.length !== 6}>
-          {busy ? w.checking : w.next}
+        <button type="submit" className="btn btn-primary" disabled={step.busy || otp.length !== 6}>
+          {step.busy ? w.signingIn : w.signIn}
         </button>
         <button type="button" className="btn btn-link" onClick={() => setSent(null)}>
           {w.startAgain}
@@ -106,124 +94,99 @@ function OtpSteps({ hospitalKey, purpose, lang, onVerified, children }) {
   );
 }
 
-function AbhaSignIn({ hospitalKey, lang, onSignedIn }) {
+function PasswordSignIn({ hospitalKey, lang, onSignedIn }) {
   const w = accountWords(lang);
-  const [choose, setChoose] = useState(null); // { id, choose: [{ id, name }] }
-  const [error, setError] = useState(null);
-  const verified = (out) => {
-    if (out.choose) setChoose(out);
-    else onSignedIn();
-  };
-  const pick = async (patientId) => {
-    setError(null);
-    try {
-      await portal(`/h/${hospitalKey}/signin`, { method: 'POST', body: { id: choose.id, patientId } });
-      onSignedIn();
-    } catch (err) {
-      setError(err);
-      setChoose(null);
-    }
-  };
-  if (choose) {
-    return (
-      <fieldset className="portal-choose">
-        <legend>{w.chooseName}</legend>
-        {choose.choose.map((p) => (
-          <button key={p.id} type="button" className="btn btn-secondary" onClick={() => pick(p.id)}>
-            <LogIn aria-hidden="true" /> {p.name}
-          </button>
-        ))}
-      </fieldset>
-    );
-  }
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const step = useStep();
   return (
-    <>
-      <Alert type="error">{error ? portalError(error, lang, { account: true }) : null}</Alert>
-      <OtpSteps hospitalKey={hospitalKey} purpose="signin" lang={lang} onVerified={verified}>
-        <p>{w.abhaIntro}</p>
-      </OtpSteps>
-    </>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        step.run(async () => {
+          try {
+            await portal(`/h/${hospitalKey}/login`, { method: 'POST', body: { email, password } });
+            onSignedIn();
+          } finally {
+            setPassword('');
+          }
+        });
+      }}
+      noValidate
+    >
+      <Refusal error={step.error} lang={lang} />
+      <Field label={w.email} id="portal-email">
+        <input id="portal-email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} />
+      </Field>
+      <Field label={w.password} id="portal-password">
+        <PasswordInput id="portal-password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </Field>
+      <button type="submit" className="btn btn-primary" disabled={step.busy || !email.trim() || !password}>
+        {step.busy ? w.signingIn : w.signIn}
+      </button>
+      <p className="hint">{w.forgotPassword}</p>
+    </form>
   );
 }
 
-function AbhaSignUp({ hospitalKey, hospital, lang }) {
+function SignUp({ hospitalKey, hospital, lang }) {
   const w = accountWords(lang);
-  const [step, setStep] = useState(null); // { id, accounts }
-  const [abha, setAbha] = useState('');
+  const [form, setForm] = useState({ fullName: '', ageYears: '', mobile: '', email: '', password: '' });
   const [agreed, setAgreed] = useState(false);
-  const [done, setDone] = useState(null); // { signupDays }
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
-  if (done) return <Alert type="success">{w.signedUp(done.signupDays)}</Alert>;
-  if (!step) {
-    return (
-      <OtpSteps
-        hospitalKey={hospitalKey}
-        purpose="signup"
-        lang={lang}
-        onVerified={(out) => {
-          setStep(out);
-          setAbha(out.accounts.length === 1 ? out.accounts[0].abhaNumber : '');
-        }}
-      >
-        <p>{w.signupIntro}</p>
-        <p className="hint">{w.noAadhaar}</p>
-      </OtpSteps>
-    );
-  }
-  const submit = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      setDone(await portal(`/h/${hospitalKey}/signup`, { method: 'POST', body: { id: step.id, abhaNumber: abha, consent: agreed } }));
-    } catch (err) {
-      setError(err);
-      if (err.code === 'EXPIRED') setStep(null);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const [done, setDone] = useState(false);
+  const step = useStep();
+  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+  const fields = step.error?.fields ?? {};
+  if (done) return <Alert type="success">{w.signedUp(hospital.name)}</Alert>;
   return (
-    <form onSubmit={submit} noValidate>
-      <Alert type="error">{error ? portalError(error, lang, { account: true }) : null}</Alert>
-      <fieldset className="portal-choose">
-        <legend>{w.chooseAbha}</legend>
-        {step.accounts.map((a) => (
-          <label key={a.abhaNumber} className="check">
-            <input type="radio" name="portal-abha" checked={abha === a.abhaNumber} onChange={() => setAbha(a.abhaNumber)} />{' '}
-            <span>
-              <strong>{a.name}</strong>
-              <span className="muted">
-                {' '}
-                · {a.abhaNumber}
-                {a.yearOfBirth ? ` · ${w.bornIn(a.yearOfBirth)}` : ''}
-              </span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        step.run(async () => {
+          await portal(`/h/${hospitalKey}/signup`, { method: 'POST', body: { ...form, consent: agreed } });
+          setDone(true);
+        });
+      }}
+      noValidate
+    >
+      <Refusal error={step.error} lang={lang} />
+      <Field label={w.fullName} id="signup-name" error={fields.fullName}>
+        <input id="signup-name" autoComplete="name" value={form.fullName} onChange={set('fullName')} maxLength={150} />
+      </Field>
+      <Field label={w.age} id="signup-age" error={fields.ageYears}>
+        <input id="signup-age" inputMode="numeric" value={form.ageYears} onChange={set('ageYears')} maxLength={3} />
+      </Field>
+      <Field label={w.mobile} id="signup-mobile" error={fields.mobile}>
+        <input id="signup-mobile" type="tel" inputMode="numeric" autoComplete="tel" value={form.mobile} onChange={set('mobile')} maxLength={20} />
+      </Field>
+      <Field label={w.email} id="signup-email" error={fields.email}>
+        <input id="signup-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} maxLength={254} />
+      </Field>
+      <Field label={w.password} id="signup-password" error={fields.password} hint={w.passwordHint} keepHint>
+        <PasswordInput id="signup-password" autoComplete="new-password" value={form.password} onChange={set('password')} />
+      </Field>
       <label className="check">
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> {w.agree(hospital.name)}
       </label>
-      <button type="submit" className="btn btn-primary" disabled={busy || !abha || !agreed}>
-        <UserPlus aria-hidden="true" /> {busy ? w.signingUp : w.signUp}
+      <button type="submit" className="btn btn-primary" disabled={step.busy || !agreed}>
+        <UserPlus aria-hidden="true" /> {step.busy ? w.signingUp : w.signUp}
       </button>
     </form>
   );
 }
 
 /**
- * The hospital's page before she is signed in: sign in with ABHA, or sign up (exported for the tests). bare: inside
- * another card (the Patient side of the sign-in page) – no card and no title of its own.
+ * Sign in or sign up on one hospital's portal (exported for the tests and the sign-in page). bare: inside another card
+ * (the Patient side of the sign-in page) – no card and no title of its own. otpMode: 'sms' | 'practice' | 'off'.
  */
-export function HospitalEntry({ hospitalKey, hospital, lang, onSignedIn, initialTab = 'signin', bare = false }) {
+export function HospitalEntry({ hospitalKey, hospital, otpMode = 'practice', lang, onSignedIn, initialTab = 'signin', bare = false }) {
   const w = accountWords(lang);
   const pw = portalWords(lang);
   const [tab, setTab] = useState(initialTab);
+  const [how, setHow] = useState(otpMode === 'off' ? 'password' : 'otp');
   const Wrap = bare ? 'div' : 'section';
   return (
-    <Wrap className={bare ? 'portal-entry' : 'card portal-card'}>
+    <Wrap className={bare ? 'portal-entry' : 'card portal-card portal-entry'}>
       {!bare && <h1>{w.hospitalTitle(hospital.name)}</h1>}
       <div className="segmented" role="group" aria-label={w.hospitalTitle(hospital.name)}>
         <button type="button" aria-pressed={tab === 'signin'} onClick={() => setTab('signin')}>
@@ -235,7 +198,19 @@ export function HospitalEntry({ hospitalKey, hospital, lang, onSignedIn, initial
       </div>
       {tab === 'signin' ? (
         <>
-          <AbhaSignIn key="signin" hospitalKey={hospitalKey} lang={lang} onSignedIn={onSignedIn} />
+          <div className="segmented portal-how" role="group" aria-label={w.signInTab}>
+            <button type="button" aria-pressed={how === 'otp'} onClick={() => setHow('otp')}>
+              <Smartphone aria-hidden="true" /> {w.withOtp}
+            </button>
+            <button type="button" aria-pressed={how === 'password'} onClick={() => setHow('password')}>
+              <Mail aria-hidden="true" /> {w.withPassword}
+            </button>
+          </div>
+          {how === 'otp' ? (
+            <OtpSignIn key="otp" hospitalKey={hospitalKey} otpMode={otpMode} lang={lang} onSignedIn={onSignedIn} />
+          ) : (
+            <PasswordSignIn key="password" hospitalKey={hospitalKey} lang={lang} onSignedIn={onSignedIn} />
+          )}
           <p>
             <Link to="/portal">
               <KeyRound aria-hidden="true" /> {w.withCode}
@@ -243,9 +218,41 @@ export function HospitalEntry({ hospitalKey, hospital, lang, onSignedIn, initial
           </p>
         </>
       ) : (
-        <AbhaSignUp key="signup" hospitalKey={hospitalKey} hospital={hospital} lang={lang} />
+        <SignUp key="signup" hospitalKey={hospitalKey} hospital={hospital} lang={lang} />
       )}
       <p className="hint">{pw.sharedDevice}</p>
     </Wrap>
+  );
+}
+
+/** Her new password, on her page once signed in with her own account (also the way back after a forgotten one). */
+export function ChangePassword({ lang, onClose }) {
+  const w = accountWords(lang);
+  const [password, setPassword] = useState('');
+  const [saved, setSaved] = useState(false);
+  const step = useStep();
+  if (saved) return <Alert type="success" onClose={onClose}>{w.passwordSaved}</Alert>;
+  return (
+    <form
+      className="portal-password"
+      onSubmit={(e) => {
+        e.preventDefault();
+        step.run(async () => {
+          await portal('/account/password', { method: 'POST', body: { password } });
+          setSaved(true);
+        });
+      }}
+      noValidate
+    >
+      <Refusal error={step.error} lang={lang} />
+      <Field label={w.newPassword} id="portal-new-password" error={step.error?.fields?.password} hint={w.passwordHint} keepHint>
+        <PasswordInput id="portal-new-password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </Field>
+      <div className="row">
+        <button type="submit" className="btn btn-secondary" disabled={step.busy || password.length < 8}>
+          {step.busy ? w.saving : w.savePassword}
+        </button>
+      </div>
+    </form>
   );
 }

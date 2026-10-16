@@ -27,16 +27,16 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   (3) Prescription design → "Fine-tune": font (Perinexa, Arial, Georgia), text / medicine-name / doctor-name sizes in
   points, line spacing, left and right margins, and the doctor's own section titles. Still to do: several
   prescriptions per visit (changes the visit model, pharmacy sales, ABDM records, signing – planned separately).
-- **Patients sign up and see their records online (16 Oct 2026, branch `patient-signup`, not merged yet – the owner
-  lifted the feature freeze for this):** plan and owner decisions in `docs/PATIENT_SIGNUP_PLAN.md`. A patient opens the
-  hospital's portal address (on a poster), signs up with her ABHA and an OTP – **no Aadhaar card is uploaded or
-  stored** (the owner chose ABHA instead) – and waits in reception's Scan & Share list, marked "Signed up online",
-  until reception registers her or finds her record. Then she signs in with her ABHA and an OTP and sees her
-  appointment and booking (as before), prescriptions and visits (signed visits only, as printed), lab reports (once a
-  doctor reviewed them) and bills; never notes, risk or anything about HIV. Hospital admin → Patient messages → "Let
-  patients sign up themselves with their ABHA". Marathi and Hindi wording DRAFT (`TRANSLATIONS_TO_CHECK.md` section
-  5). Not done: QR code on the poster (new library), printing lab reports and bills, blocking one patient's ABHA
-  sign-in. Tested in practice mode only. **How to test:** see "How to test patient sign-up with ABHA" below.
+- **Patients' own accounts and their records online (16 Oct 2026, branch `patient-accounts`, not merged yet – the owner
+  lifted the feature freeze for this):** `docs/PATIENT_ACCOUNTS_PLAN.md`. On the sign-in page a patient chooses
+  **Patient**, signs up (name, age, mobile, email, password) and waits; reception approves her in Patients → Online
+  sign-ups (choosing her record or registering her) or rejects. Then she signs in with **mobile + OTP** or **email +
+  password** and sees her appointment and booking, prescriptions and visits (signed only, as printed), lab reports
+  (reviewed only) and bills; never notes, risk or anything about HIV. OTPs go by the reminders' SMS provider; without
+  one a practice OTP shows on screen (never on a live server). This replaced the ABHA sign-up of the same morning
+  (`docs/PATIENT_SIGNUP_PLAN.md`, merged into deploy-hardening before the owner changed her mind) – the owner did not
+  want ABHA sign-in. Hospital admin → Patient messages → "Let patients sign up for their own account". Marathi and Hindi
+  DRAFT (`TRANSLATIONS_TO_CHECK.md` section 5). **How to test:** see "How to test patients' own accounts" below.
 
 ## Done
 - Project rules saved in `CLAUDE.md`.
@@ -2445,19 +2445,19 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
   small credit limit) and paste it after `OPENAI_API_KEY=` in `server/.env` yourself – never in chat – then
   restart Perinexa. Fake data only.
 
-## How to test patient sign-up with ABHA (fake data only, practice mode)
+## How to test patients' own accounts (fake data only)
 1. As the hospital admin: Hospital admin → Patient messages → tick "Let patients see their next appointment and care
-   plan online" and "Let patients sign up themselves with their ABHA" → Save. The portal address appears below the
-   switch; "Print a poster" shows the poster.
-2. Open the portal address in another browser (or a private window). Sign up → ABHA number `91-1111-2222-3333` (a
-   made-up practice ABHA) → Send OTP → OTP `123456` → Continue → tick the agreement → Sign up. She is thanked; no
-   patient is made yet.
-3. As reception: Today → Scan & Share (ABHA): "Sample Abha Mother – Signed up online" → Register (the form is filled
-   in) → save her.
-4. Back on the portal address: Sign in → the same ABHA number → OTP `123456` → she sees her page and the tabs
-   Prescriptions, Lab reports, Visits and Bills. A visit shows only after the doctor signs it; a lab report only after
-   a doctor reviews it.
-5. Try a wrong OTP, an ABHA nobody registered here (`91-4444-5555-6666` before it is linked): one plain refusal.
+   plan online" and "Let patients sign up for their own account" → Save.
+2. Sign out. On the sign-in page choose **Patient** → **Sign up**: a made-up name, age, mobile (e.g. 9000000009),
+   email and password → tick the agreement → Sign up. Try to sign in with that email and password: "waiting for …
+   to approve it".
+3. As reception: Patients → **Online sign-ups** (also on Today): **Register and approve** (or Find her record and
+   approve, or Reject with a reason).
+4. Sign out. Patient → Sign in → **Mobile number + OTP**: her mobile → Send OTP; without an SMS provider the OTP is
+   shown on screen ("Practice mode") → Sign in. Or **Email + password**. Her page opens; "Change password" is next to
+   the hospital's name.
+5. Five wrong passwords lock the account for 30 minutes. Reject, or Withdraw on her record (Reminders and portal):
+   she is told to call the hospital.
 
 ## How to test risk level and care-plan items from findings in this pregnancy (fake data only)
 1. **The rules first.** Log in as Dr. Riley Demo → Clinic library → Care plan templates → the standard antenatal

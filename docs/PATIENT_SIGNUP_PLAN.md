@@ -1,5 +1,9 @@
 # Patient sign-up and records in the patient portal – plan (owner, 16 Oct 2026)
 
+> **Sign-up and sign-in with ABHA were replaced the same day** by patients' own accounts (mobile + OTP, or email +
+> password, approved by reception): see `docs/PATIENT_ACCOUNTS_PLAN.md`. What she sees once signed in (sections 4, 5
+> and 8 below) is unchanged.
+
 Status: **approved by the owner on 16 Oct 2026** (with the two choices in section 5). Branch `patient-signup` (from `deploy-hardening`).
 
 Asked for by the owner: a patient signs in herself, registers herself, books an appointment and sees her reports,

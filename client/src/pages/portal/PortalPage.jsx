@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import logo from '../../assets/brand/perinexa-logo.png';
 import { Alert, Field, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
-import { HospitalEntry } from './PortalAccount.jsx';
+import { ChangePassword, HospitalEntry } from './PortalAccount.jsx';
 import { RECORD_TABS, RecordsTab, recordIcon } from './PortalRecords.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
@@ -28,9 +28,9 @@ import {
 // computer (only the language). Without a choice she sees it in the language recorded for her messages once she is
 // signed in, and the page stays in that language after she signs out or is timed out (the notice about it included).
 // The Marathi and Hindi wording is a DRAFT (portalWords.js); an item a doctor added or reworded is shown as typed.
-// Since 16 Oct 2026 (docs/PATIENT_SIGNUP_PLAN.md): the hospital's own address /portal/h/<code> adds sign-in and
-// sign-up with ABHA (PortalAccount.jsx), and once signed in she has tabs for her prescriptions, lab reports, visits
-// and bills (PortalRecords.jsx).
+// Since 16 Oct 2026 (docs/PATIENT_ACCOUNTS_PLAN.md): her own account – sign up, then sign in with mobile + OTP or
+// email + password once reception approved it (PortalAccount.jsx; also on the sign-in page, Patient) – and once
+// signed in, tabs for her prescriptions, lab reports, visits and bills (PortalRecords.jsx).
 
 /** English, मराठी, हिंदी – at the top of every portal page. */
 function LanguageSwitch({ lang, onChange }) {
@@ -215,6 +215,8 @@ export function MyCare({ data, booking, onChanged, onSignOut, lang = 'en' }) {
   const w = portalWords(lang);
   const { hospital } = data;
   const [tab, setTab] = useState('home');
+  const [changing, setChanging] = useState(false);
+  const aw = accountWords(lang);
   return (
     <div className="portal-stack">
       <section className="card portal-card">
@@ -224,7 +226,18 @@ export function MyCare({ data, booking, onChanged, onSignOut, lang = 'en' }) {
             <LogOut aria-hidden="true" /> {w.signOut}
           </button>
         </div>
-        <p className="muted">{hospital.name}</p>
+        <p className="muted">
+          {hospital.name}
+          {data.canChangePassword && !changing && (
+            <>
+              {' · '}
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setChanging(true)}>
+                {aw.changePassword}
+              </button>
+            </>
+          )}
+        </p>
+        {changing && <ChangePassword lang={lang} onClose={() => setChanging(false)} />}
         <PortalTabs tab={tab} onTab={setTab} lang={lang} />
       </section>
       {tab !== 'home' ? <RecordsTab key={tab} tab={tab} lang={lang} /> : <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} />}
@@ -312,7 +325,7 @@ export const signInState = (before, error = null) => ({ step: 'signin', recorded
 
 /**
  * The portal as it looks for one state (exported for the tests); its language: chosen on this phone, else recorded.
- * hospital: on the hospital's own address, { key, data, error } – sign-in and sign-up with ABHA instead of the code.
+ * hospital: on the hospital's own address, { key, data, error } – her own account's sign-in and sign-up instead of the code.
  */
 export function PortalScreen({ state, notice, chosen, onChoose, onDismiss, onSignedIn, onChanged, onSignOut, hospital = null }) {
   const lang = portalLanguage(chosen, state.recorded);
@@ -338,7 +351,7 @@ export function PortalScreen({ state, notice, chosen, onChoose, onDismiss, onSig
       {state.step === 'loading' && <p className="muted">{w.loading}</p>}
       {state.step === 'signin' && !hospital && <SignIn lang={lang} onDone={onSignedIn} />}
       {state.step === 'signin' && hospital?.error && <Alert type="error">{portalError(hospital.error, lang, { account: true })}</Alert>}
-      {state.step === 'signin' && hospital?.data && <HospitalEntry hospitalKey={hospital.key} hospital={hospital.data.hospital} lang={lang} onSignedIn={onSignedIn} />}
+      {state.step === 'signin' && hospital?.data && <HospitalEntry hospitalKey={hospital.key} hospital={hospital.data.hospital} otpMode={hospital.data.otp} lang={lang} onSignedIn={onSignedIn} />}
       {state.step === 'in' && <MyCare data={state.data} booking={state.booking} onChanged={onChanged} onSignOut={onSignOut} lang={lang} />}
     </main>
   );

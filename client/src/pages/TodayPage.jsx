@@ -11,6 +11,7 @@ import { useFetch } from '../hooks/useFetch.js';
 import { CARE_PLAN_ROLES, canBookAppointments, canRegisterPatients, canSeeAppointments, canSeeCalendar, hospitalModules } from '../platform/modules.js';
 import { rupees } from './billing/billingFormat.js';
 import { ScanShareSection } from './abdm/ScanShare.jsx';
+import { SignupsSection } from './patients/SignupsPage.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { HandoverList, VITALS_DUE_HOURS, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
@@ -748,6 +749,7 @@ function RoleToday({ roles, lensBar = null }) {
         {isReception && stays.data && <DischargesSection desk={stays.data} bills={unpaid.data?.bills} />}
         {isReception && desk.data && <TomorrowCalls list={desk.data.tomorrowList} tomorrow={desk.data.tomorrow} />}
         {has(roles, ['receptionist', 'doctor']) && <ScanShareSection />}
+        {has(roles, ['receptionist']) && <SignupsSection />}
         {today.data?.guests && <QuickBookingsSection guests={today.data.guests} canRegister={canRegisterPatients(roles)} />}
         {/* Nurses: who arrived and is waiting for her visit to be started, then the visits started today */}
         {!appointments && worklist.data?.waiting?.length > 0 && (

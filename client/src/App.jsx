@@ -18,6 +18,7 @@ import { LetterheadSettingsPage } from './pages/settings/LetterheadSettingsPage.
 import { PatientMessagesSettingsPage } from './pages/settings/PatientMessagesSettingsPage.jsx';
 import { RemindersPage } from './pages/reminders/RemindersPage.jsx';
 import { PortalPage } from './pages/portal/PortalPage.jsx';
+import { SignupsPage } from './pages/patients/SignupsPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { ChangePasswordPage } from './pages/ChangePasswordPage.jsx';
 import { TodayPage } from './pages/TodayPage.jsx';
@@ -197,6 +198,7 @@ export function App() {
             <Route element={<RequireTenant />}>
               <Route path="patients" element={<PatientsPage />} />
               <Route path="patients/new" element={<PatientNewPage />} />
+              <Route path="patients/sign-ups" element={<SignupsPage />} />
               <Route path="patients/new/:careType" element={<PatientNewPage />} />
               <Route path="patients/new/:id/clinical" element={<NewPatientClinicalPage />} />
               <Route path="patients/:id" element={<PatientDetailPage />}>
