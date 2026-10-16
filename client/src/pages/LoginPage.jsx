@@ -172,6 +172,28 @@ function PatientSignIn({ onSignedIn }) {
       .catch((error) => setList({ error }));
   }, []);
   const hospital = list?.hospitals?.find((h) => h.key === key) ?? null;
+  const several = list?.hospitals?.length > 1;
+  const chooser = several && (
+    <Field label="Your hospital" id="patient-hospital">
+      <select id="patient-hospital" value={key} onChange={(e) => setKey(e.target.value)}>
+        <option value="">Choose…</option>
+        {list.hospitals.map((h) => (
+          <option key={h.key} value={h.key}>
+            {h.name}
+          </option>
+        ))}
+      </select>
+    </Field>
+  );
+  // A hospital chosen: its sign-in and sign-up, with their own heading (the hospital's name in it)
+  if (hospital) {
+    return (
+      <div>
+        {chooser}
+        <HospitalEntry key={hospital.key} bare hospitalKey={hospital.key} hospital={hospital} otpMode={list.otp} lang="en" onSignedIn={() => onSignedIn(hospital.key)} />
+      </div>
+    );
+  }
   return (
     <div>
       <header className="auth1-head">
@@ -181,24 +203,10 @@ function PatientSignIn({ onSignedIn }) {
       {list?.error && <Alert type="error">{list.error.message}</Alert>}
       {!list && <p className="muted">Loading…</p>}
       {list?.hospitals && list.hospitals.length === 0 && <Alert type="info">No hospital offers patient sign-in online yet. If the hospital gave you a code on paper, use the link below.</Alert>}
-      {list?.hospitals?.length > 1 && (
-        <Field label="Your hospital" id="patient-hospital">
-          <select id="patient-hospital" value={key} onChange={(e) => setKey(e.target.value)}>
-            <option value="">Choose…</option>
-            {list.hospitals.map((h) => (
-              <option key={h.key} value={h.key}>
-                {h.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-      {hospital && <HospitalEntry key={hospital.key} bare hospitalKey={hospital.key} hospital={hospital} otpMode={list.otp} lang="en" onSignedIn={() => onSignedIn(hospital.key)} />}
-      {(!hospital || list?.hospitals?.length === 0) && (
-        <p className="auth1-foot">
-          <Lock aria-hidden="true" /> <a href="/portal">I have a code on paper from the hospital</a>
-        </p>
-      )}
+      {chooser}
+      <p className="auth1-foot">
+        <Lock aria-hidden="true" /> <a href="/portal">I have a code on paper from the hospital</a>
+      </p>
     </div>
   );
 }

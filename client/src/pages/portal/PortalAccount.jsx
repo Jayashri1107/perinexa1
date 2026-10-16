@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyRound, LogIn, Mail, Smartphone, UserPlus } from 'lucide-react';
+import { ArrowRight, CircleCheck, KeyRound, Mail, Smartphone, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PasswordInput } from '../../components/PasswordInput.jsx';
 import { Alert, Field } from '../../components/ui.jsx';
@@ -59,7 +59,7 @@ function OtpSignIn({ hospitalKey, otpMode, lang, onSignedIn }) {
         <Field label={w.mobile} id="portal-mobile" hint={w.mobileHint}>
           <input id="portal-mobile" type="tel" inputMode="numeric" autoComplete="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} maxLength={20} />
         </Field>
-        <button type="submit" className="btn btn-primary" disabled={step.busy || mobile.replace(/\D/g, '').length < 10}>
+        <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={step.busy || mobile.replace(/\D/g, '').length < 10}>
           {step.busy ? w.sendingOtp : w.sendOtp}
         </button>
       </form>
@@ -82,14 +82,18 @@ function OtpSignIn({ hospitalKey, otpMode, lang, onSignedIn }) {
       <Field label={w.otp} id="portal-otp">
         <input id="portal-otp" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
       </Field>
-      <div className="row">
-        <button type="submit" className="btn btn-primary" disabled={step.busy || otp.length !== 6}>
-          {step.busy ? w.signingIn : w.signIn}
-        </button>
-        <button type="button" className="btn btn-link" onClick={() => setSent(null)}>
-          {w.startAgain}
-        </button>
-      </div>
+      <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={step.busy || otp.length !== 6}>
+        {step.busy ? (
+          w.signingIn
+        ) : (
+          <>
+            {w.signIn} <ArrowRight aria-hidden="true" />
+          </>
+        )}
+      </button>
+      <button type="button" className="btn btn-link btn-sm auth-again" onClick={() => setSent(null)}>
+        {w.startAgain}
+      </button>
     </form>
   );
 }
@@ -121,15 +125,21 @@ function PasswordSignIn({ hospitalKey, lang, onSignedIn }) {
       <Field label={w.password} id="portal-password">
         <PasswordInput id="portal-password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </Field>
-      <button type="submit" className="btn btn-primary" disabled={step.busy || !email.trim() || !password}>
-        {step.busy ? w.signingIn : w.signIn}
+      <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={step.busy || !email.trim() || !password}>
+        {step.busy ? (
+          w.signingIn
+        ) : (
+          <>
+            {w.signIn} <ArrowRight aria-hidden="true" />
+          </>
+        )}
       </button>
-      <p className="hint">{w.forgotPassword}</p>
+      <p className="hint auth-note">{w.forgotPassword}</p>
     </form>
   );
 }
 
-function SignUp({ hospitalKey, hospital, lang }) {
+function SignUp({ hospitalKey, hospital, lang, onBack }) {
   const w = accountWords(lang);
   const [form, setForm] = useState({ fullName: '', ageYears: '', mobile: '', email: '', password: '' });
   const [agreed, setAgreed] = useState(false);
@@ -137,7 +147,18 @@ function SignUp({ hospitalKey, hospital, lang }) {
   const step = useStep();
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const fields = step.error?.fields ?? {};
-  if (done) return <Alert type="success">{w.signedUp(hospital.name)}</Alert>;
+  if (done) {
+    return (
+      <div className="auth-done" role="status">
+        <CircleCheck aria-hidden="true" />
+        <h2>{w.signedUpTitle}</h2>
+        <p>{w.signedUp(hospital.name)}</p>
+        <button type="button" className="btn btn-secondary btn-block" onClick={onBack}>
+          {w.backToSignIn}
+        </button>
+      </div>
+    );
+  }
   return (
     <form
       onSubmit={(e) => {
@@ -154,13 +175,15 @@ function SignUp({ hospitalKey, hospital, lang }) {
       <Field label={w.fullName} id="signup-name" error={fields.fullName}>
         <input id="signup-name" autoComplete="name" value={form.fullName} onChange={set('fullName')} maxLength={150} />
       </Field>
-      <Field label={w.age} id="signup-age" error={fields.ageYears}>
-        <input id="signup-age" inputMode="numeric" value={form.ageYears} onChange={set('ageYears')} maxLength={3} />
-      </Field>
-      <Field label={w.mobile} id="signup-mobile" error={fields.mobile}>
-        <input id="signup-mobile" type="tel" inputMode="numeric" autoComplete="tel" value={form.mobile} onChange={set('mobile')} maxLength={20} />
-      </Field>
-      <Field label={w.emailOptional} id="signup-email" error={fields.email} hint={w.emailOptionalHint} keepHint>
+      <div className="auth-grid">
+        <Field label={w.mobile} id="signup-mobile" error={fields.mobile}>
+          <input id="signup-mobile" type="tel" inputMode="numeric" autoComplete="tel" value={form.mobile} onChange={set('mobile')} maxLength={20} />
+        </Field>
+        <Field label={w.age} id="signup-age" error={fields.ageYears}>
+          <input id="signup-age" inputMode="numeric" value={form.ageYears} onChange={set('ageYears')} maxLength={3} />
+        </Field>
+      </div>
+      <Field label={w.emailOptional} id="signup-email" error={fields.email} hint={form.email.trim() ? undefined : w.emailOptionalHint} keepHint={!form.email.trim()}>
         <input id="signup-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} maxLength={254} />
       </Field>
       {/* A password only with an email: without one she signs in with her mobile number and an OTP */}
@@ -169,10 +192,11 @@ function SignUp({ hospitalKey, hospital, lang }) {
           <PasswordInput id="signup-password" autoComplete="new-password" value={form.password} onChange={set('password')} />
         </Field>
       )}
-      <label className="check">
-        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> {w.agree(hospital.name)}
+      <label className="check auth-agree">
+        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+        <span>{w.agree(hospital.name)}</span>
       </label>
-      <button type="submit" className="btn btn-primary" disabled={step.busy || !agreed}>
+      <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={step.busy || !agreed}>
         <UserPlus aria-hidden="true" /> {step.busy ? w.signingUp : w.signUp}
       </button>
     </form>
@@ -180,8 +204,8 @@ function SignUp({ hospitalKey, hospital, lang }) {
 }
 
 /**
- * Sign in or sign up on one hospital's portal (exported for the tests and the sign-in page). bare: inside another card
- * (the Patient side of the sign-in page) – no card and no title of its own. otpMode: 'sms' | 'practice' | 'off'.
+ * Sign in or sign up on one hospital's portal (exported for the tests and the sign-in page). bare: inside the sign-in
+ * page's card (Patient) – its own heading, no card. otpMode: 'sms' | 'practice' | 'off'.
  */
 export function HospitalEntry({ hospitalKey, hospital, otpMode = 'practice', lang, onSignedIn, initialTab = 'signin', bare = false }) {
   const w = accountWords(lang);
@@ -189,20 +213,26 @@ export function HospitalEntry({ hospitalKey, hospital, otpMode = 'practice', lan
   const [tab, setTab] = useState(initialTab);
   const [how, setHow] = useState(otpMode === 'off' ? 'password' : 'otp');
   const Wrap = bare ? 'div' : 'section';
+  const signUp = tab === 'signup';
   return (
     <Wrap className={bare ? 'portal-entry' : 'card portal-card portal-entry'}>
-      {!bare && <h1>{w.hospitalTitle(hospital.name)}</h1>}
-      <div className="segmented" role="group" aria-label={w.hospitalTitle(hospital.name)}>
-        <button type="button" aria-pressed={tab === 'signin'} onClick={() => setTab('signin')}>
-          <LogIn aria-hidden="true" /> {w.signInTab}
+      <header className="auth1-head">
+        <h1>{signUp ? w.signUpHeading : w.signInHeading}</h1>
+        <p className="muted">{signUp ? w.signUpLead(hospital.name) : w.signInLead(hospital.name)}</p>
+      </header>
+      <div className="auth-tabs" role="tablist" aria-label={w.signInHeading}>
+        <button type="button" role="tab" aria-selected={!signUp} className={!signUp ? 'active' : ''} onClick={() => setTab('signin')}>
+          {w.signInTab}
         </button>
-        <button type="button" aria-pressed={tab === 'signup'} onClick={() => setTab('signup')}>
-          <UserPlus aria-hidden="true" /> {w.signUpTab}
+        <button type="button" role="tab" aria-selected={signUp} className={signUp ? 'active' : ''} onClick={() => setTab('signup')}>
+          {w.signUpTab}
         </button>
       </div>
-      {tab === 'signin' ? (
+      {signUp ? (
+        <SignUp key="signup" hospitalKey={hospitalKey} hospital={hospital} lang={lang} onBack={() => setTab('signin')} />
+      ) : (
         <>
-          <div className="segmented portal-how" role="group" aria-label={w.signInTab}>
+          <div className="auth-method" role="group" aria-label={w.signInTab}>
             <button type="button" aria-pressed={how === 'otp'} onClick={() => setHow('otp')}>
               <Smartphone aria-hidden="true" /> {w.withOtp}
             </button>
@@ -215,16 +245,16 @@ export function HospitalEntry({ hospitalKey, hospital, otpMode = 'practice', lan
           ) : (
             <PasswordSignIn key="password" hospitalKey={hospitalKey} lang={lang} onSignedIn={onSignedIn} />
           )}
-          <p>
-            <Link to="/portal">
-              <KeyRound aria-hidden="true" /> {w.withCode}
-            </Link>
-          </p>
         </>
-      ) : (
-        <SignUp key="signup" hospitalKey={hospitalKey} hospital={hospital} lang={lang} />
       )}
-      <p className="hint">{pw.sharedDevice}</p>
+      <div className="auth1-foot auth-foot">
+        {!signUp && (
+          <Link to="/portal">
+            <KeyRound aria-hidden="true" /> {w.withCode}
+          </Link>
+        )}
+        <span className="muted">{pw.sharedDevice}</span>
+      </div>
     </Wrap>
   );
 }
