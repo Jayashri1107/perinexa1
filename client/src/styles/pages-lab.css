@@ -94,3 +94,8 @@
 .portal-booking h3 { margin: 0; display: flex; gap: var(--space-2); align-items: center; }
 .portal-times { border: 0; margin: 0; padding: 0; }
 .portal-time-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* Staff or patient on the sign-in page (owner, 16 Oct 2026) */
+.auth-who { display: flex; margin: 0 0 var(--space-4); }
+.auth-who button { flex: 1; justify-content: center; }
+.portal-entry { display: grid; gap: var(--space-3); }
+.portal-entry .btn-primary { width: 100%; }

@@ -91,6 +91,17 @@ describe('the hospital portal address', () => {
   });
 });
 
+describe('the hospitals on the sign-in page', () => {
+  it('lists only hospitals with sign-up on, by name and portal code only', async () => {
+    const other = await createTenant('Other Hospital');
+    expect((await request(app).get('/api/portal/h')).body).toEqual({ hospitals: [] });
+    const key = await signupOn();
+    const res = await request(app).get('/api/portal/h');
+    expect(res.body).toEqual({ hospitals: [{ key, name: 'Signup Hospital' }] });
+    expect(JSON.stringify(res.body)).not.toContain(String(other._id));
+  });
+});
+
 describe('signing up with ABHA', () => {
   it('waits at the desk for 7 days and makes no patient until reception confirms her', async () => {
     const key = await signupOn();

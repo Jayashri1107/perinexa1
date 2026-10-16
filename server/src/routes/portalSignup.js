@@ -27,6 +27,8 @@ import { abhaAccess, portalAudit, startPortalSession } from './portal.js';
 //  - Sign-in with ABHA: the same OTP; works only when a record of this hospital has that ABHA linked. Every refusal
 //    gives the same answer.
 //  - Never stored: the Aadhaar card or number (never asked for), the OTP. Her ABHA details are kept only in the sign-up.
+// The sign-in page (/login → Patient) lists these hospitals by name and opens the same steps there (owner, 16 Oct
+// 2026: one sign-in page for staff and patients; the sessions stay separate – a patient never gets a staff session).
 // The steps are kept in this server's memory for 10 minutes (one server – HANDOVER.md section 7).
 
 const STEP_MINUTES = 10;
@@ -78,6 +80,13 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
   const router = Router();
   const otpLimiter = limiter(otpLimitMax);
   const stepLimiter = limiter(Math.max(30, otpLimitMax * 3));
+
+  // ---------- The hospitals a patient can choose on the sign-in page (owner, 16 Oct 2026) ----------
+  // Only hospitals whose admin switched on sign-up (and the portal): their name and portal code – nothing else.
+  router.get('/', async (_req, res) => {
+    const list = await Tenant.find({ isActive: true, 'messaging.portalEnabled': true, 'messaging.signupKey': { $type: 'string' } }, { name: 1, 'messaging.signupKey': 1 }).sort({ name: 1 }).lean();
+    res.json({ hospitals: list.map((t) => ({ key: t.messaging.signupKey, name: t.name })) });
+  });
 
   // ---------- The hospital's page ----------
 

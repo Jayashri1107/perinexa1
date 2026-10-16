@@ -108,3 +108,11 @@ Everything in sections 1–4 except what is listed under "Not done" below.
   whole page.
 - Real ABDM (sandbox or production) not tried: practice mode only, as for the rest of ABDM.
 
+## 9. One sign-in page (owner, 16 Oct 2026)
+The owner asked for patient sign-in on the same page as staff, not a separate one. The sign-in page (/login) now has
+**Hospital staff | Patient** at the top. Patient: the hospital is chosen from the hospitals that switched on patient
+sign-up (only their names are listed, by `GET /api/portal/h`; one hospital is chosen by itself), then the same ABHA
+sign-in or sign-up as on the hospital's portal address, and a link for patients with a paper code. The sessions stay
+separate: a patient never gets a staff session, and staff sign-in is unchanged. Note for the developer: the list
+shows publicly which hospitals use Perinexa with patient sign-up on.
+

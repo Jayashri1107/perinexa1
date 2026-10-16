@@ -213,14 +213,18 @@ function AbhaSignUp({ hospitalKey, hospital, lang }) {
   );
 }
 
-/** The hospital's page before she is signed in: sign in with ABHA, or sign up (exported for the tests). */
-export function HospitalEntry({ hospitalKey, hospital, lang, onSignedIn, initialTab = 'signin' }) {
+/**
+ * The hospital's page before she is signed in: sign in with ABHA, or sign up (exported for the tests). bare: inside
+ * another card (the Patient side of the sign-in page) – no card and no title of its own.
+ */
+export function HospitalEntry({ hospitalKey, hospital, lang, onSignedIn, initialTab = 'signin', bare = false }) {
   const w = accountWords(lang);
   const pw = portalWords(lang);
   const [tab, setTab] = useState(initialTab);
+  const Wrap = bare ? 'div' : 'section';
   return (
-    <section className="card portal-card">
-      <h1>{w.hospitalTitle(hospital.name)}</h1>
+    <Wrap className={bare ? 'portal-entry' : 'card portal-card'}>
+      {!bare && <h1>{w.hospitalTitle(hospital.name)}</h1>}
       <div className="segmented" role="group" aria-label={w.hospitalTitle(hospital.name)}>
         <button type="button" aria-pressed={tab === 'signin'} onClick={() => setTab('signin')}>
           <LogIn aria-hidden="true" /> {w.signInTab}
@@ -242,6 +246,6 @@ export function HospitalEntry({ hospitalKey, hospital, lang, onSignedIn, initial
         <AbhaSignUp key="signup" hospitalKey={hospitalKey} hospital={hospital} lang={lang} />
       )}
       <p className="hint">{pw.sharedDevice}</p>
-    </section>
+    </Wrap>
   );
 }
