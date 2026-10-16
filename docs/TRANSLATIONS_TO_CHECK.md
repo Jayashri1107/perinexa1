@@ -425,10 +425,16 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `emailOptional` | Email (optional) | ईमेल (ऐच्छिक) | ईमेल (वैकल्पिक) |
 | `emailOptionalHint` | Add one to also sign in with a password. | दिल्यास पासवर्डनेही आत येता येईल. | देने पर पासवर्ड से भी अंदर आ सकते हैं। |
 | `tabs.home` | Home | मुख्य | मुख्य |
+| `tabs.appointments` | Appointments | अपॉइंटमेंट | अपॉइंटमेंट |
 | `tabs.prescriptions` | Prescriptions | औषधचिठ्ठ्या | पर्चे |
 | `tabs.lab` | Lab reports | तपासणी अहवाल | जाँच रिपोर्ट |
 | `tabs.visits` | Visits | भेटी | मुलाक़ातें |
 | `tabs.bills` | Bills | बिले | बिल |
+| `tabs.password` | Change password | पासवर्ड बदला | पासवर्ड बदलें |
+| `menu` | Menu | मेनू | मेनू |
+| `patientRole` | Patient | रुग्ण | मरीज़ |
+| `yourHospital` | Your hospital | तुमचे रुग्णालय | आपका अस्पताल |
+| `welcome` | Welcome, {name} | नमस्कार, {name} | नमस्ते, {name} |
 | `recordsRule` | You see a record here once it is final: visits signed by your doctor, and lab reports your doctor has reviewed. For anything else, please ask the hospital. | नोंद पूर्ण झाल्यावरच इथे दिसते: डॉक्टरांनी सही केलेल्या भेटी, आणि डॉक्टरांनी पाहिलेले तपासणी अहवाल. इतर काहीही हवे असल्यास रुग्णालयाला विचारा. | कोई रिकॉर्ड पूरा होने के बाद ही यहाँ दिखता है: डॉक्टर के हस्ताक्षर वाली मुलाक़ातें, और डॉक्टर द्वारा देखी गई जाँच रिपोर्ट। और कुछ चाहिए तो अस्पताल से पूछें। |
 | `noPrescriptions` | No prescriptions to show yet. | अजून दाखवण्यासाठी औषधचिठ्ठी नाही. | अभी दिखाने के लिए कोई पर्चा नहीं है। |
 | `noLab` | No lab reports to show yet. | अजून दाखवण्यासाठी तपासणी अहवाल नाही. | अभी दिखाने के लिए कोई जाँच रिपोर्ट नहीं है। |
