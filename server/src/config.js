@@ -47,6 +47,8 @@ const schema = z.object({
   SESSION_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  // OTPs one computer may ask for in 15 minutes on a hospital's portal page (sign-up and sign-in with ABHA).
+  PORTAL_OTP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(8),
   // The hospital's time zone: "today" for care plans and pregnancy weeks is the date there.
   HOSPITAL_TIME_ZONE: z.string().default('Asia/Kolkata').refine(isValidTimeZone, 'HOSPITAL_TIME_ZONE is not a known time zone'),
   // Smart features that use AI (OpenAI). Without a key the AI buttons explain that AI is not set up.

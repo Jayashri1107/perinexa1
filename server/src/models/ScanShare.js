@@ -9,7 +9,9 @@ const shareSchema = new mongoose.Schema(
   {
     on: { type: Date, required: true }, // the hospital's day
     token: { type: Number, required: true }, // 1, 2, 3 … per day
-    source: { type: String, enum: ['abdm', 'practice'], required: true },
+    // 'portal': she signed up herself in the patient portal with her ABHA and an OTP (docs/PATIENT_SIGNUP_PLAN.md) –
+    // it waits up to 7 days, not only its own day.
+    source: { type: String, enum: ['abdm', 'practice', 'portal'], required: true },
     requestId: { type: String, default: '' }, // ABDM's request id (to acknowledge)
     context: { type: String, default: '' }, // the counter code of the QR scanned
     profile: {

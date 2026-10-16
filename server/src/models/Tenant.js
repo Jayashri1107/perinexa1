@@ -69,6 +69,9 @@ const tenantSchema = new mongoose.Schema(
       whatsappDocuments: { type: Boolean, default: false },
       // The waiting-room screen: a secret in its web address (no login on the TV). null = switched off.
       displayKey: { type: String, default: null },
+      // Patients may sign up themselves with their ABHA (16 Oct 2026, docs/PATIENT_SIGNUP_PLAN.md): the code in the
+      // hospital's portal address (/portal/h/<code>), printed on a poster. Also opens sign-in with ABHA. null = off.
+      signupKey: { type: String, default: null },
     },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
@@ -78,6 +81,7 @@ const tenantSchema = new mongoose.Schema(
 tenantSchema.index({ name: 1 });
 tenantSchema.index({ createdAt: -1 });
 tenantSchema.index({ 'messaging.displayKey': 1 }, { unique: true, partialFilterExpression: { 'messaging.displayKey': { $type: 'string' } } });
+tenantSchema.index({ 'messaging.signupKey': 1 }, { unique: true, partialFilterExpression: { 'messaging.signupKey': { $type: 'string' } } });
 
 tenantSchema.pre('validate', function () {
   if (this.name) this.nameKey = this.name.trim().toLowerCase();

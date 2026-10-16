@@ -1,4 +1,4 @@
-import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import { bookSlot, cancelAppointment, freeStarts, hospitalDoctors, nextAppointment, scheduleOf } from '../appointments/appointmentService.js';
 import { leaveOn } from '../appointments/slots.js';
@@ -37,6 +37,8 @@ import { letterheadFor } from './settings.js';
 //  - when the hospital admin also switched on online booking (4 Oct 2026), she may book ONE appointment with her own
 //    doctor, from tomorrow up to 30 days ahead, in a free time of the doctor's OPD, and cancel a booking she made
 //    online. She never sees who else is booked – only which times are free.
+//  - sign-up and sign-in with her ABHA and an OTP (16 Oct 2026) are in routes/portalSignup.js; her prescriptions,
+//    lab reports, visits and bills in routes/portalRecords.js (docs/PATIENT_SIGNUP_PLAN.md).
 
 export const portalRouter = Router(); // /api/portal (no staff login)
 export const patientPortalAccessRouter = Router({ mergeParams: true }); // /api/patients/:id/portal-access
@@ -67,7 +69,7 @@ const cookieOptions = () => ({ httpOnly: true, secure: config.cookieSecure, same
 
 // ---------- Staff: the patient's access code ----------
 
-async function portalEnabled(tenantId) {
+export async function portalEnabled(tenantId) {
   const t = await Tenant.findById(tenantId, { messaging: 1 }).lean();
   return Boolean(t?.messaging?.portalEnabled);
 }
@@ -76,7 +78,8 @@ function assertStaff(req, patient) {
   if (!patientAccess(req, patient).view.has('phone')) throw new HttpError(403, "You can't manage this patient's portal access.", 'FORBIDDEN');
 }
 const accessView = (a) => (a ? { createdByName: a.createdByName, createdAt: a.createdAt, expiresAt: a.expiresAt, lastUsedAt: a.lastUsedAt } : null);
-const activeAccess = (tenantId, patientId, now) => PortalAccess.findOne({ tenantId, patientId, revoked: null, expiresAt: { $gt: now } }).sort({ createdAt: -1 });
+// The code staff made (a sign-in with ABHA is not a code: it is not shown here, but a new code or "Withdraw" ends it too).
+const activeAccess = (tenantId, patientId, now) => PortalAccess.findOne({ tenantId, patientId, method: { $ne: 'abha' }, revoked: null, expiresAt: { $gt: now } }).sort({ createdAt: -1 });
 
 patientPortalAccessRouter.get('/', async (req, res) => {
   const patient = await findPatient(req);
@@ -111,7 +114,7 @@ patientPortalAccessRouter.delete('/', async (req, res) => {
 
 const signInLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many tries. Please wait 15 minutes, or call the hospital.', code: 'RATE_LIMITED' } } });
 const WRONG = 'The code or the 4 digits are not right. Check the paper the hospital gave you, or call the hospital.';
-const portalAudit = (req, action, access, extra = {}) =>
+export const portalAudit = (req, action, access, extra = {}) =>
   audit(req, action, { actor: null, tenantId: access?.tenantId ?? null, details: access ? { patientId: String(access.patientId), ...extra } : extra });
 
 portalRouter.post('/login', signInLimiter, async (req, res) => {
@@ -143,11 +146,30 @@ portalRouter.post('/login', signInLimiter, async (req, res) => {
   access.lockedUntil = null;
   access.lastUsedAt = now;
   await access.save();
-  const token = jwt.sign({ aid: String(access._id), aud: 'perinexa-portal' }, portalKey, { expiresIn: SESSION_MINUTES * 60 });
-  res.cookie(PORTAL_COOKIE, token, { ...cookieOptions(), maxAge: SESSION_MINUTES * 60 * 1000 });
+  startPortalSession(res, access);
   await portalAudit(req, 'PORTAL_LOGIN_SUCCESS', access);
   res.json({ ok: true });
 });
+
+/** Her session cookie for this access (15 minutes, renewed by each request). */
+export function startPortalSession(res, access) {
+  const token = jwt.sign({ aid: String(access._id), aud: 'perinexa-portal' }, portalKey, { expiresIn: SESSION_MINUTES * 60 });
+  res.cookie(PORTAL_COOKIE, token, { ...cookieOptions(), maxAge: SESSION_MINUTES * 60 * 1000 });
+}
+
+/** A sign-in with her ABHA: an access of its own (no code), for one day; her session is the usual 15 minutes. */
+export function abhaAccess(tenantId, patientId, now) {
+  return PortalAccess.create({
+    tenantId,
+    patientId,
+    method: 'abha',
+    codeHash: hashCode(`abha:${randomUUID()}`),
+    expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+    createdBy: null,
+    createdByName: 'Patient (ABHA sign-in)',
+    lastUsedAt: now,
+  });
+}
 
 portalRouter.post('/logout', (_req, res) => {
   res.clearCookie(PORTAL_COOKIE, cookieOptions());
@@ -155,7 +177,7 @@ portalRouter.post('/logout', (_req, res) => {
 });
 
 /** The patient's session: the access (still valid), her record and the hospital; 401 otherwise. */
-async function portalSession(req, res) {
+export async function portalSession(req, res) {
   const token = req.cookies?.[PORTAL_COOKIE];
   let payload = null;
   try {
@@ -174,7 +196,7 @@ async function portalSession(req, res) {
     throw new HttpError(401, 'Please sign in again.', 'PORTAL_SIGNED_OUT');
   }
   // Each request renews the 15 minutes
-  res.cookie(PORTAL_COOKIE, jwt.sign({ aid: String(access._id), aud: 'perinexa-portal' }, portalKey, { expiresIn: SESSION_MINUTES * 60 }), { ...cookieOptions(), maxAge: SESSION_MINUTES * 60 * 1000 });
+  startPortalSession(res, access);
   return { access, patient, tenant };
 }
 

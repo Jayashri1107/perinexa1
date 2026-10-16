@@ -22,6 +22,9 @@ const AI_FEATURES = {
 };
 
 // Plain-English names for audit log events.
+// What she opened in the portal (PORTAL_RECORDS_VIEWED)
+const PORTAL_RECORD_WORDS = { prescriptions: 'prescriptions', lab: 'lab reports', visits: 'visits', bills: 'bills' };
+
 export const AUDIT_LABELS = {
   LOGIN_SUCCESS: 'Signed in',
   LOGIN_FAILED: 'Failed sign-in',
@@ -213,6 +216,8 @@ export const AUDIT_LABELS = {
   PORTAL_VIEWED: 'Patient viewed the portal',
   PORTAL_APPOINTMENT_BOOKED: 'Patient booked an appointment in the portal',
   PORTAL_APPOINTMENT_CANCELLED: 'Patient cancelled her appointment in the portal',
+  PORTAL_SIGNUP_RECEIVED: 'Patient signed up online with ABHA',
+  PORTAL_RECORDS_VIEWED: 'Patient viewed her records in the portal',
   // Pharmacy extras (4 Oct 2026)
   PHARMACY_ORDER_CREATED: 'Purchase order made',
   PHARMACY_ORDER_CHANGED: 'Purchase order changed',
@@ -374,6 +379,8 @@ export const AUDIT_TONES = {
   PORTAL_VIEWED: 'patient',
   PORTAL_APPOINTMENT_BOOKED: 'patient',
   PORTAL_APPOINTMENT_CANCELLED: 'patient',
+  PORTAL_SIGNUP_RECEIVED: 'patient',
+  PORTAL_RECORDS_VIEWED: 'patient',
   PORTAL_LOGIN_FAILED: 'warn',
   REMINDER_PREPARED: 'patient',
   AI_USED: 'patient',
@@ -858,9 +865,19 @@ export function describeAudit(entry) {
     case 'PORTAL_VIEWED':
     case 'PORTAL_APPOINTMENT_BOOKED':
     case 'PORTAL_APPOINTMENT_CANCELLED':
-      return d.mrn ? record(d) : '';
+      return [d.mrn ? record(d) : '', d.method === 'abha' ? 'with ABHA' : ''].filter(Boolean).join(' · ');
+    case 'PORTAL_RECORDS_VIEWED':
+      return [d.mrn ? record(d) : '', PORTAL_RECORD_WORDS[d.kind] ?? ''].filter(Boolean).join(' · ');
+    case 'PORTAL_SIGNUP_RECEIVED':
+      return d.token ? `Waiting at the desk as Scan & Share ${d.token}` : '';
     case 'PORTAL_LOGIN_FAILED':
-      return d.reason === 'wrong_digits' ? 'Wrong mobile digits' : d.reason === 'expired_or_withdrawn' ? 'Code expired or withdrawn' : 'Unknown code';
+      return d.reason === 'wrong_digits'
+        ? 'Wrong mobile digits'
+        : d.reason === 'expired_or_withdrawn'
+          ? 'Code expired or withdrawn'
+          : d.reason === 'abha_not_registered'
+            ? 'ABHA not registered at this hospital'
+            : 'Unknown code';
     // Counts only. Since 4 Oct 2026 also the two general messages (missed appointment; check-up or test due).
     case 'REMINDERS_RUN':
       return [

@@ -13,9 +13,12 @@ const accessSchema = new mongoose.Schema(
     tenantId: { type: ObjectId, ref: 'Tenant', required: true, immutable: true },
     patientId: { type: ObjectId, ref: 'Patient', required: true },
     codeHash: { type: String, required: true },
+    // 'code': a code staff made (above). 'abha': a sign-in with her ABHA and an OTP (16 Oct 2026) – no code exists;
+    // codeHash is then a random value that no code can match, and the access lasts one day.
+    method: { type: String, enum: ['code', 'abha'], default: 'code' },
     expiresAt: { type: Date, required: true },
     revoked: { type: new mongoose.Schema({ by: ObjectId, byName: String, at: Date }, { _id: false }), default: null },
-    createdBy: { type: ObjectId, ref: 'User', required: true },
+    createdBy: { type: ObjectId, ref: 'User', default: null }, // null: she signed in with her ABHA
     createdByName: { type: String, required: true },
     lastUsedAt: { type: Date, default: null },
     failedAttempts: { type: Number, default: 0 },
