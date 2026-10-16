@@ -13,6 +13,8 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
+  built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the
   owner's request a calmer premium dashboard theme: soft lavender-blue canvas, white cards with 24 px corners and a
   subtle edge (table cards too), pastel icon tiles on the KPI cards, pill-shaped quick filters and search box, and one
