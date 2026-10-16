@@ -369,6 +369,8 @@ export const ACCOUNT_MODULE = {
     { label: 'Profile', to: '/account', end: true },
     { label: 'Prescription design', to: '/account/prescription-design', end: true, roles: PRESCRIBER_ROLES },
     { label: 'Voice words', to: '/account/voice-words', end: true, roles: ['doctor', 'rmo', 'nurse', 'receptionist'] },
+    // Typing shortcuts (doctor ideas #3): everyone who types in patient records
+    { label: 'Typing shortcuts', to: '/account/shortcuts', end: true, roles: ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing'] },
   ],
 };
 /** All the person's roles, in every hospital (personal settings follow the person, not the hospital). */

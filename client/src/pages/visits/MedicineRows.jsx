@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowDown, ArrowUp, History, PackageCheck, PackageMinus, PackageX, Plus, Trash2 } from 'lucide-react';
+import { useUndo } from '../../components/Undo.jsx';
 import { Field, StatusPill } from '../../components/ui.jsx';
 import { findMedicine } from './medicines.js';
 import {
@@ -65,16 +66,26 @@ export function MedicineRows({ rows, setRows, fieldError, names, usual = null, s
       [next[i], next[j]] = [next[j], next[i]];
       return next;
     });
-  const remove = (i) => setRows((rs) => rs.filter((_, k) => k !== i));
+  // Removed at once, with Undo for a few seconds (doctor ideas #5)
+  const undo = useUndo();
+  const remove = (i) => {
+    const before = rows;
+    const name = rows[i]?.drug?.trim();
+    setRows((rs) => rs.filter((_, k) => k !== i));
+    undo.offer(`${name ? `“${name}”` : 'Medicine'} removed.`, () => setRows(before));
+  };
   const fe = (i, k) => fieldError(i, k);
 
   return (
     <>
+      {undo.element}
       <datalist id="rx-medicines">
         {names.map((n) => (
           <option key={n} value={n} />
         ))}
       </datalist>
+      {/* data-rx-rows: Enter on the last box adds a medicine line (keyboardEntry.js) */}
+      <div data-rx-rows>
       {rows.map((r, i) => {
         const listed = findMedicine(r.drug);
         const mine = usual?.get(r.drug.trim().toLowerCase());
@@ -216,6 +227,7 @@ export function MedicineRows({ rows, setRows, fieldError, names, usual = null, s
           </section>
         );
       })}
+      </div>
     </>
   );
 }

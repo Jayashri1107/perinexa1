@@ -10,6 +10,8 @@ import { hasRole } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
+import { VisitDraft } from '../models/VisitDraft.js';
+import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { audit } from '../utils/audit.js';
 import { updateLastVisit } from '../utils/lastVisit.js';
@@ -269,7 +271,10 @@ async function visitPage(req, patient, visit, access) {
     ...(redFlags === undefined ? {} : { redFlags }),
     visit: visitView(visit, { notes: access.notes }),
     carePlan,
-    previousPrescription: previous ? { visitOn: previous.visitOn, items: previous.prescription.items.map(rxItemView), notes: previous.prescription.notes ?? '' } : null,
+    // "Same as last visit" (doctor ideas #2, 16 Oct 2026): its medicines, general instructions and advice
+    previousPrescription: previous
+      ? { visitOn: previous.visitOn, items: previous.prescription.items.map(rxItemView), notes: previous.prescription.notes ?? '', advice: previous.details?.advice ?? '' }
+      : null,
     prescriber,
     today: hospitalToday(req.now),
     booking,
@@ -602,4 +607,54 @@ visitsRouter.post('/:visitId/whatsapp', async (req, res) => {
   }
   await audit(req, SENT_ACTIONS[body.copy], { details: ids(patient, visit, { access: access.level, ...(offer.practice ? { practice: true } : {}) }) });
   res.status(201).json({ sent: true, practice: offer.practice });
+});
+
+// ---------- Nothing gets lost: the person's own unsaved typing on this visit (doctor ideas #4) ----------
+// Only the author reads or changes their draft (models/VisitDraft.js). Kept while the visit can still be written.
+
+const DRAFT_PARTS = ['details', 'rx'];
+const DRAFT_DAYS = 7;
+const DRAFT_MAX_CHARS = 60_000;
+const draftView = (d) => (d ? { details: d.details ?? null, rx: d.rx ?? null, savedAt: d.updatedAt } : null);
+/** Every string in a draft, to look for a baby's sex (PCPNDT). */
+const draftTexts = (v) => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(draftTexts) : []);
+
+visitsRouter.get('/:visitId/draft', async (req, res) => {
+  const patient = await loadPatientForPlan(req);
+  assertCanView(req, patient);
+  const visit = await findVisit(req, patient);
+  const draft = await VisitDraft.findOne({ tenantId: req.tenantId, userId: req.user._id, visitId: visit._id }).lean();
+  res.json({ draft: visit.status === 'active' && !visit.signed ? draftView(draft) : null });
+});
+
+visitsRouter.put('/:visitId/draft', async (req, res) => {
+  const patient = await loadPatientForPlan(req);
+  const body = parse(z.object({ part: z.enum(DRAFT_PARTS), data: z.record(z.string(), z.unknown()).nullable() }).strict(), req.body);
+  if (body.part === 'rx') assertCanEdit(req, patient);
+  else assertCanRecordVitals(req, patient);
+  const visit = await findVisit(req, patient);
+  assertActive(visit);
+  assertNotSigned(visit);
+  const key = { tenantId: req.tenantId, userId: req.user._id, visitId: visit._id };
+  if (body.data && JSON.stringify(body.data).length > DRAFT_MAX_CHARS) throw new HttpError(400, 'Too much to keep as a draft.', 'VALIDATION');
+  // A baby's sex is never written down (PCPNDT Act): such a draft is not kept (the form refuses it on Save too)
+  if (body.data && draftTexts(body.data).some((t) => mentionsFetalSex(t))) {
+    await VisitDraft.updateOne(key, { $set: { [body.part]: null } });
+    return res.json({ kept: false });
+  }
+  const draft = await VisitDraft.findOneAndUpdate(
+    key,
+    { $set: { [body.part]: body.data, patientId: patient._id, expiresAt: addDays(req.now, DRAFT_DAYS) } },
+    { upsert: true, returnDocument: 'after' },
+  ).lean();
+  if (!draft.details && !draft.rx) await VisitDraft.deleteOne(key);
+  return res.json({ kept: Boolean(body.data), savedAt: draft.updatedAt });
+});
+
+visitsRouter.delete('/:visitId/draft', async (req, res) => {
+  const patient = await loadPatientForPlan(req);
+  assertCanView(req, patient);
+  const visit = await findVisit(req, patient);
+  await VisitDraft.deleteOne({ tenantId: req.tenantId, userId: req.user._id, visitId: visit._id });
+  res.json({ ok: true });
 });

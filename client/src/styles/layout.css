@@ -402,3 +402,37 @@
 .help-modules dd { margin: 0; color: var(--ink); }
 @media (max-width: 640px) { .help-modules > div { grid-template-columns: 1fr; gap: var(--space-1); } }
 @media (min-width: 1100px) { .help-wide .help-modules { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-8); } }
+
+/* ---------- One box for everything: Ctrl+K (doctor ideas #1, 16 Oct 2026) ---------- */
+.cmd-open { display: inline-flex; align-items: center; padding: 0; border: 0; background: none; cursor: pointer; }
+.cmd-open kbd { padding: 3px 8px; border: 1px solid var(--card-border); border-radius: 8px; background: var(--surface); color: var(--slate-600); font: inherit; font-size: var(--fs-caption); }
+.cmd-open:hover kbd { border-color: var(--indigo-700); color: var(--indigo-700); }
+.cmd-open:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 8px; }
+.cmd-backdrop { align-items: flex-start; padding-top: 12vh; }
+.cmd-box { width: min(620px, calc(100vw - 32px)); max-height: 70vh; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow-pop); }
+.cmd-input { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
+.cmd-input svg.lucide { width: 18px; height: 18px; color: var(--slate-600); flex-shrink: 0; }
+.cmd-input input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: 16px; color: var(--ink); }
+.cmd-input kbd { padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; color: var(--slate-600); font-size: var(--fs-caption); }
+.cmd-list { list-style: none; margin: 0; padding: var(--space-2); overflow-y: auto; }
+.cmd-opt { display: flex; align-items: center; gap: var(--space-3); padding: 10px var(--space-3); border-radius: 10px; cursor: pointer; }
+.cmd-opt svg.lucide { width: 16px; height: 16px; color: var(--slate-600); flex-shrink: 0; }
+.cmd-opt.is-active { background: var(--indigo-100); }
+.cmd-opt.is-active svg.lucide { color: var(--indigo-700); }
+.cmd-empty { margin: 0; padding: var(--space-4); }
+@media (max-width: 719px) { .cmd-open { display: none; } }
+/* Typing shortcuts (doctor ideas #3) */
+.ts-form { display: grid; gap: var(--space-2); }
+.ts-list { list-style: none; margin: 0; padding: 0; }
+.ts-list li { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3); align-items: start; padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.ts-list li:first-child { border-top: 0; }
+.ts-list kbd, .card kbd { padding: 1px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--mist-50); font-size: var(--fs-label); }
+.vs-draft { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.cv-list { margin: var(--space-1) 0 0; padding-left: var(--space-4); } .cv-list li + li { margin-top: 2px; }
+/* Undo instead of "Are you sure?" (doctor ideas #5): a bar at the bottom of the screen for a few seconds */
+.undo-bar {
+  position: fixed; left: 50%; bottom: var(--space-6); z-index: 60; transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-3);
+  max-width: calc(100vw - 32px); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: 12px; background: var(--ink); color: var(--on-dark, #fff); box-shadow: var(--shadow-pop);
+}
+.undo-bar .btn-link { color: var(--on-dark, #fff); font-weight: 600; }
+.undo-bar svg.lucide { width: 16px; height: 16px; }

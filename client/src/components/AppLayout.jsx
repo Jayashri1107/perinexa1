@@ -7,6 +7,8 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
 import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
 import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
+import { useTextShortcuts } from '../shortcuts/useTextShortcuts.js';
+import { CommandBox } from './CommandBox.jsx';
 import { PatientSearch } from './PatientSearch.jsx';
 import { IdleWarning } from './Layout.jsx';
 import { PasswordInput } from './PasswordInput.jsx';
@@ -274,6 +276,8 @@ export function AppLayout() {
   // Super admins and platform admins: the platform menu, or – with a hospital's setup open – its Hospital admin pages only
   const inSetup = Boolean(activeMembership?.platform);
   const modules = locked ? [] : isPlatform && !inSetup ? platformModules(platform) : hospitalModules(activeMembership?.roles);
+  // Typing shortcuts in every text box (doctor ideas #3) – hospital staff
+  useTextShortcuts(!isPlatform && !locked && Boolean(activeMembership));
   const closeMobile = () => setMobileOpen(false);
   // Icon rail: folded by the person, or automatically on narrower screens (unless the full menu is open).
   const rail = !mobileOpen && (collapsed || railForced);
@@ -335,6 +339,8 @@ export function AppLayout() {
           </div>
           {searchable && <PatientSearch key={activeTenantId} />}
           <div className="pf-topbar-actions">
+            {/* One box for everything (Ctrl+K) – hospital staff (doctor ideas #1) */}
+            {!isPlatform && !locked && <CommandBox key={activeTenantId} modules={modules} roles={activeMembership?.roles ?? []} />}
             {canSwitch(user, platform) && !locked && (
               <button
                 type="button"

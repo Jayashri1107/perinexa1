@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { keyboardEntry } from './keyboardEntry.js';
 import { CalendarCheck, CalendarDays, Check, Lock, Mic, TriangleAlert } from 'lucide-react';
 import { api } from '../../api.js';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
@@ -161,17 +162,19 @@ function NextVisitBooking({ booking, saved }) {
   );
 }
 
-export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanConflict, onDirty, append = null, onAppended = null, shown = true, printAction = null, ref }) {
+export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanConflict, onDirty, append = null, onAppended = null, shown = true, printAction = null, draft = null, onDraft = null, ref }) {
   const { visit, carePlan: plan, access } = page;
   const antenatal = patient.careType === 'antenatal';
   const active = visit.status === 'active';
   const canVitals = active && access.canRecordVitals;
   const canEdit = active && access.canEdit;
-  const [vitals, setVitals] = useState(() => fromVitals(visit.vitals));
-  const [details, setDetails] = useState(() => fromDetails(visit.details));
+  // draft: the person's own unsaved typing, put back (doctor ideas #4 – visitDraft.js)
+  const [vitals, setVitals] = useState(() => draft?.vitals ?? fromVitals(visit.vitals));
+  const [details, setDetails] = useState(() => draft?.details ?? fromDetails(visit.details));
   const isToday = toDateInput(visit.visitOn) === toDateInput(page.today);
   // The visit the care plan expects today is ticked for the doctor (they can untick it); nothing else is.
   const [ticked, setTicked] = useState(() => {
+    if (Array.isArray(draft?.ticked)) return draft.ticked;
     const expected = isToday && canEdit && plan?.canTick ? plan.dueNow.find((i) => i.kind === 'visit' && ['due', 'overdue'].includes(i.status)) : null;
     return expected ? [expected.id] : [];
   });
@@ -194,6 +197,8 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
   const edited = (canVitals && vitalsChanged) || (canEdit && detailsChanged);
   const toSave = edited || (canEdit && ticked.length > 0);
   useEffect(() => onDirty(edited), [edited, onDirty]);
+  // What is typed and not saved yet, kept as the person's draft (nothing unsaved: none)
+  useEffect(() => onDraft?.(edited ? { vitals, details, ticked } : null), [edited, vitals, details, ticked, onDraft]);
 
   // Tests and advice of a ready-made set added on the Prescription tab (each addition once; saved with the visit).
   useEffect(() => {
@@ -374,7 +379,7 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
   const flags = vitalFlags(canVitals ? vitals : visit.vitals, canEdit ? details : visit.details, { pregnant: antenatal, baby: patient.careType === 'newborn' });
 
   return (
-    <form className="vs-form" onSubmit={save} noValidate>
+    <form className="vs-form" onSubmit={save} noValidate onKeyDown={keyboardEntry()}>
       <Alert type="error">{error}</Alert>
 
       {(canVitals || canEdit) && !voiceOpen && <DictateButton onOpen={() => setVoiceOpen(true)} />}
@@ -673,7 +678,7 @@ export function VisitDetailsForm({ patient, page, onSaved, onConflict, onPlanCon
                 : 'All changes saved.'}
           </span>
           {printAction}
-          <button type="submit" className="btn btn-primary" disabled={saving || !toSave || recording} aria-describedby={recording ? 'vs-save-wait' : undefined}>
+          <button title="Ctrl+Enter saves · Enter moves to the next box" type="submit" className="btn btn-primary" disabled={saving || !toSave || recording} aria-describedby={recording ? 'vs-save-wait' : undefined}>
             {saving ? 'Saving…' : canEdit ? 'Save visit' : 'Save vital signs'}
           </button>
           {recording && (

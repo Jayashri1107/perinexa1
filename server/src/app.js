@@ -15,6 +15,8 @@ import { auditLogsRouter } from './routes/auditLogs.js';
 import { doctorsRouter, patientsRouter } from './routes/patients.js';
 import { calendarRouter } from './routes/calendar.js';
 import { dictationWordsRouter } from './routes/dictationWords.js';
+import { textShortcutsRouter } from './routes/textShortcuts.js';
+import { visitDraftsRouter } from './routes/visitDrafts.js';
 import { tenantSettingsRouter } from './routes/settings.js';
 import { templatesRouter } from './routes/templates.js';
 import { redFlagRulesRouter } from './routes/redFlagRules.js';
@@ -127,6 +129,8 @@ export function createApp({
 
   // A person's own settings that don't belong to a hospital.
   app.use('/api/me/dictation-words', ...loggedIn, dictationWordsRouter);
+  // Typing shortcuts (doctor ideas #3): the person's own
+  app.use('/api/me/shortcuts', ...loggedIn, textShortcutsRouter);
 
   // Platform: hospitals, all user accounts, full audit log. Super admins read and change everything; platform admins
   // read everything and change only the areas a super admin gave them (requirePlatform).
@@ -168,6 +172,8 @@ export function createApp({
   app.use('/api/reminders', ...inTenant, reminderOutboxRouter);
   // Reception: patients' sign-ups to approve or reject (routes/patientAccounts.js)
   app.use('/api/patient-accounts', ...inTenant, patientAccountsRouter);
+  // Nothing gets lost: the person's own unsaved visits (doctor ideas #4)
+  app.use('/api/visit-drafts', ...inTenant, visitDraftsRouter);
   app.use('/api/medicine-safety', ...inTenant, medicineSafetyRouter);
   app.use('/api/ai/brief', ...inTenant, aiBriefRouter); // before /api/ai (Ask your records)
   app.use('/api/ai', ...inTenant, aiAskRouter);

@@ -146,6 +146,8 @@ export const LEFT_OUT = {
   PortalAccess: 'Patient portal codes (kept only as hashes) never leave Perinexa.',
   PatientAccount: "Patients' own portal sign-ins (email, mobile, password hash, OTP): sign-in data, not her record – it never leaves Perinexa; approvals and rejections are in the audit log.",
   DictationWord: 'Personal voice-entry words of staff accounts – not the hospital\'s data, and never patient information.',
+  VisitDraft: 'Unsaved typing on a visit, kept for its author for up to 7 days – not part of the record; what was saved is in visits.json.',
+  TextShortcut: 'Personal typing shortcuts of staff accounts – not the hospital data, and never patient information.',
   AbdmLinkRequest: 'Short-lived searches of a patient\'s ABHA app (deleted a day after their last change) with the hash of the OTP sent to her mobile – what was linked is in abha-linked-records.json.',
   AbdmFetchedRecord: 'Records other hospitals sent for a patient through ABDM with her consent: kept only until her consent ends and never sent on (ABDM\'s rule) – what was asked for and received is in abha-records-asked-for.json.',
   AbdmFetchedFile: 'Files attached to those records – never sent on, like the records themselves.',

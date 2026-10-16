@@ -2,7 +2,8 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react
 import { BookmarkPlus, Copy, ListPlus, Plus, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
-import { Alert, Field, formatDate, formatDateTime, useConfirm } from '../../components/ui.jsx';
+import { Alert, Field, formatDate, formatDateTime } from '../../components/ui.jsx';
+import { useUndo } from '../../components/Undo.jsx';
 import { onReturnToPage } from '../../hooks/onReturnToPage.js';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
@@ -16,6 +17,7 @@ import { MEDICINES } from './medicines.js';
 import { instructionLine, medicineName } from './rxFormat.js';
 import { addSet, emptyRow, isBlankRow, rowProblems, sameRows, toItem, toRow } from './rxRows.js';
 import { useStockStatus } from './rxStock.js';
+import { focusLastMedicine, keyboardEntry } from './keyboardEntry.js';
 import { SaveAsSetDialog, SetPicker } from './SetDialogs.jsx';
 
 // The Prescription tab (Feature 8): the medicines of this visit, in order. Quick to fill: medicine names are
@@ -75,6 +77,8 @@ export function PrescriptionForm({
   onSaved,
   onConflict,
   onDirty,
+  draft = null,
+  onDraft = null,
   onAppendDetails,
   addMedicine = null,
   onMedicineAdded,
@@ -87,16 +91,17 @@ export function PrescriptionForm({
   const rx = visit.prescription;
   const canEdit = visit.status === 'active' && access.canEdit;
   // A prescription with no medicines yet starts with one empty row to type into (an empty row is never saved)
-  const [rows, setRows] = useState(() => (rx.items.length || !(visit.status === 'active' && access.canEdit) ? rx.items.map(toRow) : [emptyRow()]));
+  // draft: the person's own unsaved typing, put back (doctor ideas #4 – visitDraft.js)
+  const [rows, setRows] = useState(() => (Array.isArray(draft?.rows) && draft.rows.length ? draft.rows : rx.items.length || !(visit.status === 'active' && access.canEdit) ? rx.items.map(toRow) : [emptyRow()]));
   const filled = rows.filter((r) => !isBlankRow(r));
-  const [notes, setNotes] = useState(rx.notes);
+  const [notes, setNotes] = useState(typeof draft?.notes === 'string' ? draft.notes : rx.notes);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
   const [picking, setPicking] = useState(false);
   const [savingSet, setSavingSet] = useState(false);
   const [setNotice, setSetNotice] = useState(null); // { type, text, setId? }
-  const [confirm, confirmDialog] = useConfirm();
+  const undo = useUndo(); // Undo for replacing the medicines (doctor ideas #5)
 
   const initial = useMemo(() => rx.items.map(toRow), [rx.items]);
   // Why the doctor goes ahead despite an Avoid or Allergy warning, by warning (kept from the last save)
@@ -157,6 +162,7 @@ export function PrescriptionForm({
   const reasonsChanged = Boolean(safety.data) && (needReason.some((w) => (reasons[w.key] ?? '').trim() !== (savedReasons[w.key] ?? '')) || needReason.length !== (rx.warningReasons ?? []).length);
   const dirty = canEdit && (!sameRows(filled, initial) || notes !== rx.notes || (filled.length > 0 && reasonsChanged));
   useEffect(() => onDirty(dirty), [dirty, onDirty]);
+  useEffect(() => onDraft?.(dirty ? { rows, notes } : null), [dirty, rows, notes, onDraft]);
 
   // A medicine from the care plan: added as a new line (unless it is already there) with only its name – the
   // doctor fills in the dose and duration before saving.
@@ -168,10 +174,21 @@ export function PrescriptionForm({
     onMedicineAdded?.();
   }, [addMedicine, canEdit, onMedicineAdded]);
 
-  const copyPrevious = async () => {
-    if (filled.length && !(await confirm({ title: 'Replace the medicines here?', text: `The medicines from ${formatDate(prev.visitOn)} replace the ones on this prescription.`, confirmLabel: 'Replace' }))) return;
+  // "Same as last visit" (doctor ideas #2): the last visit's medicines and instructions here, its advice in Visit
+  // details – the doctor changes only what differs, then saves.
+  // The medicines typed here are replaced at once, with Undo (doctor ideas #5) – nothing saved changes.
+  const copyPrevious = () => {
+    if (filled.length) {
+      const before = { rows, notes };
+      undo.offer(`The medicines here were replaced by those of ${formatDate(prev.visitOn)}.`, () => {
+        setRows(before.rows);
+        setNotes(before.notes);
+      });
+    }
     setRows(prev.items.map(toRow));
     if (!notes && prev.notes) setNotes(prev.notes);
+    if (prev.advice?.trim()) onAppendDetails({ advice: prev.advice });
+    setSetNotice({ type: 'info', text: `Copied from ${formatDate(prev.visitOn)}: ${prev.items.length} ${prev.items.length === 1 ? 'medicine' : 'medicines'}${prev.advice?.trim() ? ', and its advice in Visit details' : ''}. Change what differs, then save${prev.advice?.trim() ? ' both tabs' : ''}.` });
   };
 
   const addFromSet = (set) => {
@@ -320,7 +337,18 @@ export function PrescriptionForm({
   // The dialogs are forms of their own: they sit beside this form, never inside it (no nested forms).
   return (
     <>
-      <form className="vs-form" onSubmit={save} noValidate>
+      <form
+        className="vs-form"
+        onSubmit={save}
+        noValidate
+        onKeyDown={keyboardEntry({
+          onLastEnter: () => {
+            if (rows.length >= 40) return;
+            add();
+            focusLastMedicine();
+          },
+        })}
+      >
         <Alert type="error">{error}</Alert>
         {setNotice && (
           <Alert type={setNotice.type} onClose={() => setSetNotice(null)}>
@@ -345,7 +373,7 @@ export function PrescriptionForm({
               <RxDictation onMedicines={addDictated} onError={setError} disabled={rows.length >= 40} />
               {prev && (
                 <button type="button" className="btn btn-secondary" onClick={copyPrevious}>
-                  <Copy aria-hidden="true" /> Copy from {formatDate(prev.visitOn)}
+                  <Copy aria-hidden="true" /> Same as last visit ({formatDate(prev.visitOn)})
                 </button>
               )}
               <button type="button" className="btn btn-secondary" onClick={() => setPicking(true)} disabled={rows.length >= 40}>
@@ -413,11 +441,11 @@ export function PrescriptionForm({
           )}
           <span className="grow hint">{dirty ? 'Unsaved changes.' : 'All changes saved.'}</span>
           {printAction}
-          <button type="submit" className="btn btn-primary" disabled={saving || !dirty}>
+          <button title="Ctrl+Enter saves · Enter moves to the next box" type="submit" className="btn btn-primary" disabled={saving || !dirty}>
             {saving ? 'Saving…' : 'Save prescription'}
           </button>
         </div>
-        {confirmDialog}
+        {undo.element}
       </form>
       {picking && (
         <SetPicker patient={patient} rows={filled} careLabel={CARE_TYPE_SHORT[patient.careType]?.toLowerCase()} onAdd={addFromSet} onCancel={() => setPicking(false)} />
