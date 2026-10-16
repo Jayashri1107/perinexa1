@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { bookSlot, cancelAppointment, freeStarts, hospitalDoctors, nextAppointment, scheduleOf } from '../appointments/appointmentService.js';
 import { leaveOn } from '../appointments/slots.js';
 import { Appointment } from '../models/Appointment.js';
+import { OpdSchedule } from '../models/OpdSchedule.js';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
@@ -35,9 +36,10 @@ import { letterheadFor } from './settings.js';
 //    translated in the browser (DRAFT wording); an item a doctor added or reworded is shown as typed;
 //  - her session is a separate cookie with its own signing key (it can never open a staff page), ends after 15
 //    minutes, and every sign-in, failed try and view is in the audit log (ids only);
-//  - when the hospital admin also switched on online booking (4 Oct 2026), she may book ONE appointment with her own
-//    doctor, from tomorrow up to 30 days ahead, in a free time of the doctor's OPD, and cancel a booking she made
-//    online. She never sees who else is booked – only which times are free.
+//  - when the hospital admin also switched on online booking (4 Oct 2026), she may book ONE appointment, from tomorrow
+//    up to 30 days ahead, in a free time of a doctor's OPD, and cancel a booking she made online. She never sees who else
+//    is booked – only which times are free. Since 16 Oct 2026 (owner) she chooses the doctor: any doctor of the hospital
+//    with OPD timings, her own doctor first.
 //  - her own account (16 Oct 2026): sign-up, email-and-password and mobile-and-OTP sign-in in routes/portalSignup.js,
 //    reception's approval in routes/patientAccounts.js; her prescriptions, lab reports, visits and bills in
 //    routes/portalRecords.js (docs/PATIENT_ACCOUNTS_PLAN.md).
@@ -256,25 +258,35 @@ function movedAppointment(tenantId, patient, today) {
   return Appointment.findOne({ tenantId, patientId: patient.duplicateOf.patient, movedFromPatientId: patient._id, on: { $gte: today }, kind: 'slot', status: 'booked' }).sort({ on: 1, start: 1 });
 }
 
-async function bookingState(req, res) {
+/** The hospital's doctors she may book with: those with OPD timings, her own doctor first. */
+async function bookableDoctors(tenantId, patient) {
+  const [doctors, schedules] = await Promise.all([hospitalDoctors(tenantId), OpdSchedule.find({ tenantId }, { doctorId: 1 }).lean()]);
+  const withTimings = new Set(schedules.map((x) => String(x.doctorId)));
+  const mine = String(patient.assignedDoctor ?? '');
+  return doctors.filter((d) => withTimings.has(d.id)).sort((x, y) => (x.id === mine ? -1 : y.id === mine ? 1 : 0));
+}
+
+async function bookingState(req, res, doctorId = null) {
   const session = await portalSession(req, res);
   const { access, patient, tenant } = session;
   const today = hospitalToday(req.now);
   // A record marked as a duplicate takes no new appointment: online booking is off for it (she calls the hospital)
   const enabled = Boolean(tenant.messaging?.portalBooking) && !isDuplicate(patient);
-  const doctor = enabled && patient.assignedDoctor ? ((await hospitalDoctors(access.tenantId)).find((d) => d.id === String(patient.assignedDoctor)) ?? null) : null;
+  const doctors = enabled ? await bookableDoctors(access.tenantId, patient) : [];
+  // The doctor asked for (one of the list), else her own doctor when bookable, else the first
+  const doctor = (doctorId ? doctors.find((d) => d.id === String(doctorId)) : doctors[0]) ?? null;
   const upcoming = isDuplicate(patient)
     ? await movedAppointment(access.tenantId, patient, today)
     : await Appointment.findOne({ tenantId: access.tenantId, patientId: patient._id, on: { $gte: today }, kind: 'slot', status: 'booked' }).sort({ on: 1, start: 1 });
-  return { ...session, today, enabled, doctor, upcoming, from: addDays(today, 1), to: addDays(today, BOOK_DAYS_AHEAD) };
+  return { ...session, today, enabled, doctors, doctor, upcoming, from: addDays(today, 1), to: addDays(today, BOOK_DAYS_AHEAD) };
 }
 const upcomingView = (a, today) =>
   a ? { date: isoDay(a.on), start: a.start ?? null, online: a.source === 'portal', canCancel: a.source === 'portal' && utcDay(a.on) > today } : null;
 
-// Her doctor's leave in the days she can book: dates only – never the doctor's note (it can be private).
-async function doctorLeave(s) {
-  if (!s.enabled || !s.doctor) return [];
-  const schedule = await scheduleOf(s.access.tenantId, s.doctor.id);
+// A doctor's leave in the booking days: dates only – never the doctor's note (it can be private).
+async function doctorLeave(s, doctor = s.doctor) {
+  if (!s.enabled || !doctor) return [];
+  const schedule = await scheduleOf(s.access.tenantId, doctor.id);
   return (schedule?.leave ?? [])
     .filter((l) => utcDay(l.to) >= s.from && utcDay(l.from) <= s.to)
     .sort((a, b) => utcDay(a.from) - utcDay(b.from))
@@ -283,8 +295,12 @@ async function doctorLeave(s) {
 
 portalRouter.get('/booking', async (req, res) => {
   const s = await bookingState(req, res);
+  const doctors = await Promise.all(s.doctors.map(async (d) => ({ id: d.id, name: d.name, leave: await doctorLeave(s, d) })));
   res.json({
     enabled: s.enabled,
+    // The doctors she may choose (her own first), each with leave dates in the booking days
+    doctors,
+    doctorId: s.doctor?.id ?? null,
     doctorName: s.doctor?.name ?? null,
     leave: await doctorLeave(s),
     upcoming: upcomingView(s.upcoming, s.today),
@@ -295,8 +311,9 @@ portalRouter.get('/booking', async (req, res) => {
 
 // The free times of one day with her doctor – times only, never who is booked.
 portalRouter.get('/booking/times', async (req, res) => {
-  const s = await bookingState(req, res);
-  const { date } = parse(z.object({ date: requiredDateOnly('Date') }).strict(), req.query);
+  const { date, doctorId } = parse(z.object({ date: requiredDateOnly('Date'), doctorId: z.string().max(30).optional() }).strict(), req.query);
+  const s = await bookingState(req, res, doctorId);
+  if (doctorId && s.enabled && !s.doctor) throw new HttpError(400, 'Please choose one of the doctors shown.', 'VALIDATION');
   if (!s.enabled || !s.doctor) throw new HttpError(409, 'Online booking is not available. Please call the hospital.', 'BOOKING_OFF');
   if (date < s.from || date > s.to) throw new HttpError(400, `Please choose a day from tomorrow up to ${BOOK_DAYS_AHEAD} days ahead.`, 'VALIDATION');
   const onLeave = Boolean(leaveOn(await scheduleOf(s.access.tenantId, s.doctor.id), date));
@@ -304,8 +321,9 @@ portalRouter.get('/booking/times', async (req, res) => {
 });
 
 portalRouter.post('/booking', async (req, res) => {
-  const s = await bookingState(req, res);
-  const body = parse(z.object({ date: requiredDateOnly('Date'), start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }).strict(), req.body);
+  const body = parse(z.object({ date: requiredDateOnly('Date'), start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), doctorId: z.string().max(30).optional() }).strict(), req.body);
+  const s = await bookingState(req, res, body.doctorId);
+  if (body.doctorId && s.enabled && !s.doctor) throw new HttpError(400, 'Please choose one of the doctors shown.', 'VALIDATION');
   if (!s.enabled || !s.doctor) throw new HttpError(409, 'Online booking is not available. Please call the hospital.', 'BOOKING_OFF');
   if (s.upcoming) throw new HttpError(409, 'You already have an appointment. To change it, call the hospital.', 'ALREADY_BOOKED');
   if (body.date < s.from || body.date > s.to) throw new HttpError(400, `Please choose a day from tomorrow up to ${BOOK_DAYS_AHEAD} days ahead.`, 'VALIDATION');

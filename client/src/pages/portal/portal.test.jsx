@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { CodeSlipDocument } from '../patients/PatientMessagesDialog.jsx';
-import { MyCare, PortalScreen, signInState, signedInState } from './PortalPage.jsx';
+import { Booking, MyCare, PortalScreen, signInState, signedInState } from './PortalPage.jsx';
 import {
   PORTAL_LANGUAGES,
   PORTAL_LANGUAGE_NAMES,
@@ -184,5 +184,33 @@ describe('the paper with her portal code', () => {
     expect(text(hi)).toContain('ABCD-EFGH-JKLM');
     expect(hi).not.toContain('lang="mr"');
     expect(text(slip('mr'))).toContain('हा कागद सांभाळून ठेवा.');
+  });
+});
+
+describe('booking online (16 Oct 2026)', () => {
+  const booking = {
+    enabled: true,
+    upcoming: null,
+    from: '2026-10-02',
+    to: '2026-10-31',
+    doctorId: 'a1',
+    doctors: [
+      { id: 'a1', name: 'Dr Sample A', leave: [] },
+      { id: 'b2', name: 'Dr Sample B', leave: [{ from: '2026-10-07', to: '2026-10-07' }] },
+    ],
+  };
+  it('she chooses the doctor (her own first, chosen), then a day; only free times are offered', () => {
+    const out = renderToStaticMarkup(<Booking booking={booking} onChanged={() => {}} lang="en" />);
+    const words = text(out);
+    expect(words).toContain('Book an appointment with Dr Sample A');
+    expect(words).toContain('Doctor');
+    expect(out).toMatch(/aria-pressed="true"[^>]*>Dr Sample A</);
+    expect(out).toMatch(/aria-pressed="false"[^>]*>Dr Sample B</);
+    expect(words).not.toContain('on leave'); // Dr A has no leave
+  });
+  it('one doctor only: no chooser; an older answer without the list still works', () => {
+    const words = text(renderToStaticMarkup(<Booking booking={{ ...booking, doctors: undefined, doctorName: 'Dr Sample A', leave: [] }} onChanged={() => {}} lang="mr" />));
+    expect(words).toContain('Dr Sample A यांची भेट ठरवा');
+    expect(words).not.toContain('डॉक्टर');
   });
 });

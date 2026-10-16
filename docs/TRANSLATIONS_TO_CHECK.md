@@ -321,6 +321,8 @@ File: `client/src/pages/portal/portalWords.js` (the address /portal; the switch 
 | `cancelAppointment` | Cancel this appointment | ही भेट रद्द करा | यह मुलाक़ात रद्द करें |
 | `callToBookOnline` | To book an appointment, please call the hospital. | भेट ठरवण्यासाठी कृपया रुग्णालयाला फोन करा. | मुलाक़ात तय करने के लिए कृपया अस्पताल को फ़ोन करें। |
 | `bookWith` | Book an appointment with {doctor} | {doctor} यांची भेट ठरवा | {doctor} से मुलाक़ात तय करें |
+| `chooseDoctor` (added 16 Oct 2026) | Doctor | डॉक्टर | डॉक्टर |
+| `onlyFree` (added 16 Oct 2026) | Only free times are shown. | फक्त उपलब्ध वेळा दाखवल्या आहेत. | केवल ख़ाली समय दिखाए गए हैं। |
 | `day` | Day | दिवस | दिन |
 | `noFreeTime` | No free time on this day. Please choose another day. | या दिवशी वेळ उपलब्ध नाही. कृपया दुसरा दिवस निवडा. | इस दिन कोई समय ख़ाली नहीं है। कृपया कोई और दिन चुनें। |
 | `doctorOnLeave` (added 15 Oct 2026) | {doctor} is on leave: {dates}. No bookings on these days. | {doctor} रजेवर आहेत: {dates}. या दिवसांत भेट ठरवता येणार नाही. | {doctor} छुट्टी पर हैं: {dates}। इन दिनों मुलाक़ात तय नहीं हो सकती। |

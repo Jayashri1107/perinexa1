@@ -50,8 +50,12 @@ function LanguageSwitch({ lang, onChange }) {
  * Booking her own appointment (only when the hospital switched it on): one appointment with her own doctor, from
  * tomorrow up to 30 days ahead. She chooses a day, then one of the free times; a booking she made here can be cancelled.
  */
-function Booking({ booking, onChanged, lang }) {
+export function Booking({ booking, onChanged, lang }) {
   const w = portalWords(lang);
+  // The doctors she may choose (her own first); older servers sent only doctorName and leave
+  const doctors = booking.doctors?.length ? booking.doctors : booking.doctorName ? [{ id: booking.doctorId ?? '', name: booking.doctorName, leave: booking.leave ?? [] }] : [];
+  const [doctorId, setDoctorId] = useState(booking.doctorId ?? doctors[0]?.id ?? '');
+  const doctor = doctors.find((d) => d.id === doctorId) ?? doctors[0];
   const [date, setDate] = useState('');
   const [times, setTimes] = useState(null);
   const [start, setStart] = useState('');
@@ -61,7 +65,7 @@ function Booking({ booking, onChanged, lang }) {
   const errorText = error ? portalError(error, lang, { booking: true }) : null;
 
   const [dayOnLeave, setDayOnLeave] = useState(false);
-  const chooseDay = async (value) => {
+  const chooseDay = async (value, forDoctor = doctor?.id) => {
     setDate(value);
     setStart('');
     setTimes(null);
@@ -69,7 +73,7 @@ function Booking({ booking, onChanged, lang }) {
     setError(null);
     if (!value) return;
     try {
-      const res = await portal(`/booking/times?date=${value}`);
+      const res = await portal(`/booking/times?date=${value}${forDoctor ? `&doctorId=${forDoctor}` : ''}`);
       setTimes(res.times);
       setDayOnLeave(Boolean(res.onLeave));
     } catch (err) {
@@ -116,23 +120,38 @@ function Booking({ booking, onChanged, lang }) {
       </div>
     );
   }
-  if (!booking.doctorName) return <p className="hint">{w.callToBookOnline}</p>;
+  if (!doctor) return <p className="hint">{w.callToBookOnline}</p>;
+  const chooseDoctor = (id) => {
+    setDoctorId(id);
+    if (date) chooseDay(date, id); // the same day, that doctor's free times
+  };
   return (
     <div className="portal-booking">
       <h3>
-        <CalendarPlus aria-hidden="true" /> {w.bookWith(booking.doctorName)}
+        <CalendarPlus aria-hidden="true" /> {w.bookWith(doctor.name)}
       </h3>
       <Alert type="error">{errorText}</Alert>
-      {booking.leave?.length > 0 && (
-        <Alert type="warning">{w.doctorOnLeave(booking.doctorName, booking.leave.map((l) => when(l.from, l.to)).join(', '))}</Alert>
+      {doctors.length > 1 && (
+        <fieldset className="portal-times">
+          <legend>{w.chooseDoctor}</legend>
+          <div className="portal-time-grid portal-doctor-grid">
+            {doctors.map((d) => (
+              <button key={d.id} type="button" className="appt-slot-choice" aria-pressed={d.id === doctor.id} onClick={() => chooseDoctor(d.id)}>
+                {d.name}
+              </button>
+            ))}
+          </div>
+        </fieldset>
       )}
+      {doctor.leave?.length > 0 && <Alert type="warning">{w.doctorOnLeave(doctor.name, doctor.leave.map((l) => when(l.from, l.to)).join(', '))}</Alert>}
       <Field label={w.day} id="portal-book-day">
         <input id="portal-book-day" type="date" value={date} min={booking.from} max={booking.to} onChange={(e) => chooseDay(e.target.value)} />
       </Field>
-      {date && times && times.length === 0 && <p>{dayOnLeave ? w.onLeaveDay(booking.doctorName) : w.noFreeTime}</p>}
+      {date && times && times.length === 0 && <p>{dayOnLeave ? w.onLeaveDay(doctor.name) : w.noFreeTime}</p>}
       {date && times && times.length > 0 && (
         <fieldset className="portal-times">
           <legend>{w.time}</legend>
+          <p className="hint">{w.onlyFree}</p>
           <div className="portal-time-grid">
             {times.map((t) => (
               <button key={t} type="button" className="appt-slot-choice" aria-pressed={start === t} onClick={() => setStart(t)}>
@@ -142,7 +161,7 @@ function Booking({ booking, onChanged, lang }) {
           </div>
         </fieldset>
       )}
-      <button type="button" className="btn btn-primary" disabled={!date || !start || busy} onClick={() => run(() => portal('/booking', { method: 'POST', body: { date, start } }))}>
+      <button type="button" className="btn btn-primary" disabled={!date || !start || busy} onClick={() => run(() => portal('/booking', { method: 'POST', body: { date, start, ...(doctor.id ? { doctorId: doctor.id } : {}) } }))}>
         {busy ? w.booking : start ? w.bookAt(`${formatDate(date)}, ${timeLabel(start)}`) : w.book}
       </button>
     </div>

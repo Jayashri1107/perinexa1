@@ -244,6 +244,44 @@ describe('booking her own appointment in the portal', () => {
     expect((await her.get('/api/portal/booking/times?date=2026-10-05')).body.onLeave).toBe(false);
   });
 
+  it("she chooses the doctor: any doctor with OPD timings, her own first; only that doctor’s free times", async () => {
+    await settings({ portalBooking: true });
+    const drB = await createUser({ name: 'Sample drB' });
+    await addMember(drB, hospital, 'doctor');
+    const drC = await createUser({ name: 'Sample drC' }); // no OPD timings: not offered
+    await addMember(drC, hospital, 'doctor');
+    const admin = await as('admin');
+    await admin.put(`/api/appointments/timings/${people.drA._id}`).send({ week: WEEK, leave: [] });
+    const set = await admin.put(`/api/appointments/timings/${drB._id}`).send({ week: WEEK, leave: [{ from: '2026-10-07', to: '2026-10-07', note: 'private' }] });
+    expect(set.status, JSON.stringify(set.body)).toBe(200);
+    const p = await register();
+    const her = await signedIn(p);
+    const booking = (await her.get('/api/portal/booking')).body;
+    expect(booking.doctors.map((d) => d.name)).toEqual(['Sample drA', 'Sample drB']);
+    expect(booking.doctorId).toBe(people.drA._id.toString());
+    expect(booking.doctors[1].leave).toEqual([{ from: '2026-10-07', to: '2026-10-07' }]);
+    expect(JSON.stringify(booking)).not.toContain('private');
+
+    // Someone booked drA at 10:00; drB's 10:00 is still free
+    const other = await register({ fullName: 'Someone Else', phone: '98111 11111' });
+    await (await as('reception')).post('/api/appointments').send({ doctorId: people.drA._id.toString(), date: '2026-10-05', start: '10:00', patientId: other.id });
+    expect((await her.get(`/api/portal/booking/times?date=2026-10-05&doctorId=${drB._id}`)).body.times[0]).toBe('10:00');
+    expect((await her.get('/api/portal/booking/times?date=2026-10-05')).body.times[0]).toBe('10:10');
+    expect((await her.get(`/api/portal/booking/times?date=2026-10-05&doctorId=${drC._id}`)).status).toBe(400);
+    expect((await her.post('/api/portal/booking').send({ date: '2026-10-05', start: '10:00', doctorId: drC._id.toString() })).status).toBe(400);
+
+    const booked = await her.post('/api/portal/booking').send({ date: '2026-10-05', start: '10:00', doctorId: drB._id.toString() });
+    expect(booked.status, JSON.stringify(booked.body)).toBe(201);
+    const day = (await (await as('reception')).get(`/api/appointments/day?doctorId=${drB._id}&date=2026-10-05`)).body;
+    expect(day.slots.find((x) => x.start === '10:00').appointments[0]).toMatchObject({ source: 'portal', patient: { fullName: 'Portal Mother' } });
+
+    // A patient with no doctor of her own may still book
+    const lone = await register({ fullName: 'No Doctor Yet', phone: '98222 23210', assignedDoctor: undefined });
+    const herToo = await signedIn(lone);
+    expect((await herToo.get('/api/portal/booking')).body.doctors).toHaveLength(2);
+    expect((await herToo.post('/api/portal/booking').send({ date: '2026-10-06', start: '10:00', doctorId: drB._id.toString() })).status).toBe(201);
+  });
+
   it('a booking made by the hospital cannot be cancelled online; without a doctor or a session nothing is offered', async () => {
     await settings({ portalBooking: true });
     await (await as('drA')).put(`/api/appointments/timings/${people.drA._id}`).send({ week: WEEK, leave: [] });
