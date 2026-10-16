@@ -103,3 +103,8 @@
 .portal-content { max-width: 880px; }
 .portal-content .portal-card h1, .portal-content .portal-card h2 { margin-top: 0; }
 @media (max-width: 719px) { .portal-place { display: none; } .portal-shell .portal-lang button { padding: 0 8px; } }
+
+/* Fill from Aadhaar card (16 Oct 2026) */
+.aadhaar-open { margin-bottom: var(--space-3); }
+.aadhaar-fill { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.aadhaar-fill .hint { margin: 0; }

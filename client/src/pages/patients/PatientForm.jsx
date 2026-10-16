@@ -31,6 +31,7 @@ import {
   datesWarning,
 } from './patientFormat.js';
 import { DictateButton, VoiceBar, VoiceEntry, useVoiceOpen } from './VoiceEntry.jsx';
+import { AadhaarQrFill } from './AadhaarQrFill.jsx';
 import { AbortionSection, abortionEmpty, abortionFindingErrors, abortionPayload, abortionTextErrors, abortionValues, localToday } from './AbortionSection.jsx';
 import { THREATENED_HINT, currentLossFindings, lmpCarryOver, lossRulesOn, obstetricHint, presentationWeeks } from './abortionFormat.js';
 import { mentionsFetalSex, PCPNDT_MESSAGE } from '../../pcpndtWords.js';
@@ -410,6 +411,14 @@ export function PatientForm({
   const vc = (path) => (voiced(path) ? 'voice-filled' : undefined);
   const vm = (path) => (voiced(path) ? <VoiceMark /> : null);
 
+  // From the Aadhaar QR (AadhaarQrFill.jsx): only what the card holds replaces what is in the form
+  const fillFromAadhaar = (a) =>
+    setV((cur) => {
+      const out = { ...cur };
+      for (const k of ['fullName', 'ageYears', 'address', 'pinCode', 'city', 'state']) if (a[k]) out[k] = a[k];
+      if (a.last4) out.idProof = { kind: 'aadhaar', last4: a.last4 };
+      return out;
+    });
   const set = (key) => (e) => {
     unmark(key);
     setV({ ...v, [key]: e.target.value });
@@ -624,6 +633,7 @@ export function PatientForm({
               {/* In small groups (owner, 13 Oct 2026): who she is, how to reach her, someone to call, the ID seen, her doctor */}
               <div className="pf-group">
                 <h3 className="pf-group-title">Basic details</h3>
+                {!isNewborn && access.canEditIdentity && <AadhaarQrFill onFill={fillFromAadhaar} />}
                 <div className={isEdit ? 'form-grid form-grid-fill' : 'form-grid'}>
                   {/* Editing a record: the type of care can be changed here. Registering: it was chosen from the New patient menu. */}
                   {isEdit && (
