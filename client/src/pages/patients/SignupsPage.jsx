@@ -205,6 +205,22 @@ function useSignups(onChanged) {
   return { res, flash, setFlash, dialogs, approve: (account) => setDialog({ kind: 'approve', account }), reject: (account) => setDialog({ kind: 'reject', account }) };
 }
 
+/**
+ * A notice at the top of Today and Patients while sign-ups wait (owner, 16 Oct 2026: reception did not see them – a
+ * sign-up is not in the patient list until it is approved). For reception, doctors and RMOs; nothing while none waits.
+ */
+export function SignupsNotice({ roles }) {
+  const res = useFetch(canRegisterPatients(roles) ? '/patient-accounts' : null);
+  const n = res.data?.accounts?.length ?? 0;
+  if (!n) return null;
+  return (
+    <Alert type="info">
+      {n === 1 ? '1 patient signed up online and is waiting for approval.' : `${n} patients signed up online and are waiting for approval.`}{' '}
+      <Link to="/patients/sign-ups">Review the online sign-ups</Link>
+    </Alert>
+  );
+}
+
 /** On reception's Today page: who is waiting for approval. */
 export function SignupsSection() {
   const s = useSignups();
