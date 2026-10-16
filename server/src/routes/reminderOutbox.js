@@ -90,10 +90,16 @@ const settingsOf = (tenant) => ({
   portalBooking: Boolean(tenant?.messaging?.portalBooking),
   whatsappDocuments: Boolean(tenant?.messaging?.whatsappDocuments),
   displayEnabled: Boolean(tenant?.messaging?.displayKey),
+  portalSignup: Boolean(tenant?.messaging?.signupKey),
+  // The hospital's portal address for sign-up and ABHA sign-in: public (it is printed on a poster), so all staff see it.
+  signupKey: tenant?.messaging?.signupKey ?? null,
 });
 // The waiting-room screen's secret address is shown to the hospital admin only.
 const displayOf = (req, tenant) => (isAdmin(req) ? { displayKey: tenant?.messaging?.displayKey ?? null } : {});
 const newDisplayKey = () => randomBytes(16).toString('hex');
+// 8 letters and digits without look-alikes (no 0/O, 1/I): easy to type from a poster, about 10^12 possible codes.
+const SIGNUP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newSignupKey = () => Array.from(randomBytes(8), (b) => SIGNUP_ALPHABET[b % SIGNUP_ALPHABET.length]).join('');
 const whatsappView = () => ({ whatsapp: whatsappStatus() });
 function providerView() {
   const s = currentSender();
@@ -107,13 +113,15 @@ reminderOutboxRouter.get('/settings', async (req, res) => {
 
 reminderOutboxRouter.put('/settings', async (req, res) => {
   if (!isAdmin(req)) throw forbidden('Only the hospital admin changes these settings.');
-  const body = parse(z.object({ remindersEnabled: z.boolean(), portalEnabled: z.boolean(), portalBooking: z.boolean().default(false), whatsappDocuments: z.boolean().default(false), displayEnabled: z.boolean().default(false) }).strict(), req.body);
+  const body = parse(z.object({ remindersEnabled: z.boolean(), portalEnabled: z.boolean(), portalBooking: z.boolean().default(false), whatsappDocuments: z.boolean().default(false), displayEnabled: z.boolean().default(false), portalSignup: z.boolean().default(false) }).strict(), req.body);
   const tenant = await Tenant.findById(req.tenantId);
   const before = settingsOf(tenant);
-  const { displayEnabled, ...flags } = body;
+  const { displayEnabled, portalSignup, ...flags } = body;
   // Switching the screen on makes its address; switching it off makes the old address stop working.
   const displayKey = displayEnabled ? (tenant.messaging?.displayKey ?? newDisplayKey()) : null;
-  tenant.messaging = { ...flags, portalBooking: flags.portalBooking && flags.portalEnabled, displayKey };
+  // Sign-up needs the portal; switching it off makes the poster's address stop working (switching it on again makes a new one).
+  const signupKey = portalSignup && flags.portalEnabled ? (tenant.messaging?.signupKey ?? newSignupKey()) : null;
+  tenant.messaging = { ...flags, portalBooking: flags.portalBooking && flags.portalEnabled, displayKey, signupKey };
   await tenant.save();
   const changes = Object.fromEntries(Object.keys(body).filter((k) => before[k] !== body[k]).map((k) => [k, { from: before[k], to: body[k] }]));
   if (Object.keys(changes).length) await audit(req, 'TENANT_SETTINGS_UPDATED', { details: { changes } });

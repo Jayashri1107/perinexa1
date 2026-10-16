@@ -59,6 +59,32 @@
 .portal-page:lang(mr) .portal-big, .portal-page:lang(hi) .portal-big { font-size: var(--fs-deva-heading); line-height: var(--lh-deva-heading); }
 .portal-page:lang(mr) h2, .portal-page:lang(hi) h2, .portal-page:lang(mr) h3, .portal-page:lang(hi) h3 { font-size: var(--fs-h3); line-height: var(--lh-deva-body); }
 .portal-page:lang(mr) .hint, .portal-page:lang(hi) .hint { font-size: var(--fs-label); line-height: var(--lh-body); }
+/* Sign-up and sign-in with ABHA, and her records (16 Oct 2026, docs/PATIENT_SIGNUP_PLAN.md) */
+.portal-card .segmented { display: flex; flex-wrap: wrap; margin: var(--space-3) 0; }
+.portal-tabs { margin-bottom: 0; }
+.portal-tabs button svg.lucide { width: 16px; height: 16px; }
+.portal-card form { display: grid; gap: var(--space-3); }
+.portal-choose { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.portal-choose legend { font-weight: 600; margin-bottom: var(--space-2); }
+.portal-records { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.portal-record { padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.portal-record:first-child { padding-top: 0; border-top: 0; }
+.portal-record h3, .portal-record h4 { margin: 0 0 var(--space-2); }
+.portal-record .plan-card-head { flex-wrap: wrap; gap: var(--space-2); }
+.portal-dl { margin: 0; display: grid; gap: var(--space-2); }
+.portal-dl dt { font-weight: 600; }
+.portal-dl dd { margin: 0; white-space: pre-line; }
+.portal-lab-test + .portal-lab-test { margin-top: var(--space-3); }
+.portal-lab-table th[scope="row"], .portal-bill-table th[scope="row"] { font-weight: 500; text-align: left; }
+.portal-bill-table td.num { text-align: right; white-space: nowrap; }
+.portal-bill-table tfoot th, .portal-bill-table tfoot td { border-top: 1px solid var(--border); }
+/* The poster with the hospital's portal address (Hospital admin → Patient messages) */
+.signup-poster { text-align: center; padding: var(--space-6) var(--space-4); }
+.signup-poster h1 { font-size: 2em; margin: 0 0 var(--space-2); }
+.signup-poster-lead { font-size: 1.4em; margin: 0 0 var(--space-6); }
+.signup-poster-url { font-size: 1.6em; font-weight: 700; word-break: break-all; margin: 0 0 var(--space-6); }
+.signup-poster ol { text-align: left; max-width: 34em; margin: 0 auto var(--space-4); font-size: 1.15em; }
+.signup-poster ol li + li { margin-top: var(--space-2); }
 
 /* Baby test packages in the order form */
 .lab-packages .lab-package-list { display: grid; gap: var(--space-2); }
@@ -68,3 +94,8 @@
 .portal-booking h3 { margin: 0; display: flex; gap: var(--space-2); align-items: center; }
 .portal-times { border: 0; margin: 0; padding: 0; }
 .portal-time-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* Staff or patient on the sign-in page (owner, 16 Oct 2026) */
+.auth-who { display: flex; margin: 0 0 var(--space-4); }
+.auth-who button { flex: 1; justify-content: center; }
+.portal-entry { display: grid; gap: var(--space-3); }
+.portal-entry .btn-primary { width: 100%; }

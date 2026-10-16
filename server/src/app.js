@@ -32,6 +32,8 @@ import { bedsRouter } from './routes/beds.js';
 import { labRouter } from './routes/lab.js';
 import { reminderOutboxRouter } from './routes/reminderOutbox.js';
 import { portalRouter } from './routes/portal.js';
+import { portalRecordsRouter } from './routes/portalRecords.js';
+import { portalSignupRouter } from './routes/portalSignup.js';
 import { displayRouter } from './routes/display.js';
 import { medicineSafetyRouter } from './routes/medicineSafety.js';
 import { aiAskRouter } from './routes/aiAsk.js';
@@ -60,6 +62,7 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 // platformAnalyticsCacheMs: the same for the super admin's Analytics pages (5 minutes unless set).
 export function createApp({
   loginRateLimitMax = config.LOGIN_RATE_LIMIT_MAX,
+  portalOtpRateLimitMax = config.PORTAL_OTP_RATE_LIMIT_MAX,
   apiRateLimitMax = 300,
   abdmPublicRateLimitMax = 3000,
   analyticsCacheMs = config.ANALYTICS_CACHE_SECONDS * 1000,
@@ -110,6 +113,9 @@ export function createApp({
   // From ABDM (Scan & Share): no staff login – ABDM's signature is checked (routes/abdm.js)
   app.use('/api/abdm/public', abdmPublicRouter);
   // The patient portal (Version 2): its own sign-in with a code, no staff login (routes/portal.js)
+  // Sign-up and sign-in with ABHA on the hospital's own portal address, and her records (docs/PATIENT_SIGNUP_PLAN.md)
+  app.use('/api/portal/h', portalSignupRouter({ otpLimitMax: portalOtpRateLimitMax }));
+  app.use('/api/portal/records', portalRecordsRouter);
   app.use('/api/portal', portalRouter);
   // The waiting-room screen: no login, a secret in the address, tokens and times only (routes/display.js)
   app.use('/api/display', displayRouter);

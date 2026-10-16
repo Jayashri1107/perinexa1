@@ -7,6 +7,7 @@
 // (docs/TRANSLATIONS_TO_CHECK.md).
 
 import { portalItemTranslation } from '../careplans/itemTranslations.js';
+import { ACCOUNT_ERRORS } from './portalAccountWords.js';
 
 export const PORTAL_LANGUAGES = ['en', 'mr', 'hi'];
 /** The switch at the top: each language in its own script. */
@@ -193,13 +194,14 @@ const ERRORS = {
  * A refusal or failure in her language. err: { message, code } from the portal's requests (code 'NETWORK' when the
  * server could not be reached). In English the server's own message; in Marathi or Hindi the translation of a known
  * code, else a general "something went wrong" (never an English sentence she may not read). booking: a refusal of a
- * booking request, where a VALIDATION refusal is about the day.
+ * booking request, where a VALIDATION refusal is about the day. account: a refusal of sign-up or of sign-in with ABHA
+ * (portalAccountWords.js – "we could not sign you in" there is not about a code).
  */
-export function portalError(err, lang, { booking = false } = {}) {
+export function portalError(err, lang, { booking = false, account = false } = {}) {
   const words = ERRORS[lang];
   if (!words) return err?.message ?? '';
   const code = booking && err?.code === 'VALIDATION' ? 'BOOKING_DAYS' : err?.code;
-  return (code && words[code]) || words.OTHER;
+  return (account && code && ACCOUNT_ERRORS[lang]?.[code]) || (code && words[code]) || words.OTHER;
 }
 
 /**

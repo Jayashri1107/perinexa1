@@ -12,6 +12,7 @@ export default defineConfig({
       MONGO_URI: `mongodb://127.0.0.1:27017/${testDb}`,
       JWT_SECRET: 'test-only-secret-that-is-long-enough-1234567890',
       LOGIN_RATE_LIMIT_MAX: '1000',
+      PORTAL_OTP_RATE_LIMIT_MAX: '1000',
       // Never the real OpenAI key from server/.env: AI tests set a fake one and replace OpenAI with a stand-in.
       OPENAI_API_KEY: '',
       // Tests freeze the clock, so a kept Analytics page would never expire: off, except where a test turns it on.

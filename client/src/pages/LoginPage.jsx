@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Baby, BedDouble, CalendarClock, Check, FlaskConical, HeartPulse, Lock, Pill, Receipt, ShieldCheck, Stethoscope, Syringe } from 'lucide-react';
+import { ArrowRight, Baby, BedDouble, CalendarClock, Check, FlaskConical, HeartPulse, Lock, Pill, Receipt, ShieldCheck, Stethoscope, Syringe, UserRound } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/brand/perinexa-logo.png';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
@@ -9,6 +9,8 @@ import { LOGIN_EMAIL_KEY, useAuth } from '../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../auth/guards.jsx';
 import { PasswordInput } from '../components/PasswordInput.jsx';
 import { Alert, Field } from '../components/ui.jsx';
+import { HospitalEntry } from './portal/PortalAccount.jsx';
+import { portal } from './portal/portalApi.js';
 
 const REASONS = {
   idle: { type: 'warning', text: 'You were logged out automatically after a period of inactivity. Log in again to continue.' },
@@ -60,6 +62,9 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   // First start: no super admin yet – this page creates the first one (nothing is kept in a settings file)
   const [needsSetup, setNeedsSetup] = useState(false);
+  // Staff or patient (owner, 16 Oct 2026: one sign-in page). The patient side is the patient portal's own sign-in –
+  // its own session, never a staff one.
+  const [who, setWho] = useState(location.hash === '#patient' ? 'patient' : 'staff');
   useEffect(() => {
     api('/auth/setup-status')
       .then((r) => setNeedsSetup(Boolean(r.needsSetup)))
@@ -101,6 +106,18 @@ export function LoginPage() {
           }}
         />
       ) : (
+        <>
+          <div className="segmented auth-who" role="group" aria-label="Who is signing in">
+            <button type="button" aria-pressed={who === 'staff'} onClick={() => setWho('staff')}>
+              <Stethoscope aria-hidden="true" /> Hospital staff
+            </button>
+            <button type="button" aria-pressed={who === 'patient'} onClick={() => setWho('patient')}>
+              <UserRound aria-hidden="true" /> Patient
+            </button>
+          </div>
+          {who === 'patient' ? (
+            <PatientSignIn onSignedIn={(key) => navigate(`/portal/h/${key}`)} />
+          ) : (
         <form onSubmit={onSubmit} noValidate>
           <header className="auth1-head">
             <h1>{remembered ? 'Welcome back' : 'Sign in'}</h1>
@@ -131,8 +148,58 @@ export function LoginPage() {
             <Lock aria-hidden="true" /> Forgot your password? Ask your hospital administrator to reset it.
           </p>
         </form>
+          )}
+        </>
       )}
     </AuthFrame>
+  );
+}
+
+/**
+ * Patient on the sign-in page (owner, 16 Oct 2026): choose the hospital, then sign in or sign up with ABHA – the same
+ * steps as the hospital's own portal address (docs/PATIENT_SIGNUP_PLAN.md). Only hospitals that switched on patient
+ * sign-up are listed; a patient with a paper code signs in on /portal.
+ */
+function PatientSignIn({ onSignedIn }) {
+  const [list, setList] = useState(null); // { hospitals } | { error }
+  const [key, setKey] = useState('');
+  useEffect(() => {
+    portal('/h')
+      .then((r) => {
+        setList(r);
+        if (r.hospitals.length === 1) setKey(r.hospitals[0].key);
+      })
+      .catch((error) => setList({ error }));
+  }, []);
+  const hospital = list?.hospitals?.find((h) => h.key === key) ?? null;
+  return (
+    <div>
+      <header className="auth1-head">
+        <h1>Patient sign-in</h1>
+        <p className="muted">See your appointments, prescriptions, lab reports and bills, and book an appointment.</p>
+      </header>
+      {list?.error && <Alert type="error">{list.error.message}</Alert>}
+      {!list && <p className="muted">Loading…</p>}
+      {list?.hospitals && list.hospitals.length === 0 && <Alert type="info">No hospital offers patient sign-in with ABHA yet. If the hospital gave you a code on paper, use the link below.</Alert>}
+      {list?.hospitals?.length > 1 && (
+        <Field label="Your hospital" id="patient-hospital">
+          <select id="patient-hospital" value={key} onChange={(e) => setKey(e.target.value)}>
+            <option value="">Choose…</option>
+            {list.hospitals.map((h) => (
+              <option key={h.key} value={h.key}>
+                {h.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      {hospital && <HospitalEntry key={hospital.key} bare hospitalKey={hospital.key} hospital={hospital} lang="en" onSignedIn={() => onSignedIn(hospital.key)} />}
+      {(!hospital || list?.hospitals?.length === 0) && (
+        <p className="auth1-foot">
+          <Lock aria-hidden="true" /> <a href="/portal">I have a code on paper from the hospital</a>
+        </p>
+      )}
+    </div>
   );
 }
 

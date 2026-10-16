@@ -119,7 +119,8 @@ scripts/db.mjs        Local MongoDB start / stop
 Fine for the first hospitals on one server. Running several copies needs changes first.
 
 - Background timers in `server/src/index.js` (`setInterval` for reminders and ABDM expiry): every copy would run them.
-- ABDM transactions kept in memory: `server/src/abdm/abdmService.js`, `server/src/abdm/practiceClient.js`.
+- ABDM transactions kept in memory: `server/src/abdm/abdmService.js`, `server/src/abdm/practiceClient.js`, and the
+  patient portal's sign-up and ABHA sign-in steps (`server/src/routes/portalSignup.js`).
 - Throttles and caches in memory: `careplans/templatesService.js`, `careplans/plansService.js`, the analytics caches,
   `analytics/auditThrottle.js`.
 - `express-rate-limit` with its default in-memory store (`app.js`, `routes/auth.js`, `routes/portal.js`).

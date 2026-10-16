@@ -6,7 +6,7 @@ import { PRACTICE_OTP } from '../abdm/practiceClient.js';
 import { CONFIDENTIAL_WORDS_SOURCE, CONFIDENTIAL_WORD_LIST } from '../abdm/shareRules.js';
 import { ABDM_CHECKLIST, ABDM_CHECKLIST_M2, ABDM_CHECKLIST_M3 } from '../abdm/v3Client.js';
 import { config } from '../config.js';
-import { hospitalToday, isoDay } from '../careplans/dates.js';
+import { addDays, hospitalToday, isoDay } from '../careplans/dates.js';
 import { nextNumber } from '../models/Counter.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient, maskAbha } from '../models/Patient.js';
@@ -245,16 +245,24 @@ const shareView = (s) => ({
 });
 
 /** Saves a Scan & Share with the day's next token, and finds a record that already has this ABHA. */
-async function receiveShare(tenantId, profile, meta, now = new Date()) {
+export async function receiveShare(tenantId, profile, meta, now = new Date()) {
   const on = hospitalToday(now);
   const token = await nextNumber(tenantId, `scan-share:${isoDay(on)}`);
   return ScanShare.create({ tenantId, on, token, profile, ...meta });
 }
 
+// A sign-up from the patient portal waits this many days (a Scan & Share at the desk is for its own day only).
+export const PORTAL_SIGNUP_DAYS = 7;
+
 abdmRouter.get('/scan-share', async (req, res) => {
   desk(req);
   const on = hospitalToday(req.now);
-  const list = await ScanShare.find({ tenantId: req.tenantId, on }).sort({ token: 1 }).lean();
+  const list = await ScanShare.find({
+    tenantId: req.tenantId,
+    $or: [{ on }, { source: 'portal', status: 'waiting', on: { $gte: addDays(on, 1 - PORTAL_SIGNUP_DAYS), $lt: on } }],
+  })
+    .sort({ on: 1, token: 1 })
+    .lean();
   const holders = await Patient.find({ tenantId: req.tenantId, 'abha.number': { $in: list.map((s) => s.profile.abhaNumber) } }, { fullName: 1, mrn: 1, 'abha.number': 1, duplicateOf: 1 }).lean();
   // An ABHA that is on a record marked as a duplicate: the desk is pointed to her main record, and told that the
   // ABHA is still on the earlier one (abhaOn) – it is unlinked there and linked on the main record (nothing moves by itself)

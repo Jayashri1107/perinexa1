@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarCheck, CalendarDays, CalendarPlus, LogOut, Phone } from 'lucide-react';
+import { CalendarCheck, CalendarDays, CalendarPlus, House, LogOut, Phone } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import logo from '../../assets/brand/perinexa-logo.png';
 import { Alert, Field, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
+import { HospitalEntry } from './PortalAccount.jsx';
+import { RECORD_TABS, RecordsTab, recordIcon } from './PortalRecords.jsx';
+import { accountWords } from './portalAccountWords.js';
+import { portal } from './portalApi.js';
 import {
   PORTAL_LANGUAGES,
   PORTAL_LANGUAGE_NAMES,
@@ -23,18 +28,9 @@ import {
 // computer (only the language). Without a choice she sees it in the language recorded for her messages once she is
 // signed in, and the page stays in that language after she signs out or is timed out (the notice about it included).
 // The Marathi and Hindi wording is a DRAFT (portalWords.js); an item a doctor added or reworded is shown as typed.
-
-async function portal(path, { method = 'GET', body } = {}) {
-  let res;
-  try {
-    res = await fetch(`/api/portal${path}`, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
-  } catch {
-    throw Object.assign(new Error("Can't reach the hospital's server. Please try again later."), { status: 0, code: 'NETWORK' });
-  }
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw Object.assign(new Error(data?.error?.message ?? 'Something went wrong. Please try again.'), { status: res.status, code: data?.error?.code });
-  return data;
-}
+// Since 16 Oct 2026 (docs/PATIENT_SIGNUP_PLAN.md): the hospital's own address /portal/h/<code> adds sign-in and
+// sign-up with ABHA (PortalAccount.jsx), and once signed in she has tabs for her prescriptions, lab reports, visits
+// and bills (PortalRecords.jsx).
 
 /** English, मराठी, हिंदी – at the top of every portal page. */
 function LanguageSwitch({ lang, onChange }) {
@@ -197,10 +193,28 @@ function SignIn({ onDone, lang }) {
   );
 }
 
+/** Home and her records, at the top of her page. */
+function PortalTabs({ tab, onTab, lang }) {
+  const w = accountWords(lang);
+  return (
+    <nav className="segmented portal-tabs" aria-label={w.tabs.home}>
+      {['home', ...RECORD_TABS].map((t) => {
+        const Icon = t === 'home' ? House : recordIcon(t);
+        return (
+          <button key={t} type="button" aria-pressed={tab === t} onClick={() => onTab(t)}>
+            <Icon aria-hidden="true" /> {w.tabs[t]}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 /** What she sees once signed in (exported for the tests): her appointment, her care plan and the hospital's phone. */
 export function MyCare({ data, booking, onChanged, onSignOut, lang = 'en' }) {
   const w = portalWords(lang);
-  const { hospital, appointment, plan } = data;
+  const { hospital } = data;
+  const [tab, setTab] = useState('home');
   return (
     <div className="portal-stack">
       <section className="card portal-card">
@@ -211,7 +225,37 @@ export function MyCare({ data, booking, onChanged, onSignOut, lang = 'en' }) {
           </button>
         </div>
         <p className="muted">{hospital.name}</p>
+        <PortalTabs tab={tab} onTab={setTab} lang={lang} />
       </section>
+      {tab !== 'home' ? <RecordsTab key={tab} tab={tab} lang={lang} /> : <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} />}
+      <section className="card portal-card">
+        <h2>
+          <Phone aria-hidden="true" /> {w.questions}
+        </h2>
+        <p>
+          {w.call(hospital.name)}
+          {hospital.phone ? (
+            <>
+              {w.callJoin}
+              {/* the number on one line: in Marathi or Hindi the longer sentence broke it after "+91" on a phone */}
+              <a className="nowrap" href={`tel:${hospital.phone.replace(/[^\d+]/g, '')}`}>
+                {hospital.phone}
+              </a>
+            </>
+          ) : null}
+          {w.stop} {w.emergency}
+        </p>
+      </section>
+    </div>
+  );
+}
+
+/** Home: her next appointment (and booking) and what is coming up in her care plan. */
+function HomeCards({ data, booking, onChanged, lang }) {
+  const w = portalWords(lang);
+  const { appointment, plan } = data;
+  return (
+    <>
       <section className="card portal-card" aria-labelledby="portal-appt">
         <h2 id="portal-appt">
           <CalendarCheck aria-hidden="true" /> {w.nextAppointment}
@@ -253,25 +297,7 @@ export function MyCare({ data, booking, onChanged, onSignOut, lang = 'en' }) {
           <p className="hint">{w.doctorDecides}</p>
         </section>
       )}
-      <section className="card portal-card">
-        <h2>
-          <Phone aria-hidden="true" /> {w.questions}
-        </h2>
-        <p>
-          {w.call(hospital.name)}
-          {hospital.phone ? (
-            <>
-              {w.callJoin}
-              {/* the number on one line: in Marathi or Hindi the longer sentence broke it after "+91" on a phone */}
-              <a className="nowrap" href={`tel:${hospital.phone.replace(/[^\d+]/g, '')}`}>
-                {hospital.phone}
-              </a>
-            </>
-          ) : null}
-          {w.stop} {w.emergency}
-        </p>
-      </section>
-    </div>
+    </>
   );
 }
 
@@ -284,8 +310,11 @@ export function MyCare({ data, booking, onChanged, onSignOut, lang = 'en' }) {
 export const signedInState = (data, booking) => ({ step: 'in', data, booking, recorded: data?.language ?? null });
 export const signInState = (before, error = null) => ({ step: 'signin', recorded: before?.recorded ?? null, ...(error ? { error } : {}) });
 
-/** The portal as it looks for one state (exported for the tests); its language: chosen on this phone, else recorded. */
-export function PortalScreen({ state, notice, chosen, onChoose, onDismiss, onSignedIn, onChanged, onSignOut }) {
+/**
+ * The portal as it looks for one state (exported for the tests); its language: chosen on this phone, else recorded.
+ * hospital: on the hospital's own address, { key, data, error } – sign-in and sign-up with ABHA instead of the code.
+ */
+export function PortalScreen({ state, notice, chosen, onChoose, onDismiss, onSignedIn, onChanged, onSignOut, hospital = null }) {
   const lang = portalLanguage(chosen, state.recorded);
   const w = portalWords(lang);
   useEffect(() => {
@@ -307,13 +336,27 @@ export function PortalScreen({ state, notice, chosen, onChoose, onDismiss, onSig
       </Alert>
       <Alert type="error">{state.error ? portalError(state.error, lang) : null}</Alert>
       {state.step === 'loading' && <p className="muted">{w.loading}</p>}
-      {state.step === 'signin' && <SignIn lang={lang} onDone={onSignedIn} />}
+      {state.step === 'signin' && !hospital && <SignIn lang={lang} onDone={onSignedIn} />}
+      {state.step === 'signin' && hospital?.error && <Alert type="error">{portalError(hospital.error, lang, { account: true })}</Alert>}
+      {state.step === 'signin' && hospital?.data && <HospitalEntry hospitalKey={hospital.key} hospital={hospital.data.hospital} lang={lang} onSignedIn={onSignedIn} />}
       {state.step === 'in' && <MyCare data={state.data} booking={state.booking} onChanged={onChanged} onSignOut={onSignOut} lang={lang} />}
     </main>
   );
 }
 
 export function PortalPage() {
+  const { key: hospitalKey } = useParams(); // the hospital's own address (/portal/h/<code>), else undefined
+  const [hospital, setHospital] = useState(null); // { key, data, error }
+  useEffect(() => {
+    if (!hospitalKey) return undefined;
+    let current = true;
+    portal(`/h/${encodeURIComponent(hospitalKey)}`)
+      .then((data) => current && setHospital({ key: hospitalKey, data, error: null }))
+      .catch((error) => current && setHospital({ key: hospitalKey, data: null, error }));
+    return () => {
+      current = false;
+    };
+  }, [hospitalKey]);
   const [state, setState] = useState({ step: 'loading', recorded: null }); // loading | signin | in
   const [notice, setNotice] = useState(null); // 'timedOut' | 'signedOut'
   const [chosen, setChosen] = useState(rememberedPortalLanguage); // the language chosen on this phone or computer
@@ -361,6 +404,7 @@ export function PortalPage() {
       }}
       onChanged={load}
       onSignOut={signOut}
+      hospital={hospitalKey ? (hospital ?? { key: hospitalKey, data: null, error: null }) : null}
     />
   );
 }
