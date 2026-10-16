@@ -14,8 +14,8 @@ import { moduleByKey } from '../../platform/modules.js';
 // The reminders switch also covers the two general messages added on 4 Oct 2026 ("a check-up or test is due", "we
 // missed you"): the page says exactly what switching it on sends, that agreements from before that day were asked
 // for appointment reminders only, and that a death recorded on a record (by her doctor) stops every message to it.
-// Since 16 Oct 2026: patients may sign up themselves with their ABHA (docs/PATIENT_SIGNUP_PLAN.md) – the hospital's
-// portal address and a poster to print with it.
+// Since 16 Oct 2026: patients may sign up for their own account (docs/PATIENT_ACCOUNTS_PLAN.md) – reception approves
+// each one – and the hospital's portal address with a poster to print.
 
 /** The poster for the waiting room: the hospital's portal address in large print, and what a patient can do there. */
 function SignupPoster({ url, hospital, onClose }) {
@@ -24,14 +24,14 @@ function SignupPoster({ url, hospital, onClose }) {
       <PrintDocument footer={<span>{hospital} · printed {formatDate(new Date())}</span>}>
         <div className="signup-poster">
           <h1>{hospital}</h1>
-          <p className="signup-poster-lead">Your care online – with your ABHA</p>
+          <p className="signup-poster-lead">Your care online</p>
           <p className="signup-poster-url">{url}</p>
           <ol>
             <li>Open this address on your phone.</li>
-            <li>Sign up with your ABHA number or your Aadhaar-linked mobile number. An OTP comes to your mobile.</li>
-            <li>The hospital confirms your registration. Then sign in to see your appointments, prescriptions, lab reports, visits and bills, and to book an appointment.</li>
+            <li>Sign up with your name, age, mobile number, email and a password.</li>
+            <li>The hospital checks who you are and approves your registration. Then sign in with your mobile number and an OTP, or your email and password, to see your appointments, prescriptions, lab reports, visits and bills, and to book an appointment.</li>
           </ol>
-          <p>No Aadhaar card is needed. No ABHA yet? Ask at the reception desk.</p>
+          <p>You can also sign in from the Perinexa sign-in page: choose Patient.</p>
         </div>
       </PrintDocument>
     </PrintPreview>
@@ -147,13 +147,14 @@ export function PatientMessagesSettingsPage() {
             </p>
             <label className="check">
               <input type="checkbox" checked={Boolean(form.portalSignup) && form.portalEnabled} disabled={!form.portalEnabled} onChange={(e) => setForm({ ...form, portalSignup: e.target.checked })} /> Let
-              patients sign up themselves with their ABHA, and sign in with it
+              patients sign up for their own account (reception approves each one)
             </label>
             <p className="hint">
-              The hospital gets its own portal address (below) for a poster. A patient signs up there with her ABHA number, ABHA address or Aadhaar-linked mobile and an OTP from ABDM. No Aadhaar
-              card or number is asked for or kept. Her sign-up waits on reception's Today page under Scan & Share, marked "Signed up online", for up to 7 days: she is not a patient until reception
-              registers her or finds her record. After that she signs in with her ABHA and an OTP, and sees her prescriptions and visits (signed visits only, as printed), lab reports (once a doctor
-              has reviewed them) and bills. Never notes, risk or anything about HIV. Switching this off makes the address stop working.
+              A patient signs up on the sign-in page (Patient) or at the hospital's portal address (below, for a poster) with her name, age, mobile number, email and a password. Her sign-up
+              waits for reception (Patients → Online sign-ups): reception checks who she is and approves it – linking her patient record, or registering her – or rejects it. Only then can she
+              sign in, with her mobile number and an OTP by SMS (the reminders' SMS provider; until one is set up, a practice OTP is shown on screen, never on a live server) or with her email
+              and password. She sees her prescriptions and visits (signed visits only, as printed), lab reports (once a doctor has reviewed them) and bills. Never notes, risk or anything about
+              HIV. Withdrawing her portal access (on her record) also closes her account. Switching this off makes the address stop working.
             </p>
             {signupUrl && (
               <p>

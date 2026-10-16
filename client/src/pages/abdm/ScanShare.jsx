@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { BadgeCheck, Globe, PencilLine, QrCode, Save, UserPlus } from 'lucide-react';
+import { BadgeCheck, PencilLine, QrCode, Save, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, Field, StatusPill, formatDate, formatTime } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill, formatTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { Modal } from '../pharmacy/pharmacyUi.jsx';
@@ -14,9 +14,6 @@ import { ModeBanner } from './PatientAbhaTab.jsx';
 // each with a token number. Reception links each to her record (found, or registered with the details filled in), or
 // puts it aside. And Hospital admin → ABDM: the HFR / HIP ID, the counter code and how to get the QR – and for M2
 // (sharing her records) the addresses ABDM calls and what to check against ABDM's sandbox.
-// Since 16 Oct 2026 the list also has patients who signed up online in the patient portal with their ABHA
-// (docs/PATIENT_SIGNUP_PLAN.md): marked "Signed up online", waiting up to 7 days. She is not a patient until reception
-// registers her or finds her record here.
 
 function FindDialog({ share, onClose, onDone }) {
   const [error, setError] = useState(null);
@@ -76,7 +73,7 @@ export function ScanShareSection() {
       count={waiting.length}
       empty={
         <>
-          Nobody is waiting from the desk QR code or an online sign-up.
+          Nobody is waiting from the desk QR code.
           {flash ? ` ${flash}` : ''}
           {res.data.mode === 'practice' && practiceButton}
         </>
@@ -95,17 +92,10 @@ export function ScanShareSection() {
             <div>
               <strong>
                 Token {s.token} · {s.profile.name}
-              </strong>{' '}
-              {s.source === 'portal' && (
-                <StatusPill tone="due" icon={Globe}>
-                  Signed up online
-                </StatusPill>
-              )}
+              </strong>
               <p className="hint">
                 {s.profile.yearOfBirth ? `born ${s.profile.yearOfBirth} · ` : ''}
-                {s.profile.abhaAddress || s.profile.abhaNumber} · {s.source === 'portal' ? 'signed up' : 'arrived'}{' '}
-                {formatDate(s.receivedAt) !== formatDate(new Date()) ? `${formatDate(s.receivedAt)}, ` : ''}
-                {formatTime(s.receivedAt)}
+                {s.profile.abhaAddress || s.profile.abhaNumber} · arrived {formatTime(s.receivedAt)}
                 {s.knownPatient && !s.knownPatient.abhaOn ? ` · already linked to ${s.knownPatient.fullName} (${s.knownPatient.mrn})` : ''}
                 {/* Her ABHA is on a record marked as a duplicate: the desk is pointed to her main record */}
                 {s.knownPatient?.abhaOn

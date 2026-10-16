@@ -77,6 +77,9 @@ export function PatientNewPage() {
   // A Scan & Share registration (ABDM, Today page): her ABHA name, phone and age fill in the form; once saved her ABHA
   // is linked to the new record.
   const fromAbha = location.state?.fromScanShare ?? null;
+  // A patient's online sign-up being registered (Patients → Online sign-ups, 16 Oct 2026): her name, mobile and age fill
+  // in the form; once saved (or an existing record chosen) her sign-up is approved for that record.
+  const fromSignup = location.state?.fromSignup ?? null;
   const roles = activeMembership.roles;
   const clinical = roles.includes('doctor') || roles.includes('rmo');
   const careType = CARE_TYPES.includes(chosen) ? chosen : null;
@@ -126,11 +129,23 @@ export function PatientNewPage() {
     }
   };
 
+  // Approves her online sign-up for this record; the sentence to show either way.
+  const approveSignup = async (patientId) => {
+    try {
+      await api(`/patient-accounts/${fromSignup.id}/approve`, { method: 'POST', body: { patientId } });
+      return 'Her online sign-up is approved: she can sign in now.';
+    } catch (err) {
+      return `Her online sign-up was not approved (${err.message}) – approve it in Patients → Online sign-ups.`;
+    }
+  };
+
   // "Open this record": she is already registered. A quick booking being registered joins that record.
   const openExisting = async (match) => {
     setChoosing(match.id);
     let flash = null;
-    if (booking) {
+    if (fromSignup) {
+      flash = await approveSignup(match.id);
+    } else if (booking) {
       try {
         await api(`/appointments/${booking.id}/link`, { method: 'POST', body: { patientId: match.id } });
         flash = 'Her appointment is now on this record.';
@@ -154,6 +169,7 @@ export function PatientNewPage() {
         registered += ` Her ABHA could not be linked (${err.message}) – use the ABHA tab on her record.`;
       }
     }
+    if (fromSignup) registered += ` ${await approveSignup(patient.id)}`;
     if (booking) {
       try {
         await api(`/appointments/${booking.id}/link`, { method: 'POST', body: { patientId: patient.id } });
@@ -162,7 +178,7 @@ export function PatientNewPage() {
         registered += ` Her appointment could not be added to her record (${err.message}) – book her again on the Appointments page.`;
       }
     }
-    if (another && !patient.access.canEditClinical && !booking && !fromAbha) {
+    if (another && !patient.access.canEditClinical && !booking && !fromAbha && !fromSignup) {
       setMatches(null);
       setChoosing(null);
       dictatedClinical.current = null;
@@ -201,7 +217,7 @@ export function PatientNewPage() {
                 const Icon = CARE_TYPE_ICONS[l.type] ?? UserPlus;
                 return (
                   <li key={l.to}>
-                    <Link to={l.to} className="care-type-card" state={booking ? { fromBooking: booking } : fromAbha ? { fromScanShare: fromAbha } : undefined}>
+                    <Link to={l.to} className="care-type-card" state={booking ? { fromBooking: booking } : fromAbha ? { fromScanShare: fromAbha } : fromSignup ? { fromSignup } : undefined}>
                       <span className="care-type-icon" aria-hidden="true">
                         <Icon />
                       </span>
@@ -223,6 +239,7 @@ export function PatientNewPage() {
             <Alert type="success" onClose={() => setSavedNote(null)}>
               {savedNote}
             </Alert>
+            {fromSignup && <Alert type="info">Registering {fromSignup.name} from her online sign-up. Her sign-up is approved for this record once she is saved.</Alert>}
             {fromAbha && <Alert type="info">Registering {fromAbha.name} from Scan & Share (ABHA). Her ABHA is linked once she is saved.</Alert>}
             {booking && (
               <Alert type="info">
@@ -230,13 +247,13 @@ export function PatientNewPage() {
               </Alert>
             )}
             <PatientForm
-              key={booking?.id ?? fromAbha?.id ?? `new-${round}`}
-              prefill={booking ? { fullName: booking.name, phone: booking.phone, assignedDoctor: booking.doctorId ?? '' } : fromAbha ? { fullName: fromAbha.name, phone: fromAbha.phone ?? '', ageYears: fromAbha.age ?? '' } : null}
+              key={booking?.id ?? fromAbha?.id ?? fromSignup?.id ?? `new-${round}`}
+              prefill={booking ? { fullName: booking.name, phone: booking.phone, assignedDoctor: booking.doctorId ?? '' } : fromAbha ? { fullName: fromAbha.name, phone: fromAbha.phone ?? '', ageYears: fromAbha.age ?? '' } : fromSignup ? { fullName: fromSignup.name, phone: fromSignup.phone ?? '', ageYears: fromSignup.age ?? '' } : null}
               careType={careType}
               part="info"
               onSubmit={save}
               submitLabel="Register patient"
-              anotherLabel={booking || fromAbha ? null : 'Save and register another'}
+              anotherLabel={booking || fromAbha || fromSignup ? null : 'Save and register another'}
               access={{ canEditIdentity: true, canEditNewborn: true, canEditClinical: clinical }}
               clinicalStep={clinicalStep}
               cancelTo="/patients"
@@ -255,7 +272,7 @@ export function PatientNewPage() {
           total={matches.total}
           busy={choosing}
           error={matchError}
-          openNote={booking ? 'Her appointment is added to the record you open.' : null}
+          openNote={fromSignup ? 'Her online sign-up is approved for the record you open.' : booking ? 'Her appointment is added to the record you open.' : null}
           onOpen={openExisting}
           onRegisterAnyway={registerAnyway}
           onBack={() => setMatches(null)}

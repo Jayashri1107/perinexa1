@@ -33,7 +33,8 @@ import { labRouter } from './routes/lab.js';
 import { reminderOutboxRouter } from './routes/reminderOutbox.js';
 import { portalRouter } from './routes/portal.js';
 import { portalRecordsRouter } from './routes/portalRecords.js';
-import { portalSignupRouter } from './routes/portalSignup.js';
+import { portalAccountRouter, portalSignupRouter } from './routes/portalSignup.js';
+import { patientAccountsRouter } from './routes/patientAccounts.js';
 import { displayRouter } from './routes/display.js';
 import { medicineSafetyRouter } from './routes/medicineSafety.js';
 import { aiAskRouter } from './routes/aiAsk.js';
@@ -113,8 +114,10 @@ export function createApp({
   // From ABDM (Scan & Share): no staff login – ABDM's signature is checked (routes/abdm.js)
   app.use('/api/abdm/public', abdmPublicRouter);
   // The patient portal (Version 2): its own sign-in with a code, no staff login (routes/portal.js)
-  // Sign-up and sign-in with ABHA on the hospital's own portal address, and her records (docs/PATIENT_SIGNUP_PLAN.md)
+  // Patients' own accounts: sign-up and sign-in on the hospital's portal, her password, and her records
+  // (docs/PATIENT_ACCOUNTS_PLAN.md)
   app.use('/api/portal/h', portalSignupRouter({ otpLimitMax: portalOtpRateLimitMax }));
+  app.use('/api/portal/account', portalAccountRouter);
   app.use('/api/portal/records', portalRecordsRouter);
   app.use('/api/portal', portalRouter);
   // The waiting-room screen: no login, a secret in the address, tokens and times only (routes/display.js)
@@ -163,6 +166,8 @@ export function createApp({
   app.use('/api/beds', ...inTenant, bedsRouter);
   app.use('/api/lab', ...inTenant, labRouter);
   app.use('/api/reminders', ...inTenant, reminderOutboxRouter);
+  // Reception: patients' sign-ups to approve or reject (routes/patientAccounts.js)
+  app.use('/api/patient-accounts', ...inTenant, patientAccountsRouter);
   app.use('/api/medicine-safety', ...inTenant, medicineSafetyRouter);
   app.use('/api/ai/brief', ...inTenant, aiBriefRouter); // before /api/ai (Ask your records)
   app.use('/api/ai', ...inTenant, aiAskRouter);

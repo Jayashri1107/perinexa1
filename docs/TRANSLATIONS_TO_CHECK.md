@@ -365,43 +365,50 @@ File: `client/src/pages/portal/portalWords.js` (`PORTAL_SLIP_WORDS`; Patient →
 | `digits` | and the last 4 digits of your mobile number. You will see your next appointment and what is due in your care plan. | आणि तुमच्या मोबाइल नंबरचे शेवटचे 4 अंक. तुम्हाला तुमची पुढील भेट आणि तुमच्या काळजीच्या योजनेत पुढे काय करायचे आहे ते दिसेल. | और आपके मोबाइल नंबर के आख़िरी 4 अंक। आपको अपनी अगली मुलाक़ात और अपनी देखभाल योजना में आगे क्या करना है, यह दिखेगा। |
 | `keep` | Keep this paper safe. The code works for 90 days. If you lose it, ask the hospital for a new one – the old one then stops working. | हा कागद सांभाळून ठेवा. हा कोड 90 दिवस चालतो. कागद हरवल्यास रुग्णालयाकडून नवीन कोड घ्या – मग जुना कोड बंद होतो. | यह काग़ज़ सँभालकर रखें। यह कोड 90 दिन तक चलता है। काग़ज़ खो जाए तो अस्पताल से नया कोड लें – तब पुराना कोड बंद हो जाता है। |
 
-## 5. The patient portal: sign-up and sign-in with ABHA, and her records (added 16 Oct 2026)
+## 5. The patient portal: her own account and her records (added 16 Oct 2026)
 
-File: `client/src/pages/portal/portalAccountWords.js` (the hospital's portal address /portal/h/<code>, and the tabs
-Prescriptions, Lab reports, Visits and Bills once she is signed in – docs/PATIENT_SIGNUP_PLAN.md). Written by the
-software developer (an AI assistant) on 16 October 2026; **not checked yet**. The English is also a draft for the owner
-to read on screen. `{…}` parts are filled in by the app. Words such as ABHA, OTP and UPI stay as they are.
+File: `client/src/pages/portal/portalAccountWords.js` – signing up, signing in with mobile number + OTP or email +
+password (on the sign-in page, Patient, and on the hospital's portal address), changing her password, and the tabs
+Prescriptions, Lab reports, Visits and Bills (docs/PATIENT_ACCOUNTS_PLAN.md). Written by the software developer (an AI
+assistant) on 16 October 2026; **not checked yet**. The English is also a draft for the owner to read on screen. `{…}`
+parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 
 | Where | English | मराठी (Marathi) | हिंदी (Hindi) |
 |---|---|---|---|
 | `hospitalTitle` | Your care at {hospital} | {hospital} मधील तुमची काळजी | {hospital} में आपकी देखभाल |
 | `signInTab` | Sign in | आत या | अंदर आएँ |
 | `signUpTab` | Sign up | नोंदणी करा | पंजीकरण करें |
-| `abhaIntro` | Sign in with your ABHA number, ABHA address or the mobile number linked to your Aadhaar. An OTP comes to your mobile. | तुमचा ABHA नंबर, ABHA पत्ता किंवा आधारशी जोडलेला मोबाइल नंबर वापरून आत या. तुमच्या मोबाइलवर OTP येईल. | अपने ABHA नंबर, ABHA पते या आधार से जुड़े मोबाइल नंबर से अंदर आएँ। आपके मोबाइल पर OTP आएगा। |
-| `signupIntro` | New here? Sign up with your ABHA. The hospital confirms your registration, then you can sign in. | नवीन आहात? तुमच्या ABHA ने नोंदणी करा. रुग्णालय तुमची नोंदणी पक्की करेल, मग तुम्ही आत येऊ शकता. | नए हैं? अपने ABHA से पंजीकरण करें। अस्पताल आपका पंजीकरण पक्का करेगा, फिर आप अंदर आ सकते हैं। |
-| `withCode` | I have a code on paper from the hospital | माझ्याकडे रुग्णालयाने दिलेला कोड आहे | मेरे पास अस्पताल का दिया कोड है |
-| `abhaNumber` | ABHA number | ABHA नंबर | ABHA नंबर |
-| `abhaAddress` | ABHA address | ABHA पत्ता | ABHA पता |
+| `withOtp` | Mobile number + OTP | मोबाइल नंबर + OTP | मोबाइल नंबर + OTP |
+| `withPassword` | Email + password | ईमेल + पासवर्ड | ईमेल + पासवर्ड |
 | `mobile` | Mobile number | मोबाइल नंबर | मोबाइल नंबर |
-| `abhaNumberHint` | 14 digits, e.g. 91-1234-5678-9012 | 14 अंक, उदा. 91-1234-5678-9012 | 14 अंक, जैसे 91-1234-5678-9012 |
-| `abhaAddressHint` | e.g. name@abdm | उदा. name@abdm | जैसे name@abdm |
-| `mobileHint` | The mobile number linked to your Aadhaar | तुमच्या आधारशी जोडलेला मोबाइल नंबर | आपके आधार से जुड़ा मोबाइल नंबर |
+| `mobileHint` | The number you signed up with | नोंदणी करताना दिलेला नंबर | पंजीकरण के समय दिया गया नंबर |
+| `email` | Email | ईमेल | ईमेल |
+| `password` | Password | पासवर्ड | पासवर्ड |
+| `passwordHint` | At least 8 characters, with a letter and a number | किमान 8 अक्षरे, त्यात एक अक्षर आणि एक अंक | कम से कम 8 अक्षर, जिसमें एक अक्षर और एक अंक हो |
+| `forgotPassword` | Forgot your password? Sign in with your mobile number and an OTP, then set a new one on your page. | पासवर्ड विसरलात? मोबाइल नंबर आणि OTP ने आत या, मग तुमच्या पानावर नवीन पासवर्ड ठेवा. | पासवर्ड भूल गए? मोबाइल नंबर और OTP से अंदर आएँ, फिर अपने पेज पर नया पासवर्ड रखें। |
 | `sendOtp` | Send OTP | OTP पाठवा | OTP भेजें |
 | `sendingOtp` | Sending… | पाठवत आहे… | भेज रहे हैं… |
-| `otpSentTo` | An OTP was sent to {mobile}. | {mobile} वर OTP पाठवला आहे. | {mobile} पर OTP भेजा गया है। |
+| `otpSentTo` | If {mobile} is registered, an OTP was sent to it. | {mobile} नोंदलेला असल्यास त्यावर OTP पाठवला आहे. | अगर {mobile} पंजीकृत है, तो उस पर OTP भेजा गया है। |
 | `otp` | OTP | OTP (एक वेळचा कोड) | OTP (एक बार का कोड) |
-| `practiceOtp` | Practice mode (no real OTP is sent): the OTP is {OTP}. | सराव मोड (खरा OTP पाठवला जात नाही): OTP आहे {OTP}. | अभ्यास मोड (असली OTP नहीं भेजा जाता): OTP है {OTP}। |
-| `next` | Continue | पुढे | आगे |
-| `checking` | Checking… | तपासत आहे… | जाँच रहे हैं… |
-| `startAgain` | Start again | पुन्हा सुरू करा | फिर से शुरू करें |
-| `chooseAbha` | Choose your ABHA | तुमचा ABHA निवडा | अपना ABHA चुनें |
-| `chooseName` | Who is signing in? | कोण आत येत आहे? | कौन अंदर आ रहा है? |
-| `bornIn` | born {year} | जन्म {year} | जन्म {year} |
-| `agree` | I agree that {hospital} receives my ABHA details (name, sex, year of birth and mobile number) to register me. Nothing medical is shared by signing up. | माझी नोंदणी करण्यासाठी {hospital} ला माझे ABHA तपशील (नाव, लिंग, जन्मवर्ष आणि मोबाइल नंबर) मिळतील याला माझी संमती आहे. नोंदणी करताना कोणतीही वैद्यकीय माहिती दिली जात नाही. | मैं सहमत हूँ कि मेरा पंजीकरण करने के लिए {hospital} को मेरे ABHA विवरण (नाम, लिंग, जन्म वर्ष और मोबाइल नंबर) मिलें। पंजीकरण में कोई चिकित्सा जानकारी साझा नहीं होती। |
+| `practiceOtp` | Practice mode (no SMS is sent): the OTP is {OTP}. | सराव मोड (SMS पाठवला जात नाही): OTP आहे {OTP}. | अभ्यास मोड (SMS नहीं भेजा जाता): OTP है {OTP}। |
+| `otpOff` | Sign-in with an OTP is not available yet. Please use your email and password. | OTP ने आत येण्याची सोय अजून नाही. कृपया ईमेल आणि पासवर्ड वापरा. | OTP से अंदर आने की सुविधा अभी नहीं है। कृपया ईमेल और पासवर्ड का उपयोग करें। |
+| `signIn` | Sign in | आत या | अंदर आएँ |
+| `signingIn` | Signing in… | आत येत आहे… | अंदर आ रहे हैं… |
+| `startAgain` | Change the number | नंबर बदला | नंबर बदलें |
+| `fullName` | Full name | पूर्ण नाव | पूरा नाम |
+| `age` | Age (years) | वय (वर्षे) | उम्र (वर्ष) |
+| `agree` | I agree that {hospital} keeps these details to register me and to let me sign in. My registration is checked by the hospital before I can see anything. | माझी नोंदणी करण्यासाठी आणि मला आत येऊ देण्यासाठी {hospital} हे तपशील ठेवेल याला माझी संमती आहे. काहीही दिसण्यापूर्वी रुग्णालय माझी नोंदणी तपासेल. | मैं सहमत हूँ कि मेरा पंजीकरण करने और मुझे अंदर आने देने के लिए {hospital} ये विवरण रखे। कुछ भी दिखने से पहले अस्पताल मेरा पंजीकरण जाँचेगा। |
 | `signUp` | Sign up | नोंदणी करा | पंजीकरण करें |
 | `signingUp` | Signing up… | नोंदणी करत आहे… | पंजीकरण हो रहा है… |
-| `signedUp` | Thank you. The hospital will confirm your registration within {days} days, or at your next visit. After that, sign in here with your ABHA. | धन्यवाद. रुग्णालय {days} दिवसांत किंवा तुमच्या पुढील भेटीत तुमची नोंदणी पक्की करेल. त्यानंतर तुमच्या ABHA ने इथे आत या. | धन्यवाद। अस्पताल {days} दिनों में या आपकी अगली मुलाक़ात पर आपका पंजीकरण पक्का करेगा। उसके बाद अपने ABHA से यहाँ अंदर आएँ। |
-| `noAadhaar` | No Aadhaar card is needed. No ABHA yet? Ask at the reception desk. | आधार कार्डची गरज नाही. ABHA अजून नाही? स्वागत कक्षात विचारा. | आधार कार्ड की ज़रूरत नहीं है। अभी ABHA नहीं है? रिसेप्शन पर पूछें। |
+| `signedUp` | Thank you. Your registration is waiting for {hospital} to approve it. The hospital may call you to check who you are. Once it is approved, sign in here. | धन्यवाद. तुमची नोंदणी {hospital} च्या मंजुरीसाठी थांबली आहे. तुम्ही कोण आहात हे तपासण्यासाठी रुग्णालय तुम्हाला फोन करू शकते. मंजुरी मिळाल्यावर इथे आत या. | धन्यवाद। आपका पंजीकरण {hospital} की मंज़ूरी के लिए रुका है। आप कौन हैं, यह जाँचने के लिए अस्पताल आपको फ़ोन कर सकता है। मंज़ूरी मिलने पर यहाँ अंदर आएँ। |
+| `withCode` | I have a code on paper from the hospital | माझ्याकडे रुग्णालयाने दिलेला कोड आहे | मेरे पास अस्पताल का दिया कोड है |
+| `changePassword` | Change password | पासवर्ड बदला | पासवर्ड बदलें |
+| `newPassword` | New password | नवीन पासवर्ड | नया पासवर्ड |
+| `savePassword` | Save the new password | नवीन पासवर्ड जतन करा | नया पासवर्ड सहेजें |
+| `saving` | Saving… | जतन करत आहे… | सहेज रहे हैं… |
+| `passwordSaved` | Your new password is saved. | तुमचा नवीन पासवर्ड जतन झाला. | आपका नया पासवर्ड सहेज लिया गया। |
+| `emailOptional` | Email (optional) | ईमेल (ऐच्छिक) | ईमेल (वैकल्पिक) |
+| `emailOptionalHint` | With an email you can also sign in with a password. Without one, you sign in with your mobile number and an OTP. | ईमेल दिल्यास पासवर्डनेही आत येता येईल. ईमेल नसल्यास मोबाइल नंबर आणि OTP ने आत या. | ईमेल देने पर आप पासवर्ड से भी अंदर आ सकते हैं। ईमेल न हो तो मोबाइल नंबर और OTP से अंदर आएँ। |
 | `tabs.home` | Home | मुख्य | मुख्य |
 | `tabs.prescriptions` | Prescriptions | औषधचिठ्ठ्या | पर्चे |
 | `tabs.lab` | Lab reports | तपासणी अहवाल | जाँच रिपोर्ट |
@@ -447,9 +454,10 @@ to read on screen. `{…}` parts are filled in by the app. Words such as ABHA, O
 | `billStatus.refund_due` | Refund due | परतावा बाकी | वापसी बाकी |
 | `billStatus.no_charges` | No charges | शुल्क नाही | कोई शुल्क नहीं |
 | `printedOnline` | Patient (online) | रुग्ण (ऑनलाइन) | मरीज़ (ऑनलाइन) |
-| refusal `PORTAL_LOGIN_FAILED` | (the server's English message) | आम्ही तुम्हाला आत घेऊ शकलो नाही. तुम्ही नुकतीच नोंदणी केली असल्यास, रुग्णालयाने ती अजून पक्की केली नसेल. कृपया रुग्णालयाला फोन करा. | हम आपको अंदर नहीं ले सके। अगर आपने हाल ही में पंजीकरण किया है, तो हो सकता है अस्पताल ने उसे अभी पक्का नहीं किया हो। कृपया अस्पताल को फ़ोन करें। |
-| refusal `EXPIRED` | (the server's English message) | ही पायरी कालबाह्य झाली. कृपया पुन्हा सुरू करा. | यह चरण समाप्त हो गया। कृपया फिर से शुरू करें। |
-| refusal `ABDM` | (the server's English message) | ABHA तपासता आला नाही. तुम्ही लिहिलेले आणि OTP तपासा, किंवा पुन्हा सुरू करा. | ABHA की जाँच नहीं हो सकी। आपने जो लिखा और OTP जाँचें, या फिर से शुरू करें। |
+| refusal `PORTAL_LOGIN_FAILED` | (the server's English message) | ईमेल, पासवर्ड किंवा OTP बरोबर नाही. | ईमेल, पासवर्ड या OTP सही नहीं है। |
+| refusal `PORTAL_LOCKED` | (the server's English message) | चुकीच्या प्रयत्नांमुळे हे खाते 30 मिनिटांसाठी बंद आहे. कृपया थांबा, किंवा रुग्णालयाला फोन करा. | ग़लत कोशिशों के कारण यह खाता 30 मिनट के लिए बंद है। कृपया रुकें, या अस्पताल को फ़ोन करें। |
+| refusal `ACCOUNT_PENDING` | (the server's English message) | तुमची नोंदणी अजून रुग्णालयाच्या मंजुरीसाठी थांबली आहे. मंजुरी मिळाल्यावर आत येता येईल. | आपका पंजीकरण अभी अस्पताल की मंज़ूरी के लिए रुका है। मंज़ूरी मिलने पर अंदर आ सकेंगे। |
+| refusal `ACCOUNT_REJECTED` | (the server's English message) | तुमची नोंदणी मंजूर झाली नाही. कृपया रुग्णालयाला फोन करा. | आपका पंजीकरण मंज़ूर नहीं हुआ। कृपया अस्पताल को फ़ोन करें। |
+| refusal `OTP_OFF` | (the server's English message) | OTP ने आत येण्याची सोय अजून नाही. कृपया ईमेल आणि पासवर्ड वापरा. | OTP से अंदर आने की सुविधा अभी नहीं है। कृपया ईमेल और पासवर्ड का उपयोग करें। |
 | refusal `VALIDATION` | (the server's English message) | कृपया तुम्ही लिहिलेले तपासा. | कृपया आपने जो लिखा उसे जाँचें। |
-| refusal `NOT_FOUND` | (the server's English message) | हे पान उपलब्ध नाही. पोस्टरवरील पत्ता तपासा, किंवा रुग्णालयाला फोन करा. | यह पेज उपलब्ध नहीं है। पोस्टर पर लिखा पता जाँचें, या अस्पताल को फ़ोन करें। |
-| refusal `BUSY` | (the server's English message) | रुग्णालयाचे पान सध्या व्यस्त आहे. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा. | अस्पताल का पेज अभी व्यस्त है। कृपया थोड़ी देर बाद फिर से कोशिश करें। |
+| refusal `NOT_FOUND` | (the server's English message) | हे पान उपलब्ध नाही. पत्ता तपासा, किंवा रुग्णालयाला फोन करा. | यह पेज उपलब्ध नहीं है। पता जाँचें, या अस्पताल को फ़ोन करें। |

@@ -1,24 +1,24 @@
-// The patient portal: sign-up and sign-in with ABHA, and her own records (docs/PATIENT_SIGNUP_PLAN.md, 16 Oct 2026).
-// Sign-up never makes a patient (reception confirms her); refusals give one answer; nothing on the "never shown"
-// list leaves the server. ABDM in practice mode (OTP 123456).
+// The patient portal: patients' own accounts (docs/PATIENT_ACCOUNTS_PLAN.md, owner 16 Oct 2026) – sign up, reception
+// approves (linking her record) or rejects, sign in with email and password or mobile and OTP – and her own records.
+// Sign-up never makes a patient; refusals say nothing about who is registered; nothing on the "never shown" list
+// leaves. No SMS provider in the tests: practice mode (the OTP comes back in the answer).
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resetPractice } from '../src/abdm/practiceClient.js';
 import { createApp } from '../src/app.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { Bill } from '../src/models/Bill.js';
 import { LabOrder } from '../src/models/LabOrder.js';
 import { Patient } from '../src/models/Patient.js';
+import { PatientAccount } from '../src/models/PatientAccount.js';
 import { PrescriptionDesign } from '../src/models/PrescriptionDesign.js';
-import { ScanShare } from '../src/models/ScanShare.js';
 import { Visit } from '../src/models/Visit.js';
-import { resetSignupSteps } from '../src/routes/portalSignup.js';
+import { TEST_SENDER, setTestSender, testSent } from '../src/reminders/sender.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-10-16T06:00:00Z');
-const ABHA = '91-1111-2222-3333'; // a practice ABHA: Sample Abha Mother, mobile 9000000001
-const ROLES = { drA: 'doctor', reception: 'receptionist', admin: 'admin' };
+const ROLES = { drA: 'doctor', reception: 'receptionist', lab: 'lab', admin: 'admin' };
+const SIGNUP = { fullName: 'Sample Mother', ageYears: 29, mobile: '98765 43210', email: 'Sample.Mother@example.com', password: 'Sample1234', consent: true };
 let app;
 let hospital;
 let people;
@@ -30,8 +30,7 @@ beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(NOW);
   await resetTestDb();
-  resetPractice();
-  resetSignupSteps();
+  setTestSender(null);
   app = createApp();
   hospital = await createTenant('Signup Hospital');
   people = {};
@@ -41,7 +40,10 @@ beforeEach(async () => {
     await addMember(people[key], hospital, role);
   }
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  setTestSender(null);
+});
 
 const as = async (who) => (sessions[who] ??= await loginAs(people[who], { app }));
 const settings = async (body) => (await as('admin')).put('/api/reminders/settings').send({ remindersEnabled: false, portalEnabled: true, ...body });
@@ -50,137 +52,195 @@ async function signupOn() {
   expect(res.status, JSON.stringify(res.body)).toBe(200);
   return res.body.settings.signupKey;
 }
-const otp = (agent, key, purpose, value = ABHA, hint = 'abha-number') => agent.post(`/api/portal/h/${key}/otp`).send({ purpose, hint, value });
-async function signUp(key, abha = ABHA) {
-  const agent = request.agent(app);
-  const o = await otp(agent, key, 'signup', abha);
-  expect(o.status, JSON.stringify(o.body)).toBe(200);
-  const v = await agent.post(`/api/portal/h/${key}/signup/verify`).send({ id: o.body.id, otp: '123456' });
-  expect(v.status, JSON.stringify(v.body)).toBe(200);
-  return agent.post(`/api/portal/h/${key}/signup`).send({ id: o.body.id, abhaNumber: abha, consent: true });
-}
-async function abhaSignIn(key, abha = ABHA) {
-  const agent = request.agent(app);
-  const o = await otp(agent, key, 'signin', abha);
-  const res = await agent.post(`/api/portal/h/${key}/signin/verify`).send({ id: o.body.id, otp: '123456' });
-  return { agent, res };
-}
+const signUp = (key, body = {}) => request(app).post(`/api/portal/h/${key}/signup`).send({ ...SIGNUP, ...body });
+const passwordSignIn = (agent, key, email = 'sample.mother@example.com', password = SIGNUP.password) => agent.post(`/api/portal/h/${key}/login`).send({ email, password });
 async function register(overrides = {}) {
-  const res = await (await as('reception')).post('/api/patients').send(samplePatient({ careType: 'antenatal', fullName: 'Sample Abha Mother', phone: '9000000001', assignedDoctor: people.drA._id.toString(), pregnancy: { scanEdd: '2027-03-01' }, ...overrides }));
+  const res = await (await as('reception')).post('/api/patients').send(samplePatient({ careType: 'antenatal', fullName: 'Sample Mother', phone: '98765 43210', assignedDoctor: people.drA._id.toString(), pregnancy: { scanEdd: '2027-03-01' }, ...overrides }));
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body.patient;
 }
-const deskList = async () => (await (await as('reception')).get('/api/abdm/scan-share')).body.shares;
+const waiting = async () => (await (await as('reception')).get('/api/patient-accounts')).body.accounts;
+const waitingId = async () => (await waiting())[0].id;
+const approve = async (id, patientId, who = 'reception') => (await as(who)).post(`/api/patient-accounts/${id}/approve`).send({ patientId });
 
-describe('the hospital portal address', () => {
-  it('exists only while the admin has sign-up and the portal switched on', async () => {
+describe('the hospital portal address and the sign-in page list', () => {
+  it('exist only while the admin has sign-up and the portal switched on; the list names hospitals only', async () => {
     expect((await settings({ portalEnabled: false, portalSignup: true })).body.settings).toMatchObject({ portalSignup: false, signupKey: null });
+    const other = await createTenant('Other Hospital');
+    expect((await request(app).get('/api/portal/h')).body.hospitals).toEqual([]);
     const key = await signupOn();
     expect(key).toMatch(/^[A-Z2-9]{8}$/);
-    // Staff see it too (for the poster)
-    expect((await (await as('reception')).get('/api/reminders/settings')).body.settings.signupKey).toBe(key);
-    const page = await request(app).get(`/api/portal/h/${key.toLowerCase()}`);
-    expect(page.status).toBe(200);
-    expect(page.body).toMatchObject({ hospital: { name: 'Signup Hospital' }, practice: true });
-    expect((await request(app).get('/api/portal/h/AAAABBBB')).status).toBe(404);
-    // Off: the address stops working; on again: a new one
+    expect((await request(app).get('/api/portal/h')).body).toEqual({ hospitals: [{ key, name: 'Signup Hospital' }], otp: 'practice' });
+    expect(JSON.stringify((await request(app).get('/api/portal/h')).body)).not.toContain(String(other._id));
+    expect((await request(app).get(`/api/portal/h/${key.toLowerCase()}`)).body).toMatchObject({ hospital: { name: 'Signup Hospital' }, otp: 'practice' });
     await settings({ portalSignup: false });
     expect((await request(app).get(`/api/portal/h/${key}`)).status).toBe(404);
-    const again = await signupOn();
-    expect(again).not.toBe(key);
+    expect((await signUp(key)).status).toBe(404);
   });
 });
 
-describe('the hospitals on the sign-in page', () => {
-  it('lists only hospitals with sign-up on, by name and portal code only', async () => {
-    const other = await createTenant('Other Hospital');
-    expect((await request(app).get('/api/portal/h')).body).toEqual({ hospitals: [] });
+describe('signing up', () => {
+  it('makes a pending account, no patient; the same answer when the mobile or email is already signed up', async () => {
     const key = await signupOn();
-    const res = await request(app).get('/api/portal/h');
-    expect(res.body).toEqual({ hospitals: [{ key, name: 'Signup Hospital' }] });
-    expect(JSON.stringify(res.body)).not.toContain(String(other._id));
-  });
-});
-
-describe('signing up with ABHA', () => {
-  it('waits at the desk for 7 days and makes no patient until reception confirms her', async () => {
-    const key = await signupOn();
-    const agent = request.agent(app);
-    const o = await otp(agent, key, 'signup');
-    expect(o.body).toMatchObject({ sentTo: '******0001', practiceOtp: '123456' });
-    expect((await agent.post(`/api/portal/h/${key}/signup/verify`).send({ id: o.body.id, otp: '000000' })).status).toBe(400);
-    const v = await agent.post(`/api/portal/h/${key}/signup/verify`).send({ id: o.body.id, otp: '123456' });
-    expect(v.body.accounts).toEqual([{ abhaNumber: ABHA, name: 'Sample Abha Mother', yearOfBirth: 1996, gender: 'F' }]);
-    expect((await agent.post(`/api/portal/h/${key}/signup`).send({ id: o.body.id, abhaNumber: ABHA, consent: false })).status).toBe(400);
-    const done = await agent.post(`/api/portal/h/${key}/signup`).send({ id: o.body.id, abhaNumber: ABHA, consent: true });
-    expect(done.status, JSON.stringify(done.body)).toBe(201);
-    // The step is used up
-    expect((await agent.post(`/api/portal/h/${key}/signup`).send({ id: o.body.id, abhaNumber: ABHA, consent: true })).body.error.code).toBe('EXPIRED');
-
-    expect(await Patient.countDocuments({ tenantId: hospital._id })).toBe(0);
-    expect(await deskList()).toEqual([expect.objectContaining({ source: 'portal', status: 'waiting', profile: expect.objectContaining({ name: 'Sample Abha Mother' }) })]);
-    // The audit log has ids only
-    const entry = await AuditLog.findOne({ action: 'PORTAL_SIGNUP_RECEIVED' }).lean();
-    expect(String(entry.tenantId)).toBe(String(hospital._id));
-    expect(JSON.stringify(entry)).not.toMatch(/Sample Abha Mother|1111-2222/);
-
-    vi.setSystemTime(new Date('2026-10-22T06:00:00Z')); // day 7: still there
-    sessions = {}; // (staff sessions end after 30 minutes)
-    expect(await deskList()).toHaveLength(1);
-    vi.setSystemTime(new Date('2026-10-23T06:00:00Z')); // day 8: off the list (kept in the database)
-    sessions = {};
-    expect(await deskList()).toHaveLength(0);
-    expect(await ScanShare.countDocuments({ tenantId: hospital._id })).toBe(1);
-  });
-
-  it('gives the same answer when she is already waiting or registered, and makes nothing new', async () => {
-    const key = await signupOn();
-    expect((await signUp(key)).status).toBe(201);
-    expect((await signUp(key)).status).toBe(201);
-    expect(await ScanShare.countDocuments({ tenantId: hospital._id })).toBe(1);
-    await ScanShare.deleteMany({ tenantId: hospital._id });
-    const p = await register();
-    await Patient.updateOne({ tenantId: hospital._id, _id: p.id }, { $set: { abha: { number: ABHA, method: 'verified' } } });
+    expect((await signUp(key, { consent: false })).status).toBe(400);
+    expect((await signUp(key, { password: 'short' })).body.error.fields.password).toBeTruthy();
+    expect((await signUp(key, { mobile: '12345' })).body.error.fields.mobile).toBeTruthy();
     const res = await signUp(key);
-    expect(res.status).toBe(201);
-    expect(res.body).toEqual({ ok: true, signupDays: 7 });
-    expect(await ScanShare.countDocuments({ tenantId: hospital._id })).toBe(0);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body).toEqual({ ok: true });
+    expect(await Patient.countDocuments({ tenantId: hospital._id })).toBe(0);
+    const account = await PatientAccount.findOne({ tenantId: hospital._id }).lean();
+    expect(account).toMatchObject({ status: 'pending', email: 'sample.mother@example.com', mobile: '9876543210', patientId: null });
+    expect(account.passwordHash).not.toContain('Sample1234');
+    // again, with the same mobile or the same email: the same answer, nothing new
+    expect((await signUp(key, { email: 'other@example.com' })).body).toEqual({ ok: true });
+    expect((await signUp(key, { mobile: '9123456789' })).body).toEqual({ ok: true });
+    expect(await PatientAccount.countDocuments({ tenantId: hospital._id })).toBe(1);
+    // reception sees it, never the password
+    const list = await waiting();
+    expect(list).toEqual([expect.objectContaining({ fullName: 'Sample Mother', ageYears: 29, mobile: '9876543210', status: 'pending' })]);
+    expect(JSON.stringify(list)).not.toMatch(/passwordHash|\$2/);
+    // the lab may not see sign-ups
+    expect((await (await as('lab')).get('/api/patient-accounts')).status).toBe(403);
   });
+});
 
-  it('reception registers her from the desk list, and then she signs in with her ABHA', async () => {
+describe('signing up without an email (owner, 16 Oct 2026: email optional)', () => {
+  it('needs no password; she signs in with mobile and OTP only, and has no password to change', async () => {
+    const key = await signupOn();
+    const p = await register();
+    // an email needs a password; no email, no password
+    expect((await signUp(key, { password: undefined })).body.error.fields.password).toBeTruthy();
+    expect((await signUp(key, { email: '', password: undefined })).status).toBe(201);
+    expect((await signUp(key, { email: 'not-an-email', mobile: '9111111111' })).body.error.fields.email).toBeTruthy();
+    const account = await PatientAccount.findOne({ tenantId: hospital._id }).lean();
+    expect(account).toMatchObject({ email: null, passwordHash: null, mobile: '9876543210' });
+    // a second one without email, another mobile: allowed (no email to clash)
+    expect((await request(app).post(`/api/portal/h/${key}/signup`).send({ fullName: 'Other Sample', ageYears: 40, mobile: '9222222222', consent: true })).status).toBe(201);
+    expect(await PatientAccount.countDocuments({ tenantId: hospital._id })).toBe(2);
+    expect((await waiting()).every((x) => x.email === null)).toBe(true);
+
+    await approve((await waiting()).find((x) => x.mobile === '9876543210').id, p.id);
+    // no email: password sign-in never works (an empty email is refused like any wrong one)
+    expect((await passwordSignIn(request.agent(app), key, '', 'Sample1234')).status).toBe(401);
+    const agent = request.agent(app);
+    const sent = await agent.post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' });
+    expect((await agent.post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp: sent.body.practiceOtp })).status).toBe(200);
+    expect((await agent.get('/api/portal/me')).body.canChangePassword).toBe(false);
+    expect((await agent.post('/api/portal/account/password').send({ password: 'NewSample99' })).body.error.code).toBe('NO_EMAIL');
+  });
+});
+
+describe('signing in', () => {
+  it('a pending account is told to wait – only after the right password; a wrong one says nothing more', async () => {
     const key = await signupOn();
     await signUp(key);
-    // Not yet confirmed: the same refusal as for any ABHA not registered here
-    const before = await abhaSignIn(key);
-    expect(before.res.status).toBe(401);
-    expect(before.res.body.error.code).toBe('PORTAL_LOGIN_FAILED');
+    const agent = request.agent(app);
+    const wrong = await passwordSignIn(agent, key, 'sample.mother@example.com', 'Wrong1234');
+    expect(wrong.status).toBe(401);
+    const unknown = await passwordSignIn(agent, key, 'nobody@example.com');
+    expect(unknown.body.error).toEqual(wrong.body.error);
+    const pending = await passwordSignIn(agent, key);
+    expect(pending.status).toBe(403);
+    expect(pending.body.error.code).toBe('ACCOUNT_PENDING');
+    expect((await agent.get('/api/portal/me')).status).toBe(401);
+  });
 
-    const [share] = await deskList();
+  it('after approval: email and password, or mobile and OTP, open her record; 5 wrong tries lock it', async () => {
+    const key = await signupOn();
     const p = await register();
-    const link = await (await as('reception')).post(`/api/abdm/scan-share/${share.id}/link`).send({ patientId: p.id });
-    expect(link.status, JSON.stringify(link.body)).toBe(200);
+    await signUp(key);
+    const id = await waitingId();
+    // records that may be hers: the same mobile and name
+    const matches = (await (await as('reception')).get(`/api/patient-accounts/${id}/matches`)).body.matches;
+    expect(matches).toEqual([expect.objectContaining({ id: p.id, matchedOn: expect.arrayContaining(['phone', 'name']) })]);
+    const ok = await approve(id, p.id);
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    expect(ok.body.account).toMatchObject({ status: 'approved', patient: { id: p.id, mrn: p.mrn } });
+    expect((await approve(id, p.id)).body.error.code).toBe('HANDLED');
 
-    const { agent, res } = await abhaSignIn(key);
-    expect(res.status, JSON.stringify(res.body)).toBe(200);
-    const me = await agent.get('/api/portal/me');
-    expect(me.status).toBe(200);
-    expect(me.body.patient).toEqual({ fullName: 'Sample Abha Mother' });
-    // The staff panel shows no "code" for an ABHA sign-in; withdrawing access ends her session
-    expect((await (await as('reception')).get(`/api/patients/${p.id}/portal-access`)).body.active).toBeNull();
+    const a = request.agent(app);
+    expect((await passwordSignIn(a, key, 'SAMPLE.MOTHER@example.com')).status).toBe(200);
+    const me = await a.get('/api/portal/me');
+    expect(me.body).toMatchObject({ patient: { fullName: 'Sample Mother' }, canChangePassword: true });
+
+    // mobile and OTP (practice mode: the OTP comes back); an unknown number gets the same answer, without an OTP
+    const b = request.agent(app);
+    const none = await b.post(`/api/portal/h/${key}/otp`).send({ mobile: '9000000009' });
+    expect(none.body).toEqual({ sentTo: '******0009', minutes: 10 });
+    const sent = await b.post(`/api/portal/h/${key}/otp`).send({ mobile: '+91 98765 43210' });
+    expect(sent.body.practiceOtp).toMatch(/^\d{6}$/);
+    const wrongOtp = sent.body.practiceOtp === '000000' ? '111111' : '000000';
+    expect((await b.post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp: wrongOtp })).status).toBe(401);
+    expect((await b.post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp: sent.body.practiceOtp })).status).toBe(200);
+    expect((await b.get('/api/portal/me')).status).toBe(200);
+    // the OTP is used up
+    expect((await request(app).post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp: sent.body.practiceOtp })).status).toBe(401);
+
+    // a new password, from her page
+    expect((await b.post('/api/portal/account/password').send({ password: 'short' })).status).toBe(400);
+    expect((await b.post('/api/portal/account/password').send({ password: 'NewSample99' })).status).toBe(200);
+    expect((await passwordSignIn(request.agent(app), key)).status).toBe(401);
+    expect((await passwordSignIn(request.agent(app), key, undefined, 'NewSample99')).status).toBe(200);
+
+    // 5 wrong passwords lock it for 30 minutes, even for the right one
+    for (let i = 0; i < 5; i += 1) await passwordSignIn(request.agent(app), key, undefined, 'Wrong1234');
+    expect((await passwordSignIn(request.agent(app), key, undefined, 'NewSample99')).body.error.code).toBe('PORTAL_LOCKED');
+    vi.setSystemTime(new Date(NOW.getTime() + 31 * 60 * 1000));
+    expect((await passwordSignIn(request.agent(app), key, undefined, 'NewSample99')).status).toBe(200);
+
+    const methods = (await AuditLog.find({ action: 'PORTAL_LOGIN_SUCCESS' }).sort({ _id: 1 }).lean()).map((e) => e.details.method);
+    expect(methods).toEqual(['password', 'otp', 'password', 'password']);
+    const approved = await AuditLog.findOne({ action: 'PORTAL_SIGNUP_APPROVED' }).lean();
+    expect(approved.details).toMatchObject({ patientId: p.id, mrn: p.mrn });
+  });
+
+  it('sends the OTP by SMS when a provider is set up (never in the answer)', async () => {
+    setTestSender(TEST_SENDER);
+    const key = await signupOn();
+    const p = await register();
+    await signUp(key);
+    await approve(await waitingId(), p.id);
+    const before = testSent().length;
+    const sent = await request(app).post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' });
+    expect(sent.body.practiceOtp).toBeUndefined();
+    expect(testSent().length).toBe(before + 1);
+    const sms = testSent().at(-1);
+    expect(sms).toMatchObject({ channel: 'sms', to: '+919876543210' });
+    const otp = sms.text.match(/^(\d{6}) /)[1];
+    expect((await request(app).post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp })).status).toBe(200);
+  });
+
+  it('rejected: told to call the hospital; withdrawing portal access closes an approved account', async () => {
+    const key = await signupOn();
+    await signUp(key);
+    const id = await waitingId();
+    expect((await (await as('reception')).post(`/api/patient-accounts/${id}/reject`).send({ reason: 'x' })).status).toBe(400);
+    expect((await (await as('reception')).post(`/api/patient-accounts/${id}/reject`).send({ reason: 'Could not confirm who she is' })).status).toBe(200);
+    const rejected = await passwordSignIn(request.agent(app), key);
+    expect(rejected.status).toBe(403);
+    expect(rejected.body.error.code).toBe('ACCOUNT_REJECTED');
+    expect(rejected.body.error.message).not.toContain('Could not confirm'); // the reason stays with the hospital
+
+    // she signs up again (a rejected account does not block it), is approved, then her access is withdrawn
+    const p = await register();
+    expect((await signUp(key)).status).toBe(201);
+    await approve(await waitingId(), p.id);
+    const agent = request.agent(app);
+    expect((await passwordSignIn(agent, key)).status).toBe(200);
+    // one approved account per record
+    await signUp(key, { email: 'second@example.com', mobile: '9111111111' });
+    expect((await approve(await waitingId(), p.id)).body.error.code).toBe('ACCOUNT_EXISTS');
     await (await as('reception')).delete(`/api/patients/${p.id}/portal-access`);
     expect((await agent.get('/api/portal/me')).status).toBe(401);
-    const login = await AuditLog.findOne({ action: 'PORTAL_LOGIN_SUCCESS' }).lean();
-    expect(login.details).toMatchObject({ method: 'abha', patientId: p.id });
+    expect((await passwordSignIn(request.agent(app), key)).body.error.code).toBe('ACCOUNT_REJECTED');
   });
 
   it('limits OTPs per computer', async () => {
     app = createApp({ portalOtpRateLimitMax: 2 });
     sessions = {};
     const key = await signupOn();
-    const agent = request.agent(app);
-    expect((await otp(agent, key, 'signup')).status).toBe(200);
-    expect((await otp(agent, key, 'signup')).status).toBe(200);
-    expect((await otp(agent, key, 'signup')).status).toBe(429);
+    for (const status of [200, 200, 429]) expect((await request(app).post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' })).status).toBe(status);
   });
 });
 
@@ -188,19 +248,21 @@ describe('her records in the portal', () => {
   async function signedInPatient() {
     const key = await signupOn();
     const p = await register();
-    await Patient.updateOne({ tenantId: hospital._id, _id: p.id }, { $set: { abha: { number: ABHA, method: 'verified' }, 'medical.allergies': 'Penicillin' } });
-    const { agent, res } = await abhaSignIn(key);
+    await Patient.updateOne({ tenantId: hospital._id, _id: p.id }, { $set: { 'medical.allergies': 'Penicillin' } });
+    await signUp(key);
+    await approve(await waitingId(), p.id);
+    const agent = request.agent(app);
+    const res = await passwordSignIn(agent, key);
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     return { agent, p };
   }
   const by = () => ({ by: people.drA._id, byName: 'Sample drA', at: NOW });
   const visit = (p, fields) =>
     Visit.create({ tenantId: hospital._id, patientId: p.id, visitOn: new Date('2026-10-10T00:00:00Z'), careType: 'antenatal', clientRequestId: randomUUID(), createdBy: people.drA._id, createdByName: 'Sample drA', ...fields });
-  const signed = { by: people?.drA?._id, byName: 'Sample drA', role: 'doctor', at: NOW, revs: {} };
 
   it('prescriptions and visits: signed only, as the paper copy shows them – never the private note or HIV', async () => {
     const { agent, p } = await signedInPatient();
-    const sig = { ...signed, by: people.drA._id };
+    const sig = { by: people.drA._id, byName: 'Sample drA', role: 'doctor', at: NOW, revs: {} };
     await visit(p, {
       signed: sig,
       details: { ...by(), complaints: 'Sample headache', examination: 'Sample exam', diagnosis: 'Sample diagnosis', advice: 'Sample rest', privateNote: 'Sample private note' },
@@ -216,7 +278,7 @@ describe('her records in the portal', () => {
     expect(rx.status, JSON.stringify(rx.body)).toBe(200);
     expect(rx.body.visits).toHaveLength(1);
     expect(rx.body.visits[0]).toMatchObject({ doctor: { name: 'Sample drA' }, items: [expect.objectContaining({ drug: 'Sample Iron' })], notes: 'After food', details: { complaints: 'Sample headache', examination: 'Sample exam', advice: 'Sample rest' } });
-    expect(rx.body.patient).toMatchObject({ fullName: 'Sample Abha Mother', medical: { allergies: 'Penicillin' } });
+    expect(rx.body.patient).toMatchObject({ fullName: 'Sample Mother', medical: { allergies: 'Penicillin' } });
     const visits = await agent.get('/api/portal/records/visits');
     expect(visits.body.visits).toHaveLength(1);
     const text = JSON.stringify([rx.body, visits.body]);

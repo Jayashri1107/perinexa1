@@ -114,6 +114,8 @@ const HOSPITAL_PATIENTS = {
   tabs: [
     { label: 'All patients', to: '/patients', end: true },
     { label: 'New patient', to: '/patients/new', menu: NEW_PATIENT_LINKS },
+    // Patients' own portal accounts waiting for approval (owner, 16 Oct 2026)
+    { label: 'Online sign-ups', to: '/patients/sign-ups' },
   ],
 };
 
@@ -332,7 +334,7 @@ export const canBookAppointments = (roles = []) => any(roles, BOOKING_ROLES);
 
 // The Patients tabs; "New patient" only for those who may register patients, "Ask your records" for doctors, RMOs
 // and nurses.
-export const patientTabs = (roles = []) => HOSPITAL_PATIENTS.tabs.filter((t) => (t.to === '/patients/new' ? canRegisterPatients(roles) : true));
+export const patientTabs = (roles = []) => HOSPITAL_PATIENTS.tabs.filter((t) => (['/patients/new', '/patients/sign-ups'].includes(t.to) ? canRegisterPatients(roles) : true));
 /** Ask your records: doctors, RMOs and nurses. */
 export const canAskRecords = (roles = []) => any(roles, CARE_PLAN_ROLES);
 

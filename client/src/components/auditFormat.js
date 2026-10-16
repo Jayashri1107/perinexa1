@@ -24,6 +24,9 @@ const AI_FEATURES = {
 // Plain-English names for audit log events.
 // What she opened in the portal (PORTAL_RECORDS_VIEWED)
 const PORTAL_RECORD_WORDS = { prescriptions: 'prescriptions', lab: 'lab reports', visits: 'visits', bills: 'bills' };
+// How she signed in with her own account, and why a sign-in failed (PORTAL_LOGIN_SUCCESS / _FAILED)
+const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mobile and OTP' };
+const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
   LOGIN_SUCCESS: 'Signed in',
@@ -216,7 +219,10 @@ export const AUDIT_LABELS = {
   PORTAL_VIEWED: 'Patient viewed the portal',
   PORTAL_APPOINTMENT_BOOKED: 'Patient booked an appointment in the portal',
   PORTAL_APPOINTMENT_CANCELLED: 'Patient cancelled her appointment in the portal',
-  PORTAL_SIGNUP_RECEIVED: 'Patient signed up online with ABHA',
+  PORTAL_SIGNUP_RECEIVED: 'Patient signed up online',
+  PORTAL_SIGNUP_APPROVED: "Patient's online sign-up approved",
+  PORTAL_SIGNUP_REJECTED: "Patient's online sign-up rejected",
+  PORTAL_PASSWORD_CHANGED: 'Patient changed her portal password',
   PORTAL_RECORDS_VIEWED: 'Patient viewed her records in the portal',
   // Pharmacy extras (4 Oct 2026)
   PHARMACY_ORDER_CREATED: 'Purchase order made',
@@ -380,6 +386,9 @@ export const AUDIT_TONES = {
   PORTAL_APPOINTMENT_BOOKED: 'patient',
   PORTAL_APPOINTMENT_CANCELLED: 'patient',
   PORTAL_SIGNUP_RECEIVED: 'patient',
+  PORTAL_SIGNUP_APPROVED: 'patient',
+  PORTAL_SIGNUP_REJECTED: 'warn',
+  PORTAL_PASSWORD_CHANGED: 'patient',
   PORTAL_RECORDS_VIEWED: 'patient',
   PORTAL_LOGIN_FAILED: 'warn',
   REMINDER_PREPARED: 'patient',
@@ -865,19 +874,23 @@ export function describeAudit(entry) {
     case 'PORTAL_VIEWED':
     case 'PORTAL_APPOINTMENT_BOOKED':
     case 'PORTAL_APPOINTMENT_CANCELLED':
-      return [d.mrn ? record(d) : '', d.method === 'abha' ? 'with ABHA' : ''].filter(Boolean).join(' · ');
+      return [d.mrn ? record(d) : '', LOGIN_METHOD_WORDS[d.method] ?? ''].filter(Boolean).join(' · ');
+    case 'PORTAL_SIGNUP_APPROVED':
+      return d.mrn ? `Linked to ${record(d)}` : '';
+    case 'PORTAL_SIGNUP_REJECTED':
+      return d.reason ?? '';
+    case 'PORTAL_PASSWORD_CHANGED':
+      return '';
     case 'PORTAL_RECORDS_VIEWED':
       return [d.mrn ? record(d) : '', PORTAL_RECORD_WORDS[d.kind] ?? ''].filter(Boolean).join(' · ');
     case 'PORTAL_SIGNUP_RECEIVED':
-      return d.token ? `Waiting at the desk as Scan & Share ${d.token}` : '';
+      return 'Waiting for approval (Patients → Online sign-ups)';
     case 'PORTAL_LOGIN_FAILED':
       return d.reason === 'wrong_digits'
         ? 'Wrong mobile digits'
         : d.reason === 'expired_or_withdrawn'
           ? 'Code expired or withdrawn'
-          : d.reason === 'abha_not_registered'
-            ? 'ABHA not registered at this hospital'
-            : 'Unknown code';
+          : PORTAL_FAIL_WORDS[d.reason] ?? 'Unknown code';
     // Counts only. Since 4 Oct 2026 also the two general messages (missed appointment; check-up or test due).
     case 'REMINDERS_RUN':
       return [

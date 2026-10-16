@@ -156,8 +156,8 @@ export function LoginPage() {
 }
 
 /**
- * Patient on the sign-in page (owner, 16 Oct 2026): choose the hospital, then sign in or sign up with ABHA – the same
- * steps as the hospital's own portal address (docs/PATIENT_SIGNUP_PLAN.md). Only hospitals that switched on patient
+ * Patient on the sign-in page (owner, 16 Oct 2026): choose the hospital, then sign in (mobile + OTP, or email +
+ * password) or sign up – the same steps as the hospital's own portal address (docs/PATIENT_ACCOUNTS_PLAN.md). Only hospitals that switched on patient
  * sign-up are listed; a patient with a paper code signs in on /portal.
  */
 function PatientSignIn({ onSignedIn }) {
@@ -180,7 +180,7 @@ function PatientSignIn({ onSignedIn }) {
       </header>
       {list?.error && <Alert type="error">{list.error.message}</Alert>}
       {!list && <p className="muted">Loading…</p>}
-      {list?.hospitals && list.hospitals.length === 0 && <Alert type="info">No hospital offers patient sign-in with ABHA yet. If the hospital gave you a code on paper, use the link below.</Alert>}
+      {list?.hospitals && list.hospitals.length === 0 && <Alert type="info">No hospital offers patient sign-in online yet. If the hospital gave you a code on paper, use the link below.</Alert>}
       {list?.hospitals?.length > 1 && (
         <Field label="Your hospital" id="patient-hospital">
           <select id="patient-hospital" value={key} onChange={(e) => setKey(e.target.value)}>
@@ -193,7 +193,7 @@ function PatientSignIn({ onSignedIn }) {
           </select>
         </Field>
       )}
-      {hospital && <HospitalEntry key={hospital.key} bare hospitalKey={hospital.key} hospital={hospital} lang="en" onSignedIn={() => onSignedIn(hospital.key)} />}
+      {hospital && <HospitalEntry key={hospital.key} bare hospitalKey={hospital.key} hospital={hospital} otpMode={list.otp} lang="en" onSignedIn={() => onSignedIn(hospital.key)} />}
       {(!hospital || list?.hospitals?.length === 0) && (
         <p className="auth1-foot">
           <Lock aria-hidden="true" /> <a href="/portal">I have a code on paper from the hospital</a>

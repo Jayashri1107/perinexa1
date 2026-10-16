@@ -11,6 +11,7 @@ import { addDays, hospitalToday, isoDay, utcDay } from '../careplans/dates.js';
 import { portalPlanItems } from '../careplans/plansService.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
+import { PatientAccount } from '../models/PatientAccount.js';
 import { PortalAccess } from '../models/PortalAccess.js';
 import { Tenant } from '../models/Tenant.js';
 import { Visit } from '../models/Visit.js';
@@ -37,8 +38,9 @@ import { letterheadFor } from './settings.js';
 //  - when the hospital admin also switched on online booking (4 Oct 2026), she may book ONE appointment with her own
 //    doctor, from tomorrow up to 30 days ahead, in a free time of the doctor's OPD, and cancel a booking she made
 //    online. She never sees who else is booked – only which times are free.
-//  - sign-up and sign-in with her ABHA and an OTP (16 Oct 2026) are in routes/portalSignup.js; her prescriptions,
-//    lab reports, visits and bills in routes/portalRecords.js (docs/PATIENT_SIGNUP_PLAN.md).
+//  - her own account (16 Oct 2026): sign-up, email-and-password and mobile-and-OTP sign-in in routes/portalSignup.js,
+//    reception's approval in routes/patientAccounts.js; her prescriptions, lab reports, visits and bills in
+//    routes/portalRecords.js (docs/PATIENT_ACCOUNTS_PLAN.md).
 
 export const portalRouter = Router(); // /api/portal (no staff login)
 export const patientPortalAccessRouter = Router({ mergeParams: true }); // /api/patients/:id/portal-access
@@ -78,8 +80,8 @@ function assertStaff(req, patient) {
   if (!patientAccess(req, patient).view.has('phone')) throw new HttpError(403, "You can't manage this patient's portal access.", 'FORBIDDEN');
 }
 const accessView = (a) => (a ? { createdByName: a.createdByName, createdAt: a.createdAt, expiresAt: a.expiresAt, lastUsedAt: a.lastUsedAt } : null);
-// The code staff made (a sign-in with ABHA is not a code: it is not shown here, but a new code or "Withdraw" ends it too).
-const activeAccess = (tenantId, patientId, now) => PortalAccess.findOne({ tenantId, patientId, method: { $ne: 'abha' }, revoked: null, expiresAt: { $gt: now } }).sort({ createdAt: -1 });
+// The code staff made (a sign-in with her own account is not a code: not shown here; "Withdraw" ends it too).
+const activeAccess = (tenantId, patientId, now) => PortalAccess.findOne({ tenantId, patientId, method: { $ne: 'account' }, revoked: null, expiresAt: { $gt: now } }).sort({ createdAt: -1 });
 
 patientPortalAccessRouter.get('/', async (req, res) => {
   const patient = await findPatient(req);
@@ -106,7 +108,12 @@ patientPortalAccessRouter.delete('/', async (req, res) => {
   const patient = await findPatient(req);
   assertStaff(req, patient);
   const r = await PortalAccess.updateMany({ tenantId: req.tenantId, patientId: patient._id, revoked: null }, { $set: { revoked: { by: req.user._id, byName: req.user.name, at: req.now } } });
-  if (r.modifiedCount) await audit(req, 'PORTAL_ACCESS_REVOKED', { details: { patientId: String(patient._id), mrn: patient.mrn } });
+  // Her own account stops too: it signs in again only if she signs up again and reception approves it
+  const closed = await PatientAccount.updateMany(
+    { tenantId: req.tenantId, patientId: patient._id, status: 'approved' },
+    { $set: { status: 'rejected', reviewed: { by: req.user._id, byName: req.user.name, at: req.now, reason: 'Portal access withdrawn' } } },
+  );
+  if (r.modifiedCount || closed.modifiedCount) await audit(req, 'PORTAL_ACCESS_REVOKED', { details: { patientId: String(patient._id), mrn: patient.mrn, ...(closed.modifiedCount ? { account: true } : {}) } });
   res.json({ active: null });
 });
 
@@ -157,16 +164,17 @@ export function startPortalSession(res, access) {
   res.cookie(PORTAL_COOKIE, token, { ...cookieOptions(), maxAge: SESSION_MINUTES * 60 * 1000 });
 }
 
-/** A sign-in with her ABHA: an access of its own (no code), for one day; her session is the usual 15 minutes. */
-export function abhaAccess(tenantId, patientId, now) {
+/** A sign-in with her own approved account: an access of its own (no code), for one day; her session is 15 minutes. */
+export function accountAccess(tenantId, patientId, accountId, now) {
   return PortalAccess.create({
     tenantId,
     patientId,
-    method: 'abha',
-    codeHash: hashCode(`abha:${randomUUID()}`),
+    method: 'account',
+    accountId,
+    codeHash: hashCode(`account:${randomUUID()}`),
     expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
     createdBy: null,
-    createdByName: 'Patient (ABHA sign-in)',
+    createdByName: 'Patient (own account)',
     lastUsedAt: now,
   });
 }
@@ -186,7 +194,9 @@ export async function portalSession(req, res) {
     payload = null;
   }
   const access = payload?.aid ? await PortalAccess.findById(payload.aid) : null;
-  if (!access || access.revoked || access.expiresAt <= req.now || !(await portalEnabled(access.tenantId))) {
+  // A sign-in with her own account lasts only while the account is approved
+  const accountGone = access?.accountId && !(await PatientAccount.exists({ tenantId: access.tenantId, _id: access.accountId, status: 'approved' }));
+  if (!access || access.revoked || accountGone || access.expiresAt <= req.now || !(await portalEnabled(access.tenantId))) {
     res.clearCookie(PORTAL_COOKIE, cookieOptions());
     throw new HttpError(401, 'Please sign in again.', 'PORTAL_SIGNED_OUT');
   }
@@ -224,6 +234,8 @@ portalRouter.get('/me', async (req, res) => {
     appointmentTime: next?.start ?? null,
     plan,
     sessionMinutes: SESSION_MINUTES,
+    // Signed in with her own account (not a paper code): she can set a new password on her page
+    canChangePassword: Boolean(access.accountId) && Boolean((await PatientAccount.exists({ tenantId: access.tenantId, _id: access.accountId, email: { $type: 'string' } }))),
   });
 });
 
