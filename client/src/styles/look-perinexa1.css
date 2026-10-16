@@ -289,3 +289,5 @@ input:focus, select:focus, textarea:focus { border-color: var(--indigo-700); box
 .auth2-form .portal-entry .auth1-head { margin-bottom: var(--space-3); }
 .auth2-form .portal-entry .auth1-head p { margin-top: 4px; }
 .auth2-form .portal-entry .field { margin-bottom: 10px; }
+.auth-grid-even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.auth2-form .auth-lmp-hint { margin: -4px 0 var(--space-3); }

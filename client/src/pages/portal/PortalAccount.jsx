@@ -141,7 +141,7 @@ function PasswordSignIn({ hospitalKey, lang, onSignedIn }) {
 
 function SignUp({ hospitalKey, hospital, lang, onBack }) {
   const w = accountWords(lang);
-  const [form, setForm] = useState({ fullName: '', ageYears: '', mobile: '', email: '', password: '' });
+  const [form, setForm] = useState({ fullName: '', ageYears: '', mobile: '', address: '', careType: '', lmp: '', email: '', password: '' });
   const [agreed, setAgreed] = useState(false);
   const [done, setDone] = useState(false);
   const step = useStep();
@@ -165,7 +165,8 @@ function SignUp({ hospitalKey, hospital, lang, onBack }) {
         e.preventDefault();
         step.run(async () => {
           const email = form.email.trim();
-          await portal(`/h/${hospitalKey}/signup`, { method: 'POST', body: { ...form, email, password: email ? form.password : undefined, consent: agreed } });
+          const { lmp, ...rest } = form;
+          await portal(`/h/${hospitalKey}/signup`, { method: 'POST', body: { ...rest, ...(form.careType === 'antenatal' ? { lmp } : {}), email, password: email ? form.password : undefined, consent: agreed } });
           setDone(true);
         });
       }}
@@ -183,6 +184,27 @@ function SignUp({ hospitalKey, hospital, lang, onBack }) {
           <input id="signup-age" inputMode="numeric" value={form.ageYears} onChange={set('ageYears')} maxLength={3} />
         </Field>
       </div>
+      <Field label={w.address} id="signup-address" error={fields.address}>
+        <input id="signup-address" autoComplete="street-address" value={form.address} onChange={set('address')} maxLength={300} />
+      </Field>
+      <div className={form.careType === 'antenatal' ? 'auth-grid auth-grid-even' : undefined}>
+        <Field label={w.comingFor} id="signup-care" error={fields.careType}>
+          <select id="signup-care" value={form.careType} onChange={set('careType')}>
+            <option value="">{w.choose}</option>
+            {Object.entries(w.careTypes).map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {form.careType === 'antenatal' && (
+          <Field label={w.lmp} id="signup-lmp" error={fields.lmp}>
+            <input id="signup-lmp" type="date" value={form.lmp} onChange={set('lmp')} max={new Date().toISOString().slice(0, 10)} />
+          </Field>
+        )}
+      </div>
+      {form.careType === 'antenatal' && <p className="hint auth-lmp-hint">{w.lmpHint}</p>}
       <Field label={w.emailOptional} id="signup-email" error={fields.email} hint={form.email.trim() ? undefined : w.emailOptionalHint} keepHint={!form.email.trim()}>
         <input id="signup-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} maxLength={254} />
       </Field>

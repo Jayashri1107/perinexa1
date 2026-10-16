@@ -18,7 +18,7 @@ import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, l
 
 const NOW = new Date('2026-10-16T06:00:00Z');
 const ROLES = { drA: 'doctor', reception: 'receptionist', lab: 'lab', admin: 'admin' };
-const SIGNUP = { fullName: 'Sample Mother', ageYears: 29, mobile: '98765 43210', email: 'Sample.Mother@example.com', password: 'Sample1234', consent: true };
+const SIGNUP = { fullName: 'Sample Mother', ageYears: 29, mobile: '98765 43210', address: '12 Sample Road, Pune', careType: 'gynaecology', email: 'Sample.Mother@example.com', password: 'Sample1234', consent: true };
 let app;
 let hospital;
 let people;
@@ -116,7 +116,7 @@ describe('signing up without an email (owner, 16 Oct 2026: email optional)', () 
     const account = await PatientAccount.findOne({ tenantId: hospital._id }).lean();
     expect(account).toMatchObject({ email: null, passwordHash: null, mobile: '9876543210' });
     // a second one without email, another mobile: allowed (no email to clash)
-    expect((await request(app).post(`/api/portal/h/${key}/signup`).send({ fullName: 'Other Sample', ageYears: 40, mobile: '9222222222', consent: true })).status).toBe(201);
+    expect((await request(app).post(`/api/portal/h/${key}/signup`).send({ fullName: 'Other Sample', ageYears: 40, mobile: '9222222222', address: '3 Sample Lane', careType: 'gynaecology', consent: true })).status).toBe(201);
     expect(await PatientAccount.countDocuments({ tenantId: hospital._id })).toBe(2);
     expect((await waiting()).every((x) => x.email === null)).toBe(true);
 
@@ -128,6 +128,40 @@ describe('signing up without an email (owner, 16 Oct 2026: email optional)', () 
     expect((await agent.post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp: sent.body.practiceOtp })).status).toBe(200);
     expect((await agent.get('/api/portal/me')).body.canChangePassword).toBe(false);
     expect((await agent.post('/api/portal/account/password').send({ password: 'NewSample99' })).body.error.code).toBe('NO_EMAIL');
+  });
+});
+
+describe('her own registration details (owner, 16 Oct 2026)', () => {
+  it('asks her address and what she comes for; a pregnancy needs the first day of her last period', async () => {
+    const key = await signupOn();
+    expect((await signUp(key, { address: '' })).body.error.fields.address).toBeTruthy();
+    expect((await signUp(key, { careType: 'newborn' })).body.error.fields.careType).toBeTruthy();
+    expect((await signUp(key, { careType: 'antenatal' })).body.error.fields.lmp).toBeTruthy();
+    expect((await signUp(key, { careType: 'antenatal', lmp: '2026-11-01' })).body.error.fields.lmp).toBeTruthy(); // in the future
+    expect((await signUp(key, { careType: 'antenatal', lmp: '2025-06-01' })).body.error.fields.lmp).toBeTruthy(); // too long ago
+    expect((await signUp(key, { careType: 'antenatal', lmp: '2026-08-12' })).status).toBe(201);
+    expect((await waiting())[0]).toMatchObject({ address: '12 Sample Road, Pune', careType: 'antenatal', lmpSaid: '2026-08-12' });
+  });
+
+  it('one click registers a new patient from her details; her LMP is a note for the doctor, not the pregnancy dates', async () => {
+    const key = await signupOn();
+    await signUp(key, { careType: 'antenatal', lmp: '2026-08-12' });
+    const id = await waitingId();
+    const res = await (await as('reception')).post(`/api/patient-accounts/${id}/approve-new`);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.account).toMatchObject({ status: 'approved', patient: { mrn: 'P-000001', fullName: 'Sample Mother' } });
+    const p = await Patient.findOne({ tenantId: hospital._id }).lean();
+    expect(p).toMatchObject({ fullName: 'Sample Mother', ageYears: 29, phone: '9876543210', address: '12 Sample Road, Pune', careType: 'antenatal' });
+    expect(p.pregnancy?.lmp ?? null).toBeNull(); // the doctor enters the dates
+    expect(p.notes).toContain('to confirm');
+    expect(p.notes).toContain('12 Aug 2026');
+    expect((await AuditLog.find({ action: { $in: ['PATIENT_CREATED', 'PORTAL_SIGNUP_APPROVED'] } }).lean()).map((e) => e.action).sort()).toEqual(['PATIENT_CREATED', 'PORTAL_SIGNUP_APPROVED']);
+    // she can sign in at once
+    expect((await passwordSignIn(request.agent(app), key)).status).toBe(200);
+    // already handled; the lab may not approve
+    expect((await (await as('reception')).post(`/api/patient-accounts/${id}/approve-new`)).body.error.code).toBe('HANDLED');
+    await signUp(key, { email: 'two@example.com', mobile: '9333333333' });
+    expect((await (await as('lab')).post(`/api/patient-accounts/${await waitingId()}/approve-new`)).status).toBe(403);
   });
 });
 

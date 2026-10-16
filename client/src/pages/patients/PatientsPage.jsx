@@ -12,6 +12,7 @@ import { canRegisterPatients } from '../../platform/modules.js';
 import { NEW_PATIENT_LINKS, ageText, careNowText, sinceText } from './patientFormat.js';
 import { RiskBadge } from './RiskCard.jsx';
 import { RISK_SHORT } from './riskFormat.js';
+import { SignupsNotice } from './SignupsPage.jsx';
 import { AdmissionSlip, AdmitDialog } from '../beds/BedBoardPage.jsx';
 
 // What was typed in the search box is kept here – not in the page address, where it would stay in the browser's
@@ -243,6 +244,7 @@ export function PatientsPage() {
         }
       />
       <div className="pf-content">
+        <SignupsNotice roles={roles} />
         <Alert type="error">{error}</Alert>
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}

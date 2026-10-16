@@ -400,15 +400,30 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `agree` | I agree that {hospital} keeps these details to register me and to let me sign in. My registration is checked by the hospital before I can see anything. | माझी नोंदणी करण्यासाठी आणि मला आत येऊ देण्यासाठी {hospital} हे तपशील ठेवेल याला माझी संमती आहे. काहीही दिसण्यापूर्वी रुग्णालय माझी नोंदणी तपासेल. | मैं सहमत हूँ कि मेरा पंजीकरण करने और मुझे अंदर आने देने के लिए {hospital} ये विवरण रखे। कुछ भी दिखने से पहले अस्पताल मेरा पंजीकरण जाँचेगा। |
 | `signUp` | Sign up | नोंदणी करा | पंजीकरण करें |
 | `signingUp` | Signing up… | नोंदणी करत आहे… | पंजीकरण हो रहा है… |
-| `signedUp` | Thank you. Your registration is waiting for {hospital} to approve it. The hospital may call you to check who you are. Once it is approved, sign in here. | धन्यवाद. तुमची नोंदणी {hospital} च्या मंजुरीसाठी थांबली आहे. तुम्ही कोण आहात हे तपासण्यासाठी रुग्णालय तुम्हाला फोन करू शकते. मंजुरी मिळाल्यावर इथे आत या. | धन्यवाद। आपका पंजीकरण {hospital} की मंज़ूरी के लिए रुका है। आप कौन हैं, यह जाँचने के लिए अस्पताल आपको फ़ोन कर सकता है। मंज़ूरी मिलने पर यहाँ अंदर आएँ। |
+| `signedUp` | Thank you. {hospital} will check your details and approve your registration – the hospital may call you. Once it is approved, sign in here. | धन्यवाद. तुमची नोंदणी {hospital} च्या मंजुरीसाठी थांबली आहे. तुम्ही कोण आहात हे तपासण्यासाठी रुग्णालय तुम्हाला फोन करू शकते. मंजुरी मिळाल्यावर इथे आत या. | धन्यवाद। आपका पंजीकरण {hospital} की मंज़ूरी के लिए रुका है। आप कौन हैं, यह जाँचने के लिए अस्पताल आपको फ़ोन कर सकता है। मंज़ूरी मिलने पर यहाँ अंदर आएँ। |
 | `withCode` | I have a code on paper from the hospital | माझ्याकडे रुग्णालयाने दिलेला कोड आहे | मेरे पास अस्पताल का दिया कोड है |
 | `changePassword` | Change password | पासवर्ड बदला | पासवर्ड बदलें |
 | `newPassword` | New password | नवीन पासवर्ड | नया पासवर्ड |
 | `savePassword` | Save the new password | नवीन पासवर्ड जतन करा | नया पासवर्ड सहेजें |
 | `saving` | Saving… | जतन करत आहे… | सहेज रहे हैं… |
 | `passwordSaved` | Your new password is saved. | तुमचा नवीन पासवर्ड जतन झाला. | आपका नया पासवर्ड सहेज लिया गया। |
+| `signInHeading` | Patient sign-in | रुग्ण लॉग-इन | मरीज़ लॉग-इन |
+| `signInLead` | {hospital} – your appointments, prescriptions, lab reports and bills. | {hospital} – तुमच्या भेटी, औषधचिठ्ठ्या, तपासणी अहवाल आणि बिले. | {hospital} – आपकी मुलाक़ातें, पर्चे, जाँच रिपोर्ट और बिल। |
+| `signUpHeading` | Create your patient account | तुमचे रुग्ण खाते तयार करा | अपना मरीज़ खाता बनाएँ |
+| `signUpLead` | For {hospital}. The hospital checks your details before you can sign in. | {hospital} साठी. आत येण्यापूर्वी रुग्णालय तुमचे तपशील तपासेल. | {hospital} के लिए। अंदर आने से पहले अस्पताल आपके विवरण जाँचेगा। |
+| `signedUpTitle` | Registration received | नोंदणी मिळाली | पंजीकरण मिल गया |
+| `backToSignIn` | Back to sign in | आत येण्याच्या पानावर परत | अंदर आने के पेज पर वापस |
+| `address` | Address | पत्ता | पता |
+| `comingFor` | What are you coming for? | तुम्ही कशासाठी येत आहात? | आप किसलिए आ रही हैं? |
+| `choose` | Choose… | निवडा… | चुनें… |
+| `careTypes.antenatal` | Pregnancy care | गर्भारपणाची काळजी | गर्भावस्था की देखभाल |
+| `careTypes.postnatal` | Care after delivery | प्रसूतीनंतरची काळजी | प्रसव के बाद की देखभाल |
+| `careTypes.gynaecology` | Women's health (gynaecology) | स्त्रियांचे आरोग्य (स्त्रीरोग) | महिला स्वास्थ्य (स्त्री रोग) |
+| `careTypes.infertility` | Trying to get pregnant | गर्भधारणेसाठी प्रयत्न | गर्भधारण की कोशिश |
+| `lmp` | First day of your last period | शेवटच्या पाळीचा पहिला दिवस | आख़िरी माहवारी का पहला दिन |
+| `lmpHint` | Your best guess is fine – the doctor confirms it at your visit. | अंदाजे तारीख चालेल – भेटीत डॉक्टर ती निश्चित करतील. | अंदाज़ी तारीख़ चलेगी – मुलाक़ात पर डॉक्टर इसे पक्का करेंगे। |
 | `emailOptional` | Email (optional) | ईमेल (ऐच्छिक) | ईमेल (वैकल्पिक) |
-| `emailOptionalHint` | With an email you can also sign in with a password. Without one, you sign in with your mobile number and an OTP. | ईमेल दिल्यास पासवर्डनेही आत येता येईल. ईमेल नसल्यास मोबाइल नंबर आणि OTP ने आत या. | ईमेल देने पर आप पासवर्ड से भी अंदर आ सकते हैं। ईमेल न हो तो मोबाइल नंबर और OTP से अंदर आएँ। |
+| `emailOptionalHint` | Add one to also sign in with a password. | दिल्यास पासवर्डनेही आत येता येईल. | देने पर पासवर्ड से भी अंदर आ सकते हैं। |
 | `tabs.home` | Home | मुख्य | मुख्य |
 | `tabs.prescriptions` | Prescriptions | औषधचिठ्ठ्या | पर्चे |
 | `tabs.lab` | Lab reports | तपासणी अहवाल | जाँच रिपोर्ट |

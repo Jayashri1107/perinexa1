@@ -3,16 +3,17 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { mobileDigits } from '../abdm/abhaFormat.js';
+import { addDays, hospitalToday } from '../careplans/dates.js';
 import { config } from '../config.js';
 import { Patient } from '../models/Patient.js';
-import { PatientAccount } from '../models/PatientAccount.js';
+import { PatientAccount, SELF_CARE_TYPES } from '../models/PatientAccount.js';
 import { Tenant } from '../models/Tenant.js';
 import { isClosed } from '../patients/deathRules.js';
 import { currentSender } from '../reminders/sender.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { fakeVerify, hashPassword, passwordSchema, verifyPassword } from '../utils/password.js';
-import { parse } from '../utils/validate.js';
+import { parse, requiredDateOnly } from '../utils/validate.js';
 import { letterheadFor } from './settings.js';
 import { accountAccess, portalAudit, portalSession, startPortalSession } from './portal.js';
 
@@ -20,7 +21,8 @@ import { accountAccess, portalAudit, portalSession, startPortalSession } from '.
 // staff login), so deliberately small:
 //  - On only when the hospital admin switched on "Patients may sign up online" (the hospital's portal code is made
 //    then; switching it off makes the address stop working). Needs the portal on.
-//  - Sign up: name, age, mobile, agreement – and, if she wants, email and password (owner, 16 Oct 2026: email optional;
+//  - Sign up: name, age, mobile, address, what she comes for (and for a pregnancy the first day of her last period),
+//    agreement – and, if she wants, email and password (owner, 16 Oct 2026: email optional;
 //    without one she signs in with mobile and OTP only) → a PENDING account. Nothing is a patient record yet;
 //    reception approves (linking her record) or rejects it (routes/patientAccounts.js). The answer is the same whether
 //    or not the mobile or email is already signed up here, so this page never tells anyone who is registered.
@@ -140,6 +142,10 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
       fullName: z.string().trim().min(2, 'Please enter your full name.').max(150),
       ageYears: z.coerce.number({ error: 'Please enter your age.' }).int('Please enter your age in years.').min(1, 'Please enter your age.').max(120, 'Please check your age.'),
       mobile: z.string().max(20),
+      // Her registration details (owner, 16 Oct 2026): she fills them, reception checks who she is
+      address: z.string().trim().min(5, 'Please enter your address.').max(300),
+      careType: z.enum(SELF_CARE_TYPES, 'Please choose what you are coming for.'),
+      lmp: z.preprocess((v) => (v === '' ? undefined : v), requiredDateOnly('First day of your last period').optional()),
       email: z.union([z.literal(''), z.email('Please enter a valid email, or leave it empty.').max(254)]).optional(),
       password: z.string().max(128).optional(),
       consent: z.literal(true, 'Please read and tick the agreement.'),
@@ -150,6 +156,14 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
     const tenant = await hospitalOf(req);
     const body = parse(signupBody, req.body);
     const mobile = mobileOf(body.mobile);
+    // A pregnancy: the first day of her last period (in the last 44 weeks, not in the future) – said by her
+    let lmpSaid = null;
+    if (body.careType === 'antenatal') {
+      const today = hospitalToday(req.now);
+      if (!body.lmp) throw fieldError('lmp', 'Please enter the first day of your last period (your best guess is fine).');
+      if (body.lmp > today || body.lmp < addDays(today, -44 * 7)) throw fieldError('lmp', 'Please check this date: it should be within the last 10 months.');
+      lmpSaid = body.lmp;
+    }
     const email = body.email ? body.email.trim().toLowerCase() : null;
     // A password only with an email (it is what she signs in with); the staff password rules
     let passwordHash = null;
@@ -162,7 +176,7 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
     // Already signed up with this mobile or email: nothing new, the same answer (never says who is registered here)
     if (!taken) {
       try {
-        const account = await PatientAccount.create({ tenantId: tenant._id, fullName: body.fullName, ageYears: body.ageYears, mobile, email, passwordHash });
+        const account = await PatientAccount.create({ tenantId: tenant._id, fullName: body.fullName, ageYears: body.ageYears, mobile, address: body.address, careType: body.careType, lmpSaid, email, passwordHash });
         await audit(req, 'PORTAL_SIGNUP_RECEIVED', { actor: null, tenantId: tenant._id, details: { accountId: String(account._id) } });
       } catch (err) {
         if (err?.code !== 11000) throw err; // the same sign-up sent twice at once

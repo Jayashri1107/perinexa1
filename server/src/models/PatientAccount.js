@@ -13,12 +13,21 @@ const { ObjectId } = mongoose.Schema.Types;
 const stamp = new mongoose.Schema({ by: ObjectId, byName: String, at: Date, reason: { type: String, default: '' } }, { _id: false });
 
 export const ACCOUNT_STATUSES = ['pending', 'approved', 'rejected'];
+// The types of care a patient may choose herself when she signs up (owner, 16 Oct 2026); a baby's record and a
+// pregnancy loss are registered at the hospital. The doctor can change the type of care later.
+export const SELF_CARE_TYPES = ['antenatal', 'postnatal', 'gynaecology', 'infertility'];
 
 const accountSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true, trim: true, maxlength: 150 },
     ageYears: { type: Number, min: 0, max: 120, default: null },
     mobile: { type: String, required: true }, // 10 digits (Indian mobile)
+    // Her registration details, as she typed them (owner, 16 Oct 2026: "the patient fills her own details"): reception
+    // approves a new patient in one click and her record is made from them. The LMP is what she said – it goes on her
+    // record as a note for the doctor to confirm, never as the pregnancy's dates.
+    address: { type: String, trim: true, maxlength: 300, default: '' },
+    careType: { type: String, enum: [...SELF_CARE_TYPES, null], default: null },
+    lmpSaid: { type: Date, default: null },
     email: { type: String, lowercase: true, trim: true, maxlength: 254, default: null }, // optional
     passwordHash: { type: String, default: null }, // only with an email (no email: mobile and OTP only)
     status: { type: String, enum: ACCOUNT_STATUSES, default: 'pending' },

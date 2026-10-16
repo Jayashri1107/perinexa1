@@ -10,6 +10,8 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { objectId, parse } from '../utils/validate.js';
+import { isoDay } from '../careplans/dates.js';
+import { registerPatient } from './patients.js';
 
 // Patients' own portal accounts, for reception (owner, 16 Oct 2026 – docs/PATIENT_ACCOUNTS_PLAN.md): the sign-ups
 // waiting, and approving or rejecting each. Approving checks who she is at the desk (or by phone) and links the account
@@ -34,6 +36,9 @@ const view = (a, patients = new Map()) => {
     ageYears: a.ageYears,
     mobile: a.mobile,
     email: a.email,
+    address: a.address ?? '',
+    careType: a.careType ?? null,
+    lmpSaid: a.lmpSaid ? isoDay(a.lmpSaid) : null,
     status: a.status,
     signedUpAt: a.createdAt,
     reviewed: a.reviewed ? { byName: a.reviewed.byName ?? '', at: a.reviewed.at, reason: a.reviewed.reason ?? '' } : null,
@@ -87,6 +92,35 @@ patientAccountsRouter.post('/:id/approve', async (req, res) => {
   await account.save();
   await audit(req, 'PORTAL_SIGNUP_APPROVED', { details: { accountId: String(account._id), patientId: String(patient._id), mrn: patient.mrn } });
   res.json({ account: view(account, new Map([[String(patient._id), patient]])) });
+});
+
+// Approve as a NEW patient, in one click (owner, 16 Oct 2026): her record is made from the details she typed – the
+// same registration as the New patient form (routes/patients.js registerPatient: checks, patient number, audit log).
+// Reception saw the records that may be hers first (/matches), so this registers her anyway. What she said about her
+// pregnancy goes on her record as a note for the doctor to confirm; a doctor or RMO enters the dates.
+patientAccountsRouter.post('/:id/approve-new', async (req, res) => {
+  const account = await pendingAccount(req);
+  if (!account.careType) throw new HttpError(409, 'She signed up before the registration details were asked for: use "Find her record" or register her on the New patient page.', 'NO_DETAILS');
+  const out = await registerPatient(req, {
+    careType: account.careType,
+    fullName: account.fullName,
+    ageYears: account.ageYears,
+    phone: account.mobile,
+    address: account.address ?? '',
+    registerAnyway: true,
+  });
+  const patient = out.patient;
+  if (account.lmpSaid) {
+    const said = new Date(account.lmpSaid).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+    patient.notes = `Said by the patient when she signed up online (to confirm): first day of her last period ${said}.`;
+    await patient.save();
+  }
+  account.status = 'approved';
+  account.patientId = patient._id;
+  account.reviewed = { by: req.user._id, byName: req.user.name, at: req.now, reason: '' };
+  await account.save();
+  await audit(req, 'PORTAL_SIGNUP_APPROVED', { details: { accountId: String(account._id), patientId: String(patient._id), mrn: patient.mrn, registered: true } });
+  res.status(201).json({ account: view(account, new Map([[String(patient._id), patient]])) });
 });
 
 // Reject (e.g. could not confirm who she is). The reason stays with the hospital; she is told to call the hospital.

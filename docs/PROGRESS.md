@@ -37,7 +37,8 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   (reviewed only) and bills; never notes, risk or anything about HIV. OTPs go by the reminders' SMS provider; without
   one a practice OTP shows on screen (never on a live server). This replaced the ABHA sign-up of the same morning
   (`docs/PATIENT_SIGNUP_PLAN.md`, merged into deploy-hardening before the owner changed her mind) – the owner did not
-  want ABHA sign-in. Hospital admin → Patient messages → "Let patients sign up for their own account". Marathi and Hindi
+  want ABHA sign-in. Since the same afternoon she fills her own registration details (address, what she comes for,
+  her last period for a pregnancy) and reception approves a new patient in one click. Hospital admin → Patient messages → "Let patients sign up for their own account". Marathi and Hindi
   DRAFT (`TRANSLATIONS_TO_CHECK.md` section 5). **How to test:** see "How to test patients' own accounts" below.
 
 ## Done
@@ -2450,11 +2451,13 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 ## How to test patients' own accounts (fake data only)
 1. As the hospital admin: Hospital admin → Patient messages → tick "Let patients see their next appointment and care
    plan online" and "Let patients sign up for their own account" → Save.
-2. Sign out. On the sign-in page choose **Patient** → **Sign up**: a made-up name, age, mobile (e.g. 9000000009),
-   email and password → tick the agreement → Sign up. Try to sign in with that email and password: "waiting for …
+2. Sign out. On the sign-in page choose **Patient** → **Sign up**: a made-up name, mobile (e.g. 9000000009), age,
+   address, what she comes for (Pregnancy care asks the first day of her last period), and if you like an email and
+   password → tick the agreement → Sign up. Try to sign in with that email and password: "waiting for …
    to approve it".
-3. As reception: Patients → **Online sign-ups** (also on Today): **Register and approve** (or Find her record and
-   approve, or Reject with a reason).
+3. As reception: Patients → **Online sign-ups** (also on Today) → **Review and approve**: her details are shown;
+   **Register as a new patient and approve** (one click – her record is made from what she typed), or approve with a
+   record that is already hers, or Reject with a reason.
 4. Sign out. Patient → Sign in → **Mobile number + OTP**: her mobile → Send OTP; without an SMS provider the OTP is
    shown on screen ("Practice mode") → Sign in. Or **Email + password**. Her page opens; "Change password" is next to
    the hospital's name.

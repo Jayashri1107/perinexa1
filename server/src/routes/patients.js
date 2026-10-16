@@ -653,12 +653,17 @@ patientsRouter.get('/', async (req, res) => {
   res.json({ patients: rows, ...paged(q, total) });
 });
 
-patientsRouter.post('/', async (req, res) => {
+/**
+ * Registers a patient (the checks, the patient number, the audit log, a pregnancy's risk and care plan) – for the
+ * New patient form, and for reception approving a patient's online sign-up (routes/patientAccounts.js). Returns
+ * { patient } or, when records may be hers and registerAnyway was not sent, { matches } (nothing saved).
+ */
+export async function registerPatient(req, body) {
   const can = creationAccess(req);
   if (!can.allowed) throw forbidden('Only reception, doctors and RMOs can register patients.');
   await ensureStandardTemplates(req.tenantId); // any pending rule upgrade runs now, not in the middle of saving
-  const sentPregnancy = can.clinical && req.body?.pregnancy !== undefined;
-  const data = parse(sentPregnancy ? createSchemas.withDates : createSchemas.basic, req.body);
+  const sentPregnancy = can.clinical && body?.pregnancy !== undefined;
+  const data = parse(sentPregnancy ? createSchemas.withDates : createSchemas.basic, body);
   if (!can.clinical) {
     // Reception registers identity (and newborn birth details); medical details come from clinicians.
     for (const section of ['pregnancy', 'obstetric', 'medical', 'abortion']) delete data[section];
@@ -688,14 +693,14 @@ patientsRouter.post('/', async (req, res) => {
   delete data.registerAnyway;
   const found = await possibleMatches(req, data);
   if (found.total && !registerAnyway) {
-    return res.status(409).json({
-      error: {
+    return {
+      matches: {
         message: `${data.careType === 'newborn' ? 'This baby' : 'She'} may already be registered. Check the ${found.total === 1 ? 'record' : 'records'} shown before you register a new patient.`,
         code: 'POSSIBLE_MATCHES',
         matches: found.matches,
         total: found.total,
       },
-    });
+    };
   }
 
   const seq = await nextNumber(req.tenantId, 'patient');
@@ -723,8 +728,15 @@ patientsRouter.post('/', async (req, res) => {
     // An antenatal patient registered with dates gets a care plan straight away (never fails the registration).
     await syncPlanSafely(planCtx(req), patient._id);
   }
-  const [out] = await withNames([patient]);
-  res.status(201).json({ patient: projectPatient(out, patientAccess(req, patient)) });
+  return { patient };
+}
+
+
+patientsRouter.post('/', async (req, res) => {
+  const out = await registerPatient(req, req.body);
+  if (out.matches) return res.status(409).json({ error: out.matches });
+  const [named] = await withNames([out.patient]);
+  return res.status(201).json({ patient: projectPatient(named, patientAccess(req, out.patient)) });
 });
 
 patientsRouter.get('/:id', async (req, res) => {
