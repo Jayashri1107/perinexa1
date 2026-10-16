@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Tip } from '../../components/Tip.jsx';
+import { PregnancyTimeline } from './PregnancyTimeline.jsx';
+import { KeepsakeButton } from './KeepsakeCard.jsx';
 import { Archive, BadgeCheck, BedDouble, CalendarPlus, Copy, Eye, FileText, Files, IdCard, Lock, MessageCircle, MoreHorizontal, Pencil, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -811,6 +814,7 @@ export function PatientOverviewTab() {
               ]}
             />
             <PregnancyFindings patient={p} carePlanSummary={carePlanSummary} />
+            {p.pregnancy?.effectiveEdd && <PregnancyTimeline patient={p} />}
           </section>
         )}
 
@@ -830,7 +834,12 @@ export function PatientOverviewTab() {
 
         {isNewborn && has('newborn') && (
           <section className="card">
-            <h2>Birth details</h2>
+            <div className="plan-card-head">
+              <h2>Birth details</h2>
+              {/* The baby keepsake card for the family (doctor ideas #10) */}
+              <KeepsakeButton patient={p} />
+            </div>
+            {p.newborn?.birthAt && <Tip id="keepsake-2026-10" />}
             <Details
               rows={[
                 ['Born', p.newborn?.birthAt ? formatDateTime(p.newborn.birthAt) : ''],

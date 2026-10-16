@@ -25,11 +25,11 @@ import {
 } from '../patients/abortionRules.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
 import { OVERRIDE_LEVELS } from '../careplans/risk.js';
-import { carePlanSummaryFor, planCtx, syncPlanSafely } from '../careplans/plansService.js';
+import { carePlanSummaryFor, currentPlanItems, planCtx, syncPlanSafely } from '../careplans/plansService.js';
 import { redFlagsForPatient, redFlagsForPatients } from '../redflags/redFlagService.js';
 import { applyCurrentRisk, ensureStandardTemplates, refreshDueRisks, riskTemplateFor } from '../careplans/templatesService.js';
 import { BLOOD_GROUPS, BREASTFEEDING, CARE_TYPES, CONDITIONS, FEEDING_AT_DISCHARGE, NEWBORN_SEX, NICU_ADMITTED, ID_PROOF_TYPES, PAST_COMPLICATIONS, PAYER_TYPES, Patient, currentAge } from '../models/Patient.js';
-import { PREGNANCY_FINDINGS, currentFindings, setFinding, setFindings, suggestedFindings } from '../patients/pregnancyFindings.js';
+import { PREGNANCY_FINDINGS, currentFindings, eddInUse, setFinding, setFindings, suggestedFindings } from '../patients/pregnancyFindings.js';
 import { endLossFindings, setLossFindings } from '../patients/lossFindings.js';
 import { NOT_DUPLICATE, ONLY_DUPLICATES, isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { earlierRecordsFor, possibleMatches } from '../patients/duplicateService.js';
@@ -737,6 +737,34 @@ patientsRouter.post('/', async (req, res) => {
   if (out.matches) return res.status(409).json({ error: out.matches });
   const [named] = await withNames([out.patient]);
   return res.status(201).json({ patient: projectPatient(named, patientAccess(req, out.patient)) });
+});
+
+// The baby keepsake card was printed (doctor ideas #10): ids only. A baby's own record, born; staff who see her birth.
+patientsRouter.post('/:id/keepsake-printed', async (req, res) => {
+  const patient = await loadPatientForPlan(req);
+  if (patient.careType !== 'newborn' || !patient.newborn?.birthAt || !patientAccess(req, patient).view.has('newborn')) throw forbidden("You can't print this card.");
+  await audit(req, 'KEEPSAKE_CARD_PRINTED', { details: { patientId: String(patient._id), mrn: patient.mrn } });
+  res.json({ ok: true });
+});
+
+// The pregnancy timeline (doctor ideas #7, 16 Oct 2026): this pregnancy's visit days and the care plan's scans, tests
+// and check-ups with their due dates and status – for the ribbon from LMP to EDD on her Overview. Only for those who
+// see her pregnancy (the plan's items only for those who see the plan); covered by opening her record (PATIENT_VIEWED).
+patientsRouter.get('/:id/timeline', async (req, res) => {
+  const patient = await loadPatientForPlan(req);
+  if (patient.careType !== 'antenatal' || !patientAccess(req, patient).view.has('pregnancy')) throw forbidden("You can't see this pregnancy.");
+  const edd = eddInUse(patient);
+  if (!edd) return res.json({ edd: null, visits: [], items: [] });
+  const start = addDays(edd, -280);
+  const [visits, items] = await Promise.all([
+    Visit.find({ tenantId: req.tenantId, patientId: patient._id, status: 'active', visitOn: { $gte: start } }, { visitOn: 1 }).sort({ visitOn: 1 }).limit(100).lean(),
+    currentPlanItems(planCtx(req), patient),
+  ]);
+  res.json({
+    edd,
+    visits: visits.map((v) => v.visitOn),
+    items: items.filter((it) => ['scan', 'investigation', 'visit', 'vaccination'].includes(it.kind) && it.dueBy).map((it) => ({ kind: it.kind, name: it.name, status: it.status, dueBy: it.dueBy })),
+  });
 });
 
 patientsRouter.get('/:id', async (req, res) => {

@@ -402,3 +402,99 @@
 .help-modules dd { margin: 0; color: var(--ink); }
 @media (max-width: 640px) { .help-modules > div { grid-template-columns: 1fr; gap: var(--space-1); } }
 @media (min-width: 1100px) { .help-wide .help-modules { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-8); } }
+
+/* ---------- One box for everything: Ctrl+K (doctor ideas #1, 16 Oct 2026) ---------- */
+.cmd-open { display: inline-flex; align-items: center; padding: 0; border: 0; background: none; cursor: pointer; }
+.cmd-open kbd { padding: 3px 8px; border: 1px solid var(--card-border); border-radius: 8px; background: var(--surface); color: var(--slate-600); font: inherit; font-size: var(--fs-caption); }
+.cmd-open:hover kbd { border-color: var(--indigo-700); color: var(--indigo-700); }
+.cmd-open:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 8px; }
+.cmd-backdrop { align-items: flex-start; padding-top: 12vh; }
+.cmd-box { width: min(620px, calc(100vw - 32px)); max-height: 70vh; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow-pop); }
+.cmd-input { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
+.cmd-input svg.lucide { width: 18px; height: 18px; color: var(--slate-600); flex-shrink: 0; }
+.cmd-input input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: 16px; color: var(--ink); }
+.cmd-input kbd { padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; color: var(--slate-600); font-size: var(--fs-caption); }
+.cmd-list { list-style: none; margin: 0; padding: var(--space-2); overflow-y: auto; }
+.cmd-opt { display: flex; align-items: center; gap: var(--space-3); padding: 10px var(--space-3); border-radius: 10px; cursor: pointer; }
+.cmd-opt svg.lucide { width: 16px; height: 16px; color: var(--slate-600); flex-shrink: 0; }
+.cmd-opt.is-active { background: var(--indigo-100); }
+.cmd-opt.is-active svg.lucide { color: var(--indigo-700); }
+.cmd-empty { margin: 0; padding: var(--space-4); }
+@media (max-width: 719px) { .cmd-open { display: none; } }
+/* Typing shortcuts (doctor ideas #3) */
+.ts-form { display: grid; gap: var(--space-2); }
+.ts-list { list-style: none; margin: 0; padding: 0; }
+.ts-list li { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3); align-items: start; padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.ts-list li:first-child { border-top: 0; }
+.ts-list kbd, .card kbd { padding: 1px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--mist-50); font-size: var(--fs-label); }
+.vs-draft { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.cv-list { margin: var(--space-1) 0 0; padding-left: var(--space-4); } .cv-list li + li { margin-top: 2px; }
+/* Undo instead of "Are you sure?" (doctor ideas #5): a bar at the bottom of the screen for a few seconds */
+.undo-bar {
+  position: fixed; left: 50%; bottom: var(--space-6); z-index: 60; transform: translateX(-50%); display: flex; align-items: center; gap: var(--space-3);
+  max-width: calc(100vw - 32px); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: 12px; background: var(--ink); color: var(--on-dark, #fff); box-shadow: var(--shadow-pop);
+}
+.undo-bar .btn-link { color: var(--on-dark, #fff); font-weight: 600; }
+.undo-bar svg.lucide { width: 16px; height: 16px; }
+
+/* ---------- Pregnancy timeline (doctor ideas #7) ---------- */
+.ptl { margin: var(--space-4) 0 0; }
+.ptl-title { margin: 0 0 var(--space-2); font-size: var(--fs-body); }
+.ptl-ribbon { position: relative; height: 26px; border-radius: 13px; background: var(--mist-50); box-shadow: inset 0 0 0 1px var(--border); }
+.ptl-band { position: absolute; top: 0; bottom: 0; }
+.ptl-band-0 { background: var(--indigo-100); border-radius: 13px 0 0 13px; }
+.ptl-band-1 { background: var(--mist-100); }
+.ptl-band-2 { background: var(--indigo-100); }
+.ptl-band-3 { background: var(--status-watch-bg); border-radius: 0 13px 13px 0; }
+.ptl-visit, .ptl-item, .ptl-today { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.ptl-visit { width: 4px; height: 18px; border-radius: 2px; background: var(--indigo-700); }
+.ptl-item { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface); }
+.ptl-stable { background: var(--status-stable-fg); }
+.ptl-due { background: var(--status-due-fg); }
+.ptl-high { background: var(--status-high-fg); }
+.ptl-neutral { background: var(--slate-600); opacity: 0.5; }
+.ptl-today { width: 3px; height: 34px; border-radius: 2px; background: var(--ink); }
+.ptl-scale { position: relative; height: 18px; margin-top: 4px; font-size: var(--fs-caption); }
+.ptl-scale span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ptl-scale span:first-child { transform: none; }
+.ptl-scale span:last-child { transform: translateX(-80%); }
+.ptl-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: var(--space-2) 0 0; font-size: var(--fs-caption); }
+.ptl-key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.ptl-key-visit { width: 4px; height: 12px; border-radius: 2px; background: var(--indigo-700); }
+.ptl-key-today { width: 3px; height: 12px; border-radius: 2px; background: var(--ink); }
+.ptl-list { margin-top: var(--space-2); }
+.ptl-list summary { cursor: pointer; color: var(--indigo-700); font-size: var(--fs-label); }
+.ptl-list li + li { margin-top: 4px; }
+/* ---------- Pregnancy wheel (doctor ideas #8) ---------- */
+.wheel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); align-items: start; }
+.wheel-answer { font-size: 2em; font-weight: 700; margin: 0; color: var(--indigo-700); }
+.wheel-dial { width: 220px; height: 220px; margin: 0 auto; display: block; }
+.wheel-table td, .wheel-table th { padding: 6px 8px; text-align: left; }
+
+/* Your day so far (doctor ideas #9) */
+.myday h2 { margin: 0 0 var(--space-2); }
+.myday-lead { display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.myday-lead svg.lucide { width: 18px; height: 18px; color: var(--status-stable-fg); }
+.myday-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; gap: 6px; }
+.myday-list li { display: flex; align-items: center; gap: var(--space-2); }
+.myday-list svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
+.myday-due svg.lucide { color: var(--status-due-fg); }
+.myday-high svg.lucide { color: var(--status-high-fg); }
+
+/* The baby keepsake card (doctor ideas #10) */
+.keep-controls { display: grid; gap: var(--space-2); min-width: min(420px, 100%); }
+.keepsake { text-align: center; padding: var(--space-4) var(--space-6) var(--space-6); }
+.keep-lead { margin: var(--space-6) 0 var(--space-1); font-size: 1.1em; letter-spacing: 0.08em; text-transform: uppercase; color: var(--slate-600); }
+.keep-name { margin: 0 0 var(--space-6); font-size: 2.2em; color: var(--indigo-700); }
+.keep-facts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-4) var(--space-8); margin: 0 0 var(--space-6); }
+.keep-facts dt { font-size: var(--fs-caption); color: var(--slate-600); text-transform: uppercase; letter-spacing: 0.06em; }
+.keep-facts dd { margin: 4px 0 0; font-size: 1.4em; font-weight: 600; }
+.keep-note { max-width: 32em; margin: 0 auto var(--space-6); font-size: 1.15em; font-style: italic; }
+.keep-foot { margin: 0; color: var(--slate-600); }
+
+/* Short tips (doctor ideas #11) */
+.tip { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border-radius: 12px; background: var(--indigo-100); color: var(--ink); }
+.tip > svg.lucide { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; color: var(--indigo-700); }
+.tip p { flex: 1; margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+.help-new li + li { margin-top: 6px; }
+.cmd-box .cmd-input input, .cmd-box .cmd-input input:focus { height: auto; padding: 0; border: 0; box-shadow: none; background: none; }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Tip } from '../components/Tip.jsx';
 import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, DoorOpen, FlaskConical, PhoneCall, Receipt, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
@@ -12,6 +13,8 @@ import { CARE_PLAN_ROLES, canBookAppointments, canRegisterPatients, canSeeAppoin
 import { rupees } from './billing/billingFormat.js';
 import { ScanShareSection } from './abdm/ScanShare.jsx';
 import { SignupsNotice, SignupsSection } from './patients/SignupsPage.jsx';
+import { ContinueVisits } from './visits/ContinueVisits.jsx';
+import { MyDayCard } from './MyDayCard.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { HandoverList, VITALS_DUE_HOURS, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
@@ -549,6 +552,9 @@ function RoleToday({ roles, lensBar = null }) {
       <div className="pf-content wl-page td-page">
         {lensBar}
         <SignupsNotice roles={roles} />
+        <ContinueVisits enabled={has(roles, ['doctor', 'rmo', 'nurse'])} />
+        <Tip ids={has(roles, ['doctor', 'rmo']) ? ['cmdk-2026-10', 'myday-2026-10'] : ['cmdk-2026-10']} />
+        <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>

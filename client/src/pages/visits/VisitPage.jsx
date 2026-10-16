@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Tip } from '../../components/Tip.jsx';
 import { ArrowLeft, BadgeCheck, CircleMinus, FileSearch, FileText, Languages, MoreHorizontal, Pill, Printer, Sparkles } from 'lucide-react';
 import { Link, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -23,6 +24,7 @@ import { RxDocument, rxPage } from './RxDocument.jsx';
 import { VisitDetailsForm } from './VisitDetailsForm.jsx';
 import { AdditionsCard, SignDialog, SignedPill, VisitHistory, signedText } from './VisitSignature.jsx';
 import { DESIGNS } from './rxFormat.js';
+import { useVisitDraft } from './visitDraft.js';
 import { blobToBase64, showWhatsappNumber, whatsappLink, whatsappNumber } from './whatsapp.js';
 
 // One visit (Feature 8), with its two tabs: Visit details and Prescription (?tab=prescription). Both stay
@@ -239,6 +241,8 @@ export function VisitPage() {
   const medicineAdded = useCallback(() => setMedicineAdd(null), []);
   const location = useLocation();
   const navigate = useNavigate();
+  // Nothing gets lost (doctor ideas #4): unsaved typing kept as the person's draft, offered back on opening
+  const drafts = useVisitDraft(patient.id, visitId);
 
   useEffect(() => {
     setLatest(null);
@@ -502,6 +506,34 @@ export function VisitPage() {
           Marked as entered in error by {v.cancelled?.byName} on {formatDate(v.cancelled?.at)}: {v.cancelled?.reason}
         </Alert>
       )}
+      <Tip id="visit-2026-10" />
+      {/* Unsaved typing from earlier (doctor ideas #4): put it back, or let it go */}
+      {drafts.found && active && !v.signed && (
+        <Alert type="info">
+          <span className="vs-draft">
+          <span>
+            You have unsaved changes on this visit from {formatDateTime(drafts.found.savedAt)}
+            {drafts.found.details && drafts.found.rx ? ' (visit details and prescription)' : drafts.found.rx ? ' (prescription)' : ' (visit details)'}.
+          </span>
+          <span className="row">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                drafts.restoreNow();
+                setKeys((k) => ({ details: k.details + 1, rx: k.rx + 1 }));
+                setNotice({ type: 'info', text: 'Your unsaved changes are back. Check them, then save.' });
+              }}
+            >
+              Restore them
+            </button>
+            <button type="button" className="btn btn-link btn-sm" onClick={drafts.discard}>
+              Discard
+            </button>
+          </span>
+          </span>
+        </Alert>
+      )}
       {notice && (
         <Alert type={notice.type} onClose={() => setNotice(null)}>
           {notice.text}
@@ -561,6 +593,8 @@ export function VisitPage() {
           append={detailsAppend}
           onAppended={appended}
           shown={tab === 'details'}
+          draft={drafts.restore?.details ?? null}
+          onDraft={drafts.onDetails}
         />
       </div>
       <div hidden={tab !== 'prescription'}>
@@ -573,6 +607,8 @@ export function VisitPage() {
           onSaved={saved('rx')}
           onConflict={conflict('rx')}
           onDirty={onDirtyRx}
+          draft={drafts.restore?.rx ?? null}
+          onDraft={drafts.onRx}
           onAppendDetails={appendToDetails}
           addMedicine={medicineAdd}
           onMedicineAdded={medicineAdded}

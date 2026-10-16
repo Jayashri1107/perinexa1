@@ -1,5 +1,10 @@
 # Ideas for later: easier and more pleasant for doctors
 
+> **16 Oct 2026 – the owner asked for these to be built.** Ideas **1–11 are built** (branch `doctor-ideas`; how to use
+> each one: `docs/PROGRESS.md`, "How to test the doctor ideas"). Ideas **12–16 are planned, not built**: the risks and
+> the decisions needed first are in `docs/IDEAS_12_16_PLANS.md`. The clinical parts of 7, 8 and 10 are DRAFT for the
+> owner to approve.
+
 Collected 15 Oct 2026. **Nothing here is built or approved.** New features are paused until the developer's health
 check (`docs/HEALTH_CHECK.md`) is done and the owner and the developer have agreed what the first commercial version
 contains. Pick from this list at that point.

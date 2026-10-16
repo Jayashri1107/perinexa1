@@ -885,7 +885,7 @@ export async function currentPlanItems(ctx, patient) {
     const { plan } = await readCurrentPlan(ctx, patient._id);
     if (!plan) return [];
     const statuses = planStatuses(plan, hospitalToday(ctx.now));
-    return plan.items.map((it) => ({ kind: it.kind, name: it.name, status: statuses.get(it)?.status ?? null, dueBy: it.auto?.dueBy ?? null }));
+    return plan.items.map((it) => ({ kind: it.kind, name: it.name, status: statuses.get(it)?.status ?? null, dueBy: it.manualDate?.dueBy ?? it.auto?.dueBy ?? null }));
   } catch (err) {
     console.error('Care plan items for consent suggestions failed', err?.message ?? err);
     return [];

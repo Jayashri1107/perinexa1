@@ -1,4 +1,5 @@
 import { CircleHelp, Info, LayoutGrid, Mic, ShieldCheck, UserPlus } from 'lucide-react';
+import { WHATS_NEW } from '../components/Tip.jsx';
 import { Link } from 'react-router-dom';
 import { normalizeAppearance } from '../appearance.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -76,6 +77,16 @@ export function HelpPage() {
     <>
       <PageHeader breadcrumbs={[{ label: 'Help' }]} title="Help" subtitle="How to use Perinexa" documentTitle="Help" />
       <div className="pf-content help-page">
+        <section className="card help-card help-wide" id="whats-new" aria-labelledby="help-new">
+          <h2 id="help-new">What's new</h2>
+          <ul className="plain-list help-new">
+            {WHATS_NEW.map((t) => (
+              <li key={t.id}>
+                <strong>{t.where}:</strong> {t.text}
+              </li>
+            ))}
+          </ul>
+        </section>
         <section className="card help-card" aria-labelledby="help-basics">
           <h2 id="help-basics">
             <CircleHelp aria-hidden="true" /> Getting around
