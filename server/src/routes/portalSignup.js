@@ -20,7 +20,8 @@ import { accountAccess, portalAudit, portalSession, startPortalSession } from '.
 // staff login), so deliberately small:
 //  - On only when the hospital admin switched on "Patients may sign up online" (the hospital's portal code is made
 //    then; switching it off makes the address stop working). Needs the portal on.
-//  - Sign up: name, age, mobile, email, password, agreement → a PENDING account. Nothing is a patient record yet;
+//  - Sign up: name, age, mobile, agreement – and, if she wants, email and password (owner, 16 Oct 2026: email optional;
+//    without one she signs in with mobile and OTP only) → a PENDING account. Nothing is a patient record yet;
 //    reception approves (linking her record) or rejects it (routes/patientAccounts.js). The answer is the same whether
 //    or not the mobile or email is already signed up here, so this page never tells anyone who is registered.
 //  - Sign in: email and password, or mobile and an OTP by SMS. Only an APPROVED account opens her portal; a pending or
@@ -139,8 +140,8 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
       fullName: z.string().trim().min(2, 'Please enter your full name.').max(150),
       ageYears: z.coerce.number({ error: 'Please enter your age.' }).int('Please enter your age in years.').min(1, 'Please enter your age.').max(120, 'Please check your age.'),
       mobile: z.string().max(20),
-      email: z.email('Please enter a valid email.').max(254),
-      password: passwordSchema,
+      email: z.union([z.literal(''), z.email('Please enter a valid email, or leave it empty.').max(254)]).optional(),
+      password: z.string().max(128).optional(),
       consent: z.literal(true, 'Please read and tick the agreement.'),
     })
     .strict();
@@ -149,12 +150,19 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
     const tenant = await hospitalOf(req);
     const body = parse(signupBody, req.body);
     const mobile = mobileOf(body.mobile);
-    const email = body.email.trim().toLowerCase();
-    const taken = await PatientAccount.exists({ tenantId: tenant._id, status: { $in: ['pending', 'approved'] }, $or: [{ email }, { mobile }] });
+    const email = body.email ? body.email.trim().toLowerCase() : null;
+    // A password only with an email (it is what she signs in with); the staff password rules
+    let passwordHash = null;
+    if (email) {
+      const checked = passwordSchema.safeParse(body.password ?? '');
+      if (!checked.success) throw fieldError('password', body.password ? checked.error.issues[0].message : 'With an email, please choose a password.');
+      passwordHash = await hashPassword(body.password);
+    }
+    const taken = await PatientAccount.exists({ tenantId: tenant._id, status: { $in: ['pending', 'approved'] }, $or: [{ mobile }, ...(email ? [{ email }] : [])] });
     // Already signed up with this mobile or email: nothing new, the same answer (never says who is registered here)
     if (!taken) {
       try {
-        const account = await PatientAccount.create({ tenantId: tenant._id, fullName: body.fullName, ageYears: body.ageYears, mobile, email, passwordHash: await hashPassword(body.password) });
+        const account = await PatientAccount.create({ tenantId: tenant._id, fullName: body.fullName, ageYears: body.ageYears, mobile, email, passwordHash });
         await audit(req, 'PORTAL_SIGNUP_RECEIVED', { actor: null, tenantId: tenant._id, details: { accountId: String(account._id) } });
       } catch (err) {
         if (err?.code !== 11000) throw err; // the same sign-up sent twice at once
@@ -167,8 +175,9 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
   router.post('/:key/login', stepLimiter, async (req, res) => {
     const tenant = await hospitalOf(req);
     const body = parse(z.object({ email: z.string().trim().max(254), password: z.string().max(128) }).strict(), req.body);
-    const account = await accountBy(tenant, { email: body.email.toLowerCase() });
-    if (!account) {
+    const email = body.email.toLowerCase();
+    const account = email ? await accountBy(tenant, { email }) : null;
+    if (!account || !account.passwordHash) {
       await fakeVerify(body.password); // as long as a wrong password
       return refuse(req, tenant, 'unknown_email');
     }
@@ -227,6 +236,7 @@ portalAccountRouter.post('/password', async (req, res) => {
   if (!access.accountId) throw new HttpError(409, 'Signed in with a code from the hospital: there is no password to change.', 'NO_ACCOUNT');
   const account = await PatientAccount.findOne({ tenantId: access.tenantId, _id: access.accountId, status: 'approved' });
   if (!account) throw new HttpError(401, 'Please sign in again.', 'PORTAL_SIGNED_OUT');
+  if (!account.email) throw new HttpError(409, 'You signed up without an email: you sign in with your mobile number and an OTP, so there is no password.', 'NO_EMAIL');
   account.passwordHash = await hashPassword(body.password);
   await account.save();
   await portalAudit(req, 'PORTAL_PASSWORD_CHANGED', access);

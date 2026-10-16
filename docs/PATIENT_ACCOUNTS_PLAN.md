@@ -9,10 +9,10 @@ The owner's flow (16 Oct 2026):
 
 | # | Step | How it works |
 |---|------|--------------|
-| 1 | She signs up | Sign-in page → **Patient** → **Sign up** (or the hospital's portal address on the poster): full name, age, mobile number, email, password, and the agreement. |
+| 1 | She signs up | Sign-in page → **Patient** → **Sign up** (or the hospital's portal address on the poster): full name, age, mobile number and the agreement; **email optional** (owner, 16 Oct 2026) – with an email she also chooses a password, without one she signs in with mobile + OTP only. |
 | 2 | Pending | She is told her registration is waiting for the hospital. Nothing is a patient record yet. Signing in before approval says so (only after the right password or OTP). |
 | 3 | Reception reviews | Patients → **Online sign-ups** (and a section on reception's Today page): check who she is (at the desk or by phone), then **Find her record and approve** (records with the same mobile or name are suggested), **Register and approve** (the registration form opens with her details), or **Reject** with a reason (kept by the hospital; she is told to call the hospital). |
-| 4 | Approved | She signs in with **mobile number + OTP** or **email + password**; both open the same record. |
+| 4 | Approved | She signs in with **mobile number + OTP**, or **email + password** if she gave an email; both open the same record. |
 | 5 | Her page | As before: appointment and booking, care plan, prescriptions, lab reports, visits, bills. Only signed visits and reviewed lab reports; never notes, risk or anything about HIV. |
 
 ## Rules (server)

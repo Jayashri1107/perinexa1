@@ -105,6 +105,32 @@ describe('signing up', () => {
   });
 });
 
+describe('signing up without an email (owner, 16 Oct 2026: email optional)', () => {
+  it('needs no password; she signs in with mobile and OTP only, and has no password to change', async () => {
+    const key = await signupOn();
+    const p = await register();
+    // an email needs a password; no email, no password
+    expect((await signUp(key, { password: undefined })).body.error.fields.password).toBeTruthy();
+    expect((await signUp(key, { email: '', password: undefined })).status).toBe(201);
+    expect((await signUp(key, { email: 'not-an-email', mobile: '9111111111' })).body.error.fields.email).toBeTruthy();
+    const account = await PatientAccount.findOne({ tenantId: hospital._id }).lean();
+    expect(account).toMatchObject({ email: null, passwordHash: null, mobile: '9876543210' });
+    // a second one without email, another mobile: allowed (no email to clash)
+    expect((await request(app).post(`/api/portal/h/${key}/signup`).send({ fullName: 'Other Sample', ageYears: 40, mobile: '9222222222', consent: true })).status).toBe(201);
+    expect(await PatientAccount.countDocuments({ tenantId: hospital._id })).toBe(2);
+    expect((await waiting()).every((x) => x.email === null)).toBe(true);
+
+    await approve((await waiting()).find((x) => x.mobile === '9876543210').id, p.id);
+    // no email: password sign-in never works (an empty email is refused like any wrong one)
+    expect((await passwordSignIn(request.agent(app), key, '', 'Sample1234')).status).toBe(401);
+    const agent = request.agent(app);
+    const sent = await agent.post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' });
+    expect((await agent.post(`/api/portal/h/${key}/otp/verify`).send({ mobile: '9876543210', otp: sent.body.practiceOtp })).status).toBe(200);
+    expect((await agent.get('/api/portal/me')).body.canChangePassword).toBe(false);
+    expect((await agent.post('/api/portal/account/password').send({ password: 'NewSample99' })).body.error.code).toBe('NO_EMAIL');
+  });
+});
+
 describe('signing in', () => {
   it('a pending account is told to wait – only after the right password; a wrong one says nothing more', async () => {
     const key = await signupOn();

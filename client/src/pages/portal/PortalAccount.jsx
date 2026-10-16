@@ -8,7 +8,7 @@ import { portal } from './portalApi.js';
 import { portalError, portalWords } from './portalWords.js';
 
 // A patient's own account on the hospital's portal (owner, 16 Oct 2026 – docs/PATIENT_ACCOUNTS_PLAN.md): Sign in with
-// mobile number + OTP or email + password, or Sign up (name, age, mobile, email, password) – the registration then
+// mobile number + OTP or email + password, or Sign up (name, age, mobile; email and password optional) – the registration then
 // waits for reception to approve it. Shown on the sign-in page (Patient) and on the hospital's portal address.
 // Patients with a paper code sign in on /portal as before.
 
@@ -143,7 +143,8 @@ function SignUp({ hospitalKey, hospital, lang }) {
       onSubmit={(e) => {
         e.preventDefault();
         step.run(async () => {
-          await portal(`/h/${hospitalKey}/signup`, { method: 'POST', body: { ...form, consent: agreed } });
+          const email = form.email.trim();
+          await portal(`/h/${hospitalKey}/signup`, { method: 'POST', body: { ...form, email, password: email ? form.password : undefined, consent: agreed } });
           setDone(true);
         });
       }}
@@ -159,12 +160,15 @@ function SignUp({ hospitalKey, hospital, lang }) {
       <Field label={w.mobile} id="signup-mobile" error={fields.mobile}>
         <input id="signup-mobile" type="tel" inputMode="numeric" autoComplete="tel" value={form.mobile} onChange={set('mobile')} maxLength={20} />
       </Field>
-      <Field label={w.email} id="signup-email" error={fields.email}>
+      <Field label={w.emailOptional} id="signup-email" error={fields.email} hint={w.emailOptionalHint} keepHint>
         <input id="signup-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} maxLength={254} />
       </Field>
-      <Field label={w.password} id="signup-password" error={fields.password} hint={w.passwordHint} keepHint>
-        <PasswordInput id="signup-password" autoComplete="new-password" value={form.password} onChange={set('password')} />
-      </Field>
+      {/* A password only with an email: without one she signs in with her mobile number and an OTP */}
+      {form.email.trim() && (
+        <Field label={w.password} id="signup-password" error={fields.password} hint={w.passwordHint} keepHint>
+          <PasswordInput id="signup-password" autoComplete="new-password" value={form.password} onChange={set('password')} />
+        </Field>
+      )}
       <label className="check">
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> {w.agree(hospital.name)}
       </label>

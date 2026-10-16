@@ -407,6 +407,8 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `savePassword` | Save the new password | नवीन पासवर्ड जतन करा | नया पासवर्ड सहेजें |
 | `saving` | Saving… | जतन करत आहे… | सहेज रहे हैं… |
 | `passwordSaved` | Your new password is saved. | तुमचा नवीन पासवर्ड जतन झाला. | आपका नया पासवर्ड सहेज लिया गया। |
+| `emailOptional` | Email (optional) | ईमेल (ऐच्छिक) | ईमेल (वैकल्पिक) |
+| `emailOptionalHint` | With an email you can also sign in with a password. Without one, you sign in with your mobile number and an OTP. | ईमेल दिल्यास पासवर्डनेही आत येता येईल. ईमेल नसल्यास मोबाइल नंबर आणि OTP ने आत या. | ईमेल देने पर आप पासवर्ड से भी अंदर आ सकते हैं। ईमेल न हो तो मोबाइल नंबर और OTP से अंदर आएँ। |
 | `tabs.home` | Home | मुख्य | मुख्य |
 | `tabs.prescriptions` | Prescriptions | औषधचिठ्ठ्या | पर्चे |
 | `tabs.lab` | Lab reports | तपासणी अहवाल | जाँच रिपोर्ट |

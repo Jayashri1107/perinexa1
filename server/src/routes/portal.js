@@ -235,7 +235,7 @@ portalRouter.get('/me', async (req, res) => {
     plan,
     sessionMinutes: SESSION_MINUTES,
     // Signed in with her own account (not a paper code): she can set a new password on her page
-    canChangePassword: Boolean(access.accountId),
+    canChangePassword: Boolean(access.accountId) && Boolean((await PatientAccount.exists({ tenantId: access.tenantId, _id: access.accountId, email: { $type: 'string' } }))),
   });
 });
 

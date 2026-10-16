@@ -118,7 +118,7 @@ function SignupRow({ a, onApprove, onReject }) {
           Waiting for approval
         </StatusPill>
         <p className="hint">
-          {a.ageYears != null ? `${a.ageYears} yrs · ` : ''}mobile {a.mobile} · {a.email} · signed up {formatDateTime(a.signedUpAt)}
+          {a.ageYears != null ? `${a.ageYears} yrs · ` : ''}mobile {a.mobile} · {a.email ?? 'no email (signs in with mobile and OTP)'} · signed up {formatDateTime(a.signedUpAt)}
         </p>
       </div>
       <span className="row">
