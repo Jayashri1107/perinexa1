@@ -27,6 +27,16 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   (3) Prescription design → "Fine-tune": font (Perinexa, Arial, Georgia), text / medicine-name / doctor-name sizes in
   points, line spacing, left and right margins, and the doctor's own section titles. Still to do: several
   prescriptions per visit (changes the visit model, pharmacy sales, ABDM records, signing – planned separately).
+- **Patients sign up and see their records online (16 Oct 2026, branch `patient-signup`, not merged yet – the owner
+  lifted the feature freeze for this):** plan and owner decisions in `docs/PATIENT_SIGNUP_PLAN.md`. A patient opens the
+  hospital's portal address (on a poster), signs up with her ABHA and an OTP – **no Aadhaar card is uploaded or
+  stored** (the owner chose ABHA instead) – and waits in reception's Scan & Share list, marked "Signed up online",
+  until reception registers her or finds her record. Then she signs in with her ABHA and an OTP and sees her
+  appointment and booking (as before), prescriptions and visits (signed visits only, as printed), lab reports (once a
+  doctor reviewed them) and bills; never notes, risk or anything about HIV. Hospital admin → Patient messages → "Let
+  patients sign up themselves with their ABHA". Marathi and Hindi wording DRAFT (`TRANSLATIONS_TO_CHECK.md` section
+  5). Not done: QR code on the poster (new library), printing lab reports and bills, blocking one patient's ABHA
+  sign-in. Tested in practice mode only. **How to test:** see "How to test patient sign-up with ABHA" below.
 
 ## Done
 - Project rules saved in `CLAUDE.md`.
@@ -2434,6 +2444,20 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 - Owner/administrator: to try the AI features, create an OpenAI API key (platform.openai.com → API keys, with a
   small credit limit) and paste it after `OPENAI_API_KEY=` in `server/.env` yourself – never in chat – then
   restart Perinexa. Fake data only.
+
+## How to test patient sign-up with ABHA (fake data only, practice mode)
+1. As the hospital admin: Hospital admin → Patient messages → tick "Let patients see their next appointment and care
+   plan online" and "Let patients sign up themselves with their ABHA" → Save. The portal address appears below the
+   switch; "Print a poster" shows the poster.
+2. Open the portal address in another browser (or a private window). Sign up → ABHA number `91-1111-2222-3333` (a
+   made-up practice ABHA) → Send OTP → OTP `123456` → Continue → tick the agreement → Sign up. She is thanked; no
+   patient is made yet.
+3. As reception: Today → Scan & Share (ABHA): "Sample Abha Mother – Signed up online" → Register (the form is filled
+   in) → save her.
+4. Back on the portal address: Sign in → the same ABHA number → OTP `123456` → she sees her page and the tabs
+   Prescriptions, Lab reports, Visits and Bills. A visit shows only after the doctor signs it; a lab report only after
+   a doctor reviews it.
+5. Try a wrong OTP, an ABHA nobody registered here (`91-4444-5555-6666` before it is linked): one plain refusal.
 
 ## How to test risk level and care-plan items from findings in this pregnancy (fake data only)
 1. **The rules first.** Log in as Dr. Riley Demo → Clinic library → Care plan templates → the standard antenatal

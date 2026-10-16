@@ -17,6 +17,7 @@ import {
   rememberPortalLanguage,
   rememberedPortalLanguage,
 } from './portalWords.js';
+import { PORTAL_ACCOUNT_WORDS } from './portalAccountWords.js';
 
 const DEVANAGARI = /[ऀ-ॿ]/;
 const text = (markup) => markup.replace(/<[^>]+>/g, '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
@@ -25,7 +26,7 @@ describe('the words of the portal', () => {
   it('has every word in English, Marathi and Hindi, the same kind of value in each', () => {
     expect(PORTAL_LANGUAGES).toEqual(['en', 'mr', 'hi']);
     expect(PORTAL_LANGUAGE_NAMES).toEqual({ en: 'English', mr: 'मराठी', hi: 'हिंदी' });
-    for (const table of [PORTAL_WORDS, PORTAL_SLIP_WORDS]) {
+    for (const table of [PORTAL_WORDS, PORTAL_SLIP_WORDS, PORTAL_ACCOUNT_WORDS]) {
       const keys = Object.keys(table.en).sort();
       for (const lang of ['mr', 'hi']) {
         expect(Object.keys(table[lang]).sort(), lang).toEqual(keys);
@@ -39,7 +40,11 @@ describe('the words of the portal', () => {
             if (/[A-Za-z]{3}/.test(en) && key !== 'pageTitle' && key !== 'codeHint') expect(other, `${lang}.${key}`).toMatch(DEVANAGARI);
           }
         }
-        expect(Object.keys(table[lang].kinds ?? {}).sort()).toEqual(Object.keys(table.en.kinds ?? {}).sort());
+        // Word lists (kinds of care-plan items; tabs, flags and bill words of her records): the same entries
+        for (const key of keys.filter((k) => table.en[k] && typeof table.en[k] === 'object' && !Array.isArray(table.en[k]))) {
+          expect(Object.keys(table[lang][key]).sort(), `${lang}.${key}`).toEqual(Object.keys(table.en[key]).sort());
+          for (const [k, v] of Object.entries(table[lang][key])) if (/[A-Za-z]{3}/.test(table.en[key][k]) && v !== 'UPI') expect(v, `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+        }
       }
     }
     // The draft note shows only in Marathi and Hindi

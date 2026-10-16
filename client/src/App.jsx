@@ -125,6 +125,8 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       {/* The patient portal (Version 2): its own sign-in with a code, no staff login */}
       <Route path="/portal" element={<PortalPage />} />
+      {/* A hospital's own portal address: sign-in and sign-up with ABHA (docs/PATIENT_SIGNUP_PLAN.md) */}
+      <Route path="/portal/h/:key" element={<PortalPage />} />
       {/* The waiting-room screen: no login, a secret in the address, tokens and times only */}
       <Route path="/display/:key" element={<DisplayPage />} />
       <Route element={<RequireAuth />}>

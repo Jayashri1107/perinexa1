@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Printer } from 'lucide-react';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert } from '../../components/ui.jsx';
+import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
+import { Alert, formatDate } from '../../components/ui.jsx';
 import { api } from '../../api.js';
 import { useFetch } from '../../hooks/useFetch.js';
 import { moduleByKey } from '../../platform/modules.js';
@@ -11,9 +14,34 @@ import { moduleByKey } from '../../platform/modules.js';
 // The reminders switch also covers the two general messages added on 4 Oct 2026 ("a check-up or test is due", "we
 // missed you"): the page says exactly what switching it on sends, that agreements from before that day were asked
 // for appointment reminders only, and that a death recorded on a record (by her doctor) stops every message to it.
+// Since 16 Oct 2026: patients may sign up themselves with their ABHA (docs/PATIENT_SIGNUP_PLAN.md) – the hospital's
+// portal address and a poster to print with it.
+
+/** The poster for the waiting room: the hospital's portal address in large print, and what a patient can do there. */
+function SignupPoster({ url, hospital, onClose }) {
+  return (
+    <PrintPreview title="Poster – print preview" hint="Put it up where patients wait. The address works until sign-up is switched off." onClose={onClose}>
+      <PrintDocument footer={<span>{hospital} · printed {formatDate(new Date())}</span>}>
+        <div className="signup-poster">
+          <h1>{hospital}</h1>
+          <p className="signup-poster-lead">Your care online – with your ABHA</p>
+          <p className="signup-poster-url">{url}</p>
+          <ol>
+            <li>Open this address on your phone.</li>
+            <li>Sign up with your ABHA number or your Aadhaar-linked mobile number. An OTP comes to your mobile.</li>
+            <li>The hospital confirms your registration. Then sign in to see your appointments, prescriptions, lab reports, visits and bills, and to book an appointment.</li>
+          </ol>
+          <p>No Aadhaar card is needed. No ABHA yet? Ask at the reception desk.</p>
+        </div>
+      </PrintDocument>
+    </PrintPreview>
+  );
+}
 
 export function PatientMessagesSettingsPage() {
   const { data, error } = useFetch('/reminders/settings');
+  const { activeMembership } = useAuth();
+  const [poster, setPoster] = useState(false);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
@@ -31,7 +59,8 @@ export function PatientMessagesSettingsPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await api('/reminders/settings', { method: 'PUT', body: form });
+      const { signupKey: _address, ...settings } = form; // the address is made by the server, never sent
+      const res = await api('/reminders/settings', { method: 'PUT', body: settings });
       setForm(res.settings);
       setDisplayKey(res.displayKey ?? null);
       setNotice('Saved.');
@@ -52,6 +81,8 @@ export function PatientMessagesSettingsPage() {
     }
   };
   const displayUrl = displayKey ? `${window.location.origin}/display/${displayKey}` : null;
+  const signupKey = form?.signupKey ?? null;
+  const signupUrl = signupKey ? `${window.location.origin}/portal/h/${signupKey}` : null;
   const provider = data?.provider;
   const whatsapp = data?.whatsapp;
   return (
@@ -114,6 +145,25 @@ export function PatientMessagesSettingsPage() {
               A patient with a portal code may book one appointment with her own doctor, from the next day up to 30 days ahead, in a free time of the doctor's OPD, and cancel a booking she made
               online. She sees which times are free, never who else is booked. Reception sees these bookings marked "booked online by the patient".
             </p>
+            <label className="check">
+              <input type="checkbox" checked={Boolean(form.portalSignup) && form.portalEnabled} disabled={!form.portalEnabled} onChange={(e) => setForm({ ...form, portalSignup: e.target.checked })} /> Let
+              patients sign up themselves with their ABHA, and sign in with it
+            </label>
+            <p className="hint">
+              The hospital gets its own portal address (below) for a poster. A patient signs up there with her ABHA number, ABHA address or Aadhaar-linked mobile and an OTP from ABDM. No Aadhaar
+              card or number is asked for or kept. Her sign-up waits on reception's Today page under Scan & Share, marked "Signed up online", for up to 7 days: she is not a patient until reception
+              registers her or finds her record. After that she signs in with her ABHA and an OTP, and sees her prescriptions and visits (signed visits only, as printed), lab reports (once a doctor
+              has reviewed them) and bills. Never notes, risk or anything about HIV. Switching this off makes the address stop working.
+            </p>
+            {signupUrl && (
+              <p>
+                Portal address: <a href={signupUrl} target="_blank" rel="noreferrer">{signupUrl}</a>{' '}
+                <button type="button" className="btn btn-link btn-sm" onClick={() => setPoster(true)}>
+                  <Printer aria-hidden="true" /> Print a poster
+                </button>
+              </p>
+            )}
+            {form.portalSignup && form.portalEnabled && !signupUrl && <p className="hint">Save to get the portal address.</p>}
             <h2>Prescriptions on WhatsApp</h2>
             <label className="check">
               <input type="checkbox" checked={Boolean(form.whatsappDocuments)} onChange={(e) => setForm({ ...form, whatsappDocuments: e.target.checked })} /> Let staff send a prescription or
@@ -156,6 +206,7 @@ export function PatientMessagesSettingsPage() {
             </div>
           </form>
         )}
+        {poster && signupUrl && <SignupPoster url={signupUrl} hospital={activeMembership?.tenantName ?? 'The hospital'} onClose={() => setPoster(false)} />}
       </div>
     </>
   );

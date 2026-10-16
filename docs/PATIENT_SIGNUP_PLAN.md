@@ -82,3 +82,29 @@ Every page she opens is in the audit log (ids only), as today.
 ## 7. Before real patients
 This page is open to the internet and shows medical records. The developer reviews it (health check) before any real
 patient uses it, together with HTTPS hosting and the go-live checklist in the handover plan.
+
+## 8. Built (16 Oct 2026, branch `patient-signup`, not merged yet)
+Everything in sections 1–4 except what is listed under "Not done" below.
+- Server: `routes/portalSignup.js` (the hospital's page, OTP, sign-up, ABHA sign-in), `routes/portalRecords.js` (her
+  records), the switch in `routes/reminderOutbox.js` (`portalSignup`; the code is `Tenant.messaging.signupKey`),
+  sign-ups as Scan & Share with `source: 'portal'` (waiting 7 days in `GET /api/abdm/scan-share`), ABHA sign-ins as
+  `PortalAccess` with `method: 'abha'`. Audit: `PORTAL_SIGNUP_RECEIVED`, `PORTAL_RECORDS_VIEWED`, and
+  `PORTAL_LOGIN_SUCCESS` / `PORTAL_LOGIN_FAILED` with `method: 'abha'` / `reason: 'abha_not_registered'`.
+  `PORTAL_OTP_RATE_LIMIT_MAX` (default 8 OTPs per computer in 15 minutes). Tests: `server/tests/portal-signup.test.js`.
+- Website: `PortalAccount.jsx` (sign-in and sign-up with ABHA), `PortalRecords.jsx` (the four tabs; a prescription
+  opens as the printed page, to print or save as PDF), `portalAccountWords.js` (English, Marathi and Hindi – DRAFT,
+  `TRANSLATIONS_TO_CHECK.md` section 5), "Signed up online" in the desk's Scan & Share list, and the switch, address
+  and poster in Hospital admin → Patient messages.
+
+**Not done / known limits** (for the developer and the owner):
+- **No QR code on the poster** – the address is printed in large letters. A QR code needs a new library (developer's
+  agreement first).
+- **Lab reports and bills are shown, not printed** as their own documents (prescriptions and visit summaries are).
+- **"Withdraw" on the patient's portal access ends her session, but she can sign in again with her ABHA** while the
+  hospital's sign-up switch is on. Blocking one patient's ABHA sign-in needs a small change (a flag on her record).
+- **Sign-up steps are kept in the server's memory** for 10 minutes (one server, as the ABDM steps – HANDOVER.md
+  section 7).
+- The print preview of a prescription is a little wider than a phone screen (as for staff); "Save as PDF" gives the
+  whole page.
+- Real ABDM (sandbox or production) not tried: practice mode only, as for the rest of ABDM.
+

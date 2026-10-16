@@ -364,3 +364,92 @@ File: `client/src/pages/portal/portalWords.js` (`PORTAL_SLIP_WORDS`; Patient →
 | `open` | Open {address} and sign in with: | {address} हा पत्ता उघडा आणि हे वापरून आत या: | {address} खोलें और इससे अंदर आएँ: |
 | `digits` | and the last 4 digits of your mobile number. You will see your next appointment and what is due in your care plan. | आणि तुमच्या मोबाइल नंबरचे शेवटचे 4 अंक. तुम्हाला तुमची पुढील भेट आणि तुमच्या काळजीच्या योजनेत पुढे काय करायचे आहे ते दिसेल. | और आपके मोबाइल नंबर के आख़िरी 4 अंक। आपको अपनी अगली मुलाक़ात और अपनी देखभाल योजना में आगे क्या करना है, यह दिखेगा। |
 | `keep` | Keep this paper safe. The code works for 90 days. If you lose it, ask the hospital for a new one – the old one then stops working. | हा कागद सांभाळून ठेवा. हा कोड 90 दिवस चालतो. कागद हरवल्यास रुग्णालयाकडून नवीन कोड घ्या – मग जुना कोड बंद होतो. | यह काग़ज़ सँभालकर रखें। यह कोड 90 दिन तक चलता है। काग़ज़ खो जाए तो अस्पताल से नया कोड लें – तब पुराना कोड बंद हो जाता है। |
+
+## 5. The patient portal: sign-up and sign-in with ABHA, and her records (added 16 Oct 2026)
+
+File: `client/src/pages/portal/portalAccountWords.js` (the hospital's portal address /portal/h/<code>, and the tabs
+Prescriptions, Lab reports, Visits and Bills once she is signed in – docs/PATIENT_SIGNUP_PLAN.md). Written by the
+software developer (an AI assistant) on 16 October 2026; **not checked yet**. The English is also a draft for the owner
+to read on screen. `{…}` parts are filled in by the app. Words such as ABHA, OTP and UPI stay as they are.
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `hospitalTitle` | Your care at {hospital} | {hospital} मधील तुमची काळजी | {hospital} में आपकी देखभाल |
+| `signInTab` | Sign in | आत या | अंदर आएँ |
+| `signUpTab` | Sign up | नोंदणी करा | पंजीकरण करें |
+| `abhaIntro` | Sign in with your ABHA number, ABHA address or the mobile number linked to your Aadhaar. An OTP comes to your mobile. | तुमचा ABHA नंबर, ABHA पत्ता किंवा आधारशी जोडलेला मोबाइल नंबर वापरून आत या. तुमच्या मोबाइलवर OTP येईल. | अपने ABHA नंबर, ABHA पते या आधार से जुड़े मोबाइल नंबर से अंदर आएँ। आपके मोबाइल पर OTP आएगा। |
+| `signupIntro` | New here? Sign up with your ABHA. The hospital confirms your registration, then you can sign in. | नवीन आहात? तुमच्या ABHA ने नोंदणी करा. रुग्णालय तुमची नोंदणी पक्की करेल, मग तुम्ही आत येऊ शकता. | नए हैं? अपने ABHA से पंजीकरण करें। अस्पताल आपका पंजीकरण पक्का करेगा, फिर आप अंदर आ सकते हैं। |
+| `withCode` | I have a code on paper from the hospital | माझ्याकडे रुग्णालयाने दिलेला कोड आहे | मेरे पास अस्पताल का दिया कोड है |
+| `abhaNumber` | ABHA number | ABHA नंबर | ABHA नंबर |
+| `abhaAddress` | ABHA address | ABHA पत्ता | ABHA पता |
+| `mobile` | Mobile number | मोबाइल नंबर | मोबाइल नंबर |
+| `abhaNumberHint` | 14 digits, e.g. 91-1234-5678-9012 | 14 अंक, उदा. 91-1234-5678-9012 | 14 अंक, जैसे 91-1234-5678-9012 |
+| `abhaAddressHint` | e.g. name@abdm | उदा. name@abdm | जैसे name@abdm |
+| `mobileHint` | The mobile number linked to your Aadhaar | तुमच्या आधारशी जोडलेला मोबाइल नंबर | आपके आधार से जुड़ा मोबाइल नंबर |
+| `sendOtp` | Send OTP | OTP पाठवा | OTP भेजें |
+| `sendingOtp` | Sending… | पाठवत आहे… | भेज रहे हैं… |
+| `otpSentTo` | An OTP was sent to {mobile}. | {mobile} वर OTP पाठवला आहे. | {mobile} पर OTP भेजा गया है। |
+| `otp` | OTP | OTP (एक वेळचा कोड) | OTP (एक बार का कोड) |
+| `practiceOtp` | Practice mode (no real OTP is sent): the OTP is {OTP}. | सराव मोड (खरा OTP पाठवला जात नाही): OTP आहे {OTP}. | अभ्यास मोड (असली OTP नहीं भेजा जाता): OTP है {OTP}। |
+| `next` | Continue | पुढे | आगे |
+| `checking` | Checking… | तपासत आहे… | जाँच रहे हैं… |
+| `startAgain` | Start again | पुन्हा सुरू करा | फिर से शुरू करें |
+| `chooseAbha` | Choose your ABHA | तुमचा ABHA निवडा | अपना ABHA चुनें |
+| `chooseName` | Who is signing in? | कोण आत येत आहे? | कौन अंदर आ रहा है? |
+| `bornIn` | born {year} | जन्म {year} | जन्म {year} |
+| `agree` | I agree that {hospital} receives my ABHA details (name, sex, year of birth and mobile number) to register me. Nothing medical is shared by signing up. | माझी नोंदणी करण्यासाठी {hospital} ला माझे ABHA तपशील (नाव, लिंग, जन्मवर्ष आणि मोबाइल नंबर) मिळतील याला माझी संमती आहे. नोंदणी करताना कोणतीही वैद्यकीय माहिती दिली जात नाही. | मैं सहमत हूँ कि मेरा पंजीकरण करने के लिए {hospital} को मेरे ABHA विवरण (नाम, लिंग, जन्म वर्ष और मोबाइल नंबर) मिलें। पंजीकरण में कोई चिकित्सा जानकारी साझा नहीं होती। |
+| `signUp` | Sign up | नोंदणी करा | पंजीकरण करें |
+| `signingUp` | Signing up… | नोंदणी करत आहे… | पंजीकरण हो रहा है… |
+| `signedUp` | Thank you. The hospital will confirm your registration within {days} days, or at your next visit. After that, sign in here with your ABHA. | धन्यवाद. रुग्णालय {days} दिवसांत किंवा तुमच्या पुढील भेटीत तुमची नोंदणी पक्की करेल. त्यानंतर तुमच्या ABHA ने इथे आत या. | धन्यवाद। अस्पताल {days} दिनों में या आपकी अगली मुलाक़ात पर आपका पंजीकरण पक्का करेगा। उसके बाद अपने ABHA से यहाँ अंदर आएँ। |
+| `noAadhaar` | No Aadhaar card is needed. No ABHA yet? Ask at the reception desk. | आधार कार्डची गरज नाही. ABHA अजून नाही? स्वागत कक्षात विचारा. | आधार कार्ड की ज़रूरत नहीं है। अभी ABHA नहीं है? रिसेप्शन पर पूछें। |
+| `tabs.home` | Home | मुख्य | मुख्य |
+| `tabs.prescriptions` | Prescriptions | औषधचिठ्ठ्या | पर्चे |
+| `tabs.lab` | Lab reports | तपासणी अहवाल | जाँच रिपोर्ट |
+| `tabs.visits` | Visits | भेटी | मुलाक़ातें |
+| `tabs.bills` | Bills | बिले | बिल |
+| `recordsRule` | You see a record here once it is final: visits signed by your doctor, and lab reports your doctor has reviewed. For anything else, please ask the hospital. | नोंद पूर्ण झाल्यावरच इथे दिसते: डॉक्टरांनी सही केलेल्या भेटी, आणि डॉक्टरांनी पाहिलेले तपासणी अहवाल. इतर काहीही हवे असल्यास रुग्णालयाला विचारा. | कोई रिकॉर्ड पूरा होने के बाद ही यहाँ दिखता है: डॉक्टर के हस्ताक्षर वाली मुलाक़ातें, और डॉक्टर द्वारा देखी गई जाँच रिपोर्ट। और कुछ चाहिए तो अस्पताल से पूछें। |
+| `noPrescriptions` | No prescriptions to show yet. | अजून दाखवण्यासाठी औषधचिठ्ठी नाही. | अभी दिखाने के लिए कोई पर्चा नहीं है। |
+| `noLab` | No lab reports to show yet. | अजून दाखवण्यासाठी तपासणी अहवाल नाही. | अभी दिखाने के लिए कोई जाँच रिपोर्ट नहीं है। |
+| `noVisits` | No visits to show yet. | अजून दाखवण्यासाठी भेट नाही. | अभी दिखाने के लिए कोई मुलाक़ात नहीं है। |
+| `noBills` | No bills to show. | दाखवण्यासाठी बिल नाही. | दिखाने के लिए कोई बिल नहीं है। |
+| `viewPrint` | View, print or save | पहा, छापा किंवा जतन करा | देखें, छापें या सहेजें |
+| `medicines` | {n} medicines | {n} औषधे | {n} दवाइयाँ |
+| `complaints` | Complaints | तक्रारी | शिकायतें |
+| `diagnosis` | Diagnosis | निदान | निदान |
+| `advice` | Advice | सल्ला | सलाह |
+| `testsAdvised` | Tests advised | सांगितलेल्या तपासण्या | बताई गई जाँचें |
+| `nextVisit` | Next visit | पुढील भेट | अगली मुलाक़ात |
+| `result` | Result | निकाल | नतीजा |
+| `normalRange` | Normal range | सामान्य मर्यादा | सामान्य सीमा |
+| `labRemark` | Remark from the lab | प्रयोगशाळेची टीप | लैब की टिप्पणी |
+| `reported` | Reported {date and time} | अहवाल {date and time} | रिपोर्ट {date and time} |
+| `flags.low` | Low | कमी | कम |
+| `flags.high` | High | जास्त | ज़्यादा |
+| `flags.abnormal` | Abnormal | असामान्य | असामान्य |
+| `flags.normal` | Normal | सामान्य | सामान्य |
+| `bill` | Bill {number} | बिल {number} | बिल {number} |
+| `total` | Total | एकूण | कुल |
+| `paid` | Paid | भरलेले | चुकाया |
+| `toPay` | To pay | भरायचे | चुकाना है |
+| `refundDue` | To be refunded to you | तुम्हाला परत द्यायचे | आपको वापस मिलेगा |
+| `discount` | Discount | सवलत | छूट |
+| `receipts` | Receipts | पावत्या | रसीदें |
+| `payKinds.payment` | Payment | भरणा | भुगतान |
+| `payKinds.deposit` | Deposit | अनामत | जमा राशि |
+| `payKinds.refund` | Refund | परतावा | वापसी |
+| `payModes.cash` | Cash | रोख | नकद |
+| `payModes.upi` | UPI | UPI (ऑनलाइन) | UPI (ऑनलाइन) |
+| `payModes.card` | Card | कार्ड | कार्ड |
+| `payModes.insurance` | Insurance or scheme | विमा किंवा योजना | बीमा या योजना |
+| `billStatus.paid` | Paid | भरले | चुकाया |
+| `billStatus.part_paid` | Part paid | काही भरले | कुछ चुकाया |
+| `billStatus.unpaid` | Not paid | भरले नाही | नहीं चुकाया |
+| `billStatus.refund_due` | Refund due | परतावा बाकी | वापसी बाकी |
+| `billStatus.no_charges` | No charges | शुल्क नाही | कोई शुल्क नहीं |
+| `printedOnline` | Patient (online) | रुग्ण (ऑनलाइन) | मरीज़ (ऑनलाइन) |
+| refusal `PORTAL_LOGIN_FAILED` | (the server's English message) | आम्ही तुम्हाला आत घेऊ शकलो नाही. तुम्ही नुकतीच नोंदणी केली असल्यास, रुग्णालयाने ती अजून पक्की केली नसेल. कृपया रुग्णालयाला फोन करा. | हम आपको अंदर नहीं ले सके। अगर आपने हाल ही में पंजीकरण किया है, तो हो सकता है अस्पताल ने उसे अभी पक्का नहीं किया हो। कृपया अस्पताल को फ़ोन करें। |
+| refusal `EXPIRED` | (the server's English message) | ही पायरी कालबाह्य झाली. कृपया पुन्हा सुरू करा. | यह चरण समाप्त हो गया। कृपया फिर से शुरू करें। |
+| refusal `ABDM` | (the server's English message) | ABHA तपासता आला नाही. तुम्ही लिहिलेले आणि OTP तपासा, किंवा पुन्हा सुरू करा. | ABHA की जाँच नहीं हो सकी। आपने जो लिखा और OTP जाँचें, या फिर से शुरू करें। |
+| refusal `VALIDATION` | (the server's English message) | कृपया तुम्ही लिहिलेले तपासा. | कृपया आपने जो लिखा उसे जाँचें। |
+| refusal `NOT_FOUND` | (the server's English message) | हे पान उपलब्ध नाही. पोस्टरवरील पत्ता तपासा, किंवा रुग्णालयाला फोन करा. | यह पेज उपलब्ध नहीं है। पोस्टर पर लिखा पता जाँचें, या अस्पताल को फ़ोन करें। |
+| refusal `BUSY` | (the server's English message) | रुग्णालयाचे पान सध्या व्यस्त आहे. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा. | अस्पताल का पेज अभी व्यस्त है। कृपया थोड़ी देर बाद फिर से कोशिश करें। |

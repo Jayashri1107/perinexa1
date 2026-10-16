@@ -81,7 +81,7 @@ async function readyVisits(access, patient, tenant) {
       design: who.design,
       details,
       vitals,
-      items: v.prescription?.items ?? [],
+      items: (v.prescription?.items ?? []).map(({ _id, ...it }) => ({ id: String(_id), ...it })), // as the staff pages get them
       notes: v.prescription?.notes ?? '',
     };
   });
