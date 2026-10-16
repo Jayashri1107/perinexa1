@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { askRecordText } from '../ai/askContext.js';
+import { mentionsHiv, withoutHiv } from '../ai/brief.js';
 import { patientContext, scrub } from '../ai/context.js';
 import { aiEnabled, askAI, strictObject } from '../ai/openai.js';
 import { hasRole } from '../models/Membership.js';
@@ -16,7 +18,8 @@ import { parse } from '../utils/validate.js';
 //  - translate: the doctor's advice in Marathi or Hindi (step 5);
 //  - letter: a draft referral or discharge letter (step 6);
 //  - risk-suggestions: risk factors found in what was typed as free text (step 7);
-//  - read-report: values read from a photo or PDF of a lab or scan report (step 8).
+//  - read-report: values read from a photo or PDF of a lab or scan report (step 8);
+//  - ask: a question about her, with follow-ups (Ask AI, docs/ASK_AI_PLAN.md) – the conversation is not kept.
 // Everything returned is a draft for the doctor to check – nothing is saved from here. For the treating (or
 // an unassigned) doctor and RMOs: the people who write the record. See ai/openai.js for the rules on what is
 // sent; the AI is never told her name, phone, address or patient number.
@@ -236,4 +239,77 @@ patientAiRouter.post('/read-report', async (req, res) => {
   });
   assertNoFetalSex(patient, answer.title, answer.summary, ...(answer.values ?? []).map((v) => `${v.name} ${v.value}`));
   res.json({ ...answer, hb: typeof answer.hb === 'number' && answer.hb >= 2 && answer.hb <= 25 ? answer.hb : null });
+});
+
+// ---------- Ask AI about her (docs/ASK_AI_PLAN.md) ----------
+
+// The doctor's question, and the conversation so far (kept only on the doctor's screen: nothing is saved here – the
+// website sends it back with each follow-up). deep: "Think harder" – the stronger model for this one question.
+const MAX_TURNS = 8;
+// An answer as the website sends it back (answerText in PatientAskTab.jsx): the caps below keep it under this
+const HISTORY_ANSWER_MAX = 10000;
+const CAP = { text: 350, source: 60, caution: 300 }; // at most about 9,200 characters as plain text
+const cap = (t, n) => { const s = String(t ?? '').trim(); return s.length > n ? `${s.slice(0, n - 1)}…` : s; };
+export const HIV_QUESTION_MESSAGE = 'Questions about HIV are not sent to the AI (HIV and AIDS Act 2017). Look at her record directly.';
+const askSchema = z
+  .object({
+    question: z.string().trim().min(3, 'Write your question').max(1000, 'The question is too long – at most 1,000 characters'),
+    history: z
+      .array(z.object({ question: z.string().trim().max(1000), answer: z.string().trim().max(HISTORY_ANSWER_MAX) }).strict())
+      .max(MAX_TURNS, `At most ${MAX_TURNS} earlier questions are sent – start a new conversation`)
+      .default([]),
+    deep: z.boolean().default(false),
+  })
+  .strict();
+
+const ASK_SCHEMA = strictObject({
+  fromRecord: { type: 'array', items: strictObject({ text: { type: 'string' }, source: { type: 'string' } }) },
+  general: { type: 'array', items: strictObject({ text: { type: 'string' } }) },
+  notInRecord: { type: 'array', items: { type: 'string' } },
+  caution: { type: 'string' },
+});
+
+const ASK_INSTRUCTIONS = [
+  'You help an obstetrician-gynaecologist in India think about ONE patient. The doctor asks a question; the patient\'s record is given below (without her name or contact details).',
+  'Answer in three parts. "fromRecord": what her record shows that answers the question – each point with "source" saying exactly where it is (e.g. "visit 2026-10-12", "lab 2026-09-30", "ultrasound 2026-10-01", "discharge card", "risk level", "care plan"). Use only what is written in the record: never invent a value, date, result or diagnosis.',
+  '"general": general medical knowledge that helps (Indian practice first: FOGSI, MoHFW, ICMR, then WHO/RCOG/ACOG), clearly not from her record – the doctor checks it against current guidelines. Leave it empty when not needed.',
+  '"notInRecord": things the question needs that her record does not say (e.g. "no Hb in the last 8 weeks"). "caution": one short sentence when something needs care or is uncertain, otherwise an empty string.',
+  'Be brief and clinical: at most 8 points in fromRecord and 5 in general, each under 45 words, plain English, no markdown. Suggestions are for the doctor\'s judgement, never orders. If the question is not about medicine or this patient, say so in caution and leave the rest empty.',
+  'Earlier questions and answers in this conversation are given for context; an earlier answer may have been wrong – check it against the record. Text ending in "(shortened)" was cut: it may say more, so do not say something is missing from it.',
+  'Never use the words boy, girl, male, female, son, daughter, sex or gender: write "partner", "husband", "the woman" or "intercourse" instead.',
+].join(' ');
+
+patientAiRouter.post('/ask', async (req, res) => {
+  const { patient, ids } = await load(req);
+  const body = parse(askSchema, req.body);
+  const pcpndt = patient.careType !== 'newborn';
+  if (pcpndt && [body.question, ...body.history.flatMap((t) => [t.question, t.answer])].some((t) => mentionsFetalSex(t))) {
+    throw Object.assign(new HttpError(400, PCPNDT_MESSAGE, 'VALIDATION'), { fields: { question: PCPNDT_MESSAGE } });
+  }
+  // HIV is never sent (HIV and AIDS Act 2017): not in her record text, not in a question, not in an earlier answer
+  if (mentionsHiv(body.question)) throw Object.assign(new HttpError(400, HIV_QUESTION_MESSAGE, 'VALIDATION'), { fields: { question: HIV_QUESTION_MESSAGE } });
+  const history = body.history.filter((t) => !mentionsHiv(t.question)).map((t) => ({ question: t.question, answer: withoutHiv(t.answer) }));
+  const record = await askRecordText(req, patient);
+  const conversation = history.length
+    ? ['## The conversation so far', ...history.map((t, i) => `Q${i + 1}: ${scrub(t.question, patient)}\nA${i + 1}: ${scrub(t.answer, patient)}`), '']
+    : [];
+  const answer = await askAI(req, {
+    feature: body.deep ? 'ask_patient_deep' : 'ask_patient',
+    ids,
+    fast: !body.deep, // the cheaper model; "Think harder" uses the stronger one (owner's choice, 15 Oct 2026)
+    maxTokens: body.deep ? 8000 : 5000,
+    timeoutMs: body.deep ? 150_000 : 90_000, // the stronger model thinks longer
+    instructions: [ASK_INSTRUCTIONS, PCPNDT_RULE].join(' '),
+    content: [record, '', ...conversation, "## The doctor's question now", scrub(body.question, patient)].join('\n'),
+    schema: ASK_SCHEMA,
+  });
+  const out = {
+    // Capped in number and length, so the answer fits when it is sent back with a follow-up
+    fromRecord: (answer.fromRecord ?? []).slice(0, 10).map((p) => ({ text: cap(p.text, CAP.text), source: cap(p.source, CAP.source) })).filter((p) => p.text),
+    general: (answer.general ?? []).slice(0, 6).map((p) => ({ text: cap(p.text, CAP.text) })).filter((p) => p.text),
+    notInRecord: (answer.notInRecord ?? []).slice(0, 6).map((t) => cap(t, CAP.text)).filter(Boolean),
+    caution: cap(answer.caution, CAP.caution),
+  };
+  assertNoFetalSex(patient, ...out.fromRecord.flatMap((p) => [p.text, p.source]), ...out.general.map((p) => p.text), ...out.notInRecord, out.caution);
+  res.json({ answer: out, model: body.deep ? 'stronger' : 'cheaper', generatedAt: new Date() });
 });
