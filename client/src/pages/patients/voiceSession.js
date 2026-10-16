@@ -196,6 +196,38 @@ export function speechActivity(signal, now = () => Date.now()) {
   };
 }
 
+/**
+ * The words of one recogniser from Chrome's result events (16 Oct 2026). Chrome normally sends every result so far in
+ * each event; but Chrome's on-device recogniser can start its list again after a pause, so the next event no longer
+ * holds the words before the pause ("Asha Patil … age 28" became "age 28": the name was lost). Words Chrome has
+ * marked final are therefore kept here, even when a later event leaves them out; words not final yet are replaced.
+ * Returns { add(event) → { finals, interim } }. PURE (exported for the tests).
+ */
+export function speechResults() {
+  const kept = []; // finals from an earlier list Chrome started again
+  let list = []; // this list: { text, final } by Chrome's index
+  return {
+    add(e) {
+      const results = e?.results ?? [];
+      const from = Math.max(0, Math.min(e?.resultIndex ?? 0, results.length));
+      const said = (i) => results[i]?.[0]?.transcript?.trim() ?? '';
+      // A final result never changes: a different one at its place (or a shorter list) means Chrome started again
+      let again = results.length < list.filter((x) => x?.final).length;
+      for (let i = from; i < results.length && !again; i += 1) if (list[i]?.final && said(i) !== list[i].text) again = true;
+      if (again) {
+        kept.push(...list.filter((x) => x?.final && x.text).map((x) => x.text));
+        list = [];
+      }
+      const start = again ? 0 : from;
+      const next = list.slice(0, start);
+      for (let i = start; i < results.length; i += 1) next[i] = { text: said(i), final: Boolean(results[i]?.isFinal) };
+      list = next;
+      const words = (final) => list.filter((x) => x && x.text && x.final === final).map((x) => x.text);
+      return { finals: [...kept, ...words(true)].join(' '), interim: words(false).join(' ') };
+    },
+  };
+}
+
 // Texts of separate recognisers (and what was already in the box) are joined as sentences.
 const joinParts = (parts) => parts.filter(Boolean).reduce((all, part) => (all ? `${all}${/[.,;:?!]$/.test(all) ? ' ' : '. '}${part}` : part), '');
 
@@ -421,15 +453,9 @@ export function createVoiceSession({
     });
     rec.onspeechstart = mine(() => !stopping && setState('hearing'));
     rec.onspeechend = mine(() => !stopping && setState('listening'));
+    const heard = speechResults(); // this recogniser's words (kept when Chrome starts its list again)
     rec.onresult = mine((e) => {
-      const final = [];
-      const notYet = [];
-      for (let i = 0; i < e.results.length; i += 1) {
-        const said = e.results[i][0]?.transcript?.trim();
-        if (said) (e.results[i].isFinal ? final : notYet).push(said);
-      }
-      const nextFinals = final.join(' ');
-      const nextInterim = notYet.join(' ');
+      const { finals: nextFinals, interim: nextInterim } = heard.add(e);
       if (nextFinals === finals && nextInterim === interim) return;
       finals = nextFinals;
       interim = nextInterim;

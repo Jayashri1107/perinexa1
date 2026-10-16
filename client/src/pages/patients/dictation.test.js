@@ -153,6 +153,10 @@ describe('previous pregnancies', () => {
 });
 
 describe('age, name and phone', () => {
+  it('takes the name said first without "name", straight before the age (16 Oct 2026)', () => {
+    const { values } = read('Asha Patil age 28 phone 98765 43210', 'antenatal');
+    expect(values).toMatchObject({ fullName: 'Asha Patil', ageYears: '28', phone: '98765 43210' });
+  });
   it('does not take years of marriage as the age', () => {
     const { values } = read('Priya Sample, 32 years, married for 6 years, G1 P0 L0 A1', 'infertility');
     expect(values.ageYears).toBe('32');

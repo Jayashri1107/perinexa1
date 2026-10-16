@@ -10,6 +10,7 @@ import {
   microphoneConstraints,
   microphoneFrom,
   speechEnvironment,
+  speechResults,
 } from './voiceSession.js';
 
 // A stand-in for Chrome's SpeechRecognition. `local`: how processLocally behaves –
@@ -38,9 +39,9 @@ function fakeChrome({ local = 'ok', brands = ['Chromium', 'Google Chrome'], take
       this[`on${type}`]?.({ type, ...props });
     }
     // what Chrome sends: every final result so far, then the words that are not final yet
-    hear(finals = [], interim = []) {
+    hear(finals = [], interim = [], resultIndex = 0) {
       const results = [...finals.map((t) => ({ isFinal: true, 0: { transcript: t }, length: 1 })), ...interim.map((t) => ({ isFinal: false, 0: { transcript: t }, length: 1 }))];
-      this.fire('result', { results });
+      this.fire('result', { results, resultIndex });
     }
   }
   FakeRecognition.prototype.phrases = [];
@@ -107,6 +108,47 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+});
+
+// Chrome's result events as sent (16 Oct 2026: the name was lost when Chrome started its list again after a pause)
+const event = (finals, interim = [], resultIndex = 0) => ({
+  resultIndex,
+  results: [...finals.map((t) => ({ isFinal: true, 0: { transcript: t } })), ...interim.map((t) => ({ isFinal: false, 0: { transcript: t } }))],
+});
+
+describe('every word said is kept', () => {
+  it('keeps the words before a pause when Chrome starts its list again (the name was lost)', () => {
+    const h = speechResults();
+    expect(h.add(event([], ['Asha']))).toEqual({ finals: '', interim: 'Asha' });
+    expect(h.add(event([], ['Asha Patil']))).toEqual({ finals: '', interim: 'Asha Patil' });
+    expect(h.add(event(['Asha Patil']))).toEqual({ finals: 'Asha Patil', interim: '' });
+    // after the pause Chrome's list holds only the new words
+    expect(h.add(event([], ['age']))).toEqual({ finals: 'Asha Patil', interim: 'age' });
+    expect(h.add(event(['age 28']))).toEqual({ finals: 'Asha Patil age 28', interim: '' });
+    expect(h.add(event([], ['phone 98765']))).toEqual({ finals: 'Asha Patil age 28', interim: 'phone 98765' });
+  });
+
+  it('works as before when Chrome sends every result so far, with or without resultIndex', () => {
+    const h = speechResults();
+    h.add(event(['Asha Patil'], ['age']));
+    expect(h.add(event(['Asha Patil', 'age 28'], [], 1))).toEqual({ finals: 'Asha Patil age 28', interim: '' });
+    expect(h.add(event(['Asha Patil', 'age 28'], ['phone'], 2))).toEqual({ finals: 'Asha Patil age 28', interim: 'phone' });
+    // words not final yet are replaced, never kept
+    expect(h.add(event(['Asha Patil', 'age 28'], ['phone 98765 43210'], 2))).toEqual({ finals: 'Asha Patil age 28', interim: 'phone 98765 43210' });
+  });
+
+  it('a recording keeps the name through Chrome starting its list again', () => {
+    const t = setup();
+    t.session.start('');
+    const r = t.rec();
+    r.hear(['Name Asha Patil']);
+    r.hear([], ['age 28']); // Chrome's new list, after a short pause
+    expect(t.texts.at(-1).text).toBe('Name Asha Patil age 28');
+    r.hear(['age 28 phone 98765 43210']);
+    t.session.stop();
+    r.fire('end');
+    expect(t.ends).toEqual([{ reason: 'stopped', text: 'Name Asha Patil age 28 phone 98765 43210' }]);
+  });
 });
 
 describe('recording keeps going through pauses', () => {
