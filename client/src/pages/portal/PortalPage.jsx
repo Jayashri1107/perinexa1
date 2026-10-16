@@ -5,6 +5,7 @@ import logo from '../../assets/brand/perinexa-logo.png';
 import { Alert, Field, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
 import { ChangePassword, HospitalEntry } from './PortalAccount.jsx';
+import { PortalShell } from './PortalShell.jsx';
 import { RECORD_TABS, RecordsTab, recordIcon } from './PortalRecords.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
@@ -193,79 +194,77 @@ function SignIn({ onDone, lang }) {
   );
 }
 
-/** Home and her records, at the top of her page. */
-function PortalTabs({ tab, onTab, lang }) {
-  const w = accountWords(lang);
+/**
+ * What she sees once signed in (exported for the tests), in the app's own frame (PortalShell.jsx): Home (her next
+ * appointment, her care plan, the hospital's phone), Appointments (booking, when the hospital allows it), her records,
+ * and Change password for an account with an email.
+ */
+export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null, lang = 'en' }) {
+  const [section, setSection] = useState('home');
   return (
-    <nav className="segmented portal-tabs" aria-label={w.tabs.home}>
-      {['home', ...RECORD_TABS].map((t) => {
-        const Icon = t === 'home' ? House : recordIcon(t);
-        return (
-          <button key={t} type="button" aria-pressed={tab === t} onClick={() => onTab(t)}>
-            <Icon aria-hidden="true" /> {w.tabs[t]}
-          </button>
-        );
-      })}
-    </nav>
+    <PortalShell
+      patientName={data.patient.fullName}
+      hospitalName={data.hospital.name}
+      section={section}
+      onSection={setSection}
+      canChangePassword={Boolean(data.canChangePassword)}
+      lang={lang}
+      onLanguage={onLanguage}
+      onSignOut={onSignOut}
+    >
+      <div className="portal-stack">
+        {section === 'home' && (
+          <>
+            <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} withBooking={false} onBook={() => setSection('appointments')} />
+            <CallCard hospital={data.hospital} lang={lang} />
+          </>
+        )}
+        {section === 'appointments' && (
+          <>
+            <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} withPlan={false} />
+            <CallCard hospital={data.hospital} lang={lang} />
+          </>
+        )}
+        {RECORD_TABS.includes(section) && <RecordsTab key={section} tab={section} lang={lang} />}
+        {section === 'password' && (
+          <section className="card portal-card">
+            <ChangePassword lang={lang} onClose={() => setSection('home')} />
+          </section>
+        )}
+      </div>
+    </PortalShell>
   );
 }
 
-/** What she sees once signed in (exported for the tests): her appointment, her care plan and the hospital's phone. */
-export function MyCare({ data, booking, onChanged, onSignOut, lang = 'en' }) {
+/** "Questions, or need to change the date? Call …" */
+function CallCard({ hospital, lang }) {
   const w = portalWords(lang);
-  const { hospital } = data;
-  const [tab, setTab] = useState('home');
-  const [changing, setChanging] = useState(false);
-  const aw = accountWords(lang);
   return (
-    <div className="portal-stack">
-      <section className="card portal-card">
-        <div className="plan-card-head">
-          <h1>{data.patient.fullName}</h1>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onSignOut}>
-            <LogOut aria-hidden="true" /> {w.signOut}
-          </button>
-        </div>
-        <p className="muted">
-          {hospital.name}
-          {data.canChangePassword && !changing && (
-            <>
-              {' · '}
-              <button type="button" className="btn btn-link btn-sm" onClick={() => setChanging(true)}>
-                {aw.changePassword}
-              </button>
-            </>
-          )}
-        </p>
-        {changing && <ChangePassword lang={lang} onClose={() => setChanging(false)} />}
-        <PortalTabs tab={tab} onTab={setTab} lang={lang} />
-      </section>
-      {tab !== 'home' ? <RecordsTab key={tab} tab={tab} lang={lang} /> : <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} />}
-      <section className="card portal-card">
-        <h2>
-          <Phone aria-hidden="true" /> {w.questions}
-        </h2>
-        <p>
-          {w.call(hospital.name)}
-          {hospital.phone ? (
-            <>
-              {w.callJoin}
-              {/* the number on one line: in Marathi or Hindi the longer sentence broke it after "+91" on a phone */}
-              <a className="nowrap" href={`tel:${hospital.phone.replace(/[^\d+]/g, '')}`}>
-                {hospital.phone}
-              </a>
-            </>
-          ) : null}
-          {w.stop} {w.emergency}
-        </p>
-      </section>
-    </div>
+    <section className="card portal-card">
+      <h2>
+        <Phone aria-hidden="true" /> {w.questions}
+      </h2>
+      <p>
+        {w.call(hospital.name)}
+        {hospital.phone ? (
+          <>
+            {w.callJoin}
+            {/* the number on one line: in Marathi or Hindi the longer sentence broke it after "+91" on a phone */}
+            <a className="nowrap" href={`tel:${hospital.phone.replace(/[^\d+]/g, '')}`}>
+              {hospital.phone}
+            </a>
+          </>
+        ) : null}
+        {w.stop} {w.emergency}
+      </p>
+    </section>
   );
 }
 
 /** Home: her next appointment (and booking) and what is coming up in her care plan. */
-function HomeCards({ data, booking, onChanged, lang }) {
+function HomeCards({ data, booking, onChanged, lang, withBooking = true, withPlan = true, onBook = null }) {
   const w = portalWords(lang);
+  const aw = accountWords(lang);
   const { appointment, plan } = data;
   return (
     <>
@@ -284,9 +283,14 @@ function HomeCards({ data, booking, onChanged, lang }) {
             {booking?.enabled ? '' : ` ${w.callToBook}`}
           </p>
         )}
-        {booking?.enabled && <Booking booking={booking} onChanged={onChanged} lang={lang} />}
+        {booking?.enabled && withBooking && <Booking booking={booking} onChanged={onChanged} lang={lang} />}
+        {booking?.enabled && !withBooking && onBook && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onBook}>
+            <CalendarDays aria-hidden="true" /> {aw.tabs.appointments}
+          </button>
+        )}
       </section>
-      {plan && (
+      {plan && withPlan && (
         <section className="card portal-card" aria-labelledby="portal-plan">
           <h2 id="portal-plan">
             <CalendarDays aria-hidden="true" /> {w.comingUp}
@@ -337,6 +341,18 @@ export function PortalScreen({ state, notice, chosen, onChoose, onDismiss, onSig
       document.title = before;
     };
   }, [w.pageTitle]);
+  if (state.step === 'in') {
+    return (
+      <>
+        {notice && (
+          <Alert type="info" onClose={onDismiss} closeLabel={w.dismiss}>
+            {w[notice]}
+          </Alert>
+        )}
+        <MyCare data={state.data} booking={state.booking} onChanged={onChanged} onSignOut={onSignOut} onLanguage={onChoose} lang={lang} />
+      </>
+    );
+  }
   return (
     <main className="portal-page" lang={lang}>
       <div className="portal-top">
@@ -352,7 +368,6 @@ export function PortalScreen({ state, notice, chosen, onChoose, onDismiss, onSig
       {state.step === 'signin' && !hospital && <SignIn lang={lang} onDone={onSignedIn} />}
       {state.step === 'signin' && hospital?.error && <Alert type="error">{portalError(hospital.error, lang, { account: true })}</Alert>}
       {state.step === 'signin' && hospital?.data && <HospitalEntry hospitalKey={hospital.key} hospital={hospital.data.hospital} otpMode={hospital.data.otp} lang={lang} onSignedIn={onSignedIn} />}
-      {state.step === 'in' && <MyCare data={state.data} booking={state.booking} onChanged={onChanged} onSignOut={onSignOut} lang={lang} />}
     </main>
   );
 }

@@ -1,5 +1,6 @@
 // The patient portal in English, Marathi or Hindi (5 Oct 2026): its words, the language it opens in, refusals in her
 // language, and her care plan with the built-in items translated (rendered to HTML, no browser). Fake data only.
+import { MemoryRouter } from 'react-router-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { CodeSlipDocument } from '../patients/PatientMessagesDialog.jsx';
@@ -109,7 +110,7 @@ describe('what she sees once signed in', () => {
       ],
     },
   };
-  const html = (lang) => renderToStaticMarkup(<MyCare data={data} booking={null} onChanged={() => {}} onSignOut={() => {}} lang={lang} />);
+  const html = (lang) => renderToStaticMarkup(<MemoryRouter><MyCare data={data} booking={null} onChanged={() => {}} onSignOut={() => {}} lang={lang} /></MemoryRouter>);
 
   it('in Marathi: the portal’s words and the built-in items; dates and times as usual; an added item as typed, marked as English', () => {
     const out = html('mr');
@@ -126,14 +127,15 @@ describe('what she sees once signed in', () => {
     const words = text(html('en'));
     for (const w of ['Sign out', 'Your next appointment', 'Coming up in your care plan', 'Check-up: Check-up at about 20 weeks', 'Scan: Detailed ultrasound of baby (18–20 weeks)', 'Call Sample Hospital on 020 0000 0000.'])
       expect(words).toContain(w);
-    expect(words).not.toMatch(DEVANAGARI);
+    // (the language switch in her top bar names each language in its own script)
+    expect(words.replace(PORTAL_LANGUAGE_NAMES.mr, '').replace(PORTAL_LANGUAGE_NAMES.hi, '')).not.toMatch(DEVANAGARI);
   });
 });
 
 describe('after she signs out or is timed out', () => {
   const data = { hospital: { name: 'Sample Hospital', phone: '' }, patient: { fullName: 'Sample Mother' }, language: 'mr', appointment: null, plan: null };
   const screen = (state, notice, chosen = null) =>
-    renderToStaticMarkup(<PortalScreen state={state} notice={notice} chosen={chosen} onChoose={() => {}} onDismiss={() => {}} onSignedIn={() => {}} onChanged={() => {}} onSignOut={() => {}} />);
+    renderToStaticMarkup(<MemoryRouter><PortalScreen state={state} notice={notice} chosen={chosen} onChoose={() => {}} onDismiss={() => {}} onSignedIn={() => {}} onChanged={() => {}} onSignOut={() => {}} /></MemoryRouter>);
 
   it('keeps the language recorded for her messages: the notice and the sign-in page stay in Marathi or Hindi', () => {
     const before = signedInState(data, null);
