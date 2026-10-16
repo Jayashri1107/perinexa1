@@ -7,36 +7,83 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { canRegisterPatients, patientTabs } from '../../platform/modules.js';
+import { CARE_TYPE_LABELS } from './patientFormat.js';
 import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { Modal } from '../pharmacy/pharmacyUi.jsx';
 import { Section } from '../worklist/WorklistSections.jsx';
 
 // Patients → Online sign-ups (owner, 16 Oct 2026 – docs/PATIENT_ACCOUNTS_PLAN.md): patients who signed up for their own
-// portal account wait here. Reception checks who she is (at the desk or by phone), then approves – linking her patient
-// record: one that may be hers ("same mobile" / "same name"), one found, or a new registration with her details filled
-// in – or rejects with a reason. Only an approved account can sign in. Reception, doctors and RMOs.
+// portal account wait here, with the registration details they typed (name, age, mobile, address, what they come for,
+// and for a pregnancy the first day of the last period). Reception checks who she is (at the desk or by phone), then
+// approves – linking a record that is already hers ("same mobile" / "same name"), or registering her as a new patient
+// from her own details in one click – or rejects with a reason. Only an approved account can sign in.
 
 /** Approve against an existing record: the records that may be hers, or any found. */
+/** What she typed when she signed up. */
+function SignupDetails({ a }) {
+  const rows = [
+    ['Age', a.ageYears != null ? `${a.ageYears} yrs` : ''],
+    ['Mobile', a.mobile],
+    ['Address', a.address],
+    ['Coming for', a.careType ? CARE_TYPE_LABELS[a.careType] : ''],
+    ['Last period (said by her)', a.lmpSaid ? formatDate(a.lmpSaid) : ''],
+    ['Email', a.email ?? 'none – signs in with mobile and OTP'],
+  ].filter(([, v]) => v);
+  return (
+    <dl className="signup-details">
+      {rows.map(([k, v]) => (
+        <div key={k}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function ApproveDialog({ account, onClose, onDone }) {
   const matches = useFetch(`/patient-accounts/${account.id}/matches`);
   const [chosen, setChosen] = useState(null);
   const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const approve = async () => {
-    setBusy(true);
+  const [busy, setBusy] = useState(null); // 'link' | 'new'
+  const run = async (kind, fn) => {
+    setBusy(kind);
     setError(null);
     try {
-      await api(`/patient-accounts/${account.id}/approve`, { method: 'POST', body: { patientId: chosen.id } });
-      onDone(`${account.fullName}: approved, linked to ${chosen.fullName} (${chosen.mrn}). She can sign in now.`);
+      await fn();
     } catch (err) {
       setError(err.message);
-      setBusy(false);
+      setBusy(null);
     }
   };
+  const approve = () =>
+    run('link', async () => {
+      await api(`/patient-accounts/${account.id}/approve`, { method: 'POST', body: { patientId: chosen.id } });
+      onDone(`${account.fullName}: approved, linked to ${chosen.fullName} (${chosen.mrn}). She can sign in now.`);
+    });
+  const registerNew = () =>
+    run('new', async () => {
+      const out = await api(`/patient-accounts/${account.id}/approve-new`, { method: 'POST' });
+      onDone(`${account.fullName}: registered as ${out.account.patient.mrn} from her own details and approved. She can sign in now.${account.lmpSaid ? ' The date of her last period is on her record as a note for the doctor to confirm.' : ''}`);
+    });
+  const found = matches.data?.matches ?? [];
   return (
     <Modal id="signup-approve" title={`Approve ${account.fullName}`} onClose={onClose} wide>
-      <p className="hint">Check who she is first (at the desk, or by calling {account.mobile}). Then choose her record.</p>
+      <p className="hint">Check who she is first (at the desk, or by calling {account.mobile}).</p>
+      <SignupDetails a={account} />
       <Alert type="error">{error ?? matches.error}</Alert>
+      {matches.data && account.careType && (
+        <div className={`signup-new ${found.length ? '' : 'is-only'}`}>
+          <div>
+            <strong>{found.length ? 'Not one of the records below?' : 'No record with the same mobile number or name.'}</strong>
+            <p className="hint">Her record is made from the details above (patient number given now). The doctor adds the medical details at her visit.</p>
+          </div>
+          <button type="button" className={`btn btn-sm ${found.length ? 'btn-secondary' : 'btn-primary'}`} disabled={Boolean(busy)} onClick={registerNew}>
+            <UserPlus aria-hidden="true" /> {busy === 'new' ? 'Registering…' : 'Register as a new patient and approve'}
+          </button>
+        </div>
+      )}
+      {found.length > 0 && <h3 className="signup-sub">Records that may be hers</h3>}
       {matches.data?.matches?.length > 0 && (
         <ul className="appt-pick-list" aria-label="Records that may be hers">
           {matches.data.matches.map((m) => (
@@ -53,7 +100,6 @@ function ApproveDialog({ account, onClose, onDone }) {
           ))}
         </ul>
       )}
-      {matches.data && !matches.data.matches.length && <p className="muted">No record with the same mobile number or name. Find another, or register her.</p>}
       <PatientFinder onPick={(p) => setChosen({ id: p.id, fullName: p.fullName, mrn: p.mrn })} />
       {chosen && (
         <p className="appt-chosen">
@@ -61,8 +107,8 @@ function ApproveDialog({ account, onClose, onDone }) {
         </p>
       )}
       <div className="row">
-        <button type="button" className="btn btn-primary" disabled={!chosen || busy} onClick={approve}>
-          <BadgeCheck aria-hidden="true" /> {busy ? 'Approving…' : chosen ? `Approve as ${chosen.fullName}` : 'Approve'}
+        <button type="button" className={`btn ${found.length || !account.careType ? 'btn-primary' : 'btn-secondary'}`} disabled={!chosen || Boolean(busy)} onClick={approve}>
+          <BadgeCheck aria-hidden="true" /> {busy === 'link' ? 'Approving…' : chosen ? `Approve as ${chosen.fullName} (${chosen.mrn})` : 'Approve with the record chosen'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
           Cancel
@@ -118,16 +164,20 @@ function SignupRow({ a, onApprove, onReject }) {
           Waiting for approval
         </StatusPill>
         <p className="hint">
-          {a.ageYears != null ? `${a.ageYears} yrs · ` : ''}mobile {a.mobile} · {a.email ?? 'no email (signs in with mobile and OTP)'} · signed up {formatDateTime(a.signedUpAt)}
+          {a.ageYears != null ? `${a.ageYears} yrs · ` : ''}mobile {a.mobile}
+          {a.careType ? ` · ${CARE_TYPE_LABELS[a.careType]}` : ''} · signed up {formatDateTime(a.signedUpAt)}
         </p>
       </div>
       <span className="row">
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => onApprove(a)}>
-          <BadgeCheck aria-hidden="true" /> Find her record and approve
+          <BadgeCheck aria-hidden="true" /> Review and approve
         </button>
-        <Link className="btn btn-link btn-sm" to="/patients/new" state={{ fromSignup: { id: a.id, name: a.fullName, phone: a.mobile, age: a.ageYears } }}>
-          <UserPlus aria-hidden="true" /> Register and approve
-        </Link>
+        {/* Signed up before the registration details were asked for: the New patient form, filled in */}
+        {!a.careType && (
+          <Link className="btn btn-link btn-sm" to="/patients/new" state={{ fromSignup: { id: a.id, name: a.fullName, phone: a.mobile, age: a.ageYears } }}>
+            <UserPlus aria-hidden="true" /> Register and approve
+          </Link>
+        )}
         <button type="button" className="btn btn-link btn-sm" onClick={() => onReject(a)}>
           Reject
         </button>
@@ -194,8 +244,8 @@ export function SignupsPage() {
           <section className="card" aria-labelledby="signups-waiting">
             <h2 id="signups-waiting">Waiting for approval ({list.length})</h2>
             <p className="hint">
-              A patient signed up on the sign-in page or the hospital's portal address. Check who she is, then approve – choosing her record, or registering her – or reject. She can sign in
-              only after approval, and sees only signed visits, reviewed lab reports and her bills.
+              A patient signed up on the sign-in page with her own registration details. Check who she is, then Review and approve: link the record that is already hers, or register
+              her as a new patient from her details in one click – or reject. She can sign in only after approval, and sees only signed visits, reviewed lab reports and her bills.
             </p>
             {!list.length && <p className="muted">Nobody is waiting.</p>}
             <ul className="wl-list">

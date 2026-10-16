@@ -53,3 +53,22 @@ The owner's flow (16 Oct 2026):
   (rate limits are in memory – HANDOVER.md section 7), HTTPS, and the go-live checklist.
 - One mobile number per account: two patients sharing a phone (e.g. a mother and her grown-up daughter) need different
   numbers, or one of them signs in with the paper code.
+
+## She fills her own registration details (owner, 16 Oct 2026)
+The owner did not want reception to type a new patient's details. Since then:
+- **Sign up** asks her full name, age, mobile, **address**, **what she is coming for** (Pregnancy care, Care after
+  delivery, Women's health, Trying to get pregnant – a baby's record and a pregnancy loss are registered at the
+  hospital) and, for a pregnancy, **the first day of her last period** ("your best guess is fine – the doctor confirms
+  it"). Email and password stay optional.
+- **Reception: Review and approve.** The window shows everything she typed and the records that may be hers. Either
+  approve with her existing record, or **Register as a new patient and approve** – one click: her record and patient
+  number are made from her details, by the same registration as the New patient form (`registerPatient` in
+  `routes/patients.js`: the same checks and audit log).
+- **Her last period is not entered as the pregnancy's dates.** Reception never enters medical details, and what a
+  patient types may be wrong: it goes on her record as a note, "Said by the patient when she signed up online (to
+  confirm): first day of her last period …", and the doctor or RMO enters the dates at her first visit (her care plan
+  starts then, as for any patient registered by reception).
+- "Trying to get pregnant" makes an infertility record, which is marked sensitive as always: her portal then shows her
+  appointment, but none of her records (the existing rule for sensitive records).
+- Sign-ups from before this change (no details) keep the old way: Register and approve opens the New patient form.
+
