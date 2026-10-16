@@ -553,8 +553,7 @@ function RoleToday({ roles, lensBar = null }) {
         {lensBar}
         <SignupsNotice roles={roles} />
         <ContinueVisits enabled={has(roles, ['doctor', 'rmo', 'nurse'])} />
-        <Tip id="cmdk-2026-10" />
-        {has(roles, ['doctor', 'rmo']) && <Tip id="myday-2026-10" />}
+        <Tip ids={has(roles, ['doctor', 'rmo']) ? ['cmdk-2026-10', 'myday-2026-10'] : ['cmdk-2026-10']} />
         <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}

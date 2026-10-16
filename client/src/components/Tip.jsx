@@ -26,14 +26,19 @@ function seenTips(userId) {
   }
 }
 
-/** The tip `id` (from WHATS_NEW), shown once to this person on this computer. */
-export function Tip({ id }) {
+/**
+ * One tip (from WHATS_NEW), shown once to this person on this computer. ids: several tips for one screen – the first
+ * not seen yet is shown, the next after "Got it" (one tip at a time).
+ */
+export function Tip({ id, ids = [id] }) {
   const { user } = useAuth();
-  const tip = WHATS_NEW.find((t) => t.id === id);
-  const [hidden, setHidden] = useState(() => !user || seenTips(user.id).has(id));
-  if (!tip || hidden) return null;
+  const [seen, setSeen] = useState(() => (user ? seenTips(user.id) : null));
+  const next = seen ? ids.find((x) => !seen.has(x)) : null;
+  const tip = WHATS_NEW.find((t) => t.id === next);
+  if (!tip) return null;
   const done = () => {
-    setHidden(true);
+    const id = tip.id;
+    setSeen(new Set([...seen, id]));
     try {
       const s = seenTips(user.id);
       s.add(id);

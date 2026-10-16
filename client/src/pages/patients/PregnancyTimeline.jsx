@@ -42,7 +42,9 @@ export function PregnancyTimeline({ patient }) {
         {t.visits.map((v) => (
           <span key={`v-${v}`} className="ptl-visit" style={{ left: `${ribbonPosition(t.edd, v)}%` }} title={`Visit ${formatDate(v)}`} />
         ))}
+        {/* On the ribbon: the visits and the scans (the idea's "dots for visits and scans"); every item is in the list below */}
         {items.map((it, i) => {
+          if (it.kind !== 'scan') return null;
           const s = statusOf(it.status);
           return <span key={`i-${i}`} className={`ptl-item ptl-${s.tone}`} style={{ left: `${ribbonPosition(t.edd, it.dueBy)}%` }} title={`${it.name} – by ${formatDate(it.dueBy)} (${s.word})`} />;
         })}
@@ -55,7 +57,7 @@ export function PregnancyTimeline({ patient }) {
         <span style={{ left: `${(280 * 100) / 294}%` }}>EDD {formatDate(t.edd)}</span>
       </div>
       <p className="ptl-legend muted">
-        <span className="ptl-key ptl-key-visit" /> Visit <span className="ptl-key ptl-stable" /> Done <span className="ptl-key ptl-due" /> Due <span className="ptl-key ptl-high" /> Missed{' '}
+        <span className="ptl-key ptl-key-visit" /> Visit · scans: <span className="ptl-key ptl-stable" /> Done <span className="ptl-key ptl-due" /> Due <span className="ptl-key ptl-high" /> Missed{' '}
         <span className="ptl-key ptl-neutral" /> Coming <span className="ptl-key ptl-key-today" /> Today · trimester weeks DRAFT
       </p>
       {items.length > 0 && (
