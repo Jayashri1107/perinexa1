@@ -17,6 +17,7 @@ import { calendarRouter } from './routes/calendar.js';
 import { dictationWordsRouter } from './routes/dictationWords.js';
 import { textShortcutsRouter } from './routes/textShortcuts.js';
 import { visitDraftsRouter } from './routes/visitDrafts.js';
+import { myDayRouter } from './routes/myDay.js';
 import { tenantSettingsRouter } from './routes/settings.js';
 import { templatesRouter } from './routes/templates.js';
 import { redFlagRulesRouter } from './routes/redFlagRules.js';
@@ -174,6 +175,8 @@ export function createApp({
   app.use('/api/patient-accounts', ...inTenant, patientAccountsRouter);
   // Nothing gets lost: the person's own unsaved visits (doctor ideas #4)
   app.use('/api/visit-drafts', ...inTenant, visitDraftsRouter);
+  // Your day so far (doctor ideas #9)
+  app.use('/api/my-day', ...inTenant, myDayRouter);
   app.use('/api/medicine-safety', ...inTenant, medicineSafetyRouter);
   app.use('/api/ai/brief', ...inTenant, aiBriefRouter); // before /api/ai (Ask your records)
   app.use('/api/ai', ...inTenant, aiAskRouter);

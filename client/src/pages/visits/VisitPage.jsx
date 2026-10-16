@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Tip } from '../../components/Tip.jsx';
 import { ArrowLeft, BadgeCheck, CircleMinus, FileSearch, FileText, Languages, MoreHorizontal, Pill, Printer, Sparkles } from 'lucide-react';
 import { Link, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -505,6 +506,7 @@ export function VisitPage() {
           Marked as entered in error by {v.cancelled?.byName} on {formatDate(v.cancelled?.at)}: {v.cancelled?.reason}
         </Alert>
       )}
+      <Tip id="visit-2026-10" />
       {/* Unsaved typing from earlier (doctor ideas #4): put it back, or let it go */}
       {drafts.found && active && !v.signed && (
         <Alert type="info">

@@ -281,8 +281,9 @@ const HOSPITAL_KNOWLEDGE = {
   label: 'Clinic library',
   icon: Library,
   to: '/care-plans/templates',
-  activeFor: ['/care-plans', '/consent-forms', '/information-forms', '/test-packages', '/prescription-sets', '/medicine-safety', '/library', '/clinical-rules'],
-  tabs: [KNOWLEDGE_APPROVALS, KNOWLEDGE_CARE_PLANS, KNOWLEDGE_RULES, KNOWLEDGE_CONSENTS, KNOWLEDGE_INFORMATION, KNOWLEDGE_TEST_PACKAGES, KNOWLEDGE_RX_SETS],
+  activeFor: ['/care-plans', '/consent-forms', '/information-forms', '/test-packages', '/prescription-sets', '/medicine-safety', '/library', '/clinical-rules', '/tools'],
+  // The pregnancy wheel (doctor ideas #8): a calculator, for everyone who opens the library
+  tabs: [KNOWLEDGE_APPROVALS, KNOWLEDGE_CARE_PLANS, KNOWLEDGE_RULES, KNOWLEDGE_CONSENTS, KNOWLEDGE_INFORMATION, KNOWLEDGE_TEST_PACKAGES, KNOWLEDGE_RX_SETS, { key: 'wheel', label: 'Pregnancy wheel', to: '/tools/pregnancy-wheel', end: true }],
 };
 /** The clinic library's tabs this person may open: To approve for doctors, prescription sets for those who prescribe. */
 export const knowledgeTabs = (roles = []) =>

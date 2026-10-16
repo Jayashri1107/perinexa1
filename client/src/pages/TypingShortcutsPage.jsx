@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Tip } from '../components/Tip.jsx';
 import { Keyboard, Plus, Trash2 } from 'lucide-react';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -65,6 +66,7 @@ export function TypingShortcutsPage() {
       <div className="pf-content">
         <Alert type="error">{error ?? actionError}</Alert>
         {undo.element}
+        <Tip id="shortcuts-2026-10" />
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>

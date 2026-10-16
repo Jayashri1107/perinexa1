@@ -224,6 +224,7 @@ export const AUDIT_LABELS = {
   PORTAL_SIGNUP_REJECTED: "Patient's online sign-up rejected",
   PORTAL_PASSWORD_CHANGED: 'Patient changed her portal password',
   PORTAL_RECORDS_VIEWED: 'Patient viewed her records in the portal',
+  KEEPSAKE_CARD_PRINTED: 'Baby keepsake card printed',
   // Pharmacy extras (4 Oct 2026)
   PHARMACY_ORDER_CREATED: 'Purchase order made',
   PHARMACY_ORDER_CHANGED: 'Purchase order changed',
@@ -390,6 +391,7 @@ export const AUDIT_TONES = {
   PORTAL_SIGNUP_REJECTED: 'warn',
   PORTAL_PASSWORD_CHANGED: 'patient',
   PORTAL_RECORDS_VIEWED: 'patient',
+  KEEPSAKE_CARD_PRINTED: 'patient',
   PORTAL_LOGIN_FAILED: 'warn',
   REMINDER_PREPARED: 'patient',
   AI_USED: 'patient',
@@ -881,6 +883,8 @@ export function describeAudit(entry) {
       return d.reason ?? '';
     case 'PORTAL_PASSWORD_CHANGED':
       return '';
+    case 'KEEPSAKE_CARD_PRINTED':
+      return d.mrn ? record(d) : '';
     case 'PORTAL_RECORDS_VIEWED':
       return [d.mrn ? record(d) : '', PORTAL_RECORD_WORDS[d.kind] ?? ''].filter(Boolean).join(' · ');
     case 'PORTAL_SIGNUP_RECEIVED':

@@ -46,6 +46,7 @@ import { DailySummaryPage, MonthlyPage, PatientBillsTab, PriceListPage, UnpaidPa
 import { PatientsPage } from './pages/patients/PatientsPage.jsx';
 import { VoiceWordsPage } from './pages/VoiceWordsPage.jsx';
 import { TypingShortcutsPage } from './pages/TypingShortcutsPage.jsx';
+import { PregnancyWheelPage } from './pages/PregnancyWheelPage.jsx';
 import { NewPatientClinicalPage, PatientNewPage } from './pages/patients/PatientNewPage.jsx';
 import { PatientDetailPage, PatientEditTab, PatientOverviewTab } from './pages/patients/PatientDetailPage.jsx';
 import { PatientCarePlanTab } from './pages/patients/CarePlanTab.jsx';
@@ -141,6 +142,7 @@ export function App() {
             <Route path="account/professional" element={<Navigate to="/account" replace />} />
             <Route path="account/voice-words" element={<VoiceWordsPage />} />
             <Route path="account/shortcuts" element={<TypingShortcutsPage />} />
+            <Route path="tools/pregnancy-wheel" element={<PregnancyWheelPage />} />
             <Route path="account/prescription-design" element={<PrescriptionDesignPage />} />
             <Route path="account/appearance" element={<Navigate to="/account" replace />} />
             {/* Platform area: super admins only */}
