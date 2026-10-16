@@ -41,6 +41,17 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   her last period for a pregnancy) and reception approves a new patient in one click. Hospital admin → Patient messages → "Let patients sign up for their own account". Marathi and Hindi
   DRAFT (`TRANSLATIONS_TO_CHECK.md` section 5). **How to test:** see "How to test patients' own accounts" below.
 
+- **Easier and more pleasant for doctors: ideas 1–11 built (16 Oct 2026, branch `doctor-ideas` – the owner asked for
+  them; the feature freeze was lifted for this):** from `docs/IDEAS_FOR_LATER.md`. (1) Ctrl+K opens one box for pages,
+  actions, "book Friday" and patients; (2) "Same as last visit" copies the last visit's medicines, instructions and
+  advice; (3) My settings → Typing shortcuts (".fu2" and a space); (4) unsaved visit typing kept as the person's own
+  draft on the server for 7 days – Restore on the visit, "Continue ___'s visit" on Today; (5) Undo instead of "Are you
+  sure?" for unsaved changes; (6) Enter moves to the next box, Ctrl+Enter saves, Enter on the last medicine adds one;
+  (7) the pregnancy timeline on her Overview; (8) Clinic library → Pregnancy wheel; (9) "Your day so far" on a doctor's
+  Today; (10) the baby keepsake card on a baby's record; (11) one short tip per changed screen and Help → What's new.
+  DRAFT for the owner: the trimester and milestone weeks (7, 8) and the keepsake card's words (10). Ideas 12–16 are
+  planned only: `docs/IDEAS_12_16_PLANS.md`. **How to test:** "How to test the doctor ideas" below.
+
 ## Done
 - Project rules saved in `CLAUDE.md`.
 - **Phase 0 – computer set up.** macOS 26.6 (Intel), Node.js v24 (LTS), npm 11, git 2.50,
@@ -2447,6 +2458,23 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 - Owner/administrator: to try the AI features, create an OpenAI API key (platform.openai.com → API keys, with a
   small credit limit) and paste it after `OPENAI_API_KEY=` in `server/.env` yourself – never in chat – then
   restart Perinexa. Fake data only.
+
+## How to test the doctor ideas (fake data only)
+1. **Ctrl+K** anywhere (or the "Ctrl K" button in the title bar): type "unpaid", "new patient", "book Friday", or a
+   patient's name or number, then Enter.
+2. A visit → Prescription → **Same as last visit**: the medicines come in, the advice goes to Visit details; Undo puts
+   back what was there.
+3. My settings → **Typing shortcuts**: add "fu2" = "Follow up after 2 weeks"; in a visit's Advice type ".fu2 " (with
+   the space).
+4. Type in a visit without saving, wait a few seconds, go to Today: "Continue ___'s visit". Open it: "You have unsaved
+   changes … Restore them".
+5. Remove a medicine line: it goes at once, with **Undo** at the bottom of the screen.
+6. In a visit, Enter moves to the next box; Ctrl+Enter saves; Enter in the last box of the last medicine adds a line.
+7. A pregnant patient's Overview → Pregnancy card → **Pregnancy timeline** (and its list of scans and tests).
+8. Clinic library → **Pregnancy wheel**: an LMP or an EDD and a date.
+9. As a doctor, Today → **Your day so far**.
+10. A baby's record → Birth details → **Keepsake card** → type a note → Print.
+11. The first time on each changed screen a short "New:" tip shows; "Got it" hides it; Help → **What's new**.
 
 ## How to test patients' own accounts (fake data only)
 1. As the hospital admin: Hospital admin → Patient messages → tick "Let patients see their next appointment and care

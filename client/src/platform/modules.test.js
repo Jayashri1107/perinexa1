@@ -14,10 +14,10 @@ describe('the Clinic library', () => {
   });
 
   it('opens as tabs – To approve for doctors, prescription sets only for those who prescribe', () => {
-    expect(knowledgeTabs(['doctor']).map((t) => t.label)).toEqual(['To approve', 'Care plans', 'Clinical rules', 'Consent forms', 'Information forms', 'Test packages', 'Prescription sets']);
-    expect(knowledgeTabs(['rmo']).map((t) => t.label)).toEqual(['Care plans', 'Clinical rules', 'Consent forms', 'Information forms', 'Test packages', 'Prescription sets']); // RMOs don't approve
-    expect(knowledgeTabs(['nurse']).map((t) => t.label)).toEqual(['Care plans', 'Clinical rules', 'Consent forms', 'Information forms', 'Test packages']);
-    expect(knowledgeTabs(['nurse', 'doctor'])).toHaveLength(7); // a person with several roles gets everything any role allows
+    expect(knowledgeTabs(['doctor']).map((t) => t.label)).toEqual(['To approve', 'Care plans', 'Clinical rules', 'Consent forms', 'Information forms', 'Test packages', 'Prescription sets', 'Pregnancy wheel']);
+    expect(knowledgeTabs(['rmo']).map((t) => t.label)).toEqual(['Care plans', 'Clinical rules', 'Consent forms', 'Information forms', 'Test packages', 'Prescription sets', 'Pregnancy wheel']); // RMOs don't approve
+    expect(knowledgeTabs(['nurse']).map((t) => t.label)).toEqual(['Care plans', 'Clinical rules', 'Consent forms', 'Information forms', 'Test packages', 'Pregnancy wheel']);
+    expect(knowledgeTabs(['nurse', 'doctor'])).toHaveLength(8); // a person with several roles gets everything any role allows
   });
 
   it('keeps each tab current on all its pages, with its own sections underneath', () => {
@@ -46,10 +46,10 @@ describe('My settings and Hospital admin', () => {
   it('My settings shows Prescription design to prescribers and Voice words to those who dictate', async () => {
     const { accountTabs, isPrescriber } = await import('./modules.js');
     const tabs = (...roleSets) => accountTabs(roleSets.map((roles) => ({ roles }))).map((t) => t.label);
-    expect(tabs(['doctor'])).toEqual(['Profile', 'Prescription design', 'Voice words']);
-    expect(tabs(['nurse'])).toEqual(['Profile', 'Voice words']);
-    expect(tabs(['receptionist'])).toEqual(['Profile', 'Voice words']);
-    expect(tabs(['lab'])).toEqual(['Profile']);
+    expect(tabs(['doctor'])).toEqual(['Profile', 'Prescription design', 'Voice words', 'Typing shortcuts']);
+    expect(tabs(['nurse'])).toEqual(['Profile', 'Voice words', 'Typing shortcuts']);
+    expect(tabs(['receptionist'])).toEqual(['Profile', 'Voice words', 'Typing shortcuts']);
+    expect(tabs(['lab'])).toEqual(['Profile', 'Typing shortcuts']);
     expect(tabs()).toEqual(['Profile']); // super admin
     expect(tabs(['nurse'], ['rmo'])).toContain('Prescription design'); // an RMO in another hospital
     expect(isPrescriber([{ roles: ['admin'] }])).toBe(false);
