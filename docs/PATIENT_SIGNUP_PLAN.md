@@ -1,6 +1,6 @@
 # Patient sign-up and records in the patient portal – plan (owner, 16 Oct 2026)
 
-Status: **waiting for the owner's approval.** Nothing is built yet. Branch `patient-signup` (from `deploy-hardening`).
+Status: **approved by the owner on 16 Oct 2026** (with the two choices in section 5). Branch `patient-signup` (from `deploy-hardening`).
 
 Asked for by the owner: a patient signs in herself, registers herself, books an appointment and sees her reports,
 prescriptions and other useful things. The owner chose (16 Oct 2026):
@@ -64,13 +64,12 @@ that is not signed off. There is no fetal-sex field anywhere, and that stays.
 
 Every page she opens is in the audit log (ids only), as today.
 
-## 5. Owner approval needed before building
-- **The patient wording** (agreement text, tab names, explanations) – shown as DRAFT, with Marathi and Hindi DRAFT
-  in `TRANSLATIONS_TO_CHECK.md`.
-- **Visits:** whether to show **diagnosis** online. The printed prescription shows it when the prescription design
-  shows it. Proposed: **follow the prescription design** (online = paper).
-- **Lab reports:** proposed **"reviewed by a doctor" = ready for her.** The other choice is an extra "Share with
-  patient" tick on each report, which is one more step for the doctor every time.
+## 5. Owner decisions (16 Oct 2026)
+- **Visits:** the diagnosis is shown online **exactly when the printed prescription shows it** (the hospital's
+  prescription design decides; online = paper).
+- **Lab reports:** **reviewed by a doctor = ready for her.** No extra tick.
+- **The patient wording** (agreement text, tab names, explanations) stays DRAFT until the owner reads it on screen;
+  Marathi and Hindi DRAFT in `TRANSLATIONS_TO_CHECK.md`.
 
 ## 6. Order of work (each step tested and committed)
 1. Server: hospital sign-up link and switch; sign-up with ABHA OTP → waits in the desk list; reception's choices.
