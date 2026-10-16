@@ -244,3 +244,48 @@ input:focus, select:focus, textarea:focus { border-color: var(--indigo-700); box
 .pf-collapsed { --sb-column: var(--rail-width); }
 @media (max-width: 1023px) { .pf { --sb-column: var(--rail-width); } }
 @media (max-width: 719px) { .pf { --sb-column: 0px; } }
+
+/* ---------- Patient sign-in and sign-up on the sign-in card (owner, 16 Oct 2026: "make it look professional") ---------- */
+.auth-who { display: grid; grid-template-columns: 1fr 1fr; width: 100%; margin: 0 0 var(--space-6); }
+.auth-who button { justify-content: center; }
+.portal-entry { display: block; }
+.portal-entry form { display: block; }
+/* Sign in | Sign up: underlined tabs across the card */
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; margin: 0 0 var(--space-4); border-bottom: 1px solid var(--border); }
+.auth-tabs button {
+  margin-bottom: -1px; padding: 10px 0; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer;
+  color: var(--slate-600); font: inherit; font-weight: 600;
+}
+.auth-tabs button:hover { color: var(--indigo-700); }
+.auth-tabs button.active { border-bottom-color: var(--indigo-700); color: var(--indigo-700); }
+.auth-tabs button:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px 6px 0 0; }
+/* Mobile + OTP | Email + password: two even halves */
+.auth-method { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 0 var(--space-4); padding: 4px; background: var(--mist-50); border: 1px solid var(--border); border-radius: 12px; }
+.auth-method button {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 38px; padding: 0 var(--space-2);
+  border: 0; border-radius: 9px; background: none; cursor: pointer; color: var(--slate-600); font: inherit; font-size: var(--fs-label); font-weight: 600;
+}
+.auth-method button svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
+.auth-method button[aria-pressed='true'] { background: var(--surface); color: var(--indigo-700); box-shadow: var(--shadow-card); }
+.auth-method button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* Mobile and age side by side */
+.auth-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 0 var(--space-3); }
+.auth2-form .auth-agree { display: flex; align-items: flex-start; gap: var(--space-2); margin: var(--space-1) 0 0; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.auth2-form .auth-agree input { flex-shrink: 0; margin-top: 3px; }
+.auth2-form .portal-entry .auth1-submit { margin-top: var(--space-4); }
+.auth-again { display: block; margin: var(--space-2) auto 0; }
+.auth-note { margin: var(--space-3) 0 0; text-align: center; }
+/* One footer: the paper-code link, and "sign out on a shared phone" */
+.auth2-form .auth-foot { flex-direction: column; gap: var(--space-1); margin-top: var(--space-4); }
+.auth-foot a { display: inline-flex; align-items: center; gap: var(--space-1); }
+.auth-foot svg.lucide { width: 14px; height: 14px; }
+.auth-foot .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+/* After signing up */
+.auth-done { text-align: center; padding: var(--space-4) 0 0; }
+.auth-done > svg.lucide { width: 44px; height: 44px; color: var(--status-stable-fg); }
+.auth-done h2 { margin: var(--space-2) 0 var(--space-2); font-size: 20px; }
+.auth-done p { margin: 0 0 var(--space-4); color: var(--slate-600); line-height: 1.5; }
+@media (max-width: 480px) { .auth-method button { font-size: var(--fs-caption); } }
+.auth2-form .portal-entry .auth1-head { margin-bottom: var(--space-3); }
+.auth2-form .portal-entry .auth1-head p { margin-top: 4px; }
+.auth2-form .portal-entry .field { margin-bottom: 10px; }
