@@ -136,6 +136,7 @@ export const HOSPITAL_LAB = {
     { label: 'Stock', to: '/lab/stock', end: true },
     { label: 'Tests', to: '/lab/tests', end: false },
     { label: 'Referrers', to: '/lab/referrers', end: true },
+    { label: 'Cash', to: '/cash-handover', end: true },
     { label: 'Settings', to: '/lab/settings', end: true },
   ],
 };

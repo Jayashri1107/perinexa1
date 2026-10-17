@@ -242,3 +242,9 @@
 .lab-report-verify { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); break-inside: avoid; }
 .verify-good, .verify-bad { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; }
 .verify-good svg, .verify-bad svg { width: 1.25em; height: 1.25em; }
+
+/* Receiving samples by scanning their labels (the accession step) */
+.lab-scan { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.lab-scan .lab-filter span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.lab-scan .lab-filter svg { width: 1em; height: 1em; }
+.lab-scan input { min-width: 18rem; }

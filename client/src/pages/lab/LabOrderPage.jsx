@@ -557,6 +557,14 @@ export function LabOrderPage() {
                 </dd>
               </>
             )}
+            {order.received && (
+              <>
+                <dt>Received in the lab</dt>
+                <dd>
+                  {order.received.byName}, {formatDateTime(order.received.at)}
+                </dd>
+              </>
+            )}
             {order.dueAt && order.status !== 'cancelled' && (
               <>
                 <dt>{order.reported ? 'Time taken' : 'Due'}</dt>
@@ -644,11 +652,30 @@ export function LabOrderPage() {
               ))}
             </ul>
           )}
-          {(a.canCollect || a.canCancel || a.canLabel || a.canReject || a.canPrint) && (
+          {(a.canCollect || a.canCancel || a.canLabel || a.canReject || a.canPrint || a.canReceive) && (
             <div className="row">
               {a.canCollect && (
                 <button type="button" className={`btn ${a.canReview ? 'btn-secondary' : 'btn-primary'}`} disabled={busy} onClick={collect}>
                   <TestTube aria-hidden="true" /> {busy ? 'Saving…' : 'Mark sample taken'}
+                </button>
+              )}
+              {a.canReceive && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      saved((await api(`/lab/orders/${order.id}/receive`, { method: 'POST', body: { rev: order.rev } })).order, 'Sample received in the lab.');
+                    } catch (err) {
+                      failed(err);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Receive the sample
                 </button>
               )}
               {a.canLabel && (

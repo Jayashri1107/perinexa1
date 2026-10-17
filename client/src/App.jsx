@@ -288,7 +288,7 @@ export function App() {
                 <Route path="settings" element={<PharmacySettingsPage />} />
               </Route>
               {/* The daily cash handover: those who take payments hand over; a doctor or the admin confirms */}
-              <Route path="cash-handover" element={<RequireTenantRole roles={[...BILLING_MODULE_ROLES, 'doctor']} message="The cash handover is for reception, the billing department, doctors and the hospital admin." />}>
+              <Route path="cash-handover" element={<RequireTenantRole roles={[...BILLING_MODULE_ROLES, 'doctor', 'lab']} message="The cash handover is for reception, the billing department, the lab, doctors and the hospital admin." />}>
                 <Route index element={<CashHandoverPage />} />
               </Route>
               <Route path="billing" element={<RequireTenantRole roles={BILLING_MODULE_ROLES} message="Billing is for reception, the billing department and the hospital admin." />}>

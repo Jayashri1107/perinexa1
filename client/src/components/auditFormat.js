@@ -188,6 +188,7 @@ export const AUDIT_LABELS = {
   LAB_ORDER_VIEWED: 'Lab order opened',
   LAB_RESULTS_VIEWED: "Patient's lab results opened",
   LAB_SAMPLE_COLLECTED: 'Lab sample taken',
+  LAB_SAMPLE_RECEIVED: 'Lab sample received in the lab',
   LAB_RESULTS_SAVED: 'Lab results saved (not reported)',
   LAB_RESULTS_REPORTED: 'Lab results reported',
   LAB_RESULTS_AMENDED: 'Lab results changed after the report',
@@ -403,6 +404,7 @@ export const AUDIT_TONES = {
   LAB_ORDER_VIEWED: 'patient',
   LAB_RESULTS_VIEWED: 'patient',
   LAB_SAMPLE_COLLECTED: 'patient',
+  LAB_SAMPLE_RECEIVED: 'patient',
   LAB_RESULTS_SAVED: 'patient',
   LAB_RESULTS_REPORTED: 'patient',
   LAB_RESULTS_AMENDED: 'patient',
@@ -938,6 +940,7 @@ export function describeAudit(entry) {
     case 'LAB_ORDER_VIEWED':
     case 'LAB_RESULTS_VIEWED':
     case 'LAB_SAMPLE_COLLECTED':
+    case 'LAB_SAMPLE_RECEIVED':
     case 'LAB_RESULTS_SAVED':
     case 'LAB_RESULTS_REPORTED':
     case 'LAB_RESULTS_AMENDED':

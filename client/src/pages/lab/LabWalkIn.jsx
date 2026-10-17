@@ -3,6 +3,9 @@ import { Home, Plus, TestTube } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import { Alert, Field, formatDate, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
+import { Letterhead } from '../../components/print/Letterhead.jsx';
+import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
+import { rupees, toPaise } from '../billing/billingFormat.js';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { AdmitRegister } from '../beds/AdmitRegister.jsx';
@@ -61,6 +64,10 @@ const EMPTY_HOME = { address: '', on: today(), time: '09:00', collectorId: '' };
 export function WalkInDialog({ onClose }) {
   const navigate = useNavigate();
   const catalogue = useFetch('/lab/tests');
+  // Prices from the hospital's test list (the price list), for the payment at registration
+  const priced = useFetch('/lab-setup/tests');
+  const [pay, setPay] = useState({ take: true, mode: 'cash', amount: '', reference: '' });
+  const [done, setDone] = useState(null); // { order, payment }
   const referrers = useFetch('/lab-setup/referrers');
   const home = useFetch('/lab/home');
   const [patient, setPatient] = useState(null);
@@ -74,6 +81,9 @@ export function WalkInDialog({ onClose }) {
   const [requestId] = useState(() => crypto.randomUUID());
   const tests = useMemo(() => (catalogue.data?.tests ?? []).filter((t) => t.active !== false && t.who === (patient?.careType === 'newborn' ? 'newborn' : 'adult') && t.name.toLowerCase().includes(filter.toLowerCase())), [catalogue.data, patient, filter]);
   const toggle = (key) => setChosen((c) => (c.includes(key) ? c.filter((k) => k !== key) : [...c, key]));
+  const price = (key) => priced.data?.tests?.find((t) => t.key === key)?.pricePaise ?? 0;
+  const totalPaise = chosen.reduce((s, k) => s + price(k), 0);
+  const amountPaise = pay.amount === '' ? totalPaise : toPaise(pay.amount);
   const send = async () => {
     setBusy(true);
     setError(null);
@@ -88,15 +98,18 @@ export function WalkInDialog({ onClose }) {
         referrerId: form.referrerId || null,
         prescription: form.prescription.trim(),
         home: form.atHome ? homeBody(homeForm) : null,
+        payment: pay.take && amountPaise > 0 ? { mode: pay.mode, amountPaise, reference: pay.reference.trim() } : null,
       };
-      const { order } = await api('/lab/walk-in', { method: 'POST', body });
-      navigate(`/lab/orders/${order.id}`);
+      const res = await api('/lab/walk-in', { method: 'POST', body });
+      if (res.payment) setDone({ order: res.order, payment: res.payment, patient, tests: chosen.map((k) => catalogue.data.tests.find((t) => t.key === k)?.name ?? k) });
+      else navigate(`/lab/orders/${res.order.id}`);
     } catch (err) {
       setError(err.message);
       setFields(err.fields ?? {});
       setBusy(false);
     }
   };
+  if (done) return <PaidReceipt done={done} onOpen={() => navigate(`/lab/orders/${done.order.id}`)} />;
   return (
     <Modal id="walkin" title="Walk-in or referred patient" onClose={onClose}>
       <Alert type="error">{error || catalogue.error}</Alert>
@@ -146,6 +159,7 @@ export function WalkInDialog({ onClose }) {
               {tests.map((t) => (
                 <label key={t.key} className="check">
                   <input type="checkbox" checked={chosen.includes(t.key)} onChange={() => toggle(t.key)} /> {t.name}
+                  {price(t.key) > 0 && <span className="muted tabular"> · {rupees(price(t.key))}</span>}
                 </label>
               ))}
             </div>
@@ -157,6 +171,32 @@ export function WalkInDialog({ onClose }) {
             <input type="checkbox" checked={form.atHome} onChange={(e) => setForm({ ...form, atHome: e.target.checked })} /> Collect the sample at home
           </label>
           {form.atHome && <HomeFields value={homeForm} onChange={setHomeForm} collectors={home.data?.collectors} fields={fields} idPrefix="wi-home" />}
+          <fieldset className="fieldset">
+            <legend>Payment – total {rupees(totalPaise)}</legend>
+            <label className="check">
+              <input type="checkbox" checked={pay.take} onChange={(e) => setPay({ ...pay, take: e.target.checked })} /> Take the payment now (a receipt is printed)
+            </label>
+            {pay.take && (
+              <div className="form-grid">
+                <Field label="Paid by" id="wi-mode">
+                  <select id="wi-mode" value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })}>
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                  </select>
+                </Field>
+                <Field label="Amount (₹)" id="wi-amount" error={fields['payment.amountPaise']} hint={`Empty = the total, ${rupees(totalPaise)}.`}>
+                  <input id="wi-amount" inputMode="decimal" className="tabular" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
+                </Field>
+                {pay.mode !== 'cash' && (
+                  <Field label="UPI or card reference (optional)" id="wi-ref2">
+                    <input id="wi-ref2" maxLength={80} value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} />
+                  </Field>
+                )}
+              </div>
+            )}
+            {totalPaise === 0 && chosen.length > 0 && <p className="hint">These tests have no price on the price list yet (Billing → Price list).</p>}
+          </fieldset>
           <div className="row">
             <button type="button" className="btn btn-primary" disabled={busy || !chosen.length} onClick={send}>
               <TestTube aria-hidden="true" /> {busy ? 'Saving…' : 'Make the order'}
@@ -319,5 +359,36 @@ export function PreviousResults({ order, catalogue, previous }) {
         </tbody>
       </table>
     </section>
+  );
+}
+
+/** The receipt of the payment taken at the lab's counter: printed for the patient, then the order opens. */
+function PaidReceipt({ done, onOpen }) {
+  const lh = useFetch('/tenant/settings/letterhead');
+  const { payment: p, order: o } = done;
+  const record = () => Promise.resolve();
+  return (
+    <PrintPreview title="Receipt – print preview" hint="Give the receipt to the patient. Close this to open the order." page={{ size: 'A5', margin: '10mm' }} onPrint={record} onClose={onOpen}>
+      {!lh.data && !lh.error ? (
+        <p className="muted">Preparing…</p>
+      ) : (
+        <PrintDocument className="bill-doc">
+          {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
+          <h1 className="pdoc-title">Receipt</h1>
+          <PrintFacts
+            items={[
+              ['Receipt no.', p.receipt],
+              ['Date', formatDateTime(new Date())],
+              ['Patient', done.patient.fullName],
+              ['Patient no.', done.patient.mrn],
+              ['Sample no.', o.sampleNo ?? ''],
+              ['Tests', done.tests.join(', '), true],
+              ['Paid', `${rupees(p.amountPaise)} by ${p.mode === 'upi' ? 'UPI' : p.mode === 'card' ? 'card' : 'cash'}`],
+              ['Bill', `${p.billNumber}${p.duePaise > 0 ? ` – ${rupees(p.duePaise)} still due` : ' – paid in full'}`],
+            ]}
+          />
+        </PrintDocument>
+      )}
+    </PrintPreview>
   );
 }

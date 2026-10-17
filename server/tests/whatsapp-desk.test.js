@@ -217,7 +217,7 @@ describe('the daily cash handover', () => {
     expect(ok.body.handover.received).toMatchObject({ byName: 'Sample drA', receivedPaise: 50000, differencePaise: 0 });
     expect((await (await as('drA')).post(`/api/cash-handover/${id}/confirm`).send({ receivedPaise: 50000 })).status).toBe(409);
     expect((await (await as('reception')).post('/api/cash-handover').send({ handedPaise: 50000 })).status).toBe(409);
-    expect((await (await as('lab')).get('/api/cash-handover')).status).toBe(403);
+    expect((await (await as('lab')).get('/api/cash-handover')).status).toBe(200); // the lab takes walk-in payments too
     expect((await AuditLog.find({ action: /^CASH_/ }).sort({ _id: 1 }).lean()).map((e) => e.action)).toEqual(['CASH_HANDED_OVER', 'CASH_HANDED_OVER', 'CASH_HANDOVER_CONFIRMED']);
   });
 });
