@@ -70,3 +70,11 @@ describe('where the QR is looked for in a picture', () => {
     expect(searchAreas(1920, 1080, true)).toEqual([[0, 0, 1920, 1080], [144, 81, 1632, 918]]);
   });
 });
+
+describe('a USB webcam before the laptop’s own camera (17 Oct 2026)', () => {
+  it('knows a laptop camera by its name', async () => {
+    const { isBuiltInCamera } = await import('./AadhaarQrFill.jsx');
+    for (const name of ['Integrated Camera (04f2:b6dd)', 'Integrated Webcam', 'FaceTime HD Camera', 'HP TrueVision HD Camera (Built-in)']) expect(isBuiltInCamera(name), name).toBe(true);
+    for (const name of ['Logitech BRIO (046d:085e)', 'HD Pro Webcam C920', 'USB Camera', '']) expect(isBuiltInCamera(name), name).toBe(false);
+  });
+});
