@@ -22,7 +22,7 @@ const text = (v) => (v == null ? '' : String(v));
 const emptyBand = () => ({ pregnant: '', sex: '', ageUnit: 'years', fromAge: '', toAge: '', low: '', high: '', range: '' });
 const bandForm = (b) => ({ pregnant: b.pregnant ?? '', sex: b.sex ?? '', ageUnit: b.ageUnit ?? 'years', fromAge: text(b.fromAge), toAge: text(b.toAge), low: text(b.low), high: text(b.high), range: b.range ?? '' });
 const bandBody = (b) => ({ pregnant: b.pregnant, sex: b.sex, ageUnit: b.ageUnit, fromAge: num(b.fromAge), toAge: num(b.toAge), low: num(b.low), high: num(b.high), range: b.range.trim() });
-const emptyField = () => ({ name: '', type: 'number', unit: '', low: '', high: '', range: '', options: '', abnormal: '', bands: [] });
+const emptyField = () => ({ name: '', type: 'number', unit: '', low: '', high: '', range: '', deltaPercent: '', options: '', abnormal: '', bands: [] });
 const list = (t) => t.split(',').map((x) => x.trim()).filter(Boolean);
 
 function Bands({ bands, baby, prefix, errors, onChange, disabled }) {
@@ -97,7 +97,7 @@ function formOf(test) {
     const ranges = Object.fromEntries(
       test.fields
         .filter((f) => f.type === 'number')
-        .map((f) => [f.key, { low: text(f.low), high: text(f.high), range: test.fieldRanges?.[f.key]?.range ?? '', bands: (f.bands ?? []).map(bandForm) }]),
+        .map((f) => [f.key, { low: text(f.low), high: text(f.high), range: test.fieldRanges?.[f.key]?.range ?? '', bands: (f.bands ?? []).map(bandForm), deltaPercent: text(f.deltaPercent) }]),
     );
     return { ...common, ranges };
   }
@@ -107,14 +107,14 @@ function formOf(test) {
     name: test.name,
     group: test.group,
     sample: test.sample,
-    fields: test.fields.map((f) => ({ key: f.key, name: f.name, type: f.type, unit: f.unit ?? '', low: text(f.low), high: text(f.high), range: f.range ?? '', options: (f.options ?? []).join(', '), abnormal: (f.abnormal ?? []).join(', '), bands: (f.bands ?? []).map(bandForm) })),
+    fields: test.fields.map((f) => ({ key: f.key, name: f.name, type: f.type, unit: f.unit ?? '', low: text(f.low), high: text(f.high), range: f.range ?? '', deltaPercent: text(f.deltaPercent), options: (f.options ?? []).join(', '), abnormal: (f.abnormal ?? []).join(', '), bands: (f.bands ?? []).map(bandForm) })),
   };
 }
 
 function bodyOf(test, form) {
   const common = { department: form.department, tatHours: num(form.tatHours), urgentTatHours: num(form.urgentTatHours), outsideLab: form.outsideLab.trim(), active: form.active };
   if (test && !test.custom) {
-    return { ...common, version: test.version, fieldRanges: Object.fromEntries(Object.entries(form.ranges).map(([k, r]) => [k, { low: num(r.low), high: num(r.high), range: r.range.trim(), bands: r.bands.map(bandBody) }])) };
+    return { ...common, version: test.version, fieldRanges: Object.fromEntries(Object.entries(form.ranges).map(([k, r]) => [k, { low: num(r.low), high: num(r.high), range: r.range.trim(), bands: r.bands.map(bandBody), deltaPercent: num(r.deltaPercent) }])) };
   }
   return {
     ...common,
@@ -125,7 +125,7 @@ function bodyOf(test, form) {
     sample: form.sample.trim(),
     fields: form.fields.map((f) => {
       const base = { ...(f.key ? { key: f.key } : {}), name: f.name.trim(), type: f.type };
-      if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: num(f.low), high: num(f.high), range: f.range.trim(), bands: f.bands.map(bandBody) };
+      if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: num(f.low), high: num(f.high), range: f.range.trim(), bands: f.bands.map(bandBody), deltaPercent: num(f.deltaPercent) };
       if (f.type === 'choice') return { ...base, options: list(f.options), abnormal: list(f.abnormal) };
       return base;
     }),
@@ -327,6 +327,9 @@ export function LabTestEditPage() {
                       <Field label="Range in words (optional)" id={`lt-${f.key}-range`} hint="Left empty, it is written from the limits.">
                         <input id={`lt-${f.key}-range`} maxLength={150} value={r.range} disabled={locked} onChange={(e) => setRange(f.key, 'range', e.target.value)} />
                       </Field>
+                      <Field label="Big change from her last result (%)" id={`lt-${f.key}-delta`} hint="Empty = no flag. DRAFT until a doctor approves.">
+                        <input id={`lt-${f.key}-delta`} inputMode="decimal" className="tabular" value={r.deltaPercent} disabled={locked} onChange={(e) => setRange(f.key, 'deltaPercent', e.target.value)} />
+                      </Field>
                     </div>
                     <Bands bands={r.bands} baby={baby} prefix={at} errors={fields} disabled={locked} onChange={(v) => setRange(f.key, 'bands', v)} />
                   </fieldset>
@@ -364,6 +367,9 @@ export function LabTestEditPage() {
                         </Field>
                         <Field label="Range in words (optional)" id={`lf-${i}-range`}>
                           <input id={`lf-${i}-range`} maxLength={150} value={f.range} disabled={locked} onChange={(e) => setField(i, 'range', e.target.value)} />
+                        </Field>
+                        <Field label="Big change from her last result (%)" id={`lf-${i}-delta`} hint="Empty = no flag.">
+                          <input id={`lf-${i}-delta`} inputMode="decimal" className="tabular" value={f.deltaPercent} disabled={locked} onChange={(e) => setField(i, 'deltaPercent', e.target.value)} />
                         </Field>
                       </>
                     )}
