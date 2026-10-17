@@ -58,6 +58,18 @@ export function ageFrom({ dob, yob }, today = new Date()) {
   return age >= 0 && age < 130 ? String(age) : '';
 }
 
+// "W/O Ravi Sample" (wife of), "D/O …" (daughter of), "C/O …" (care of) → her contact person and how related
+const CARE_OF = [
+  [/^\s*(?:w\/o|wife\s+of)\s*[:.,-]?\s*/i, 'Husband'],
+  [/^\s*(?:d\/o|daughter\s+of|s\/o|son\s+of)\s*[:.,-]?\s*/i, 'Father'],
+  [/^\s*(?:c\/o|care\s+of)\s*[:.,-]?\s*/i, ''],
+];
+export function careOf(co) {
+  const text = clean(co);
+  for (const [rx, relation] of CARE_OF) if (rx.test(text)) return { name: text.replace(rx, '').slice(0, 100), relation };
+  return { name: text.slice(0, 100), relation: '' };
+}
+
 /** The form's words from the card's address parts. */
 function fromParts(p, today) {
   const city = clean(p.vtc) || clean(p.loc) || clean(p.dist);
@@ -76,6 +88,7 @@ function fromParts(p, today) {
     city: city.slice(0, 60),
     state: clean(p.state).slice(0, 60),
     last4: /^\d{4}$/.test(p.last4 ?? '') ? p.last4 : '',
+    ...(clean(p.co) ? { contactName: careOf(p.co).name, contactRelation: careOf(p.co).relation } : { contactName: '', contactRelation: '' }),
   };
 }
 
@@ -87,7 +100,7 @@ function parseXml(text, today) {
   const uid = attr('uid').replace(/\D/g, '');
   return fromParts(
     {
-      name: attr('name'), dob: attr('dob'), yob: attr('yob'), house: attr('house'), street: attr('street'), lm: attr('lm'), loc: attr('loc'),
+      name: attr('name'), dob: attr('dob'), yob: attr('yob'), co: attr('co'), house: attr('house'), street: attr('street'), lm: attr('lm'), loc: attr('loc'),
       vtc: attr('vtc'), po: attr('po'), dist: attr('dist'), subdist: attr('subdist'), state: attr('state'), pc: attr('pc'),
       last4: uid.length >= 4 ? uid.slice(-4) : '',
     },
@@ -103,14 +116,14 @@ async function parseSecure(text, today) {
   //    10 PIN, 11 post office, 12 state, 13 street, 14 sub-district, 15 village/town/city
   if (f.length < 16) throw new Error('short');
   return fromParts(
-    { name: f[2], dob: f[3], dist: f[6], lm: f[7], house: f[8], loc: f[9], pc: f[10], po: f[11], state: f[12], street: f[13], subdist: f[14], vtc: f[15], last4: f[1].slice(0, 4) },
+    { name: f[2], dob: f[3], co: f[5], dist: f[6], lm: f[7], house: f[8], loc: f[9], pc: f[10], po: f[11], state: f[12], street: f[13], subdist: f[14], vtc: f[15], last4: f[1].slice(0, 4) },
     today,
   );
 }
 
 /**
- * The text read from an Aadhaar QR → { fullName, ageYears, address, pinCode, city, state, last4 } (text, '' when
- * missing). Throws Error('NOT_AADHAAR') for any other QR.
+ * The text read from an Aadhaar QR → { fullName, ageYears, address, pinCode, city, state, last4, contactName,
+ * contactRelation } (text, '' when missing). Throws Error('NOT_AADHAAR') for any other QR.
  */
 export async function parseAadhaarQr(text, today = new Date()) {
   const t = String(text ?? '').trim();
@@ -126,9 +139,80 @@ export async function parseAadhaarQr(text, today = new Date()) {
   throw new Error('NOT_AADHAAR');
 }
 
-/** Finds and reads a QR in an image file (photo or scan), trying a few sizes – a phone photo is often too big. */
+// ---------- Finding the QR in a picture ----------
+// The Secure QR on the card is dense (about 100 × 100 squares) and small on a photo of the whole card, so it is looked
+// for in several ways until one reads it: Chrome's own QR reader where the computer has one (phones, Macs), then jsQR
+// on the whole picture at a few sizes, then on overlapping parts of it at full sharpness (the QR then fills more of
+// what is looked at, and the card's printing around it no longer confuses the search).
+
+let nativeDetector; // undefined: not asked yet; null: none on this computer
+async function nativeRead(source) {
+  if (nativeDetector === undefined) {
+    nativeDetector = null;
+    try {
+      if (typeof window !== 'undefined' && 'BarcodeDetector' in window && (await window.BarcodeDetector.getSupportedFormats()).includes('qr_code')) {
+        nativeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      }
+    } catch {
+      nativeDetector = null;
+    }
+  }
+  if (!nativeDetector) return null;
+  try {
+    const found = await nativeDetector.detect(source);
+    return found.find((f) => f.rawValue)?.rawValue ?? null;
+  } catch {
+    return null;
+  }
+}
+
+let jsQRModule = null;
+const loadJsQR = async () => (jsQRModule ??= (await import('jsqr')).default);
+
+/** The parts of a w × h picture to look in: [sx, sy, sw, sh] – the whole, the middle, then overlapping halves. */
+export function searchAreas(w, h, quick = false) {
+  const areas = [[0, 0, w, h]];
+  const mid = (f) => [Math.round((w * (1 - f)) / 2), Math.round((h * (1 - f)) / 2), Math.round(w * f), Math.round(h * f)];
+  areas.push(mid(0.6));
+  if (quick) return areas;
+  for (const fy of [0, 0.25, 0.5]) for (const fx of [0, 0.25, 0.5]) areas.push([Math.round(w * fx), Math.round(h * fy), Math.round(w * 0.5), Math.round(h * 0.5)]);
+  return areas;
+}
+
+/**
+ * Reads a QR from something that can be drawn (an image or a video frame) of w × h, or null. quick: fewer tries, for
+ * the camera's frames (it tries again on the next one).
+ */
+export async function readQrFrom(source, w, h, { quick = false, canvas = null } = {}) {
+  const native = await nativeRead(source);
+  if (native) return native;
+  const jsQR = await loadJsQR();
+  const c = canvas ?? document.createElement('canvas');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const attempt = (sx, sy, sw, sh, size) => {
+    // Shrunk to `size` on its longer side – or enlarged to it, for a small part, so each square of the QR is a few dots
+    const scale = size / Math.max(sw, sh);
+    c.width = Math.max(1, Math.round(sw * scale));
+    c.height = Math.max(1, Math.round(sh * scale));
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    const { data, width, height } = ctx.getImageData(0, 0, c.width, c.height);
+    return jsQR(data, width, height, { inversionAttempts: quick ? 'dontInvert' : 'attemptBoth' })?.data ?? null;
+  };
+  const longest = Math.max(w, h);
+  const sizes = quick ? [Math.min(longest, 1280)] : [1600, 1200, 2400, Math.min(longest, 3200)];
+  for (const [sx, sy, sw, sh] of searchAreas(w, h, quick)) {
+    const own = Math.max(sw, sh);
+    for (const size of sx === 0 && sy === 0 && sw === w ? sizes : [Math.min(Math.max(own, 1000), 2000)]) {
+      const text = attempt(sx, sy, sw, sh, size);
+      if (text) return text;
+    }
+  }
+  return null;
+}
+
+/** Finds and reads a QR in an image file (a photo or scan of the card). */
 export async function readQrFromImage(file) {
-  const { default: jsQR } = await import('jsqr');
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise((resolve, reject) => {
@@ -137,19 +221,9 @@ export async function readQrFromImage(file) {
       i.onerror = () => reject(new Error('NOT_IMAGE'));
       i.src = url;
     });
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const longest = Math.max(img.naturalWidth, img.naturalHeight);
-    for (const size of [1600, 1200, 2400, 800, longest]) {
-      const scale = Math.min(1, size / longest);
-      canvas.width = Math.round(img.naturalWidth * scale);
-      canvas.height = Math.round(img.naturalHeight * scale);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const found = jsQR(data, width, height, { inversionAttempts: 'attemptBoth' });
-      if (found?.data) return found.data;
-    }
-    throw new Error('NO_QR');
+    const text = await readQrFrom(img, img.naturalWidth, img.naturalHeight);
+    if (!text) throw new Error('NO_QR');
+    return text;
   } finally {
     URL.revokeObjectURL(url);
   }

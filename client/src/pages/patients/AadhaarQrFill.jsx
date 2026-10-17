@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, QrCode, ScanLine, Upload } from 'lucide-react';
 import { Alert } from '../../components/ui.jsx';
-import { parseAadhaarQr, readQrFromImage } from './aadhaarQr.js';
+import { parseAadhaarQr, readQrFrom, readQrFromImage } from './aadhaarQr.js';
 
 // "Fill from Aadhaar card" on the patient's details (owner, 16 Oct 2026): reception, doctor or RMO reads the QR code on
 // the patient's own Aadhaar card (the paper letter or the plastic card – owner, 17 Oct 2026: "people have the normal
 // Aadhaar, not e-Aadhaar"), with her agreement, in one of three ways:
-//  - a camera, live: the card is held up to the webcam (or her phone's camera) and the QR is read from the moving
-//    picture in this browser – no photo is taken or kept;
+//  - a camera, live: it starts by itself once the agreement is ticked; the card is held up to the webcam (or her
+//    phone's camera) and the QR is read from the moving picture in this browser the moment it is clear – no photo is
+//    taken or kept, and the camera turns itself off (owner, 17 Oct 2026: "capture it automatically, no stop button");
 //  - a USB QR scanner (staff only): the scanner types what the QR holds into a box, as a keyboard would;
 //  - a photo or scan of the card, uploaded (the way back when there is no camera or scanner).
 // The name, age, address and last 4 digits go into the form for staff to check (aadhaarQr.js). Nothing is sent
@@ -22,8 +23,10 @@ export const AADHAAR_WORDS = {
     'Read the QR code on the patient’s Aadhaar card – the paper letter or the plastic card. It is read on this computer: nothing is saved or sent anywhere, and only the name, age, address and the last 4 digits are used.',
   agree: 'The patient agrees to her Aadhaar card being read for these details',
   camera: 'Scan with camera',
-  stopCamera: 'Stop the camera',
-  cameraHint: 'Hold the card close to the camera so the QR code fills the box. Keep it still, in good light.',
+  scanAgain: 'Scan again',
+  looking: 'Looking for the QR code…',
+  noCamera: 'No camera was found on this computer. Use a QR scanner or upload a photo of the card.',
+  cameraHint: 'Hold the QR code of the card inside the box, about a hand’s width from the camera. Keep it still, in good light – it is read by itself.',
   cameraBlocked: 'The camera could not be opened. Allow the camera for this site in the browser, or use a QR scanner or a photo.',
   scanner: 'Or scan with a QR scanner',
   scannerHint: 'Click here, then scan the QR code on the card',
@@ -36,7 +39,7 @@ export const AADHAAR_WORDS = {
   notImage: 'This file could not be opened as a picture. Please upload a photo (JPG or PNG) or a screenshot.',
 };
 
-/** Reads QR codes from the camera, live, until one is found (onText) or it is stopped. Nothing is recorded. */
+/** Reads QR codes from the camera, live, until one is found (onText). Nothing is recorded. */
 function CameraScan({ words, onText, onBlocked }) {
   const video = useRef(null);
   useEffect(() => {
@@ -44,10 +47,8 @@ function CameraScan({ words, onText, onBlocked }) {
     let timer = null;
     let stopped = false;
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     (async () => {
       try {
-        const { default: jsQR } = await import('jsqr');
         // The back camera on a phone; a sharp picture – the Secure QR on the card is dense
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
         if (stopped) {
@@ -56,26 +57,21 @@ function CameraScan({ words, onText, onBlocked }) {
         }
         video.current.srcObject = stream;
         await video.current.play();
-        const look = () => {
+        const look = async () => {
           if (stopped) return;
           const v = video.current;
           if (v && v.readyState >= 2 && v.videoWidth) {
-            const scale = Math.min(1, 1600 / Math.max(v.videoWidth, v.videoHeight));
-            canvas.width = Math.round(v.videoWidth * scale);
-            canvas.height = Math.round(v.videoHeight * scale);
-            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-            const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const found = jsQR(data, width, height, { inversionAttempts: 'dontInvert' });
-            if (found?.data) {
-              onText(found.data);
+            const text = await readQrFrom(v, v.videoWidth, v.videoHeight, { quick: true, canvas });
+            if (text && !stopped) {
+              onText(text);
               return;
             }
           }
-          timer = setTimeout(look, 150);
+          if (!stopped) timer = setTimeout(look, 120);
         };
         look();
-      } catch {
-        if (!stopped) onBlocked();
+      } catch (err) {
+        if (!stopped) onBlocked(err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError' ? 'none' : 'blocked');
       }
     })();
     return () => {
@@ -90,7 +86,9 @@ function CameraScan({ words, onText, onBlocked }) {
         <video ref={video} muted playsInline aria-label={words.camera} />
         <span className="aadhaar-camera-box" aria-hidden="true" />
       </div>
-      <p className="hint">{words.cameraHint}</p>
+      <p className="hint" role="status">
+        <Camera aria-hidden="true" /> {words.looking} {words.cameraHint}
+      </p>
     </div>
   );
 }
@@ -131,8 +129,12 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
     if (file) use(() => readQrFromImage(file));
   };
   const fromCamera = (text) => {
-    setCamera(false);
+    setCamera(false); // off by itself once read
     use(() => text);
+  };
+  const cameraProblem = (why) => {
+    setCamera(false);
+    setResult({ problem: why === 'none' ? t.noCamera : t.cameraBlocked });
   };
   const fromScanner = (text) => {
     setScanned(''); // not kept in the box
@@ -161,15 +163,26 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
           checked={agreed}
           onChange={(e) => {
             setAgreed(e.target.checked);
-            if (!e.target.checked) setCamera(false);
+            setCamera(e.target.checked); // the camera starts by itself once she agrees
+            if (e.target.checked) setResult(null);
           }}
         />{' '}
         {t.agree}
       </label>
       <div className="row">
-        <button type="button" className="btn btn-secondary btn-sm" disabled={!agreed || busy || disabled} onClick={() => setCamera((c) => !c)} aria-pressed={camera}>
-          <Camera aria-hidden="true" /> {camera ? t.stopCamera : t.camera}
-        </button>
+        {!camera && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={!can}
+            onClick={() => {
+              setResult(null);
+              setCamera(true);
+            }}
+          >
+            <Camera aria-hidden="true" /> {result ? t.scanAgain : t.camera}
+          </button>
+        )}
         <input ref={input} type="file" accept="image/*" className="sr-only" onChange={fromFile} aria-label={t.upload} tabIndex={-1} />
         <button type="button" className="btn btn-secondary btn-sm" disabled={!can} onClick={() => input.current?.click()}>
           <Upload aria-hidden="true" /> {busy ? t.reading : t.upload}
@@ -178,15 +191,8 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
           {t.close}
         </button>
       </div>
-      {camera && (
-        <CameraScan
-          words={t}
-          onText={fromCamera}
-          onBlocked={() => {
-            setCamera(false);
-            setResult({ problem: t.cameraBlocked });
-          }}
-        />
+      {camera && agreed && !disabled && (
+        <CameraScan words={t} onText={fromCamera} onBlocked={cameraProblem} />
       )}
       {scanner && (
         <label className="aadhaar-scanner">
