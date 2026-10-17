@@ -156,3 +156,4 @@
 .aadhaar-start .hint { margin: 0; flex: 1 1 260px; }
 .aadhaar-camera-pick { display: grid; gap: var(--space-1); max-width: 420px; }
 .aadhaar-camera-pick > span { font-weight: 500; }
+.aadhaar-camera-view video.is-mirrored { transform: scaleX(-1); }

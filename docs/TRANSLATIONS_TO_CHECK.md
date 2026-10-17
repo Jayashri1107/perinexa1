@@ -539,3 +539,5 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `aadhaar.slowTips` (added 17 Oct 2026) | Not read yet? Hold the card flat and still with the QR code filling most of the box. If the picture is blurry, move the card a little further away until it is sharp, then press Capture. Or upload a close photo of the QR code. | अजून वाचले नाही? कार्ड सरळ आणि स्थिर धरा, QR कोडने चौकटीचा बहुतेक भाग भरेल असे. चित्र धूसर असल्यास, ते स्पष्ट होईपर्यंत कार्ड थोडे दूर न्या, मग "फोटो घ्या" दाबा. किंवा QR कोडचा जवळून घेतलेला फोटो अपलोड करा. | अभी तक नहीं पढ़ा गया? कार्ड सीधा और स्थिर रखें, ताकि QR कोड बॉक्स का ज़्यादातर हिस्सा भरे। तस्वीर धुंधली हो तो कार्ड थोड़ा दूर ले जाएँ जब तक वह साफ़ न हो, फिर "फ़ोटो लें" दबाएँ। या QR कोड की पास से ली गई फ़ोटो अपलोड करें। |
 | `aadhaar.whichCamera` (added 17 Oct 2026) | Camera | कॅमेरा | कैमरा |
 | `aadhaar.defaultCamera` (added 17 Oct 2026) | The usual camera | नेहमीचा कॅमेरा | सामान्य कैमरा |
+| `aadhaar.switchCamera` (added 17 Oct 2026) | Switch camera | कॅमेरा बदला | कैमरा बदलें |
+| `aadhaar.mirror` (added 17 Oct 2026) | Mirror picture | आरशासारखे चित्र | आईने जैसी तस्वीर |

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Aperture, Camera, ScanLine, Upload } from 'lucide-react';
+import { Aperture, Camera, FlipHorizontal2, ScanLine, SwitchCamera, Upload } from 'lucide-react';
 import { Alert } from '../../components/ui.jsx';
 import { parseAadhaarQr, prepareQrReaders, readQrFrom, readQrFromImage } from './aadhaarQr.js';
 
@@ -24,6 +24,8 @@ export const AADHAAR_WORDS = {
   scanAgain: 'Scan again',
   capture: 'Capture',
   whichCamera: 'Camera',
+  switchCamera: 'Switch camera',
+  mirror: 'Mirror picture',
   defaultCamera: 'This computer’s usual camera',
   cameraSize: (size) => `Camera picture: ${size}`,
   captureMissed: 'The QR code could not be read from this picture. Hold the card still, a little closer or further, with no shine on it, and press Capture again.',
@@ -91,7 +93,17 @@ async function listCameras() {
   }
 }
 
-function CameraScan({ words, onText, onBlocked, deviceId = '', onCameras = () => {}, onGone = () => {} }) {
+// Mirror picture: shown flipped left–right, like a mirror (only what is shown – the reading is the same)
+const MIRROR_KEY = 'perinexa:aadhaarMirror';
+const savedMirror = () => {
+  try {
+    return localStorage.getItem(MIRROR_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+function CameraScan({ words, onText, onBlocked, deviceId = '', onCameras = () => {}, onGone = () => {}, onSwitch = null, mirror = false, onMirror = () => {} }) {
   const video = useRef(null);
   const trackRef = useRef(null);
   const stoppedRef = useRef(false);
@@ -188,12 +200,20 @@ function CameraScan({ words, onText, onBlocked, deviceId = '', onCameras = () =>
   return (
     <div className="aadhaar-camera">
       <div className="aadhaar-camera-view">
-        <video ref={video} muted playsInline aria-label={words.camera} />
+        <video ref={video} muted playsInline aria-label={words.camera} className={mirror ? 'is-mirrored' : undefined} />
         <span className="aadhaar-camera-box" aria-hidden="true" />
       </div>
       <div className="row">
         <button type="button" className="btn btn-secondary btn-sm" onClick={capture} disabled={capturing || !size}>
           <Aperture aria-hidden="true" /> {capturing ? words.reading : words.capture}
+        </button>
+        {onSwitch && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onSwitch}>
+            <SwitchCamera aria-hidden="true" /> {words.switchCamera}
+          </button>
+        )}
+        <button type="button" className="btn btn-link btn-sm" aria-pressed={mirror} onClick={onMirror}>
+          <FlipHorizontal2 aria-hidden="true" /> {words.mirror}
         </button>
         {size && <span className="hint tabular">{words.cameraSize(size)}</span>}
       </div>
@@ -218,18 +238,37 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
   const [camera, setCamera] = useState(false);
   const [cameraId, setCameraId] = useState(savedCamera);
   const [cameras, setCameras] = useState([]);
+  const [inUse, setInUse] = useState('');
+  const [mirror, setMirror] = useState(savedMirror);
   // Told by the camera once it is open: the list, and which one is in use. With no choice saved, a USB webcam is
   // used in place of the laptop's own camera.
-  const camerasFound = (list, inUse, label) => {
+  const camerasFound = (list, using, label) => {
     setCameras(list);
+    setInUse(using);
     if (!cameraId && list.length > 1 && isBuiltInCamera(label)) {
-      const usb = list.find((c) => c.id !== inUse && !isBuiltInCamera(c.label));
+      const usb = list.find((c) => c.id !== using && !isBuiltInCamera(c.label));
       if (usb) setCameraId(usb.id);
     }
   };
   const chooseCamera = (id) => {
     saveCamera(id);
     setCameraId(id);
+  };
+  // Switch camera: the next one (on a phone, back ↔ front; on a computer, the laptop's own ↔ a USB webcam)
+  const switchCamera = () => {
+    const at = cameras.findIndex((c) => c.id === (cameraId || inUse));
+    const next = cameras[(at + 1) % cameras.length];
+    if (next) chooseCamera(next.id);
+  };
+  const toggleMirror = () => {
+    setMirror((m) => {
+      try {
+        localStorage.setItem(MIRROR_KEY, m ? '0' : '1');
+      } catch {
+        /* not important if it can't be remembered */
+      }
+      return !m;
+    });
   };
   const [scanned, setScanned] = useState('');
   const [result, setResult] = useState(null); // { ok: [labels] } or { problem }
@@ -320,7 +359,18 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
         </label>
       )}
       {camera && !disabled && (
-        <CameraScan key={cameraId || 'default'} words={t} deviceId={cameraId} onCameras={camerasFound} onGone={() => chooseCamera('')} onText={fromCamera} onBlocked={cameraProblem} />
+        <CameraScan
+          key={cameraId || 'default'}
+          words={t}
+          deviceId={cameraId}
+          onCameras={camerasFound}
+          onGone={() => chooseCamera('')}
+          onSwitch={cameras.length > 1 ? switchCamera : null}
+          mirror={mirror}
+          onMirror={toggleMirror}
+          onText={fromCamera}
+          onBlocked={cameraProblem}
+        />
       )}
       {result?.ok && <Alert type="success">{t.filled(result.ok.join(', '))}</Alert>}
       {result?.problem && <Alert type="warning">{result.problem}</Alert>}
