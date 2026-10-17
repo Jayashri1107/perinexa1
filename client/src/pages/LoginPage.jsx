@@ -65,6 +65,8 @@ export function LoginPage() {
   // Staff or patient (owner, 16 Oct 2026: one sign-in page). The patient side is the patient portal's own sign-in –
   // its own session, never a staff one.
   const [who, setWho] = useState(location.hash === '#patient' ? 'patient' : 'staff');
+  // A patient who has just signed out of the portal (PortalPage): told so, her hospital chosen again
+  const signedOut = location.state?.patientSignedOut ?? null;
   useEffect(() => {
     api('/auth/setup-status')
       .then((r) => setNeedsSetup(Boolean(r.needsSetup)))
@@ -116,7 +118,10 @@ export function LoginPage() {
             </button>
           </div>
           {who === 'patient' ? (
-            <PatientSignIn onSignedIn={(key) => navigate(`/portal/h/${key}`)} />
+            <>
+              {signedOut && <Alert type="success">You have signed out successfully. Sign in again below when you need to.</Alert>}
+              <PatientSignIn preferred={signedOut?.key ?? ''} onSignedIn={(key) => navigate(`/portal/h/${key}`)} />
+            </>
           ) : (
         <form onSubmit={onSubmit} noValidate>
           <header className="auth1-head">
@@ -160,14 +165,15 @@ export function LoginPage() {
  * password) or sign up – the same steps as the hospital's own portal address (docs/PATIENT_ACCOUNTS_PLAN.md). Only hospitals that switched on patient
  * sign-up are listed; a patient with a paper code signs in on /portal.
  */
-function PatientSignIn({ onSignedIn }) {
+function PatientSignIn({ onSignedIn, preferred = '' }) {
   const [list, setList] = useState(null); // { hospitals } | { error }
   const [key, setKey] = useState('');
   useEffect(() => {
     portal('/h')
       .then((r) => {
         setList(r);
-        if (r.hospitals.length === 1) setKey(r.hospitals[0].key);
+        if (r.hospitals.some((h) => h.key === preferred)) setKey(preferred);
+        else if (r.hospitals.length === 1) setKey(r.hospitals[0].key);
       })
       .catch((error) => setList({ error }));
   }, []);

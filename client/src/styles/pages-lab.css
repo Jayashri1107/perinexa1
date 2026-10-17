@@ -100,7 +100,7 @@
 .portal-shell .sb-brand > span { display: inline-flex; }
 .portal-place { display: flex; flex-direction: column; line-height: 1.2; }
 .portal-place .muted { font-size: var(--fs-caption); }
-.portal-content { max-width: 880px; }
+.portal-content { max-width: 1280px; container-type: inline-size; }
 .portal-content .portal-card h1, .portal-content .portal-card h2 { margin-top: 0; }
 @media (max-width: 719px) { .portal-place { display: none; } .portal-shell .portal-lang button { padding: 0 8px; } }
 
@@ -122,15 +122,23 @@
 /* The patient's Home page at a glance, her appointments, bills total and details (17 Oct 2026) */
 .portal-next .btn { width: auto; align-self: flex-start; }
 .portal-glance-title { font-size: var(--fs-h3); margin: var(--space-2) 0; }
-.portal-glance { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-@media (min-width: 1400px) { .portal-glance { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 519px) { .portal-glance { grid-template-columns: 1fr; } }
-.portal-glance-card { width: 100%; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); text-align: left; font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--card-border, var(--border)); }
+.portal-glance { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.portal-glance > li { display: flex; }
+/* by the room the page has (not the window): four in a row only when each has room, one on a phone */
+@container (min-width: 960px) {
+  .portal-glance { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .portal-glance .portal-glance-card { flex-direction: column; align-items: flex-start; position: relative; padding: var(--space-6); }
+  .portal-glance .portal-glance-go { position: absolute; top: var(--space-4); right: var(--space-4); }
+}
+@container (max-width: 519px) { .portal-glance { grid-template-columns: 1fr; } }
+.portal-glance-card { width: 100%; height: 100%; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); text-align: left; font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--card-border, var(--border)); }
 .portal-glance-card:hover { border-color: var(--indigo-600); }
 .portal-glance-icon { display: inline-flex; padding: var(--space-2); border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
-.portal-glance-text { display: grid; gap: 2px; flex: 1; min-width: 0; }
-.portal-glance-value { font-size: 1.25rem; font-weight: 600; }
-.portal-glance-value.is-text { font-size: var(--fs-h3); }
+.portal-glance-text { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.portal-glance-text strong { font-weight: 500; }
+.portal-glance-text .muted { font-size: var(--fs-caption); line-height: 1.35; }
+.portal-glance-value { font-size: 1.5rem; font-weight: 600; line-height: 1.2; color: var(--indigo-700); }
+.portal-glance-value.is-text { font-size: var(--fs-h3); color: inherit; }
 .portal-glance-go { flex: none; color: var(--slate-300); }
 .portal-appt-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
 .portal-appt-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
@@ -157,3 +165,10 @@
 .aadhaar-camera-pick { display: grid; gap: var(--space-1); max-width: 420px; }
 .aadhaar-camera-pick > span { font-weight: 500; }
 .aadhaar-camera-view video.is-mirrored { transform: scaleX(-1); }
+/* Phone: the menu, language and Sign out on one line (17 Oct 2026) */
+@media (max-width: 519px) {
+  .portal-shell .pf-topbar { flex-wrap: nowrap; gap: var(--space-2); }
+  .portal-shell .pf-topbar-actions { flex-wrap: nowrap; gap: var(--space-1); margin-left: auto; }
+  .portal-shell .pf-logout { padding: 0 var(--space-2); white-space: nowrap; }
+  .portal-shell .portal-lang button { padding: 0 6px; }
+}

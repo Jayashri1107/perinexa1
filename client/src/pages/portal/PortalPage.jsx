@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarCheck, CalendarDays, CalendarPlus, House, LogOut, Phone } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import logo from '../../assets/brand/perinexa-logo.png';
 import { Alert, Field, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
@@ -403,6 +403,7 @@ export function PortalScreen({ state, notice, chosen, onChoose, onDismiss, onSig
 
 export function PortalPage() {
   const { key: hospitalKey } = useParams(); // the hospital's own address (/portal/h/<code>), else undefined
+  const navigate = useNavigate();
   const [hospital, setHospital] = useState(null); // { key, data, error }
   useEffect(() => {
     if (!hospitalKey) return undefined;
@@ -443,8 +444,14 @@ export function PortalPage() {
     }, (state.data.sessionMinutes ?? 15) * 60 * 1000);
     return () => clearTimeout(t);
   }, [state]);
+  // Signing out (owner, 17 Oct 2026): from her own account, back to Perinexa's sign-in page (Patient, her hospital
+  // chosen) saying so; with a paper code, the code sign-in page here, saying so
   const signOut = async () => {
     await portal('/logout', { method: 'POST' }).catch(() => {});
+    if (hospitalKey) {
+      navigate('/login#patient', { replace: true, state: { patientSignedOut: { key: hospitalKey } } });
+      return;
+    }
     setNotice('signedOut');
     setState(signInState);
   };
