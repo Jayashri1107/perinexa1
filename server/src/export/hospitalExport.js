@@ -50,6 +50,7 @@ import { Counter } from '../models/Counter.js';
 import { LabOrder } from '../models/LabOrder.js';
 import { LabPackage } from '../models/LabPackage.js';
 import { LabSetup } from '../models/LabSetup.js';
+import { CashHandover } from '../models/CashHandover.js';
 import { LabTestSetting } from '../models/LabTestSetting.js';
 import { MedicineSafetyList } from '../models/MedicineSafetyList.js';
 import { Membership } from '../models/Membership.js';
@@ -122,6 +123,7 @@ export const KINDS = [
   { file: 'settings-lab-packages.json', model: LabPackage, what: 'Settings: the lab test packages.' },
   { file: 'settings-lab-tests.json', model: LabTestSetting, what: "Settings: the hospital's lab test list (its own tests, departments, times, ranges)." },
   { file: 'settings-lab.json', model: LabSetup, what: 'Settings: the lab (check before the report, who checks).' },
+  { file: 'cash-handovers.json', model: CashHandover, what: 'Billing: the daily cash handovers (amounts, who handed over and who confirmed).' },
   { file: 'settings-prescription-sets.json', model: PrescriptionSet, what: 'Settings: the ready-made prescription sets.' },
   { file: 'settings-prescription-layout.json', model: PrescriptionDesign, what: 'Settings: how each doctor\'s prescriptions look when printed.' },
   { file: 'settings-price-list.json', model: PriceItem, what: 'Settings: the price list.' },

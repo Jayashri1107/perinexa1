@@ -9,7 +9,7 @@ import { Patient } from '../models/Patient.js';
 import { PatientAccount, SELF_CARE_TYPES } from '../models/PatientAccount.js';
 import { Tenant } from '../models/Tenant.js';
 import { isClosed } from '../patients/deathRules.js';
-import { otpSender } from '../reminders/sender.js';
+import { deliverOtp, otpChannels, otpSender } from '../reminders/sender.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { fakeVerify, hashPassword, passwordSchema, verifyPassword } from '../utils/password.js';
@@ -50,8 +50,12 @@ const same = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), 
 const limiter = (limit) =>
   rateLimit({ windowMs: 15 * 60 * 1000, limit, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many tries. Please wait 15 minutes, or call the hospital.', code: 'RATE_LIMITED' } } });
 
-/** How an OTP reaches her: the SMS provider, practice mode (shown on screen, never in production), or not at all. */
-export function otpMode() {
+/**
+ * How an OTP reaches her: WhatsApp (the hospital switched it on – SMS if WhatsApp fails), the SMS provider, practice
+ * mode (shown on screen, never in production), or not at all. Without a hospital: SMS or not.
+ */
+export function otpMode(tenant = null) {
+  if (tenant && otpChannels(tenant).whatsapp) return 'whatsapp';
   if (otpSender()) return 'sms';
   return config.isProduction ? 'off' : 'practice';
 }
@@ -132,7 +136,7 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
   router.get('/:key', async (req, res) => {
     const tenant = await hospitalOf(req);
     const lh = letterheadFor(tenant);
-    res.json({ hospital: { name: lh.name, phone: lh.phone, address: lh.address }, otp: otpMode() });
+    res.json({ hospital: { name: lh.name, phone: lh.phone, address: lh.address }, otp: otpMode(tenant) });
   });
 
   // ---------- Sign up ----------
@@ -205,7 +209,7 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
   // ---------- Sign in: mobile and OTP ----------
   router.post('/:key/otp', otpLimiter, async (req, res) => {
     const tenant = await hospitalOf(req);
-    const mode = otpMode();
+    const mode = otpMode(tenant);
     if (mode === 'off') throw new HttpError(409, 'Sign-in with an OTP is not available yet. Please use your email and password.', 'OTP_OFF');
     const mobile = mobileOf(parse(z.object({ mobile: z.string().max(20) }).strict(), req.body).mobile);
     const account = await accountBy(tenant, { mobile });
@@ -215,17 +219,18 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
       account.otp = { hash: hashOtp(account._id, otp), expiresAt: new Date(req.now.getTime() + OTP_MINUTES * 60 * 1000), tries: 0 };
       await account.save();
       const lh = letterheadFor(tenant);
-      if (mode === 'sms') {
+      if (mode === 'sms' || mode === 'whatsapp') {
         try {
-          await otpSender().sendOtp({ to: `+91${mobile}`, otp, hospital: lh.name, minutes: OTP_MINUTES });
+          await deliverOtp(tenant, { to: `+91${mobile}`, otp, hospital: lh.name, minutes: OTP_MINUTES });
         } catch {
-          // Not sent (the SMS company refused it or did not answer): she is told so, nothing about her is logged
+          // Not sent (WhatsApp and the SMS company refused it or did not answer): she is told so, nothing about her is logged
           throw new HttpError(503, 'The OTP could not be sent just now. Please try again in a minute, or sign in with your email and password.', 'OTP_NOT_SENT');
         }
       } else practiceOtp = otp;
     }
     // The same answer for every number (practice mode shows the OTP only when one was made)
-    res.json({ sentTo: `******${mobile.slice(-4)}`, minutes: OTP_MINUTES, ...(practiceOtp ? { practiceOtp } : {}) });
+    // via: how it is meant to go for every number (an SMS after a WhatsApp failure is not told – the same answer)
+    res.json({ sentTo: `******${mobile.slice(-4)}`, minutes: OTP_MINUTES, via: mode, ...(practiceOtp ? { practiceOtp } : {}) });
   });
 
   router.post('/:key/otp/verify', stepLimiter, async (req, res) => {

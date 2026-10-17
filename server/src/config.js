@@ -87,6 +87,14 @@ const schema = z.object({
   WHATSAPP_TEMPLATE: z.string().default('perinexa_document'),
   WHATSAPP_TEMPLATE_LANG: z.string().default('en'),
   WHATSAPP_API_URL: z.url().default('https://graph.facebook.com/v21.0'),
+  // WhatsApp at the desk (owner, 17 Oct 2026 – docs/WHATSAPP_DESK_PLAN.md): the same Cloud API also sends sign-in OTPs
+  // (an AUTHENTICATION template with a "Copy code" button: body {{1}} = the code) and the patient messages – booking,
+  // move, cancellation, reminders, the queue time – through one UTILITY template whose body is
+  // "Message from {{1}}: {{2}}" ({{1}} the hospital, {{2}} the message). WHATSAPP_NUMBER: the hospital's WhatsApp
+  // number as patients know it (shown on the settings page only – the sending number is the phone number id above).
+  WHATSAPP_OTP_TEMPLATE: z.string().default('perinexa_otp'),
+  WHATSAPP_UPDATE_TEMPLATE: z.string().default('perinexa_update'),
+  WHATSAPP_NUMBER: z.string().max(20).default(''),
   // ABDM linking (M1, docs/ABDM_PLAN.md). 'practice' (default): a built-in stand-in, no connection to ABDM.
   // 'sandbox' or 'production': ABDM's V3 APIs with the client ID and secret ABDM issues (never in the code).
   ABDM_MODE: z.enum(['practice', 'sandbox', 'production']).default('practice'),

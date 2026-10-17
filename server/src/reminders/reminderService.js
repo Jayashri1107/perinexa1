@@ -88,6 +88,21 @@ export async function queueAppointmentReminders(tenant, now = new Date()) {
 }
 
 /**
+ * Sends one hospital's due messages now, without waiting for the hourly round (a booking, a move or a cancellation –
+ * docs/WHATSAPP_DESK_PLAN.md). Never fails the caller: a failure stays on the message for the next round.
+ */
+export function sendSoon(tenantId, now = new Date()) {
+  return (async () => {
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant?.messaging?.remindersEnabled || !currentSender()) return null;
+    return sendDueReminders(tenant, now, { withGeneral: false });
+  })().catch((err) => {
+    console.error('Reminders: sending a change at once failed', err?.message ?? err);
+    return null;
+  });
+}
+
+/**
  * Sends one hospital's queued messages that are due. Returns { sent, failed, toSend }.
  * withGeneral: false leaves the general messages ("something is due", "we missed you") waiting – used when they
  * could not be checked first for being still true, and outside the hours they go out.
@@ -118,7 +133,7 @@ export async function sendDueReminders(tenant, now = new Date(), { withGeneral =
     if (!(await claim(m, tenantId, now))) continue;
     m.attempts += 1;
     try {
-      const { providerId } = await sender.send({ channel: m.channel, to: m.to, text: m.text });
+      const { providerId } = await sender.send({ channel: m.channel, to: m.to, text: m.text, hospital: tenant.letterhead?.name || tenant.name });
       m.status = 'sent';
       m.sentAt = now;
       m.providerId = providerId ?? '';

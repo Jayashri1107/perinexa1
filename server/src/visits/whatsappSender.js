@@ -16,8 +16,12 @@ import { config } from '../config.js';
 // DOCUMENT header (the PDF) and a body with one variable, {{1}} – the hospital's name. Suggested body:
 //   "Your document from {{1}} is attached. Please call the hospital if you have any questions."
 
+// Since 17 Oct 2026 (docs/WHATSAPP_DESK_PLAN.md) the same number also sends sign-in OTPs (sendOtp – Meta's
+// AUTHENTICATION template) and short patient messages (textSender – one UTILITY template "Message from {{1}}: {{2}}"),
+// in the same modes. Every send names only the step and the provider's status when it fails.
+
 const practiceOutbox = [];
-/** Tests and practice mode: what was "sent" ({ to, fileName, bytes, hospital }) – never the PDF itself. */
+/** Tests and practice mode: what was "sent" ({ to, fileName, bytes, hospital } or { to, template, params }) – never the PDF itself. */
 export const practiceSent = () => practiceOutbox;
 
 /** How one-click WhatsApp is set up: { mode: '' | 'practice' | 'live', ready }. */
@@ -26,6 +30,63 @@ export function whatsappStatus() {
   if (mode === 'practice') return { mode, ready: true };
   if (mode === 'live') return { mode, ready: Boolean(config.WHATSAPP_PHONE_NUMBER_ID && config.WHATSAPP_ACCESS_TOKEN && config.WHATSAPP_TEMPLATE) };
   return { mode: '', ready: false };
+}
+
+/** The hospital's WhatsApp number as staff know it (server/.env WHATSAPP_NUMBER), or ''. */
+export const whatsappNumberShown = () => config.WHATSAPP_NUMBER ?? '';
+
+// A template parameter may not hold a line break, a tab or more than 4 spaces in a row (Meta's rule).
+const oneLine = (t) => String(t ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {4,}/g, '   ').trim();
+
+/** Sends one approved template with these components. Returns { providerId }. */
+async function sendTemplate({ to, template, components, params }) {
+  const { mode, ready } = whatsappStatus();
+  if (!ready) throw new Error('WhatsApp sending is not set up');
+  if (mode === 'practice') {
+    practiceOutbox.push({ to, template, params });
+    return { providerId: `practice-${practiceOutbox.length}` };
+  }
+  const base = `${config.WHATSAPP_API_URL}/${encodeURIComponent(config.WHATSAPP_PHONE_NUMBER_ID)}`;
+  const message = { messaging_product: 'whatsapp', to: to.replace(/\D/g, ''), type: 'template', template: { name: template, language: { code: config.WHATSAPP_TEMPLATE_LANG }, components } };
+  const res = await fetch(`${base}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${config.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(message),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw refused('message', res, data);
+  return { providerId: String(data.messages?.[0]?.id ?? '') };
+}
+
+/** A sign-in OTP (Meta's authentication template: the code in the body and in the "Copy code" button). */
+export async function sendOtp({ to, otp }) {
+  const code = String(otp);
+  return sendTemplate({
+    to,
+    template: config.WHATSAPP_OTP_TEMPLATE,
+    params: ['otp'], // practice outbox: never the code itself
+    components: [
+      { type: 'body', parameters: [{ type: 'text', text: code }] },
+      { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
+    ],
+  });
+}
+
+/**
+ * The reminders' WhatsApp sender ({ name, channels, send({ to, text, hospital }) }) – the same shape as the SMS
+ * senders (reminders/sender.js) – or null when WhatsApp is not set up. The message goes in the update template.
+ */
+export function textSender() {
+  if (!whatsappStatus().ready || !config.WHATSAPP_UPDATE_TEMPLATE) return null;
+  return {
+    name: 'whatsapp',
+    channels: ['whatsapp'],
+    async send({ to, text, hospital = '' }) {
+      const params = [oneLine(hospital) || 'the hospital', oneLine(text)];
+      return sendTemplate({ to, template: config.WHATSAPP_UPDATE_TEMPLATE, params, components: [{ type: 'body', parameters: params.map((p) => ({ type: 'text', text: p })) }] });
+    },
+  };
 }
 
 const refused = (step, res, data) => new Error(`WhatsApp refused the ${step} (${res.status}${data?.error?.code ? `, code ${data.error.code}` : ''})`);

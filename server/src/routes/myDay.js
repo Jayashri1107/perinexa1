@@ -6,6 +6,7 @@ import { LabOrder } from '../models/LabOrder.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { Visit } from '../models/Visit.js';
+import { handoversToConfirm } from './cashHandover.js';
 
 // "Your day" on a doctor's or RMO's Today (doctor ideas #9, 16 Oct 2026): counts only, of their own work today – the
 // patients they saw, their visits not signed yet, the lab reports waiting for their review (their patients, or what
@@ -45,6 +46,8 @@ myDayRouter.get('/', async (req, res) => {
       notSigned: visits.filter((v) => !v.signed).length,
       labToReview: toReview,
       missedHighRisk,
+      // Doctors: the cash handed over that waits for a confirmation (docs/WHATSAPP_DESK_PLAN.md)
+      cashToConfirm: hasRole(req.membership, 'doctor') ? await handoversToConfirm(req.tenantId) : 0,
     },
   });
 });

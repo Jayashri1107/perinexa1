@@ -47,6 +47,7 @@ import { prescriptionDesignRouter } from './routes/prescriptionDesign.js';
 import { prescriptionSetsRouter } from './routes/prescriptionSets.js';
 import { labPackagesRouter } from './routes/labPackages.js';
 import { labSetupRouter } from './routes/labSetup.js';
+import { cashHandoverRouter } from './routes/cashHandover.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
@@ -163,6 +164,8 @@ export function createApp({
   app.use('/api/arrivals', ...inTenant, arrivalsRouter);
   app.use('/api/appointments', ...inTenant, appointmentsRouter);
   app.use('/api/billing', ...inTenant, billingRouter);
+  // The daily cash handover (routes/cashHandover.js)
+  app.use('/api/cash-handover', ...inTenant, cashHandoverRouter);
   app.use('/api/pharmacy', ...inTenant, pharmacyRouter);
   // Stock while prescribing (doctors and RMOs): in stock / low / out only (routes/pharmacyStock.js)
   app.use('/api/pharmacy-stock', ...inTenant, pharmacyStockRouter);

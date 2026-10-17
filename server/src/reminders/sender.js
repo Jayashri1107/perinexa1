@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { sendOtp as sendWhatsappOtp, textSender, whatsappStatus } from '../visits/whatsappSender.js';
 
 // Who sends the messages (Version 2): nobody (the default – staff send them by hand), or Twilio (SMS and WhatsApp).
 // The keys come from server/.env only. Tests use the "test" sender, which keeps the messages in memory.
@@ -44,11 +45,21 @@ function twilio() {
   };
 }
 
-/** The sender in use, or null when none is set up. */
+/**
+ * The sender in use, or null when none is set up. WhatsApp messages go through the hospital's own WhatsApp Business
+ * number (Meta's Cloud API, visits/whatsappSender.js) when that is set up; SMS (and WhatsApp otherwise) through Twilio.
+ */
 export function currentSender() {
   if (testSender) return testSender;
-  if (config.REMINDER_PROVIDER === 'twilio') return twilio();
-  return null;
+  const base = config.REMINDER_PROVIDER === 'twilio' ? twilio() : null;
+  const wa = textSender();
+  if (!wa) return base;
+  if (!base) return wa;
+  return {
+    name: `${base.name}+${wa.name}`,
+    channels: [...new Set([...base.channels, ...wa.channels])],
+    send: (m) => (m.channel === 'whatsapp' ? wa.send(m) : base.send(m)),
+  };
 }
 
 // ---------- Sign-in OTPs ----------
@@ -96,4 +107,31 @@ export function otpSender() {
   if (s?.channels?.includes('sms')) return { name: s.name, sendOtp: ({ to, otp, hospital, minutes }) => s.send({ channel: 'sms', to, text: otpText(otp, hospital, minutes) }) };
   return null;
 }
+/**
+ * How this hospital's sign-in OTPs go: { whatsapp, sms } – WhatsApp when the hospital admin switched it on and the
+ * WhatsApp number is set up (docs/WHATSAPP_DESK_PLAN.md), SMS when an SMS sender is set up.
+ */
+export function otpChannels(tenant) {
+  return { whatsapp: Boolean(tenant?.messaging?.whatsappOtp) && whatsappStatus().ready, sms: Boolean(otpSender()) };
+}
+
+/**
+ * Sends a sign-in OTP: on WhatsApp first (when on), else – or when WhatsApp fails – by SMS. Returns 'whatsapp' or
+ * 'sms'; throws when neither could send it. Nothing about the patient is written to the log.
+ */
+export async function deliverOtp(tenant, { to, otp, hospital, minutes }) {
+  const ch = otpChannels(tenant);
+  if (ch.whatsapp) {
+    try {
+      await sendWhatsappOtp({ to, otp });
+      return 'whatsapp';
+    } catch (err) {
+      console.error('WhatsApp OTP not sent, trying SMS:', err?.message ?? err);
+      if (!ch.sms) throw err;
+    }
+  }
+  await otpSender().sendOtp({ to, otp, hospital, minutes });
+  return 'sms';
+}
+
 export const otpText = (otp, hospital, minutes) => `${otp} is your OTP to sign in to ${hospital}. It works for ${minutes} minutes. Do not share it.`;

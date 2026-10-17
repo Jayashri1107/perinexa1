@@ -67,6 +67,11 @@ const tenantSchema = new mongoose.Schema(
       // Staff may send a prescription or visit summary to the patient on WhatsApp in one click (4 Oct 2026); it
       // also needs WHATSAPP_MODE in server/.env and the patient's agreement to WhatsApp messages.
       whatsappDocuments: { type: Boolean, default: false },
+      // WhatsApp at the desk (owner, 17 Oct 2026 – docs/WHATSAPP_DESK_PLAN.md): sign-in OTPs on WhatsApp (SMS if it
+      // fails), and the queue time on WhatsApp when a walk-in token is given or a booked patient arrives (only to a
+      // patient who agreed to WhatsApp messages). Both also need WHATSAPP_MODE in server/.env.
+      whatsappOtp: { type: Boolean, default: false },
+      whatsappQueue: { type: Boolean, default: false },
       // The waiting-room screen: a secret in its web address (no login on the TV). null = switched off.
       displayKey: { type: String, default: null },
       // Patients may sign up themselves with their ABHA (16 Oct 2026, docs/PATIENT_SIGNUP_PLAN.md): the code in the

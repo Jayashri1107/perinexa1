@@ -15,6 +15,7 @@ import { HttpError } from '../utils/httpError.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
+import { documentOffer, sendPatientPdf } from '../visits/whatsappDocuments.js';
 
 // Billing (docs/BILLING_PLAN.md, approved 3 Oct 2026), for reception and the hospital admin:
 //  - /api/billing/prices            the price list (everyone who bills reads it; the admin changes it)
@@ -308,6 +309,31 @@ billingRouter.post('/bills/:id/printed', async (req, res) => {
   const bill = await findBill(req, id);
   await audit(req, 'BILL_PRINTED', { details: ids(bill, body.receipt ? { receipt: body.receipt } : {}) });
   res.json({ ok: true });
+});
+
+// ---------- The bill or a receipt on WhatsApp (owner, 17 Oct 2026 – docs/WHATSAPP_DESK_PLAN.md) ----------
+// In one click from the hospital's WhatsApp number, to the mobile number on her record, when she agreed to WhatsApp
+// messages (visits/whatsappDocuments.js). The PDF is made in the browser. The audit log gets ids only.
+
+const billPatient = (req, bill) => Patient.findOne({ tenantId: req.tenantId, _id: bill.patientId }, { mrn: 1, phone: 1, reminders: 1, 'death.on': 1 }).lean();
+
+billingRouter.get('/bills/:id/whatsapp', async (req, res) => {
+  const { id } = parse(z.object({ id: objectId }), req.params);
+  const bill = await findBill(req, id);
+  const { available, reason, practice } = await documentOffer(req.tenantId, await billPatient(req, bill));
+  res.json({ available, reason, practice });
+});
+
+billingRouter.post('/bills/:id/whatsapp', async (req, res) => {
+  const { id } = parse(z.object({ id: objectId }), req.params);
+  const body = parse(z.object({ pdf: z.string().min(100).max(7_500_000), receipt: z.string().max(20).optional() }).strict(), req.body);
+  const bill = await findBill(req, id);
+  if (body.receipt && !(bill.payments ?? []).some((p) => p.receipt === body.receipt)) throw new HttpError(404, 'This receipt is not on the bill.', 'NOT_FOUND');
+  const offer = await documentOffer(req.tenantId, await billPatient(req, bill));
+  // The file's name has the bill or receipt number, never her name
+  await sendPatientPdf(offer, { pdf: body.pdf, fileName: body.receipt ? `Receipt-${body.receipt}.pdf` : `Bill-${bill.number}.pdf` });
+  await audit(req, 'BILL_SENT_WHATSAPP', { details: ids(bill, { ...(body.receipt ? { receipt: body.receipt } : {}), ...(offer.practice ? { practice: true } : {}) }) });
+  res.status(201).json({ sent: true, practice: offer.practice });
 });
 
 // ---------- Insurance or scheme details on a bill (billing extras, 4 Oct 2026) ----------

@@ -34,6 +34,7 @@ import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
 import { hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
+import { documentOffer, sendPatientPdf } from '../visits/whatsappDocuments.js';
 
 // The lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md). Two routers:
 //  - patientLabRouter, /api/patients/:id/lab-orders: a patient's orders and results (those who may see the
@@ -727,6 +728,30 @@ labRouter.post('/orders/:orderId/report-printed', async (req, res) => {
   if (!DONE.includes(order.status)) throw conflict('The report is printed once the results are reported.');
   await audit(req, 'LAB_REPORT_PRINTED', { details: ids(order, { mrn: patient.mrn, ...(body.confidential ? { confidential: true } : {}) }) });
   res.json({ ok: true });
+});
+
+// The printed report on WhatsApp (owner, 17 Oct 2026 – docs/WHATSAPP_DESK_PLAN.md): only once a doctor has reviewed
+// it, as the patient portal; a confidential test (HIV) is never on it (the browser makes the PDF without it, and says
+// so here). To the mobile number on her record, with her agreement to WhatsApp messages (visits/whatsappDocuments.js).
+const whatsappPatient = (req, order) => Patient.findOne({ tenantId: req.tenantId, _id: order.patientId }, { mrn: 1, phone: 1, reminders: 1, 'death.on': 1 }).lean();
+
+labRouter.get('/orders/:orderId/whatsapp', async (req, res) => {
+  const { order, access } = await loadOrder(req);
+  if (!access.view) throw forbidden("You can't see this patient's lab orders.");
+  if (order.status !== 'reviewed') return res.json({ available: false, reason: 'not_reviewed', practice: false });
+  const { available, reason, practice } = await documentOffer(req.tenantId, await whatsappPatient(req, order));
+  res.json({ available, reason, practice });
+});
+
+labRouter.post('/orders/:orderId/whatsapp', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  if (!access.view) throw forbidden("You can't see this patient's lab orders.");
+  const body = parse(z.object({ pdf: z.string().min(100).max(7_500_000), confidential: z.literal(false, 'A confidential test is never sent on WhatsApp.') }).strict(), req.body);
+  if (order.status !== 'reviewed') throw conflict('The report is sent once a doctor has reviewed it.');
+  const offer = await documentOffer(req.tenantId, await whatsappPatient(req, order));
+  await sendPatientPdf(offer, { pdf: body.pdf, fileName: `Lab-report-${order.sampleNo ?? patient.mrn}.pdf` });
+  await audit(req, 'LAB_REPORT_SENT_WHATSAPP', { details: ids(order, { mrn: patient.mrn, ...(offer.practice ? { practice: true } : {}) }) });
+  res.status(201).json({ sent: true, practice: offer.practice });
 });
 
 // A report file (PDF or photo): utils/storedFiles.js checks and stores it.
