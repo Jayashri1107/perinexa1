@@ -94,7 +94,7 @@ describe('the edit form has the tick boxes', () => {
     ]);
     expect(out).toMatch(/Recorded by Dr Sample, /);
     expect(out).toMatch(/Recorded by RMO Sample, /);
-    expect(out).toMatch(/Nothing is\s+ticked by itself\./);
+    expect(out).toMatch(/a tick from voice entry is marked and is saved only when you save\./);
     expect(out).toMatch(/switches on the items her care plan has for it/);
     expect(out).not.toMatch(/switches on its care-plan items/);
     expect(out).toContain('not blood pressure that was high before the pregnancy');

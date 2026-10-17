@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { CodeSlipDocument } from '../patients/PatientMessagesDialog.jsx';
-import { MyCare, PortalScreen, signInState, signedInState } from './PortalPage.jsx';
+import { Booking, MyCare, PortalScreen, signInState, signedInState } from './PortalPage.jsx';
 import {
   PORTAL_LANGUAGES,
   PORTAL_LANGUAGE_NAMES,
@@ -44,7 +44,14 @@ describe('the words of the portal', () => {
         // Word lists (kinds of care-plan items; tabs, flags and bill words of her records): the same entries
         for (const key of keys.filter((k) => table.en[k] && typeof table.en[k] === 'object' && !Array.isArray(table.en[k]))) {
           expect(Object.keys(table[lang][key]).sort(), `${lang}.${key}`).toEqual(Object.keys(table.en[key]).sort());
-          for (const [k, v] of Object.entries(table[lang][key])) if (/[A-Za-z]{3}/.test(table.en[key][k]) && v !== 'UPI') expect(v, `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+          for (const [k, v] of Object.entries(table[lang][key])) {
+            const en = table.en[key][k];
+            expect(typeof v, `${lang}.${key}.${k}`).toBe(typeof en);
+            // (a group inside a group – the Aadhaar words' field names, 17 Oct 2026 – the same entries, in Devanagari)
+            if (typeof v === 'function') expect(v('Sample'), `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+            else if (typeof v === 'object') for (const x of Object.values(v)) expect(x, `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+            else if (/[A-Za-z]{3}/.test(en) && v !== 'UPI') expect(v, `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+          }
         }
       }
     }
@@ -184,5 +191,50 @@ describe('the paper with her portal code', () => {
     expect(text(hi)).toContain('ABCD-EFGH-JKLM');
     expect(hi).not.toContain('lang="mr"');
     expect(text(slip('mr'))).toContain('हा कागद सांभाळून ठेवा.');
+  });
+});
+
+describe('booking online (16 Oct 2026)', () => {
+  const booking = {
+    enabled: true,
+    upcoming: null,
+    from: '2026-10-02',
+    to: '2026-10-31',
+    doctorId: 'a1',
+    doctors: [
+      { id: 'a1', name: 'Dr Sample A', leave: [] },
+      { id: 'b2', name: 'Dr Sample B', leave: [{ from: '2026-10-07', to: '2026-10-07' }] },
+    ],
+  };
+  it('she chooses the doctor (her own first, chosen), then a day; only free times are offered', () => {
+    const out = renderToStaticMarkup(<Booking booking={booking} onChanged={() => {}} lang="en" />);
+    const words = text(out);
+    expect(words).toContain('Book an appointment with Dr Sample A');
+    expect(words).toContain('Doctor');
+    expect(out).toMatch(/aria-pressed="true"[^>]*>Dr Sample A</);
+    expect(out).toMatch(/aria-pressed="false"[^>]*>Dr Sample B</);
+    expect(words).not.toContain('on leave'); // Dr A has no leave
+  });
+  it('one doctor only: no chooser; an older answer without the list still works', () => {
+    const words = text(renderToStaticMarkup(<Booking booking={{ ...booking, doctors: undefined, doctorName: 'Dr Sample A', leave: [] }} onChanged={() => {}} lang="mr" />));
+    expect(words).toContain('Dr Sample A यांची भेट ठरवा');
+    expect(words).not.toContain('डॉक्टर');
+  });
+});
+
+describe('her Home page at a glance (17 Oct 2026)', () => {
+  const summary = { appointment: null, prescriptions: 2, visits: 3, lab: 1, bills: 1, toPayPaise: 30000 };
+  it('the next step is one clear button; four cards with her real counts; a Call button and the emergency line', () => {
+    const data = { hospital: { name: 'Sample Hospital', phone: '020 0000 0000' }, patient: { fullName: 'Sample Mother' }, appointment: null, plan: null };
+    const out = renderToStaticMarkup(<MemoryRouter><MyCare data={data} booking={{ enabled: true, upcoming: null, doctors: [{ id: 'a1', name: 'Dr Sample A', leave: [] }] }} summary={summary} onChanged={() => {}} onSignOut={() => {}} lang="en" /></MemoryRouter>);
+    const words = text(out);
+    expect(out.match(/btn btn-primary/g)).toHaveLength(1);
+    for (const w of ['Book an appointment', 'Your health at a glance', 'Prescriptions', 'Medicines prescribed to you', 'Lab reports', '₹300 to pay', 'None booked', 'Call the hospital', 'In an emergency', 'My details']) expect(words).toContain(w);
+    expect(out).toContain('href="tel:02000000000"');
+  });
+  it('in Marathi', () => {
+    const data = { hospital: { name: 'Sample Hospital', phone: '' }, patient: { fullName: 'Sample Mother' }, appointment: null, plan: null };
+    const words = text(renderToStaticMarkup(<MemoryRouter><MyCare data={data} booking={{ enabled: true, doctors: [{ id: 'a1', name: 'Dr Sample A', leave: [] }] }} summary={{ ...summary, toPayPaise: 0 }} onChanged={() => {}} onSignOut={() => {}} lang="mr" /></MemoryRouter>));
+    for (const w of ['तुमचे आरोग्य एका नजरेत', 'भेट ठरवा', 'काही भरायचे बाकी नाही']) expect(words).toContain(w);
   });
 });

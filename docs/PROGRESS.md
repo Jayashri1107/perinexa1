@@ -52,6 +52,17 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   DRAFT for the owner: the trimester and milestone weeks (7, 8) and the keepsake card's words (10). Ideas 12–16 are
   planned only: `docs/IDEAS_12_16_PLANS.md`. **How to test:** "How to test the doctor ideas" below.
 
+- **Booking with a chosen doctor, Aadhaar QR, and voice picking choices (16–17 Oct 2026, branches `portal-booking`,
+  `aadhaar-qr`, `voice-autoselect` – asked by the owner):** (1) In the patient portal, Appointments: she chooses the
+  doctor (any doctor with OPD timings, her own first), then a day; only free times are shown, with that doctor's leave.
+  (2) New patient / Edit details → "Fill from Aadhaar card": with the patient's agreement, a photo of the card's QR
+  side fills name, age, address, PIN, city, state and the last 4 digits – read in the browser, nothing sent or kept;
+  the UIDAI signature is not checked yet (`docs/AADHAAR_QR.md`; add-on `jsqr` 1.4.0 – run `npm install` after merging).
+  (3) New patient → Dictate: the type of care said ("Pregnancy, Asha Sample, 28 …") opens its form with the rest
+  filled in; on the clinical page, GDM, PIH / pre-eclampsia, twins, placenta praevia and APH said in antenatal care
+  tick "Findings in this pregnancy" (marked From voice; saved only on Save). **How to test:** "How to test booking with
+  a chosen doctor, the Aadhaar QR and voice choices" below.
+
 ## Done
 - Project rules saved in `CLAUDE.md`.
 - **Phase 0 – computer set up.** macOS 26.6 (Intel), Node.js v24 (LTS), npm 11, git 2.50,
@@ -2475,6 +2486,17 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 9. As a doctor, Today → **Your day so far**.
 10. A baby's record → Birth details → **Keepsake card** → type a note → Print.
 11. The first time on each changed screen a short "New:" tip shows; "Got it" hides it; Help → **What's new**.
+
+## How to test booking with a chosen doctor, the Aadhaar QR and voice choices (fake data only)
+
+1. Hospital admin → Patient messages: tick online booking. Give two doctors OPD timings (Appointments → OPD timings).
+   Sign in to the portal as a sample patient → Appointments: both doctors are listed, hers first; pick one and a day –
+   only free times show; book. Reception sees it on that doctor's day as "Patient (online)".
+2. New patient → Pregnancy → "Fill from Aadhaar card": tick the agreement, upload a photo of a **sample** Aadhaar QR
+   (never a real patient's card on a developer's computer). Name, age, address and ID last 4 fill in; check and save.
+3. New patient → Dictate → say or type "Pregnancy, Asha Sample, age 28, phone 98765 43210, GDM on diet, twins" → stop
+   (or "Open this form"): the Pregnancy form opens filled in. As a doctor, Save and continue: GDM and Twins are ticked
+   on the next page, marked "From voice – check".
 
 ## How to test patients' own accounts (fake data only)
 1. As the hospital admin: Hospital admin → Patient messages → tick "Let patients see their next appointment and care

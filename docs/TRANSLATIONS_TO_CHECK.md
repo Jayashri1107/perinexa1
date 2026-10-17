@@ -321,6 +321,8 @@ File: `client/src/pages/portal/portalWords.js` (the address /portal; the switch 
 | `cancelAppointment` | Cancel this appointment | ही भेट रद्द करा | यह मुलाक़ात रद्द करें |
 | `callToBookOnline` | To book an appointment, please call the hospital. | भेट ठरवण्यासाठी कृपया रुग्णालयाला फोन करा. | मुलाक़ात तय करने के लिए कृपया अस्पताल को फ़ोन करें। |
 | `bookWith` | Book an appointment with {doctor} | {doctor} यांची भेट ठरवा | {doctor} से मुलाक़ात तय करें |
+| `chooseDoctor` (added 16 Oct 2026) | Doctor | डॉक्टर | डॉक्टर |
+| `onlyFree` (added 16 Oct 2026) | Only free times are shown. | फक्त उपलब्ध वेळा दाखवल्या आहेत. | केवल ख़ाली समय दिखाए गए हैं। |
 | `day` | Day | दिवस | दिन |
 | `noFreeTime` | No free time on this day. Please choose another day. | या दिवशी वेळ उपलब्ध नाही. कृपया दुसरा दिवस निवडा. | इस दिन कोई समय ख़ाली नहीं है। कृपया कोई और दिन चुनें। |
 | `doctorOnLeave` (added 15 Oct 2026) | {doctor} is on leave: {dates}. No bookings on these days. | {doctor} रजेवर आहेत: {dates}. या दिवसांत भेट ठरवता येणार नाही. | {doctor} छुट्टी पर हैं: {dates}। इन दिनों मुलाक़ात तय नहीं हो सकती। |
@@ -482,3 +484,47 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | refusal `OTP_OFF` | (the server's English message) | OTP ने आत येण्याची सोय अजून नाही. कृपया ईमेल आणि पासवर्ड वापरा. | OTP से अंदर आने की सुविधा अभी नहीं है। कृपया ईमेल और पासवर्ड का उपयोग करें। |
 | refusal `VALIDATION` | (the server's English message) | कृपया तुम्ही लिहिलेले तपासा. | कृपया आपने जो लिखा उसे जाँचें। |
 | refusal `NOT_FOUND` | (the server's English message) | हे पान उपलब्ध नाही. पत्ता तपासा, किंवा रुग्णालयाला फोन करा. | यह पेज उपलब्ध नहीं है। पता जाँचें, या अस्पताल को फ़ोन करें। |
+| `aadhaar.open` (added 17 Oct 2026) | Fill from my Aadhaar card | माझ्या आधार कार्डवरून भरा | मेरे आधार कार्ड से भरें |
+| `aadhaar.intro` (added 17 Oct 2026) | Upload a photo of the side of your Aadhaar card with the QR code. It is read on this phone or computer: the picture is not saved or sent anywhere. Only your name, age and address are used. | आधार कार्डच्या QR कोड असलेल्या बाजूचा फोटो अपलोड करा. तो याच फोन किंवा संगणकावर वाचला जातो: फोटो साठवला जात नाही किंवा कुठेही पाठवला जात नाही. फक्त तुमचे नाव, वय आणि पत्ता वापरले जातात. | आधार कार्ड की QR कोड वाली तरफ़ की फ़ोटो अपलोड करें। इसे इसी फ़ोन या कंप्यूटर पर पढ़ा जाता है: फ़ोटो न रखी जाती है, न कहीं भेजी जाती है। केवल आपका नाम, उम्र और पता इस्तेमाल होते हैं। |
+| `aadhaar.agree` (added 17 Oct 2026) | I agree to my Aadhaar card being read for these details | या माहितीसाठी माझे आधार कार्ड वाचण्यास माझी संमती आहे | इन जानकारियों के लिए मेरा आधार कार्ड पढ़े जाने पर मेरी सहमति है |
+| `aadhaar.upload` (added 17 Oct 2026) | Upload photo of the card | कार्डचा फोटो अपलोड करा | कार्ड की फ़ोटो अपलोड करें |
+| `aadhaar.reading` (added 17 Oct 2026) | Reading the QR code… | QR कोड वाचत आहे… | QR कोड पढ़ा जा रहा है… |
+| `aadhaar.close` (added 17 Oct 2026) | Close | बंद करा | बंद करें |
+| `aadhaar.filled` (added 17 Oct 2026) | Filled from your Aadhaar card: {list}. Please check them. | तुमच्या आधार कार्डवरून भरले: {list}. कृपया तपासा. | आपके आधार कार्ड से भरा गया: {list}। कृपया जाँच लें। |
+| `aadhaar.noQr` (added 17 Oct 2026) | No QR code was found in this picture. Please upload a clearer photo of the side with the QR code, or type your details. | या फोटोत QR कोड सापडला नाही. कृपया QR कोड असलेल्या बाजूचा अधिक स्पष्ट फोटो अपलोड करा, किंवा माहिती टाइप करा. | इस फ़ोटो में QR कोड नहीं मिला। कृपया QR कोड वाली तरफ़ की साफ़ फ़ोटो अपलोड करें, या अपनी जानकारी टाइप करें। |
+| `aadhaar.notAadhaar` (added 17 Oct 2026) | This is not an Aadhaar QR code. Please type your details. | हा आधार QR कोड नाही. कृपया तुमची माहिती टाइप करा. | यह आधार QR कोड नहीं है। कृपया अपनी जानकारी टाइप करें। |
+| `aadhaar.notImage` (added 17 Oct 2026) | This file could not be opened as a picture. Please upload a photo or a screenshot. | ही फाइल फोटो म्हणून उघडता आली नाही. कृपया फोटो किंवा स्क्रीनशॉट अपलोड करा. | यह फ़ाइल फ़ोटो की तरह नहीं खुल सकी। कृपया फ़ोटो या स्क्रीनशॉट अपलोड करें। |
+| `aadhaar.fields` (added 17 Oct 2026) | name, age, address | नाव, वय, पत्ता | नाम, उम्र, पता |
+| `tabs.profile` (added 17 Oct 2026) | My details | माझी माहिती | मेरी जानकारी |
+| `home.glance` (added 17 Oct 2026) | Your health at a glance | तुमचे आरोग्य एका नजरेत | आपकी सेहत एक नज़र में |
+| `home.book` (added 17 Oct 2026) | Book an appointment | भेट ठरवा | मुलाक़ात तय करें |
+| `home.viewAppointments` (added 17 Oct 2026) | Your appointments | तुमच्या भेटी | आपकी मुलाक़ातें |
+| `home.withDoctor` (added 17 Oct 2026) | With {x} | {x} यांच्याकडे | {x} के साथ |
+| `home.noneBooked` (added 17 Oct 2026) | None booked | भेट ठरलेली नाही | कोई मुलाक़ात तय नहीं |
+| `home.toPay` (added 17 Oct 2026) | {x} to pay | {x} भरायचे बाकी | {x} चुकाना बाकी |
+| `home.allPaid` (added 17 Oct 2026) | Nothing to pay | काही भरायचे बाकी नाही | कुछ चुकाना बाकी नहीं |
+| `home.about.appointments` (added 17 Oct 2026) | Book and see your visits | भेट ठरवा आणि तुमच्या भेटी पाहा | मुलाक़ात तय करें और अपनी मुलाक़ातें देखें |
+| `home.about.prescriptions` (added 17 Oct 2026) | Medicines prescribed to you | तुम्हाला दिलेली औषधे | आपको दी गई दवाइयाँ |
+| `home.about.lab` (added 17 Oct 2026) | Your test results | तुमचे तपासणी निकाल | आपकी जाँच के नतीजे |
+| `home.about.bills` (added 17 Oct 2026) | Charges and payments | शुल्क आणि भरणा | शुल्क और भुगतान |
+| `home.help` (added 17 Oct 2026) | Need help? | मदत हवी आहे? | मदद चाहिए? |
+| `home.callHospital` (added 17 Oct 2026) | Call the hospital | रुग्णालयाला फोन करा | अस्पताल को फ़ोन करें |
+| `home.appointmentsTitle` (added 17 Oct 2026) | Your appointments in the last year and to come | गेल्या वर्षातील आणि पुढील तुमच्या भेटी | पिछले साल की और आने वाली आपकी मुलाक़ातें |
+| `home.noAppointments` (added 17 Oct 2026) | No appointments in the last year. | गेल्या वर्षात कोणतीही भेट नाही. | पिछले साल कोई मुलाक़ात नहीं। |
+| `home.bookedOnline` (added 17 Oct 2026) | booked online | ऑनलाइन ठरवली | ऑनलाइन तय की गई |
+| `home.statuses.upcoming` (added 17 Oct 2026) | Upcoming | पुढील | आने वाली |
+| `home.statuses.seen` (added 17 Oct 2026) | Seen by the doctor | डॉक्टरांनी पाहिले | डॉक्टर ने देखा |
+| `home.statuses.arrived` (added 17 Oct 2026) | Arrived | आल्या | आ गईं |
+| `home.statuses.missed` (added 17 Oct 2026) | Missed | आल्या नाहीत | नहीं आईं |
+| `home.statuses.cancelled` (added 17 Oct 2026) | Cancelled | रद्द | रद्द |
+| `home.billsSummary.total` (added 17 Oct 2026) | Total billed | एकूण बिल | कुल बिल |
+| `home.billsSummary.paid` (added 17 Oct 2026) | Paid | भरले | चुकाया |
+| `home.billsSummary.due` (added 17 Oct 2026) | Still to pay | भरायचे बाकी | चुकाना बाकी |
+| `home.profile.fullName` (added 17 Oct 2026) | Name | नाव | नाम |
+| `home.profile.mrn` (added 17 Oct 2026) | Hospital number | रुग्णालय क्रमांक | अस्पताल नंबर |
+| `home.profile.age` (added 17 Oct 2026) | Age (years) | वय (वर्षे) | उम्र (साल) |
+| `home.profile.phone` (added 17 Oct 2026) | Mobile | मोबाइल | मोबाइल |
+| `home.profile.email` (added 17 Oct 2026) | Email | ईमेल | ईमेल |
+| `home.profile.address` (added 17 Oct 2026) | Address | पत्ता | पता |
+| `home.profile.hospital` (added 17 Oct 2026) | Hospital | रुग्णालय | अस्पताल |
+| `home.profileNote` (added 17 Oct 2026) | To change these details, please call or visit the hospital reception. They check who you are first. | ही माहिती बदलण्यासाठी कृपया रुग्णालयाच्या स्वागत कक्षाला फोन करा किंवा भेट द्या. ते आधी तुमची ओळख तपासतात. | यह जानकारी बदलने के लिए कृपया अस्पताल के रिसेप्शन पर फ़ोन करें या जाएँ। वे पहले आपकी पहचान जाँचते हैं। |

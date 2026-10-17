@@ -31,6 +31,7 @@ import {
   datesWarning,
 } from './patientFormat.js';
 import { DictateButton, VoiceBar, VoiceEntry, useVoiceOpen } from './VoiceEntry.jsx';
+import { AadhaarQrFill } from './AadhaarQrFill.jsx';
 import { AbortionSection, abortionEmpty, abortionFindingErrors, abortionPayload, abortionTextErrors, abortionValues, localToday } from './AbortionSection.jsx';
 import { THREATENED_HINT, currentLossFindings, lmpCarryOver, lossRulesOn, obstetricHint, presentationWeeks } from './abortionFormat.js';
 import { mentionsFetalSex, PCPNDT_MESSAGE } from '../../pcpndtWords.js';
@@ -336,6 +337,7 @@ function MotherPicker({ value, initial, onChange, error, suggest }) {
  * - voice: show voice entry – beside the form on a wide screen (it stays in view while the form scrolls), above it
  *   on a narrow one
  * - dictated: details said on the previous page ({ values, paths, found }), filled in and marked "From voice"
+ * - spoken: what was said on the New patient chooser, read into the form when it opens (voice entry open)
  * - onDictatedClinical(details | null): registration – clinical details said on this page, for the next page
  * - anotherLabel: registration without a clinical page – a second button ("Save and register another"); onSubmit
  *   then gets { another: true } as its second argument when it was pressed
@@ -352,6 +354,7 @@ export function PatientForm({
   cancelLabel = 'Cancel',
   voice = false,
   dictated,
+  spoken = '',
   onDictatedClinical,
   prefill = null, // a new patient's details already known (a quick booking: name, phone, doctor)
   anotherLabel = null,
@@ -372,7 +375,7 @@ export function PatientForm({
   const [voiceStatus, setVoiceStatus] = useState(null); // the recording's status, for the bar above Save
   const [lmpCopied, setLmpCopied] = useState(''); // the LMP copied from the pregnancy loss (to be checked), or ''
   const voiceControl = useRef(null);
-  const [voiceOpen, setVoiceOpen] = useVoiceOpen(Boolean(dictated));
+  const [voiceOpen, setVoiceOpen] = useVoiceOpen(Boolean(dictated) || Boolean(spoken));
   // A new reading of what was said never undoes the person's own work (plan 1.7), on this form only: fields changed by
   // hand, ticks taken off, notes already added, answers (see newFillMemory in dictation.js)
   const memory = useRef(null);
@@ -410,6 +413,14 @@ export function PatientForm({
   const vc = (path) => (voiced(path) ? 'voice-filled' : undefined);
   const vm = (path) => (voiced(path) ? <VoiceMark /> : null);
 
+  // From the Aadhaar QR (AadhaarQrFill.jsx): only what the card holds replaces what is in the form
+  const fillFromAadhaar = (a) =>
+    setV((cur) => {
+      const out = { ...cur };
+      for (const k of ['fullName', 'ageYears', 'address', 'pinCode', 'city', 'state']) if (a[k]) out[k] = a[k];
+      if (a.last4) out.idProof = { kind: 'aadhaar', last4: a.last4 };
+      return out;
+    });
   const set = (key) => (e) => {
     unmark(key);
     setV({ ...v, [key]: e.target.value });
@@ -442,8 +453,11 @@ export function PatientForm({
     const conditions = v.medical.conditions.includes(c) ? v.medical.conditions.filter((x) => x !== c) : [...v.medical.conditions, c];
     setV({ ...v, medical: { ...v.medical, conditions, conditionsReviewed: conditions.length ? false : v.medical.conditionsReviewed } });
   };
-  // A finding in this pregnancy, ticked or unticked by hand (voice entry never ticks one)
+  // A finding in this pregnancy, ticked or unticked by hand (voice entry ticks one when it is said, 16 Oct 2026; one
+  // unticked by hand is not ticked again by the next recording)
   const toggleFinding = (k) => {
+    noteTick(memory.current, `pregnancy.findings.${k}`, v.pregnancy.findings.includes(k));
+    unmark(`pregnancy.findings.${k}`);
     const list = v.pregnancy.findings;
     setV({ ...v, pregnancy: { ...v.pregnancy, findings: list.includes(k) ? list.filter((x) => x !== k) : [...list, k] } });
   };
@@ -610,6 +624,7 @@ export function PatientForm({
               canNote={clinical}
               example={voiceExample(part, type, clinical)}
               initial={dictated ? { here: dictated.found, later: [], notes: [], carried: true } : null}
+              initialText={spoken}
             />
           </div>
         )}
@@ -624,6 +639,7 @@ export function PatientForm({
               {/* In small groups (owner, 13 Oct 2026): who she is, how to reach her, someone to call, the ID seen, her doctor */}
               <div className="pf-group">
                 <h3 className="pf-group-title">Basic details</h3>
+                {!isNewborn && access.canEditIdentity && <AadhaarQrFill onFill={fillFromAadhaar} />}
                 <div className={isEdit ? 'form-grid form-grid-fill' : 'form-grid'}>
                   {/* Editing a record: the type of care can be changed here. Registering: it was chosen from the New patient menu. */}
                   {isEdit && (
@@ -877,6 +893,7 @@ export function PatientForm({
                             <input type="checkbox" checked={ticked} onChange={() => toggleFinding(k)} />
                             <span>
                               {label}
+                              {vm(`pregnancy.findings.${k}`)}
                               {PREGNANCY_FINDING_HINTS[k] && <span className="pf-finding-by">{PREGNANCY_FINDING_HINTS[k]}</span>}
                               {stored && ticked && (
                                 <span className="pf-finding-by">
@@ -889,9 +906,9 @@ export function PatientForm({
                       })}
                     </div>
                     <p className="hint">
-                      Tick what has been found in this pregnancy, and untick it if it turns out not to be so. Each tick is saved with your name and the date. It counts
+                      Tick what has been found in this pregnancy, and untick it if it turns out not to be so. Each tick is saved with your name and the date; a tick from voice entry is marked and is saved only when you save. It counts
                       for the risk level (the Risk card shows the reason) and switches on the items her care plan has for it, as the hospital's risk rules and care-plan
-                      template say. Nothing is ticked by itself.
+                      template say.
                     </p>
                     <FieldError>{fe('pregnancy.findings')}</FieldError>
                   </fieldset>

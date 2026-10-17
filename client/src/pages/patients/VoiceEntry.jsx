@@ -9,6 +9,7 @@ import { CONDITION_LABELS, PAST_COMPLICATION_LABELS } from './patientFormat.js';
 import {
   ACTIVITY_EVENT,
   ERROR_MESSAGES,
+  PREGNANCY_CARE,
   MASKED_WORDS_NOTE,
   PAUSED_REASONS,
   careTypeChange,
@@ -234,6 +235,8 @@ function Question({ question, onAnswer }) {
  * - canNote: this person may add notes (clinical details)
  * - example: an example of what to say on this page
  * - initial: what was already filled when the page opened (details carried over from the previous page)
+ * - initialText: what was said on the New patient chooser (the type of care was picked from it): put in the box and
+ *   read once when the card opens
  * Optional, for other forms that use the same card (e.g. a visit):
  * - read(text, { careType, words, voice, keep }): reads the text; returns the same shape as extractPatientDetails
  * - answerWith(question, value): turns an answer (or "note:…") into a result for onAnswer (default answerToResult)
@@ -286,6 +289,8 @@ export function VoiceEntry({
   canNote,
   example,
   initial,
+  initialText = '',
+  emptyNote = 'No details could be read from the text. Check the words in the box or type the details.', // null: not shown
   read = extractPatientDetails,
   answerWith,
   noteTo = NOTE_TO,
@@ -421,6 +426,14 @@ export function VoiceEntry({
   useEffect(() => {
     latest.current = { fill, speech, text, careType, words, micId, finishAi };
   });
+
+  // Said on the New patient chooser: read into this form once (the same as typed text)
+  useEffect(() => {
+    if (!initialText.trim()) return;
+    fromPregnancy.current = PREGNANCY_CARE.includes(careType);
+    setText(initialText);
+    fill(initialText);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     alive.current = true;
@@ -1108,11 +1121,7 @@ export function VoiceEntry({
             </ul>
           </section>
         )}
-        {nothing && (
-          <Alert type="info">
-            No details could be read from the text. Check the words in the box or type the details.
-          </Alert>
-        )}
+        {nothing && emptyNote && <Alert type="info">{emptyNote}</Alert>}
         {summary?.dropped && <p className="hint">Medical details that were said are not used here: a doctor or RMO adds them.</p>}
         {summary?.skippedInfo && <p className="hint">Name, age and contact details are not changed on this page – use Edit details on the record.</p>}
         {summary?.notes.length > 0 && (

@@ -8,6 +8,7 @@ import { RxDocument, rxPage } from '../visits/RxDocument.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
 import { portalError } from './portalWords.js';
+import { BillsSummary } from './PortalHome.jsx';
 
 // Her own records in the patient portal (docs/PATIENT_SIGNUP_PLAN.md): prescriptions, lab reports, visits and bills.
 // The server sends only what may be shown (signed visits as printed, reviewed lab reports, open bills – never notes,
@@ -178,6 +179,8 @@ function BillList({ data, lang }) {
   const w = accountWords(lang);
   if (!data.bills.length) return <p className="muted">{w.noBills}</p>;
   return (
+    <>
+    <BillsSummary bills={data.bills} lang={lang} />
     <ul className="portal-records">
       {data.bills.map((b) => (
         <li key={b.id} className="portal-record">
@@ -241,6 +244,7 @@ function BillList({ data, lang }) {
         </li>
       ))}
     </ul>
+    </>
   );
 }
 

@@ -511,7 +511,7 @@ describe('what the summary says was filled (splitFound)', () => {
       obstetric: { gravida: '3' },
       notes: 'Seen with husband',
     });
-    expect(lines(a.filled)).toEqual(['Full name: Asha Sample', 'Age: 29', 'LMP: 5 Mar 2026', 'Obstetric history: P1 L1 A0', 'Existing conditions: Anaemia']);
+    expect(lines(a.filled)).toEqual(['Full name: Asha Sample', 'Age: 29', 'LMP: 5 Mar 2026', 'Findings in this pregnancy: Twins or more', 'Obstetric history: P1 L1 A0', 'Existing conditions: Anaemia']);
     expect(lines(a.notChanged)).toEqual(['Obstetric history: G2', 'Existing conditions: Asthma', 'Notes: Twin pregnancy']);
     // nothing left alone: the same list
     expect(splitFound(r.found, r.values, {}, current)).toEqual({ filled: r.found, notChanged: [] });
@@ -734,5 +734,29 @@ describe('an abortion said with how long ago', () => {
     const r = read('no previous LSCS 3 years back normal delivery');
     expect(r.values.obstetric.previousCaesareans).toBe('0');
     expect(r.values.notes).toBeUndefined();
+  });
+});
+
+describe('findings in this pregnancy said aloud (16 Oct 2026)', () => {
+  const said = (text, careType = 'antenatal') => extractPatientDetails(text, { careType, now, voice: true });
+  it('antenatal: GDM, twins, PIH, praevia and APH tick their boxes; the notes stay', () => {
+    const r = said('GDM on diet, twins DCDA, PIH, low lying placenta, APH');
+    expect(r.values.pregnancy.findings).toEqual(['gdm', 'hypertension', 'multiple', 'placenta_praevia', 'bleeding']);
+    expect(r.values.notes).toMatch(/Gestational diabetes/);
+    expect(r.found.find((x) => x.path === 'pregnancy.findings').text).toBe(
+      'Gestational diabetes (GDM), High blood pressure in this pregnancy, Twins or more, Low-lying placenta / placenta praevia, Bleeding in this pregnancy',
+    );
+  });
+  it('not when said about a previous pregnancy, when denied, or in other care', () => {
+    expect(said('previous GDM').values.pregnancy?.findings).toBeUndefined();
+    expect(said('no twins').values.pregnancy?.findings).toBeUndefined();
+    expect(said('twins', 'gynaecology').values.pregnancy?.findings).toBeUndefined();
+  });
+  it('a box unticked by hand is not ticked again by the next recording; ticks are only added', () => {
+    const r = said('twins and GDM');
+    const v = { pregnancy: { findings: ['bleeding'] }, newborn: {}, abortion: {}, obstetric: {}, medical: {} };
+    const out = mergeDictated(v, r.values, r.paths, { unticked: ['pregnancy.findings.gdm'] });
+    expect(out.pregnancy.findings).toEqual(['bleeding', 'multiple']);
+    expect(dictatedFields(r.values, ['pregnancy.findings'], { unticked: ['pregnancy.findings.gdm'] })).toEqual(['pregnancy.findings.multiple']);
   });
 });

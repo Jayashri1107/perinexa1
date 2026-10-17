@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { TERMS } from './obgyTerms.js';
-import { extractPatientDetails } from './dictation.js';
+import { extractPatientDetails, noteFinding } from './dictation.js';
 import corpusA from './testdata/voiceCorpusA.json';
 import corpusB from './testdata/voiceCorpusB.json';
 import regions from './testdata/voiceRegions.json';
@@ -96,6 +96,12 @@ function check(expected, r, strictPaths) {
   // Anything else filled is wrong: an extra field, tick, other condition or note
   for (const [path, have] of Object.entries(got)) {
     if (strictPaths && !strictPaths.has(path)) continue;
+    // A "Findings in this pregnancy" tick comes with its note (16 Oct 2026): right when that note was expected
+    if (path === 'pregnancy.findings') {
+      const notes = (got.notes ?? []).filter((n) => (expected.values.notes ?? []).some((w) => new RegExp(w, 'i').test(n)) || expected.allow?.includes('notes'));
+      for (const item of have) if (!notes.some((n) => noteFinding(n) === item)) wrong.push(`extra ${path}: ${item}`);
+      continue;
+    }
     if (LISTS.has(path) || TEXT_LISTS.has(path)) {
       const want = expected.values[path] ?? [];
       const confirmed = Object.keys(confirm).filter((p) => p.startsWith(`${path}.`)).map((p) => p.slice(path.length + 1));

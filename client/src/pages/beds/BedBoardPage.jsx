@@ -9,6 +9,8 @@ import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/
 import { Alert, Field, StatusPill, formatDateTime, hasRole, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
+import { canRegisterPatients } from '../../platform/modules.js';
+import { AdmitRegister } from './AdmitRegister.jsx';
 import { REASONS, freeBeds, nowLocal } from './bedFormat.js';
 
 // The bed board (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): each ward's beds, free or occupied, with who
@@ -313,6 +315,7 @@ function Occupant({ stay, canBill, onMove, moveLabel = 'Transfer' }) {
  * Admit a patient: to the bed clicked on the board (bed), or – from her record (patient) – to a free bed chosen here.
  */
 export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, onClose, onAdmitted }) {
+  const { activeMembership } = useAuth();
   const [patient, setPatient] = useState(preset);
   const freeList = useFetch(fixedBed ? null : '/beds', { free: '1' });
   const [bedId, setBedId] = useState('');
@@ -365,6 +368,7 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, onCl
       )}
       <Alert type="error">{error}</Alert>
       {!patient && <PatientFinder onPick={setPatient} />}
+      {!patient && canRegisterPatients(activeMembership?.roles ?? []) && <AdmitRegister onRegistered={setPatient} />}
       {patient && (
         <>
           <div className="appt-chosen">
