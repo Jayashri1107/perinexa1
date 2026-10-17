@@ -182,7 +182,7 @@ function SignUp({ hospitalKey, hospital, lang, onBack }) {
       noValidate
     >
       <Refusal error={step.error} lang={lang} />
-      <AadhaarQrFill onFill={fromAadhaar} words={w.aadhaar} />
+      <AadhaarQrFill onFill={fromAadhaar} words={w.aadhaar} scanner={false} />
       <Field label={w.fullName} id="signup-name" error={fields.fullName}>
         <input id="signup-name" autoComplete="name" value={form.fullName} onChange={set('fullName')} maxLength={150} />
       </Field>
