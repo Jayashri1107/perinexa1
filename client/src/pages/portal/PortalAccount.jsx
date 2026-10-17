@@ -3,6 +3,7 @@ import { ArrowRight, CircleCheck, KeyRound, Mail, Smartphone, UserPlus } from 'l
 import { Link } from 'react-router-dom';
 import { PasswordInput } from '../../components/PasswordInput.jsx';
 import { Alert, Field } from '../../components/ui.jsx';
+import { AadhaarQrFill } from '../patients/AadhaarQrFill.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
 import { portalError, portalWords } from './portalWords.js';
@@ -146,6 +147,14 @@ function SignUp({ hospitalKey, hospital, lang, onBack }) {
   const [done, setDone] = useState(false);
   const step = useStep();
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+  // From her Aadhaar card's QR (read in her browser): name, age and the address in one line – never the number
+  const fromAadhaar = (a) =>
+    setForm((cur) => ({
+      ...cur,
+      ...(a.fullName ? { fullName: a.fullName } : {}),
+      ...(a.ageYears ? { ageYears: a.ageYears } : {}),
+      ...(a.address || a.city ? { address: [a.address, a.city, a.state, a.pinCode].filter(Boolean).join(', ').slice(0, 300) } : {}),
+    }));
   const fields = step.error?.fields ?? {};
   if (done) {
     return (
@@ -173,6 +182,7 @@ function SignUp({ hospitalKey, hospital, lang, onBack }) {
       noValidate
     >
       <Refusal error={step.error} lang={lang} />
+      <AadhaarQrFill onFill={fromAadhaar} words={w.aadhaar} />
       <Field label={w.fullName} id="signup-name" error={fields.fullName}>
         <input id="signup-name" autoComplete="name" value={form.fullName} onChange={set('fullName')} maxLength={150} />
       </Field>

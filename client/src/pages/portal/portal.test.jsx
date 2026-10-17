@@ -44,7 +44,14 @@ describe('the words of the portal', () => {
         // Word lists (kinds of care-plan items; tabs, flags and bill words of her records): the same entries
         for (const key of keys.filter((k) => table.en[k] && typeof table.en[k] === 'object' && !Array.isArray(table.en[k]))) {
           expect(Object.keys(table[lang][key]).sort(), `${lang}.${key}`).toEqual(Object.keys(table.en[key]).sort());
-          for (const [k, v] of Object.entries(table[lang][key])) if (/[A-Za-z]{3}/.test(table.en[key][k]) && v !== 'UPI') expect(v, `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+          for (const [k, v] of Object.entries(table[lang][key])) {
+            const en = table.en[key][k];
+            expect(typeof v, `${lang}.${key}.${k}`).toBe(typeof en);
+            // (a group inside a group – the Aadhaar words' field names, 17 Oct 2026 – the same entries, in Devanagari)
+            if (typeof v === 'function') expect(v('Sample'), `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+            else if (typeof v === 'object') for (const x of Object.values(v)) expect(x, `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+            else if (/[A-Za-z]{3}/.test(en) && v !== 'UPI') expect(v, `${lang}.${key}.${k}`).toMatch(DEVANAGARI);
+          }
         }
       }
     }
