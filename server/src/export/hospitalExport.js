@@ -161,7 +161,7 @@ const NEVER_KEYS_PATTERN = new RegExp(`"(${[...NEVER_KEYS].join('|')})"\\s*:`);
  * The secret settings of server/.env (and the passwords the seed scripts read from it). None of their values may
  * appear in an exported file; values shorter than 8 characters are not secrets and are not looked for.
  */
-const SECRET_SETTINGS = ['JWT_SECRET', 'MONGO_URI', 'OPENAI_API_KEY', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN', 'ABDM_CLIENT_ID', 'ABDM_CLIENT_SECRET', 'SUPER_ADMIN_PASSWORD', 'ADMIN_PASSWORD', 'DEMO_PASSWORD'];
+const SECRET_SETTINGS = ['JWT_SECRET', 'MONGO_URI', 'OPENAI_API_KEY', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'MSG91_AUTH_KEY', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN', 'ABDM_CLIENT_ID', 'ABDM_CLIENT_SECRET', 'SUPER_ADMIN_PASSWORD', 'ADMIN_PASSWORD', 'DEMO_PASSWORD'];
 export const secretSettings = (env = process.env) =>
   SECRET_SETTINGS.map((name) => [name, String(env[name] ?? '').trim()]).filter(([, value]) => value.length >= 8);
 

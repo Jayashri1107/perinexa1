@@ -68,6 +68,10 @@ const schema = z.object({
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_SMS_FROM: z.string().optional(), // e.g. +1… or an approved sender id
   TWILIO_WHATSAPP_FROM: z.string().optional(), // e.g. whatsapp:+1…
+  // Patients' sign-in OTPs by SMS through MSG91 (India; owner, 17 Oct 2026), with one DLT-approved template – used
+  // for OTPs only (reminders are free text: the outbox or Twilio, above). Both empty = OTPs go by REMINDER_PROVIDER.
+  MSG91_AUTH_KEY: z.string().optional(),
+  MSG91_OTP_TEMPLATE_ID: z.string().optional(),
   // The hour (hospital time, 0–23) from which the next day's appointment reminders are sent.
   REMINDER_SEND_HOUR: z.coerce.number().int().min(0).max(23).default(10),
   // The hour (hospital time, 1–24) from which the two general messages ("a check-up or test is due", "we missed you")
