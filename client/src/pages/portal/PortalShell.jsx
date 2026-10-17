@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Building2, CalendarDays, House, KeyRound, LogOut, Menu, X } from 'lucide-react';
+import { Building2, CalendarDays, House, KeyRound, LogOut, Menu, UserRound, X } from 'lucide-react';
 import appIcon from '../../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../../assets/brand/perinexa-logo-reversed.png';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -19,6 +19,7 @@ export function portalSections(canChangePassword) {
     { key: 'home', Icon: House },
     { key: 'appointments', Icon: CalendarDays },
     ...RECORD_TABS.map((key) => ({ key, Icon: recordIcon(key) })),
+    { key: 'profile', Icon: UserRound },
     ...(canChangePassword ? [{ key: 'password', Icon: KeyRound }] : []),
   ];
 }

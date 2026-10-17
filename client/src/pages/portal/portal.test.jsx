@@ -221,3 +221,20 @@ describe('booking online (16 Oct 2026)', () => {
     expect(words).not.toContain('डॉक्टर');
   });
 });
+
+describe('her Home page at a glance (17 Oct 2026)', () => {
+  const summary = { appointment: null, prescriptions: 2, visits: 3, lab: 1, bills: 1, toPayPaise: 30000 };
+  it('the next step is one clear button; four cards with her real counts; a Call button and the emergency line', () => {
+    const data = { hospital: { name: 'Sample Hospital', phone: '020 0000 0000' }, patient: { fullName: 'Sample Mother' }, appointment: null, plan: null };
+    const out = renderToStaticMarkup(<MemoryRouter><MyCare data={data} booking={{ enabled: true, upcoming: null, doctors: [{ id: 'a1', name: 'Dr Sample A', leave: [] }] }} summary={summary} onChanged={() => {}} onSignOut={() => {}} lang="en" /></MemoryRouter>);
+    const words = text(out);
+    expect(out.match(/btn btn-primary/g)).toHaveLength(1);
+    for (const w of ['Book an appointment', 'Your health at a glance', 'Prescriptions', 'Medicines prescribed to you', 'Lab reports', '₹300 to pay', 'None booked', 'Call the hospital', 'In an emergency', 'My details']) expect(words).toContain(w);
+    expect(out).toContain('href="tel:02000000000"');
+  });
+  it('in Marathi', () => {
+    const data = { hospital: { name: 'Sample Hospital', phone: '' }, patient: { fullName: 'Sample Mother' }, appointment: null, plan: null };
+    const words = text(renderToStaticMarkup(<MemoryRouter><MyCare data={data} booking={{ enabled: true, doctors: [{ id: 'a1', name: 'Dr Sample A', leave: [] }] }} summary={{ ...summary, toPayPaise: 0 }} onChanged={() => {}} onSignOut={() => {}} lang="mr" /></MemoryRouter>));
+    for (const w of ['तुमचे आरोग्य एका नजरेत', 'भेट ठरवा', 'काही भरायचे बाकी नाही']) expect(words).toContain(w);
+  });
+});

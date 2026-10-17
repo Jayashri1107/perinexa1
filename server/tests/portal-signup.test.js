@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
+import { Appointment } from '../src/models/Appointment.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { Bill } from '../src/models/Bill.js';
 import { LabOrder } from '../src/models/LabOrder.js';
@@ -347,7 +348,42 @@ describe('her records in the portal', () => {
     expect(JSON.stringify(bills.body)).not.toMatch(/HIV|Sample cancelled line|Sample drA/);
   });
 
+  it('her Home page summary, her appointments with their states, and her profile to read (17 Oct 2026)', async () => {
+    const { agent, p } = await signedInPatient();
+    const sig = { by: people.drA._id, byName: 'Sample drA', role: 'doctor', at: NOW, revs: {} };
+    await visit(p, { signed: sig, details: { ...by(), advice: 'Sample rest' }, prescription: { ...by(), items: [{ drug: 'Sample Iron', frequency: '1-0-0' }], warningReasons: [] } });
+    await visit(p, { signed: sig, details: { ...by(), advice: 'Sample walk' } }); // a visit without medicines
+    await LabOrder.create({ tenantId: hospital._id, patientId: p.id, clientRequestId: randomUUID(), status: 'reviewed', ordered: by(), reported: by(), tests: [{ key: 'hb', name: 'Haemoglobin (Hb)', values: [{ key: 'hb', value: '11.2' }] }] });
+    const line = (name, paise) => ({ name, group: 'lab', qty: 1, ratePaise: paise, amountPaise: paise, source: 'manual', added: by() });
+    await Bill.create({ tenantId: hospital._id, number: 'B-000001', patientId: p.id, kind: 'opd', on: new Date('2026-10-10T00:00:00Z'), lines: [line('Haemoglobin', 15000)], payments: [{ receipt: 'R-000001', kind: 'payment', mode: 'cash', amountPaise: 5000, ...by() }] });
+    const appt = (on, start, extra = {}) =>
+      Appointment.create({ tenantId: hospital._id, patientId: p.id, doctorId: people.drA._id, on: new Date(`${on}T00:00:00Z`), kind: 'slot', start, source: 'booked', created: by(), ...extra });
+    await appt('2026-10-20', '10:00', { source: 'portal' });
+    await appt('2026-10-05', '10:00'); // past, she did not come
+    await appt('2026-10-06', '11:00', { status: 'cancelled' });
+
+    const summary = await agent.get('/api/portal/records/summary');
+    expect(summary.status, JSON.stringify(summary.body)).toBe(200);
+    expect(summary.body).toEqual({ appointment: { date: '2026-10-20', start: '10:00', doctorName: 'Sample drA' }, prescriptions: 1, visits: 2, lab: 1, bills: 1, toPayPaise: 10000 });
+
+    const list = (await agent.get('/api/portal/records/appointments')).body.appointments;
+    expect(list).toEqual([
+      { date: '2026-10-20', start: '10:00', doctorName: 'Sample drA', status: 'upcoming', online: true },
+      { date: '2026-10-06', start: '11:00', doctorName: 'Sample drA', status: 'cancelled', online: false },
+      { date: '2026-10-05', start: '10:00', doctorName: 'Sample drA', status: 'missed', online: false },
+    ]);
+
+    const profile = (await agent.get('/api/portal/records/profile')).body;
+    expect(profile).toMatchObject({ fullName: 'Sample Mother', mrn: expect.stringMatching(/^P-/), email: 'sample.mother@example.com' });
+    expect(JSON.stringify(profile)).not.toMatch(/Penicillin|allerg/i); // her details only, nothing clinical
+    const kinds = (await AuditLog.find({ action: 'PORTAL_RECORDS_VIEWED' }).sort({ _id: 1 }).lean()).map((e) => e.details.kind);
+    expect(kinds).toEqual(['summary', 'appointments', 'profile']);
+    // A record marked sensitive: no counts of her records
+    await Patient.updateOne({ tenantId: hospital._id, _id: p.id }, { $set: { sensitive: true } });
+    expect((await agent.get('/api/portal/records/summary')).body).toMatchObject({ prescriptions: 0, visits: 0, lab: 0 });
+  });
+
   it('needs her portal session', async () => {
-    for (const kind of ['prescriptions', 'visits', 'lab', 'bills']) expect((await request(app).get(`/api/portal/records/${kind}`)).status).toBe(401);
+    for (const kind of ['prescriptions', 'visits', 'lab', 'bills', 'summary', 'appointments', 'profile']) expect((await request(app).get(`/api/portal/records/${kind}`)).status).toBe(401);
   });
 });

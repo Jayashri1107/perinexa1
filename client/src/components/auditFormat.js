@@ -23,7 +23,7 @@ const AI_FEATURES = {
 
 // Plain-English names for audit log events.
 // What she opened in the portal (PORTAL_RECORDS_VIEWED)
-const PORTAL_RECORD_WORDS = { prescriptions: 'prescriptions', lab: 'lab reports', visits: 'visits', bills: 'bills' };
+const PORTAL_RECORD_WORDS = { prescriptions: 'prescriptions', lab: 'lab reports', visits: 'visits', bills: 'bills', summary: 'her Home page summary', appointments: 'appointments', profile: 'profile' };
 // How she signed in with her own account, and why a sign-in failed (PORTAL_LOGIN_SUCCESS / _FAILED)
 const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mobile and OTP' };
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };

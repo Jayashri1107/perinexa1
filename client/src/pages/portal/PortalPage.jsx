@@ -6,6 +6,7 @@ import { Alert, Field, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
 import { ChangePassword, HospitalEntry } from './PortalAccount.jsx';
 import { PortalShell } from './PortalShell.jsx';
+import { AppointmentHistory, AtAGlance, CallHospital, NextAppointment, ProfileCard, useLoad } from './PortalHome.jsx';
 import { RECORD_TABS, RecordsTab, recordIcon } from './PortalRecords.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
@@ -218,8 +219,11 @@ function SignIn({ onDone, lang }) {
  * appointment, her care plan, the hospital's phone), Appointments (booking, when the hospital allows it), her records,
  * and Change password for an account with an email.
  */
-export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null, lang = 'en' }) {
+export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null, lang = 'en', summary: given = undefined }) {
   const [section, setSection] = useState('home');
+  // Her records at a glance (counts only); read again after a booking or a cancellation
+  const loaded = useLoad(given === undefined ? `/records/summary?v=${booking?.upcoming?.date ?? ''}${data.appointment ?? ''}` : null);
+  const summary = given === undefined ? loaded.data : given;
   return (
     <PortalShell
       patientName={data.patient.fullName}
@@ -234,16 +238,20 @@ export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null,
       <div className="portal-stack">
         {section === 'home' && (
           <>
-            <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} withBooking={false} onBook={() => setSection('appointments')} />
-            <CallCard hospital={data.hospital} lang={lang} />
+            <NextAppointment data={data} summary={summary} bookingOn={Boolean(booking?.enabled && (booking.doctors?.length || booking.doctorName))} lang={lang} onBook={() => setSection('appointments')} />
+            <AtAGlance summary={summary} lang={lang} onOpen={setSection} />
+            <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} withBooking={false} withAppointment={false} />
+            <CallHospital hospital={data.hospital} lang={lang} />
           </>
         )}
         {section === 'appointments' && (
           <>
             <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} withPlan={false} />
-            <CallCard hospital={data.hospital} lang={lang} />
+            <AppointmentHistory key={`${booking?.upcoming?.date ?? ''}${data.appointment ?? ''}`} lang={lang} />
+            <CallHospital hospital={data.hospital} lang={lang} />
           </>
         )}
+        {section === 'profile' && <ProfileCard lang={lang} />}
         {RECORD_TABS.includes(section) && <RecordsTab key={section} tab={section} lang={lang} />}
         {section === 'password' && (
           <section className="card portal-card">
@@ -281,12 +289,13 @@ function CallCard({ hospital, lang }) {
 }
 
 /** Home: her next appointment (and booking) and what is coming up in her care plan. */
-function HomeCards({ data, booking, onChanged, lang, withBooking = true, withPlan = true, onBook = null }) {
+function HomeCards({ data, booking, onChanged, lang, withBooking = true, withPlan = true, withAppointment = true, onBook = null }) {
   const w = portalWords(lang);
   const aw = accountWords(lang);
   const { appointment, plan } = data;
   return (
     <>
+      {withAppointment && (
       <section className="card portal-card" aria-labelledby="portal-appt">
         <h2 id="portal-appt">
           <CalendarCheck aria-hidden="true" /> {w.nextAppointment}
@@ -309,6 +318,7 @@ function HomeCards({ data, booking, onChanged, lang, withBooking = true, withPla
           </button>
         )}
       </section>
+      )}
       {plan && withPlan && (
         <section className="card portal-card" aria-labelledby="portal-plan">
           <h2 id="portal-plan">

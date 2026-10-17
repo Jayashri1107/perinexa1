@@ -495,3 +495,36 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `aadhaar.notAadhaar` (added 17 Oct 2026) | This is not an Aadhaar QR code. Please type your details. | हा आधार QR कोड नाही. कृपया तुमची माहिती टाइप करा. | यह आधार QR कोड नहीं है। कृपया अपनी जानकारी टाइप करें। |
 | `aadhaar.notImage` (added 17 Oct 2026) | This file could not be opened as a picture. Please upload a photo or a screenshot. | ही फाइल फोटो म्हणून उघडता आली नाही. कृपया फोटो किंवा स्क्रीनशॉट अपलोड करा. | यह फ़ाइल फ़ोटो की तरह नहीं खुल सकी। कृपया फ़ोटो या स्क्रीनशॉट अपलोड करें। |
 | `aadhaar.fields` (added 17 Oct 2026) | name, age, address | नाव, वय, पत्ता | नाम, उम्र, पता |
+| `tabs.profile` (added 17 Oct 2026) | My details | माझी माहिती | मेरी जानकारी |
+| `home.glance` (added 17 Oct 2026) | Your health at a glance | तुमचे आरोग्य एका नजरेत | आपकी सेहत एक नज़र में |
+| `home.book` (added 17 Oct 2026) | Book an appointment | भेट ठरवा | मुलाक़ात तय करें |
+| `home.viewAppointments` (added 17 Oct 2026) | Your appointments | तुमच्या भेटी | आपकी मुलाक़ातें |
+| `home.withDoctor` (added 17 Oct 2026) | With {x} | {x} यांच्याकडे | {x} के साथ |
+| `home.noneBooked` (added 17 Oct 2026) | None booked | भेट ठरलेली नाही | कोई मुलाक़ात तय नहीं |
+| `home.toPay` (added 17 Oct 2026) | {x} to pay | {x} भरायचे बाकी | {x} चुकाना बाकी |
+| `home.allPaid` (added 17 Oct 2026) | Nothing to pay | काही भरायचे बाकी नाही | कुछ चुकाना बाकी नहीं |
+| `home.about.appointments` (added 17 Oct 2026) | Book and see your visits | भेट ठरवा आणि तुमच्या भेटी पाहा | मुलाक़ात तय करें और अपनी मुलाक़ातें देखें |
+| `home.about.prescriptions` (added 17 Oct 2026) | Medicines prescribed to you | तुम्हाला दिलेली औषधे | आपको दी गई दवाइयाँ |
+| `home.about.lab` (added 17 Oct 2026) | Your test results | तुमचे तपासणी निकाल | आपकी जाँच के नतीजे |
+| `home.about.bills` (added 17 Oct 2026) | Charges and payments | शुल्क आणि भरणा | शुल्क और भुगतान |
+| `home.help` (added 17 Oct 2026) | Need help? | मदत हवी आहे? | मदद चाहिए? |
+| `home.callHospital` (added 17 Oct 2026) | Call the hospital | रुग्णालयाला फोन करा | अस्पताल को फ़ोन करें |
+| `home.appointmentsTitle` (added 17 Oct 2026) | Your appointments in the last year and to come | गेल्या वर्षातील आणि पुढील तुमच्या भेटी | पिछले साल की और आने वाली आपकी मुलाक़ातें |
+| `home.noAppointments` (added 17 Oct 2026) | No appointments in the last year. | गेल्या वर्षात कोणतीही भेट नाही. | पिछले साल कोई मुलाक़ात नहीं। |
+| `home.bookedOnline` (added 17 Oct 2026) | booked online | ऑनलाइन ठरवली | ऑनलाइन तय की गई |
+| `home.statuses.upcoming` (added 17 Oct 2026) | Upcoming | पुढील | आने वाली |
+| `home.statuses.seen` (added 17 Oct 2026) | Seen by the doctor | डॉक्टरांनी पाहिले | डॉक्टर ने देखा |
+| `home.statuses.arrived` (added 17 Oct 2026) | Arrived | आल्या | आ गईं |
+| `home.statuses.missed` (added 17 Oct 2026) | Missed | आल्या नाहीत | नहीं आईं |
+| `home.statuses.cancelled` (added 17 Oct 2026) | Cancelled | रद्द | रद्द |
+| `home.billsSummary.total` (added 17 Oct 2026) | Total billed | एकूण बिल | कुल बिल |
+| `home.billsSummary.paid` (added 17 Oct 2026) | Paid | भरले | चुकाया |
+| `home.billsSummary.due` (added 17 Oct 2026) | Still to pay | भरायचे बाकी | चुकाना बाकी |
+| `home.profile.fullName` (added 17 Oct 2026) | Name | नाव | नाम |
+| `home.profile.mrn` (added 17 Oct 2026) | Hospital number | रुग्णालय क्रमांक | अस्पताल नंबर |
+| `home.profile.age` (added 17 Oct 2026) | Age (years) | वय (वर्षे) | उम्र (साल) |
+| `home.profile.phone` (added 17 Oct 2026) | Mobile | मोबाइल | मोबाइल |
+| `home.profile.email` (added 17 Oct 2026) | Email | ईमेल | ईमेल |
+| `home.profile.address` (added 17 Oct 2026) | Address | पत्ता | पता |
+| `home.profile.hospital` (added 17 Oct 2026) | Hospital | रुग्णालय | अस्पताल |
+| `home.profileNote` (added 17 Oct 2026) | To change these details, please call or visit the hospital reception. They check who you are first. | ही माहिती बदलण्यासाठी कृपया रुग्णालयाच्या स्वागत कक्षाला फोन करा किंवा भेट द्या. ते आधी तुमची ओळख तपासतात. | यह जानकारी बदलने के लिए कृपया अस्पताल के रिसेप्शन पर फ़ोन करें या जाएँ। वे पहले आपकी पहचान जाँचते हैं। |
