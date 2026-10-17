@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, TriangleAlert } from 'lucide-react';
 import { api } from '../../api.js';
 import { blobToBase64 } from '../visits/whatsapp.js';
 import { Barcode } from '../../components/print/Barcode.jsx';
+import { QrCode } from '../../components/print/QrCode.jsx';
 import { Letterhead, LetterheadFooter } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, formatDate, formatDateTime } from '../../components/ui.jsx';
@@ -89,7 +90,7 @@ export function LabReportDocument({ order, catalogue, letterhead, withConfidenti
           ['Patient number', p.mrn],
           ['Age', p.age != null ? `${p.age} years` : ''],
           ['Sample number', order.sampleNo ?? ''],
-          ['Ordered by', order.ordered.byName],
+          [order.source === 'walk_in' ? 'Referred by' : 'Ordered by', order.source === 'walk_in' ? (order.referrer?.name ?? 'Self') : order.ordered.byName],
           ['Ordered', formatDateTime(order.ordered.at)],
           ['Sample taken', order.collected ? formatDateTime(order.collected.at) : ''],
           ['Reported', order.reported ? formatDateTime(order.reported.at) : ''],
@@ -135,6 +136,7 @@ export function LabReportDocument({ order, catalogue, letterhead, withConfidenti
                             <Icon aria-hidden="true" /> {flag.word}
                           </span>
                         )}
+                        {v.bigChange && <span className="lab-report-flag"> · big change ({v.deltaPercent > 0 ? '+' : ''}{v.deltaPercent} %)</span>}
                       </td>
                       <td>{w.unit}</td>
                       <td>
@@ -188,7 +190,15 @@ export function LabReportDocument({ order, catalogue, letterhead, withConfidenti
           </div>
         </div>
       </div>
-      <p className="pdoc-small">{order.status === 'reviewed' ? `Reviewed by ${order.reviewed.byName}, ${formatDate(order.reviewed.at)}.` : 'Not reviewed by a doctor yet.'}</p>
+      <p className="pdoc-small">
+        {order.status === 'reviewed' ? `Reviewed by ${order.reviewed.byName}, ${formatDate(order.reviewed.at)}.` : order.source === 'walk_in' ? 'For the referring doctor.' : 'Not reviewed by a doctor yet.'}
+      </p>
+      {order.verifyToken && (
+        <div className="lab-report-verify">
+          <QrCode value={`${window.location.origin}/verify/${order.verifyToken}`} />
+          <p className="pdoc-small">Scan to check that this report is genuine (no results are shown there).</p>
+        </div>
+      )}
     </PrintDocument>
   );
 }
@@ -199,7 +209,7 @@ export function LabReportPrint({ order, catalogue, onClose }) {
   const [withConfidential, setWithConfidential] = useState(false);
   const record = () => api(`/lab/orders/${order.id}/report-printed`, { method: 'POST', body: { confidential: hasConfidential && withConfidential } });
   // On WhatsApp in one click once a doctor reviewed it, with her agreement – never with the confidential test
-  const offer = useFetch(order.status === 'reviewed' ? `/lab/orders/${order.id}/whatsapp` : null);
+  const offer = useFetch(order.status === 'reviewed' || (order.source === 'walk_in' && order.status === 'reported') ? `/lab/orders/${order.id}/whatsapp` : null);
   const pdf = {
     fileName: `Lab report ${order.sampleNo ?? order.patient.mrn}.pdf`,
     title: `Lab report ${order.sampleNo ?? ''}`.trim(),

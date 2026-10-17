@@ -84,6 +84,11 @@ import { LabRegisterPage } from './pages/lab/LabRegisterPage.jsx';
 import { LabSettingsPage } from './pages/lab/LabSettingsPage.jsx';
 import { LabTestEditPage } from './pages/lab/LabTestEditPage.jsx';
 import { LabTestsPage } from './pages/lab/LabTestsPage.jsx';
+import { LabQcPage } from './pages/lab/LabQcPage.jsx';
+import { LabReferrersPage } from './pages/lab/LabReferrersPage.jsx';
+import { LabStockPage } from './pages/lab/LabStockPage.jsx';
+import { VerifyReportPage } from './pages/lab/VerifyReportPage.jsx';
+import { ImagingStudyPage, ImagingWorklistPage } from './pages/imaging/ImagingPages.jsx';
 import { PatientLabTab } from './pages/lab/PatientLabTab.jsx';
 import { DocumentPage } from './pages/inpatient/DocumentPage.jsx';
 import { PrescriptionDesignPage } from './pages/visits/PrescriptionDesignPage.jsx';
@@ -100,7 +105,7 @@ import { ByDoctorPage } from './pages/analytics/ByDoctorPage.jsx';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
 import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, SCAN_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 
 // Unknown address: the title in the title bar, then a short message and the way back.
 // Old Registers links (removed 2 Oct 2026) go to the monthly report in Analytics, keeping ?month=… so a bookmarked month still opens.
@@ -138,6 +143,8 @@ export function App() {
       <Route path="/portal/h/:key" element={<PortalPage />} />
       {/* The waiting-room screen: no login, a secret in the address, tokens and times only */}
       <Route path="/display/:key" element={<DisplayPage />} />
+      {/* Is this lab report genuine? The QR code on a printed report opens it – no login (Lab version 2) */}
+      <Route path="/verify/:code" element={<VerifyReportPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
           <Route path="/change-password" element={<ChangePasswordPage />} />
@@ -236,9 +243,17 @@ export function App() {
                 <Route path="tests" element={<LabTestsPage />} />
                 <Route path="tests/:key" element={<LabTestEditPage key="edit" />} />
                 <Route path="settings" element={<LabSettingsPage />} />
+                <Route path="qc" element={<LabQcPage />} />
+                <Route path="stock" element={<LabStockPage />} />
+                <Route path="referrers" element={<LabReferrersPage />} />
               </Route>
               {/* The registers were removed on 2 Oct 2026; old links go to the monthly report in Analytics. */}
               <Route path="registers/*" element={<RegistersRedirect />} />
+              {/* USG and radiology (Lab version 2) */}
+              <Route path="scans" element={<RequireTenantRole roles={SCAN_ROLES} message="Scans are for doctors, RMOs, nurses and reception." />}>
+                <Route index element={<ImagingWorklistPage />} />
+                <Route path=":id" element={<ImagingStudyPage />} />
+              </Route>
               <Route path="beds" element={<RequireTenantRole roles={BED_ROLES} message="The bed board is for reception, doctors, RMOs and nurses." />}>
                 <Route index element={<BedBoardPage />} />
               </Route>

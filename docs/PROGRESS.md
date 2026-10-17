@@ -3780,6 +3780,45 @@ Branch `admission-desk`. Plan and decision: `docs/ADMISSION_DESK_PLAN.md`.
    amount needs a reason) → the gate pass prints.
 7. Today → mark a patient arrived: "OPD number OP-2026-…" → **Print the OPD case paper**.
 
+## Lab version 2 (owner, 17 Oct 2026 – feature freeze lifted for these 8 parts)
+Branch `lab-v2`. Plan and decisions: `docs/LAB_V2_PLAN.md`. **The lab may now register walk-in patients (identity only)
+and order tests from an outside prescription** (owner's clinical decision).
+1. **Walk-in and referred patients**: Lab → Worklist → **Walk-in patient** (find or register her, referrer or "self",
+   prescription, tests, home collection). Lab → **Referrers** (doctors and centres; no commissions). Walk-in orders are
+   not in the hospital doctors' review list and can go on WhatsApp once reported.
+2. **Trends and delta checks**: an order shows **Her earlier results**; Lab → Tests → a value's "Big change" limit (%)
+   flags a jump (DRAFT, none by default); printed on the report.
+3. **QR code** on the printed report → a public page (/verify/…) confirms it is genuine – no results, initials only.
+4. **Quality control**: Lab → **QC** – control lots, the day's runs, Westgard rules, **Levey-Jennings chart**,
+   corrective actions; while a test's QC is rejected today, reporting it needs a reason.
+5. **Lab stock**: Lab → **Stock** – items, what each test uses, batches (expiry, cost), receive, count, write off; a
+   reported test takes its stock (earliest expiry first); low-stock and expiring warnings.
+6. **Cost per test**: Lab → Stock → **Cost per test** – by month: tests, income, reagents, write-offs, margin.
+7. **Home collection**: on a walk-in or any order waiting for a sample – address, day, time, collector; Worklist →
+   **Home collections**; On the way → Collected (the sample is taken) or Could not collect.
+8. **USG and radiology**: patient → Lab tab → **Order a scan**; left menu **Scans** (to schedule, scheduled, to report,
+   signed); DRAFT report templates (early pregnancy, NT, anomaly, growth, pelvis/TVS, follicular, breast, abdomen,
+   X-ray); a doctor signs; printed report says the fetal sex is not determined (PCPNDT).
+- Server: `routes/lab.js`, `routes/labQc.js`, `routes/labStock.js`, `routes/imaging.js`, `routes/verify.js`,
+  `lab/qc.js`, `lab/stock.js`, `imaging/templates.js`, models Referrer, QcLot, QcRun, LabItem, LabBatch, LabStockMove,
+  ImagingOrder. Website: `pages/lab/` (LabWalkIn, LabQcPage, LabStockPage, LabReferrersPage, VerifyReportPage),
+  `pages/imaging/ImagingPages.jsx`, `components/print/QrCode.jsx`. Tests: `server/tests/lab-v2.test.js`,
+  `client/src/pages/lab/labV2.test.jsx`.
+- ⚠️ For the doctor to approve: the scan report templates and any "Big change" limits (DRAFT).
+
+### How to test (fake data only)
+1. As lab staff: Lab → Referrers → add a fake doctor. Lab → Worklist → **Walk-in patient** → register a fake patient →
+   choose the referrer, tests (Hb), tick "Collect the sample at home" → Make the order.
+2. Worklist → **Home collections** → open it → On the way → Collected. Enter Hb 12 → Report results → **Print the
+   report**: "Referred by", and a QR code at the bottom; open the QR's address: "This is a genuine report".
+3. Lab → **QC** → add a lot (Haemoglobin, level 1, mean 12, SD 0.3) → enter 12.2 (Accepted), then 13.2 (Rejected) →
+   Chart. Make another Hb order → reporting asks why (QC rejected) → write a corrective action under QC.
+4. Lab → **Stock** → add "Hb reagent", unit test, used by Hb 1 per test → Receive a batch (10, ₹30). Report an Hb:
+   the stock drops by 1. Stock → **Cost per test** for this month.
+5. Lab → Tests → Haemoglobin → set the "Big change" limit (20 %); report Hb 12, then Hb 9 for the same patient: Big change.
+6. As a doctor: a patient → Lab tab → **Order a scan** (USG – NT scan). Scans → Schedule → Mark done → write the report
+   → Sign → Print.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

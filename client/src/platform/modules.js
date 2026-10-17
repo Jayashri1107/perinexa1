@@ -1,4 +1,4 @@
-import { BedDouble, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
+import { BedDouble, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -131,9 +131,23 @@ const HOSPITAL_LAB = {
     { label: 'Worklist', to: '/lab', end: true },
     { label: 'Find', to: '/lab/find', end: true },
     { label: 'Register', to: '/lab/register', end: true },
+    // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, referrers
+    { label: 'QC', to: '/lab/qc', end: true },
+    { label: 'Stock', to: '/lab/stock', end: true },
     { label: 'Tests', to: '/lab/tests', end: false },
+    { label: 'Referrers', to: '/lab/referrers', end: true },
     { label: 'Settings', to: '/lab/settings', end: true },
   ],
+};
+
+// USG and radiology (Lab version 2 part 8): the scan worklist and reports. Same list as server/src/routes/imaging.js.
+export const SCAN_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist'];
+const HOSPITAL_SCANS = {
+  key: 'scans',
+  label: 'Scans',
+  icon: ScanLine,
+  to: '/scans',
+  tabs: [{ label: 'Scans', to: '/scans', end: false }],
 };
 
 // The calendar (LMP, EDD, care-plan and booked visits). Same list as server/src/calendar/calendarRules.js.
@@ -358,6 +372,7 @@ export function hospitalModules(roles = []) {
   if (canSeeCalendar(roles) && !(roles.includes('rmo') && !any(roles, ['doctor', 'receptionist']))) modules.push(HOSPITAL_CALENDAR);
   if (any(roles, BED_MENU_ROLES)) modules.push(HOSPITAL_BEDS);
   if (any(roles, LAB_ROLES)) modules.push(HOSPITAL_LAB);
+  if (any(roles, SCAN_ROLES)) modules.push(HOSPITAL_SCANS);
   if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);
   if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: roles.includes('pharmacist') ? '/pharmacy' : '/pharmacy/stock' });
   if (any(roles, ANALYTICS_ROLES)) modules.push(HOSPITAL_ANALYTICS); // after Patients and Calendar, or after Today for an admin

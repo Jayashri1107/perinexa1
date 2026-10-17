@@ -9,6 +9,7 @@ import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { OutsideSection, RejectDialog, VerifyCard } from './LabOrderExtras.jsx';
 import { LabLabels, LabReportPrint } from './LabPrints.jsx';
+import { HomeCard, PreviousResults } from './LabWalkIn.jsx';
 import {
   FILE_TYPES,
   FLAG_LOOK,
@@ -73,6 +74,12 @@ function ResultsView({ order, catalogue }) {
                         <th scope="row">{w.name}</th>
                         <td>
                           <strong className="tabular">{v.value}</strong> {w.unit} <FlagPill flag={v.flag} />
+                          {v.bigChange && (
+                            <StatusPill tone="watch" icon={Siren}>
+                              Big change ({v.deltaPercent > 0 ? '+' : ''}
+                              {v.deltaPercent} %)
+                            </StatusPill>
+                          )}
                         </td>
                         <td className="muted">{w.range}</td>
                       </tr>
@@ -97,10 +104,11 @@ function ResultsView({ order, catalogue }) {
 }
 
 /** Entering or changing the results. amending: they were reported already (a reason is needed). */
-function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, onSaved, onCancel }) {
+function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRejected = [], onSaved, onCancel }) {
   const [form, setForm] = useState(() => formFromOrder(order));
   const [labNote, setLabNote] = useState(order.labNote ?? '');
   const [reason, setReason] = useState('');
+  const [qcReason, setQcReason] = useState('');
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
   const [saving, setSaving] = useState(null); // 'save' | 'report'
@@ -132,14 +140,14 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, onSa
     setError(null);
     setFields({});
     try {
-      const res = await api(`/lab/orders/${order.id}/results`, { method: 'PUT', body: { rev: order.rev, tests: testsFromForm(order, form, catalogue), labNote: labNote.trim(), report, reason: reason.trim() } });
+      const res = await api(`/lab/orders/${order.id}/results`, { method: 'PUT', body: { rev: order.rev, tests: testsFromForm(order, form, catalogue), labNote: labNote.trim(), report, reason: reason.trim(), qcReason: qcReason.trim() } });
       const words =
         res.order.status === 'entered' && report
           ? 'Results entered. They go to the doctor once a second person has checked them.'
           : report || amending
             ? 'Results reported. The doctor sees them for review.'
             : 'Results saved – not reported yet.';
-      onSaved(res.order, words);
+      onSaved(res.order, `${words}${res.stockShort?.length ? ` Not enough stock for: ${res.stockShort.join(', ')} – check Lab → Stock.` : ''}`);
     } catch (err) {
       setError(err.message);
       setFields(err.fields ?? {});
@@ -219,6 +227,14 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, onSa
       <Field label="Lab remark (optional)" id="lab-note" error={fields.labNote}>
         <input id="lab-note" maxLength={1000} value={labNote} onChange={(e) => setLabNote(e.target.value)} />
       </Field>
+      {qcRejected.length > 0 && (
+        <>
+          <Alert type="warning">Quality control was rejected today for this test and has no corrective action yet (Lab → QC).</Alert>
+          <Field label="Why may the result still be reported?" id="lab-qc-reason" error={fields.qcReason}>
+            <input id="lab-qc-reason" maxLength={300} value={qcReason} onChange={(e) => setQcReason(e.target.value)} />
+          </Field>
+        </>
+      )}
       {amending && (
         <Field label="Why are the results changed?" id="lab-reason" error={fields.reason}>
           <input id="lab-reason" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -594,6 +610,18 @@ export function LabOrderPage() {
               {packageNames(order.packages)}
             </p>
           )}
+          {order.source === 'walk_in' && (
+            <p>
+              <span className="muted">Walk-in · referred by: </span>
+              {order.referrer?.name ?? 'self'}
+              {order.prescription ? ` · ${order.prescription}` : ''}
+            </p>
+          )}
+          {order.qcOverride && (
+            <p className="hint">
+              Reported while quality control was rejected: {order.qcOverride.reason} ({order.qcOverride.byName})
+            </p>
+          )}
           {order.noteToLab && (
             <p>
               <span className="muted">Note to the lab: </span>
@@ -664,6 +692,7 @@ export function LabOrderPage() {
                 amending={done}
                 primary={primaryReport}
                 verify={Boolean(data?.verify)}
+                qcRejected={data?.qcRejected ?? []}
                 onSaved={saved}
                 onCancel={changing ? () => setChanging(false) : null}
               />
@@ -684,6 +713,10 @@ export function LabOrderPage() {
             {order.lastSaved && open && <p className="hint">Last saved by {order.lastSaved.byName}, {formatDateTime(order.lastSaved.at)} – not reported yet.</p>}
           </section>
         )}
+
+        <PreviousResults order={order} catalogue={catalogue} previous={data?.previous} />
+
+        {order.status !== 'cancelled' && <HomeCard order={order} onSaved={saved} onError={failed} />}
 
         {a.canVerify && <VerifyCard order={order} onSaved={saved} onError={failed} />}
 
