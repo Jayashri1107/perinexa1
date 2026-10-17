@@ -11,6 +11,7 @@ import { HttpError } from '../utils/httpError.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { refuseNewOnClosed } from '../patients/deathRules.js';
 import { objectId, parse } from '../utils/validate.js';
+import { sendQueueTime } from '../appointments/queueTime.js';
 
 // "Mark arrived" (Feature 10): POST /api/arrivals { patientId, doctorId? } marks a patient as arrived today; DELETE
 // /api/arrivals/:patientId undoes it (today only). Reception, nurses, doctors and RMOs. Audited with ids only.
@@ -56,7 +57,9 @@ arrivalsRouter.post('/', async (req, res) => {
   }
   await audit(req, 'PATIENT_ARRIVED', { details: { patientId: String(patient._id), mrn: patient.mrn } });
   const [appointment] = appt ? await viewsOf(req.tenantId, [appt], on) : [null];
-  res.status(201).json({ arrival: { patientId: String(patient._id), at: arrival.at, byName: arrival.byName }, appointment });
+  // Her place in the queue and about when she goes in, on WhatsApp (when the hospital switched it on and she agreed)
+  const queueTime = appt ? await sendQueueTime(req, patient._id, appt._id) : { sent: false, reason: 'no_appointment' };
+  res.status(201).json({ queueTime, arrival: { patientId: String(patient._id), at: arrival.at, byName: arrival.byName }, appointment });
 });
 
 arrivalsRouter.delete('/:patientId', async (req, res) => {

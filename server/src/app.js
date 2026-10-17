@@ -46,6 +46,8 @@ import { consentFormsRouter } from './routes/consentForms.js';
 import { prescriptionDesignRouter } from './routes/prescriptionDesign.js';
 import { prescriptionSetsRouter } from './routes/prescriptionSets.js';
 import { labPackagesRouter } from './routes/labPackages.js';
+import { labSetupRouter } from './routes/labSetup.js';
+import { cashHandoverRouter } from './routes/cashHandover.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
@@ -162,6 +164,8 @@ export function createApp({
   app.use('/api/arrivals', ...inTenant, arrivalsRouter);
   app.use('/api/appointments', ...inTenant, appointmentsRouter);
   app.use('/api/billing', ...inTenant, billingRouter);
+  // The daily cash handover (routes/cashHandover.js)
+  app.use('/api/cash-handover', ...inTenant, cashHandoverRouter);
   app.use('/api/pharmacy', ...inTenant, pharmacyRouter);
   // Stock while prescribing (doctors and RMOs): in stock / low / out only (routes/pharmacyStock.js)
   app.use('/api/pharmacy-stock', ...inTenant, pharmacyStockRouter);
@@ -170,6 +174,8 @@ export function createApp({
   // Beds and admission at the desk (routes/beds.js)
   app.use('/api/beds', ...inTenant, bedsRouter);
   app.use('/api/lab', ...inTenant, labRouter);
+  // The lab's test list and settings (routes/labSetup.js)
+  app.use('/api/lab-setup', ...inTenant, labSetupRouter);
   app.use('/api/reminders', ...inTenant, reminderOutboxRouter);
   // Reception: patients' sign-ups to approve or reject (routes/patientAccounts.js)
   app.use('/api/patient-accounts', ...inTenant, patientAccountsRouter);

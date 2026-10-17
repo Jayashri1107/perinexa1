@@ -122,8 +122,8 @@ describe('the pregnancy timeline (#7), your day (#9), the keepsake card (#10)', 
     const p = await register();
     await newVisit('drA', p);
     await LabOrder.create({ tenantId: hospital._id, patientId: p.id, clientRequestId: randomUUID(), status: 'reported', ordered: { by: people.drA._id, byName: 'Sample drA', at: NOW }, tests: [{ key: 'hb', name: 'Haemoglobin (Hb)' }] });
-    expect((await (await as('drA')).get('/api/my-day')).body.day).toEqual({ seen: 1, notSigned: 1, labToReview: 1, missedHighRisk: 0 });
-    expect((await (await as('drB')).get('/api/my-day')).body.day).toEqual({ seen: 0, notSigned: 0, labToReview: 0, missedHighRisk: 0 });
+    expect((await (await as('drA')).get('/api/my-day')).body.day).toEqual({ seen: 1, notSigned: 1, labToReview: 1, missedHighRisk: 0, cashToConfirm: 0 });
+    expect((await (await as('drB')).get('/api/my-day')).body.day).toEqual({ seen: 0, notSigned: 0, labToReview: 0, missedHighRisk: 0, cashToConfirm: 0 });
     expect((await (await as('reception')).get('/api/my-day')).body.day).toBeNull();
   });
 

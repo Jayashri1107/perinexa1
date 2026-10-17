@@ -24,6 +24,7 @@ import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { appointmentChangeMessage, timeWords } from '../reminders/messages.js';
 import { mobileNumber } from '../reminders/phone.js';
+import { sendSoon } from '../reminders/reminderService.js';
 import { HttpError } from '../utils/httpError.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
@@ -220,6 +221,7 @@ export async function queueChangeMessage(tenantId, appt, kind, now = new Date())
     to,
     text,
   });
+  sendSoon(tenantId, now); // at once, not with the next hourly round (not waited for: the booking never waits on it)
   return true;
 }
 

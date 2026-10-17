@@ -11,13 +11,25 @@ const { ObjectId } = mongoose.Schema.Types;
 const byFields = { by: { type: ObjectId, ref: 'User' }, byName: String, at: Date };
 const stamp = () => ({ type: new mongoose.Schema(byFields, { _id: false }), default: null });
 
-const valueSchema = new mongoose.Schema({ key: String, value: { type: String, default: '' }, flag: { type: String, enum: FLAGS, default: '' } }, { _id: false });
+// name, unit, range: as they were when the result was saved – the range that applied to this patient (her age,
+// pregnancy; docs/LAB_LIMS_PLAN.md feature 3) and the hospital's own test's words. Not set on older results.
+const valueSchema = new mongoose.Schema(
+  { key: String, value: { type: String, default: '' }, flag: { type: String, enum: FLAGS, default: '' }, name: String, unit: String, range: String },
+  { _id: false },
+);
+// A test sent to an outside lab (feature 7): which lab and its reference, when it was sent and when the result came.
+const outsideSchema = new mongoose.Schema(
+  { labName: String, ref: { type: String, default: '' }, sent: new mongoose.Schema(byFields, { _id: false }), received: { type: new mongoose.Schema(byFields, { _id: false }), default: null } },
+  { _id: false },
+);
 const testSchema = new mongoose.Schema(
   {
     key: { type: String, required: true }, // a LAB_TESTS key, or 'other'
     name: { type: String, required: true },
     values: { type: [valueSchema], default: [] },
     text: { type: String, default: '' }, // the result in words (also the whole result of an 'other' test)
+    department: { type: String, default: '' }, // the lab department when ordered (lab/labSetup.js DEPARTMENTS)
+    outside: { type: outsideSchema, default: null },
   },
   { _id: false },
 );
@@ -26,7 +38,12 @@ const orderSchema = new mongoose.Schema(
   {
     patientId: { type: ObjectId, ref: 'Patient', required: true },
     visitId: { type: ObjectId, ref: 'Visit', default: null },
-    status: { type: String, enum: ['ordered', 'collected', 'reported', 'reviewed', 'cancelled'], default: 'ordered' },
+    // 'entered': the results are typed and wait for the lab's check (only when the hospital asks for one – LabSetup)
+    status: { type: String, enum: ['ordered', 'collected', 'entered', 'reported', 'reviewed', 'cancelled'], default: 'ordered' },
+    // The sample number printed with a barcode on the labels (lab/labSetup.js nextSampleNo). Not set on older orders
+    // until a label is printed or the sample is taken.
+    sampleNo: { type: String, default: null },
+    dueAt: { type: Date, default: null }, // when the report is due (the tests' turnaround times); null on older orders
     urgent: { type: Boolean, default: false },
     tests: { type: [testSchema], default: [] },
     noteToLab: { type: String, default: '' }, // what the doctor tells the lab (fasting, clinical question …)
@@ -39,6 +56,8 @@ const orderSchema = new mongoose.Schema(
     // sample was taken some time between the order and the report (the red flags work out a baby's age for a
     // bilirubin result from the order's time then, redflags/redFlags.js labReadings). Not set on older orders.
     collectedAtReport: { type: Boolean, default: false },
+    entered: stamp(), // who typed the results that were then checked (with the check on)
+    verified: stamp(), // who checked them (with the check on); the report is then stamped with the same person and time
     reported: stamp(),
     reviewed: {
       type: new mongoose.Schema({ ...byFields, comment: { type: String, default: '' } }, { _id: false }),
@@ -49,6 +68,9 @@ const orderSchema = new mongoose.Schema(
       default: null,
     },
     lastSaved: stamp(), // the latest save of results (also before the report)
+    // Samples the lab refused (the order went back to "sample to take") and results the checker sent back
+    rejections: { type: [new mongoose.Schema({ ...byFields, reason: String, note: { type: String, default: '' } }, { _id: false })], default: [] },
+    sentBack: { type: [new mongoose.Schema({ ...byFields, reason: String }, { _id: false })], default: [] },
     amendments: {
       type: [
         new mongoose.Schema(
@@ -72,5 +94,7 @@ orderSchema.plugin(tenantScoped);
 orderSchema.index({ tenantId: 1, patientId: 1, createdAt: -1 });
 orderSchema.index({ tenantId: 1, status: 1, createdAt: 1 });
 orderSchema.index({ tenantId: 1, clientRequestId: 1 }, { unique: true });
+orderSchema.index({ tenantId: 1, sampleNo: 1 });
+orderSchema.index({ tenantId: 1, 'ordered.at': -1 });
 
 export const LabOrder = mongoose.model('LabOrder', orderSchema);

@@ -160,6 +160,12 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   patient data". Platform admins see the same and change only what the super admin ticked (Users & access → User
   permissions). Hospital admins reset passwords, remove access, change roles or edit staff details only with the super
   admin's permission; new people are added by the super admin. Review this before real patient data.
+- **Feature freeze lifted for the lab module (17 Oct 2026)** to build a full lab system (sample numbers and labels,
+  the hospital's test list and ranges, printed report, check before the report, outside labs, Find, register) –
+  `docs/LAB_LIMS_PLAN.md`. The freeze stays for everything else.
+- **Feature freeze lifted for WhatsApp at the desk (17 Oct 2026)**: OTP on WhatsApp with SMS fallback, appointment,
+  bill and reviewed lab-report messages, queue time, daily cash handover – `docs/WHATSAPP_DESK_PLAN.md`. The hospital's
+  WhatsApp number: +91 88880 24000.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

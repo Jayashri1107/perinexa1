@@ -86,3 +86,23 @@ export function appointmentChangeMessage({ kind, hospital, phone, day, time, doc
   const lead = kind === 'moved' ? 'your appointment has moved to' : 'your appointment is booked for';
   return `${hospital}: ${lead} ${d} at ${at} with ${doctor}.${call ? ` To change it, call ${call}.` : ''}${stop}`;
 }
+
+/**
+ * The queue time (owner, 17 Oct 2026 – docs/WHATSAPP_DESK_PLAN.md), sent on WhatsApp when she gets a walk-in token or
+ * arrives for her booking: her token (or booked time), how many are before her and about when she goes in – never
+ * her name or why she came. eta: "11:40" (hospital time); ahead: patients waiting before her.
+ * DRAFT: the Marathi and Hindi wording must be checked by fluent speakers before use.
+ */
+export function queueMessage({ hospital, doctor, token = null, start = null, ahead, eta, lang = 'en' }) {
+  const at = timeWords(eta);
+  if (lang === 'mr') {
+    const who = token ? `आपला टोकन क्रमांक ${token} आहे` : `आपली ${timeWords(start)} ची भेट नोंदली आहे`;
+    return `${hospital}: ${who} (${doctor}). आपल्या आधी ${ahead} रुग्ण आहेत. साधारण ${at} वाजता आपला क्रमांक येईल. वेळ थोडी बदलू शकते.`;
+  }
+  if (lang === 'hi') {
+    const who = token ? `आपका टोकन नंबर ${token} है` : `आपकी ${timeWords(start)} की मुलाक़ात दर्ज है`;
+    return `${hospital}: ${who} (${doctor})। आपसे पहले ${ahead} मरीज़ हैं। लगभग ${at} बजे आपकी बारी आएगी। समय थोड़ा बदल सकता है।`;
+  }
+  const who = token ? `your token is ${token}` : `you are checked in for ${timeWords(start)}`;
+  return `${hospital}: ${who} with ${doctor}. ${ahead === 0 ? 'You are next.' : `${ahead} ${ahead === 1 ? 'patient is' : 'patients are'} before you.`} Expected time about ${at} – it may change a little.`;
+}

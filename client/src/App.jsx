@@ -78,6 +78,12 @@ import { PatientStaysTab } from './pages/inpatient/PatientStaysTab.jsx';
 import { AdmissionPage } from './pages/inpatient/AdmissionPage.jsx';
 import { LabOrderPage } from './pages/lab/LabOrderPage.jsx';
 import { LabWorklistPage } from './pages/lab/LabWorklistPage.jsx';
+import { CashHandoverPage } from './pages/billing/CashHandoverPage.jsx';
+import { LabFindPage } from './pages/lab/LabFindPage.jsx';
+import { LabRegisterPage } from './pages/lab/LabRegisterPage.jsx';
+import { LabSettingsPage } from './pages/lab/LabSettingsPage.jsx';
+import { LabTestEditPage } from './pages/lab/LabTestEditPage.jsx';
+import { LabTestsPage } from './pages/lab/LabTestsPage.jsx';
 import { PatientLabTab } from './pages/lab/PatientLabTab.jsx';
 import { DocumentPage } from './pages/inpatient/DocumentPage.jsx';
 import { PrescriptionDesignPage } from './pages/visits/PrescriptionDesignPage.jsx';
@@ -225,6 +231,11 @@ export function App() {
               <Route path="lab" element={<RequireTenantRole roles={LAB_ROLES} message="The lab module is for the lab, doctors, RMOs and nurses." />}>
                 <Route index element={<LabWorklistPage />} />
                 <Route path="orders/:orderId" element={<LabOrderPage />} />
+                <Route path="find" element={<LabFindPage />} />
+                <Route path="register" element={<LabRegisterPage />} />
+                <Route path="tests" element={<LabTestsPage />} />
+                <Route path="tests/:key" element={<LabTestEditPage key="edit" />} />
+                <Route path="settings" element={<LabSettingsPage />} />
               </Route>
               {/* The registers were removed on 2 Oct 2026; old links go to the monthly report in Analytics. */}
               <Route path="registers/*" element={<RegistersRedirect />} />
@@ -260,6 +271,10 @@ export function App() {
                 <Route path="suppliers" element={<SuppliersPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="settings" element={<PharmacySettingsPage />} />
+              </Route>
+              {/* The daily cash handover: those who take payments hand over; a doctor or the admin confirms */}
+              <Route path="cash-handover" element={<RequireTenantRole roles={[...BILLING_MODULE_ROLES, 'doctor']} message="The cash handover is for reception, the billing department, doctors and the hospital admin." />}>
+                <Route index element={<CashHandoverPage />} />
               </Route>
               <Route path="billing" element={<RequireTenantRole roles={BILLING_MODULE_ROLES} message="Billing is for reception, the billing department and the hospital admin." />}>
                 <Route index element={<BillsPage />} />

@@ -77,7 +77,7 @@ function OtpSignIn({ hospitalKey, otpMode, lang, onSignedIn }) {
       }}
       noValidate
     >
-      <p>{w.otpSentTo(sent.sentTo)}</p>
+      <p>{sent.via === 'whatsapp' ? w.otpSentWhatsapp(sent.sentTo) : w.otpSentTo(sent.sentTo)}</p>
       {sent.practiceOtp && <Alert type="info">{w.practiceOtp(sent.practiceOtp)}</Alert>}
       <Refusal error={step.error} lang={lang} />
       <Field label={w.otp} id="portal-otp">
@@ -237,7 +237,7 @@ function SignUp({ hospitalKey, hospital, lang, onBack }) {
 
 /**
  * Sign in or sign up on one hospital's portal (exported for the tests and the sign-in page). bare: inside the sign-in
- * page's card (Patient) – its own heading, no card. otpMode: 'sms' | 'practice' | 'off'.
+ * page's card (Patient) – its own heading, no card. otpMode: 'whatsapp' | 'sms' | 'practice' | 'off'.
  */
 export function HospitalEntry({ hospitalKey, hospital, otpMode = 'practice', lang, onSignedIn, initialTab = 'signin', bare = false }) {
   const w = accountWords(lang);

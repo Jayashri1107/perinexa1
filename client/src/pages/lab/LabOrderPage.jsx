@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CircleCheck, FileText, Paperclip, Siren, TestTube, Upload } from 'lucide-react';
+import { ArrowLeft, Ban, CircleCheck, FileText, Paperclip, Printer, Siren, Tag, TestTube, Upload } from 'lucide-react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -7,9 +7,12 @@ import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
+import { OutsideSection, RejectDialog, VerifyCard } from './LabOrderExtras.jsx';
+import { LabLabels, LabReportPrint } from './LabPrints.jsx';
 import {
   FILE_TYPES,
   FLAG_LOOK,
+  LATE_LOOK,
   FLAG_OPTIONS,
   MAX_FILE_BYTES,
   fileSize,
@@ -22,6 +25,8 @@ import {
   resultLine,
   testDef,
   testsFromForm,
+  turnaround,
+  valueWords,
 } from './labFormat.js';
 
 // One lab order (Version 2, lab module) – in the Lab module (/lab/orders/:orderId) and on the patient record
@@ -49,6 +54,7 @@ function ResultsView({ order, catalogue }) {
         return (
           <div key={`${t.key}-${i}`} className="lab-test">
             <h3>{t.name}</h3>
+            {t.outside && <p className="hint">Done at {t.outside.labName}</p>}
             {values.length > 0 && (
               <table className="lab-values">
                 <thead>
@@ -60,14 +66,15 @@ function ResultsView({ order, catalogue }) {
                 </thead>
                 <tbody>
                   {values.map((v) => {
-                    const f = def?.fields.find((x) => x.key === v.key);
+                    // The words saved with the result: the range that applied to this patient
+                    const w = valueWords(v, def);
                     return (
                       <tr key={v.key}>
-                        <th scope="row">{f?.name ?? v.key}</th>
+                        <th scope="row">{w.name}</th>
                         <td>
-                          <strong className="tabular">{v.value}</strong> {f?.unit ?? ''} <FlagPill flag={v.flag} />
+                          <strong className="tabular">{v.value}</strong> {w.unit} <FlagPill flag={v.flag} />
                         </td>
-                        <td className="muted">{f?.range ?? ''}</td>
+                        <td className="muted">{w.range}</td>
                       </tr>
                     );
                   })}
@@ -90,7 +97,7 @@ function ResultsView({ order, catalogue }) {
 }
 
 /** Entering or changing the results. amending: they were reported already (a reason is needed). */
-function ResultsForm({ order, catalogue, pcpndt, amending, primary, onSaved, onCancel }) {
+function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, onSaved, onCancel }) {
   const [form, setForm] = useState(() => formFromOrder(order));
   const [labNote, setLabNote] = useState(order.labNote ?? '');
   const [reason, setReason] = useState('');
@@ -126,7 +133,13 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, onSaved, onC
     setFields({});
     try {
       const res = await api(`/lab/orders/${order.id}/results`, { method: 'PUT', body: { rev: order.rev, tests: testsFromForm(order, form, catalogue), labNote: labNote.trim(), report, reason: reason.trim() } });
-      onSaved(res.order, report || amending ? 'Results reported. The doctor sees them for review.' : 'Results saved – not reported yet.');
+      const words =
+        res.order.status === 'entered' && report
+          ? 'Results entered. They go to the doctor once a second person has checked them.'
+          : report || amending
+            ? 'Results reported. The doctor sees them for review.'
+            : 'Results saved – not reported yet.';
+      onSaved(res.order, words);
     } catch (err) {
       setError(err.message);
       setFields(err.fields ?? {});
@@ -178,7 +191,7 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, onSaved, onC
                   );
                 }
                 return (
-                  <Field key={f.key} label={`${f.name}${f.unit ? ` (${f.unit})` : ''}`} id={id} error={fields[`tests.${i}.${f.key}`]} hint={f.range ? `Usual: ${f.range}` : undefined} keepHint>
+                  <Field key={f.key} label={`${f.name}${f.unit ? ` (${f.unit})` : ''}`} id={id} error={fields[`tests.${i}.${f.key}`]} hint={f.range ? `Usual${f.band ? ' for her' : ''}: ${f.range}` : undefined} keepHint>
                     <span className="lab-value-row">
                       <input id={id} className="tabular" inputMode="decimal" value={v.value} maxLength={20} onChange={(e) => setValue(i, f, e.target.value)} />
                       <select aria-label={`Flag for ${f.name}`} value={v.flag ?? ''} onChange={(e) => setFlag(i, f, e.target.value)}>
@@ -213,7 +226,7 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, onSaved, onC
       )}
       <div className="row">
         <button type="submit" className={`btn ${primary ? 'btn-primary' : 'btn-secondary'}`} disabled={Boolean(saving)}>
-          <FileText aria-hidden="true" /> {saving === 'report' ? 'Reporting…' : amending ? 'Save the change' : 'Report results'}
+          <FileText aria-hidden="true" /> {saving === 'report' ? 'Saving…' : amending ? 'Save the change' : verify && order.status !== 'entered' ? 'Send for checking' : 'Report results'}
         </button>
         {!amending && (
           <button type="button" className="btn btn-secondary" disabled={Boolean(saving)} onClick={() => send(false)}>
@@ -393,6 +406,8 @@ export function LabOrderPage() {
   const [notice, setNotice] = useState(null);
   const [changing, setChanging] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [printing, setPrinting] = useState(null); // 'labels' | 'report'
+  const [rejecting, setRejecting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState(null);
 
@@ -453,7 +468,11 @@ export function LabOrderPage() {
   const open = ['ordered', 'collected'].includes(order.status);
   const done = ['reported', 'reviewed'].includes(order.status);
   // One primary button: review, else "sample taken", else reporting
-  const primaryReport = !a.canReview && !a.canCollect;
+  const primaryReport = !a.canReview && !a.canCollect && !a.canVerify;
+  const failed = (err) => {
+    setActionError(err.message);
+    if (err.status === 409) reload();
+  };
 
   return (
     <>
@@ -478,6 +497,16 @@ export function LabOrderPage() {
                   Urgent
                 </StatusPill>
               )}
+              {order.late && (
+                <StatusPill tone={LATE_LOOK.tone} icon={LATE_LOOK.icon}>
+                  {LATE_LOOK.word}
+                </StatusPill>
+              )}
+              {order.status === 'ordered' && order.rejections?.length > 0 && (
+                <StatusPill tone="watch" icon={Ban}>
+                  New sample needed
+                </StatusPill>
+              )}
               <StatusPill tone={look.tone} icon={look.icon}>
                 {look.word}
               </StatusPill>
@@ -493,6 +522,12 @@ export function LabOrderPage() {
             </p>
           )}
           <dl className="lab-stamps">
+            {order.sampleNo && (
+              <>
+                <dt>Sample number</dt>
+                <dd className="tabular">{order.sampleNo}</dd>
+              </>
+            )}
             <dt>Ordered</dt>
             <dd>
               {order.ordered.byName}, {formatDateTime(order.ordered.at)}
@@ -502,6 +537,28 @@ export function LabOrderPage() {
                 <dt>Sample taken</dt>
                 <dd>
                   {order.collected.byName}, {formatDateTime(order.collected.at)}
+                </dd>
+              </>
+            )}
+            {order.dueAt && order.status !== 'cancelled' && (
+              <>
+                <dt>{order.reported ? 'Time taken' : 'Due'}</dt>
+                <dd>{order.reported ? `${turnaround(order)}${order.late ? ' – after the due time' : ''}` : formatDateTime(order.dueAt)}</dd>
+              </>
+            )}
+            {order.entered && (
+              <>
+                <dt>Entered</dt>
+                <dd>
+                  {order.entered.byName}, {formatDateTime(order.entered.at)}
+                </dd>
+              </>
+            )}
+            {order.verified && (
+              <>
+                <dt>Checked</dt>
+                <dd>
+                  {order.verified.byName}, {formatDateTime(order.verified.at)}
                 </dd>
               </>
             )}
@@ -543,11 +600,41 @@ export function LabOrderPage() {
               {order.noteToLab}
             </p>
           )}
-          {(a.canCollect || a.canCancel) && (
+          {(order.rejections?.length > 0 || order.sentBack?.length > 0) && (
+            <ul className="plain-list lab-history">
+              {order.rejections.map((r, i) => (
+                <li key={`r-${i}`}>
+                  <Ban aria-hidden="true" /> Sample rejected – {r.reasonText}
+                  {r.note ? ` (${r.note})` : ''} · {r.byName}, {formatDateTime(r.at)}
+                </li>
+              ))}
+              {order.sentBack.map((r, i) => (
+                <li key={`b-${i}`}>
+                  Results sent back – {r.reason} · {r.byName}, {formatDateTime(r.at)}
+                </li>
+              ))}
+            </ul>
+          )}
+          {(a.canCollect || a.canCancel || a.canLabel || a.canReject || a.canPrint) && (
             <div className="row">
               {a.canCollect && (
                 <button type="button" className={`btn ${a.canReview ? 'btn-secondary' : 'btn-primary'}`} disabled={busy} onClick={collect}>
                   <TestTube aria-hidden="true" /> {busy ? 'Saving…' : 'Mark sample taken'}
+                </button>
+              )}
+              {a.canLabel && (
+                <button type="button" className="btn btn-secondary" onClick={() => setPrinting('labels')}>
+                  <Tag aria-hidden="true" /> Print labels
+                </button>
+              )}
+              {a.canPrint && (
+                <button type="button" className="btn btn-secondary" onClick={() => setPrinting('report')}>
+                  <Printer aria-hidden="true" /> Print the report
+                </button>
+              )}
+              {a.canReject && (
+                <button type="button" className="btn btn-link" onClick={() => setRejecting(true)}>
+                  Reject the sample
                 </button>
               )}
               {a.canCancel && (
@@ -576,6 +663,7 @@ export function LabOrderPage() {
                 pcpndt={pcpndt}
                 amending={done}
                 primary={primaryReport}
+                verify={Boolean(data?.verify)}
                 onSaved={saved}
                 onCancel={changing ? () => setChanging(false) : null}
               />
@@ -597,7 +685,11 @@ export function LabOrderPage() {
           </section>
         )}
 
+        {a.canVerify && <VerifyCard order={order} onSaved={saved} onError={failed} />}
+
         {a.canReview && <Review order={order} onSaved={saved} />}
+
+        {order.status !== 'cancelled' && <OutsideSection order={order} catalogue={catalogue} onSaved={saved} onError={failed} />}
 
         {order.status !== 'cancelled' && <Files order={order} pcpndt={pcpndt} onSaved={saved} />}
 
@@ -629,6 +721,18 @@ export function LabOrderPage() {
           </section>
         )}
       </div>
+      {rejecting && (
+        <RejectDialog
+          order={order}
+          onCancel={() => setRejecting(false)}
+          onDone={(next, message) => {
+            setRejecting(false);
+            saved(next, message);
+          }}
+        />
+      )}
+      {printing === 'labels' && <LabLabels order={order} catalogue={catalogue} onPrinted={(next) => setCurrent({ ...next, patient: order.patient })} onClose={() => setPrinting(null)} />}
+      {printing === 'report' && <LabReportPrint order={order} catalogue={catalogue} onClose={() => setPrinting(null)} />}
       {cancelling && (
         <CancelDialog
           order={order}

@@ -543,3 +543,15 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `aadhaar.mirror` (added 17 Oct 2026) | Mirror picture | आरशासारखे चित्र | आईने जैसी तस्वीर |
 | `aadhaar.oneCamera` (added 17 Oct 2026) | This device has only one camera. | या उपकरणाला एकच कॅमेरा आहे. | इस डिवाइस में केवल एक कैमरा है। |
 | refusal `OTP_NOT_SENT` (added 17 Oct 2026) | (the server's English message) | OTP आत्ता पाठवता आला नाही. कृपया एका मिनिटाने पुन्हा प्रयत्न करा, किंवा ईमेल आणि पासवर्डने आत या. | OTP अभी नहीं भेजा जा सका। कृपया एक मिनट बाद फिर कोशिश करें, या ईमेल और पासवर्ड से अंदर आएँ। |
+
+## 6. WhatsApp at the desk (added 17 Oct 2026)
+
+Files: `server/src/reminders/messages.js` (`queueMessage`) and `client/src/pages/portal/portalAccountWords.js`
+(`otpSentWhatsapp`). Sent on WhatsApp to a patient who chose Marathi or Hindi for her messages, and shown in the portal
+after she asks for an OTP. `{…}` are filled in by the app.
+
+| What | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| Queue time, walk-in token | {hospital}: your token is {token} with {doctor}. {n} patients are before you. Expected time about {time} – it may change a little. | {hospital}: आपला टोकन क्रमांक {token} आहे ({doctor}). आपल्या आधी {n} रुग्ण आहेत. साधारण {time} वाजता आपला क्रमांक येईल. वेळ थोडी बदलू शकते. | {hospital}: आपका टोकन नंबर {token} है ({doctor})। आपसे पहले {n} मरीज़ हैं। लगभग {time} बजे आपकी बारी आएगी। समय थोड़ा बदल सकता है। |
+| Queue time, booked time | {hospital}: you are checked in for {time} with {doctor}. … | {hospital}: आपली {time} ची भेट नोंदली आहे ({doctor}). … | {hospital}: आपकी {time} की मुलाक़ात दर्ज है ({doctor})। … |
+| OTP sent (portal) | If {number} is registered, an OTP was sent to it on WhatsApp (or by SMS). | {number} नोंदलेला असल्यास त्यावर WhatsApp वर (किंवा SMS ने) OTP पाठवला आहे. | अगर {number} पंजीकृत है, तो उस पर WhatsApp पर (या SMS से) OTP भेजा गया है। |

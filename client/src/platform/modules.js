@@ -126,7 +126,14 @@ const HOSPITAL_LAB = {
   label: 'Lab',
   icon: FlaskConical,
   to: '/lab',
-  tabs: [{ label: 'Lab', to: '/lab', end: false }],
+  // The full lab system (docs/LAB_LIMS_PLAN.md): Find, the register, the hospital's test list and the lab's settings
+  tabs: [
+    { label: 'Worklist', to: '/lab', end: true },
+    { label: 'Find', to: '/lab/find', end: true },
+    { label: 'Register', to: '/lab/register', end: true },
+    { label: 'Tests', to: '/lab/tests', end: false },
+    { label: 'Settings', to: '/lab/settings', end: true },
+  ],
 };
 
 // The calendar (LMP, EDD, care-plan and booked visits). Same list as server/src/calendar/calendarRules.js.
@@ -172,6 +179,7 @@ const HOSPITAL_BILLING = {
     { label: 'Bills', to: '/billing', end: false },
     { label: 'Unpaid', to: '/billing/unpaid', end: true },
     { label: 'Daily summary', to: '/billing/daily', end: true },
+    { label: 'Cash handover', to: '/cash-handover', end: true },
     { label: 'Monthly', to: '/billing/monthly', end: true },
     { label: 'Price list', to: '/billing/prices', end: true },
     { label: 'Settings', to: '/billing/settings', end: true },

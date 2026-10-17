@@ -13,7 +13,7 @@ import { runForTenant } from '../reminders/reminderService.js';
 import { currentSender } from '../reminders/sender.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { whatsappStatus } from '../visits/whatsappSender.js';
+import { whatsappNumberShown, whatsappStatus } from '../visits/whatsappSender.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { CLOSED_MESSAGE_REASON, closedRefusal, isClosed } from '../patients/deathRules.js';
 import { findPatient } from '../utils/patientLookup.js';
@@ -89,6 +89,8 @@ const settingsOf = (tenant) => ({
   portalEnabled: Boolean(tenant?.messaging?.portalEnabled),
   portalBooking: Boolean(tenant?.messaging?.portalBooking),
   whatsappDocuments: Boolean(tenant?.messaging?.whatsappDocuments),
+  whatsappOtp: Boolean(tenant?.messaging?.whatsappOtp),
+  whatsappQueue: Boolean(tenant?.messaging?.whatsappQueue),
   displayEnabled: Boolean(tenant?.messaging?.displayKey),
   portalSignup: Boolean(tenant?.messaging?.signupKey),
   // The hospital's portal address for sign-up and ABHA sign-in: public (it is printed on a poster), so all staff see it.
@@ -100,7 +102,7 @@ const newDisplayKey = () => randomBytes(16).toString('hex');
 // 8 letters and digits without look-alikes (no 0/O, 1/I): easy to type from a poster, about 10^12 possible codes.
 const SIGNUP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newSignupKey = () => Array.from(randomBytes(8), (b) => SIGNUP_ALPHABET[b % SIGNUP_ALPHABET.length]).join('');
-const whatsappView = () => ({ whatsapp: whatsappStatus() });
+const whatsappView = () => ({ whatsapp: { ...whatsappStatus(), number: whatsappNumberShown() } });
 function providerView() {
   const s = currentSender();
   return s ? { name: s.name, channels: s.channels } : null;
@@ -113,7 +115,7 @@ reminderOutboxRouter.get('/settings', async (req, res) => {
 
 reminderOutboxRouter.put('/settings', async (req, res) => {
   if (!isAdmin(req)) throw forbidden('Only the hospital admin changes these settings.');
-  const body = parse(z.object({ remindersEnabled: z.boolean(), portalEnabled: z.boolean(), portalBooking: z.boolean().default(false), whatsappDocuments: z.boolean().default(false), displayEnabled: z.boolean().default(false), portalSignup: z.boolean().default(false) }).strict(), req.body);
+  const body = parse(z.object({ remindersEnabled: z.boolean(), portalEnabled: z.boolean(), portalBooking: z.boolean().default(false), whatsappDocuments: z.boolean().default(false), whatsappOtp: z.boolean().default(false), whatsappQueue: z.boolean().default(false), displayEnabled: z.boolean().default(false), portalSignup: z.boolean().default(false) }).strict(), req.body);
   const tenant = await Tenant.findById(req.tenantId);
   const before = settingsOf(tenant);
   const { displayEnabled, portalSignup, ...flags } = body;

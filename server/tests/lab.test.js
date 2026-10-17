@@ -103,8 +103,9 @@ describe('the lab', () => {
     expect((await (await as('lab')).put(lab(`${o.id}/results`)).send({ rev: partial.body.order.rev, tests: [{ key: 'cbc', values: [{ key: 'hb', value: 'nine' }] }, cbcHiv()[1]] })).body.error.fields).toHaveProperty(['tests.0.hb']);
     const reported = (await results('lab', partial.body.order, { report: true, labNote: 'Sample slightly haemolysed' })).body.order;
     expect(reported).toMatchObject({ status: 'reported', abnormal: true, labNote: 'Sample slightly haemolysed', reported: { byName: 'Sample lab' } });
-    expect(reported.tests[0].values[0]).toEqual({ key: 'hb', value: '9.5', flag: 'low' }); // below 11
-    expect(reported.tests[1].values[0]).toEqual({ key: 'hiv', value: 'Non-reactive', flag: 'normal' });
+    // below 11; each value keeps the name, unit and range that applied to her
+    expect(reported.tests[0].values[0]).toEqual({ key: 'hb', value: '9.5', flag: 'low', name: 'Haemoglobin', unit: 'g/dL', range: '11–16 g/dL (below 11 in pregnancy is anaemia)' });
+    expect(reported.tests[1].values[0]).toEqual({ key: 'hiv', value: 'Non-reactive', flag: 'normal', name: 'HIV' });
 
     // The doctor's list of results to review; another doctor does not see this patient's
     const toReview = (await (await as('drA')).get('/api/lab/to-review')).body.orders;

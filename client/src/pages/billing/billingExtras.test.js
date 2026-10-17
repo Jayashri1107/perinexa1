@@ -67,7 +67,7 @@ describe('the UPI ID and the billing settings', () => {
   });
 
   it('shows the Settings tab to the hospital admin only', () => {
-    expect(billingTabs(['receptionist']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Price list']);
-    expect(billingTabs(['admin']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Monthly', 'Price list', 'Settings']);
+    expect(billingTabs(['receptionist']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Cash handover', 'Price list']);
+    expect(billingTabs(['admin']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Cash handover', 'Monthly', 'Price list', 'Settings']);
   });
 });

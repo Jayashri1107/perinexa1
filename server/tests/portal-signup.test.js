@@ -202,7 +202,7 @@ describe('signing in', () => {
     // mobile and OTP (practice mode: the OTP comes back); an unknown number gets the same answer, without an OTP
     const b = request.agent(app);
     const none = await b.post(`/api/portal/h/${key}/otp`).send({ mobile: '9000000009' });
-    expect(none.body).toEqual({ sentTo: '******0009', minutes: 10 });
+    expect(none.body).toEqual({ sentTo: '******0009', minutes: 10, via: 'practice' });
     const sent = await b.post(`/api/portal/h/${key}/otp`).send({ mobile: '+91 98765 43210' });
     expect(sent.body.practiceOtp).toMatch(/^\d{6}$/);
     const wrongOtp = sent.body.practiceOtp === '000000' ? '111111' : '000000';
