@@ -419,6 +419,8 @@ export function PatientForm({
       const out = { ...cur };
       for (const k of ['fullName', 'ageYears', 'address', 'pinCode', 'city', 'state']) if (a[k]) out[k] = a[k];
       if (a.last4) out.idProof = { kind: 'aadhaar', last4: a.last4 };
+      // The card's "W/O …" (husband) or "D/O …" (father) as her contact person – only into an empty contact
+      if (a.contactName && !cur.emergencyContact.name.trim()) out.emergencyContact = { ...cur.emergencyContact, name: a.contactName, relation: cur.emergencyContact.relation || a.contactRelation };
       return out;
     });
   const set = (key) => (e) => {

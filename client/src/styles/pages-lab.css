@@ -151,3 +151,4 @@
 .aadhaar-camera-box { position: absolute; inset: 15% 22%; border: 3px solid var(--teal-500); border-radius: var(--radius-sm); box-shadow: 0 0 0 999px rgba(34, 31, 110, 0.35); }
 .aadhaar-scanner { display: grid; gap: var(--space-1); }
 .aadhaar-scanner > span { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 500; }
+.aadhaar-camera .hint svg { width: 16px; height: 16px; vertical-align: -3px; color: var(--teal-700); }

@@ -1,7 +1,7 @@
 // Reading an Aadhaar QR (16 Oct 2026). Fake cards only: the QR text is built here the way UIDAI builds it.
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { ageFrom, decimalToBytes, parseAadhaarQr } from './aadhaarQr.js';
+import { ageFrom, careOf, decimalToBytes, parseAadhaarQr, searchAreas } from './aadhaarQr.js';
 
 const TODAY = new Date(2026, 9, 16);
 
@@ -17,8 +17,8 @@ const FIELDS = ['3', '123420191231120000000', 'Asha Sample', '15-08-1996', 'F', 
 describe('the Secure QR', () => {
   it('version 2: name, age from the date of birth, address, PIN, city, state and only the last 4 digits', async () => {
     const out = await parseAadhaarQr(secureQr(['V2', ...FIELDS, '0000']), TODAY);
-    expect(out).toEqual({ fullName: 'Asha Sample', ageYears: '30', address: '12, MG Road, Near Temple, Kothrud, Haveli', pinCode: '411038', city: 'Pune', state: 'Maharashtra', last4: '1234' });
-    expect(JSON.stringify(out)).not.toContain('W/O'); // care of: not used
+    expect(out).toEqual({ fullName: 'Asha Sample', ageYears: '30', address: '12, MG Road, Near Temple, Kothrud, Haveli', pinCode: '411038', city: 'Pune', state: 'Maharashtra', last4: '1234', contactName: 'Ravi Sample', contactRelation: 'Husband' });
+    expect(JSON.stringify(out)).not.toContain('W/O'); // care of: her husband, as her contact person
   });
   it('version 1 (no "V2" at the start) reads the same', async () => {
     expect((await parseAadhaarQr(secureQr(FIELDS), TODAY)).fullName).toBe('Asha Sample');
@@ -33,7 +33,7 @@ describe('the old XML QR', () => {
   it('reads the attributes; of the number only the last 4 digits are kept', async () => {
     const xml = '<?xml version="1.0" encoding="UTF-8"?><PrintLetterBarcodeData uid="999988887777" name="Meena Sample" gender="F" yob="1990" co="D/O Sample" house="4" street="Station Road" lm="" loc="Shivaji Nagar" vtc="Nashik" po="Nashik" dist="Nashik" subdist="Nashik" state="Maharashtra" pc="422001"/>';
     const out = await parseAadhaarQr(xml, TODAY);
-    expect(out).toEqual({ fullName: 'Meena Sample', ageYears: '36', address: '4, Station Road, Shivaji Nagar', pinCode: '422001', city: 'Nashik', state: 'Maharashtra', last4: '7777' });
+    expect(out).toEqual({ fullName: 'Meena Sample', ageYears: '36', address: '4, Station Road, Shivaji Nagar', pinCode: '422001', city: 'Nashik', state: 'Maharashtra', last4: '7777', contactName: 'Sample', contactRelation: 'Father' });
     expect(JSON.stringify(out)).not.toContain('99998888');
   });
 });
@@ -51,5 +51,22 @@ describe('age', () => {
     expect(ageFrom({ dob: '1996-10-17' }, TODAY)).toBe('29');
     expect(ageFrom({ yob: '1990' }, TODAY)).toBe('36');
     expect(ageFrom({ dob: 'unknown' }, TODAY)).toBe('');
+  });
+});
+
+describe('care of: her contact person (17 Oct 2026)', () => {
+  it('wife of → husband, daughter of → father, care of → no relation', () => {
+    expect(careOf('W/O: Ravi Sample')).toEqual({ name: 'Ravi Sample', relation: 'Husband' });
+    expect(careOf('D/O Mohan Sample')).toEqual({ name: 'Mohan Sample', relation: 'Father' });
+    expect(careOf('C/O Sita Sample')).toEqual({ name: 'Sita Sample', relation: '' });
+    expect(careOf('Ravi Sample')).toEqual({ name: 'Ravi Sample', relation: '' });
+  });
+});
+
+describe('where the QR is looked for in a picture', () => {
+  it('the whole, the middle, then nine overlapping halves; the camera only the whole and the middle', () => {
+    expect(searchAreas(4000, 3000)).toHaveLength(11);
+    expect(searchAreas(4000, 3000)[1]).toEqual([800, 600, 2400, 1800]);
+    expect(searchAreas(1920, 1080, true)).toHaveLength(2);
   });
 });
