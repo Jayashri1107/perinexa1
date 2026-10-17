@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field } from '../../components/ui.jsx';
 import { LabRow, DepartmentSelect } from './LabWorklistPage.jsx';
 
@@ -55,7 +56,7 @@ export function LabFindPage() {
 
   return (
     <>
-      <PageHeader title="Find lab orders" documentTitle="Find lab orders" help="Type or scan a sample number, or type a patient number or name. Dates, status and department narrow the list." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Find lab orders" documentTitle="Find lab orders" help="Type or scan a sample number, or type a patient number or name. Dates, status and department narrow the list." />
       <div className="pf-content">
         <form className="card lab-find" onSubmit={find} noValidate>
           <Alert type="error">{error}</Alert>

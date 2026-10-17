@@ -3,6 +3,7 @@ import { PackagePlus, Plus, TriangleAlert } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
@@ -241,7 +242,7 @@ export function LabStockPage() {
   const expiring = (shown ?? []).flatMap((i) => i.batches.filter((b) => b.expiring || b.expired).map((b) => ({ ...b, item: i.name })));
   return (
     <>
-      <PageHeader title="Lab stock" documentTitle="Lab stock" help="Reagents and consumables. A reported test takes its stock by itself, earliest expiry first." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab stock" documentTitle="Lab stock" help="Reagents and consumables. A reported test takes its stock by itself, earliest expiry first." />
       <div className="pf-content">
         <div className="segmented" aria-label="Stock or costs">
           <button type="button" aria-pressed={tab === 'stock'} onClick={() => setParams({}, { replace: true })}>

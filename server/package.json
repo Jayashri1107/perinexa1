@@ -8,6 +8,7 @@
     "seed": "node scripts/seed.js",
     "sample:pharmacy": "node scripts/sample-pharmacy.js",
     "sample:beds": "node scripts/sample-beds.js",
+    "sample:lab": "node scripts/sample-lab.js",
     "test": "vitest run"
   },
   "dependencies": {

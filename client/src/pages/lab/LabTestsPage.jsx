@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { CircleCheck, FilePen, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { DEPARTMENTS, departmentName } from './labFormat.js';
@@ -40,7 +41,7 @@ export function LabTestsPage() {
 
   return (
     <>
-      <PageHeader title="Lab tests" documentTitle="Lab tests" help="The hospital's test list. Open a test to change its department, times, outside lab or usual ranges. A change to a range is a DRAFT until a doctor approves it." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab tests" documentTitle="Lab tests" help="The hospital's test list. Open a test to change its department, times, outside lab or usual ranges. A change to a range is a DRAFT until a doctor approves it." />
       <div className="pf-content">
         <Alert type="error">{error}</Alert>
         <div className="lab-toolbar">

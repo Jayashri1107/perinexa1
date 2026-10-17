@@ -3,6 +3,7 @@ import { ArrowLeft, Ban, CircleCheck, FileText, Paperclip, Printer, Siren, Tag, 
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
@@ -435,7 +436,7 @@ export function LabOrderPage() {
   const catalogue = data?.catalogue;
   const back = inRecord ? `/patients/${outlet.patient.id}/lab` : '/lab';
   const header = !inRecord && (
-    <PageHeader breadcrumbs={[{ label: 'Lab', to: '/lab' }, { label: 'Lab order' }]} title={order ? order.patient.fullName : 'Lab order'} documentTitle="Lab order" />
+    <PageHeader tabs={HOSPITAL_LAB.tabs} breadcrumbs={[{ label: 'Lab', to: '/lab' }, { label: 'Lab order' }]} title={order ? order.patient.fullName : 'Lab order'} documentTitle="Lab order" />
   );
   if (error && !order) {
     return (

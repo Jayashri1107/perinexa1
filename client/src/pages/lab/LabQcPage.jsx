@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CircleCheck, Plus, TriangleAlert } from 'lucide-react';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 
@@ -137,7 +138,7 @@ export function LabQcPage() {
   };
   return (
     <>
-      <PageHeader title="Quality control" documentTitle="Lab quality control" help="Enter each day's control readings. The Westgard rules check each run; a rejected run needs a corrective action before results are reported without a reason." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Quality control" documentTitle="Lab quality control" help="Enter each day's control readings. The Westgard rules check each run; a rejected run needs a corrective action before results are reported without a reason." />
       <div className="pf-content">
         <Alert type="error">{error || actionError}</Alert>
         <Alert type="success" onClose={() => setNotice(null)}>
