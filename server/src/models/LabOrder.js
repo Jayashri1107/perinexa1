@@ -14,7 +14,18 @@ const stamp = () => ({ type: new mongoose.Schema(byFields, { _id: false }), defa
 // name, unit, range: as they were when the result was saved – the range that applied to this patient (her age,
 // pregnancy; docs/LAB_LIMS_PLAN.md feature 3) and the hospital's own test's words. Not set on older results.
 const valueSchema = new mongoose.Schema(
-  { key: String, value: { type: String, default: '' }, flag: { type: String, enum: FLAGS, default: '' }, name: String, unit: String, range: String },
+  {
+    key: String,
+    value: { type: String, default: '' },
+    flag: { type: String, enum: FLAGS, default: '' },
+    name: String,
+    unit: String,
+    range: String,
+    // Lab version 2 (docs/LAB_V2_PLAN.md): the change from her earlier result of this value (per cent), and whether it
+    // passed the hospital's limit for this value ("Big change")
+    deltaPercent: { type: Number, default: null },
+    bigChange: { type: Boolean, default: false },
+  },
   { _id: false },
 );
 // A test sent to an outside lab (feature 7): which lab and its reference, when it was sent and when the result came.
@@ -43,6 +54,34 @@ const orderSchema = new mongoose.Schema(
     // The sample number printed with a barcode on the labels (lab/labSetup.js nextSampleNo). Not set on older orders
     // until a label is printed or the sample is taken.
     sampleNo: { type: String, default: null },
+    // Lab version 2 (docs/LAB_V2_PLAN.md): who ordered – a hospital doctor or RMO ('doctor'), or the lab from an
+    // outside prescription for a walk-in or referred patient ('walk_in') – and the referrer and prescription then
+    source: { type: String, enum: ['doctor', 'walk_in'], default: 'doctor' },
+    referrer: { type: new mongoose.Schema({ id: ObjectId, name: String, kind: String }, { _id: false }), default: null },
+    prescription: { type: String, default: '' }, // e.g. "Dr Sample's prescription of 16 Oct", or "Self – no prescription"
+    // The secret code of the report's QR code (a public page confirms the report is genuine)
+    verifyToken: { type: String, default: null },
+    // Collected at home: address, day and time, the collector and how it went
+    home: {
+      type: new mongoose.Schema(
+        {
+          address: String,
+          on: Date,
+          time: String,
+          collectorId: ObjectId,
+          collectorName: String,
+          status: { type: String, enum: ['scheduled', 'on_the_way', 'collected', 'failed'], default: 'scheduled' },
+          note: { type: String, default: '' },
+          updated: new mongoose.Schema(byFields, { _id: false }),
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
+    // Reported while the quality control of one of its tests was rejected today: the reason given
+    qcOverride: { type: new mongoose.Schema({ ...byFields, reason: String }, { _id: false }), default: null },
+    // The lab's stock taken for this order when it was reported (no double taking on a change)
+    stockTaken: { type: Boolean, default: false },
     dueAt: { type: Date, default: null }, // when the report is due (the tests' turnaround times); null on older orders
     urgent: { type: Boolean, default: false },
     tests: { type: [testSchema], default: [] },
@@ -95,6 +134,8 @@ orderSchema.index({ tenantId: 1, patientId: 1, createdAt: -1 });
 orderSchema.index({ tenantId: 1, status: 1, createdAt: 1 });
 orderSchema.index({ tenantId: 1, clientRequestId: 1 }, { unique: true });
 orderSchema.index({ tenantId: 1, sampleNo: 1 });
+orderSchema.index({ tenantId: 1, verifyToken: 1 });
+orderSchema.index({ tenantId: 1, 'home.on': 1 });
 orderSchema.index({ tenantId: 1, 'ordered.at': -1 });
 
 export const LabOrder = mongoose.model('LabOrder', orderSchema);

@@ -232,7 +232,8 @@ export function projectPatient(json, access) {
 export function creationAccess(req) {
   const roles = req.membership?.roles ?? [];
   return {
-    allowed: roles.some((r) => ['receptionist', 'rmo', 'doctor'].includes(r)),
+    // The lab registers walk-in and referred patients (identity only – owner, 17 Oct 2026, docs/LAB_V2_PLAN.md)
+    allowed: roles.some((r) => ['receptionist', 'rmo', 'doctor', 'lab'].includes(r)),
     clinical: roles.some((r) => ['rmo', 'doctor'].includes(r)),
   };
 }
