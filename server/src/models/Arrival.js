@@ -12,6 +12,9 @@ const arrivalSchema = new mongoose.Schema(
     at: { type: Date, required: true },
     by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     byName: { type: String, required: true, maxlength: 150 },
+    // The OPD number of this visit (OP-2026-000001, per hospital and year – docs/ADMISSION_DESK_PLAN.md), printed on the
+    // OPD case paper. Not set on older arrivals.
+    opdNo: { type: String, default: null },
   },
   { timestamps: false },
 );

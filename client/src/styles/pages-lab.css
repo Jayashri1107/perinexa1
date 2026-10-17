@@ -209,3 +209,14 @@
 .lab-report-flag { white-space: nowrap; font-weight: 600; }
 .lab-report-flag svg { width: 1em; height: 1em; vertical-align: -0.125em; }
 .lab-register-table { font-size: var(--fs-print-small); }
+
+/* Admission like a hospital system (docs/ADMISSION_DESK_PLAN.md): the wristband, the barcodes and the OPD case paper */
+.adm-barcode { display: block; width: 60mm; color: var(--print-ink); margin: 0 0 var(--space-2); }
+.adm-wristband .pframe td { padding: 0; }
+.wristband { display: flex; align-items: center; gap: 4mm; width: 250mm; max-width: 100%; height: 25mm; box-sizing: border-box; padding: 2mm 4mm; border: 0.3mm dashed var(--print-rule); color: var(--print-ink); font-size: 8pt; line-height: 1.25; overflow: hidden; }
+.wristband-text { display: grid; flex: 1 1 auto; min-width: 0; }
+.wristband-text strong { font-size: 10pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wristband-text span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wristband-code { flex: 0 0 55mm; width: 55mm; }
+.opd-space { margin-top: var(--space-3); break-inside: avoid; }
+.opd-lines { height: 32mm; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 7.5mm, var(--print-rule) 7.5mm, var(--print-rule) 7.8mm); }

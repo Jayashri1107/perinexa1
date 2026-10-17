@@ -10,6 +10,38 @@ import { bedNames } from './bedFormat.js';
 // Hospital admin → Beds (owner, 13 Oct 2026): the wards and their beds, for the bed board. The admin sees only whether a
 // bed is free or occupied – never who is in it. A bed is never deleted: it is taken out of use (only when empty).
 // The bed charge comes from the price list: a bed price for a ward with the same name, else the general bed price.
+/** The hospital's admission rules (docs/ADMISSION_DESK_PLAN.md): a doctor's request first; the checklist complete. */
+function AdmissionRules() {
+  const res = useFetch('/admission-desk/rules');
+  const [saved, setSaved] = useState(null);
+  const [error, setError] = useState(null);
+  if (!res.data) return null;
+  const rules = saved ?? res.data;
+  const change = async (k, v) => {
+    setError(null);
+    try {
+      setSaved(await api('/admission-desk/rules', { method: 'PUT', body: { requireAdmissionRequest: rules.requireAdmissionRequest, requireChecklist: rules.requireChecklist, [k]: v } }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  return (
+    <section className="card" aria-labelledby="adm-rules">
+      <h2 id="adm-rules">Admission rules</h2>
+      <Alert type="error">{error}</Alert>
+      <label className="check">
+        <input type="checkbox" checked={rules.requireAdmissionRequest} disabled={!rules.canChange} onChange={(e) => change('requireAdmissionRequest', e.target.checked)} /> Reception admits only
+        after a doctor's admission request (an emergency still can, and is marked so)
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={rules.requireChecklist} disabled={!rules.canChange} onChange={(e) => change('requireChecklist', e.target.checked)} /> A planned or day-care
+        admission needs the admission checklist complete (ID proof seen, attendant, who pays, consent signed)
+      </label>
+      <p className="hint">Without these rules the bed board still shows "Checklist incomplete" until the desk completes it.</p>
+    </section>
+  );
+}
+
 export function BedSetupPage() {
   const setup = useFetch('/beds/setup');
   const [form, setForm] = useState({ ward: '', names: '' });
@@ -54,6 +86,7 @@ export function BedSetupPage() {
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}
         </Alert>
+        <AdmissionRules />
         <form className="card beds-add" onSubmit={add} noValidate>
           <h2>Add beds</h2>
           <div className="form-grid">

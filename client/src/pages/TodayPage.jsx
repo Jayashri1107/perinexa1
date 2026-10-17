@@ -19,6 +19,7 @@ import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { HandoverList, VITALS_DUE_HOURS, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
 import { timeLabel } from './appointments/appointmentFormat.js';
+import { OpdCasePaper } from './beds/AdmissionDesk.jsx';
 import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
 import { AiBriefCard } from './ai/AiBriefCard.jsx';
 import { useLibraryDrafts } from './library/ApprovalsPage.jsx';
@@ -360,6 +361,9 @@ function RoleToday({ roles, lensBar = null }) {
   const [markError, setMarkError] = useState(null);
   // The queue time sent to her on WhatsApp when she arrived (docs/WHATSAPP_DESK_PLAN.md): said once to the desk
   const [queueNote, setQueueNote] = useState(null);
+  // The OPD case paper of the patient just marked arrived (docs/ADMISSION_DESK_PLAN.md)
+  const [arrivedNow, setArrivedNow] = useState(null); // { patientId, fullName, opdNo }
+  const [casePaper, setCasePaper] = useState(null);
   const queueSent = (q) => setQueueNote(q?.sent ? `Queue time sent on WhatsApp: ${q.ahead === 0 ? 'she is next' : `${q.ahead} before her`}, about ${timeLabel(q.eta)}${q.practice ? ' (practice – nothing really sent)' : ''}.` : null);
   const [arriving, setArriving] = useState(null); // a patient with no appointment: which doctor (token)
   const [tokenGiven, setTokenGiven] = useState(null); // the walk-in token just given
@@ -434,7 +438,10 @@ function RoleToday({ roles, lensBar = null }) {
     setMarkError(null);
     try {
       const res = await (method === 'POST' ? api('/arrivals', { method, body: { patientId: p.id } }) : api(`/arrivals/${p.id}`, { method }));
-      if (method === 'POST') queueSent(res?.queueTime);
+      if (method === 'POST') {
+        queueSent(res?.queueTime);
+        if (res?.arrival?.opdNo) setArrivedNow({ patientId: p.id, fullName: p.fullName, opdNo: res.arrival.opdNo });
+      }
       listsChanged();
     } catch (err) {
       setMarkError(`${p.fullName}: ${err.message}`);
@@ -571,6 +578,14 @@ function RoleToday({ roles, lensBar = null }) {
         <Alert type="success" onClose={() => setQueueNote(null)}>
           {queueNote}
         </Alert>
+        {arrivedNow && (
+          <Alert type="success" onClose={() => setArrivedNow(null)}>
+            {arrivedNow.fullName}: OPD number {arrivedNow.opdNo}.{' '}
+            <button type="button" className="btn btn-link btn-sm" onClick={() => setCasePaper(arrivedNow.patientId)}>
+              Print the OPD case paper
+            </button>
+          </Alert>
+        )}
         {tokenGiven && (
           <Alert type="success" onClose={() => setTokenGiven(null)}>
             {tokenGiven.patient?.fullName}: token {tokenGiven.token} for {tokenGiven.doctor.name}.{' '}
@@ -820,14 +835,16 @@ function RoleToday({ roles, lensBar = null }) {
           patient={arriving.patient}
           doctorName={arriving.doctorName}
           onClose={() => setArriving(null)}
-          onDone={(appointment, queueTime) => {
+          onDone={(appointment, queueTime, arrival) => {
             setArriving(null);
             queueSent(queueTime);
+            if (arrival?.opdNo && arriving.patient) setArrivedNow({ patientId: arriving.patient.id, fullName: arriving.patient.fullName, opdNo: arrival.opdNo });
             if (appointment?.kind === 'token') setTokenGiven(appointment);
             listsChanged();
           }}
         />
       )}
+      {casePaper && <OpdCasePaper patientId={casePaper} onClose={() => setCasePaper(null)} />}
       {slip && <TokenSlip appointment={{ ...slip, date: slip.date ?? today.data?.today }} onClose={() => setSlip(null)} />}
     </>
   );

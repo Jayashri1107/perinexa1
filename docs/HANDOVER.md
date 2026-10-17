@@ -166,6 +166,8 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - **Feature freeze lifted for WhatsApp at the desk (17 Oct 2026)**: OTP on WhatsApp with SMS fallback, appointment,
   bill and reviewed lab-report messages, queue time, daily cash handover – `docs/WHATSAPP_DESK_PLAN.md`. The hospital's
   WhatsApp number: +91 88880 24000.
+- **Feature freeze lifted for admission like a hospital system (17 Oct 2026)**: IPD/OPD numbers, admission form,
+  wristband, checklist, doctor's admission request, discharge clearance and gate pass – `docs/ADMISSION_DESK_PLAN.md`.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

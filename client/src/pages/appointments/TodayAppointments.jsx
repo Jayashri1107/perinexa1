@@ -36,7 +36,7 @@ export function ArrivalDialog({ patient: given = null, doctorName: givenDoctor =
     setError(null);
     try {
       const res = await api('/arrivals', { method: 'POST', body: { patientId: patient.id, ...(withToken && doctorId ? { doctorId } : {}) } });
-      onDone(res.appointment, res.queueTime);
+      onDone(res.appointment, res.queueTime, res.arrival);
     } catch (err) {
       setError(err.message);
       setBusy(false);

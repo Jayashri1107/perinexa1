@@ -195,6 +195,15 @@ export const AUDIT_LABELS = {
   LAB_REPORT_OPENED: 'Lab report file opened',
   LAB_RESULTS_REVIEWED: 'Lab results reviewed by a doctor',
   LAB_ORDER_CANCELLED: 'Lab order cancelled',
+  ADMISSION_REQUESTED: 'Admission requested by a doctor',
+  ADMISSION_REQUEST_CANCELLED: 'Admission request cancelled',
+  ADMISSION_CHECKLIST_UPDATED: 'Admission checklist filled in',
+  ADMISSION_FORM_PRINTED: 'Admission form printed',
+  WRISTBAND_PRINTED: 'Wristband printed',
+  DISCHARGE_CLEARED: 'Cleared for leaving (gate pass)',
+  GATE_PASS_PRINTED: 'Gate pass printed',
+  OPD_CASE_PAPER_PRINTED: 'OPD case paper printed',
+  ADMISSION_RULES_CHANGED: 'Admission rules changed',
   QUEUE_TIME_SENT: 'Queue time sent on WhatsApp',
   BILL_SENT_WHATSAPP: 'Bill sent on WhatsApp',
   LAB_REPORT_SENT_WHATSAPP: 'Lab report sent on WhatsApp',
@@ -385,6 +394,15 @@ export const AUDIT_TONES = {
   LAB_REPORT_OPENED: 'patient',
   LAB_RESULTS_REVIEWED: 'patient',
   LAB_ORDER_CANCELLED: 'patient',
+  ADMISSION_REQUESTED: 'patient',
+  ADMISSION_REQUEST_CANCELLED: 'patient',
+  ADMISSION_CHECKLIST_UPDATED: 'patient',
+  ADMISSION_FORM_PRINTED: 'patient',
+  WRISTBAND_PRINTED: 'patient',
+  DISCHARGE_CLEARED: 'patient',
+  GATE_PASS_PRINTED: 'patient',
+  OPD_CASE_PAPER_PRINTED: 'patient',
+  ADMISSION_RULES_CHANGED: 'info',
   QUEUE_TIME_SENT: 'patient',
   BILL_SENT_WHATSAPP: 'patient',
   LAB_REPORT_SENT_WHATSAPP: 'patient',
@@ -916,6 +934,20 @@ export function describeAudit(entry) {
       return `${d.day ?? ''}: ₹${((d.handedPaise ?? 0) / 100).toLocaleString('en-IN')} handed over (Perinexa counted ₹${((d.cashPaise ?? 0) / 100).toLocaleString('en-IN')})`;
     case 'CASH_HANDOVER_CONFIRMED':
       return `${d.day ?? ''}: ₹${((d.receivedPaise ?? 0) / 100).toLocaleString('en-IN')} received (₹${((d.handedPaise ?? 0) / 100).toLocaleString('en-IN')} handed over)`;
+    case 'ADMISSION_REQUESTED':
+    case 'ADMISSION_REQUEST_CANCELLED':
+    case 'ADMISSION_FORM_PRINTED':
+    case 'WRISTBAND_PRINTED':
+    case 'GATE_PASS_PRINTED':
+      return record(d);
+    case 'ADMISSION_CHECKLIST_UPDATED':
+      return `${record(d)}${d.complete ? ' – complete' : ' – not complete yet'}`;
+    case 'DISCHARGE_CLEARED':
+      return `${record(d)}${d.balancePaise > 0 ? ` – ₹${(d.balancePaise / 100).toLocaleString('en-IN')} still due` : ' – bill settled'}`;
+    case 'OPD_CASE_PAPER_PRINTED':
+      return `${record(d)}${d.opdNo ? ` – ${d.opdNo}` : ''}`;
+    case 'ADMISSION_RULES_CHANGED':
+      return `${d.requireAdmissionRequest ? "A doctor's request first" : 'No request needed'} · ${d.requireChecklist ? 'checklist required' : 'checklist not required'}`;
     case 'LAB_SAMPLE_REJECTED':
       return `${record(d)}${d.reason ? `: ${LAB_REJECT_WORDS[d.reason] ?? d.reason}` : ''}`;
     case 'LAB_SENT_OUTSIDE':
