@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { billRegistered } from '../billing/hooks.js';
 import { z } from 'zod';
 import { nextNumber } from '../models/Counter.js';
 import { Membership, hasRole } from '../models/Membership.js';
@@ -719,6 +720,7 @@ export async function registerPatient(req, body) {
   });
   // Only ids go into the audit log, never the patient's personal details.
   await audit(req, 'PATIENT_CREATED', { details: { patientId: patient._id.toString(), mrn: patient.mrn, careType: patient.careType } });
+  await billRegistered(req, patient); // the registration fee, when the hospital charges one
   // Registered although matching records were shown: which records (ids only – never a name or a phone number)
   if (found.total) {
     await audit(req, 'PATIENT_REGISTERED_ANYWAY', { details: { patientId: patient._id.toString(), mrn: patient.mrn, matches: found.total, matchIds: found.ids.slice(0, 20) } });

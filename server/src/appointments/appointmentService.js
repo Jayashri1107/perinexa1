@@ -9,6 +9,7 @@
 //  - nothing medical is read or sent: names, patient numbers, phones, doctors, days, times and visit types.
 
 import mongoose from 'mongoose';
+import { notify } from '../notifications/notify.js';
 import { addDays, hospitalToday, isoDay, utcDay } from '../careplans/dates.js';
 import { appointmentFees } from '../billing/billingService.js';
 import { billAppointmentCancelled } from '../billing/hooks.js';
@@ -29,7 +30,7 @@ import { HttpError } from '../utils/httpError.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { MAX_DAYS_AHEAD, SLOT_MINUTES } from './appointmentRules.js';
-import { coveredStarts, firstFreeSlot, hospitalMinutes, leaveOn, lengthFor, minutesOf, sessionsOn, slotCheck, slotStarts } from './slots.js';
+import { coveredStarts, firstFreeSlot, hospitalMinutes, leaveOn, lengthFor, minutesOf, sessionsOn, slotCheck, slotStarts, walkInStarts } from './slots.js';
 
 const who = (req) => ({ by: req.user?._id ?? null, byName: req.user?.name ?? 'Perinexa', at: req.now ?? new Date() });
 
@@ -70,7 +71,7 @@ export async function takenStarts(tenantId, doctorId, day, exceptId = null) {
  * The times of a doctor's day that are free for a visit of this type (every slot it takes is free and in a session,
  * and not already past today): ["10:00", …]. [] on leave, on a day off, or when the doctor set no timings.
  */
-export async function freeStarts(tenantId, doctorId, day, { visitType = 'follow_up', now = new Date() } = {}) {
+export async function freeStarts(tenantId, doctorId, day, { visitType = 'follow_up', now = new Date(), online = false } = {}) {
   const schedule = await scheduleOf(tenantId, doctorId);
   if (!schedule || leaveOn(schedule, day)) return [];
   const minutes = lengthFor(schedule, visitType);
@@ -78,7 +79,9 @@ export async function freeStarts(tenantId, doctorId, day, { visitType = 'follow_
   const taken = await takenStarts(tenantId, doctorId, day);
   const isToday = utcDay(day).getTime() === hospitalToday(now).getTime();
   const nowMinutes = hospitalMinutes(now);
-  return starts.filter((start) => coveredStarts(start, minutes).every((s) => starts.includes(s) && !taken.has(s)) && !(isToday && minutesOf(start) < nowMinutes));
+  // Online (the patient portal): never the slots kept for walk-ins
+  const kept = online ? walkInStarts(schedule, day) : new Set();
+  return starts.filter((start) => coveredStarts(start, minutes).every((s) => starts.includes(s) && !taken.has(s) && !kept.has(s)) && !(isToday && minutesOf(start) < nowMinutes));
 }
 
 // ---------- Arrived, seen, did not come ----------
@@ -112,7 +115,7 @@ export async function dayStates(tenantId, patientIds, day) {
 /** 'cancelled' | 'seen' | 'arrived' | 'booked' | 'no_show' ("did not come": the day passed with no arrival). */
 export function statusOf(appt, state, today) {
   if (appt.status === 'cancelled') return 'cancelled';
-  if (state?.seen) return 'seen';
+  if (state?.seen || appt.done) return 'seen';
   if (state?.arrivedAt) return 'arrived';
   return utcDay(appt.on) < utcDay(today) ? 'no_show' : 'booked';
 }
@@ -291,6 +294,9 @@ export async function bookSlot(req, body) {
     created: who(req),
   });
   await queueChangeMessage(req.tenantId, appt, 'booked', req.now);
+  // The doctor is told (not when the doctor booked it): name, day and time – never why she comes
+  const bookedName = patientId ? (await Patient.findOne({ tenantId: req.tenantId, _id: patientId }, { fullName: 1 }).lean())?.fullName : body.guest?.name;
+  await notify(req, { userIds: [doctor.id] }, { kind: 'appointment', text: `New appointment: ${bookedName ?? 'a patient'}, ${isoDay(day)} at ${body.start}${body.source === 'portal' ? ' (booked online)' : ''}.`, link: '/appointments' });
   return appt;
 }
 

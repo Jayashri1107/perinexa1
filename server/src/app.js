@@ -53,6 +53,7 @@ import { labQcRouter } from './routes/labQc.js';
 import { labStockRouter } from './routes/labStock.js';
 import { imagingRouter } from './routes/imaging.js';
 import { verifyRouter } from './routes/verify.js';
+import { notificationsRouter } from './routes/notifications.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
@@ -187,6 +188,8 @@ export function createApp({
   app.use('/api/lab-qc', ...inTenant, labQcRouter);
   app.use('/api/lab-stock', ...inTenant, labStockRouter);
   app.use('/api/imaging', ...inTenant, imagingRouter);
+  // The bell: this person's notifications (routes/notifications.js)
+  app.use('/api/notifications', ...inTenant, notificationsRouter);
   // Is this lab report genuine? (the QR code on a printed report – no login)
   app.use('/api/verify', verifyRouter);
   app.use('/api/reminders', ...inTenant, reminderOutboxRouter);

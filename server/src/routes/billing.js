@@ -7,7 +7,7 @@ import { PAYEE_NAME_MAX, UPI_ID_MAX, payeeNameProblem, upiIdProblem, upiLink, up
 import { addDays, daysBetween, hospitalDayStart, hospitalToday, isoDay, timeIn, toHospitalDate } from '../careplans/dates.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
-import { hasRole } from '../models/Membership.js';
+import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { PriceItem } from '../models/PriceItem.js';
 import { audit } from '../utils/audit.js';
@@ -194,6 +194,7 @@ const lineSchema = z
     qty: z.number().int().min(1).max(365).default(1),
     ratePaise: paise.optional(),
     name: z.string().trim().min(2).max(120).optional(),
+    doctorId: objectId.nullable().optional(), // the doctor the charge is for (shown on the bill)
   })
   .strict();
 
@@ -207,7 +208,8 @@ billingRouter.post('/bills/:id/lines', async (req, res) => {
   const rate = item.pricePaise || body.ratePaise;
   // A confidential test keeps its neutral name on the bill, also when added by hand (labLineName)
   const listed = item.key?.startsWith('lab:') ? labLineName({ key: item.key.slice(4), name: item.name }) : item.name;
-  const after = await pushLines(req, bill._id, [{ item, name: !item.pricePaise && body.name ? body.name : listed, qty: body.qty, ratePaise: rate, source: 'manual' }]);
+  if (body.doctorId && !(await Membership.exists({ tenantId: req.tenantId, userId: body.doctorId, roles: 'doctor', isActive: true }))) throw Object.assign(new HttpError(400, 'Choose a doctor of this hospital.', 'VALIDATION'), { fields: { doctorId: 'Choose a doctor of this hospital.' } });
+  const after = await pushLines(req, bill._id, [{ item, name: !item.pricePaise && body.name ? body.name : listed, qty: body.qty, ratePaise: rate, source: 'manual', doctorId: body.doctorId ?? null }]);
   if (!after) throw conflict('This bill was cancelled.', 'CANCELLED');
   await audit(req, 'BILL_ITEM_ADDED', { details: ids(bill, { priceItemId: String(item._id), amountPaise: rate * body.qty }) });
   res.status(201).json({ bill: await viewOf(req, after) });

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { notify } from '../notifications/notify.js';
 import { billLabCancelled, billLabOrdered } from '../billing/hooks.js';
 import { z } from 'zod';
 import { hasRole } from '../models/Membership.js';
@@ -895,6 +896,7 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   order.rev += 1;
   await order.save();
   await audit(req, action, { details: ids(order, { mrn: patient.mrn }) });
+  if (order.status === 'reported' && order.source !== 'walk_in') await notify(req, { userIds: [order.ordered?.by] }, { kind: 'lab', text: `Lab results to review: ${patient.fullName}${order.abnormal ? ' – outside the usual range' : ''}.`, link: `/lab/orders/${order._id}` });
   res.json({ order: await viewFor(req, order, access, setup), ...(stock?.short.length ? { stockShort: stock.short } : {}) });
 });
 

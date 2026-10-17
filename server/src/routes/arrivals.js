@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { notify } from '../notifications/notify.js';
 import { z } from 'zod';
 import { cancelAppointment, giveToken, hospitalDoctor, viewsOf } from '../appointments/appointmentService.js';
 import { hospitalToday } from '../careplans/dates.js';
@@ -66,6 +67,10 @@ arrivalsRouter.post('/', async (req, res) => {
   }
   await audit(req, 'PATIENT_ARRIVED', { details: { patientId: String(patient._id), mrn: patient.mrn } });
   const [appointment] = appt ? await viewsOf(req.tenantId, [appt], on) : [null];
+  if (appointment) {
+    const name = (await Patient.findOne({ tenantId: req.tenantId, _id: patient._id }, { fullName: 1 }).lean())?.fullName ?? 'A patient';
+    await notify(req, { userIds: [appointment.doctor?.id] }, { kind: 'arrived', text: `${name} has arrived${appointment.token ? ` – token ${appointment.token}` : appointment.start ? ` for ${appointment.start}` : ''}.`, link: '/' });
+  }
   // Her place in the queue and about when she goes in, on WhatsApp (when the hospital switched it on and she agreed)
   const queueTime = appt ? await sendQueueTime(req, patient._id, appt._id) : { sent: false, reason: 'no_appointment' };
   res.status(201).json({ queueTime, arrival: { patientId: String(patient._id), at: arrival.at, byName: arrival.byName, opdNo: arrival.opdNo }, appointment });

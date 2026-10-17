@@ -8,6 +8,7 @@ import { Patient, currentAge } from '../models/Patient.js';
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
+import { billScan, billScanCancelled } from '../billing/hooks.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { findPatient } from '../utils/patientLookup.js';
@@ -114,6 +115,7 @@ patientImagingRouter.post('/', async (req, res) => {
     clientRequestId: body.clientRequestId,
   });
   await audit(req, 'IMAGING_ORDERED', { details: ids(o, patient) });
+  await billScan(req, patient, o); // the scan on her bill (its price-list item)
   res.status(201).json({ study: view(req, o, patient) });
 });
 
@@ -241,6 +243,7 @@ imagingRouter.post('/:id/cancel', async (req, res) => {
   Object.assign(o, { status: 'cancelled', cancelled: { ...stampOf(req), reason: body.reason.trim() }, rev: o.rev + 1 });
   await o.save();
   await audit(req, 'IMAGING_CANCELLED', { details: ids(o, patient) });
+  await billScanCancelled(req, o);
   res.json({ study: view(req, o, patient) });
 });
 

@@ -162,12 +162,32 @@ export async function removeLinesOf(req, ref, reason) {
 export async function syncBed(req, bill, stay) {
   if (bill.status !== 'open' || bill.kind !== 'ipd') return null;
   const days = bedDays(stay.admittedAt, stay.dischargedAt, req.now ?? new Date());
+  // Nursing per day (once its price is set) follows the same days as the bed
+  const nursed = (await syncNursing(req, bill, stay, days)) ?? bill;
+  if (nursed !== bill) bill = nursed;
   const line = bill.lines.find((l) => l.ref?.kind === 'bed' && !l.removed);
   if (!line) {
     if (bill.lines.some((l) => l.ref?.kind === 'bed')) return null; // taken off by hand: left so
     const item = await bedPriceFor(req.tenantId, stay.ward);
     if (!item) return null;
     return pushLines(req, bill._id, [{ item, name: `${item.name}${stay.ward ? ` (${stay.ward})` : ''}`, qty: days, source: 'auto', ref: { kind: 'bed', id: stay._id } }]);
+  }
+  if (line.qty === days) return null;
+  return Bill.findOneAndUpdate(
+    { tenantId: req.tenantId, _id: bill._id },
+    { $set: { 'lines.$[l].qty': days, 'lines.$[l].amountPaise': days * line.ratePaise } },
+    { arrayFilters: [{ 'l._id': line._id }], returnDocument: 'after' },
+  ).lean();
+}
+
+/** The nursing line of a stay: as many days as the bed (only when the hospital charges nursing). */
+async function syncNursing(req, bill, stay, days) {
+  const line = bill.lines.find((l) => l.ref?.kind === 'nursing' && !l.removed);
+  if (!line) {
+    if (bill.lines.some((l) => l.ref?.kind === 'nursing')) return null; // taken off by hand: left so
+    const item = await priceByKey(req.tenantId, 'nursing');
+    if (!item?.pricePaise) return null;
+    return pushLines(req, bill._id, [{ item, qty: days, source: 'auto', ref: { kind: 'nursing', id: stay._id } }]);
   }
   if (line.qty === days) return null;
   return Bill.findOneAndUpdate(
@@ -248,9 +268,39 @@ export async function chargeWorkDone(req, patient, work, item) {
   await pushLines(req, bill._id, [{ item, source: 'auto', ref: { kind: 'work', id: work._id }, doctorId: work.doctorId ?? null }]);
 }
 
-/** A patient was admitted: the stay's bill, with its bed-day line. */
+/** A patient was admitted: the stay's bill, with its bed-day line, and the admission charge (once its price is set). */
 export async function chargeAdmission(req, stay) {
-  await openStayBill(req, stay);
+  const bill = await openStayBill(req, stay);
+  const item = await priceByKey(req.tenantId, 'admission');
+  if (item?.pricePaise && !bill.lines.some((l) => l.ref?.kind === 'admission')) await pushLines(req, bill._id, [{ item, source: 'auto', ref: { kind: 'admission', id: stay._id } }]);
+}
+
+// Charges a hospital system adds by itself (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md) – only once the hospital
+// admin has set their price, so a hospital that does not charge them sees nothing.
+
+/** A new patient was registered: the registration fee on today's bill. */
+export async function chargeRegistration(req, patient) {
+  const item = await priceByKey(req.tenantId, 'registration');
+  if (!item?.pricePaise) return;
+  const bill = await openBillFor(req, patient._id);
+  await pushLines(req, bill._id, [{ item, source: 'auto', ref: { kind: 'registration', id: patient._id }, doctorId: patient.assignedDoctor ?? null }]);
+}
+
+/** A doctor signed a ward-round note: one doctor visit on the stay's bill, with the doctor's name. */
+export async function chargeRound(req, stay, doc) {
+  const item = await priceByKey(req.tenantId, 'ipd_round');
+  if (!item?.pricePaise) return;
+  const bill = await openStayBill(req, stay);
+  if (bill.lines.some((l) => l.ref?.kind === 'round' && String(l.ref.id) === String(doc._id))) return;
+  await pushLines(req, bill._id, [{ item, name: `${item.name} – ${req.user.name}`, source: 'auto', ref: { kind: 'round', id: doc._id }, doctorId: req.user._id }]);
+}
+
+/** A scan was ordered: its price-list item (scan:<study>) on her bill, with the ordering doctor. */
+export async function chargeScan(req, patient, study) {
+  const item = await priceByKey(req.tenantId, `scan:${study.study}`);
+  if (!item) return;
+  const bill = await openBillFor(req, patient._id);
+  await pushLines(req, bill._id, [{ item, source: 'auto', ref: { kind: 'scan', id: study._id }, doctorId: study.ordered?.by ?? null }]);
 }
 
 // ---------- The consultation fee taken when an appointment is booked ----------
@@ -475,16 +525,20 @@ export async function claimForm(req, bill) {
 async function lookups(tenantId, bills) {
   const pids = [...new Set(bills.map((b) => String(b.patientId)))];
   const aids = [...new Set(bills.map((b) => b.admissionId && String(b.admissionId)).filter(Boolean))];
-  const [patients, stays] = await Promise.all([
-    pids.length ? Patient.find({ tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1 }).lean() : [],
+  const [patients, stays, doctors] = await Promise.all([
+    pids.length ? Patient.find({ tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, assignedDoctor: 1 }).lean() : [],
     aids.length ? Admission.find({ tenantId, _id: { $in: aids } }, { admittedAt: 1, dischargedAt: 1, ward: 1, bed: 1, status: 1 }).lean() : [],
+    // Each line's doctor, and her own doctor, by name (owner, 17 Oct 2026: the doctor's name shows on the bill)
+    userNames(bills.flatMap((b) => (b.lines ?? []).map((l) => l.doctorId))),
   ]);
-  return { patients: new Map(patients.map((p) => [String(p._id), p])), stays: new Map(stays.map((s) => [String(s._id), s])) };
+  const own = await userNames(patients.map((p) => p.assignedDoctor));
+  return { patients: new Map(patients.map((p) => [String(p._id), p])), stays: new Map(stays.map((s) => [String(s._id), s])), doctors: new Map([...doctors, ...own]) };
 }
 
-const lineView = (l) => ({
+const lineView = (l, doctors = new Map()) => ({
   id: String(l._id),
   name: l.name,
+  doctorName: l.doctorId ? (doctors.get(String(l.doctorId)) ?? '') : '',
   group: l.group,
   qty: l.qty,
   ratePaise: l.ratePaise,
@@ -516,7 +570,7 @@ function lastPayment(b) {
 }
 
 /** One bill as the website gets it; `full` adds the lines and payments. */
-export function billView(b, { patients, stays }, { full = true } = {}) {
+export function billView(b, { patients, stays, doctors = new Map() }, { full = true } = {}) {
   const p = patients.get(String(b.patientId));
   const s = b.admissionId ? stays.get(String(b.admissionId)) : null;
   const t = totals(b);
@@ -526,6 +580,7 @@ export function billView(b, { patients, stays }, { full = true } = {}) {
     kind: b.kind,
     date: isoDay(b.on),
     // duplicateOf: this bill is on a record marked as a duplicate – the note reception sees ({ id, mrn } of the main record)
+    doctorName: p?.assignedDoctor ? (doctors.get(String(p.assignedDoctor)) ?? '') : '',
     patient: p ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn, phone: p.phone ?? '', duplicateOf: isDuplicate(p) ? { id: String(p.duplicateOf.patient), mrn: p.duplicateOf.mrn } : null } : null,
     stay: s ? { ward: s.ward ?? '', bed: s.bed ?? '', admittedAt: s.admittedAt, dischargedAt: s.dischargedAt ?? null, inHospital: s.status === 'admitted' } : null,
     ...t,
@@ -535,7 +590,7 @@ export function billView(b, { patients, stays }, { full = true } = {}) {
     cancelled: b.status === 'cancelled' && b.cancelled ? { reason: b.cancelled.reason ?? '', byName: b.cancelled.byName ?? '', at: b.cancelled.at ?? null } : null,
     insurer: b.insurance?.insurer ?? '', // who the claim is with (lists); every detail only with the full bill
     lastPayment: lastPayment(b), // the latest money in or out, for lists: when, how and what kind (null: none yet)
-    ...(full ? { lines: (b.lines ?? []).map(lineView), payments: (b.payments ?? []).map(paymentView), insurance: insuranceView(b.insurance) } : {}),
+    ...(full ? { lines: (b.lines ?? []).map((l) => lineView(l, doctors)), payments: (b.payments ?? []).map(paymentView), insurance: insuranceView(b.insurance) } : {}),
   };
 }
 

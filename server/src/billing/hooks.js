@@ -2,7 +2,7 @@
 // A billing problem must never stop clinical work, so each hook catches and logs its own error; reception can still
 // add the charge by hand.
 
-import { chargeAdmission, chargeLabOrder, chargeVisit, chargeWorkDone, removeLinesOf } from './billingService.js';
+import { chargeAdmission, chargeLabOrder, chargeVisit, chargeWorkDone, removeLinesOf, chargeRegistration, chargeRound, chargeScan } from './billingService.js';
 
 async function safely(what, fn) {
   try {
@@ -27,4 +27,9 @@ export const billAppointmentCancelled = (req, appt) => safely('take off the appo
 /** A scan or procedure was recorded as done. */
 export const billWorkDone = (req, patient, work, item) => safely('charge the scan or procedure', () => chargeWorkDone(req, patient, work, item));
 /** A scan or procedure was entered in error: its charge comes off. */
+// Charges a hospital system adds by itself (owner, 17 Oct 2026), once their price is set
+export const billRegistered = (req, patient) => safely('charge the registration fee', () => chargeRegistration(req, patient));
+export const billRound = (req, stay, doc) => safely('charge the doctor visit', () => chargeRound(req, stay, doc));
+export const billScan = (req, patient, study) => safely('charge the scan', () => chargeScan(req, patient, study));
+export const billScanCancelled = (req, study) => safely('take off the scan', () => removeLinesOf(req, { id: study._id }, 'Scan cancelled'));
 export const billWorkCancelled = (req, work) => safely('take off the scan or procedure', () => removeLinesOf(req, { id: work._id }, 'Entered in error'));

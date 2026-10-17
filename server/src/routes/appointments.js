@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { notify } from '../notifications/notify.js';
 import { z } from 'zod';
 import { BOOKING_ROLES, CANCEL_REASONS, MAX_LEAVE_DAYS, MAX_LEAVE_ENTRIES, MAX_SESSIONS_PER_DAY, PATIENT_APPOINTMENT_ROLES, QUEUE_ROLES, SLOT_MINUTES, VISIT_LENGTHS, VISIT_TYPES } from '../appointments/appointmentRules.js';
 import {
@@ -15,7 +16,7 @@ import {
   statusOf,
   viewsOf,
 } from '../appointments/appointmentService.js';
-import { coveredStarts, hospitalMinutes, leaveOn, lengthFor, sessionsOn, slotCheck, slotStarts, timetableProblems, waitingOrder } from '../appointments/slots.js';
+import { coveredStarts, hospitalMinutes, leaveOn, lengthFor, sessionsOn, slotCheck, slotStarts, timetableProblems, waitingOrder, walkInStarts } from '../appointments/slots.js';
 import { MODE_LABELS, PAYMENT_MODES } from '../billing/billingRules.js';
 import { appointmentFeeItem, takeAppointmentFee } from '../billing/billingService.js';
 import { addDays, daysBetween, hospitalToday, isoDay, utcDay } from '../careplans/dates.js';
@@ -93,6 +94,8 @@ const timingsSchema = z
       .object(Object.fromEntries(VISIT_TYPES.map((t) => [t, z.number().refine((n) => VISIT_LENGTHS.includes(n), 'Choose one of the lengths offered.')])))
       .strict()
       .optional(),
+    // The last N slots of each session kept for walk-ins (not offered online). Left out: as it is.
+    walkInSlots: z.number().int().min(0).max(20).optional(),
   })
   .strict();
 
@@ -100,6 +103,7 @@ const timingsView = (s) => ({
   week: [0, 1, 2, 3, 4, 5, 6].map((day) => ({ day, sessions: (s?.week?.find((w) => w.day === day)?.sessions ?? []).map((x) => ({ from: x.from, to: x.to })) })),
   leave: (s?.leave ?? []).map((l) => ({ from: isoDay(l.from), to: isoDay(l.to), note: l.note ?? '' })),
   lengths: Object.fromEntries(VISIT_TYPES.map((t) => [t, lengthFor(s, t)])),
+  walkInSlots: s?.walkInSlots ?? 0,
   updatedByName: s?.updatedByName ?? '',
   updatedAt: s?.updatedAt ?? null,
 });
@@ -126,7 +130,7 @@ appointmentsRouter.put('/timings/:doctorId', async (req, res) => {
   const leave = body.leave.filter((l) => l.to >= today).sort((a, b) => a.from - b.from);
   const schedule = await OpdSchedule.findOneAndUpdate(
     { tenantId: req.tenantId, doctorId },
-    { $set: { week, leave, ...(body.lengths ? { lengths: body.lengths } : {}), updatedBy: req.user._id, updatedByName: req.user.name }, $setOnInsert: { tenantId: req.tenantId, doctorId } },
+    { $set: { week, leave, ...(body.lengths ? { lengths: body.lengths } : {}), ...(body.walkInSlots !== undefined ? { walkInSlots: body.walkInSlots } : {}), updatedBy: req.user._id, updatedByName: req.user.name }, $setOnInsert: { tenantId: req.tenantId, doctorId } },
     { upsert: true, returnDocument: 'after' },
   ).lean();
   await audit(req, 'OPD_TIMINGS_CHANGED', { details: { doctorId: String(doctorId), days: week.filter((w) => w.sessions.length).length, leave: leave.length } });
@@ -155,6 +159,7 @@ appointmentsRouter.get('/day', async (req, res) => {
   const onLeave = leaveOn(schedule, day);
   const nowMinutes = day.getTime() === today.getTime() ? hospitalMinutes(req.now) : day < today ? 24 * 60 : -1;
   const slotSet = new Set(onLeave ? [] : starts);
+  const keptForWalkIns = walkInStarts(schedule, day);
   const slots = onLeave
     ? []
     : starts.map((start) => {
@@ -164,6 +169,7 @@ appointmentsRouter.get('/day', async (req, res) => {
         return {
           start,
           past: h * 60 + m < nowMinutes,
+          walkIn: keptForWalkIns.has(start), // kept for walk-ins: not offered online
           appointments: views.filter((v) => v.kind === 'slot' && v.start === start),
           busyWith: busy ? { id: busy.id, start: busy.start, name: busy.patient?.fullName ?? busy.guest?.name ?? '' } : null,
         };
@@ -360,6 +366,22 @@ appointmentsRouter.post('/', async (req, res) => {
 const moveSchema = z
   .object({ doctorId: objectId.optional(), date: requiredDateOnly('Date'), start: time, visitType: z.enum(VISIT_TYPES).optional(), confirm: z.boolean().default(false) })
   .strict();
+
+// The doctor (or an RMO) marks the checkup done: she leaves the waiting list; reception is told (owner, 17 Oct 2026)
+appointmentsRouter.post('/:id/done', async (req, res) => {
+  if (!hasRole(req.membership, 'doctor', 'rmo')) throw forbidden('The doctor marks the checkup done.');
+  const appt = await findAppointment(req, req.params.id);
+  if (appt.status !== 'booked') throw new HttpError(409, 'This appointment was cancelled.', 'CANCELLED');
+  if (utcDay(appt.on).getTime() !== hospitalToday(req.now).getTime()) throw new HttpError(409, "Only today's checkups are marked done.", 'NOT_TODAY');
+  if (!appt.done) {
+    appt.done = { by: req.user._id, byName: req.user.name, at: req.now ?? new Date() };
+    await appt.save();
+    await audit(req, 'APPOINTMENT_DONE', { details: ids(appt) });
+    const p = appt.patientId ? await Patient.findOne({ tenantId: req.tenantId, _id: appt.patientId }, { fullName: 1 }).lean() : null;
+    await notify(req, { roles: ['receptionist'] }, { kind: 'done', text: `Checkup done: ${p?.fullName ?? appt.guest?.name ?? 'a patient'} (${req.user.name}).`, link: '/' });
+  }
+  res.json({ appointment: await viewOf(req, appt) });
+});
 
 appointmentsRouter.post('/:id/move', async (req, res) => {
   assertCanBook(req);

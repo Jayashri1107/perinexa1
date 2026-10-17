@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { notify } from '../notifications/notify.js';
 import { z } from 'zod';
 import { totals } from '../billing/money.js';
 import { addDays, hospitalDayStart, hospitalToday, isoDay } from '../careplans/dates.js';
@@ -138,6 +139,7 @@ admissionDeskRouter.post('/requests', async (req, res) => {
     throw conflict('She already has an open admission request. Cancel it first to make a new one.', 'ALREADY_REQUESTED');
   }
   await audit(req, 'ADMISSION_REQUESTED', { details: { patientId: String(patient._id), mrn: patient.mrn, requestId: String(r._id) } });
+  await notify(req, { roles: ['receptionist'] }, { kind: 'admission', text: `Admission requested by ${req.user.name}: ${patient.fullName}.`, link: '/beds' });
   res.status(201).json({ request: requestView(r, patient) });
 });
 
