@@ -241,14 +241,20 @@ describe('"She may already be registered" at registration', () => {
   it('shows only what the person registering may see – never a clinical detail, the type of care or "sensitive"', async () => {
     const sensitive = await registered('drA', { careType: 'infertility', fullName: 'Private Sample', phone: '98765 11111', ageYears: 33, assignedDoctor: id('drA'), medical: { allergies: 'Penicillin', bloodGroup: 'O+' }, notes: 'IVF cycle' });
     expect((await view('drA', sensitive)).body.patient.sensitive).toBe(true);
+    // The lab registers walk-ins too (owner, 17 Oct 2026): the same safe list as reception
     for (const who of ['reception', 'drB', 'rmo']) {
       const res = await register(who, { fullName: 'Private Sample', phone: '98765 11111' });
       expect(res.status, who).toBe(409);
       expect(res.body.error.matches).toEqual([{ id: sensitive.id, mrn: 'P-000001', fullName: 'Private Sample', matchedOn: ['phone', 'name'], baby: false, age: 33, doctorName: 'Sample drA', phoneEnd: '1111' }]);
       expect(JSON.stringify(res.body)).not.toMatch(/infertility|Penicillin|IVF|sensitive|98765 11111/i);
     }
-    // Nurses and lab staff do not register patients at all
-    for (const who of ['nurse', 'lab']) expect((await register(who, { fullName: 'Private Sample', phone: '98765 11111' })).status, who).toBe(403);
+    // The lab sees an even shorter list (its need-to-know): never the phone, the age or the doctor
+    const forLab = await register('lab', { fullName: 'Private Sample', phone: '98765 11111' });
+    expect(forLab.status).toBe(409);
+    expect(forLab.body.error.matches[0]).toMatchObject({ id: sensitive.id, mrn: 'P-000001', fullName: 'Private Sample' });
+    expect(JSON.stringify(forLab.body)).not.toMatch(/infertility|Penicillin|IVF|sensitive|98765 11111|1111/i);
+    // Nurses do not register patients at all
+    for (const who of ['nurse']) expect((await register(who, { fullName: 'Private Sample', phone: '98765 11111' })).status, who).toBe(403);
   });
 
   it('a placeholder number is no match; mistakes in the form are said first; at most five records are shown', async () => {
