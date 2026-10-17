@@ -152,3 +152,5 @@
 .aadhaar-scanner { display: grid; gap: var(--space-1); }
 .aadhaar-scanner > span { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 500; }
 .aadhaar-camera .hint svg { width: 16px; height: 16px; vertical-align: -3px; color: var(--teal-700); }
+.aadhaar-start { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.aadhaar-start .hint { margin: 0; flex: 1 1 260px; }

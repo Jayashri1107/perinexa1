@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, QrCode, ScanLine, Upload } from 'lucide-react';
+import { Camera, ScanLine, Upload } from 'lucide-react';
 import { Alert } from '../../components/ui.jsx';
 import { parseAadhaarQr, prepareQrReaders, readQrFrom, readQrFromImage } from './aadhaarQr.js';
 
 // "Fill from Aadhaar card" on the patient's details (owner, 16 Oct 2026): reception, doctor or RMO reads the QR code on
 // the patient's own Aadhaar card (the paper letter or the plastic card – owner, 17 Oct 2026: "people have the normal
-// Aadhaar, not e-Aadhaar"), with her agreement, in one of three ways:
-//  - a camera, live: it starts by itself once the agreement is ticked; the card is held up to the webcam (or her
+// Aadhaar, not e-Aadhaar"), with her agreement (said on the button: one click opens the camera), in one of three ways:
+//  - a camera, live: it opens with the click; the card is held up to the webcam (or her
 //    phone's camera) and the QR is read from the moving picture in this browser the moment it is clear – no photo is
 //    taken or kept, and the camera turns itself off (owner, 17 Oct 2026: "capture it automatically, no stop button");
 //  - a USB QR scanner (staff only): the scanner types what the QR holds into a box, as a keyboard would;
@@ -18,19 +18,17 @@ export const AADHAAR_FIELD_LABELS = { fullName: 'name', ageYears: 'age', address
 
 // Staff wording (English); the patient's sign-up passes its own (portalAccountWords.js aadhaar), in her language
 export const AADHAAR_WORDS = {
-  open: 'Fill from Aadhaar card',
-  intro:
-    'Read the QR code on the patient’s Aadhaar card – the paper letter or the plastic card. It is read on this computer: nothing is saved or sent anywhere, and only the name, age, address and the last 4 digits are used.',
-  agree: 'The patient agrees to her Aadhaar card being read for these details',
+  open: 'Scan Aadhaar card',
+  openHint: 'With the patient’s agreement. The QR code on her card (paper letter or plastic card) is read on this computer – nothing is saved or sent.',
   camera: 'Scan with camera',
   scanAgain: 'Scan again',
   looking: 'Looking for the QR code…',
   noCamera: 'No camera was found on this computer. Use a QR scanner or upload a photo of the card.',
   cameraHint: 'Hold the QR code of the card inside the box, about a hand’s width from the camera. Keep it still, in good light – it is read by itself.',
   cameraBlocked: 'The camera could not be opened. Allow the camera for this site in the browser, or use a QR scanner or a photo.',
-  scanner: 'Or scan with a QR scanner',
+  scanner: 'Or with a USB QR scanner',
   scannerHint: 'Click here, then scan the QR code on the card',
-  upload: 'Upload a photo of the card',
+  upload: 'Upload a photo instead',
   reading: 'Reading the QR code…',
   close: 'Close',
   filled: (list) => `Filled from the Aadhaar QR: ${list}. Please check them against the card – the card's digital signature is not checked.`,
@@ -106,7 +104,6 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
   const t = { ...AADHAAR_WORDS, ...words };
   const problem = { NO_QR: t.noQr, NOT_AADHAAR: t.notAadhaar, NOT_IMAGE: t.notImage };
   const [open, setOpen] = useState(false);
-  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [camera, setCamera] = useState(false);
   const [scanned, setScanned] = useState('');
@@ -131,7 +128,10 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
   const fromFile = (e) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // the picture is not kept, even in the file box
-    if (file) use(() => readQrFromImage(file));
+    if (file) {
+      setCamera(false);
+      use(() => readQrFromImage(file));
+    }
   };
   const fromCamera = (text) => {
     setCamera(false); // off by itself once read
@@ -143,7 +143,14 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
   };
   const fromScanner = (text) => {
     setScanned(''); // not kept in the box
-    if (text.trim()) use(() => text);
+    if (text.trim()) {
+      setCamera(false);
+      use(() => text);
+    }
+  };
+  const scan = () => {
+    setResult(null);
+    setCamera(true);
   };
   const close = () => {
     setCamera(false);
@@ -151,62 +158,47 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
     setResult(null);
   };
 
+  // One click (owner, 17 Oct 2026): the button says it is done with her agreement, and the camera opens straight away
   if (!open) {
     return (
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm aadhaar-open"
-        onClick={() => {
-          prepareQrReaders(); // ready by the time the card is shown
-          setOpen(true);
-        }}
-        disabled={disabled}
-      >
-        <QrCode aria-hidden="true" /> {t.open}
-      </button>
+      <div className="aadhaar-start">
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => {
+            prepareQrReaders();
+            setOpen(true);
+            scan();
+          }}
+          disabled={disabled}
+        >
+          <Camera aria-hidden="true" /> {t.open}
+        </button>
+        <span className="hint">{t.openHint}</span>
+      </div>
     );
   }
-  const can = agreed && !busy && !disabled;
+  const can = !busy && !disabled;
   return (
     <div className="aadhaar-fill">
-      <p className="hint">{t.intro}</p>
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(e) => {
-            setAgreed(e.target.checked);
-            setCamera(e.target.checked); // the camera starts by itself once she agrees
-            if (e.target.checked) setResult(null);
-          }}
-        />{' '}
-        {t.agree}
-      </label>
+      {camera && !disabled && <CameraScan words={t} onText={fromCamera} onBlocked={cameraProblem} />}
+      {result?.ok && <Alert type="success">{t.filled(result.ok.join(', '))}</Alert>}
+      {result?.problem && <Alert type="warning">{result.problem}</Alert>}
+      {busy && <p className="hint" role="status">{t.reading}</p>}
       <div className="row">
         {!camera && (
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            disabled={!can}
-            onClick={() => {
-              setResult(null);
-              setCamera(true);
-            }}
-          >
-            <Camera aria-hidden="true" /> {result ? t.scanAgain : t.camera}
+          <button type="button" className="btn btn-secondary btn-sm" disabled={!can} onClick={scan}>
+            <Camera aria-hidden="true" /> {t.scanAgain}
           </button>
         )}
         <input ref={input} type="file" accept="image/*" className="sr-only" onChange={fromFile} aria-label={t.upload} tabIndex={-1} />
-        <button type="button" className="btn btn-secondary btn-sm" disabled={!can} onClick={() => input.current?.click()}>
-          <Upload aria-hidden="true" /> {busy ? t.reading : t.upload}
+        <button type="button" className="btn btn-link btn-sm" disabled={!can} onClick={() => input.current?.click()}>
+          <Upload aria-hidden="true" /> {t.upload}
         </button>
         <button type="button" className="btn btn-link btn-sm" onClick={close}>
           {t.close}
         </button>
       </div>
-      {camera && agreed && !disabled && (
-        <CameraScan words={t} onText={fromCamera} onBlocked={cameraProblem} />
-      )}
       {scanner && (
         <label className="aadhaar-scanner">
           <span>
@@ -229,8 +221,6 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
           />
         </label>
       )}
-      {result?.ok && <Alert type="success">{t.filled(result.ok.join(', '))}</Alert>}
-      {result?.problem && <Alert type="warning">{result.problem}</Alert>}
     </div>
   );
 }
