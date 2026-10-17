@@ -12,11 +12,16 @@ at once), and never uses the whole Aadhaar number, the photo in the QR, gender, 
 **Code.** `client/src/pages/patients/aadhaarQr.js` (reading: Secure QR V1/V2 and the old XML QR; tests in
 `aadhaarQr.test.js`), `AadhaarQrFill.jsx` (the panel), `PatientForm.jsx` (`fillFromAadhaar`).
 
-**Add-on.** `jsqr` 1.4.0 (Apache-2.0, no dependencies, exact version) finds the QR in the picture. Agreed by the owner
-for the developer on 16 Oct 2026 (choice "QR code, in the browser"). Loaded only when a picture is uploaded.
+**Add-ons.** `zxing-wasm` 3.1.4 (MIT; ZXing, the reader most scanner apps use) reads the QR first – agreed by the
+owner on 17 Oct 2026 because jsQR could not read the dense Secure QR from webcams. Its program file
+(`zxing_reader.wasm`, ~950 KB) is bundled with the app; `locateFile` in `aadhaarQr.js` stops it being fetched from its
+default CDN. `jsqr` 1.4.0 (Apache-2.0) is the fallback. Both load only when the Aadhaar panel opens. Measured with
+Aadhaar-sized sample codes (about 150 squares across), blurred like a webcam picture: ZXing needs about 3 camera dots
+per square (the QR about half the height of a Full-HD picture); jsQR about 4 sharp ones. Laptop webcams that cannot
+focus closer than ~30 cm may still fail – then a USB QR scanner, a phone camera or a close photo.
 
 **Not done yet – for the developer.**
 - The UIDAI digital signature in the Secure QR is **not checked** (it needs UIDAI's public certificate). A made-up QR
   would fill the form with its own words, so staff still compare with the card. The screen says so.
 - e-Aadhaar PDFs are password-protected: staff upload a screenshot of the QR instead.
-- No live camera scanning; on a phone or tablet the upload button offers the camera.
+- Camera: starts when the agreement is ticked, reads by itself, turns off; asks for the camera's sharpest picture and continuous focus where the camera has it.

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, QrCode, ScanLine, Upload } from 'lucide-react';
 import { Alert } from '../../components/ui.jsx';
-import { parseAadhaarQr, readQrFrom, readQrFromImage } from './aadhaarQr.js';
+import { parseAadhaarQr, prepareQrReaders, readQrFrom, readQrFromImage } from './aadhaarQr.js';
 
 // "Fill from Aadhaar card" on the patient's details (owner, 16 Oct 2026): reception, doctor or RMO reads the QR code on
 // the patient's own Aadhaar card (the paper letter or the plastic card – owner, 17 Oct 2026: "people have the normal
@@ -49,25 +49,30 @@ function CameraScan({ words, onText, onBlocked }) {
     const canvas = document.createElement('canvas');
     (async () => {
       try {
-        // The back camera on a phone; a sharp picture – the Secure QR on the card is dense
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+        // The back camera on a phone; the sharpest picture the camera gives (4K, Full HD, …) – the Secure QR on the card
+        // is dense, and each of its squares needs about 3 camera dots to be read
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
+        // Focus that follows the card, where the camera can (most phones, some webcams)
+        const [track] = stream.getVideoTracks();
+        if (track?.getCapabilities?.().focusMode?.includes('continuous')) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
         if (stopped) {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
         video.current.srcObject = stream;
         await video.current.play();
+        let frame = 0;
         const look = async () => {
           if (stopped) return;
           const v = video.current;
           if (v && v.readyState >= 2 && v.videoWidth) {
-            const text = await readQrFrom(v, v.videoWidth, v.videoHeight, { quick: true, canvas });
+            const text = await readQrFrom(v, v.videoWidth, v.videoHeight, { quick: true, frame: frame++, canvas });
             if (text && !stopped) {
               onText(text);
               return;
             }
           }
-          if (!stopped) timer = setTimeout(look, 120);
+          if (!stopped) timer = setTimeout(look, 60);
         };
         look();
       } catch (err) {
@@ -148,7 +153,15 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
 
   if (!open) {
     return (
-      <button type="button" className="btn btn-secondary btn-sm aadhaar-open" onClick={() => setOpen(true)} disabled={disabled}>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm aadhaar-open"
+        onClick={() => {
+          prepareQrReaders(); // ready by the time the card is shown
+          setOpen(true);
+        }}
+        disabled={disabled}
+      >
         <QrCode aria-hidden="true" /> {t.open}
       </button>
     );
