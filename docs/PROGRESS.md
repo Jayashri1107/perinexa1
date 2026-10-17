@@ -3753,6 +3753,33 @@ Branch `whatsapp-desk` (on top of `lab-lims`). Plan, decision and Meta setup for
 6. As reception: take a cash payment → Billing → Cash handover → Hand over the cash. As a doctor: Today shows
    "1 cash handover is waiting" → Count and confirm.
 
+## Admission like a hospital system (owner, 17 Oct 2026 – feature freeze lifted for these 6 items)
+Branch `admission-desk`. Plan and decision: `docs/ADMISSION_DESK_PLAN.md`.
+- **IPD number** for every stay (`IP-2026-000001`) and a printed **admission form** with the general consent (DRAFT
+  wording) and signature lines.
+- **Wristband** with a barcode of the IPD number (blood group and allergies only for nurses, RMOs and doctors).
+- **Admission checklist** at the desk (ID proof type + last 4 digits only, attendant, who pays, consent signed),
+  pre-filled from her record; **Checklist incomplete** on the bed board; MLC needs the police station.
+- **A doctor's admission request** (her Stays tab → Request admission at the desk); reception admits from **Admission
+  requests** on the bed board. Hospital admin → Beds → **Admission rules** (request first; checklist required).
+- **Discharge clearance and gate pass**: after the doctor confirms the discharge card, the bed board lists her under
+  **Discharged – to clear for leaving**; reception or billing clears her (dues need a reason) and prints the **gate pass**.
+- **OPD number** when marked arrived (`OP-2026-000001`) and **Print the OPD case paper** on Today.
+- Server: `inpatient/admissionDesk.js`, `models/AdmissionRequest.js`, `routes/admissionDesk.js` (`/api/admission-desk`),
+  `routes/beds.js`, `routes/arrivals.js`; website: `pages/beds/AdmissionDesk.jsx`, BedBoardPage, BedSetupPage,
+  PatientStaysTab, TodayPage. Tests: `server/tests/admission-desk.test.js`, `client/src/pages/beds/admissionDesk.test.jsx`.
+
+### How to test (fake data only)
+1. Hospital admin → Beds → Admission rules: tick both (or leave them off to try the flag).
+2. As a doctor: a fake patient → Stays → **Request admission at the desk** (Caesarean section – planned, tomorrow).
+3. As reception: Beds → **Admission requests** → Admit → choose a bed; the checklist is pre-filled from her record –
+   complete it (ID proof last 4 digits, attendant, who pays, consent signed) → Admit. Her bed shows the IPD number.
+4. On her bed: **Form** (admission form with the barcode and consent lines) and **Wristband**.
+5. Admit someone as an **Emergency** without the checklist: "Checklist incomplete" on her bed → **Checklist** → complete.
+6. As her doctor, confirm her discharge card; as reception: Beds → **Discharged – to clear for leaving** → Clear (a due
+   amount needs a reason) → the gate pass prints.
+7. Today → mark a patient arrived: "OPD number OP-2026-…" → **Print the OPD case paper**.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

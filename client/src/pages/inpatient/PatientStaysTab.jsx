@@ -7,6 +7,7 @@ import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { fromLocalInput, toLocalInput } from './inpatientFormat.js';
+import { RequestAdmissionDialog } from '../beds/AdmissionDesk.jsx';
 
 // The Stays tab on the patient record (Version 2, inpatients): every stay in hospital, newest first, and "Admit"
 // (the patient's doctor or an RMO). A stay opens on its own page: its documents and the nursing chart.
@@ -76,6 +77,9 @@ export function PatientStaysTab() {
   const canView = Boolean(patient.access?.canViewVisits);
   const { data, error, loading } = useFetch(canView ? `/patients/${patient.id}/admissions` : null);
   const [admitting, setAdmitting] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [requested, setRequested] = useState(null);
+  const requests = useFetch(patient?.id ? '/admission-desk/requests' : null, patient?.id ? { patientId: patient.id } : undefined);
   if (!canView) return <div className="card">Inpatient records are not part of your role for this patient.</div>;
 
   const columns = [
@@ -117,9 +121,23 @@ export function PatientStaysTab() {
             <button type="button" className="btn btn-primary" onClick={() => setAdmitting(true)}>
               <LogIn aria-hidden="true" /> Admit
             </button>
+            {/* A doctor's request: reception admits her at the desk (docs/ADMISSION_DESK_PLAN.md) */}
+            {requests.data?.canRequest && !requests.data.requests.length && (
+              <button type="button" className="btn btn-secondary" onClick={() => setRequesting(true)}>
+                Request admission at the desk
+              </button>
+            )}
           </div>
         )}
       </section>
+      {requests.data?.requests?.length > 0 && (
+        <Alert type="info">
+          Admission requested by {requests.data.requests[0].requested.byName}, {formatDateTime(requests.data.requests[0].requested.at)} – waiting for reception to admit her.
+        </Alert>
+      )}
+      <Alert type="success" onClose={() => setRequested(null)}>
+        {requested}
+      </Alert>
       <DataTable
         caption="Stays in hospital"
         columns={columns}
@@ -128,6 +146,17 @@ export function PatientStaysTab() {
         onRowClick={(s) => navigate(`/patients/${patient.id}/stays/${s.id}`)}
         emptyText="No stays in hospital yet."
       />
+      {requesting && (
+        <RequestAdmissionDialog
+          patient={patient}
+          onClose={() => setRequesting(false)}
+          onDone={(message) => {
+            setRequesting(false);
+            setRequested(message);
+            requests.reload();
+          }}
+        />
+      )}
       {admitting && (
         <AdmitDialog
           patient={patient}

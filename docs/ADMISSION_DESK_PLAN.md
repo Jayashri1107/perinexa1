@@ -17,8 +17,10 @@ merge (1cfe79d); merged only when the owner asks and `npm test` and `npm run bui
    "Blood group and allergies: see the record".
 3. **Admission checklist at the desk:** ID proof checked (type + last 4 digits – never the whole number), attendant's
    name, relation and phone, payer (cash, insurance with the insurer, government scheme with its name), general consent
-   signed. Required for a planned or day-care admission; an emergency is admitted at once and shows **Checklist
-   incomplete** on the bed board until reception completes it. MLC needs the police station (or "to inform").
+   signed – pre-filled from her record. Hospital admin → Beds → "A planned or day-care admission needs the admission
+   checklist complete" makes it required (an emergency is admitted at once and completed later); without the rule an
+   incomplete checklist shows **Checklist incomplete** on the bed board until reception completes it. MLC needs the
+   police station (or "to inform").
 4. **A doctor's admission request.** A doctor or RMO asks for an admission from her record (reason, planned or
    emergency, ward wanted, when, note). Reception sees **Admission requests** on the bed board and admits from it.
    Hospital admin → Beds: "Reception admits only after a doctor's request" (emergencies excepted, marked so).

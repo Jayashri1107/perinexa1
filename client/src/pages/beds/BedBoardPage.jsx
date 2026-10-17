@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRightLeft, BedDouble, BedSingle, Building2, Check, ChevronDown, ChevronUp, CircleSlash, Eye, LogIn, Plus, Receipt, Search, User, Users } from 'lucide-react';
+import { ArrowRightLeft, BedDouble, BedSingle, Building2, Check, ChevronDown, ChevronUp, CircleSlash, ClipboardList, Eye, LogIn, Plus, Receipt, Search, User, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -12,6 +12,7 @@ import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { canRegisterPatients } from '../../platform/modules.js';
 import { AdmitRegister } from './AdmitRegister.jsx';
 import { REASONS, freeBeds, nowLocal } from './bedFormat.js';
+import { ChecklistDialog, ChecklistFields, EMPTY_CHECKLIST, RequestsSection, StayPaper, StayPaperButtons, ToClearSection, checklistFromPatient } from './AdmissionDesk.jsx';
 
 // The bed board (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): each ward's beds, free or occupied, with who
 // is in each bed, her doctor, since when and – as the server allows – the reason. Reception, doctors and RMOs admit a
@@ -56,6 +57,11 @@ export function BedBoardPage() {
   const [wardFilter, setWardFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [folded, setFolded] = useState(() => new Set()); // wards closed by the person
+  // Admission like a hospital system (docs/ADMISSION_DESK_PLAN.md): doctors' requests, papers, the checklist
+  const requests = useFetch('/admission-desk/requests');
+  const [fromRequest, setFromRequest] = useState(null); // a request reception admits from
+  const [paper, setPaper] = useState(null); // { stay, what }
+  const [checking, setChecking] = useState(null); // a stay whose checklist is completed
   const data = board.data;
   const canBill = hasRole(activeMembership, 'receptionist');
   const free = freeBeds(data?.wards);
@@ -63,9 +69,11 @@ export function BedBoardPage() {
 
   const admitted = (info) => {
     setAdmitTo(null);
-    setNotice(`${info.patient.fullName} is admitted to ${info.ward} · ${info.bed}.`);
+    setFromRequest(null);
+    setNotice(`${info.patient.fullName} is admitted to ${info.ward} · ${info.bed}${info.ipdNo ? ` – IPD number ${info.ipdNo}` : ''}.${info.checklistComplete === false ? ' Complete her admission checklist (Checklist on her bed).' : ''}`);
     setSlip(info);
     board.reload();
+    requests.reload();
   };
   const moved = (info) => {
     setMoving(null);
@@ -157,6 +165,9 @@ export function BedBoardPage() {
               )}
             </div>
 
+            <RequestsSection data={requests.data} onAdmit={data.canAdmit && free.length ? (r) => setFromRequest(r) : null} />
+            <ToClearSection onCleared={(s) => setPaper({ stay: s, what: 'gatepass' })} />
+
             {data.wards.length === 0 && (
               <div className="card beds-empty">
                 <BedDouble aria-hidden="true" />
@@ -220,7 +231,13 @@ export function BedBoardPage() {
                               )}
                             </div>
                             {b.stay ? (
-                              <Occupant stay={b.stay} canBill={canBill} onMove={free.length ? () => setMoving({ stay: b.stay, from: `${w.ward} · ${b.name}` }) : null} />
+                              <Occupant
+                                stay={b.stay}
+                                canBill={canBill}
+                                onMove={free.length ? () => setMoving({ stay: b.stay, from: `${w.ward} · ${b.name}` }) : null}
+                                onPaper={(what) => setPaper({ stay: b.stay, what })}
+                                onChecklist={() => setChecking(b.stay)}
+                              />
                             ) : (
                               <>
                                 <BedSingle className="bed-picture" aria-hidden="true" />
@@ -272,6 +289,19 @@ export function BedBoardPage() {
         )}
       </div>
       {admitTo && <AdmitDialog bed={admitTo === 'any' ? null : admitTo} onClose={() => setAdmitTo(null)} onAdmitted={admitted} />}
+      {fromRequest && <AdmitDialog patient={fromRequest.patient} request={fromRequest} onClose={() => setFromRequest(null)} onAdmitted={admitted} />}
+      {paper && <StayPaper stay={paper.stay} what={paper.what} onClose={() => setPaper(null)} />}
+      {checking && (
+        <ChecklistDialog
+          stay={checking}
+          onClose={() => setChecking(null)}
+          onSaved={(message) => {
+            setChecking(null);
+            setNotice(message);
+            board.reload();
+          }}
+        />
+      )}
       {moving && <MoveDialog stay={moving.stay} from={moving.from} beds={free} onClose={() => setMoving(null)} onMoved={moved} />}
       {slip && <AdmissionSlip info={slip} onClose={() => setSlip(null)} />}
     </>
@@ -279,7 +309,7 @@ export function BedBoardPage() {
 }
 
 /** Who is in the bed: name (a link to her record), patient number, doctor, since when, the reason when shown. */
-function Occupant({ stay, canBill, onMove, moveLabel = 'Transfer' }) {
+function Occupant({ stay, canBill, onMove, onPaper, onChecklist, moveLabel = 'Transfer' }) {
   const p = stay.patient;
   return (
     <div className="bed-who">
@@ -290,6 +320,12 @@ function Occupant({ stay, canBill, onMove, moveLabel = 'Transfer' }) {
       </span>
       <span className="muted">Admitted {formatDateTime(stay.admittedAt)}</span>
       <span className="bed-stay">Stay: {stayLength(stay.admittedAt)}</span>
+      {stay.ipdNo && <span className="muted tabular">{stay.ipdNo}</span>}
+      {stay.checklistIncomplete && (
+        <StatusPill tone="watch" icon={ClipboardList}>
+          Checklist incomplete
+        </StatusPill>
+      )}
       {stay.reason && <span className="bed-reason">{stay.reason}</span>}
       {p.closed && <span className="muted">Record closed</span>}
       <div className="bed-actions">
@@ -301,6 +337,7 @@ function Occupant({ stay, canBill, onMove, moveLabel = 'Transfer' }) {
             <Receipt aria-hidden="true" /> Bill
           </Link>
         )}
+        {onPaper && <StayPaperButtons stay={stay} onPaper={onPaper} onChecklist={stay.canMove ? onChecklist : null} />}
         {stay.canMove && onMove && (
           <button type="button" className="btn btn-link btn-sm" onClick={onMove}>
             <ArrowRightLeft aria-hidden="true" /> {moveLabel}
@@ -314,13 +351,19 @@ function Occupant({ stay, canBill, onMove, moveLabel = 'Transfer' }) {
 /**
  * Admit a patient: to the bed clicked on the board (bed), or – from her record (patient) – to a free bed chosen here.
  */
-export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, onClose, onAdmitted }) {
+export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, request = null, onClose, onAdmitted }) {
   const { activeMembership } = useAuth();
   const [patient, setPatient] = useState(preset);
   const freeList = useFetch(fixedBed ? null : '/beds', { free: '1' });
   const [bedId, setBedId] = useState('');
   const bed = fixedBed ?? freeList.data?.beds.find((b) => b.id === (bedId || freeList.data.beds[0]?.id)) ?? null;
-  const [form, setForm] = useState({ reasonCode: 'labour', reasonNote: '', admittedAt: nowLocal(), admissionType: 'planned', mlc: false });
+  const [form, setForm] = useState({ reasonCode: request?.reasonCode ?? 'labour', reasonNote: '', admittedAt: nowLocal(), admissionType: request?.admissionType ?? 'planned', mlc: false, mlcPolice: '' });
+  // The checklist, first filled from her record (ID proof, payer, emergency contact); her open request, if any
+  const record = useFetch(patient ? `/patients/${patient.id}` : null);
+  const [checklist, setChecklist] = useState(null);
+  const shownChecklist = checklist ?? (record.data?.patient ? checklistFromPatient(record.data.patient) : EMPTY_CHECKLIST);
+  const open = useFetch(patient && !request ? '/admission-desk/requests' : null, patient && !request ? { patientId: patient.id } : undefined);
+  const req = request ?? open.data?.requests?.[0] ?? null;
   const [clientRequestId] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -333,9 +376,20 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, onCl
     setError(null);
     setFields({});
     try {
-      const body = { clientRequestId, patientId: patient.id, reasonCode: form.reasonCode, reasonNote: form.reasonNote.trim(), admissionType: form.admissionType, mlc: form.mlc, admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : '' };
+      const body = {
+        clientRequestId,
+        patientId: patient.id,
+        reasonCode: form.reasonCode,
+        reasonNote: form.reasonNote.trim(),
+        admissionType: form.admissionType,
+        mlc: form.mlc,
+        mlcPolice: form.mlc ? form.mlcPolice.trim() : '',
+        admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : '',
+        checklist: shownChecklist,
+        ...(req ? { requestId: req.id } : {}),
+      };
       const { admission } = await api(`/beds/${bed.id}/admit`, { method: 'POST', body });
-      onAdmitted({ patient, ward: admission.ward, bed: admission.bed, admittedAt: admission.admittedAt });
+      onAdmitted({ patient, ward: admission.ward, bed: admission.bed, admittedAt: admission.admittedAt, ipdNo: admission.ipdNo, checklistComplete: admission.checklistComplete, stayId: admission.id });
     } catch (err) {
       setError(err.message);
       setFields(err.fields ?? {});
@@ -383,6 +437,12 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, onCl
               </button>
             )}
           </div>
+          {req && (
+            <Alert type="info">
+              Admitting from {req.requested.byName}'s request{req.reason ? `: ${req.reason}` : ''}
+              {req.note ? ` – ${req.note}` : ''}.
+            </Alert>
+          )}
           {blocked && <Alert type="warning">{patient.duplicateOf ? `This record is a duplicate: choose ${patient.duplicateOf.mrn} instead.` : 'This record is closed: it takes no admission.'}</Alert>}
           <div className="form-grid">
             <Field label="Reason for admission" id="bed-reason" error={fields.reasonCode} hint="Choose from the list – no medical details here.">
@@ -412,6 +472,13 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, onCl
             <input type="checkbox" checked={form.mlc} onChange={(e) => setForm({ ...form, mlc: e.target.checked })} /> Medico-legal case (MLC) – e.g. an
             accident, assault, burns or poisoning; the police are informed as the hospital's rules say
           </label>
+          {form.mlc && (
+            <Field label="Police station informed" id="bed-police" error={fields.mlcPolice} hint='Or write "to inform".'>
+              <input id="bed-police" maxLength={120} value={form.mlcPolice} onChange={set('mlcPolice')} />
+            </Field>
+          )}
+          <ChecklistFields value={shownChecklist} onChange={setChecklist} fields={fields} idPrefix="bed-ck" />
+          {form.admissionType === 'emergency' && <p className="hint">An emergency is admitted at once: anything missing in the checklist can be completed later (Checklist on her bed).</p>}
           <p className="hint">Her bill for the stay opens with this ward's bed charge. The RMO writes the admission notes.</p>
         </>
       )}
@@ -483,6 +550,7 @@ export function AdmissionSlip({ info, onClose }) {
             items={[
               ['Name', info.patient.fullName],
               ['Patient number', info.patient.mrn],
+              ['IPD number', info.ipdNo ?? ''],
               ['Doctor', info.patient.assignedDoctorName ?? ''],
               ['Ward', info.ward],
               ['Bed', info.bed],
