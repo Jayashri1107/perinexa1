@@ -64,9 +64,9 @@ describe('care of: her contact person (17 Oct 2026)', () => {
 });
 
 describe('where the QR is looked for in a picture', () => {
-  it('the whole, the middle, then nine overlapping halves; the camera only the whole and the middle', () => {
+  it('the whole, the middle, then nine overlapping halves; the camera only the whole and its middle 85 %', () => {
     expect(searchAreas(4000, 3000)).toHaveLength(11);
     expect(searchAreas(4000, 3000)[1]).toEqual([800, 600, 2400, 1800]);
-    expect(searchAreas(1920, 1080, true)).toHaveLength(2);
+    expect(searchAreas(1920, 1080, true)).toEqual([[0, 0, 1920, 1080], [144, 81, 1632, 918]]);
   });
 });

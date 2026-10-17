@@ -12,6 +12,9 @@
 // The UIDAI signature is NOT checked (that needs UIDAI's certificate): a forged QR would fill the form with its words,
 // so staff still look at the card as before. Developer: see docs/AADHAAR_QR.md.
 
+// The address of ZXing's program file, served by this app (just a text; the file loads only when a QR is read)
+import zxingWasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url';
+
 const SEP = 255;
 
 /** A decimal string of the Secure QR → its bytes. */
@@ -140,10 +143,14 @@ export async function parseAadhaarQr(text, today = new Date()) {
 }
 
 // ---------- Finding the QR in a picture ----------
-// The Secure QR on the card is dense (about 100 × 100 squares) and small on a photo of the whole card, so it is looked
-// for in several ways until one reads it: Chrome's own QR reader where the computer has one (phones, Macs), then jsQR
-// on the whole picture at a few sizes, then on overlapping parts of it at full sharpness (the QR then fills more of
-// what is looked at, and the card's printing around it no longer confuses the search).
+// The Secure QR on the card is dense (about 120–150 squares across) and small in a webcam picture, often a little
+// blurred. Measured on 17 Oct 2026 (Aadhaar-sized sample codes, blurred and noisy as a webcam sees them): ZXing reads
+// them down to about 2.6 camera pixels per square when a generous middle part of the picture is enlarged 2× first;
+// jsQR needs about 3–4 sharp pixels per square. So the QR is looked for, until one way reads it:
+//  1. Chrome's own QR reader, where the computer has one (phones, Macs);
+//  2. ZXing (zxing-wasm, loaded from this app – never from the internet) on the whole picture, then on the middle 85 %
+//     enlarged 2×; the camera alternates the two from frame to frame;
+//  3. for a photo: ZXing and jsQR on overlapping parts of it, at full sharpness; jsQR on the whole picture.
 
 let nativeDetector; // undefined: not asked yet; null: none on this computer
 async function nativeRead(source) {
@@ -166,6 +173,31 @@ async function nativeRead(source) {
   }
 }
 
+// ZXing: its program file comes with the app (Vite gives its address); without this it would be fetched from a CDN.
+let zxing = null; // a promise of the reader, or of null when it can't load
+function loadZxing() {
+  zxing ??= (async () => {
+    try {
+      const { prepareZXingModule, readBarcodes } = await import('zxing-wasm/reader');
+      await prepareZXingModule({ overrides: { locateFile: (path, prefix) => (path.endsWith('.wasm') ? zxingWasmUrl : prefix + path) }, fireImmediately: true });
+      return readBarcodes;
+    } catch {
+      return null;
+    }
+  })();
+  return zxing;
+}
+const ZXING_OPTIONS = { formats: ['QRCode'], tryHarder: true, maxNumberOfSymbols: 1 };
+async function zxingRead(imageData) {
+  const read = await loadZxing();
+  if (!read) return null;
+  try {
+    return (await read(imageData, ZXING_OPTIONS)).find((r) => r.isValid && r.text)?.text ?? null;
+  } catch {
+    return null;
+  }
+}
+
 let jsQRModule = null;
 const loadJsQR = async () => (jsQRModule ??= (await import('jsqr')).default);
 
@@ -173,43 +205,66 @@ const loadJsQR = async () => (jsQRModule ??= (await import('jsqr')).default);
 export function searchAreas(w, h, quick = false) {
   const areas = [[0, 0, w, h]];
   const mid = (f) => [Math.round((w * (1 - f)) / 2), Math.round((h * (1 - f)) / 2), Math.round(w * f), Math.round(h * f)];
-  areas.push(mid(0.6));
+  areas.push(mid(quick ? 0.85 : 0.6));
   if (quick) return areas;
   for (const fy of [0, 0.25, 0.5]) for (const fx of [0, 0.25, 0.5]) areas.push([Math.round(w * fx), Math.round(h * fy), Math.round(w * 0.5), Math.round(h * 0.5)]);
   return areas;
 }
 
+/** Part [sx, sy, sw, sh] of the picture, drawn `scale` times its size (at most `max` dots on its longer side). */
+function pixels(source, [sx, sy, sw, sh], scale, canvas, max = 3600) {
+  const k = Math.min(scale, max / Math.max(sw, sh));
+  canvas.width = Math.max(1, Math.round(sw * k));
+  canvas.height = Math.max(1, Math.round(sh * k));
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
 /**
- * Reads a QR from something that can be drawn (an image or a video frame) of w × h, or null. quick: fewer tries, for
- * the camera's frames (it tries again on the next one).
+ * Reads a QR from something that can be drawn (an image or a video frame) of w × h, or null.
+ * quick: one try per camera frame (`frame` counts them – whole picture and enlarged middle in turn).
  */
-export async function readQrFrom(source, w, h, { quick = false, canvas = null } = {}) {
+export async function readQrFrom(source, w, h, { quick = false, frame = 0, canvas = null } = {}) {
   const native = await nativeRead(source);
   if (native) return native;
-  const jsQR = await loadJsQR();
   const c = canvas ?? document.createElement('canvas');
-  const ctx = c.getContext('2d', { willReadFrequently: true });
-  const attempt = (sx, sy, sw, sh, size) => {
-    // Shrunk to `size` on its longer side – or enlarged to it, for a small part, so each square of the QR is a few dots
-    const scale = size / Math.max(sw, sh);
-    c.width = Math.max(1, Math.round(sw * scale));
-    c.height = Math.max(1, Math.round(sh * scale));
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
-    const { data, width, height } = ctx.getImageData(0, 0, c.width, c.height);
-    return jsQR(data, width, height, { inversionAttempts: quick ? 'dontInvert' : 'attemptBoth' })?.data ?? null;
-  };
-  const longest = Math.max(w, h);
-  const sizes = quick ? [Math.min(longest, 1280)] : [1600, 1200, 2400, Math.min(longest, 3200)];
-  for (const [sx, sy, sw, sh] of searchAreas(w, h, quick)) {
-    const own = Math.max(sw, sh);
-    for (const size of sx === 0 && sy === 0 && sw === w ? sizes : [Math.min(Math.max(own, 1000), 2000)]) {
-      const text = attempt(sx, sy, sw, sh, size);
-      if (text) return text;
-    }
+  const [whole, middle] = searchAreas(w, h, true);
+  if (quick) {
+    const text = frame % 2 === 0 ? await zxingRead(pixels(source, whole, 1, c, 2560)) : await zxingRead(pixels(source, middle, 2, c));
+    if (text || (await loadZxing())) return text;
+    // ZXing could not load: jsQR on the whole frame
+    const jsQR = await loadJsQR();
+    const d = pixels(source, whole, 1, c, 1600);
+    return jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' })?.data ?? null;
+  }
+  // A photo: every way, the surest first
+  for (const [area, scale, max] of [[whole, 1, 4000], [middle, 2, 3600], [whole, 0.5, 4000]]) {
+    const text = await zxingRead(pixels(source, area, scale, c, max));
+    if (text) return text;
+  }
+  const jsQR = await loadJsQR();
+  for (const area of searchAreas(w, h)) {
+    const own = Math.max(area[2], area[3]);
+    const d = pixels(source, area, Math.max(1, 1600 / own), c, 2400);
+    const text = (await zxingRead(d)) ?? jsQR(d.data, d.width, d.height, { inversionAttempts: 'attemptBoth' })?.data ?? null;
+    if (text) return text;
+  }
+  for (const size of [1600, 1200, 2400]) {
+    const d = pixels(source, whole, size / Math.max(w, h), c, size);
+    const text = jsQR(d.data, d.width, d.height, { inversionAttempts: 'attemptBoth' })?.data ?? null;
+    if (text) return text;
   }
   return null;
 }
+
+/** Starts loading the QR readers before they are needed (when the Aadhaar panel opens). */
+export const prepareQrReaders = () => {
+  loadZxing();
+  loadJsQR().catch(() => {});
+};
 
 /** Finds and reads a QR in an image file (a photo or scan of the card). */
 export async function readQrFromImage(file) {
