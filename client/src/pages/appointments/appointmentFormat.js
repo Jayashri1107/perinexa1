@@ -39,7 +39,7 @@ export const whenLabel = (a) => (a.kind === 'token' ? `Token ${a.token}` : a.sta
 export const STATUS_LOOK = {
   booked: { tone: 'due', icon: CalendarCheck, label: 'Booked' },
   arrived: { tone: 'stable', icon: UserCheck, label: 'Arrived' },
-  seen: { tone: 'inactive', icon: UserCheck, label: 'Seen' },
+  seen: { tone: 'inactive', icon: UserCheck, label: 'Checkup done' },
   no_show: { tone: 'watch', icon: UserX, label: 'Did not come' },
   cancelled: { tone: 'inactive', icon: CalendarX2, label: 'Cancelled' },
 };

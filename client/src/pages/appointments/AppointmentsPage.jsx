@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, IndianRupee, Plane, Plus, Settings, UserCheck } from 'lucide-react';
+import { CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, Footprints, IndianRupee, Plane, Plus, Settings, UserCheck } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill } from '../../components/ui.jsx';
@@ -11,6 +11,13 @@ import { NEEDS_TIME_LOOK, STATUS_LOOK, VISIT_TYPE_LABELS, addDaysIso, dayLabel, 
 // Appointment booking (docs/APPOINTMENTS_PLAN.md): one doctor's day in 10-minute slots. Reception and doctors click
 // a free time to book (a registered patient, or a new one with name and phone), and move or cancel bookings. RMOs
 // and nurses can look. The doctor and day are in the address (?doctor=…&date=…), so a page can be shared or reloaded.
+
+/** A free slot kept for walk-ins (owner, 17 Oct 2026): not offered online; reception and doctors book it here. */
+const WalkInWord = () => (
+  <>
+    <Footprints aria-hidden="true" className="appt-walkin-icon" /> Walk-in
+  </>
+);
 
 export const appointmentTabs = (canBook) => [
   { label: 'Schedule', to: '/appointments', end: true },
@@ -288,17 +295,17 @@ export function AppointmentsPage() {
                         const taken = s.appointments.length > 0 || Boolean(s.busyWith);
                         const bookHere = () => dialogs.book(d.doctor, d.date, s.start, forPatient, d.lengths);
                         return (
-                          <li key={s.start} className={`appt-chip ${taken ? 'is-booked' : 'is-free'} ${s.past ? 'is-past' : ''}`}>
+                          <li key={s.start} className={`appt-chip ${taken ? 'is-booked' : 'is-free'} ${s.past ? 'is-past' : ''}${s.walkIn && !taken ? ' is-walkin' : ''}`}>
                             {!taken ? (
                               canBook && !s.past ? (
-                                <button type="button" className="appt-chip-main" onClick={bookHere} aria-label={`Book ${timeLabel(s.start)}`}>
+                                <button type="button" className="appt-chip-main" onClick={bookHere} aria-label={`Book ${timeLabel(s.start)}${s.walkIn ? ' (kept for walk-ins)' : ''}`}>
                                   <span className="appt-chip-time">{timeLabel(s.start)}</span>
-                                  <span className="appt-chip-who">Free</span>
+                                  <span className="appt-chip-who">{s.walkIn ? <WalkInWord /> : 'Free'}</span>
                                 </button>
                               ) : (
                                 <span className="appt-chip-main">
                                   <span className="appt-chip-time">{timeLabel(s.start)}</span>
-                                  <span className="appt-chip-who">Free</span>
+                                  <span className="appt-chip-who">{s.walkIn ? <WalkInWord /> : 'Free'}</span>
                                 </span>
                               )
                             ) : (

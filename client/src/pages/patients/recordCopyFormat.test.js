@@ -430,7 +430,7 @@ describe('care plans, consent forms, appointments', () => {
 
   it('appointments, oldest first (as the server sends them): the day, the time or token, the doctor and what became of it', () => {
     expect(appointmentRows(SAMPLE_COPY.appointments).map((r) => r.cells)).toEqual([
-      ['21 Sep 2026', '10:30 AM', 'Follow-up', 'Dr. Meera Sample', 'Seen'],
+      ['21 Sep 2026', '10:30 AM', 'Follow-up', 'Dr. Meera Sample', 'Checkup done'],
       ['25 Sep 2026', 'Token 4', 'Other', 'Dr. Meera Sample', 'Cancelled'],
       ['19 Oct 2026', 'Time to be given', 'Follow-up', 'Dr. Meera Sample', 'Booked'],
     ]);

@@ -3819,6 +3819,27 @@ and order tests from an outside prescription** (owner's clinical decision).
 6. As a doctor: a patient → Lab tab → **Order a scan** (USG – NT scan). Scans → Schedule → Mark done → write the report
    → Sign → Print.
 
+## Reception like a hospital system (owner, 17 Oct 2026)
+Branch `reception-v2`. Plan, decisions and the WhatsApp set-up steps: `docs/RECEPTION_V2_PLAN.md`.
+- **Sidebar**: each module's pages show under it in the left menu.
+- **Charges by themselves** once priced: registration, admission, nursing per day, doctor's ward round, scans; more
+  hospital items in the price list. **Doctor's name** on the bill and on each line.
+- **Add items** on a bill: search or tap, a list with − / +, the doctor once, one button.
+- **Slots kept for walk-ins** (OPD settings), not offered online, marked Walk-in for reception.
+- **Bell** (notifications) and **Checkup done** for the doctor; reception is told.
+
+### How to test (fake data only)
+1. Hospital admin → Billing → Price list: set Registration fee ₹100, Nursing charge per day ₹300, Doctor visit (ward
+   round) ₹400. Register a fake patient → her bill has the registration fee, with her doctor's name.
+2. A bill → **Add items** → type "cert" → tap Medical certificate, tap Emergency consultation twice → choose a doctor →
+   Add to the bill. The lines show the doctor; Print shows "Doctor".
+3. Appointments → OPD settings → Slots kept for walk-ins: 2 → Save. Schedule: the last two slots of each session say
+   Walk-in. The patient portal does not offer them.
+4. As reception book a fake patient for the doctor → as the doctor, the bell shows "New appointment". Mark her arrived
+   → "has arrived". As the doctor: Today → Waiting to be seen → open her → **Checkup done** → as reception, the bell
+   says "Checkup done".
+5. The left menu: Billing, Lab, Appointments show their pages underneath.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.
