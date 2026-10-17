@@ -25,6 +25,7 @@ export const AADHAAR_WORDS = {
   capture: 'Capture',
   whichCamera: 'Camera',
   switchCamera: 'Switch camera',
+  oneCamera: 'This device has only one camera. Plug in a USB webcam, then press Switch camera.',
   mirror: 'Mirror picture',
   defaultCamera: 'This computer’s usual camera',
   cameraSize: (size) => `Camera picture: ${size}`,
@@ -103,7 +104,8 @@ const savedMirror = () => {
   }
 };
 
-function CameraScan({ words, onText, onBlocked, deviceId = '', onCameras = () => {}, onGone = () => {}, onSwitch = null, mirror = false, onMirror = () => {} }) {
+// facing: 'environment' (the back camera of a phone) or 'user' (the front one); facingExact: only that one (Switch)
+function CameraScan({ words, onText, onBlocked, deviceId = '', facing = 'environment', facingExact = false, onCameras = () => {}, onGone = () => {}, onSwitch = null, mirror = false, onMirror = () => {} }) {
   const video = useRef(null);
   const trackRef = useRef(null);
   const stoppedRef = useRef(false);
@@ -125,7 +127,8 @@ function CameraScan({ words, onText, onBlocked, deviceId = '', onCameras = () =>
         // The back camera on a phone; the sharpest picture the camera gives (4K, Full HD, …) – the Secure QR on the card
         // is dense, and each of its squares needs about 3 camera dots to be read
         const sharpest = { width: { ideal: 3840 }, height: { ideal: 2160 } };
-        stream = await navigator.mediaDevices.getUserMedia({ video: deviceId ? { deviceId: { exact: deviceId }, ...sharpest } : { facingMode: { ideal: 'environment' }, ...sharpest }, audio: false });
+        const face = facingExact ? { exact: facing } : { ideal: facing };
+        stream = await navigator.mediaDevices.getUserMedia({ video: deviceId ? { deviceId: { exact: deviceId }, ...sharpest } : { facingMode: face, ...sharpest }, audio: false });
         const [track] = stream.getVideoTracks();
         trackRef.current = track;
         onCameras(await listCameras(), track?.getSettings?.().deviceId ?? deviceId, track?.label ?? '');
@@ -164,7 +167,7 @@ function CameraScan({ words, onText, onBlocked, deviceId = '', onCameras = () =>
       } catch (err) {
         if (stoppedRef.current) return;
         const gone = err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError';
-        if (gone && deviceId) onGone(); // the chosen camera is unplugged: the computer's default camera instead
+        if (gone && (deviceId || facingExact)) onGone(); // the chosen camera is not there: back to the usual one
         else onBlocked(gone ? 'none' : 'blocked');
       }
     })();
@@ -239,6 +242,9 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
   const [cameraId, setCameraId] = useState(savedCamera);
   const [cameras, setCameras] = useState([]);
   const [inUse, setInUse] = useState('');
+  const [facing, setFacing] = useState('environment');
+  const [facingExact, setFacingExact] = useState(false);
+  const [oneCamera, setOneCamera] = useState(false);
   const [mirror, setMirror] = useState(savedMirror);
   // Told by the camera once it is open: the list, and which one is in use. With no choice saved, a USB webcam is
   // used in place of the laptop's own camera.
@@ -254,11 +260,29 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
     saveCamera(id);
     setCameraId(id);
   };
-  // Switch camera: the next one (on a phone, back ↔ front; on a computer, the laptop's own ↔ a USB webcam)
+  // Switch camera (owner, 17 Oct 2026: always there): the next camera in the list (a computer's own ↔ a USB webcam,
+  // a phone's back ↔ front); where the list has one camera, the other side (back ↔ front), else "only one camera"
   const switchCamera = () => {
-    const at = cameras.findIndex((c) => c.id === (cameraId || inUse));
-    const next = cameras[(at + 1) % cameras.length];
-    if (next) chooseCamera(next.id);
+    setOneCamera(false);
+    if (cameras.length > 1) {
+      const at = cameras.findIndex((c) => c.id === (cameraId || inUse));
+      const next = cameras[(at + 1) % cameras.length];
+      if (next && next.id !== (cameraId || inUse)) {
+        chooseCamera(next.id);
+        return;
+      }
+    }
+    if (cameraId) chooseCamera('');
+    setFacing((f) => (f === 'environment' ? 'user' : 'environment'));
+    setFacingExact(true);
+  };
+  // The chosen camera is not there: the usual one, and when it was the other side of a phone, say there is only one
+  const cameraGone = () => {
+    if (facingExact) {
+      setFacing('environment');
+      setFacingExact(false);
+      setOneCamera(true);
+    } else chooseCamera('');
   };
   const toggleMirror = () => {
     setMirror((m) => {
@@ -360,18 +384,21 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
       )}
       {camera && !disabled && (
         <CameraScan
-          key={cameraId || 'default'}
+          key={`${cameraId || 'default'}-${facing}-${facingExact}`}
           words={t}
           deviceId={cameraId}
+          facing={facing}
+          facingExact={facingExact}
           onCameras={camerasFound}
-          onGone={() => chooseCamera('')}
-          onSwitch={cameras.length > 1 ? switchCamera : null}
+          onGone={cameraGone}
+          onSwitch={switchCamera}
           mirror={mirror}
           onMirror={toggleMirror}
           onText={fromCamera}
           onBlocked={cameraProblem}
         />
       )}
+      {camera && oneCamera && <Alert type="info">{t.oneCamera}</Alert>}
       {result?.ok && <Alert type="success">{t.filled(result.ok.join(', '))}</Alert>}
       {result?.problem && <Alert type="warning">{result.problem}</Alert>}
       {busy && <p className="hint" role="status">{t.reading}</p>}

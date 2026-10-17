@@ -541,3 +541,4 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `aadhaar.defaultCamera` (added 17 Oct 2026) | The usual camera | नेहमीचा कॅमेरा | सामान्य कैमरा |
 | `aadhaar.switchCamera` (added 17 Oct 2026) | Switch camera | कॅमेरा बदला | कैमरा बदलें |
 | `aadhaar.mirror` (added 17 Oct 2026) | Mirror picture | आरशासारखे चित्र | आईने जैसी तस्वीर |
+| `aadhaar.oneCamera` (added 17 Oct 2026) | This device has only one camera. | या उपकरणाला एकच कॅमेरा आहे. | इस डिवाइस में केवल एक कैमरा है। |
