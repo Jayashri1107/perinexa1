@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Baby, Check, ChevronRight, HeartHandshake, HeartPulse, Flower2, Stethoscope, UserPlus, Users } from 'lucide-react';
+import { Baby, Check, ChevronRight, HeartHandshake, HeartPulse, Flower2, Mic, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -9,6 +9,9 @@ import { Alert, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { canRegisterPatients, patientTabs } from '../../platform/modules.js';
 import { PatientForm } from './PatientForm.jsx';
+import { VoiceEntry } from './VoiceEntry.jsx';
+import { careTypeFromSpeech, withoutCareTypeWords } from './careTypeSpeech.js';
+import { hearingPhrases } from './obgyTerms.js';
 import { PossibleMatchesDialog } from './PossibleMatchesDialog.jsx';
 import { CARE_TYPE_HINTS, CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, ageText } from './patientFormat.js';
 
@@ -29,6 +32,77 @@ const CLINICAL_CONTENTS = {
 
 // Who adds the clinical details when the person registering can't (reception, or a colleague's patient).
 const clinicalDetailsBy = (patient) => (patient.assignedDoctorName ? `${patient.assignedDoctorName} or an RMO` : 'A doctor or an RMO');
+
+// Said on the chooser (the type of care and her details), waiting for the form it opened. PRIVACY: this tab's memory
+// only – never the address bar or the browser history.
+let spokenForForm = null; // { careType, text }
+
+const NOTHING_READ = { values: {}, paths: [], found: [], questions: [], notes: [], unused: [], corrections: [] };
+const NOTHING_FILLED = { here: [], later: [], notes: [], questions: [], unused: [] };
+const CHOOSER_INTRO =
+  'Say the type of care first, then her details – for example “Pregnancy, Asha Sample, age 28, phone 98765 43210, LMP 5 March”. ' +
+  'When you stop, the form for that type of care opens with the details filled in for you to check. Speech is turned into text on this ' +
+  'computer: nothing is sent anywhere or kept.';
+
+/** The chooser's voice entry: picks the type of care from what was said, then opens its form with the words. */
+function SayCareType({ onChosen }) {
+  const [open, setOpen] = useState(false);
+  const [heard, setHeard] = useState(null); // { careType, candidates, text }
+  const latest = useRef(null);
+  const wasBusy = useRef(false);
+  const read = (said) => {
+    const found = { ...careTypeFromSpeech(said), text: said };
+    latest.current = found;
+    setHeard(found);
+    return NOTHING_READ;
+  };
+  // A recording that ends with one type of care heard opens its form
+  const onBusy = (busy) => {
+    if (wasBusy.current && !busy && latest.current?.careType) onChosen(latest.current.careType, latest.current.text);
+    wasBusy.current = busy;
+  };
+  if (!open) {
+    return (
+      <div className="voice-folded">
+        <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)}>
+          <Mic aria-hidden="true" /> Dictate
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="care-type-voice">
+      <VoiceEntry
+        careType={null}
+        read={read}
+        onDetails={() => NOTHING_FILLED}
+        onAnswer={() => ({ here: [], later: [] })}
+        onBusy={onBusy}
+        canNote={false}
+        emptyNote={null}
+        intro={CHOOSER_INTRO}
+        example="“Pregnancy, Asha Sample, age 28 …” or “Gynaecology, Meena Sample …”"
+        hearing={(c, words) => hearingPhrases('antenatal', words)}
+        onHide={() => setOpen(false)}
+      />
+      {heard?.careType && (
+        <p className="care-type-heard">
+          <Check aria-hidden="true" /> Heard: <strong>{CARE_TYPE_LABELS[heard.careType]}</strong>.{' '}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onChosen(heard.careType, heard.text)}>
+            Open this form
+          </button>
+        </p>
+      )}
+      {heard && !heard.careType && heard.text.trim() && (
+        <p className="hint">
+          {heard.candidates.length > 1
+            ? `More than one type of care was heard (${heard.candidates.map((t) => CARE_TYPE_LABELS[t]).join(', ')}). Please choose one below.`
+            : 'The type of care was not heard. Say it (for example “pregnancy” or “gynaecology”), or choose it below.'}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // Clinical details said by voice on page 1, waiting for page 2. PRIVACY: kept in this browser tab's memory only
 // (never stored or sent), and only until page 2 opens.
@@ -84,6 +158,17 @@ export function PatientNewPage() {
   const clinical = roles.includes('doctor') || roles.includes('rmo');
   const careType = CARE_TYPES.includes(chosen) ? chosen : null;
   const dictatedClinical = useRef(null);
+  // What was said on the chooser, for the form it opened (taken once; the page stays mounted between the two)
+  const [spoken, setSpoken] = useState({ for: careType, text: spokenForForm?.careType === careType ? spokenForForm.text : '' });
+  if (spoken.for !== careType) setSpoken({ for: careType, text: careType && spokenForForm?.careType === careType ? spokenForForm.text : '' });
+  useEffect(() => {
+    if (careType) spokenForForm = null;
+  }, [careType]);
+  const linkState = booking ? { fromBooking: booking } : fromAbha ? { fromScanShare: fromAbha } : fromSignup ? { fromSignup } : undefined;
+  const chooseBySpeech = (type, text) => {
+    spokenForForm = { careType: type, text: withoutCareTypeWords(text) };
+    navigate(`/patients/new/${type}`, { state: linkState });
+  };
   // "She may already be registered": the matching records, and the details that were about to be saved
   const [matches, setMatches] = useState(null); // { list, total, payload } | null
   // "Save and register another" (owner, 13 Oct 2026): a fresh form for the next patient, with what was saved above it
@@ -212,12 +297,13 @@ export function PatientNewPage() {
           // Cards, each with an icon and a line on what it is for (owner, 13 Oct 2026)
           <section aria-labelledby="care-type-title">
             <h2 id="care-type-title">Choose the type of care</h2>
+            <SayCareType onChosen={chooseBySpeech} />
             <ul className="care-type-cards">
               {NEW_PATIENT_LINKS.map((l) => {
                 const Icon = CARE_TYPE_ICONS[l.type] ?? UserPlus;
                 return (
                   <li key={l.to}>
-                    <Link to={l.to} className="care-type-card" state={booking ? { fromBooking: booking } : fromAbha ? { fromScanShare: fromAbha } : fromSignup ? { fromSignup } : undefined}>
+                    <Link to={l.to} className="care-type-card" state={linkState}>
                       <span className="care-type-icon" aria-hidden="true">
                         <Icon />
                       </span>
@@ -248,6 +334,7 @@ export function PatientNewPage() {
             )}
             <PatientForm
               key={booking?.id ?? fromAbha?.id ?? fromSignup?.id ?? `new-${round}`}
+              spoken={round === 0 ? spoken.text : ''}
               prefill={booking ? { fullName: booking.name, phone: booking.phone, assignedDoctor: booking.doctorId ?? '' } : fromAbha ? { fullName: fromAbha.name, phone: fromAbha.phone ?? '', ageYears: fromAbha.age ?? '' } : fromSignup ? { fullName: fromSignup.name, phone: fromSignup.phone ?? '', ageYears: fromSignup.age ?? '' } : null}
               careType={careType}
               part="info"

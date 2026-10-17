@@ -4,7 +4,7 @@
 // marked "From voice"; what they are not sure of becomes a question with choices; what they did not understand
 // is listed. The baby's sex is read only for newborns – never during a pregnancy (PCPNDT Act).
 
-import { CONDITION_LABELS, NEWBORN_SEX_LABELS, PAST_COMPLICATION_LABELS } from './patientFormat.js';
+import { CONDITION_LABELS, NEWBORN_SEX_LABELS, PAST_COMPLICATION_LABELS, PREGNANCY_FINDING_LABELS } from './patientFormat.js';
 import { ANTI_D, LOSS_LABELS, THREATENED_HINT } from './abortionFormat.js';
 import { COMMON_WORDS, FAMILY_WORDS, KNOWN_SHORT_FORMS, TERMS, isBlockedLearned } from './obgyTerms.js';
 import {
@@ -480,7 +480,7 @@ function newFindings(careType) {
 // `at`: where in the text it was said (other conditions, notes and questions keep that order).
 function put(f, path, value, learned = false, at = Infinity) {
   const [a, b] = path.split('.');
-  if (path === 'medical.conditions' || path === 'obstetric.pastComplications') {
+  if (path === 'medical.conditions' || path === 'obstetric.pastComplications' || path === 'pregnancy.findings') {
     const list = f.values[a]?.[b] ?? [];
     if (!list.includes(value)) f.values[a] = { ...f.values[a], [b]: [...list, value] };
     if (learned) f.learned.add(`${path}.${value}`);
@@ -495,6 +495,18 @@ function put(f, path, value, learned = false, at = Infinity) {
   if (!f.paths.includes(path)) f.paths.push(path);
 }
 
+// A this-pregnancy note that also ticks a "Findings in this pregnancy" box in antenatal care (owner, 16 Oct 2026: what
+// is said is ticked). The note stays, with what was said (e.g. "on metformin"); the tick is listed in the voice summary
+// and saved only when staff save the form, with their name, as a tick by hand.
+const NOTE_FINDINGS = [
+  [/^Gestational diabetes\b/i, 'gdm'],
+  [/^(?:Gestational hypertension|Pre-eclampsia \(this pregnancy\))/i, 'hypertension'],
+  [/^(?:Twin|Triplet) pregnancy$/i, 'multiple'],
+  [/^Placenta praevia\b/i, 'placenta_praevia'],
+  [/^Antepartum haemorrhage\b/i, 'bleeding'],
+];
+export const noteFinding = (note) => NOTE_FINDINGS.find(([rx]) => rx.test(note))?.[1] ?? null;
+
 // Puts one meaning into the findings (the form fields shown for this type of care only).
 function applyMeaning(f, meaning, data = {}, learned = false, at = Infinity) {
   const [kind] = meaning.split(':');
@@ -503,7 +515,11 @@ function applyMeaning(f, meaning, data = {}, learned = false, at = Infinity) {
   if (kind === 'condition' && !newborn && CONDITION_LABELS[value]) put(f, 'medical.conditions', value, learned);
   else if (kind === 'past' && !newborn && PAST_COMPLICATION_LABELS[value]) put(f, 'obstetric.pastComplications', value, learned);
   else if (kind === 'other' && !newborn) put(f, 'medical.otherConditions', value, learned, at);
-  else if (kind === 'note') put(f, 'notes', value, learned, at);
+  else if (kind === 'note') {
+    put(f, 'notes', value, learned, at);
+    const finding = f.careType === 'antenatal' && noteFinding(value);
+    if (finding) put(f, 'pregnancy.findings', finding, learned);
+  }
   else if (meaning === 'bloodgroup' && data.group) put(f, 'medical.bloodGroup', data.group, learned);
   else if (kind === 'blood') put(f, 'medical.bloodGroup', value, learned);
   else if (meaning === 'scanedd' && data.date && f.careType === 'antenatal') put(f, 'pregnancy.scanEdd', data.date, learned);
@@ -517,7 +533,7 @@ export const isInfoPath = (path) => /^(?:fullName|ageYears|phone|address|motherN
 // What to show the person, in the form's order.
 function finish(f) {
   // Ticked items in the form's own order
-  for (const [a, b, labels] of [['medical', 'conditions', CONDITION_LABELS], ['obstetric', 'pastComplications', PAST_COMPLICATION_LABELS]]) {
+  for (const [a, b, labels] of [['medical', 'conditions', CONDITION_LABELS], ['obstetric', 'pastComplications', PAST_COMPLICATION_LABELS], ['pregnancy', 'findings', PREGNANCY_FINDING_LABELS]]) {
     const order = Object.keys(labels);
     if (f.values[a]?.[b]) f.values[a][b] = [...f.values[a][b]].sort((x, y) => order.indexOf(x) - order.indexOf(y));
   }
@@ -551,6 +567,7 @@ function finish(f) {
   show('motherName', 'Mother', `${v.motherName} – pick her from the search results`);
   show('pregnancy.lmp', 'LMP', v.pregnancy?.lmp && showDate(v.pregnancy.lmp));
   show('pregnancy.scanEdd', 'EDD from dating scan', v.pregnancy?.scanEdd && mine('pregnancy.scanEdd', showDate(v.pregnancy.scanEdd)));
+  show('pregnancy.findings', 'Findings in this pregnancy', list('pregnancy.findings', PREGNANCY_FINDING_LABELS), { ticks: ticks('pregnancy.findings', PREGNANCY_FINDING_LABELS) });
   show('abortion.lossType', 'Type of loss', LOSS_LABELS[v.abortion?.lossType]);
   show('abortion.lmp', 'LMP', v.abortion?.lmp && showDate(v.abortion.lmp));
   show('abortion.weeks', 'Weeks at presentation', v.abortion?.weeks);
@@ -2892,7 +2909,7 @@ function findNewborn(s, now, f, use, note, ask, nameText = s) {
   if (got) put(f, 'motherName', got.name);
 }
 
-const TICK_LISTS = new Set(['medical.conditions', 'obstetric.pastComplications']);
+const TICK_LISTS = new Set(['medical.conditions', 'obstetric.pastComplications', 'pregnancy.findings']);
 const TEXT_LISTS = new Set(['medical.otherConditions', 'notes']);
 // The pieces of an "Other conditions" or notes text ("Twin pregnancy; CPD"), as kept in `added`
 const textPieces = (path, value) =>
@@ -2933,7 +2950,7 @@ export function mergeDictated(v, values, paths, { skip = [], unticked = [], adde
       const more = value.filter((key) => !untickedSet.has(`${path}.${key}`) && !have.includes(key));
       if (!more.length) continue;
       out[a][b] = [...have, ...more];
-      out[a][b === 'conditions' ? 'conditionsReviewed' : 'complicationsReviewed'] = false;
+      if (b !== 'findings') out[a][b === 'conditions' ? 'conditionsReviewed' : 'complicationsReviewed'] = false;
     } else if (TEXT_LISTS.has(path)) {
       if (path === 'notes') out.notes = addText(path, out.notes, value);
       else out.medical.otherConditions = addText(path, out.medical.otherConditions, value);
@@ -2999,7 +3016,7 @@ export function dictatedFields(values, paths, { skip = [], unticked = [], added 
   return paths.flatMap((path) => {
     if (TICK_LISTS.has(path)) {
       const [a, b] = path.split('.');
-      return values[a][b].map((key) => `${path}.${key}`).filter((p) => !untickedSet.has(p));
+      return (values[a]?.[b] ?? []).map((key) => `${path}.${key}`).filter((p) => !untickedSet.has(p));
     }
     if (path === 'motherName') return [];
     if (!byHand.has(path)) return [path];
