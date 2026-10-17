@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, ScanLine, Upload } from 'lucide-react';
+import { Aperture, Camera, ScanLine, Upload } from 'lucide-react';
 import { Alert } from '../../components/ui.jsx';
 import { parseAadhaarQr, prepareQrReaders, readQrFrom, readQrFromImage } from './aadhaarQr.js';
 
@@ -22,6 +22,11 @@ export const AADHAAR_WORDS = {
   openHint: 'With the patient’s agreement. The QR code on her card (paper letter or plastic card) is read on this computer – nothing is saved or sent.',
   camera: 'Scan with camera',
   scanAgain: 'Scan again',
+  capture: 'Capture',
+  cameraSize: (size) => `Camera picture: ${size}`,
+  captureMissed: 'The QR code could not be read from this picture. Hold the card still, a little closer or further, with no shine on it, and press Capture again.',
+  slowTips:
+    'Not read yet? Hold the card flat and still with the QR code filling most of the box. If the picture is blurry, move the card a little further away until it is sharp, then press Capture. A laptop camera may not be sharp enough: a USB QR scanner, a phone or a close photo works then.',
   looking: 'Looking for the QR code…',
   noCamera: 'No camera was found on this computer. Use a QR scanner or upload a photo of the card.',
   cameraHint: 'Hold the QR code of the card inside the box, about a hand’s width from the camera. Keep it still, in good light – it is read by itself.',
@@ -37,61 +42,130 @@ export const AADHAAR_WORDS = {
   notImage: 'This file could not be opened as a picture. Please upload a photo (JPG or PNG) or a screenshot.',
 };
 
-/** Reads QR codes from the camera, live, until one is found (onText). Nothing is recorded. */
+// The camera's still photo (often sharper and larger than its live picture), else the frame shown now
+async function stillFrom(track, v) {
+  if (typeof window !== 'undefined' && 'ImageCapture' in window && track) {
+    try {
+      const blob = await new window.ImageCapture(track).takePhoto();
+      const bitmap = await createImageBitmap(blob);
+      return { source: bitmap, w: bitmap.width, h: bitmap.height, done: () => bitmap.close() };
+    } catch {
+      // not on this camera: the live frame
+    }
+  }
+  return { source: v, w: v.videoWidth, h: v.videoHeight, done: () => {} };
+}
+
+/**
+ * Reads the QR from the camera, live, until found (onText): a quick look at every frame, a closer look about every 2
+ * seconds, and Capture for a still photo looked at closely. Nothing is recorded or kept.
+ */
 function CameraScan({ words, onText, onBlocked }) {
   const video = useRef(null);
+  const trackRef = useRef(null);
+  const stoppedRef = useRef(false);
+  const [size, setSize] = useState(null); // the camera's picture, e.g. "1280 × 720"
+  const [slow, setSlow] = useState(false); // nothing read after a while: the tips
+  const [capturing, setCapturing] = useState(false);
+  const [missed, setMissed] = useState(false); // Capture did not read it
+  const deepBusy = useRef(false);
+
   useEffect(() => {
     let stream = null;
     let timer = null;
-    let stopped = false;
     const canvas = document.createElement('canvas');
+    const deepCanvas = document.createElement('canvas');
+    stoppedRef.current = false;
+    const tipTimer = setTimeout(() => setSlow(true), 8000);
     (async () => {
       try {
         // The back camera on a phone; the sharpest picture the camera gives (4K, Full HD, …) – the Secure QR on the card
         // is dense, and each of its squares needs about 3 camera dots to be read
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
-        // Focus that follows the card, where the camera can (most phones, some webcams)
         const [track] = stream.getVideoTracks();
+        trackRef.current = track;
+        // Focus that follows the card, where the camera can (most phones, some webcams)
         if (track?.getCapabilities?.().focusMode?.includes('continuous')) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
-        if (stopped) {
-          stream.getTracks().forEach((track) => track.stop());
+        if (stoppedRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
           return;
         }
         video.current.srcObject = stream;
         await video.current.play();
         let frame = 0;
+        let lastDeep = Date.now();
         const look = async () => {
-          if (stopped) return;
+          if (stoppedRef.current) return;
           const v = video.current;
           if (v && v.readyState >= 2 && v.videoWidth) {
-            const text = await readQrFrom(v, v.videoWidth, v.videoHeight, { quick: true, frame: frame++, canvas });
-            if (text && !stopped) {
+            setSize(`${v.videoWidth} × ${v.videoHeight}`);
+            let text = await readQrFrom(v, v.videoWidth, v.videoHeight, { quick: true, frame: frame++, canvas });
+            // A closer look at the frame about every 2 seconds
+            if (!text && !deepBusy.current && Date.now() - lastDeep > 2000) {
+              deepBusy.current = true;
+              text = await readQrFrom(v, v.videoWidth, v.videoHeight, { deep: true, canvas: deepCanvas });
+              deepBusy.current = false;
+              lastDeep = Date.now();
+            }
+            if (text && !stoppedRef.current) {
+              stoppedRef.current = true;
               onText(text);
               return;
             }
           }
-          if (!stopped) timer = setTimeout(look, 60);
+          if (!stoppedRef.current) timer = setTimeout(look, 60);
         };
         look();
       } catch (err) {
-        if (!stopped) onBlocked(err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError' ? 'none' : 'blocked');
+        if (!stoppedRef.current) onBlocked(err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError' ? 'none' : 'blocked');
       }
     })();
     return () => {
-      stopped = true;
+      stoppedRef.current = true;
       clearTimeout(timer);
-      stream?.getTracks().forEach((track) => track.stop()); // the camera light goes off
+      clearTimeout(tipTimer);
+      stream?.getTracks().forEach((t) => t.stop()); // the camera light goes off
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Capture: a still photo from the camera, looked at closely
+  const capture = async () => {
+    const v = video.current;
+    if (!v?.videoWidth || capturing) return;
+    setCapturing(true);
+    setMissed(false);
+    const still = await stillFrom(trackRef.current, v);
+    try {
+      const text = (await readQrFrom(still.source, still.w, still.h, { deep: true })) ?? (await readQrFrom(still.source, still.w, still.h));
+      if (text && !stoppedRef.current) {
+        stoppedRef.current = true;
+        onText(text);
+        return;
+      }
+      setMissed(true);
+    } finally {
+      still.done();
+      setCapturing(false);
+    }
+  };
+
   return (
     <div className="aadhaar-camera">
       <div className="aadhaar-camera-view">
         <video ref={video} muted playsInline aria-label={words.camera} />
         <span className="aadhaar-camera-box" aria-hidden="true" />
       </div>
+      <div className="row">
+        <button type="button" className="btn btn-secondary btn-sm" onClick={capture} disabled={capturing || !size}>
+          <Aperture aria-hidden="true" /> {capturing ? words.reading : words.capture}
+        </button>
+        {size && <span className="hint tabular">{words.cameraSize(size)}</span>}
+      </div>
       <p className="hint" role="status">
         <Camera aria-hidden="true" /> {words.looking} {words.cameraHint}
       </p>
+      {missed && <Alert type="warning">{words.captureMissed}</Alert>}
+      {slow && !missed && <Alert type="info">{words.slowTips}</Alert>}
     </div>
   );
 }
