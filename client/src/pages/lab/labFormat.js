@@ -1,10 +1,11 @@
 // Words, colours and small helpers for the lab module (Version 2). Statuses and flags are colour + icon + word
 // (brand guide). The test list and the reference values come from the server (GET /api/lab/tests).
-import { ArrowDown, ArrowUp, CircleCheck, CircleMinus, Clock, FileText, TestTube, TriangleAlert } from 'lucide-react';
+import { ArrowDown, ArrowUp, CircleCheck, CircleMinus, ClipboardCheck, Clock, FileText, TestTube, TriangleAlert } from 'lucide-react';
 
 export const ORDER_STATUS = {
   ordered: { tone: 'due', icon: Clock, word: 'Sample to take' },
   collected: { tone: 'due', icon: TestTube, word: 'Sample taken' },
+  entered: { tone: 'due', icon: ClipboardCheck, word: 'Entered – to check' },
   reported: { tone: 'watch', icon: FileText, word: 'Reported – to review' },
   reviewed: { tone: 'stable', icon: CircleCheck, word: 'Reviewed' },
   cancelled: { tone: 'inactive', icon: CircleMinus, word: 'Cancelled' },
@@ -75,15 +76,24 @@ export function flagFor(field, value) {
 /** The test's definition (null for a test the doctor typed: its result is in words). */
 export const testDef = (catalogue, key) => catalogue?.tests?.find((t) => t.key === key) ?? null;
 
+/**
+ * A value's name, unit and usual range: as saved with the result (the range that applied to this patient, a test of
+ * the hospital's own), else from the test list.
+ */
+export function valueWords(v, def) {
+  const f = def?.fields?.find((x) => x.key === v.key);
+  return { name: v.name ?? f?.name ?? v.key, unit: v.unit ?? f?.unit ?? '', range: v.range ?? f?.range ?? '' };
+}
+
 /** "Haemoglobin 9.5 g/dL (Low), Platelets 2.1 lakh/µL" – one line per test, for lists. */
 export function resultLine(test, catalogue) {
   const def = testDef(catalogue, test.key);
   const parts = (test.values ?? [])
     .filter((v) => v.value !== '')
     .map((v) => {
-      const f = def?.fields.find((x) => x.key === v.key);
+      const w = valueWords(v, def);
       const flag = FLAG_LOOK[v.flag] ? ` (${FLAG_LOOK[v.flag].word})` : '';
-      return `${f?.name ?? v.key} ${v.value}${f?.unit ? ` ${f.unit}` : ''}${flag}`;
+      return `${w.name} ${v.value}${w.unit ? ` ${w.unit}` : ''}${flag}`;
     });
   if (test.text) parts.push(test.text);
   return parts.join(', ');
@@ -147,3 +157,92 @@ export const packageNames = (packages) => (packages ?? []).map((p) => (typeof p 
 
 /** "Day 0", "Day 2–7", "From day 14" for a baby package; '' for an adult one (no day window). */
 export const packageWhen = (pkg) => (pkg.who === 'newborn' && pkg.fromDay != null ? packageDays(pkg) : '');
+
+// ---------- The full lab system (docs/LAB_LIMS_PLAN.md) ----------
+
+// The lab's departments (the same list as server/src/lab/labSetup.js DEPARTMENTS)
+export const DEPARTMENTS = {
+  haematology: 'Haematology',
+  biochemistry: 'Biochemistry',
+  serology: 'Serology',
+  immunoassay: 'Hormones and immunoassay',
+  clinical: 'Clinical pathology',
+  microbiology: 'Microbiology',
+  cytology: 'Cytology and histopathology',
+  bedside: 'Bedside tests',
+  other: 'Other',
+};
+export const departmentName = (key) => DEPARTMENTS[key] ?? DEPARTMENTS.other;
+
+// Why the lab refuses a sample (the same list as server/src/lab/labSetup.js REJECT_REASONS)
+export const REJECT_REASONS = {
+  haemolysed: 'Haemolysed',
+  clotted: 'Clotted',
+  insufficient: 'Too little sample',
+  container: 'Wrong container or tube',
+  label: 'Not labelled or wrongly labelled',
+  leaked: 'Leaked or broken in transport',
+  delayed: 'Arrived too late to test',
+  other: 'Other',
+};
+
+// The neutral name of a confidential test (HIV) on labels, the register and a printed report – the same as
+// server/src/billing/billingRules.js CONFIDENTIAL_TESTS / CONFIDENTIAL_NAME.
+export const CONFIDENTIAL_TESTS = ['hiv'];
+export const CONFIDENTIAL_NAME = 'Lab test (confidential)';
+export const isConfidential = (test) => CONFIDENTIAL_TESTS.includes(test.key);
+export const shownName = (test) => (isConfidential(test) ? CONFIDENTIAL_NAME : test.name);
+
+export const LATE_LOOK = { tone: 'high', icon: Clock, word: 'Late' };
+
+/** "3 h 20 min" or "2 days 4 h" – the time from the order to the report (or to now). */
+export function duration(from, to) {
+  const min = Math.max(0, Math.round((new Date(to) - new Date(from)) / 60000));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 48) return `${h} h${min % 60 ? ` ${min % 60} min` : ''}`;
+  return `${Math.floor(h / 24)} days${h % 24 ? ` ${h % 24} h` : ''}`;
+}
+
+/** The time taken so far: to the report, or (still open) until now. */
+export const turnaround = (order, now = new Date()) => duration(order.ordered.at, order.reported?.at ?? now);
+
+/**
+ * The containers of an order, one label each: the tests grouped by their sample ("Blood (EDTA)"), numbered 1, 2 …
+ * Each label's barcode is the sample number and the container's number ("261017-0003-2"). A confidential test is
+ * named by its neutral name; a typed test without a sample in the list goes on a label "Sample as noted".
+ */
+export function sampleLabels(order, catalogue) {
+  const groups = new Map();
+  for (const t of order.tests) {
+    const sample = testDef(catalogue, t.key)?.sample || 'Sample as noted';
+    if (!groups.has(sample)) groups.set(sample, []);
+    groups.get(sample).push(shownName(t));
+  }
+  return [...groups.entries()].map(([sample, tests], i) => ({ code: `${order.sampleNo}-${i + 1}`, sample, tests }));
+}
+
+/** The register as a CSV file (opens in Excel): one row per order. Words only – the confidential test is neutral. */
+export function registerCsv(rows) {
+  const cell = (v) => {
+    const t = String(v ?? '');
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const head = ['Sample number', 'Ordered', 'Patient', 'Patient number', 'Tests', 'Departments', 'Urgent', 'Status', 'Reported', 'Time taken', 'Late', 'Outside lab', 'Rejected samples'];
+  const lines = rows.map((o) => [
+    o.sampleNo ?? '',
+    new Date(o.ordered.at).toLocaleString('en-IN'),
+    o.patient.fullName,
+    o.patient.mrn,
+    o.tests.map((t) => t.name).join('; '),
+    [...new Set(o.tests.map((t) => departmentName(t.department)))].join('; '),
+    o.urgent ? 'Yes' : '',
+    orderLook(o).word,
+    o.reported ? new Date(o.reported.at).toLocaleString('en-IN') : '',
+    o.status === 'cancelled' ? '' : turnaround(o),
+    o.late ? 'Yes' : '',
+    [...new Set(o.tests.filter((t) => t.outside).map((t) => t.outside.labName))].join('; '),
+    o.rejections.length || '',
+  ]);
+  return [head, ...lines].map((l) => l.map(cell).join(',')).join('\r\n');
+}

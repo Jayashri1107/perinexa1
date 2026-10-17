@@ -172,3 +172,40 @@
   .portal-shell .pf-logout { padding: 0 var(--space-2); white-space: nowrap; }
   .portal-shell .portal-lang button { padding: 0 6px; }
 }
+
+/* The full lab system (docs/LAB_LIMS_PLAN.md): worklist toolbar, Find and the register, the test list, the labels
+   and the printed report. */
+.lab-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin-bottom: var(--space-4); }
+.lab-toolbar .lab-lists { margin-bottom: 0; }
+.lab-filter { display: grid; gap: var(--space-1); }
+.lab-filter > span { font-size: var(--fs-label); color: var(--slate-600); }
+.lab-filter select, .lab-filter input { width: auto; min-width: 12rem; }
+.lab-history { margin: var(--space-2) 0; color: var(--slate-600); }
+.lab-history svg { width: 1em; height: 1em; vertical-align: -0.125em; }
+.lab-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); margin: var(--space-3) 0; }
+.lab-counts div { padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.lab-counts dt { color: var(--slate-600); font-size: var(--fs-label); }
+.lab-counts dd { margin: 0; font-size: var(--fs-display); line-height: var(--lh-display); font-weight: 600; }
+.lab-band { margin-top: var(--space-3); }
+.lab-bands { display: grid; gap: var(--space-2); justify-items: start; margin-top: var(--space-2); }
+.lab-bands .lab-band { justify-self: stretch; }
+.lab-test-form > .fieldset { margin-bottom: var(--space-4); }
+@media (max-width: 600px) {
+  .lab-filter select, .lab-filter input { min-width: 0; width: 100%; }
+  .lab-toolbar > * { flex: 1 1 100%; }
+}
+
+/* Sample labels: 50 × 25 mm each, on an A4 label sheet or plain paper */
+.lab-labels .pframe td { padding: 0; }
+.lab-labels .lab-label { display: inline-flex; flex-direction: column; justify-content: flex-start; width: 50mm; height: 25mm; box-sizing: border-box; margin: 0 2mm 2mm 0; padding: 1mm 2mm; border: 0.3mm dashed var(--print-rule); overflow: hidden; break-inside: avoid; vertical-align: top; color: var(--print-ink); font-size: 6.5pt; line-height: 1.2; }
+.lab-label .barcode { display: block; width: 100%; }
+.lab-label-code { font-weight: 600; letter-spacing: 0.05em; text-align: center; }
+.lab-label-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lab-label-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The printed lab report */
+.lab-report-table td:first-child { width: 38%; }
+.lab-report-indent { padding-left: var(--space-4) !important; }
+.lab-report-flag { white-space: nowrap; font-weight: 600; }
+.lab-report-flag svg { width: 1em; height: 1em; vertical-align: -0.125em; }
+.lab-register-table { font-size: var(--fs-print-small); }

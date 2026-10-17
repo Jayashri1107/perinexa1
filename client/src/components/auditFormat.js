@@ -195,6 +195,20 @@ export const AUDIT_LABELS = {
   LAB_REPORT_OPENED: 'Lab report file opened',
   LAB_RESULTS_REVIEWED: 'Lab results reviewed by a doctor',
   LAB_ORDER_CANCELLED: 'Lab order cancelled',
+  LAB_LABELS_PRINTED: 'Lab sample labels printed',
+  LAB_SAMPLE_REJECTED: 'Lab sample rejected',
+  LAB_RESULTS_ENTERED: 'Lab results entered (to check)',
+  LAB_RESULTS_VERIFIED: 'Lab results checked and reported',
+  LAB_RESULTS_SENT_BACK: 'Lab results sent back by the checker',
+  LAB_SENT_OUTSIDE: 'Lab tests sent to an outside lab',
+  LAB_OUTSIDE_RECEIVED: 'Lab tests back from an outside lab',
+  LAB_REPORT_PRINTED: 'Lab report printed',
+  LAB_ORDERS_SEARCHED: 'Lab orders searched',
+  LAB_REGISTER_VIEWED: 'Lab register opened',
+  LAB_TEST_CREATED: 'Lab test added to the test list',
+  LAB_TEST_UPDATED: 'Lab test changed',
+  LAB_TEST_APPROVED: 'Lab test ranges approved',
+  LAB_SETTINGS_CHANGED: 'Lab settings changed',
   WORK_DONE_VIEWED: "Patient's scans and procedures opened",
   WORK_DONE_RECORDED: 'Scan or procedure recorded as done',
   WORK_DONE_CANCELLED: 'Scan or procedure cancelled',
@@ -366,6 +380,17 @@ export const AUDIT_TONES = {
   LAB_REPORT_OPENED: 'patient',
   LAB_RESULTS_REVIEWED: 'patient',
   LAB_ORDER_CANCELLED: 'patient',
+  LAB_LABELS_PRINTED: 'patient',
+  LAB_SAMPLE_REJECTED: 'patient',
+  LAB_RESULTS_ENTERED: 'patient',
+  LAB_RESULTS_VERIFIED: 'patient',
+  LAB_RESULTS_SENT_BACK: 'patient',
+  LAB_SENT_OUTSIDE: 'patient',
+  LAB_OUTSIDE_RECEIVED: 'patient',
+  LAB_REPORT_PRINTED: 'patient',
+  LAB_ORDERS_SEARCHED: 'patient',
+  LAB_REGISTER_VIEWED: 'patient',
+  LAB_TEST_APPROVED: 'info',
   WORK_DONE_VIEWED: 'patient',
   WORK_DONE_RECORDED: 'patient',
   WORK_DONE_CANCELLED: 'patient',
@@ -607,6 +632,8 @@ const count = (n, one, many = `${one}s`) => `${formatNumber(n)} ${Number(n) === 
 // The record an entry is about. The super admin's audit log never holds record numbers (it shows no patient),
 // so there it reads "A patient record" – "A patient record was opened" instead of "Record P-000004".
 const record = (d) => (d.mrn ? `Record ${d.mrn}` : 'A patient record');
+// Why the lab rejected a sample (server/src/lab/labSetup.js REJECT_REASONS)
+const LAB_REJECT_WORDS = { haemolysed: 'haemolysed', clotted: 'clotted', insufficient: 'too little sample', container: 'wrong container', label: 'not labelled', leaked: 'leaked or broken', delayed: 'arrived too late', other: 'other reason' };
 const opened = (d) => (d.mrn ? `Record ${d.mrn}` : 'A patient record was opened');
 // Analytics entries hold only which tab and whose numbers – never a number, a label or a filter.
 const ANALYTICS_TABS = { overview: 'Overview', pregnancy: 'Pregnancy', risk: 'Risk & conditions', care: 'Care plans & visits', deliveries: 'Deliveries', newborn: 'Newborn', doctors: 'By doctor' };
@@ -863,10 +890,31 @@ export function describeAudit(entry) {
     case 'LAB_REPORT_OPENED':
     case 'LAB_RESULTS_REVIEWED':
     case 'LAB_ORDER_CANCELLED':
+    case 'LAB_LABELS_PRINTED':
+    case 'LAB_RESULTS_ENTERED':
+    case 'LAB_RESULTS_VERIFIED':
+    case 'LAB_RESULTS_SENT_BACK':
     case 'WORK_DONE_VIEWED':
     case 'WORK_DONE_RECORDED':
     case 'WORK_DONE_CANCELLED':
       return record(d);
+    case 'LAB_SAMPLE_REJECTED':
+      return `${record(d)}${d.reason ? `: ${LAB_REJECT_WORDS[d.reason] ?? d.reason}` : ''}`;
+    case 'LAB_SENT_OUTSIDE':
+    case 'LAB_OUTSIDE_RECEIVED':
+      return `${record(d)}${d.tests ? ` – ${count(d.tests, 'test')}` : ''}`;
+    case 'LAB_REPORT_PRINTED':
+      return `${record(d)}${d.confidential ? ' – with the confidential test' : ''}`;
+    case 'LAB_ORDERS_SEARCHED':
+      return count(d.results ?? 0, 'order') + ' listed';
+    case 'LAB_REGISTER_VIEWED':
+      return `${d.from ?? ''}${d.to && d.to !== d.from ? ` to ${d.to}` : ''}: ${count(d.results ?? 0, 'order')}`;
+    case 'LAB_TEST_CREATED':
+    case 'LAB_TEST_UPDATED':
+    case 'LAB_TEST_APPROVED':
+      return `${d.name ?? d.test ?? ''}${d.version ? ` (version ${d.version})` : ''}${d.ranges ? ' – values or ranges changed' : ''}`;
+    case 'LAB_SETTINGS_CHANGED':
+      return d.verify ? `Results checked before the report${d.checkers ? ` (${count(d.checkers, 'chosen checker')})` : ' (any lab staff, doctor or RMO)'}` : 'Results not checked before the report';
     case 'PATIENT_REMINDERS_CHANGED':
       return `${record(d)}: ${d.consent ? `agreed (${d.channel === 'whatsapp' ? 'WhatsApp' : 'SMS'})` : 'no reminders'}`;
     case 'REMINDER_SENT_BY_HAND':

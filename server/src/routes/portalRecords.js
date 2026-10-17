@@ -126,7 +126,8 @@ function testView(t) {
       .filter((v) => String(v.value ?? '').trim())
       .map((v) => {
         const f = fields.get(v.key);
-        return { name: f?.name ?? v.key, value: v.value, unit: f?.unit ?? '', range: f?.range ?? '', flag: v.flag ?? '' };
+        // The words saved with the result (the range that applied to her, a test of the hospital's own) come first
+        return { name: v.name ?? f?.name ?? v.key, value: v.value, unit: v.unit ?? f?.unit ?? '', range: v.range ?? f?.range ?? '', flag: v.flag ?? '' };
       }),
     text: t.text ?? '',
   };

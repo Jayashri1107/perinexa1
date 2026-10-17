@@ -126,7 +126,14 @@ const HOSPITAL_LAB = {
   label: 'Lab',
   icon: FlaskConical,
   to: '/lab',
-  tabs: [{ label: 'Lab', to: '/lab', end: false }],
+  // The full lab system (docs/LAB_LIMS_PLAN.md): Find, the register, the hospital's test list and the lab's settings
+  tabs: [
+    { label: 'Worklist', to: '/lab', end: true },
+    { label: 'Find', to: '/lab/find', end: true },
+    { label: 'Register', to: '/lab/register', end: true },
+    { label: 'Tests', to: '/lab/tests', end: false },
+    { label: 'Settings', to: '/lab/settings', end: true },
+  ],
 };
 
 // The calendar (LMP, EDD, care-plan and booked visits). Same list as server/src/calendar/calendarRules.js.

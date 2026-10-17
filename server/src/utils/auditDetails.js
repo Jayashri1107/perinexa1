@@ -44,7 +44,9 @@ const INPATIENT_DETAIL_FIELDS = ['patientId', 'mrn', 'admissionId', 'documentId'
 
 // The lab module (Version 2): ids and the number of tests ordered – never a test name, value or file name.
 const LAB_ACTIONS = new Set(AUDIT_CATEGORIES.patients.filter((a) => a.startsWith('LAB_')));
-const LAB_DETAIL_FIELDS = ['patientId', 'mrn', 'orderId', 'fileId', 'tests'];
+// reason: the code of a rejected sample's reason (haemolysed …); confidential: a printed report included a confidential
+// test; from, to, results: the dates of the lab register and how many orders a list showed.
+const LAB_DETAIL_FIELDS = ['patientId', 'mrn', 'orderId', 'fileId', 'tests', 'reason', 'confidential', 'from', 'to', 'results'];
 // Registers removed 2 Oct 2026 – kept so old entries still display. REPORT_VIEWED (the monthly report) is still written.
 const REGISTER_ACTIONS = new Set(AUDIT_CATEGORIES.patients.filter((a) => a.startsWith('REGISTER_') || a === 'REPORT_VIEWED'));
 const REGISTER_DETAIL_FIELDS = ['register', 'report', 'entryId', 'patientId', 'mrn', 'fileId', 'month'];

@@ -3686,6 +3686,47 @@ colours and fonts – no new library (`client/src/styles/look-materio.css`, load
 - Note: this page has two filled buttons (Upload new photo, Save changes), as in the owner's picture – an exception
   to "one primary button per screen" (docs/BRAND.md).
 
+## The full lab system (owner, 17 Oct 2026 – feature freeze lifted for the lab by the owner)
+Branch `lab-lims`. Plan and decision: `docs/LAB_LIMS_PLAN.md`. Features like a commercial lab system (eLabAssist was
+used only as a list of features; the look stays Perinexa's own).
+- **Sample numbers and labels**: every order gets a sample number (`261017-0003`); **Print labels** – one per
+  container, with a barcode (`261017-0003-2`), name, number, age, sample and tests (HIV under its neutral name).
+- **Reject the sample** (haemolysed, clotted, too little …): the order goes back to Samples to take, marked
+  **New sample needed**; every rejection is kept.
+- **Lab → Tests**: the hospital's test list by department. The lab, doctors and RMOs add the hospital's own tests
+  (₹0 line on the price list for the admin) and change any test's department, times, outside lab, "offered", limits,
+  and **ranges for a group** (an age; pregnant or not; a baby's sex after birth). Values and ranges are DRAFT until a
+  doctor approves them; the range used is saved with each result and shown on the report.
+- **Print the report** (once reported): letterhead, results by department, flags, the range used (DRAFT marked), who
+  entered and who checked. The confidential test is left out unless ticked, then printed under its neutral name.
+- **Lab → Settings** (doctors): a second person checks results before they go to the doctor (Results to check, Approve
+  and report, Send back); optionally only chosen people. Red flags from lab results start once checked.
+- **Worklist**: department filter, **Late** when past the due time (24 h, urgent 4 h, cultures 72 h, smears 120 h –
+  changeable per test), **At outside labs** list. **Lab → Find**: sample number (scan a label), patient number or
+  name, dates, status. **Outside lab** on an order: send tests (lab, reference), mark them come back.
+- **Lab → Register**: orders between two dates (at most 62 days) with counts; Print; Save for Excel (CSV).
+- Server: `lab/labSetup.js`, `models/LabTestSetting.js`, `models/LabSetup.js`, `routes/labSetup.js`
+  (`/api/lab-setup`), `routes/lab.js`; website: `pages/lab/` (LabFindPage, LabRegisterPage, LabTestsPage,
+  LabTestEditPage, LabSettingsPage, LabOrderExtras, LabPrints), `components/print/barcode.js`. Tests:
+  `server/tests/lab-lims.test.js`, `client/src/pages/lab/labLims.test.jsx`.
+- ⚠️ For the doctor to check: every usual range (built-in and new) stays DRAFT until approved under Lab → Tests.
+- Not yet: the hospital's own tests can't go into test packages; the copy of the whole record names their values by
+  key. Later list: QC charts, reagent stock, machine connection, home collection, WhatsApp/SMS reports, delta checks.
+
+### How to test (fake data only)
+1. As a doctor: open a fake patient → Lab → Order tests (CBC, HIV, TSH). The order shows a **Sample number**.
+2. Log in as lab staff → Lab → open the order → **Print labels** (one label per tube, with a barcode) → **Mark sample
+   taken** → **Reject the sample** (Haemolysed): it is back under Samples to take with **New sample needed**.
+3. Take the sample again, enter results, **Report results** → **Print the report**; tick "Include the confidential
+   test" and see it printed as "Lab test (confidential)".
+4. Lab → **Tests** → Haemoglobin (Hb) → Add a range for a group: Pregnant, 10.5 to 14 → Save. Order Hb for an
+   antenatal patient: the form says "Usual for her: 10.5–14 g/dL (pregnant)". As a doctor, open the test → Approve.
+5. As a doctor: Lab → **Settings** → tick the check → Save. Lab staff report a result: it waits under **Results to
+   check**; a second lab person opens it → Approve and report (or Send back).
+6. On an order: Outside lab → **Send tests to an outside lab** → it shows under **At outside labs** → Mark as come back.
+7. Lab → **Find**: type the sample number (or a patient's name). Lab → **Register**: today's counts → Print, Save for
+   Excel.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

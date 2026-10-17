@@ -8,7 +8,21 @@ import { User } from '../models/User.js';
 import { markDoneFromLab, planCtx, syncPlanSafely } from '../careplans/plansService.js';
 import { refreshPatientRiskSafely } from '../careplans/templatesService.js';
 import { ensureLabPackages } from '../lab/labPackages.js';
-import { FLAGS, LAB_TEST_KEYS, OTHER_TEST, catalogueView, flagFor, isAbnormal, labNumber, testByKey, testsFor } from '../lab/labTests.js';
+import { FLAGS, OTHER_TEST, flagFor, isAbnormal, labNumber, testsFor } from '../lab/labTests.js';
+import {
+  DEPARTMENT_KEYS,
+  REJECT_REASONS,
+  catalogueView,
+  dueAt,
+  ensureSampleNo,
+  fieldFor,
+  labCatalogue,
+  labSetup,
+  nextSampleNo,
+  rangeContext,
+  setupOf,
+  shownName,
+} from '../lab/labSetup.js';
 import { LabPackage } from '../models/LabPackage.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
@@ -17,24 +31,26 @@ import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { findPatient } from '../utils/patientLookup.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
-import { hospitalToday } from '../careplans/dates.js';
+import { hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
-import { objectId, parse } from '../utils/validate.js';
+import { escapeRegex, objectId, parse } from '../utils/validate.js';
 
-// The lab module (Version 2). Two routers:
+// The lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md). Two routers:
 //  - patientLabRouter, /api/patients/:id/lab-orders: a patient's orders and results (those who may see the
 //    medical details), and new orders (the treating or an unassigned doctor, RMOs);
-//  - labRouter, /api/lab: the test list, the lab's worklist, one order (collect, results, report files, cancel)
-//    and the doctor's review.
+//  - labRouter, /api/lab: the test list, the lab's worklist, Find and the register, one order (labels, collect,
+//    reject, results, check, outside lab, report files, printed report, cancel) and the doctor's review.
 // Who may do what:
 //  - lab staff see only the patient's name, number, type of care and age, the tests and the doctor's note to the
-//    lab – never the record or the doctor's review comment; they collect, enter results, upload report files;
-//  - nurses may mark a sample collected; doctors and RMOs may also enter results (a test done at the bedside or a
-//    report from outside);
+//    lab – never the record or the doctor's review comment; they print labels, collect, reject a sample, enter
+//    results, send tests to an outside lab, upload report files and print the report;
+//  - nurses may mark a sample collected (and print its labels); doctors and RMOs may also enter results (a test
+//    done at the bedside or a report from outside);
+//  - with the hospital's check on (LabSetup), results go to the doctor only once a second person checked them;
 //  - a doctor reviews the results (the treating or an unassigned doctor). A reviewed result completes the
 //    matching care-plan items. A change after the report needs a reason, keeps the earlier results and goes
 //    back to the doctor.
-// The audit log gets ids only, never a value.
+// The audit log gets ids only, never a value, a test name or a patient's name.
 
 export const labRouter = Router();
 export const patientLabRouter = Router({ mergeParams: true });
@@ -48,6 +64,8 @@ const invalid = (fields, message = 'Please check the highlighted fields.') => Ob
 const rev = z.number('The version you edited is missing – please reload the page').int().min(0);
 const stampOf = (req) => ({ by: req.user._id, byName: req.user.name, at: req.now });
 const ids = (order, extra = {}) => ({ patientId: String(order.patientId), orderId: String(order._id), ...extra });
+const OPEN = ['ordered', 'collected', 'entered'];
+const DONE = ['reported', 'reviewed'];
 
 // ---------- Who may do what ----------
 
@@ -82,6 +100,16 @@ function assertCan(access, what) {
   throw forbidden(words[what]);
 }
 
+/**
+ * Whether this person may check results entered by someone else (the hospital's check, LabSetup): one of the people
+ * the hospital chose, or – none chosen – any lab staff, doctor or RMO who may enter results for this patient.
+ */
+function mayVerify(req, access, setup) {
+  if (!setup.verify || !access.report) return false;
+  if (setup.verifierIds.length) return setup.verifierIds.includes(String(req.user._id));
+  return hasRole(req.membership, 'lab', 'doctor', 'rmo');
+}
+
 labRouter.use((req, _res, next) => {
   if (!hasRole(req.membership, ...LAB_ROLES)) throw forbidden('The lab module is for the lab, doctors, RMOs and nurses.');
   next();
@@ -90,30 +118,49 @@ labRouter.use((req, _res, next) => {
 // ---------- The view of an order ----------
 
 const stampView = (s) => (s ? { byName: s.byName, at: s.at } : null);
-const testView = (t) => ({ key: t.key, name: t.name, values: (t.values ?? []).map((v) => ({ key: v.key, value: v.value, flag: v.flag })), text: t.text ?? '' });
+const valueView = (v) => ({ key: v.key, value: v.value, flag: v.flag, ...(v.name ? { name: v.name } : {}), ...(v.unit ? { unit: v.unit } : {}), ...(v.range ? { range: v.range } : {}) });
+const outsideView = (o) => (o?.sent ? { labName: o.labName, ref: o.ref ?? '', sent: stampView(o.sent), received: stampView(o.received) } : null);
+const testView = (t) => ({ key: t.key, name: t.name, values: (t.values ?? []).map(valueView), text: t.text ?? '', department: t.department ?? '', outside: outsideView(t.outside) });
+
+/** Whether an order is past its due time: not reported yet and the time has passed, or reported after it. */
+export function isLate(order, now) {
+  if (!order.dueAt || order.status === 'cancelled') return false;
+  const done = order.reported?.at ?? null;
+  return done ? new Date(done) > new Date(order.dueAt) : new Date(now) > new Date(order.dueAt);
+}
 
 /**
  * One order; clinical: may see the doctor's review comment and the earlier results of an amended report, and the
  * name of the test package it was ordered with. Lab staff who may not see the medical details get the tests only: a
  * package name says why she is tested ("Recurrent pregnancy loss work-up") – more than the lab needs to do the work.
+ * more: { canVerify, now } – worked out by the caller (the hospital's check needs its settings).
  */
-export function orderView(order, access) {
+export function orderView(order, access, more = {}) {
+  const status = order.status;
+  const outsideOpen = (order.tests ?? []).some((t) => t.outside?.sent && !t.outside?.received);
   return {
     id: String(order._id),
     patientId: String(order.patientId),
     visitId: order.visitId ? String(order.visitId) : null,
-    status: order.status,
+    status,
     urgent: Boolean(order.urgent),
+    sampleNo: order.sampleNo ?? null,
+    dueAt: order.dueAt ?? null,
+    late: isLate(order, more.now ?? new Date()),
     tests: order.tests.map(testView),
     noteToLab: order.noteToLab ?? '',
     packages: access.clinical ? (order.packages ?? []).map((p) => (typeof p === 'string' ? { key: p, name: p } : { key: p.key, name: p.name, version: p.version, approved: p.approved })) : [],
     labNote: order.labNote ?? '',
     ordered: stampView(order.ordered),
     collected: stampView(order.collected),
+    entered: stampView(order.entered),
+    verified: stampView(order.verified),
     reported: stampView(order.reported),
     lastSaved: stampView(order.lastSaved),
     reviewed: order.reviewed ? { byName: order.reviewed.byName, at: order.reviewed.at, ...(access.clinical ? { comment: order.reviewed.comment ?? '' } : {}) } : null,
     cancelled: order.cancelled ? { byName: order.cancelled.byName, at: order.cancelled.at, reason: order.cancelled.reason ?? '' } : null,
+    rejections: (order.rejections ?? []).map((r) => ({ byName: r.byName, at: r.at, reason: r.reason, reasonText: REJECT_REASONS[r.reason] ?? r.reason, note: r.note ?? '' })),
+    sentBack: (order.sentBack ?? []).map((r) => ({ byName: r.byName, at: r.at, reason: r.reason ?? '' })),
     amendments: (order.amendments ?? []).map((m) => ({
       byName: m.byName,
       at: m.at,
@@ -124,10 +171,16 @@ export function orderView(order, access) {
     abnormal: Boolean(order.abnormal),
     rev: order.rev ?? 0,
     access: {
-      canCollect: access.collect && order.status === 'ordered',
-      canReport: access.report && order.status !== 'cancelled',
-      canReview: access.review && order.status === 'reported',
-      canCancel: access.cancel && ['ordered', 'collected'].includes(order.status),
+      canCollect: access.collect && status === 'ordered',
+      canLabel: access.collect && ['ordered', 'collected'].includes(status),
+      canReject: access.report && status === 'collected',
+      canReport: access.report && status !== 'cancelled',
+      canVerify: Boolean(more.canVerify) && status === 'entered' && String(order.entered?.by) !== String(more.userId),
+      canSendOutside: access.report && OPEN.includes(status),
+      canReceiveOutside: access.report && outsideOpen && status !== 'cancelled',
+      canPrint: access.view && DONE.includes(status),
+      canReview: access.review && status === 'reported',
+      canCancel: access.cancel && ['ordered', 'collected'].includes(status),
     },
   };
 }
@@ -142,6 +195,11 @@ async function loadOrder(req) {
   const patient = await Patient.findOne({ _id: order.patientId, tenantId: req.tenantId });
   if (!patient) throw notFound();
   return { order, patient, access: labAccess(req, patient) };
+}
+/** The order's view for this person, with the hospital's check worked out. */
+async function viewFor(req, order, access, setup = null) {
+  const s = setup ?? (await labSetup(req.tenantId));
+  return orderView(order, access, { canVerify: mayVerify(req, access, s), userId: req.user._id, now: req.now });
 }
 // A reviewed haemoglobin counts for the risk level (the lowest Hb of this pregnancy – careplans/readings.js).
 // After a doctor's review the level is worked out again and the care plan follows. (A result changed after its
@@ -164,7 +222,7 @@ const orderSchema = z
   .object({
     clientRequestId: z.string().min(8).max(64),
     tests: z
-      .array(z.object({ key: z.enum([...LAB_TEST_KEYS, OTHER_TEST]), name: safeText('Test name', 150).optional() }).strict())
+      .array(z.object({ key: z.string().min(1).max(40), name: safeText('Test name', 150).optional() }).strict())
       .min(1, 'Choose at least one test.')
       .max(30, 'At most 30 tests in one order.'),
     urgent: z.boolean().default(false),
@@ -180,7 +238,8 @@ patientLabRouter.get('/', async (req, res) => {
   if (!access.clinical) throw forbidden(isLab(req) ? 'The lab sees orders in the Lab worklist.' : "You can't see this patient's lab results.");
   const orders = await LabOrder.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ createdAt: -1 }).limit(200);
   await audit(req, 'LAB_RESULTS_VIEWED', { details: { patientId: String(patient._id), mrn: patient.mrn } });
-  res.json({ orders: orders.map((o) => orderView(o, access)), canOrder: access.order && !isDuplicate(patient) && !isClosed(patient) });
+  const setup = await labSetup(req.tenantId);
+  res.json({ orders: await Promise.all(orders.map((o) => viewFor(req, o, access, setup))), canOrder: access.order && !isDuplicate(patient) && !isClosed(patient) });
 });
 
 patientLabRouter.post('/', async (req, res) => {
@@ -191,23 +250,29 @@ patientLabRouter.post('/', async (req, res) => {
   const repeat = await LabOrder.findOne({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
   if (repeat) {
     if (String(repeat.patientId) !== String(patient._id)) throw conflict('This request was already used.');
-    return res.status(201).json({ order: orderView(repeat, access) });
+    return res.status(201).json({ order: await viewFor(req, repeat, access) });
   }
   // A record marked as a duplicate takes no new lab orders (orders already made on it are still finished there)
   refuseNewOnDuplicate(patient, 'lab');
   refuseNewOnClosed(patient, 'lab'); // nor a record closed after a death (an order already made is finished)
+  const catalogue = await labCatalogue(req.tenantId);
   const fields = {};
   const tests = body.tests.map((t, i) => {
     if (t.key === OTHER_TEST) {
       if (!t.name || t.name.trim().length < 2) fields[`tests.${i}.name`] = 'Write the name of the test.';
-      return { key: OTHER_TEST, name: (t.name ?? '').trim(), values: [], text: '' };
+      return { key: OTHER_TEST, name: (t.name ?? '').trim(), values: [], text: '', department: setupOf(catalogue, OTHER_TEST).department };
     }
-    const test = testByKey.get(t.key);
+    const test = catalogue.byKey.get(t.key);
+    if (!test) {
+      fields[`tests.${i}.key`] = 'This test is not on the hospital\'s test list. Reload the page and choose again.';
+      return { key: t.key, name: t.key, values: [], text: '' };
+    }
+    if (!test.active) fields[`tests.${i}.key`] = `${test.name} is not offered by the lab at the moment.`;
     // A baby's record takes only baby tests; everyone else's only adult tests (the mother's are on her record).
     if (test.who !== testsFor(patient)) {
       fields[`tests.${i}.key`] = test.who === 'newborn' ? `${test.name} is a test for babies.` : `${test.name} is not a test for a baby – order the mother's tests on her own record.`;
     }
-    return { key: t.key, name: test.name, values: [], text: '' };
+    return { key: t.key, name: test.name, values: [], text: '', department: test.department };
   });
   // The packages chosen: the hospital's own, in use, for this kind of patient. Recorded with their name and version.
   let packages = [];
@@ -233,71 +298,82 @@ patientLabRouter.post('/', async (req, res) => {
     tests,
     noteToLab: body.noteToLab,
     packages,
+    sampleNo: await nextSampleNo(req.tenantId, req.now),
+    dueAt: dueAt(req.now, tests.map((t) => setupOf(catalogue, t.key)), body.urgent),
     ordered: stampOf(req),
     clientRequestId: body.clientRequestId,
   });
   await audit(req, 'LAB_ORDER_CREATED', { details: ids(order, { mrn: patient.mrn, tests: tests.length }) });
   await billLabOrdered(req, patient, order); // billing: each test
-  res.status(201).json({ order: orderView(order, access) });
+  res.status(201).json({ order: await viewFor(req, order, access) });
 });
 
 // ---------- The test list ----------
 
-labRouter.get('/tests', (_req, res) => {
-  res.json(catalogueView());
+labRouter.get('/tests', async (req, res) => {
+  res.json(catalogueView(await labCatalogue(req.tenantId)));
 });
 
 // ---------- Lists ----------
 
-// The lab's worklist: to collect (ordered), to report (collected), and reported in the last 7 days. Urgent orders
-// first, then the oldest. Doctors, RMOs and nurses see only patients whose medical details they may see.
+// The lab's worklist: to collect (ordered), to report (collected), to check (entered, with the check on), tests at an
+// outside lab, and reported in the last 7 days. Urgent orders first, then the oldest. A department narrows each list
+// to orders with a test of that department. Doctors, RMOs and nurses see only patients whose medical details they may
+// see.
 const LISTS = {
-  collect: { status: 'ordered', sort: { urgent: -1, createdAt: 1 } },
-  report: { status: 'collected', sort: { urgent: -1, createdAt: 1 } },
-  done: { status: { $in: ['reported', 'reviewed'] }, sort: { 'reported.at': -1 } },
+  collect: { filter: { status: 'ordered' }, sort: { urgent: -1, createdAt: 1 } },
+  report: { filter: { status: 'collected' }, sort: { urgent: -1, createdAt: 1 } },
+  verify: { filter: { status: 'entered' }, sort: { urgent: -1, createdAt: 1 } },
+  outside: { filter: { status: { $ne: 'cancelled' }, tests: { $elemMatch: { 'outside.sent': { $ne: null }, 'outside.received': null } } }, sort: { createdAt: 1 } },
+  done: { filter: { status: { $in: DONE } }, sort: { 'reported.at': -1 } },
 };
 
-async function withPatients(req, orders, keep) {
+async function withPatients(req, orders, keep, setup = null) {
   const pids = [...new Set(orders.map((o) => String(o.patientId)))];
   const patients = pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }) : [];
   const byId = new Map(patients.map((p) => [String(p._id), p]));
   const doctorIds = [...new Set(patients.map((p) => p.assignedDoctor && String(p.assignedDoctor)).filter(Boolean))];
   const names = new Map((doctorIds.length ? await User.find({ _id: { $in: doctorIds } }, { name: 1 }).lean() : []).map((u) => [String(u._id), u.name]));
+  const s = setup ?? (await labSetup(req.tenantId));
   return orders
     .map((o) => {
       const p = byId.get(String(o.patientId));
       if (!p) return null;
       const access = labAccess(req, p);
       if (!keep(access)) return null;
-      return { ...orderView(o, access), patient: patientBrief(p, p.assignedDoctor ? (names.get(String(p.assignedDoctor)) ?? null) : null) };
+      const view = orderView(o, access, { canVerify: mayVerify(req, access, s), userId: req.user._id, now: req.now });
+      return { ...view, patient: patientBrief(p, p.assignedDoctor ? (names.get(String(p.assignedDoctor)) ?? null) : null) };
     })
     .filter(Boolean);
 }
 
+const departmentParam = z.enum(['', ...DEPARTMENT_KEYS]).default('');
+const byDepartment = (department) => (department ? { 'tests.department': department } : {});
+
 labRouter.get('/worklist', async (req, res) => {
-  const { list } = parse(z.object({ list: z.enum(Object.keys(LISTS)).default('collect') }), req.query);
-  const { status, sort } = LISTS[list];
+  const { list, department } = parse(z.object({ list: z.enum(Object.keys(LISTS)).default('collect'), department: departmentParam }), req.query);
+  const { filter, sort } = LISTS[list];
   const since = new Date(req.now.getTime() - 7 * 24 * 3600 * 1000);
-  const filter = { tenantId: req.tenantId, status, ...(list === 'done' ? { 'reported.at': { $gte: since } } : {}) };
-  const orders = await LabOrder.find(filter).sort(sort).limit(300);
+  const where = { tenantId: req.tenantId, ...filter, ...byDepartment(department), ...(list === 'done' ? { 'reported.at': { $gte: since } } : {}) };
+  const orders = await LabOrder.find(where).sort(sort).limit(300);
+  const setup = await labSetup(req.tenantId);
+  const counted = Object.entries(LISTS).filter(([k]) => k !== 'done');
   const counts = {};
-  for (const [k, l] of Object.entries(LISTS)) {
-    if (k !== 'done') counts[k] = await LabOrder.countDocuments({ tenantId: req.tenantId, status: l.status });
-  }
+  for (const [k, l] of counted) counts[k] = await LabOrder.countDocuments({ tenantId: req.tenantId, ...l.filter, ...byDepartment(department) });
   // Counts are hospital-wide for the lab; for others they are of the patients they may see.
-  const shown = await withPatients(req, orders, (a) => a.view);
+  const shown = await withPatients(req, orders, (a) => a.view, setup);
   if (!isLab(req)) {
-    for (const k of Object.keys(counts)) {
+    for (const [k, l] of counted) {
       // Only the patient of each order is read here, so the orders are counted by who may see their patient (not
       // passed through withPatients, which needs the whole order)
-      const all = await LabOrder.find({ tenantId: req.tenantId, status: LISTS[k].status }, { patientId: 1 }).limit(1000).lean();
+      const all = await LabOrder.find({ tenantId: req.tenantId, ...l.filter, ...byDepartment(department) }, { patientId: 1 }).limit(1000).lean();
       const pids = [...new Set(all.map((o) => String(o.patientId)))];
       const patients = pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }) : [];
       const visible = new Set(patients.filter((p) => labAccess(req, p).view).map((p) => String(p._id)));
       counts[k] = all.filter((o) => visible.has(String(o.patientId))).length;
     }
   }
-  res.json({ list, orders: shown, counts, isLab: isLab(req) });
+  res.json({ list, department, orders: shown, counts, isLab: isLab(req), verify: setup.verify });
 });
 
 // Results waiting for a doctor's review: the doctor's own and unassigned patients. Abnormal results first.
@@ -307,13 +383,111 @@ labRouter.get('/to-review', async (req, res) => {
   res.json({ orders: await withPatients(req, orders, (a) => a.review) });
 });
 
+// Find (feature 6): by sample number (a label's barcode "261017-0003-2" finds its order), patient number or name,
+// between two dates, in one status. Only orders whose patient this person may see. The audit log records the search
+// with how many orders were listed – never what was typed (a name).
+const STATUS_FILTER = ['', 'ordered', 'collected', 'entered', 'reported', 'reviewed', 'cancelled', 'late', 'rejected', 'outside'];
+const dateRange = z
+  .object({ from: z.iso.date('From: please enter a valid date').optional(), to: z.iso.date('To: please enter a valid date').optional() })
+  .refine((d) => !d.from || !d.to || d.from <= d.to, { message: 'The first date must be before the second.', path: ['to'] });
+
+function rangeFilter(from, to) {
+  if (!from && !to) return {};
+  const at = {};
+  if (from) at.$gte = hospitalDayStart(new Date(`${from}T00:00:00Z`));
+  if (to) at.$lt = hospitalDayStart(new Date(new Date(`${to}T00:00:00Z`).getTime() + 86400000));
+  return { 'ordered.at': at };
+}
+function statusFilter(status, now) {
+  if (!status) return {};
+  if (status === 'late') return { status: { $in: OPEN }, dueAt: { $ne: null, $lt: now } };
+  if (status === 'rejected') return { 'rejections.0': { $exists: true } };
+  if (status === 'outside') return { tests: { $elemMatch: { 'outside.sent': { $ne: null } } } };
+  return { status };
+}
+
+labRouter.get('/search', async (req, res) => {
+  const q = parse(
+    z.object({ q: z.string().trim().max(100).default(''), status: z.enum(STATUS_FILTER).default(''), department: departmentParam, from: z.string().optional(), to: z.string().optional() }),
+    req.query,
+  );
+  const dates = parse(dateRange, { from: q.from || undefined, to: q.to || undefined });
+  const where = { tenantId: req.tenantId, ...rangeFilter(dates.from, dates.to), ...statusFilter(q.status, req.now), ...byDepartment(q.department) };
+  const text = q.q;
+  if (text) {
+    const sample = text.match(/^(\d{6}-\d{4})(?:-\d{1,2})?$/);
+    if (sample) where.sampleNo = sample[1];
+    else {
+      const patients = await Patient.find(
+        { tenantId: req.tenantId, $or: [{ mrn: text.toUpperCase() }, { fullName: { $regex: escapeRegex(text), $options: 'i' } }] },
+        { _id: 1 },
+      )
+        .limit(200)
+        .lean();
+      where.patientId = { $in: patients.map((p) => p._id) };
+    }
+  }
+  if (!text && !dates.from && !dates.to && !q.status) throw invalid({ q: 'Type a sample number, a patient number or a name, or choose dates.' });
+  const orders = await LabOrder.find(where).sort({ 'ordered.at': -1 }).limit(200);
+  const shown = await withPatients(req, orders, (a) => a.view);
+  await audit(req, 'LAB_ORDERS_SEARCHED', { details: { results: shown.length } });
+  res.json({ orders: shown, more: orders.length === 200 });
+});
+
+// The lab register (feature 8): every order made between two dates (at most 62 days), in one department or all,
+// with counts. The names shown are only those of patients this person may see; a confidential test is listed under
+// its neutral name. Audited with the dates and the number of orders.
+const MAX_REGISTER_DAYS = 62;
+labRouter.get('/register', async (req, res) => {
+  const q = parse(z.object({ from: z.string(), to: z.string(), department: departmentParam }), req.query);
+  const { from, to } = parse(dateRange, { from: q.from, to: q.to });
+  if ((new Date(to) - new Date(from)) / 86400000 + 1 > MAX_REGISTER_DAYS) throw invalid({ to: `At most ${MAX_REGISTER_DAYS} days at a time.` });
+  const orders = await LabOrder.find({ tenantId: req.tenantId, ...rangeFilter(from, to), ...byDepartment(q.department) }).sort({ 'ordered.at': 1, _id: 1 }).limit(3000);
+  const shown = await withPatients(req, orders, (a) => a.view);
+  const rows = shown.map((o) => ({ ...o, tests: o.tests.map((t) => ({ ...t, name: shownName(t), values: [], text: '' })), labNote: '', noteToLab: '' }));
+  const count = (fn) => rows.filter(fn).length;
+  const summary = {
+    orders: rows.length,
+    tests: rows.reduce((n, o) => n + o.tests.length, 0),
+    collected: count((o) => o.collected),
+    rejected: count((o) => o.rejections.length > 0),
+    reported: count((o) => DONE.includes(o.status)),
+    reviewed: count((o) => o.status === 'reviewed'),
+    waiting: count((o) => OPEN.includes(o.status)),
+    cancelled: count((o) => o.status === 'cancelled'),
+    late: count((o) => o.late),
+    outside: count((o) => o.tests.some((t) => t.outside)),
+    abnormal: count((o) => o.abnormal && DONE.includes(o.status)),
+    urgent: count((o) => o.urgent),
+  };
+  const byDept = {};
+  for (const o of rows) for (const t of o.tests) byDept[t.department || 'other'] = (byDept[t.department || 'other'] ?? 0) + 1;
+  await audit(req, 'LAB_REGISTER_VIEWED', { details: { from, to, results: rows.length } });
+  res.json({ from, to, department: q.department, orders: rows, summary, byDepartment: byDept, more: orders.length === 3000 });
+});
+
 // ---------- One order ----------
 
 labRouter.get('/orders/:orderId', async (req, res) => {
   const { order, patient, access } = await loadOrder(req);
   if (!access.view) throw forbidden("You can't see this patient's lab orders.");
   await audit(req, 'LAB_ORDER_VIEWED', { details: ids(order, { mrn: patient.mrn }) });
-  res.json({ order: { ...orderView(order, access), patient: patientBrief(patient) }, catalogue: catalogueView() });
+  const [catalogue, setup] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId)]);
+  // The result form suggests flags from the ranges that apply to this patient (her age, pregnancy)
+  res.json({ order: { ...(await viewFor(req, order, access, setup)), patient: patientBrief(patient) }, catalogue: catalogueView(catalogue, rangeContext(patient, req.now)), verify: setup.verify });
+});
+
+// The labels were printed (the browser prints them): the order gets its sample number if it had none (older orders).
+labRouter.post('/orders/:orderId/labels-printed', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'collect');
+  if (!['ordered', 'collected'].includes(order.status)) throw conflict('Labels are printed before the results are entered.');
+  if (await ensureSampleNo(order, req.now)) {
+    order.rev += 1;
+    await order.save();
+  }
+  await audit(req, 'LAB_LABELS_PRINTED', { details: ids(order, { mrn: patient.mrn }) });
+  res.json({ order: await viewFor(req, order, access) });
 });
 
 labRouter.post('/orders/:orderId/collect', async (req, res) => {
@@ -324,10 +498,29 @@ labRouter.post('/orders/:orderId/collect', async (req, res) => {
   checkRev(order, body.rev);
   order.status = 'collected';
   order.collected = stampOf(req);
+  await ensureSampleNo(order, req.now);
   order.rev += 1;
   await order.save();
   await audit(req, 'LAB_SAMPLE_COLLECTED', { details: ids(order, { mrn: patient.mrn }) });
-  res.json({ order: orderView(order, access) });
+  res.json({ order: await viewFor(req, order, access) });
+});
+
+// The lab refuses the sample (feature 1): the order goes back to "sample to take", the rejection is kept.
+labRouter.post('/orders/:orderId/reject', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'report');
+  const body = parse(z.object({ rev, reason: z.enum(Object.keys(REJECT_REASONS), 'Choose why the sample is rejected.'), note: safeText('Note', 300).default('') }).strict(), req.body);
+  if (order.status !== 'collected') throw conflict('Only a sample that was taken and has no results yet can be rejected.');
+  checkRev(order, body.rev);
+  if (body.reason === 'other' && body.note.trim().length < 3) throw invalid({ note: 'Write what was wrong with the sample.' });
+  order.rejections.push({ ...stampOf(req), reason: body.reason, note: body.note.trim() });
+  order.status = 'ordered';
+  order.collected = null;
+  order.collectedAtReport = false;
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_SAMPLE_REJECTED', { details: ids(order, { mrn: patient.mrn, reason: body.reason }) });
+  res.json({ order: await viewFor(req, order, access) });
 });
 
 const resultsSchema = z
@@ -343,32 +536,37 @@ const resultsSchema = z
         .strict(),
     ),
     labNote: safeText('Remark', 1000).default(''),
-    report: z.boolean().default(false), // finish: the results go to the doctor
+    report: z.boolean().default(false), // finish: the results go to the doctor (or to the check)
     reason: safeText('Reason', 500).default(''),
   })
   .strict();
 
-/** The sent results, checked against the order's tests and the test list (values, choices and flags). */
-function checkedTests(order, sent) {
+/**
+ * The sent results, checked against the order's tests and the hospital's test list (values, choices and flags).
+ * Each value keeps the name, unit and range that applied to this patient (ctx: rangeContext).
+ */
+function checkedTests(order, sent, catalogue, ctx) {
   const fields = {};
   if (sent.length !== order.tests.length || sent.some((t, i) => t.key !== order.tests[i].key)) {
     throw conflict('The tests of this order are different from those on your screen – please reload the page.', 'STALE');
   }
   const tests = order.tests.map((t, i) => {
     const s = sent[i];
-    const def = testByKey.get(t.key);
+    const def = t.key === OTHER_TEST ? null : catalogue.byKey.get(t.key);
     const values = [];
     for (const v of s.values) {
-      const field = def?.fields.find((f) => f.key === v.key);
+      const raw = def?.fields.find((f) => f.key === v.key);
       const at = `tests.${i}.${v.key}`;
-      if (!field) {
+      if (!raw) {
         fields[at] = 'Unknown value for this test.';
         continue;
       }
       if (v.value === '') continue;
+      const field = fieldFor(raw, ctx);
+      const words = { name: field.name, ...(field.unit ? { unit: field.unit } : {}), ...(field.range ? { range: field.range } : {}) };
       if (field.type === 'text') {
         if (mentionsFetalSex(v.value)) fields[at] = PCPNDT_MESSAGE;
-        values.push({ key: v.key, value: v.value, flag: '' });
+        values.push({ key: v.key, value: v.value, flag: '', name: field.name });
         continue;
       }
       let value = v.value;
@@ -380,14 +578,25 @@ function checkedTests(order, sent) {
         else value = n.value;
       }
       if (field.type === 'choice' && !field.options.includes(v.value)) fields[at] = 'Choose one of the options.';
-      values.push({ key: v.key, value, flag: v.flag || flagFor(field, value) });
+      values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words });
     }
-    return { key: t.key, name: t.name, values, text: s.text };
+    return { key: t.key, name: t.name, values, text: s.text, department: t.department ?? '', outside: t.outside ?? null };
   });
   if (Object.keys(fields).length) throw invalid(fields);
   return tests;
 }
 const hasResult = (t) => t.values.some((v) => v.value !== '') || t.text.trim() !== '';
+
+/** The report: the results go to the doctor (with the check on, `verified` says who checked them). */
+function markReported(req, order) {
+  order.status = 'reported';
+  order.reported = stampOf(req);
+  if (!order.collected) {
+    // Reported without "sample collected": the sample's own time is not known (it is stamped with the report's)
+    order.collected = stampOf(req);
+    order.collectedAtReport = true;
+  }
+}
 
 labRouter.put('/orders/:orderId/results', async (req, res) => {
   const { order, patient, access } = await loadOrder(req);
@@ -395,8 +604,9 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   if (order.status === 'cancelled') throw conflict('This order was cancelled.');
   const body = parse(resultsSchema, req.body);
   checkRev(order, body.rev);
-  const tests = checkedTests(order, body.tests);
-  const amending = ['reported', 'reviewed'].includes(order.status);
+  const [catalogue, setup] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId)]);
+  const tests = checkedTests(order, body.tests, catalogue, rangeContext(patient, req.now));
+  const amending = DONE.includes(order.status);
   if (amending && body.reason.trim().length < 5) throw invalid({ reason: 'The results were already reported: write why they are changed.' });
   if ((body.report || amending) && order.files.length === 0) {
     const missing = Object.fromEntries(tests.map((t, i) => [t, i]).filter(([t]) => !hasResult(t)).map(([, i]) => [`tests.${i}`, 'Enter the result (or attach the report).']));
@@ -410,20 +620,113 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   order.labNote = body.labNote;
   order.abnormal = tests.some((t) => t.values.some((v) => isAbnormal(v.flag)));
   order.lastSaved = stampOf(req);
-  if (body.report || amending) {
-    order.status = 'reported';
-    order.reported = stampOf(req);
-    if (!order.collected) {
-      // Reported without "sample collected": the sample's own time is not known (it is stamped with the report's)
-      order.collected = stampOf(req);
-      order.collectedAtReport = true;
-    }
+  let action = amending ? 'LAB_RESULTS_AMENDED' : 'LAB_RESULTS_SAVED';
+  if (amending) markReported(req, order);
+  else if (body.report && setup.verify) {
+    // The hospital's check: entered now, reported once a second person checked them. A change while waiting for the
+    // check makes this person the one who entered them (so they can't check their own).
+    order.status = 'entered';
+    order.entered = stampOf(req);
+    action = 'LAB_RESULTS_ENTERED';
+  } else if (order.status === 'entered') order.entered = stampOf(req);
+  else if (body.report) {
+    markReported(req, order);
+    action = 'LAB_RESULTS_REPORTED';
   }
   order.rev += 1;
   await order.save();
-  const action = amending ? 'LAB_RESULTS_AMENDED' : body.report ? 'LAB_RESULTS_REPORTED' : 'LAB_RESULTS_SAVED';
   await audit(req, action, { details: ids(order, { mrn: patient.mrn }) });
-  res.json({ order: orderView(order, access) });
+  res.json({ order: await viewFor(req, order, access, setup) });
+});
+
+// The hospital's check (feature 5): a second person approves the entered results (they go to the doctor) or sends
+// them back with a reason (back to "results to enter").
+labRouter.post('/orders/:orderId/verify', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  const setup = await labSetup(req.tenantId);
+  const body = parse(z.object({ rev }).strict(), req.body);
+  if (!access.view) throw forbidden("You can't see this patient's lab orders.");
+  if (order.status !== 'entered') throw conflict('These results are not waiting for a check.');
+  if (!mayVerify(req, access, setup)) throw forbidden(setup.verify ? 'You are not one of the people who check lab results here.' : 'Results are not checked before the report in this hospital.');
+  if (String(order.entered?.by) === String(req.user._id)) throw forbidden('Someone other than the person who entered the results must check them.');
+  checkRev(order, body.rev);
+  order.verified = stampOf(req);
+  markReported(req, order);
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_RESULTS_VERIFIED', { details: ids(order, { mrn: patient.mrn }) });
+  res.json({ order: await viewFor(req, order, access, setup) });
+});
+
+labRouter.post('/orders/:orderId/send-back', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  const setup = await labSetup(req.tenantId);
+  const body = parse(z.object({ rev, reason: safeText('Reason', 500) }).strict(), req.body);
+  if (!access.view) throw forbidden("You can't see this patient's lab orders.");
+  if (order.status !== 'entered') throw conflict('These results are not waiting for a check.');
+  if (!mayVerify(req, access, setup)) throw forbidden('You are not one of the people who check lab results here.');
+  checkRev(order, body.rev);
+  if (body.reason.trim().length < 5) throw invalid({ reason: 'Write what needs to be looked at again.' });
+  order.sentBack.push({ ...stampOf(req), reason: body.reason.trim() });
+  order.status = 'collected';
+  order.entered = null;
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_RESULTS_SENT_BACK', { details: ids(order, { mrn: patient.mrn }) });
+  res.json({ order: await viewFor(req, order, access, setup) });
+});
+
+// Tests sent to an outside lab (feature 7): which tests, which lab and its reference; later, which came back.
+// The outside lab's report is attached as a report file and its values typed as usual.
+labRouter.post('/orders/:orderId/outside', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'report');
+  const body = parse(z.object({ rev, tests: z.array(z.number().int().min(0).max(29)).min(1, 'Choose the tests sent.'), labName: safeText('Outside lab', 120), ref: safeText('Their reference', 80).default('') }).strict(), req.body);
+  if (!OPEN.includes(order.status)) throw conflict('Tests are sent to an outside lab before the report.');
+  checkRev(order, body.rev);
+  if (body.labName.trim().length < 2) throw invalid({ labName: 'Write the name of the outside lab.' });
+  const fields = {};
+  for (const i of body.tests) {
+    const t = order.tests[i];
+    if (!t) fields.tests = 'A test chosen is not in this order. Reload the page.';
+    else if (t.outside?.sent && !t.outside?.received) fields.tests = `${t.name} is already at an outside lab.`;
+  }
+  if (Object.keys(fields).length) throw invalid(fields);
+  for (const i of body.tests) order.tests[i].outside = { labName: body.labName.trim(), ref: body.ref.trim(), sent: stampOf(req), received: null };
+  order.markModified('tests');
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_SENT_OUTSIDE', { details: ids(order, { mrn: patient.mrn, tests: body.tests.length }) });
+  res.json({ order: await viewFor(req, order, access) });
+});
+
+labRouter.post('/orders/:orderId/outside/received', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'report');
+  const body = parse(z.object({ rev, tests: z.array(z.number().int().min(0).max(29)).min(1, 'Choose the tests that came back.') }).strict(), req.body);
+  if (order.status === 'cancelled') throw conflict('This order was cancelled.');
+  checkRev(order, body.rev);
+  for (const i of body.tests) {
+    const t = order.tests[i];
+    if (!t?.outside?.sent || t.outside.received) throw invalid({ tests: 'A test chosen is not waiting for an outside lab. Reload the page.' });
+  }
+  for (const i of body.tests) order.tests[i].outside.received = stampOf(req);
+  order.markModified('tests');
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_OUTSIDE_RECEIVED', { details: ids(order, { mrn: patient.mrn, tests: body.tests.length }) });
+  res.json({ order: await viewFor(req, order, access) });
+});
+
+// The printed report (feature 4): the browser prints it; this records the printout. confidential: whether a
+// confidential test (HIV) was included (under its neutral name).
+labRouter.post('/orders/:orderId/report-printed', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  if (!access.view) throw forbidden("You can't see this patient's lab orders.");
+  const body = parse(z.object({ confidential: z.boolean().default(false) }).strict(), req.body);
+  if (!DONE.includes(order.status)) throw conflict('The report is printed once the results are reported.');
+  await audit(req, 'LAB_REPORT_PRINTED', { details: ids(order, { mrn: patient.mrn, ...(body.confidential ? { confidential: true } : {}) }) });
+  res.json({ ok: true });
 });
 
 // A report file (PDF or photo): utils/storedFiles.js checks and stores it.
@@ -433,7 +736,7 @@ labRouter.post('/orders/:orderId/files', async (req, res) => {
   if (order.status === 'cancelled') throw conflict('This order was cancelled.');
   const body = parse(fileUploadSchema, req.body);
   if (order.files.length >= MAX_FILES) throw conflict(`At most ${MAX_FILES} report files per order.`);
-  const amending = ['reported', 'reviewed'].includes(order.status);
+  const amending = DONE.includes(order.status);
   if (amending && body.reason.trim().length < 5) throw invalid({ reason: 'The results were already reported: write why a file is added.' });
   const file = await storeFile(req, { patientId: order.patientId, kind: 'lab_report', ownerId: order._id, body });
   if (amending) {
@@ -446,7 +749,7 @@ labRouter.post('/orders/:orderId/files', async (req, res) => {
   order.rev += 1;
   await order.save();
   await audit(req, 'LAB_REPORT_UPLOADED', { details: ids(order, { mrn: patient.mrn, fileId: String(file._id) }) });
-  res.status(201).json({ order: orderView(order, access) });
+  res.status(201).json({ order: await viewFor(req, order, access) });
 });
 
 labRouter.get('/orders/:orderId/files/:fileId', async (req, res) => {
@@ -471,19 +774,19 @@ labRouter.post('/orders/:orderId/cancel', async (req, res) => {
   await order.save();
   await audit(req, 'LAB_ORDER_CANCELLED', { details: ids(order, { mrn: patient.mrn }) });
   await billLabCancelled(req, order); // billing: its tests come off
-  res.json({ order: orderView(order, access) });
+  res.json({ order: await viewFor(req, order, access) });
 });
 
 // The doctor's review. An abnormal result needs a comment (what was done about it). The matching care-plan
 // items are then marked done (never failing the review).
-const resultWords = (t) => {
-  const def = testByKey.get(t.key);
+const resultWords = (t, def) => {
   const parts = t.values
     .filter((v) => v.value !== '')
     .map((v) => {
       const f = def?.fields.find((x) => x.key === v.key);
       const flag = isAbnormal(v.flag) ? ` (${v.flag})` : '';
-      return `${f?.name ?? v.key} ${v.value}${f?.unit ? ` ${f.unit}` : ''}${flag}`;
+      const unit = v.unit ?? f?.unit;
+      return `${v.name ?? f?.name ?? v.key} ${v.value}${unit ? ` ${unit}` : ''}${flag}`;
     });
   if (t.text) parts.push(t.text);
   return parts.join(', ') || 'See the lab report';
@@ -505,14 +808,16 @@ labRouter.post('/orders/:orderId/review', async (req, res) => {
   const riskChanged = await riskAfterLab(req, patient);
   let planChanged = false;
   try {
+    const catalogue = await labCatalogue(req.tenantId);
     const day = hospitalToday(order.collected?.at ?? order.reported?.at ?? req.now); // the hospital's date of the sample
     const tests = order.tests
-      .filter((t) => testByKey.get(t.key)?.planKeys.length)
-      .map((t) => ({ planKeys: testByKey.get(t.key).planKeys, series: Boolean(testByKey.get(t.key).planSeries), result: resultWords(t) }));
+      .map((t) => ({ t, def: catalogue.byKey.get(t.key) }))
+      .filter(({ def }) => def?.planKeys?.length)
+      .map(({ t, def }) => ({ planKeys: def.planKeys, series: Boolean(def.planSeries), result: resultWords(t, def) }));
     const result = tests.length ? await markDoneFromLab(planCtx(req), patient._id, { labOrderId: order._id, on: day, tests }) : null;
     planChanged = Boolean(result?.changed);
   } catch (err) {
     console.error('Care plan after a lab review failed', err?.message ?? err);
   }
-  res.json({ order: orderView(order, access), planChanged, riskChanged });
+  res.json({ order: await viewFor(req, order, access), planChanged, riskChanged });
 });
