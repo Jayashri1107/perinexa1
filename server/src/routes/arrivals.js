@@ -11,6 +11,10 @@ import { HttpError } from '../utils/httpError.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { refuseNewOnClosed } from '../patients/deathRules.js';
 import { objectId, parse } from '../utils/validate.js';
+import { nextOpdNo } from '../inpatient/admissionDesk.js';
+import { currentAge } from '../models/Patient.js';
+import { User } from '../models/User.js';
+import { patientAccess } from '../utils/patientAccess.js';
 import { sendQueueTime } from '../appointments/queueTime.js';
 
 // "Mark arrived" (Feature 10): POST /api/arrivals { patientId, doctorId? } marks a patient as arrived today; DELETE
@@ -48,7 +52,12 @@ arrivalsRouter.post('/', async (req, res) => {
     if (e?.code !== 11000) throw e;
     // Already marked today (e.g. at the other desk): kept as it was.
   }
-  const arrival = await Arrival.findOne({ tenantId: req.tenantId, patientId: patient._id, on }).lean();
+  let arrival = await Arrival.findOne({ tenantId: req.tenantId, patientId: patient._id, on }).lean();
+  // The day's OPD number (docs/ADMISSION_DESK_PLAN.md), given once – also to an arrival marked before it existed
+  if (!arrival.opdNo) {
+    await Arrival.updateOne({ _id: arrival._id, tenantId: req.tenantId, opdNo: null }, { $set: { opdNo: await nextOpdNo(req.tenantId, at) } });
+    arrival = await Arrival.findOne({ _id: arrival._id, tenantId: req.tenantId }).lean();
+  }
   // Her appointment today, or – sent to a doctor without one – a walk-in token
   let appt = await Appointment.findOne({ tenantId: req.tenantId, patientId: patient._id, on, status: 'booked' }).sort({ kind: 1, start: 1 }).lean();
   if (!appt && doctor) {
@@ -59,7 +68,49 @@ arrivalsRouter.post('/', async (req, res) => {
   const [appointment] = appt ? await viewsOf(req.tenantId, [appt], on) : [null];
   // Her place in the queue and about when she goes in, on WhatsApp (when the hospital switched it on and she agreed)
   const queueTime = appt ? await sendQueueTime(req, patient._id, appt._id) : { sent: false, reason: 'no_appointment' };
-  res.status(201).json({ queueTime, arrival: { patientId: String(patient._id), at: arrival.at, byName: arrival.byName }, appointment });
+  res.status(201).json({ queueTime, arrival: { patientId: String(patient._id), at: arrival.at, byName: arrival.byName, opdNo: arrival.opdNo }, appointment });
+});
+
+// The OPD case paper of today's visit (docs/ADMISSION_DESK_PLAN.md): the OPD number, the day, her token or time and
+// doctor, and her details as this person may see them – printed with ruled space for the doctor to write by hand.
+arrivalsRouter.get('/:patientId/case-paper', async (req, res) => {
+  const { patientId } = parse(z.object({ patientId: objectId }), req.params);
+  const patient = await Patient.findOne({ _id: patientId, tenantId: req.tenantId });
+  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  const a = patientAccess(req, patient);
+  if (!a.view.has('phone')) throw new HttpError(403, "You can't see this patient's details.", 'FORBIDDEN');
+  const on = hospitalToday(req.now);
+  const arrival = await Arrival.findOne({ tenantId: req.tenantId, patientId: patient._id, on }).lean();
+  if (!arrival?.opdNo) throw new HttpError(409, 'Mark her arrived first: the OPD number is given then.', 'NOT_ARRIVED');
+  const appt = await Appointment.findOne({ tenantId: req.tenantId, patientId: patient._id, on, status: 'booked' }).sort({ kind: 1, start: 1 }).lean();
+  const doctorId = appt?.doctorId ?? patient.assignedDoctor;
+  const doctor = doctorId ? await User.findById(doctorId, { name: 1 }).lean() : null;
+  res.json({
+    paper: {
+      opdNo: arrival.opdNo,
+      date: on.toISOString().slice(0, 10),
+      arrivedAt: arrival.at,
+      token: appt?.kind === 'token' ? appt.token : null,
+      time: appt?.kind === 'slot' ? (appt.start ?? null) : null,
+      doctorName: doctor?.name ?? '',
+      patient: {
+        fullName: patient.fullName,
+        mrn: patient.mrn,
+        age: patient.careType === 'newborn' ? null : currentAge(patient, req.now),
+        careType: patient.careType,
+        phone: patient.phone ?? '',
+        address: a.view.has('address') ? [patient.address, patient.city, patient.state, patient.pinCode].filter(Boolean).join(', ') : '',
+      },
+    },
+  });
+});
+
+arrivalsRouter.post('/:patientId/case-paper/printed', async (req, res) => {
+  const { patientId } = parse(z.object({ patientId: objectId }), req.params);
+  const patient = await patientOf(req, patientId);
+  const arrival = await Arrival.findOne({ tenantId: req.tenantId, patientId: patient._id, on: hospitalToday(req.now) }, { opdNo: 1 }).lean();
+  await audit(req, 'OPD_CASE_PAPER_PRINTED', { details: { patientId: String(patient._id), mrn: patient.mrn, opdNo: arrival?.opdNo ?? null } });
+  res.json({ ok: true });
 });
 
 arrivalsRouter.delete('/:patientId', async (req, res) => {

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { nextIpdNo } from '../inpatient/admissionDesk.js';
 import { billAdmitted } from '../billing/hooks.js';
 import { z } from 'zod';
 import { hasRole } from '../models/Membership.js';
@@ -168,6 +169,7 @@ admissionsRouter.post('/', async (req, res) => {
       ward: body.ward,
       bed: body.bed,
       reason: body.reason,
+      ipdNo: await nextIpdNo(req.tenantId, now), // docs/ADMISSION_DESK_PLAN.md
       admittedBy: req.user._id,
       admittedByName: req.user.name,
       clientRequestId: body.clientRequestId,

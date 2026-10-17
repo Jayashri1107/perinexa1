@@ -10,6 +10,9 @@ export const admissionView = (a) => ({
   reason: a.reason ?? '',
   admissionType: a.admissionType ?? null,
   mlc: Boolean(a.mlc),
+  ipdNo: a.ipdNo ?? null, // docs/ADMISSION_DESK_PLAN.md
+  checklistIncomplete: Boolean(a.checklist) && !a.checklist.complete,
+  cleared: a.clearance ? { passNo: a.clearance.passNo, byName: a.clearance.byName, at: a.clearance.at } : null,
   status: a.status,
   dischargedAt: a.dischargedAt ?? null,
   admittedByName: a.admittedByName,

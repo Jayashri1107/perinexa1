@@ -48,6 +48,7 @@ import { prescriptionSetsRouter } from './routes/prescriptionSets.js';
 import { labPackagesRouter } from './routes/labPackages.js';
 import { labSetupRouter } from './routes/labSetup.js';
 import { cashHandoverRouter } from './routes/cashHandover.js';
+import { admissionDeskRouter } from './routes/admissionDesk.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
@@ -173,6 +174,8 @@ export function createApp({
   app.use('/api/inpatients', ...inTenant, inpatientsRouter);
   // Beds and admission at the desk (routes/beds.js)
   app.use('/api/beds', ...inTenant, bedsRouter);
+  // Admission like a hospital system: requests, checklist, papers, clearance (routes/admissionDesk.js)
+  app.use('/api/admission-desk', ...inTenant, admissionDeskRouter);
   app.use('/api/lab', ...inTenant, labRouter);
   // The lab's test list and settings (routes/labSetup.js)
   app.use('/api/lab-setup', ...inTenant, labSetupRouter);

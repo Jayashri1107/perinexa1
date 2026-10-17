@@ -78,6 +78,13 @@ const tenantSchema = new mongoose.Schema(
       // hospital's portal address (/portal/h/<code>), printed on a poster. Also opens sign-in with ABHA. null = off.
       signupKey: { type: String, default: null },
     },
+    // Admission at the desk (owner, 17 Oct 2026 – docs/ADMISSION_DESK_PLAN.md): reception admits only after a doctor's
+    // request (an emergency still can, marked so). Changed by the hospital admin (Hospital admin → Beds).
+    desk: {
+      requireAdmissionRequest: { type: Boolean, default: false },
+      // A planned or day-care admission needs the admission checklist complete (an emergency is completed later)
+      requireChecklist: { type: Boolean, default: false },
+    },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },

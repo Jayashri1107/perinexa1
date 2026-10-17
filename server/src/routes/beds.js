@@ -17,6 +17,9 @@ import { HttpError } from '../utils/httpError.js';
 import { loadPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
+import { checklistDoc, checklistMissing, checklistSchema, nextIpdNo } from '../inpatient/admissionDesk.js';
+import { AdmissionRequest } from '../models/AdmissionRequest.js';
+import { deskRules } from './admissionDesk.js';
 
 // Beds and admission at the desk (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): /api/beds.
 //  - GET  /?summary=1  only the counts; /?free=1 only the free beds (no names, not audited);
@@ -98,6 +101,10 @@ bedsRouter.get('/', async (req, res) => {
       reason: reasonFor(req, p, s),
       patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn, assignedDoctorName: p.assignedDoctor ? (doctors.get(String(p.assignedDoctor)) ?? null) : null, ...(isClosed(p) ? { closed: true } : {}) },
       canMove: mayMoveBed(req, p),
+      // HIMS-style admission (docs/ADMISSION_DESK_PLAN.md): the IPD number, and an emergency's checklist still to fill in
+      ipdNo: s.ipdNo ?? null,
+      checklistIncomplete: Boolean(s.checklist) && !s.checklist.complete,
+      mlc: Boolean(s.mlc),
     };
   };
   const inBed = new Map(stays.filter((s) => s.bedId).map((s) => [String(s.bedId), s]));
@@ -180,6 +187,11 @@ const admitSchema = z
     reasonNote: safeText('Note', 120).default(''),
     admissionType: z.enum(['planned', 'emergency', 'day_care'], 'Choose planned, emergency or day care').default('planned'),
     mlc: z.boolean().default(false),
+    // HIMS-style admission (docs/ADMISSION_DESK_PLAN.md): the checklist (required unless an emergency), the police
+    // station of a medico-legal case, and the doctor's request she is admitted from
+    checklist: checklistSchema.optional(),
+    mlcPolice: safeText('Police station', 120).default(''),
+    requestId: objectId.optional(),
   })
   .strict()
   .superRefine((b, ctx) => {
@@ -203,6 +215,24 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
   const now = req.now ?? new Date();
   const admittedAt = body.admittedAt ? new Date(body.admittedAt) : now;
   if (admittedAt.getTime() > now.getTime() + 5 * 60 * 1000) throw invalid({ admittedAt: "The admission can't be in the future." });
+  // The checklist: when the hospital requires it, complete for a planned or day-care admission (an emergency goes in at
+  // once and is completed later); otherwise an incomplete one is flagged on the bed board until it is completed
+  const rules = await deskRules(req.tenantId);
+  const checklist = checklistDoc(req, checklistSchema.parse(body.checklist ?? {}));
+  if (rules.requireChecklist && body.admissionType !== 'emergency') {
+    const missing = checklistMissing(checklist);
+    if (Object.keys(missing).length) throw invalid(missing, 'Complete the admission checklist (an emergency can be admitted first and completed later).');
+  }
+  if (body.mlc && body.mlcPolice.trim().length < 3) throw invalid({ mlcPolice: 'Write the police station informed (or "to inform").' });
+  // The doctor's request: the one she is admitted from, else her open one; required at the desk when the hospital says so
+  const request = body.requestId
+    ? await AdmissionRequest.findOne({ tenantId: req.tenantId, _id: body.requestId, patientId: patient._id, status: 'open' })
+    : await AdmissionRequest.findOne({ tenantId: req.tenantId, patientId: patient._id, status: 'open' });
+  if (body.requestId && !request) throw conflict('This admission request is no longer open. Reload the page.', 'REQUEST_CLOSED');
+  const fromDesk = !hasRole(req.membership, 'doctor', 'rmo');
+  if (rules.requireAdmissionRequest && fromDesk && !request && body.admissionType !== 'emergency') {
+    throw conflict("A doctor's admission request is needed first (or admit as an emergency).", 'REQUEST_NEEDED');
+  }
   let admission;
   try {
     admission = await Admission.create({
@@ -217,6 +247,11 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
       reasonCode: body.reasonCode,
       admissionType: body.admissionType,
       mlc: body.mlc,
+      mlcPolice: body.mlc ? body.mlcPolice.trim() : '',
+      checklist,
+      requestId: request?._id ?? null,
+      withoutRequest: Boolean(rules.requireAdmissionRequest && fromDesk && !request),
+      ipdNo: await nextIpdNo(req.tenantId, now),
       admittedBy: req.user._id,
       admittedByName: req.user.name,
       clientRequestId: body.clientRequestId,
@@ -227,8 +262,9 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
     throw conflict('She is already admitted.', 'ALREADY_ADMITTED');
   }
   await audit(req, 'ADMISSION_CREATED', { details: { patientId: String(patient._id), mrn: patient.mrn, admissionId: String(admission._id), bedId: String(bed._id), via: 'bed board' } });
+  if (request) await AdmissionRequest.updateOne({ _id: request._id, tenantId: req.tenantId, status: 'open' }, { $set: { status: 'admitted', admissionId: admission._id } });
   await billAdmitted(req, admission); // billing: the stay's bill with the bed charge of this ward
-  res.status(201).json({ admission: { id: String(admission._id), admittedAt: admission.admittedAt, ward: admission.ward, bed: admission.bed } });
+  res.status(201).json({ admission: { id: String(admission._id), ipdNo: admission.ipdNo, admittedAt: admission.admittedAt, ward: admission.ward, bed: admission.bed, checklistComplete: checklist.complete } });
 });
 
 // ---------- Move to another bed ----------

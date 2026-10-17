@@ -231,7 +231,7 @@ describe('admission type and medico-legal case (owner, 14 Oct 2026)', () => {
     const planned = await register('Planned Mother');
     const emergency = await register('Emergency Mother');
     expect((await admit('reception', beds.G1, planned)).status).toBe(201);
-    expect((await admit('reception', beds.G2, emergency, { admissionType: 'emergency', mlc: true })).status).toBe(201);
+    expect((await admit('reception', beds.G2, emergency, { admissionType: 'emergency', mlc: true, mlcPolice: 'To inform' })).status).toBe(201);
     const stay = async (p) => Admission.findOne({ tenantId: hospital._id, patientId: p.id, status: 'admitted' }).lean();
     expect(await stay(planned)).toMatchObject({ admissionType: 'planned', mlc: false });
     expect(await stay(emergency)).toMatchObject({ admissionType: 'emergency', mlc: true });
