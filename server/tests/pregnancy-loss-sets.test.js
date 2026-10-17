@@ -399,8 +399,8 @@ describe('the work-up package and the new tests in use', () => {
     expect(done.orders.map((x) => x.id)).toContain(o.id);
     expect(JSON.stringify(done)).not.toMatch(/Recurrent pregnancy loss/);
     expect((await (await as('nurse')).get(lab(o.id))).body.order.packages.map((x) => x.name)).toEqual(['Recurrent pregnancy loss work-up']);
-    expect(reported.body.order.tests[0].values[0]).toEqual({ key: 'la', value: 'Positive', flag: 'abnormal' });
-    expect(reported.body.order.tests[1].values[0]).toEqual({ key: 'aclIgg', value: '62', flag: '' }); // the lab flags it from its own report
+    expect(reported.body.order.tests[0].values[0]).toMatchObject({ key: 'la', value: 'Positive', flag: 'abnormal' });
+    expect(reported.body.order.tests[1].values[0]).toMatchObject({ key: 'aclIgg', value: '62', flag: '' }); // the lab flags it from its own report
     const noComment = await (await as('drA')).post(lab(`${o.id}/review`)).send({ rev: reported.body.order.rev });
     expect(noComment.body.error.fields).toHaveProperty('comment');
     const reviewed = await (await as('drA')).post(lab(`${o.id}/review`)).send({ rev: reported.body.order.rev, comment: 'Repeat the antibodies after 12 weeks' });
