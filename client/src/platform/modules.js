@@ -121,14 +121,14 @@ const HOSPITAL_PATIENTS = {
 
 // The lab (Version 2): samples to take, results to enter, recent reports. Same list as server/src/routes/lab.js.
 export const LAB_ROLES = ['lab', 'doctor', 'rmo', 'nurse'];
-const HOSPITAL_LAB = {
+export const HOSPITAL_LAB = {
   key: 'lab',
   label: 'Lab',
   icon: FlaskConical,
   to: '/lab',
   // The full lab system (docs/LAB_LIMS_PLAN.md): Find, the register, the hospital's test list and the lab's settings
   tabs: [
-    { label: 'Worklist', to: '/lab', end: true },
+    { label: 'Worklist', to: '/lab', end: true, activeFor: '/lab/orders' },
     { label: 'Find', to: '/lab/find', end: true },
     { label: 'Register', to: '/lab/register', end: true },
     // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, referrers

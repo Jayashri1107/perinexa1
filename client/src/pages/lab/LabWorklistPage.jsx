@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Ban, ClipboardCheck, ClipboardList, FileText, Home, Plus, Siren, TestTube, Truck } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
@@ -119,7 +120,7 @@ export function LabWorklistPage() {
 
   return (
     <>
-      <PageHeader title="Lab" help="Samples to take, results to enter and check, tests at outside labs and recent reports. Open an order to print its labels, enter its results or print the report." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab" help="Samples to take, results to enter and check, tests at outside labs and recent reports. Open an order to print its labels, enter its results or print the report." />
       <div className="pf-content">
         <div className="lab-toolbar">
           <div className="segmented lab-lists" aria-label="Lab lists">

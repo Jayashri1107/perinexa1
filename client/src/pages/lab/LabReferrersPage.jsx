@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 
@@ -36,7 +37,7 @@ export function LabReferrersPage() {
   };
   return (
     <>
-      <PageHeader title="Referrers" documentTitle="Lab referrers" help="Doctors and centres who send patients to the lab. Chosen on a walk-in order and printed on its report. No commissions are recorded." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Referrers" documentTitle="Lab referrers" help="Doctors and centres who send patients to the lab. Chosen on a walk-in order and printed on its report. No commissions are recorded." />
       <div className="pf-content">
         <Alert type="error">{error}</Alert>
         {data?.canEdit && !form && (

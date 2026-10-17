@@ -494,6 +494,10 @@ function RoleToday({ roles, lensBar = null }) {
     unpaid.data && !isBillingDesk && !isReception && <KpiCard key="unpaid" to="/billing/unpaid" tone={unpaid.data.bills.length ? 'watch' : 'neutral'} icon={Wallet} label="Unpaid bills" value={formatNumber(unpaid.data.bills.length)} sub={unpaid.data.owed ? `${rupees(unpaid.data.owed)} owed` : 'Nothing owed'} />,
     labWork.data && <KpiCard key="lab-collect" to="/lab" tone={labWork.data.counts.collect ? 'due' : 'neutral'} icon={TestTube} label="Samples to take" value={formatNumber(labWork.data.counts.collect)} sub="Lab orders waiting for a sample" />,
     labWork.data && <KpiCard key="lab-report" to="/lab?list=report" tone={labWork.data.counts.report ? 'due' : 'neutral'} icon={FlaskConical} label="Results to enter" value={formatNumber(labWork.data.counts.report)} sub="Samples taken, results not reported" />,
+    // Lab version 2: results to check, home collections, tests at outside labs
+    labWork.data && labWork.data.counts.verify > 0 && <KpiCard key="lab-verify" to="/lab?list=verify" tone="due" icon={FlaskConical} label="Results to check" value={formatNumber(labWork.data.counts.verify)} sub="Entered, waiting for a second person" />,
+    labWork.data && <KpiCard key="lab-home" to="/lab?list=home" tone={labWork.data.counts.home ? 'due' : 'neutral'} icon={TestTube} label="Home collections" value={formatNumber(labWork.data.counts.home ?? 0)} sub="Samples to collect at home" />,
+    labWork.data && <KpiCard key="lab-outside" to="/lab?list=outside" tone={labWork.data.counts.outside ? 'watch' : 'neutral'} icon={FlaskConical} label="At outside labs" value={formatNumber(labWork.data.counts.outside ?? 0)} sub="Sent out, results not back" />,
     seesRisk && (
       <KpiCard
         key="risk"

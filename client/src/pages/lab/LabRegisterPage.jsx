@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FileDown, Printer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
@@ -86,7 +87,7 @@ export function LabRegisterPage() {
 
   return (
     <>
-      <PageHeader title="Lab register" documentTitle="Lab register" help="The lab's orders between two dates with the day's counts. Print it, or save it as a file for Excel." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab register" documentTitle="Lab register" help="The lab's orders between two dates with the day's counts. Print it, or save it as a file for Excel." />
       <div className="pf-content">
         <form
           className="card lab-find"

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, formatDateTime, rolesLabel } from '../../components/ui.jsx';
 import { api } from '../../api.js';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -35,7 +36,7 @@ export function LabSettingsPage() {
 
   return (
     <>
-      <PageHeader title="Lab settings" documentTitle="Lab settings" help="Whether a second person checks lab results before they go to the doctor. A doctor changes this." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab settings" documentTitle="Lab settings" help="Whether a second person checks lab results before they go to the doctor. A doctor changes this." />
       <div className="pf-content">
         <Alert type="error">{error || saveError}</Alert>
         <Alert type="success" onClose={() => setNotice(null)}>

@@ -3,6 +3,7 @@ import { CircleCheck, Plus, Trash2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
@@ -213,7 +214,7 @@ export function LabTestEditPage() {
   };
 
   const title = creating ? 'Add a test' : (test?.name ?? 'Lab test');
-  const header = <PageHeader breadcrumbs={[{ label: 'Lab tests', to: '/lab/tests' }, { label: title }]} title={title} documentTitle="Lab test" />;
+  const header = <PageHeader tabs={HOSPITAL_LAB.tabs} breadcrumbs={[{ label: 'Lab tests', to: '/lab/tests' }, { label: title }]} title={title} documentTitle="Lab test" />;
   if (loadError) return (<>{header}<div className="pf-content"><Alert type="error">{loadError}</Alert></div></>);
   if (!source || !form) return (<>{header}<div className="pf-content"><p className="muted">{source && !test && !creating ? 'This test is not on the list.' : 'Loading…'}</p></div></>);
   const baby = (test?.who ?? form.who) === 'newborn';
