@@ -46,6 +46,7 @@ export const billingTabs = (roles = []) => [
   { label: 'Bills', to: '/billing', end: false, activeFor: '/billing/bills' },
   { label: 'Unpaid', to: '/billing/unpaid', end: true },
   { label: 'Daily summary', to: '/billing/daily', end: true },
+  { label: 'Cash handover', to: '/cash-handover', end: true },
   ...(roles.some((r) => REPORT_ROLES.includes(r)) ? [{ label: 'Monthly', to: '/billing/monthly', end: true }] : []),
   { label: 'Price list', to: '/billing/prices', end: true },
   ...(roles.includes('admin') ? [{ label: 'Settings', to: '/billing/settings', end: true }] : []),

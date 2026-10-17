@@ -18,6 +18,7 @@ import { MyDayCard } from './MyDayCard.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { HandoverList, VITALS_DUE_HOURS, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
+import { timeLabel } from './appointments/appointmentFormat.js';
 import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
 import { AiBriefCard } from './ai/AiBriefCard.jsx';
 import { useLibraryDrafts } from './library/ApprovalsPage.jsx';
@@ -357,6 +358,9 @@ function RoleToday({ roles, lensBar = null }) {
   const [reminding, setReminding] = useState(null);
   const [marking, setMarking] = useState(null); // the patient being marked arrived (or undone)
   const [markError, setMarkError] = useState(null);
+  // The queue time sent to her on WhatsApp when she arrived (docs/WHATSAPP_DESK_PLAN.md): said once to the desk
+  const [queueNote, setQueueNote] = useState(null);
+  const queueSent = (q) => setQueueNote(q?.sent ? `Queue time sent on WhatsApp: ${q.ahead === 0 ? 'she is next' : `${q.ahead} before her`}, about ${timeLabel(q.eta)}${q.practice ? ' (practice – nothing really sent)' : ''}.` : null);
   const [arriving, setArriving] = useState(null); // a patient with no appointment: which doctor (token)
   const [tokenGiven, setTokenGiven] = useState(null); // the walk-in token just given
   const [slip, setSlip] = useState(null); // the token slip being printed
@@ -429,7 +433,8 @@ function RoleToday({ roles, lensBar = null }) {
     setMarking(p.id);
     setMarkError(null);
     try {
-      await (method === 'POST' ? api('/arrivals', { method, body: { patientId: p.id } }) : api(`/arrivals/${p.id}`, { method }));
+      const res = await (method === 'POST' ? api('/arrivals', { method, body: { patientId: p.id } }) : api(`/arrivals/${p.id}`, { method }));
+      if (method === 'POST') queueSent(res?.queueTime);
       listsChanged();
     } catch (err) {
       setMarkError(`${p.fullName}: ${err.message}`);
@@ -562,6 +567,9 @@ function RoleToday({ roles, lensBar = null }) {
         {today.error && <Alert type="error">{today.error}</Alert>}
         <Alert type="error" onClose={() => setMarkError(null)}>
           {markError}
+        </Alert>
+        <Alert type="success" onClose={() => setQueueNote(null)}>
+          {queueNote}
         </Alert>
         {tokenGiven && (
           <Alert type="success" onClose={() => setTokenGiven(null)}>
@@ -812,8 +820,9 @@ function RoleToday({ roles, lensBar = null }) {
           patient={arriving.patient}
           doctorName={arriving.doctorName}
           onClose={() => setArriving(null)}
-          onDone={(appointment) => {
+          onDone={(appointment, queueTime) => {
             setArriving(null);
+            queueSent(queueTime);
             if (appointment?.kind === 'token') setTokenGiven(appointment);
             listsChanged();
           }}

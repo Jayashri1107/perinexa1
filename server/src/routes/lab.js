@@ -34,7 +34,7 @@ import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
 import { hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
-import { documentOffer, sendPatientPdf } from '../visits/whatsappDocuments.js';
+import { documentOffer, offerView, sendPatientPdf } from '../visits/whatsappDocuments.js';
 
 // The lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md). Two routers:
 //  - patientLabRouter, /api/patients/:id/lab-orders: a patient's orders and results (those who may see the
@@ -739,8 +739,7 @@ labRouter.get('/orders/:orderId/whatsapp', async (req, res) => {
   const { order, access } = await loadOrder(req);
   if (!access.view) throw forbidden("You can't see this patient's lab orders.");
   if (order.status !== 'reviewed') return res.json({ available: false, reason: 'not_reviewed', practice: false });
-  const { available, reason, practice } = await documentOffer(req.tenantId, await whatsappPatient(req, order));
-  res.json({ available, reason, practice });
+  res.json(offerView(await documentOffer(req.tenantId, await whatsappPatient(req, order))));
 });
 
 labRouter.post('/orders/:orderId/whatsapp', async (req, res) => {

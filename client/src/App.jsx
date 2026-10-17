@@ -78,6 +78,7 @@ import { PatientStaysTab } from './pages/inpatient/PatientStaysTab.jsx';
 import { AdmissionPage } from './pages/inpatient/AdmissionPage.jsx';
 import { LabOrderPage } from './pages/lab/LabOrderPage.jsx';
 import { LabWorklistPage } from './pages/lab/LabWorklistPage.jsx';
+import { CashHandoverPage } from './pages/billing/CashHandoverPage.jsx';
 import { LabFindPage } from './pages/lab/LabFindPage.jsx';
 import { LabRegisterPage } from './pages/lab/LabRegisterPage.jsx';
 import { LabSettingsPage } from './pages/lab/LabSettingsPage.jsx';
@@ -270,6 +271,10 @@ export function App() {
                 <Route path="suppliers" element={<SuppliersPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="settings" element={<PharmacySettingsPage />} />
+              </Route>
+              {/* The daily cash handover: those who take payments hand over; a doctor or the admin confirms */}
+              <Route path="cash-handover" element={<RequireTenantRole roles={[...BILLING_MODULE_ROLES, 'doctor']} message="The cash handover is for reception, the billing department, doctors and the hospital admin." />}>
+                <Route index element={<CashHandoverPage />} />
               </Route>
               <Route path="billing" element={<RequireTenantRole roles={BILLING_MODULE_ROLES} message="Billing is for reception, the billing department and the hospital admin." />}>
                 <Route index element={<BillsPage />} />

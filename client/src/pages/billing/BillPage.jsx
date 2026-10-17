@@ -10,6 +10,7 @@ import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview
 import { Alert, Field, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
+import { blobToBase64 } from '../visits/whatsapp.js';
 import { ClaimFormPrint, InsuranceDialog, InsuranceSection, UpiLinkDialog } from './BillingExtras.jsx';
 import { BillStatus } from './BillsPage.jsx';
 import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
@@ -254,8 +255,27 @@ function BillPrint({ bill, receipt = null, onClose }) {
   const payment = receipt ? bill.payments.find((p) => p.receipt === receipt) : null;
   const lines = bill.lines.filter((l) => !l.removed);
   const record = () => api(`/billing/bills/${bill.id}/printed`, { method: 'POST', body: receipt ? { receipt } : {} });
+  // In one click from the hospital's WhatsApp number, when she agreed to WhatsApp messages (docs/WHATSAPP_DESK_PLAN.md)
+  const offer = useFetch(`/billing/bills/${bill.id}/whatsapp`);
+  const what = receipt ? `Receipt ${receipt}` : `Bill ${bill.number}`;
+  const pdf = {
+    fileName: `${what}.pdf`,
+    title: what,
+    onSaved: () => record(),
+    sendNow: offer.data?.available
+      ? { label: offer.data.label, practice: offer.data.practice, send: async (blob) => api(`/billing/bills/${bill.id}/whatsapp`, { method: 'POST', body: { pdf: await blobToBase64(blob), ...(receipt ? { receipt } : {}) } }) }
+      : null,
+  };
   return (
-    <PrintPreview title={receipt ? 'Receipt – print preview' : 'Bill – print preview'} hint="Check it, then print on A5 paper." page={{ size: 'A5', margin: '10mm' }} onPrint={record} onClose={onClose}>
+    <PrintPreview
+      title={receipt ? 'Receipt – print preview' : 'Bill – print preview'}
+      hint="Check it, then print on A5 paper."
+      page={{ size: 'A5', margin: '10mm' }}
+      pdf={pdf}
+      docKey={lh.data ? `${bill.id}-${receipt ?? ''}` : null}
+      onPrint={record}
+      onClose={onClose}
+    >
       <PrintDocument className="bill-doc">
         {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
         <h1 className="pdoc-title">{receipt ? 'Receipt' : bill.kind === 'ipd' ? 'Inpatient bill' : 'Bill'}</h1>

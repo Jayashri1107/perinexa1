@@ -1,4 +1,4 @@
-import { CircleCheck, FlaskConical, PenLine, TriangleAlert } from 'lucide-react';
+import { CircleCheck, FlaskConical, HandCoins, PenLine, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useFetch } from '../hooks/useFetch.js';
 
@@ -15,6 +15,8 @@ export function MyDayCard({ enabled }) {
   const ends = [
     d.notSigned > 0 && { key: 'sign', Icon: PenLine, text: `${plural(d.notSigned, 'visit', 'visits')} of today not signed yet`, to: '/', tone: 'due' },
     d.labToReview > 0 && { key: 'lab', Icon: FlaskConical, text: `${plural(d.labToReview, 'lab report is', 'lab reports are')} waiting for your review`, to: '/lab', tone: 'due' },
+    // The cash handed over by reception that waits for a doctor's confirmation (docs/WHATSAPP_DESK_PLAN.md)
+    d.cashToConfirm > 0 && { key: 'cash', Icon: HandCoins, text: `${plural(d.cashToConfirm, 'cash handover is', 'cash handovers are')} waiting for your confirmation`, to: '/cash-handover', tone: 'due' },
     d.missedHighRisk > 0 && {
       key: 'missed',
       Icon: TriangleAlert,

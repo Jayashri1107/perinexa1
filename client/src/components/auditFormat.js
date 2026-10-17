@@ -195,6 +195,11 @@ export const AUDIT_LABELS = {
   LAB_REPORT_OPENED: 'Lab report file opened',
   LAB_RESULTS_REVIEWED: 'Lab results reviewed by a doctor',
   LAB_ORDER_CANCELLED: 'Lab order cancelled',
+  QUEUE_TIME_SENT: 'Queue time sent on WhatsApp',
+  BILL_SENT_WHATSAPP: 'Bill sent on WhatsApp',
+  LAB_REPORT_SENT_WHATSAPP: 'Lab report sent on WhatsApp',
+  CASH_HANDED_OVER: 'Cash handed over',
+  CASH_HANDOVER_CONFIRMED: 'Cash handover confirmed',
   LAB_LABELS_PRINTED: 'Lab sample labels printed',
   LAB_SAMPLE_REJECTED: 'Lab sample rejected',
   LAB_RESULTS_ENTERED: 'Lab results entered (to check)',
@@ -380,6 +385,10 @@ export const AUDIT_TONES = {
   LAB_REPORT_OPENED: 'patient',
   LAB_RESULTS_REVIEWED: 'patient',
   LAB_ORDER_CANCELLED: 'patient',
+  QUEUE_TIME_SENT: 'patient',
+  BILL_SENT_WHATSAPP: 'patient',
+  LAB_REPORT_SENT_WHATSAPP: 'patient',
+  CASH_HANDOVER_CONFIRMED: 'info',
   LAB_LABELS_PRINTED: 'patient',
   LAB_SAMPLE_REJECTED: 'patient',
   LAB_RESULTS_ENTERED: 'patient',
@@ -898,6 +907,15 @@ export function describeAudit(entry) {
     case 'WORK_DONE_RECORDED':
     case 'WORK_DONE_CANCELLED':
       return record(d);
+    case 'QUEUE_TIME_SENT':
+    case 'LAB_REPORT_SENT_WHATSAPP':
+      return `${record(d)}${d.practice ? ' (practice – not really sent)' : ''}`;
+    case 'BILL_SENT_WHATSAPP':
+      return `${d.receipt ? `Receipt ${d.receipt}` : `Bill ${d.number ?? ''}`}${d.practice ? ' (practice – not really sent)' : ''}`;
+    case 'CASH_HANDED_OVER':
+      return `${d.day ?? ''}: ₹${((d.handedPaise ?? 0) / 100).toLocaleString('en-IN')} handed over (Perinexa counted ₹${((d.cashPaise ?? 0) / 100).toLocaleString('en-IN')})`;
+    case 'CASH_HANDOVER_CONFIRMED':
+      return `${d.day ?? ''}: ₹${((d.receivedPaise ?? 0) / 100).toLocaleString('en-IN')} received (₹${((d.handedPaise ?? 0) / 100).toLocaleString('en-IN')} handed over)`;
     case 'LAB_SAMPLE_REJECTED':
       return `${record(d)}${d.reason ? `: ${LAB_REJECT_WORDS[d.reason] ?? d.reason}` : ''}`;
     case 'LAB_SENT_OUTSIDE':

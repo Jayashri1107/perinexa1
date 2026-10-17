@@ -15,7 +15,7 @@ import { HttpError } from '../utils/httpError.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
-import { documentOffer, sendPatientPdf } from '../visits/whatsappDocuments.js';
+import { documentOffer, offerView, sendPatientPdf } from '../visits/whatsappDocuments.js';
 
 // Billing (docs/BILLING_PLAN.md, approved 3 Oct 2026), for reception and the hospital admin:
 //  - /api/billing/prices            the price list (everyone who bills reads it; the admin changes it)
@@ -320,8 +320,7 @@ const billPatient = (req, bill) => Patient.findOne({ tenantId: req.tenantId, _id
 billingRouter.get('/bills/:id/whatsapp', async (req, res) => {
   const { id } = parse(z.object({ id: objectId }), req.params);
   const bill = await findBill(req, id);
-  const { available, reason, practice } = await documentOffer(req.tenantId, await billPatient(req, bill));
-  res.json({ available, reason, practice });
+  res.json(offerView(await documentOffer(req.tenantId, await billPatient(req, bill))));
 });
 
 billingRouter.post('/bills/:id/whatsapp', async (req, res) => {

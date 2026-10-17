@@ -122,7 +122,7 @@ describe('the bill and the reviewed lab report in one click', () => {
     await switches({ whatsappDocuments: true });
     expect(await offer()).toMatchObject({ available: false, reason: 'no_agreement' });
     await agree(p);
-    expect(await offer()).toEqual({ available: true, reason: null, practice: true });
+    expect(await offer()).toEqual({ available: true, reason: null, practice: true, label: '******3210' });
     const sent = await (await as('reception')).post(`/api/billing/bills/${b.id}/whatsapp`).send({ pdf: PDF });
     expect(sent.status, JSON.stringify(sent.body)).toBe(201);
     expect(practiceSent().at(-1)).toMatchObject({ to: '+919876543210', fileName: `Bill-${b.number}.pdf`, hospital: 'Desk Hospital' });

@@ -3727,6 +3727,32 @@ used only as a list of features; the look stays Perinexa's own).
 7. Lab → **Find**: type the sample number (or a patient's name). Lab → **Register**: today's counts → Print, Save for
    Excel.
 
+## WhatsApp at the desk (owner, 17 Oct 2026 – feature freeze lifted for these 5 items)
+Branch `whatsapp-desk` (on top of `lab-lims`). Plan, decision and Meta setup for +91 88880 24000:
+`docs/WHATSAPP_DESK_PLAN.md`. Off until WhatsApp is set up in `server/.env` and the hospital admin switches it on.
+- **Sign-in OTP on WhatsApp**, SMS if WhatsApp fails (Hospital admin → Patient messages).
+- **Appointment messages** (booking, move, cancellation – now at once – and the day-before reminder) on WhatsApp for
+  patients who chose WhatsApp; **bill or receipt** from its print preview (Send on WhatsApp now).
+- **Lab report** on WhatsApp once a doctor reviewed it, never with the confidential test.
+- **Queue time** on WhatsApp when she is marked arrived (token or time, patients before her, about when).
+- **Cash handover** (Billing → Cash handover): hand over the day's cash; a doctor or the admin confirms.
+- Server: `reminders/sender.js` (`deliverOtp`, WhatsApp in `currentSender`), `visits/whatsappSender.js` (templates),
+  `visits/whatsappDocuments.js`, `appointments/queueTime.js`, `models/CashHandover.js`, `routes/cashHandover.js`;
+  website: `pages/billing/CashHandoverPage.jsx`, BillPage and LabPrints (Send on WhatsApp now), TodayPage, portal
+  words, Patient messages settings. Tests: `server/tests/whatsapp-desk.test.js`, `client/src/pages/billing/cashHandover.test.jsx`.
+- ⚠️ Marathi and Hindi of the queue message and the portal line are DRAFT (TRANSLATIONS_TO_CHECK.md section 6).
+
+### How to test (fake data only, `WHATSAPP_MODE=practice` – nothing really sent)
+1. Hospital admin → Patient messages: tick "Let staff send … on WhatsApp", "Send patients' sign-in OTPs on WhatsApp",
+   "Send the queue time on WhatsApp" and automatic reminders → Save.
+2. A fake patient's page → More → Reminders and portal → agrees, WhatsApp.
+3. Today → mark her arrived and give a token: "Queue time sent on WhatsApp: … about 10:40".
+4. Billing → her bill → Print → Send on WhatsApp now. Lab → a reviewed order → Print the report → Send on WhatsApp now
+   (tick "Include the confidential test": the button goes away).
+5. Portal sign-in with mobile and OTP: "an OTP was sent to it on WhatsApp (or by SMS)".
+6. As reception: take a cash payment → Billing → Cash handover → Hand over the cash. As a doctor: Today shows
+   "1 cash handover is waiting" → Count and confirm.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

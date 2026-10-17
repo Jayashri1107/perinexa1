@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowDown, ArrowUp, TriangleAlert } from 'lucide-react';
 import { api } from '../../api.js';
+import { blobToBase64 } from '../visits/whatsapp.js';
 import { Barcode } from '../../components/print/Barcode.jsx';
 import { Letterhead, LetterheadFooter } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
@@ -197,8 +198,21 @@ export function LabReportPrint({ order, catalogue, onClose }) {
   const hasConfidential = order.tests.some(isConfidential);
   const [withConfidential, setWithConfidential] = useState(false);
   const record = () => api(`/lab/orders/${order.id}/report-printed`, { method: 'POST', body: { confidential: hasConfidential && withConfidential } });
+  // On WhatsApp in one click once a doctor reviewed it, with her agreement – never with the confidential test
+  const offer = useFetch(order.status === 'reviewed' ? `/lab/orders/${order.id}/whatsapp` : null);
+  const pdf = {
+    fileName: `Lab report ${order.sampleNo ?? order.patient.mrn}.pdf`,
+    title: `Lab report ${order.sampleNo ?? ''}`.trim(),
+    onSaved: () => record(),
+    sendNow:
+      offer.data?.available && !withConfidential
+        ? { label: offer.data.label, practice: offer.data.practice, send: async (blob) => api(`/lab/orders/${order.id}/whatsapp`, { method: 'POST', body: { pdf: await blobToBase64(blob), confidential: false } }) }
+        : null,
+  };
   return (
     <PrintPreview
+      pdf={pdf}
+      docKey={lh.data ? `${order.id}-${withConfidential}` : null}
       title="Lab report – print preview"
       hint="Check it, then print on A4 paper. Use only fake sample data until the app has been reviewed."
       controls={

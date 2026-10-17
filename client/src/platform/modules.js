@@ -179,6 +179,7 @@ const HOSPITAL_BILLING = {
     { label: 'Bills', to: '/billing', end: false },
     { label: 'Unpaid', to: '/billing/unpaid', end: true },
     { label: 'Daily summary', to: '/billing/daily', end: true },
+    { label: 'Cash handover', to: '/cash-handover', end: true },
     { label: 'Monthly', to: '/billing/monthly', end: true },
     { label: 'Price list', to: '/billing/prices', end: true },
     { label: 'Settings', to: '/billing/settings', end: true },

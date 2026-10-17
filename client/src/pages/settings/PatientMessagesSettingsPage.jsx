@@ -182,6 +182,21 @@ export function PatientMessagesSettingsPage() {
                     : 'Not set up on this server yet: the hospital needs a WhatsApp Business account with Meta and an approved message template; the keys then go in the server’s settings file (server/.env), never in the app. Until then staff use Send on WhatsApp, which opens a chat to attach the PDF by hand.'}{' '}
               Use it for real patients only after the app has been reviewed by an experienced developer.
             </p>
+            <h2>WhatsApp at the desk</h2>
+            {whatsapp?.number && <p>The hospital's WhatsApp number: {whatsapp.number}</p>}
+            <label className="check">
+              <input type="checkbox" checked={Boolean(form.whatsappOtp)} onChange={(e) => setForm({ ...form, whatsappOtp: e.target.checked })} /> Send patients' sign-in OTPs on WhatsApp
+              (by SMS if WhatsApp fails)
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={Boolean(form.whatsappQueue)} onChange={(e) => setForm({ ...form, whatsappQueue: e.target.checked })} /> Send the queue time on WhatsApp when a
+              patient arrives (her token, how many are before her, about when she goes in)
+            </label>
+            <p className="hint">
+              The bill, receipts and the reviewed lab report are sent from their print previews when “Let staff send … on WhatsApp in one click” above is on. Booking, change and reminder
+              messages go on WhatsApp to patients who chose WhatsApp, when automatic reminders are on. All go from the hospital’s WhatsApp Business number, only to patients who agreed to WhatsApp
+              messages (the OTP: to the number she signs in with). Meta must first approve the two message templates (docs/WHATSAPP_DESK_PLAN.md).
+            </p>
             <h2>Waiting-room screen</h2>
             <label className="check">
               <input type="checkbox" checked={Boolean(form.displayEnabled)} onChange={(e) => setForm({ ...form, displayEnabled: e.target.checked })} /> Show who goes in next on a screen in the

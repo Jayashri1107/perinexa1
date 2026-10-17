@@ -34,6 +34,9 @@ export async function documentOffer(tenantId, patient) {
   return { available: !reason, reason, practice: status.mode === 'practice', to, hospital: tenant?.letterhead?.name || tenant?.name || '' };
 }
 
+/** The offer for the screen: { available, reason, practice, label } – the number only as its last 4 digits. */
+export const offerView = (o) => ({ available: o.available, reason: o.reason, practice: o.practice, label: o.to ? `******${o.to.slice(-4)}` : null });
+
 /** Sends the PDF (base64 from the browser) after checking the offer and the file. Throws the words to show. */
 export async function sendPatientPdf(offer, { pdf: base64, fileName }) {
   if (!offer.available) throw new HttpError(409, WORDS[offer.reason], 'WHATSAPP_UNAVAILABLE');
