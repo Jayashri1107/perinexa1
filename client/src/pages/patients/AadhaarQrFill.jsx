@@ -23,6 +23,8 @@ export const AADHAAR_WORDS = {
   camera: 'Scan with camera',
   scanAgain: 'Scan again',
   capture: 'Capture',
+  whichCamera: 'Camera',
+  defaultCamera: 'This computer’s usual camera',
   cameraSize: (size) => `Camera picture: ${size}`,
   captureMissed: 'The QR code could not be read from this picture. Hold the card still, a little closer or further, with no shine on it, and press Capture again.',
   slowTips:
@@ -60,7 +62,36 @@ async function stillFrom(track, v) {
  * Reads the QR from the camera, live, until found (onText): a quick look at every frame, a closer look about every 2
  * seconds, and Capture for a still photo looked at closely. Nothing is recorded or kept.
  */
-function CameraScan({ words, onText, onBlocked }) {
+// The camera chosen for reading Aadhaar on this computer (a USB webcam rather than the laptop's own): its id only
+const CAMERA_KEY = 'perinexa:aadhaarCamera';
+const savedCamera = () => {
+  try {
+    return localStorage.getItem(CAMERA_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+const saveCamera = (id) => {
+  try {
+    if (id) localStorage.setItem(CAMERA_KEY, id);
+    else localStorage.removeItem(CAMERA_KEY);
+  } catch {
+    /* not important if it can't be remembered */
+  }
+};
+// A laptop's own camera, by its name – a USB webcam is preferred when there is one
+export const isBuiltInCamera = (label) => /integrated|built-?in|facetime|internal|laptop|\bfront\b/i.test(label ?? '');
+
+/** The cameras of this computer: [{ id, label }] (names only once the camera is allowed). */
+async function listCameras() {
+  try {
+    return (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput').map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` }));
+  } catch {
+    return [];
+  }
+}
+
+function CameraScan({ words, onText, onBlocked, deviceId = '', onCameras = () => {}, onGone = () => {} }) {
   const video = useRef(null);
   const trackRef = useRef(null);
   const stoppedRef = useRef(false);
@@ -81,9 +112,11 @@ function CameraScan({ words, onText, onBlocked }) {
       try {
         // The back camera on a phone; the sharpest picture the camera gives (4K, Full HD, …) – the Secure QR on the card
         // is dense, and each of its squares needs about 3 camera dots to be read
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
+        const sharpest = { width: { ideal: 3840 }, height: { ideal: 2160 } };
+        stream = await navigator.mediaDevices.getUserMedia({ video: deviceId ? { deviceId: { exact: deviceId }, ...sharpest } : { facingMode: { ideal: 'environment' }, ...sharpest }, audio: false });
         const [track] = stream.getVideoTracks();
         trackRef.current = track;
+        onCameras(await listCameras(), track?.getSettings?.().deviceId ?? deviceId, track?.label ?? '');
         // Focus that follows the card, where the camera can (most phones, some webcams)
         if (track?.getCapabilities?.().focusMode?.includes('continuous')) track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
         if (stoppedRef.current) {
@@ -117,7 +150,10 @@ function CameraScan({ words, onText, onBlocked }) {
         };
         look();
       } catch (err) {
-        if (!stoppedRef.current) onBlocked(err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError' ? 'none' : 'blocked');
+        if (stoppedRef.current) return;
+        const gone = err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError';
+        if (gone && deviceId) onGone(); // the chosen camera is unplugged: the computer's default camera instead
+        else onBlocked(gone ? 'none' : 'blocked');
       }
     })();
     return () => {
@@ -180,6 +216,21 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [camera, setCamera] = useState(false);
+  const [cameraId, setCameraId] = useState(savedCamera);
+  const [cameras, setCameras] = useState([]);
+  // Told by the camera once it is open: the list, and which one is in use. With no choice saved, a USB webcam is
+  // used in place of the laptop's own camera.
+  const camerasFound = (list, inUse, label) => {
+    setCameras(list);
+    if (!cameraId && list.length > 1 && isBuiltInCamera(label)) {
+      const usb = list.find((c) => c.id !== inUse && !isBuiltInCamera(c.label));
+      if (usb) setCameraId(usb.id);
+    }
+  };
+  const chooseCamera = (id) => {
+    saveCamera(id);
+    setCameraId(id);
+  };
   const [scanned, setScanned] = useState('');
   const [result, setResult] = useState(null); // { ok: [labels] } or { problem }
   const input = useRef(null);
@@ -255,7 +306,22 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
   const can = !busy && !disabled;
   return (
     <div className="aadhaar-fill">
-      {camera && !disabled && <CameraScan words={t} onText={fromCamera} onBlocked={cameraProblem} />}
+      {camera && cameras.length > 1 && (
+        <label className="aadhaar-camera-pick">
+          <span>{t.whichCamera}</span>
+          <select value={cameraId || ''} onChange={(e) => chooseCamera(e.target.value)}>
+            {!cameraId && <option value="">{t.defaultCamera}</option>}
+            {cameras.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {camera && !disabled && (
+        <CameraScan key={cameraId || 'default'} words={t} deviceId={cameraId} onCameras={camerasFound} onGone={() => chooseCamera('')} onText={fromCamera} onBlocked={cameraProblem} />
+      )}
       {result?.ok && <Alert type="success">{t.filled(result.ok.join(', '))}</Alert>}
       {result?.problem && <Alert type="warning">{result.problem}</Alert>}
       {busy && <p className="hint" role="status">{t.reading}</p>}
