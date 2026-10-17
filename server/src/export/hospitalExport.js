@@ -52,6 +52,13 @@ import { LabPackage } from '../models/LabPackage.js';
 import { LabSetup } from '../models/LabSetup.js';
 import { CashHandover } from '../models/CashHandover.js';
 import { AdmissionRequest } from '../models/AdmissionRequest.js';
+import { Referrer } from '../models/Referrer.js';
+import { QcLot } from '../models/QcLot.js';
+import { QcRun } from '../models/QcRun.js';
+import { LabItem } from '../models/LabItem.js';
+import { LabBatch } from '../models/LabBatch.js';
+import { LabStockMove } from '../models/LabStockMove.js';
+import { ImagingOrder } from '../models/ImagingOrder.js';
 import { LabTestSetting } from '../models/LabTestSetting.js';
 import { MedicineSafetyList } from '../models/MedicineSafetyList.js';
 import { Membership } from '../models/Membership.js';
@@ -124,6 +131,13 @@ export const KINDS = [
   { file: 'settings-lab-packages.json', model: LabPackage, what: 'Settings: the lab test packages.' },
   { file: 'settings-lab-tests.json', model: LabTestSetting, what: "Settings: the hospital's lab test list (its own tests, departments, times, ranges)." },
   { file: 'settings-lab.json', model: LabSetup, what: 'Settings: the lab (check before the report, who checks).' },
+  { file: 'imaging.json', model: ImagingOrder, what: 'USG and radiology: orders, reports and signatures.' },
+  { file: 'lab-referrers.json', model: Referrer, what: 'Lab: referring doctors and centres.' },
+  { file: 'lab-qc-lots.json', model: QcLot, what: 'Lab: quality-control lots.' },
+  { file: 'lab-qc-runs.json', model: QcRun, what: 'Lab: quality-control runs and corrective actions.' },
+  { file: 'lab-stock-items.json', model: LabItem, what: 'Lab: reagents and consumables.' },
+  { file: 'lab-stock-batches.json', model: LabBatch, what: 'Lab: stock batches.' },
+  { file: 'lab-stock-moves.json', model: LabStockMove, what: 'Lab: every stock movement.' },
   { file: 'admission-requests.json', model: AdmissionRequest, what: "Inpatients: doctors' admission requests (open, admitted, cancelled)." },
   { file: 'cash-handovers.json', model: CashHandover, what: 'Billing: the daily cash handovers (amounts, who handed over and who confirmed).' },
   { file: 'settings-prescription-sets.json', model: PrescriptionSet, what: 'Settings: the ready-made prescription sets.' },

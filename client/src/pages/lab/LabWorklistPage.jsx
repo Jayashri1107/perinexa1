@@ -1,4 +1,5 @@
-import { Ban, ClipboardCheck, ClipboardList, FileText, Siren, TestTube, Truck } from 'lucide-react';
+import { useState } from 'react';
+import { Ban, ClipboardCheck, ClipboardList, FileText, Home, Plus, Siren, TestTube, Truck } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill, formatDateTime } from '../../components/ui.jsx';
@@ -6,6 +7,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { Section } from '../worklist/WorklistSections.jsx';
 import { DEPARTMENTS, FLAG_LOOK, LATE_LOOK, orderLook, testNames } from './labFormat.js';
+import { WalkInDialog, homeWord } from './LabWalkIn.jsx';
 
 // The Lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md): the lab's worklist – samples to take,
 // results to enter, results to check (when the hospital checks results before the report), tests at an outside lab,
@@ -18,6 +20,7 @@ const LISTS = [
   { key: 'report', label: 'Results to enter', icon: ClipboardList, empty: 'No results waiting to be entered.' },
   { key: 'verify', label: 'Results to check', icon: ClipboardCheck, empty: 'No results waiting for a check.' },
   { key: 'outside', label: 'At outside labs', icon: Truck, empty: 'No tests waiting for an outside lab.' },
+  { key: 'home', label: 'Home collections', icon: Home, empty: 'No home collection waiting.' },
   { key: 'done', label: 'Reported (last 7 days)', icon: FileText, empty: 'Nothing reported in the last 7 days.' },
 ];
 
@@ -45,6 +48,16 @@ export function LabRow({ o, list }) {
               {LATE_LOOK.word}
             </StatusPill>
           )}
+          {o.source === 'walk_in' && (
+            <StatusPill tone="neutral" icon={null}>
+              Walk-in
+            </StatusPill>
+          )}
+          {o.home && o.status === 'ordered' && (
+            <StatusPill tone="due" icon={Home}>
+              {homeWord(o.home.status)}
+            </StatusPill>
+          )}
           {o.status === 'ordered' && o.rejections?.length > 0 && (
             <StatusPill tone="watch" icon={Ban}>
               New sample needed
@@ -63,6 +76,7 @@ export function LabRow({ o, list }) {
       <span className="hint">
         {testNames(o)} · ordered by {o.ordered.byName}, {formatDateTime(o.ordered.at)}
         {o.reported ? ` · reported ${formatDateTime(o.reported.at)}` : o.dueAt && o.status !== 'cancelled' ? ` · due ${formatDateTime(o.dueAt)}` : ''}
+        {o.home && o.status === 'ordered' ? ` · home ${o.home.time}, ${o.home.address}${o.home.collectorName ? ` (${o.home.collectorName})` : ''}` : ''}
         {list === 'outside'
           ? ` · ${[...new Set(o.tests.filter((t) => t.outside && !t.outside.received).map((t) => t.outside.labName))].join(', ')}`
           : ''}
@@ -90,6 +104,7 @@ export function DepartmentSelect({ value, onChange, id = 'lab-department' }) {
 
 export function LabWorklistPage() {
   const [params, setParams] = useSearchParams();
+  const [walkIn, setWalkIn] = useState(false);
   const list = LISTS.some((l) => l.key === params.get('list')) ? params.get('list') : 'collect';
   const department = params.get('department') && DEPARTMENTS[params.get('department')] ? params.get('department') : '';
   const { data, error, loading } = useFetch('/lab/worklist', { list, ...(department ? { department } : {}) });
@@ -116,6 +131,11 @@ export function LabWorklistPage() {
             ))}
           </div>
           <DepartmentSelect value={department} onChange={(d) => go({ list, department: d })} />
+          {data?.isLab && (
+            <button type="button" className="btn btn-primary" onClick={() => setWalkIn(true)}>
+              <Plus aria-hidden="true" /> Walk-in patient
+            </button>
+          )}
         </div>
         <Alert type="error">{error}</Alert>
         {loading && !data ? (
@@ -130,6 +150,7 @@ export function LabWorklistPage() {
           </Section>
         )}
       </div>
+      {walkIn && <WalkInDialog onClose={() => setWalkIn(false)} />}
     </>
   );
 }

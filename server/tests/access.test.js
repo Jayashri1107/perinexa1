@@ -167,9 +167,11 @@ describe('registering patients', () => {
     expect(p.medical.bloodGroup).toBe('');
   });
 
-  it('nurses and lab staff cannot register patients', async () => {
+  it('nurses cannot register patients; the lab registers walk-ins (identity only – owner, 17 Oct 2026)', async () => {
     expect((await sessions.nurse.post('/api/patients').send(samplePatient())).status).toBe(403);
-    expect((await sessions.lab.post('/api/patients').send(samplePatient())).status).toBe(403);
+    const walkIn = await sessions.lab.post('/api/patients').send(samplePatient({ fullName: 'Lab Walk In' }));
+    expect(walkIn.status).toBe(201);
+    expect(walkIn.body.patient.risk).toBeUndefined();
   });
 
   it('unassigned patients can be edited by any doctor', async () => {

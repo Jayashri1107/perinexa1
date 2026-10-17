@@ -49,6 +49,10 @@ import { labPackagesRouter } from './routes/labPackages.js';
 import { labSetupRouter } from './routes/labSetup.js';
 import { cashHandoverRouter } from './routes/cashHandover.js';
 import { admissionDeskRouter } from './routes/admissionDesk.js';
+import { labQcRouter } from './routes/labQc.js';
+import { labStockRouter } from './routes/labStock.js';
+import { imagingRouter } from './routes/imaging.js';
+import { verifyRouter } from './routes/verify.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
@@ -179,6 +183,12 @@ export function createApp({
   app.use('/api/lab', ...inTenant, labRouter);
   // The lab's test list and settings (routes/labSetup.js)
   app.use('/api/lab-setup', ...inTenant, labSetupRouter);
+  // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, USG and radiology
+  app.use('/api/lab-qc', ...inTenant, labQcRouter);
+  app.use('/api/lab-stock', ...inTenant, labStockRouter);
+  app.use('/api/imaging', ...inTenant, imagingRouter);
+  // Is this lab report genuine? (the QR code on a printed report – no login)
+  app.use('/api/verify', verifyRouter);
   app.use('/api/reminders', ...inTenant, reminderOutboxRouter);
   // Reception: patients' sign-ups to approve or reject (routes/patientAccounts.js)
   app.use('/api/patient-accounts', ...inTenant, patientAccountsRouter);

@@ -1,0 +1,407 @@
+import { useState } from 'react';
+import { CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, Printer, ScanLine, Siren } from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { api } from '../../api.js';
+import { PageHeader } from '../../components/PageHeader.jsx';
+import { Letterhead } from '../../components/print/Letterhead.jsx';
+import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
+import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
+import { useFetch } from '../../hooks/useFetch.js';
+import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
+
+// USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): the worklist (to schedule, scheduled, to report,
+// signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
+// order dialog. Reception and nurses see the name, number and study only. PCPNDT: no field holds a fetus's sex; any
+// text about it is refused here and on the server.
+
+export const STATUS = {
+  ordered: { tone: 'due', icon: Clock, word: 'To schedule' },
+  scheduled: { tone: 'due', icon: CalendarClock, word: 'Scheduled' },
+  done: { tone: 'watch', icon: FilePen, word: 'Done – to report' },
+  signed: { tone: 'stable', icon: CircleCheck, word: 'Signed' },
+  cancelled: { tone: 'inactive', icon: CircleMinus, word: 'Cancelled' },
+};
+export function StudyStatus({ s }) {
+  const l = STATUS[s.status];
+  return (
+    <StatusPill tone={l.tone} icon={l.icon}>
+      {l.word}
+    </StatusPill>
+  );
+}
+const LISTS = [
+  ['ordered', 'To schedule'],
+  ['scheduled', 'Scheduled'],
+  ['report', 'To report'],
+  ['signed', 'Signed (last 7 days)'],
+];
+const localInput = (d) => {
+  const x = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return x.toISOString().slice(0, 16);
+};
+
+export function ImagingWorklistPage() {
+  const [params, setParams] = useSearchParams();
+  const list = LISTS.some(([k]) => k === params.get('list')) ? params.get('list') : 'ordered';
+  const { data, error, loading } = useFetch('/imaging/worklist', { list });
+  return (
+    <>
+      <PageHeader title="Scans" help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
+      <div className="pf-content">
+        <div className="segmented" aria-label="Scan lists">
+          {LISTS.map(([k, w]) => (
+            <button key={k} type="button" aria-pressed={k === list} onClick={() => setParams(k === 'ordered' ? {} : { list: k }, { replace: true })}>
+              {w}
+              {data?.counts?.[k] != null && <span className="tabular"> ({data.counts[k]})</span>}
+            </button>
+          ))}
+        </div>
+        <Alert type="error">{error}</Alert>
+        <section className="card">
+          {loading && !data ? (
+            <p className="muted">Loading…</p>
+          ) : !data?.studies.length ? (
+            <p className="muted">Nothing here.</p>
+          ) : (
+            <ul className="wl-list">
+              {data.studies.map((s) => (
+                <li key={s.id}>
+                  <div className="wl-row-head">
+                    <span className="wl-who">
+                      <Link to={`/scans/${s.id}`} className="strong-name">
+                        {s.patient.fullName}
+                      </Link>
+                      <span className="muted tabular">{[s.patient.mrn, s.patient.age != null ? `${s.patient.age} yrs` : null, s.studyName].filter(Boolean).join(' · ')}</span>
+                    </span>
+                    <span className="wl-counts">
+                      {s.urgent && (
+                        <StatusPill tone="high" icon={Siren}>
+                          Urgent
+                        </StatusPill>
+                      )}
+                      <StudyStatus s={s} />
+                    </span>
+                  </div>
+                  <span className="hint">
+                    Ordered by {s.ordered.byName}, {formatDateTime(s.ordered.at)}
+                    {s.scheduledFor ? ` · for ${formatDateTime(s.scheduledFor)}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </>
+  );
+}
+
+function ReportForm({ s, template, onSaved, onError }) {
+  const [values, setValues] = useState(() => Object.fromEntries((template?.fields ?? []).map((f) => [f.key, s.report?.values?.[f.key] != null ? String(s.report.values[f.key]) : ''])));
+  const [findings, setFindings] = useState(s.report?.findings ?? '');
+  const [impression, setImpression] = useState(s.report?.impression ?? '');
+  const [reason, setReason] = useState('');
+  const [fields, setFields] = useState({});
+  const [busy, setBusy] = useState(false);
+  const save = async (e) => {
+    e.preventDefault();
+    if ([findings, impression, ...Object.values(values)].some((t) => mentionsFetalSex(t))) return setFields({ findings: PCPNDT_MESSAGE });
+    setBusy(true);
+    try {
+      const res = await api(`/imaging/${s.id}/report`, { method: 'PUT', body: { rev: s.rev, values, findings, impression, reason } });
+      setFields({});
+      onSaved(res.study, 'Report saved.');
+    } catch (err) {
+      setFields(err.fields ?? {});
+      onError(err);
+    } finally {
+      setBusy(false);
+    }
+    return undefined;
+  };
+  return (
+    <form className="card" onSubmit={save} noValidate aria-labelledby="img-report-title">
+      <h2 id="img-report-title">Report</h2>
+      <p className="hint">DRAFT template – for the doctor to check and approve. No field records the sex of a fetus (PCPNDT Act).</p>
+      <div className="form-grid">
+        {(template?.fields ?? []).map((f) => (
+          <Field key={f.key} label={`${f.name}${f.unit ? ` (${f.unit})` : ''}`} id={`img-${f.key}`} error={fields[`values.${f.key}`]}>
+            {f.type === 'choice' ? (
+              <select id={`img-${f.key}`} value={values[f.key]} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}>
+                <option value="">—</option>
+                {f.options.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input id={`img-${f.key}`} inputMode={f.type === 'number' ? 'decimal' : undefined} maxLength={300} value={values[f.key]} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+            )}
+          </Field>
+        ))}
+      </div>
+      <Field label="Findings" id="img-findings" error={fields.findings}>
+        <textarea id="img-findings" rows={4} maxLength={4000} value={findings} onChange={(e) => setFindings(e.target.value)} />
+      </Field>
+      <Field label="Impression" id="img-impression" error={fields.impression}>
+        <textarea id="img-impression" rows={2} maxLength={1000} value={impression} onChange={(e) => setImpression(e.target.value)} />
+      </Field>
+      {s.status === 'signed' && (
+        <Field label="Why is the signed report changed?" id="img-reason" error={fields.reason}>
+          <input id="img-reason" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      )}
+      <div className="row">
+        <button type="submit" className="btn btn-secondary" disabled={busy}>
+          {busy ? 'Saving…' : 'Save the report'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ReportPrint({ s, template, onClose }) {
+  const lh = useFetch('/tenant/settings/letterhead');
+  const record = () => api(`/imaging/${s.id}/printed`, { method: 'POST' });
+  return (
+    <PrintPreview title="Scan report – print preview" hint="Check it, then print on A4 paper." onPrint={record} onClose={onClose}>
+      {!lh.data && !lh.error ? (
+        <p className="muted">Preparing…</p>
+      ) : (
+        <PrintDocument draft="DRAFT report template – not yet approved by the hospital's doctor.">
+          {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
+          <h1 className="pdoc-title">{s.studyName}</h1>
+          <PrintFacts
+            items={[
+              ['Patient', s.patient.fullName],
+              ['Patient number', s.patient.mrn],
+              ['Age', s.patient.age != null ? `${s.patient.age} years` : ''],
+              ['Referred by', s.ordered.byName],
+              ['Done', s.done ? formatDateTime(s.done.at) : ''],
+              ['Indication', s.indication ?? '', true],
+            ]}
+          />
+          <PrintFacts items={(template?.fields ?? []).filter((f) => s.report?.values?.[f.key] != null && s.report.values[f.key] !== '').map((f) => [f.name, `${s.report.values[f.key]}${f.unit ? ` ${f.unit}` : ''}`])} />
+          {s.report?.findings && (
+            <>
+              <h2 className="pdoc-sig-title">Findings</h2>
+              <p className="pre-line">{s.report.findings}</p>
+            </>
+          )}
+          {s.report?.impression && (
+            <>
+              <h2 className="pdoc-sig-title">Impression</h2>
+              <p className="pre-line">{s.report.impression}</p>
+            </>
+          )}
+          <p className="pdoc-small">The sex of the fetus is not determined or disclosed (PCPNDT Act, 1994).</p>
+          <div className="pdoc-sigs">
+            <div className="pdoc-sig">
+              <h2 className="pdoc-sig-title">Signed by</h2>
+              <p>
+                {s.signed?.byName}, {s.signed ? formatDateTime(s.signed.at) : ''}
+              </p>
+            </div>
+          </div>
+        </PrintDocument>
+      )}
+    </PrintPreview>
+  );
+}
+
+export function ImagingStudyPage() {
+  const { id } = useParams();
+  const { data, error, reload } = useFetch(`/imaging/${id}`);
+  const [current, setCurrent] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [when, setWhen] = useState(() => localInput(new Date()));
+  const [printing, setPrinting] = useState(false);
+  const s = current ?? data?.study;
+  const saved = (next, msg) => {
+    setCurrent(next);
+    setNotice(msg);
+    setActionError(null);
+  };
+  const failed = (err) => {
+    setActionError(err.message);
+    if (err.status === 409) {
+      setCurrent(null);
+      reload();
+    }
+  };
+  const act = async (path, body, msg) => {
+    try {
+      saved((await api(`/imaging/${s.id}/${path}`, { method: 'POST', body: { rev: s.rev, ...body } })).study, msg);
+    } catch (err) {
+      failed(err);
+    }
+  };
+  const header = <PageHeader breadcrumbs={[{ label: 'Scans', to: '/scans' }, { label: s?.patient?.fullName ?? 'Scan' }]} title={s?.studyName ?? 'Scan'} documentTitle="Scan" />;
+  if (!s) return (<>{header}<div className="pf-content">{error ? <Alert type="error">{error}</Alert> : <p className="muted">Loading…</p>}</div></>);
+  const a = s.access;
+  return (
+    <>
+      {header}
+      <div className="pf-content">
+        <Alert type="success" onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+        <Alert type="error">{actionError}</Alert>
+        <section className="card">
+          <div className="plan-card-head">
+            <h2>
+              <ScanLine aria-hidden="true" /> {s.patient.fullName} <span className="muted tabular">{s.patient.mrn}</span>
+            </h2>
+            <StudyStatus s={s} />
+          </div>
+          <p className="muted">
+            Ordered by {s.ordered.byName}, {formatDateTime(s.ordered.at)}
+            {s.scheduledFor ? ` · for ${formatDateTime(s.scheduledFor)}` : ''}
+            {s.done ? ` · done ${formatDateTime(s.done.at)}` : ''}
+            {s.signed ? ` · signed by ${s.signed.byName}` : ''}
+          </p>
+          {s.indication && <p>Indication: {s.indication}</p>}
+          <div className="row">
+            {a.canSchedule && (
+              <>
+                <input type="datetime-local" aria-label="Day and time" value={when} onChange={(e) => setWhen(e.target.value)} />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => act('schedule', { scheduledFor: new Date(when).toISOString() }, 'Scheduled.')}>
+                  Schedule
+                </button>
+              </>
+            )}
+            {a.canDone && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => act('done', {}, 'Marked done. A doctor writes the report.')}>
+                Mark done
+              </button>
+            )}
+            {a.canSign && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => act('sign', {}, 'Signed.')}>
+                <CircleCheck aria-hidden="true" /> Sign the report
+              </button>
+            )}
+            {a.canPrint && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPrinting(true)}>
+                <Printer aria-hidden="true" /> Print the report
+              </button>
+            )}
+          </div>
+        </section>
+        {a.canReport && <ReportForm key={`${s.rev}`} s={s} template={data?.template} onSaved={saved} onError={failed} />}
+        {!a.canReport && s.report && (
+          <section className="card">
+            <h2>Report</h2>
+            {s.report.findings && <p className="pre-line">{s.report.findings}</p>}
+            {s.report.impression && <p>{s.report.impression}</p>}
+          </section>
+        )}
+      </div>
+      {printing && <ReportPrint s={s} template={data?.template} onClose={() => setPrinting(false)} />}
+    </>
+  );
+}
+
+function OrderScanDialog({ patient, onDone, onClose }) {
+  const studies = useFetch('/imaging/studies');
+  const ref = useDialogFocus(onClose);
+  const [form, setForm] = useState({ study: 'usg_early', urgent: false, indication: '' });
+  const [error, setError] = useState(null);
+  const [requestId] = useState(() => crypto.randomUUID());
+  const send = async (e) => {
+    e.preventDefault();
+    if (mentionsFetalSex(form.indication)) return setError(PCPNDT_MESSAGE);
+    try {
+      await api(`/patients/${patient.id}/imaging`, { method: 'POST', body: { clientRequestId: requestId, ...form } });
+      onDone();
+    } catch (err) {
+      setError(err.message);
+    }
+    return undefined;
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="scan-order-title" onSubmit={send} noValidate>
+        <h2 id="scan-order-title">Order a scan</h2>
+        <Alert type="error">{error}</Alert>
+        <Field label="Study" id="so-study">
+          <select id="so-study" value={form.study} onChange={(e) => setForm({ ...form, study: e.target.value })}>
+            {(studies.data?.studies ?? []).map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Indication (why)" id="so-ind">
+          <input id="so-ind" maxLength={300} value={form.indication} onChange={(e) => setForm({ ...form, indication: e.target.value })} />
+        </Field>
+        <label className="check">
+          <input type="checkbox" checked={form.urgent} onChange={(e) => setForm({ ...form, urgent: e.target.checked })} /> Urgent
+        </label>
+        <div className="row">
+          <button type="submit" className="btn btn-primary">
+            Order the scan
+          </button>
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/** On the patient's Lab tab: her scans (USG and radiology), and "Order a scan" for her doctor or an RMO. */
+export function PatientScans({ patient }) {
+  const res = useFetch(`/patients/${patient.id}/imaging`);
+  const [ordering, setOrdering] = useState(false);
+  if (res.error || !res.data) return null;
+  return (
+    <section className="card" aria-labelledby="pt-scans">
+      <div className="plan-card-head">
+        <h2 id="pt-scans">
+          <ScanLine aria-hidden="true" /> Scans (USG and X-ray)
+        </h2>
+        {res.data.canOrder && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOrdering(true)}>
+            Order a scan
+          </button>
+        )}
+      </div>
+      {res.data.studies.length === 0 ? (
+        <p className="muted">No scans ordered here yet.</p>
+      ) : (
+        <ul className="wl-list">
+          {res.data.studies.map((s) => (
+            <li key={s.id}>
+              <div className="wl-row-head">
+                <span className="wl-who">
+                  <Link to={`/scans/${s.id}`} className="strong-name">
+                    {s.studyName}
+                  </Link>
+                  <span className="muted">
+                    {formatDateTime(s.ordered.at)} · {s.ordered.byName}
+                    {s.report?.impression ? ` · ${s.report.impression}` : ''}
+                  </span>
+                </span>
+                <StudyStatus s={s} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {ordering && (
+        <OrderScanDialog
+          patient={patient}
+          onClose={() => setOrdering(false)}
+          onDone={() => {
+            setOrdering(false);
+            res.reload();
+          }}
+        />
+      )}
+    </section>
+  );
+}

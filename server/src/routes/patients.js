@@ -52,6 +52,7 @@ import { remindersRouter } from './reminders.js';
 import { visitsRouter } from './visits.js';
 import { admissionsRouter } from './admissions.js';
 import { patientLabRouter } from './lab.js';
+import { patientImagingRouter } from './imaging.js';
 import { workDoneRouter } from './workDone.js';
 import { patientReminderConsentRouter } from './reminderOutbox.js';
 import { patientPortalAccessRouter } from './portal.js';
@@ -521,6 +522,7 @@ patientsRouter.use('/:id/consents', patientConsentsRouter);
 patientsRouter.use('/:id/visits', visitsRouter);
 patientsRouter.use('/:id/admissions', admissionsRouter);
 patientsRouter.use('/:id/lab-orders', patientLabRouter);
+patientsRouter.use('/:id/imaging', patientImagingRouter); // USG and radiology (Lab version 2)
 patientsRouter.use('/:id/work-done', workDoneRouter);
 patientsRouter.use('/:id/reminder-consent', patientReminderConsentRouter);
 patientsRouter.use('/:id/portal-access', patientPortalAccessRouter);

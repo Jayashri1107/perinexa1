@@ -176,11 +176,11 @@ function builtInAsSet(t, s) {
   const ranges = s?.fieldRanges ?? {};
   const fields = t.fields.map((f) => {
     const r = ranges[f.key];
-    if (!r || f.type !== 'number') return { ...f, bands: [] };
+    if (!r || f.type !== 'number') return { ...f, bands: [], deltaPercent: null };
     const changed = r.low !== undefined || r.high !== undefined;
     const low = r.low !== undefined ? r.low : f.low;
     const high = r.high !== undefined ? r.high : f.high;
-    return { ...f, low, high, range: r.range || (changed ? rangeText(low, high, f.unit) : f.range), bands: r.bands ?? [] };
+    return { ...f, low, high, range: r.range || (changed ? rangeText(low, high, f.unit) : f.range), bands: r.bands ?? [], deltaPercent: r.deltaPercent ?? null };
   });
   return {
     key: t.key,
@@ -216,7 +216,7 @@ function customAsSet(s) {
     group: s.group || 'other',
     sample: s.sample,
     who: s.who,
-    fields: (s.fields ?? []).map((f) => ({ ...f, bands: f.type === 'number' ? (f.bands ?? []) : [] })),
+    fields: (s.fields ?? []).map((f) => ({ ...f, bands: f.type === 'number' ? (f.bands ?? []) : [], deltaPercent: f.type === 'number' ? (f.deltaPercent ?? null) : null })),
     planKeys: [],
     custom: true,
     department,

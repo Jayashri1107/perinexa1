@@ -24,7 +24,7 @@ myDayRouter.get('/', async (req, res) => {
     Visit.find({ tenantId: req.tenantId, visitOn: today, status: 'active', ...mine }, { patientId: 1, signed: 1 }).lean(),
     (async () => {
       const myPatients = await Patient.distinct('_id', { tenantId: req.tenantId, assignedDoctor: me });
-      return LabOrder.countDocuments({ tenantId: req.tenantId, status: 'reported', $or: [{ patientId: { $in: myPatients } }, { 'ordered.by': me }] });
+      return LabOrder.countDocuments({ tenantId: req.tenantId, status: 'reported', source: { $ne: 'walk_in' }, $or: [{ patientId: { $in: myPatients } }, { 'ordered.by': me }] });
     })(),
     Appointment.find({ tenantId: req.tenantId, on: today, doctorId: me, kind: 'slot', status: 'booked', patientId: { $ne: null }, start: { $ne: null } }, { patientId: 1, start: 1, on: 1, status: 1 }).lean(),
   ]);

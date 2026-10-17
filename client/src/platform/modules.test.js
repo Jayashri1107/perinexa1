@@ -65,13 +65,13 @@ describe('My settings and Hospital admin', () => {
 
 describe('the left menu by role', () => {
   it('Analytics for doctors and hospital admins only; Appointments for reception, doctors, RMOs and nurses; Calendar for doctors, RMOs and reception; Billing for reception and admins; Pharmacy for pharmacists and admins (exact lists pin the order too)', () => {
-    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Analytics', 'Clinic library']);
+    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Scans', 'Analytics', 'Clinic library']);
     expect(menu(['admin'])).toEqual(['Today', 'Billing', 'Pharmacy', 'Analytics', 'Hospital admin']);
-    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Billing', 'Pharmacy', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
-    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Analytics', 'Clinic library']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
+    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Scans', 'Billing', 'Pharmacy', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
+    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Scans', 'Analytics', 'Clinic library']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
     expect(menu(['rmo', 'doctor'])).toContain('Calendar');
-    expect(menu(['nurse'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Analytics', 'Clinic library']);
-    expect(menu(['receptionist'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Billing']);
+    expect(menu(['nurse'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Scans', 'Analytics', 'Clinic library']);
+    expect(menu(['receptionist'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Scans', 'Billing']);
     expect(menu(['lab'])).toEqual(['Today', 'Patients', 'Lab']);
     expect(menu(['pharmacist'])).toEqual(['Today', 'Patients', 'Pharmacy']);
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists

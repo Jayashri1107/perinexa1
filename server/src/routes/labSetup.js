@@ -7,6 +7,7 @@ import { LabSetup } from '../models/LabSetup.js';
 import { LabTestSetting } from '../models/LabTestSetting.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { PriceItem } from '../models/PriceItem.js';
+import { Referrer } from '../models/Referrer.js';
 import { User } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
@@ -65,10 +66,14 @@ const fieldSchema = z
     options: z.array(safeText('Choice', 40)).max(12).default([]),
     abnormal: z.array(z.string().max(40)).max(12).default([]),
     bands: z.array(bandSchema).max(MAX_BANDS, `At most ${MAX_BANDS} group ranges`).default([]),
+    // Lab version 2: flag "Big change" when the value moved by at least this much from her last result (per cent)
+    deltaPercent: z.number().min(1).max(1000).nullable().default(null),
   })
   .strict();
 const optionalLimit = z.number('Enter a number').finite().nullable().optional(); // left out = the built-in limit
-const rangeSchema = z.object({ low: optionalLimit, high: optionalLimit, range: safeText('Usual range in words', 150).default(''), bands: z.array(bandSchema).max(MAX_BANDS).default([]) }).strict();
+const rangeSchema = z
+  .object({ low: optionalLimit, high: optionalLimit, range: safeText('Usual range in words', 150).default(''), bands: z.array(bandSchema).max(MAX_BANDS).default([]), deltaPercent: z.number().min(1).max(1000).nullable().default(null) })
+  .strict();
 const hours = z.number('Enter the hours').int().min(1).max(2000).nullable().default(null);
 const commonShape = {
   department: z.enum(['', ...DEPARTMENT_KEYS]).default(''),
@@ -119,7 +124,7 @@ function checkedFields(data, fields) {
       checkBands(f.bands, data.who, at, fields);
     }
     const base = { key, name: f.name.trim(), type: f.type };
-    if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: f.low, high: f.high, range: f.range.trim() || rangeText(f.low, f.high, f.unit.trim()), bands: f.bands };
+    if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: f.low, high: f.high, range: f.range.trim() || rangeText(f.low, f.high, f.unit.trim()), bands: f.bands, deltaPercent: f.deltaPercent };
     if (f.type === 'choice') return { ...base, options: f.options.map((o) => o.trim()), abnormal: f.abnormal };
     return base;
   });
@@ -221,6 +226,7 @@ labSetupRouter.put('/tests/:key', async (req, res) => {
       if (high !== f.high) entry.high = high;
       if (r.range.trim() && r.range.trim() !== f.range) entry.range = r.range.trim();
       if (r.bands.length) entry.bands = r.bands;
+      if (r.deltaPercent != null) entry.deltaPercent = r.deltaPercent;
       if (Object.keys(entry).length) ranges[k] = entry;
     }
     s.fieldRanges = ranges;
@@ -287,4 +293,45 @@ labSetupRouter.put('/settings', async (req, res) => {
   await LabSetup.updateOne({ tenantId: req.tenantId, set: 'lab' }, { $set: { verify: body.verify, verifierIds: ids, updatedByName: req.user.name } }, { upsert: true });
   await audit(req, 'LAB_SETTINGS_CHANGED', { details: { verify: body.verify, checkers: ids.length } });
   res.json(await settingsView(req));
+});
+
+// ---------- Referrers (Lab version 2 – docs/LAB_V2_PLAN.md) ----------
+// Doctors and centres who refer walk-in patients: the lab, doctors and RMOs keep the list; everyone in the lab module
+// reads it. No money is recorded for a referrer (commissions are not allowed).
+
+const referrerSchema = z
+  .object({
+    kind: z.enum(['doctor', 'centre'], 'Choose a doctor or a centre'),
+    name: safeText('Name', 120).refine((t) => t.trim().length >= 2, 'Write the name'),
+    qualification: safeText('Qualification', 80).default(''),
+    registrationNumber: safeText('Registration number', 40).default(''),
+    phone: z.string().trim().max(20).regex(/^[+\d\s-]*$/, 'Write the phone number in digits').default(''),
+    address: safeText('Address', 200).default(''),
+    active: z.boolean().default(true),
+  })
+  .strict();
+const referrerView = (r) => ({ id: String(r._id), kind: r.kind, name: r.name, qualification: r.qualification ?? '', registrationNumber: r.registrationNumber ?? '', phone: r.phone ?? '', address: r.address ?? '', active: r.active !== false });
+
+labSetupRouter.get('/referrers', async (req, res) => {
+  const list = await Referrer.find({ tenantId: req.tenantId }).sort({ active: -1, name: 1 }).limit(1000).lean();
+  res.json({ referrers: list.map(referrerView), canEdit: canEdit(req) });
+});
+
+labSetupRouter.post('/referrers', async (req, res) => {
+  if (!canEdit(req)) throw forbidden('The lab, doctors and RMOs keep the list of referrers.');
+  const body = parse(referrerSchema, req.body);
+  const r = await Referrer.create({ tenantId: req.tenantId, ...body, name: body.name.trim(), updatedByName: req.user.name });
+  await audit(req, 'LAB_REFERRER_CHANGED', { details: { referrerId: String(r._id), added: true } });
+  res.status(201).json({ referrer: referrerView(r) });
+});
+
+labSetupRouter.put('/referrers/:id', async (req, res) => {
+  if (!canEdit(req)) throw forbidden('The lab, doctors and RMOs keep the list of referrers.');
+  const body = parse(referrerSchema, req.body);
+  const r = await Referrer.findOne({ tenantId: req.tenantId, _id: parse(objectId, req.params.id) });
+  if (!r) throw new HttpError(404, 'This referrer was not found.', 'NOT_FOUND');
+  Object.assign(r, { ...body, name: body.name.trim(), updatedByName: req.user.name });
+  await r.save();
+  await audit(req, 'LAB_REFERRER_CHANGED', { details: { referrerId: String(r._id), active: r.active } });
+  res.json({ referrer: referrerView(r) });
 });

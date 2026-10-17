@@ -35,6 +35,11 @@ import { hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
 import { documentOffer, offerView, sendPatientPdf } from '../visits/whatsappDocuments.js';
+import { randomBytes } from 'node:crypto';
+import { QcRun } from '../models/QcRun.js';
+import { Referrer } from '../models/Referrer.js';
+import { Membership } from '../models/Membership.js';
+import { takeStock } from '../lab/stock.js';
 
 // The lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md). Two routers:
 //  - patientLabRouter, /api/patients/:id/lab-orders: a patient's orders and results (those who may see the
@@ -119,7 +124,16 @@ labRouter.use((req, _res, next) => {
 // ---------- The view of an order ----------
 
 const stampView = (s) => (s ? { byName: s.byName, at: s.at } : null);
-const valueView = (v) => ({ key: v.key, value: v.value, flag: v.flag, ...(v.name ? { name: v.name } : {}), ...(v.unit ? { unit: v.unit } : {}), ...(v.range ? { range: v.range } : {}) });
+const valueView = (v) => ({
+  key: v.key,
+  value: v.value,
+  flag: v.flag,
+  ...(v.name ? { name: v.name } : {}),
+  ...(v.unit ? { unit: v.unit } : {}),
+  ...(v.range ? { range: v.range } : {}),
+  ...(v.deltaPercent != null ? { deltaPercent: v.deltaPercent } : {}),
+  ...(v.bigChange ? { bigChange: true } : {}),
+});
 const outsideView = (o) => (o?.sent ? { labName: o.labName, ref: o.ref ?? '', sent: stampView(o.sent), received: stampView(o.received) } : null);
 const testView = (t) => ({ key: t.key, name: t.name, values: (t.values ?? []).map(valueView), text: t.text ?? '', department: t.department ?? '', outside: outsideView(t.outside) });
 
@@ -146,6 +160,13 @@ export function orderView(order, access, more = {}) {
     status,
     urgent: Boolean(order.urgent),
     sampleNo: order.sampleNo ?? null,
+    // Lab version 2 (docs/LAB_V2_PLAN.md): a walk-in order, its referrer and prescription; home collection; QC reason
+    source: order.source ?? 'doctor',
+    referrer: order.referrer?.name ? { id: order.referrer.id ? String(order.referrer.id) : null, name: order.referrer.name, kind: order.referrer.kind } : null,
+    prescription: order.prescription ?? '',
+    home: order.home ? { address: order.home.address ?? '', on: order.home.on ?? null, time: order.home.time ?? '', collectorName: order.home.collectorName ?? '', collectorId: order.home.collectorId ? String(order.home.collectorId) : null, status: order.home.status, note: order.home.note ?? '', updated: stampView(order.home.updated) } : null,
+    qcOverride: order.qcOverride ? { byName: order.qcOverride.byName, at: order.qcOverride.at, reason: order.qcOverride.reason } : null,
+    verifyToken: DONE.includes(status) ? (order.verifyToken ?? null) : null,
     dueAt: order.dueAt ?? null,
     late: isLate(order, more.now ?? new Date()),
     tests: order.tests.map(testView),
@@ -180,7 +201,8 @@ export function orderView(order, access, more = {}) {
       canSendOutside: access.report && OPEN.includes(status),
       canReceiveOutside: access.report && outsideOpen && status !== 'cancelled',
       canPrint: access.view && DONE.includes(status),
-      canReview: access.review && status === 'reported',
+      canReview: access.review && status === 'reported' && order.source !== 'walk_in',
+      canHome: access.collect && status === 'ordered',
       canCancel: access.cancel && ['ordered', 'collected'].includes(status),
     },
   };
@@ -248,10 +270,19 @@ patientLabRouter.post('/', async (req, res) => {
   const access = labAccess(req, patient);
   assertCan(access, 'order');
   const body = parse(orderSchema, req.body);
+  const out = await createOrder(req, patient, access, body);
+  res.status(201).json({ order: out });
+});
+
+/**
+ * Makes an order for this patient (body: orderSchema's fields). extra: what a walk-in order adds (source, referrer,
+ * prescription, home). Returns the order's view. A repeated request (a double click) returns the first order.
+ */
+async function createOrder(req, patient, access, body, extra = {}) {
   const repeat = await LabOrder.findOne({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
   if (repeat) {
     if (String(repeat.patientId) !== String(patient._id)) throw conflict('This request was already used.');
-    return res.status(201).json({ order: await viewFor(req, repeat, access) });
+    return viewFor(req, repeat, access);
   }
   // A record marked as a duplicate takes no new lab orders (orders already made on it are still finished there)
   refuseNewOnDuplicate(patient, 'lab');
@@ -303,10 +334,110 @@ patientLabRouter.post('/', async (req, res) => {
     dueAt: dueAt(req.now, tests.map((t) => setupOf(catalogue, t.key)), body.urgent),
     ordered: stampOf(req),
     clientRequestId: body.clientRequestId,
+    ...extra,
   });
-  await audit(req, 'LAB_ORDER_CREATED', { details: ids(order, { mrn: patient.mrn, tests: tests.length }) });
+  await audit(req, 'LAB_ORDER_CREATED', { details: ids(order, { mrn: patient.mrn, tests: tests.length, ...(extra.source === 'walk_in' ? { walkIn: true } : {}) }) });
   await billLabOrdered(req, patient, order); // billing: each test
-  res.status(201).json({ order: await viewFor(req, order, access) });
+  return viewFor(req, order, access);
+}
+
+// ---------- Walk-in and referred patients (Lab version 2 – docs/LAB_V2_PLAN.md) ----------
+// The lab orders tests from an outside prescription (owner's decision, 17 Oct 2026): the referring doctor or centre
+// (Lab → Referrers), or "self" with what she asked for. The order is reported by the lab (with the second-person check
+// when the hospital has it on); it is not in the hospital doctors' review list and does not tick care plans.
+const homeSchema = z
+  .object({
+    address: safeText('Address', 300).refine((t) => t.trim().length >= 5, 'Write the address for the collection'),
+    on: z.iso.date('Choose the day'),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Choose the time'),
+    collectorId: objectId.nullable().default(null),
+  })
+  .strict();
+const walkInSchema = orderSchema
+  .omit({ visitId: true, packages: true })
+  .extend({
+    patientId: objectId,
+    referrerId: objectId.nullable().default(null),
+    prescription: safeText('Prescription', 200).default(''),
+    home: homeSchema.nullable().default(null),
+  })
+  .strict();
+
+/** The collector chosen for a home collection: lab staff of this hospital (or none yet). */
+async function homeCollector(req, id) {
+  if (!id) return { collectorId: null, collectorName: '' };
+  const m = await Membership.findOne({ tenantId: req.tenantId, userId: id, isActive: true, roles: 'lab' }, { userId: 1 }).lean();
+  if (!m) throw invalid({ 'home.collectorId': 'Choose someone from the lab.' });
+  const u = await User.findById(id, { name: 1 }).lean();
+  return { collectorId: m.userId, collectorName: u?.name ?? '' };
+}
+
+labRouter.post('/walk-in', async (req, res) => {
+  if (!isLab(req)) throw forbidden('The lab enters walk-in orders.');
+  const body = parse(walkInSchema, req.body);
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: body.patientId });
+  if (!patient) throw notFound('Patient not found.');
+  let referrer = null;
+  if (body.referrerId) {
+    const r = await Referrer.findOne({ tenantId: req.tenantId, _id: body.referrerId, active: true }).lean();
+    if (!r) throw invalid({ referrerId: 'Choose a referrer from the list (or none).' });
+    referrer = { id: r._id, name: r.name, kind: r.kind };
+  }
+  if (!referrer && body.prescription.trim().length < 3) throw invalid({ prescription: 'Choose the referring doctor, or write "Self – no prescription" and what she asked for.' });
+  const home = body.home ? { address: body.home.address.trim(), on: new Date(`${body.home.on}T00:00:00Z`), time: body.home.time, ...(await homeCollector(req, body.home.collectorId)), status: 'scheduled', note: '', updated: stampOf(req) } : null;
+  const { patientId, referrerId, prescription, home: _h, ...order } = body;
+  const access = labAccess(req, patient);
+  const out = await createOrder(req, patient, access, { ...order, visitId: null, packages: [] }, { source: 'walk_in', referrer, prescription: prescription.trim(), home });
+  res.status(201).json({ order: out });
+});
+
+// ---------- Home collection (Lab version 2) ----------
+
+const HOME_NEXT = { scheduled: ['on_the_way', 'collected', 'failed'], on_the_way: ['collected', 'failed'], failed: ['scheduled'] };
+labRouter.put('/orders/:orderId/home', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'collect');
+  const body = parse(z.object({ rev, home: homeSchema.nullable() }).strict(), req.body);
+  if (order.status !== 'ordered') throw conflict('The sample is already taken.');
+  checkRev(order, body.rev);
+  order.home = body.home ? { address: body.home.address.trim(), on: new Date(`${body.home.on}T00:00:00Z`), time: body.home.time, ...(await homeCollector(req, body.home.collectorId)), status: 'scheduled', note: '', updated: stampOf(req) } : null;
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_HOME_COLLECTION', { details: ids(order, { mrn: patient.mrn, status: order.home ? 'scheduled' : 'removed' }) });
+  res.json({ order: await viewFor(req, order, access) });
+});
+
+labRouter.post('/orders/:orderId/home/status', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'collect');
+  const body = parse(z.object({ rev, status: z.enum(['on_the_way', 'collected', 'failed', 'scheduled']), note: safeText('Note', 200).default('') }).strict(), req.body);
+  if (!order.home) throw conflict('This order is not collected at home.');
+  checkRev(order, body.rev);
+  if (!(HOME_NEXT[order.home.status] ?? []).includes(body.status)) throw conflict('This step does not follow the last one. Reload the page.');
+  if (body.status === 'failed' && body.note.trim().length < 3) throw invalid({ note: 'Write why the sample could not be collected.' });
+  order.home.status = body.status;
+  order.home.note = body.note.trim();
+  order.home.updated = stampOf(req);
+  if (body.status === 'collected' && order.status === 'ordered') {
+    order.status = 'collected';
+    order.collected = stampOf(req);
+    await ensureSampleNo(order, req.now);
+  }
+  order.markModified('home');
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_HOME_COLLECTION', { details: ids(order, { mrn: patient.mrn, status: body.status }) });
+  res.json({ order: await viewFor(req, order, access) });
+});
+
+// The day's home collections (all, or one collector's): address and time – lab staff and nurses
+labRouter.get('/home', async (req, res) => {
+  const q = parse(z.object({ date: z.iso.date().optional(), mine: z.enum(['1', '']).optional() }).strict(), req.query);
+  const day = q.date ? new Date(`${q.date}T00:00:00Z`) : hospitalToday(req.now);
+  const orders = await LabOrder.find({ tenantId: req.tenantId, 'home.on': day, status: { $ne: 'cancelled' }, ...(q.mine === '1' ? { 'home.collectorId': req.user._id } : {}) }).sort({ 'home.time': 1 }).limit(300);
+  const staff = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'lab' }, { userId: 1 }).lean();
+  const names = new Map((await User.find({ _id: { $in: staff.map((m) => m.userId) } }, { name: 1 }).lean()).map((u) => [String(u._id), u.name]));
+  res.json({ date: day.toISOString().slice(0, 10), orders: await withPatients(req, orders, (a) => a.view), collectors: [...names].map(([id, name]) => ({ id, name })) });
 });
 
 // ---------- The test list ----------
@@ -326,6 +457,7 @@ const LISTS = {
   report: { filter: { status: 'collected' }, sort: { urgent: -1, createdAt: 1 } },
   verify: { filter: { status: 'entered' }, sort: { urgent: -1, createdAt: 1 } },
   outside: { filter: { status: { $ne: 'cancelled' }, tests: { $elemMatch: { 'outside.sent': { $ne: null }, 'outside.received': null } } }, sort: { createdAt: 1 } },
+  home: { filter: { status: 'ordered', 'home.status': { $in: ['scheduled', 'on_the_way'] } }, sort: { 'home.on': 1, 'home.time': 1 } },
   done: { filter: { status: { $in: DONE } }, sort: { 'reported.at': -1 } },
 };
 
@@ -380,7 +512,7 @@ labRouter.get('/worklist', async (req, res) => {
 // Results waiting for a doctor's review: the doctor's own and unassigned patients. Abnormal results first.
 labRouter.get('/to-review', async (req, res) => {
   if (!hasRole(req.membership, 'doctor')) return res.json({ orders: null });
-  const orders = await LabOrder.find({ tenantId: req.tenantId, status: 'reported' }).sort({ abnormal: -1, 'reported.at': 1 }).limit(300);
+  const orders = await LabOrder.find({ tenantId: req.tenantId, status: 'reported', source: { $ne: 'walk_in' } }).sort({ abnormal: -1, 'reported.at': 1 }).limit(300);
   res.json({ orders: await withPatients(req, orders, (a) => a.review) });
 });
 
@@ -473,9 +605,10 @@ labRouter.get('/orders/:orderId', async (req, res) => {
   const { order, patient, access } = await loadOrder(req);
   if (!access.view) throw forbidden("You can't see this patient's lab orders.");
   await audit(req, 'LAB_ORDER_VIEWED', { details: ids(order, { mrn: patient.mrn }) });
-  const [catalogue, setup] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId)]);
-  // The result form suggests flags from the ranges that apply to this patient (her age, pregnancy)
-  res.json({ order: { ...(await viewFor(req, order, access, setup)), patient: patientBrief(patient) }, catalogue: catalogueView(catalogue, rangeContext(patient, req.now)), verify: setup.verify });
+  const [catalogue, setup, previous, qc] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId), previousResults(req.tenantId, order), qcRejected(req.tenantId, order.tests.map((t) => t.key), req.now)]);
+  // The result form suggests flags from the ranges that apply to this patient (her age, pregnancy); her earlier results
+  // of the same values (trends, Lab version 2); the tests whose quality control was rejected today
+  res.json({ order: { ...(await viewFor(req, order, access, setup)), patient: patientBrief(patient) }, catalogue: catalogueView(catalogue, rangeContext(patient, req.now)), verify: setup.verify, previous, qcRejected: qc });
 });
 
 // The labels were printed (the browser prints them): the order gets its sample number if it had none (older orders).
@@ -539,6 +672,7 @@ const resultsSchema = z
     labNote: safeText('Remark', 1000).default(''),
     report: z.boolean().default(false), // finish: the results go to the doctor (or to the check)
     reason: safeText('Reason', 500).default(''),
+    qcReason: safeText('Reason', 300).default(''), // reporting while a test's quality control is rejected today
   })
   .strict();
 
@@ -546,7 +680,44 @@ const resultsSchema = z
  * The sent results, checked against the order's tests and the hospital's test list (values, choices and flags).
  * Each value keeps the name, unit and range that applied to this patient (ctx: rangeContext).
  */
-function checkedTests(order, sent, catalogue, ctx) {
+/**
+ * Her earlier reported results of this order's tests (Lab version 2 – trends): { testKey: { fieldKey: [{ value, flag,
+ * at }] } }, newest first, at most 5 each – from orders reported before this one.
+ */
+async function previousResults(tenantId, order) {
+  const keys = order.tests.map((t) => t.key).filter((k) => k !== OTHER_TEST);
+  if (!keys.length) return {};
+  const earlier = await LabOrder.find(
+    { tenantId, patientId: order.patientId, _id: { $ne: order._id }, status: { $in: DONE }, 'tests.key': { $in: keys }, createdAt: { $lt: order.createdAt ?? new Date() } },
+    { tests: 1, reported: 1, collected: 1 },
+  )
+    .sort({ 'reported.at': -1 })
+    .limit(30)
+    .lean();
+  const out = {};
+  for (const o of earlier) {
+    for (const t of o.tests) {
+      if (!keys.includes(t.key)) continue;
+      for (const v of t.values ?? []) {
+        if (v.value === '') continue;
+        const list = ((out[t.key] ??= {})[v.key] ??= []);
+        if (list.length < 5) list.push({ value: v.value, flag: v.flag, at: o.collected?.at ?? o.reported?.at });
+      }
+    }
+  }
+  return out;
+}
+
+/** The tests whose latest quality-control run today was rejected and has no corrective action yet. */
+async function qcRejected(tenantId, keys, now) {
+  if (!keys.length) return [];
+  const runs = await QcRun.find({ tenantId, testKey: { $in: keys }, 'run.at': { $gte: hospitalDayStart(hospitalToday(now)) } }).sort({ 'run.at': -1, _id: -1 }).lean();
+  const latest = new Map();
+  for (const r of runs) if (!latest.has(String(r.lotId))) latest.set(String(r.lotId), r);
+  return [...new Set([...latest.values()].filter((r) => r.status === 'rejected' && !r.action).map((r) => r.testKey))];
+}
+
+function checkedTests(order, sent, catalogue, ctx, previous = {}) {
   const fields = {};
   if (sent.length !== order.tests.length || sent.some((t, i) => t.key !== order.tests[i].key)) {
     throw conflict('The tests of this order are different from those on your screen – please reload the page.', 'STALE');
@@ -579,7 +750,14 @@ function checkedTests(order, sent, catalogue, ctx) {
         else value = n.value;
       }
       if (field.type === 'choice' && !field.options.includes(v.value)) fields[at] = 'Choose one of the options.';
-      values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words });
+      // The change from her last result of this value (trends), and "Big change" past the hospital's limit
+      const prev = previous[t.key]?.[v.key]?.[0];
+      let delta = {};
+      if (field.type === 'number' && prev && Number(prev.value) !== 0 && Number.isFinite(Number(prev.value)) && Number.isFinite(Number(value))) {
+        const pct = Math.round(((Number(value) - Number(prev.value)) / Math.abs(Number(prev.value))) * 1000) / 10;
+        delta = { deltaPercent: pct, bigChange: field.deltaPercent != null && Math.abs(pct) >= field.deltaPercent };
+      }
+      values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words, ...delta });
     }
     return { key: t.key, name: t.name, values, text: s.text, department: t.department ?? '', outside: t.outside ?? null };
   });
@@ -592,6 +770,8 @@ const hasResult = (t) => t.values.some((v) => v.value !== '') || t.text.trim() !
 function markReported(req, order) {
   order.status = 'reported';
   order.reported = stampOf(req);
+  // The secret code of the report's QR code (the public page names the hospital: the hospital's id goes first)
+  if (!order.verifyToken) order.verifyToken = `${String(order.tenantId)}.${randomBytes(12).toString('hex')}`;
   if (!order.collected) {
     // Reported without "sample collected": the sample's own time is not known (it is stamped with the report's)
     order.collected = stampOf(req);
@@ -605,8 +785,16 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   if (order.status === 'cancelled') throw conflict('This order was cancelled.');
   const body = parse(resultsSchema, req.body);
   checkRev(order, body.rev);
-  const [catalogue, setup] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId)]);
-  const tests = checkedTests(order, body.tests, catalogue, rangeContext(patient, req.now));
+  const [catalogue, setup, previous] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId), previousResults(req.tenantId, order)]);
+  const tests = checkedTests(order, body.tests, catalogue, rangeContext(patient, req.now), previous);
+  // Quality control (Lab version 2): finishing results while a test's control was rejected today needs a reason
+  if (body.report || DONE.includes(order.status)) {
+    const qc = await qcRejected(req.tenantId, order.tests.map((t) => t.key), req.now);
+    if (qc.length) {
+      if (body.qcReason.trim().length < 5) throw invalid({ qcReason: 'The quality control of this test was rejected today: write why the result may still be reported.' }, 'Quality control was rejected today.');
+      order.qcOverride = { ...stampOf(req), reason: body.qcReason.trim() };
+    }
+  }
   const amending = DONE.includes(order.status);
   if (amending && body.reason.trim().length < 5) throw invalid({ reason: 'The results were already reported: write why they are changed.' });
   if ((body.report || amending) && order.files.length === 0) {
@@ -634,10 +822,16 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
     markReported(req, order);
     action = 'LAB_RESULTS_REPORTED';
   }
+  // The lab's stock this order used is taken once, when it is first reported (Lab version 2)
+  let stock = null;
+  if (order.status === 'reported' && !order.stockTaken) {
+    order.stockTaken = true;
+    stock = await takeStock(req, order);
+  }
   order.rev += 1;
   await order.save();
   await audit(req, action, { details: ids(order, { mrn: patient.mrn }) });
-  res.json({ order: await viewFor(req, order, access, setup) });
+  res.json({ order: await viewFor(req, order, access, setup), ...(stock?.short.length ? { stockShort: stock.short } : {}) });
 });
 
 // The hospital's check (feature 5): a second person approves the entered results (they go to the doctor) or sends
@@ -653,6 +847,10 @@ labRouter.post('/orders/:orderId/verify', async (req, res) => {
   checkRev(order, body.rev);
   order.verified = stampOf(req);
   markReported(req, order);
+  if (!order.stockTaken) {
+    order.stockTaken = true;
+    await takeStock(req, order);
+  }
   order.rev += 1;
   await order.save();
   await audit(req, 'LAB_RESULTS_VERIFIED', { details: ids(order, { mrn: patient.mrn }) });
@@ -738,7 +936,7 @@ const whatsappPatient = (req, order) => Patient.findOne({ tenantId: req.tenantId
 labRouter.get('/orders/:orderId/whatsapp', async (req, res) => {
   const { order, access } = await loadOrder(req);
   if (!access.view) throw forbidden("You can't see this patient's lab orders.");
-  if (order.status !== 'reviewed') return res.json({ available: false, reason: 'not_reviewed', practice: false });
+  if (!(order.status === 'reviewed' || (order.source === 'walk_in' && order.status === 'reported'))) return res.json({ available: false, reason: 'not_reviewed', practice: false });
   res.json(offerView(await documentOffer(req.tenantId, await whatsappPatient(req, order))));
 });
 
@@ -746,7 +944,7 @@ labRouter.post('/orders/:orderId/whatsapp', async (req, res) => {
   const { order, patient, access } = await loadOrder(req);
   if (!access.view) throw forbidden("You can't see this patient's lab orders.");
   const body = parse(z.object({ pdf: z.string().min(100).max(7_500_000), confidential: z.literal(false, 'A confidential test is never sent on WhatsApp.') }).strict(), req.body);
-  if (order.status !== 'reviewed') throw conflict('The report is sent once a doctor has reviewed it.');
+  if (!(order.status === 'reviewed' || (order.source === 'walk_in' && order.status === 'reported'))) throw conflict('The report is sent once a doctor has reviewed it.');
   const offer = await documentOffer(req.tenantId, await whatsappPatient(req, order));
   await sendPatientPdf(offer, { pdf: body.pdf, fileName: `Lab-report-${order.sampleNo ?? patient.mrn}.pdf` });
   await audit(req, 'LAB_REPORT_SENT_WHATSAPP', { details: ids(order, { mrn: patient.mrn, ...(offer.practice ? { practice: true } : {}) }) });
@@ -821,6 +1019,7 @@ labRouter.post('/orders/:orderId/review', async (req, res) => {
   assertCan(access, 'review');
   const body = parse(z.object({ rev, comment: safeText('Comment', 1000).default('') }).strict(), req.body);
   if (order.status !== 'reported') throw conflict(order.status === 'reviewed' ? 'These results are already reviewed.' : 'The lab has not reported these results yet.');
+  if (order.source === 'walk_in') throw conflict('A walk-in order goes to the referring doctor, not for a review here.');
   checkRev(order, body.rev);
   if (order.abnormal && body.comment.trim().length < 3) throw invalid({ comment: 'A result is outside the usual range: write what was done about it.' });
   order.status = 'reviewed';

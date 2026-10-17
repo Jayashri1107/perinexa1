@@ -195,6 +195,22 @@ export const AUDIT_LABELS = {
   LAB_REPORT_OPENED: 'Lab report file opened',
   LAB_RESULTS_REVIEWED: 'Lab results reviewed by a doctor',
   LAB_ORDER_CANCELLED: 'Lab order cancelled',
+  LAB_HOME_COLLECTION: 'Lab home collection updated',
+  LAB_REPORT_VERIFIED: 'Lab report checked with its QR code',
+  IMAGING_ORDERED: 'Scan ordered',
+  IMAGING_VIEWED: 'Scan opened',
+  IMAGING_SCHEDULED: 'Scan scheduled',
+  IMAGING_DONE: 'Scan done',
+  IMAGING_SAVED: 'Scan report saved',
+  IMAGING_AMENDED: 'Scan report changed after signing',
+  IMAGING_SIGNED: 'Scan report signed',
+  IMAGING_CANCELLED: 'Scan cancelled',
+  IMAGING_PRINTED: 'Scan report printed',
+  LAB_REFERRER_CHANGED: 'Lab referrer added or changed',
+  LAB_QC_LOT_CHANGED: 'QC lot added or changed',
+  LAB_QC_RUN: 'QC run entered',
+  LAB_QC_ACTION: 'QC corrective action written',
+  LAB_STOCK_CHANGED: 'Lab stock changed',
   ADMISSION_REQUESTED: 'Admission requested by a doctor',
   ADMISSION_REQUEST_CANCELLED: 'Admission request cancelled',
   ADMISSION_CHECKLIST_UPDATED: 'Admission checklist filled in',
@@ -394,6 +410,18 @@ export const AUDIT_TONES = {
   LAB_REPORT_OPENED: 'patient',
   LAB_RESULTS_REVIEWED: 'patient',
   LAB_ORDER_CANCELLED: 'patient',
+  LAB_HOME_COLLECTION: 'patient',
+  LAB_REPORT_VERIFIED: 'info',
+  IMAGING_ORDERED: 'patient',
+  IMAGING_VIEWED: 'patient',
+  IMAGING_SCHEDULED: 'patient',
+  IMAGING_DONE: 'patient',
+  IMAGING_SAVED: 'patient',
+  IMAGING_AMENDED: 'patient',
+  IMAGING_SIGNED: 'patient',
+  IMAGING_CANCELLED: 'patient',
+  IMAGING_PRINTED: 'patient',
+  LAB_QC_ACTION: 'info',
   ADMISSION_REQUESTED: 'patient',
   ADMISSION_REQUEST_CANCELLED: 'patient',
   ADMISSION_CHECKLIST_UPDATED: 'patient',
@@ -948,6 +976,20 @@ export function describeAudit(entry) {
       return `${record(d)}${d.opdNo ? ` – ${d.opdNo}` : ''}`;
     case 'ADMISSION_RULES_CHANGED':
       return `${d.requireAdmissionRequest ? "A doctor's request first" : 'No request needed'} · ${d.requireChecklist ? 'checklist required' : 'checklist not required'}`;
+    case 'IMAGING_ORDERED':
+    case 'IMAGING_VIEWED':
+    case 'IMAGING_SCHEDULED':
+    case 'IMAGING_DONE':
+    case 'IMAGING_SAVED':
+    case 'IMAGING_AMENDED':
+    case 'IMAGING_SIGNED':
+    case 'IMAGING_CANCELLED':
+    case 'IMAGING_PRINTED':
+      return record(d);
+    case 'LAB_HOME_COLLECTION':
+      return `${record(d)}${d.status ? ` – ${String(d.status).replace(/_/g, ' ')}` : ''}`;
+    case 'LAB_QC_RUN':
+      return d.status ? `Run ${d.status}` : '';
     case 'LAB_SAMPLE_REJECTED':
       return `${record(d)}${d.reason ? `: ${LAB_REJECT_WORDS[d.reason] ?? d.reason}` : ''}`;
     case 'LAB_SENT_OUTSIDE':

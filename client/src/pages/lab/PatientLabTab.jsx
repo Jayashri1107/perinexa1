@@ -7,6 +7,7 @@ import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { WorkDoneSection } from './WorkDoneSection.jsx';
+import { PatientScans } from '../imaging/ImagingPages.jsx';
 import { FLAG_LOOK, dayOfLife, orderLook, packageFits, packageNames, packageWhen, resultLine, testsFor } from './labFormat.js';
 
 // The Lab tab on the patient record (Version 2, lab module): every lab order, newest first, with its status and
@@ -274,6 +275,7 @@ export function PatientLabTab() {
         )}
       </section>
       <DataTable caption="Lab orders" columns={columns} rows={data?.orders} loading={loading} onRowClick={(o) => navigate(`/patients/${patient.id}/lab/${o.id}`)} emptyText="No lab tests ordered yet." />
+      <PatientScans patient={patient} />
       <WorkDoneSection patient={patient} />
       {ordering && (
         <OrderDialog

@@ -280,11 +280,14 @@ describe('editing', () => {
     expect(JSON.stringify(entry.details)).not.toMatch(/11111/);
   });
 
-  it('lab staff and admin-only accounts cannot register or edit patients', async () => {
+  it('lab staff register walk-in patients (identity only, owner 17 Oct 2026); admin-only accounts cannot', async () => {
     const lab = await createUser();
     await addMember(lab, home, 'lab');
     const l = await loginAs(lab, { app });
-    expect((await l.post('/api/patients').send(samplePatient())).status).toBe(403);
+    const walkIn = await l.post('/api/patients').send(samplePatient({ fullName: 'Walk In Patient' }));
+    expect(walkIn.status, JSON.stringify(walkIn.body)).toBe(201);
+    expect(walkIn.body.patient.fullName).toBe('Walk In Patient');
+    expect(walkIn.body.patient.risk).toBeUndefined();
     const admin = await createUser();
     await addMember(admin, home, 'admin');
     const a = await loginAs(admin, { app });
