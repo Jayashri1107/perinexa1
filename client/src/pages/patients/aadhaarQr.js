@@ -188,11 +188,11 @@ function loadZxing() {
   return zxing;
 }
 const ZXING_OPTIONS = { formats: ['QRCode'], tryHarder: true, maxNumberOfSymbols: 1 };
-async function zxingRead(imageData) {
+async function zxingRead(imageData, extra = {}) {
   const read = await loadZxing();
   if (!read) return null;
   try {
-    return (await read(imageData, ZXING_OPTIONS)).find((r) => r.isValid && r.text)?.text ?? null;
+    return (await read(imageData, { ...ZXING_OPTIONS, ...extra })).find((r) => r.isValid && r.text)?.text ?? null;
   } catch {
     return null;
   }
@@ -226,12 +226,32 @@ function pixels(source, [sx, sy, sw, sh], scale, canvas, max = 3600) {
 /**
  * Reads a QR from something that can be drawn (an image or a video frame) of w × h, or null.
  * quick: one try per camera frame (`frame` counts them – whole picture and enlarged middle in turn).
+ * deep: a camera frame looked at more closely (every ~2 seconds, and Capture): a smaller QR (the card held further away,
+ * where a webcam can focus) enlarged 3×, another way of telling black from white, and the four quarters.
  */
-export async function readQrFrom(source, w, h, { quick = false, frame = 0, canvas = null } = {}) {
+export async function readQrFrom(source, w, h, { quick = false, deep = false, frame = 0, canvas = null } = {}) {
   const native = await nativeRead(source);
   if (native) return native;
   const c = canvas ?? document.createElement('canvas');
   const [whole, middle] = searchAreas(w, h, true);
+  if (deep) {
+    const mid = (f) => [Math.round((w * (1 - f)) / 2), Math.round((h * (1 - f)) / 2), Math.round(w * f), Math.round(h * f)];
+    const quarters = [0, 0.5].flatMap((fy) => [0, 0.5].map((fx) => [Math.round(w * fx), Math.round(h * fy), Math.round(w * 0.5), Math.round(h * 0.5)]));
+    const tries = [
+      [whole, 1, {}],
+      [middle, 2, {}],
+      [mid(0.55), 3, {}],
+      [mid(0.4), 4, {}],
+      [middle, 2, { binarizer: 'GlobalHistogram' }],
+      [whole, 1, { binarizer: 'FixedThreshold' }],
+      ...quarters.map((q) => [q, 2, {}]),
+    ];
+    for (const [area, scale, extra] of tries) {
+      const text = await zxingRead(pixels(source, area, scale, c, 3600), extra);
+      if (text) return text;
+    }
+    return null;
+  }
   if (quick) {
     const text = frame % 2 === 0 ? await zxingRead(pixels(source, whole, 1, c, 2560)) : await zxingRead(pixels(source, middle, 2, c));
     if (text || (await loadZxing())) return text;
