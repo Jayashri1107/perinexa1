@@ -9,7 +9,7 @@ import { Patient } from '../models/Patient.js';
 import { PatientAccount, SELF_CARE_TYPES } from '../models/PatientAccount.js';
 import { Tenant } from '../models/Tenant.js';
 import { isClosed } from '../patients/deathRules.js';
-import { currentSender } from '../reminders/sender.js';
+import { otpSender } from '../reminders/sender.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { fakeVerify, hashPassword, passwordSchema, verifyPassword } from '../utils/password.js';
@@ -52,8 +52,7 @@ const limiter = (limit) =>
 
 /** How an OTP reaches her: the SMS provider, practice mode (shown on screen, never in production), or not at all. */
 export function otpMode() {
-  const sender = currentSender();
-  if (sender?.channels?.includes('sms')) return 'sms';
+  if (otpSender()) return 'sms';
   return config.isProduction ? 'off' : 'practice';
 }
 
@@ -216,8 +215,14 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
       account.otp = { hash: hashOtp(account._id, otp), expiresAt: new Date(req.now.getTime() + OTP_MINUTES * 60 * 1000), tries: 0 };
       await account.save();
       const lh = letterheadFor(tenant);
-      if (mode === 'sms') await currentSender().send({ channel: 'sms', to: `+91${mobile}`, text: `${otp} is your OTP to sign in to ${lh.name}. It works for ${OTP_MINUTES} minutes. Do not share it.` });
-      else practiceOtp = otp;
+      if (mode === 'sms') {
+        try {
+          await otpSender().sendOtp({ to: `+91${mobile}`, otp, hospital: lh.name, minutes: OTP_MINUTES });
+        } catch {
+          // Not sent (the SMS company refused it or did not answer): she is told so, nothing about her is logged
+          throw new HttpError(503, 'The OTP could not be sent just now. Please try again in a minute, or sign in with your email and password.', 'OTP_NOT_SENT');
+        }
+      } else practiceOtp = otp;
     }
     // The same answer for every number (practice mode shows the OTP only when one was made)
     res.json({ sentTo: `******${mobile.slice(-4)}`, minutes: OTP_MINUTES, ...(practiceOtp ? { practiceOtp } : {}) });

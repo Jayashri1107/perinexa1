@@ -230,6 +230,19 @@ describe('signing in', () => {
     expect(approved.details).toMatchObject({ patientId: p.id, mrn: p.mrn });
   });
 
+  it('an SMS that could not be sent: she is told so (503), and no OTP is shown', async () => {
+    setTestSender({ name: 'broken', channels: ['sms'], send: async () => { throw new Error('refused'); } });
+    const key = await signupOn();
+    const p = await register();
+    await signUp(key);
+    await approve(await waitingId(), p.id);
+    const res = await request(app).post(`/api/portal/h/${key}/otp`).send({ mobile: '9876543210' });
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('OTP_NOT_SENT');
+    expect(JSON.stringify(res.body)).not.toMatch(/\d{6}/);
+    setTestSender(TEST_SENDER);
+  });
+
   it('sends the OTP by SMS when a provider is set up (never in the answer)', async () => {
     setTestSender(TEST_SENDER);
     const key = await signupOn();

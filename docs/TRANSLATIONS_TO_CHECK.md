@@ -542,3 +542,4 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `aadhaar.switchCamera` (added 17 Oct 2026) | Switch camera | कॅमेरा बदला | कैमरा बदलें |
 | `aadhaar.mirror` (added 17 Oct 2026) | Mirror picture | आरशासारखे चित्र | आईने जैसी तस्वीर |
 | `aadhaar.oneCamera` (added 17 Oct 2026) | This device has only one camera. | या उपकरणाला एकच कॅमेरा आहे. | इस डिवाइस में केवल एक कैमरा है। |
+| refusal `OTP_NOT_SENT` (added 17 Oct 2026) | (the server's English message) | OTP आत्ता पाठवता आला नाही. कृपया एका मिनिटाने पुन्हा प्रयत्न करा, किंवा ईमेल आणि पासवर्डने आत या. | OTP अभी नहीं भेजा जा सका। कृपया एक मिनट बाद फिर कोशिश करें, या ईमेल और पासवर्ड से अंदर आएँ। |
