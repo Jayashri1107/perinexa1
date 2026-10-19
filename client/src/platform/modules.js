@@ -144,7 +144,7 @@ export const HOSPITAL_LAB = {
 };
 
 // USG and radiology (Lab version 2 part 8): the scan worklist and reports. Same list as server/src/routes/imaging.js.
-export const SCAN_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist'];
+export const SCAN_ROLES = ['doctor', 'rmo']; // owner, 19 Oct 2026: sonography for doctors and RMOs only
 const HOSPITAL_SCANS = {
   key: 'scans',
   label: 'Scans',

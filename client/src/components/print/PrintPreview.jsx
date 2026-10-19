@@ -17,6 +17,7 @@ const FITTED = ['', 'the parts are spaced a little closer', 'the text is a littl
  * - onPrint(): runs just before the browser's print window opens (e.g. to record the printout). If it fails,
  *   its message is shown and nothing is printed.
  * - hint: a line under the title (defaults to the A4 reminder); controls: choices shown under it.
+ * - autoPrint: open the browser's print window by itself once the preview is shown (a scan report completed).
  * - page: the paper, when it isn't A4 with 12 mm margins: { size: 'A4' | 'A5', margin: '12mm' | '45mm 12mm 20mm' }
  *   (used for printing and for the sheet on screen).
  * Optional (prescriptions):
@@ -40,7 +41,7 @@ const FITTED = ['', 'the parts are spaced a little closer', 'the text is a littl
  */
 export const forDocument = (result, docKey) => (result && result.key === docKey ? result : null);
 
-export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pdf, fit = false, docKey, children }) {
+export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pdf, fit = false, docKey, autoPrint = false, children }) {
   const ref = useDialogFocus(onClose);
   const sheet = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -103,6 +104,15 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
       setBusy(false);
     }
   };
+
+  // Printed by itself once the sheet is laid out (a start that is undone – React's double start in development – also
+  // undoes its timer, so it still prints once)
+  useEffect(() => {
+    if (!autoPrint) return undefined;
+    const t = setTimeout(print, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the preview opens
+  }, []);
 
   const ready = forDocument(made, docKey)?.blob ?? null;
   const failed = Boolean(forDocument(made, docKey)?.failed);

@@ -13,6 +13,7 @@ import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { findPatient } from '../utils/patientLookup.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
+import { eddInUse } from '../patients/pregnancyFindings.js';
 import { objectId, parse } from '../utils/validate.js';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md). Two routers:
@@ -21,12 +22,13 @@ import { objectId, parse } from '../utils/validate.js';
 //  - imagingRouter, /api/imaging: the study list and DRAFT templates, the worklist (to schedule, scheduled today, done
 //    and to report, signed), one study: scheduled, done, the report saved (doctors, RMOs) and signed (a doctor),
 //    changed after signing with a reason (the earlier report kept), cancelled with a reason, printed.
-// Reception and nurses see the worklist with the name, number and study only – never the indication or the report.
+// Doctors and RMOs only (owner, 19 Oct 2026: "sonography login only doctor and RMO"): reception and nurses no longer
+// open Scans. A pregnancy scan's page has her EDD (by her dates) for the weight centile – for those who see her details.
 // PCPNDT: no field holds a fetus's sex; any text about it is refused. The audit log gets ids only.
 
 export const imagingRouter = Router();
 export const patientImagingRouter = Router({ mergeParams: true });
-const WORK_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist'];
+const WORK_ROLES = ['doctor', 'rmo'];
 const forbidden = (m) => new HttpError(403, m, 'FORBIDDEN');
 const conflict = (m) => new HttpError(409, m, 'CONFLICT');
 const invalid = (fields, message = 'Please check the highlighted fields.') => Object.assign(new HttpError(400, message, 'VALIDATION'), { fields });
@@ -57,13 +59,22 @@ function view(req, o, patient) {
     cancelled: o.cancelled ? { ...stampView(o.cancelled), reason: o.cancelled.reason } : null,
     ...(clinical ? { indication: o.indication ?? '', report: reportView(o.report), amendments: (o.amendments ?? []).map((m) => ({ ...stampView(m), reason: m.reason, report: reportView(m.report) })) } : {}),
     rev: o.rev ?? 0,
-    patient: patient ? { id: String(patient._id), fullName: patient.fullName, mrn: patient.mrn, age: patient.careType === 'newborn' ? null : currentAge(patient), careType: patient.careType } : null,
+    patient: patient
+      ? {
+          id: String(patient._id),
+          fullName: patient.fullName,
+          mrn: patient.mrn,
+          age: patient.careType === 'newborn' ? null : currentAge(patient),
+          careType: patient.careType,
+          ...(clinical && patient.careType === 'antenatal' ? { eddByDates: eddInUse(patient) } : {}),
+        }
+      : null,
     access: {
       canSchedule: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
-      canDone: hasRole(req.membership, 'doctor', 'rmo', 'nurse', 'receptionist') && ['ordered', 'scheduled'].includes(o.status),
+      canDone: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
       canReport: clinical && hasRole(req.membership, 'doctor', 'rmo') && ['done', 'signed'].includes(o.status),
       canSign: clinical && hasRole(req.membership, 'doctor') && o.status === 'done' && Boolean(o.report),
-      canCancel: hasRole(req.membership, 'doctor', 'rmo', 'receptionist') && ['ordered', 'scheduled'].includes(o.status),
+      canCancel: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
       canPrint: clinical && o.status === 'signed',
     },
   };
@@ -122,7 +133,7 @@ patientImagingRouter.post('/', async (req, res) => {
 // ---------- The department ----------
 
 imagingRouter.use((req, _res, next) => {
-  if (!hasRole(req.membership, ...WORK_ROLES)) throw forbidden('Scans are for doctors, RMOs, nurses and reception.');
+  if (!hasRole(req.membership, ...WORK_ROLES)) throw forbidden('Scans are for doctors and RMOs.');
   next();
 });
 
