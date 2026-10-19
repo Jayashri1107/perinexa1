@@ -10,6 +10,7 @@ import { markDoneFromLab, planCtx, syncPlanSafely } from '../careplans/plansServ
 import { refreshPatientRiskSafely } from '../careplans/templatesService.js';
 import { ensureLabPackages } from '../lab/labPackages.js';
 import { FLAGS, OTHER_TEST, flagFor, isAbnormal, labNumber, testsFor } from '../lab/labTests.js';
+import { calculate } from '../lab/labCalcs.js';
 import {
   DEPARTMENT_KEYS,
   REJECT_REASONS,
@@ -19,7 +20,9 @@ import {
   fieldFor,
   labCatalogue,
   labSetup,
+  labSignatories,
   nextSampleNo,
+  reportSigner,
   rangeContext,
   setupOf,
   shownName,
@@ -138,9 +141,21 @@ const valueView = (v) => ({
   ...(v.range ? { range: v.range } : {}),
   ...(v.deltaPercent != null ? { deltaPercent: v.deltaPercent } : {}),
   ...(v.bigChange ? { bigChange: true } : {}),
+  ...(v.section ? { section: v.section } : {}),
+  ...(v.calculated ? { calculated: true } : {}),
 });
 const outsideView = (o) => (o?.sent ? { labName: o.labName, ref: o.ref ?? '', sent: stampView(o.sent), received: stampView(o.received) } : null);
-const testView = (t) => ({ key: t.key, name: t.name, values: (t.values ?? []).map(valueView), text: t.text ?? '', department: t.department ?? '', outside: outsideView(t.outside) });
+const testView = (t) => ({
+  key: t.key,
+  name: t.name,
+  values: (t.values ?? []).map(valueView),
+  text: t.text ?? '',
+  department: t.department ?? '',
+  outside: outsideView(t.outside),
+  ...(t.antibiotics?.length ? { antibiotics: t.antibiotics.map((a) => ({ name: a.name, result: a.result, zone: a.zone ?? '' })) } : {}),
+  ...(t.method ? { method: t.method } : {}),
+  ...(t.notes ? { notes: t.notes } : {}),
+});
 
 /** Whether an order is past its due time: not reported yet and the time has passed, or reported after it. */
 export function isLate(order, now) {
@@ -216,7 +231,8 @@ export function orderView(order, access, more = {}) {
 }
 
 /** The patient as the lab sees them (and as the lists show them). */
-const patientBrief = (p, doctorName = null) => ({ id: String(p._id), fullName: p.fullName, mrn: p.mrn, careType: p.careType, age: p.careType === 'newborn' ? null : currentAge(p), assignedDoctorName: doctorName });
+// sex: only for a man the lab registered (his usual ranges are men's; every other adult is a women's-care patient)
+const patientBrief = (p, doctorName = null) => ({ id: String(p._id), fullName: p.fullName, mrn: p.mrn, careType: p.careType, age: p.careType === 'newborn' ? null : currentAge(p), assignedDoctorName: doctorName, ...(p.careType !== 'newborn' && p.sex === 'male' ? { sex: 'male' } : {}) });
 
 async function loadOrder(req) {
   const orderId = parse(objectId, req.params.orderId);
@@ -381,6 +397,8 @@ const walkInSchema = orderSchema
       .nullable()
       .default(null),
     collectNow: z.boolean().default(false),
+    // The patient's own sex for the usual ranges (report templates – an adult walk-in may be a man); left out = as recorded
+    sex: z.enum(['female', 'male']).optional(),
   })
   .strict();
 
@@ -442,7 +460,12 @@ labRouter.post('/walk-in', async (req, res) => {
   }
   if (!referrer && body.prescription.trim().length < 3) throw invalid({ prescription: 'Choose the referring doctor, or write "Self – no prescription" and what she asked for.' });
   const home = body.home ? { address: body.home.address.trim(), on: new Date(`${body.home.on}T00:00:00Z`), time: body.home.time, ...(await homeCollector(req, body.home.collectorId)), status: 'scheduled', note: '', updated: stampOf(req) } : null;
-  const { patientId, referrerId, prescription, home: _h, payment, discount, collectNow, ...order } = body;
+  const { patientId, referrerId, prescription, home: _h, payment, discount, collectNow, sex, ...order } = body;
+  // An adult's own sex, for the usual ranges (never a baby's here: that is recorded after birth on the baby's record)
+  if (sex && patient.careType !== 'newborn' && patient.sex !== sex) {
+    patient.sex = sex;
+    await patient.save();
+  }
   const access = labAccess(req, patient);
   const repeat = await LabOrder.exists({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
   if (discount && !repeat && (await otherChargesToday(req, patient._id))) {
@@ -735,10 +758,11 @@ labRouter.get('/orders/:orderId', async (req, res) => {
   const { order, patient, access } = await loadOrder(req);
   if (!access.view) throw forbidden("You can't see this patient's lab orders.");
   await audit(req, 'LAB_ORDER_VIEWED', { details: ids(order, { mrn: patient.mrn }) });
-  const [catalogue, setup, previous, qc] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId), previousResults(req.tenantId, order), qcRejected(req.tenantId, order.tests.map((t) => t.key), req.now)]);
+  const [catalogue, setup, previous, qc, signatories] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId), previousResults(req.tenantId, order), qcRejected(req.tenantId, order.tests.map((t) => t.key), req.now), labSignatories(req.tenantId)]);
   // The result form suggests flags from the ranges that apply to this patient (her age, pregnancy); her earlier results
-  // of the same values (trends, Lab version 2); the tests whose quality control was rejected today
-  res.json({ order: { ...(await viewFor(req, order, access, setup)), patient: patientBrief(patient) }, catalogue: catalogueView(catalogue, rangeContext(patient, req.now)), verify: setup.verify, previous, qcRejected: qc });
+  // of the same values (trends, Lab version 2); the tests whose quality control was rejected today; who signs the
+  // printed report (report templates)
+  res.json({ order: { ...(await viewFor(req, order, access, setup)), patient: patientBrief(patient) }, catalogue: catalogueView(catalogue, rangeContext(patient, req.now)), verify: setup.verify, previous, qcRejected: qc, signer: reportSigner(signatories, order) });
 });
 
 // The labels were printed (the browser prints them): the order gets its sample number if it had none (older orders).
@@ -830,8 +854,14 @@ const resultsSchema = z
       z
         .object({
           key: z.string().max(40),
-          values: z.array(z.object({ key: z.string().max(40), value: z.string().trim().max(100), flag: z.enum(FLAGS).default('') }).strict()).max(20).default([]),
+          // A paragraph value (histopathology) holds up to 2000 characters; any other at most 100 (checkedTests)
+          values: z.array(z.object({ key: z.string().max(40), value: z.string().trim().max(2000), flag: z.enum(FLAGS).default('') }).strict()).max(40).default([]),
           text: safeText('Result', 2000).default(''),
+          // The culture template's sensitivity table: an antibiotic left without a result is not kept
+          antibiotics: z
+            .array(z.object({ name: safeText('Antibiotic', 60), result: z.enum(['', 'S', 'I', 'R']).default(''), zone: safeText('Zone', 20).default('') }).strict())
+            .max(30)
+            .default([]),
         })
         .strict(),
     ),
@@ -902,11 +932,14 @@ function checkedTests(order, sent, catalogue, ctx, previous = {}) {
       if (v.value === '') continue;
       const field = fieldFor(raw, ctx);
       const words = { name: field.name, ...(field.unit ? { unit: field.unit } : {}), ...(field.range ? { range: field.range } : {}) };
+      const section = field.section ? { section: field.section } : {};
       if (field.type === 'text') {
         if (mentionsFetalSex(v.value)) fields[at] = PCPNDT_MESSAGE;
-        values.push({ key: v.key, value: v.value, flag: '', name: field.name });
+        else if (!field.long && v.value.length > 100) fields[at] = 'At most 100 characters here.';
+        values.push({ key: v.key, value: v.value, flag: '', name: field.name, ...section });
         continue;
       }
+      if (v.value.length > 100) fields[at] = 'At most 100 characters here.';
       let value = v.value;
       if (field.type === 'number') {
         // Stored as a plain number: "1,23,456" becomes 123456; "1,500" is asked about; a grouped number in a field
@@ -923,14 +956,39 @@ function checkedTests(order, sent, catalogue, ctx, previous = {}) {
         const pct = Math.round(((Number(value) - Number(prev.value)) / Math.abs(Number(prev.value))) * 1000) / 10;
         delta = { deltaPercent: pct, bigChange: field.deltaPercent != null && Math.abs(pct) >= field.deltaPercent };
       }
-      values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words, ...delta });
+      values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words, ...section, ...delta });
     }
-    return { key: t.key, name: t.name, values, text: s.text, department: t.department ?? '', outside: t.outside ?? null };
+    // Values worked out from the others (report templates – lab/labCalcs.js): only when left empty and their inputs
+    // were typed; a value typed (an analyser's own MCV) is kept
+    const numbers = Object.fromEntries(values.filter((v) => def?.fields.find((f) => f.key === v.key)?.type === 'number').map((v) => [v.key, Number(v.value)]));
+    for (const raw of def?.fields ?? []) {
+      if (!raw.calc || values.some((v) => v.key === raw.key)) continue;
+      const value = calculate(raw.calc, numbers);
+      if (value == null) continue;
+      const field = fieldFor(raw, ctx);
+      values.push({ key: raw.key, value, flag: flagFor(field, value), name: field.name, ...(field.unit ? { unit: field.unit } : {}), ...(field.range ? { range: field.range } : {}), ...(field.section ? { section: field.section } : {}), calculated: true });
+    }
+    // In the test's order, so the report reads as the template lays it out
+    const place = new Map((def?.fields ?? []).map((f, n) => [f.key, n]));
+    values.sort((a, b) => (place.get(a.key) ?? 99) - (place.get(b.key) ?? 99));
+    const antibiotics = def?.report?.template === 'culture' ? (s.antibiotics ?? []).filter((a) => a.result).map((a) => ({ name: a.name.trim(), result: a.result, zone: a.zone.trim() })) : [];
+    return {
+      key: t.key,
+      name: t.name,
+      values,
+      text: s.text,
+      department: t.department ?? '',
+      outside: t.outside ?? null,
+      ...(antibiotics.length ? { antibiotics } : {}),
+      // The method and notes as printed now (the test list may change later)
+      ...(def?.report?.method ? { method: def.report.method } : {}),
+      ...(def?.report?.notes ? { notes: def.report.notes } : {}),
+    };
   });
   if (Object.keys(fields).length) throw invalid(fields);
   return tests;
 }
-const hasResult = (t) => t.values.some((v) => v.value !== '') || t.text.trim() !== '';
+const hasResult = (t) => t.values.some((v) => v.value !== '' && !v.calculated) || t.text.trim() !== '' || Boolean(t.antibiotics?.length);
 
 /** The report: the results go to the doctor (with the check on, `verified` says who checked them). */
 function markReported(req, order) {

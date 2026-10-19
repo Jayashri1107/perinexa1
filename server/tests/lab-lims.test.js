@@ -134,8 +134,8 @@ describe("the hospital's test list", () => {
 
   it('a range for pregnant women applies to an antenatal patient and is saved with her result; others get the usual one', async () => {
     const band = { pregnant: 'yes', low: 10.5, high: 14, range: '' };
-    const sexOnAdult = await (await as('drA')).put('/api/lab-setup/tests/hb').send({ fieldRanges: { hb: { bands: [{ ...band, sex: 'female' }] } }, version: 1 });
-    expect(sexOnAdult.status).toBe(400); // a range for one sex is only for a baby's test
+    const daysOnAdult = await (await as('drA')).put('/api/lab-setup/tests/hb').send({ fieldRanges: { hb: { bands: [{ ...band, ageUnit: 'days', fromAge: 0, toAge: 7 }] } }, version: 1 });
+    expect(daysOnAdult.status).toBe(400); // days of life are only for a baby's test (a range for men is allowed: report templates)
     const noWho = await (await as('drA')).put('/api/lab-setup/tests/hb').send({ fieldRanges: { hb: { bands: [{ low: 10 }] } }, version: 1 });
     expect(noWho.status).toBe(400);
     const set = await (await as('lab')).put('/api/lab-setup/tests/hb').send({ fieldRanges: { hb: { bands: [band] } }, version: 1 });

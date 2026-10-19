@@ -40,6 +40,8 @@ const GROUP_DEPARTMENT = {
 };
 const KEY_DEPARTMENT = {
   urineCulture: 'microbiology',
+  hvsCulture: 'microbiology',
+  histopath: 'cytology',
   pap: 'cytology',
   nb_cbc: 'haematology',
   nb_group_dct: 'haematology',
@@ -100,14 +102,16 @@ export const shownName = (test) => (isConfidential(test.key) ? CONFIDENTIAL_NAME
 
 // ---------- Usual ranges for one patient ----------
 
-export const BAND_SEX = ['', 'female', 'male']; // a baby's sex as recorded after birth – never a fetus's
+// The patient's own sex: a baby's as recorded after birth, an adult's as the lab recorded it at a walk-in registration
+// (every other adult in Perinexa is a women's-care patient). Never a fetus's (PCPNDT).
+export const BAND_SEX = ['', 'female', 'male'];
 export const BAND_PREGNANT = ['', 'yes', 'no'];
 export const AGE_UNITS = ['years', 'days'];
 
 /**
- * What decides which range applies to a patient: age in years (adults) or days of life (a baby), the baby's sex
- * recorded after birth, and whether she is pregnant (antenatal care). Adults in Perinexa are women's-care patients, so
- * an adult has no recorded sex here and a range for one sex never applies to her.
+ * What decides which range applies to a patient: age in years (adults) or days of life (a baby), the patient's sex
+ * (a baby's recorded after birth; an adult's recorded by the lab for a walk-in, else female – Perinexa's adults are
+ * women's-care patients), and whether she is pregnant (antenatal care).
  */
 export function rangeContext(patient, now = new Date()) {
   const baby = patient.careType === 'newborn';
@@ -117,7 +121,7 @@ export function rangeContext(patient, now = new Date()) {
     baby,
     ageYears: baby ? 0 : currentAge(patient, now),
     ageDays,
-    sex: baby && ['female', 'male'].includes(patient.newborn?.sex) ? patient.newborn.sex : '',
+    sex: baby ? (['female', 'male'].includes(patient.newborn?.sex) ? patient.newborn.sex : '') : patient.sex === 'male' ? 'male' : 'female',
     pregnant: patient.careType === 'antenatal',
   };
 }
@@ -144,12 +148,12 @@ export function rangeText(low, high, unit) {
   return '';
 }
 
-/** "Pregnant, 18–45 years" – who a group range is for. */
-export function bandWho(band) {
+/** "Pregnant, 18–45 years" – who a group range is for. baby: a baby's test (a girl or a boy, not women or men). */
+export function bandWho(band, baby = false) {
   const parts = [];
   if (band.pregnant === 'yes') parts.push('pregnant');
   if (band.pregnant === 'no') parts.push('not pregnant');
-  if (band.sex) parts.push(band.sex === 'female' ? 'baby girl' : 'baby boy');
+  if (band.sex) parts.push(baby ? (band.sex === 'female' ? 'baby girl' : 'baby boy') : band.sex === 'female' ? 'women' : 'men');
   if (band.fromAge != null || band.toAge != null) {
     const u = band.ageUnit === 'days' ? 'days of life' : 'years';
     if (band.fromAge != null && band.toAge != null) parts.push(`${band.fromAge}–${band.toAge} ${u}`);
@@ -165,10 +169,25 @@ export function fieldFor(field, ctx) {
   if (field.type !== 'number') return field;
   const band = (field.bands ?? []).find((b) => bandFits(b, ctx));
   if (!band) return field;
-  return { ...field, low: band.low ?? null, high: band.high ?? null, range: band.range || `${rangeText(band.low, band.high, field.unit)} (${bandWho(band).toLowerCase()})`, band: bandWho(band) };
+  const who = bandWho(band, ctx?.baby);
+  return { ...field, low: band.low ?? null, high: band.high ?? null, range: band.range || `${rangeText(band.low, band.high, field.unit)} (${who.toLowerCase()})`, band: who };
 }
 
 // ---------- The hospital's test list ----------
+
+// Report templates (docs/LAB_TEMPLATES_PLAN.md): how a test prints – a table of values (with sections), a serology
+// line with method, a culture with its sensitivity table, or paragraphs (histopathology, Pap smear).
+export const TEMPLATES = { table: 'Table of values', serology: 'Serology (result and method)', culture: 'Culture and sensitivity', narrative: 'Paragraphs (histopathology, cytology)' };
+export const TEMPLATE_KEYS = Object.keys(TEMPLATES);
+export const SENSITIVITY = ['S', 'I', 'R']; // Sensitive, Intermediate, Resistant
+
+/** A test's report settings: the built-in (or empty) ones with the hospital's changes over them. */
+function reportOf(base, changed) {
+  const b = base ?? {};
+  const c = changed ?? {};
+  const pick = (k, d) => (c[k] !== undefined && c[k] !== null ? c[k] : (b[k] ?? d));
+  return { template: pick('template', 'table'), method: pick('method', ''), notes: pick('notes', ''), ownPage: Boolean(pick('ownPage', false)) };
+}
 
 /** A built-in test as this hospital set it up (s: its LabTestSetting, or none). */
 function builtInAsSet(t, s) {
@@ -176,11 +195,12 @@ function builtInAsSet(t, s) {
   const ranges = s?.fieldRanges ?? {};
   const fields = t.fields.map((f) => {
     const r = ranges[f.key];
-    if (!r || f.type !== 'number') return { ...f, bands: [], deltaPercent: null };
+    // The built-in group ranges (men) stay until the hospital sets its own (an empty list removes them)
+    if (!r || f.type !== 'number') return { ...f, bands: f.type === 'number' ? (f.bands ?? []) : [], deltaPercent: null };
     const changed = r.low !== undefined || r.high !== undefined;
     const low = r.low !== undefined ? r.low : f.low;
     const high = r.high !== undefined ? r.high : f.high;
-    return { ...f, low, high, range: r.range || (changed ? rangeText(low, high, f.unit) : f.range), bands: r.bands ?? [], deltaPercent: r.deltaPercent ?? null };
+    return { ...f, low, high, range: r.range || (changed ? rangeText(low, high, f.unit) : f.range), bands: r.bands !== undefined ? r.bands : (f.bands ?? []), deltaPercent: r.deltaPercent ?? null };
   });
   return {
     key: t.key,
@@ -191,6 +211,8 @@ function builtInAsSet(t, s) {
     fields,
     planKeys: t.planKeys ?? [],
     planSeries: Boolean(t.planSeries),
+    report: reportOf(t.report, s?.report),
+    antibiotics: s?.antibiotics ?? t.antibiotics ?? [],
     custom: false,
     department,
     tatHours: s?.tatHours ?? defaultTat(department),
@@ -218,6 +240,8 @@ function customAsSet(s) {
     who: s.who,
     fields: (s.fields ?? []).map((f) => ({ ...f, bands: f.type === 'number' ? (f.bands ?? []) : [], deltaPercent: f.type === 'number' ? (f.deltaPercent ?? null) : null })),
     planKeys: [],
+    report: reportOf(null, s.report),
+    antibiotics: s.antibiotics ?? [],
     custom: true,
     department,
     tatHours: s.tatHours ?? defaultTat(department),
@@ -264,12 +288,35 @@ export function catalogueView(catalogue, ctx = null) {
       active: t.active,
       department: t.department,
       status: t.status,
+      report: t.report,
+      antibiotics: t.antibiotics,
       fields: t.fields.map((f) => {
         const { bands, ...rest } = ctx ? fieldFor(f, ctx) : f;
         return rest;
       }),
     })),
   };
+}
+
+/** Who signs reports (the lab's settings – report templates), with their signature pictures. */
+export async function labSignatories(tenantId) {
+  const s = await LabSetup.findOne({ tenantId, set: 'lab' }, { signatories: 1 }).lean();
+  return (s?.signatories ?? []).map((x) => ({ id: String(x._id), name: x.name, title: x.title ?? '', qualification: x.qualification ?? '', regNo: x.regNo ?? '', userId: x.userId ? String(x.userId) : null, signature: x.signature ?? '', isDefault: Boolean(x.isDefault), active: x.active !== false }));
+}
+
+/**
+ * Who signs this report: the signer who checked it (or reported it, without the check) – with the signature picture –
+ * else the default signer's name with a line to sign by hand (no picture: the report was not checked by them).
+ * Only for reported results.
+ */
+export function reportSigner(signatories, order) {
+  if (!['reported', 'reviewed'].includes(order.status)) return null;
+  const active = signatories.filter((x) => x.active);
+  const by = String(order.verified?.by ?? order.reported?.by ?? '');
+  const own = active.find((x) => x.userId && x.userId === by);
+  const pick = own ?? active.find((x) => x.isDefault) ?? null;
+  if (!pick) return null;
+  return { name: pick.name, title: pick.title, qualification: pick.qualification, regNo: pick.regNo, signature: own && pick.signature ? pick.signature : '', signed: Boolean(own) };
 }
 
 /** The lab's settings (the defaults when the hospital has none). */

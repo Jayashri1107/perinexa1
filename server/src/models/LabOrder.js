@@ -25,9 +25,15 @@ const valueSchema = new mongoose.Schema(
     // passed the hospital's limit for this value ("Big change")
     deltaPercent: { type: Number, default: null },
     bigChange: { type: Boolean, default: false },
+    // Report templates (docs/LAB_TEMPLATES_PLAN.md): the heading it prints under, and whether it was worked out from
+    // other values (lab/labCalcs.js) rather than typed
+    section: String,
+    calculated: { type: Boolean, default: false },
   },
   { _id: false },
 );
+// The culture template's sensitivity table: each antibiotic tested, Sensitive / Intermediate / Resistant, and the zone
+const antibioticSchema = new mongoose.Schema({ name: String, result: { type: String, enum: ['S', 'I', 'R'] }, zone: { type: String, default: '' } }, { _id: false });
 // A test sent to an outside lab (feature 7): which lab and its reference, when it was sent and when the result came.
 const outsideSchema = new mongoose.Schema(
   { labName: String, ref: { type: String, default: '' }, sent: new mongoose.Schema(byFields, { _id: false }), received: { type: new mongoose.Schema(byFields, { _id: false }), default: null } },
@@ -41,6 +47,10 @@ const testSchema = new mongoose.Schema(
     text: { type: String, default: '' }, // the result in words (also the whole result of an 'other' test)
     department: { type: String, default: '' }, // the lab department when ordered (lab/labSetup.js DEPARTMENTS)
     outside: { type: outsideSchema, default: null },
+    antibiotics: { type: [antibioticSchema], default: undefined },
+    // The method and notes printed with the result, as they were when it was saved (the test list may change later)
+    method: { type: String, default: undefined },
+    notes: { type: String, default: undefined },
   },
   { _id: false },
 );
