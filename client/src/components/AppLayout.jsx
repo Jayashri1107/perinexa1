@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftRight, Building2, ChevronDown, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, UserCog } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, UserCog } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
-import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules, sideTabs } from '../platform/modules.js';
+import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
 import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
 import { useTextShortcuts } from '../shortcuts/useTextShortcuts.js';
 import { CommandBox } from './CommandBox.jsx';
@@ -58,29 +58,17 @@ function useDismiss(open, setOpen, box) {
 /** "Super admin" or "Platform admin" (null for hospital staff). */
 const platformRoleLabel = (platform) => (platform?.role === 'superadmin' ? 'Super admin' : platform?.role === 'platformadmin' ? 'Platform admin' : null);
 
-/** Is this path inside a module (its own page, its other pages, or one of its tabs)? */
-const inModule = (module, pathname) => {
-  const prefixes = [module.activeFor ?? [], module.to === '/' ? [] : module.to, ...(module.tabs ?? []).map((t) => (t.to === '/' ? [] : [t.to, t.activeFor ?? []]))].flat(2);
-  return module.to === '/' ? pathname === '/' : prefixes.some((prefix) => pathname.startsWith(prefix));
-};
-
-// A menu item: an icon tile and the label (only the tile in the icon rail). With more than one page, its pages show
-// as items under it (owner, 17 Oct 2026): open while one of them is open, or opened with the arrow.
-function SideLink({ module, rail, onNavigate, roles = [] }) {
+// A menu item: an icon tile and the label (only the tile in the icon rail).
+function SideLink({ module, rail, onNavigate }) {
   const Icon = module.icon;
   const { pathname } = useLocation();
   // activeFor: the item also stays highlighted on its other pages (e.g. Care plans → Red-flag rules)
   const inSection = [module.activeFor ?? []].flat().some((prefix) => pathname.startsWith(prefix));
-  const subs = rail ? [] : sideTabs(module, roles);
-  const here = subs.length > 0 && inModule(module, pathname);
-  const [opened, setOpened] = useState(null); // null: follows the page; true/false: the person's choice
-  const open = subs.length > 0 && (opened ?? here);
-  const subId = `sb-sub-${module.key}`;
-  const link = (
+  return (
     <NavLink
       to={module.to}
       end={module.end}
-      className={({ isActive }) => `sb-link ${isActive || inSection || here ? 'active' : ''}`}
+      className={({ isActive }) => `sb-link ${isActive || inSection ? 'active' : ''}`}
       title={rail ? module.label : undefined}
       aria-label={rail ? module.label : undefined}
       onClick={onNavigate}
@@ -90,33 +78,6 @@ function SideLink({ module, rail, onNavigate, roles = [] }) {
       </span>
       <span className="sb-label">{module.label}</span>
     </NavLink>
-  );
-  if (!subs.length) return link;
-  return (
-    <div className={`sb-group${open ? ' is-open' : ''}`}>
-      <div className="sb-group-row">
-        {link}
-        <button type="button" className="sb-expand" aria-expanded={open} aria-controls={subId} aria-label={`${open ? 'Hide' : 'Show'} the ${module.label} pages`} onClick={() => setOpened(!open)}>
-          <ChevronDown aria-hidden="true" />
-        </button>
-      </div>
-      {open && (
-        <ul className="sb-sub" id={subId}>
-          {subs.map((t) => (
-            <li key={t.to}>
-              <NavLink
-                to={t.to}
-                end={t.end}
-                className={({ isActive }) => `sb-sublink${isActive || [t.activeFor ?? []].flat().some((prefix) => pathname.startsWith(prefix)) ? ' active' : ''}`}
-                onClick={onNavigate}
-              >
-                {t.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 
@@ -353,7 +314,7 @@ export function AppLayout() {
 
         <nav className="sb-nav">
           {modules.map((m) => (
-            <SideLink key={m.key} module={m} rail={rail} onNavigate={closeMobile} roles={isPlatform && !inSetup ? [] : activeMembership?.roles ?? []} />
+            <SideLink key={m.key} module={m} rail={rail} onNavigate={closeMobile} />
           ))}
           {!locked && <SideLink module={ACCOUNT_MODULE} rail={rail} onNavigate={closeMobile} />}
         </nav>

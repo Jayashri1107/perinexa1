@@ -499,27 +499,6 @@
 .help-new li + li { margin-top: 6px; }
 .cmd-box .cmd-input input, .cmd-box .cmd-input input:focus { height: auto; padding: 0; border: 0; box-shadow: none; background: none; }
 
-/* ---------- A module's pages under it in the left menu (owner, 17 Oct 2026) ---------- */
-.sb-group-row { display: flex; align-items: center; gap: var(--space-1); }
-.sb-group-row .sb-link { flex: 1; min-width: 0; }
-.sb-expand {
-  display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--radius-md);
-  background: none; color: var(--indigo-200); cursor: pointer;
-}
-.sb-expand:hover { background: var(--nav-row-hover); color: var(--on-dark); }
-.sb-expand:focus-visible { box-shadow: var(--focus-ring-on-dark); outline: none; }
-.sb-expand svg { width: 18px; height: 18px; transition: transform 0.15s; }
-.sb-group.is-open .sb-expand svg { transform: rotate(180deg); }
-.sb-sub { display: grid; gap: 2px; margin: 2px 0 var(--space-2); padding: 0 0 0 calc(var(--nav-tile-size) + var(--space-3)); list-style: none; }
-.sb-sublink {
-  display: block; padding: 6px var(--space-3); border-radius: var(--radius-md); color: var(--indigo-200); font-size: var(--fs-body);
-  line-height: var(--lh-body); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.sb-sublink:hover { background: var(--nav-row-hover); color: var(--on-dark); }
-.sb-sublink.active { background: var(--nav-row-active); color: var(--on-dark); font-weight: 600; }
-.sb-sublink:focus-visible { box-shadow: var(--focus-ring-on-dark); outline: none; }
-.pf-collapsed .sb-expand, .pf-collapsed .sb-sub { display: none; }
-
 /* ---------- The bell in the top bar (owner, 17 Oct 2026) ---------- */
 .nb { position: relative; }
 .nb-btn { position: relative; }

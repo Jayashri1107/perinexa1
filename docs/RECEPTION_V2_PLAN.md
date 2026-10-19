@@ -16,8 +16,8 @@ the Docterz app and eLabAssist do, without the bill becoming complicated. All te
 | The doctor marks the checkup done; reception sees it | Today → Waiting to be seen → open a patient → **Checkup done** (doctors and RMOs, today's appointments). She leaves the waiting list, her appointment shows **Checkup done**, reception gets a notification. Audit: "Checkup marked done". |
 | WhatsApp message when an appointment is booked | Already built (`docs/WHATSAPP_DESK_PLAN.md`): a booking, move or cancellation goes at once to a patient who chose WhatsApp, once WhatsApp is set up (below). |
 
-**Changed 19 Oct 2026 (owner):** only the Lab shows its pages under it in the sidebar; every other item is one link
-again, with its pages as tabs at the top.
+**Changed 19 Oct 2026 (owner):** the sidebar is back as it was first – no pages under any item (the Lab too); each
+module's pages are the tabs at the top.
 
 ## Is WhatsApp integrated?
 
