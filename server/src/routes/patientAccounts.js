@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { hasRole } from '../models/Membership.js';
-import { Patient } from '../models/Patient.js';
+import { Patient, currentAge } from '../models/Patient.js';
+import { PatientChangeRequest } from '../models/PatientChangeRequest.js';
 import { PatientAccount } from '../models/PatientAccount.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { possibleMatches } from '../patients/duplicateService.js';
@@ -132,4 +133,68 @@ patientAccountsRouter.post('/:id/reject', async (req, res) => {
   await account.save();
   await audit(req, 'PORTAL_SIGNUP_REJECTED', { details: { accountId: String(account._id), reason } });
   res.json({ account: view(account) });
+});
+
+// ---------- Her requests to change her name, age, mobile or email (from her portal profile – owner, 19 Oct 2026) ----------
+// Reception checks who she is, then approves (her record and her sign-in are changed) or rejects with a reason.
+
+const changeView = (r, patient) => ({
+  id: String(r._id),
+  patient: patient ? { id: String(patient._id), fullName: patient.fullName, mrn: patient.mrn, phone: patient.phone ?? '', age: currentAge(patient) } : null,
+  changes: r.changes,
+  note: r.note ?? '',
+  status: r.status,
+  at: r.createdAt,
+  reviewed: r.reviewed ? { byName: r.reviewed.byName ?? '', at: r.reviewed.at, reason: r.reviewed.reason ?? '' } : null,
+});
+
+/** The requests waiting (oldest first). */
+patientAccountsRouter.get('/changes', async (req, res) => {
+  const list = await PatientChangeRequest.find({ tenantId: req.tenantId, status: 'pending' }).sort({ createdAt: 1 }).limit(200).lean();
+  const patients = new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: list.map((r) => r.patientId) } })).map((p) => [String(p._id), p]));
+  res.json({ requests: list.map((r) => changeView(r, patients.get(String(r.patientId)))) });
+});
+
+async function pendingChange(req) {
+  const r = await PatientChangeRequest.findOne({ tenantId: req.tenantId, _id: parse(objectId, req.params.id) });
+  if (!r) throw new HttpError(404, 'This request was not found.', 'NOT_FOUND');
+  if (r.status !== 'pending') throw new HttpError(409, 'This request was already handled.', 'CONFLICT');
+  return r;
+}
+
+patientAccountsRouter.post('/changes/:id/approve', async (req, res) => {
+  const r = await pendingChange(req);
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: r.patientId });
+  if (!patient) throw new HttpError(404, 'Her record was not found.', 'NOT_FOUND');
+  const c = r.changes ?? {};
+  const account = r.accountId ? await PatientAccount.findOne({ tenantId: req.tenantId, _id: r.accountId }) : null;
+  // Her sign-in first: a mobile or email another live account uses is refused (nothing is changed then)
+  if (account && (c.phone || c.email)) {
+    const clash = await PatientAccount.exists({ tenantId: req.tenantId, _id: { $ne: account._id }, status: { $in: ['pending', 'approved'] }, $or: [...(c.phone ? [{ mobile: c.phone }] : []), ...(c.email ? [{ email: c.email }] : [])] });
+    if (clash) throw new HttpError(409, 'Another patient account already uses this mobile number or email.', 'CONFLICT');
+    if (c.phone) account.mobile = c.phone;
+    if (c.email) account.email = c.email;
+    await account.save();
+  }
+  if (c.fullName) patient.fullName = c.fullName;
+  if (c.ageYears != null) Object.assign(patient, { ageYears: c.ageYears, ageRecordedOn: req.now });
+  if (c.phone) patient.phone = c.phone;
+  await patient.save();
+  r.status = 'approved';
+  r.reviewed = { by: req.user._id, byName: req.user.name, at: req.now };
+  await r.save();
+  // Ids and which fields – never the old or new name, age, number or email
+  await audit(req, 'PORTAL_CHANGE_APPROVED', { details: { patientId: String(patient._id), mrn: patient.mrn, fields: Object.keys(c).filter((k) => c[k] != null) } });
+  res.json({ request: changeView(r, patient) });
+});
+
+patientAccountsRouter.post('/changes/:id/reject', async (req, res) => {
+  const r = await pendingChange(req);
+  const { reason } = parse(z.object({ reason: z.string().trim().min(3, 'Please write why.').max(200) }).strict(), req.body);
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: r.patientId });
+  r.status = 'rejected';
+  r.reviewed = { by: req.user._id, byName: req.user.name, at: req.now, reason };
+  await r.save();
+  await audit(req, 'PORTAL_CHANGE_REJECTED', { details: { patientId: String(r.patientId), mrn: patient?.mrn } });
+  res.json({ request: changeView(r, patient) });
 });

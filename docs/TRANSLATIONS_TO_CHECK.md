@@ -555,3 +555,47 @@ after she asks for an OTP. `{…}` are filled in by the app.
 | Queue time, walk-in token | {hospital}: your token is {token} with {doctor}. {n} patients are before you. Expected time about {time} – it may change a little. | {hospital}: आपला टोकन क्रमांक {token} आहे ({doctor}). आपल्या आधी {n} रुग्ण आहेत. साधारण {time} वाजता आपला क्रमांक येईल. वेळ थोडी बदलू शकते. | {hospital}: आपका टोकन नंबर {token} है ({doctor})। आपसे पहले {n} मरीज़ हैं। लगभग {time} बजे आपकी बारी आएगी। समय थोड़ा बदल सकता है। |
 | Queue time, booked time | {hospital}: you are checked in for {time} with {doctor}. … | {hospital}: आपली {time} ची भेट नोंदली आहे ({doctor}). … | {hospital}: आपकी {time} की मुलाक़ात दर्ज है ({doctor})। … |
 | OTP sent (portal) | If {number} is registered, an OTP was sent to it on WhatsApp (or by SMS). | {number} नोंदलेला असल्यास त्यावर WhatsApp वर (किंवा SMS ने) OTP पाठवला आहे. | अगर {number} पंजीकृत है, तो उस पर WhatsApp पर (या SMS से) OTP भेजा गया है। |
+| `tabs.profile` (changed 19 Oct 2026) | My profile | माझी प्रोफाइल | मेरी प्रोफ़ाइल |
+| `myProfile.title` (added 19 Oct 2026) | My profile | माझी प्रोफाइल | मेरी प्रोफ़ाइल |
+| `myProfile.tabs.details` (added 19 Oct 2026) | My details | माझी माहिती | मेरी जानकारी |
+| `myProfile.tabs.visits` (added 19 Oct 2026) | Visits | भेटी | मुलाक़ातें |
+| `myProfile.tabs.plan` (added 19 Oct 2026) | Care plan | काळजीची योजना | देखभाल योजना |
+| `myProfile.tabs.scans` (added 19 Oct 2026) | Sonography | सोनोग्राफी | सोनोग्राफ़ी |
+| `myProfile.tabs.lab` (added 19 Oct 2026) | Lab reports | तपासणी अहवाल | जाँच रिपोर्ट |
+| `myProfile.tabs.prescriptions` (added 19 Oct 2026) | Prescriptions | औषधचिठ्ठ्या | पर्चे |
+| `myProfile.tabs.password` (added 19 Oct 2026) | Password | पासवर्ड | पासवर्ड |
+| `myProfile.yourDetails` (added 19 Oct 2026) | Your details at the hospital | रुग्णालयाकडे असलेली तुमची माहिती | अस्पताल में आपकी जानकारी |
+| `myProfile.contactTitle` (added 19 Oct 2026) | Your contact details | तुमची संपर्क माहिती | आपकी संपर्क जानकारी |
+| `myProfile.contactHint` (added 19 Oct 2026) | You can change these yourself. | ही माहिती तुम्ही स्वतः बदलू शकता. | यह जानकारी आप ख़ुद बदल सकती हैं। |
+| `myProfile.city` (added 19 Oct 2026) | City, town or village | शहर, गाव | शहर, क़स्बा या गाँव |
+| `myProfile.state` (added 19 Oct 2026) | State | राज्य | राज्य |
+| `myProfile.pinCode` (added 19 Oct 2026) | PIN code | पिन कोड | पिन कोड |
+| `myProfile.emergencyTitle` (added 19 Oct 2026) | Whom to call in an emergency | आणीबाणीच्या वेळी कोणाला फोन करावा | आपातकाल में किसे फ़ोन करें |
+| `myProfile.ecName` (added 19 Oct 2026) | Name | नाव | नाम |
+| `myProfile.ecRelation` (added 19 Oct 2026) | Relation | नाते | रिश्ता |
+| `myProfile.ecPhone` (added 19 Oct 2026) | Phone | फोन | फ़ोन |
+| `myProfile.saveContact` (added 19 Oct 2026) | Save my contact details | माझी संपर्क माहिती जतन करा | मेरी संपर्क जानकारी सहेजें |
+| `myProfile.contactSaved` (added 19 Oct 2026) | Your contact details are saved. | तुमची संपर्क माहिती जतन झाली. | आपकी संपर्क जानकारी सहेज ली गई। |
+| `myProfile.requestTitle` (added 19 Oct 2026) | Change your name, age, mobile or email | तुमचे नाव, वय, मोबाइल किंवा ईमेल बदला | अपना नाम, उम्र, मोबाइल या ईमेल बदलें |
+| `myProfile.requestHint` (added 19 Oct 2026) | The hospital reception checks who you are, then changes them. You see the answer here. Fill in only what should change. | रुग्णालयाचा स्वागत कक्ष आधी तुमची ओळख तपासतो, मग बदल करतो. उत्तर इथे दिसेल. फक्त जे बदलायचे ते भरा. | अस्पताल का रिसेप्शन पहले आपकी पहचान जाँचता है, फिर बदलाव करता है। जवाब यहीं दिखेगा। केवल वही भरें जो बदलना है। |
+| `myProfile.newName` (added 19 Oct 2026) | New name | नवीन नाव | नया नाम |
+| `myProfile.newAge` (added 19 Oct 2026) | Age (years) | वय (वर्षे) | उम्र (साल) |
+| `myProfile.newMobile` (added 19 Oct 2026) | New mobile number | नवीन मोबाइल क्रमांक | नया मोबाइल नंबर |
+| `myProfile.newEmail` (added 19 Oct 2026) | New email | नवीन ईमेल | नया ईमेल |
+| `myProfile.why` (added 19 Oct 2026) | Why (optional) | कारण (ऐच्छिक) | कारण (वैकल्पिक) |
+| `myProfile.sendRequest` (added 19 Oct 2026) | Send to reception | स्वागत कक्षाला पाठवा | रिसेप्शन को भेजें |
+| `myProfile.requestSent` (added 19 Oct 2026) | Sent to reception. You see their answer here. | स्वागत कक्षाला पाठवले. त्यांचे उत्तर इथे दिसेल. | रिसेप्शन को भेज दिया। उनका जवाब यहीं दिखेगा। |
+| `myProfile.waiting` (added 19 Oct 2026) | Waiting for reception | स्वागत कक्षाच्या उत्तराची वाट | रिसेप्शन के जवाब का इंतज़ार |
+| `myProfile.requestedOn` (added 19 Oct 2026) | Asked on {x}: | {x} रोजी विचारले: | {x} को पूछा: |
+| `myProfile.approved` (added 19 Oct 2026) | Changed | बदलले | बदल दिया |
+| `myProfile.rejected` (added 19 Oct 2026) | Not changed | बदलले नाही | नहीं बदला |
+| `myProfile.changeNames.fullName` (added 19 Oct 2026) | Name | नाव | नाम |
+| `myProfile.changeNames.ageYears` (added 19 Oct 2026) | Age | वय | उम्र |
+| `myProfile.changeNames.phone` (added 19 Oct 2026) | Mobile | मोबाइल | मोबाइल |
+| `myProfile.changeNames.email` (added 19 Oct 2026) | Email | ईमेल | ईमेल |
+| `myProfile.scansRule` (added 19 Oct 2026) | Your scan reports once the doctor has signed them, as printed. | डॉक्टरांनी सही केल्यानंतर तुमचे स्कॅन अहवाल, छापलेल्याप्रमाणे. | डॉक्टर के हस्ताक्षर के बाद आपकी स्कैन रिपोर्ट, छपी हुई जैसी। |
+| `myProfile.noScans` (added 19 Oct 2026) | No signed scan reports yet. | अजून सही केलेला स्कॅन अहवाल नाही. | अभी कोई हस्ताक्षरित स्कैन रिपोर्ट नहीं। |
+| `myProfile.findings` (added 19 Oct 2026) | Findings | निष्कर्ष | निष्कर्ष |
+| `myProfile.impression` (added 19 Oct 2026) | Impression | सारांश | सारांश |
+| `myProfile.signedBy` (added 19 Oct 2026) | Signed by {x}, {y} | {x} यांनी सही केली, {y} | {x} ने हस्ताक्षर किए, {y} |
+| `myProfile.noPlan` (added 19 Oct 2026) | No care plan yet. | अजून काळजीची योजना नाही. | अभी कोई देखभाल योजना नहीं। |

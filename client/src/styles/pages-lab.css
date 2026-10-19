@@ -248,3 +248,7 @@
 .lab-scan .lab-filter span { display: inline-flex; align-items: center; gap: var(--space-1); }
 .lab-scan .lab-filter svg { width: 1em; height: 1em; }
 .lab-scan input { min-width: 18rem; }
+/* My profile tabs (19 Oct 2026) */
+.portal-profile-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.portal-profile-tabs button { white-space: nowrap; }
+.change-table { margin: var(--space-2) 0; max-width: 560px; }

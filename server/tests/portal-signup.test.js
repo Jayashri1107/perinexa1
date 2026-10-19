@@ -9,6 +9,7 @@ import { createApp } from '../src/app.js';
 import { Appointment } from '../src/models/Appointment.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { Bill } from '../src/models/Bill.js';
+import { ImagingOrder } from '../src/models/ImagingOrder.js';
 import { LabOrder } from '../src/models/LabOrder.js';
 import { Patient } from '../src/models/Patient.js';
 import { PatientAccount } from '../src/models/PatientAccount.js';
@@ -396,7 +397,64 @@ describe('her records in the portal', () => {
     expect((await agent.get('/api/portal/records/summary')).body).toMatchObject({ prescriptions: 0, visits: 0, lab: 0 });
   });
 
+  it('My profile: she changes her contact details herself; name, age or mobile go to reception, who approves or rejects (19 Oct 2026)', async () => {
+    const { agent, p } = await signedInPatient();
+    const contact = { address: '5 Sample Street', city: 'Pune', state: 'Maharashtra', pinCode: '411001', emergencyContact: { name: 'Sample Husband', relation: 'Husband', phone: '98765 00000' } };
+    const saved = await agent.put('/api/portal/records/profile/contact').send(contact);
+    expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+    expect(saved.body.contact).toEqual(contact);
+    expect((await agent.put('/api/portal/records/profile/contact').send({ ...contact, pinCode: '12' })).status).toBe(400);
+    expect((await agent.put('/api/portal/records/profile/contact').send({ ...contact, fullName: 'Changed Here' })).status).toBe(400); // her name is not changed here
+
+    const asked = await agent.post('/api/portal/records/profile/request').send({ fullName: 'Sample Mother Patil', phone: '98765 99999', note: 'Name after marriage' });
+    expect(asked.status, JSON.stringify(asked.body)).toBe(201);
+    expect(asked.body.request).toMatchObject({ status: 'pending', changes: { fullName: 'Sample Mother Patil', phone: '9876599999' } });
+    expect((await Patient.findOne({ tenantId: hospital._id, _id: p.id })).fullName).toBe('Sample Mother'); // nothing changes yet
+    expect((await agent.post('/api/portal/records/profile/request').send({ fullName: 'Sample Mother' })).status).toBe(400); // the same name: nothing to change
+
+    const reception = await as('reception');
+    const waiting = (await reception.get('/api/patient-accounts/changes')).body.requests;
+    expect(waiting).toHaveLength(1);
+    expect(waiting[0]).toMatchObject({ patient: { fullName: 'Sample Mother' }, changes: { fullName: 'Sample Mother Patil' }, note: 'Name after marriage' });
+    const ok = await reception.post(`/api/patient-accounts/changes/${waiting[0].id}/approve`).send({});
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    const after = await Patient.findOne({ tenantId: hospital._id, _id: p.id });
+    expect(after).toMatchObject({ fullName: 'Sample Mother Patil', phone: '9876599999' });
+    expect((await PatientAccount.findOne({ tenantId: hospital._id, patientId: p.id })).mobile).toBe('9876599999'); // she signs in with the new mobile
+    expect((await reception.post(`/api/patient-accounts/changes/${waiting[0].id}/approve`).send({})).status).toBe(409);
+
+    await agent.post('/api/portal/records/profile/request').send({ ageYears: 35 });
+    const second = (await reception.get('/api/patient-accounts/changes')).body.requests[0];
+    expect((await reception.post(`/api/patient-accounts/changes/${second.id}/reject`).send({ reason: 'Please bring an ID' })).status).toBe(200);
+    expect((await agent.get('/api/portal/records/profile')).body).toMatchObject({ request: null, lastRequest: { status: 'rejected', reason: 'Please bring an ID' } });
+    expect((await (await as('lab')).get('/api/patient-accounts/changes')).status).toBe(403);
+
+    const actions = (await AuditLog.find({ action: /^PORTAL_(PROFILE|CHANGE)_/ }).sort({ _id: 1 }).lean()).map((e) => [e.action, e.details.fields ?? null]);
+    expect(actions).toEqual([
+      ['PORTAL_PROFILE_UPDATED', ['address', 'city', 'state', 'pinCode', 'emergencyContact']],
+      ['PORTAL_CHANGE_REQUESTED', ['fullName', 'phone']],
+      ['PORTAL_CHANGE_APPROVED', ['fullName', 'phone']],
+      ['PORTAL_CHANGE_REQUESTED', ['ageYears']],
+      ['PORTAL_CHANGE_REJECTED', null],
+    ]);
+    expect(JSON.stringify(await AuditLog.find({ action: /^PORTAL_(PROFILE|CHANGE)_/ }).lean())).not.toMatch(/Patil|99999|Sample Street/);
+  });
+
+  it('her sonography reports: signed only, with the readings, findings and impression as printed', async () => {
+    const { agent, p } = await signedInPatient();
+    const stampBy = { by: people.drA._id, byName: 'Sample drA', at: NOW };
+    await ImagingOrder.create({ tenantId: hospital._id, clientRequestId: randomUUID(), patientId: p.id, study: 'usg_growth', status: 'signed', ordered: stampBy, done: stampBy, signed: stampBy, report: { values: { bpd: 78, efw: 1613 }, findings: 'Biometry normal.', impression: 'Single live pregnancy.' } });
+    await ImagingOrder.create({ tenantId: hospital._id, clientRequestId: randomUUID(), patientId: p.id, study: 'usg_nt', status: 'done', ordered: stampBy, done: stampBy, report: { values: {}, findings: 'Not signed yet', impression: '' } });
+    const scans = (await agent.get('/api/portal/records/scans')).body.scans;
+    expect(scans).toHaveLength(1);
+    expect(scans[0]).toMatchObject({ study: 'USG – growth and well-being (third trimester)', findings: 'Biometry normal.', impression: 'Single live pregnancy.', signedBy: 'Sample drA' });
+    expect(scans[0].readings).toEqual([{ name: 'BPD', value: '78 mm' }, { name: 'Estimated fetal weight', value: '1613 g' }]);
+    expect(JSON.stringify(scans)).not.toContain('Not signed yet');
+    await Patient.updateOne({ tenantId: hospital._id, _id: p.id }, { $set: { sensitive: true } });
+    expect((await agent.get('/api/portal/records/scans')).body.scans).toEqual([]);
+  });
+
   it('needs her portal session', async () => {
-    for (const kind of ['prescriptions', 'visits', 'lab', 'bills', 'summary', 'appointments', 'profile']) expect((await request(app).get(`/api/portal/records/${kind}`)).status).toBe(401);
+    for (const kind of ['prescriptions', 'visits', 'lab', 'bills', 'summary', 'appointments', 'profile', 'scans']) expect((await request(app).get(`/api/portal/records/${kind}`)).status).toBe(401);
   });
 });
