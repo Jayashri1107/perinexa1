@@ -30,6 +30,8 @@ export function LabRegistrationPage() {
   const referrers = useFetch('/lab-setup/referrers');
   const home = useFetch('/lab/home');
   const [patient, setPatient] = useState(null);
+  // The patient's own sex for the usual ranges (report templates): a man may come for his own tests
+  const [sex, setSex] = useState('');
   const [ref, setRef] = useState({ referrerId: '', prescription: '', noteToLab: '', urgent: false });
   const [chosen, setChosen] = useState([]);
   const [find, setFind] = useState('');
@@ -75,6 +77,7 @@ export function LabRegistrationPage() {
         prescription: ref.prescription.trim(),
         home: sample === 'home' ? { address: homeForm.address.trim(), on: homeForm.on, time: homeForm.time, collectorId: homeForm.collectorId || null } : null,
         collectNow: sample === 'now',
+        ...(patient.careType !== 'newborn' ? { sex: sex || (patient.sex === 'male' ? 'male' : 'female') } : {}),
         discount: discount > 0 ? { mode: disc.mode, value: discValue, reason: disc.reason.trim() } : null,
         payment: pay.take && amount > 0 ? { mode: pay.mode, amountPaise: amount, reference: pay.reference.trim() } : null,
       };
@@ -139,6 +142,14 @@ export function LabRegistrationPage() {
                     </button>
                   </div>
                 </dl>
+              )}
+              {patient && patient.careType !== 'newborn' && (
+                <Field label="Sex (for the usual ranges)" id="reg-sex" hint="Men's ranges differ for some tests (haemoglobin, creatinine …).">
+                  <select id="reg-sex" value={sex || (patient.sex === 'male' ? 'male' : 'female')} onChange={(e) => setSex(e.target.value)}>
+                    <option value="female">Woman</option>
+                    <option value="male">Man</option>
+                  </select>
+                </Field>
               )}
             </section>
 

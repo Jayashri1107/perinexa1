@@ -3925,6 +3925,35 @@ Branch `walkin-pattern`. Appointments → OPD settings → Slots kept for walk-i
 2. Schedule: 10:50 and 11:00, 12:00 and 12:10 … say Walk-in (dashed); reception can book them.
 3. Patient portal booking: those times are not offered.
 
+## Lab report templates: each test its own report (owner, 19 Oct 2026)
+Branch `lab-templates`. Plan and decisions: `docs/LAB_TEMPLATES_PLAN.md`.
+- **Each test prints by its own template**: a table with sections (CBC, LFT, RFT, urine routine, thyroid, lipid …),
+  serology with method and cut-off, culture with the antibiotic table (S / I / R), or paragraphs (histopathology, Pap
+  smear in the Bethesda layout); with its method and interpretation notes, and cultures and histopathology on their
+  own page.
+- **Full value sets**: full CBC with indices and differential, full LFT, RFT with electrolytes, full urine routine;
+  new thyroid and lipid profiles, high vaginal swab culture, histopathology. MCV, MCH, MCHC, indirect bilirubin,
+  globulin, A/G ratio, LDL, VLDL and cholesterol/HDL are **worked out** when left empty.
+- **Ranges for men** (a man the lab registers – Woman / Man at registration); women and pregnancy ranges as before.
+- **Who signs the report** (Lab → Settings): name, qualification, registration number and signature picture – printed
+  only on a report that person checked. "End of report" and "Page 1 of 2".
+- ⚠️ **DRAFT for the doctor to check and approve**: the new values and ranges, the ranges for men, every method and
+  note (Lab → Tests → a test → Approve).
+
+### How to test (fake data only)
+1. As a doctor: Lab → Settings → **Add a signer** → "Dr Sample Pathologist", MD (Pathology), Reg. No. "TEST 123",
+   staff member: a lab person, signature picture: any small PNG → Save. Tick **Default signer** on a second signer.
+2. As that lab person: Lab → New registration → a fake patient → Sex **Man** → tests CBC, LFT, Urine culture → Taken now
+   → Save.
+3. Open the order → type Hb 12.5, RBC 4.2, PCV 38 (leave MCV, MCH, MCHC empty: the hint shows what they come to),
+   bilirubin 1.0, direct 0.3, total protein 7, albumin 4; urine culture: Growth, E. coli, Nitrofurantoin Sensitive,
+   Ciprofloxacin Resistant → Report results.
+4. Hb 12.5 is **Low** with "13–17 g/dL (men)"; MCV, globulin and A/G ratio say "worked out".
+5. **Print the report**: CBC in sections, LFT, the culture on its own page with the S / I / R table, methods and
+   "Note (DRAFT)", the signer with the signature picture, "End of report", "Page 1 of 2" at the bottom.
+6. Lab → Tests → **Histopathology** → layout Paragraphs. Order it for a fake patient, type the specimen and diagnosis →
+   the report prints them as paragraphs.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

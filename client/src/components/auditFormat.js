@@ -1132,6 +1132,8 @@ export function describeAudit(entry) {
     case 'LAB_TEST_APPROVED':
       return `${d.name ?? d.test ?? ''}${d.version ? ` (version ${d.version})` : ''}${d.ranges ? ' – values or ranges changed' : ''}`;
     case 'LAB_SETTINGS_CHANGED':
+      // Who signs the report (report templates): how many signers – never a name or a signature
+      if (d.signers != null) return `Who signs the lab report: ${count(d.signers, 'signer')}`;
       return d.verify ? `Results checked before the report${d.checkers ? ` (${count(d.checkers, 'chosen checker')})` : ' (any lab staff, doctor or RMO)'}` : 'Results not checked before the report';
     case 'PATIENT_REMINDERS_CHANGED':
       return `${record(d)}: ${d.consent ? `agreed (${d.channel === 'whatsapp' ? 'WhatsApp' : 'SMS'})` : 'no reminders'}`;

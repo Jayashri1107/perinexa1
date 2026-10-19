@@ -7,7 +7,7 @@ import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
-import { DEPARTMENTS } from './labFormat.js';
+import { DEPARTMENTS, TEMPLATES } from './labFormat.js';
 import { TestStatus, rupees } from './LabTestsPage.jsx';
 
 // Lab → Tests → one test (docs/LAB_LIMS_PLAN.md features 2 and 3).
@@ -23,7 +23,8 @@ const text = (v) => (v == null ? '' : String(v));
 const emptyBand = () => ({ pregnant: '', sex: '', ageUnit: 'years', fromAge: '', toAge: '', low: '', high: '', range: '' });
 const bandForm = (b) => ({ pregnant: b.pregnant ?? '', sex: b.sex ?? '', ageUnit: b.ageUnit ?? 'years', fromAge: text(b.fromAge), toAge: text(b.toAge), low: text(b.low), high: text(b.high), range: b.range ?? '' });
 const bandBody = (b) => ({ pregnant: b.pregnant, sex: b.sex, ageUnit: b.ageUnit, fromAge: num(b.fromAge), toAge: num(b.toAge), low: num(b.low), high: num(b.high), range: b.range.trim() });
-const emptyField = () => ({ name: '', type: 'number', unit: '', low: '', high: '', range: '', deltaPercent: '', options: '', abnormal: '', bands: [] });
+const emptyField = () => ({ name: '', type: 'number', unit: '', low: '', high: '', range: '', deltaPercent: '', options: '', abnormal: '', bands: [], section: '', long: false });
+const lines = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
 const list = (t) => t.split(',').map((x) => x.trim()).filter(Boolean);
 
 function Bands({ bands, baby, prefix, errors, onChange, disabled }) {
@@ -44,15 +45,14 @@ function Bands({ bands, baby, prefix, errors, onChange, disabled }) {
                   <option value="no">Not pregnant</option>
                 </select>
               </Field>
-              {baby && (
-                <Field label="Baby's sex (after birth)" id={`${id}-sex`}>
-                  <select id={`${id}-sex`} value={b.sex} disabled={disabled} onChange={(e) => set(j, 'sex', e.target.value)}>
-                    <option value="">Any</option>
-                    <option value="female">Girl</option>
-                    <option value="male">Boy</option>
-                  </select>
-                </Field>
-              )}
+              {/* The patient's own sex: a baby's recorded after birth, an adult's (a man registered by the lab) */}
+              <Field label={baby ? "Baby's sex (after birth)" : 'Sex'} id={`${id}-sex`}>
+                <select id={`${id}-sex`} value={b.sex} disabled={disabled} onChange={(e) => set(j, 'sex', e.target.value)}>
+                  <option value="">Any</option>
+                  <option value="female">{baby ? 'Girl' : 'Women'}</option>
+                  <option value="male">{baby ? 'Boy' : 'Men'}</option>
+                </select>
+              </Field>
               <Field label={`From age (${b.ageUnit === 'days' ? 'days of life' : 'years'})`} id={`${id}-from`}>
                 <input id={`${id}-from`} inputMode="numeric" value={b.fromAge} disabled={disabled} onChange={(e) => set(j, 'fromAge', e.target.value)} />
               </Field>
@@ -84,7 +84,7 @@ function Bands({ bands, baby, prefix, errors, onChange, disabled }) {
       })}
       {!disabled && bands.length < 10 && (
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => onChange([...bands, { ...emptyBand(), ageUnit: baby ? 'days' : 'years' }])}>
-          <Plus aria-hidden="true" /> Add a range for a group (age, pregnant)
+          <Plus aria-hidden="true" /> Add a range for a group (age, sex, pregnant)
         </button>
       )}
     </div>
@@ -92,7 +92,20 @@ function Bands({ bands, baby, prefix, errors, onChange, disabled }) {
 }
 
 function formOf(test) {
-  const common = { department: test?.department ?? 'other', tatHours: text(test?.tatHours ?? ''), urgentTatHours: text(test?.urgentTatHours ?? ''), outsideLab: test?.outsideLab ?? '', active: test?.active ?? true };
+  const report = test?.report ?? {};
+  const common = {
+    department: test?.department ?? 'other',
+    tatHours: text(test?.tatHours ?? ''),
+    urgentTatHours: text(test?.urgentTatHours ?? ''),
+    outsideLab: test?.outsideLab ?? '',
+    active: test?.active ?? true,
+    // How it prints (report templates)
+    template: report.template ?? 'table',
+    method: report.method ?? '',
+    notes: report.notes ?? '',
+    ownPage: Boolean(report.ownPage),
+    antibiotics: (test?.antibiotics ?? []).join('\n'),
+  };
   if (!test) return { ...common, who: 'adult', name: '', group: 'chemistry', sample: '', fields: [emptyField()] };
   if (!test.custom) {
     const ranges = Object.fromEntries(
@@ -108,12 +121,20 @@ function formOf(test) {
     name: test.name,
     group: test.group,
     sample: test.sample,
-    fields: test.fields.map((f) => ({ key: f.key, name: f.name, type: f.type, unit: f.unit ?? '', low: text(f.low), high: text(f.high), range: f.range ?? '', deltaPercent: text(f.deltaPercent), options: (f.options ?? []).join(', '), abnormal: (f.abnormal ?? []).join(', '), bands: (f.bands ?? []).map(bandForm) })),
+    fields: test.fields.map((f) => ({ key: f.key, name: f.name, type: f.type, unit: f.unit ?? '', low: text(f.low), high: text(f.high), range: f.range ?? '', deltaPercent: text(f.deltaPercent), options: (f.options ?? []).join(', '), abnormal: (f.abnormal ?? []).join(', '), bands: (f.bands ?? []).map(bandForm), section: f.section ?? '', long: Boolean(f.long) })),
   };
 }
 
 function bodyOf(test, form) {
-  const common = { department: form.department, tatHours: num(form.tatHours), urgentTatHours: num(form.urgentTatHours), outsideLab: form.outsideLab.trim(), active: form.active };
+  const common = {
+    department: form.department,
+    tatHours: num(form.tatHours),
+    urgentTatHours: num(form.urgentTatHours),
+    outsideLab: form.outsideLab.trim(),
+    active: form.active,
+    report: { template: form.template, method: form.method.trim(), notes: form.notes.trim(), ownPage: form.ownPage },
+    ...(form.template === 'culture' ? { antibiotics: lines(form.antibiotics) } : {}),
+  };
   if (test && !test.custom) {
     return { ...common, version: test.version, fieldRanges: Object.fromEntries(Object.entries(form.ranges).map(([k, r]) => [k, { low: num(r.low), high: num(r.high), range: r.range.trim(), bands: r.bands.map(bandBody), deltaPercent: num(r.deltaPercent) }])) };
   }
@@ -125,7 +146,8 @@ function bodyOf(test, form) {
     group: form.group,
     sample: form.sample.trim(),
     fields: form.fields.map((f) => {
-      const base = { ...(f.key ? { key: f.key } : {}), name: f.name.trim(), type: f.type };
+      const base = { ...(f.key ? { key: f.key } : {}), name: f.name.trim(), type: f.type, section: f.section.trim() };
+      if (f.type === 'text') return { ...base, long: f.long };
       if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: num(f.low), high: num(f.high), range: f.range.trim(), bands: f.bands.map(bandBody), deltaPercent: num(f.deltaPercent) };
       if (f.type === 'choice') return { ...base, options: list(f.options), abnormal: list(f.abnormal) };
       return base;
@@ -303,6 +325,35 @@ export function LabTestEditPage() {
             </label>
           </fieldset>
 
+          <fieldset className="fieldset">
+            <legend>On the report</legend>
+            <div className="form-grid">
+              <Field label="Report layout" id="lt-template" error={fields['report.template']}>
+                <select id="lt-template" value={form.template} disabled={locked} onChange={(e) => set('template', e.target.value)}>
+                  {Object.entries(TEMPLATES).map(([k, w]) => (
+                    <option key={k} value={k}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Method (DRAFT until approved)" id="lt-method" error={fields['report.method']} hint="For example: Automated cell counter">
+                <input id="lt-method" maxLength={300} value={form.method} disabled={locked} onChange={(e) => set('method', e.target.value)} />
+              </Field>
+            </div>
+            <Field label="Interpretation notes printed under the result (DRAFT until approved)" id="lt-notes" error={fields['report.notes']}>
+              <textarea id="lt-notes" rows={3} maxLength={1000} value={form.notes} disabled={locked} onChange={(e) => set('notes', e.target.value)} />
+            </Field>
+            {form.template === 'culture' && (
+              <Field label="Antibiotics tested, one per line" id="lt-abx" error={fields.antibiotics} hint="The sensitivity table lists these in this order.">
+                <textarea id="lt-abx" rows={6} value={form.antibiotics} disabled={locked} onChange={(e) => set('antibiotics', e.target.value)} />
+              </Field>
+            )}
+            <label className="check">
+              <input type="checkbox" checked={form.ownPage} disabled={locked} onChange={(e) => set('ownPage', e.target.checked)} /> Print on its own page
+            </label>
+          </fieldset>
+
           {!own &&
             test.fields
               .filter((f) => f.type === 'number')
@@ -348,6 +399,9 @@ export function LabTestEditPage() {
                     <Field label="Name" id={`lf-${i}-name`} error={fields[`${at}.name`]}>
                       <input id={`lf-${i}-name`} maxLength={80} value={f.name} disabled={locked} onChange={(e) => setField(i, 'name', e.target.value)} />
                     </Field>
+                    <Field label="Section on the report (optional)" id={`lf-${i}-section`} hint="For example: Microscopy">
+                      <input id={`lf-${i}-section`} maxLength={60} value={f.section} disabled={locked} onChange={(e) => setField(i, 'section', e.target.value)} />
+                    </Field>
                     <Field label="Kind of result" id={`lf-${i}-type`}>
                       <select id={`lf-${i}-type`} value={f.type} disabled={locked} onChange={(e) => setField(i, 'type', e.target.value)}>
                         <option value="number">A number</option>
@@ -373,6 +427,11 @@ export function LabTestEditPage() {
                           <input id={`lf-${i}-delta`} inputMode="decimal" className="tabular" value={f.deltaPercent} disabled={locked} onChange={(e) => setField(i, 'deltaPercent', e.target.value)} />
                         </Field>
                       </>
+                    )}
+                    {f.type === 'text' && (
+                      <label className="check">
+                        <input type="checkbox" checked={f.long} disabled={locked} onChange={(e) => setField(i, 'long', e.target.checked)} /> A paragraph (histopathology, cytology)
+                      </label>
                     )}
                     {f.type === 'choice' && (
                       <>

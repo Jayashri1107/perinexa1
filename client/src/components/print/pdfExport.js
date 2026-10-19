@@ -188,8 +188,11 @@ const jpeg = (canvas) =>
     }
   });
 
-/** The document as a PDF file (a Blob), each page as it prints. fit: as paperPages found; title: shown by PDF viewers. */
-export async function makePdf(docEl, page, { fit = 0, title = '' } = {}) {
+/**
+ * The document as a PDF file (a Blob), each page as it prints. fit: as paperPages found; title: shown by PDF viewers;
+ * pageNumbers: "Page 1 of 2" drawn in each page's bottom margin, as the printout has it.
+ */
+export async function makePdf(docEl, page, { fit = 0, title = '', pageNumbers = false } = {}) {
   const layout = await layOut(docEl, page, { fit });
   try {
     const { paper, breaks } = layout;
@@ -212,6 +215,12 @@ export async function makePdf(docEl, page, { fit = 0, title = '' } = {}) {
       const body = await picture(layout, layout.content, cut(i), cut(i + 1), layout.total);
       ctx.drawImage(body, left, top + Math.round(layout.headHeight * SCALE));
       if (foot) ctx.drawImage(foot, left, at(paper.height - paper.margin.bottom) - Math.round(layout.footHeight * SCALE));
+      if (pageNumbers) {
+        ctx.fillStyle = '#000000';
+        ctx.font = `${Math.round(at(2.8))}px sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.fillText(`Page ${i + 1} of ${breaks.length - 1}`, at(paper.width - paper.margin.right), at(paper.height - paper.margin.bottom / 2));
+      }
       pages.push({ jpeg: await jpeg(canvas), width: canvas.width, height: canvas.height });
     }
     const bytes = jpegPdf(pages, { width: paper.width * PT_PER_MM, height: paper.height * PT_PER_MM, title });

@@ -28,6 +28,10 @@ const settingSchema = new mongoose.Schema(
     urgentTatHours: { type: Number, min: 1, max: 2000, default: null },
     outsideLab: { type: String, trim: true, maxlength: 120, default: '' }, // usually sent to (shown when sending)
     active: { type: Boolean, default: true }, // offered when ordering
+    // How it prints (docs/LAB_TEMPLATES_PLAN.md): { template, method, notes, ownPage } – what the hospital changed over
+    // the built-in ones (lab/labSetup.js reportOf). The method and notes are clinical wording (a change makes a DRAFT).
+    report: { type: mongoose.Schema.Types.Mixed, default: null },
+    antibiotics: { type: [String], default: undefined }, // the culture template's sensitivity panel (none = built-in)
     // The clinical part (fields and ranges): DRAFT until a doctor approves this version
     status: { type: String, enum: ['draft', 'approved'], default: 'draft' },
     version: { type: Number, default: 1 },

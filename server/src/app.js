@@ -104,6 +104,7 @@ export function createApp({
   // (Each field has its own limit, so the list's "at most 300 entries" is reached before this one.)
   app.use('/api/medicine-safety', express.json({ limit: '2mb' }));
   app.use('/api/auth/me/photo', express.json({ limit: '200kb' })); // My profile: a small staff photo
+  app.use(/^\/api\/lab-setup\/signatories(\/[^/]+)?$/, express.json({ limit: '300kb' })); // a signature picture (lab reports)
   // From ABDM and other hospitals (ABDM M2 and M3): a limit of their own, checked before any body is read – ABDM's
   // messages and the pages of her records come in bursts from a few addresses, and must not meet a browser's limit.
   app.use('/api/abdm/public', rateLimit({ windowMs: 60 * 1000, limit: abdmPublicRateLimitMax, standardHeaders: 'draft-8', legacyHeaders: false }));

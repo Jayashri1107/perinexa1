@@ -4,12 +4,16 @@ import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, formatDateTime, rolesLabel } from '../../components/ui.jsx';
 import { api } from '../../api.js';
 import { useFetch } from '../../hooks/useFetch.js';
+import { LabSigners } from './LabSigners.jsx';
 
 // Lab → Settings (docs/LAB_LIMS_PLAN.md feature 5): whether results are checked by a second person before they go to
-// the doctor, and who may check them. Doctors change it; the lab, RMOs and nurses read it.
+// the doctor, and who may check them; who signs the printed report (report templates). Doctors change it; the lab,
+// RMOs and nurses read it.
 
 export function LabSettingsPage() {
-  const { data, error } = useFetch('/lab-setup/settings');
+  const { data: loaded, error } = useFetch('/lab-setup/settings');
+  const [changed, setChanged] = useState(null); // the settings as the latest signer change answered
+  const data = changed ?? loaded;
   const [form, setForm] = useState(null);
   const [notice, setNotice] = useState(null);
   const [saveError, setSaveError] = useState(null);
@@ -83,6 +87,15 @@ export function LabSettingsPage() {
               </p>
             )}
           </form>
+        )}
+        {data && (
+          <LabSigners
+            data={data}
+            onChanged={(res) => {
+              setChanged(res);
+              setNotice('Saved who signs the report.');
+            }}
+          />
         )}
       </div>
     </>

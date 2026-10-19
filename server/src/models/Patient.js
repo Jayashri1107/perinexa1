@@ -121,6 +121,10 @@ const patientSchema = new mongoose.Schema(
     fullName: { type: String, required: true, trim: true, maxlength: 150 },
     ageYears: num(0, 120), // age given at registration (adults)
     ageRecordedOn: { type: Date, default: null }, // so the current age can be worked out later
+    // An adult's own sex, recorded only when the lab registers a walk-in (a man may come for his own tests): the lab's
+    // usual ranges for men then apply (lab/labSetup.js rangeContext). '' = a women's-care patient. Never a fetus's sex
+    // (PCPNDT): a baby's is in newborn.sex, recorded after birth.
+    sex: { type: String, enum: ['', 'female', 'male'], default: '' },
     phone: { type: String, trim: true, maxlength: 30, default: '' },
     address: { type: String, trim: true, maxlength: 300, default: '' },
     // Whom to call in an emergency (a relative or attendant).

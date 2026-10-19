@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import { AGE_UNITS, BAND_PREGNANT, BAND_SEX, DEPARTMENT_KEYS, DEPARTMENTS, labCatalogue, labSetup, rangeText } from '../lab/labSetup.js';
+import { AGE_UNITS, BAND_PREGNANT, BAND_SEX, DEPARTMENT_KEYS, DEPARTMENTS, TEMPLATE_KEYS, TEMPLATES, labCatalogue, labSetup, labSignatories, rangeText } from '../lab/labSetup.js';
 import { LAB_GROUPS, LAB_TESTS, testByKey } from '../lab/labTests.js';
 import { LabSetup } from '../models/LabSetup.js';
 import { LabTestSetting } from '../models/LabTestSetting.js';
@@ -17,8 +17,9 @@ import { safeText } from '../utils/pcpndt.js';
 // The lab's set-up (/api/lab-setup, docs/LAB_LIMS_PLAN.md features 2, 3 and 5). Holds no patient data.
 //  - The hospital's test list: lab staff, doctors and RMOs add the hospital's own tests and change any test's
 //    department, turnaround times, usual outside lab, whether it is offered, and its usual ranges (also ranges for a
-//    group: an age, pregnant or not, a baby's sex after birth). A change to the fields or ranges is clinical: it makes
-//    a new DRAFT version, which only a doctor approves. Nurses read the list.
+//    group: an age, pregnant or not, the patient's sex), and how it prints (its report template, method and notes –
+//    docs/LAB_TEMPLATES_PLAN.md). A change to the fields, ranges, method or notes is clinical: it makes a new DRAFT
+//    version, which only a doctor approves. Nurses read the list.
 //  - The lab's settings (the check before the report and who checks): doctors change them.
 // A new test of the hospital's own gets a ₹0 line on the price list (key lab:<test key>) for the hospital admin to price.
 
@@ -68,11 +69,14 @@ const fieldSchema = z
     bands: z.array(bandSchema).max(MAX_BANDS, `At most ${MAX_BANDS} group ranges`).default([]),
     // Lab version 2: flag "Big change" when the value moved by at least this much from her last result (per cent)
     deltaPercent: z.number().min(1).max(1000).nullable().default(null),
+    // Report templates: the heading it prints under ("Microscopy"), and a paragraph instead of one line (words only)
+    section: safeText('Section', 60).default(''),
+    long: z.boolean().default(false),
   })
   .strict();
 const optionalLimit = z.number('Enter a number').finite().nullable().optional(); // left out = the built-in limit
 const rangeSchema = z
-  .object({ low: optionalLimit, high: optionalLimit, range: safeText('Usual range in words', 150).default(''), bands: z.array(bandSchema).max(MAX_BANDS).default([]), deltaPercent: z.number().min(1).max(1000).nullable().default(null) })
+  .object({ low: optionalLimit, high: optionalLimit, range: safeText('Usual range in words', 150).default(''), bands: z.array(bandSchema).max(MAX_BANDS).optional(), deltaPercent: z.number().min(1).max(1000).nullable().default(null) })
   .strict();
 const hours = z.number('Enter the hours').int().min(1).max(2000).nullable().default(null);
 const commonShape = {
@@ -81,6 +85,12 @@ const commonShape = {
   urgentTatHours: hours,
   outsideLab: safeText('Usual outside lab', 120).default(''),
   active: z.boolean().default(true),
+  // How it prints (report templates): left out = as it is
+  report: z
+    .object({ template: z.enum(TEMPLATE_KEYS), method: safeText('Method', 300).default(''), notes: safeText('Notes', 1000).default(''), ownPage: z.boolean().default(false) })
+    .strict()
+    .optional(),
+  antibiotics: z.array(safeText('Antibiotic', 60).refine((t) => t.trim().length > 0, 'Name the antibiotic')).max(30, 'At most 30 antibiotics').optional(),
 };
 const ownShape = {
   who: z.enum(['adult', 'newborn'], 'Choose whose test this is'),
@@ -98,12 +108,11 @@ const updateBuiltInSchema = z.object({ ...commonShape, fieldRanges: z.record(z.s
 function checkBands(bands, who, at, fields) {
   bands.forEach((b, j) => {
     const here = `${at}.bands.${j}`;
-    if (b.sex && who !== 'newborn') fields[here] = "A range for one sex is only for a baby's test (the sex recorded after birth).";
     if (b.ageUnit === 'days' && who !== 'newborn') fields[here] = "Days of life are only for a baby's test – use years.";
     if (b.low == null && b.high == null) fields[here] = 'Enter the lower or the upper limit (or both).';
     else if (b.low != null && b.high != null && b.low > b.high) fields[here] = 'The lower limit must not be above the upper limit.';
     if (b.fromAge != null && b.toAge != null && b.fromAge > b.toAge) fields[here] = 'The first age must not be after the last.';
-    if (!b.sex && !b.pregnant && b.fromAge == null && b.toAge == null) fields[here] = 'Say whom this range is for (an age, pregnant or not).';
+    if (!b.sex && !b.pregnant && b.fromAge == null && b.toAge == null) fields[here] = 'Say whom this range is for (an age, pregnant or not, women or men).';
   });
 }
 
@@ -123,7 +132,8 @@ function checkedFields(data, fields) {
       if (f.low != null && f.high != null && f.low > f.high) fields[at] = 'The lower limit must not be above the upper limit.';
       checkBands(f.bands, data.who, at, fields);
     }
-    const base = { key, name: f.name.trim(), type: f.type };
+    const base = { key, name: f.name.trim(), type: f.type, ...(f.section.trim() ? { section: f.section.trim() } : {}) };
+    if (f.type === 'text' && f.long) return { ...base, long: true };
     if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: f.low, high: f.high, range: f.range.trim() || rangeText(f.low, f.high, f.unit.trim()), bands: f.bands, deltaPercent: f.deltaPercent };
     if (f.type === 'choice') return { ...base, options: f.options.map((o) => o.trim()), abnormal: f.abnormal };
     return base;
@@ -132,7 +142,25 @@ function checkedFields(data, fields) {
   return out;
 }
 
-const clinicalOf = (s) => JSON.stringify(s.custom ? { name: s.name, sample: s.sample, group: s.group, who: s.who, fields: s.fields } : { fieldRanges: s.fieldRanges ?? {} });
+// The method and notes printed on the report are clinical wording too (the template and "own page" are layout only)
+const clinicalOf = (s) =>
+  JSON.stringify({ ...(s.custom ? { name: s.name, sample: s.sample, group: s.group, who: s.who, fields: s.fields } : { fieldRanges: s.fieldRanges ?? {} }), method: s.report?.method ?? null, notes: s.report?.notes ?? null });
+
+/** A group range in one shape, to tell whether the hospital's ranges differ from the built-in ones. */
+const bandKey = (b) => JSON.stringify([b.sex ?? '', b.pregnant ?? '', b.ageUnit ?? 'years', b.fromAge ?? null, b.toAge ?? null, b.low ?? null, b.high ?? null, b.range ?? '']);
+const sameBands = (a, b) => JSON.stringify((a ?? []).map(bandKey)) === JSON.stringify((b ?? []).map(bandKey));
+
+/** What the hospital changed in how a test prints, over the built-in settings (only the parts that differ). */
+function reportChanges(builtIn, sent) {
+  if (!sent) return undefined;
+  const base = { template: 'table', method: '', notes: '', ownPage: false, ...(builtIn?.report ?? {}) };
+  const out = {};
+  for (const k of ['template', 'method', 'notes', 'ownPage']) {
+    const v = typeof sent[k] === 'string' ? sent[k].trim() : sent[k];
+    if (v !== base[k]) out[k] = v;
+  }
+  return out;
+}
 
 // ---------- The test list ----------
 
@@ -145,6 +173,7 @@ async function listView(req) {
   return {
     groups: LAB_GROUPS,
     departments: DEPARTMENTS,
+    templates: TEMPLATES,
     // A built-in test also says what the hospital changed (fieldRanges) and each value's built-in limits
     tests: catalogue.tests.map((t) => {
       const builtIn = t.custom ? null : testByKey.get(t.key);
@@ -185,6 +214,8 @@ labSetupRouter.post('/tests', async (req, res) => {
     urgentTatHours: body.urgentTatHours,
     outsideLab: body.outsideLab.trim(),
     active: body.active,
+    report: reportChanges(null, body.report) ?? null,
+    ...(body.antibiotics ? { antibiotics: body.antibiotics.map((a) => a.trim()) } : {}),
     updatedByName: req.user.name,
   });
   // Its line on the price list (₹0 until the hospital admin prices it), so an order bills it like any other test
@@ -220,12 +251,13 @@ labSetupRouter.put('/tests/:key', async (req, res) => {
       const low = r.low === undefined ? f.low : r.low;
       const high = r.high === undefined ? f.high : r.high;
       if (low != null && high != null && low > high) fields[`fieldRanges.${k}`] = 'The lower limit must not be above the upper limit.';
-      checkBands(r.bands, builtIn.who, `fieldRanges.${k}`, fields);
+      checkBands(r.bands ?? [], builtIn.who, `fieldRanges.${k}`, fields);
       const entry = {};
       if (low !== f.low) entry.low = low;
       if (high !== f.high) entry.high = high;
       if (r.range.trim() && r.range.trim() !== f.range) entry.range = r.range.trim();
-      if (r.bands.length) entry.bands = r.bands;
+      // The built-in group ranges (men) stay unless the hospital's differ (an empty list then removes them)
+      if (r.bands !== undefined && !sameBands(r.bands, f.bands)) entry.bands = r.bands;
       if (r.deltaPercent != null) entry.deltaPercent = r.deltaPercent;
       if (Object.keys(entry).length) ranges[k] = entry;
     }
@@ -238,6 +270,14 @@ labSetupRouter.put('/tests/:key', async (req, res) => {
   }
   if (Object.keys(fields).length) throw invalid(fields);
   Object.assign(s, { department: body.department || (builtIn ? '' : 'other'), tatHours: body.tatHours, urgentTatHours: body.urgentTatHours, outsideLab: body.outsideLab.trim(), active: body.active, updatedByName: req.user.name });
+  if (body.report) {
+    s.report = reportChanges(builtIn, body.report);
+    s.markModified('report');
+  }
+  if (body.antibiotics) {
+    const list = body.antibiotics.map((a) => a.trim());
+    s.antibiotics = builtIn && JSON.stringify(list) === JSON.stringify(builtIn.antibiotics ?? []) ? undefined : list;
+  }
   const clinical = clinicalOf(s) !== before;
   if (clinical && !s.isNew) {
     s.version += 1;
@@ -275,7 +315,7 @@ async function settingsView(req) {
     .filter((m) => users.has(String(m.userId)))
     .map((m) => ({ id: String(m.userId), name: users.get(String(m.userId)), roles: m.roles.filter((r) => STAFF_ROLES.includes(r)) }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  return { ...setup, staff, canEdit: isDoctor(req) };
+  return { ...setup, staff, signatories: await labSignatories(req.tenantId), canEdit: isDoctor(req) };
 }
 
 labSetupRouter.get('/settings', async (req, res) => {
@@ -292,6 +332,78 @@ labSetupRouter.put('/settings', async (req, res) => {
   }
   await LabSetup.updateOne({ tenantId: req.tenantId, set: 'lab' }, { $set: { verify: body.verify, verifierIds: ids, updatedByName: req.user.name } }, { upsert: true });
   await audit(req, 'LAB_SETTINGS_CHANGED', { details: { verify: body.verify, checkers: ids.length } });
+  res.json(await settingsView(req));
+});
+
+// ---------- Who signs the report (report templates – docs/LAB_TEMPLATES_PLAN.md part 4) ----------
+
+const MAX_SIGNATURE_BYTES = 150 * 1024;
+/** A signature picture: a PNG or JPEG data: address, checked from its first bytes (not from what it says it is). */
+function checkedSignature(data) {
+  if (!data) return '';
+  const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(data);
+  if (!m) return null;
+  const bytes = Buffer.from(m[2], 'base64');
+  if (!bytes.length || bytes.length > MAX_SIGNATURE_BYTES) return null;
+  const png = bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  return (m[1] === 'png' && png) || (m[1] === 'jpeg' && jpeg) ? data : null;
+}
+const signatorySchema = z
+  .object({
+    name: safeText('Name', 100).refine((t) => t.trim().length >= 2, 'Write the name'),
+    title: safeText('Title', 80).default(''),
+    qualification: safeText('Qualification', 100).default(''),
+    regNo: safeText('Registration number', 60).default(''),
+    userId: objectId.nullable().default(null),
+    signature: z.string().max(220_000).default(''),
+    isDefault: z.boolean().default(false),
+    active: z.boolean().default(true),
+  })
+  .strict();
+
+async function savedSignatory(req, body) {
+  const signature = checkedSignature(body.signature);
+  if (signature === null) throw invalid({ signature: 'Choose a PNG or JPEG picture of the signature, at most 150 KB.' });
+  if (body.userId) {
+    const ok = await Membership.exists({ tenantId: req.tenantId, isActive: true, roles: { $in: STAFF_ROLES }, userId: body.userId });
+    if (!ok) throw invalid({ userId: 'Choose lab staff, a doctor or an RMO of this hospital.' });
+  }
+  return { name: body.name.trim(), title: body.title.trim(), qualification: body.qualification.trim(), regNo: body.regNo.trim(), userId: body.userId, signature, isDefault: body.isDefault, active: body.active };
+}
+
+async function saveSignatories(req, change) {
+  const setup = (await LabSetup.findOne({ tenantId: req.tenantId, set: 'lab' })) ?? new LabSetup({ tenantId: req.tenantId, set: 'lab' });
+  const id = change(setup);
+  // One default signer at most: the one just marked
+  const marked = setup.signatories.find((x) => String(x._id) === String(id));
+  if (marked?.isDefault) for (const x of setup.signatories) if (String(x._id) !== String(id)) x.isDefault = false;
+  setup.updatedByName = req.user.name;
+  await setup.save();
+  await audit(req, 'LAB_SETTINGS_CHANGED', { details: { verify: setup.verify, signers: setup.signatories.filter((x) => x.active).length } });
+}
+
+labSetupRouter.post('/signatories', async (req, res) => {
+  if (!isDoctor(req)) throw forbidden('A doctor changes who signs lab reports.');
+  const entry = await savedSignatory(req, parse(signatorySchema, req.body));
+  await saveSignatories(req, (setup) => {
+    if (setup.signatories.length >= 20) throw invalid({ name: 'At most 20 signers.' });
+    setup.signatories.push(entry);
+    return setup.signatories[setup.signatories.length - 1]._id;
+  });
+  res.status(201).json(await settingsView(req));
+});
+
+labSetupRouter.put('/signatories/:id', async (req, res) => {
+  if (!isDoctor(req)) throw forbidden('A doctor changes who signs lab reports.');
+  const id = parse(objectId, req.params.id);
+  const entry = await savedSignatory(req, parse(signatorySchema, req.body));
+  await saveSignatories(req, (setup) => {
+    const x = setup.signatories.find((y) => String(y._id) === id);
+    if (!x) throw new HttpError(404, 'This signer was not found.', 'NOT_FOUND');
+    Object.assign(x, entry);
+    return x._id;
+  });
   res.json(await settingsView(req));
 });
 

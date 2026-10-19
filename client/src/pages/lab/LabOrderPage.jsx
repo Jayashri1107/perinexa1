@@ -9,6 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { OutsideSection, RejectDialog, VerifyCard } from './LabOrderExtras.jsx';
+import { AntibioticTable, calcHint, previewCalc } from './LabTemplateParts.jsx';
 import { LabLabels, LabReportPrint } from './LabPrints.jsx';
 import { HomeCard, PreviousResults } from './LabWalkIn.jsx';
 import { OrderTracker } from './OrderTracker.jsx';
@@ -26,6 +27,9 @@ import {
   packageNames,
   readAsBase64,
   resultLine,
+  SENSITIVITY,
+  antibioticRows,
+  bySection,
   testDef,
   testsFromForm,
   turnaround,
@@ -75,7 +79,8 @@ function ResultsView({ order, catalogue }) {
                       <tr key={v.key}>
                         <th scope="row">{w.name}</th>
                         <td>
-                          <strong className="tabular">{v.value}</strong> {w.unit} <FlagPill flag={v.flag} />
+                          <strong className="tabular pre-line">{v.value}</strong> {w.unit} <FlagPill flag={v.flag} />
+                          {v.calculated && <span className="muted"> (worked out)</span>}
                           {v.bigChange && (
                             <StatusPill tone="watch" icon={Siren}>
                               Big change ({v.deltaPercent > 0 ? '+' : ''}
@@ -90,8 +95,29 @@ function ResultsView({ order, catalogue }) {
                 </tbody>
               </table>
             )}
+            {t.antibiotics?.length > 0 && (
+              <table className="lab-values lab-abx-table">
+                <caption>Sensitivity</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Antibiotic</th>
+                    <th scope="col">Result</th>
+                    <th scope="col">Zone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {t.antibiotics.map((a) => (
+                    <tr key={a.name}>
+                      <th scope="row">{a.name}</th>
+                      <td>{SENSITIVITY[a.result] ?? a.result}</td>
+                      <td>{a.zone}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
             {t.text && <p className="pre-line">{t.text}</p>}
-            {!values.length && !t.text && <p className="muted">No result typed{order.files.length ? ' – see the report file' : ''}.</p>}
+            {!values.length && !t.text && !t.antibiotics?.length && <p className="muted">No result typed{order.files.length ? ' – see the report file' : ''}.</p>}
           </div>
         );
       })}
@@ -120,13 +146,14 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
       cur.map((e, j) => {
         if (j !== i) return e;
         const before = e.values[f.key] ?? {};
-        // The flag follows the value until someone chooses it
+        // The flag follows the value until someone chooses it; a value typed over a worked-out one is the lab's own
         const flag = before.flagChosen ? before.flag : flagFor(f, value);
-        return { ...e, values: { ...e.values, [f.key]: { ...before, value, flag } } };
+        return { ...e, values: { ...e.values, [f.key]: { ...before, value, flag, calculated: false } } };
       }),
     );
   const setFlag = (i, f, flag) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, values: { ...e.values, [f.key]: { ...(e.values[f.key] ?? { value: '' }), flag, flagChosen: true } } } : e)));
   const setText = (i, text) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, text } : e)));
+  const setAntibiotics = (i, rows) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, antibiotics: rows } : e)));
 
   const send = async (report) => {
     const texts = [labNote, reason, ...form.flatMap((e) => [e.text, ...Object.values(e.values).map((v) => v.value)])];
@@ -187,7 +214,18 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((f) => {
+                  {bySection(list).flatMap(([section, fs]) => [
+                    // A heading row where the report's section changes (report templates)
+                    ...(section
+                      ? [
+                          <tr key={`s-${section}`} className="lab-entry-section">
+                            <th scope="rowgroup" colSpan={5}>
+                              {section}
+                            </th>
+                          </tr>,
+                        ]
+                      : []),
+                    ...fs.map((f) => {
                     const id = `lab-${i}-${f.key}`;
                     const v = entry.values[f.key] ?? { value: '', flag: '' };
                     const err = fields[`tests.${i}.${f.key}`];
@@ -206,16 +244,28 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
                                 </option>
                               ))}
                             </select>
+                          ) : f.type === 'text' && f.long ? (
+                            <textarea id={id} rows={4} maxLength={2000} value={v.value} onChange={(e) => setValue(i, f, e.target.value)} />
                           ) : f.type === 'text' ? (
                             <input id={id} value={v.value} maxLength={100} onChange={(e) => setValue(i, f, e.target.value)} />
                           ) : (
-                            <input id={id} className="tabular" inputMode="decimal" value={v.value} maxLength={20} onChange={(e) => setValue(i, f, e.target.value)} />
+                            // A worked-out value (MCV, globulin …) shows what it comes to; typed over, the lab's own is kept
+                            <input
+                              id={id}
+                              className="tabular"
+                              inputMode="decimal"
+                              value={v.calculated ? '' : v.value}
+                              placeholder={(f.calc ? previewCalc(f, def, entry) : null) ?? (v.calculated ? v.value : '')}
+                              maxLength={20}
+                              onChange={(e) => setValue(i, f, e.target.value)}
+                            />
                           )}
                           {err && <span className="field-error">{err}</span>}
                         </td>
                         <td data-label="Unit">{f.unit ?? ''}</td>
                         <td data-label="Usual range" className="muted">
                           {f.range ?? ''}
+                          {f.calc && <span className="lab-order-sub">{calcHint(f, def, entry)}</span>}
                         </td>
                         <td data-label="Flag">
                           {f.type === 'number' ? (
@@ -232,9 +282,13 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
                         </td>
                       </tr>
                     );
-                  })}
+                    }),
+                  ])}
                 </tbody>
               </table>
+            )}
+            {def?.report?.template === 'culture' && (
+              <AntibioticTable idPrefix={`lab-${i}`} rows={antibioticRows(def.antibiotics, entry.antibiotics)} onChange={(rows) => setAntibiotics(i, rows)} error={fields[`tests.${i}.antibiotics`]} />
             )}
             <Field label={def ? 'Comment on this test (optional)' : 'Result'} id={`lab-${i}-text`} error={fields[`tests.${i}.text`]}>
               {def ? (
@@ -784,7 +838,7 @@ export function LabOrderPage() {
         />
       )}
       {printing === 'labels' && <LabLabels order={order} catalogue={catalogue} onPrinted={(next) => setCurrent({ ...next, patient: order.patient })} onClose={() => setPrinting(null)} />}
-      {printing === 'report' && <LabReportPrint order={order} catalogue={catalogue} onClose={() => setPrinting(null)} />}
+      {printing === 'report' && <LabReportPrint order={order} catalogue={catalogue} signer={data?.signer ?? null} onClose={() => setPrinting(null)} />}
       {cancelling && (
         <CancelDialog
           order={order}
