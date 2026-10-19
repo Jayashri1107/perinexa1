@@ -248,3 +248,52 @@
 .lab-scan .lab-filter span { display: inline-flex; align-items: center; gap: var(--space-1); }
 .lab-scan .lab-filter svg { width: 1em; height: 1em; }
 .lab-scan input { min-width: 18rem; }
+
+/* ---------- A lab order, laid out (owner, 19 Oct 2026) ---------- */
+.lab-order-page { display: grid; gap: var(--space-4); align-content: start; }
+.lab-order-page > .btn-link { justify-self: start; }
+.lab-order-page > .alert, .lab-order-page > .card { margin: 0; }
+.lab-order-card { display: grid; gap: var(--space-4); }
+.lab-order-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
+.lab-order-who { min-width: 0; }
+.lab-order-who h2 { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.lab-order-who h2 svg { flex-shrink: 0; width: 22px; height: 22px; color: var(--indigo-700); }
+.lab-order-patient { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin: var(--space-1) 0 0; }
+.lab-order-pills { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.lab-order-card .lab-track { margin: 0; padding: var(--space-3) 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.lab-order-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3) var(--space-6); margin: 0; }
+.lab-order-facts > div { min-width: 0; }
+.lab-order-facts .lab-order-wide { grid-column: 1 / -1; }
+.lab-order-facts dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.lab-order-facts dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.lab-order-sub { display: block; font-size: var(--fs-caption); }
+.lab-order-card .lab-history { margin: 0; }
+.lab-order-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.lab-order-actions-gap { flex: 1 1 auto; }
+.lab-order-cancel { color: var(--status-high-fg); }
+
+/* The results typed as a table: value, result, unit, usual range, flag */
+.lab-entry-test { padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.lab-entry-test legend { padding: 0 var(--space-2); font-weight: 600; }
+.lab-entry { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: var(--space-3); }
+.lab-entry th, .lab-entry td { padding: var(--space-2); border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.lab-entry thead th { background: var(--mist-50); font-size: var(--fs-label); font-weight: 500; color: var(--slate-600); }
+.lab-entry thead th:nth-child(1) { width: 26%; }
+.lab-entry thead th:nth-child(2) { width: 18%; }
+.lab-entry thead th:nth-child(3) { width: 10%; }
+.lab-entry thead th:nth-child(5) { width: 170px; }
+.lab-entry tbody th { font-weight: 500; color: var(--ink); background: none; font-size: inherit; text-transform: none; letter-spacing: normal; }
+.lab-entry input, .lab-entry select { width: 100%; }
+.lab-entry tr.has-error td, .lab-entry tr.has-error th { background: var(--mist-50); }
+.lab-entry .field-error { display: block; margin-top: var(--space-1); }
+.lab-entry-test .field { margin-bottom: 0; }
+@media (max-width: 760px) {
+  .lab-entry, .lab-entry tbody { display: block; table-layout: auto; }
+  .lab-entry thead { display: none; }
+  .lab-entry tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+  .lab-entry th, .lab-entry td { display: block; padding: 0; border: 0; }
+  .lab-entry th[data-label='Value'] { grid-column: 1 / -1; }
+  .lab-entry td:empty { display: none; }
+  .lab-entry td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); color: var(--slate-600); }
+  .lab-order-actions-gap { display: none; }
+}

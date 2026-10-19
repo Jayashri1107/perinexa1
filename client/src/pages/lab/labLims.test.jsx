@@ -139,8 +139,9 @@ describe('screens', () => {
   it('an order shows its sample number, who entered and checked it, and Print the report', () => {
     const html = page(order());
     expect(html).toContain('Sample number 261001-0001');
-    expect(html).toContain('Entered Sample lab');
-    expect(html).toContain('Checked Sample checker');
+    // Who entered and who checked: on the order's steps (owner, 19 Oct 2026)
+    expect(html).toMatch(/Results entered – done [^·]+· Sample lab/);
+    expect(html).toMatch(/Checked – done [^·]+· Sample checker/);
     expect(html).toContain('Print the report');
     expect(html).toContain('10.5–14 g/dL (pregnant)');
     expect(html).toContain('Done at Sample Town Lab (practice)');

@@ -5,6 +5,7 @@ import { leaveOn } from '../appointments/slots.js';
 import { Appointment } from '../models/Appointment.js';
 import { OpdSchedule } from '../models/OpdSchedule.js';
 import rateLimit from 'express-rate-limit';
+import { countFailure, lockedError, secondsLeft } from '../auth/loginLock.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
@@ -50,8 +51,6 @@ export const patientPortalAccessRouter = Router({ mergeParams: true }); // /api/
 const PORTAL_COOKIE = 'perinexa_portal';
 const SESSION_MINUTES = 15;
 const CODE_DAYS = 90;
-const MAX_FAILED = 5;
-const LOCK_MINUTES = 30;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I
 const STAFF = ['doctor', 'rmo', 'nurse', 'receptionist'];
 
@@ -136,19 +135,17 @@ portalRouter.post('/login', signInLimiter, async (req, res) => {
     await portalAudit(req, 'PORTAL_LOGIN_FAILED', null, { reason: access ? 'expired_or_withdrawn' : 'unknown_code' });
     throw new HttpError(401, WRONG, 'PORTAL_LOGIN_FAILED');
   }
-  if (access.lockedUntil && access.lockedUntil > now) throw new HttpError(429, 'This code is locked for a while after wrong tries. Please call the hospital.', 'PORTAL_LOCKED');
+  // 3 wrong tries lock the code for 2 minutes (auth/loginLock.js – owner, 19 Oct 2026)
+  if (secondsLeft(access.lockedUntil, now)) throw lockedError(secondsLeft(access.lockedUntil, now), 'PORTAL_LOCKED');
   const [patient, enabled] = await Promise.all([Patient.findOne({ _id: access.patientId, tenantId: access.tenantId }), portalEnabled(access.tenantId)]);
   // (a record closed after a death: its codes were withdrawn when it was closed – the same answer as for any withdrawn code)
   if (!enabled || !patient || isClosed(patient)) throw new HttpError(401, WRONG, 'PORTAL_LOGIN_FAILED');
   const expected = lastFour(patient.phone);
   if (expected.length !== 4 || digits.length !== 4 || !sameText(expected, digits)) {
-    access.failedAttempts += 1;
-    if (access.failedAttempts >= MAX_FAILED) {
-      access.lockedUntil = new Date(now.getTime() + LOCK_MINUTES * 60 * 1000);
-      access.failedAttempts = 0;
-    }
+    const lockedFor = countFailure(access, now);
     await access.save();
     await portalAudit(req, 'PORTAL_LOGIN_FAILED', access, { reason: 'wrong_digits' });
+    if (lockedFor) throw lockedError(lockedFor, 'PORTAL_LOCKED');
     throw new HttpError(401, WRONG, 'PORTAL_LOGIN_FAILED');
   }
   access.failedAttempts = 0;

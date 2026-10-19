@@ -1,3 +1,4 @@
+import { LockNotice, useLockCountdown } from '../../components/LockCountdown.jsx';
 import { useState } from 'react';
 import { ArrowRight, CircleCheck, KeyRound, Mail, Smartphone, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -23,18 +24,19 @@ function Refusal({ error, lang }) {
 function useStep() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const lock = useLockCountdown(); // 3 wrong tries: 2 minutes to wait (owner, 19 Oct 2026)
   const run = async (fn) => {
     setBusy(true);
     setError(null);
     try {
       await fn();
     } catch (err) {
-      setError(err);
+      if (!lock.catchLock(err)) setError(err);
     } finally {
       setBusy(false);
     }
   };
-  return { busy, error, run, setError };
+  return { busy: busy || lock.seconds > 0, locked: lock.seconds, error, run, setError };
 }
 
 function OtpSignIn({ hospitalKey, otpMode, lang, onSignedIn }) {
@@ -57,6 +59,7 @@ function OtpSignIn({ hospitalKey, otpMode, lang, onSignedIn }) {
         noValidate
       >
         <Refusal error={step.error} lang={lang} />
+      <LockNotice seconds={step.locked} lang={lang} />
         <Field label={w.mobile} id="portal-mobile" hint={w.mobileHint}>
           <input id="portal-mobile" type="tel" inputMode="numeric" autoComplete="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} maxLength={20} />
         </Field>
@@ -80,6 +83,7 @@ function OtpSignIn({ hospitalKey, otpMode, lang, onSignedIn }) {
       <p>{sent.via === 'whatsapp' ? w.otpSentWhatsapp(sent.sentTo) : w.otpSentTo(sent.sentTo)}</p>
       {sent.practiceOtp && <Alert type="info">{w.practiceOtp(sent.practiceOtp)}</Alert>}
       <Refusal error={step.error} lang={lang} />
+      <LockNotice seconds={step.locked} lang={lang} />
       <Field label={w.otp} id="portal-otp">
         <input id="portal-otp" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
       </Field>
@@ -120,6 +124,7 @@ function PasswordSignIn({ hospitalKey, lang, onSignedIn }) {
       noValidate
     >
       <Refusal error={step.error} lang={lang} />
+      <LockNotice seconds={step.locked} lang={lang} />
       <Field label={w.email} id="portal-email">
         <input id="portal-email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} />
       </Field>
@@ -182,6 +187,7 @@ function SignUp({ hospitalKey, hospital, lang, onBack }) {
       noValidate
     >
       <Refusal error={step.error} lang={lang} />
+      <LockNotice seconds={step.locked} lang={lang} />
       <AadhaarQrFill onFill={fromAadhaar} words={w.aadhaar} scanner={false} />
       <Field label={w.fullName} id="signup-name" error={fields.fullName}>
         <input id="signup-name" autoComplete="name" value={form.fullName} onChange={set('fullName')} maxLength={150} />
@@ -311,6 +317,7 @@ export function ChangePassword({ lang, onClose }) {
       noValidate
     >
       <Refusal error={step.error} lang={lang} />
+      <LockNotice seconds={step.locked} lang={lang} />
       <Field label={w.newPassword} id="portal-new-password" error={step.error?.fields?.password} hint={w.passwordHint} keepHint>
         <PasswordInput id="portal-new-password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </Field>

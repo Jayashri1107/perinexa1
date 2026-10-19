@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 export const AUDIT_ACTIONS = [
   'LOGIN_SUCCESS',
-  'LOGIN_FAILED',
+  'LOGIN_FAILED', 'LOGIN_LOCKED',
   'LOGIN_RATE_LIMITED',
   'LOGOUT',
   'PASSWORD_CHANGED',
@@ -325,7 +325,7 @@ export const RETIRED_AUDIT_ACTIONS = new Set([
 // Groups of events, used by the audit log tabs.
 export const AUDIT_CATEGORIES = {
   security: [
-    'LOGIN_FAILED',
+    'LOGIN_FAILED', 'LOGIN_LOCKED',
     'LOGIN_RATE_LIMITED',
     'PASSWORD_RESET',
     'PASSWORD_CHANGED',

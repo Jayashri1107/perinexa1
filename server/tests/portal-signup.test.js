@@ -181,7 +181,7 @@ describe('signing in', () => {
     expect((await agent.get('/api/portal/me')).status).toBe(401);
   });
 
-  it('after approval: email and password, or mobile and OTP, open her record; 5 wrong tries lock it', async () => {
+  it('after approval: email and password, or mobile and OTP, open her record; 3 wrong tries lock it for 2 minutes', async () => {
     const key = await signupOn();
     const p = await register();
     await signUp(key);
@@ -218,10 +218,11 @@ describe('signing in', () => {
     expect((await passwordSignIn(request.agent(app), key)).status).toBe(401);
     expect((await passwordSignIn(request.agent(app), key, undefined, 'NewSample99')).status).toBe(200);
 
-    // 5 wrong passwords lock it for 30 minutes, even for the right one
-    for (let i = 0; i < 5; i += 1) await passwordSignIn(request.agent(app), key, undefined, 'Wrong1234');
+    // 3 wrong passwords lock it for 2 minutes, even for the right one; the third answer gives the countdown
+    for (let i = 0; i < 2; i += 1) expect((await passwordSignIn(request.agent(app), key, undefined, 'Wrong1234')).status).toBe(401);
+    expect((await passwordSignIn(request.agent(app), key, undefined, 'Wrong1234')).body.error).toMatchObject({ code: 'PORTAL_LOCKED', retryAfterSeconds: 120 });
     expect((await passwordSignIn(request.agent(app), key, undefined, 'NewSample99')).body.error.code).toBe('PORTAL_LOCKED');
-    vi.setSystemTime(new Date(NOW.getTime() + 31 * 60 * 1000));
+    vi.setSystemTime(new Date(NOW.getTime() + 121 * 1000));
     expect((await passwordSignIn(request.agent(app), key, undefined, 'NewSample99')).status).toBe(200);
 
     const methods = (await AuditLog.find({ action: 'PORTAL_LOGIN_SUCCESS' }).sort({ _id: 1 }).lean()).map((e) => e.details.method);

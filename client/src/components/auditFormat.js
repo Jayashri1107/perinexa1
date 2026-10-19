@@ -31,6 +31,7 @@ const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password
 export const AUDIT_LABELS = {
   LOGIN_SUCCESS: 'Signed in',
   LOGIN_FAILED: 'Failed sign-in',
+  LOGIN_LOCKED: 'Sign-in locked for 2 minutes (3 wrong tries)',
   LOGIN_RATE_LIMITED: 'Too many sign-in attempts',
   LOGOUT: 'Signed out',
   PASSWORD_CHANGED: 'Changed password',
@@ -322,6 +323,7 @@ const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_su
 
 export const AUDIT_TONES = {
   LOGIN_FAILED: 'warn',
+  LOGIN_LOCKED: 'danger',
   LOGIN_RATE_LIMITED: 'danger',
   USER_DEACTIVATED: 'warn',
   TENANT_DEACTIVATED: 'warn',
@@ -519,6 +521,7 @@ export const AUDIT_TONES = {
  */
 const STATUS_EVENTS = {
   LOGIN_FAILED: 'high',
+  LOGIN_LOCKED: 'high',
   LOGIN_RATE_LIMITED: 'high',
   EMERGENCY_NOTE_ADDED: 'high',
   USER_DEACTIVATED: 'inactive',
@@ -780,6 +783,8 @@ function abdmText(action, d) {
 export function describeAudit(entry) {
   const d = entry.details || {};
   switch (entry.action) {
+    case 'LOGIN_LOCKED':
+      return [d.email, d.seconds ? `${Math.round(d.seconds / 60)} minutes` : ''].filter(Boolean).join(' · ');
     case 'LOGIN_FAILED':
       return `${d.email} (${FAIL_REASONS[d.reason] ?? d.reason})`;
     case 'LOGIN_RATE_LIMITED':

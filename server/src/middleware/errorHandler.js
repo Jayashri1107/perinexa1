@@ -19,7 +19,8 @@ export function errorHandler(err, _req, res, _next) {
   }
 
   if (err instanceof HttpError) {
-    return res.status(err.status).json({ error: { message: err.message, code: err.code, ...(err.fields ? { fields: err.fields } : {}) } });
+    if (err.retryAfterSeconds != null) res.set('Retry-After', String(err.retryAfterSeconds));
+    return res.status(err.status).json({ error: { message: err.message, code: err.code, ...(err.fields ? { fields: err.fields } : {}), ...(err.retryAfterSeconds != null ? { retryAfterSeconds: err.retryAfterSeconds } : {}) } });
   }
 
   // Someone else saved the same record at the same moment.

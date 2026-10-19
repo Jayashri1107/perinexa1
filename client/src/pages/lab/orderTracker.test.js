@@ -1,6 +1,6 @@
 // The order's steps (owner, 19 Oct 2026 – docs/LAB_DASHBOARD_PLAN.md): which show, and which are done.
 import { describe, expect, it } from 'vitest';
-import { orderSteps } from './OrderTracker.jsx';
+import { orderSteps, trackedSteps } from './OrderTracker.jsx';
 
 const at = (h) => ({ byName: 'Sample lab', at: `2026-10-19T0${h}:00:00Z` });
 const words = (o) => orderSteps(o).map((s) => `${s.word}${s.stamp ? ' ✓' : ''}`);
@@ -24,6 +24,16 @@ describe('the order tracker', () => {
       'Results entered ✓',
       'Checked',
       'Reported',
+    ]);
+  });
+  it('an older order with no "received" stamp: that step counts as passed, and nothing is "next" once reported', () => {
+    const steps = trackedSteps({ status: 'reported', source: 'walk_in', ordered: at(1), collected: at(2), reported: at(3) });
+    expect(steps.map((x) => [x.word, x.done, x.next])).toEqual([
+      ['Registered', true, false],
+      ['Sample taken', true, false],
+      ['Received in lab', true, false],
+      ['Results entered', true, false],
+      ['Reported', true, false],
     ]);
   });
 });

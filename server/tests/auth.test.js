@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { LoginLock } from '../src/models/LoginLock.js';
 import { User } from '../src/models/User.js';
 import { COOKIE_NAME } from '../src/middleware/auth.js';
 import {
@@ -107,6 +108,32 @@ describe('POST /api/auth/login', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.fields).toHaveProperty('email');
     expect(res.body.error.fields).toHaveProperty('password');
+  });
+
+  // Owner, 19 Oct 2026: 3 wrong passwords in a row lock the email for 2 minutes, with the seconds to count down
+  it('locks the email for 2 minutes after 3 wrong passwords – also an unknown email – and a right one clears the count', async () => {
+    const user = await createUser();
+    const login = (password, email = user.email) => request(app).post('/api/auth/login').send({ email, password });
+    expect((await login('wrong-1')).status).toBe(401);
+    const second = await login('wrong-2');
+    expect(second.body.error.message).toMatch(/One more wrong try/);
+    const third = await login('wrong-3');
+    expect(third.status).toBe(429);
+    expect(third.body.error).toMatchObject({ code: 'LOGIN_LOCKED', retryAfterSeconds: 120 });
+    expect(third.headers['retry-after']).toBe('120');
+    expect((await AuditLog.findOne({ action: 'LOGIN_LOCKED' }).lean()).details).toMatchObject({ email: user.email, seconds: 120 });
+    // Locked: even the right password waits, and is not checked
+    const right = await login(PASSWORD);
+    expect(right.status).toBe(429);
+    expect(right.body.error.retryAfterSeconds).toBeGreaterThan(0);
+    expect(right.headers['set-cookie']).toBeUndefined();
+    // Two minutes later: the right password signs in and the count starts again
+    await LoginLock.updateOne({ key: `staff:${user.email}` }, { $set: { lockedUntil: new Date(Date.now() - 1000) } });
+    expect((await login(PASSWORD)).status).toBe(200);
+    expect(await LoginLock.countDocuments({ key: `staff:${user.email}` })).toBe(0);
+    // An unknown email gets exactly the same answers (nothing shows whether an account exists)
+    for (let i = 0; i < 2; i++) expect((await login('x', 'nobody@example.com')).status).toBe(401);
+    expect((await login('x', 'nobody@example.com')).body.error.code).toBe('LOGIN_LOCKED');
   });
 
   it('limits repeated login attempts', async () => {

@@ -23,26 +23,36 @@ export function orderSteps(order) {
   return steps;
 }
 
+/**
+ * Each step with { done, next }: a step with no stamp before one that has one was passed without being recorded (an
+ * older order, from before the "received" step); "next" is the first step after the last one done.
+ */
+export function trackedSteps(order) {
+  const steps = orderSteps(order);
+  const lastDone = steps.reduce((n, s, i) => (s.stamp ? i : n), -1);
+  const next = steps.findIndex((s, i) => !s.stamp && i > lastDone);
+  return steps.map((s, i) => ({ ...s, done: Boolean(s.stamp) || i < lastDone, next: i === next }));
+}
+
 export function OrderTracker({ order }) {
   if (order.status === 'cancelled') return null;
-  const steps = orderSteps(order);
-  const next = steps.findIndex((s) => !s.stamp);
+  const steps = trackedSteps(order);
   return (
     <ol className="lab-track" aria-label="Where this order is">
       {steps.map((s, i) => {
-        const done = Boolean(s.stamp);
+        const { done } = s;
         const Icon = done ? Check : s.icon;
         return (
-          <li key={s.key} className={done ? 'is-done' : i === next ? 'is-now' : ''} aria-current={i === next ? 'step' : undefined}>
+          <li key={s.key} className={done ? 'is-done' : s.next ? 'is-now' : ''} aria-current={s.next ? 'step' : undefined}>
             <span className="lab-track-dot" aria-hidden="true">
               <Icon />
             </span>
             <span>
               <span className="lab-track-word">
                 {s.word}
-                <span className="sr-only">{done ? ' – done' : i === next ? ' – next' : ' – not yet'}</span>
+                <span className="sr-only">{done ? ' – done' : s.next ? ' – next' : ' – not yet'}</span>
               </span>
-              <span className="lab-track-when">{done ? `${formatDateTime(s.stamp.at)}${s.stamp.byName ? ` · ${s.stamp.byName}` : ''}` : i === next ? 'Next' : ''}</span>
+              <span className="lab-track-when">{s.stamp ? `${formatDateTime(s.stamp.at)}${s.stamp.byName ? ` · ${s.stamp.byName}` : ''}` : done ? 'Not recorded' : s.next ? 'Next' : ''}</span>
             </span>
           </li>
         );

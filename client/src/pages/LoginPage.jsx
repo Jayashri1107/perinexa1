@@ -1,3 +1,4 @@
+import { LockNotice, useLockCountdown } from '../components/LockCountdown.jsx';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Baby, BedDouble, CalendarClock, Check, FlaskConical, HeartPulse, Lock, Pill, Receipt, ShieldCheck, Stethoscope, Syringe, UserRound } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -60,6 +61,7 @@ export function LoginPage() {
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const lock = useLockCountdown(); // 3 wrong passwords: 2 minutes to wait
   // First start: no super admin yet – this page creates the first one (nothing is kept in a settings file)
   const [needsSetup, setNeedsSetup] = useState(false);
   // Staff or patient (owner, 16 Oct 2026: one sign-in page). The patient side is the patient portal's own sign-in –
@@ -87,7 +89,7 @@ export function LoginPage() {
       const from = location.state?.from?.pathname || '/';
       navigate(loggedIn.mustChangePassword ? '/change-password' : from, { replace: true });
     } catch (err) {
-      setError(err.message);
+      if (!lock.catchLock(err)) setError(err.message);
       setFieldErrors(err.fields);
       setPassword('');
     } finally {
@@ -129,7 +131,8 @@ export function LoginPage() {
             <p className="muted">Use the email and password your administrator gave you.</p>
           </header>
           {reason && !error && <Alert type={reason.type}>{reasonText}</Alert>}
-          <Alert type="error">{error}</Alert>
+          <Alert type="error">{lock.seconds ? null : error}</Alert>
+          <LockNotice seconds={lock.seconds} />
           <Field label="Email" id="email" error={fieldErrors.email}>
             <input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus={!email} />
           </Field>
@@ -140,7 +143,7 @@ export function LoginPage() {
             <input id="remember-email" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
             Remember my email on this computer
           </label>
-          <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={submitting}>
+          <button type="submit" className="btn btn-primary btn-block auth1-submit" disabled={submitting || lock.seconds > 0}>
             {submitting ? (
               'Signing in…'
             ) : (
