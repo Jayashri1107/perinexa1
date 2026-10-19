@@ -29,11 +29,17 @@ export function sessionsOn(schedule, day) {
   return schedule?.week?.find((w) => w.day === dow)?.sessions ?? [];
 }
 
-/** The slots kept for walk-ins on this day: the last schedule.walkInSlots slots of each session (a Set of "HH:MM"). */
+/**
+ * The slots kept for walk-ins on this day (owner, 19 Oct 2026): through the whole day, after every
+ * schedule.walkInEvery slots open for booking online, the next schedule.walkInKeep slots are kept for walk-ins – e.g.
+ * 5 and 2: slots 1–5 online, 6–7 walk-in, 8–12 online, 13–14 walk-in … (morning and evening sessions count as one day).
+ * Never offered online; reception and doctors see and book them. A Set of "HH:MM"; empty when walkInKeep is 0.
+ */
 export function walkInStarts(schedule, day, slotMinutes = SLOT_MINUTES) {
-  const n = schedule?.walkInSlots ?? 0;
-  if (!n) return new Set();
-  return new Set(sessionsOn(schedule, day).flatMap((s) => slotStarts([s], slotMinutes).slice(-n)));
+  const keep = schedule?.walkInKeep ?? 0;
+  const every = schedule?.walkInEvery ?? 5;
+  if (!keep || !every) return new Set();
+  return new Set(slotStarts(sessionsOn(schedule, day), slotMinutes).filter((_, i) => i % (every + keep) >= every));
 }
 
 /** The leave entry that covers this day, or null. */

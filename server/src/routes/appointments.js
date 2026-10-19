@@ -96,7 +96,8 @@ const timingsSchema = z
       .strict()
       .optional(),
     // The last N slots of each session kept for walk-ins (not offered online). Left out: as it is.
-    walkInSlots: z.number().int().min(0).max(20).optional(),
+    walkInEvery: z.number().int().min(1).max(20).optional(),
+    walkInKeep: z.number().int().min(0).max(10).optional(),
   })
   .strict();
 
@@ -104,7 +105,8 @@ const timingsView = (s) => ({
   week: [0, 1, 2, 3, 4, 5, 6].map((day) => ({ day, sessions: (s?.week?.find((w) => w.day === day)?.sessions ?? []).map((x) => ({ from: x.from, to: x.to })) })),
   leave: (s?.leave ?? []).map((l) => ({ from: isoDay(l.from), to: isoDay(l.to), note: l.note ?? '' })),
   lengths: Object.fromEntries(VISIT_TYPES.map((t) => [t, lengthFor(s, t)])),
-  walkInSlots: s?.walkInSlots ?? 0,
+  walkInEvery: s?.walkInEvery ?? 5,
+  walkInKeep: s?.walkInKeep ?? 0,
   updatedByName: s?.updatedByName ?? '',
   updatedAt: s?.updatedAt ?? null,
 });
@@ -131,7 +133,7 @@ appointmentsRouter.put('/timings/:doctorId', async (req, res) => {
   const leave = body.leave.filter((l) => l.to >= today).sort((a, b) => a.from - b.from);
   const schedule = await OpdSchedule.findOneAndUpdate(
     { tenantId: req.tenantId, doctorId },
-    { $set: { week, leave, ...(body.lengths ? { lengths: body.lengths } : {}), ...(body.walkInSlots !== undefined ? { walkInSlots: body.walkInSlots } : {}), updatedBy: req.user._id, updatedByName: req.user.name }, $setOnInsert: { tenantId: req.tenantId, doctorId } },
+    { $set: { week, leave, ...(body.lengths ? { lengths: body.lengths } : {}), ...(body.walkInEvery !== undefined ? { walkInEvery: body.walkInEvery } : {}), ...(body.walkInKeep !== undefined ? { walkInKeep: body.walkInKeep } : {}), updatedBy: req.user._id, updatedByName: req.user.name }, $setOnInsert: { tenantId: req.tenantId, doctorId } },
     { upsert: true, returnDocument: 'after' },
   ).lean();
   await audit(req, 'OPD_TIMINGS_CHANGED', { details: { doctorId: String(doctorId), days: week.filter((w) => w.sessions.length).length, leave: leave.length } });

@@ -50,19 +50,31 @@ const bell = async (who) => (await (await as(who)).get('/api/notifications')).bo
 const price = (key, pricePaise) => PriceItem.updateOne({ tenantId: hospital._id, key }, { $set: { pricePaise } });
 
 describe('slots kept for walk-ins', () => {
-  it('the last slots of each session are not offered online; reception sees and books them', async () => {
-    const set = await (await as('drA')).put(`/api/appointments/timings/${drId()}`).send({ week: WEEKDAYS, leave: [], walkInSlots: 2 });
+  it('after every 5 slots open online, 2 are kept for walk-ins, through the whole day; reception sees and books them', async () => {
+    // A morning (10:00–11:30, 9 slots) and an evening (17:00–18:00, 6 slots) session of 10-minute slots: 15 in the day
+    const week = [1, 2, 3, 4, 5, 6].map((day) => ({ day, sessions: [{ from: '10:00', to: '11:30' }, { from: '17:00', to: '18:00' }] }));
+    const set = await (await as('drA')).put(`/api/appointments/timings/${drId()}`).send({ week, leave: [], walkInEvery: 5, walkInKeep: 2 });
     expect(set.status, JSON.stringify(set.body)).toBe(200);
-    expect(set.body.timings.walkInSlots).toBe(2);
+    expect(set.body.timings).toMatchObject({ walkInEvery: 5, walkInKeep: 2 });
     const tomorrow = new Date('2026-09-29T00:00:00Z');
     const online = await freeStarts(hospital._id, drId(), tomorrow, { now: NOW, online: true });
     const desk = await freeStarts(hospital._id, drId(), tomorrow, { now: NOW });
-    expect(online).toEqual(['10:00', '10:10', '10:20', '10:30']);
-    expect(desk).toEqual(['10:00', '10:10', '10:20', '10:30', '10:40', '10:50']);
+    // The day's slots: 10:00–11:20 and 17:00–17:50. Slots 6–7 (10:50, 11:00) and 13–14 (17:30, 17:40) – the pattern
+    // carries on into the evening session
+    const kept = ['10:50', '11:00', '17:30', '17:40'];
+    expect(desk).toHaveLength(15);
+    expect(online).toEqual(desk.filter((t) => !kept.includes(t)));
     const day = (await (await as('reception')).get(`/api/appointments/day?doctorId=${drId()}&date=2026-09-29`)).body;
-    expect(day.slots.filter((s) => s.walkIn).map((s) => s.start)).toEqual(['10:40', '10:50']);
+    expect(day.slots.filter((s) => s.walkIn).map((s) => s.start)).toEqual(kept);
     const p = await register();
-    expect((await (await as('reception')).post('/api/appointments').send({ doctorId: drId(), date: '2026-09-29', start: '10:50', patientId: p.id, visitType: 'follow_up' })).status).toBe(201);
+    expect((await (await as('reception')).post('/api/appointments').send({ doctorId: drId(), date: '2026-09-29', start: '11:00', patientId: p.id, visitType: 'follow_up' })).status).toBe(201);
+    // Other numbers: 3 online, then 1 kept
+    await (await as('drA')).put(`/api/appointments/timings/${drId()}`).send({ week, leave: [], walkInEvery: 3, walkInKeep: 1 });
+    const day2 = (await (await as('reception')).get(`/api/appointments/day?doctorId=${drId()}&date=2026-09-30`)).body;
+    expect(day2.slots.filter((s) => s.walkIn).map((s) => s.start)).toEqual(['10:30', '11:10', '17:20']); // slots 4, 8 and 12 of the day
+    // 0 kept: none
+    await (await as('drA')).put(`/api/appointments/timings/${drId()}`).send({ week, leave: [], walkInKeep: 0 });
+    expect((await freeStarts(hospital._id, drId(), tomorrow, { now: NOW, online: true })).length).toBe(14); // all but the 11:00 booked above
   });
 });
 
