@@ -13,7 +13,7 @@ import { PriceItem } from '../src/models/PriceItem.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-09-28T04:00:00Z'); // Monday 28 Sep 2026, 09:30 in the hospital (India)
-const ROLES = { drA: 'doctor', reception: 'receptionist', reception2: 'receptionist', admin: 'admin', nurse: 'nurse' };
+const ROLES = { drA: 'doctor', reception: 'receptionist', reception2: 'receptionist', admin: 'admin', nurse: 'nurse', lab: 'lab' };
 const WEEKDAYS = [1, 2, 3, 4, 5, 6].map((day) => ({ day, sessions: [{ from: '10:00', to: '11:00' }] })); // 6 slots of 10 min
 let app;
 let hospital;
@@ -89,6 +89,11 @@ describe('the doctor marks the checkup done; notifications', () => {
     expect(JSON.stringify(queue.queues?.[0]?.waiting ?? [])).not.toContain('Bell Patient');
 
     expect((await (await as('drA')).post('/api/notifications/read').send({})).body.read).toBe(2);
+
+    // The lab is told of a new order: the number of tests, not their names
+    const ordered = await (await as('drA')).post(`/api/patients/${p.id}/lab-orders`).send({ clientRequestId: randomUUID(), tests: [{ key: 'hb' }] });
+    expect(ordered.status, JSON.stringify(ordered.body)).toBe(201);
+    expect((await bell('lab')).notifications[0]).toMatchObject({ kind: 'lab', text: 'New lab order: Bell Patient, 1 test.' });
     expect((await bell('drA')).unread).toBe(0);
   });
 });

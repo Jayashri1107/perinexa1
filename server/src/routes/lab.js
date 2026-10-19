@@ -345,6 +345,8 @@ async function createOrder(req, patient, access, body, extra = {}) {
   });
   await audit(req, 'LAB_ORDER_CREATED', { details: ids(order, { mrn: patient.mrn, tests: tests.length, ...(extra.source === 'walk_in' ? { walkIn: true } : {}) }) });
   await billLabOrdered(req, patient, order); // billing: each test
+  // The lab is told of a new order (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md): the count of tests, never their names
+  await notify(req, { roles: ['lab'] }, { kind: 'lab', text: `New lab order: ${patient.fullName}, ${tests.length} test${tests.length > 1 ? 's' : ''}${body.urgent ? ' (urgent)' : ''}.`, link: `/lab/orders/${order._id}` });
   return viewFor(req, order, access);
 }
 
