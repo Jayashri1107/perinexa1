@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { billRound } from '../billing/hooks.js';
 import { nextIpdNo } from '../inpatient/admissionDesk.js';
 import { billAdmitted } from '../billing/hooks.js';
 import { z } from 'zod';
@@ -335,6 +336,8 @@ admissionsRouter.post('/:admissionId/documents/:docId/sign', async (req, res) =>
     );
     await audit(req, 'PATIENT_DISCHARGED', { details: ids(patient, { admissionId: String(admission._id) }) });
   }
+  // A ward round signed by a doctor: one doctor visit on the stay's bill (when the hospital charges it)
+  if (doc.kind === 'round' && role === 'doctor') await billRound(req, admission, doc);
   if (doc.kind === 'delivery') {
     const deliveredAt = new Date(doc.content.deliveredAt);
     const later = patient.lastDelivery?.at && patient.lastDelivery.at > deliveredAt;

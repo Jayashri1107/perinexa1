@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Clock, Hash, Printer, UserCheck, UserPlus, Users } from 'lucide-react';
+import { CheckCircle2, Clock, Hash, Printer, UserCheck, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, Field, StatusPill, formatTime, useDialogFocus } from '../../components/ui.jsx';
@@ -117,8 +118,24 @@ export function TokenButton({ appointment, onPrint }) {
   );
 }
 
-/** One line of a waiting list: "Next", the time or token and when she came show without opening the row. */
-function WaitingLine({ w, next }) {
+/**
+ * One line of a waiting list: "Next", the time or token and when she came show without opening the row. A doctor (or
+ * RMO) marks the checkup done here: she leaves the list and reception is told.
+ */
+function WaitingLine({ w, next, canMarkDone, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const markDone = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/appointments/${w.id}/done`, { method: 'POST' });
+      onDone();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
   return (
     <PatientRow
       patient={w.patient}
@@ -139,6 +156,12 @@ function WaitingLine({ w, next }) {
         {w.kind === 'token' ? 'Walk-in' : `Booked · ${VISIT_TYPE_LABELS[w.visitType]}`}
         {w.arrivedAt ? ` · arrived ${formatTime(w.arrivedAt)}` : ''}
       </p>
+      {canMarkDone && (
+        <button type="button" className="btn btn-secondary btn-sm" onClick={markDone} disabled={busy}>
+          <CheckCircle2 aria-hidden="true" /> {busy ? 'Saving…' : 'Checkup done'}
+        </button>
+      )}
+      {error && <Alert type="error">{error}</Alert>}
     </PatientRow>
   );
 }
@@ -149,6 +172,9 @@ function WaitingLine({ w, next }) {
  */
 export function WaitingLists() {
   const queue = useFetch('/appointments/queue');
+  const { activeMembership } = useAuth();
+  const roles = activeMembership?.roles ?? [];
+  const isDoctor = roles.includes('doctor') || roles.includes('rmo');
   if (queue.error) return <Alert type="error">{queue.error}</Alert>;
   if (!queue.data) return null;
   const { queues, me } = queue.data;
@@ -169,7 +195,7 @@ export function WaitingLists() {
           {q.waiting.length > 0 && (
             <ul className="wl-list">
               {q.waiting.map((w, i) => (
-                <WaitingLine key={w.id} w={w} next={i === 0} />
+                <WaitingLine key={w.id} w={w} next={i === 0} canMarkDone={isDoctor} onDone={queue.reload} />
               ))}
             </ul>
           )}

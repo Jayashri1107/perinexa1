@@ -95,6 +95,10 @@ const orderSchema = new mongoose.Schema(
     // sample was taken some time between the order and the report (the red flags work out a baby's age for a
     // bilirubin result from the order's time then, redflags/redFlags.js labReadings). Not set on older orders.
     collectedAtReport: { type: Boolean, default: false },
+    // The sample received in the lab (the eLabAssist-style accession step – owner, 17 Oct 2026): a sample the lab takes at
+    // its counter is received at once; one taken on a ward by a nurse, or at home, is received when it reaches the lab
+    // (Samples to receive, by scanning the label). Not set on older orders.
+    received: stamp(),
     entered: stamp(), // who typed the results that were then checked (with the check on)
     verified: stamp(), // who checked them (with the check on); the report is then stamped with the same person and time
     reported: stamp(),

@@ -170,6 +170,10 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   wristband, checklist, doctor's admission request, discharge clearance and gate pass – `docs/ADMISSION_DESK_PLAN.md`.
 - **Lab version 2 (17 Oct 2026)**: the freeze is lifted for 8 more lab parts, and **the lab may register walk-in
   patients and order tests from an outside prescription** (owner's clinical decision) – `docs/LAB_V2_PLAN.md`.
+- **Reception like a hospital system (17 Oct 2026)**: module pages in the sidebar, automatic charges once priced
+  (registration, admission, nursing per day, ward round, scans), the doctor's name on bills, an easier Add items, slots
+  kept for walk-ins (not offered online), the notification bell, and the doctor marking a checkup done –
+  `docs/RECEPTION_V2_PLAN.md`.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

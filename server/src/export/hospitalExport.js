@@ -165,6 +165,7 @@ export const LEFT_OUT = {
   Membership: 'Written as staff.json (name and roles).',
   Tenant: 'Written as hospital.json, field by field (never the waiting-room screen key).',
   StoredFile: 'Written as stored-files.json and the "files" folder.',
+  Notification: "Staff's notifications (the bell): short-lived messages, deleted after 30 days; the work itself is exported.",
   PortalAccess: 'Patient portal codes (kept only as hashes) never leave Perinexa.',
   PatientAccount: "Patients' own portal sign-ins (email, mobile, password hash, OTP): sign-in data, not her record – it never leaves Perinexa; approvals and rejections are in the audit log.",
   DictationWord: 'Personal voice-entry words of staff accounts – not the hospital\'s data, and never patient information.',

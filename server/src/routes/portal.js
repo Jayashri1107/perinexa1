@@ -317,7 +317,7 @@ portalRouter.get('/booking/times', async (req, res) => {
   if (!s.enabled || !s.doctor) throw new HttpError(409, 'Online booking is not available. Please call the hospital.', 'BOOKING_OFF');
   if (date < s.from || date > s.to) throw new HttpError(400, `Please choose a day from tomorrow up to ${BOOK_DAYS_AHEAD} days ahead.`, 'VALIDATION');
   const onLeave = Boolean(leaveOn(await scheduleOf(s.access.tenantId, s.doctor.id), date));
-  res.json({ date: isoDay(date), onLeave, times: onLeave ? [] : await freeStarts(s.access.tenantId, s.doctor.id, date, { now: req.now }) });
+  res.json({ date: isoDay(date), onLeave, times: onLeave ? [] : await freeStarts(s.access.tenantId, s.doctor.id, date, { now: req.now, online: true }) });
 });
 
 portalRouter.post('/booking', async (req, res) => {
@@ -327,6 +327,8 @@ portalRouter.post('/booking', async (req, res) => {
   if (!s.enabled || !s.doctor) throw new HttpError(409, 'Online booking is not available. Please call the hospital.', 'BOOKING_OFF');
   if (s.upcoming) throw new HttpError(409, 'You already have an appointment. To change it, call the hospital.', 'ALREADY_BOOKED');
   if (body.date < s.from || body.date > s.to) throw new HttpError(400, `Please choose a day from tomorrow up to ${BOOK_DAYS_AHEAD} days ahead.`, 'VALIDATION');
+  // A slot kept for walk-ins is never booked online
+  if (!(await freeStarts(s.access.tenantId, s.doctor.id, body.date, { now: req.now, online: true })).includes(body.start)) throw new HttpError(409, 'This time is not free any more. Please choose another time.', 'SLOT_TAKEN');
   let appt;
   try {
     appt = await bookSlot(asPatient(req, s.access), { doctorId: s.doctor.id, date: body.date, start: body.start, patientId: s.patient._id, visitType: 'follow_up', confirm: false, source: 'portal' });

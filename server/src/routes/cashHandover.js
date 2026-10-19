@@ -19,7 +19,7 @@ import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
 
 export const cashHandoverRouter = Router();
 
-const TAKERS = ['receptionist', 'billing', 'admin'];
+const TAKERS = ['receptionist', 'billing', 'admin', 'lab']; // the lab takes payments at walk-in registration
 const CONFIRMERS = ['doctor', 'admin'];
 const forbidden = (message) => new HttpError(403, message, 'FORBIDDEN');
 const paise = z.number('Enter the amount').int().min(0).max(MAX_PAISE);

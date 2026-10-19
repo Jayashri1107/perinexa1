@@ -1,6 +1,6 @@
 // The left menu and the Clinic library's tabs, by role (no browser needed).
 import { describe, expect, it } from 'vitest';
-import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, patientTabs } from './modules.js';
+import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, patientTabs, sideTabs } from './modules.js';
 
 const menu = (roles) => hospitalModules(roles).map((m) => m.label);
 
@@ -88,5 +88,19 @@ describe('the left menu by role', () => {
     expect(PLATFORM_MODULES.map((m) => m.label)).toEqual(['Overview', 'Analytics', 'Hospitals', 'Users & access', 'Staff', 'Audit & compliance']);
     expect(moduleByKey('platform-analytics').to).toBe('/platform/analytics');
     expect(moduleByKey('analytics').to).toBe('/analytics');
+  });
+});
+
+// Each module's pages as items under it in the left menu (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md)
+describe('the pages under each item of the left menu', () => {
+  const subs = (roles, key) => sideTabs(hospitalModules(roles).find((m) => m.key === key), roles).map((t) => t.label);
+  it('shows only the pages this person may open, and none for a module with one page', () => {
+    expect(subs(['receptionist'], 'billing')).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Cash handover', 'Price list']);
+    expect(subs(['admin'], 'billing')).toContain('Settings');
+    expect(subs(['receptionist'], 'appointments')).toContain('OPD settings');
+    expect(subs(['nurse'], 'appointments')).not.toContain('OPD settings');
+    expect(subs(['receptionist'], 'patients')).toEqual(['All patients', 'New patient', 'Online sign-ups']);
+    expect(subs(['doctor'], 'lab')).not.toContain('Cash');
+    expect(subs(['receptionist'], 'today')).toEqual([]);
   });
 });

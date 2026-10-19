@@ -22,7 +22,7 @@ const lineSchema = new mongoose.Schema({
   source: { type: String, enum: ['auto', 'manual'], required: true },
   // What added it automatically: a visit, a lab order (and which test), a stay's bed days, a scan or procedure done,
   // or an appointment whose consultation fee was taken in advance
-  ref: { type: new mongoose.Schema({ kind: { type: String, enum: ['visit', 'lab', 'bed', 'pharmacy', 'work', 'appointment'] }, id: ObjectId, test: String }, { _id: false }), default: null },
+  ref: { type: new mongoose.Schema({ kind: { type: String, enum: ['visit', 'lab', 'bed', 'pharmacy', 'work', 'appointment', 'registration', 'admission', 'nursing', 'round', 'scan'] }, id: ObjectId, test: String }, { _id: false }), default: null },
   doctorId: { type: ObjectId, ref: 'User', default: null }, // for the monthly report by doctor
   added: { type: stampSchema, required: true },
   removed: { type: new mongoose.Schema({ ...stamp, reason: String }, { _id: false }), default: null },

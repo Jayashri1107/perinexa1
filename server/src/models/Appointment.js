@@ -51,6 +51,8 @@ const appointmentSchema = new mongoose.Schema(
     movedFromPatientId: { type: ObjectId, ref: 'Patient', default: null },
     created: { type: new mongoose.Schema(byWhom, { _id: false }), required: true },
     updated: { type: new mongoose.Schema(byWhom, { _id: false }), default: null },
+    // The doctor marked the checkup done (owner, 17 Oct 2026): she leaves the waiting list and reception sees "Checkup done"
+    done: { type: new mongoose.Schema(byWhom, { _id: false }), default: null },
   },
   { timestamps: true },
 );

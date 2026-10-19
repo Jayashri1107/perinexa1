@@ -29,6 +29,13 @@ export function sessionsOn(schedule, day) {
   return schedule?.week?.find((w) => w.day === dow)?.sessions ?? [];
 }
 
+/** The slots kept for walk-ins on this day: the last schedule.walkInSlots slots of each session (a Set of "HH:MM"). */
+export function walkInStarts(schedule, day, slotMinutes = SLOT_MINUTES) {
+  const n = schedule?.walkInSlots ?? 0;
+  if (!n) return new Set();
+  return new Set(sessionsOn(schedule, day).flatMap((s) => slotStarts([s], slotMinutes).slice(-n)));
+}
+
 /** The leave entry that covers this day, or null. */
 export function leaveOn(schedule, day) {
   const t = utcDay(day).getTime();

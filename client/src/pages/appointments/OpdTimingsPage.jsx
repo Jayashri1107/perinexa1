@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, Copy, Plane, Plus, Save, Timer, Trash2 } from 'lucide-react';
+import { CalendarClock, Copy, Footprints, Plane, Plus, Save, Timer, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -27,6 +27,7 @@ export function OpdTimingsPage({ admin = false }) {
   const [week, setWeek] = useState(emptyWeek);
   const [leave, setLeave] = useState([]);
   const [lengths, setLengths] = useState({});
+  const [walkInSlots, setWalkInSlots] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -37,6 +38,7 @@ export function OpdTimingsPage({ admin = false }) {
     setWeek(res.data.timings.week.map((w) => ({ day: w.day, sessions: w.sessions.map((s) => ({ ...s })) })));
     setLeave(res.data.timings.leave.map((l) => ({ ...l })));
     setLengths({ ...res.data.timings.lengths });
+    setWalkInSlots(res.data.timings.walkInSlots ?? 0);
     setDirty(false);
   }, [res.data]);
 
@@ -64,7 +66,7 @@ export function OpdTimingsPage({ admin = false }) {
     setSaving(true);
     setError(null);
     try {
-      const body = { week: week.map((d) => ({ day: d.day, sessions: d.sessions })), leave: leave.map((l) => ({ from: l.from, to: l.to || l.from, note: l.note ?? '' })), lengths };
+      const body = { week: week.map((d) => ({ day: d.day, sessions: d.sessions })), leave: leave.map((l) => ({ from: l.from, to: l.to || l.from, note: l.note ?? '' })), lengths, walkInSlots };
       const out = await api(`/appointments/timings/${doctorId}`, { method: 'PUT', body });
       setSaved({ affected: out.affected ?? [], placed: out.placed ?? 0 });
       res.reload();
@@ -216,6 +218,32 @@ export function OpdTimingsPage({ admin = false }) {
                 </label>
               ))}
             </div>
+          </section>
+        )}
+
+        {res.data && (
+          <section className="card appt-section" aria-labelledby="opd-walkin">
+            <h2 id="opd-walkin">
+              <Footprints aria-hidden="true" /> Slots kept for walk-ins
+            </h2>
+            <p className="hint">
+              The last slots of each session are not offered to patients booking online, so a patient who walks in can still be seen. Reception and doctors
+              see them marked Walk-in and can book them.
+            </p>
+            <label className="opd-length">
+              <span className="field-label">Slots kept in each session</span>
+              {canEdit ? (
+                <select value={walkInSlots} onChange={(e) => change(() => setWalkInSlots(Number(e.target.value)))}>
+                  {Array.from({ length: 11 }, (_, n) => (
+                    <option key={n} value={n}>
+                      {n === 0 ? 'None' : `${n} slot${n > 1 ? 's' : ''} (${n * res.data.slotMinutes} minutes)`}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span>{walkInSlots ? `${walkInSlots} slot${walkInSlots > 1 ? 's' : ''}` : 'None'}</span>
+              )}
+            </label>
           </section>
         )}
 

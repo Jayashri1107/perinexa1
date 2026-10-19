@@ -70,6 +70,7 @@ export const AUDIT_LABELS = {
   APPOINTMENT_MOVED: 'Appointment moved',
   APPOINTMENT_CANCELLED: 'Appointment cancelled',
   APPOINTMENT_LINKED: 'Quick booking linked to a record',
+  APPOINTMENT_DONE: 'Checkup marked done',
   TOKEN_GIVEN: 'Walk-in token given',
   OPD_TIMINGS_CHANGED: 'OPD timings changed',
   BEDS_ADDED: 'Beds added',
@@ -188,6 +189,7 @@ export const AUDIT_LABELS = {
   LAB_ORDER_VIEWED: 'Lab order opened',
   LAB_RESULTS_VIEWED: "Patient's lab results opened",
   LAB_SAMPLE_COLLECTED: 'Lab sample taken',
+  LAB_SAMPLE_RECEIVED: 'Lab sample received in the lab',
   LAB_RESULTS_SAVED: 'Lab results saved (not reported)',
   LAB_RESULTS_REPORTED: 'Lab results reported',
   LAB_RESULTS_AMENDED: 'Lab results changed after the report',
@@ -338,6 +340,7 @@ export const AUDIT_TONES = {
   APPOINTMENT_MOVED: 'patient',
   APPOINTMENT_CANCELLED: 'patient',
   APPOINTMENT_LINKED: 'patient',
+  APPOINTMENT_DONE: 'patient',
   TOKEN_GIVEN: 'patient',
   PATIENT_CARD_PRINTED: 'patient',
   PATIENT_CREATED: 'patient',
@@ -403,6 +406,7 @@ export const AUDIT_TONES = {
   LAB_ORDER_VIEWED: 'patient',
   LAB_RESULTS_VIEWED: 'patient',
   LAB_SAMPLE_COLLECTED: 'patient',
+  LAB_SAMPLE_RECEIVED: 'patient',
   LAB_RESULTS_SAVED: 'patient',
   LAB_RESULTS_REPORTED: 'patient',
   LAB_RESULTS_AMENDED: 'patient',
@@ -938,6 +942,7 @@ export function describeAudit(entry) {
     case 'LAB_ORDER_VIEWED':
     case 'LAB_RESULTS_VIEWED':
     case 'LAB_SAMPLE_COLLECTED':
+    case 'LAB_SAMPLE_RECEIVED':
     case 'LAB_RESULTS_SAVED':
     case 'LAB_RESULTS_REPORTED':
     case 'LAB_RESULTS_AMENDED':

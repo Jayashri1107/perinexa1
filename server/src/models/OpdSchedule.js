@@ -34,6 +34,9 @@ const scheduleSchema = new mongoose.Schema(
         { _id: false },
       ),
     ],
+    // Slots kept for walk-in patients (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md): the last N slots of each session
+    // are not offered for online booking (the patient portal); reception and doctors still book them.
+    walkInSlots: { type: Number, min: 0, max: 20, default: 0 },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedByName: { type: String, default: '' },
   },

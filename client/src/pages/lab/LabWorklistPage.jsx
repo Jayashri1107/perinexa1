@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Ban, ClipboardCheck, ClipboardList, FileText, Home, Plus, Siren, TestTube, Truck } from 'lucide-react';
+import { Ban, ClipboardCheck, ClipboardList, FileText, Home, Inbox, Plus, ScanBarcode, Siren, TestTube, Truck } from 'lucide-react';
+import { api } from '../../api.js';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { HOSPITAL_LAB } from '../../platform/modules.js';
@@ -18,6 +19,7 @@ import { WalkInDialog, homeWord } from './LabWalkIn.jsx';
 
 const LISTS = [
   { key: 'collect', label: 'Samples to take', icon: TestTube, empty: 'No samples waiting.' },
+  { key: 'receive', label: 'Samples to receive', icon: Inbox, empty: 'No sample waiting to reach the lab.' },
   { key: 'report', label: 'Results to enter', icon: ClipboardList, empty: 'No results waiting to be entered.' },
   { key: 'verify', label: 'Results to check', icon: ClipboardCheck, empty: 'No results waiting for a check.' },
   { key: 'outside', label: 'At outside labs', icon: Truck, empty: 'No tests waiting for an outside lab.' },
@@ -106,9 +108,23 @@ export function DepartmentSelect({ value, onChange, id = 'lab-department' }) {
 export function LabWorklistPage() {
   const [params, setParams] = useSearchParams();
   const [walkIn, setWalkIn] = useState(false);
+  // Receiving by scanning a label (the scanner types the number and presses Enter)
+  const [scan, setScan] = useState('');
+  const [scanNote, setScanNote] = useState(null);
+  const receive = async (e) => {
+    e.preventDefault();
+    try {
+      const { order } = await api('/lab/receive', { method: 'POST', body: { code: scan.trim() } });
+      setScanNote({ ok: true, text: `Received: ${order.patient.fullName}, sample ${order.sampleNo}.` });
+      setScan('');
+      reload();
+    } catch (err) {
+      setScanNote({ ok: false, text: err.fields?.code ?? err.message });
+    }
+  };
   const list = LISTS.some((l) => l.key === params.get('list')) ? params.get('list') : 'collect';
   const department = params.get('department') && DEPARTMENTS[params.get('department')] ? params.get('department') : '';
-  const { data, error, loading } = useFetch('/lab/worklist', { list, ...(department ? { department } : {}) });
+  const { data, error, loading, reload } = useFetch('/lab/worklist', { list, ...(department ? { department } : {}) });
   const current = LISTS.find((l) => l.key === list);
   const count = (key) => (key === 'done' ? null : data?.counts?.[key]);
   // "Results to check" only where the hospital checks results (or something is still waiting for a check)
@@ -139,6 +155,20 @@ export function LabWorklistPage() {
           )}
         </div>
         <Alert type="error">{error}</Alert>
+        {list === 'receive' && data?.isLab && (
+          <form className="card lab-scan" onSubmit={receive} noValidate>
+            <label className="lab-filter" htmlFor="lab-scan">
+              <span>
+                <ScanBarcode aria-hidden="true" /> Scan or type the sample number on the label
+              </span>
+              <input id="lab-scan" value={scan} onChange={(e) => setScan(e.target.value)} autoFocus autoComplete="off" />
+            </label>
+            <button type="submit" className="btn btn-secondary" disabled={!scan.trim()}>
+              Receive
+            </button>
+            {scanNote && <Alert type={scanNote.ok ? 'success' : 'error'} onClose={() => setScanNote(null)}>{scanNote.text}</Alert>}
+          </form>
+        )}
         {loading && !data ? (
           <p className="muted">Loading…</p>
         ) : (

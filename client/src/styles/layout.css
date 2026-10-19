@@ -498,3 +498,77 @@
 .tip p { flex: 1; margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
 .help-new li + li { margin-top: 6px; }
 .cmd-box .cmd-input input, .cmd-box .cmd-input input:focus { height: auto; padding: 0; border: 0; box-shadow: none; background: none; }
+
+/* ---------- A module's pages under it in the left menu (owner, 17 Oct 2026) ---------- */
+.sb-group-row { display: flex; align-items: center; gap: var(--space-1); }
+.sb-group-row .sb-link { flex: 1; min-width: 0; }
+.sb-expand {
+  display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--radius-md);
+  background: none; color: var(--indigo-200); cursor: pointer;
+}
+.sb-expand:hover { background: var(--nav-row-hover); color: var(--on-dark); }
+.sb-expand:focus-visible { box-shadow: var(--focus-ring-on-dark); outline: none; }
+.sb-expand svg { width: 18px; height: 18px; transition: transform 0.15s; }
+.sb-group.is-open .sb-expand svg { transform: rotate(180deg); }
+.sb-sub { display: grid; gap: 2px; margin: 2px 0 var(--space-2); padding: 0 0 0 calc(var(--nav-tile-size) + var(--space-3)); list-style: none; }
+.sb-sublink {
+  display: block; padding: 6px var(--space-3); border-radius: var(--radius-md); color: var(--indigo-200); font-size: var(--fs-body);
+  line-height: var(--lh-body); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sb-sublink:hover { background: var(--nav-row-hover); color: var(--on-dark); }
+.sb-sublink.active { background: var(--nav-row-active); color: var(--on-dark); font-weight: 600; }
+.sb-sublink:focus-visible { box-shadow: var(--focus-ring-on-dark); outline: none; }
+.pf-collapsed .sb-expand, .pf-collapsed .sb-sub { display: none; }
+
+/* ---------- The bell in the top bar (owner, 17 Oct 2026) ---------- */
+.nb { position: relative; }
+.nb-btn { position: relative; }
+.nb-count {
+  position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
+  background: var(--indigo-700); color: var(--on-dark); box-shadow: 0 0 0 2px var(--surface); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+}
+.nb-card {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 45; width: 340px; max-width: calc(100vw - 32px); max-height: 70vh; overflow: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+}
+.nb-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
+.nb-empty { margin: 0; padding: var(--space-4); }
+.nb-list { margin: 0; padding: var(--space-1); list-style: none; }
+.nb-item {
+  display: flex; align-items: flex-start; gap: var(--space-3); width: 100%; padding: var(--space-2) var(--space-3); border: none; border-radius: var(--radius-md);
+  background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.nb-item:hover { background: var(--indigo-100); }
+.nb-item.is-new { font-weight: 600; }
+.nb-item svg { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; color: var(--indigo-700); }
+.nb-text { display: grid; gap: 2px; min-width: 0; }
+.nb-when { font-size: var(--fs-caption); font-weight: 400; }
+
+/* ---------- Adding items to a bill (owner, 17 Oct 2026): search, common items, the list to add ---------- */
+.bill-add-search { position: relative; display: flex; align-items: center; }
+.bill-add-search svg { position: absolute; left: 12px; width: 18px; height: 18px; color: var(--slate-600); pointer-events: none; }
+.bill-add-search input { width: 100%; padding-left: 38px; }
+.bill-add-groups { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: var(--space-2) 0; }
+.bill-add-chip { padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-caption); cursor: pointer; }
+.bill-add-chip.is-on { border-color: var(--indigo-700); background: var(--indigo-100); color: var(--indigo-700); font-weight: 600; }
+.bill-add-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-1); max-height: 260px; overflow: auto; margin: 0 0 var(--space-3); padding: 0; list-style: none; }
+.bill-add-pick {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.bill-add-pick:hover, .bill-add-pick:focus-visible { border-color: var(--indigo-700); background: var(--indigo-100); }
+.bill-add-pick.is-in { border-color: var(--indigo-700); }
+.bill-add-pick svg { flex-shrink: 0; width: 16px; height: 16px; color: var(--indigo-700); }
+.bill-add-pick .muted { flex-shrink: 0; font-size: var(--fs-caption); }
+.bill-add-pick-name { flex: 1; min-width: 0; }
+.bill-add-title { margin: var(--space-2) 0; font-size: var(--fs-body); }
+.bill-add-basket { display: grid; gap: var(--space-2); margin: 0 0 var(--space-3); padding: 0; list-style: none; }
+.bill-add-basket > li { padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.bill-add-row { display: flex; align-items: center; gap: var(--space-2); }
+.bill-add-row .num { min-width: 80px; text-align: right; font-variant-numeric: tabular-nums; }
+.bill-add-qty { display: inline-flex; align-items: center; gap: 2px; }
+.bill-add-qty input { width: 48px; text-align: center; }
+
+/* A free slot kept for walk-ins (owner, 17 Oct 2026) */
+.appt-chip.is-walkin { border-style: dashed; }
+.appt-walkin-icon { width: 14px; height: 14px; vertical-align: -2px; }

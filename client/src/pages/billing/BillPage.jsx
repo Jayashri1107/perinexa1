@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgePercent, Ban, FileText, Link2, Plus, Printer, RotateCcw, Wallet } from 'lucide-react';
+import { BadgePercent, Ban, FileText, Link2, Minus, Plus, Printer, RotateCcw, Search, Wallet, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -22,77 +22,166 @@ import { Modal, useSend } from './billingUi.jsx';
 // Billing extras (BillingExtras.jsx): insurance or scheme details, the claim form and the PM-JAY claim sheet (A4), and
 // the UPI payment link – which records nothing; the payment is recorded here with "Take payment".
 
+// Adding items (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md: "make sure it get easy to add them"): type a few
+// letters or tap a common item, it goes into a list; change the quantity with − and +; choose the doctor once; one
+// button adds them all. Lab tests, scans, beds, nursing, ward rounds and medicines come onto the bill by themselves.
+const QUICK_GROUPS = ['consultation', 'procedure', 'inpatient', 'other'];
+const MAX_SHOWN = 40;
+
 function AddItemDialog({ bill, onClose, onDone }) {
   const prices = useFetch('/billing/prices');
-  const [groupFilter, setGroupFilter] = useState('');
-  const [itemId, setItemId] = useState('');
-  const [qty, setQty] = useState('1');
-  const [amount, setAmount] = useState('');
-  const [name, setName] = useState('');
-  const s = useSend(onDone);
-  const items = (prices.data?.items ?? []).filter((i) => i.active && (!groupFilter || i.group === groupFilter));
-  const item = prices.data?.items.find((i) => i.id === itemId);
-  const needsAmount = item && !item.pricePaise;
-  const rate = needsAmount ? toPaise(amount) : item?.pricePaise;
-  const n = Number(qty);
-  const ready = item && Number.isInteger(n) && n >= 1 && rate > 0;
+  const doctors = useFetch('/appointments/doctors'); // not for the billing department: then no doctor is asked
+  const [query, setQuery] = useState('');
+  const [group, setGroup] = useState('');
+  const [basket, setBasket] = useState([]); // { item, qty, amount, name }
+  const [doctorId, setDoctorId] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const all = (prices.data?.items ?? []).filter((i) => i.active);
+  const doctorList = doctors.data?.doctors ?? [];
+  const chosenDoctor = doctorId ?? doctorList.find((d) => d.name === bill.doctorName)?.id ?? '';
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const searching = words.length > 0 || group;
+  const found = all.filter((i) => (!group || i.group === group) && words.every((w) => i.name.toLowerCase().includes(w)));
+  // Common items: those with a price in the groups reception adds by hand (consultation first); if none is priced yet, the consultations
+  const priced = all.filter((i) => QUICK_GROUPS.includes(i.group) && i.pricePaise > 0).sort((x, y) => QUICK_GROUPS.indexOf(x.group) - QUICK_GROUPS.indexOf(y.group));
+  const quick = (priced.length ? priced : all.filter((i) => i.group === 'consultation')).slice(0, 12);
+  const shown = searching ? found.slice(0, MAX_SHOWN) : quick;
+
+  const add = (item) =>
+    setBasket((list) => (list.some((r) => r.item.id === item.id) ? list.map((r) => (r.item.id === item.id ? { ...r, qty: r.qty + 1 } : r)) : [...list, { item, qty: 1, amount: '', name: '' }]));
+  const change = (id, patch) => setBasket((list) => list.map((r) => (r.item.id === id ? { ...r, ...patch } : r)));
+  const drop = (id) => setBasket((list) => list.filter((r) => r.item.id !== id));
+  const rateOf = (r) => (r.item.pricePaise ? r.item.pricePaise : toPaise(r.amount));
+  const ready = basket.length > 0 && basket.every((r) => Number.isInteger(r.qty) && r.qty >= 1 && rateOf(r) > 0);
+  const total = basket.reduce((sum, r) => sum + (rateOf(r) > 0 ? rateOf(r) * r.qty : 0), 0);
+  const hasMedicine = basket.some((r) => r.item.group === 'medicine') || group === 'medicine';
+
+  const addAll = async () => {
+    setBusy(true);
+    setError(null);
+    let last = null;
+    const left = [...basket];
+    try {
+      while (left.length) {
+        const r = left[0];
+        const needsAmount = !r.item.pricePaise;
+        last = await api(`/billing/bills/${bill.id}/lines`, {
+          method: 'POST',
+          body: {
+            priceItemId: r.item.id,
+            qty: r.qty,
+            ...(needsAmount ? { ratePaise: rateOf(r), ...(r.name.trim().length >= 2 ? { name: r.name.trim() } : {}) } : {}),
+            ...(chosenDoctor ? { doctorId: chosenDoctor } : {}),
+          },
+        });
+        left.shift();
+      }
+      onDone(last, `Added ${basket.length} item${basket.length > 1 ? 's' : ''}: ${rupees(total)}.`);
+    } catch (err) {
+      // What was added stays on the bill; what is left stays in the list to try again
+      setBasket(left);
+      setError(`${left[0].item.name}: ${err.message}`);
+      setBusy(false);
+      if (last) onDone(last, null, { keepOpen: true });
+    }
+  };
+
   return (
-    <Modal id="bill-add" title="Add an item" onClose={onClose}>
-      <Alert type="error">{s.error || prices.error}</Alert>
-      <div className="form-grid">
-        <Field label="Group" id="bill-add-group">
-          <select id="bill-add-group" value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
-            <option value="">All groups</option>
-            {(prices.data?.groups ?? []).map((g) => (
-              <option key={g.key} value={g.key}>
-                {g.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Item" id="bill-add-item">
-          <select id="bill-add-item" value={itemId} onChange={(e) => setItemId(e.target.value)} autoFocus>
-            <option value="">Choose…</option>
-            {items.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name} – {i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}
-              </option>
-            ))}
-          </select>
-        </Field>
+    <Modal id="bill-add" title="Add items" onClose={onClose}>
+      <Alert type="error">{error || prices.error}</Alert>
+      <div className="bill-add-search">
+        <Search aria-hidden="true" />
+        <label htmlFor="bill-add-q" className="sr-only">
+          Find an item
+        </label>
+        <input id="bill-add-q" type="search" placeholder="Type to find – e.g. consult, CTG, delivery" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus autoComplete="off" />
       </div>
+      <div className="bill-add-groups" role="group" aria-label="Group">
+        {[{ key: '', label: 'Common' }, ...(prices.data?.groups ?? [])].map((g) => (
+          <button key={g.key || 'all'} type="button" className={`bill-add-chip${group === g.key ? ' is-on' : ''}`} aria-pressed={group === g.key} onClick={() => setGroup(g.key)}>
+            {g.key ? g.label : words.length ? 'All groups' : 'Common'}
+          </button>
+        ))}
+      </div>
+      <ul className="bill-add-results" aria-label={searching ? 'Items found' : 'Common items'}>
+        {shown.map((i) => {
+          const inList = basket.find((r) => r.item.id === i.id);
+          return (
+            <li key={i.id}>
+              <button type="button" className={`bill-add-pick${inList ? ' is-in' : ''}`} onClick={() => add(i)}>
+                <span className="bill-add-pick-name">{i.name}</span>
+                <span className="muted">{i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}</span>
+                <Plus aria-hidden="true" />
+                {inList && <span className="sr-only">(in the list: {inList.qty})</span>}
+              </button>
+            </li>
+          );
+        })}
+        {searching && !found.length && <li className="muted">Nothing found. The hospital admin adds new items in Billing → Price list.</li>}
+        {searching && found.length > MAX_SHOWN && <li className="muted">{found.length - MAX_SHOWN} more – type a little more to narrow the list.</li>}
+      </ul>
       {/* Medicines come from the pharmacy stock (owner, 13 Oct 2026): sold there, they come onto this bill by themselves */}
-      {(groupFilter === 'medicine' || item?.group === 'medicine') && (
+      {hasMedicine && (
         <Alert type="info">
-          Medicines from the hospital pharmacy come onto this bill by themselves: the pharmacist scans or finds them in Pharmacy → Sell (or Issue to ward
-          for an admitted patient), where the stock, batch and expiry are checked, and the pharmacy invoice is added here. Use this item only for a
-          medicine that did not come from the pharmacy – it does not take anything from the stock.
+          Medicines from the hospital pharmacy come onto this bill by themselves (Pharmacy → Sell, or Issue to ward). Add a medicine here only if it did
+          not come from the pharmacy – it does not take anything from the stock.
         </Alert>
       )}
-      <div className="form-grid">
-        <Field label="Quantity" id="bill-add-qty">
-          <input id="bill-add-qty" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />
-        </Field>
-        {needsAmount && (
-          <Field label="Amount (₹ each)" id="bill-add-amount" error={s.fields.ratePaise}>
-            <input id="bill-add-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          </Field>
-        )}
-      </div>
-      {needsAmount && (
-        <Field label="What it is for (optional)" id="bill-add-name" hint={`For example: Medical certificate. ${NO_SEX_WORDS_HINT}`} error={s.fields.name}>
-          <input id="bill-add-name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} />
+
+      <h3 className="bill-add-title">To add {basket.length > 0 && <span className="muted">· {basket.length}</span>}</h3>
+      {basket.length === 0 ? (
+        <p className="muted">Tap an item above to put it here.</p>
+      ) : (
+        <ul className="bill-add-basket">
+          {basket.map((r) => (
+            <li key={r.item.id}>
+              <div className="bill-add-row">
+                <span className="bill-add-pick-name">{r.item.name}</span>
+                <span className="bill-add-qty">
+                  <button type="button" className="icon-btn" onClick={() => (r.qty > 1 ? change(r.item.id, { qty: r.qty - 1 }) : drop(r.item.id))} aria-label={`One less ${r.item.name}`}>
+                    <Minus aria-hidden="true" />
+                  </button>
+                  <input inputMode="numeric" aria-label={`Quantity of ${r.item.name}`} value={r.qty} onChange={(e) => change(r.item.id, { qty: Number(e.target.value) || 0 })} />
+                  <button type="button" className="icon-btn" onClick={() => change(r.item.id, { qty: r.qty + 1 })} aria-label={`One more ${r.item.name}`}>
+                    <Plus aria-hidden="true" />
+                  </button>
+                </span>
+                <span className="num">{rateOf(r) > 0 ? rupees(rateOf(r) * r.qty) : '–'}</span>
+                <button type="button" className="icon-btn" onClick={() => drop(r.item.id)} aria-label={`Take ${r.item.name} out of the list`}>
+                  <X aria-hidden="true" />
+                </button>
+              </div>
+              {!r.item.pricePaise && (
+                <div className="form-grid">
+                  <Field label="Amount (₹ each)" id={`bill-add-amount-${r.item.id}`}>
+                    <input id={`bill-add-amount-${r.item.id}`} inputMode="decimal" value={r.amount} onChange={(e) => change(r.item.id, { amount: e.target.value })} />
+                  </Field>
+                  <Field label="What it is for (optional)" id={`bill-add-name-${r.item.id}`} hint={NO_SEX_WORDS_HINT}>
+                    <input id={`bill-add-name-${r.item.id}`} value={r.name} maxLength={120} onChange={(e) => change(r.item.id, { name: e.target.value })} />
+                  </Field>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {doctorList.length > 0 && (
+        <Field label="Doctor" id="bill-add-doctor" hint="Printed with these items on the bill.">
+          <select id="bill-add-doctor" value={chosenDoctor} onChange={(e) => setDoctorId(e.target.value)}>
+            <option value="">No doctor</option>
+            {doctorList.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+                {d.name === bill.doctorName ? ' (her doctor)' : ''}
+              </option>
+            ))}
+          </select>
         </Field>
       )}
-      {ready && <p className="appt-when">Adds {rupees(rate * n)}</p>}
       <div className="row">
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={!ready || s.busy}
-          onClick={() => s.send(`/billing/bills/${bill.id}/lines`, { priceItemId: item.id, qty: n, ...(needsAmount ? { ratePaise: rate, ...(name.trim().length >= 2 ? { name: name.trim() } : {}) } : {}) }, () => `Added: ${name.trim() || item.name}.`)}
-        >
-          <Plus aria-hidden="true" /> {s.busy ? 'Adding…' : 'Add to the bill'}
+        <button type="button" className="btn btn-primary" disabled={!ready || busy} onClick={addAll}>
+          <Plus aria-hidden="true" /> {busy ? 'Adding…' : basket.length ? `Add to the bill · ${rupees(total)}` : 'Add to the bill'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
           Cancel
@@ -293,6 +382,14 @@ function BillPrint({ bill, receipt = null, onClose }) {
               <th scope="row">Patient no.</th>
               <td>{bill.patient?.mrn}</td>
             </tr>
+            {bill.doctorName && !receipt && (
+              <tr>
+                <th scope="row">Doctor</th>
+                <td>{bill.doctorName}</td>
+                <th scope="row" />
+                <td />
+              </tr>
+            )}
             {receipt && (
               <tr>
                 <th scope="row">Bill no.</th>
@@ -338,7 +435,10 @@ function BillPrint({ bill, receipt = null, onClose }) {
             <tbody>
               {lines.map((l) => (
                 <tr key={l.id}>
-                  <td>{l.name}</td>
+                  <td>
+                    {l.name}
+                    {l.doctorName && !l.name.includes(l.doctorName) ? <span className="pdoc-small"> · {l.doctorName}</span> : null}
+                  </td>
                   <td className="num">{l.qty}</td>
                   <td className="num">{rupees(l.ratePaise)}</td>
                   <td className="num">{rupees(l.amountPaise)}</td>
@@ -397,8 +497,9 @@ export function BillPage() {
   const [printing, setPrinting] = useState(null); // { receipt? } | { claim: 'claim' | 'pmjay' }
   const [flash, setFlash] = useState(null);
   const b = bill ?? res.data?.bill;
-  const done = (out, message) => {
+  const done = (out, message, { keepOpen = false } = {}) => {
     setBill(out.bill);
+    if (keepOpen) return;
     setDialog(null);
     setFlash(message ?? null);
   };
@@ -514,6 +615,7 @@ export function BillPage() {
                       <span className="muted bill-line-from">
                         {' '}
                         · {GROUP_LABELS[l.group]}
+                        {l.doctorName ? ` · ${l.doctorName}` : ''}
                         {l.source === 'auto' ? ' · added by itself' : ` · added by ${l.addedByName}`}
                         {l.priceNotSet ? ' · price not set' : ''}
                       </span>

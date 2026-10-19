@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { notify } from '../notifications/notify.js';
 import { billLabCancelled, billLabOrdered } from '../billing/hooks.js';
 import { z } from 'zod';
 import { hasRole } from '../models/Membership.js';
@@ -40,6 +41,10 @@ import { QcRun } from '../models/QcRun.js';
 import { Referrer } from '../models/Referrer.js';
 import { Membership } from '../models/Membership.js';
 import { takeStock } from '../lab/stock.js';
+import { Bill } from '../models/Bill.js';
+import { nextNumber } from '../models/Counter.js';
+import { totals } from '../billing/money.js';
+import { padded } from '../billing/billingService.js';
 
 // The lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md). Two routers:
 //  - patientLabRouter, /api/patients/:id/lab-orders: a patient's orders and results (those who may see the
@@ -175,6 +180,7 @@ export function orderView(order, access, more = {}) {
     labNote: order.labNote ?? '',
     ordered: stampView(order.ordered),
     collected: stampView(order.collected),
+    received: stampView(order.received),
     entered: stampView(order.entered),
     verified: stampView(order.verified),
     reported: stampView(order.reported),
@@ -195,6 +201,7 @@ export function orderView(order, access, more = {}) {
     access: {
       canCollect: access.collect && status === 'ordered',
       canLabel: access.collect && ['ordered', 'collected'].includes(status),
+      canReceive: access.report && status === 'collected' && !order.received,
       canReject: access.report && status === 'collected',
       canReport: access.report && status !== 'cancelled',
       canVerify: Boolean(more.canVerify) && status === 'entered' && String(order.entered?.by) !== String(more.userId),
@@ -338,6 +345,8 @@ async function createOrder(req, patient, access, body, extra = {}) {
   });
   await audit(req, 'LAB_ORDER_CREATED', { details: ids(order, { mrn: patient.mrn, tests: tests.length, ...(extra.source === 'walk_in' ? { walkIn: true } : {}) }) });
   await billLabOrdered(req, patient, order); // billing: each test
+  // The lab is told of a new order (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md): the count of tests, never their names
+  await notify(req, { roles: ['lab'] }, { kind: 'lab', text: `New lab order: ${patient.fullName}, ${tests.length} test${tests.length > 1 ? 's' : ''}${body.urgent ? ' (urgent)' : ''}.`, link: `/lab/orders/${order._id}` });
   return viewFor(req, order, access);
 }
 
@@ -360,8 +369,27 @@ const walkInSchema = orderSchema
     referrerId: objectId.nullable().default(null),
     prescription: safeText('Prescription', 200).default(''),
     home: homeSchema.nullable().default(null),
+    // The payment taken at the lab's counter (eLabAssist-style registration – owner, 17 Oct 2026): on the order's bill
+    payment: z.object({ mode: z.enum(['cash', 'upi', 'card']), amountPaise: z.number().int().min(1).max(100_000_000), reference: safeText('Reference', 80).default('') }).strict().nullable().default(null),
   })
   .strict();
+
+/**
+ * The payment taken when the lab registers a walk-in: on the bill that holds this order's tests, at most what is due on
+ * it, with a receipt number – as reception's "Take payment" (routes/billing.js). The cash is handed over at the end of
+ * the day (Billing → Cash handover, which the lab now has). Returns { receipt, mode, amountPaise, billNumber, duePaise }.
+ */
+async function takeWalkInPayment(req, orderId, p) {
+  const bill = await Bill.findOne({ tenantId: req.tenantId, status: 'open', 'lines.ref.id': orderId }).lean();
+  if (!bill) throw conflict('The order is made, but its bill was not found: take the payment at the billing desk.', 'NO_BILL');
+  const due = totals(bill).balance;
+  if (p.amountPaise > due) throw invalid({ 'payment.amountPaise': `The order is made; at most ${(due / 100).toFixed(2)} is due on its bill – take the payment at the billing desk.` }, 'The payment was not taken.');
+  const receipt = padded('R', await nextNumber(req.tenantId, 'receipt'));
+  const entry = { receipt, kind: 'payment', mode: p.mode, amountPaise: p.amountPaise, reference: p.reference.trim(), scheme: '', ...stampOf(req) };
+  await Bill.updateOne({ tenantId: req.tenantId, _id: bill._id, status: 'open' }, { $push: { payments: entry } });
+  await audit(req, 'PAYMENT_RECEIVED', { details: { billId: String(bill._id), number: bill.number, patientId: String(bill.patientId), receipt, kind: 'payment', mode: p.mode, amountPaise: p.amountPaise } });
+  return { receipt, mode: p.mode, amountPaise: p.amountPaise, billNumber: bill.number, duePaise: due - p.amountPaise };
+}
 
 /** The collector chosen for a home collection: lab staff of this hospital (or none yet). */
 async function homeCollector(req, id) {
@@ -385,10 +413,11 @@ labRouter.post('/walk-in', async (req, res) => {
   }
   if (!referrer && body.prescription.trim().length < 3) throw invalid({ prescription: 'Choose the referring doctor, or write "Self – no prescription" and what she asked for.' });
   const home = body.home ? { address: body.home.address.trim(), on: new Date(`${body.home.on}T00:00:00Z`), time: body.home.time, ...(await homeCollector(req, body.home.collectorId)), status: 'scheduled', note: '', updated: stampOf(req) } : null;
-  const { patientId, referrerId, prescription, home: _h, ...order } = body;
+  const { patientId, referrerId, prescription, home: _h, payment, ...order } = body;
   const access = labAccess(req, patient);
   const out = await createOrder(req, patient, access, { ...order, visitId: null, packages: [] }, { source: 'walk_in', referrer, prescription: prescription.trim(), home });
-  res.status(201).json({ order: out });
+  const paid = payment ? await takeWalkInPayment(req, out.id, payment) : null;
+  res.status(201).json({ order: out, ...(paid ? { payment: paid } : {}) });
 });
 
 // ---------- Home collection (Lab version 2) ----------
@@ -454,7 +483,8 @@ labRouter.get('/tests', async (req, res) => {
 // see.
 const LISTS = {
   collect: { filter: { status: 'ordered' }, sort: { urgent: -1, createdAt: 1 } },
-  report: { filter: { status: 'collected' }, sort: { urgent: -1, createdAt: 1 } },
+  receive: { filter: { status: 'collected', received: null }, sort: { urgent: -1, 'collected.at': 1 } },
+  report: { filter: { status: 'collected', received: { $ne: null } }, sort: { urgent: -1, createdAt: 1 } },
   verify: { filter: { status: 'entered' }, sort: { urgent: -1, createdAt: 1 } },
   outside: { filter: { status: { $ne: 'cancelled' }, tests: { $elemMatch: { 'outside.sent': { $ne: null }, 'outside.received': null } } }, sort: { createdAt: 1 } },
   home: { filter: { status: 'ordered', 'home.status': { $in: ['scheduled', 'on_the_way'] } }, sort: { 'home.on': 1, 'home.time': 1 } },
@@ -632,10 +662,45 @@ labRouter.post('/orders/:orderId/collect', async (req, res) => {
   checkRev(order, body.rev);
   order.status = 'collected';
   order.collected = stampOf(req);
+  // Taken by the lab at its counter: received at once. Taken on a ward (a nurse, a doctor): received when it arrives.
+  if (isLab(req) && !order.home) order.received = stampOf(req);
   await ensureSampleNo(order, req.now);
   order.rev += 1;
   await order.save();
   await audit(req, 'LAB_SAMPLE_COLLECTED', { details: ids(order, { mrn: patient.mrn }) });
+  res.json({ order: await viewFor(req, order, access) });
+});
+
+// The sample arrives in the lab (the accession step): by the order, or by its sample number (a label's barcode
+// "261017-0003-2" scanned into the box finds its order).
+labRouter.post('/receive', async (req, res) => {
+  if (!isLab(req)) throw forbidden('The lab receives samples.');
+  const { code } = parse(z.object({ code: z.string().trim().max(40) }).strict(), req.body);
+  const m = code.match(/^(\d{6}-\d{4})(?:-\d{1,2})?$/);
+  if (!m) throw invalid({ code: 'Scan or type the sample number (e.g. 261017-0003).' });
+  const order = await LabOrder.findOne({ tenantId: req.tenantId, sampleNo: m[1] });
+  if (!order) throw notFound('No order has this sample number.');
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: order.patientId });
+  const access = labAccess(req, patient);
+  if (order.status === 'ordered') throw conflict('This sample is not taken yet: mark it taken first.');
+  if (order.status !== 'collected' || order.received) throw conflict(`Already received${order.received ? ` by ${order.received.byName}` : ''}.`, 'ALREADY_RECEIVED');
+  order.received = stampOf(req);
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_SAMPLE_RECEIVED', { details: ids(order, { mrn: patient.mrn }) });
+  res.json({ order: { ...(await viewFor(req, order, access)), patient: patientBrief(patient) } });
+});
+
+labRouter.post('/orders/:orderId/receive', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'report');
+  const body = parse(z.object({ rev }).strict(), req.body);
+  if (order.status !== 'collected' || order.received) throw conflict('This sample is not waiting to be received.');
+  checkRev(order, body.rev);
+  order.received = stampOf(req);
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_SAMPLE_RECEIVED', { details: ids(order, { mrn: patient.mrn }) });
   res.json({ order: await viewFor(req, order, access) });
 });
 
@@ -650,6 +715,7 @@ labRouter.post('/orders/:orderId/reject', async (req, res) => {
   order.rejections.push({ ...stampOf(req), reason: body.reason, note: body.note.trim() });
   order.status = 'ordered';
   order.collected = null;
+  order.received = null;
   order.collectedAtReport = false;
   order.rev += 1;
   await order.save();
@@ -797,6 +863,7 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   }
   const amending = DONE.includes(order.status);
   if (amending && body.reason.trim().length < 5) throw invalid({ reason: 'The results were already reported: write why they are changed.' });
+  if (!order.received && !amending) order.received = stampOf(req); // typed without "received": received now
   if ((body.report || amending) && order.files.length === 0) {
     const missing = Object.fromEntries(tests.map((t, i) => [t, i]).filter(([t]) => !hasResult(t)).map(([, i]) => [`tests.${i}`, 'Enter the result (or attach the report).']));
     if (Object.keys(missing).length) throw invalid(missing, 'Enter every result, or attach the report file, before reporting.');
@@ -831,6 +898,7 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   order.rev += 1;
   await order.save();
   await audit(req, action, { details: ids(order, { mrn: patient.mrn }) });
+  if (order.status === 'reported' && order.source !== 'walk_in') await notify(req, { userIds: [order.ordered?.by] }, { kind: 'lab', text: `Lab results to review: ${patient.fullName}${order.abnormal ? ' – outside the usual range' : ''}.`, link: `/lab/orders/${order._id}` });
   res.json({ order: await viewFor(req, order, access, setup), ...(stock?.short.length ? { stockShort: stock.short } : {}) });
 });
 
