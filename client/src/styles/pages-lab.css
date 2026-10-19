@@ -257,3 +257,25 @@
 .portal-profile-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .portal-profile-tabs button { white-space: nowrap; }
 .change-table { margin: var(--space-2) 0; max-width: 560px; }
+
+/* Report templates (docs/LAB_TEMPLATES_PLAN.md): the result forms and the printed report */
+.lab-section + .lab-section { margin-top: var(--space-3); }
+.lab-form .lab-section-title { margin: 0 0 var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.lab-abx { margin-top: var(--space-3); }
+.lab-abx-table caption { text-align: left; font-weight: 500; padding: var(--space-2) 0; }
+.lab-abx-table select, .lab-abx-table input { width: 100%; }
+.lab-res-section td { font-weight: 600; color: var(--slate-600); padding-top: var(--space-2); }
+.lab-report-dept-name { margin: var(--space-4) 0 var(--space-1); padding-bottom: var(--space-1); border-bottom: 1.5px solid var(--print-ink); font-size: var(--fs-print-body); }
+.lab-report-test { margin: var(--space-3) 0; break-inside: avoid; }
+.lab-report-own-page { break-before: page; }
+.lab-report .lab-report-test-name { margin: 0 0 var(--space-1); font-size: var(--fs-print-body); line-height: var(--lh-print-body); }
+.lab-report-section td { font-weight: 600; padding-top: var(--space-2); }
+.lab-report-calc { display: inline; margin-left: var(--space-1); }
+.lab-report-narrative h3 { margin: var(--space-2) 0 0; font-size: var(--fs-print-small); line-height: var(--lh-print-small); text-transform: uppercase; letter-spacing: 0.04em; }
+.lab-report-narrative p { margin: 0; }
+.lab-report-notes { font-style: italic; }
+.lab-report-signature { display: block; max-height: 18mm; max-width: 60mm; margin-top: var(--space-2); }
+.lab-report-signer { margin: var(--space-1) 0 0; }
+.lab-report-end { margin-top: var(--space-4); text-align: center; font-size: var(--fs-print-small); letter-spacing: 0.08em; text-transform: uppercase; }
+.lab-report-end::before, .lab-report-end::after { content: ' — '; }
+.lab-signer-preview { max-height: 40px; max-width: 160px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }

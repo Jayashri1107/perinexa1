@@ -8,7 +8,8 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { DepartmentSelect } from './LabWorklistPage.jsx';
-import { FLAG_OPTIONS, departmentName, formFromOrder, testDef, testsFromForm } from './labFormat.js';
+import { FLAG_OPTIONS, antibioticRows, departmentName, formFromOrder, testDef, testsFromForm } from './labFormat.js';
+import { AntibioticTable, calcHint, previewCalc } from './LabTemplateParts.jsx';
 
 // Result entry by department (owner, 19 Oct 2026 – docs/LAB_DASHBOARD_PLAN.md, as in eLabAssist): the samples received
 // in one department, each with its values in a row – type them one after another, save each sample, and report it when
@@ -24,10 +25,13 @@ function SampleCard({ order, department, catalogue, verify, onSaved }) {
   // The flag is left to the server unless someone chooses it: it applies HER usual range (age, pregnancy), which this
   // screen does not know (the range shown is the general one)
   const setValue = (i, f, value) =>
-    setForm((cur) => cur.map((e, j) => (j === i ? { ...e, values: { ...e.values, [f.key]: { ...(e.values[f.key] ?? {}), value, flag: e.values[f.key]?.flagChosen ? e.values[f.key].flag : '' } } } : e)));
+    setForm((cur) => cur.map((e, j) => (j === i ? { ...e, values: { ...e.values, [f.key]: { ...(e.values[f.key] ?? {}), value, flag: e.values[f.key]?.flagChosen ? e.values[f.key].flag : '', calculated: false } } } : e)));
   const setFlag = (i, f, flag) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, values: { ...e.values, [f.key]: { ...(e.values[f.key] ?? { value: '' }), flag, flagChosen: true } } } : e)));
   const setText = (i, text) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, text } : e)));
-  const filled = (i) => Object.values(form[i]?.values ?? {}).some((v) => v.value !== '') || (form[i]?.text ?? '').trim() !== '';
+  const setAntibiotics = (i, rows) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, antibiotics: rows } : e)));
+  // A test has a result: a value typed (a worked-out one alone is not), words, or a sensitivity
+  const filled = (i) =>
+    Object.values(form[i]?.values ?? {}).some((v) => v.value !== '' && !v.calculated) || (form[i]?.text ?? '').trim() !== '' || (form[i]?.antibiotics ?? []).some((a) => a.result);
   const allFilled = order.tests.every((_, i) => filled(i));
 
   const send = async (report) => {
@@ -82,11 +86,23 @@ function SampleCard({ order, department, catalogue, verify, onSaved }) {
         <tbody>
           {mine.flatMap(([t, i]) => {
             const def = testDef(catalogue, t.key);
-            const rows = (def?.fields ?? []).map((f, n) => {
+            const rows = (def?.fields ?? []).flatMap((f, n) => {
               const v = form[i]?.values[f.key] ?? { value: '', flag: '' };
               const id = `res-${order.id}-${i}-${f.key}`;
               const err = fields[`tests.${i}.${f.key}`];
-              return (
+              const worked = f.calc ? previewCalc(f, def, form[i]) : null;
+              // A heading row where the report's section changes (report templates)
+              const heading =
+                f.section && f.section !== def.fields[n - 1]?.section
+                  ? [
+                      <tr key={`${i}-s-${f.key}`} className="lab-res-section">
+                        <td />
+                        <td colSpan={5}>{f.section}</td>
+                      </tr>,
+                    ]
+                  : [];
+              return [
+                ...heading,
                 <tr key={`${i}-${f.key}`}>
                   <td data-label="Test">{n === 0 ? <strong>{t.name}</strong> : ''}</td>
                   <td data-label="Value">
@@ -102,8 +118,19 @@ function SampleCard({ order, department, catalogue, verify, onSaved }) {
                           </option>
                         ))}
                       </select>
+                    ) : f.long ? (
+                      <textarea id={id} className="lab-res-input" rows={3} maxLength={2000} value={v.value} onChange={(e) => setValue(i, f, e.target.value)} />
                     ) : (
-                      <input id={id} className={f.type === 'number' ? 'tabular lab-res-input' : 'lab-res-input'} inputMode={f.type === 'number' ? 'decimal' : undefined} maxLength={f.type === 'number' ? 20 : 100} value={v.value} onChange={(e) => setValue(i, f, e.target.value)} />
+                      <input
+                        id={id}
+                        className={f.type === 'number' ? 'tabular lab-res-input' : 'lab-res-input'}
+                        inputMode={f.type === 'number' ? 'decimal' : undefined}
+                        maxLength={f.type === 'number' ? 20 : 100}
+                        value={v.calculated ? '' : v.value}
+                        placeholder={worked ?? (v.calculated ? v.value : '')}
+                        title={f.calc ? calcHint(f, def, form[i]) : undefined}
+                        onChange={(e) => setValue(i, f, e.target.value)}
+                      />
                     )}
                     {err && <span className="field-error">{err}</span>}
                   </td>
@@ -122,9 +149,20 @@ function SampleCard({ order, department, catalogue, verify, onSaved }) {
                       </select>
                     )}
                   </td>
-                </tr>
-              );
+                </tr>,
+              ];
             });
+            // The culture template: the sensitivity table under the test's values
+            if (def?.report?.template === 'culture') {
+              rows.push(
+                <tr key={`${i}-abx`}>
+                  <td />
+                  <td colSpan={5}>
+                    <AntibioticTable idPrefix={`res-${order.id}-${i}`} rows={antibioticRows(def.antibiotics, form[i]?.antibiotics)} onChange={(r) => setAntibiotics(i, r)} />
+                  </td>
+                </tr>,
+              );
+            }
             // A test with no set values (e.g. "Other test"): the result in words
             if (!def?.fields?.length) {
               rows.push(

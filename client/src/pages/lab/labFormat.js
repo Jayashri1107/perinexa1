@@ -108,8 +108,10 @@ export const fileUrl = (order, file) => `/api/lab/orders/${order.id}/files/${fil
 /** The values as the result form keeps them: { [testIndex]: { [fieldKey]: { value, flag, touched } }, text }. */
 export function formFromOrder(order) {
   return order.tests.map((t) => ({
-    values: Object.fromEntries((t.values ?? []).map((v) => [v.key, { value: v.value, flag: v.flag, flagSet: true }])),
+    // calculated: worked out by the server (report templates) – sent back only once someone types over it
+    values: Object.fromEntries((t.values ?? []).map((v) => [v.key, { value: v.value, flag: v.flag, flagSet: true, ...(v.calculated ? { calculated: true } : {}) }])),
     text: t.text ?? '',
+    antibiotics: (t.antibiotics ?? []).map((a) => ({ name: a.name, result: a.result, zone: a.zone ?? '' })),
   }));
 }
 
@@ -121,11 +123,14 @@ export function testsFromForm(order, form, catalogue) {
     const values = (def?.fields ?? [])
       .map((f) => {
         const v = entry.values[f.key];
-        if (!v || v.value === '') return null;
+        // A value the server worked out is worked out again from what is typed now (left out here)
+        if (!v || v.value === '' || v.calculated) return null;
         return { key: f.key, value: String(v.value).trim(), flag: f.type === 'text' ? '' : (v.flag ?? flagFor(f, v.value)) };
       })
       .filter(Boolean);
-    return { key: t.key, values, text: entry.text.trim() };
+    // The culture template's sensitivity table: the antibiotics given a result
+    const antibiotics = (entry.antibiotics ?? []).filter((a) => a.result).map((a) => ({ name: a.name, result: a.result, zone: (a.zone ?? '').trim() }));
+    return { key: t.key, values, text: entry.text.trim(), ...(antibiotics.length ? { antibiotics } : {}) };
   });
 }
 
@@ -245,4 +250,29 @@ export function registerCsv(rows) {
     o.rejections.length || '',
   ]);
   return [head, ...lines].map((l) => l.map(cell).join(',')).join('\r\n');
+}
+
+// ---------- Report templates (docs/LAB_TEMPLATES_PLAN.md) ----------
+
+export const TEMPLATES = { table: 'Table of values', serology: 'Serology (result and method)', culture: 'Culture and sensitivity', narrative: 'Paragraphs (histopathology, cytology)' };
+export const SENSITIVITY = { S: 'Sensitive', I: 'Intermediate', R: 'Resistant' };
+
+/** A test's values grouped by their section on the report: [[section or '', [values or fields]]], in order. */
+export function bySection(items) {
+  const out = [];
+  for (const it of items) {
+    const sec = it.section ?? '';
+    const last = out[out.length - 1];
+    if (last && last[0] === sec) last[1].push(it);
+    else out.push([sec, [it]]);
+  }
+  return out;
+}
+
+/** The sensitivity table's rows for the form: the test's panel, then any other antibiotic already entered. */
+export function antibioticRows(panel, entered = []) {
+  const byName = new Map(entered.map((a) => [a.name, a]));
+  const rows = (panel ?? []).map((name) => ({ name, result: byName.get(name)?.result ?? '', zone: byName.get(name)?.zone ?? '' }));
+  for (const a of entered) if (!(panel ?? []).includes(a.name)) rows.push({ name: a.name, result: a.result, zone: a.zone ?? '' });
+  return rows;
 }

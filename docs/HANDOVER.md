@@ -189,6 +189,8 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   templates; the 25 decisions in `docs/CARE_PLAN_DECISIONS.md`.
 - Risk rules (`docs/RISK_RULES_RESEARCH.md`), red-flag rules, the medicine safety list, prescription sets, test packages.
 - Lab usual ranges (adult; the newborn values need a paediatrician).
+- Lab report templates (`docs/LAB_TEMPLATES_PLAN.md`): the new values and ranges, the ranges for men, each test's
+  method and interpretation notes.
 - Consent forms and their translations (`docs/CONSENT_FORMS.md`); Marathi and Hindi wording
   (`docs/TRANSLATIONS_TO_CHECK.md`).
 

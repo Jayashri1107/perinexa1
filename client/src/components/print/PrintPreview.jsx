@@ -41,7 +41,7 @@ const FITTED = ['', 'the parts are spaced a little closer', 'the text is a littl
  */
 export const forDocument = (result, docKey) => (result && result.key === docKey ? result : null);
 
-export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pdf, fit = false, docKey, autoPrint = false, children }) {
+export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pdf, fit = false, docKey, autoPrint = false, pageNumbers = false, children }) {
   const ref = useDialogFocus(onClose);
   const sheet = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -78,7 +78,7 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
         if (!alive) return;
         setPaper({ key: docKey, ...counted });
         if (pdf && pdf.share !== false) {
-          const blob = await makePdf(doc, page, { fit: counted.fit, title: pdf.title });
+          const blob = await makePdf(doc, page, { fit: counted.fit, title: pdf.title, pageNumbers });
           if (alive) setMade({ key: docKey, blob });
         }
       } catch (err) {
@@ -121,7 +121,7 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
     setError(null);
     setNotice(null);
     try {
-      const blob = ready ?? (await makePdf(sheet.current.querySelector('.pdoc'), page, { fit: fitted, title: pdf.title }));
+      const blob = ready ?? (await makePdf(sheet.current.querySelector('.pdoc'), page, { fit: fitted, title: pdf.title, pageNumbers }));
       await pdf.onSaved('download');
       downloadFile(blob, pdf.fileName);
       setNotice(`Saved as “${pdf.fileName}” in your Downloads folder. ${PDF_CARE}`);
@@ -144,7 +144,7 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
     if (!blob) {
       setPdfBusy(true);
       try {
-        blob = await makePdf(sheet.current.querySelector('.pdoc'), page, { fit: fitted, title: pdf.title });
+        blob = await makePdf(sheet.current.querySelector('.pdoc'), page, { fit: fitted, title: pdf.title, pageNumbers });
       } catch (err) {
         setError(`No PDF was saved to attach. ${err.message}`);
         return;
@@ -169,7 +169,7 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
     setError(null);
     setNotice(null);
     try {
-      const blob = ready ?? (await makePdf(sheet.current.querySelector('.pdoc'), page, { fit: fitted, title: pdf.title }));
+      const blob = ready ?? (await makePdf(sheet.current.querySelector('.pdoc'), page, { fit: fitted, title: pdf.title, pageNumbers }));
       const out = await pdf.sendNow.send(blob);
       setAsking(false);
       setNotice(out?.practice ? `Practice mode: nothing was sent. With WhatsApp set up, this would go to ${pdf.sendNow.label}.` : `Sent on WhatsApp to ${pdf.sendNow.label}.`);
@@ -265,6 +265,8 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
         </Alert>
       </div>
       {page && <style>{`@media print { @page { size: ${page.size ?? 'A4'}; margin: ${page.margin ?? '12mm'}; } }`}</style>}
+      {/* "Page 1 of 2" in the page's bottom margin (a lab report – docs/LAB_TEMPLATES_PLAN.md); the PDF draws its own */}
+      {pageNumbers && <style>{'@media print { @page { @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt sans-serif; color: #000; } } }'}</style>}
       <div
         ref={sheet}
         className={['pv-sheet', page?.size === 'A5' ? 'pv-sheet-a5' : '', FITS[fitted]].filter(Boolean).join(' ')}

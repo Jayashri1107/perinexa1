@@ -98,7 +98,7 @@ describe('labels, the report and the register', () => {
     expect(html).toContain('Haematology');
     expect(html).toContain('10.5–14 g/dL (pregnant) (DRAFT)');
     expect(html).toContain('Low');
-    expect(html).toContain('Usual ranges marked DRAFT are not yet approved');
+    expect(html).toContain('Usual ranges and notes marked DRAFT are not yet approved');
     expect(html).toContain('Done at Sample Town Lab (practice)');
     expect(html).toContain('Checked and reported by Sample checker');
     expect(html).toContain('One confidential test is not on this printout');
