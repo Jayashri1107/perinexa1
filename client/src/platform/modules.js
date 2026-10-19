@@ -136,7 +136,7 @@ export const HOSPITAL_LAB = {
     { label: 'Stock', to: '/lab/stock', end: true },
     { label: 'Tests', to: '/lab/tests', end: false },
     { label: 'Referrers', to: '/lab/referrers', end: true },
-    { label: 'Cash', to: '/cash-handover', end: true, roles: ['lab'] },
+    { label: 'Cash', to: '/cash-handover', end: true },
     { label: 'Settings', to: '/lab/settings', end: true },
   ],
 };
@@ -177,7 +177,7 @@ const HOSPITAL_APPOINTMENTS = {
     { label: 'Schedule', to: '/appointments', end: true },
     { label: 'Month', to: '/appointments/month', end: true },
     { label: 'Needs a time', to: '/appointments/needs-time', end: true },
-    { label: 'OPD settings', to: '/appointments/timings', end: true, roles: ['receptionist', 'doctor'] },
+    { label: 'OPD settings', to: '/appointments/timings', end: true },
   ],
 };
 
@@ -195,9 +195,9 @@ const HOSPITAL_BILLING = {
     { label: 'Unpaid', to: '/billing/unpaid', end: true },
     { label: 'Daily summary', to: '/billing/daily', end: true },
     { label: 'Cash handover', to: '/cash-handover', end: true },
-    { label: 'Monthly', to: '/billing/monthly', end: true, roles: ['admin', 'billing'] },
+    { label: 'Monthly', to: '/billing/monthly', end: true },
     { label: 'Price list', to: '/billing/prices', end: true },
-    { label: 'Settings', to: '/billing/settings', end: true, roles: ['admin'] },
+    { label: 'Settings', to: '/billing/settings', end: true },
   ],
 };
 
@@ -381,19 +381,6 @@ export function hospitalModules(roles = []) {
   if (any(roles, CARE_PLAN_ROLES)) modules.push(HOSPITAL_KNOWLEDGE);
   if (roles.includes('admin')) modules.push(HOSPITAL_ADMIN);
   return modules;
-}
-
-/** The modules whose pages show as items under them in the left menu: the Lab only (owner, 19 Oct 2026). */
-export const SIDE_TAB_MODULES = ['lab'];
-
-/**
- * A module's pages as items under it in the left menu – the Lab only (owner, 17 Oct 2026, narrowed on 19 Oct 2026:
- * "I am only asking for lab"): the same pages as the tabs at the top, only those this person may open.
- */
-export function sideTabs(module, roles = []) {
-  if (!SIDE_TAB_MODULES.includes(module.key)) return [];
-  const mine = (module.tabs ?? []).filter((t) => !t.roles || any(roles, t.roles));
-  return mine.length > 1 ? mine : [];
 }
 
 // Everyone.

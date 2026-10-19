@@ -1,6 +1,6 @@
 // The left menu and the Clinic library's tabs, by role (no browser needed).
 import { describe, expect, it } from 'vitest';
-import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, patientTabs, sideTabs } from './modules.js';
+import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, patientTabs } from './modules.js';
 
 const menu = (roles) => hospitalModules(roles).map((m) => m.label);
 
@@ -88,17 +88,5 @@ describe('the left menu by role', () => {
     expect(PLATFORM_MODULES.map((m) => m.label)).toEqual(['Overview', 'Analytics', 'Hospitals', 'Users & access', 'Staff', 'Audit & compliance']);
     expect(moduleByKey('platform-analytics').to).toBe('/platform/analytics');
     expect(moduleByKey('analytics').to).toBe('/analytics');
-  });
-});
-
-// The Lab's pages as items under it in the left menu; no other module (owner, 19 Oct 2026)
-describe('the pages under an item of the left menu', () => {
-  const subs = (roles, key) => sideTabs(hospitalModules(roles).find((m) => m.key === key), roles).map((t) => t.label);
-  it('the Lab only, with the pages this person may open', () => {
-    expect(subs(['lab'], 'lab')).toEqual(['Worklist', 'Find', 'Register', 'QC', 'Stock', 'Tests', 'Referrers', 'Cash', 'Settings']);
-    expect(subs(['doctor'], 'lab')).not.toContain('Cash');
-    for (const [roles, key] of [[['receptionist'], 'billing'], [['receptionist'], 'appointments'], [['receptionist'], 'patients'], [['receptionist'], 'calendar'], [['admin'], 'hospital-admin'], [['doctor'], 'knowledge']]) {
-      expect(subs(roles, key)).toEqual([]);
-    }
   });
 });
