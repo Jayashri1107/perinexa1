@@ -685,3 +685,7 @@
 .lab-tables .dt td.num, .lab-tables .dt .qc-run-inline, .lab-tables .dt .pill { white-space: nowrap; }
 .lab-tables .dt td .tabular { white-space: nowrap; }
 .lab-tables .dt td:first-child { min-width: 170px; }
+
+/* Walk-in slots: the two numbers side by side, and the rule in words (owner, 19 Oct 2026) */
+.opd-walkin { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-2); }
+.opd-walkin-rule { margin: 0; font-weight: 500; }

@@ -17,6 +17,17 @@ import { VISIT_TYPES, VISIT_TYPE_LABELS, WEEKDAYS, WEEK_ORDER, timeLabel } from 
 const MAX_SESSIONS = 4;
 const emptyWeek = () => [0, 1, 2, 3, 4, 5, 6].map((day) => ({ day, sessions: [] }));
 
+/** "10:50 and 11:00 kept, then 12:00 and 12:10" – the first two kept groups from 10:00 with 10-minute slots. */
+function walkInExample(every, keep) {
+  const time = (i) => {
+    const m = 10 * 60 + i * 10;
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  };
+  const group = (g) => Array.from({ length: keep }, (_, k) => time(g * (every + keep) + every + k));
+  const words = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0]);
+  return `${words(group(0))} kept, then ${words(group(1))}`;
+}
+
 export function OpdTimingsPage({ admin = false }) {
   const [params, setParams] = useSearchParams();
   const doctorsRes = useFetch('/appointments/doctors');
@@ -27,7 +38,7 @@ export function OpdTimingsPage({ admin = false }) {
   const [week, setWeek] = useState(emptyWeek);
   const [leave, setLeave] = useState([]);
   const [lengths, setLengths] = useState({});
-  const [walkInSlots, setWalkInSlots] = useState(0);
+  const [walkIn, setWalkIn] = useState({ every: 5, keep: 0 });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -38,7 +49,7 @@ export function OpdTimingsPage({ admin = false }) {
     setWeek(res.data.timings.week.map((w) => ({ day: w.day, sessions: w.sessions.map((s) => ({ ...s })) })));
     setLeave(res.data.timings.leave.map((l) => ({ ...l })));
     setLengths({ ...res.data.timings.lengths });
-    setWalkInSlots(res.data.timings.walkInSlots ?? 0);
+    setWalkIn({ every: res.data.timings.walkInEvery ?? 5, keep: res.data.timings.walkInKeep ?? 0 });
     setDirty(false);
   }, [res.data]);
 
@@ -66,7 +77,7 @@ export function OpdTimingsPage({ admin = false }) {
     setSaving(true);
     setError(null);
     try {
-      const body = { week: week.map((d) => ({ day: d.day, sessions: d.sessions })), leave: leave.map((l) => ({ from: l.from, to: l.to || l.from, note: l.note ?? '' })), lengths, walkInSlots };
+      const body = { week: week.map((d) => ({ day: d.day, sessions: d.sessions })), leave: leave.map((l) => ({ from: l.from, to: l.to || l.from, note: l.note ?? '' })), lengths, walkInEvery: walkIn.every, walkInKeep: walkIn.keep };
       const out = await api(`/appointments/timings/${doctorId}`, { method: 'PUT', body });
       setSaved({ affected: out.affected ?? [], placed: out.placed ?? 0 });
       res.reload();
@@ -227,23 +238,38 @@ export function OpdTimingsPage({ admin = false }) {
               <Footprints aria-hidden="true" /> Slots kept for walk-ins
             </h2>
             <p className="hint">
-              The last slots of each session are not offered to patients booking online, so a patient who walks in can still be seen. Reception and doctors
-              see them marked Walk-in and can book them.
+              Through the whole day, after every few slots open for booking online, the next ones are kept for patients who walk in. They are never offered
+              to patients booking online; reception and doctors see them marked Walk-in and can book them.
             </p>
-            <label className="opd-length">
-              <span className="field-label">Slots kept in each session</span>
-              {canEdit ? (
-                <select value={walkInSlots} onChange={(e) => change(() => setWalkInSlots(Number(e.target.value)))}>
-                  {Array.from({ length: 11 }, (_, n) => (
-                    <option key={n} value={n}>
-                      {n === 0 ? 'None' : `${n} slot${n > 1 ? 's' : ''} (${n * res.data.slotMinutes} minutes)`}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span>{walkInSlots ? `${walkInSlots} slot${walkInSlots > 1 ? 's' : ''}` : 'None'}</span>
-              )}
-            </label>
+            {canEdit ? (
+              <div className="opd-walkin">
+                <label className="opd-length">
+                  <span className="field-label">Slots open online in a row</span>
+                  <select value={walkIn.every} onChange={(e) => change(() => setWalkIn({ ...walkIn, every: Number(e.target.value) }))}>
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="opd-length">
+                  <span className="field-label">Then kept for walk-ins</span>
+                  <select value={walkIn.keep} onChange={(e) => change(() => setWalkIn({ ...walkIn, keep: Number(e.target.value) }))}>
+                    {Array.from({ length: 11 }, (_, n) => (
+                      <option key={n} value={n}>
+                        {n === 0 ? 'None – all online' : `${n} slot${n > 1 ? 's' : ''}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+            <p className="opd-walkin-rule">
+              {walkIn.keep
+                ? `After every ${walkIn.every} slot${walkIn.every > 1 ? 's' : ''} open online, ${walkIn.keep} ${walkIn.keep > 1 ? 'are' : 'is'} kept for walk-ins – e.g. with 10-minute slots from 10:00: ${walkInExample(walkIn.every, walkIn.keep)}.`
+                : 'No slots are kept for walk-ins: every slot can be booked online.'}
+            </p>
           </section>
         )}
 

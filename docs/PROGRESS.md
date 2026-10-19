@@ -3875,6 +3875,16 @@ Branch `lab-dash`. Plan and decisions: `docs/LAB_DASHBOARD_PLAN.md`.
    Hb is flagged Low.
 5. Lab → Dashboard: Registered, Tests, Reported and Charged went up; Today / Last 7 days / This month.
 
+## Walk-in slots: after every 5 online, 2 kept (owner, 19 Oct 2026)
+Branch `walkin-pattern`. Appointments → OPD settings → Slots kept for walk-ins: "Slots open online in a row" (e.g. 5) and
+"Then kept for walk-ins" (e.g. 2), through the whole day; the screen says the rule in words with an example. Replaces
+"the last slots of each session".
+
+### How to test (fake data only)
+1. As a doctor: Appointments → OPD settings → a session 10:00–13:00 → 5 and 2 → Save timings.
+2. Schedule: 10:50 and 11:00, 12:00 and 12:10 … say Walk-in (dashed); reception can book them.
+3. Patient portal booking: those times are not offered.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.
