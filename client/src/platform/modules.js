@@ -383,14 +383,16 @@ export function hospitalModules(roles = []) {
   return modules;
 }
 
+/** The modules whose pages show as items under them in the left menu: the Lab only (owner, 19 Oct 2026). */
+export const SIDE_TAB_MODULES = ['lab'];
+
 /**
- * A module's pages as items under it in the left menu (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md: "add them as
- * sidebar as separate option"), the same pages as the tabs at the top, only those this person may open. A module with
- * one page has none.
+ * A module's pages as items under it in the left menu – the Lab only (owner, 17 Oct 2026, narrowed on 19 Oct 2026:
+ * "I am only asking for lab"): the same pages as the tabs at the top, only those this person may open.
  */
 export function sideTabs(module, roles = []) {
-  const tabs = module.key === 'patients' ? patientTabs(roles) : module.key === 'knowledge' ? knowledgeTabs(roles) : module.tabs ?? [];
-  const mine = tabs.filter((t) => !t.roles || any(roles, t.roles));
+  if (!SIDE_TAB_MODULES.includes(module.key)) return [];
+  const mine = (module.tabs ?? []).filter((t) => !t.roles || any(roles, t.roles));
   return mine.length > 1 ? mine : [];
 }
 
