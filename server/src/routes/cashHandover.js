@@ -31,7 +31,7 @@ cashHandoverRouter.use((req, _res, next) => {
 });
 
 /** What one person collected on a day, from the bills' payments: { cashPaise, byMode, payments }. */
-async function collected(tenantId, userId, day) {
+export async function collected(tenantId, userId, day) {
   const [from, to] = [hospitalDayStart(day), hospitalDayStart(addDays(day, 1))];
   const bills = await Bill.find({ tenantId, payments: { $elemMatch: { by: userId, at: { $gte: from, $lt: to } } } }, { payments: 1 }).lean();
   const byMode = Object.fromEntries(PAYMENT_MODES.map((m) => [m, 0]));
@@ -59,6 +59,7 @@ const view = (h) => ({
   differencePaise: h.handedPaise - h.cashPaise,
   note: h.note ?? '',
   handed: stampView(h.handed),
+  correctedAfter: (h.correctedAfter ?? []).map((c) => ({ receipt: c.receipt, beforePaise: c.beforePaise, afterPaise: c.afterPaise, beforeMode: c.beforeMode, afterMode: c.afterMode, byName: c.byName, at: c.at })),
   received: h.received ? { ...stampView(h.received), receivedPaise: h.received.receivedPaise, note: h.received.note ?? '', differencePaise: h.received.receivedPaise - h.handedPaise } : null,
 });
 

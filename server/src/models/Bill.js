@@ -36,6 +36,25 @@ const paymentSchema = new mongoose.Schema({
   reference: { type: String, trim: true, maxlength: 80, default: '' }, // UPI / card reference, or the claim number
   scheme: { type: String, trim: true, maxlength: 80, default: '' }, // insurance company or scheme
   ...stamp,
+  // Corrections (owner, 19 Oct 2026 – docs/BILL_CORRECTIONS_PLAN.md): e.g. a UPI payment that failed and was paid in
+  // cash. The payment shows what is true now; each correction keeps what it was before, who changed it, when and why.
+  // Never removed. The receipt keeps its number and prints "Corrected".
+  corrections: {
+    type: [
+      new mongoose.Schema(
+        {
+          before: {
+            type: new mongoose.Schema({ mode: String, amountPaise: Number, reference: String, scheme: String, at: Date }, { _id: false }),
+            required: true,
+          },
+          reason: { type: String, required: true, maxlength: 300 },
+          ...stamp,
+        },
+        { _id: false },
+      ),
+    ],
+    default: [],
+  },
 });
 
 // Insurance or scheme details of the bill (billing extras, 4 Oct 2026): typed by reception or the hospital admin, all

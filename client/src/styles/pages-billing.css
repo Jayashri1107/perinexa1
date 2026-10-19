@@ -100,3 +100,65 @@
 .bill-last { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
 .bill-last .muted { font-size: var(--fs-label); line-height: var(--lh-label); }
 .bill-pay { white-space: nowrap; }
+
+/* ---------- The bill as a hospital bill (owner, 19 Oct 2026 – docs/BILL_CORRECTIONS_PLAN.md) ---------- */
+.bill-head { padding: var(--space-4); }
+.bill-head-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-3) var(--space-4); margin: 0; }
+.bill-head-grid > div { min-width: 0; }
+.bill-head-grid dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); font-weight: 500; }
+.bill-head-grid dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.bill-body { display: grid; gap: var(--space-4); }
+.bill-totals { justify-self: end; width: min(100%, 420px); }
+.bill-totals .bill-sums { max-width: none; margin: 0 0 var(--space-2); }
+.bill-sums .bill-total th, .bill-sums .bill-total td { font-weight: 600; border-top: 1px solid var(--border); padding-top: var(--space-2); }
+.bill-sum-note { display: block; font-size: var(--fs-label); }
+.bill-table-wrap { overflow-x: auto; }
+.bill-lines .bill-col-no { width: 48px; color: var(--slate-600); }
+.bill-lines .bill-col-item { min-width: 200px; }
+.bill-item-name { display: block; font-weight: 500; }
+.bill-lines .bill-line-from { display: block; }
+.bill-lines .pill { margin-top: var(--space-1); }
+.bill-lines .bill-col-amount { font-weight: 600; }
+.bill-lines .bill-col-actions { width: 1%; white-space: nowrap; text-align: right; }
+.bill-lines tr.is-unpriced td { background: var(--mist-50); }
+.bill-unpriced { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-1); }
+.bill-unpriced .pill { margin: 0; }
+.bill-item-cat, .bill-item-qty { display: none; font-size: var(--fs-label); }
+.bill-lines .bill-col-doctor { min-width: 110px; }
+.bill-totals .bill-sums th, .bill-totals .bill-sums td { background: none; border: 0; border-bottom: 1px solid var(--border); padding: var(--space-2) 0; }
+.bill-totals .bill-sums th { color: var(--slate-600); }
+.bill-totals .bill-sums .bill-total th, .bill-totals .bill-sums .bill-total td { color: var(--ink); }
+.bill-totals .bill-sums .bill-balance th, .bill-totals .bill-sums .bill-balance td { color: var(--ink); border-bottom: 0; border-top: 2px solid var(--ink); }
+.bill-unpriced-note { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); color: var(--slate-600); }
+.bill-unpriced-note svg { flex-shrink: 0; width: 18px; height: 18px; }
+.bill-pay-table td .pill { margin-left: var(--space-2); }
+.bill-pay-history td { background: var(--mist-50); }
+.bill-pay-history .hint { margin: 0; }
+.bill-doc-corrected { border: 1px dashed var(--border); padding: var(--space-2); }
+
+/* A tablet: the totals under the items */
+/* A tablet: the category goes under the item's name */
+@media (max-width: 1100px) {
+  .bill-lines .bill-col-cat { display: none; }
+  .bill-item-cat { display: block; }
+}
+/* A tablet held upright and a phone: each item and each payment as a block, no sideways scrolling */
+@media (max-width: 900px) {
+  .bill-page .bill-table-wrap { overflow: visible; }
+  .bill-page .bill-lines thead { display: none; }
+  .bill-page .bill-lines, .bill-page .bill-lines tbody { display: block; }
+  .bill-page .bill-lines tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+  .bill-page .bill-lines td { display: block; border: 0; padding: 0; background: none; }
+  .bill-page .bill-lines tr.is-unpriced { background: var(--mist-50); padding-left: var(--space-2); padding-right: var(--space-2); }
+  /* Items: the name (with category and who added it) and the amount; then the doctor and qty × rate; then the actions */
+  .bill-page .bill-lines:not(.bill-pay-table) td[data-label='No.'], .bill-page .bill-lines:not(.bill-pay-table) td[data-label='Category'] { display: none; }
+  .bill-page .bill-lines:not(.bill-pay-table) .bill-col-item { grid-column: 1; grid-row: 1; min-width: 0; }
+  .bill-page .bill-lines:not(.bill-pay-table) .bill-col-amount { grid-column: 2; grid-row: 1; }
+  .bill-page .bill-lines:not(.bill-pay-table) td[data-label='Doctor'], .bill-page .bill-lines:not(.bill-pay-table) td[data-label='Qty'], .bill-page .bill-lines:not(.bill-pay-table) td[data-label='Rate'] { display: none; }
+  .bill-page .bill-item-qty { display: block; }
+  .bill-page .bill-lines .bill-col-actions { grid-column: 1 / -1; width: auto; text-align: left; }
+  /* Payments: each field with its label */
+  .bill-page .bill-pay-table tr { grid-template-columns: 1fr 1fr; }
+  .bill-page .bill-pay-table td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); color: var(--slate-600); }
+  .bill-page .bill-pay-history { display: block !important; }
+}

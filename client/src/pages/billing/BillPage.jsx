@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgePercent, Ban, FileText, Link2, Minus, Plus, Printer, RotateCcw, Search, Wallet, X } from 'lucide-react';
+import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, Minus, PencilLine, Plus, Printer, RotateCcw, Search, Tag, Wallet, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -7,7 +7,7 @@ import { MenuButton } from '../../components/MenuButton.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, formatDateTime } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { blobToBase64 } from '../visits/whatsapp.js';
@@ -338,6 +338,128 @@ function ReasonDialog({ id, title, text, label, confirmLabel, path, message, onC
   );
 }
 
+/** The time of day of an instant (HH:MM, 24 hours) – for the correction's time box. */
+const hhmm = (at) => new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(at)); // as the times on screen
+/** "₹500 by UPI (ref …)" – what a payment is or was. */
+const paidAs = (x) => `${rupees(x.amountPaise)} by ${MODE_LABELS[x.mode]}${x.scheme ? ` (${x.scheme})` : ''}${x.reference ? `, ref ${x.reference}` : ''}`;
+
+/**
+ * Correct a payment (owner, 19 Oct 2026 – docs/BILL_CORRECTIONS_PLAN.md): e.g. the UPI payment failed and she paid in
+ * cash. What it was is kept and shown; a reason always; the receipt keeps its number and prints "Corrected".
+ */
+function CorrectPaymentDialog({ bill, payment: p, onClose, onDone }) {
+  const [amount, setAmount] = useState(toInput(p.amountPaise));
+  const [mode, setMode] = useState(p.mode);
+  const [reference, setReference] = useState(p.reference);
+  const [scheme, setScheme] = useState(p.scheme);
+  const [time, setTime] = useState(hhmm(p.at));
+  const [reason, setReason] = useState('');
+  const s = useSend(onDone);
+  const paise = toPaise(amount);
+  const insured = mode === 'insurance';
+  const ready = paise > 0 && reason.trim().length >= 3 && /^\d\d:\d\d$/.test(time) && (!insured || scheme.trim().length >= 2);
+  return (
+    <Modal id="bill-correct" title={`Correct ${PAYMENT_KIND_LABELS[p.kind].toLowerCase()} ${p.receipt}`} onClose={onClose}>
+      <p>
+        Recorded as <strong>{paidAs(p)}</strong> at {formatDateTime(p.at)} by {p.byName}. Change what is wrong – for example a UPI payment that failed and was
+        then paid in cash. What it was stays on the bill with your reason.
+      </p>
+      <Alert type="error">{s.error}</Alert>
+      <div className="form-grid">
+        <Field label="Amount (₹)" id="bill-corr-amount" error={s.fields.amountPaise}>
+          <input id="bill-corr-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </Field>
+        <Field label={p.kind === 'refund' ? 'Given back by' : 'Paid by'} id="bill-corr-mode">
+          <select id="bill-corr-mode" value={mode} onChange={(e) => setMode(e.target.value)} autoFocus>
+            {Object.entries(MODE_LABELS)
+              .filter(([m]) => p.kind !== 'refund' || m !== 'insurance')
+              .map(([m, label]) => (
+                <option key={m} value={m}>
+                  {label}
+                </option>
+              ))}
+          </select>
+        </Field>
+        <Field label="Time (same day)" id="bill-corr-time" error={s.fields.time}>
+          <input id="bill-corr-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </Field>
+      </div>
+      {insured && (
+        <Field label="Insurance company or scheme" id="bill-corr-scheme" error={s.fields.scheme}>
+          <input id="bill-corr-scheme" value={scheme} maxLength={80} onChange={(e) => setScheme(e.target.value)} />
+        </Field>
+      )}
+      {mode !== 'cash' && (
+        <Field label={insured ? 'Claim number (optional)' : `${MODE_LABELS[mode]} reference (optional)`} id="bill-corr-ref" error={s.fields.reference} hint="The number of the payment. No names of people.">
+          <input id="bill-corr-ref" value={reference} maxLength={80} onChange={(e) => setReference(e.target.value)} />
+        </Field>
+      )}
+      <Field label="Why is it corrected" id="bill-corr-reason" error={s.fields.reason} hint={`For example: UPI failed, paid in cash. ${NO_SEX_WORDS_HINT}`}>
+        <input id="bill-corr-reason" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} />
+      </Field>
+      <div className="row">
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!ready || s.busy}
+          onClick={() =>
+            s.send(
+              `/billing/bills/${bill.id}/payments/${p.id}/correct`,
+              { mode, amountPaise: paise, reference: mode === 'cash' ? '' : reference.trim(), scheme: insured ? scheme.trim() : '', time, reason: reason.trim() },
+              (res) => `Receipt ${res.payment.receipt} corrected: ${paidAs(res.payment)}. Print the receipt again for the patient.`,
+            )
+          }
+        >
+          <PencilLine aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save the correction'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/** Set the price of an item with no price yet (the hospital admin): the price list changes, and the bill takes it. */
+function SetPriceDialog({ bill, line, onClose, onDone }) {
+  const prices = useFetch('/billing/prices');
+  const item = (prices.data?.items ?? []).find((i) => (line.priceItemId ? i.id === line.priceItemId : line.key && i.key === line.key));
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const paise = toPaise(amount);
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/billing/prices/${item.id}`, { method: 'PATCH', body: { pricePaise: paise } });
+      const fresh = await api(`/billing/bills/${bill.id}`);
+      onDone(fresh, `${item.name}: ${rupees(paise)} in the price list.`);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal id="bill-set-price" title={`Set the price of ${line.name}`} onClose={onClose}>
+      <p>This changes the hospital's price list: this bill, and every bill from now on, uses the new price.</p>
+      <Alert type="error">{error || prices.error}</Alert>
+      {prices.data && !item && <Alert type="warning">This item is not in the price list. Set it in Billing → Price list.</Alert>}
+      <Field label="Price (₹)" id="bill-set-price-amount">
+        <input id="bill-set-price-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+      </Field>
+      <div className="row">
+        <button type="button" className="btn btn-primary" disabled={!item || !(paise > 0) || busy} onClick={save}>
+          <Tag aria-hidden="true" /> {busy ? 'Saving…' : 'Save the price'}
+        </button>
+        <button type="button" className="btn btn-link" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 /** The printed bill (A5), or one receipt. */
 function BillPrint({ bill, receipt = null, onClose }) {
   const lh = useFetch('/tenant/settings/letterhead');
@@ -367,7 +489,7 @@ function BillPrint({ bill, receipt = null, onClose }) {
     >
       <PrintDocument className="bill-doc">
         {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
-        <h1 className="pdoc-title">{receipt ? 'Receipt' : bill.kind === 'ipd' ? 'Inpatient bill' : 'Bill'}</h1>
+        <h1 className="pdoc-title">{receipt ? (payment?.corrections?.length ? 'Receipt (corrected)' : 'Receipt') : bill.kind === 'ipd' ? 'Inpatient bill' : 'Bill'}</h1>
         <table className="bill-doc-head">
           <tbody>
             <tr>
@@ -416,7 +538,17 @@ function BillPrint({ bill, receipt = null, onClose }) {
             {payment.kind === 'deposit' ? ', as a deposit' : ''}
             {payment.kind === 'refund' ? ' – refunded to the patient' : ''}.
           </p>
-        ) : (
+        ) : null}
+        {payment?.corrections?.length ? (
+          <p className="pdoc-small bill-doc-corrected">
+            {payment.corrections.map((c, i) => (
+              <span key={i}>
+                Corrected on {formatDateTime(c.at)} by {c.byName}: was {paidAs(c.before)} at {formatDateTime(c.before.at)}. Reason: {c.reason}.{' '}
+              </span>
+            ))}
+          </p>
+        ) : null}
+        {payment ? null : (
           <table className="bill-doc-lines">
             <thead>
               <tr>
@@ -477,7 +609,7 @@ function BillPrint({ bill, receipt = null, onClose }) {
         </table>
         {!payment && bill.payments.length > 0 && (
           <p className="pdoc-small">
-            Payments: {bill.payments.map((p) => `${p.receipt} ${PAYMENT_KIND_LABELS[p.kind].toLowerCase()} ${rupees(p.amountPaise)} (${MODE_LABELS[p.mode]})`).join('; ')}.
+            Payments: {bill.payments.map((p) => `${p.receipt} ${PAYMENT_KIND_LABELS[p.kind].toLowerCase()} ${rupees(p.amountPaise)} (${MODE_LABELS[p.mode]}${p.corrections?.length ? ', corrected' : ''})`).join('; ')}.
           </p>
         )}
         <p className="pdoc-small">This is a computer-generated {receipt ? 'receipt' : 'bill'}.</p>
@@ -486,12 +618,19 @@ function BillPrint({ bill, receipt = null, onClose }) {
   );
 }
 
+/**
+ * The bill as a hospital bill (owner, 19 Oct 2026 – docs/BILL_CORRECTIONS_PLAN.md): the bill's details at the top; the
+ * items as a numbered table (item, category, doctor, qty, rate, amount) with the totals beside it; then the payments as a
+ * table with their receipts and corrections; insurance and what was taken off below.
+ */
 export function BillPage() {
   const { id } = useParams();
   const { activeMembership } = useAuth();
   const res = useFetch(`/billing/bills/${id}`);
+  const corr = useFetch(`/billing/bills/${id}/corrections`);
   const [bill, setBill] = useState(null);
-  // add | pay | refund | discount | cancel | insurance | upi | { remove: line }; ?pay=1 (Take payment on the Bills list) opens pay
+  // add | pay | refund | discount | cancel | insurance | upi | { remove: line } | { correct: payment } | { price: line };
+  // ?pay=1 (Take payment on the Bills list) opens pay
   const { search: query } = useLocation();
   const [dialog, setDialog] = useState(() => (new URLSearchParams(query).get('pay') === '1' ? 'pay' : null));
   const [printing, setPrinting] = useState(null); // { receipt? } | { claim: 'claim' | 'pmjay' }
@@ -499,6 +638,7 @@ export function BillPage() {
   const b = bill ?? res.data?.bill;
   const done = (out, message, { keepOpen = false } = {}) => {
     setBill(out.bill);
+    corr.reload();
     if (keepOpen) return;
     setDialog(null);
     setFlash(message ?? null);
@@ -507,7 +647,11 @@ export function BillPage() {
   if (res.error && !b) return <div className="pf-content"><Alert type="error">{res.error}</Alert></div>;
   if (!b) return <div className="pf-content"><p className="muted" aria-busy="true">Loading the bill…</p></div>;
   const open = b.status !== 'cancelled';
+  const isAdmin = (activeMembership?.roles ?? []).includes('admin');
+  const lines = b.lines.filter((l) => !l.removed);
   const removed = b.lines.filter((l) => l.removed);
+  const unpriced = lines.filter((l) => l.priceNotSet).length;
+  const canCorrect = (p) => open && (corr.data?.correctableBy?.[p.id] === 'desk' || corr.data?.isAdmin);
   const printItems = [
     { label: 'Print the bill', icon: Printer, onSelect: () => setPrinting({}) },
     ...b.payments.map((p) => ({ label: `Print receipt ${p.receipt}`, icon: Printer, onSelect: () => setPrinting({ receipt: p.receipt }) })),
@@ -522,7 +666,7 @@ export function BillPage() {
         title={`Bill ${b.number}`}
         documentTitle="Bill"
         badges={<BillStatus status={b.status} />}
-        subtitle={[b.patient?.fullName, b.patient?.mrn, KIND_LABELS[b.kind], dayLabel(b.date)].filter(Boolean).join(' · ')}
+        subtitle={[b.patient?.fullName, b.patient?.mrn].filter(Boolean).join(' · ')}
         tabs={billingTabs(activeMembership.roles)}
         actions={
           <>
@@ -559,11 +703,6 @@ export function BillPage() {
             Cancelled by {b.cancelled.byName} on {formatDateTime(b.cancelled.at)}: {b.cancelled.reason}
           </Alert>
         )}
-        {b.priceNotSet && (
-          <Alert type="warning">
-            Some items have no price yet (₹0). Ask the hospital admin to set them in the price list – the bill picks the price up by itself.
-          </Alert>
-        )}
         {/* The note reception sees on a bill of a record marked as a duplicate: the bill stays here; new charges go on the main record */}
         {b.patient?.duplicateOf && (
           <Alert type="info">
@@ -571,143 +710,234 @@ export function BillPage() {
             on this record: settle it here. New charges go on the bills of {b.patient.duplicateOf.mrn}.
           </Alert>
         )}
-        {b.patient && (
-          <p className="hint">
-            <Link to={`/patients/${b.patient.id}`}>Open {b.patient.fullName}'s record</Link>
-            {b.stay ? ` · ${b.stay.ward || 'Ward not given'}${b.stay.bed ? `, bed ${b.stay.bed}` : ''} · admitted ${formatDateTime(b.stay.admittedAt)}${b.stay.dischargedAt ? ` · discharged ${formatDateTime(b.stay.dischargedAt)}` : ' · in hospital'}` : ''}
-          </p>
-        )}
 
-        <section className="card bill-section" aria-labelledby="bill-items">
-          <div className="row-between">
-            <h2 id="bill-items">Items</h2>
-            {open && (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('add')}>
-                <Plus aria-hidden="true" /> Add an item
+        <section className="card bill-head" aria-label="Bill details">
+          <dl className="bill-head-grid">
+            <div>
+              <dt>Patient</dt>
+              <dd>{b.patient ? <Link to={`/patients/${b.patient.id}`}>{b.patient.fullName}</Link> : '–'}</dd>
+            </div>
+            <div>
+              <dt>Patient no.</dt>
+              <dd className="tabular">{b.patient?.mrn ?? '–'}</dd>
+            </div>
+            <div>
+              <dt>Bill type</dt>
+              <dd>{b.kind === 'ipd' ? 'IPD – inpatient' : 'OPD – outpatient'}</dd>
+            </div>
+            <div>
+              <dt>Doctor</dt>
+              <dd>{b.doctorName || '–'}</dd>
+            </div>
+            <div>
+              <dt>Date</dt>
+              <dd>{dayLabel(b.date)}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <BillStatus status={b.status} />
+              </dd>
+            </div>
+            {b.stay && (
+              <>
+                <div>
+                  <dt>Ward and bed</dt>
+                  <dd>{[b.stay.ward || 'Ward not given', b.stay.bed ? `bed ${b.stay.bed}` : ''].filter(Boolean).join(', ')}</dd>
+                </div>
+                <div>
+                  <dt>Admitted</dt>
+                  <dd>{formatDateTime(b.stay.admittedAt)}</dd>
+                </div>
+                <div>
+                  <dt>Discharged</dt>
+                  <dd>{b.stay.dischargedAt ? formatDateTime(b.stay.dischargedAt) : 'In hospital'}</dd>
+                </div>
+              </>
+            )}
+          </dl>
+        </section>
+
+        <div className="bill-body">
+          <section className="card bill-section bill-items" aria-labelledby="bill-items">
+            <div className="row-between">
+              <h2 id="bill-items">
+                Items <span className="muted">· {lines.length}</span>
+              </h2>
+              {open && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('add')}>
+                  <Plus aria-hidden="true" /> Add items
+                </button>
+              )}
+            </div>
+            {unpriced > 0 && (
+              <p className="bill-unpriced-note">
+                <CircleAlert aria-hidden="true" /> {unpriced} item{unpriced > 1 ? 's have' : ' has'} no price yet (₹0).{' '}
+                {isAdmin ? 'Set the price on the item below.' : 'Ask the hospital admin to set it in the price list – the bill takes it by itself.'}
+              </p>
+            )}
+            <div className="bill-table-wrap">
+              <table className="bill-lines">
+                <thead>
+                  <tr>
+                    <th scope="col" className="bill-col-no">
+                      No.
+                    </th>
+                    <th scope="col">Item</th>
+                    <th scope="col" className="bill-col-cat">
+                      Category
+                    </th>
+                    <th scope="col" className="bill-col-doctor">
+                      Doctor
+                    </th>
+                    <th scope="col" className="num">
+                      Qty
+                    </th>
+                    <th scope="col" className="num">
+                      Rate
+                    </th>
+                    <th scope="col" className="num">
+                      Amount
+                    </th>
+                    <th scope="col" className="bill-col-actions">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((l, i) => (
+                    <tr key={l.id} className={l.priceNotSet ? 'is-unpriced' : ''}>
+                      <td data-label="No." className="bill-col-no tabular">
+                        {i + 1}
+                      </td>
+                      <td data-label="Item" className="bill-col-item">
+                        <span className="bill-item-name">{l.name}</span>
+                        <span className="muted bill-line-from">{l.source === 'auto' ? 'Added by itself' : `Added by ${l.addedByName}`}</span>
+                        <span className="bill-item-cat muted">{GROUP_LABELS[l.group]}</span>
+                        <span className="bill-item-qty muted">
+                          Qty {l.qty} × {rupees(l.ratePaise)}
+                          {l.doctorName ? ` · ${l.doctorName}` : ''}
+                        </span>
+                        {l.priceNotSet && (
+                          <span className="bill-unpriced">
+                            <StatusPill tone="watch" icon={CircleAlert}>
+                              Price not set
+                            </StatusPill>
+                            {open && isAdmin && (
+                              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog({ price: l })}>
+                                <Tag aria-hidden="true" /> Set price
+                              </button>
+                            )}
+                          </span>
+                        )}
+                      </td>
+                      <td data-label="Category" className="bill-col-cat">
+                        {GROUP_LABELS[l.group]}
+                      </td>
+                      <td data-label="Doctor" className="bill-col-doctor">{l.doctorName || <span className="muted">–</span>}</td>
+                      <td data-label="Qty" className="num">
+                        {l.qty}
+                      </td>
+                      <td data-label="Rate" className="num">
+                        {rupees(l.ratePaise)}
+                      </td>
+                      <td data-label="Amount" className="num bill-col-amount">
+                        {rupees(l.amountPaise)}
+                      </td>
+                      <td className="bill-col-actions">
+                        {open && (
+                          <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ remove: l })} aria-label={`Take ${l.name} off the bill`}>
+                            Take off
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {!lines.length && (
+                    <tr>
+                      <td colSpan={8} className="muted">
+                        No items yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="card bill-section bill-totals" aria-labelledby="bill-totals">
+            <h2 id="bill-totals">Amount</h2>
+            <table className="bill-sums">
+              <tbody>
+                <tr>
+                  <th scope="row">Subtotal</th>
+                  <td>{rupees(b.subtotal)}</td>
+                </tr>
+                <tr>
+                  <th scope="row">
+                    Discount
+                    {b.discountInfo ? <span className="muted bill-sum-note">{b.discountInfo.mode === 'percent' ? `${b.discountInfo.value}%` : 'Amount'} – {b.discountInfo.reason}</span> : null}
+                  </th>
+                  <td>{b.discount ? `−${rupees(b.discount)}` : rupees(0)}</td>
+                </tr>
+                <tr className="bill-total">
+                  <th scope="row">Total</th>
+                  <td>{rupees(b.total)}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Paid</th>
+                  <td>{rupees(b.paid)}</td>
+                </tr>
+                <tr className="bill-balance">
+                  <th scope="row">{b.balance < 0 ? 'To give back' : 'Balance to pay'}</th>
+                  <td>{rupees(Math.abs(b.balance))}</td>
+                </tr>
+              </tbody>
+            </table>
+            {open && b.subtotal > 0 && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('discount')}>
+                <BadgePercent aria-hidden="true" /> {b.discountInfo ? 'Change the discount' : 'Give a discount'}
               </button>
             )}
-          </div>
-          <table className="bill-lines">
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col" className="num">
-                  Qty
-                </th>
-                <th scope="col" className="num">
-                  Rate
-                </th>
-                <th scope="col" className="num">
-                  Amount
-                </th>
-                <th scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {b.lines
-                .filter((l) => !l.removed)
-                .map((l) => (
-                  <tr key={l.id}>
-                    <td data-label="Item">
-                      {l.name}
-                      <span className="muted bill-line-from">
-                        {' '}
-                        · {GROUP_LABELS[l.group]}
-                        {l.doctorName ? ` · ${l.doctorName}` : ''}
-                        {l.source === 'auto' ? ' · added by itself' : ` · added by ${l.addedByName}`}
-                        {l.priceNotSet ? ' · price not set' : ''}
-                      </span>
-                    </td>
-                    <td data-label="Qty" className="num">
-                      {l.qty}
-                    </td>
-                    <td data-label="Rate" className="num">
-                      {rupees(l.ratePaise)}
-                    </td>
-                    <td data-label="Amount" className="num">
-                      {rupees(l.amountPaise)}
-                    </td>
-                    <td>
-                      {open && (
-                        <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ remove: l })} aria-label={`Take ${l.name} off the bill`}>
-                          Take off
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              {!b.items && (
-                <tr>
-                  <td colSpan={5} className="muted">
-                    No items yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          </section>
+        </div>
 
-          <table className="bill-sums">
-            <tbody>
-              <tr>
-                <th scope="row">Subtotal</th>
-                <td>{rupees(b.subtotal)}</td>
-              </tr>
-              <tr>
-                <th scope="row">
-                  Discount
-                  {b.discountInfo ? <span className="muted"> ({b.discountInfo.mode === 'percent' ? `${b.discountInfo.value}%` : 'amount'} – {b.discountInfo.reason})</span> : ''}
-                  {open && b.subtotal > 0 && (
-                    <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('discount')}>
-                      {b.discountInfo ? 'Change' : 'Give a discount'}
-                    </button>
-                  )}
-                </th>
-                <td>{b.discount ? `−${rupees(b.discount)}` : rupees(0)}</td>
-              </tr>
-              <tr>
-                <th scope="row">Total</th>
-                <td>{rupees(b.total)}</td>
-              </tr>
-              <tr>
-                <th scope="row">Paid</th>
-                <td>{rupees(b.paid)}</td>
-              </tr>
-              <tr className="bill-balance">
-                <th scope="row">{b.balance < 0 ? 'To give back' : 'Balance to pay'}</th>
-                <td>{rupees(Math.abs(b.balance))}</td>
-              </tr>
-            </tbody>
-          </table>
+        <section className="card bill-section" aria-labelledby="bill-payments">
+          <h2 id="bill-payments">
+            Payments <span className="muted">· {b.payments.length}</span>
+          </h2>
+          {!b.payments.length ? (
+            <p className="muted">Nothing paid yet.</p>
+          ) : (
+            <div className="bill-table-wrap">
+              <table className="bill-lines bill-pay-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Receipt</th>
+                    <th scope="col">Date and time</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Mode</th>
+                    <th scope="col">Reference</th>
+                    <th scope="col" className="num">
+                      Amount
+                    </th>
+                    <th scope="col">Taken by</th>
+                    <th scope="col" className="bill-col-actions">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {b.payments.map((p) => (
+                    <PaymentRow key={p.id} p={p} canCorrect={canCorrect(p)} adminOnly={open && corr.data?.correctableBy?.[p.id] === 'admin' && !corr.data?.isAdmin} onPrint={() => setPrinting({ receipt: p.receipt })} onCorrect={() => setDialog({ correct: p })} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <InsuranceSection bill={b} open={open} onEdit={() => setDialog('insurance')} />
-
-        <section className="card bill-section" aria-labelledby="bill-payments">
-          <h2 id="bill-payments">Payments</h2>
-          {!b.payments.length && <p className="muted">Nothing paid yet.</p>}
-          <ul className="appt-lines">
-            {b.payments.map((p) => (
-              <li key={p.id} className="bill-payment">
-                <span>
-                  <strong>
-                    {PAYMENT_KIND_LABELS[p.kind]} {p.kind === 'refund' ? '−' : ''}
-                    {rupees(p.amountPaise)}
-                  </strong>{' '}
-                  <span className="muted">
-                    {MODE_LABELS[p.mode]}
-                    {p.scheme ? ` · ${p.scheme}` : ''}
-                    {p.reference ? ` · ${p.reference}` : ''} · {p.receipt} · {formatDateTime(p.at)} · {p.byName}
-                  </span>
-                </span>
-                <button type="button" className="btn btn-link btn-sm" onClick={() => setPrinting({ receipt: p.receipt })}>
-                  <Printer aria-hidden="true" /> Receipt
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
 
         {removed.length > 0 && (
           <section className="card bill-section" aria-labelledby="bill-removed">
@@ -739,6 +969,8 @@ export function BillPage() {
       {dialog === 'discount' && <DiscountDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'insurance' && <InsuranceDialog bill={b} earlier={res.data?.earlierInsurance ?? null} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'upi' && <UpiLinkDialog bill={b} upiReady={Boolean(res.data?.upiReady)} onClose={() => setDialog(null)} />}
+      {dialog?.correct && <CorrectPaymentDialog bill={b} payment={dialog.correct} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog?.price && <SetPriceDialog bill={b} line={dialog.price} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'cancel' && (
         <ReasonDialog
           id="bill-cancel"
@@ -767,6 +999,69 @@ export function BillPage() {
       )}
       {printing && !printing.claim && <BillPrint bill={b} receipt={printing.receipt ?? null} onClose={() => setPrinting(null)} />}
       {printing?.claim && <ClaimFormPrint bill={b} layout={printing.claim} onClose={() => setPrinting(null)} />}
+    </>
+  );
+}
+
+/** One payment in the payments table, with "Corrected" and what it was before. */
+function PaymentRow({ p, canCorrect, adminOnly, onPrint, onCorrect }) {
+  const [history, setHistory] = useState(false);
+  const corrected = p.corrections?.length > 0;
+  return (
+    <>
+      <tr>
+        <td data-label="Receipt" className="tabular">
+          {p.receipt}
+          {corrected && (
+            <StatusPill tone="due" icon={History}>
+              Corrected
+            </StatusPill>
+          )}
+        </td>
+        <td data-label="Date and time">{formatDateTime(p.at)}</td>
+        <td data-label="Type">{PAYMENT_KIND_LABELS[p.kind]}</td>
+        <td data-label="Mode">
+          {MODE_LABELS[p.mode]}
+          {p.scheme ? <span className="muted bill-line-from">{p.scheme}</span> : null}
+        </td>
+        <td data-label="Reference">{p.reference || <span className="muted">–</span>}</td>
+        <td data-label="Amount" className="num bill-col-amount">
+          {p.kind === 'refund' ? '−' : ''}
+          {rupees(p.amountPaise)}
+        </td>
+        <td data-label="Taken by">{p.byName}</td>
+        <td className="bill-col-actions">
+          <button type="button" className="btn btn-link btn-sm" onClick={onPrint} aria-label={`Print receipt ${p.receipt}`}>
+            <Printer aria-hidden="true" /> Receipt
+          </button>
+          {canCorrect && (
+            <button type="button" className="btn btn-link btn-sm" onClick={onCorrect} aria-label={`Correct ${p.receipt}`}>
+              <PencilLine aria-hidden="true" /> Correct
+            </button>
+          )}
+          {corrected && (
+            <button type="button" className="btn btn-link btn-sm" aria-expanded={history} onClick={() => setHistory(!history)}>
+              {history ? 'Hide history' : 'History'}
+            </button>
+          )}
+        </td>
+      </tr>
+      {(history || adminOnly) && (
+        <tr className="bill-pay-history">
+          <td colSpan={8}>
+            {adminOnly && <p className="hint">The day's cash handover is confirmed, or the day has passed: only the hospital admin corrects this payment now.</p>}
+            {history && (
+              <ul className="appt-lines">
+                {p.corrections.map((c, i) => (
+                  <li key={i}>
+                    {formatDateTime(c.at)} · {c.byName}: was {paidAs(c.before)} at {formatDateTime(c.before.at)} – <em>{c.reason}</em>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </td>
+        </tr>
+      )}
     </>
   );
 }

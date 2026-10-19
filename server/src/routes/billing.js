@@ -6,6 +6,8 @@ import { discountPaise, liveLines, rupees, totals } from '../billing/money.js';
 import { PAYEE_NAME_MAX, UPI_ID_MAX, payeeNameProblem, upiIdProblem, upiLink, upiMessage } from '../billing/upi.js';
 import { addDays, daysBetween, hospitalDayStart, hospitalToday, isoDay, timeIn, toHospitalDate } from '../careplans/dates.js';
 import { Bill } from '../models/Bill.js';
+import { CashHandover } from '../models/CashHandover.js';
+import { collected } from './cashHandover.js';
 import { nextNumber } from '../models/Counter.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
@@ -293,6 +295,91 @@ billingRouter.post('/bills/:id/payments', async (req, res) => {
   const after = (kind !== 'refund' && scheme ? await noteInsurer(req, paid, scheme, body.reference) : null) ?? paid;
   const view = await viewOf(req, after);
   res.status(201).json({ bill: view, payment: view.payments.find((p) => p.receipt === receipt) });
+});
+
+// ---------- Correcting a payment (owner, 19 Oct 2026 – docs/BILL_CORRECTIONS_PLAN.md) ----------
+// E.g. the UPI payment failed and she paid in cash: the mode, reference, amount or time is corrected, never deleted.
+// Reception and the billing department correct on the day of the payment, until that day's cash handover of the person
+// who took it is confirmed; after that (or on a later day) only the hospital admin. A reason always.
+
+/** Who may correct this payment now: 'desk' (reception too), 'admin' (only the hospital admin). */
+async function correctableBy(req, p) {
+  const day = toHospitalDate(p.at);
+  if (day.getTime() !== hospitalToday(req.now).getTime()) return 'admin';
+  const handover = await CashHandover.findOne({ tenantId: req.tenantId, day, userId: p.by }, { received: 1 }).lean();
+  return handover?.received ? 'admin' : 'desk';
+}
+
+const correctionSchema = z
+  .object({
+    mode: z.enum(PAYMENT_MODES),
+    amountPaise: z.number().int().min(1, 'Enter the amount.').max(MAX_PAISE),
+    reference: z.string().trim().max(80).default(''),
+    scheme: z.string().trim().max(80).default(''),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Enter the time as HH:MM.').optional(), // the same day
+    reason: z.string().trim().min(MIN_REASON, 'Write why it is corrected.').max(300),
+  })
+  .strict();
+
+billingRouter.post('/bills/:id/payments/:paymentId/correct', async (req, res) => {
+  const bill = await openBill(req);
+  const { paymentId } = parse(z.object({ id: objectId, paymentId: objectId }), req.params);
+  const p = (bill.payments ?? []).find((x) => String(x._id) === paymentId);
+  if (!p) throw new HttpError(404, 'This payment is not on the bill.', 'NOT_FOUND');
+  const body = parse(correctionSchema, req.body);
+  if ((await correctableBy(req, p)) === 'admin' && !hasRole(req.membership, 'admin')) {
+    throw forbidden("After the day's cash handover is confirmed, or on a later day, only the hospital admin corrects a payment.");
+  }
+  const scheme = body.mode === 'insurance' ? body.scheme || (bill.insurance?.insurer ?? '') : '';
+  if (body.mode === 'insurance' && scheme.length < 2) throw Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields: { scheme: 'Write the insurance company or scheme.' } });
+  await refuseFetalSex(req, bill, { scheme, reference: body.reference, reason: body.reason });
+  const day = toHospitalDate(p.at);
+  const at = body.time ? new Date(hospitalDayStart(day).getTime() + (Number(body.time.slice(0, 2)) * 60 + Number(body.time.slice(3))) * 60000) : p.at;
+  if (at > (req.now ?? new Date())) throw Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields: { time: 'The time cannot be later than now.' } });
+  // The amount: within what was due without this payment (a deposit during a stay may be more)
+  const t = totals(bill);
+  if (p.kind === 'refund') {
+    const dueBack = Math.max(0, -(t.balance - p.amountPaise));
+    if (body.amountPaise > dueBack) throw Object.assign(new HttpError(400, `At most ${(dueBack / 100).toFixed(2)} can be refunded.`, 'VALIDATION'), { fields: { amountPaise: 'More than is due back.' } });
+  } else if (p.kind === 'payment' && body.amountPaise > t.balance + p.amountPaise) {
+    throw Object.assign(new HttpError(400, `The bill comes to ${((t.balance + p.amountPaise) / 100).toFixed(2)} without this payment: at most that.`, 'VALIDATION'), { fields: { amountPaise: 'More than is due.' } });
+  }
+  const same = body.mode === p.mode && body.amountPaise === p.amountPaise && body.reference === (p.reference ?? '') && scheme === (p.scheme ?? '') && at.getTime() === new Date(p.at).getTime();
+  if (same) throw new HttpError(400, 'Nothing was changed.', 'VALIDATION');
+  const before = { mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', scheme: p.scheme ?? '', at: p.at };
+  const after = await Bill.findOneAndUpdate(
+    { tenantId: req.tenantId, _id: bill._id, status: 'open', payments: { $elemMatch: { _id: p._id, amountPaise: p.amountPaise, mode: p.mode } } },
+    {
+      $set: { 'payments.$[p].mode': body.mode, 'payments.$[p].amountPaise': body.amountPaise, 'payments.$[p].reference': body.reference, 'payments.$[p].scheme': scheme, 'payments.$[p].at': at },
+      $push: { 'payments.$[p].corrections': { before, reason: body.reason, ...stampOf(req) } },
+    },
+    { arrayFilters: [{ 'p._id': p._id }], returnDocument: 'after' },
+  ).lean();
+  if (!after) throw conflict('Someone changed this payment or the bill meanwhile. Open the bill again.', 'CONFLICT');
+  // The day's cash handover follows: recounted while it waits for a confirmation; once confirmed it is kept as it was,
+  // with the correction shown on it
+  const handover = await CashHandover.findOne({ tenantId: req.tenantId, day, userId: p.by });
+  if (handover && !handover.received) {
+    Object.assign(handover, await collected(req.tenantId, p.by, day));
+    await handover.save();
+  } else if (handover) {
+    handover.correctedAfter.push({ receipt: p.receipt, beforePaise: p.amountPaise, afterPaise: body.amountPaise, beforeMode: p.mode, afterMode: body.mode, by: req.user._id, byName: req.user.name, at: req.now ?? new Date() });
+    await handover.save();
+  }
+  await audit(req, 'PAYMENT_CORRECTED', {
+    details: ids(bill, { receipt: p.receipt, kind: p.kind, before: { mode: p.mode, amountPaise: p.amountPaise }, after: { mode: body.mode, amountPaise: body.amountPaise }, timeChanged: at.getTime() !== new Date(p.at).getTime(), reason: body.reason }),
+  });
+  const view = await viewOf(req, after);
+  res.json({ bill: view, payment: view.payments.find((x) => x.receipt === p.receipt) });
+});
+
+/** Who may correct each payment of a bill now (for the Correct button): { [paymentId]: 'desk' | 'admin' }. */
+billingRouter.get('/bills/:id/corrections', async (req, res) => {
+  const { id } = parse(z.object({ id: objectId }), req.params);
+  const bill = await findBill(req, id);
+  const out = {};
+  for (const p of bill.payments ?? []) out[String(p._id)] = await correctableBy(req, p);
+  res.json({ correctableBy: out, isAdmin: hasRole(req.membership, 'admin') });
 });
 
 billingRouter.post('/bills/:id/cancel', async (req, res) => {

@@ -83,6 +83,7 @@ export const AUDIT_LABELS = {
   DISCOUNT_GIVEN: 'Discount given or taken off',
   PAYMENT_RECEIVED: 'Payment received',
   REFUND_GIVEN: 'Refund given',
+  PAYMENT_CORRECTED: 'Payment corrected',
   BILL_CANCELLED: 'Bill cancelled',
   BILL_PRINTED: 'Bill or receipt printed',
   PRICE_LIST_CHANGED: 'Price list changed',
@@ -1169,6 +1170,15 @@ export function describeAudit(entry) {
       return joined(billOf(d), ...paidOf(d), d.kind === 'deposit' ? 'deposit' : '', d.appointmentId ? 'taken with the appointment' : '');
     case 'REFUND_GIVEN':
       return joined(billOf(d), ...paidOf(d));
+    // A correction: what it was and what it is now, and the reason (owner, 19 Oct 2026)
+    case 'PAYMENT_CORRECTED':
+      return joined(
+        billOf(d),
+        d.receipt ? `receipt ${d.receipt}` : '',
+        d.before && d.after ? `${rupeesOf(d.before.amountPaise)} by ${PAYMENT_MODE_WORDS[d.before.mode] ?? d.before.mode} → ${rupeesOf(d.after.amountPaise)} by ${PAYMENT_MODE_WORDS[d.after.mode] ?? d.after.mode}` : '',
+        d.timeChanged ? 'time changed' : '',
+        d.reason ?? '',
+      );
     case 'BILL_CANCELLED':
       return joined(billOf(d), d.totalPaise != null ? `total ${rupeesOf(d.totalPaise)}` : '');
     case 'BILL_PRINTED':

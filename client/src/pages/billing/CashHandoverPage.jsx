@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
-import { billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
+import { MODE_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
 
 // The daily cash handover (owner, 17 Oct 2026 – docs/WHATSAPP_DESK_PLAN.md; like Docterz's "Hisaab Kitaab"): whoever
 // took payments sees what Perinexa counted from their own payments and hands over the cash; a doctor or the hospital
@@ -148,6 +148,12 @@ function ConfirmRow({ h, me, onSaved }) {
         </span>
       </div>
       {h.note && <span className="hint">Note: {h.note}</span>}
+      {/* A payment corrected after the handover was confirmed (owner, 19 Oct 2026): shown, the handover itself kept */}
+      {h.correctedAfter?.map((c, i) => (
+        <span key={i} className="hint">
+          Corrected after it was confirmed: receipt {c.receipt} {rupees(c.beforePaise)} {MODE_LABELS[c.beforeMode] ?? c.beforeMode} → {rupees(c.afterPaise)} {MODE_LABELS[c.afterMode] ?? c.afterMode} ({c.byName}, {formatDateTime(c.at)})
+        </span>
+      ))}
       {h.received && (
         <span className="hint">
           {h.received.byName} received {rupees(h.received.receivedPaise)}, {formatDateTime(h.received.at)}
