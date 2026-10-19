@@ -43,7 +43,7 @@ import { Membership } from '../models/Membership.js';
 import { takeStock } from '../lab/stock.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
-import { totals } from '../billing/money.js';
+import { discountPaise, totals } from '../billing/money.js';
 import { padded } from '../billing/billingService.js';
 
 // The lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md). Two routers:
@@ -371,8 +371,37 @@ const walkInSchema = orderSchema
     home: homeSchema.nullable().default(null),
     // The payment taken at the lab's counter (eLabAssist-style registration – owner, 17 Oct 2026): on the order's bill
     payment: z.object({ mode: z.enum(['cash', 'upi', 'card']), amountPaise: z.number().int().min(1).max(100_000_000), reference: safeText('Reference', 80).default('') }).strict().nullable().default(null),
+    // Registration on one screen (owner, 19 Oct 2026 – docs/LAB_DASHBOARD_PLAN.md): a discount on the order's bill, and
+    // the sample taken at the lab's counter now
+    discount: z
+      .object({ mode: z.enum(['amount', 'percent']), value: z.number().int().min(1).max(100_000_000), reason: safeText('Reason', 200) })
+      .strict()
+      .refine((d) => d.mode === 'amount' || d.value <= 100, { message: 'At most 100 per cent.', path: ['value'] })
+      .refine((d) => d.reason.trim().length >= 3, { message: 'Please write why the discount is given.', path: ['reason'] })
+      .nullable()
+      .default(null),
+    collectNow: z.boolean().default(false),
   })
   .strict();
+
+/**
+ * The patient's open outpatient bill of today has charges other than this order (e.g. a consultation): a discount
+ * then belongs to the billing desk, which sees the whole bill.
+ */
+async function otherChargesToday(req, patientId) {
+  const bill = await Bill.findOne({ tenantId: req.tenantId, patientId, kind: 'opd', status: 'open', on: hospitalToday(req.now) }, { lines: 1 }).lean();
+  return Boolean(bill?.lines?.some((l) => !l.removed));
+}
+
+/** The discount given at the lab's counter, on the bill that holds only this order's tests. */
+async function giveWalkInDiscount(req, orderId, d) {
+  const bill = await Bill.findOne({ tenantId: req.tenantId, status: 'open', 'lines.ref.id': orderId }).lean();
+  if (!bill) return;
+  const { subtotal } = totals(bill);
+  const amount = Math.min(discountPaise(d, subtotal), subtotal);
+  await Bill.updateOne({ tenantId: req.tenantId, _id: bill._id, status: 'open' }, { $set: { discount: { mode: d.mode, value: d.value, paise: amount, reason: d.reason.trim(), ...stampOf(req) } } });
+  await audit(req, 'DISCOUNT_GIVEN', { details: { billId: String(bill._id), number: bill.number, patientId: String(bill.patientId), mode: d.mode, value: d.value, discountPaise: amount, reason: d.reason.trim() } });
+}
 
 /**
  * The payment taken when the lab registers a walk-in: on the bill that holds this order's tests, at most what is due on
@@ -413,9 +442,29 @@ labRouter.post('/walk-in', async (req, res) => {
   }
   if (!referrer && body.prescription.trim().length < 3) throw invalid({ prescription: 'Choose the referring doctor, or write "Self – no prescription" and what she asked for.' });
   const home = body.home ? { address: body.home.address.trim(), on: new Date(`${body.home.on}T00:00:00Z`), time: body.home.time, ...(await homeCollector(req, body.home.collectorId)), status: 'scheduled', note: '', updated: stampOf(req) } : null;
-  const { patientId, referrerId, prescription, home: _h, payment, ...order } = body;
+  const { patientId, referrerId, prescription, home: _h, payment, discount, collectNow, ...order } = body;
   const access = labAccess(req, patient);
-  const out = await createOrder(req, patient, access, { ...order, visitId: null, packages: [] }, { source: 'walk_in', referrer, prescription: prescription.trim(), home });
+  const repeat = await LabOrder.exists({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
+  if (discount && !repeat && (await otherChargesToday(req, patient._id))) {
+    throw invalid({ 'discount.value': 'She has other charges on today\'s bill: give the discount at the billing desk.' }, 'The discount was not given.');
+  }
+  let out = await createOrder(req, patient, access, { ...order, visitId: null, packages: [] }, { source: 'walk_in', referrer, prescription: prescription.trim(), home });
+  if (repeat) return res.status(201).json({ order: out });
+  if (discount) await giveWalkInDiscount(req, out.id, discount);
+  // The sample taken now at the counter (not for a home collection): taken and received in the lab at once
+  if (collectNow && !home) {
+    const o = await LabOrder.findOne({ tenantId: req.tenantId, _id: out.id });
+    if (o?.status === 'ordered') {
+      o.status = 'collected';
+      o.collected = stampOf(req);
+      o.received = stampOf(req);
+      await ensureSampleNo(o, req.now);
+      o.rev += 1;
+      await o.save();
+      await audit(req, 'LAB_SAMPLE_COLLECTED', { details: ids(o, { mrn: patient.mrn }) });
+      out = await viewFor(req, o, access);
+    }
+  }
   const paid = payment ? await takeWalkInPayment(req, out.id, payment) : null;
   res.status(201).json({ order: out, ...(paid ? { payment: paid } : {}) });
 });
@@ -467,6 +516,57 @@ labRouter.get('/home', async (req, res) => {
   const staff = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'lab' }, { userId: 1 }).lean();
   const names = new Map((await User.find({ _id: { $in: staff.map((m) => m.userId) } }, { name: 1 }).lean()).map((u) => [String(u._id), u.name]));
   res.json({ date: day.toISOString().slice(0, 10), orders: await withPatients(req, orders, (a) => a.view), collectors: [...names].map(([id, name]) => ({ id, name })) });
+});
+
+// ---------- The lab's dashboard (owner, 19 Oct 2026 – docs/LAB_DASHBOARD_PLAN.md, eLabAssist-style) ----------
+// Lab staff: for a period (today by default) – orders registered (walk-in or from a doctor), reported, tests and
+// charges by department; and now – what waits at each step and what is late. Numbers only: no patient, no test names.
+labRouter.get('/dashboard', async (req, res) => {
+  if (!isLab(req)) throw forbidden('The lab dashboard is for the lab.');
+  const q = parse(z.object({ from: z.iso.date().optional(), to: z.iso.date().optional() }).strict(), req.query);
+  const today = hospitalToday(req.now);
+  const from = q.from ? new Date(`${q.from}T00:00:00Z`) : today;
+  const to = q.to ? new Date(`${q.to}T00:00:00Z`) : from;
+  if (to < from) throw invalid({ to: 'The end is before the start.' });
+  if ((to - from) / 86_400_000 > 92) throw invalid({ to: 'At most 3 months at a time.' });
+  const [start, end] = [hospitalDayStart(from), hospitalDayStart(new Date(to.getTime() + 86_400_000))];
+  const inRange = { $gte: start, $lt: end };
+
+  const orders = await LabOrder.find({ tenantId: req.tenantId, 'ordered.at': inRange, status: { $ne: 'cancelled' } }, { source: 1, patientId: 1, tests: 1, status: 1 }).limit(20_000).lean();
+  const reported = await LabOrder.countDocuments({ tenantId: req.tenantId, 'reported.at': inRange, status: { $in: DONE } });
+  const byDepartment = Object.fromEntries(DEPARTMENT_KEYS.map((k) => [k, { tests: 0, chargedPaise: 0 }]));
+  for (const o of orders) for (const t of o.tests ?? []) byDepartment[t.department in byDepartment ? t.department : 'other'].tests += 1;
+
+  // Charges: the lab lines of the bills added in the period (taken off: not counted), by the department of their test
+  const bills = await Bill.find({ tenantId: req.tenantId, status: { $ne: 'cancelled' }, lines: { $elemMatch: { 'ref.kind': 'lab', 'added.at': inRange } } }, { lines: 1 }).limit(20_000).lean();
+  const lines = bills.flatMap((b) => b.lines.filter((l) => l.ref?.kind === 'lab' && !l.removed && l.added?.at >= start && l.added?.at < end));
+  const orderIds = [...new Set(lines.map((l) => String(l.ref.id)))];
+  const depOf = new Map();
+  for (const o of orderIds.length ? await LabOrder.find({ tenantId: req.tenantId, _id: { $in: orderIds } }, { tests: 1 }).lean() : []) {
+    for (const t of o.tests ?? []) depOf.set(`${o._id}:${t.key}`, t.department || 'other');
+  }
+  let chargedPaise = 0;
+  for (const l of lines) {
+    const dep = depOf.get(`${l.ref.id}:${l.ref.test}`) ?? 'other';
+    byDepartment[dep in byDepartment ? dep : 'other'].chargedPaise += l.amountPaise;
+    chargedPaise += l.amountPaise;
+  }
+
+  // Now: what waits at each step (as the worklist counts them), and orders past their due time
+  const waiting = {};
+  for (const [k, l] of Object.entries(LISTS)) if (k !== 'done') waiting[k] = await LabOrder.countDocuments({ tenantId: req.tenantId, ...l.filter });
+  const late = await LabOrder.countDocuments({ tenantId: req.tenantId, status: { $in: ['ordered', 'collected', 'entered'] }, dueAt: { $ne: null, $lt: req.now } });
+
+  res.json({
+    from: from.toISOString().slice(0, 10),
+    to: to.toISOString().slice(0, 10),
+    registered: { orders: orders.length, patients: new Set(orders.map((o) => String(o.patientId))).size, walkIn: orders.filter((o) => o.source === 'walk_in').length, tests: orders.reduce((n, o) => n + (o.tests?.length ?? 0), 0) },
+    reported,
+    chargedPaise,
+    byDepartment: DEPARTMENT_KEYS.map((k) => ({ key: k, ...byDepartment[k] })).filter((d) => d.tests || d.chargedPaise),
+    waiting,
+    late,
+  });
 });
 
 // ---------- The test list ----------

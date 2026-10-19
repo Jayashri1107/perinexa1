@@ -90,3 +90,12 @@ describe('the left menu by role', () => {
     expect(moduleByKey('analytics').to).toBe('/analytics');
   });
 });
+
+// The Lab item opens the lab's dashboard for lab staff; doctors, RMOs and nurses keep the worklist (owner, 19 Oct 2026)
+describe('the Lab item', () => {
+  it('starts on the dashboard for the lab, on the worklist for others', () => {
+    expect(hospitalModules(['lab']).find((m) => m.key === 'lab').to).toBe('/lab/dashboard');
+    expect(hospitalModules(['doctor']).find((m) => m.key === 'lab').to).toBe('/lab');
+    expect(moduleByKey('lab').tabs.map((t) => t.label).slice(0, 3)).toEqual(['Dashboard', 'Worklist', 'Result entry']);
+  });
+});

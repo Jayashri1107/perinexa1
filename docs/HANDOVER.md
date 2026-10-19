@@ -177,6 +177,9 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - **Correcting a payment (19 Oct 2026)**: reception and billing correct a payment on its day until that day's cash
   handover is confirmed; then only the hospital admin; a reason always; the original kept –
   `docs/BILL_CORRECTIONS_PLAN.md`.
+- **The lab as eLabAssist lays it out (19 Oct 2026)**: lab dashboard with module buttons, registration on one screen
+  with discount and payment, status tracker, result entry by department; the lab gives a discount only on a bill with
+  nothing else on it – `docs/LAB_DASHBOARD_PLAN.md`.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

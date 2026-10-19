@@ -3859,6 +3859,22 @@ Branch `bill-correct`. Plan and decisions: `docs/BILL_CORRECTIONS_PLAN.md`.
 5. As the hospital admin, a bill with a lab test at ₹0 → **Set price** → the bill takes the price.
 6. Make the browser narrow (tablet): items and payments show as blocks, no sideways scrolling.
 
+## The lab as eLabAssist lays it out (owner, 19 Oct 2026)
+Branch `lab-dash`. Plan and decisions: `docs/LAB_DASHBOARD_PLAN.md`.
+- **Lab dashboard**: every lab module as a button with what waits there; the day's numbers and tests and charges by
+  department (lab staff).
+- **Registration on one screen**: patient, referral, tests, sample, bill (discount, payment) → Save and print receipt.
+- **Status tracker** on each order; **result entry by department**.
+
+### How to test (fake data only)
+1. As lab staff: click **Lab** in the menu → the dashboard. Click **New registration**.
+2. Find or register a fake patient → Prescription "Self" → type "hb", tap Haemoglobin; type "tsh", tap TSH → Sample:
+   Taken now → Discount ₹50, why "Staff family" → Save and print receipt. The receipt shows the sample number.
+3. Close the receipt → the order shows the steps: Registered, Sample taken, Received in lab done; Results entered next.
+4. Lab → **Result entry** → Haematology → type Hb 9.5 → Save, then (after TSH under Hormones) Report. Open the order:
+   Hb is flagged Low.
+5. Lab → Dashboard: Registered, Tests, Reported and Charged went up; Today / Last 7 days / This month.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.
