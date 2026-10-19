@@ -28,6 +28,7 @@ import { appointmentsRouter } from './routes/appointments.js';
 import { billingRouter } from './routes/billing.js';
 import { pharmacyRouter } from './routes/pharmacy.js';
 import { pharmacyStockRouter } from './routes/pharmacyStock.js';
+import { tallyRouter } from './routes/tally.js';
 import { abdmPublicRouter, abdmRouter } from './routes/abdm.js';
 import { beforePushBody } from './routes/abdmFetch.js';
 import { inpatientsRouter } from './routes/inpatients.js';
@@ -191,6 +192,9 @@ export function createApp({
   // copy, 19 Oct 2026): the referral desk, doctors and RMOs only (routes/referrals.js REFERRAL_ROLES)
   app.use('/api/referrals', ...inTenant, referralsRouter);
   app.use('/api/referring-doctors', ...inTenant, referringDoctorsRouter);
+  // The Tally link (docs/TALLY_PLAN.md – from the other Perinexa copy, 19 Oct 2026): the accountant's files, for the
+  // hospital admin only (routes/tally.js)
+  app.use('/api/tally', ...inTenant, tallyRouter);
   // The lab's test list and settings (routes/labSetup.js)
   app.use('/api/lab-setup', ...inTenant, labSetupRouter);
   // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, USG and radiology

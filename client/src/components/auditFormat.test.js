@@ -117,6 +117,20 @@ describe('pharmacy extras in the audit log (4 Oct 2026)', () => {
   });
 });
 
+describe('the Tally link in the audit log (16 Oct 2026)', () => {
+  it('batches, files and entry statuses read in plain words – numbers, counts and status words, never an account name or a note', () => {
+    for (const action of ['TALLY_SETTINGS_CHANGED', 'TALLY_BATCH_CREATED', 'TALLY_FILE_DOWNLOADED', 'TALLY_VOUCHER_STATUS']) expect(AUDIT_LABELS[action], action).toBeTruthy();
+    expect(describeAudit({ action: 'TALLY_SETTINGS_CHANGED', details: { fields: ['companyName', 'ledgers'] } })).toBe('Tally company, account names');
+    expect(describeAudit({ action: 'TALLY_BATCH_CREATED', details: { batchId: 'x', number: 'TB-000001', from: '2026-09-01', to: '2026-09-28', vouchers: 5 } })).toBe('Batch TB-000001 · 1 Sep 2026 to 28 Sep 2026 · 5 entries');
+    expect(describeAudit({ action: 'TALLY_FILE_DOWNLOADED', details: { batchId: 'x', number: 'TB-000001', part: 'masters' } })).toBe('Batch TB-000001 · account names file');
+    expect(describeAudit({ action: 'TALLY_VOUCHER_STATUS', details: { voucherId: 'v', key: 'B-000001/CN1', status: 'failed' } })).toBe('Entry B-000001/CN1 · refused by Tally');
+    expect(describeAudit({ action: 'TALLY_VOUCHER_STATUS', details: { batchId: 'x', number: 'TB-000001', status: 'imported', count: 5 } })).toBe('Batch TB-000001 · imported · 5 entries');
+    // The super admin's log holds no batch or entry number
+    expect(describeAudit({ action: 'TALLY_BATCH_CREATED', details: { from: '2026-09-01', to: '2026-09-28', vouchers: 1 } })).toBe('A batch · 1 Sep 2026 to 28 Sep 2026 · 1 entry');
+    expect(describeAudit({ action: 'TALLY_VOUCHER_STATUS', details: { status: 'skipped' } })).toBe('Entries · skipped');
+  });
+});
+
 describe('billing extras in the audit log (4 Oct 2026)', () => {
   it('insurance details, claim forms, UPI links and the billing settings read in plain words – names of details only', () => {
     for (const action of ['BILL_INSURANCE_CHANGED', 'CLAIM_FORM_PRINTED', 'UPI_LINK_MADE', 'BILLING_SETTINGS_CHANGED']) expect(AUDIT_LABELS[action], action).toBeTruthy();
@@ -369,7 +383,8 @@ const FILTER_ACTIONS = [
   'PHARMACY_MEDICINE_CHANGED', 'PHARMACY_SUPPLIER_CHANGED', 'PHARMACY_PURCHASE_ENTERED', 'PHARMACY_PURCHASE_CANCELLED', 'PHARMACY_STOCK_WRITTEN_OFF', 'PHARMACY_STOCK_COUNTED', 'PHARMACY_PRESCRIPTIONS_VIEWED', 'PHARMACY_SOLD',
   'PHARMACY_ISSUED', 'PHARMACY_INVOICE_VIEWED', 'PHARMACY_RETURNED', 'PHARMACY_PRINTED', 'PHARMACY_REGISTER_VIEWED', 'PHARMACY_EXPORTED', 'PHARMACY_ORDER_CREATED', 'PHARMACY_ORDER_CHANGED',
   'PHARMACY_ORDER_SENT', 'PHARMACY_ORDER_RECEIVED', 'PHARMACY_ORDER_CLOSED', 'PHARMACY_ORDER_CANCELLED', 'PHARMACY_ORDER_PRINTED', 'PHARMACY_SUPPLIER_RETURNED', 'PHARMACY_SUPPLIER_RETURN_CANCELLED', 'PHARMACY_DEBIT_NOTE_PRINTED',
-  'PHARMACY_EINVOICE_DOWNLOADED', 'ABHA_VERIFIED', 'ABHA_LINKED', 'ABHA_CREATED', 'ABHA_UNLINKED', 'ABHA_VIEWED', 'ABHA_CARD_PRINTED', 'ABDM_SCAN_SHARE_RECEIVED',
+  'PHARMACY_EINVOICE_DOWNLOADED', 'TALLY_SETTINGS_CHANGED', 'TALLY_BATCH_CREATED', 'TALLY_FILE_DOWNLOADED', 'TALLY_VOUCHER_STATUS',
+  'ABHA_VERIFIED', 'ABHA_LINKED', 'ABHA_CREATED', 'ABHA_UNLINKED', 'ABHA_VIEWED', 'ABHA_CARD_PRINTED', 'ABDM_SCAN_SHARE_RECEIVED',
   'ABDM_SCAN_SHARE_HANDLED', 'ABDM_SETTINGS_CHANGED', 'ABDM_RECORDS_VIEWED', 'ABDM_RECORDS_LINKED', 'ABDM_RECORDS_DISCOVERED', 'ABDM_CONSENT_RECEIVED', 'ABDM_RECORDS_SHARED', 'ABDM_SHARE_REFUSED',
   'ABDM_FETCH_REQUESTED', 'ABDM_FETCH_ANSWERED', 'ABDM_RECORDS_FETCHED', 'ABDM_FETCHED_VIEWED', 'ABDM_FETCHED_DELETED', 'TENANT_SETTINGS_UPDATED', 'PROFILE_UPDATED', 'PATIENT_UPDATED',
   'PATIENT_ASSIGNED', 'PATIENT_SENSITIVITY_CHANGED', 'EMERGENCY_NOTE_ADDED', 'TEMPLATE_CREATED', 'TEMPLATE_UPDATED', 'TEMPLATE_APPROVED', 'TEMPLATE_DEFAULT_SET', 'TEMPLATE_DEFAULT_REMOVED',

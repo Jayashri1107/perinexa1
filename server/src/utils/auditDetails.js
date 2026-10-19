@@ -77,6 +77,12 @@ const HOSPITAL_EXPORT_DETAIL_FIELDS = ['patients', 'records', 'files', 'counts']
 // amount or a link. The routes write nothing else; this is a second guard.
 const BILLING_EXTRA_ACTIONS = new Set(['BILL_INSURANCE_CHANGED', 'CLAIM_FORM_PRINTED', 'UPI_LINK_MADE']);
 const BILLING_EXTRA_DETAIL_FIELDS = ['billId', 'number', 'patientId', 'fields', 'removed', 'via', 'layout'];
+// The Tally link (16 Oct 2026): the NAMES of the settings changed, the batch's number and period, counts, which file,
+// and an entry's key (a document number) and new status – never an account name, an amount of one entry or a note
+// typed. The super admin's log keeps counts and plain words only (no batch or document numbers).
+const TALLY_ACTIONS = new Set(['TALLY_SETTINGS_CHANGED', 'TALLY_BATCH_CREATED', 'TALLY_FILE_DOWNLOADED', 'TALLY_VOUCHER_STATUS']);
+const TALLY_DETAIL_FIELDS = ['fields', 'batchId', 'number', 'from', 'to', 'vouchers', 'part', 'voucherId', 'key', 'status', 'count'];
+const TALLY_PLATFORM_FIELDS = ['fields', 'from', 'to', 'vouchers', 'part', 'status', 'count'];
 // A record closed after a death, and reopened: counts only, in every reader – never which record, the date, the
 // place, the timing or the reason a doctor typed. A record is closed for one reason only (a doctor recorded a death),
 // so an entry with the record's number would give the hospital admin – who reads this log and sees no patient data –
@@ -135,6 +141,7 @@ const PLATFORM_PATIENT_EVENT_FIELDS = ['access', 'fields', 'sections', 'change',
 // ANALYTICS_LIST_VIEWED, the AI events, WORKLIST_VIEWED and INPATIENTS_VIEWED are patient events: without their
 // own fields the allowlist above would drop them all.
 const PLATFORM_FIELDS_BY_ACTION = {
+  ...Object.fromEntries([...TALLY_ACTIONS].map((a) => [a, TALLY_PLATFORM_FIELDS])),
   RISK_RECALCULATED: ['templateId', 'name', 'version', 'checked', 'changed', 'skipped'],
   ANALYTICS_VIEWED: ANALYTICS_DETAIL_FIELDS.platform,
   ANALYTICS_LIST_VIEWED: ANALYTICS_DETAIL_FIELDS.platform,
@@ -176,6 +183,7 @@ function trimmedByAction(action, details) {
   if (AI_ACTIONS.has(action)) return only(details, AI_DETAIL_FIELDS);
   if (LAB_ACTIONS.has(action)) return only(details, LAB_DETAIL_FIELDS);
   if (REFERRAL_ACTIONS.has(action)) return only(details, REFERRAL_DETAIL_FIELDS);
+  if (TALLY_ACTIONS.has(action)) return only(details, TALLY_DETAIL_FIELDS);
   if (REGISTER_ACTIONS.has(action)) return only(details, REGISTER_DETAIL_FIELDS);
   if (BILLING_EXTRA_ACTIONS.has(action)) return only(details, BILLING_EXTRA_DETAIL_FIELDS);
   if (ANALYTICS_ACTIONS.has(action)) return only(details, ANALYTICS_DETAIL_FIELDS.tenant);
