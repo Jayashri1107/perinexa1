@@ -91,16 +91,14 @@ describe('the left menu by role', () => {
   });
 });
 
-// Each module's pages as items under it in the left menu (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md)
-describe('the pages under each item of the left menu', () => {
+// The Lab's pages as items under it in the left menu; no other module (owner, 19 Oct 2026)
+describe('the pages under an item of the left menu', () => {
   const subs = (roles, key) => sideTabs(hospitalModules(roles).find((m) => m.key === key), roles).map((t) => t.label);
-  it('shows only the pages this person may open, and none for a module with one page', () => {
-    expect(subs(['receptionist'], 'billing')).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Cash handover', 'Price list']);
-    expect(subs(['admin'], 'billing')).toContain('Settings');
-    expect(subs(['receptionist'], 'appointments')).toContain('OPD settings');
-    expect(subs(['nurse'], 'appointments')).not.toContain('OPD settings');
-    expect(subs(['receptionist'], 'patients')).toEqual(['All patients', 'New patient', 'Online sign-ups']);
+  it('the Lab only, with the pages this person may open', () => {
+    expect(subs(['lab'], 'lab')).toEqual(['Worklist', 'Find', 'Register', 'QC', 'Stock', 'Tests', 'Referrers', 'Cash', 'Settings']);
     expect(subs(['doctor'], 'lab')).not.toContain('Cash');
-    expect(subs(['receptionist'], 'today')).toEqual([]);
+    for (const [roles, key] of [[['receptionist'], 'billing'], [['receptionist'], 'appointments'], [['receptionist'], 'patients'], [['receptionist'], 'calendar'], [['admin'], 'hospital-admin'], [['doctor'], 'knowledge']]) {
+      expect(subs(roles, key)).toEqual([]);
+    }
   });
 });
