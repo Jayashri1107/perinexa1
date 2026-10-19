@@ -198,6 +198,28 @@ export const AUDIT_LABELS = {
   LAB_REPORT_OPENED: 'Lab report file opened',
   LAB_RESULTS_REVIEWED: 'Lab results reviewed by a doctor',
   LAB_ORDER_CANCELLED: 'Lab order cancelled',
+  // Referrals from other doctors (docs/REFERRALS_PLAN.md): ids, the record number and which part – never what was written
+  REFERRAL_CREATED: 'Referral logged',
+  REFERRAL_VIEWED: 'Referral opened',
+  REFERRAL_UPDATED: 'Referral details changed',
+  REFERRAL_LINKED: 'Referral linked to a patient record',
+  REFERRAL_BOOKED: 'Appointment booked for a referral',
+  REFERRAL_ATTACHMENT_ADDED: "Referring doctor's note or report attached",
+  REFERRAL_ATTACHMENT_OPENED: "Referring doctor's note or report opened",
+  REFERRAL_SHARING_ANSWERED: 'Her answer on sharing with the referring doctor recorded',
+  REFERRAL_NOTE_SAVED: 'Consultant note saved',
+  REFERRAL_NOTE_SIGNED: 'Consultant note signed',
+  REFERRAL_NOTE_ADDITION_ADDED: 'Addition to a signed consultant note',
+  REFERRAL_PDF_RELEASED: 'PDF released to the referral desk',
+  REFERRAL_PDF_OPENED: 'Released PDF opened',
+  REFERRAL_MESSAGE_SENT: 'Message to a referring doctor marked sent',
+  REFERRAL_REVIEW_ADDED: 'Weekly review note on a missed promise',
+  REFERRAL_CLOSED: 'Referral closed',
+  REFERRAL_CANCELLED: 'Referral cancelled',
+  REFERRING_DOCTOR_ADDED: 'Referring doctor added',
+  REFERRING_DOCTOR_UPDATED: "Referring doctor's details changed",
+  REFERRAL_SUMMARY_VIEWED: "Referring doctor's quarterly summary opened",
+  REFERRAL_SETTINGS_CHANGED: 'Referral settings changed',
   LAB_HOME_COLLECTION: 'Lab home collection updated',
   LAB_REPORT_VERIFIED: 'Lab report checked with its QR code',
   IMAGING_ORDERED: 'Scan ordered',
@@ -415,6 +437,24 @@ export const AUDIT_TONES = {
   LAB_REPORT_OPENED: 'patient',
   LAB_RESULTS_REVIEWED: 'patient',
   LAB_ORDER_CANCELLED: 'patient',
+  REFERRAL_CREATED: 'patient',
+  REFERRAL_VIEWED: 'patient',
+  REFERRAL_UPDATED: 'patient',
+  REFERRAL_LINKED: 'patient',
+  REFERRAL_BOOKED: 'patient',
+  REFERRAL_ATTACHMENT_ADDED: 'patient',
+  REFERRAL_ATTACHMENT_OPENED: 'patient',
+  REFERRAL_SHARING_ANSWERED: 'patient',
+  REFERRAL_NOTE_SAVED: 'patient',
+  REFERRAL_NOTE_SIGNED: 'patient',
+  REFERRAL_NOTE_ADDITION_ADDED: 'patient',
+  REFERRAL_PDF_RELEASED: 'patient',
+  REFERRAL_PDF_OPENED: 'patient',
+  REFERRAL_MESSAGE_SENT: 'patient',
+  REFERRAL_REVIEW_ADDED: 'patient',
+  REFERRAL_CLOSED: 'patient',
+  REFERRAL_CANCELLED: 'patient',
+  REFERRAL_SUMMARY_VIEWED: 'patient',
   LAB_HOME_COLLECTION: 'patient',
   LAB_REPORT_VERIFIED: 'info',
   IMAGING_ORDERED: 'patient',
@@ -564,6 +604,10 @@ const CATEGORY_ICONS = {
   VISIT_SUMMARY_PDF_SAVED: FileDown,
   PRESCRIPTION_SENT_WHATSAPP: MessageCircle,
   VISIT_SUMMARY_SENT_WHATSAPP: MessageCircle,
+  REFERRAL_MESSAGE_SENT: MessageCircle,
+  REFERRAL_LINKED: Link2,
+  REFERRAL_NOTE_SIGNED: BadgeCheck,
+  REFERRAL_PDF_RELEASED: FileDown,
   LOGIN_SUCCESS: LogIn,
   LOGOUT: LogOut,
   TENANT_SWITCHED: Building2,
@@ -632,6 +676,30 @@ function listChangeText(what, d) {
   const onlyInUse = Array.isArray(d.fields) && d.fields.length === 1 && d.fields[0] === 'active';
   return joined(onlyInUse ? `a ${what} stopped or brought back into use` : `a ${what}'s details saved`, d.barcodes != null ? count(d.barcodes, 'barcode') : '');
 }
+
+// Referrals from other doctors: the record number (none before she is registered, and none in the super admin's log)
+// and which part – the message, the PDF, her answer or the promise – never a name, a reason or what was written.
+const REFERRAL_MESSAGE_WORDS = { reply: 'the reply', note: 'the consultant note', discharge: 'the discharge summary', other: 'another message' };
+const REFERRAL_PDF_WORDS = { note: 'consultant note', discharge: 'discharge summary' };
+const REFERRAL_ANSWER_WORDS = { yes: 'she agreed to share the note and discharge summary', no: 'she did not agree to share' };
+const REFERRAL_PROMISE_WORDS = { reply: 'reply within 2 working hours', seen: 'seen in time', note: 'consultant note within 24 hours', discharge: 'discharge summary within 24 hours' };
+const referralText = (d) =>
+  joined(
+    d.mrn ? record(d) : 'A referral',
+    REFERRAL_MESSAGE_WORDS[d.what] ?? '',
+    REFERRAL_MESSAGE_WORDS[d.what] ? '' : (REFERRAL_PDF_WORDS[d.kind] ?? ''), // a message already says which PDF
+    REFERRAL_ANSWER_WORDS[d.answer] ?? '',
+    REFERRAL_PROMISE_WORDS[d.promise] ? `promise: ${REFERRAL_PROMISE_WORDS[d.promise]}` : '',
+  );
+const REFERRAL_SETTING_WORDS = {
+  centres: 'centres',
+  deskNumber: 'referral desk number',
+  consultantLines: "consultants' direct lines",
+  workingHours: 'working hours',
+  holidays: 'holidays',
+  urgentCutoff: 'urgent cut-off time',
+  urgentNextMorning: 'next-morning time for late urgent referrals',
+};
 
 const FAIL_REASONS = { wrong_password: 'wrong password', unknown_email: 'unknown email', inactive_account: 'account is deactivated' };
 
@@ -959,6 +1027,32 @@ export function describeAudit(entry) {
     case 'WORK_DONE_RECORDED':
     case 'WORK_DONE_CANCELLED':
       return record(d);
+    case 'REFERRAL_CREATED':
+    case 'REFERRAL_VIEWED':
+    case 'REFERRAL_UPDATED':
+    case 'REFERRAL_LINKED':
+    case 'REFERRAL_BOOKED':
+    case 'REFERRAL_ATTACHMENT_ADDED':
+    case 'REFERRAL_ATTACHMENT_OPENED':
+    case 'REFERRAL_SHARING_ANSWERED':
+    case 'REFERRAL_NOTE_SAVED':
+    case 'REFERRAL_NOTE_SIGNED':
+    case 'REFERRAL_NOTE_ADDITION_ADDED':
+    case 'REFERRAL_PDF_RELEASED':
+    case 'REFERRAL_PDF_OPENED':
+    case 'REFERRAL_MESSAGE_SENT':
+    case 'REFERRAL_REVIEW_ADDED':
+    case 'REFERRAL_CLOSED':
+    case 'REFERRAL_CANCELLED':
+      return referralText(d);
+    // The referring doctor and the quarterly summary are kept as ids only
+    case 'REFERRING_DOCTOR_ADDED':
+    case 'REFERRING_DOCTOR_UPDATED':
+    case 'REFERRAL_SUMMARY_VIEWED':
+      return '';
+    // Which settings – never a phone number or a holiday
+    case 'REFERRAL_SETTINGS_CHANGED':
+      return joined(namesOf(d.fields, REFERRAL_SETTING_WORDS));
     case 'QUEUE_TIME_SENT':
     case 'LAB_REPORT_SENT_WHATSAPP':
       return `${record(d)}${d.practice ? ' (practice – not really sent)' : ''}`;

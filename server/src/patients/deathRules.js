@@ -7,8 +7,8 @@
 //    day of birth) and the place. On every other record: the date and when it was in relation to the pregnancy.
 //    There is no cause-of-death field;
 //  - the record stays fully readable, but takes nothing new: no new visits, admissions, appointments, arrivals, lab
-//    orders, scans or procedures and no counter sale at the pharmacy; no next visit can be set; no reminder, message
-//    or patient-portal access of any kind (refuseNewOnClosed). What was under way can be finished: a visit already
+//    orders, scans or procedures, referrals and no counter sale at the pharmacy; no next visit can be set; no
+//    reminder, message or patient-portal access of any kind (refuseNewOnClosed). What was under way can be finished: a visit already
 //    started, the documents of a stay in hospital (the discharge card ends the stay), a lab order already made, and
 //    her bills;
 //  - when it is closed, her booked appointments from today on are cancelled (no message goes out), every message
@@ -75,6 +75,7 @@ export const CLOSED_THINGS = {
   message: 'reminders or messages',
   portal: 'patient portal access',
   ai: 'AI briefs',
+  referral: 'new referrals', // a referral is not logged or linked to a closed record (routes/referrals.js)
 };
 
 /** The plain refusal for something new on a closed record (it never says why the record is closed). */

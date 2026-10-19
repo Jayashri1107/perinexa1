@@ -29,6 +29,7 @@ import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { isClosed } from '../patients/deathRules.js';
+import { bookingJoinsRecord } from '../referrals/referralService.js';
 import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
 
 // Appointment booking (docs/APPOINTMENTS_PLAN.md, approved 3 Oct 2026):
@@ -50,7 +51,7 @@ export const appointmentsRouter = Router();
 const forbidden = (message) => new HttpError(403, message, 'FORBIDDEN');
 const canBook = (req) => hasRole(req.membership, ...BOOKING_ROLES);
 const assertCanBook = (req) => {
-  if (!canBook(req)) throw forbidden('Appointments are booked by reception and doctors.');
+  if (!canBook(req)) throw forbidden('Appointments are booked by reception, the referral desk and doctors.');
 };
 const isAdmin = (req) => hasRole(req.membership, 'admin');
 const canEditTimings = (req, doctorId) => isAdmin(req) || (hasRole(req.membership, 'doctor') && String(req.user._id) === String(doctorId));
@@ -446,13 +447,16 @@ appointmentsRouter.post('/:id/fee', async (req, res) => {
   res.status(201).json({ appointment: await viewOf(req, appt), receipt, billId: String(bill._id) });
 });
 
-// A quick booking's patient was registered: the booking joins her record.
+// A quick booking's patient was registered: the booking joins her record. (The referral desk too: it books the
+// woman a doctor sent before she is registered, then registers her.)
 appointmentsRouter.post('/:id/link', async (req, res) => {
-  if (!hasRole(req.membership, 'receptionist', 'doctor', 'rmo')) throw forbidden('Only those who register patients can do this.');
+  if (!hasRole(req.membership, 'receptionist', 'doctor', 'rmo', 'referral_desk')) throw forbidden('Only those who register patients can do this.');
   const { id } = parse(z.object({ id: objectId }), req.params);
   const { patientId } = parse(z.object({ patientId: objectId }).strict(), req.body);
   const appt = await findAppointment(req, id);
   await linkPatient(req, appt, patientId);
+  // A referral booked for her before she was registered joins her record too (Referrals)
+  await bookingJoinsRecord(req.tenantId, appt._id, appt.patientId);
   await audit(req, 'APPOINTMENT_LINKED', { details: ids(appt) });
   res.json({ appointment: await viewOf(req, appt) });
 });

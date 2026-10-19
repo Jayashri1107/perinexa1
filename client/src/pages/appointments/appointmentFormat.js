@@ -3,8 +3,9 @@ import { CalendarCheck, CalendarX2, Clock, Hash, UserCheck, UserX } from 'lucide
 // Appointment booking (docs/APPOINTMENTS_PLAN.md): words, times and status looks shared by the Appointments page,
 // Today, the patient's Appointments tab and the calendar. Same lists as server/src/appointments/appointmentRules.js.
 
-export const BOOKING_ROLES = ['receptionist', 'doctor'];
-export const QUEUE_ROLES = ['receptionist', 'doctor', 'rmo', 'nurse'];
+// The referral desk books a referred patient's appointment, and so sees the doctors' days (docs/REFERRALS_PLAN.md).
+export const BOOKING_ROLES = ['receptionist', 'referral_desk', 'doctor'];
+export const QUEUE_ROLES = ['receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse'];
 export const VISIT_TYPES = ['new', 'follow_up', 'scan', 'other'];
 export const VISIT_TYPE_LABELS = { new: 'New', follow_up: 'Follow-up', scan: 'Scan', other: 'Other' };
 export const CANCEL_REASONS = [
