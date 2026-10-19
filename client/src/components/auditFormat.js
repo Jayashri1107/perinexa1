@@ -23,7 +23,10 @@ const AI_FEATURES = {
 
 // Plain-English names for audit log events.
 // What she opened in the portal (PORTAL_RECORDS_VIEWED)
-const PORTAL_RECORD_WORDS = { prescriptions: 'prescriptions', lab: 'lab reports', visits: 'visits', bills: 'bills', summary: 'her Home page summary', appointments: 'appointments', profile: 'profile' };
+const PORTAL_RECORD_WORDS = { prescriptions: 'prescriptions', lab: 'lab reports', visits: 'visits', bills: 'bills', summary: 'her Home page summary', appointments: 'appointments', profile: 'profile', scans: 'scan reports' };
+// Her profile (19 Oct 2026): which details – never the values
+const PORTAL_PROFILE_WORDS = { address: 'address', city: 'city', state: 'state', pinCode: 'PIN code', emergencyContact: 'emergency contact', fullName: 'name', ageYears: 'age', phone: 'mobile', email: 'email' };
+const profileFields = (d) => (d.fields ?? []).map((f) => PORTAL_PROFILE_WORDS[f] ?? f).join(', ');
 // How she signed in with her own account, and why a sign-in failed (PORTAL_LOGIN_SUCCESS / _FAILED)
 const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mobile and OTP' };
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
@@ -198,6 +201,28 @@ export const AUDIT_LABELS = {
   LAB_REPORT_OPENED: 'Lab report file opened',
   LAB_RESULTS_REVIEWED: 'Lab results reviewed by a doctor',
   LAB_ORDER_CANCELLED: 'Lab order cancelled',
+  // Referrals from other doctors (docs/REFERRALS_PLAN.md): ids, the record number and which part – never what was written
+  REFERRAL_CREATED: 'Referral logged',
+  REFERRAL_VIEWED: 'Referral opened',
+  REFERRAL_UPDATED: 'Referral details changed',
+  REFERRAL_LINKED: 'Referral linked to a patient record',
+  REFERRAL_BOOKED: 'Appointment booked for a referral',
+  REFERRAL_ATTACHMENT_ADDED: "Referring doctor's note or report attached",
+  REFERRAL_ATTACHMENT_OPENED: "Referring doctor's note or report opened",
+  REFERRAL_SHARING_ANSWERED: 'Her answer on sharing with the referring doctor recorded',
+  REFERRAL_NOTE_SAVED: 'Consultant note saved',
+  REFERRAL_NOTE_SIGNED: 'Consultant note signed',
+  REFERRAL_NOTE_ADDITION_ADDED: 'Addition to a signed consultant note',
+  REFERRAL_PDF_RELEASED: 'PDF released to the referral desk',
+  REFERRAL_PDF_OPENED: 'Released PDF opened',
+  REFERRAL_MESSAGE_SENT: 'Message to a referring doctor marked sent',
+  REFERRAL_REVIEW_ADDED: 'Weekly review note on a missed promise',
+  REFERRAL_CLOSED: 'Referral closed',
+  REFERRAL_CANCELLED: 'Referral cancelled',
+  REFERRING_DOCTOR_ADDED: 'Referring doctor added',
+  REFERRING_DOCTOR_UPDATED: "Referring doctor's details changed",
+  REFERRAL_SUMMARY_VIEWED: "Referring doctor's quarterly summary opened",
+  REFERRAL_SETTINGS_CHANGED: 'Referral settings changed',
   LAB_HOME_COLLECTION: 'Lab home collection updated',
   LAB_REPORT_VERIFIED: 'Lab report checked with its QR code',
   IMAGING_ORDERED: 'Scan ordered',
@@ -271,6 +296,10 @@ export const AUDIT_LABELS = {
   PORTAL_SIGNUP_REJECTED: "Patient's online sign-up rejected",
   PORTAL_PASSWORD_CHANGED: 'Patient changed her portal password',
   PORTAL_RECORDS_VIEWED: 'Patient viewed her records in the portal',
+  PORTAL_PROFILE_UPDATED: 'Patient changed her contact details in the portal',
+  PORTAL_CHANGE_REQUESTED: 'Patient asked to change her name, age, mobile or email',
+  PORTAL_CHANGE_APPROVED: "Patient's change request approved",
+  PORTAL_CHANGE_REJECTED: "Patient's change request rejected",
   KEEPSAKE_CARD_PRINTED: 'Baby keepsake card printed',
   // Pharmacy extras (4 Oct 2026)
   PHARMACY_ORDER_CREATED: 'Purchase order made',
@@ -284,6 +313,11 @@ export const AUDIT_LABELS = {
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
+  // The Tally link (16 Oct 2026)
+  TALLY_SETTINGS_CHANGED: 'Tally account names changed',
+  TALLY_BATCH_CREATED: 'Tally batch prepared',
+  TALLY_FILE_DOWNLOADED: 'Tally file downloaded',
+  TALLY_VOUCHER_STATUS: 'Tally entry status changed',
   // Billing extras (4 Oct 2026)
   BILL_INSURANCE_CHANGED: 'Insurance details of a bill changed',
   CLAIM_FORM_PRINTED: 'Claim form printed',
@@ -415,6 +449,24 @@ export const AUDIT_TONES = {
   LAB_REPORT_OPENED: 'patient',
   LAB_RESULTS_REVIEWED: 'patient',
   LAB_ORDER_CANCELLED: 'patient',
+  REFERRAL_CREATED: 'patient',
+  REFERRAL_VIEWED: 'patient',
+  REFERRAL_UPDATED: 'patient',
+  REFERRAL_LINKED: 'patient',
+  REFERRAL_BOOKED: 'patient',
+  REFERRAL_ATTACHMENT_ADDED: 'patient',
+  REFERRAL_ATTACHMENT_OPENED: 'patient',
+  REFERRAL_SHARING_ANSWERED: 'patient',
+  REFERRAL_NOTE_SAVED: 'patient',
+  REFERRAL_NOTE_SIGNED: 'patient',
+  REFERRAL_NOTE_ADDITION_ADDED: 'patient',
+  REFERRAL_PDF_RELEASED: 'patient',
+  REFERRAL_PDF_OPENED: 'patient',
+  REFERRAL_MESSAGE_SENT: 'patient',
+  REFERRAL_REVIEW_ADDED: 'patient',
+  REFERRAL_CLOSED: 'patient',
+  REFERRAL_CANCELLED: 'patient',
+  REFERRAL_SUMMARY_VIEWED: 'patient',
   LAB_HOME_COLLECTION: 'patient',
   LAB_REPORT_VERIFIED: 'info',
   IMAGING_ORDERED: 'patient',
@@ -476,6 +528,10 @@ export const AUDIT_TONES = {
   PORTAL_SIGNUP_REJECTED: 'warn',
   PORTAL_PASSWORD_CHANGED: 'patient',
   PORTAL_RECORDS_VIEWED: 'patient',
+  PORTAL_PROFILE_UPDATED: 'patient',
+  PORTAL_CHANGE_REQUESTED: 'patient',
+  PORTAL_CHANGE_APPROVED: 'patient',
+  PORTAL_CHANGE_REJECTED: 'patient',
   KEEPSAKE_CARD_PRINTED: 'patient',
   PORTAL_LOGIN_FAILED: 'warn',
   REMINDER_PREPARED: 'patient',
@@ -564,6 +620,10 @@ const CATEGORY_ICONS = {
   VISIT_SUMMARY_PDF_SAVED: FileDown,
   PRESCRIPTION_SENT_WHATSAPP: MessageCircle,
   VISIT_SUMMARY_SENT_WHATSAPP: MessageCircle,
+  REFERRAL_MESSAGE_SENT: MessageCircle,
+  REFERRAL_LINKED: Link2,
+  REFERRAL_NOTE_SIGNED: BadgeCheck,
+  REFERRAL_PDF_RELEASED: FileDown,
   LOGIN_SUCCESS: LogIn,
   LOGOUT: LogOut,
   TENANT_SWITCHED: Building2,
@@ -601,6 +661,11 @@ const rupeesOf = (paise) => `₹${formatNumber(Math.floor((paise ?? 0) / 100))}$
 // an amount or a link. The super admin's log holds no bill number ("A bill").
 const INSURANCE_FIELD_WORDS = { insurer: 'insurer', policyNumber: 'policy or member number', tpa: 'TPA', preAuthNumber: 'pre-authorisation number', claimNumber: 'claim number', pmjayId: 'PM-JAY ID', packageCode: 'package code', packageName: 'package name' };
 const BILLING_SETTING_WORDS = { upiId: 'UPI ID', payeeName: 'payee name' };
+// The Tally link: the NAMES of the settings' sections, batch and entry numbers, counts and status words – never an
+// account name, an amount of one entry or a note typed. The super admin's log holds no batch or entry number.
+const TALLY_SETTING_WORDS = { companyName: 'Tally company', booksFrom: 'day the books start', inpatientIssues: 'medicines issued to admitted patients', ledgers: 'account names', voucherTypes: 'voucher type names' };
+const TALLY_STATUS_WORDS = { exported: 'waiting for Tally (sent again)', imported: 'imported', failed: 'refused by Tally', skipped: 'skipped' };
+const TALLY_PART_WORDS = { vouchers: 'entries file', masters: 'account names file' };
 const CLAIM_LAYOUT_WORDS = { claim: 'claim form', pmjay: 'PM-JAY claim sheet' };
 const billOf = (d) => (d.number ? `Bill ${d.number}` : 'A bill');
 const namesOf = (fields, words) => (Array.isArray(fields) ? fields.map((f) => words[f] ?? f).join(', ') : '');
@@ -632,6 +697,30 @@ function listChangeText(what, d) {
   const onlyInUse = Array.isArray(d.fields) && d.fields.length === 1 && d.fields[0] === 'active';
   return joined(onlyInUse ? `a ${what} stopped or brought back into use` : `a ${what}'s details saved`, d.barcodes != null ? count(d.barcodes, 'barcode') : '');
 }
+
+// Referrals from other doctors: the record number (none before she is registered, and none in the super admin's log)
+// and which part – the message, the PDF, her answer or the promise – never a name, a reason or what was written.
+const REFERRAL_MESSAGE_WORDS = { reply: 'the reply', note: 'the consultant note', discharge: 'the discharge summary', other: 'another message' };
+const REFERRAL_PDF_WORDS = { note: 'consultant note', discharge: 'discharge summary' };
+const REFERRAL_ANSWER_WORDS = { yes: 'she agreed to share the note and discharge summary', no: 'she did not agree to share' };
+const REFERRAL_PROMISE_WORDS = { reply: 'reply within 2 working hours', seen: 'seen in time', note: 'consultant note within 24 hours', discharge: 'discharge summary within 24 hours' };
+const referralText = (d) =>
+  joined(
+    d.mrn ? record(d) : 'A referral',
+    REFERRAL_MESSAGE_WORDS[d.what] ?? '',
+    REFERRAL_MESSAGE_WORDS[d.what] ? '' : (REFERRAL_PDF_WORDS[d.kind] ?? ''), // a message already says which PDF
+    REFERRAL_ANSWER_WORDS[d.answer] ?? '',
+    REFERRAL_PROMISE_WORDS[d.promise] ? `promise: ${REFERRAL_PROMISE_WORDS[d.promise]}` : '',
+  );
+const REFERRAL_SETTING_WORDS = {
+  centres: 'centres',
+  deskNumber: 'referral desk number',
+  consultantLines: "consultants' direct lines",
+  workingHours: 'working hours',
+  holidays: 'holidays',
+  urgentCutoff: 'urgent cut-off time',
+  urgentNextMorning: 'next-morning time for late urgent referrals',
+};
 
 const FAIL_REASONS = { wrong_password: 'wrong password', unknown_email: 'unknown email', inactive_account: 'account is deactivated' };
 
@@ -959,6 +1048,32 @@ export function describeAudit(entry) {
     case 'WORK_DONE_RECORDED':
     case 'WORK_DONE_CANCELLED':
       return record(d);
+    case 'REFERRAL_CREATED':
+    case 'REFERRAL_VIEWED':
+    case 'REFERRAL_UPDATED':
+    case 'REFERRAL_LINKED':
+    case 'REFERRAL_BOOKED':
+    case 'REFERRAL_ATTACHMENT_ADDED':
+    case 'REFERRAL_ATTACHMENT_OPENED':
+    case 'REFERRAL_SHARING_ANSWERED':
+    case 'REFERRAL_NOTE_SAVED':
+    case 'REFERRAL_NOTE_SIGNED':
+    case 'REFERRAL_NOTE_ADDITION_ADDED':
+    case 'REFERRAL_PDF_RELEASED':
+    case 'REFERRAL_PDF_OPENED':
+    case 'REFERRAL_MESSAGE_SENT':
+    case 'REFERRAL_REVIEW_ADDED':
+    case 'REFERRAL_CLOSED':
+    case 'REFERRAL_CANCELLED':
+      return referralText(d);
+    // The referring doctor and the quarterly summary are kept as ids only
+    case 'REFERRING_DOCTOR_ADDED':
+    case 'REFERRING_DOCTOR_UPDATED':
+    case 'REFERRAL_SUMMARY_VIEWED':
+      return '';
+    // Which settings – never a phone number or a holiday
+    case 'REFERRAL_SETTINGS_CHANGED':
+      return joined(namesOf(d.fields, REFERRAL_SETTING_WORDS));
     case 'QUEUE_TIME_SENT':
     case 'LAB_REPORT_SENT_WHATSAPP':
       return `${record(d)}${d.practice ? ' (practice – not really sent)' : ''}`;
@@ -1030,6 +1145,12 @@ export function describeAudit(entry) {
     case 'PORTAL_PASSWORD_CHANGED':
       return '';
     case 'KEEPSAKE_CARD_PRINTED':
+      return d.mrn ? record(d) : '';
+    case 'PORTAL_PROFILE_UPDATED':
+    case 'PORTAL_CHANGE_REQUESTED':
+    case 'PORTAL_CHANGE_APPROVED':
+      return [d.mrn ? record(d) : '', profileFields(d)].filter(Boolean).join(' · ');
+    case 'PORTAL_CHANGE_REJECTED':
       return d.mrn ? record(d) : '';
     case 'PORTAL_RECORDS_VIEWED':
       return [d.mrn ? record(d) : '', PORTAL_RECORD_WORDS[d.kind] ?? ''].filter(Boolean).join(' · ');
@@ -1130,6 +1251,14 @@ export function describeAudit(entry) {
       const names = namesOf(d.fields, BILLING_SETTING_WORDS);
       return names ? `${names} · what it was set to is listed under Billing → Settings` : '';
     }
+    case 'TALLY_SETTINGS_CHANGED':
+      return joined(namesOf(d.fields, TALLY_SETTING_WORDS));
+    case 'TALLY_BATCH_CREATED':
+      return joined(d.number ? `Batch ${d.number}` : 'A batch', periodOf(d), d.vouchers != null ? count(d.vouchers, 'entry', 'entries') : '');
+    case 'TALLY_FILE_DOWNLOADED':
+      return joined(d.number ? `Batch ${d.number}` : 'A batch', TALLY_PART_WORDS[d.part] ?? '');
+    case 'TALLY_VOUCHER_STATUS':
+      return joined(d.key ? `Entry ${d.key}` : d.number ? `Batch ${d.number}` : 'Entries', TALLY_STATUS_WORDS[d.status] ?? d.status ?? '', d.count != null ? count(d.count, 'entry', 'entries') : '');
     case 'ABHA_VERIFIED':
     case 'ABHA_LINKED':
     case 'ABHA_CREATED':

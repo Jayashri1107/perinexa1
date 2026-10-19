@@ -28,11 +28,14 @@ import { appointmentsRouter } from './routes/appointments.js';
 import { billingRouter } from './routes/billing.js';
 import { pharmacyRouter } from './routes/pharmacy.js';
 import { pharmacyStockRouter } from './routes/pharmacyStock.js';
+import { tallyRouter } from './routes/tally.js';
 import { abdmPublicRouter, abdmRouter } from './routes/abdm.js';
 import { beforePushBody } from './routes/abdmFetch.js';
 import { inpatientsRouter } from './routes/inpatients.js';
 import { bedsRouter } from './routes/beds.js';
 import { labRouter } from './routes/lab.js';
+import { referralsRouter } from './routes/referrals.js';
+import { referringDoctorsRouter } from './routes/referringDoctors.js';
 import { reminderOutboxRouter } from './routes/reminderOutbox.js';
 import { portalRouter } from './routes/portal.js';
 import { portalRecordsRouter } from './routes/portalRecords.js';
@@ -94,6 +97,9 @@ export function createApp({
   app.use(/^\/api\/lab\/orders\/[^/]+\/files$/, express.json({ limit: '8mb' }));
   app.use(/^\/api\/patients\/[^/]+\/consents\/[^/]+\/scans$/, express.json({ limit: '8mb' }));
   app.use(/^\/api\/patients\/[^/]+\/visits\/[^/]+\/whatsapp$/, express.json({ limit: '8mb' })); // the PDF to send
+  // A referral's files: the referring doctor's note or reports, and the PDF of a consultant note or discharge card
+  // released to the referral desk (at most 5 MB each, like the files above).
+  app.use(/^\/api\/referrals\/[^/]+\/(attachments|releases)$/, express.json({ limit: '8mb' }));
   // The medicine safety list is saved whole: 300 entries with their names, advice and sources do not fit in 100 kb.
   // (Each field has its own limit, so the list's "at most 300 entries" is reached before this one.)
   app.use('/api/medicine-safety', express.json({ limit: '2mb' }));
@@ -182,6 +188,13 @@ export function createApp({
   // Admission like a hospital system: requests, checklist, papers, clearance (routes/admissionDesk.js)
   app.use('/api/admission-desk', ...inTenant, admissionDeskRouter);
   app.use('/api/lab', ...inTenant, labRouter);
+  // Referrals from other doctors and the referring doctors (docs/REFERRALS_PLAN.md – brought from the other Perinexa
+  // copy, 19 Oct 2026): the referral desk, doctors and RMOs only (routes/referrals.js REFERRAL_ROLES)
+  app.use('/api/referrals', ...inTenant, referralsRouter);
+  app.use('/api/referring-doctors', ...inTenant, referringDoctorsRouter);
+  // The Tally link (docs/TALLY_PLAN.md – from the other Perinexa copy, 19 Oct 2026): the accountant's files, for the
+  // hospital admin only (routes/tally.js)
+  app.use('/api/tally', ...inTenant, tallyRouter);
   // The lab's test list and settings (routes/labSetup.js)
   app.use('/api/lab-setup', ...inTenant, labSetupRouter);
   // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, USG and radiology

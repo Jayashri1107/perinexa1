@@ -17,8 +17,9 @@
 //  - Never: password hashes, sign-in sessions or tokens, patient portal code hashes, the waiting-room screen key,
 //    other hospitals' data, staff e-mail addresses, or anything from server/.env – every file is checked for the
 //    secret settings of server/.env and for the names of those fields before it is kept.
-//  - The stored files (lab report files, scanned signed consent forms) go in the subfolder "files", named by their id
-//    (never by the uploaded name, which may hold a patient's name), with a list in stored-files.json.
+//  - The stored files (lab report files, scanned signed consent forms, a referral's files) go in the subfolder
+//    "files", named by their id (never by the uploaded name, which may hold a patient's name), with a list in
+//    stored-files.json.
 //  - README.txt says in plain words what each file is, the date, the counts, and that the folder holds confidential
 //    patient data, is not encrypted, must be kept on an encrypted disk and deleted when no longer needed.
 //  - One entry in the hospital's audit log, counts only: "Hospital data exported by the server operator". An
@@ -72,13 +73,19 @@ import { PrescriptionDesign } from '../models/PrescriptionDesign.js';
 import { PrescriptionSet } from '../models/PrescriptionSet.js';
 import { PriceItem } from '../models/PriceItem.js';
 import { RedFlagRuleSet } from '../models/RedFlagRuleSet.js';
+import { Referral } from '../models/Referral.js';
+import { ReferringDoctor } from '../models/ReferringDoctor.js';
 import { ReminderMessage } from '../models/ReminderMessage.js';
 import { ScanShare } from '../models/ScanShare.js';
 import { FILE_KINDS, StoredFile } from '../models/StoredFile.js';
 import { Tenant } from '../models/Tenant.js';
+import { TallyBatch } from '../models/TallyBatch.js';
+import { TallyVoucher } from '../models/TallyVoucher.js';
+import { withDefaults as tallySettingsWithDefaults } from '../tally/tallyRules.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { WorkDone } from '../models/WorkDone.js';
+import { referralSettingsFor } from '../referrals/settings.js';
 
 /** The project folder (where package.json and server/ are): the export is never written inside it. */
 export const PROJECT_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -109,6 +116,8 @@ export const KINDS = [
   { file: 'consents.json', model: PatientConsent, what: 'Consent forms and information sheets printed for a patient, with what was typed into them, and when the signed copy came back. Scanned signed copies are in the "files" folder.' },
   { file: 'appointments.json', model: Appointment, what: 'Appointments and walk-in tokens, and what became of them.' },
   { file: 'arrivals.json', model: Arrival, what: 'Patients marked as arrived at reception, by day.' },
+  { file: 'referrals.json', model: Referral, what: 'Referrals from other doctors: the referring doctor, when and how it came, urgent or routine, the centre, the patient (or her name, phone and age before she was registered), the reasons and the question, what the doctor sent, the consultant, her appointment, her Yes or No to sharing the note and the discharge summary, when she was first seen and discharged, the consultant note (draft or signed, with additions), the PDFs released to the referral desk, the messages marked sent, the weekly review notes, and closing or cancelling. The attached and released files are in the "files" folder.' },
+  { file: 'referring-doctors.json', model: ReferringDoctor, what: 'The doctors who refer patients to the hospital: name, qualification, clinic, area, phone, e-mail, registration number, notes, what they joined (the partner programme) and whether they are still active.' },
   { file: 'reminder-messages.json', model: ReminderMessage, what: 'Reminder messages to patients by SMS or WhatsApp: the text, the phone number, and whether they were sent.' },
   { file: 'abha-scan-and-share.json', model: ScanShare, what: 'ABHA details that patients shared at the reception desk with the Scan & Share QR code.' },
   { file: 'abha-linked-records.json', model: AbdmCareContext, what: 'Which visits, lab reports and discharge summaries were linked to a patient\'s ABHA, to which ABHA, when, and by whom (or by her from her ABHA app).' },
@@ -124,6 +133,8 @@ export const KINDS = [
   { file: 'pharmacy-purchase-orders.json', model: PurchaseOrder, what: 'Pharmacy: purchase orders.' },
   { file: 'pharmacy-supplier-returns.json', model: SupplierReturn, what: 'Pharmacy: stock returned to suppliers.' },
   { file: 'pharmacy-invoices.json', model: PharmacyInvoice, what: 'Pharmacy: sales and issues to patients, with their tax invoices and returns.' },
+  { file: 'tally-entries.json', model: TallyVoucher, what: 'The accounting entries written for Tally (bills, receipts, pharmacy invoices, credit and debit notes): their lines by account (an insurance line carries the scheme as reception typed it on the payment), the batch each went in, whether Tally imported, refused or skipped them, and the hospital admin\'s note on a refused or skipped entry. Document numbers, never a patient\'s name.' },
+  { file: 'tally-batches.json', model: TallyBatch, what: 'The Tally files prepared for the accountant: the period of each, how many entries, the account names it introduced (with a business buyer\'s or supplier\'s GSTIN), and the fingerprint of its entries file.' },
   { file: 'audit-log.json', model: AuditLog, what: 'The hospital\'s audit log: who did what and when (record ids and counts, never what was written). People are named; their e-mail addresses are left out.' },
   { file: 'numbering.json', model: Counter, what: 'The last number given in each of the hospital\'s numbering series (patient numbers, receipts, invoices …), so another system can go on from there.' },
   { file: 'settings-care-plan-templates.json', model: CarePlanTemplate, what: 'Settings: the care plan templates and risk rules, with their versions and who approved them.' },
@@ -151,9 +162,9 @@ export const KINDS = [
 
 /** Written field by field (not from KINDS): the hospital itself, its staff and the list of stored files. */
 const SPECIAL_FILES = {
-  'hospital.json': 'The hospital\'s own details: name, letterhead, the pharmacy\'s licence numbers, the UPI ID for payment links (and earlier ones), the ABDM ids, and which patient messages are switched on.',
+  'hospital.json': 'The hospital\'s own details: name, letterhead, the pharmacy\'s licence numbers, the UPI ID for payment links (and earlier ones), the ABDM ids, which patient messages are switched on, the referral settings (centres, the referral desk\'s number, the consultants\' direct lines, working hours, holidays and the urgent cut-off), and the Tally link\'s settings (the Tally company, the first day of the books, how medicines issued to admitted patients are booked, and the accountant\'s account and voucher type names).',
   'staff.json': 'The staff of the hospital: name, roles here, whether they still work here, and a doctor\'s qualification and registration number. No e-mail addresses and no passwords. The ids in the other files ("by", "doctorId", "actor" …) are these ids; an id that is not here is someone outside the hospital\'s staff (for example the platform\'s super admin).',
-  'stored-files.json': 'The list of the stored files (lab report files and scanned signed consent forms): the patient and the record each belongs to, its name when it was added, type and size, who added it and when, and where it is in the "files" folder.',
+  'stored-files.json': 'The list of the stored files (lab report files, scanned signed consent forms, the notes and reports attached to a referral, and the consultant notes and discharge cards released to the referral desk as PDFs): the patient (empty for a referral\'s file added before she was registered – see referrals.json) and the record each belongs to, its name when it was added, type and size, who added it and when, and where it is in the "files" folder.',
 };
 
 /**
@@ -167,6 +178,7 @@ export const LEFT_OUT = {
   StoredFile: 'Written as stored-files.json and the "files" folder.',
   Notification: "Staff's notifications (the bell): short-lived messages, deleted after 30 days; the work itself is exported.",
   PortalAccess: 'Patient portal codes (kept only as hashes) never leave Perinexa.',
+  PatientChangeRequest: "Patients' requests from the portal to change their name, age, mobile or email: kept until reception decides – the record carries the decision, and who decided and when is in the audit log.",
   PatientAccount: "Patients' own portal sign-ins (email, mobile, password hash, OTP): sign-in data, not her record – it never leaves Perinexa; approvals and rejections are in the audit log.",
   DictationWord: 'Personal voice-entry words of staff accounts – not the hospital\'s data, and never patient information.',
   VisitDraft: 'Unsaved typing on a visit, kept for its author for up to 7 days – not part of the record; what was saved is in visits.json.',
@@ -272,6 +284,10 @@ function hospitalRecord(t) {
     abdm: pick(t.abdm, ['hfrId', 'hipId', 'counterCode']),
     // The waiting-room screen: only whether it is on – its key (a secret in its web address) never leaves
     messaging: { ...pick(t.messaging, ['remindersEnabled', 'portalEnabled', 'portalBooking', 'whatsappDocuments']), waitingRoomScreenOn: Boolean(t.messaging?.displayKey) },
+    // The referral settings as the referral clocks use them (the defaults where the admin never saved them)
+    referrals: referralSettingsFor(t),
+    // The Tally link's settings as the batches use them (the starting account names where the admin never changed them)
+    tally: tallySettingsWithDefaults(t.tally),
   });
 }
 

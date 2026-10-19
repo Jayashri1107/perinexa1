@@ -47,6 +47,12 @@ const LAB_ACTIONS = new Set(AUDIT_CATEGORIES.patients.filter((a) => a.startsWith
 // reason: the code of a rejected sample's reason (haemolysed …); confidential: a printed report included a confidential
 // test; from, to, results: the dates of the lab register and how many orders a list showed.
 const LAB_DETAIL_FIELDS = ['patientId', 'mrn', 'orderId', 'fileId', 'tests', 'reason', 'confidential', 'from', 'to', 'results', 'practice', 'status', 'walkIn'];
+// Referrals from other doctors (docs/REFERRALS_PLAN.md) and the referring doctors: ids, which message was marked sent
+// (what), the kind of PDF (kind), her Yes or No to sharing (answer), which promise a review is about, and the names
+// of the fields changed – never the referring doctor's words, the question, a reason, the consultant note, a name or a
+// phone number. referringDoctorId and quarter: whose summary was opened, for which quarter.
+const REFERRAL_ACTIONS = new Set(AUDIT_CATEGORIES.patients.filter((a) => a.startsWith('REFERRAL_') || a.startsWith('REFERRING_DOCTOR_')));
+const REFERRAL_DETAIL_FIELDS = ['patientId', 'mrn', 'referralId', 'what', 'kind', 'answer', 'promise', 'fileId', 'referringDoctorId', 'quarter', 'fields'];
 // Registers removed 2 Oct 2026 – kept so old entries still display. REPORT_VIEWED (the monthly report) is still written.
 const REGISTER_ACTIONS = new Set(AUDIT_CATEGORIES.patients.filter((a) => a.startsWith('REGISTER_') || a === 'REPORT_VIEWED'));
 const REGISTER_DETAIL_FIELDS = ['register', 'report', 'entryId', 'patientId', 'mrn', 'fileId', 'month'];
@@ -71,6 +77,12 @@ const HOSPITAL_EXPORT_DETAIL_FIELDS = ['patients', 'records', 'files', 'counts']
 // amount or a link. The routes write nothing else; this is a second guard.
 const BILLING_EXTRA_ACTIONS = new Set(['BILL_INSURANCE_CHANGED', 'CLAIM_FORM_PRINTED', 'UPI_LINK_MADE']);
 const BILLING_EXTRA_DETAIL_FIELDS = ['billId', 'number', 'patientId', 'fields', 'removed', 'via', 'layout'];
+// The Tally link (16 Oct 2026): the NAMES of the settings changed, the batch's number and period, counts, which file,
+// and an entry's key (a document number) and new status – never an account name, an amount of one entry or a note
+// typed. The super admin's log keeps counts and plain words only (no batch or document numbers).
+const TALLY_ACTIONS = new Set(['TALLY_SETTINGS_CHANGED', 'TALLY_BATCH_CREATED', 'TALLY_FILE_DOWNLOADED', 'TALLY_VOUCHER_STATUS']);
+const TALLY_DETAIL_FIELDS = ['fields', 'batchId', 'number', 'from', 'to', 'vouchers', 'part', 'voucherId', 'key', 'status', 'count'];
+const TALLY_PLATFORM_FIELDS = ['fields', 'from', 'to', 'vouchers', 'part', 'status', 'count'];
 // A record closed after a death, and reopened: counts only, in every reader – never which record, the date, the
 // place, the timing or the reason a doctor typed. A record is closed for one reason only (a doctor recorded a death),
 // so an entry with the record's number would give the hospital admin – who reads this log and sees no patient data –
@@ -129,6 +141,7 @@ const PLATFORM_PATIENT_EVENT_FIELDS = ['access', 'fields', 'sections', 'change',
 // ANALYTICS_LIST_VIEWED, the AI events, WORKLIST_VIEWED and INPATIENTS_VIEWED are patient events: without their
 // own fields the allowlist above would drop them all.
 const PLATFORM_FIELDS_BY_ACTION = {
+  ...Object.fromEntries([...TALLY_ACTIONS].map((a) => [a, TALLY_PLATFORM_FIELDS])),
   RISK_RECALCULATED: ['templateId', 'name', 'version', 'checked', 'changed', 'skipped'],
   ANALYTICS_VIEWED: ANALYTICS_DETAIL_FIELDS.platform,
   ANALYTICS_LIST_VIEWED: ANALYTICS_DETAIL_FIELDS.platform,
@@ -152,7 +165,7 @@ const PLATFORM_FIELDS_BY_ACTION = {
   ...Object.fromEntries([...ABDM_FETCH_ACTIONS].map((a) => [a, ABDM_FETCH_PLATFORM_FIELDS])),
 };
 // A second guard for staff, hospital, template and form events (not `reason`: a failed sign-in needs it).
-const PLATFORM_HIDDEN_KEYS = ['mrn', 'orderId', 'fileId', 'entryId', 'patientId', 'patientIds', 'careType', 'planId', 'visitId', 'noteId', 'itemId', 'consentId', 'mainPatientId', 'mainMrn', 'matchIds'];
+const PLATFORM_HIDDEN_KEYS = ['mrn', 'orderId', 'fileId', 'entryId', 'patientId', 'patientIds', 'careType', 'planId', 'visitId', 'noteId', 'itemId', 'consentId', 'mainPatientId', 'mainMrn', 'matchIds', 'referralId', 'referringDoctorId'];
 const withoutPatientKeys = (details) => Object.fromEntries(Object.entries(details).filter(([k]) => !PLATFORM_HIDDEN_KEYS.includes(k)));
 
 function platformDetails(action, shown) {
@@ -169,6 +182,8 @@ function trimmedByAction(action, details) {
   if (INPATIENT_ACTIONS.has(action)) return only(details, INPATIENT_DETAIL_FIELDS);
   if (AI_ACTIONS.has(action)) return only(details, AI_DETAIL_FIELDS);
   if (LAB_ACTIONS.has(action)) return only(details, LAB_DETAIL_FIELDS);
+  if (REFERRAL_ACTIONS.has(action)) return only(details, REFERRAL_DETAIL_FIELDS);
+  if (TALLY_ACTIONS.has(action)) return only(details, TALLY_DETAIL_FIELDS);
   if (REGISTER_ACTIONS.has(action)) return only(details, REGISTER_DETAIL_FIELDS);
   if (BILLING_EXTRA_ACTIONS.has(action)) return only(details, BILLING_EXTRA_DETAIL_FIELDS);
   if (ANALYTICS_ACTIONS.has(action)) return only(details, ANALYTICS_DETAIL_FIELDS.tenant);

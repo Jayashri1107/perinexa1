@@ -195,17 +195,21 @@ describe('USG and radiology', () => {
     const res = await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'antenatal', fullName: 'Scan Mother', assignedDoctor: people.drA._id.toString(), pregnancy: { scanEdd: '2027-03-01' } }));
     return res.body.patient;
   }
-  it('her doctor orders; reception schedules and marks done; a doctor reports and signs; no fetal sex anywhere', async () => {
+  it('her doctor orders; doctors and RMOs only (reception and nurses no longer, 19 Oct 2026); a doctor reports and signs; no fetal sex anywhere', async () => {
     const p = await antenatal();
     expect((await (await as('reception')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_nt' })).status).toBe(403);
     const made = await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_nt', indication: 'Screening at 12 weeks' });
     expect(made.status, JSON.stringify(made.body)).toBe(201);
     let s = made.body.study;
-    const desk = (await (await as('reception')).get('/api/imaging/worklist?list=ordered')).body.studies[0];
+    expect((await (await as('reception')).get('/api/imaging/worklist?list=ordered')).status).toBe(403);
+    expect((await (await as('nurse')).get('/api/imaging/worklist?list=ordered')).status).toBe(403);
+    expect((await (await as('reception')).post(`/api/imaging/${s.id}/schedule`).send({ rev: s.rev, scheduledFor: '2026-10-18T05:30:00.000Z' })).status).toBe(403);
+    const desk = (await (await as('rmo')).get('/api/imaging/worklist?list=ordered')).body.studies[0];
     expect(desk).toMatchObject({ studyName: 'USG – NT scan (11–13+6 weeks)', patient: { fullName: 'Scan Mother' } });
-    expect(desk.indication).toBeUndefined();
-    s = (await (await as('reception')).post(`/api/imaging/${s.id}/schedule`).send({ rev: s.rev, scheduledFor: '2026-10-18T05:30:00.000Z' })).body.study;
-    s = (await (await as('reception')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).body.study;
+    s = (await (await as('rmo')).post(`/api/imaging/${s.id}/schedule`).send({ rev: s.rev, scheduledFor: '2026-10-18T05:30:00.000Z' })).body.study;
+    s = (await (await as('drA')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).body.study;
+    // Her EDD by dates is on the scan page for the weight centile (her doctor sees her details)
+    expect((await (await as('drA')).get(`/api/imaging/${s.id}`)).body.study.patient.eddByDates).toBeTruthy();
     expect((await (await as('reception')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, findings: 'x' })).status).toBe(403);
     const sex = await (await as('drA')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, values: { ductus: 'Normal, it is a boy' }, impression: 'Normal' });
     expect(sex.status).toBe(400);
@@ -219,7 +223,7 @@ describe('USG and radiology', () => {
     const changed = await (await as('drA')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, findings: 'Single live intrauterine fetus.', impression: 'Low-risk NT.', reason: 'Wording corrected' });
     expect(changed.body.study).toMatchObject({ status: 'done', amendments: [{ reason: 'Wording corrected' }] });
     expect((await AuditLog.find({ action: /^IMAGING_/ }).lean()).every((e) => !JSON.stringify(e.details).includes('Scan Mother'))).toBe(true);
-    const studies = (await (await as('nurse')).get('/api/imaging/studies')).body.studies;
+    const studies = (await (await as('drA')).get('/api/imaging/studies')).body.studies;
     expect(JSON.stringify(studies)).not.toMatch(/\bsex\b|gender/i);
   });
 });

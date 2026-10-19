@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarCheck, CalendarDays, CalendarPlus, Check, ChevronRight, CircleSlash, Clock, FlaskConical, Phone, Pill, Receipt, TriangleAlert, UserRound } from 'lucide-react';
+import { CalendarCheck, CalendarDays, CalendarPlus, Check, ChevronRight, CircleSlash, Clock, FlaskConical, Phone, Pill, Receipt, TriangleAlert } from 'lucide-react';
 import { Alert, StatusPill, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
 import { rupees } from '../billing/billingFormat.js';
@@ -196,43 +196,6 @@ export function BillsSummary({ bills, lang }) {
         </div>
       ))}
     </dl>
-  );
-}
-
-/** Her details as the hospital has them – to read; changes are made at reception. */
-export function ProfileCard({ lang }) {
-  const h = accountWords(lang).home;
-  const { data, error } = useLoad('/records/profile');
-  const rows = data
-    ? [
-        ['fullName', data.fullName],
-        ['mrn', data.mrn],
-        ['age', data.age != null ? String(data.age) : ''],
-        ['phone', data.phone],
-        ['email', data.email ?? ''],
-        ['address', data.address],
-        ['hospital', data.hospital],
-      ].filter(([, v]) => v)
-    : [];
-  return (
-    <section className="card portal-card" aria-labelledby="portal-profile">
-      <h2 id="portal-profile">
-        <UserRound aria-hidden="true" /> {accountWords(lang).tabs.profile}
-      </h2>
-      <Alert type="error">{error ? portalError(error, lang) : null}</Alert>
-      {!data && !error && <p className="muted" aria-busy="true">…</p>}
-      {data && (
-        <dl className="portal-profile">
-          {rows.map(([k, v]) => (
-            <div key={k}>
-              <dt>{h.profile[k]}</dt>
-              <dd className={k === 'mrn' || k === 'phone' ? 'tabular' : undefined}>{v}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      <p className="hint">{h.profileNote}</p>
-    </section>
   );
 }
 

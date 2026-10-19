@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgeCheck, Globe, UserPlus, UserX } from 'lucide-react';
+import { BadgeCheck, Globe, UserPen, UserPlus, UserX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -154,6 +154,110 @@ function RejectDialog({ account, onClose, onDone }) {
   );
 }
 
+// ---------- Her requests from her portal profile to change her name, age, mobile or email (owner, 19 Oct 2026) ----------
+const CHANGE_NAMES = { fullName: 'Name', ageYears: 'Age', phone: 'Mobile', email: 'Email' };
+const NOW_VALUE = { fullName: (p) => p.fullName, ageYears: (p) => (p.age != null ? String(p.age) : '—'), phone: (p) => p.phone || '—', email: () => '—' };
+
+/** The requests waiting: what she has now and what she asks for; Approve (after checking who she is) or Reject. */
+function ChangeRequests({ onChanged }) {
+  const res = useFetch('/patient-accounts/changes');
+  const [rejecting, setRejecting] = useState(null);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState(null);
+  const [flash, setFlash] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const list = res.data?.requests ?? [];
+  const act = async (r, path, body = {}) => {
+    setBusy(r.id);
+    setError(null);
+    try {
+      await api(`/patient-accounts/changes/${r.id}/${path}`, { method: 'POST', body });
+      setFlash(`${r.patient?.fullName ?? 'Her'} request: ${path === 'approve' ? 'approved – her record is changed' : 'rejected – she sees the reason in her profile'}.`);
+      setRejecting(null);
+      setReason('');
+      res.reload();
+      onChanged?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (!res.data && !res.error) return null;
+  return (
+    <section className="card" aria-labelledby="change-requests">
+      <h2 id="change-requests">
+        <UserPen aria-hidden="true" /> Change requests from patients ({list.length})
+      </h2>
+      <p className="hint">A patient asked, from her profile in the patient portal, to change her name, age, mobile or email. Check who she is (at the desk or by phone), then approve – her record and her sign-in change – or reject with a reason she will see.</p>
+      <Alert type="success" onClose={() => setFlash(null)}>
+        {flash}
+      </Alert>
+      <Alert type="error">{error || res.error}</Alert>
+      {!list.length && <p className="muted">No requests waiting.</p>}
+      <ul className="wl-list">
+        {list.map((r) => (
+          <li key={r.id} className="wl-row appt-guest-row">
+            <div>
+              <strong>{r.patient ? <Link to={`/patients/${r.patient.id}`}>{r.patient.fullName}</Link> : 'Her record'}</strong>{' '}
+              <span className="muted tabular">{r.patient?.mrn}</span> <span className="muted">· asked {formatDateTime(r.at)}</span>
+              <table className="table change-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Detail</th>
+                    <th scope="col">Now</th>
+                    <th scope="col">She asks for</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(r.changes ?? {})
+                    .filter(([, v]) => v != null && v !== '')
+                    .map(([k, v]) => (
+                      <tr key={k}>
+                        <th scope="row">{CHANGE_NAMES[k] ?? k}</th>
+                        <td>{r.patient ? NOW_VALUE[k]?.(r.patient) : '—'}</td>
+                        <td>
+                          <strong>{String(v)}</strong>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              {r.note && <p className="muted">Her reason: {r.note}</p>}
+              {rejecting === r.id && (
+                <Field label="Why (she sees this)" id={`chg-reason-${r.id}`}>
+                  <input id={`chg-reason-${r.id}`} maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+                </Field>
+              )}
+            </div>
+            <div className="row">
+              {rejecting === r.id ? (
+                <>
+                  <button type="button" className="btn btn-danger btn-sm" disabled={busy === r.id || reason.trim().length < 3} onClick={() => act(r, 'reject', { reason })}>
+                    <UserX aria-hidden="true" /> Reject
+                  </button>
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => setRejecting(null)}>
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={busy === r.id} onClick={() => act(r, 'approve')}>
+                    <BadgeCheck aria-hidden="true" /> Approve
+                  </button>
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => setRejecting(r.id)}>
+                    Reject
+                  </button>
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** One waiting sign-up with its three choices. */
 function SignupRow({ a, onApprove, onReject }) {
   return (
@@ -271,6 +375,7 @@ export function SignupsPage() {
             </ul>
           </section>
         )}
+        {canRegisterPatients(roles) && <ChangeRequests />}
         {handled.data?.accounts?.length > 0 && (
           <section className="card" aria-labelledby="signups-handled">
             <h2 id="signups-handled">Recently handled</h2>

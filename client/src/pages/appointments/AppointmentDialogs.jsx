@@ -229,8 +229,8 @@ export function BookDialog({ doctor, date, start, patient: preset = null, length
   );
 }
 
-/** The free slots of a doctor's day, to choose one (Move, and giving a time). */
-function SlotChooser({ doctorId, date, value, onChange, exceptId }) {
+/** The free slots of a doctor's day, to choose one (Move, giving a time, and booking a referred patient). */
+export function SlotChooser({ doctorId, date, value, onChange, exceptId }) {
   const day = useFetch(doctorId && date ? '/appointments/day' : null, { doctorId, date });
   if (!doctorId || !date) return null;
   if (day.error) return <Alert type="error">{day.error}</Alert>;

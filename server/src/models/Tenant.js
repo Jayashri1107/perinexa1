@@ -85,6 +85,61 @@ const tenantSchema = new mongoose.Schema(
       // A planned or day-care admission needs the admission checklist complete (an emergency is completed later)
       requireChecklist: { type: Boolean, default: false },
     },
+    // Referrals from other doctors (docs/REFERRALS_PLAN.md), kept by the hospital admin: the centres a woman may be
+    // seen at, the referral desk's number, the consultants' direct lines (printed on the referral slip), the working
+    // hours and holidays the 2-hour reply clock counts in, and the urgent cut-off. Read through
+    // referrals/settings.js referralSettingsFor, which fills in the defaults for what was never saved (an empty list
+    // of centres or days = never saved: the settings route always keeps at least one of each).
+    referrals: {
+      centres: {
+        type: [new mongoose.Schema({ key: { type: String, maxlength: 30 }, name: { type: String, trim: true, maxlength: 60 }, active: { type: Boolean, default: true } }, { _id: false })],
+        default: undefined,
+      },
+      deskNumber: { type: String, trim: true, maxlength: 30, default: '' },
+      consultantLines: {
+        type: [new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, phone: { type: String, trim: true, maxlength: 30 }, note: { type: String, trim: true, maxlength: 100, default: '' } }, { _id: false })],
+        default: undefined,
+      },
+      workingHours: {
+        days: { type: [Number], default: undefined }, // 0 = Sunday … 6 = Saturday
+        from: { type: String, maxlength: 5, default: '' }, // 'HH:MM', hospital time
+        to: { type: String, maxlength: 5, default: '' },
+      },
+      holidays: {
+        type: [new mongoose.Schema({ on: { type: String, maxlength: 10 }, note: { type: String, trim: true, maxlength: 100, default: '' } }, { _id: false })],
+        default: undefined,
+      },
+      urgentCutoff: { type: String, maxlength: 5, default: '' },
+      urgentNextMorning: { type: String, maxlength: 5, default: '' },
+    },
+    // The Tally link (docs/TALLY_PLAN.md), kept by the hospital admin: the Tally company's name, the first day the
+    // books hold in Perinexa, how medicines issued to admitted patients are booked, and the accountant's exact account
+    // (ledger) and voucher type names. Read through tally/tallyRules.js withDefaults, which fills in the starting names.
+    tally: {
+      companyName: { type: String, trim: true, maxlength: 150, default: '' },
+      booksFrom: { type: Date, default: null },
+      inpatientIssues: { type: String, enum: ['taxable', 'exempt'], default: 'taxable' },
+      ledgers: {
+        income: { type: Map, of: String, default: undefined },
+        modes: { type: Map, of: String, default: undefined },
+        schemes: { type: [new mongoose.Schema({ scheme: { type: String, trim: true, maxlength: 80 }, ledger: { type: String, trim: true, maxlength: 100 } }, { _id: false })], default: undefined },
+        patients: { type: String, trim: true, maxlength: 100, default: undefined },
+        counter: { type: String, trim: true, maxlength: 100, default: undefined },
+        deposits: { type: String, trim: true, maxlength: 100, default: undefined },
+        discount: { type: String, trim: true, maxlength: 100, default: undefined },
+        pharmacySales: { type: Map, of: String, default: undefined },
+        exemptIssues: { type: String, trim: true, maxlength: 100, default: undefined },
+        outputCgst: { type: String, trim: true, maxlength: 100, default: undefined },
+        outputSgst: { type: String, trim: true, maxlength: 100, default: undefined },
+        inputCgst: { type: String, trim: true, maxlength: 100, default: undefined },
+        inputSgst: { type: String, trim: true, maxlength: 100, default: undefined },
+        inputIgst: { type: String, trim: true, maxlength: 100, default: undefined },
+        purchaseReturns: { type: String, trim: true, maxlength: 100, default: undefined },
+      },
+      voucherTypes: { type: Map, of: String, default: undefined },
+      updatedByName: { type: String, trim: true, maxlength: 100, default: '' },
+      updatedAt: { type: Date, default: null },
+    },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },
@@ -107,6 +162,8 @@ tenantSchema.set('toJSON', {
     delete ret.nameKey;
     if (ret.letterhead) delete ret.letterhead.pcpndtRegistration; // removed 2 Oct 2026: kept in the database, never sent
     delete ret.billing; // the UPI ID leaves only through the billing routes (never to the platform's lists of hospitals)
+    delete ret.referrals; // the consultants' direct lines leave only through the referral routes (never to the platform)
+    delete ret.tally; // the accountant's account names leave only through the Tally routes (never to the platform)
     return ret;
   },
 });

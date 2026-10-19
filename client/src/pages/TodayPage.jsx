@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tip } from '../components/Tip.jsx';
-import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, DoorOpen, FlaskConical, PhoneCall, Receipt, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
+import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, ClockAlert, DoorOpen, FileOutput, FilePen, FlaskConical, MessageCircleReply, PhoneCall, Receipt, Send, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -9,7 +9,7 @@ import { MenuButton } from '../components/MenuButton.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { Alert, KpiCard, StatusPill, formatDate, formatDateTime, formatTime } from '../components/ui.jsx';
 import { useFetch } from '../hooks/useFetch.js';
-import { CARE_PLAN_ROLES, canBookAppointments, canRegisterPatients, canSeeAppointments, canSeeCalendar, hospitalModules } from '../platform/modules.js';
+import { CARE_PLAN_ROLES, REFERRAL_ROLES, canBookAppointments, canRegisterPatients, canSeeAppointments, canSeeCalendar, hospitalModules, newPatientLinks } from '../platform/modules.js';
 import { rupees } from './billing/billingFormat.js';
 import { ScanShareSection } from './abdm/ScanShare.jsx';
 import { SignupsNotice, SignupsSection } from './patients/SignupsPage.jsx';
@@ -25,7 +25,6 @@ import { AiBriefCard } from './ai/AiBriefCard.jsx';
 import { useLibraryDrafts } from './library/ApprovalsPage.jsx';
 import { KIND_LABELS } from './inpatient/inpatientFormat.js';
 import { FLAG_LOOK, testNames } from './lab/labFormat.js';
-import { NEW_PATIENT_LINKS } from './patients/patientFormat.js';
 import { ReminderDialog } from './reminders/ReminderDialog.jsx';
 import { DischargesSection, DoctorsToday, TomorrowCalls } from './appointments/DeskToday.jsx';
 import { paymentsToCollect, receptionCounts } from './todayReception.js';
@@ -44,7 +43,9 @@ import { CarePlanSection, FlagCountPill, PatientRow, RedFlagsSection, Section, V
 //    became overdue in the last six weeks, nothing booked) in general words – never what is due; a baby whose
 //    schedule no doctor has approved yet is marked "Draft schedule" (ask the doctor before calling);
 //  - care plan to act on, and babies' vaccinations overdue with the vaccines by name (doctors, RMOs, nurses);
-//  - a few counts: high-risk pregnancies, overrides to review, active staff (admins).
+//  - a few counts: high-risk pregnancies, overrides to review, active staff (admins); referrals from other doctors
+//    (docs/REFERRALS_PLAN.md) – the desk's replies due, late promises (opening the Late list) and PDFs to send, and
+//    for doctors and RMOs the consultant notes to write and the PDFs to release (only when there are some).
 
 const has = (roles, list) => roles.some((r) => list.includes(r));
 
@@ -389,6 +390,11 @@ function RoleToday({ roles, lensBar = null }) {
   // jobs – no Scan & Share, walk-in tokens, babies' vaccination calls or calendar link
   const rmoOnly = roles.includes('rmo') && !has(roles, ['doctor', 'receptionist']); // the billing department's own cards and today's bills (BillingToday)
   const unpaid = useFetch(has(roles, ['billing', 'receptionist']) ? '/billing/reports/unpaid' : null);
+  // Referrals from other doctors: counts only, each role gets the ones that concern it (the others are 0)
+  const referralWork = useFetch(has(roles, REFERRAL_ROLES) ? '/referrals/worklist' : null);
+  const referrals = referralWork.data;
+  const isDesk = roles.includes('referral_desk');
+  const writesNotes = has(roles, ['doctor', 'rmo']);
   const collected = useFetch(isReception ? '/billing/reports/daily' : null);
   const beds = useFetch(isReception ? '/beds' : null, { summary: '1' });
   // The front desk's day: which doctors are in today, and tomorrow's bookings to confirm (owner, 14 Oct 2026)
@@ -492,6 +498,23 @@ function RoleToday({ roles, lensBar = null }) {
       />
     ),
     unpaid.data && !isBillingDesk && !isReception && <KpiCard key="unpaid" to="/billing/unpaid" tone={unpaid.data.bills.length ? 'watch' : 'neutral'} icon={Wallet} label="Unpaid bills" value={formatNumber(unpaid.data.bills.length)} sub={unpaid.data.owed ? `${rupees(unpaid.data.owed)} owed` : 'Nothing owed'} />,
+    // The referral desk's day: always shown, like the lab's counts (it is the desk's own work)
+    referrals && isDesk && (
+      <KpiCard key="ref-replies" to="/referrals" tone={referrals.replies ? 'due' : 'neutral'} icon={MessageCircleReply} label="Referral replies due" value={formatNumber(referrals.replies)} sub="Referring doctors waiting for her appointment time" />
+    ),
+    referrals && isDesk && (
+      <KpiCard key="ref-late" to="/referrals?list=late" tone={referrals.late ? 'high' : 'neutral'} icon={ClockAlert} label="Referral promises late" value={formatNumber(referrals.late)} sub="Referrals with a promise past its time" />
+    ),
+    referrals && isDesk && (
+      <KpiCard key="ref-send" to="/referrals" tone={referrals.toSend ? 'due' : 'neutral'} icon={Send} label="PDFs to send" value={formatNumber(referrals.toSend)} sub="Released notes and discharge summaries not yet marked sent" />
+    ),
+    // Doctors and RMOs: only when something is waiting for them
+    referrals && writesNotes && referrals.notesToWrite > 0 && (
+      <KpiCard key="ref-notes" to="/referrals" tone="due" icon={FilePen} label="Consultant notes to write" value={formatNumber(referrals.notesToWrite)} sub="Referred patients seen, note not yet signed" />
+    ),
+    referrals && writesNotes && referrals.toRelease > 0 && (
+      <KpiCard key="ref-release" to="/referrals" tone="due" icon={FileOutput} label="PDFs to release" value={formatNumber(referrals.toRelease)} sub="Signed notes and discharge cards for the desk to send" />
+    ),
     labWork.data && <KpiCard key="lab-collect" to="/lab" tone={labWork.data.counts.collect ? 'due' : 'neutral'} icon={TestTube} label="Samples to take" value={formatNumber(labWork.data.counts.collect)} sub="Lab orders waiting for a sample" />,
     labWork.data && <KpiCard key="lab-receive" to="/lab?list=receive" tone={labWork.data.counts.receive ? 'due' : 'neutral'} icon={TestTube} label="Samples to receive" value={formatNumber(labWork.data.counts.receive ?? 0)} sub="Taken on a ward or at home, not in the lab yet" />,
     labWork.data && <KpiCard key="lab-report" to="/lab?list=report" tone={labWork.data.counts.report ? 'due' : 'neutral'} icon={FlaskConical} label="Results to enter" value={formatNumber(labWork.data.counts.report)} sub="Samples taken, results not reported" />,
@@ -562,7 +585,7 @@ function RoleToday({ roles, lensBar = null }) {
                 <Hash aria-hidden="true" /> Walk-in token
               </button>
             )}
-            {canRegisterPatients(roles) && <MenuButton className="btn btn-primary" icon={UserPlus} label="New patient" items={NEW_PATIENT_LINKS} align="end" />}
+            {canRegisterPatients(roles) && <MenuButton className="btn btn-primary" icon={UserPlus} label="New patient" items={newPatientLinks(roles)} align="end" />}
           </>
         }
       />

@@ -12,11 +12,15 @@
 //   and whether the record is closed (no counter sale).
 // - Billing department: name, patient number, phone, doctor and who pays, to find her bills, call about unpaid ones and
 //   claim from an insurer or scheme.
+// - Referral desk (owner, 15 Oct 2026 – docs/REFERRALS_PLAN.md, brought over 19 Oct 2026): logs referrals from other
+//   doctors, registers the woman sent and books her appointment. Name, patient number, age, phone, type of care, her
+//   doctor and whether the record is closed – no address, reminders, ABHA, pregnancy or anything medical, on every
+//   record (sensitive or not). Her referrals through routes/referrals.js; never the medical record.
 // - Everyone but lab staff sees whether a record is closed after a death – never why or when (clinical details).
 // - Hospital admin (with no clinical role): no patient data.
 // A person with several roles gets everything any of their roles allows.
 
-export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing'];
+export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing', 'referral_desk'];
 
 // duplicateOf: the record is marked as a duplicate of another (that record's number, who marked it and when) –
 // everyone who may open the record sees it, so nobody works on the wrong record. earlierRecords: on the main
@@ -27,6 +31,10 @@ export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', '
 // number only: nothing they do is refused on a closed record (doctors order the tests; an order already made is
 // finished).
 const LAB_FIELDS = ['id', 'mrn', 'fullName', 'careType', 'tenantId', 'duplicateOf', 'earlierRecords'];
+// The referral desk's details (see the rules above): what it needs to register her, find her again and book her –
+// with her doctor, so the booking goes to the right consultant. Not `sensitive`: whether a record is sensitive is
+// itself a clinical hint, and the desk's view is the same on every record.
+const DESK_FIELDS = [...LAB_FIELDS, 'closed', 'ageYears', 'ageRecordedOn', 'currentAge', 'phone', 'assignedDoctor', 'assignedDoctorName', 'createdAt', 'updatedAt'];
 const IDENTITY_FIELDS = [
   ...LAB_FIELDS,
   'closed',
@@ -148,6 +156,9 @@ function forRole(role, patient, userId) {
     case 'billing':
       // payer: who pays and the card or policy number, for the bill and an insurance claim (owner, 14 Oct 2026)
       return { ...NONE, view: [...LAB_FIELDS, 'closed', 'phone', 'payer', 'assignedDoctor', 'assignedDoctorName'] };
+    case 'referral_desk':
+      // Identity details only, and nothing to change: she is registered through POST /api/patients (creationAccess)
+      return { ...NONE, view: DESK_FIELDS };
     default:
       return NONE;
   }
@@ -233,8 +244,11 @@ export function creationAccess(req) {
   const roles = req.membership?.roles ?? [];
   return {
     // The lab registers walk-in and referred patients (identity only – owner, 17 Oct 2026, docs/LAB_V2_PLAN.md)
-    allowed: roles.some((r) => ['receptionist', 'rmo', 'doctor', 'lab'].includes(r)),
+    allowed: roles.some((r) => ['receptionist', 'rmo', 'doctor', 'lab', 'referral_desk'].includes(r)),
     clinical: roles.some((r) => ['rmo', 'doctor'].includes(r)),
+    // Every identity detail (the address, a baby's birth details). The referral desk registers a woman sent by another
+    // doctor with what it may see of her afterwards – name, age, phone, type of care and doctor – and no babies.
+    fullIdentity: roles.some((r) => ['receptionist', 'rmo', 'doctor', 'lab'].includes(r)),
   };
 }
 

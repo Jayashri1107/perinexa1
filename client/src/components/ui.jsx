@@ -346,6 +346,7 @@ export const ROLE_LABELS = {
   lab: 'Lab staff',
   pharmacist: 'Pharmacist',
   billing: 'Billing',
+  referral_desk: 'Referral desk',
 };
 export const ROLE_HINTS = {
   admin: 'Manages staff, print settings and the audit log',
@@ -356,6 +357,7 @@ export const ROLE_HINTS = {
   lab: 'Lab worklist: collects samples, enters results, attaches reports',
   pharmacist: 'Pharmacy: medicine stock, counter sales and the registers',
   billing: 'Billing department: bills, payments, refunds and billing reports',
+  referral_desk: 'Referral desk: logs referrals from other doctors, books appointments and sends replies; never the medical record',
 };
 export const ROLES = Object.keys(ROLE_LABELS);
 export const roleLabel = (role) => ROLE_LABELS[role] ?? role;

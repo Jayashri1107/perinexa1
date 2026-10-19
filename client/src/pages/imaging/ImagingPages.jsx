@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, Printer, ScanLine, Siren } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileText, Printer, ScanLine, Siren } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -8,11 +8,13 @@ import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/
 import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
+import { CALC_SOURCES, draftReport, gaWords, ordinal, workOut } from './usgCalc.js';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): the worklist (to schedule, scheduled, to report,
 // signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
-// order dialog. Reception and nurses see the name, number and study only. PCPNDT: no field holds a fetus's sex; any
-// text about it is refused here and on the server.
+// order dialog. Doctors and RMOs only (owner, 19 Oct 2026). Pregnancy scans work out the weeks, EDD, weight and
+// centile from the readings and write a draft report (usgCalc.js, DRAFT); "Complete" signs and prints. PCPNDT: no
+// field holds a fetus's sex; any text about it is refused here and on the server.
 
 export const STATUS = {
   ordered: { tone: 'due', icon: Clock, word: 'To schedule' },
@@ -96,21 +98,39 @@ export function ImagingWorklistPage() {
   );
 }
 
-function ReportForm({ s, template, onSaved, onError }) {
+function ReportForm({ s, template, onSaved, onError, onAsk = null }) {
   const [values, setValues] = useState(() => Object.fromEntries((template?.fields ?? []).map((f) => [f.key, s.report?.values?.[f.key] != null ? String(s.report.values[f.key]) : ''])));
   const [findings, setFindings] = useState(s.report?.findings ?? '');
   const [impression, setImpression] = useState(s.report?.impression ?? '');
   const [reason, setReason] = useState('');
   const [fields, setFields] = useState({});
   const [busy, setBusy] = useState(false);
+  // Worked out from the readings (usgCalc.js, DRAFT): put in the fields it fills – never over what was typed by hand
+  const typedByHand = useRef(new Set(Object.keys(s.report?.values ?? {}).filter((k) => s.report.values[k] !== '' && s.report.values[k] != null)));
+  const scanDay = s.done?.at ?? s.scheduledFor ?? new Date();
+  const calc = useMemo(() => workOut(s.study, values, { on: scanDay, eddByDates: s.patient?.eddByDates ?? null }), [s.study, values, scanDay, s.patient?.eddByDates]);
+  useEffect(() => {
+    const next = Object.entries(calc.fill).filter(([k, v]) => !typedByHand.current.has(k) && values[k] !== v);
+    if (next.length) setValues((cur) => ({ ...cur, ...Object.fromEntries(next) }));
+  }, [calc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setValue = (key, value) => {
+    if (key in calc.fill) typedByHand.current.add(key);
+    setValues({ ...values, [key]: value });
+  };
+  const writeReport = () => {
+    const d = draftReport(s.study, values, calc, template?.fields ?? []);
+    setFindings(d.findings);
+    if (d.impression) setImpression(d.impression);
+  };
   const save = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if ([findings, impression, ...Object.values(values)].some((t) => mentionsFetalSex(t))) return setFields({ findings: PCPNDT_MESSAGE });
     setBusy(true);
     try {
       const res = await api(`/imaging/${s.id}/report`, { method: 'PUT', body: { rev: s.rev, values, findings, impression, reason } });
       setFields({});
       onSaved(res.study, 'Report saved.');
+      if (res.study.status === 'done') onAsk?.(); // "Is the report complete?" (on the page: the form starts again after a save)
     } catch (err) {
       setFields(err.fields ?? {});
       onError(err);
@@ -119,6 +139,7 @@ function ReportForm({ s, template, onSaved, onError }) {
     }
     return undefined;
   };
+  const worked = [calc.ga && `${gaWords(calc.ga)} by ${calc.gaFrom}`, calc.edd && `EDD by scan ${calc.edd}`, calc.efw && `weight ${calc.efw} g`, calc.efwCentile && `${ordinal(calc.efwCentile)} centile by dates`].filter(Boolean);
   return (
     <form className="card" onSubmit={save} noValidate aria-labelledby="img-report-title">
       <h2 id="img-report-title">Report</h2>
@@ -127,7 +148,7 @@ function ReportForm({ s, template, onSaved, onError }) {
         {(template?.fields ?? []).map((f) => (
           <Field key={f.key} label={`${f.name}${f.unit ? ` (${f.unit})` : ''}`} id={`img-${f.key}`} error={fields[`values.${f.key}`]}>
             {f.type === 'choice' ? (
-              <select id={`img-${f.key}`} value={values[f.key]} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}>
+              <select id={`img-${f.key}`} value={values[f.key]} onChange={(e) => setValue(f.key, e.target.value)}>
                 <option value="">—</option>
                 {f.options.map((o) => (
                   <option key={o} value={o}>
@@ -136,13 +157,31 @@ function ReportForm({ s, template, onSaved, onError }) {
                 ))}
               </select>
             ) : (
-              <input id={`img-${f.key}`} inputMode={f.type === 'number' ? 'decimal' : undefined} maxLength={300} value={values[f.key]} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+              <input
+                id={`img-${f.key}`}
+                className={f.key in calc.fill && !typedByHand.current.has(f.key) ? 'voice-filled' : undefined}
+                inputMode={f.type === 'number' ? 'decimal' : undefined}
+                maxLength={300}
+                value={values[f.key]}
+                onChange={(e) => setValue(f.key, e.target.value)}
+              />
             )}
           </Field>
         ))}
       </div>
+      {worked.length > 0 && (
+        <p className="hint img-worked" role="status">
+          <Calculator aria-hidden="true" /> Worked out from the readings: {worked.join(' · ')}. {CALC_SOURCES}.
+        </p>
+      )}
+      <div className="row">
+        <button type="button" className="btn btn-secondary btn-sm" onClick={writeReport}>
+          <FileText aria-hidden="true" /> Write the report from the readings
+        </button>
+        <span className="hint">Fills the findings and impression for you to check and change.</span>
+      </div>
       <Field label="Findings" id="img-findings" error={fields.findings}>
-        <textarea id="img-findings" rows={4} maxLength={4000} value={findings} onChange={(e) => setFindings(e.target.value)} />
+        <textarea id="img-findings" rows={6} maxLength={4000} value={findings} onChange={(e) => setFindings(e.target.value)} />
       </Field>
       <Field label="Impression" id="img-impression" error={fields.impression}>
         <textarea id="img-impression" rows={2} maxLength={1000} value={impression} onChange={(e) => setImpression(e.target.value)} />
@@ -161,11 +200,11 @@ function ReportForm({ s, template, onSaved, onError }) {
   );
 }
 
-function ReportPrint({ s, template, onClose }) {
+function ReportPrint({ s, template, onClose, autoPrint = false }) {
   const lh = useFetch('/tenant/settings/letterhead');
   const record = () => api(`/imaging/${s.id}/printed`, { method: 'POST' });
   return (
-    <PrintPreview title="Scan report – print preview" hint="Check it, then print on A4 paper." onPrint={record} onClose={onClose}>
+    <PrintPreview title="Scan report – print preview" hint="Check it, then print on A4 paper." onPrint={record} onClose={onClose} autoPrint={autoPrint}>
       {!lh.data && !lh.error ? (
         <p className="muted">Preparing…</p>
       ) : (
@@ -217,7 +256,8 @@ export function ImagingStudyPage() {
   const [notice, setNotice] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [when, setWhen] = useState(() => localInput(new Date()));
-  const [printing, setPrinting] = useState(false);
+  const [printing, setPrinting] = useState(false); // false | 'preview' | 'auto' (completed: prints by itself)
+  const [asking, setAsking] = useState(false); // the report saved: "Is the report complete?"
   const s = current ?? data?.study;
   const saved = (next, msg) => {
     setCurrent(next);
@@ -234,6 +274,15 @@ export function ImagingStudyPage() {
   const act = async (path, body, msg) => {
     try {
       saved((await api(`/imaging/${s.id}/${path}`, { method: 'POST', body: { rev: s.rev, ...body } })).study, msg);
+    } catch (err) {
+      failed(err);
+    }
+  };
+  const complete = async () => {
+    try {
+      saved((await api(`/imaging/${s.id}/sign`, { method: 'POST', body: { rev: s.rev } })).study, 'Signed. The report is printing.');
+      setAsking(false);
+      setPrinting('auto');
     } catch (err) {
       failed(err);
     }
@@ -289,7 +338,24 @@ export function ImagingStudyPage() {
             )}
           </div>
         </section>
-        {a.canReport && <ReportForm key={`${s.rev}`} s={s} template={data?.template} onSaved={saved} onError={failed} />}
+        {a.canReport && <ReportForm key={`${s.rev}`} s={s} template={data?.template} onSaved={saved} onError={failed} onAsk={() => setAsking(true)} />}
+        {asking && s.status === 'done' && (
+          // Asked once the report is saved (owner, 19 Oct 2026): complete – the doctor signs and it prints by itself
+          <section className="card img-complete" aria-labelledby="img-complete-title">
+            <h2 id="img-complete-title">Is the report complete?</h2>
+            <p>{a.canSign ? 'Complete signs the report and prints it. Add something keeps it open for more.' : 'A doctor signs it; until then it stays open for more.'}</p>
+            <div className="row">
+              {a.canSign && (
+                <button type="button" className="btn btn-primary" onClick={complete}>
+                  <CircleCheck aria-hidden="true" /> Complete – sign and print
+                </button>
+              )}
+              <button type="button" className="btn btn-secondary" onClick={() => setAsking(false)}>
+                Add something
+              </button>
+            </div>
+          </section>
+        )}
         {!a.canReport && s.report && (
           <section className="card">
             <h2>Report</h2>
@@ -298,7 +364,7 @@ export function ImagingStudyPage() {
           </section>
         )}
       </div>
-      {printing && <ReportPrint s={s} template={data?.template} onClose={() => setPrinting(false)} />}
+      {printing && <ReportPrint s={s} template={data?.template} autoPrint={printing === 'auto'} onClose={() => setPrinting(false)} />}
     </>
   );
 }

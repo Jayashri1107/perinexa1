@@ -190,6 +190,25 @@ describe('several roles per person', () => {
     expect((await add({ name: 'None', email: 'none@example.com', roles: [] })).status).toBe(400);
   });
 
+  it('adds a referral desk person (referrals, booking and replies; never the medical record)', async () => {
+    const desk = await add({ name: 'Sample Desk', email: 'desk@example.com', roles: ['referral_desk'] });
+    expect(desk.status).toBe(201);
+    expect(desk.body.member.roles).toEqual(['referral_desk']);
+    // beside another role, in the fixed order (TENANT_ROLES: last)
+    const both = await add({ name: 'Sample Desk And Reception', email: 'desk.reception@example.com', roles: ['referral_desk', 'receptionist'] });
+    expect(both.status).toBe(201);
+    expect(both.body.member.roles).toEqual(['receptionist', 'referral_desk']);
+    const entry = await AuditLog.findOne({ action: 'MEMBER_ADDED', targetEmail: 'desk@example.com' });
+    expect(entry.details).toEqual({ roles: ['referral_desk'] });
+    // The admin's role picker offers it, and the list filters by it
+    const list = await s.get('/api/tenant/members?role=referral_desk');
+    expect(list.body.roles).toContain('referral_desk');
+    expect(list.body.members.map((m) => m.user.name).sort()).toEqual(['Sample Desk', 'Sample Desk And Reception']);
+    // An unknown role is still refused
+    expect((await add({ name: 'Wrong Role', email: 'wrong@example.com', roles: ['referral'] })).status).toBe(400);
+  });
+
+
   it('a doctor who is also admin can manage staff', async () => {
     const both = await createUser();
     await addMember(both, home, ['doctor', 'admin']);

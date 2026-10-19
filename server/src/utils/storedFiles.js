@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { FILE_TYPES, StoredFile } from '../models/StoredFile.js';
+import { FILE_TYPES, NO_PATIENT_KINDS, StoredFile } from '../models/StoredFile.js';
 import { HttpError } from './httpError.js';
 import { safeText } from './pcpndt.js';
 
-// Files attached to a record (lab reports, scanned consent forms): sent as base64 in JSON (the body limit for
-// these paths is in app.js), at most 5 MB, and only a PDF or a photo – checked from the file's first bytes, not
-// only from what the browser says. Served back inline with the stored type.
+// Files attached to a record (lab reports, scanned consent forms, a referral's files): sent as base64 in JSON (the
+// body limit for these paths is in app.js), at most 5 MB, and only a PDF or a photo – checked from the file's first
+// bytes, not only from what the browser says. Served back inline with the stored type.
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -28,8 +28,14 @@ const MAGIC = {
 export const cleanFileName = (name) => name.replace(/[^\w.\- ()]/g, '_').slice(0, 120) || 'file';
 const invalid = (message) => Object.assign(new HttpError(400, message, 'VALIDATION'), { fields: { file: message } });
 
-/** Checks the upload and stores it. Returns the stored file (without reading its data back). */
-export async function storeFile(req, { patientId, kind, ownerId, body }) {
+/**
+ * Checks the upload and stores it. Returns the stored file (without reading its data back).
+ * patientId: null only for a referral's files (a referral can arrive before she is registered – NO_PATIENT_KINDS).
+ * types: the file types this place takes (a released note or discharge card: PDF only); any PDF or photo by default.
+ */
+export async function storeFile(req, { patientId = null, kind, ownerId, body, types = FILE_TYPES }) {
+  if (!patientId && !NO_PATIENT_KINDS.includes(kind)) throw new Error(`A stored file of kind ${kind} needs a patient`);
+  if (!types.includes(body.mediaType)) throw invalid(types.length === 1 && types[0] === 'application/pdf' ? 'Only a PDF file.' : 'Only PDF, JPEG, PNG or WebP files.');
   const data = Buffer.from(body.data, 'base64');
   if (data.length > MAX_FILE_BYTES) throw invalid('The file is too large (at most 5 MB).');
   if (!MAGIC[body.mediaType](data)) throw invalid('This file is not a readable PDF or photo.');

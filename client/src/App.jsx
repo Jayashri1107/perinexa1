@@ -42,6 +42,7 @@ import { MedicineStockPage, StockPage } from './pages/pharmacy/StockPage.jsx';
 import { NewSupplierReturnPage, SupplierReturnPage, SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
 import { BillsPage } from './pages/billing/BillsPage.jsx';
 import { BillingSettingsPage } from './pages/billing/BillingExtras.jsx';
+import { TallyBatchPage, TallyBatchesPage, TallyControlPage, TallyExceptionsPage, TallySettingsPage } from './pages/billing/TallyPage.jsx';
 import { DailySummaryPage, MonthlyPage, PatientBillsTab, PriceListPage, UnpaidPage } from './pages/billing/BillingReports.jsx';
 import { PatientsPage } from './pages/patients/PatientsPage.jsx';
 import { VoiceWordsPage } from './pages/VoiceWordsPage.jsx';
@@ -108,7 +109,16 @@ import { ByDoctorPage } from './pages/analytics/ByDoctorPage.jsx';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
 import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, SCAN_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { ReferralSettingsPage } from './pages/settings/ReferralSettingsPage.jsx';
+import { ReferralsDeskPage } from './pages/referrals/ReferralsDeskPage.jsx';
+import { NewReferralPage } from './pages/referrals/NewReferralPage.jsx';
+import { ReferralPage } from './pages/referrals/ReferralPage.jsx';
+import { ReferringDoctorsPage } from './pages/referrals/ReferringDoctorsPage.jsx';
+import { ReferringDoctorSummaryPage } from './pages/referrals/ReferringDoctorSummaryPage.jsx';
+import { ReferralReviewPage } from './pages/referrals/ReferralReviewPage.jsx';
+import { ReferralSlipPage } from './pages/referrals/ReferralSlipPage.jsx';
+import { PatientReferralsTab } from './pages/referrals/PatientReferralsTab.jsx';
 
 // Unknown address: the title in the title bar, then a short message and the way back.
 // Old Registers links (removed 2 Oct 2026) go to the monthly report in Analytics, keeping ?month=… so a bookmarked month still opens.
@@ -235,6 +245,8 @@ export function App() {
                 <Route path="stays/:admissionId" element={<AdmissionPage />} />
                 <Route path="stays/:admissionId/docs/:docId" element={<DocumentPage />} />
                 <Route path="lab" element={<PatientLabTab />} />
+                {/* Her referrals from other doctors (doctors and RMOs; the server lists only those this person may open) */}
+                <Route path="referrals" element={<PatientReferralsTab />} />
                 <Route path="lab/:orderId" element={<LabOrderPage />} />
                 <Route path="edit" element={<PatientEditTab />} />
               </Route>
@@ -259,14 +271,24 @@ export function App() {
               {/* The registers were removed on 2 Oct 2026; old links go to the monthly report in Analytics. */}
               <Route path="registers/*" element={<RegistersRedirect />} />
               {/* USG and radiology (Lab version 2) */}
-              <Route path="scans" element={<RequireTenantRole roles={SCAN_ROLES} message="Scans are for doctors, RMOs, nurses and reception." />}>
+              <Route path="scans" element={<RequireTenantRole roles={SCAN_ROLES} message="Scans are for doctors and RMOs." />}>
                 <Route index element={<ImagingWorklistPage />} />
                 <Route path=":id" element={<ImagingStudyPage />} />
               </Route>
               <Route path="beds" element={<RequireTenantRole roles={BED_ROLES} message="The bed board is for reception, doctors, RMOs and nurses." />}>
                 <Route index element={<BedBoardPage />} />
               </Route>
-              <Route path="appointments" element={<RequireTenantRole roles={APPOINTMENT_ROLES} message="Appointments are for reception, doctors, RMOs and nurses." />}>
+              {/* Referrals from other doctors (docs/REFERRALS_PLAN.md): the referral desk, doctors and RMOs */}
+              <Route path="referrals" element={<RequireTenantRole roles={REFERRAL_ROLES} message="Referrals are for the referral desk, doctors and RMOs." />}>
+                <Route index element={<ReferralsDeskPage />} />
+                <Route path="new" element={<NewReferralPage />} />
+                <Route path="doctors" element={<ReferringDoctorsPage />} />
+                <Route path="doctors/:doctorId/summary" element={<ReferringDoctorSummaryPage />} />
+                <Route path="review" element={<ReferralReviewPage />} />
+                <Route path="slip" element={<ReferralSlipPage />} />
+                <Route path=":referralId" element={<ReferralPage />} />
+              </Route>
+              <Route path="appointments" element={<RequireTenantRole roles={APPOINTMENT_ROLES} message="Appointments are for reception, the referral desk, doctors, RMOs and nurses." />}>
                 <Route index element={<AppointmentsPage />} />
                 <Route path="month" element={<AppointmentsMonthPage />} />
                 <Route path="needs-time" element={<NeedsTimePage />} />
@@ -312,6 +334,14 @@ export function App() {
                 {/* The hospital's UPI ID and payee name, for the UPI payment link of a bill */}
                 <Route path="settings" element={<RequireTenantRole roles={['admin']} message="The billing settings are kept by the hospital admin." />}>
                   <Route index element={<BillingSettingsPage />} />
+                </Route>
+                {/* The Tally link (docs/TALLY_PLAN.md): files for the accountant's Tally, hospital admin only */}
+                <Route path="accounts" element={<RequireTenantRole roles={['admin']} message="The Tally link is kept by the hospital admin." />}>
+                  <Route index element={<TallyBatchesPage />} />
+                  <Route path="settings" element={<TallySettingsPage />} />
+                  <Route path="exceptions" element={<TallyExceptionsPage />} />
+                  <Route path="control" element={<TallyControlPage />} />
+                  <Route path="batches/:id" element={<TallyBatchPage />} />
                 </Route>
               </Route>
               <Route path="calendar" element={<RequireCalendarRole />}>
@@ -376,6 +406,8 @@ export function App() {
                 <Route path="opd-timings" element={<OpdTimingsPage admin />} />
                 <Route path="beds" element={<BedSetupPage />} />
                 <Route path="abdm" element={<AbdmSettingsPage />} />
+                {/* The referral settings: centres, desk number, consultants' direct lines, working hours, holidays */}
+                <Route path="referrals" element={<ReferralSettingsPage />} />
                 <Route path="audit-log" element={<HospitalAuditLogPage />} />
                 {['security', 'access', 'sessions', 'patients'].map((c) => (
                   <Route key={c} path={`audit-log/${c}`} element={<AuditCategoryRedirect to="/admin/audit-log" category={c} />} />

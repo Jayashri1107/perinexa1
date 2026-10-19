@@ -8,8 +8,8 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Avatar, StatusPill, formatDate, formatDateTime, hasRole } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { useListParams } from '../../hooks/useListParams.js';
-import { canRegisterPatients } from '../../platform/modules.js';
-import { NEW_PATIENT_LINKS, ageText, careNowText, sinceText } from './patientFormat.js';
+import { canRegisterPatients, newPatientLinks } from '../../platform/modules.js';
+import { ageText, careNowText, sinceText } from './patientFormat.js';
 import { RiskBadge } from './RiskCard.jsx';
 import { RISK_SHORT } from './riskFormat.js';
 import { SignupsNotice } from './SignupsPage.jsx';
@@ -239,7 +239,7 @@ export function PatientsPage() {
         help={`Click a patient to open her record. Use the choices above the list to show only some patients.${seesDuplicates ? ' Records marked as a duplicate of another are hidden: More filters shows them.' : ''}`}
         actions={
           canRegister && (
-            <MenuButton className="btn btn-primary" icon={UserPlus} label="New patient" items={NEW_PATIENT_LINKS} align="end" />
+            <MenuButton className="btn btn-primary" icon={UserPlus} label="New patient" items={newPatientLinks(roles)} align="end" />
           )
         }
       />
@@ -293,7 +293,7 @@ export function PatientsPage() {
             ) : (
               <span className="pt-empty">
                 No patients in this hospital yet.
-                {canRegister && <MenuButton className="btn btn-secondary btn-sm" icon={UserPlus} label="Register the first patient" items={NEW_PATIENT_LINKS} />}
+                {canRegister && <MenuButton className="btn btn-secondary btn-sm" icon={UserPlus} label="Register the first patient" items={newPatientLinks(roles)} />}
               </span>
             )
           }

@@ -63,6 +63,23 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   tick "Findings in this pregnancy" (marked From voice; saved only on Save). **How to test:** "How to test booking with
   a chosen doctor, the Aadhaar QR and voice choices" below.
 
+- **Brought from the other copy, C:\Perinexa (19 Oct 2026 – owner asked for the modules missing here):**
+  1. **Sonography** – perinexa1 already had Scans (USG and radiology), so the other copy's ultrasound module was not added
+     as a second system; its strengths were added to Scans: the readings work out the weeks and EDD by scan (CRL,
+     biometry or mean sac diameter), the baby's weight (Hadlock) and its centile by her dates, filled into the form
+     (never over what was typed by hand); "Write the report from the readings" drafts the findings and impression;
+     after saving, "Is the report complete?" – Complete signs it and the print window opens by itself. Scans is now for
+     doctors and RMOs only (owner). DRAFT formulas and sentences (`client/src/pages/imaging/usgCalc.js`). **Not yet:**
+     the machine sending its readings by itself (DICOM structured report) – needs the machine's make and model and a
+     DICOM add-on (developer to agree).
+  2. **Referrals from other doctors** – the referral desk login, referring doctors, the six promises with clocks, the
+     consultant note, PDFs released to the desk, the weekly review, quarterly summaries, the referral slip, and
+     Hospital admin → Referrals settings (`docs/REFERRALS_PLAN.md`). Left out here: the other copy's separate
+     sonologist login; referrals in the copy of the whole record (later).
+  3. **Tally link** – Billing → Accounts for the hospital admin: account names, batches as Tally XML files, exceptions,
+     the control sheet and "Sent to Tally" marks (`docs/TALLY_PLAN.md`). To be tried with the accountant's TallyPrime.
+  **How to test:** see "How to test the modules brought from C:\Perinexa" below.
+
 ## Done
 - Project rules saved in `CLAUDE.md`.
 - **Phase 0 – computer set up.** macOS 26.6 (Intel), Node.js v24 (LTS), npm 11, git 2.50,
@@ -2497,6 +2514,18 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 3. New patient → Dictate → say or type "Pregnancy, Asha Sample, age 28, phone 98765 43210, GDM on diet, twins" → stop
    (or "Open this form"): the Pregnancy form opens filled in. As a doctor, Save and continue: GDM and Twins are ticked
    on the next page, marked "From voice – check".
+
+## How to test the modules brought from C:\Perinexa (fake data only)
+
+1. **Sonography:** sign in as a doctor → a sample pregnant patient → Lab tab → order a scan (e.g. growth scan) → Scans
+   → open it → Mark done → type BPD, HC, AC, FL: the weeks, EDD by scan and weight appear; Write the report from the
+   readings → Save the report → "Is the report complete?" → Complete – sign and print: the print window opens.
+   Signed in as reception or a nurse, Scans is not in the menu.
+2. **Referrals:** as the hospital admin, Hospital admin → Referrals (centres, desk number, working hours). Give a sample
+   staff member the "Referral desk" role (super admin → Staff). As the desk: Referrals → New referral → log one →
+   book her appointment → Reply. As a doctor: Referrals → write the consultant note → sign → release the PDF.
+3. **Tally:** as the hospital admin, Billing → Accounts → Settings (company name, books from) → make a batch → download
+   the files (for the accountant to import into TallyPrime).
 
 ## How to test patients' own accounts (fake data only)
 1. As the hospital admin: Hospital admin → Patient messages → tick "Let patients see their next appointment and care

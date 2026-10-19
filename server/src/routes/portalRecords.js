@@ -8,6 +8,14 @@ import { nextAppointment, statesFor, statusOf } from '../appointments/appointmen
 import { Appointment } from '../models/Appointment.js';
 import { Bill } from '../models/Bill.js';
 import { PatientAccount } from '../models/PatientAccount.js';
+import { PatientChangeRequest } from '../models/PatientChangeRequest.js';
+import { ImagingOrder } from '../models/ImagingOrder.js';
+import { currentAge } from '../models/Patient.js';
+import { studyByKey } from '../imaging/templates.js';
+import { mobileDigits } from '../abdm/abhaFormat.js';
+import { HttpError } from '../utils/httpError.js';
+import { parse } from '../utils/validate.js';
+import { z } from 'zod';
 import { LabOrder } from '../models/LabOrder.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
@@ -230,19 +238,127 @@ portalRecordsRouter.get('/appointments', async (req, res) => {
   res.json({ today: isoDay(today), appointments: list });
 });
 
-/** Her own details as the hospital has them (to read; changes are made at reception, who check who she is). */
-portalRecordsRouter.get('/profile', async (req, res) => {
-  const { access, patient, tenant } = await portalSession(req, res);
+// ---------- My profile (owner, 19 Oct 2026): her details, the contact details she changes herself, and a request to
+// reception for her name, age, mobile or email (reception checks who she is – routes/patientAccounts.js) ----------
+
+const profileView = async (access, patient, tenant) => {
   const p = patient.toJSON();
   const account = access.accountId ? await PatientAccount.findOne({ tenantId: access.tenantId, _id: access.accountId }, { email: 1, mobile: 1 }).lean() : null;
-  await viewed(req, access, 'profile');
-  res.json({
+  const pending = await PatientChangeRequest.findOne({ tenantId: access.tenantId, patientId: patient._id, status: 'pending' }).sort({ createdAt: -1, _id: -1 }).lean();
+  const last = pending ? null : await PatientChangeRequest.findOne({ tenantId: access.tenantId, patientId: patient._id, status: { $in: ['approved', 'rejected'] } }).sort({ updatedAt: -1, _id: -1 }).lean();
+  return {
     hospital: letterheadFor(tenant).name,
     fullName: p.fullName,
     mrn: p.mrn,
     age: p.currentAge ?? null,
     phone: p.phone ?? '',
-    address: [p.address, p.city, p.state, p.pinCode].filter(Boolean).join(', '),
     email: account?.email ?? null,
-  });
+    address: [p.address, p.city, p.state, p.pinCode].filter(Boolean).join(', '),
+    // What she may change herself
+    contact: {
+      address: p.address ?? '',
+      city: p.city ?? '',
+      state: p.state ?? '',
+      pinCode: p.pinCode ?? '',
+      emergencyContact: { name: p.emergencyContact?.name ?? '', relation: p.emergencyContact?.relation ?? '', phone: p.emergencyContact?.phone ?? '' },
+    },
+    // A record marked as a duplicate is not changed from the portal (the hospital uses her main record)
+    canEdit: !isDuplicateRecord(patient),
+    request: pending ? { changes: pending.changes, note: pending.note, at: pending.createdAt, status: 'pending' } : null,
+    lastRequest: last ? { changes: last.changes, status: last.status, at: last.updatedAt, reason: last.status === 'rejected' ? last.reviewed?.reason ?? '' : '' } : null,
+  };
+};
+const isDuplicateRecord = (p) => Boolean(p.duplicateOf?.patient);
+
+/** Her own details as the hospital has them, with what she may change. */
+portalRecordsRouter.get('/profile', async (req, res) => {
+  const { access, patient, tenant } = await portalSession(req, res);
+  await viewed(req, access, 'profile');
+  res.json(await profileView(access, patient, tenant));
+});
+
+const contactSchema = z
+  .object({
+    address: z.string().trim().max(300),
+    city: z.string().trim().max(60),
+    state: z.string().trim().max(60),
+    pinCode: z.string().trim().regex(/^(\d{6})?$/, 'A PIN code has 6 digits.'),
+    emergencyContact: z.object({ name: z.string().trim().max(100), relation: z.string().trim().max(50), phone: z.string().trim().max(30).regex(/^[0-9+()\-\s]*$/, 'A phone number has only digits.') }).strict(),
+  })
+  .strict();
+
+/** The contact details she changes herself: address, city, state, PIN code and whom to call in an emergency. */
+portalRecordsRouter.put('/profile/contact', async (req, res) => {
+  const { access, patient, tenant } = await portalSession(req, res);
+  if (isDuplicateRecord(patient)) throw new HttpError(409, 'Please ask the hospital to change your details.', 'NOT_EDITABLE');
+  const body = parse(contactSchema, req.body);
+  const before = patient.toJSON();
+  const changed = ['address', 'city', 'state', 'pinCode'].filter((k) => (before[k] ?? '') !== body[k]);
+  if (['name', 'relation', 'phone'].some((k) => (before.emergencyContact?.[k] ?? '') !== body.emergencyContact[k])) changed.push('emergencyContact');
+  Object.assign(patient, { address: body.address, city: body.city, state: body.state, pinCode: body.pinCode, emergencyContact: body.emergencyContact });
+  await patient.save();
+  // Which fields, never what she wrote
+  if (changed.length) await portalAudit(req, 'PORTAL_PROFILE_UPDATED', access, { fields: changed });
+  res.json(await profileView(access, patient, tenant));
+});
+
+const requestSchema = z
+  .object({
+    fullName: z.string().trim().min(2, 'Please write your full name.').max(150).optional(),
+    ageYears: z.coerce.number().int('Age is a whole number.').min(10, 'Please check the age.').max(120, 'Please check the age.').optional(),
+    phone: z.string().trim().max(20).optional(),
+    email: z.string().trim().toLowerCase().email('Please check the email.').max(254).optional(),
+    note: z.string().trim().max(300).default(''),
+  })
+  .strict();
+
+/** A request to reception to change her name, age, mobile or email (a new one replaces one still waiting). */
+portalRecordsRouter.post('/profile/request', async (req, res) => {
+  const { access, patient, tenant } = await portalSession(req, res);
+  if (isDuplicateRecord(patient)) throw new HttpError(409, 'Please ask the hospital to change your details.', 'NOT_EDITABLE');
+  const body = parse(requestSchema, req.body);
+  const changes = {};
+  if (body.fullName && body.fullName !== patient.fullName) changes.fullName = body.fullName;
+  if (body.ageYears != null && body.ageYears !== currentAge(patient, req.now)) changes.ageYears = body.ageYears;
+  if (body.phone) {
+    const m = mobileDigits(body.phone);
+    if (!m) throw Object.assign(new HttpError(400, 'Enter a 10-digit mobile number.', 'VALIDATION'), { fields: { phone: 'Enter a 10-digit mobile number.' } });
+    if (mobileDigits(patient.phone) !== m) changes.phone = m;
+  }
+  if (body.email) {
+    const account = access.accountId ? await PatientAccount.findOne({ tenantId: access.tenantId, _id: access.accountId }, { email: 1 }).lean() : null;
+    if (!account) throw Object.assign(new HttpError(400, 'An email is kept only with your own account (sign-up).', 'VALIDATION'), { fields: { email: 'An email is kept only with your own account.' } });
+    if (account.email !== body.email) changes.email = body.email;
+  }
+  if (!Object.keys(changes).length) throw new HttpError(400, 'Nothing to change: write the new name, age, mobile or email.', 'VALIDATION');
+  await PatientChangeRequest.updateMany({ tenantId: access.tenantId, patientId: patient._id, status: 'pending' }, { $set: { status: 'replaced' } });
+  await PatientChangeRequest.create({ tenantId: access.tenantId, patientId: patient._id, accountId: access.accountId ?? null, changes, note: body.note });
+  await portalAudit(req, 'PORTAL_CHANGE_REQUESTED', access, { fields: Object.keys(changes) });
+  res.status(201).json(await profileView(access, patient, tenant));
+});
+
+// ---------- Her sonography (and other scan) reports: signed only, as printed – never anything about a baby's sex
+// (no field holds it, and the report's text refuses it: utils/pcpndt.js) ----------
+portalRecordsRouter.get('/scans', async (req, res) => {
+  const { access, patient, tenant } = await portalSession(req, res);
+  let scans = [];
+  if (!patient.sensitive) {
+    const orders = await ImagingOrder.find({ tenantId: access.tenantId, patientId: patient._id, status: 'signed' }).sort({ 'signed.at': -1 }).limit(LIMIT).lean();
+    scans = orders.map((o) => {
+      const study = studyByKey.get(o.study);
+      const values = o.report?.values ?? {};
+      return {
+        id: String(o._id),
+        study: study?.name ?? o.study,
+        on: o.done?.at ?? o.signed?.at ?? null,
+        readings: (study?.fields ?? []).filter((f) => values[f.key] != null && values[f.key] !== '').map((f) => ({ name: f.name, value: `${values[f.key]}${f.unit ? ` ${f.unit}` : ''}` })),
+        findings: o.report?.findings ?? '',
+        impression: o.report?.impression ?? '',
+        signedBy: o.signed?.byName ?? '',
+        signedAt: o.signed?.at ?? null,
+      };
+    });
+  }
+  await viewed(req, access, 'scans');
+  res.json({ letterhead: letterheadFor(tenant), patient: patientView(patient), scans });
 });
