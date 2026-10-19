@@ -20,7 +20,7 @@ import { Tenant } from '../models/Tenant.js';
 import { HttpError } from '../utils/httpError.js';
 import { deriveEvents, isGstRole, ledgerFor, parentGroupFor, roleWords } from './events.js';
 import { BATCH_PREFIX, KIND_LABELS, MAX_BATCH_VOUCHERS, STATUS_LABELS, withDefaults } from './tallyRules.js';
-import { mastersXml, remoteIdFor, sha256, tallyDate, voucherTypeMasters, voucherTypeNameFor, vouchersXml } from './xml.js';
+import { allInOneXml, mastersXml, remoteIdFor, sha256, tallyDate, voucherTypeMasters, voucherTypeNameFor, vouchersXml } from './xml.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
 const conflict = (message, code, extra = {}) => Object.assign(new HttpError(409, message, code), extra);
@@ -249,12 +249,11 @@ export async function filesFor(req, batch) {
   const settings = await tallySettings(req.tenantId);
   const company = batch.company || settings.companyName;
   const vouchers = await vouchersOfBatch(req.tenantId, batch);
-  const xml = vouchersXml({
-    company,
-    vouchers: vouchers.map((v) => ({ key: v.key, kind: v.kind, date: v.date, narration: v.narration, lines: v.lines, remoteId: v.remoteId, voucherType: v.voucherType, reference: v.key === v.source.number ? '' : v.source.number })),
-  });
-  const masters = batch.masters.length || batch.voucherTypes.length ? mastersXml({ company, voucherTypes: batch.voucherTypes, ledgers: batch.masters, applicableFrom: settings.booksFrom ? tallyDate(settings.booksFrom) : '' }) : null;
-  return { vouchers: xml, masters };
+  const entries = vouchers.map((v) => ({ key: v.key, kind: v.kind, date: v.date, narration: v.narration, lines: v.lines, remoteId: v.remoteId, voucherType: v.voucherType, reference: v.key === v.source.number ? '' : v.source.number }));
+  const xml = vouchersXml({ company, vouchers: entries });
+  const names = { company, voucherTypes: batch.voucherTypes, ledgers: batch.masters, applicableFrom: settings.booksFrom ? tallyDate(settings.booksFrom) : '' };
+  const masters = batch.masters.length || batch.voucherTypes.length ? mastersXml(names) : null;
+  return { vouchers: xml, masters, all: allInOneXml({ ...names, vouchers: entries }) };
 }
 
 /** How many entries of a batch still wait for Tally (the whole batch, not only the entries shown). */
@@ -271,7 +270,7 @@ export const batchView = (b) => ({
   masters: (b.masters ?? []).map((m) => ({ name: m.name, parent: m.parent })),
   voucherTypes: (b.voucherTypes ?? []).map((t) => t.name),
   hasMastersFile: Boolean((b.masters ?? []).length || (b.voucherTypes ?? []).length),
-  downloads: { vouchers: b.downloads?.vouchers ?? 0, masters: b.downloads?.masters ?? 0 },
+  downloads: { all: b.downloads?.all ?? 0, vouchers: b.downloads?.vouchers ?? 0, masters: b.downloads?.masters ?? 0 },
   imported: b.imported?.at ? { byName: b.imported.byName ?? '', at: b.imported.at } : null,
   createdByName: b.created?.byName ?? '',
   createdAt: b.created?.at ?? b.createdAt ?? null,

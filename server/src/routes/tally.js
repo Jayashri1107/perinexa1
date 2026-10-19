@@ -123,16 +123,18 @@ tallyRouter.get('/batches/:id', async (req, res) => {
   res.json({ batch: batchView(batch), vouchers: vouchers.map(voucherView), shown: vouchers.length, waiting });
 });
 
+// all: account names and entries in one file (the one to use); the two separate files stay as a fallback
+const FILE_WORDS = { all: 'all-in-one', vouchers: 'entries', masters: 'account-names' };
 tallyRouter.get('/batches/:id/file', async (req, res) => {
   const batch = await batchOf(req);
-  const { part } = parse(z.object({ part: z.enum(['vouchers', 'masters']).default('vouchers') }), req.query);
+  const { part } = parse(z.object({ part: z.enum(['all', 'vouchers', 'masters']).default('vouchers') }), req.query);
   const files = await filesFor(req, batch);
-  const xml = part === 'masters' ? files.masters : files.vouchers;
+  const xml = files[part];
   if (!xml) throw new HttpError(404, 'This batch introduces no new account names: there is no account names file.', 'NO_MASTERS');
   await countDownload(req.tenantId, batch, part);
   await audit(req, 'TALLY_FILE_DOWNLOADED', { details: { batchId: String(batch._id), number: batch.number, part } });
   res.set('Content-Type', 'application/xml; charset=utf-8');
-  res.set('Content-Disposition', `attachment; filename="perinexa-tally-${batch.number}-${part === 'masters' ? 'account-names' : 'entries'}.xml"`);
+  res.set('Content-Disposition', `attachment; filename="perinexa-tally-${batch.number}-${FILE_WORDS[part]}.xml"`);
   res.send(xml);
 });
 

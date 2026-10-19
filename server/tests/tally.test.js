@@ -308,6 +308,22 @@ describe('batches, files, corrections and the trail', () => {
     expect(masters.text).toContain('<VOUCHERTYPE NAME="Perinexa Receipt" ACTION="Create">');
     expect(masters.text).not.toMatch(/Output CGST|Output SGST/);
 
+    // The one file (owner, 19 Oct 2026): the account names first, then the same entries, in one import
+    const all = await tally('get', `/batches/${made.id}/file?part=all`);
+    expect(all.status).toBe(200);
+    expect(all.headers['content-disposition']).toBe('attachment; filename="perinexa-tally-TB-000001-all-in-one.xml"');
+    expect(all.text).toContain('<TALLYREQUEST>Import Data</TALLYREQUEST>');
+    expect(all.text).toContain('<REPORTNAME>Vouchers</REPORTNAME><STATICVARIABLES><SVCURRENTCOMPANY>Tally Hospital Books</SVCURRENTCOMPANY>');
+    expect(vouchersIn(all.text)).toHaveLength(5);
+    balanced(all.text);
+    expect(all.text.indexOf('<VOUCHERTYPE NAME="Perinexa Receipt"')).toBeGreaterThan(0);
+    expect(all.text.indexOf('<LEDGER NAME="Patients"')).toBeLessThan(all.text.indexOf('<VOUCHER '));
+    for (const v of vouchersIn(xml)) expect(all.text).toContain(v.slice(0, v.indexOf('</VOUCHER>'))); // the very same entries
+    expect(all.text).not.toMatch(/Tally Mother|Walk In Secret|Folic|Secret|P-0000|LEDGER NAME="Output/);
+    expect((await tally('get', `/batches/${made.id}/file?part=everything`)).status).toBe(400);
+    expect((await tally('get', `/batches/${made.id}`)).body.batch.downloads).toEqual({ all: 1, vouchers: 2, masters: 1 });
+    expect((await AuditLog.find({ action: 'TALLY_FILE_DOWNLOADED' }).lean()).map((e) => e.details.part)).toEqual(['vouchers', 'vouchers', 'masters', 'all']);
+
     // The same day again: refused; a day with nothing new: nothing to send
     expect(ok(await tally('post', '/batches', { to: '2026-09-28' }), 409).error.code).toBe('INCOMPLETE');
     later('2026-09-30T06:00:00Z');
@@ -387,7 +403,7 @@ describe('batches, files, corrections and the trail', () => {
 
     // The audit log: numbers, counts and status words – never an account name or a note
     expect(await AuditLog.countDocuments({ action: 'TALLY_BATCH_CREATED' })).toBe(3);
-    expect(await AuditLog.countDocuments({ action: 'TALLY_FILE_DOWNLOADED' })).toBe(6);
+    expect(await AuditLog.countDocuments({ action: 'TALLY_FILE_DOWNLOADED' })).toBe(7);
     const statusEntries = await AuditLog.find({ action: 'TALLY_VOUCHER_STATUS' }).lean();
     expect(statusEntries.length).toBe(4);
     expect(JSON.stringify(statusEntries)).not.toMatch(/totals do not match|Patients/);

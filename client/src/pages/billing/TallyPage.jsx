@@ -217,8 +217,11 @@ export function TallyBatchPage() {
                 <Download aria-hidden="true" /> {busy === 'masters' ? 'Preparing…' : 'Account names file'}
               </button>
             )}
-            <button type="button" className="btn btn-primary" disabled={Boolean(busy)} onClick={() => download('vouchers')}>
+            <button type="button" className="btn btn-secondary" disabled={Boolean(busy)} onClick={() => download('vouchers')}>
               <Download aria-hidden="true" /> {busy === 'vouchers' ? 'Preparing…' : 'Entries file'}
+            </button>
+            <button type="button" className="btn btn-primary" disabled={Boolean(busy)} onClick={() => download('all')}>
+              <Download aria-hidden="true" /> {busy === 'all' ? 'Preparing…' : 'Download for Tally (one file)'}
             </button>
           </>
         }
@@ -232,11 +235,13 @@ export function TallyBatchPage() {
           <h2 id="tally-how">For the accountant</h2>
           <ol>
             <li>In Tally, open the company named under Account names. Under Import → Configuration, set “Overwrite voucher when a voucher with same GUID exists” to Yes, and for account names “Behaviour of import if master already exists” to Ignore duplicates (an account the accountant already has is left as it is).</li>
-            {b.hasMastersFile && <li>Import → Masters, and choose the account names file ({b.voucherTypes.length + b.masters.length} new names).</li>}
-            <li>Import → Transactions, and choose the entries file. Tally lists anything it refused under Import → Exceptions.</li>
+            <li>Import → Transactions, and choose the one file (Download for Tally){b.hasMastersFile ? ` – it brings the ${b.voucherTypes.length + b.masters.length} new account names first, then the entries` : ''}. Tally lists anything it refused under Import → Exceptions.</li>
             <li>Tell the hospital admin what Tally refused; the admin records it under Exceptions here and sends it again or skips it.</li>
           </ol>
-          <p className="hint">The same file can be downloaded again any time. Each entry carries Perinexa’s number and an identifier that, with the setting above, makes Tally overwrite rather than double an entry imported twice. An entry sent again after a refusal carries the account names as they are now. Downloads: entries {b.downloads.vouchers}, account names {b.downloads.masters}.</p>
+          <p className="hint">
+            If Tally does not take the one file, use the two separate files instead: {b.hasMastersFile ? 'first Import → Masters with the account names file, then ' : ''}Import → Transactions with the entries file.
+          </p>
+          <p className="hint">The same file can be downloaded again any time. Each entry carries Perinexa’s number and an identifier that, with the setting above, makes Tally overwrite rather than double an entry imported twice. An entry sent again after a refusal carries the account names as they are now. Downloads: one file {b.downloads.all ?? 0}, entries {b.downloads.vouchers}, account names {b.downloads.masters}.</p>
           {b.imported ? (
             <p>
               <StatusPill tone="stable">Imported</StatusPill> Confirmed by {b.imported.byName || 'the hospital admin'} on {formatDateTime(b.imported.at)}.

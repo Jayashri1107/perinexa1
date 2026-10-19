@@ -93,6 +93,11 @@ export function vouchersXml({ company, vouchers }) {
  * registration and mailing lists, in force from `applicableFrom` (YYYYMMDD, the day the books start).
  */
 export function mastersXml({ company, voucherTypes = [], ledgers = [], applicableFrom = '' }) {
+  return `${header}<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>All Masters</REPORTNAME><STATICVARIABLES>${el('SVCURRENTCOMPANY', company)}</STATICVARIABLES></REQUESTDESC><REQUESTDATA>${masterMessages({ voucherTypes, ledgers, applicableFrom }).join('\n')}</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>\n`;
+}
+
+/** The voucher types, then the accounts, one TALLYMESSAGE each. */
+function masterMessages({ voucherTypes, ledgers, applicableFrom }) {
   const types = voucherTypes.map((t) => message(`<VOUCHERTYPE NAME="${xmlText(t.name)}" ACTION="Create">${el('NAME', t.name)}${el('PARENT', t.parent)}<NUMBERINGMETHOD>Manual</NUMBERINGMETHOD><PREVENTDUPLICATES>Yes</PREVENTDUPLICATES><ISACTIVE>Yes</ISACTIVE></VOUCHERTYPE>`));
   const accounts = ledgers.map((l) => {
     const state = tallyStateName(l.state ?? '');
@@ -103,7 +108,18 @@ export function mastersXml({ company, voucherTypes = [], ledgers = [], applicabl
       : '';
     return message(`<LEDGER NAME="${xmlText(l.name)}" ACTION="Create">${el('NAME', l.name)}${el('PARENT', l.parent)}<ISBILLWISEON>No</ISBILLWISEON>${gst}</LEDGER>`);
   });
-  return `${header}<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>All Masters</REPORTNAME><STATICVARIABLES>${el('SVCURRENTCOMPANY', company)}</STATICVARIABLES></REQUESTDESC><REQUESTDATA>${[...types, ...accounts].join('\n')}</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>\n`;
+  return [...types, ...accounts];
+}
+
+/**
+ * Everything of a batch in ONE file (owner, 19 Oct 2026: the accountant downloads one file and imports it): the new
+ * voucher types and accounts first, then the entries, in Tally's Import Data envelope for vouchers – Tally reads the
+ * messages in order, so an account exists before the first entry that uses it. The two separate files stay as a
+ * fallback. To be tried once on a test company in the accountant's TallyPrime before real use.
+ */
+export function allInOneXml({ company, voucherTypes = [], ledgers = [], applicableFrom = '', vouchers }) {
+  const messages = [...masterMessages({ voucherTypes, ledgers, applicableFrom }), ...vouchers.map((v) => message(voucherXml(v)))];
+  return `${header}<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME><STATICVARIABLES>${el('SVCURRENTCOMPANY', company)}</STATICVARIABLES></REQUESTDESC><REQUESTDATA>${messages.join('\n')}</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>\n`;
 }
 
 /** The Tally voucher type (its name in the settings) an entry of this kind uses. */

@@ -33,7 +33,7 @@ const brand = (html) => {
 };
 
 const BID = 'b'.repeat(24);
-const batch = { id: BID, number: 'TB-000001', from: '2026-09-01', to: '2026-09-28', vouchers: 5, amountPaise: 128136, byKind: { sales: 3, receipt: 2 }, masters: [{ name: 'Patients', parent: 'Sundry Debtors' }], voucherTypes: ['Perinexa Sales'], hasMastersFile: true, downloads: { vouchers: 1, masters: 1 }, imported: null, createdByName: 'Sample Admin', createdAt: '2026-09-29T04:30:00.000Z' };
+const batch = { id: BID, number: 'TB-000001', from: '2026-09-01', to: '2026-09-28', vouchers: 5, amountPaise: 128136, byKind: { sales: 3, receipt: 2 }, masters: [{ name: 'Patients', parent: 'Sundry Debtors' }], voucherTypes: ['Perinexa Sales'], hasMastersFile: true, downloads: { all: 2, vouchers: 1, masters: 1 }, imported: null, createdByName: 'Sample Admin', createdAt: '2026-09-29T04:30:00.000Z' };
 const voucher = (extra = {}) => ({
   id: 'v'.repeat(24),
   key: 'B-000001',
@@ -122,8 +122,11 @@ describe('Billing → Accounts', () => {
     expect(t).toMatch(/Batch TB-000001/);
     expect(t).toMatch(/Entries file/);
     expect(t).toMatch(/Account names file/);
-    expect(t).toMatch(/Import → Masters/);
-    expect(t).toMatch(/Import → Transactions/);
+    expect(t).toMatch(/Download for Tally \(one file\)/);
+    expect(html.match(/btn btn-primary/g)).toHaveLength(1); // the one file is the main button
+    expect(t).toMatch(/Import → Transactions, and choose the one file \(Download for Tally\) – it brings the 2 new account names first, then the entries/);
+    expect(t).toMatch(/If Tally does not take the one file, use the two separate files instead: first Import → Masters/);
+    expect(t).toMatch(/Downloads: one file 2, entries 1, account names 1/);
     expect(t).toMatch(/Mark the whole batch imported \(2 waiting\)/);
     expect(t).toMatch(/B-000001 Sales 28 Sep 2026 ₹750 Waiting for Tally TB-000001/);
     expect(t).toMatch(/R-000001 Receipt/);

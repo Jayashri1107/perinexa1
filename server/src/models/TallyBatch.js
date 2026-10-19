@@ -21,7 +21,7 @@ const batchSchema = new mongoose.Schema(
     masters: { type: [new mongoose.Schema({ name: String, parent: String, gstin: { type: String, default: '' }, state: { type: String, default: '' } }, { _id: false })], default: [] },
     voucherTypes: { type: [new mongoose.Schema({ name: String, parent: String }, { _id: false })], default: [] },
     sha256: { type: String, default: '' }, // of the entries file when the batch was made
-    downloads: { vouchers: { type: Number, default: 0 }, masters: { type: Number, default: 0 } },
+    downloads: { all: { type: Number, default: 0 }, vouchers: { type: Number, default: 0 }, masters: { type: Number, default: 0 } },
     imported: { type: new mongoose.Schema(stamp, { _id: false }), default: null }, // the admin marked the whole batch imported
     created: { type: new mongoose.Schema(stamp, { _id: false }), required: true },
   },
