@@ -180,6 +180,8 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - **The lab as eLabAssist lays it out (19 Oct 2026)**: lab dashboard with module buttons, registration on one screen
   with discount and payment, status tracker, result entry by department; the lab gives a discount only on a bill with
   nothing else on it – `docs/LAB_DASHBOARD_PLAN.md`.
+- **Sign-in wait (19 Oct 2026)**: 3 wrong passwords in a row → 2 minutes' wait with a countdown, for staff (by email)
+  and patients (code, account); this replaces 5 tries / 30 minutes for patients – `docs/LOGIN_LOCK_PLAN.md`.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

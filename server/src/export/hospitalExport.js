@@ -176,6 +176,7 @@ export const LEFT_OUT = {
   Membership: 'Written as staff.json (name and roles).',
   Tenant: 'Written as hospital.json, field by field (never the waiting-room screen key).',
   StoredFile: 'Written as stored-files.json and the "files" folder.',
+  LoginLock: 'Wrong sign-in tries by email (the 2-minute lock): not hospital data, deleted a day later.',
   Notification: "Staff's notifications (the bell): short-lived messages, deleted after 30 days; the work itself is exported.",
   PortalAccess: 'Patient portal codes (kept only as hashes) never leave Perinexa.',
   PatientChangeRequest: "Patients' requests from the portal to change their name, age, mobile or email: kept until reception decides – the record carries the decision, and who decided and when is in the audit log.",

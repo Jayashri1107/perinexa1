@@ -1,6 +1,7 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { countFailure, lockedError, secondsLeft } from '../auth/loginLock.js';
 import { z } from 'zod';
 import { mobileDigits } from '../abdm/abhaFormat.js';
 import { addDays, hospitalToday } from '../careplans/dates.js';
@@ -36,12 +37,10 @@ import { accountAccess, portalAudit, portalSession, startPortalSession } from '.
 // The sign-in page (/login → Patient) lists the hospitals with sign-up on, by name, and opens these steps there.
 
 const OTP_MINUTES = 10;
-const MAX_FAILED = 5;
-const LOCK_MINUTES = 30;
+const MAX_FAILED = 5; // wrong OTPs before a new one is needed
 const NOT_FOUND = 'This page is not available. Please check the address, or call the hospital.';
 const WRONG = 'The email or password is not right.';
 const WRONG_OTP = 'The OTP is not right, or it has expired. Ask for a new one.';
-const LOCKED = 'This account is locked for 30 minutes after wrong tries. Please wait, or call the hospital.';
 
 const otpKey = createHmac('sha256', config.JWT_SECRET).update('perinexa-patient-otp-v1').digest();
 const hashOtp = (accountId, otp) => createHmac('sha256', otpKey).update(`${accountId}:${otp}`).digest('hex');
@@ -81,14 +80,14 @@ async function accountBy(tenant, filter) {
   return live ?? PatientAccount.findOne({ tenantId: tenant._id, ...filter, status: 'rejected' }).sort({ createdAt: -1 });
 }
 
-const isLocked = (a, now) => a.lockedUntil && a.lockedUntil > now;
+// 3 wrong tries lock the account for 2 minutes (auth/loginLock.js – owner, 19 Oct 2026)
+const isLocked = (a, now) => secondsLeft(a.lockedUntil, now) > 0;
+const locked = (a, now) => lockedError(secondsLeft(a.lockedUntil, now), 'PORTAL_LOCKED');
+/** A wrong password or OTP: counted; the third in a row locks the account. Returns the seconds locked now (0: not). */
 async function failed(a, now) {
-  a.failedAttempts += 1;
-  if (a.failedAttempts >= MAX_FAILED) {
-    a.lockedUntil = new Date(now.getTime() + LOCK_MINUTES * 60 * 1000);
-    a.failedAttempts = 0;
-  }
+  const lockedFor = countFailure(a, now);
   await a.save();
+  return lockedFor;
 }
 
 /** After the right password or OTP: a pending or rejected account is told so; an approved one gets her portal. */
@@ -114,8 +113,9 @@ async function signIn(req, res, tenant, account, method) {
   res.json({ ok: true });
 }
 
-async function refuse(req, tenant, reason, message = WRONG) {
+async function refuse(req, tenant, reason, message = WRONG, lockedFor = 0) {
   await audit(req, 'PORTAL_LOGIN_FAILED', { actor: null, tenantId: tenant._id, details: { reason } });
+  if (lockedFor) throw lockedError(lockedFor, 'PORTAL_LOCKED'); // the third wrong try: the countdown
   throw new HttpError(401, message, 'PORTAL_LOGIN_FAILED');
 }
 
@@ -198,10 +198,9 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
       await fakeVerify(body.password); // as long as a wrong password
       return refuse(req, tenant, 'unknown_email');
     }
-    if (isLocked(account, req.now)) throw new HttpError(429, LOCKED, 'PORTAL_LOCKED');
+    if (isLocked(account, req.now)) throw locked(account, req.now);
     if (!(await verifyPassword(body.password, account.passwordHash))) {
-      await failed(account, req.now);
-      return refuse(req, tenant, 'wrong_password');
+      return refuse(req, tenant, 'wrong_password', WRONG, await failed(account, req.now));
     }
     return signIn(req, res, tenant, account, 'password');
   });
@@ -239,12 +238,11 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
     const mobile = mobileOf(body.mobile);
     const account = await accountBy(tenant, { mobile });
     if (!account || !account.otp || account.otp.expiresAt <= req.now) return refuse(req, tenant, 'otp_expired', WRONG_OTP);
-    if (isLocked(account, req.now)) throw new HttpError(429, LOCKED, 'PORTAL_LOCKED');
+    if (isLocked(account, req.now)) throw locked(account, req.now);
     if (!same(hashOtp(account._id, body.otp), account.otp.hash)) {
       account.otp.tries += 1;
       if (account.otp.tries >= MAX_FAILED) account.otp = null; // a new OTP is needed
-      await failed(account, req.now);
-      return refuse(req, tenant, 'wrong_otp', WRONG_OTP);
+      return refuse(req, tenant, 'wrong_otp', WRONG_OTP, await failed(account, req.now));
     }
     return signIn(req, res, tenant, account, 'otp');
   });

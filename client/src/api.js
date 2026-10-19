@@ -6,6 +6,8 @@ export class ApiError extends Error {
     this.status = status;
     this.code = error.code;
     this.fields = error.fields || {};
+    // Sign-in locked after 3 wrong passwords: the seconds left (the page counts them down)
+    if (error.retryAfterSeconds != null) this.retryAfterSeconds = error.retryAfterSeconds;
     // Registration only ("She may already be registered", code POSSIBLE_MATCHES): the records that match, and how many
     if (error.matches) {
       this.matches = error.matches;

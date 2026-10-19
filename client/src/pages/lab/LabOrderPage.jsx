@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Ban, CircleCheck, FileText, Paperclip, Printer, Siren, Tag, TestTube, Upload } from 'lucide-react';
+import { ArrowLeft, Ban, CircleCheck, FileText, Inbox, Paperclip, Printer, Siren, Tag, TestTube, Upload } from 'lucide-react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -170,52 +170,72 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
       {order.tests.map((t, i) => {
         const def = testDef(catalogue, t.key);
         const entry = form[i];
+        const list = def?.fields ?? [];
         return (
-          <fieldset key={`${t.key}-${i}`} className="fieldset lab-test">
+          <fieldset key={`${t.key}-${i}`} className="fieldset lab-test lab-entry-test">
             <legend>{t.name}</legend>
             {fields[`tests.${i}`] && <p className="field-error">{fields[`tests.${i}`]}</p>}
-            <div className="form-grid">
-              {(def?.fields ?? []).map((f) => {
-                const id = `lab-${i}-${f.key}`;
-                const v = entry.values[f.key] ?? { value: '', flag: '' };
-                if (f.type === 'choice') {
-                  return (
-                    <Field key={f.key} label={f.name} id={id} error={fields[`tests.${i}.${f.key}`]}>
-                      <select id={id} value={v.value} onChange={(e) => setValue(i, f, e.target.value)}>
-                        <option value="">—</option>
-                        {f.options.map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
-                      <FlagPill flag={v.flag} />
-                    </Field>
-                  );
-                }
-                if (f.type === 'text') {
-                  return (
-                    <Field key={f.key} label={f.name} id={id} error={fields[`tests.${i}.${f.key}`]}>
-                      <input id={id} value={v.value} maxLength={100} onChange={(e) => setValue(i, f, e.target.value)} />
-                    </Field>
-                  );
-                }
-                return (
-                  <Field key={f.key} label={`${f.name}${f.unit ? ` (${f.unit})` : ''}`} id={id} error={fields[`tests.${i}.${f.key}`]} hint={f.range ? `Usual${f.band ? ' for her' : ''}: ${f.range}` : undefined} keepHint>
-                    <span className="lab-value-row">
-                      <input id={id} className="tabular" inputMode="decimal" value={v.value} maxLength={20} onChange={(e) => setValue(i, f, e.target.value)} />
-                      <select aria-label={`Flag for ${f.name}`} value={v.flag ?? ''} onChange={(e) => setFlag(i, f, e.target.value)}>
-                        {FLAG_OPTIONS.map(([k, w]) => (
-                          <option key={k} value={k}>
-                            {w}
-                          </option>
-                        ))}
-                      </select>
-                    </span>
-                  </Field>
-                );
-              })}
-            </div>
+            {list.length > 0 && (
+              <table className="lab-entry">
+                <thead>
+                  <tr>
+                    <th scope="col">Value</th>
+                    <th scope="col">Result</th>
+                    <th scope="col">Unit</th>
+                    <th scope="col">Usual range</th>
+                    <th scope="col">Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((f) => {
+                    const id = `lab-${i}-${f.key}`;
+                    const v = entry.values[f.key] ?? { value: '', flag: '' };
+                    const err = fields[`tests.${i}.${f.key}`];
+                    return (
+                      <tr key={f.key} className={err ? 'has-error' : ''}>
+                        <th scope="row" data-label="Value">
+                          <label htmlFor={id}>{f.name}</label>
+                        </th>
+                        <td data-label="Result">
+                          {f.type === 'choice' ? (
+                            <select id={id} value={v.value} onChange={(e) => setValue(i, f, e.target.value)}>
+                              <option value="">—</option>
+                              {f.options.map((o) => (
+                                <option key={o} value={o}>
+                                  {o}
+                                </option>
+                              ))}
+                            </select>
+                          ) : f.type === 'text' ? (
+                            <input id={id} value={v.value} maxLength={100} onChange={(e) => setValue(i, f, e.target.value)} />
+                          ) : (
+                            <input id={id} className="tabular" inputMode="decimal" value={v.value} maxLength={20} onChange={(e) => setValue(i, f, e.target.value)} />
+                          )}
+                          {err && <span className="field-error">{err}</span>}
+                        </td>
+                        <td data-label="Unit">{f.unit ?? ''}</td>
+                        <td data-label="Usual range" className="muted">
+                          {f.range ?? ''}
+                        </td>
+                        <td data-label="Flag">
+                          {f.type === 'number' ? (
+                            <select aria-label={`Flag for ${f.name}`} value={v.flag ?? ''} onChange={(e) => setFlag(i, f, e.target.value)}>
+                              {FLAG_OPTIONS.map(([k, w]) => (
+                                <option key={k} value={k}>
+                                  {w}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <FlagPill flag={v.flag} />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
             <Field label={def ? 'Comment on this test (optional)' : 'Result'} id={`lab-${i}-text`} error={fields[`tests.${i}.text`]}>
               {def ? (
                 <input id={`lab-${i}-text`} maxLength={2000} value={entry.text} onChange={(e) => setText(i, e.target.value)} />
@@ -495,7 +515,7 @@ export function LabOrderPage() {
   return (
     <>
       {header}
-      <div className={inRecord ? 'vs-tab' : 'pf-content'}>
+      <div className={inRecord ? 'vs-tab lab-order-page' : 'pf-content lab-order-page'}>
         <Link to={back} className="btn btn-link btn-sm">
           <ArrowLeft aria-hidden="true" /> {inRecord ? 'All lab orders' : 'Lab worklist'}
         </Link>
@@ -504,12 +524,23 @@ export function LabOrderPage() {
         </Alert>
         <Alert type="error">{actionError}</Alert>
 
-        <section className="card" aria-labelledby="lab-order-title">
-          <div className="plan-card-head">
-            <h2 id="lab-order-title">
-              <TestTube aria-hidden="true" /> {order.tests.map((t) => t.name).join(', ')}
-            </h2>
-            <span className="wl-counts">
+        <section className="card lab-order-card" aria-labelledby="lab-order-title">
+          <div className="lab-order-top">
+            <div className="lab-order-who">
+              <h2 id="lab-order-title">
+                <TestTube aria-hidden="true" /> {order.tests.map((t) => t.name).join(', ')}
+              </h2>
+              {!inRecord && (
+                <p className="lab-order-patient">
+                  <strong>{order.patient.fullName}</strong>
+                  <span className="muted tabular">
+                    {order.patient.mrn}
+                    {order.patient.age != null ? ` · ${order.patient.age} yrs` : ''} · {CARE_TYPE_SHORT[order.patient.careType] ?? order.patient.careType}
+                  </span>
+                </p>
+              )}
+            </div>
+            <span className="lab-order-pills">
               {order.urgent && (
                 <StatusPill tone="high" icon={Siren}>
                   Urgent
@@ -530,115 +561,71 @@ export function LabOrderPage() {
               </StatusPill>
             </span>
           </div>
-          {!inRecord && (
-            <p>
-              <strong>{order.patient.fullName}</strong>{' '}
-              <span className="muted tabular">
-                · {order.patient.mrn}
-                {order.patient.age != null ? ` · ${order.patient.age} yrs` : ''} · {CARE_TYPE_SHORT[order.patient.careType] ?? order.patient.careType}
-              </span>
-            </p>
-          )}
+
+          {/* Who did each step and when: the tracker (the facts below hold the rest) */}
           <OrderTracker order={order} />
-          <dl className="lab-stamps">
-            {order.sampleNo && (
-              <>
-                <dt>Sample number</dt>
-                <dd className="tabular">{order.sampleNo}</dd>
-              </>
-            )}
-            <dt>Ordered</dt>
-            <dd>
-              {order.ordered.byName}, {formatDateTime(order.ordered.at)}
-            </dd>
-            {order.collected && (
-              <>
-                <dt>Sample taken</dt>
-                <dd>
-                  {order.collected.byName}, {formatDateTime(order.collected.at)}
-                </dd>
-              </>
-            )}
-            {order.received && (
-              <>
-                <dt>Received in the lab</dt>
-                <dd>
-                  {order.received.byName}, {formatDateTime(order.received.at)}
-                </dd>
-              </>
-            )}
+
+          <dl className="lab-order-facts">
+            <div>
+              <dt>Sample number</dt>
+              <dd className="tabular">{order.sampleNo ?? 'Given when the label is printed or the sample is taken'}</dd>
+            </div>
+            <div>
+              <dt>Ordered by</dt>
+              <dd>
+                {order.ordered.byName}
+                <span className="muted lab-order-sub">{formatDateTime(order.ordered.at)}</span>
+              </dd>
+            </div>
             {order.dueAt && order.status !== 'cancelled' && (
-              <>
-                <dt>{order.reported ? 'Time taken' : 'Due'}</dt>
+              <div>
+                <dt>{order.reported ? 'Time taken' : 'Report due'}</dt>
                 <dd>{order.reported ? `${turnaround(order)}${order.late ? ' – after the due time' : ''}` : formatDateTime(order.dueAt)}</dd>
-              </>
+              </div>
             )}
-            {order.entered && (
-              <>
-                <dt>Entered</dt>
-                <dd>
-                  {order.entered.byName}, {formatDateTime(order.entered.at)}
-                </dd>
-              </>
+            <div>
+              <dt>{order.source === 'walk_in' ? 'Walk-in · referred by' : 'Ordered from'}</dt>
+              <dd>
+                {order.source === 'walk_in' ? (order.referrer?.name ?? 'Self') : 'A doctor of this hospital'}
+                {order.source === 'walk_in' && order.prescription && <span className="muted lab-order-sub">{order.prescription}</span>}
+              </dd>
+            </div>
+            {order.packages?.length > 0 && (
+              <div>
+                <dt>Package</dt>
+                <dd>{packageNames(order.packages)}</dd>
+              </div>
             )}
-            {order.verified && (
-              <>
-                <dt>Checked</dt>
-                <dd>
-                  {order.verified.byName}, {formatDateTime(order.verified.at)}
-                </dd>
-              </>
+            {order.noteToLab && (
+              <div className="lab-order-wide">
+                <dt>Note to the lab</dt>
+                <dd>{order.noteToLab}</dd>
+              </div>
             )}
-            {order.reported && (
-              <>
-                <dt>Reported</dt>
-                <dd>
-                  {order.reported.byName}, {formatDateTime(order.reported.at)}
-                </dd>
-              </>
+            {order.reviewed?.comment && (
+              <div className="lab-order-wide">
+                <dt>Doctor's comment</dt>
+                <dd>{order.reviewed.comment}</dd>
+              </div>
             )}
-            {order.reviewed && (
-              <>
-                <dt>Reviewed</dt>
+            {order.qcOverride && (
+              <div className="lab-order-wide">
+                <dt>Reported while quality control was rejected</dt>
                 <dd>
-                  {order.reviewed.byName}, {formatDateTime(order.reviewed.at)}
-                  {order.reviewed.comment ? ` – ${order.reviewed.comment}` : ''}
+                  {order.qcOverride.reason} <span className="muted">({order.qcOverride.byName})</span>
                 </dd>
-              </>
+              </div>
             )}
             {order.cancelled && (
-              <>
+              <div className="lab-order-wide">
                 <dt>Cancelled</dt>
                 <dd>
                   {order.cancelled.byName}, {formatDateTime(order.cancelled.at)} – {order.cancelled.reason}
                 </dd>
-              </>
+              </div>
             )}
           </dl>
-          {order.packages?.length > 0 && (
-            <p>
-              <span className="muted">Package: </span>
-              {packageNames(order.packages)}
-            </p>
-          )}
-          {order.source === 'walk_in' && (
-            <p>
-              <span className="muted">Walk-in · referred by: </span>
-              {order.referrer?.name ?? 'self'}
-              {order.prescription ? ` · ${order.prescription}` : ''}
-            </p>
-          )}
-          {order.qcOverride && (
-            <p className="hint">
-              Reported while quality control was rejected: {order.qcOverride.reason} ({order.qcOverride.byName})
-            </p>
-          )}
-          {order.noteToLab && (
-            <p>
-              <span className="muted">Note to the lab: </span>
-              {order.noteToLab}
-            </p>
-          )}
+
           {(order.rejections?.length > 0 || order.sentBack?.length > 0) && (
             <ul className="plain-list lab-history">
               {order.rejections.map((r, i) => (
@@ -654,8 +641,9 @@ export function LabOrderPage() {
               ))}
             </ul>
           )}
+
           {(a.canCollect || a.canCancel || a.canLabel || a.canReject || a.canPrint || a.canReceive) && (
-            <div className="row">
+            <div className="lab-order-actions">
               {a.canCollect && (
                 <button type="button" className={`btn ${a.canReview ? 'btn-secondary' : 'btn-primary'}`} disabled={busy} onClick={collect}>
                   <TestTube aria-hidden="true" /> {busy ? 'Saving…' : 'Mark sample taken'}
@@ -677,7 +665,7 @@ export function LabOrderPage() {
                     }
                   }}
                 >
-                  Receive the sample
+                  <Inbox aria-hidden="true" /> Receive the sample
                 </button>
               )}
               {a.canLabel && (
@@ -690,13 +678,14 @@ export function LabOrderPage() {
                   <Printer aria-hidden="true" /> Print the report
                 </button>
               )}
+              {(a.canReject || a.canCancel) && <span className="lab-order-actions-gap" aria-hidden="true" />}
               {a.canReject && (
                 <button type="button" className="btn btn-link" onClick={() => setRejecting(true)}>
-                  Reject the sample
+                  <Ban aria-hidden="true" /> Reject the sample
                 </button>
               )}
               {a.canCancel && (
-                <button type="button" className="btn btn-link" onClick={() => setCancelling(true)}>
+                <button type="button" className="btn btn-link lab-order-cancel" onClick={() => setCancelling(true)}>
                   Cancel the order
                 </button>
               )}

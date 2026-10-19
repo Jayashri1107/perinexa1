@@ -1,3 +1,4 @@
+import { LockNotice, useLockCountdown } from '../../components/LockCountdown.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarCheck, CalendarDays, CalendarPlus, House, LogOut, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -183,6 +184,7 @@ function SignIn({ onDone, lang }) {
   const [digits, setDigits] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const lock = useLockCountdown(); // 3 wrong tries: 2 minutes to wait
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -191,7 +193,7 @@ function SignIn({ onDone, lang }) {
       await portal('/login', { method: 'POST', body: { code, digits } });
       onDone();
     } catch (err) {
-      setError(err);
+      if (!lock.catchLock(err)) setError(err);
     } finally {
       setBusy(false);
     }
@@ -200,14 +202,15 @@ function SignIn({ onDone, lang }) {
     <form className="card portal-card" onSubmit={submit} noValidate>
       <h1>{w.signInTitle}</h1>
       <p>{w.signInIntro}</p>
-      <Alert type="error">{error ? portalError(error, lang) : null}</Alert>
+      <Alert type="error">{error && !lock.seconds ? portalError(error, lang) : null}</Alert>
+      <LockNotice seconds={lock.seconds} lang={lang} />
       <Field label={w.code} id="portal-code" hint={w.codeHint} keepHint>
         <input id="portal-code" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="characters" maxLength={20} autoFocus />
       </Field>
       <Field label={w.digits} id="portal-digits">
         <input id="portal-digits" value={digits} onChange={(e) => setDigits(e.target.value)} inputMode="numeric" autoComplete="off" maxLength={4} />
       </Field>
-      <button type="submit" className="btn btn-primary" disabled={busy || !code.trim() || digits.trim().length !== 4}>
+      <button type="submit" className="btn btn-primary" disabled={busy || lock.seconds > 0 || !code.trim() || digits.trim().length !== 4}>
         {busy ? w.signingIn : w.signIn}
       </button>
       <p className="hint">{w.sharedDevice}</p>

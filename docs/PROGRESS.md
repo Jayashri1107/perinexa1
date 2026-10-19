@@ -3904,6 +3904,17 @@ Branch `lab-dash`. Plan and decisions: `docs/LAB_DASHBOARD_PLAN.md`.
    Hb is flagged Low.
 5. Lab → Dashboard: Registered, Tests, Reported and Charged went up; Today / Last 7 days / This month.
 
+## Sign-in wait after wrong passwords; the lab order page (owner, 19 Oct 2026)
+Branch `login-lock`. Decisions: `docs/LOGIN_LOCK_PLAN.md`.
+- 3 wrong passwords in a row → 2 minutes' wait with a countdown, for staff and patients (was 5 / 30 minutes for patients).
+- The lab order page as one clear summary card (steps, facts, buttons) and results typed in a table.
+
+### How to test (fake data only)
+1. Sign-in page: a fake staff email, a wrong password three times. The second time it warns; the third shows "Please
+   wait 1:59…" counting down, and Sign in is off. After 2 minutes the right password works.
+2. Patient → code on paper: a wrong 4 digits three times – the same countdown.
+3. Lab → open any order: one card with the steps, the facts and the buttons; Results as a table.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.

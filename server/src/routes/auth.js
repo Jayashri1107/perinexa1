@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { lockedError, staffFailed, staffLockLeft, staffSignedIn } from '../auth/loginLock.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
@@ -122,12 +123,25 @@ export function authRouter({ loginRateLimitMax }) {
 
   router.post('/login', loginLimiter, async (req, res) => {
     const { email, password } = parse(loginSchema, req.body);
+    const now = req.now ?? new Date();
+    // 3 wrong tries in a row lock this email for 2 minutes (auth/loginLock.js): the password is not checked meanwhile
+    const left = await staffLockLeft(email, now);
+    if (left) throw lockedError(left);
     const user = await User.findOne({ email }).select('+passwordHash');
+    // A wrong try – the same for an unknown email, so the answer never shows whether an account exists
+    const wrong = async () => {
+      const { lockedFor, triesLeft } = await staffFailed(email, now);
+      if (lockedFor) {
+        await audit(req, 'LOGIN_LOCKED', { ...(user ? { actor: user, target: user } : {}), details: { email, seconds: lockedFor } });
+        throw lockedError(lockedFor);
+      }
+      throw new HttpError(401, `${INVALID_LOGIN} ${triesLeft === 1 ? 'One more wrong try and sign-in waits 2 minutes.' : ''}`.trim(), 'INVALID_LOGIN');
+    };
 
     if (!user) {
       await fakeVerify(password); // same timing as a real check, so emails can't be guessed
       await audit(req, 'LOGIN_FAILED', { details: { email, reason: 'unknown_email' } });
-      throw new HttpError(401, INVALID_LOGIN, 'INVALID_LOGIN');
+      return wrong();
     }
 
     const ok = await verifyPassword(password, user.passwordHash);
@@ -137,8 +151,9 @@ export function authRouter({ loginRateLimitMax }) {
         target: user,
         details: { email, reason: ok ? 'inactive_account' : 'wrong_password' },
       });
-      throw new HttpError(401, INVALID_LOGIN, 'INVALID_LOGIN');
+      return wrong();
     }
+    await staffSignedIn(email);
 
     // Land in the hospital the person last worked in (if they still have access there).
     const memberships = await listActiveMemberships(user);

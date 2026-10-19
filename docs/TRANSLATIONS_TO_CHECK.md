@@ -344,7 +344,7 @@ In English the server’s own sentence is shown (as before); in Marathi and Hind
 |---|---|---|---|
 | `NETWORK` | Can't reach the hospital's server. Please try again later. | रुग्णालयाच्या सर्व्हरशी संपर्क होत नाही. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा. | अस्पताल के सर्वर से संपर्क नहीं हो पा रहा है। कृपया थोड़ी देर बाद फिर से कोशिश करें। |
 | `PORTAL_LOGIN_FAILED` | The code or the 4 digits are not right. Check the paper the hospital gave you, or call the hospital. | कोड किंवा 4 अंक बरोबर नाहीत. रुग्णालयाने दिलेला कागद तपासा, किंवा रुग्णालयाला फोन करा. | कोड या 4 अंक सही नहीं हैं। अस्पताल का दिया काग़ज़ देखें, या अस्पताल को फ़ोन करें। |
-| `PORTAL_LOCKED` | This code is locked for a while after wrong tries. Please call the hospital. | चुकीच्या प्रयत्नांमुळे हा कोड काही वेळासाठी बंद झाला आहे. कृपया रुग्णालयाला फोन करा. | ग़लत कोशिशों के कारण यह कोड कुछ समय के लिए बंद है। कृपया अस्पताल को फ़ोन करें। |
+| `PORTAL_LOCKED` | Too many wrong tries. Please wait 2 minutes, then try again. | चुकीच्या प्रयत्नांमुळे हा कोड 2 मिनिटांसाठी बंद झाला आहे. कृपया थांबा, मग पुन्हा प्रयत्न करा. | ग़लत कोशिशों के कारण यह कोड 2 मिनट के लिए बंद है। कृपया रुकें, फिर से कोशिश करें। |
 | `RATE_LIMITED` | Too many tries. Please wait 15 minutes, or call the hospital. | खूप जास्त प्रयत्न झाले. कृपया 15 मिनिटे थांबा, किंवा रुग्णालयाला फोन करा. | बहुत ज़्यादा कोशिशें हो गईं। कृपया 15 मिनट रुकें, या अस्पताल को फ़ोन करें। |
 | `PORTAL_SIGNED_OUT` | Please sign in again. | कृपया पुन्हा आत या. | कृपया फिर से अंदर आएँ। |
 | `SLOT_TAKEN` | That time has just been taken. Please choose another time. | ही वेळ आत्ताच दुसऱ्या कोणी घेतली. कृपया दुसरी वेळ निवडा. | यह समय अभी-अभी किसी और ने ले लिया। कृपया कोई और समय चुनें। |
@@ -478,7 +478,8 @@ parts are filled in by the app. Words such as OTP, SMS and UPI stay as they are.
 | `billStatus.no_charges` | No charges | शुल्क नाही | कोई शुल्क नहीं |
 | `printedOnline` | Patient (online) | रुग्ण (ऑनलाइन) | मरीज़ (ऑनलाइन) |
 | refusal `PORTAL_LOGIN_FAILED` | (the server's English message) | ईमेल, पासवर्ड किंवा OTP बरोबर नाही. | ईमेल, पासवर्ड या OTP सही नहीं है। |
-| refusal `PORTAL_LOCKED` | (the server's English message) | चुकीच्या प्रयत्नांमुळे हे खाते 30 मिनिटांसाठी बंद आहे. कृपया थांबा, किंवा रुग्णालयाला फोन करा. | ग़लत कोशिशों के कारण यह खाता 30 मिनट के लिए बंद है। कृपया रुकें, या अस्पताल को फ़ोन करें। |
+| refusal `PORTAL_LOCKED` | (the server's English message) | चुकीच्या प्रयत्नांमुळे हे खाते 2 मिनिटांसाठी बंद आहे. कृपया थांबा, मग पुन्हा प्रयत्न करा. | ग़लत कोशिशों के कारण यह खाता 2 मिनट के लिए बंद है। कृपया रुकें, फिर से कोशिश करें। |
+| sign-in countdown (components/LockCountdown.jsx) | Too many wrong tries. Please wait 1:45 – then you can try again. | खूप चुकीचे प्रयत्न झाले. कृपया 1:45 थांबा – मग पुन्हा प्रयत्न करा. | बहुत ग़लत कोशिशें हुईं। कृपया 1:45 रुकें – फिर से कोशिश करें। |
 | refusal `ACCOUNT_PENDING` | (the server's English message) | तुमची नोंदणी अजून रुग्णालयाच्या मंजुरीसाठी थांबली आहे. मंजुरी मिळाल्यावर आत येता येईल. | आपका पंजीकरण अभी अस्पताल की मंज़ूरी के लिए रुका है। मंज़ूरी मिलने पर अंदर आ सकेंगे। |
 | refusal `ACCOUNT_REJECTED` | (the server's English message) | तुमची नोंदणी मंजूर झाली नाही. कृपया रुग्णालयाला फोन करा. | आपका पंजीकरण मंज़ूर नहीं हुआ। कृपया अस्पताल को फ़ोन करें। |
 | refusal `OTP_OFF` | (the server's English message) | OTP ने आत येण्याची सोय अजून नाही. कृपया ईमेल आणि पासवर्ड वापरा. | OTP से अंदर आने की सुविधा अभी नहीं है। कृपया ईमेल और पासवर्ड का उपयोग करें। |

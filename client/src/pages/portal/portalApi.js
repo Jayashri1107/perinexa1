@@ -9,6 +9,6 @@ export async function portal(path, { method = 'GET', body } = {}) {
     throw Object.assign(new Error("Can't reach the hospital's server. Please try again later."), { status: 0, code: 'NETWORK' });
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw Object.assign(new Error(data?.error?.message ?? 'Something went wrong. Please try again.'), { status: res.status, code: data?.error?.code });
+  if (!res.ok) throw Object.assign(new Error(data?.error?.message ?? 'Something went wrong. Please try again.'), { status: res.status, code: data?.error?.code, retryAfterSeconds: data?.error?.retryAfterSeconds });
   return data;
 }

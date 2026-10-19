@@ -86,13 +86,20 @@ describe('the patient portal', () => {
     expect(actions).toEqual(['PORTAL_ACCESS_CREATED', 'PORTAL_LOGIN_FAILED', 'PORTAL_LOGIN_FAILED', 'PORTAL_LOGIN_SUCCESS', 'PORTAL_VIEWED']);
   });
 
-  it('5 wrong tries lock the code; a new code or withdrawing stops the old one; switching the portal off ends it', async () => {
+  it('3 wrong tries lock the code for 2 minutes; a new code or withdrawing stops the old one; switching the portal off ends it', async () => {
     const p = await register();
     await portalOn();
     const first = (await makeCode('drA', p)).body.code;
     const agent = request.agent(app);
-    for (let i = 0; i < 5; i += 1) expect((await signIn(agent, first, '1111')).status).toBe(401);
-    expect((await signIn(agent, first, '3210')).body.error.code).toBe('PORTAL_LOCKED');
+    for (let i = 0; i < 2; i += 1) expect((await signIn(agent, first, '1111')).status).toBe(401);
+    // The third wrong try: locked, with the seconds to count down (owner, 19 Oct 2026)
+    const third = await signIn(agent, first, '1111');
+    expect(third.status).toBe(429);
+    expect(third.body.error).toMatchObject({ code: 'PORTAL_LOCKED', retryAfterSeconds: 120 });
+    expect(third.headers['retry-after']).toBe('120');
+    expect((await signIn(agent, first, '3210')).body.error.code).toBe('PORTAL_LOCKED'); // even the right digits wait
+    vi.setSystemTime(new Date(NOW.getTime() + 121 * 1000));
+    expect((await signIn(request.agent(app), first, '3210')).status).toBe(200); // after 2 minutes
 
     const second = (await makeCode('drA', p)).body.code;
     vi.setSystemTime(new Date(NOW.getTime() + 31 * 60 * 1000));
