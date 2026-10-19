@@ -25,6 +25,12 @@ const handoverSchema = new mongoose.Schema(
       type: new mongoose.Schema({ ...byFields, receivedPaise: Number, note: { type: String, default: '' } }, { _id: false }),
       default: null,
     },
+    // A payment of this person and day corrected after the handover was confirmed (by the hospital admin): shown on
+    // the handover, which itself is not changed (owner, 19 Oct 2026)
+    correctedAfter: {
+      type: [new mongoose.Schema({ receipt: String, beforePaise: Number, afterPaise: Number, beforeMode: String, afterMode: String, ...byFields }, { _id: false })],
+      default: [],
+    },
   },
   { timestamps: true },
 );

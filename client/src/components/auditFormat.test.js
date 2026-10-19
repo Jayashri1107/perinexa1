@@ -271,6 +271,9 @@ describe('billing in the audit log (5 Oct 2026)', () => {
     expect(describeAudit({ action: 'PAYMENT_RECEIVED', details: { ...bill, receipt: 'R-000013', kind: 'deposit', mode: 'cash', amountPaise: 500000 } })).toBe('Bill B-000007 · receipt R-000013 · ₹5,000 by cash · deposit');
     // The fee taken when an appointment is booked
     expect(describeAudit({ action: 'PAYMENT_RECEIVED', details: { ...bill, appointmentId: 'a', receipt: 'R-000014', kind: 'payment', mode: 'card', amountPaise: 50000 } })).toBe('Bill B-000007 · receipt R-000014 · ₹500 by card · taken with the appointment');
+    expect(describeAudit({ action: 'PAYMENT_CORRECTED', details: { ...bill, receipt: 'R-000015', before: { mode: 'upi', amountPaise: 50000 }, after: { mode: 'cash', amountPaise: 50000 }, timeChanged: false, reason: 'UPI failed' } })).toBe(
+      'Bill B-000007 · receipt R-000015 · ₹500 by UPI → ₹500 by cash · UPI failed',
+    );
     expect(describeAudit({ action: 'REFUND_GIVEN', details: { ...bill, receipt: 'R-000015', kind: 'refund', mode: 'cash', amountPaise: 20000 } })).toBe('Bill B-000007 · receipt R-000015 · ₹200 by cash');
     expect(describeAudit({ action: 'BILL_CANCELLED', details: { ...bill, reason: 'Opened for the wrong patient', totalPaise: 150000 } })).toBe('Bill B-000007 · total ₹1,500');
     expect(describeAudit({ action: 'BILL_PRINTED', details: bill })).toBe('Bill B-000007');
@@ -344,7 +347,7 @@ const FILTER_ACTIONS = [
   'TENANT_DEACTIVATED', 'TENANT_SWITCHED', 'MEMBER_ADDED', 'MEMBER_ROLE_CHANGED', 'MEMBER_ACTIVATED', 'MEMBER_DEACTIVATED', 'PATIENT_CREATED', 'PATIENT_REGISTERED_ANYWAY',
   'PATIENT_MARKED_DUPLICATE', 'PATIENT_DUPLICATE_UNDONE', 'PATIENT_RECORD_CLOSED', 'PATIENT_RECORD_REOPENED', 'PATIENT_VIEWED', 'PATIENT_RECORD_COPIED', 'PATIENT_RECORD_COPY_PRINTED', 'PATIENT_RECORD_COPY_PDF_SAVED',
   'PATIENT_ARRIVED', 'PATIENT_ARRIVAL_UNDONE', 'APPOINTMENT_BOOKED', 'APPOINTMENT_MOVED', 'APPOINTMENT_CANCELLED', 'APPOINTMENT_LINKED', 'APPOINTMENT_DONE', 'TOKEN_GIVEN', 'OPD_TIMINGS_CHANGED', 'BEDS_ADDED', 'BED_UPDATED',
-  'PATIENT_CARD_PRINTED', 'BILL_VIEWED', 'BILL_ITEM_ADDED', 'BILL_ITEM_REMOVED', 'DISCOUNT_GIVEN', 'PAYMENT_RECEIVED', 'REFUND_GIVEN', 'BILL_CANCELLED',
+  'PATIENT_CARD_PRINTED', 'BILL_VIEWED', 'BILL_ITEM_ADDED', 'BILL_ITEM_REMOVED', 'DISCOUNT_GIVEN', 'PAYMENT_RECEIVED', 'REFUND_GIVEN', 'PAYMENT_CORRECTED', 'BILL_CANCELLED',
   'BILL_PRINTED', 'PRICE_LIST_CHANGED', 'BILLING_EXPORTED', 'BILL_INSURANCE_CHANGED', 'CLAIM_FORM_PRINTED', 'UPI_LINK_MADE', 'BILLING_SETTINGS_CHANGED', 'PHARMACY_SETTINGS_CHANGED',
   'PHARMACY_MEDICINE_CHANGED', 'PHARMACY_SUPPLIER_CHANGED', 'PHARMACY_PURCHASE_ENTERED', 'PHARMACY_PURCHASE_CANCELLED', 'PHARMACY_STOCK_WRITTEN_OFF', 'PHARMACY_STOCK_COUNTED', 'PHARMACY_PRESCRIPTIONS_VIEWED', 'PHARMACY_SOLD',
   'PHARMACY_ISSUED', 'PHARMACY_INVOICE_VIEWED', 'PHARMACY_RETURNED', 'PHARMACY_PRINTED', 'PHARMACY_REGISTER_VIEWED', 'PHARMACY_EXPORTED', 'PHARMACY_ORDER_CREATED', 'PHARMACY_ORDER_CHANGED',

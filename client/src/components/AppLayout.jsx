@@ -396,7 +396,7 @@ export function AppLayout() {
                 <Eye aria-hidden="true" /> View only{allowed ? ' (mostly)' : ''}
               </span>
             )}
-            {!isPlatform && !locked && activeMembership && <NotificationBell key={activeTenantId} />}
+            {!isPlatform && !locked && activeMembership && <NotificationBell key={`bell-${activeTenantId}`} />}
             {!locked && <HelpLink />}
             <ProfileMenu locked={locked} onSwitch={() => setSwitching(true)} />
             <button type="button" className="btn btn-sm pf-logout" onClick={() => logout('manual')}>

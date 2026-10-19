@@ -546,6 +546,8 @@ const lineView = (l, doctors = new Map()) => ({
   source: l.source,
   from: l.ref?.kind ?? null,
   priceNotSet: l.ratePaise === 0,
+  priceItemId: l.priceItemId ? String(l.priceItemId) : null,
+  key: l.key ?? null,
   addedByName: l.added?.byName ?? '',
   addedAt: l.added?.at ?? null,
   removed: l.removed ? { byName: l.removed.byName ?? '', at: l.removed.at ?? null, reason: l.removed.reason ?? '' } : null,
@@ -561,6 +563,7 @@ const paymentView = (p) => ({
   scheme: p.scheme ?? '',
   at: p.at,
   byName: p.byName ?? '',
+  corrections: (p.corrections ?? []).map((c) => ({ before: { mode: c.before.mode, amountPaise: c.before.amountPaise, reference: c.before.reference ?? '', scheme: c.before.scheme ?? '', at: c.before.at }, reason: c.reason, byName: c.byName, at: c.at })),
 });
 
 /** The bill's latest payment, deposit or refund (by time), or null. */

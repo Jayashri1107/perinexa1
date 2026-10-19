@@ -174,6 +174,9 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   (registration, admission, nursing per day, ward round, scans), the doctor's name on bills, an easier Add items, slots
   kept for walk-ins (not offered online), the notification bell, and the doctor marking a checkup done –
   `docs/RECEPTION_V2_PLAN.md`.
+- **Correcting a payment (19 Oct 2026)**: reception and billing correct a payment on its day until that day's cash
+  handover is confirmed; then only the hospital admin; a reason always; the original kept –
+  `docs/BILL_CORRECTIONS_PLAN.md`.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

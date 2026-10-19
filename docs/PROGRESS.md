@@ -3840,6 +3840,25 @@ Branch `reception-v2`. Plan, decisions and the WhatsApp set-up steps: `docs/RECE
    says "Checkup done".
 5. The left menu: Billing, Lab, Appointments show their pages underneath.
 
+## Correcting a payment, and a clearer bill (owner, 19 Oct 2026)
+Branch `bill-correct`. Plan and decisions: `docs/BILL_CORRECTIONS_PLAN.md`.
+- **Correct a payment** (e.g. UPI failed, paid in cash): mode, reference, amount, time; the original is kept with who,
+  when and why; the receipt prints "Corrected"; audit log; the cash handover follows. Reception on the day until the
+  cash handover is confirmed, then only the hospital admin.
+- **Sidebar**: only the Lab shows its pages under it (owner's change); the other items are one link each again.
+- **The bill screen** as a hospital bill: details at the top, numbered items with category and doctor, "Set price" for
+  the admin on an item with no price, totals on the right, payments as a table.
+
+### How to test (fake data only)
+1. As reception: a fake patient's bill → Add items → take payment by UPI.
+2. Payments → **Correct** → Paid by: Cash, reason "UPI failed, paid in cash" → Save. The payment shows "Corrected";
+   History shows what it was. Print → the receipt says "Receipt (corrected)".
+3. Billing → Cash handover: your cash now includes it.
+4. Hand over and have a doctor confirm it → as reception, Correct is gone ("only the hospital admin"); as the hospital
+   admin, correct it → the confirmed handover shows "Corrected after it was confirmed".
+5. As the hospital admin, a bill with a lab test at ₹0 → **Set price** → the bill takes the price.
+6. Make the browser narrow (tablet): items and payments show as blocks, no sideways scrolling.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.
