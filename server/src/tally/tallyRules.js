@@ -3,7 +3,10 @@
 // and the accountant imports it. Nothing connects to Tally over the network.
 
 // Who prepares batches, downloads the files, keeps the account names and clears exceptions (owner's decision 7).
-export const TALLY_ROLES = ['admin'];
+// The hospital admin and the accounts staff (billing role, owner 19 Oct 2026: they download the file for Tally); only
+// the admin changes the account names, since a wrong name changes the books.
+export const TALLY_ROLES = ['admin', 'billing'];
+export const TALLY_SETTINGS_ROLES = ['admin'];
 
 // Batches are numbered TB-000001 … per hospital.
 export const BATCH_PREFIX = 'TB';

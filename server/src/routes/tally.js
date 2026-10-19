@@ -4,13 +4,14 @@ import { GROUPS, PAYMENT_MODES } from '../billing/billingRules.js';
 import { addDays, hospitalToday, isoDay } from '../careplans/dates.js';
 import { hasRole } from '../models/Membership.js';
 import { TallyVoucher } from '../models/TallyVoucher.js';
-import { INPATIENT_ISSUES, KIND_LABELS, LEDGER_NAME_MAX, NOTE_MAX, STATUS_LABELS, TALLY_ROLES, VOUCHER_STATUSES } from '../tally/tallyRules.js';
+import { INPATIENT_ISSUES, KIND_LABELS, LEDGER_NAME_MAX, NOTE_MAX, STATUS_LABELS, TALLY_ROLES, TALLY_SETTINGS_ROLES, VOUCHER_STATUSES } from '../tally/tallyRules.js';
 import { batchView, batchVouchers, controlSheet, countDownload, countsByStatus, createBatch, filesFor, findBatch, listBatches, listVouchers, markBatchImported, marksFor, preview, saveTallySettings, setVoucherStatus, tallySettings, voucherView, waitingIn } from '../tally/tallyService.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
 
-// The Tally link (docs/TALLY_PLAN.md), step 1 – the file. Hospital admin only (owner's decision 7):
+// The Tally link (docs/TALLY_PLAN.md), step 1 – the file. The hospital admin and the accounts staff (owner's decision 7,
+// widened 19 Oct 2026 to the billing role); only the admin saves the settings:
 //  - /api/tally/settings              the Tally company, the day the books start, the account and voucher type names
 //  - /api/tally/preview?to=           what a batch up to that day would hold, and what stops it
 //  - /api/tally/batches               the batches; make one; one batch with its entries
@@ -24,7 +25,7 @@ import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
 export const tallyRouter = Router();
 
 tallyRouter.use((req, _res, next) => {
-  if (!hasRole(req.membership, ...TALLY_ROLES)) throw new HttpError(403, 'The Tally link is kept by the hospital admin.', 'FORBIDDEN');
+  if (!hasRole(req.membership, ...TALLY_ROLES)) throw new HttpError(403, 'The Tally link is for the hospital admin and the accounts staff.', 'FORBIDDEN');
   next();
 });
 
@@ -63,13 +64,14 @@ const settingsSchema = z
   })
   .partial();
 
-const settingsAnswer = async (req) => ({ settings: await tallySettings(req.tenantId), canEdit: true, lists: { groups: GROUPS, modes: PAYMENT_MODES, kinds: KIND_LABELS, statuses: STATUS_LABELS } });
+const settingsAnswer = async (req) => ({ settings: await tallySettings(req.tenantId), canEdit: hasRole(req.membership, ...TALLY_SETTINGS_ROLES), lists: { groups: GROUPS, modes: PAYMENT_MODES, kinds: KIND_LABELS, statuses: STATUS_LABELS } });
 
 tallyRouter.get('/settings', async (req, res) => {
   res.json(await settingsAnswer(req));
 });
 
 tallyRouter.put('/settings', async (req, res) => {
+  if (!hasRole(req.membership, ...TALLY_SETTINGS_ROLES)) throw new HttpError(403, 'Only the hospital admin changes the account names.', 'FORBIDDEN');
   const body = parse(settingsSchema, req.body);
   const current = await tallySettings(req.tenantId);
   // Each section is merged with what is saved, so a request naming one account never resets the others to the defaults

@@ -51,7 +51,7 @@ export const billingTabs = (roles = []) => [
   { label: 'Price list', to: '/billing/prices', end: true },
   ...(roles.includes('admin') ? [{ label: 'Settings', to: '/billing/settings', end: true }] : []),
   // The Tally link (docs/TALLY_PLAN.md): batches, account names, exceptions and the control sheet
-  ...(roles.includes('admin') ? [{ label: 'Accounts', to: '/billing/accounts', end: false }] : []),
+  ...(roles.some((r) => REPORT_ROLES.includes(r)) ? [{ label: 'Accounts', to: '/billing/accounts', end: false }] : []),
 ];
 
 // ---------- Billing extras (4 Oct 2026): insurance details, the claim forms, the UPI payment link ----------

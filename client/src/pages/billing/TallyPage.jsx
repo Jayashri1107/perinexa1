@@ -236,7 +236,7 @@ export function TallyBatchPage() {
           <ol>
             <li>In Tally, open the company named under Account names. Under Import → Configuration, set “Overwrite voucher when a voucher with same GUID exists” to Yes, and for account names “Behaviour of import if master already exists” to Ignore duplicates (an account the accountant already has is left as it is).</li>
             <li>Import → Transactions, and choose the one file (Download for Tally){b.hasMastersFile ? ` – it brings the ${b.voucherTypes.length + b.masters.length} new account names first, then the entries` : ''}. Tally lists anything it refused under Import → Exceptions.</li>
-            <li>Tell the hospital admin what Tally refused; the admin records it under Exceptions here and sends it again or skips it.</li>
+            <li>Record what Tally refused under Exceptions here, then send it again in the next batch or skip it.</li>
           </ol>
           <p className="hint">
             If Tally does not take the one file, use the two separate files instead: {b.hasMastersFile ? 'first Import → Masters with the account names file, then ' : ''}Import → Transactions with the entries file.
@@ -507,8 +507,9 @@ export function TallySettingsPage() {
         {res.error && <Alert type="error">{res.error}</Alert>}
         <Alert type="error">{s.error}</Alert>
         {saved && !form && <Alert type="success">Saved.</Alert>}
+        {v && res.data?.canEdit === false && <Alert type="info">Only the hospital admin changes the account names. Tell the admin if a name here does not match Tally.</Alert>}
         {v && (
-          <>
+          <fieldset className="fieldset" disabled={res.data?.canEdit === false}>
             <section className="card bill-section narrow" aria-labelledby="tally-company">
               <h2 id="tally-company">The Tally company and the books</h2>
               <div className="form-grid">
@@ -610,11 +611,13 @@ export function TallySettingsPage() {
                   Last changed by {v.updatedByName}, {formatDateTime(v.updatedAt)}.
                 </p>
               )}
-              <button type="button" className="btn btn-primary" disabled={!form || s.busy} onClick={save}>
-                <Save aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save'}
-              </button>
+              {res.data?.canEdit !== false && (
+                <button type="button" className="btn btn-primary" disabled={!form || s.busy} onClick={save}>
+                  <Save aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save'}
+                </button>
+              )}
             </section>
-          </>
+          </fieldset>
         )}
       </div>
     </>

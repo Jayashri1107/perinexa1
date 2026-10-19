@@ -14,7 +14,7 @@ import { mastersXml, remoteIdFor, voucherXml, vouchersXml, xmlText } from '../sr
 import { addMember, connectTestDb, createSuperAdmin, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-09-28T06:00:00Z'); // Monday 28 Sep 2026, 11:30 in the hospital
-const ROLES = { drA: 'doctor', nurse: 'nurse', reception: 'receptionist', pharm: 'pharmacist', admin: 'admin' };
+const ROLES = { drA: 'doctor', nurse: 'nurse', reception: 'receptionist', pharm: 'pharmacist', admin: 'admin', accounts: 'billing' };
 
 let app;
 let hospital;
@@ -198,6 +198,10 @@ describe('the entries worked out from the documents (pure)', () => {
 describe('settings and who may use the link', () => {
   it('the hospital admin keeps the settings; everyone else is refused; the audit log gets the names of the sections, never an account name', async () => {
     for (const who of ['reception', 'pharm', 'drA', 'nurse']) expect((await tally('get', '/settings', undefined, who)).status).toBe(403);
+    // The accounts staff (19 Oct 2026) see the names but only the admin changes them
+    expect(ok(await tally('get', '/settings', undefined, 'accounts')).canEdit).toBe(false);
+    expect(ok(await tally('get', '/settings')).canEdit).toBe(true);
+    expect((await tally('put', '/settings', { companyName: 'Other Books' }, 'accounts')).status).toBe(403);
     const first = ok(await tally('get', '/settings'));
     expect(first.settings).toMatchObject({ companyName: '', booksFrom: null, inpatientIssues: 'taxable', ledgers: expect.objectContaining({ patients: 'Patients', modes: expect.objectContaining({ upi: 'Bank (UPI)' }) }), voucherTypes: expect.objectContaining({ sales: 'Perinexa Sales' }) });
     const saved = ok(await settings({ ledgers: { modes: { upi: 'HDFC Bank' } } }));
@@ -288,6 +292,7 @@ describe('batches, files, corrections and the trail', () => {
     expect((await tally('get', `/batches/${made.id}/file`, undefined, 'reception')).status).toBe(403);
     const file = await tally('get', `/batches/${made.id}/file?part=vouchers`);
     expect(file.status).toBe(200);
+    expect(ok(await tally('get', '/batches', undefined, 'accounts')).batches.map((b) => b.number)).toEqual(['TB-000001']); // the accounts staff see the batches
     expect(file.headers['content-type']).toMatch(/application\/xml/);
     expect(file.headers['content-disposition']).toBe('attachment; filename="perinexa-tally-TB-000001-entries.xml"');
     const xml = file.text;

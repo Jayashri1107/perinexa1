@@ -335,8 +335,8 @@ export function App() {
                 <Route path="settings" element={<RequireTenantRole roles={['admin']} message="The billing settings are kept by the hospital admin." />}>
                   <Route index element={<BillingSettingsPage />} />
                 </Route>
-                {/* The Tally link (docs/TALLY_PLAN.md): files for the accountant's Tally, hospital admin only */}
-                <Route path="accounts" element={<RequireTenantRole roles={['admin']} message="The Tally link is kept by the hospital admin." />}>
+                {/* The Tally link (docs/TALLY_PLAN.md): files for the accountant's Tally – the hospital admin and the accounts staff */}
+                <Route path="accounts" element={<RequireTenantRole roles={['admin', 'billing']} message="The Tally link is for the hospital admin and the accounts staff." />}>
                   <Route index element={<TallyBatchesPage />} />
                   <Route path="settings" element={<TallySettingsPage />} />
                   <Route path="exceptions" element={<TallyExceptionsPage />} />
