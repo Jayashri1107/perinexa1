@@ -2,8 +2,10 @@ import mongoose from 'mongoose';
 
 // Roles a person can have inside one hospital. Only "admin" can manage that hospital's users.
 // "rmo" = resident medical officer; "lab" = lab staff; "pharmacist" = the pharmacy (stock, counter, registers);
-// "billing" = the billing department (bills, payments, billing reports – no medical details).
-export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing'];
+// "billing" = the billing department (bills, payments, billing reports – no medical details);
+// "referral_desk" = the referral desk: logs referrals from other doctors, books appointments and sends replies – never
+// the medical record (utils/patientAccess.js, routes/referrals.js; docs/REFERRALS_PLAN.md).
+export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing', 'referral_desk'];
 
 // What a hospital admin may do to the hospital's staff – only what the super admin gave them (owner, 12 Oct 2026):
 // reset a password, remove or restore access, change roles, edit name and email. Without it they see who works there.

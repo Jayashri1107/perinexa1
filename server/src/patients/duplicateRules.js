@@ -5,7 +5,7 @@
 //  - nothing is ever moved between records or deleted (the one exception: her appointments from today on go to
 //    the main record, and come back on "Undo");
 //  - a duplicate stays fully readable, but takes nothing new: no new visits, lab orders, admissions,
-//    appointments, prescriptions, scans or procedures, bills or pharmacy sales – the server refuses with
+//    appointments, prescriptions, scans or procedures, bills, pharmacy sales or referrals – the server refuses with
 //    refuseNewOnDuplicate (the pharmacy sells on the main record, also against a prescription written on the duplicate);
 //  - a record with a visit of today that is still open, or with a patient in hospital on it, cannot be marked
 //    (routes/patientDuplicates.js): the work under way on it would be frozen;
@@ -41,6 +41,7 @@ export const NEW_THINGS = {
   work: 'new scans or procedures',
   bill: 'new bills',
   sale: 'new pharmacy sales',
+  referral: 'new referrals', // a referral is linked to her main record (routes/referrals.js)
 };
 
 /** The plain refusal for something new on a duplicate record. */

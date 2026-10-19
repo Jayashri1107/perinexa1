@@ -1,4 +1,4 @@
-import { BedDouble, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
+import { BedDouble, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -153,6 +153,25 @@ const HOSPITAL_SCANS = {
   tabs: [{ label: 'Scans', to: '/scans', end: false }],
 };
 
+// Referrals from other doctors (docs/REFERRALS_PLAN.md): the referral desk logs them, books her appointment and
+// sends the replies; her doctor or an RMO writes the consultant note. Same list as server/src/routes/referrals.js.
+// Nurses, reception, lab staff, pharmacists and sonologists have no Referrals; the hospital admin has only its
+// settings (Hospital admin → Referrals), because referrals are patient data.
+export const REFERRAL_ROLES = ['referral_desk', 'doctor', 'rmo'];
+const HOSPITAL_REFERRALS = {
+  key: 'referrals',
+  label: 'Referrals',
+  icon: Handshake,
+  to: '/referrals',
+  tabs: [
+    { label: 'Desk', to: '/referrals', end: true },
+    // Open on a doctor's quarterly summary too
+    { label: 'Referring doctors', to: '/referrals/doctors', end: false },
+    { label: 'Weekly review', to: '/referrals/review', end: true },
+    { label: 'Referral slip', to: '/referrals/slip', end: true },
+  ],
+};
+
 // The calendar (LMP, EDD, care-plan and booked visits). Same list as server/src/calendar/calendarRules.js.
 export const CALENDAR_ROLES = ['doctor', 'rmo', 'receptionist'];
 const HOSPITAL_CALENDAR = {
@@ -166,10 +185,11 @@ const HOSPITAL_CALENDAR = {
   ],
 };
 
-// Appointment booking: one doctor's day of 10-minute slots, next visits that need a time, and OPD timings. Reception
-// and doctors book; RMOs and nurses can look. Same lists as server/src/appointments/appointmentRules.js.
-export const APPOINTMENT_ROLES = ['receptionist', 'doctor', 'rmo', 'nurse'];
-export const BOOKING_ROLES = ['receptionist', 'doctor'];
+// Appointment booking: one doctor's day of 10-minute slots, next visits that need a time, and OPD timings. Reception,
+// the referral desk (the appointment for a referred patient) and doctors book; RMOs and nurses can look. Same lists
+// as server/src/appointments/appointmentRules.js (APPOINTMENT_ROLES is its QUEUE_ROLES).
+export const APPOINTMENT_ROLES = ['receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse'];
+export const BOOKING_ROLES = ['receptionist', 'referral_desk', 'doctor'];
 const HOSPITAL_APPOINTMENTS = {
   key: 'appointments',
   label: 'Appointments',
@@ -333,6 +353,8 @@ export const HOSPITAL_ADMIN = {
     { label: 'OPD timings', to: '/admin/opd-timings', end: true },
     { label: 'Beds', to: '/admin/beds', end: true },
     { label: 'ABDM', to: '/admin/abdm', end: true },
+    // Centres, the desk number, consultants' direct lines, working hours and holidays – never a referral
+    { label: 'Referrals', to: '/admin/referrals', end: true },
   ],
 };
 
@@ -349,9 +371,16 @@ const HOSPITAL_BEDS = {
 };
 
 // Roles that work with patient records, and those that may register new patients.
-export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing'];
-export const REGISTER_ROLES = ['doctor', 'rmo', 'receptionist'];
+// The referral desk registers a referred patient with her identity details only (name, age, phone, type of care,
+// doctor), as reception does (brought over 19 Oct 2026).
+export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing', 'referral_desk'];
+export const REGISTER_ROLES = ['doctor', 'rmo', 'receptionist', 'referral_desk'];
 const any = (roles, list) => roles.some((r) => list.includes(r));
+// Babies (their birth details and their mother) are registered by reception, doctors and RMOs; the referral desk
+// registers the women other doctors send. Same rule as server/src/utils/patientAccess.js (creationAccess.fullIdentity).
+const BABY_REGISTER_ROLES = ['doctor', 'rmo', 'receptionist'];
+/** The "New patient" menu (type of care) for this person: without Newborn for the referral desk. */
+export const newPatientLinks = (roles = []) => (any(roles, BABY_REGISTER_ROLES) ? NEW_PATIENT_LINKS : NEW_PATIENT_LINKS.filter((l) => l.to !== '/patients/new/newborn'));
 export const canSeePatients = (roles = []) => any(roles, PATIENT_ROLES);
 export const canRegisterPatients = (roles = []) => any(roles, REGISTER_ROLES);
 export const canSeeCalendar = (roles = []) => any(roles, CALENDAR_ROLES);
@@ -360,7 +389,8 @@ export const canBookAppointments = (roles = []) => any(roles, BOOKING_ROLES);
 
 // The Patients tabs; "New patient" only for those who may register patients, "Ask your records" for doctors, RMOs
 // and nurses.
-export const patientTabs = (roles = []) => HOSPITAL_PATIENTS.tabs.filter((t) => (['/patients/new', '/patients/sign-ups'].includes(t.to) ? canRegisterPatients(roles) : true));
+export const patientTabs = (roles = []) =>
+  HOSPITAL_PATIENTS.tabs.filter((t) => (['/patients/new', '/patients/sign-ups'].includes(t.to) ? canRegisterPatients(roles) : true)).map((t) => (t.menu ? { ...t, menu: newPatientLinks(roles) } : t));
 /** Ask your records: doctors, RMOs and nurses. */
 export const canAskRecords = (roles = []) => any(roles, CARE_PLAN_ROLES);
 
@@ -377,6 +407,7 @@ export function hospitalModules(roles = []) {
   // Lab staff start on the lab's dashboard (owner, 19 Oct 2026); doctors, RMOs and nurses on the worklist
   if (any(roles, LAB_ROLES)) modules.push(roles.includes('lab') ? { ...HOSPITAL_LAB, to: '/lab/dashboard', activeFor: '/lab' } : HOSPITAL_LAB);
   if (any(roles, SCAN_ROLES)) modules.push(HOSPITAL_SCANS);
+  if (any(roles, REFERRAL_ROLES)) modules.push(HOSPITAL_REFERRALS);
   if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);
   if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: roles.includes('pharmacist') ? '/pharmacy' : '/pharmacy/stock' });
   if (any(roles, ANALYTICS_ROLES)) modules.push(HOSPITAL_ANALYTICS); // after Patients and Calendar, or after Today for an admin
@@ -411,7 +442,7 @@ export const accountTabs = (memberships = []) => {
 /** Doctors and RMOs (anywhere): their professional details print on prescriptions. */
 export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRESCRIBER_ROLES);
 
-const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
+const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.

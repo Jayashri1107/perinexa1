@@ -85,6 +85,33 @@ const tenantSchema = new mongoose.Schema(
       // A planned or day-care admission needs the admission checklist complete (an emergency is completed later)
       requireChecklist: { type: Boolean, default: false },
     },
+    // Referrals from other doctors (docs/REFERRALS_PLAN.md), kept by the hospital admin: the centres a woman may be
+    // seen at, the referral desk's number, the consultants' direct lines (printed on the referral slip), the working
+    // hours and holidays the 2-hour reply clock counts in, and the urgent cut-off. Read through
+    // referrals/settings.js referralSettingsFor, which fills in the defaults for what was never saved (an empty list
+    // of centres or days = never saved: the settings route always keeps at least one of each).
+    referrals: {
+      centres: {
+        type: [new mongoose.Schema({ key: { type: String, maxlength: 30 }, name: { type: String, trim: true, maxlength: 60 }, active: { type: Boolean, default: true } }, { _id: false })],
+        default: undefined,
+      },
+      deskNumber: { type: String, trim: true, maxlength: 30, default: '' },
+      consultantLines: {
+        type: [new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, phone: { type: String, trim: true, maxlength: 30 }, note: { type: String, trim: true, maxlength: 100, default: '' } }, { _id: false })],
+        default: undefined,
+      },
+      workingHours: {
+        days: { type: [Number], default: undefined }, // 0 = Sunday … 6 = Saturday
+        from: { type: String, maxlength: 5, default: '' }, // 'HH:MM', hospital time
+        to: { type: String, maxlength: 5, default: '' },
+      },
+      holidays: {
+        type: [new mongoose.Schema({ on: { type: String, maxlength: 10 }, note: { type: String, trim: true, maxlength: 100, default: '' } }, { _id: false })],
+        default: undefined,
+      },
+      urgentCutoff: { type: String, maxlength: 5, default: '' },
+      urgentNextMorning: { type: String, maxlength: 5, default: '' },
+    },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },
@@ -107,6 +134,7 @@ tenantSchema.set('toJSON', {
     delete ret.nameKey;
     if (ret.letterhead) delete ret.letterhead.pcpndtRegistration; // removed 2 Oct 2026: kept in the database, never sent
     delete ret.billing; // the UPI ID leaves only through the billing routes (never to the platform's lists of hospitals)
+    delete ret.referrals; // the consultants' direct lines leave only through the referral routes (never to the platform)
     return ret;
   },
 });

@@ -166,6 +166,10 @@ export function PatientDetailPage() {
   const { activeMembership } = useAuth();
   const location = useLocation();
   const { data, error, reload } = useFetch(`/patients/${id}`);
+  // Referrals from other doctors (docs/REFERRALS_PLAN.md): doctors and RMOs get a Referrals tab when she has any (the
+  // server lists only the referrals this person may open).
+  const seesReferrals = hasRole(activeMembership, 'doctor', 'rmo');
+  const referrals = useFetch(seesReferrals ? '/referrals' : null, { patientId: id, list: 'all' });
   const [flash, setFlash] = useState(location.state?.flash ?? null);
   const [actionError, setActionError] = useState(null);
   // Another patient's record opened from this one (the main record of a duplicate, an earlier record, a baby's
@@ -240,6 +244,9 @@ export function PatientDetailPage() {
   // On the Edit details tab, "Save changes" is the screen's one primary action: the header's Edit button is hidden
   // there, and today's visit button is shown as a secondary button.
   const onEditTab = /\/edit\/?$/.test(location.pathname);
+  // The Referrals tab: for doctors and RMOs who may see her visits, when she has a referral (or while it is open)
+  const referralsTab =
+    seesReferrals && a.canViewVisits && (referrals.data?.referrals?.length > 0 || /\/referrals\/?$/.test(location.pathname));
   const carePlanSummary = localSummary ?? patient.carePlanSummary;
   const planTab = showsCarePlan(patient, carePlanSummary);
   const subtitle = [
@@ -297,9 +304,10 @@ export function PatientDetailPage() {
     ...(a.canMarkSensitive ? [{ label: patient.sensitive ? 'Remove sensitive marking' : 'Mark sensitive', icon: Lock, onSelect: () => setConfirmSensitive(true) }] : []),
     ...(a.canEditClinical && hasRole(activeMembership, 'doctor', 'rmo') ? [{ label: 'Write a letter', icon: FileText, onSelect: () => setWritingLetter(true) }] : []),
     ...(a.canAddEmergencyNote ? [{ label: 'Emergency note', icon: Siren, onSelect: () => setEmergencyOpen(true) }] : []),
-    // The patient card: her name, number, doctor and appointments to keep (reception, doctors, RMOs, nurses) – never
-    // for a record marked as a duplicate (her card carries the number of her main record), nor for a closed record
-    ...(patient.phone !== undefined && !patient.duplicateOf && !patient.closed && hasRole(activeMembership, 'receptionist', 'doctor', 'rmo', 'nurse')
+    // The patient card: her name, number, doctor and appointments to keep (reception, the referral desk, doctors, RMOs,
+    // nurses) – never for a record marked as a duplicate (her card carries the number of her main record), nor for a
+    // closed record
+    ...(patient.phone !== undefined && !patient.duplicateOf && !patient.closed && hasRole(activeMembership, 'receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse')
       ? [{ label: 'Print patient card', icon: IdCard, onSelect: () => setPrintingCard(true) }]
       : []),
     // Automatic reminders and the patient portal (Version 2): staff who see her phone number – not on a closed record,
@@ -405,8 +413,9 @@ export function PatientDetailPage() {
           ...(a.canViewVisits ? [{ label: 'Visits', to: `${base}/visits`, end: false }] : []),
           ...(a.canViewVisits ? [{ label: 'Stays', to: `${base}/stays`, end: false }] : []),
           ...(a.canViewVisits ? [{ label: 'Lab and scans', to: `${base}/lab`, end: false }] : []),
-          // Appointment booking: for reception, doctors, RMOs and nurses who may see her phone number
-          ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'doctor', 'rmo', 'nurse') ? [{ label: 'Appointments', to: `${base}/appointments`, end: true }] : []),
+          ...(referralsTab ? [{ label: 'Referrals', to: `${base}/referrals`, end: true }] : []),
+          // Appointment booking: for reception, the referral desk, doctors, RMOs and nurses who may see her phone number
+          ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse') ? [{ label: 'Appointments', to: `${base}/appointments`, end: true }] : []),
           // ABDM linking (M1): her ABHA – reception, doctors and RMOs
           ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'doctor', 'rmo') ? [{ label: 'ABHA', to: `${base}/abha`, end: true }] : []),
           // Billing: reception and the billing department (the hospital admin opens bills from Billing)

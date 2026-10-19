@@ -663,7 +663,7 @@ patientsRouter.get('/', async (req, res) => {
  */
 export async function registerPatient(req, body) {
   const can = creationAccess(req);
-  if (!can.allowed) throw forbidden('Only reception, doctors and RMOs can register patients.');
+  if (!can.allowed) throw forbidden('Only reception, the referral desk, the lab, doctors and RMOs can register patients.');
   await ensureStandardTemplates(req.tenantId); // any pending rule upgrade runs now, not in the middle of saving
   const sentPregnancy = can.clinical && body?.pregnancy !== undefined;
   const data = parse(sentPregnancy ? createSchemas.withDates : createSchemas.basic, body);
@@ -671,6 +671,12 @@ export async function registerPatient(req, body) {
     // Reception registers identity (and newborn birth details); medical details come from clinicians.
     for (const section of ['pregnancy', 'obstetric', 'medical', 'abortion']) delete data[section];
     data.notes = '';
+  }
+  if (!can.fullIdentity) {
+    // The referral desk saves only what it may see of her afterwards (utils/patientAccess.js): no address, and no
+    // baby – a baby's birth details and mother are registered by reception, doctors and RMOs.
+    if (data.careType === 'newborn') throw forbidden('Babies are registered by reception, doctors and RMOs.');
+    data.address = '';
   }
   // Pregnancy loss: seen today unless another day was entered. Its findings are written with who recorded them.
   if (data.abortion) {

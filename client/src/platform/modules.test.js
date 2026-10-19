@@ -1,6 +1,6 @@
 // The left menu and the Clinic library's tabs, by role (no browser needed).
 import { describe, expect, it } from 'vitest';
-import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, patientTabs } from './modules.js';
+import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, newPatientLinks, patientTabs } from './modules.js';
 
 const menu = (roles) => hospitalModules(roles).map((m) => m.label);
 
@@ -55,7 +55,8 @@ describe('My settings and Hospital admin', () => {
     expect(isPrescriber([{ roles: ['admin'] }])).toBe(false);
   });
   it('Hospital admin holds Staff, Audit log and Print letterhead', () => {
-    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'Beds', 'ABDM']);
+    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'Beds', 'ABDM', 'Referrals']);
+    expect(moduleByKey('hospital-admin').tabs.find((t) => t.label === 'Referrals').to).toBe('/admin/referrals'); // the settings only, never a referral
     expect(moduleByKey('appointments').tabs.map((t) => t.label)).toEqual(['Schedule', 'Month', 'Needs a time', 'OPD settings']);
     expect(moduleByKey('registers')).toBeUndefined(); // the registers were removed on 2 Oct 2026
     expect(moduleByKey('analytics').tabs.map((t) => t.label)).not.toContain('Monthly report'); // a doctors-only tab, added on the page itself
@@ -65,15 +66,21 @@ describe('My settings and Hospital admin', () => {
 
 describe('the left menu by role', () => {
   it('Analytics for doctors and hospital admins only; Appointments for reception, doctors, RMOs and nurses; Calendar for doctors, RMOs and reception; Billing for reception and admins; Pharmacy for pharmacists and admins (exact lists pin the order too)', () => {
-    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Scans', 'Analytics', 'Clinic library']);
+    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Scans', 'Referrals', 'Analytics', 'Clinic library']);
     expect(menu(['admin'])).toEqual(['Today', 'Billing', 'Pharmacy', 'Analytics', 'Hospital admin']);
-    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Scans', 'Billing', 'Pharmacy', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
-    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Scans', 'Analytics', 'Clinic library']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
+    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Scans', 'Referrals', 'Billing', 'Pharmacy', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
+    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Scans', 'Referrals', 'Analytics', 'Clinic library']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
     expect(menu(['rmo', 'doctor'])).toContain('Calendar');
     // Scans for doctors and RMOs only (owner, 19 Oct 2026)
     expect(menu(['nurse'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Analytics', 'Clinic library']);
     expect(menu(['receptionist'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Billing']);
     expect(menu(['lab'])).toEqual(['Today', 'Patients', 'Lab']);
+    // The referral desk (brought over 19 Oct 2026): referrals, her identity details and her appointment
+    expect(menu(['referral_desk'])).toEqual(['Today', 'Patients', 'Appointments', 'Referrals']);
+    expect(patientTabs(['referral_desk']).find((t) => t.label === 'New patient').menu.map((l) => l.to)).not.toContain('/patients/new/newborn'); // never a baby
+    for (const roles of [['receptionist'], ['doctor'], ['rmo'], ['referral_desk', 'receptionist']]) expect(newPatientLinks(roles).map((l) => l.to), roles.join()).toContain('/patients/new/newborn');
+    for (const roles of [['nurse'], ['receptionist'], ['lab'], ['pharmacist'], ['admin']]) expect(menu(roles), roles[0]).not.toContain('Referrals');
+    expect(moduleByKey('referrals').tabs.map((t) => t.to)).toEqual(['/referrals', '/referrals/doctors', '/referrals/review', '/referrals/slip']);
     expect(menu(['pharmacist'])).toEqual(['Today', 'Patients', 'Pharmacy']);
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists
     expect(menu(['receptionist', 'lab'])).not.toContain('Analytics');
