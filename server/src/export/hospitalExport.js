@@ -178,6 +178,7 @@ export const LEFT_OUT = {
   StoredFile: 'Written as stored-files.json and the "files" folder.',
   Notification: "Staff's notifications (the bell): short-lived messages, deleted after 30 days; the work itself is exported.",
   PortalAccess: 'Patient portal codes (kept only as hashes) never leave Perinexa.',
+  PatientChangeRequest: "Patients' requests from the portal to change their name, age, mobile or email: kept until reception decides – the record carries the decision, and who decided and when is in the audit log.",
   PatientAccount: "Patients' own portal sign-ins (email, mobile, password hash, OTP): sign-in data, not her record – it never leaves Perinexa; approvals and rejections are in the audit log.",
   DictationWord: 'Personal voice-entry words of staff accounts – not the hospital\'s data, and never patient information.',
   VisitDraft: 'Unsaved typing on a visit, kept for its author for up to 7 days – not part of the record; what was saved is in visits.json.',

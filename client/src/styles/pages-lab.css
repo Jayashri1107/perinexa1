@@ -253,3 +253,7 @@
 .img-worked svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--teal-700); }
 .img-complete { display: grid; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-md); background: var(--teal-100); }
 .img-complete p { margin: 0; }
+/* My profile tabs (19 Oct 2026) */
+.portal-profile-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.portal-profile-tabs button { white-space: nowrap; }
+.change-table { margin: var(--space-2) 0; max-width: 560px; }

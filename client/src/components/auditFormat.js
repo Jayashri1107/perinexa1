@@ -23,7 +23,10 @@ const AI_FEATURES = {
 
 // Plain-English names for audit log events.
 // What she opened in the portal (PORTAL_RECORDS_VIEWED)
-const PORTAL_RECORD_WORDS = { prescriptions: 'prescriptions', lab: 'lab reports', visits: 'visits', bills: 'bills', summary: 'her Home page summary', appointments: 'appointments', profile: 'profile' };
+const PORTAL_RECORD_WORDS = { prescriptions: 'prescriptions', lab: 'lab reports', visits: 'visits', bills: 'bills', summary: 'her Home page summary', appointments: 'appointments', profile: 'profile', scans: 'scan reports' };
+// Her profile (19 Oct 2026): which details – never the values
+const PORTAL_PROFILE_WORDS = { address: 'address', city: 'city', state: 'state', pinCode: 'PIN code', emergencyContact: 'emergency contact', fullName: 'name', ageYears: 'age', phone: 'mobile', email: 'email' };
+const profileFields = (d) => (d.fields ?? []).map((f) => PORTAL_PROFILE_WORDS[f] ?? f).join(', ');
 // How she signed in with her own account, and why a sign-in failed (PORTAL_LOGIN_SUCCESS / _FAILED)
 const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mobile and OTP' };
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
@@ -293,6 +296,10 @@ export const AUDIT_LABELS = {
   PORTAL_SIGNUP_REJECTED: "Patient's online sign-up rejected",
   PORTAL_PASSWORD_CHANGED: 'Patient changed her portal password',
   PORTAL_RECORDS_VIEWED: 'Patient viewed her records in the portal',
+  PORTAL_PROFILE_UPDATED: 'Patient changed her contact details in the portal',
+  PORTAL_CHANGE_REQUESTED: 'Patient asked to change her name, age, mobile or email',
+  PORTAL_CHANGE_APPROVED: "Patient's change request approved",
+  PORTAL_CHANGE_REJECTED: "Patient's change request rejected",
   KEEPSAKE_CARD_PRINTED: 'Baby keepsake card printed',
   // Pharmacy extras (4 Oct 2026)
   PHARMACY_ORDER_CREATED: 'Purchase order made',
@@ -521,6 +528,10 @@ export const AUDIT_TONES = {
   PORTAL_SIGNUP_REJECTED: 'warn',
   PORTAL_PASSWORD_CHANGED: 'patient',
   PORTAL_RECORDS_VIEWED: 'patient',
+  PORTAL_PROFILE_UPDATED: 'patient',
+  PORTAL_CHANGE_REQUESTED: 'patient',
+  PORTAL_CHANGE_APPROVED: 'patient',
+  PORTAL_CHANGE_REJECTED: 'patient',
   KEEPSAKE_CARD_PRINTED: 'patient',
   PORTAL_LOGIN_FAILED: 'warn',
   REMINDER_PREPARED: 'patient',
@@ -1134,6 +1145,12 @@ export function describeAudit(entry) {
     case 'PORTAL_PASSWORD_CHANGED':
       return '';
     case 'KEEPSAKE_CARD_PRINTED':
+      return d.mrn ? record(d) : '';
+    case 'PORTAL_PROFILE_UPDATED':
+    case 'PORTAL_CHANGE_REQUESTED':
+    case 'PORTAL_CHANGE_APPROVED':
+      return [d.mrn ? record(d) : '', profileFields(d)].filter(Boolean).join(' · ');
+    case 'PORTAL_CHANGE_REJECTED':
       return d.mrn ? record(d) : '';
     case 'PORTAL_RECORDS_VIEWED':
       return [d.mrn ? record(d) : '', PORTAL_RECORD_WORDS[d.kind] ?? ''].filter(Boolean).join(' · ');

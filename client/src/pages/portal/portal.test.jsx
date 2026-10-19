@@ -229,7 +229,7 @@ describe('her Home page at a glance (17 Oct 2026)', () => {
     const out = renderToStaticMarkup(<MemoryRouter><MyCare data={data} booking={{ enabled: true, upcoming: null, doctors: [{ id: 'a1', name: 'Dr Sample A', leave: [] }] }} summary={summary} onChanged={() => {}} onSignOut={() => {}} lang="en" /></MemoryRouter>);
     const words = text(out);
     expect(out.match(/btn btn-primary/g)).toHaveLength(1);
-    for (const w of ['Book an appointment', 'Your health at a glance', 'Prescriptions', 'Medicines prescribed to you', 'Lab reports', '₹300 to pay', 'None booked', 'Call the hospital', 'In an emergency', 'My details']) expect(words).toContain(w);
+    for (const w of ['Book an appointment', 'Your health at a glance', 'Prescriptions', 'Medicines prescribed to you', 'Lab reports', '₹300 to pay', 'None booked', 'Call the hospital', 'In an emergency', 'My profile']) expect(words).toContain(w);
     expect(out).toContain('href="tel:02000000000"');
   });
   it('in Marathi', () => {

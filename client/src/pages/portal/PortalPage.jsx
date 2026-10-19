@@ -6,7 +6,8 @@ import { Alert, Field, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
 import { ChangePassword, HospitalEntry } from './PortalAccount.jsx';
 import { PortalShell } from './PortalShell.jsx';
-import { AppointmentHistory, AtAGlance, CallHospital, NextAppointment, ProfileCard, useLoad } from './PortalHome.jsx';
+import { AppointmentHistory, AtAGlance, CallHospital, NextAppointment, useLoad } from './PortalHome.jsx';
+import { ProfilePage } from './PortalProfile.jsx';
 import { RECORD_TABS, RecordsTab, recordIcon } from './PortalRecords.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
@@ -251,7 +252,14 @@ export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null,
             <CallHospital hospital={data.hospital} lang={lang} />
           </>
         )}
-        {section === 'profile' && <ProfileCard lang={lang} />}
+        {section === 'profile' && (
+          <ProfilePage
+            lang={lang}
+            canChangePassword={Boolean(data.canChangePassword)}
+            onPasswordDone={() => setSection('home')}
+            plan={data.plan ? <HomeCards data={data} booking={null} onChanged={onChanged} lang={lang} withBooking={false} withAppointment={false} /> : null}
+          />
+        )}
         {RECORD_TABS.includes(section) && <RecordsTab key={section} tab={section} lang={lang} />}
         {section === 'password' && (
           <section className="card portal-card">
