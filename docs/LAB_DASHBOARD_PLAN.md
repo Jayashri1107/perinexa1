@@ -30,6 +30,11 @@ product pages), in Perinexa's own look (`docs/BRAND.md`). Most of the workflow a
 The tabs at the top of the lab pages now start with Dashboard, Worklist, Result entry. The main sidebar is unchanged
 (no pages under any item – owner, 19 Oct 2026).
 
+5. **QC, Stock, Tests and Referrers laid out properly** (owner, 19 Oct 2026): each as a table with aligned columns,
+   search and pages (10, 25 or 50 rows); the Add button at the top right; adding, changing, receiving a batch, counting
+   or writing off, the QC chart and the corrective action in dialogs instead of forms always open on the page. QC:
+   today's value is typed on the lot's row. Stock: items and batches in two tables. Tests: by department, with search.
+
 ## Later (not built)
 - Several branches and collection centres (a filter on the dashboard).
 - Test-wise and referrer-wise income reports; a daily trend chart.
