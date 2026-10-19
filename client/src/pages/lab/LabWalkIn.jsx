@@ -1,30 +1,15 @@
-import { useMemo, useState } from 'react';
-import { Home, Plus, TestTube } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Home, Plus } from 'lucide-react';
 import { api } from '../../api.js';
-import { Alert, Field, formatDate, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
+import { Field, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { rupees, toPaise } from '../billing/billingFormat.js';
+import { rupees } from '../billing/billingFormat.js';
 import { useFetch } from '../../hooks/useFetch.js';
-import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
-import { AdmitRegister } from '../beds/AdmitRegister.jsx';
 import { isAbnormal } from './labFormat.js';
 
-// Lab version 2 (docs/LAB_V2_PLAN.md): a walk-in or referred patient's order entered by the lab from the prescription
-// (the owner's decision), the home collection of an order, and her earlier results of the same values (trends).
-
-function Modal({ id, title, onClose, children }) {
-  const ref = useDialogFocus(onClose);
-  return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} tabIndex={-1} className="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
-        <h2 id={`${id}-title`}>{title}</h2>
-        {children}
-      </div>
-    </div>
-  );
-}
+// Lab version 2 (docs/LAB_V2_PLAN.md): the home collection of an order, her earlier results of the same values (trends)
+// and the receipt of a payment taken at registration (the registration itself: LabRegistrationPage.jsx).
 
 const today = () => {
   const d = new Date();
@@ -60,156 +45,6 @@ export function HomeFields({ value, onChange, collectors, fields = {}, idPrefix 
 }
 const homeBody = (h) => ({ address: h.address.trim(), on: h.on, time: h.time, collectorId: h.collectorId || null });
 const EMPTY_HOME = { address: '', on: today(), time: '09:00', collectorId: '' };
-
-export function WalkInDialog({ onClose }) {
-  const navigate = useNavigate();
-  const catalogue = useFetch('/lab/tests');
-  // Prices from the hospital's test list (the price list), for the payment at registration
-  const priced = useFetch('/lab-setup/tests');
-  const [pay, setPay] = useState({ take: true, mode: 'cash', amount: '', reference: '' });
-  const [done, setDone] = useState(null); // { order, payment }
-  const referrers = useFetch('/lab-setup/referrers');
-  const home = useFetch('/lab/home');
-  const [patient, setPatient] = useState(null);
-  const [chosen, setChosen] = useState([]);
-  const [filter, setFilter] = useState('');
-  const [form, setForm] = useState({ referrerId: '', prescription: '', urgent: false, noteToLab: '', atHome: false });
-  const [homeForm, setHomeForm] = useState(EMPTY_HOME);
-  const [error, setError] = useState(null);
-  const [fields, setFields] = useState({});
-  const [busy, setBusy] = useState(false);
-  const [requestId] = useState(() => crypto.randomUUID());
-  const tests = useMemo(() => (catalogue.data?.tests ?? []).filter((t) => t.active !== false && t.who === (patient?.careType === 'newborn' ? 'newborn' : 'adult') && t.name.toLowerCase().includes(filter.toLowerCase())), [catalogue.data, patient, filter]);
-  const toggle = (key) => setChosen((c) => (c.includes(key) ? c.filter((k) => k !== key) : [...c, key]));
-  const price = (key) => priced.data?.tests?.find((t) => t.key === key)?.pricePaise ?? 0;
-  const totalPaise = chosen.reduce((s, k) => s + price(k), 0);
-  const amountPaise = pay.amount === '' ? totalPaise : toPaise(pay.amount);
-  const send = async () => {
-    setBusy(true);
-    setError(null);
-    setFields({});
-    try {
-      const body = {
-        clientRequestId: requestId,
-        patientId: patient.id,
-        tests: chosen.map((key) => ({ key })),
-        urgent: form.urgent,
-        noteToLab: form.noteToLab.trim(),
-        referrerId: form.referrerId || null,
-        prescription: form.prescription.trim(),
-        home: form.atHome ? homeBody(homeForm) : null,
-        payment: pay.take && amountPaise > 0 ? { mode: pay.mode, amountPaise, reference: pay.reference.trim() } : null,
-      };
-      const res = await api('/lab/walk-in', { method: 'POST', body });
-      if (res.payment) setDone({ order: res.order, payment: res.payment, patient, tests: chosen.map((k) => catalogue.data.tests.find((t) => t.key === k)?.name ?? k) });
-      else navigate(`/lab/orders/${res.order.id}`);
-    } catch (err) {
-      setError(err.message);
-      setFields(err.fields ?? {});
-      setBusy(false);
-    }
-  };
-  if (done) return <PaidReceipt done={done} onOpen={() => navigate(`/lab/orders/${done.order.id}`)} />;
-  return (
-    <Modal id="walkin" title="Walk-in or referred patient" onClose={onClose}>
-      <Alert type="error">{error || catalogue.error}</Alert>
-      {!patient ? (
-        <>
-          <p>Find her record, or register her (name, age, phone and address only).</p>
-          <PatientFinder onPick={setPatient} />
-          <AdmitRegister onRegistered={setPatient} />
-        </>
-      ) : (
-        <>
-          <p className="appt-chosen">
-            <strong>{patient.fullName}</strong> <span className="muted">{patient.mrn}</span>{' '}
-            <button type="button" className="btn btn-link btn-sm" onClick={() => setPatient(null)}>
-              Choose someone else
-            </button>
-          </p>
-          <div className="form-grid">
-            <Field label="Referred by" id="wi-ref" error={fields.referrerId} hint="Add doctors and centres under Lab → Referrers.">
-              <select id="wi-ref" value={form.referrerId} onChange={(e) => setForm({ ...form, referrerId: e.target.value })}>
-                <option value="">No referrer (self)</option>
-                {(referrers.data?.referrers ?? [])
-                  .filter((r) => r.active)
-                  .map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                      {r.kind === 'centre' ? ' (centre)' : ''}
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field label={form.referrerId ? 'Prescription (optional)' : 'Prescription'} id="wi-rx" error={fields.prescription} hint='e.g. "Prescription of 16 Oct" or "Self – no prescription".'>
-              <input id="wi-rx" maxLength={200} value={form.prescription} onChange={(e) => setForm({ ...form, prescription: e.target.value })} />
-            </Field>
-            <Field label="Note for the lab (optional)" id="wi-note">
-              <input id="wi-note" maxLength={500} value={form.noteToLab} onChange={(e) => setForm({ ...form, noteToLab: e.target.value })} />
-            </Field>
-          </div>
-          <fieldset className="fieldset">
-            <legend>Tests ({chosen.length} chosen)</legend>
-            {fields.tests && <p className="field-error">{fields.tests}</p>}
-            <label className="lab-filter" htmlFor="wi-find">
-              <span>Find a test</span>
-              <input id="wi-find" value={filter} onChange={(e) => setFilter(e.target.value)} />
-            </label>
-            <div className="check-grid lab-choose">
-              {tests.map((t) => (
-                <label key={t.key} className="check">
-                  <input type="checkbox" checked={chosen.includes(t.key)} onChange={() => toggle(t.key)} /> {t.name}
-                  {price(t.key) > 0 && <span className="muted tabular"> · {rupees(price(t.key))}</span>}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <label className="check">
-            <input type="checkbox" checked={form.urgent} onChange={(e) => setForm({ ...form, urgent: e.target.checked })} /> Urgent
-          </label>
-          <label className="check">
-            <input type="checkbox" checked={form.atHome} onChange={(e) => setForm({ ...form, atHome: e.target.checked })} /> Collect the sample at home
-          </label>
-          {form.atHome && <HomeFields value={homeForm} onChange={setHomeForm} collectors={home.data?.collectors} fields={fields} idPrefix="wi-home" />}
-          <fieldset className="fieldset">
-            <legend>Payment – total {rupees(totalPaise)}</legend>
-            <label className="check">
-              <input type="checkbox" checked={pay.take} onChange={(e) => setPay({ ...pay, take: e.target.checked })} /> Take the payment now (a receipt is printed)
-            </label>
-            {pay.take && (
-              <div className="form-grid">
-                <Field label="Paid by" id="wi-mode">
-                  <select id="wi-mode" value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })}>
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                  </select>
-                </Field>
-                <Field label="Amount (₹)" id="wi-amount" error={fields['payment.amountPaise']} hint={`Empty = the total, ${rupees(totalPaise)}.`}>
-                  <input id="wi-amount" inputMode="decimal" className="tabular" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
-                </Field>
-                {pay.mode !== 'cash' && (
-                  <Field label="UPI or card reference (optional)" id="wi-ref2">
-                    <input id="wi-ref2" maxLength={80} value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} />
-                  </Field>
-                )}
-              </div>
-            )}
-            {totalPaise === 0 && chosen.length > 0 && <p className="hint">These tests have no price on the price list yet (Billing → Price list).</p>}
-          </fieldset>
-          <div className="row">
-            <button type="button" className="btn btn-primary" disabled={busy || !chosen.length} onClick={send}>
-              <TestTube aria-hidden="true" /> {busy ? 'Saving…' : 'Make the order'}
-            </button>
-            <button type="button" className="btn btn-link" onClick={onClose}>
-              Cancel
-            </button>
-          </div>
-        </>
-      )}
-    </Modal>
-  );
-}
 
 const HOME_WORDS = { scheduled: 'Scheduled', on_the_way: 'On the way', collected: 'Collected', failed: 'Could not collect' };
 export const homeWord = (s) => HOME_WORDS[s] ?? s;
@@ -363,7 +198,7 @@ export function PreviousResults({ order, catalogue, previous }) {
 }
 
 /** The receipt of the payment taken at the lab's counter: printed for the patient, then the order opens. */
-function PaidReceipt({ done, onOpen }) {
+export function PaidReceipt({ done, onOpen }) {
   const lh = useFetch('/tenant/settings/letterhead');
   const { payment: p, order: o } = done;
   const record = () => Promise.resolve();

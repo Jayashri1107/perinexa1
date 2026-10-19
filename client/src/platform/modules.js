@@ -128,7 +128,9 @@ export const HOSPITAL_LAB = {
   to: '/lab',
   // The full lab system (docs/LAB_LIMS_PLAN.md): Find, the register, the hospital's test list and the lab's settings
   tabs: [
+    { label: 'Dashboard', to: '/lab/dashboard', end: true, activeFor: '/lab/new' },
     { label: 'Worklist', to: '/lab', end: true, activeFor: '/lab/orders' },
+    { label: 'Result entry', to: '/lab/results', end: true },
     { label: 'Find', to: '/lab/find', end: true },
     { label: 'Register', to: '/lab/register', end: true },
     // Lab version 2 (docs/LAB_V2_PLAN.md): quality control, the lab's stock and cost per test, referrers
@@ -372,7 +374,8 @@ export function hospitalModules(roles = []) {
   // 13 Oct 2026); their Today still lists today's patients and who is waiting.
   if (canSeeCalendar(roles) && !(roles.includes('rmo') && !any(roles, ['doctor', 'receptionist']))) modules.push(HOSPITAL_CALENDAR);
   if (any(roles, BED_MENU_ROLES)) modules.push(HOSPITAL_BEDS);
-  if (any(roles, LAB_ROLES)) modules.push(HOSPITAL_LAB);
+  // Lab staff start on the lab's dashboard (owner, 19 Oct 2026); doctors, RMOs and nurses on the worklist
+  if (any(roles, LAB_ROLES)) modules.push(roles.includes('lab') ? { ...HOSPITAL_LAB, to: '/lab/dashboard', activeFor: '/lab' } : HOSPITAL_LAB);
   if (any(roles, SCAN_ROLES)) modules.push(HOSPITAL_SCANS);
   if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);
   if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: roles.includes('pharmacist') ? '/pharmacy' : '/pharmacy/stock' });

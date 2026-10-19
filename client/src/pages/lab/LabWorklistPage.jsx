@@ -9,7 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { Section } from '../worklist/WorklistSections.jsx';
 import { DEPARTMENTS, FLAG_LOOK, LATE_LOOK, orderLook, testNames } from './labFormat.js';
-import { WalkInDialog, homeWord } from './LabWalkIn.jsx';
+import { homeWord } from './LabWalkIn.jsx';
 
 // The Lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md): the lab's worklist – samples to take,
 // results to enter, results to check (when the hospital checks results before the report), tests at an outside lab,
@@ -107,7 +107,6 @@ export function DepartmentSelect({ value, onChange, id = 'lab-department' }) {
 
 export function LabWorklistPage() {
   const [params, setParams] = useSearchParams();
-  const [walkIn, setWalkIn] = useState(false);
   // Receiving by scanning a label (the scanner types the number and presses Enter)
   const [scan, setScan] = useState('');
   const [scanNote, setScanNote] = useState(null);
@@ -149,9 +148,9 @@ export function LabWorklistPage() {
           </div>
           <DepartmentSelect value={department} onChange={(d) => go({ list, department: d })} />
           {data?.isLab && (
-            <button type="button" className="btn btn-primary" onClick={() => setWalkIn(true)}>
-              <Plus aria-hidden="true" /> Walk-in patient
-            </button>
+            <Link to="/lab/new" className="btn btn-primary">
+              <Plus aria-hidden="true" /> New registration
+            </Link>
           )}
         </div>
         <Alert type="error">{error}</Alert>
@@ -181,7 +180,6 @@ export function LabWorklistPage() {
           </Section>
         )}
       </div>
-      {walkIn && <WalkInDialog onClose={() => setWalkIn(false)} />}
     </>
   );
 }

@@ -11,6 +11,7 @@ import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { OutsideSection, RejectDialog, VerifyCard } from './LabOrderExtras.jsx';
 import { LabLabels, LabReportPrint } from './LabPrints.jsx';
 import { HomeCard, PreviousResults } from './LabWalkIn.jsx';
+import { OrderTracker } from './OrderTracker.jsx';
 import {
   FILE_TYPES,
   FLAG_LOOK,
@@ -538,6 +539,7 @@ export function LabOrderPage() {
               </span>
             </p>
           )}
+          <OrderTracker order={order} />
           <dl className="lab-stamps">
             {order.sampleNo && (
               <>

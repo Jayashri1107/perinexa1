@@ -78,6 +78,9 @@ import { PatientStaysTab } from './pages/inpatient/PatientStaysTab.jsx';
 import { AdmissionPage } from './pages/inpatient/AdmissionPage.jsx';
 import { LabOrderPage } from './pages/lab/LabOrderPage.jsx';
 import { LabWorklistPage } from './pages/lab/LabWorklistPage.jsx';
+import { LabDashboardPage } from './pages/lab/LabDashboardPage.jsx';
+import { LabRegistrationPage } from './pages/lab/LabRegistrationPage.jsx';
+import { LabResultsPage } from './pages/lab/LabResultsPage.jsx';
 import { CashHandoverPage } from './pages/billing/CashHandoverPage.jsx';
 import { LabFindPage } from './pages/lab/LabFindPage.jsx';
 import { LabRegisterPage } from './pages/lab/LabRegisterPage.jsx';
@@ -237,6 +240,12 @@ export function App() {
               </Route>
               <Route path="lab" element={<RequireTenantRole roles={LAB_ROLES} message="The lab module is for the lab, doctors, RMOs and nurses." />}>
                 <Route index element={<LabWorklistPage />} />
+                {/* The eLabAssist-style dashboard, registration on one screen and result entry by department (19 Oct 2026) */}
+                <Route path="dashboard" element={<LabDashboardPage />} />
+                <Route path="new" element={<RequireTenantRole roles={['lab']} message="The lab registers walk-in and referred patients." />}>
+                  <Route index element={<LabRegistrationPage />} />
+                </Route>
+                <Route path="results" element={<LabResultsPage />} />
                 <Route path="orders/:orderId" element={<LabOrderPage />} />
                 <Route path="find" element={<LabFindPage />} />
                 <Route path="register" element={<LabRegisterPage />} />
