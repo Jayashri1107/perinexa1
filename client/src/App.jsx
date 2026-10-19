@@ -259,7 +259,7 @@ export function App() {
               {/* The registers were removed on 2 Oct 2026; old links go to the monthly report in Analytics. */}
               <Route path="registers/*" element={<RegistersRedirect />} />
               {/* USG and radiology (Lab version 2) */}
-              <Route path="scans" element={<RequireTenantRole roles={SCAN_ROLES} message="Scans are for doctors, RMOs, nurses and reception." />}>
+              <Route path="scans" element={<RequireTenantRole roles={SCAN_ROLES} message="Scans are for doctors and RMOs." />}>
                 <Route index element={<ImagingWorklistPage />} />
                 <Route path=":id" element={<ImagingStudyPage />} />
               </Route>
