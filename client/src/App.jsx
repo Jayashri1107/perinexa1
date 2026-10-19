@@ -42,6 +42,7 @@ import { MedicineStockPage, StockPage } from './pages/pharmacy/StockPage.jsx';
 import { NewSupplierReturnPage, SupplierReturnPage, SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
 import { BillsPage } from './pages/billing/BillsPage.jsx';
 import { BillingSettingsPage } from './pages/billing/BillingExtras.jsx';
+import { TallyBatchPage, TallyBatchesPage, TallyControlPage, TallyExceptionsPage, TallySettingsPage } from './pages/billing/TallyPage.jsx';
 import { DailySummaryPage, MonthlyPage, PatientBillsTab, PriceListPage, UnpaidPage } from './pages/billing/BillingReports.jsx';
 import { PatientsPage } from './pages/patients/PatientsPage.jsx';
 import { VoiceWordsPage } from './pages/VoiceWordsPage.jsx';
@@ -312,6 +313,14 @@ export function App() {
                 {/* The hospital's UPI ID and payee name, for the UPI payment link of a bill */}
                 <Route path="settings" element={<RequireTenantRole roles={['admin']} message="The billing settings are kept by the hospital admin." />}>
                   <Route index element={<BillingSettingsPage />} />
+                </Route>
+                {/* The Tally link (docs/TALLY_PLAN.md): files for the accountant's Tally, hospital admin only */}
+                <Route path="accounts" element={<RequireTenantRole roles={['admin']} message="The Tally link is kept by the hospital admin." />}>
+                  <Route index element={<TallyBatchesPage />} />
+                  <Route path="settings" element={<TallySettingsPage />} />
+                  <Route path="exceptions" element={<TallyExceptionsPage />} />
+                  <Route path="control" element={<TallyControlPage />} />
+                  <Route path="batches/:id" element={<TallyBatchPage />} />
                 </Route>
               </Route>
               <Route path="calendar" element={<RequireCalendarRole />}>

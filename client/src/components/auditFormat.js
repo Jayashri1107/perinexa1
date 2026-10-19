@@ -284,6 +284,11 @@ export const AUDIT_LABELS = {
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
+  // The Tally link (16 Oct 2026)
+  TALLY_SETTINGS_CHANGED: 'Tally account names changed',
+  TALLY_BATCH_CREATED: 'Tally batch prepared',
+  TALLY_FILE_DOWNLOADED: 'Tally file downloaded',
+  TALLY_VOUCHER_STATUS: 'Tally entry status changed',
   // Billing extras (4 Oct 2026)
   BILL_INSURANCE_CHANGED: 'Insurance details of a bill changed',
   CLAIM_FORM_PRINTED: 'Claim form printed',
@@ -601,6 +606,11 @@ const rupeesOf = (paise) => `₹${formatNumber(Math.floor((paise ?? 0) / 100))}$
 // an amount or a link. The super admin's log holds no bill number ("A bill").
 const INSURANCE_FIELD_WORDS = { insurer: 'insurer', policyNumber: 'policy or member number', tpa: 'TPA', preAuthNumber: 'pre-authorisation number', claimNumber: 'claim number', pmjayId: 'PM-JAY ID', packageCode: 'package code', packageName: 'package name' };
 const BILLING_SETTING_WORDS = { upiId: 'UPI ID', payeeName: 'payee name' };
+// The Tally link: the NAMES of the settings' sections, batch and entry numbers, counts and status words – never an
+// account name, an amount of one entry or a note typed. The super admin's log holds no batch or entry number.
+const TALLY_SETTING_WORDS = { companyName: 'Tally company', booksFrom: 'day the books start', inpatientIssues: 'medicines issued to admitted patients', ledgers: 'account names', voucherTypes: 'voucher type names' };
+const TALLY_STATUS_WORDS = { exported: 'waiting for Tally (sent again)', imported: 'imported', failed: 'refused by Tally', skipped: 'skipped' };
+const TALLY_PART_WORDS = { vouchers: 'entries file', masters: 'account names file' };
 const CLAIM_LAYOUT_WORDS = { claim: 'claim form', pmjay: 'PM-JAY claim sheet' };
 const billOf = (d) => (d.number ? `Bill ${d.number}` : 'A bill');
 const namesOf = (fields, words) => (Array.isArray(fields) ? fields.map((f) => words[f] ?? f).join(', ') : '');
@@ -1130,6 +1140,14 @@ export function describeAudit(entry) {
       const names = namesOf(d.fields, BILLING_SETTING_WORDS);
       return names ? `${names} · what it was set to is listed under Billing → Settings` : '';
     }
+    case 'TALLY_SETTINGS_CHANGED':
+      return joined(namesOf(d.fields, TALLY_SETTING_WORDS));
+    case 'TALLY_BATCH_CREATED':
+      return joined(d.number ? `Batch ${d.number}` : 'A batch', periodOf(d), d.vouchers != null ? count(d.vouchers, 'entry', 'entries') : '');
+    case 'TALLY_FILE_DOWNLOADED':
+      return joined(d.number ? `Batch ${d.number}` : 'A batch', TALLY_PART_WORDS[d.part] ?? '');
+    case 'TALLY_VOUCHER_STATUS':
+      return joined(d.key ? `Entry ${d.key}` : d.number ? `Batch ${d.number}` : 'Entries', TALLY_STATUS_WORDS[d.status] ?? d.status ?? '', d.count != null ? count(d.count, 'entry', 'entries') : '');
     case 'ABHA_VERIFIED':
     case 'ABHA_LINKED':
     case 'ABHA_CREATED':

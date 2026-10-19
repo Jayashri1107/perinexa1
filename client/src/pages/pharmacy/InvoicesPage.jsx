@@ -10,6 +10,7 @@ import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview
 import { Alert, Field, formatDateTime, useDebounced } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
+import { TallyMarks } from '../billing/TallyPage.jsx';
 import { MODE_LABELS, expiryLabel } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
@@ -379,6 +380,7 @@ export function InvoicePage() {
             On her hospital bill: <Link to={`/billing/bills/${v.billId}`}>open the bill</Link> (reception takes the payment).
           </p>
         )}
+        {activeMembership.roles.includes('admin') && <TallyMarks model="invoice" id={v.id} />}
         <section className="card bill-section">
           <table className="bill-lines">
             <thead>

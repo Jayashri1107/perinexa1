@@ -76,6 +76,9 @@ import { ReminderMessage } from '../models/ReminderMessage.js';
 import { ScanShare } from '../models/ScanShare.js';
 import { FILE_KINDS, StoredFile } from '../models/StoredFile.js';
 import { Tenant } from '../models/Tenant.js';
+import { TallyBatch } from '../models/TallyBatch.js';
+import { TallyVoucher } from '../models/TallyVoucher.js';
+import { withDefaults as tallySettingsWithDefaults } from '../tally/tallyRules.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { WorkDone } from '../models/WorkDone.js';
@@ -124,6 +127,8 @@ export const KINDS = [
   { file: 'pharmacy-purchase-orders.json', model: PurchaseOrder, what: 'Pharmacy: purchase orders.' },
   { file: 'pharmacy-supplier-returns.json', model: SupplierReturn, what: 'Pharmacy: stock returned to suppliers.' },
   { file: 'pharmacy-invoices.json', model: PharmacyInvoice, what: 'Pharmacy: sales and issues to patients, with their tax invoices and returns.' },
+  { file: 'tally-entries.json', model: TallyVoucher, what: 'The accounting entries written for Tally (bills, receipts, pharmacy invoices, credit and debit notes): their lines by account (an insurance line carries the scheme as reception typed it on the payment), the batch each went in, whether Tally imported, refused or skipped them, and the hospital admin\'s note on a refused or skipped entry. Document numbers, never a patient\'s name.' },
+  { file: 'tally-batches.json', model: TallyBatch, what: 'The Tally files prepared for the accountant: the period of each, how many entries, the account names it introduced (with a business buyer\'s or supplier\'s GSTIN), and the fingerprint of its entries file.' },
   { file: 'audit-log.json', model: AuditLog, what: 'The hospital\'s audit log: who did what and when (record ids and counts, never what was written). People are named; their e-mail addresses are left out.' },
   { file: 'numbering.json', model: Counter, what: 'The last number given in each of the hospital\'s numbering series (patient numbers, receipts, invoices …), so another system can go on from there.' },
   { file: 'settings-care-plan-templates.json', model: CarePlanTemplate, what: 'Settings: the care plan templates and risk rules, with their versions and who approved them.' },
@@ -151,7 +156,7 @@ export const KINDS = [
 
 /** Written field by field (not from KINDS): the hospital itself, its staff and the list of stored files. */
 const SPECIAL_FILES = {
-  'hospital.json': 'The hospital\'s own details: name, letterhead, the pharmacy\'s licence numbers, the UPI ID for payment links (and earlier ones), the ABDM ids, and which patient messages are switched on.',
+  'hospital.json': 'The hospital\'s own details: name, letterhead, the pharmacy\'s licence numbers, the UPI ID for payment links (and earlier ones), the ABDM ids, which patient messages are switched on, and the Tally link\'s settings (the Tally company, the first day of the books, how medicines issued to admitted patients are booked, and the accountant\'s account and voucher type names).',
   'staff.json': 'The staff of the hospital: name, roles here, whether they still work here, and a doctor\'s qualification and registration number. No e-mail addresses and no passwords. The ids in the other files ("by", "doctorId", "actor" …) are these ids; an id that is not here is someone outside the hospital\'s staff (for example the platform\'s super admin).',
   'stored-files.json': 'The list of the stored files (lab report files and scanned signed consent forms): the patient and the record each belongs to, its name when it was added, type and size, who added it and when, and where it is in the "files" folder.',
 };
@@ -272,6 +277,8 @@ function hospitalRecord(t) {
     abdm: pick(t.abdm, ['hfrId', 'hipId', 'counterCode']),
     // The waiting-room screen: only whether it is on – its key (a secret in its web address) never leaves
     messaging: { ...pick(t.messaging, ['remindersEnabled', 'portalEnabled', 'portalBooking', 'whatsappDocuments']), waitingRoomScreenOn: Boolean(t.messaging?.displayKey) },
+    // The Tally link's settings as the batches use them (the starting account names where the admin never changed them)
+    tally: tallySettingsWithDefaults(t.tally),
   });
 }
 

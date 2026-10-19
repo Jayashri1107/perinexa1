@@ -13,6 +13,7 @@ import { dayLabel } from '../appointments/appointmentFormat.js';
 import { blobToBase64 } from '../visits/whatsapp.js';
 import { ClaimFormPrint, InsuranceDialog, InsuranceSection, UpiLinkDialog } from './BillingExtras.jsx';
 import { BillStatus } from './BillsPage.jsx';
+import { TallyMarks } from './TallyPage.jsx';
 import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
 import { Modal, useSend } from './billingUi.jsx';
 
@@ -902,6 +903,8 @@ export function BillPage() {
           </section>
         </div>
 
+        {/* The Tally link: whether this bill went to the accountant's Tally (the hospital admin only) */}
+        {activeMembership.roles.includes('admin') && <TallyMarks model="bill" id={b.id} />}
         <section className="card bill-section" aria-labelledby="bill-payments">
           <h2 id="bill-payments">
             Payments <span className="muted">· {b.payments.length}</span>
