@@ -56,6 +56,23 @@ const schema = z.object({
   // The one-time code the sign-in page asks for when the first super admin is created. Required on the live server
   // (NODE_ENV=production), so nobody who finds the new address first can make themselves super admin.
   SETUP_CODE: z.string().trim().default(''),
+  // Several copies of the server behind one address (scaling out): where the request limits are counted. 'database'
+  // (the default on the live server): every copy counts the same requests. 'memory': this copy only (one server, tests).
+  RATE_LIMIT_STORE: z.enum(['memory', 'database']).optional(),
+  // More limits, per 15 minutes from one internet address unless said otherwise (wrong tries only where marked)
+  PORTAL_SIGNIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20), // portal code + 4 digits, wrong tries
+  VERIFY_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60), // checking a printed document's QR
+  ABDM_PUBLIC_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(3000), // a minute: ABDM's gateway, other hospitals
+  // Database connections each copy may open at once (MongoDB driver default 100); lower it on a small database plan.
+  MONGO_MAX_POOL_SIZE: z.coerce.number().int().positive().max(500).default(50),
+  // Risk levels: after the first refresh, a due refresh runs in the background and lists do not wait for it.
+  // Default: on, except in tests (which check the result of each refresh straight away).
+  RISK_REFRESH_IN_BACKGROUND: z.enum(['true', 'false']).optional(),
+  // Seconds a person's worklist is kept for them (utils/worklistCache.js); 0 = never. Default 15, 0 in tests.
+  WORKLIST_CACHE_SECONDS: z.coerce.number().int().min(0).max(120).optional(),
+  // Outside services' addresses (only change for a test stand-in or a provider's regional address)
+  TWILIO_API_URL: z.url().default('https://api.twilio.com/2010-04-01'),
+  MSG91_FLOW_URL: z.url().default('https://control.msg91.com/api/v5/flow'),
   // OTPs one computer may ask for in 15 minutes on a hospital's portal page (sign-up and sign-in with ABHA).
   PORTAL_OTP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(8),
   // The hospital's time zone: "today" for care plans and pregnancy weeks is the date there.
@@ -147,6 +164,9 @@ if (env.NODE_ENV === 'production') {
 export const config = {
   ...env,
   isProduction: env.NODE_ENV === 'production',
+  RATE_LIMIT_STORE: env.RATE_LIMIT_STORE ?? (env.NODE_ENV === 'production' ? 'database' : 'memory'),
+  WORKLIST_CACHE_SECONDS: env.WORKLIST_CACHE_SECONDS ?? (env.NODE_ENV === 'test' ? 0 : 15),
+  RISK_REFRESH_IN_BACKGROUND: env.RISK_REFRESH_IN_BACKGROUND ? env.RISK_REFRESH_IN_BACKGROUND === 'true' : env.NODE_ENV !== 'test',
   // Secure cookies are only sent over HTTPS. Always on in production.
   cookieSecure: env.COOKIE_SECURE ? env.COOKIE_SECURE === 'true' : env.NODE_ENV === 'production',
 };

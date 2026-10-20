@@ -5,6 +5,8 @@ import { RISK_ENGINE_VERSION, assessRisk, effectiveLevel, nextAgeChange, overrid
 import { AuditLog } from '../models/AuditLog.js';
 import { CarePlanTemplate } from '../models/CarePlanTemplate.js';
 import { Patient } from '../models/Patient.js';
+import { config } from '../config.js';
+import { sharedAcrossCopies, takeTurn } from '../utils/sharedState.js';
 import { ABORTION_DRAFT, GYNAECOLOGY_DRAFT, INFERTILITY_DRAFT, NEWBORN_DRAFT, POSTNATAL_DRAFT, POSTNATAL_FINDING_CHANGES } from './otherDrafts.js';
 
 // One built-in DRAFT per type of care. A hospital that does not have the standard template of a type yet (a type
@@ -507,8 +509,12 @@ export async function recalculateForTemplate(template, now = new Date()) {
  * Brings stored risk levels up to date for patients that are due: never worked out, worked out by older
  * risk logic, based on an older version or approval state of the rules, or whose age has changed. Used
  * before lists and counts so the risk filter and dashboard don't depend on someone opening each record.
- * Requests that arrive while a refresh is running wait for it; the time is only recorded after success.
+ * The first refresh after the server starts is waited for. After that (RISK_REFRESH_IN_BACKGROUND, the default
+ * outside tests), a refresh that is due runs in the background and lists answer at once with the levels of a
+ * minute ago, so many people opening the worklist together never all wait for it (load test, 20 Oct 2026). With
+ * several copies of the server, only one copy refreshes each round. The time is only recorded after success.
  */
+const SKIPPED = Object.freeze({ checked: 0, changed: 0, skipped: 0 });
 const lastRefresh = new Map(); // tenant -> time of the last successful refresh
 const inFlight = new Map(); // tenant -> promise of the refresh running now
 
@@ -537,16 +543,23 @@ async function runDueRefresh(tenantId, now) {
 
 export async function refreshDueRisks(tenantId, now = new Date(), { minIntervalMs = 60_000 } = {}) {
   const key = String(tenantId);
-  if (inFlight.has(key)) return inFlight.get(key);
-  if (minIntervalMs && now - (lastRefresh.get(key) ?? 0) < minIntervalMs) return { checked: 0, changed: 0, skipped: 0 };
-  const run = runDueRefresh(tenantId, now)
+  const background = config.RISK_REFRESH_IN_BACKGROUND && lastRefresh.has(key);
+  if (inFlight.has(key)) return background ? SKIPPED : inFlight.get(key);
+  if (minIntervalMs && now - (lastRefresh.get(key) ?? 0) < minIntervalMs) return SKIPPED;
+  const run = (async () => {
+    // Several copies: one refreshes this round; the others carry on with the levels as they are
+    if (minIntervalMs && sharedAcrossCopies() && !(await takeTurn(`risk-refresh:${key}`, minIntervalMs))) return SKIPPED;
+    return runDueRefresh(tenantId, now);
+  })()
     .then((r) => {
       lastRefresh.set(key, Date.now());
       return r;
     })
     .finally(() => inFlight.delete(key));
   inFlight.set(key, run);
-  return run;
+  if (!background) return run;
+  run.catch((err) => console.error('Risk levels: background refresh failed:', err?.message ?? err));
+  return SKIPPED;
 }
 export const resetRiskRefreshTimer = () => lastRefresh.clear();
 

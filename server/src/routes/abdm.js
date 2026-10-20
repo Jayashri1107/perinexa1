@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { aadhaarDigits, abhaAddress, abhaNumber, mobileDigits, verhoeffValid } from '../abdm/abhaFormat.js';
-import { abdmClient, abdmMode, endTxn, getTxn, hospitalByHipId, linkAbha, profileView, startTxn } from '../abdm/abdmService.js';
+import { abdmClient, abdmMode, endTxn, getTxn, hospitalByHipId, linkAbha, profileView, saveTxn, startTxn } from '../abdm/abdmService.js';
 import { PRACTICE_OTP } from '../abdm/practiceClient.js';
 import { CONFIDENTIAL_WORDS_SOURCE, CONFIDENTIAL_WORD_LIST } from '../abdm/shareRules.js';
 import { ABDM_CHECKLIST, ABDM_CHECKLIST_M2, ABDM_CHECKLIST_M3 } from '../abdm/v3Client.js';
@@ -130,17 +130,18 @@ abdmRouter.post('/verify/request', async (req, res) => {
   const value = body.hint === 'abha-number' ? abhaNumber(body.value) : body.hint === 'mobile' ? mobileDigits(body.value) : abhaAddress(body.value);
   if (!value) throw Object.assign(new HttpError(400, body.hint === 'abha-number' ? 'An ABHA number has 14 digits.' : body.hint === 'mobile' ? 'Enter a 10-digit mobile number.' : 'Enter an ABHA address like name@abdm.', 'VALIDATION'), { fields: { value: 'Please check this.' } });
   const out = await abdmClient().requestLoginOtp({ hint: body.hint, value });
-  const id = startTxn(req, { kind: 'verify', abdmTxnId: out.txnId, patientId: String(p._id) });
+  const id = await startTxn(req, { kind: 'verify', abdmTxnId: out.txnId, patientId: String(p._id) });
   res.json({ id, sentTo: out.sentTo, ...practiceHint() });
 });
 
 abdmRouter.post('/verify/confirm', async (req, res) => {
   desk(req);
   const body = parse(z.object({ id: z.uuid(), otp: z.string().regex(/^\d{6}$/, 'The OTP has 6 digits.') }).strict(), req.body);
-  const t = getTxn(req, body.id, 'verify');
+  const t = await getTxn(req, body.id, 'verify');
   const out = await abdmClient().verifyLoginOtp({ txnId: t.abdmTxnId, otp: body.otp });
   t.accounts = out.accounts;
   t.token = out.token;
+  await saveTxn(body.id, t);
   const p = await Patient.findOne({ tenantId: req.tenantId, _id: t.patientId }, { mrn: 1 }).lean();
   await audit(req, 'ABHA_VERIFIED', { details: { patientId: t.patientId, mrn: p?.mrn, accounts: out.accounts.length } });
   res.json({ accounts: out.accounts.map(profileView) });
@@ -149,11 +150,12 @@ abdmRouter.post('/verify/confirm', async (req, res) => {
 abdmRouter.post('/verify/link', async (req, res) => {
   desk(req);
   const body = parse(z.object({ id: z.uuid(), abhaNumber: z.string(), consent: z.literal(true, 'She must agree to link her ABHA.') }).strict(), req.body);
-  const t = getTxn(req, body.id, 'verify');
+  const t = await getTxn(req, body.id, 'verify');
   const profile = (t.accounts ?? []).find((a) => a.abhaNumber === abhaNumber(body.abhaNumber));
   if (!profile) throw new HttpError(400, 'Choose one of the ABHAs ABDM sent.', 'VALIDATION');
   const p = await linkAbha(req, t.patientId, profile, 'verified');
   t.profile = profile;
+  await saveTxn(body.id, t);
   await audit(req, 'ABHA_LINKED', { details: ids(p, { method: 'verified' }) });
   res.json({ abha: abhaView(p), cardId: body.id });
 });
@@ -171,7 +173,7 @@ abdmRouter.post('/create/request', async (req, res) => {
     throw Object.assign(new HttpError(400, 'This is not a valid Aadhaar number. Please check the 12 digits.', 'VALIDATION'), { fields: { aadhaar: 'Please check the 12 digits.' } });
   }
   const out = await abdmClient().requestEnrolOtp({ aadhaar });
-  const id = startTxn(req, { kind: 'create', abdmTxnId: out.txnId, patientId: String(p._id) });
+  const id = await startTxn(req, { kind: 'create', abdmTxnId: out.txnId, patientId: String(p._id) });
   res.json({ id, sentTo: out.sentTo, ...practiceHint() });
 });
 
@@ -180,11 +182,12 @@ abdmRouter.post('/create/confirm', async (req, res) => {
   const body = parse(z.object({ id: z.uuid(), otp: z.string().regex(/^\d{6}$/, 'The OTP has 6 digits.'), mobile: z.string().max(20) }).strict(), req.body);
   const mobile = mobileDigits(body.mobile);
   if (!mobile) throw Object.assign(new HttpError(400, 'Enter her 10-digit mobile number for ABHA.', 'VALIDATION'), { fields: { mobile: 'Enter a 10-digit mobile number.' } });
-  const t = getTxn(req, body.id, 'create');
+  const t = await getTxn(req, body.id, 'create');
   const out = await abdmClient().enrolByAadhaar({ txnId: t.abdmTxnId, otp: body.otp, mobile });
   t.profile = out.profile;
   t.token = out.token;
   if (out.txnId) t.abdmTxnId = out.txnId;
+  await saveTxn(body.id, t);
   const suggestions = out.profile.abhaAddress ? [] : await abdmClient().addressSuggestions({ txnId: t.abdmTxnId }).catch(() => []);
   const p = await Patient.findOne({ tenantId: req.tenantId, _id: t.patientId }, { mrn: 1 }).lean();
   await audit(req, 'ABHA_CREATED', { details: { patientId: t.patientId, mrn: p?.mrn, isNew: out.isNew !== false } });
@@ -196,16 +199,17 @@ abdmRouter.post('/create/address', async (req, res) => {
   const body = parse(z.object({ id: z.uuid(), address: z.string().trim().max(60) }).strict(), req.body);
   const address = abhaAddress(body.address);
   if (!address) throw Object.assign(new HttpError(400, 'An ABHA address has 4 to 32 letters, numbers, dots or underscores.', 'VALIDATION'), { fields: { address: 'Please check it.' } });
-  const t = getTxn(req, body.id, 'create');
+  const t = await getTxn(req, body.id, 'create');
   const out = await abdmClient().setAddress({ txnId: t.abdmTxnId, address });
   t.profile = { ...t.profile, abhaAddress: out.abhaAddress };
+  await saveTxn(body.id, t);
   res.json({ profile: profileView(t.profile) });
 });
 
 abdmRouter.post('/create/link', async (req, res) => {
   desk(req);
   const body = parse(z.object({ id: z.uuid() }).strict(), req.body);
-  const t = getTxn(req, body.id, 'create');
+  const t = await getTxn(req, body.id, 'create');
   if (!t.profile) throw new HttpError(409, 'Her ABHA is not created yet.', 'EXPIRED');
   const p = await linkAbha(req, t.patientId, t.profile, 'created');
   await audit(req, 'ABHA_LINKED', { details: ids(p, { method: 'created' }) });
@@ -216,7 +220,7 @@ abdmRouter.post('/create/link', async (req, res) => {
 abdmRouter.get('/card/:id', async (req, res) => {
   desk(req);
   const { id } = parse(z.object({ id: z.uuid() }), req.params);
-  const t = getTxn(req, id);
+  const t = await getTxn(req, id);
   if (!t.profile || !t.token) throw new HttpError(409, 'Verify or create her ABHA first.', 'EXPIRED');
   const card = await abdmClient().card({ token: t.token, profile: t.profile });
   const p = await Patient.findOne({ tenantId: req.tenantId, _id: t.patientId }, { mrn: 1 }).lean();
@@ -224,9 +228,9 @@ abdmRouter.get('/card/:id', async (req, res) => {
   res.json(card);
 });
 
-abdmRouter.post('/done/:id', (req, res) => {
+abdmRouter.post('/done/:id', async (req, res) => {
   desk(req);
-  endTxn(parse(z.object({ id: z.uuid() }), req.params).id);
+  await endTxn(parse(z.object({ id: z.uuid() }), req.params).id);
   res.json({ ok: true });
 });
 

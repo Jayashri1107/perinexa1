@@ -114,16 +114,23 @@ scripts/db.mjs        Local MongoDB start / stop
 - **Files** (lab reports, scanned consent forms) are stored inside MongoDB (`StoredFile`, `utils/storedFiles.js`).
 - **Taking data out.** `npm run export:hospital` writes one hospital's data to an unencrypted folder (README.md).
 
-## 7. Parts that assume a single server
+## 7. Running several copies of the server (scaling out, 20 Oct 2026)
 
-Fine for the first hospitals on one server. Running several copies needs changes first.
-
-- Background timers in `server/src/index.js` (`setInterval` for reminders and ABDM expiry): every copy would run them.
-- ABDM transactions kept in memory: `server/src/abdm/abdmService.js`, `server/src/abdm/practiceClient.js`, and the
-  (no longer the patient portal: its sign-up and sign-in steps are kept in the database since 16 Oct 2026).
-- Throttles and caches in memory: `careplans/templatesService.js`, `careplans/plansService.js`, the analytics caches,
-  `analytics/auditThrottle.js`.
-- `express-rate-limit` with its default in-memory store (`app.js`, `routes/auth.js`, `routes/portal.js`).
+Perinexa can run as several copies behind one address (DigitalOcean `instance_count`, or any load balancer):
+- **Shared in the database** (`models/SharedState.js`, `utils/sharedState.js`): the request limits
+  (`RATE_LIMIT_STORE=database`, the default in production), the ABDM verify / create steps and the one-time keys for
+  records another hospital sends (both encrypted with a key derived from `JWT_SECRET`), and the background-job turns.
+  Login locks and the patient portal's steps were already in the database.
+- **Background jobs** (reminders, ABDM expiry in `index.js`): every copy keeps its timer, but only one copy runs each
+  round (`takeTurn`), so a reminder is never sent twice.
+- **Still per copy, by design:** caches and throttles (`careplans/templatesService.js`, `careplans/plansService.js`, the
+  analytics caches, `analytics/auditThrottle.js`) – a second copy only works some things out again or writes one more
+  audit line.
+- **ABDM practice mode** (`abdm/practiceClient.js`, the built-in stand-in): its made-up ABHAs and consents live in one
+  copy's memory. With 2+ copies a practice step can say "expired – start again". Real ABDM (sandbox / production)
+  does not have this limit. Try practice mode with one copy.
+- The website tries a page load again (up to 3 times in about 5 seconds) while a copy restarts (`client/src/api.js`);
+  saving is never repeated by itself.
 
 ## 8. Outside services
 

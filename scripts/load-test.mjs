@@ -2,7 +2,7 @@
 //
 //   node scripts/load-test.mjs [--users 40] [--seconds 60] [--think 1000] [--url http://localhost:4000]
 //
-// Each pretend user signs in with one of the demo accounts (`npm run seed:demo`, password DEMO_PASSWORD from
+// Each pretend user signs in with one of the demo accounts (`scripts/load-test-seed.mjs`, password DEMO_PASSWORD from
 // server/.env) and opens the screens that person would open – Today, the worklist, patient lists and records, lab and
 // scan lists – waiting about --think milliseconds between clicks (0 = as fast as possible). At the end: how many
 // requests, how fast (half of them faster than "p50", 95 in 100 faster than "p95"), and any failures.
@@ -73,7 +73,7 @@ async function call(session, path, label = path) {
 
 async function signIn(email, password) {
   const res = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-  if (res.status !== 200) throw new Error(`Sign-in failed for ${email}: ${res.status} – run npm run seed:demo, and check DEMO_PASSWORD`);
+  if (res.status !== 200) throw new Error(`Sign-in failed for ${email}: ${res.status} – run scripts/load-test-seed.mjs, and check DEMO_PASSWORD`);
   const cookie = (res.headers.getSetCookie?.() ?? []).map((c) => c.split(';')[0]).join('; ');
   const data = await res.json();
   return { email, cookie, tenantId: data.activeTenantId, patientIds: [] };
@@ -116,7 +116,7 @@ async function main() {
     }
   }
   for (const m of missing) console.log(`  skipped: ${m}`);
-  if (!sessions.length) throw new Error('No demo account could sign in – run npm run seed:demo, and check DEMO_PASSWORD');
+  if (!sessions.length) throw new Error('No demo account could sign in – run scripts/load-test-seed.mjs, and check DEMO_PASSWORD');
   console.log(`  ${sessions.length} signed in, ${fmt((performance.now() - signInStarted) / sessions.length)} each on average.`);
   console.log(`Using the app for ${SECONDS} seconds (about ${THINK_MS} ms between clicks) …`);
   const started = Date.now();

@@ -48,7 +48,7 @@ beforeEach(async () => {
   vi.setSystemTime(NOW);
   await resetTestDb();
   resetPractice();
-  forgetKeysForTests();
+  await forgetKeysForTests();
   setAbdmClientForTests(null);
   app = createApp({ apiRateLimitMax: 100000 });
   hospital = await createTenant('ABDM Fetch Hospital');
@@ -665,7 +665,7 @@ describe('from ABDM (sandbox stand-in): her answer, the consent, the records pus
 
   it('the key is gone (a restart): nothing can be read – "Fetch again" asks with a new key; a checksum that does not match is marked', async () => {
     const { p, r, km, dataRequestId } = await upToTheRecords();
-    forgetKeysForTests();
+    await forgetKeysForTests();
     const one = entry(km, 'CC-1');
     await push({ transactionId: 'tx-sample-1', pageNumber: 1, pageCount: 1, entries: [one.entry], keyMaterial: one.keyMaterial });
     await abdmIdle();

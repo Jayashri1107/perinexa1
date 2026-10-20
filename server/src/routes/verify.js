@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { config } from '../config.js';
+import { rateLimitStore } from '../utils/sharedState.js';
 import mongoose from 'mongoose';
 import { CONFIDENTIAL_NAME, CONFIDENTIAL_TESTS } from '../billing/billingRules.js';
 import { LabOrder } from '../models/LabOrder.js';
@@ -16,7 +18,7 @@ import { letterheadFor } from './settings.js';
 
 export const verifyRouter = Router();
 const NOT_FOUND = { error: { message: 'This report could not be found. Ask the hospital that gave it to you.', code: 'NOT_FOUND' } };
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many checks. Please wait 15 minutes.', code: 'RATE_LIMITED' } } });
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: config.VERIFY_RATE_LIMIT_MAX, store: rateLimitStore('verify'), standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many checks. Please wait 15 minutes.', code: 'RATE_LIMITED' } } });
 const initials = (name) =>
   String(name ?? '')
     .split(/\s+/)

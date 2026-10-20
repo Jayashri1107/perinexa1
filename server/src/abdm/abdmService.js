@@ -10,6 +10,7 @@ import { config } from '../config.js';
 import { Patient } from '../models/Patient.js';
 import { Tenant } from '../models/Tenant.js';
 import { HttpError } from '../utils/httpError.js';
+import * as shared from '../utils/sharedState.js';
 import { practiceClient } from './practiceClient.js';
 import { v3Client } from './v3Client.js';
 
@@ -38,7 +39,9 @@ export function track(work) {
 export async function abdmIdle() {
   while (pending.size) await Promise.allSettled([...pending]);
 }
-const txns = new Map(); // our id -> { tenantId, userId, kind, abdmTxnId, patientId, accounts, profile, token, until }
+// A step of verifying or creating an ABHA (our id -> { tenantId, userId, kind, abdmTxnId, patientId, accounts, profile,
+// token }): in the database, encrypted (utils/sharedState.js), so any copy of the server can continue it.
+const TXN = 'abdm-txn';
 
 /**
  * The hospital a message from ABDM (or another hospital's records) is for: the ONE active hospital with this HIP ID
@@ -57,22 +60,24 @@ export async function hospitalByHipId(hipId, projection = { name: 1, abdm: 1 }) 
   return found[0] ?? null;
 }
 
-export function startTxn(req, fields) {
-  for (const [id, t] of txns) if (t.until < Date.now()) txns.delete(id);
+export async function startTxn(req, fields) {
   const id = randomUUID();
-  txns.set(id, { tenantId: String(req.tenantId), userId: String(req.user._id), until: Date.now() + TTL_MS, ...fields });
+  const until = Date.now() + TTL_MS;
+  await shared.put(TXN, id, { tenantId: String(req.tenantId), userId: String(req.user._id), until, ...fields }, until, { secret: true });
   return id;
 }
 
 /** The transaction with this id, started by this person in this hospital (else: expired). */
-export function getTxn(req, id, kind) {
-  const t = txns.get(id);
+export async function getTxn(req, id, kind) {
+  const t = await shared.get(TXN, id);
   if (!t || t.until < Date.now() || t.tenantId !== String(req.tenantId) || t.userId !== String(req.user._id) || (kind && t.kind !== kind)) {
     throw new HttpError(409, 'This step has expired. Please start again.', 'EXPIRED');
   }
   return t;
 }
-export const endTxn = (id) => txns.delete(id);
+/** Keeps a step's changes (after getTxn) for the next request, on whichever copy it lands. */
+export const saveTxn = (id, t) => shared.put(TXN, id, t, t.until, { secret: true });
+export const endTxn = (id) => shared.drop(TXN, id);
 
 /** What the website gets of an ABHA profile from ABDM (to check against her record). */
 export const profileView = (p) => ({

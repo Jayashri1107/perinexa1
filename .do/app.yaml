@@ -20,7 +20,9 @@ services:
     build_command: npm ci --include=dev && npm run build
     run_command: npm start
     http_port: 8080
-    # ONE copy only: some parts assume a single server (docs/HANDOVER.md section 7)
+    # Copies of the server. 1 is enough for the first hospitals; raise to 2–3 for more users at once or no pause while a
+    # new version is put online. Limits, ABDM steps and background jobs are shared in the database (docs/HANDOVER.md
+    # section 7). ABDM practice mode works best with 1.
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-2gb # 2 GB: several users at once (1 GB is too small)
     health_check:

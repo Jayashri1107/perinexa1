@@ -12,6 +12,7 @@ import { CarePlanTemplate } from './models/CarePlanTemplate.js';
 import { ReminderMessage } from './models/ReminderMessage.js';
 import { Tenant } from './models/Tenant.js';
 import { runReminders } from './reminders/reminderService.js';
+import { takeTurn } from './utils/sharedState.js';
 
 // A hosted database with its own CA certificate (docs/DEPLOY.md): the certificate is written to a private temporary
 // file, which the database driver reads.
@@ -24,7 +25,7 @@ function databaseOptions() {
 }
 
 try {
-  await mongoose.connect(config.MONGO_URI, { serverSelectionTimeoutMS: 5000, ...databaseOptions() });
+  await mongoose.connect(config.MONGO_URI, { serverSelectionTimeoutMS: 5000, maxPoolSize: config.MONGO_MAX_POOL_SIZE, ...databaseOptions() });
 } catch (err) {
   console.error('\n❌ Could not connect to the database. Is MongoDB running? Try: npm run db:start\n');
   console.error(err.message);
@@ -82,13 +83,20 @@ process.on('unhandledRejection', (err) => console.error('Unhandled error (the se
 // Automatic reminders (Version 2): once an hour, for hospitals that switched them on (Hospital admin → Patient
 // messages). Without a message provider in server/.env they wait in the outbox for staff to send by hand.
 const REMINDER_ROUND_MS = 60 * 60 * 1000;
-const reminderRound = () => runReminders(new Date()).catch((err) => console.error('Reminders round failed:', err?.message ?? err));
+// With several copies of the server, only one runs each round (utils/sharedState.js takeTurn): never two reminders.
+const reminderRound = () =>
+  takeTurn('reminders', REMINDER_ROUND_MS)
+    .then((mine) => mine && runReminders(new Date()))
+    .catch((err) => console.error('Reminders round failed:', err?.message ?? err));
 setTimeout(reminderRound, 60 * 1000).unref();
 setInterval(reminderRound, REMINDER_ROUND_MS).unref();
 
 // ABDM (M3): records fetched from other hospitals are deleted when her consent ends – when the server starts, and every
 // 15 minutes (her records are also checked whenever they are opened).
 const ABDM_EXPIRY_ROUND_MS = 15 * 60 * 1000;
-const abdmExpiryRound = () => expireAllDue(new Date()).catch((err) => console.error('ABDM: deleting ended records failed:', err?.message ?? err));
+const abdmExpiryRound = () =>
+  takeTurn('abdm-expiry', ABDM_EXPIRY_ROUND_MS)
+    .then((mine) => mine && expireAllDue(new Date()))
+    .catch((err) => console.error('ABDM: deleting ended records failed:', err?.message ?? err));
 abdmExpiryRound();
 setInterval(abdmExpiryRound, ABDM_EXPIRY_ROUND_MS).unref();

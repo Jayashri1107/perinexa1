@@ -30,6 +30,7 @@ import { isClosed } from '../patients/deathRules.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
+import * as shared from '../utils/sharedState.js';
 import { abhaAddress as cleanAddress } from './abhaFormat.js';
 import { abdmClient } from './abdmService.js';
 import { checksumOf, decryptFrom, requesterKeyMaterial } from './fidelius.js';
@@ -59,19 +60,16 @@ const errText = (err) => clip(err instanceof HttpError ? err.message : 'ABDM cou
 /** The address other hospitals send her records to (after the bridge URL), with the hospital's HIU ID. */
 export const dataPushUrl = (hiuId) => `${String(config.ABDM_PUBLIC_URL ?? '').replace(/\/+$/, '')}/api/abdm/public/api/v3/hiu/data/push/${encodeURIComponent(hiuId)}`;
 
-// ---------- The one-time keys (memory only) ----------
+// ---------- The one-time keys ----------
+// dataRequestId -> { privateRaw, nonce }: in the database, encrypted (utils/sharedState.js), so the copy of the server
+// that receives her records can read them whichever copy asked; removed when used or when their time has passed.
 
-const keys = new Map(); // dataRequestId -> { privateRaw, nonce, until }
-function keepKey(id, key, until) {
-  for (const [k, v] of keys) if (v.until < Date.now()) keys.delete(k);
-  keys.set(id, { ...key, until });
-}
-const keyFor = (id) => {
-  const k = keys.get(id);
-  return k && k.until > Date.now() ? k : null;
-};
-/** Tests only: forgets every key, as a restart of the server does. */
-export const forgetKeysForTests = () => keys.clear();
+const KEYS = 'abdm-hiu-key';
+const keepKey = (id, key, until) => shared.put(KEYS, id, key, until, { secret: true });
+const keyFor = (id) => shared.get(KEYS, id);
+const dropKey = (id) => (id ? shared.drop(KEYS, id) : null);
+/** Tests only: forgets every key (records that come later cannot be read). */
+export const forgetKeysForTests = () => shared.dropAll(KEYS);
 
 // ---------- Small helpers ----------
 
@@ -102,7 +100,7 @@ async function removeDocuments(tenantId, consentId) {
 /** Deletes one hospital's documents and writes "deleted" to the audit log (when there was something to delete). */
 async function deleteFor(req, tenantId, r, h, why, now) {
   const counts = await removeDocuments(tenantId, h.consentId);
-  keys.delete(h.dataRequestId);
+  await dropKey(h.dataRequestId);
   if (why !== 'replaced') await setHospital(tenantId, r._id, h.consentId, { step: 'deleted', deletedAt: now, deletedWhy: why });
   if (counts.documents || counts.files) {
     const { who } = await patientIds(tenantId, r.patientId);
@@ -367,7 +365,7 @@ async function requestData(req, tenant, requestDocId, consentId) {
   const dataRequestId = randomUUID();
   const until = new Date(Math.min(now.getTime() + KEY_HOURS * 3600 * 1000, (h.expiresAt ?? r.expiresAt).getTime()));
   const k = requesterKeyMaterial({ expiry: until.toISOString() });
-  keepKey(dataRequestId, { privateRaw: k.privateRaw, nonce: k.nonce }, until.getTime());
+  await keepKey(dataRequestId, { privateRaw: k.privateRaw, nonce: k.nonce }, until.getTime());
   await setHospital(tenantId, r._id, consentId, { step: 'asked', dataRequestId, transactionId: '', askedAt: now, receivedAt: null, pageCount: 0, pagesReceived: [], pagesDone: [], refsReceived: [], refsFailed: [], documents: 0, files: 0, filesLeftOut: 0, withheld: 0, failedEntries: 0, error: '' });
   const dateRange = { from: (h.from ?? r.from).toISOString(), to: (h.to ?? r.to).toISOString() };
   try {
@@ -378,7 +376,7 @@ async function requestData(req, tenant, requestDocId, consentId) {
       if (practice) for (const page of client.practiceDeliver(out.transactionId, now)) await receivePush(req, tenant, page);
     }
   } catch (err) {
-    keys.delete(dataRequestId);
+    await dropKey(dataRequestId);
     await setHospital(tenantId, r._id, consentId, { step: 'failed', error: errText(err) });
   }
 }
@@ -393,7 +391,7 @@ export async function onDataRequested(req, tenant, body) {
   if (!h || h.step !== 'asked' || h.transactionId) return;
   const transactionId = clip(body?.hiRequest?.transactionId, 100);
   if (body.error || !transactionId) {
-    keys.delete(dataRequestId);
+    await dropKey(dataRequestId);
     h.step = 'failed';
     h.error = clip(body.error?.message ?? 'ABDM did not accept the request for her records.', 300);
   } else {
@@ -429,13 +427,13 @@ export async function receivePush(req, tenant, body) {
       { $set: { 'hospitals.$.step': 'failed', 'hospitals.$.error': `The other hospital sent more than ${MAX_PAGES} pages at once, more than Perinexa takes in one transfer. Ask again for fewer kinds of record or a shorter period.` } },
     );
     if (failed.modifiedCount) {
-      keys.delete(h.dataRequestId);
+      await dropKey(h.dataRequestId);
       await notifyAbdm(tenant, r, { ...h, refsReceived: [] }, now);
     }
     return { kept: 0, failed: list(body.entries).length, duplicate: false };
   }
   const ended = h.status !== 'GRANTED' || (h.expiresAt && h.expiresAt <= now);
-  const key = keyFor(h.dataRequestId);
+  const key = await keyFor(h.dataRequestId);
   // The page is claimed first, so the same page sent twice (even at the same moment) is kept once
   const claimed = await AbdmFetchRequest.updateOne(
     { tenantId, _id: r._id, hospitals: { $elemMatch: { transactionId, step: 'asked', pagesReceived: { $ne: pageNumber } } } },
@@ -443,7 +441,7 @@ export async function receivePush(req, tenant, body) {
   );
   if (!claimed.modifiedCount) return { kept: 0, failed: 0, duplicate: true };
   if (ended || !key) {
-    keys.delete(h.dataRequestId);
+    await dropKey(h.dataRequestId);
     await setHospital(tenantId, r._id, h.consentId, { step: 'failed', error: ended ? 'Her consent ended before the records came: nothing was kept.' : KEY_GONE });
     await notifyAbdm(tenant, r, { ...h, refsReceived: [] }, now);
     return { kept: 0, failed: list(body.entries).length, duplicate: false };
@@ -545,7 +543,7 @@ async function finishIfComplete(req, tenant, requestDocId, transactionId, now) {
   // Only one page's handler finishes it (pages may arrive at the same moment)
   const won = await AbdmFetchRequest.findOneAndUpdate({ tenantId, _id: r._id, hospitals: { $elemMatch: { transactionId, step: 'asked' } } }, { $set: { 'hospitals.$.step': 'received', 'hospitals.$.receivedAt': now } });
   if (!won) return;
-  keys.delete(h.dataRequestId);
+  await dropKey(h.dataRequestId);
   await notifyAbdm(tenant, r, h, now);
   const { who } = await patientIds(tenantId, r.patientId);
   await audit(req, 'ABDM_RECORDS_FETCHED', {

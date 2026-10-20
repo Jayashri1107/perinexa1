@@ -48,7 +48,9 @@ About **$25/month** for the app (2 GB, so several people can use it at once) and
 | `JWT_SECRET` | Signs the sign-in sessions. Encrypted; never in the code or in git. |
 | `SETUP_CODE` | Asked for once, when the first super admin is created. Encrypted; remove it afterwards. |
 | 2 GB instance | Enough for several people at once; 1 GB is too small. Request limits count per signed-in person, so a whole hospital behind one internet address does not share one limit. |
-| one instance | Some parts assume a single server (`docs/HANDOVER.md` section 7). Do not scale out. |
+| `instance_count` | Copies of the server (1 to start). For more users at once, raise it to 2–3 in the App's **Settings → web → Resources** – nothing else changes: request limits, ABDM steps and background jobs are shared in the database (`docs/HANDOVER.md` section 7). |
+| `RATE_LIMIT_STORE` | Not set: on the live server the request limits are counted in the database, the same for every copy. |
+| `MONGO_MAX_POOL_SIZE` | Database connections per copy (50). Copies × 50 must stay under the database plan's connection limit; lower it on the smallest plan with several copies. |
 
 Kept **off** until their agreements are done (`docs/HANDOVER.md` section 8): AI (no `OPENAI_API_KEY`), SMS and
 WhatsApp (no Twilio / WhatsApp keys), ABDM (`ABDM_MODE` stays `practice`).
@@ -76,7 +78,16 @@ HTTPS is set up by itself. Then change nothing else: `CLIENT_URL` follows the ap
 
 ## Trying it with many people (fake data only)
 
-On a test copy with the demo hospitals (`npm run seed:demo`):
-`node scripts/load-test.mjs --users 40 --seconds 60 --url https://<app address>` – pretend staff sign in with the
-demo accounts (DEMO_PASSWORD), open the screens their role opens, never save anything, and the script prints how fast
-each screen was and any failures.
+Only against a THROW-AWAY database (its name ends in `_loadtest`), never the live one:
+1. Start a server on it, then add fake staff and patients:
+   `MONGO_URI=mongodb://…/perinexa_loadtest DEMO_PASSWORD=<a test password> node scripts/load-test-seed.mjs --patients 2000 --api <server address>`
+   (start that server with `API_RATE_LIMIT_MAX=100000` while seeding – 2,000 registrations by one person go over the
+   normal limit).
+2. `DEMO_PASSWORD=<the same> node scripts/load-test.mjs --users 40 --seconds 60 --url <server address>` – pretend staff
+   sign in, open the screens their role opens, never save anything; it prints how fast each screen was and any failures.
+
+Result on 20 Oct 2026 (a laptop, two copies of the server on one database, 2,000 fake patients, 50 pretend staff each
+clicking every second – several times a busy hospital): no failures, half the answers in 0.03 s, 95 in 100 in about
+0.5 s. The slowest screen is the whole-hospital worklist the first time a person opens it (every pregnant patient's
+care plan is read – about 2 s for 500 patients, a few seconds under heavy load); after that it is kept for that person
+for 15 seconds (`WORKLIST_CACHE_SECONDS`).

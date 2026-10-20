@@ -20,6 +20,8 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { parse } from '../utils/validate.js';
+import { config } from '../config.js';
+import { cachedWorklist } from '../utils/worklistCache.js';
 
 // Today's worklist (Smart features, step 1): /api/worklist. Who needs attention today, for doctors, RMOs and
 // nurses – only patients whose medical details the person may see:
@@ -69,7 +71,7 @@ async function inBatches(list, size, fn) {
 
 worklistRouter.get('/', async (req, res) => {
   const q = parse(querySchema, req.query);
-  const data = await worklistFor(req, q.scope);
+  const data = await cachedWorklist(`${req.user._id}|${req.tenantId}|${q.scope ?? ''}`, config.WORKLIST_CACHE_SECONDS, () => worklistFor(req, q.scope));
   await audit(req, 'WORKLIST_VIEWED', {
     details: { scope: data.scope, redFlags: data.redFlags.length, carePlan: data.carePlan.length, seenToday: data.seenToday.length, vaccinations: data.vaccinationsOverdue.length },
   });
@@ -167,7 +169,7 @@ export async function worklistFor(req, askedScope) {
   for (const u of lossDoctors.length ? await User.find({ _id: { $in: lossDoctors } }, { name: 1 }).lean() : []) doctors.set(String(u._id), u.name);
 
   const ctx = planCtx(req);
-  const summaries = await inBatches([...antenatal, ...lossPatients], 8, async (p) => ({ p, s: await carePlanSummaryFor(ctx, p) }));
+  const summaries = await inBatches([...antenatal, ...lossPatients], 16, async (p) => ({ p, s: await carePlanSummaryFor(ctx, p) }));
   const carePlan = summaries
     .filter(({ s }) => s?.exists && s.status === 'active' && s.counts && s.counts.overdue + s.counts.due + s.counts.needsDecision + s.counts.missedVisits > 0)
     .map(({ p, s }) => ({ patient: who(p), counts: s.counts, top: s.top, next: s.next }))

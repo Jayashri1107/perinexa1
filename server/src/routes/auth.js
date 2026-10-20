@@ -5,6 +5,7 @@ import { lockedError, staffFailed, staffLockLeft, staffSignedIn } from '../auth/
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
+import { rateLimitStore } from '../utils/sharedState.js';
 import { Tenant } from '../models/Tenant.js';
 import { PLATFORM_AREAS, User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
@@ -124,6 +125,7 @@ export function authRouter({ loginRateLimitMax }) {
     windowMs: 15 * 60 * 1000,
     limit: loginRateLimitMax,
     skipSuccessfulRequests: true,
+    store: rateLimitStore('login'),
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: async (req, res) => {

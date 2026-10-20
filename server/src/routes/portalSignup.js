@@ -1,6 +1,7 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { rateLimitStore } from '../utils/sharedState.js';
 import { countFailure, lockedError, secondsLeft } from '../auth/loginLock.js';
 import { z } from 'zod';
 import { mobileDigits } from '../abdm/abhaFormat.js';
@@ -46,8 +47,9 @@ const otpKey = createHmac('sha256', config.JWT_SECRET).update('perinexa-patient-
 const hashOtp = (accountId, otp) => createHmac('sha256', otpKey).update(`${accountId}:${otp}`).digest('hex');
 const same = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
+let limiterCount = 0; // each limit counts on its own
 const limiter = (limit) =>
-  rateLimit({ windowMs: 15 * 60 * 1000, limit, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many tries. Please wait 15 minutes, or call the hospital.', code: 'RATE_LIMITED' } } });
+  rateLimit({ windowMs: 15 * 60 * 1000, limit, store: rateLimitStore(`portal-signup-${limit}-${++limiterCount}`), standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many tries. Please wait 15 minutes, or call the hospital.', code: 'RATE_LIMITED' } } });
 
 /**
  * How an OTP reaches her: WhatsApp (the hospital switched it on – SMS if WhatsApp fails), the SMS provider, practice

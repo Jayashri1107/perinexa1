@@ -8,6 +8,8 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { config } from './config.js';
+import { rateLimitStore } from './utils/sharedState.js';
+import { forgetWorklists } from './utils/worklistCache.js';
 import { authRouter } from './routes/auth.js';
 import { platformTenantsRouter } from './routes/platformTenants.js';
 import { platformUsersRouter } from './routes/platformUsers.js';
@@ -110,7 +112,7 @@ export function createApp({
   loginRateLimitMax = config.LOGIN_RATE_LIMIT_MAX,
   portalOtpRateLimitMax = config.PORTAL_OTP_RATE_LIMIT_MAX,
   apiRateLimitMax = config.API_RATE_LIMIT_MAX,
-  abdmPublicRateLimitMax = 3000,
+  abdmPublicRateLimitMax = config.ABDM_PUBLIC_RATE_LIMIT_MAX,
   analyticsCacheMs = config.ANALYTICS_CACHE_SECONDS * 1000,
   platformAnalyticsCacheMs = config.ANALYTICS_PLATFORM_CACHE_SECONDS * 1000,
 } = {}) {
@@ -139,7 +141,7 @@ export function createApp({
   app.use(/^\/api\/lab-setup\/signatories(\/[^/]+)?$/, express.json({ limit: '300kb' })); // a signature picture (lab reports)
   // From ABDM and other hospitals (ABDM M2 and M3): a limit of their own, checked before any body is read – ABDM's
   // messages and the pages of her records come in bursts from a few addresses, and must not meet a browser's limit.
-  app.use('/api/abdm/public', rateLimit({ windowMs: 60 * 1000, limit: abdmPublicRateLimitMax, standardHeaders: 'draft-8', legacyHeaders: false }));
+  app.use('/api/abdm/public', rateLimit({ windowMs: 60 * 1000, limit: abdmPublicRateLimitMax, standardHeaders: 'draft-8', legacyHeaders: false, store: rateLimitStore('abdm-public') }));
   // A page of her records sent by another hospital through ABDM (M3): encrypted FHIR documents, an attached file of at
   // most 10 MB each (base64 twice: inside the document, then the encrypted document). Anyone can post to this address,
   // so it is refused before the body is read in practice mode and for an unknown HIU ID (routes/abdmFetch.js).
@@ -150,6 +152,14 @@ export function createApp({
   // even if the request happens to run across midnight.
   app.use((req, _res, next) => {
     req.now = new Date();
+    next();
+  });
+  // Anyone who saves something sees their own change on their worklist straight away (utils/worklistCache.js)
+  app.use('/api', (req, _res, next) => {
+    if (req.method !== 'GET') {
+      const who = personKey(req);
+      if (who.startsWith('u:')) forgetWorklists(who.slice(2));
+    }
     next();
   });
   // Tell browsers never to cache API responses (they may contain private data).
@@ -166,6 +176,7 @@ export function createApp({
       standardHeaders: 'draft-8',
       legacyHeaders: false,
       keyGenerator: personKey,
+      store: rateLimitStore('api'),
       skip: (req) => req.originalUrl.startsWith('/api/abdm/public/'),
     }),
   );

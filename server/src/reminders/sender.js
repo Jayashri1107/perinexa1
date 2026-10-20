@@ -32,7 +32,7 @@ function twilio() {
       const from = channel === 'whatsapp' ? waFrom : smsFrom;
       if (!from) throw new Error(`No ${channel} sender is set up`);
       const body = new URLSearchParams({ From: from, To: channel === 'whatsapp' ? `whatsapp:${to}` : to, Body: text });
-      const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(sid)}/Messages.json`, {
+      const res = await fetch(`${config.TWILIO_API_URL.replace(/\/+$/, '')}/Accounts/${encodeURIComponent(sid)}/Messages.json`, {
         method: 'POST',
         headers: { Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`, 'Content-Type': 'application/x-www-form-urlencoded' },
         body,
@@ -67,7 +67,7 @@ export function currentSender() {
 // OTP template in MSG91 (its "Flow") must read, with these variable names:
 //   ##otp## is your OTP to sign in to ##hospital##. It works for ##minutes## minutes. Do not share it.
 // (on DLT: {#var#} is your OTP to sign in to {#var#}. It works for {#var#} minutes. Do not share it.)
-const MSG91_FLOW_URL = 'https://control.msg91.com/api/v5/flow';
+const MSG91_FLOW_URL = config.MSG91_FLOW_URL; // server/.env (default: MSG91's own address)
 const DLT_VARIABLE = 30; // a DLT variable holds at most 30 characters
 
 /** MSG91, for OTPs only: { name, sendOtp({ to, otp, hospital, minutes }) }, or null without its keys. */

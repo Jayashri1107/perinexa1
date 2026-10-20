@@ -32,6 +32,14 @@ export const setActiveTenant = (id) => {
   activeTenantId = id;
 };
 
+const RETRY_STATUSES = new Set([0, 502, 503, 504]); // no answer, or the hosting's "the server is restarting"
+const RETRIES = 3;
+/** Whether a request tries again: reading only, after no answer or a restart answer, at most 3 times. */
+export const shouldRetry = (method, status, attempt) => method === 'GET' && attempt < RETRIES && RETRY_STATUSES.has(status);
+/** Wait before try number attempt + 2: 0.5 s, 1.5 s, 3 s. */
+export const retryDelay = (attempt) => [500, 1500, 3000][Math.min(attempt, 2)];
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export async function api(path, { method = 'GET', body, query } = {}) {
   const url = new URL(`/api${path}`, window.location.origin);
   for (const [key, value] of Object.entries(query || {})) {
@@ -42,16 +50,26 @@ export async function api(path, { method = 'GET', body, query } = {}) {
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (activeTenantId) headers['X-Tenant-Id'] = activeTenantId;
 
+  // Reading (GET) tries again a few times while a server copy restarts or is briefly busy (a new version being put
+  // online): the person sees a short wait instead of an error. Saving never tries again by itself.
   let res;
-  try {
-    res = await fetch(url, {
-      method,
-      credentials: 'same-origin',
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-  } catch {
-    throw new ApiError(0, { message: "Can't reach the server. Please check that the app is running." });
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      res = await fetch(url, {
+        method,
+        credentials: 'same-origin',
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      if (shouldRetry(method, 0, attempt)) {
+        await wait(retryDelay(attempt));
+        continue;
+      }
+      throw new ApiError(0, { message: "Can't reach the server. Please check that the app is running." });
+    }
+    if (!shouldRetry(method, res.status, attempt)) break;
+    await wait(retryDelay(attempt));
   }
 
   const data = await res.json().catch(() => null);
