@@ -322,7 +322,10 @@ export function VoiceEntry({
   const [micId, setMicId] = useState(savedMic);
   const [muted, setMuted] = useState(false);
   const [aiPhase, setAiPhase] = useState('idle'); // AI dictation: 'idle' | 'starting' | 'recording' | 'writing'
-  const [aiOn, setAiOn] = useState(false); // AI is set up: the AI dictation button shows beside Start recording (owner, 15 Oct 2026)
+  // The AI dictation button shows beside Start recording (owner, 15 Oct 2026), as in Perinexa: hidden only when the
+  // server says plainly that AI is not set up. A failed check never hides it (20 Oct 2026: it vanished without a word);
+  // pressing it then shows the server's own message.
+  const [aiOn, setAiOn] = useState(true);
   const [aiHelp, setAiHelp] = useState(null); // "Ask AI where these belong": { busy, items: [{ part, text, label, meaning }] }
   const aiRec = useRef(null);
   const answered = useRef(new Set()); // questions answered on this form (questionKey)
@@ -439,8 +442,10 @@ export function VoiceEntry({
     alive.current = true;
     if (Recognition) checkSpeech(Recognition).then((s) => alive.current && showCheck(s));
     api('/ai/status')
-      .then((res) => alive.current && setAiOn(Boolean(res.enabled)))
-      .catch(() => {}); // unknown: Chrome's on-device recording, as before
+      .then((res) => alive.current && setAiOn(res?.enabled !== false))
+      .catch((err) => {
+        if (import.meta.env.DEV) console.warn('voice: AI status check failed – the AI dictation button stays', err?.message);
+      });
     api('/me/dictation-words')
       .then((res) => alive.current && setWords(res.words))
       .catch(() => {}); // without them, voice entry still works (it just asks more)
