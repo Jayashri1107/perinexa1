@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Building2, CalendarDays, House, KeyRound, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { Building2, CalendarDays, House, LogOut, Menu, UserRound, X } from 'lucide-react';
 import appIcon from '../../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../../assets/brand/perinexa-logo-reversed.png';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -9,18 +9,17 @@ import { accountWords } from './portalAccountWords.js';
 import { PORTAL_LANGUAGES, PORTAL_LANGUAGE_NAMES, portalWords } from './portalWords.js';
 
 // The patient's own pages in the app's own frame (owner, 16 Oct 2026: "like the other modules"): the same left menu,
-// top bar and page header as the staff screens – Home, Appointments, Prescriptions, Lab reports, Visits, Bills, and
-// Change password for an account with an email. On a tablet the menu is an icon rail, on a phone it opens from the menu
+// top bar and page header as the staff screens – Home, Appointments, Prescriptions, Lab reports, Visits, Bills and My
+// profile. Change password is in My profile (owner, 20 Oct 2026: not twice). On a tablet the menu is an icon rail, on a phone it opens from the menu
 // button, as for staff. Only her own sections are ever in it. The tab title never holds her name (browser history).
 
 /** The sections of her menu: [{ key, Icon }]. */
-export function portalSections(canChangePassword) {
+export function portalSections() {
   return [
     { key: 'home', Icon: House },
     { key: 'appointments', Icon: CalendarDays },
     ...RECORD_TABS.map((key) => ({ key, Icon: recordIcon(key) })),
     { key: 'profile', Icon: UserRound },
-    ...(canChangePassword ? [{ key: 'password', Icon: KeyRound }] : []),
   ];
 }
 
@@ -50,7 +49,7 @@ function LanguageSwitch({ lang, onChange }) {
   );
 }
 
-export function PortalShell({ patientName, hospitalName, section, onSection, canChangePassword, lang, onLanguage, onSignOut, children }) {
+export function PortalShell({ patientName, hospitalName, section, onSection, lang, onLanguage, onSignOut, children }) {
   const w = portalWords(lang);
   const aw = accountWords(lang);
   const [open, setOpen] = useState(false);
@@ -63,7 +62,7 @@ export function PortalShell({ patientName, hospitalName, section, onSection, can
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
-  const sections = portalSections(canChangePassword);
+  const sections = portalSections();
   const label = (key) => aw.tabs[key];
   const current = sections.find((s) => s.key === section) ?? sections[0];
   return (
@@ -131,7 +130,7 @@ export function PortalShell({ patientName, hospitalName, section, onSection, can
           </div>
         </header>
         <main className="pf-main" id="main">
-          <PageHeader title={label(current.key)} subtitle={current.key === 'home' ? aw.welcome(patientName) : hospitalName} documentTitle={false} />
+          {current.key !== 'home' && <PageHeader title={label(current.key)} subtitle={hospitalName} documentTitle={false} />}
           <div className="pf-content portal-content">
             {w.draftNote && <p className="hint portal-draft">{w.draftNote}</p>}
             {children}

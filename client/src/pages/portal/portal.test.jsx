@@ -238,3 +238,32 @@ describe('her Home page at a glance (17 Oct 2026)', () => {
     for (const w of ['तुमचे आरोग्य एका नजरेत', 'भेट ठरवा', 'काही भरायचे बाकी नाही']) expect(words).toContain(w);
   });
 });
+
+describe('her Home page: welcome and next steps (20 Oct 2026)', () => {
+  const summary = { appointment: null, prescriptions: 2, visits: 3, lab: 2, bills: 1, toPayPaise: 45000 };
+  const data = {
+    hospital: { name: 'Sample Hospital', phone: '020 0000 0000' },
+    patient: { fullName: 'Asha Sample' },
+    appointment: null,
+    canChangePassword: true,
+    plan: { nextVisit: { builtIn: true, text: 'Check-up at about 20 weeks', from: '2026-10-12T00:00:00.000Z', by: '2026-10-26T00:00:00.000Z' }, items: [] },
+  };
+  const render = (d, s, lang = 'en') => renderToStaticMarkup(<MemoryRouter><MyCare data={d} booking={{ enabled: true, doctors: [{ id: 'a1', name: 'Dr Sample A', leave: [] }] }} summary={s} onChanged={() => {}} onSignOut={() => {}} lang={lang} /></MemoryRouter>);
+
+  it('greets her by first name, lists what needs her attention, and keeps Change password out of the menu', () => {
+    const out = render(data, summary);
+    const words = text(out);
+    expect(words).toMatch(/Good (morning|afternoon|evening), Asha/);
+    for (const w of ['Your care at Sample Hospital, all in one place.', 'Your next steps', 'Coming up in your care: Check-up at about 20 weeks', '2 lab reports are ready to see', '₹450 still to pay']) expect(words).toContain(w);
+    expect(out.match(/btn btn-primary/g)).toHaveLength(1); // still one clear next step: Book an appointment
+    expect(out).not.toMatch(/sb-label">Change password/);
+    expect(out).toMatch(/sb-label">My profile/);
+  });
+
+  it('says so calmly when nothing is waiting, and in Marathi', () => {
+    expect(text(render({ ...data, plan: null }, { ...summary, lab: 0, toPayPaise: 0 }))).toContain('Nothing is waiting for you right now.');
+    const words = text(render(data, summary, 'mr'));
+    for (const w of ['Asha', 'तुमची पुढील पावले', '2 तपासणी अहवाल पाहण्यासाठी तयार आहेत']) expect(words).toContain(w);
+  });
+});
+

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarCheck, CalendarDays, CalendarPlus, Check, ChevronRight, CircleSlash, Clock, FlaskConical, Phone, Pill, Receipt, TriangleAlert } from 'lucide-react';
+import { CalendarCheck, CalendarDays, CalendarPlus, Check, ChevronRight, CircleCheck, CircleSlash, Clock, FlaskConical, HeartPulse, Phone, Pill, Receipt, TriangleAlert } from 'lucide-react';
 import { Alert, StatusPill, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
 import { rupees } from '../billing/billingFormat.js';
@@ -28,15 +28,36 @@ function useLoad(path) {
 
 const when = (date, start) => `${formatDate(date)}${start ? `, ${timeLabel(start)}` : ''}`;
 
-/** "Your next appointment" with the doctor, or the one clear next step: Book an appointment (the screen's primary). */
-export function NextAppointment({ data, summary, bookingOn, lang, onBook }) {
+/** Good morning / afternoon / evening, by the hour on her phone. */
+export const greetingFor = (hour) => (hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening');
+const firstName = (name) => String(name ?? '').trim().split(/\s+/)[0] ?? '';
+
+/**
+ * "Your next appointment" with the doctor, or the one clear next step: Book an appointment (the screen's primary).
+ * welcome: Home's top card – a greeting by the time of day with her first name and the hospital (owner, 20 Oct 2026:
+ * friendlier, so patients like coming back), then the appointment.
+ */
+export function NextAppointment({ data, summary, bookingOn, lang, onBook, welcome = false, now = new Date() }) {
   const w = portalWords(lang);
   const h = accountWords(lang).home;
   const date = summary?.appointment?.date ?? data.appointment;
   const start = summary?.appointment?.start ?? data.appointmentTime;
   const doctor = summary?.appointment?.doctorName ?? null;
   return (
-    <section className="card portal-card portal-next" aria-labelledby="portal-next">
+    <section className={`card portal-card portal-next${welcome ? ' portal-welcome' : ''}`} aria-labelledby="portal-next">
+      {welcome && (
+        <div className="portal-welcome-head">
+          <span className="portal-welcome-icon" aria-hidden="true">
+            <HeartPulse />
+          </span>
+          <div>
+            <h1 className="portal-welcome-title">
+              {h.greet[greetingFor(now.getHours())]}, {firstName(data.patient?.fullName)}
+            </h1>
+            <p className="portal-welcome-line">{h.heroLine(data.hospital?.name ?? '')}</p>
+          </div>
+        </div>
+      )}
       <h2 id="portal-next">
         <CalendarCheck aria-hidden="true" /> {w.nextAppointment}
       </h2>
@@ -65,6 +86,43 @@ export function NextAppointment({ data, summary, bookingOn, lang, onBook }) {
   );
 }
 
+/**
+ * "Your next steps": what needs her attention, each with Open – the first thing coming up in her care plan, lab
+ * reports ready to see, and money still to pay. With nothing waiting: a calm line.
+ */
+export function NextSteps({ summary, planLine, lang, onOpen }) {
+  const h = accountWords(lang).home;
+  if (!summary) return null;
+  // (her appointment is in the welcome card just above, with its button)
+  const steps = [
+    planLine && { key: 'plan', Icon: HeartPulse, tone: 'is-plan', text: <><strong>{h.stepPlan}:</strong> {planLine}</> },
+    summary.lab > 0 && { key: 'lab', Icon: FlaskConical, tone: 'is-lab', text: h.stepReports(summary.lab) },
+    summary.toPayPaise > 0 && { key: 'bills', Icon: Receipt, tone: 'is-bills', text: h.stepPay(rupees(summary.toPayPaise)) },
+  ].filter(Boolean);
+
+  return (
+    <section className="card portal-card portal-steps" aria-labelledby="portal-steps">
+      <h2 id="portal-steps">
+        <CircleCheck aria-hidden="true" /> {h.nextSteps}
+      </h2>
+      {!steps.length && <p className="muted portal-steps-calm">{h.stepAllDone}</p>}
+      <ul className="portal-step-list">
+        {steps.map(({ key, Icon, tone, text }) => (
+          <li key={key} className={tone}>
+            <span className="portal-step-icon" aria-hidden="true">
+              <Icon />
+            </span>
+            <span className="portal-step-text">{text}</span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpen(key)}>
+              {h.open} <ChevronRight aria-hidden="true" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** Four cards: Appointments, Prescriptions, Lab reports, Bills – each opens its page. */
 export function AtAGlance({ summary, lang, onOpen }) {
   const aw = accountWords(lang);
@@ -84,7 +142,7 @@ export function AtAGlance({ summary, lang, onOpen }) {
       <ul className="portal-glance">
         {cards.map(({ key, Icon, value }) => (
           <li key={key}>
-            <button type="button" className="card portal-glance-card" onClick={() => onOpen(key)}>
+            <button type="button" className={`card portal-glance-card is-${key}`} onClick={() => onOpen(key)}>
               <span className="portal-glance-icon" aria-hidden="true">
                 <Icon />
               </span>

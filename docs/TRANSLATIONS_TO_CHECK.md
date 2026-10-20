@@ -600,3 +600,18 @@ after she asks for an OTP. `{…}` are filled in by the app.
 | `myProfile.impression` (added 19 Oct 2026) | Impression | सारांश | सारांश |
 | `myProfile.signedBy` (added 19 Oct 2026) | Signed by {x}, {y} | {x} यांनी सही केली, {y} | {x} ने हस्ताक्षर किए, {y} |
 | `myProfile.noPlan` (added 19 Oct 2026) | No care plan yet. | अजून काळजीची योजना नाही. | अभी कोई देखभाल योजना नहीं। |
+
+## 7. The patient's Home page: welcome and next steps (added 20 Oct 2026)
+
+File: `client/src/pages/portal/portalAccountWords.js` (`home`). DRAFT – to be checked by fluent speakers.
+
+| Where | English | मराठी (Marathi) | हिंदी (Hindi) |
+|---|---|---|---|
+| `greet` | Good morning / Good afternoon / Good evening | सुप्रभात / नमस्कार / शुभ संध्याकाळ | सुप्रभात / नमस्ते / शुभ संध्या |
+| `heroLine` | Your care at {hospital}, all in one place. | {hospital} मधील तुमची सर्व काळजी, एकाच ठिकाणी. | {hospital} में आपकी पूरी देखभाल, एक ही जगह। |
+| `nextSteps` | Your next steps | तुमची पुढील पावले | आपके अगले कदम |
+| `stepPlan` | Coming up in your care | तुमच्या काळजीत पुढे | आपकी देखभाल में आगे |
+| `stepReports` | 1 lab report is ready to see / {n} lab reports are ready to see | 1 तपासणी अहवाल पाहण्यासाठी तयार आहे / {n} … तयार आहेत | 1 जाँच रिपोर्ट देखने के लिए तैयार है / {n} … तैयार हैं |
+| `stepPay` | {amount} still to pay | {amount} भरायचे बाकी | {amount} भरना बाकी |
+| `stepAllDone` | Nothing is waiting for you right now. | सध्या तुमच्यासाठी काहीही बाकी नाही. | अभी आपके लिए कुछ भी बाकी नहीं है। |
+| `open` | Open | उघडा | खोलें |

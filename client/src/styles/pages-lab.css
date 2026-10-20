@@ -329,3 +329,29 @@
 .lab-report-end::before, .lab-report-end::after { content: ' — '; }
 .lab-signer-preview { max-height: 40px; max-width: 160px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .lab-entry .lab-entry-section th { padding-top: var(--space-3); font-size: var(--fs-label); font-weight: 600; color: var(--slate-600); background: none; }
+
+/* Patient Home (owner, 20 Oct 2026: friendlier): the welcome card, "Your next steps", a colour per glance card */
+.portal-welcome { background: linear-gradient(135deg, var(--indigo-100), var(--teal-100)); border-color: transparent; }
+.portal-welcome-head { display: flex; gap: var(--space-4); align-items: center; margin-bottom: var(--space-4); }
+.portal-welcome-icon { flex: none; display: inline-flex; padding: var(--space-3); border-radius: 50%; background: var(--surface); color: var(--indigo-700); box-shadow: var(--shadow-card); }
+.portal-welcome-icon svg { width: 28px; height: 28px; }
+.portal-welcome-title { font-size: var(--fs-h1); line-height: var(--lh-h1); margin: 0; color: var(--indigo-800); }
+.portal-welcome-line { margin: var(--space-1) 0 0; color: var(--slate-600); }
+.portal-welcome h2 { font-size: var(--fs-h3); color: var(--indigo-800); }
+.portal-step-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.portal-step-list > li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); background: var(--mist-50); }
+.portal-step-icon { flex: none; display: inline-flex; padding: var(--space-2); border-radius: var(--radius-md); }
+.portal-step-text { flex: 1; min-width: 0; }
+.portal-step-list .btn { flex: none; }
+.portal-steps-calm { margin: var(--space-3) 0 0; }
+.is-appointments .portal-step-icon, .portal-glance-card.is-appointments .portal-glance-icon { background: var(--indigo-100); color: var(--indigo-700); }
+.is-plan .portal-step-icon, .portal-glance-card.is-prescriptions .portal-glance-icon { background: var(--teal-100); color: var(--teal-700); }
+.is-lab .portal-step-icon, .portal-glance-card.is-lab .portal-glance-icon { background: var(--status-admitted-bg); color: var(--status-admitted-fg); }
+.is-bills .portal-step-icon, .portal-glance-card.is-bills .portal-glance-icon { background: var(--status-due-bg); color: var(--status-due-fg); }
+.portal-glance-card.is-prescriptions .portal-glance-value { color: var(--teal-700); }
+.portal-glance-card.is-lab .portal-glance-value { color: var(--status-admitted-fg); }
+@media (max-width: 519px) {
+  .portal-welcome-title { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .portal-step-list > li { flex-wrap: wrap; }
+  .portal-step-list .btn { margin-left: auto; }
+}

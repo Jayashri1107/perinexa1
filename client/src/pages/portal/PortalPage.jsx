@@ -5,9 +5,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import logo from '../../assets/brand/perinexa-logo.png';
 import { Alert, Field, formatDate } from '../../components/ui.jsx';
 import { timeLabel } from '../appointments/appointmentFormat.js';
-import { ChangePassword, HospitalEntry } from './PortalAccount.jsx';
+import { HospitalEntry } from './PortalAccount.jsx';
 import { PortalShell } from './PortalShell.jsx';
-import { AppointmentHistory, AtAGlance, CallHospital, NextAppointment, useLoad } from './PortalHome.jsx';
+import { AppointmentHistory, AtAGlance, CallHospital, NextAppointment, NextSteps, useLoad } from './PortalHome.jsx';
 import { ProfilePage } from './PortalProfile.jsx';
 import { RECORD_TABS, RecordsTab, recordIcon } from './PortalRecords.jsx';
 import { accountWords } from './portalAccountWords.js';
@@ -234,7 +234,6 @@ export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null,
       hospitalName={data.hospital.name}
       section={section}
       onSection={setSection}
-      canChangePassword={Boolean(data.canChangePassword)}
       lang={lang}
       onLanguage={onLanguage}
       onSignOut={onSignOut}
@@ -242,7 +241,21 @@ export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null,
       <div className="portal-stack">
         {section === 'home' && (
           <>
-            <NextAppointment data={data} summary={summary} bookingOn={Boolean(booking?.enabled && (booking.doctors?.length || booking.doctorName))} lang={lang} onBook={() => setSection('appointments')} />
+            <NextAppointment
+              data={data}
+              summary={summary}
+              bookingOn={Boolean(booking?.enabled && (booking.doctors?.length || booking.doctorName))}
+              lang={lang}
+              onBook={() => setSection('appointments')}
+              welcome
+            />
+            <NextSteps
+              summary={summary}
+              lang={lang}
+              planLine={planLine(data.plan, lang)}
+              // her care plan is further down this page: Open goes there
+              onOpen={(key) => (key === 'plan' ? document.getElementById('portal-plan')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : setSection(key))}
+            />
             <AtAGlance summary={summary} lang={lang} onOpen={setSection} />
             <HomeCards data={data} booking={booking} onChanged={onChanged} lang={lang} withBooking={false} withAppointment={false} />
             <CallHospital hospital={data.hospital} lang={lang} />
@@ -264,13 +277,19 @@ export function MyCare({ data, booking, onChanged, onSignOut, onLanguage = null,
           />
         )}
         {RECORD_TABS.includes(section) && <RecordsTab key={section} tab={section} lang={lang} />}
-        {section === 'password' && (
-          <section className="card portal-card">
-            <ChangePassword lang={lang} onClose={() => setSection('home')} />
-          </section>
-        )}
       </div>
     </PortalShell>
+  );
+}
+
+/** The first thing coming up in her care plan, in her words (for "Your next steps"), or null. */
+function planLine(plan, lang) {
+  const first = plan?.nextVisit ?? plan?.items?.[0];
+  if (!first) return null;
+  return (
+    <>
+      <ItemText item={first} lang={lang} /> – {when(first.from, first.by)}
+    </>
   );
 }
 
