@@ -278,9 +278,28 @@ describe("a hospital's staff need \"User accounts\"", () => {
 });
 
 describe('the first super admin (first start)', () => {
+  it('asks for the one-time SETUP_CODE when one is set (always on the live server)', async () => {
+    await resetTestDb();
+    process.env.SETUP_CODE = 'fake-setup-code-123';
+    try {
+      expect((await request(app).get('/api/auth/setup-status')).body).toEqual({ needsSetup: true, needsCode: true });
+      const body = { name: 'Owner', email: 'owner@example.com', password: 'OwnerPassw0rd!' };
+      const none = await request(app).post('/api/auth/setup').send(body);
+      expect(none.status).toBe(403);
+      expect(none.body.error.code).toBe('WRONG_SETUP_CODE');
+      const wrong = await request(app).post('/api/auth/setup').send({ ...body, setupCode: 'guess' });
+      expect(wrong.body.error.fields).toHaveProperty('setupCode');
+      expect(await User.exists({ isSuperAdmin: true })).toBeFalsy();
+      const made = await request(app).post('/api/auth/setup').send({ ...body, setupCode: 'fake-setup-code-123' });
+      expect(made.status).toBe(201);
+    } finally {
+      delete process.env.SETUP_CODE;
+    }
+  });
+
   it('is made on the sign-in page while there is none, and only then', async () => {
     await resetTestDb();
-    expect((await request(app).get('/api/auth/setup-status')).body).toEqual({ needsSetup: true });
+    expect((await request(app).get('/api/auth/setup-status')).body).toEqual({ needsSetup: true, needsCode: false });
     const weak = await request(app).post('/api/auth/setup').send({ name: 'Owner', email: 'owner@example.com', password: 'short' });
     expect(weak.status).toBe(400);
     const made = await request(app).post('/api/auth/setup').send({ name: 'Owner', email: 'Owner@Example.com', password: 'OwnerPassw0rd!' });
@@ -290,7 +309,7 @@ describe('the first super admin (first start)', () => {
     expect(owner.mustChangePassword).toBe(false);
     expect((await request(app).post('/api/auth/login').send({ email: 'owner@example.com', password: 'OwnerPassw0rd!' })).status).toBe(200);
     // Once there is a super admin, nobody can make another one this way
-    expect((await request(app).get('/api/auth/setup-status')).body).toEqual({ needsSetup: false });
+    expect((await request(app).get('/api/auth/setup-status')).body).toEqual({ needsSetup: false, needsCode: false });
     const again = await request(app).post('/api/auth/setup').send({ name: 'Intruder', email: 'intruder@example.com', password: 'IntruderPassw0rd!' });
     expect(again.status).toBe(403);
     expect(again.body.error.code).toBe('ALREADY_SET_UP');

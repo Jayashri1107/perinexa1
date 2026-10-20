@@ -46,7 +46,16 @@ const schema = z.object({
   CLIENT_URL: z.url().default('http://localhost:5173'),
   SESSION_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
-  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  // WRONG sign-in tries per 15 minutes from one internet address (right ones are not counted): a whole hospital often
+  // shares one address. Each account also locks on its own after wrong tries (utils/loginLock.js).
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
+  // Requests a minute per signed-in person (per internet address before signing in).
+  API_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
+  // A request slower than this (milliseconds) is written to the server's log; 0 = off.
+  SLOW_REQUEST_MS: z.coerce.number().int().min(0).default(1500),
+  // The one-time code the sign-in page asks for when the first super admin is created. Required on the live server
+  // (NODE_ENV=production), so nobody who finds the new address first can make themselves super admin.
+  SETUP_CODE: z.string().trim().default(''),
   // OTPs one computer may ask for in 15 minutes on a hospital's portal page (sign-up and sign-in with ABHA).
   PORTAL_OTP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(8),
   // The hospital's time zone: "today" for care plans and pregnancy weeks is the date there.

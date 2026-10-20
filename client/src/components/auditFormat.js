@@ -725,7 +725,7 @@ const REFERRAL_SETTING_WORDS = {
   urgentNextMorning: 'next-morning time for late urgent referrals',
 };
 
-const FAIL_REASONS = { wrong_password: 'wrong password', unknown_email: 'unknown email', inactive_account: 'account is deactivated' };
+const FAIL_REASONS = { wrong_password: 'wrong password', unknown_email: 'unknown email', inactive_account: 'account is deactivated', wrong_setup_code: 'wrong setup code for the first super admin' };
 
 // Field names as people say them (the last part of the stored name, e.g. "pregnancy.lmp" -> "LMP").
 const FIELD_LABELS = {

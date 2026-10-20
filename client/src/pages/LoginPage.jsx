@@ -64,6 +64,7 @@ export function LoginPage() {
   const lock = useLockCountdown(); // 3 wrong passwords: 2 minutes to wait
   // First start: no super admin yet – this page creates the first one (nothing is kept in a settings file)
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [needsCode, setNeedsCode] = useState(false); // the live server asks for its one-time SETUP_CODE
   // Staff or patient (owner, 16 Oct 2026: one sign-in page). The patient side is the patient portal's own sign-in –
   // its own session, never a staff one.
   const [who, setWho] = useState(location.hash === '#patient' ? 'patient' : 'staff');
@@ -71,7 +72,10 @@ export function LoginPage() {
   const signedOut = location.state?.patientSignedOut ?? null;
   useEffect(() => {
     api('/auth/setup-status')
-      .then((r) => setNeedsSetup(Boolean(r.needsSetup)))
+      .then((r) => {
+        setNeedsSetup(Boolean(r.needsSetup));
+        setNeedsCode(Boolean(r.needsCode));
+      })
       .catch(() => {});
   }, []);
 
@@ -104,6 +108,7 @@ export function LoginPage() {
     <AuthFrame>
       {needsSetup ? (
         <FirstSuperAdminForm
+          needsCode={needsCode}
           onDone={async (account) => {
             const loggedIn = await login(account.email, account.password);
             navigate(loggedIn.mustChangePassword ? '/change-password' : '/', { replace: true });
@@ -267,8 +272,8 @@ function AuthFrame({ children }) {
  * The very first start (owner's request, 12 Oct 2026): there is no super admin yet, so this creates the first one –
  * name, email and password typed here, never kept in a settings file. The server refuses once a super admin exists.
  */
-function FirstSuperAdminForm({ onDone }) {
-  const [form, setForm] = useState({ name: '', email: '', password: '', repeat: '' });
+function FirstSuperAdminForm({ onDone, needsCode = false }) {
+  const [form, setForm] = useState({ name: '', email: '', password: '', repeat: '', setupCode: '' });
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -284,7 +289,7 @@ function FirstSuperAdminForm({ onDone }) {
     }
     setSubmitting(true);
     try {
-      await api('/auth/setup', { method: 'POST', body: { name: form.name, email: form.email, password: form.password } });
+      await api('/auth/setup', { method: 'POST', body: { name: form.name, email: form.email, password: form.password, ...(needsCode ? { setupCode: form.setupCode } : {}) } });
       await onDone({ email: form.email, password: form.password });
     } catch (err) {
       setError(err.message);
@@ -300,8 +305,13 @@ function FirstSuperAdminForm({ onDone }) {
         <p className="muted">Perinexa has no super admin yet. This account manages every hospital and every user account. It never sees patient records.</p>
       </header>
       <Alert type="error">{error}</Alert>
+      {needsCode && (
+        <Field label="Setup code" id="setup-code" error={fieldErrors.setupCode} hint="The SETUP_CODE in the server's settings. Needed once, for this first account." keepHint>
+          <input id="setup-code" value={form.setupCode} onChange={set('setupCode')} maxLength={200} autoComplete="off" required autoFocus />
+        </Field>
+      )}
       <Field label="Full name" id="setup-name" error={fieldErrors.name}>
-        <input id="setup-name" value={form.name} onChange={set('name')} maxLength={100} autoComplete="name" required autoFocus />
+        <input id="setup-name" value={form.name} onChange={set('name')} maxLength={100} autoComplete="name" required autoFocus={!needsCode} />
       </Field>
       <Field label="Email" id="setup-email" error={fieldErrors.email}>
         <input id="setup-email" type="email" value={form.email} onChange={set('email')} maxLength={254} autoComplete="username" required />

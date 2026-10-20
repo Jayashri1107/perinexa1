@@ -4,7 +4,8 @@
 # Before using this file:
 #  - change "repo" below if the code is in another GitHub repository;
 #  - create the Managed MongoDB cluster "perinexa-db" (MongoDB, region BLR1) first – App Platform links to it;
-#  - set JWT_SECRET in the App's settings (Settings → App-Level Environment Variables → Edit, tick "Encrypt").
+#  - set JWT_SECRET in the App's settings (Settings → App-Level Environment Variables → Edit, tick "Encrypt");
+#  - set SETUP_CODE there too (encrypted): the sign-in page asks for it when the first super admin is created.
 name: perinexa
 region: blr
 
@@ -21,7 +22,7 @@ services:
     http_port: 8080
     # ONE copy only: some parts assume a single server (docs/HANDOVER.md section 7)
     instance_count: 1
-    instance_size_slug: apps-s-1vcpu-1gb
+    instance_size_slug: apps-s-1vcpu-2gb # 2 GB: several users at once (1 GB is too small)
     health_check:
       http_path: /api/health
     envs:

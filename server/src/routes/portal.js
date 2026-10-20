@@ -120,7 +120,8 @@ patientPortalAccessRouter.delete('/', async (req, res) => {
 
 // ---------- The patient ----------
 
-const signInLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many tries. Please wait 15 minutes, or call the hospital.', code: 'RATE_LIMITED' } } });
+// Wrong tries only: patients on one mobile network can share an address
+const signInLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, skipSuccessfulRequests: true, standardHeaders: 'draft-8', legacyHeaders: false, message: { error: { message: 'Too many tries. Please wait 15 minutes, or call the hospital.', code: 'RATE_LIMITED' } } });
 const WRONG = 'The code or the 4 digits are not right. Check the paper the hospital gave you, or call the hospital.';
 export const portalAudit = (req, action, access, extra = {}) =>
   audit(req, action, { actor: null, tenantId: access?.tenantId ?? null, details: access ? { patientId: String(access.patientId), ...extra } : extra });

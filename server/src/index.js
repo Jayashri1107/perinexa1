@@ -54,9 +54,30 @@ try {
   console.error('\n⚠️  WARNING: could not prepare appointment booking at startup. Details:', err.message, '\n');
 }
 
-createApp().listen(config.API_PORT, () => {
+const server = createApp().listen(config.API_PORT, () => {
   console.log(`✅ Server running on http://localhost:${config.API_PORT} (${config.NODE_ENV})`);
 });
+// Behind the hosting's load balancer: keep idle connections a little longer than it does.
+server.keepAliveTimeout = 65 * 1000;
+server.headersTimeout = 66 * 1000;
+
+// Stopping (a new version pushed, the hosting restarting the server): finish the requests in progress, then close the
+// database, instead of cutting people off in the middle of a save.
+let stopping = false;
+function stop(signal) {
+  if (stopping) return;
+  stopping = true;
+  console.log(`${signal}: finishing requests in progress, then stopping.`);
+  server.close(async () => {
+    await mongoose.disconnect().catch(() => {});
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 15 * 1000).unref(); // never wait more than 15 seconds
+}
+process.on('SIGTERM', () => stop('SIGTERM'));
+process.on('SIGINT', () => stop('SIGINT'));
+// A mistake in one request must not stop the server for everyone: write it to the log and carry on.
+process.on('unhandledRejection', (err) => console.error('Unhandled error (the server keeps running):', err?.stack ?? err));
 
 // Automatic reminders (Version 2): once an hour, for hospitals that switched them on (Hospital admin → Patient
 // messages). Without a message provider in server/.env they wait in the outbox for staff to send by hand.

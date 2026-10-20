@@ -4,7 +4,9 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { config } from './config.js';
 import { authRouter } from './routes/auth.js';
 import { platformTenantsRouter } from './routes/platformTenants.js';
@@ -61,6 +63,7 @@ import { analyticsRouter } from './routes/analytics.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
+  COOKIE_NAME,
   requireAuth,
   requirePasswordChanged,
   platformHospitalGuard,
@@ -75,10 +78,38 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 // abdmPublicRateLimitMax: calls a minute from one address to ABDM's public addresses (ABDM's gateway, other hospitals).
 // analyticsCacheMs: how long a doctor's Analytics page is kept (analytics/sectionCache.js; 0 = not kept).
 // platformAnalyticsCacheMs: the same for the super admin's Analytics pages (5 minutes unless set).
+// The request limit's key: the signed-in person (from the session cookie) or, before signing in, the internet address.
+function personKey(req) {
+  const token = req.cookies?.[COOKIE_NAME];
+  if (token) {
+    try {
+      return `u:${jwt.verify(token, config.JWT_SECRET).sub}`;
+    } catch {
+      /* expired or not ours: by address */
+    }
+  }
+  return ipKeyGenerator(req.ip ?? '');
+}
+
+// Writes slow requests to the server's log (method, path with ids replaced, status, milliseconds) – never a query,
+// a body or a name.
+function logSlowRequests(ms) {
+  return (req, res, next) => {
+    const start = process.hrtime.bigint();
+    res.on('finish', () => {
+      const took = Number(process.hrtime.bigint() - start) / 1e6;
+      if (took < ms) return;
+      const route = req.originalUrl.split('?')[0].replace(/[0-9a-f]{24}/gi, ':id');
+      console.warn(`Slow request: ${req.method} ${route} ${res.statusCode} ${Math.round(took)} ms`);
+    });
+    next();
+  };
+}
+
 export function createApp({
   loginRateLimitMax = config.LOGIN_RATE_LIMIT_MAX,
   portalOtpRateLimitMax = config.PORTAL_OTP_RATE_LIMIT_MAX,
-  apiRateLimitMax = 300,
+  apiRateLimitMax = config.API_RATE_LIMIT_MAX,
   abdmPublicRateLimitMax = 3000,
   analyticsCacheMs = config.ANALYTICS_CACHE_SECONDS * 1000,
   platformAnalyticsCacheMs = config.ANALYTICS_PLATFORM_CACHE_SECONDS * 1000,
@@ -89,6 +120,7 @@ export function createApp({
   app.locals.platformAnalyticsCacheMs = platformAnalyticsCacheMs;
 
   app.use(helmet());
+  if (config.SLOW_REQUEST_MS) app.use(logSlowRequests(config.SLOW_REQUEST_MS));
   app.use(cors({ origin: config.CLIENT_URL, credentials: true, allowedHeaders: ['Content-Type', 'X-Tenant-Id'] }));
   // A photo or PDF of a report read by AI (Smart features) is larger than any other request.
   app.use(/^\/api\/patients\/[^/]+\/ai\/read-report$/, express.json({ limit: '10mb' }));
@@ -125,9 +157,24 @@ export function createApp({
     res.set('Cache-Control', 'no-store');
     next();
   });
-  app.use('/api', rateLimit({ windowMs: 60 * 1000, limit: apiRateLimitMax, standardHeaders: 'draft-8', legacyHeaders: false, skip: (req) => req.originalUrl.startsWith('/api/abdm/public/') }));
+  // Counted per signed-in person, so the many staff of one hospital (often one internet address) never share a limit.
+  app.use(
+    '/api',
+    rateLimit({
+      windowMs: 60 * 1000,
+      limit: apiRateLimitMax,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+      keyGenerator: personKey,
+      skip: (req) => req.originalUrl.startsWith('/api/abdm/public/'),
+    }),
+  );
 
-  app.get('/api/health', (_req, res) => res.json({ ok: true }));
+  // For the hosting's health check and uptime monitors: 503 while the database is not reachable.
+  app.get('/api/health', (_req, res) => {
+    const ok = mongoose.connection.readyState === 1;
+    res.status(ok ? 200 : 503).json({ ok });
+  });
   app.use('/api/auth', authRouter({ loginRateLimitMax }));
   // From ABDM (Scan & Share): no staff login – ABDM's signature is checked (routes/abdm.js)
   app.use('/api/abdm/public', abdmPublicRouter);

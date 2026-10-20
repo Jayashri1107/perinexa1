@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { lockedError, staffFailed, staffLockLeft, staffSignedIn } from '../auth/loginLock.js';
@@ -99,6 +100,15 @@ const openHospitalSchema = z.object({ tenantId: objectId.nullable() });
 
 // The very first start: no super admin yet. The sign-in page then shows "Create the first super admin".
 const needsSetup = async () => !(await User.exists({ isSuperAdmin: true }));
+// The first super admin needs the one-time SETUP_CODE when one is set – and always on the live server (read when
+// used, so tests can set their own).
+const setupCode = () => String(process.env.SETUP_CODE ?? config.SETUP_CODE ?? '').trim();
+const setupNeedsCode = () => Boolean(setupCode()) || config.isProduction;
+const sameCode = (a, b) => {
+  const x = Buffer.from(String(a));
+  const y = Buffer.from(String(b));
+  return x.length === y.length && timingSafeEqual(x, y);
+};
 const setupSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(100, 'Name is too long'),
   email: z.string().trim().toLowerCase().pipe(z.email('Please enter a valid email address').max(254)),
@@ -108,9 +118,12 @@ const setupSchema = z.object({
 export function authRouter({ loginRateLimitMax }) {
   const router = Router();
 
+  // Per internet address, wrong tries only (a hospital's staff often share one address); the lock per account
+  // (utils/loginLock.js) is the main guard.
   const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: loginRateLimitMax,
+    skipSuccessfulRequests: true,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: async (req, res) => {
@@ -169,12 +182,20 @@ export function authRouter({ loginRateLimitMax }) {
 
   // Is there a super admin yet? (No login needed: the sign-in page asks before anyone exists.)
   router.get('/setup-status', async (_req, res) => {
-    res.json({ needsSetup: await needsSetup() });
+    const open = await needsSetup();
+    res.json({ needsSetup: open, needsCode: open && setupNeedsCode() });
   });
 
   // Creates the first super admin – refused as soon as one exists, so it can only ever be used once.
   router.post('/setup', loginLimiter, async (req, res) => {
     if (!(await needsSetup())) throw new HttpError(403, 'Perinexa already has a super admin. Please log in.', 'ALREADY_SET_UP');
+    if (setupNeedsCode()) {
+      if (!setupCode()) throw new HttpError(403, 'The first super admin can be made only with a setup code. Set SETUP_CODE in the server settings, then try again.', 'SETUP_CODE_MISSING');
+      if (!sameCode(req.body?.setupCode ?? '', setupCode())) {
+        await audit(req, 'LOGIN_FAILED', { details: { email: String(req.body?.email ?? '').slice(0, 254), reason: 'wrong_setup_code' } });
+        throw Object.assign(new HttpError(403, 'The setup code is not right.', 'WRONG_SETUP_CODE'), { fields: { setupCode: 'The setup code is not right.' } });
+      }
+    }
     const data = parse(setupSchema, req.body);
     if (await User.exists({ email: data.email })) throw new HttpError(409, 'An account with this email already exists.', 'EMAIL_TAKEN');
     const user = await User.create({
