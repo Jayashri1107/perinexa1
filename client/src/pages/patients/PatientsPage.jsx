@@ -14,6 +14,7 @@ import { RiskBadge } from './RiskCard.jsx';
 import { RISK_SHORT } from './riskFormat.js';
 import { SignupsNotice } from './SignupsPage.jsx';
 import { AdmissionSlip, AdmitDialog } from '../beds/BedBoardPage.jsx';
+import { ExportButton } from '../../components/ExportButton.jsx';
 
 // What was typed in the search box is kept here – not in the page address, where it would stay in the browser's
 // history – so going back to the list keeps it. Only for the same person and hospital; gone after a reload.
@@ -238,9 +239,10 @@ export function PatientsPage() {
         title="Patients"
         help={`Click a patient to open her record. Use the choices above the list to show only some patients.${seesDuplicates ? ' Records marked as a duplicate of another are hidden: More filters shows them.' : ''}`}
         actions={
-          canRegister && (
-            <MenuButton className="btn btn-primary" icon={UserPlus} label="New patient" items={newPatientLinks(roles)} align="end" />
-          )
+          <>
+            <ExportButton what="patients" />
+            {canRegister && <MenuButton className="btn btn-primary" icon={UserPlus} label="New patient" items={newPatientLinks(roles)} align="end" />}
+          </>
         }
       />
       <div className="pf-content">

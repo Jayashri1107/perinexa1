@@ -9,6 +9,7 @@ import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CALC_SOURCES, draftReport, gaWords, ordinal, workOut } from './usgCalc.js';
+import { ExportButton } from '../../components/ExportButton.jsx';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): the worklist (to schedule, scheduled, to report,
 // signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
@@ -48,7 +49,7 @@ export function ImagingWorklistPage() {
   const { data, error, loading } = useFetch('/imaging/worklist', { list });
   return (
     <>
-      <PageHeader title="Scans" help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
+      <PageHeader title="Scans" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
       <div className="pf-content">
         <div className="segmented" aria-label="Scan lists">
           {LISTS.map(([k, w]) => (

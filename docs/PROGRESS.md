@@ -81,6 +81,16 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **Export lists as Excel-ready CSV (21 Oct 2026, developer):** an **Export** button on Patients, Appointments, Beds, Lab,
+  Scans and Referrals saves a list for the dates chosen (patients: all, or registered between two dates). Exports show
+  exactly what the person may already see: **doctors, their own patients** – their appointments, and the stays, lab
+  orders (tests and status, HIV under its neutral name, never results), scans (study and status, never the report) and
+  referrals (as consultant) of their own patients. A hospital admin with no clinical role sees no patient data, so has
+  no export (an admin who is also a doctor exports as that doctor); nor has a platform user who opened the hospital.
+  At most 366 days and 20,000 rows per file; cells that start like a formula get an apostrophe; every file saved is in
+  the audit log (what, the dates, how many rows – no names). The dialog warns that the file holds names and phone
+  numbers. Code: `server/src/routes/exports.js`, `server/src/utils/csv.js`, `client/src/components/ExportButton.jsx`.
+  Tests: `server/tests/exports.test.js`, `client/src/components/exportButton.test.jsx`.
 - **Names start with capitals (21 Oct 2026, developer):** people's names are saved with every word starting with a
   capital letter – "jayashri sable" → "Jayashri Sable" – for patients, emergency contacts, staff (added, or their own
   name on My profile), portal sign-ups, referral and appointment guests, referring doctors, pharmacy customers, doctors on

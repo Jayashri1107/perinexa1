@@ -7,6 +7,7 @@ import { Alert, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { moduleByKey } from '../../platform/modules.js';
 import { VIA_LABELS, WAITING_LOOK, promiseLabel, promiseLook, statusLook, timeLeftWords, urgencyLook, whoFacts, whoName } from './referralFormat.js';
+import { ExportButton } from '../../components/ExportButton.jsx';
 
 // The referral desk (docs/REFERRALS_PLAN.md): the referrals from other doctors with the next promise of each and
 // its clock – Open (newest first), Late (a promise past its time) and Closed. The list holds only the referrals this
@@ -179,9 +180,12 @@ export function ReferralsDeskPage() {
         help="Referrals from other doctors and the hospital’s promises to them: a reply within 2 working hours, urgent patients seen the same day and routine ones within 48 hours, the consultant note within 24 hours of her first visit and the discharge summary within 24 hours of discharge."
         tabs={moduleByKey('referrals')?.tabs}
         actions={
-          <Link to="/referrals/new" className="btn btn-primary">
-            <FilePlus2 aria-hidden="true" /> New referral
-          </Link>
+          <>
+            <ExportButton what="referrals" />
+            <Link to="/referrals/new" className="btn btn-primary">
+              <FilePlus2 aria-hidden="true" /> New referral
+            </Link>
+          </>
         }
       />
       <div className="pf-content">

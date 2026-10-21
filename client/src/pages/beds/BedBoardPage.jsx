@@ -13,6 +13,7 @@ import { canRegisterPatients } from '../../platform/modules.js';
 import { AdmitRegister } from './AdmitRegister.jsx';
 import { REASONS, freeBeds, nowLocal } from './bedFormat.js';
 import { ChecklistDialog, ChecklistFields, EMPTY_CHECKLIST, RequestsSection, StayPaper, StayPaperButtons, ToClearSection, checklistFromPatient } from './AdmissionDesk.jsx';
+import { ExportButton } from '../../components/ExportButton.jsx';
 
 // The bed board (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): each ward's beds, free or occupied, with who
 // is in each bed, her doctor, since when and – as the server allows – the reason. Reception, doctors and RMOs admit a
@@ -97,7 +98,7 @@ export function BedBoardPage() {
 
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: 'Beds' }]} title="Beds" subtitle="Occupancy, available beds and who is staying, at a glance." />
+      <PageHeader breadcrumbs={[{ label: 'Beds' }]} title="Beds" subtitle="Occupancy, available beds and who is staying, at a glance." actions={<ExportButton what="admissions" />} />
       <div className="pf-content beds-page">
         <Alert type="error">{board.error}</Alert>
         <Alert type="success" onClose={() => setNotice(null)}>

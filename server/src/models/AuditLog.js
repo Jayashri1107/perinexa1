@@ -18,6 +18,8 @@ export const AUDIT_ACTIONS = [
   'LINKED_ACCOUNT_CHANGED',
   // A super admin switched to their own doctor account and back (one login – 21 Oct 2026)
   'ACCOUNT_SWITCHED',
+  // A list saved as a CSV file by a doctor – what, the dates and how many rows (routes/exports.js, 21 Oct 2026)
+  'LIST_EXPORTED',
   'TENANT_CREATED',
   'TENANT_UPDATED',
   'TENANT_ACTIVATED',
@@ -377,6 +379,7 @@ export const AUDIT_CATEGORIES = {
     'ACCOUNT_SWITCHED',
     'PORTAL_LOGIN_FAILED',
     'HOSPITAL_DATA_EXPORTED',
+    'LIST_EXPORTED',
   ],
   access: [
     'USER_CREATED',

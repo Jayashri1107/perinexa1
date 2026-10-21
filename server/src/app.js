@@ -40,6 +40,7 @@ import { bedsRouter } from './routes/beds.js';
 import { labRouter } from './routes/lab.js';
 import { referralsRouter } from './routes/referrals.js';
 import { referringDoctorsRouter } from './routes/referringDoctors.js';
+import { exportsRouter } from './routes/exports.js';
 import { reminderOutboxRouter } from './routes/reminderOutbox.js';
 import { portalRouter } from './routes/portal.js';
 import { portalRecordsRouter } from './routes/portalRecords.js';
@@ -255,6 +256,7 @@ export function createApp({
   // copy, 19 Oct 2026): the referral desk, doctors and RMOs only (routes/referrals.js REFERRAL_ROLES)
   app.use('/api/referrals', ...inTenant, referralsRouter);
   app.use('/api/referring-doctors', ...inTenant, referringDoctorsRouter);
+  app.use('/api/exports', ...inTenant, exportsRouter); // lists as CSV: a doctor's own patients (routes/exports.js)
   // The Tally link (docs/TALLY_PLAN.md – from the other Perinexa copy, 19 Oct 2026): the accountant's files, for the
   // hospital admin only (routes/tally.js)
   app.use('/api/tally', ...inTenant, tallyRouter);

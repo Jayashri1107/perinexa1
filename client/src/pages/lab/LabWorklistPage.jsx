@@ -10,6 +10,7 @@ import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { Section } from '../worklist/WorklistSections.jsx';
 import { DEPARTMENTS, FLAG_LOOK, LATE_LOOK, orderLook, testNames } from './labFormat.js';
 import { homeWord } from './LabWalkIn.jsx';
+import { ExportButton } from '../../components/ExportButton.jsx';
 
 // The Lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md): the lab's worklist – samples to take,
 // results to enter, results to check (when the hospital checks results before the report), tests at an outside lab,
@@ -135,7 +136,7 @@ export function LabWorklistPage() {
 
   return (
     <>
-      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab" help="Samples to take, results to enter and check, tests at outside labs and recent reports. Open an order to print its labels, enter its results or print the report." />
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab" actions={<ExportButton what="lab" />} help="Samples to take, results to enter and check, tests at outside labs and recent reports. Open an order to print its labels, enter its results or print the report." />
       <div className="pf-content">
         <div className="lab-toolbar">
           <div className="segmented lab-lists" aria-label="Lab lists">
