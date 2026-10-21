@@ -81,6 +81,12 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **Names start with capitals (21 Oct 2026, developer):** people's names are saved with every word starting with a
+  capital letter – "jayashri sable" → "Jayashri Sable" – for patients, emergency contacts, staff (added, or their own
+  name on My profile), portal sign-ups, referral and appointment guests, referring doctors, pharmacy customers, doctors on
+  walk-in sales, pharmacists and witnesses. Only the first letter of a word changes ("McDonald", "D'Souza", "A.K." keep
+  theirs); Marathi and Hindi are left as they are; medicine, hospital and business names stay as typed. Names saved
+  before keep their spelling until changed. `server/src/utils/personName.js`, `server/tests/person-names.test.js`.
 - **A super admin who is also a doctor – one login (21 Oct 2026, developer):** profile menu → **Work as a doctor…** →
   choose a hospital: the super admin's own doctor account is made once (their email with "+doctor", a random password
   nobody knows – no second email or password to remember) and added to that hospital's staff as a doctor; this browser

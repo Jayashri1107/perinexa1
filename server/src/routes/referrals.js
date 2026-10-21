@@ -40,6 +40,7 @@ import { HttpError } from '../utils/httpError.js';
 import { safeText } from '../utils/pcpndt.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
 import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
+import { capitalizeName } from '../utils/personName.js';
 
 // Referrals from other doctors (docs/REFERRALS_PLAN.md – the owner's decisions of 15 Oct 2026), /api/referrals:
 //  - GET  /settings-view  the centres, desk number, consultants' direct lines, reasons and doctors (for the forms)
@@ -310,7 +311,7 @@ referralsRouter.get('/review', async (req, res) => {
 
 const guestSchema = z
   .object({
-    name: z.string().trim().min(2, 'Please enter her name.').max(150),
+    name: z.string().trim().min(2, 'Please enter her name.').max(150).transform(capitalizeName),
     phone: z.string().trim().max(30).regex(/^[0-9+()\-\s]*$/, 'The phone number can only contain numbers, spaces, +, ( ) and -').default(''),
     ageYears: z.union([z.number().int('Age: whole years').min(0, 'Age: between 0 and 120').max(120, 'Age: between 0 and 120'), z.null()]).default(null),
   })

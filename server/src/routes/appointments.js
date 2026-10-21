@@ -31,6 +31,7 @@ import { isDuplicate } from '../patients/duplicateRules.js';
 import { isClosed } from '../patients/deathRules.js';
 import { bookingJoinsRecord } from '../referrals/referralService.js';
 import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
+import { capitalizeName } from '../utils/personName.js';
 
 // Appointment booking (docs/APPOINTMENTS_PLAN.md, approved 3 Oct 2026):
 //  - GET  /api/appointments/doctors            the hospital's doctors, who has OPD timings, what this person may do
@@ -351,7 +352,7 @@ const bookSchema = z
     date: requiredDateOnly('Date'),
     start: time,
     patientId: objectId.optional(),
-    guest: z.object({ name: z.string().trim().min(2, 'Please enter her name.').max(150), phone: z.string().trim().min(6, 'Please enter a phone number.').max(30) }).strict().optional(),
+    guest: z.object({ name: z.string().trim().min(2, 'Please enter her name.').max(150).transform(capitalizeName), phone: z.string().trim().min(6, 'Please enter a phone number.').max(30) }).strict().optional(),
     visitType: z.enum(VISIT_TYPES).default('follow_up'),
     confirm: z.boolean().default(false),
   })

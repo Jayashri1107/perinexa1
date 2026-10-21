@@ -23,6 +23,7 @@ import {
   setAuthCookie,
 } from '../middleware/auth.js';
 import { APPEARANCE_CHOICES, STANDARD_APPEARANCE } from '../utils/appearance.js';
+import { capitalizeName } from '../utils/personName.js';
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().min(1, 'Email is required').max(254),
@@ -50,7 +51,7 @@ const professionalSchema = z.object({
 // My profile: name, work phone and staff number (the email is the login: changed by the super admin only).
 const detailsSchema = z
   .object({
-    name: z.string().trim().min(2, 'Write your name').max(100, 'The name is too long'),
+    name: z.string().trim().min(2, 'Write your name').max(100, 'The name is too long').transform(capitalizeName),
     phone: z.string().trim().max(30, 'The phone number is too long').regex(/^[\d+\-\s()]*$/, 'Only digits, spaces, + - ( )').default(''),
     employeeId: z.string().trim().max(30, 'The staff number is too long').default(''),
   })
@@ -136,7 +137,7 @@ const sameCode = (a, b) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 const setupSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required').max(100, 'Name is too long'),
+  name: z.string().trim().min(1, 'Name is required').max(100, 'Name is too long').transform(capitalizeName),
   email: z.string().trim().toLowerCase().pipe(z.email('Please enter a valid email address').max(254)),
   password: passwordSchema,
 });

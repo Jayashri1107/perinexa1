@@ -41,6 +41,7 @@ import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { pharmacyOrdersRouter } from './pharmacyOrders.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
+import { capitalizeName } from '../utils/personName.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -76,7 +77,7 @@ const settingsSchema = z
     licence20: z.string().trim().max(80),
     licence21: z.string().trim().max(80),
     rmi: z.string().trim().max(80),
-    pharmacistName: z.string().trim().max(150),
+    pharmacistName: z.string().trim().max(150).transform(capitalizeName),
     state: z.string().trim().max(60),
     // City or town and PIN code: only the e-invoice file needs them
     place: z.string().trim().max(50),
@@ -388,7 +389,7 @@ pharmacyRouter.post('/batches/:id/writeoff', async (req, res) => {
 
 pharmacyRouter.post('/batches/:id/count', async (req, res) => {
   desk(req);
-  const body = parse(z.object({ counted: z.number().int().min(0).max(MAX_QTY), reason: reason('Correcting the stock'), witness: z.string().trim().max(150).default('') }).strict(), req.body);
+  const body = parse(z.object({ counted: z.number().int().min(0).max(MAX_QTY), reason: reason('Correcting the stock'), witness: z.string().trim().max(150).transform(capitalizeName).default('') }).strict(), req.body);
   const { b, m } = await loadBatch(req);
   const after = await countStock(req, b, body.counted, body.reason, body.witness, m);
   await audit(req, 'PHARMACY_STOCK_COUNTED', { details: { medicineId: String(m._id), batchId: String(b._id), from: b.qtyLeft, to: body.counted, reason: body.reason, ...(body.witness ? { witness: body.witness } : {}) } });
@@ -488,8 +489,8 @@ const invoiceSchema = z
   .object({
     kind: z.enum(['sale', 'issue']),
     patientId: objectId.optional(),
-    customer: z.object({ name: z.string().trim().min(2, 'Write the customer’s name.').max(150), phone: z.string().trim().max(30).default('') }).strict().optional(),
-    doctor: z.object({ name: z.string().trim().max(150).default(''), reg: z.string().trim().max(60).default('') }).strict().optional(),
+    customer: z.object({ name: z.string().trim().min(2, 'Write the customer’s name.').max(150).transform(capitalizeName), phone: z.string().trim().max(30).default('') }).strict().optional(),
+    doctor: z.object({ name: z.string().trim().max(150).transform(capitalizeName).default(''), reg: z.string().trim().max(60).default('') }).strict().optional(),
     visitId: objectId.optional(),
     rxSeen: z.boolean().default(false),
     lines: z.array(z.object({ medicineId: objectId, qty, batchId: objectId.optional() }).strict()).min(1, 'Add at least one medicine.').max(60),

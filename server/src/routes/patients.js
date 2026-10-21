@@ -60,6 +60,7 @@ import { patientPortalAccessRouter } from './portal.js';
 import { patientDuplicateRouter } from './patientDuplicates.js';
 import { patientDeathRouter } from './patientDeath.js';
 import { recordCopyRouter } from './recordCopy.js';
+import { capitalizeName } from '../utils/personName.js';
 import {
   CLINICAL_EDIT,
   IDENTITY_EDIT,
@@ -85,12 +86,12 @@ const emptyToNull = (v) => (v === '' || v === undefined ? null : v);
 const identity = {
   // No characters that cannot be seen (a tab, a line break, a NUL …): a name is one line of letters, and the
   // "already registered" search builds a database pattern from it.
-  fullName: text('Full name', 150).min(1, 'Full name is required').regex(/^\P{Cc}*$/u, 'Full name has a character that cannot be saved. Please type the name again.'),
+  fullName: text('Full name', 150).min(1, 'Full name is required').regex(/^\P{Cc}*$/u, 'Full name has a character that cannot be saved. Please type the name again.').transform(capitalizeName),
   phone: text('Phone', 30).regex(/^[0-9+()\-\s]*$/, 'Phone can only contain numbers, spaces, +, ( ) and -').default(''),
   address: text('Address', 300).default(''),
   emergencyContact: z
     .object({
-      name: text('Emergency contact name', 100).regex(/^[^\p{Cc}]*$/u, 'Emergency contact name has a character that cannot be saved.').default(''),
+      name: text('Emergency contact name', 100).regex(/^[^\p{Cc}]*$/u, 'Emergency contact name has a character that cannot be saved.').transform(capitalizeName).default(''),
       relation: text('Relation', 50).default(''),
       phone: text('Emergency contact phone', 30).regex(/^[0-9+()\-\s]*$/, 'Phone can only contain numbers, spaces, +, ( ) and -').default(''),
     })

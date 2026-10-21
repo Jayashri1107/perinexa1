@@ -13,6 +13,7 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { safeText } from '../utils/pcpndt.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
+import { capitalizeName } from '../utils/personName.js';
 
 // The doctors outside the hospital who send patients (Referrals, docs/REFERRALS_PLAN.md), /api/referring-doctors:
 //  - GET  /             the list (?search= name, clinic, area or number; ?active=true|false), with how many referrals each sent
@@ -37,7 +38,7 @@ referringDoctorsRouter.use((req, _res, next) => {
 
 const text = (label, max) => z.string().trim().max(max, `${label} is too long (at most ${max} characters).`);
 const FIELDS = {
-  name: text('Name', 150).min(2, "Enter the doctor's name."),
+  name: text('Name', 150).min(2, "Enter the doctor's name.").transform(capitalizeName),
   qualification: text('Qualification', 150),
   clinic: text('Clinic', 150),
   area: text('Area', 150),

@@ -18,6 +18,7 @@ import { fakeVerify, hashPassword, passwordSchema, verifyPassword } from '../uti
 import { parse, requiredDateOnly } from '../utils/validate.js';
 import { letterheadFor } from './settings.js';
 import { accountAccess, portalAudit, portalSession, startPortalSession } from './portal.js';
+import { capitalizeName } from '../utils/personName.js';
 
 // Patients' own accounts on the hospital's portal (owner, 16 Oct 2026 – docs/PATIENT_ACCOUNTS_PLAN.md). Public (no
 // staff login), so deliberately small:
@@ -144,7 +145,7 @@ export function portalSignupRouter({ otpLimitMax = 8 } = {}) {
   // ---------- Sign up ----------
   const signupBody = z
     .object({
-      fullName: z.string().trim().min(2, 'Please enter your full name.').max(150),
+      fullName: z.string().trim().min(2, 'Please enter your full name.').max(150).transform(capitalizeName),
       ageYears: z.coerce.number({ error: 'Please enter your age.' }).int('Please enter your age in years.').min(1, 'Please enter your age.').max(120, 'Please check your age.'),
       mobile: z.string().max(20),
       // Her registration details (owner, 16 Oct 2026): she fills them, reception checks who she is
