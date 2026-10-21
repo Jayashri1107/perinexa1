@@ -81,6 +81,14 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **Ready for AWS (21 Oct 2026):** `docs/DEPLOY_AWS.md` – one EC2 server in Mumbai, Caddy for HTTPS, MongoDB Atlas,
+  with `deploy/perinexa.service`, `deploy/Caddyfile` and `deploy/deploy.sh` (updates, builds, restarts, and goes back
+  to the version before if the health check fails). CI on GitHub (`.github/workflows/ci.yml`): every test and the
+  build on each push to `main` and each pull request, no secrets. Two fixes for the live server: its security header
+  now lets the app's own WebAssembly run and pictures made from a chosen file show (reading the Aadhaar QR, QR codes,
+  profile photos and signatures would have failed there – the development website does not send that header); and it
+  refuses a `JWT_SECRET` or `SETUP_CODE` that looks typed or copied from an example. `server/.env.example` now has
+  Perinexa1's own addresses (server 4001, website 5174): a new computer set up from it got "Can't reach the server".
 - **Medicine GST rates brought up to date (21 Oct 2026):** the pharmacy now offers 0, 5 and 18 % (the 12 % rate ended
   on 22 Sept 2025, 56th GST Council) and a new medicine starts at 5 %. Medicines saved earlier at 12 % keep working;
   `npm run fix:gst-rates` moves them to 5 % in every hospital, lists them, and writes each change to the audit log –

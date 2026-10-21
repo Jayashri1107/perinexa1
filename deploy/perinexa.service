@@ -1,0 +1,27 @@
+# /etc/systemd/system/perinexa.service – keeps the Perinexa server running on the AWS server (docs/DEPLOY_AWS.md).
+#   sudo cp /opt/perinexa/app/deploy/perinexa.service /etc/systemd/system/ && sudo systemctl enable --now perinexa
+#   journalctl -u perinexa -f          its log
+[Unit]
+Description=Perinexa
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=perinexa
+Group=perinexa
+WorkingDirectory=/opt/perinexa/app/server
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+# The server finishes requests in progress before it stops.
+TimeoutStopSec=20
+# Hardening: the server needs nothing outside its own folder.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/perinexa/app
+
+[Install]
+WantedBy=multi-user.target

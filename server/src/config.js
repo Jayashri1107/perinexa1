@@ -148,11 +148,24 @@ if (!parsed.success) {
 
 const env = parsed.data;
 
-// On the live server a setting that would weaken sign-in stops the start, so it is seen at once (docs/DEPLOY.md).
-if (env.NODE_ENV === 'production') {
+// A secret that was typed or copied from an example rather than made at random (21 Oct 2026): a known word, or too
+// few different characters (a random value of 48 bytes has about 40).
+const MAKE_ONE = 'make one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'base64url\'))"';
+const looksTyped = (value) => /replace|example|change.?me|placeholder|secret|password|perinexa/i.test(value) || new Set(value).size < 16;
+
+/** What would weaken sign-in on the live server – each a sentence for the person starting it. PURE. */
+export function productionProblems(settings) {
   const unsafe = [];
-  if (!env.CLIENT_URL.startsWith('https://')) unsafe.push('CLIENT_URL must be the https:// address of the website');
-  if (env.COOKIE_SECURE === 'false') unsafe.push('COOKIE_SECURE=false sends the sign-in cookie without HTTPS – remove it');
+  if (!settings.CLIENT_URL.startsWith('https://')) unsafe.push('CLIENT_URL must be the https:// address of the website');
+  if (settings.COOKIE_SECURE === 'false') unsafe.push('COOKIE_SECURE=false sends the sign-in cookie without HTTPS – remove it');
+  if (looksTyped(settings.JWT_SECRET)) unsafe.push(`JWT_SECRET looks typed or copied from an example – ${MAKE_ONE}`);
+  if (settings.SETUP_CODE && (settings.SETUP_CODE.length < 20 || looksTyped(settings.SETUP_CODE))) unsafe.push(`SETUP_CODE is too easy to guess – ${MAKE_ONE}`);
+  return unsafe;
+}
+
+// On the live server a setting that would weaken sign-in stops the start, so it is seen at once (docs/DEPLOY_AWS.md).
+if (env.NODE_ENV === 'production') {
+  const unsafe = productionProblems(env);
   if (unsafe.length) {
     console.error('\n❌ Unsafe settings for production:');
     for (const problem of unsafe) console.error(`   - ${problem}`);

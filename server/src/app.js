@@ -121,7 +121,11 @@ export function createApp({
   app.locals.analyticsCacheMs = analyticsCacheMs;
   app.locals.platformAnalyticsCacheMs = platformAnalyticsCacheMs;
 
-  app.use(helmet());
+  // helmet's strict defaults, with two additions the website needs on the live server (21 Oct 2026; the development
+  // website never sends this header, so they did not show there): 'wasm-unsafe-eval' lets the app's own WebAssembly
+  // run (zxing-wasm: reading the Aadhaar QR, drawing QR codes) – still no eval of text; blob: lets a picture made in
+  // this browser from a chosen file be shown (an Aadhaar card photo, a profile photo or signature).
+  app.use(helmet({ contentSecurityPolicy: { directives: { 'script-src': ["'self'", "'wasm-unsafe-eval'"], 'img-src': ["'self'", 'data:', 'blob:'] } } }));
   if (config.SLOW_REQUEST_MS) app.use(logSlowRequests(config.SLOW_REQUEST_MS));
   app.use(cors({ origin: config.CLIENT_URL, credentials: true, allowedHeaders: ['Content-Type', 'X-Tenant-Id'] }));
   // A photo or PDF of a report read by AI (Smart features) is larger than any other request.

@@ -1,5 +1,8 @@
 # Deploying Perinexa on DigitalOcean App Platform
 
+> **On AWS** (one EC2 server in Mumbai, Caddy, MongoDB Atlas): `docs/DEPLOY_AWS.md`, with `deploy/` and the CI in
+> `.github/workflows/ci.yml`.
+
 **FAKE SAMPLE DATA ONLY.** This puts Perinexa online for a private demo. Real patient data waits until the developer's
 health check and the go-live checklist are complete (`docs/HANDOVER.md` sections 2 and 6–8).
 

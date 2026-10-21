@@ -14,7 +14,7 @@ npm run dev
 ```
 
 This single command starts the database, the server and the website. Then open
-**http://localhost:5173** in your browser.
+**http://localhost:5174** in your browser.
 
 To stop the app, click in the terminal and press **Ctrl + C**. The database keeps running in the
 background (it uses very little). To stop it too:
