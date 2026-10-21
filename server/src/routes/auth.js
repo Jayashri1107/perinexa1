@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { lockedError, staffFailed, staffLockLeft, staffSignedIn } from '../auth/loginLock.js';
@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { rateLimitStore } from '../utils/sharedState.js';
+import { Membership } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
 import { PLATFORM_AREAS, User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
@@ -74,11 +75,13 @@ const appearanceSchema = z
 const INVALID_LOGIN = 'Invalid email or password.';
 
 // What the website needs to know about the logged-in person.
-const sessionBody = (user, memberships, activeTenantId, platform = null) => ({
+// switchBack: a super admin working in their own doctor account – the website offers "Switch back to super admin".
+const sessionBody = (user, memberships, activeTenantId, platform = null, switchBack = false) => ({
   user,
   memberships,
   activeTenantId,
   ...(platform ? { platform } : {}),
+  ...(switchBack ? { switchBack: true } : {}),
   sessionTimeoutMinutes: config.SESSION_TIMEOUT_MINUTES,
 });
 
@@ -93,11 +96,33 @@ async function platformInfo(user, tenant) {
     role: user.isSuperAdmin ? 'superadmin' : 'platformadmin',
     permissions: user.isSuperAdmin ? PLATFORM_AREAS : [...(user.platformPermissions ?? [])],
     hospital: tenant ? { tenantId: String(tenant._id), tenantName: tenant.name, readOnly: !canEditPlatform(user, 'hospitalSetup') } : null,
-    linkedAccount: linked?.isActive && !isPlatformUser(linked) ? { email: linked.email, name: linked.name } : null,
+    // own: made by this super admin for themselves – the switch needs no password (21 Oct 2026)
+    linkedAccount: linked?.isActive && !isPlatformUser(linked) ? { email: linked.email, name: linked.name, own: ownDoctorAccount(user, linked) } : null,
   };
 }
 
 const openHospitalSchema = z.object({ tenantId: objectId.nullable() });
+
+// ---------- A super admin who is also a doctor: one login (21 Oct 2026) ----------
+// The super admin makes their own doctor account (no second email: theirs with "+doctor", a random password nobody
+// knows) and is tagged as a doctor in a hospital. "Switch to your doctor account" then needs no password; "Switch back
+// to super admin" asks for theirs (going up to every hospital). Only a super admin's OWN account can be entered without
+// a password – an account linked by email (someone's real login) still asks for its own password, so a super admin can
+// never step into another doctor's account. The two stay separate accounts: the hospital's rules for doctors, and the
+// audit log, see a doctor; the super admin never becomes a hospital member.
+const ownDoctorAccount = (superAdmin, linked) =>
+  Boolean(superAdmin?.isSuperAdmin && linked?.ownedBy && linked.ownedBy.equals(superAdmin._id) && superAdmin.linkedAccountId?.equals(linked._id));
+/** The doctor account's email: the super admin's own with "+doctor" (name@x.in → name+doctor@x.in). */
+export const doctorEmailOf = (email) => {
+  const at = email.lastIndexOf('@');
+  return `${email.slice(0, at)}+doctor${email.slice(at)}`;
+};
+const doctorAccountSchema = z.object({ tenantId: objectId }).strict();
+const switchUpSchema = z.object({ password: z.string().min(1, 'Type your super admin password.').max(128) }).strict();
+const superAdminOnly = (req) => {
+  if (!req.user.isSuperAdmin || req.via) throw new HttpError(403, 'Only a super admin can do this.', 'FORBIDDEN');
+  if (req.user.mustChangePassword) throw new HttpError(403, 'You must change your password before continuing.', 'PASSWORD_CHANGE_REQUIRED');
+};
 
 // The very first start: no super admin yet. The sign-in page then shows "Create the first super admin".
 const needsSetup = async () => !(await User.exists({ isSuperAdmin: true }));
@@ -237,9 +262,9 @@ export function authRouter({ loginRateLimitMax }) {
     if (!activeTenantId && memberships.length) {
       // Session has no (valid) hospital: pick one, e.g. after access to the previous one was removed.
       activeTenantId = pickTenant(memberships, req.user.lastTenantId);
-      setAuthCookie(res, req.user, activeTenantId);
+      setAuthCookie(res, req.user, activeTenantId, req.via);
     }
-    res.json(sessionBody(req.user, memberships, activeTenantId, await platformInfo(req.user, req.tenant)));
+    res.json(sessionBody(req.user, memberships, activeTenantId, await platformInfo(req.user, req.tenant), Boolean(req.via)));
   });
 
   // A super admin or platform admin opens a hospital's setup (Hospital admin pages only – never its patients), or
@@ -272,8 +297,8 @@ export function authRouter({ loginRateLimitMax }) {
     if (from !== tenantId) {
       await audit(req, 'TENANT_SWITCHED', { tenantId: found.tenant._id, details: { from, to: tenantId } });
     }
-    setAuthCookie(res, req.user, found.tenant._id);
-    res.json(sessionBody(req.user, await listActiveMemberships(req.user), tenantId));
+    setAuthCookie(res, req.user, found.tenant._id, req.via);
+    res.json(sessionBody(req.user, await listActiveMemberships(req.user), tenantId, null, Boolean(req.via)));
   });
 
   // A person's own professional details (qualification, medical registration number).
@@ -325,6 +350,93 @@ export function authRouter({ loginRateLimitMax }) {
     res.json({ appearance });
   });
 
+  // "Work as a doctor here": the super admin's own doctor account – made the first time – tagged as a doctor in this
+  // hospital (another hospital: called again). Shown in the hospital's staff list like any doctor.
+  router.post('/me/doctor-account', requireAuth, async (req, res) => {
+    superAdminOnly(req);
+    const { tenantId } = parse(doctorAccountSchema, req.body);
+    const tenant = await Tenant.findOne({ _id: tenantId, isActive: true });
+    if (!tenant) throw new HttpError(404, 'This hospital does not exist or is deactivated.', 'NOT_FOUND');
+    const me = req.user;
+    let doctor = me.linkedAccountId ? await User.findById(me.linkedAccountId) : null;
+    if (doctor && !ownDoctorAccount(me, doctor)) {
+      throw new HttpError(409, 'Your doctor account is a separate login with its own email. Remove that link under Users (your name) first, or keep switching with its password.', 'LINKED_ELSEWHERE');
+    }
+    if (doctor && !doctor.isActive) throw new HttpError(409, 'Your doctor account has been deactivated. A super admin can restore it under Users.', 'DOCTOR_INACTIVE');
+    if (!doctor) {
+      const email = doctorEmailOf(me.email);
+      if (email.length > 254) throw new HttpError(400, 'Your email is too long to make a doctor account from it.', 'VALIDATION');
+      if (await User.exists({ email })) throw new HttpError(409, `${email} is already someone's login. Link it under Users instead.`, 'EMAIL_TAKEN');
+      doctor = await User.create({
+        name: me.name,
+        email,
+        passwordHash: await hashPassword(randomBytes(32).toString('base64url')), // never told to anyone
+        mustChangePassword: false,
+        ownedBy: me._id,
+        // printed under the doctor's name on prescriptions (changed later on the doctor's own My profile)
+        professional: { qualification: me.professional?.qualification ?? '', registrationNumber: me.professional?.registrationNumber ?? '', council: me.professional?.council ?? '' },
+      });
+      me.linkedAccountId = doctor._id;
+      await me.save();
+      await audit(req, 'USER_CREATED', { target: doctor, details: { name: doctor.name, ownDoctorAccount: true } });
+      await audit(req, 'LINKED_ACCOUNT_CHANGED', { target: me, details: { linked: true, linkedEmail: doctor.email, own: true } });
+    }
+    const membership = await Membership.findOne({ tenantId: tenant._id, userId: doctor._id });
+    if (!membership) {
+      await Membership.create({ tenantId: tenant._id, userId: doctor._id, roles: ['doctor'], createdBy: me._id });
+      await audit(req, 'MEMBER_ADDED', { target: doctor, tenantId: tenant._id, details: { roles: ['doctor'], ownDoctorAccount: true } });
+    } else if (!membership.isActive || !membership.roles.includes('doctor')) {
+      const before = [...membership.roles];
+      if (!membership.roles.includes('doctor')) membership.roles = [...membership.roles, 'doctor'];
+      membership.isActive = true;
+      await membership.save();
+      await audit(req, 'MEMBER_ROLE_CHANGED', { target: doctor, tenantId: tenant._id, details: { from: before, to: membership.roles, ownDoctorAccount: true } });
+    }
+    res.json({ platform: await platformInfo(me, req.tenant), hospitals: await listActiveMemberships(doctor) });
+  });
+
+  // "Switch to your doctor account" – the super admin's own: no password. This browser then works as the doctor.
+  router.post('/switch-to-doctor', requireAuth, async (req, res) => {
+    superAdminOnly(req);
+    const me = req.user;
+    const doctor = me.linkedAccountId ? await User.findById(me.linkedAccountId) : null;
+    if (!doctor || !ownDoctorAccount(me, doctor)) throw new HttpError(409, 'Make your doctor account first ("Work as a doctor").', 'NO_OWN_DOCTOR_ACCOUNT');
+    if (!doctor.isActive || isPlatformUser(doctor)) throw new HttpError(409, 'Your doctor account has been deactivated. A super admin can restore it under Users.', 'DOCTOR_INACTIVE');
+    const memberships = await listActiveMemberships(doctor);
+    if (!memberships.length) throw new HttpError(409, 'Your doctor account is not in any hospital yet. Choose a hospital under "Work as a doctor".', 'NO_HOSPITAL');
+    const activeTenantId = pickTenant(memberships, doctor.lastTenantId);
+    doctor.lastLoginAt = new Date();
+    doctor.lastTenantId = activeTenantId;
+    await doctor.save();
+    await audit(req, 'ACCOUNT_SWITCHED', { actor: me, target: doctor, tenantId: activeTenantId, details: { to: 'doctor' } });
+    setAuthCookie(res, doctor, activeTenantId, { id: me._id, tv: me.tokenVersion });
+    res.json(sessionBody(doctor, memberships, activeTenantId, null, true));
+  });
+
+  // "Switch back to super admin": asks the super admin's password (every hospital is behind it). Wrong tries count
+  // towards the same lock as signing in with that email.
+  router.post('/switch-to-super-admin', requireAuth, async (req, res) => {
+    if (!req.via) throw new HttpError(403, 'This is not a switched session. Please sign in as super admin.', 'NOT_SWITCHED');
+    const { password } = parse(switchUpSchema, req.body);
+    const now = req.now ?? new Date();
+    const me = await User.findById(req.via.id).select('+passwordHash');
+    const valid = me && me.isActive && me.isSuperAdmin && me.tokenVersion === req.via.tv && ownDoctorAccount(me, req.user);
+    if (!valid) throw new HttpError(403, 'Your super admin session has ended. Please sign out and sign in as super admin.', 'SWITCH_ENDED');
+    const left = await staffLockLeft(me.email, now);
+    if (left) throw lockedError(left);
+    if (!(await verifyPassword(password, me.passwordHash))) {
+      const { lockedFor } = await staffFailed(me.email, now);
+      await audit(req, 'LOGIN_FAILED', { actor: me, target: me, details: { email: me.email, reason: 'wrong_password_switch_back' } });
+      if (lockedFor) throw lockedError(lockedFor);
+      const message = 'That is not your super admin password.';
+      throw Object.assign(new HttpError(400, message, 'VALIDATION'), { fields: { password: message } });
+    }
+    await staffSignedIn(me.email);
+    await audit(req, 'ACCOUNT_SWITCHED', { actor: me, target: req.user, tenantId: req.tenantId, details: { to: 'superadmin' } });
+    setAuthCookie(res, me, null);
+    res.json(sessionBody(me, [], null, await platformInfo(me, null)));
+  });
+
   router.post('/change-password', requireAuth, async (req, res) => {
     const { currentPassword, newPassword } = parse(changePasswordSchema, req.body);
     const user = await User.findById(req.user._id).select('+passwordHash');
@@ -339,7 +451,7 @@ export function authRouter({ loginRateLimitMax }) {
     user.tokenVersion += 1; // signs out any other sessions
     await user.save();
     await audit(req, 'PASSWORD_CHANGED', { actor: user, target: user });
-    setAuthCookie(res, user, req.tenantId);
+    setAuthCookie(res, user, req.tenantId, req.via);
     res.json({ user });
   });
 

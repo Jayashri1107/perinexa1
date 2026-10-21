@@ -81,6 +81,17 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **A super admin who is also a doctor – one login (21 Oct 2026, developer):** profile menu → **Work as a doctor…** →
+  choose a hospital: the super admin's own doctor account is made once (their email with "+doctor", a random password
+  nobody knows – no second email or password to remember) and added to that hospital's staff as a doctor; this browser
+  switches to it. **Switch to your doctor account** then needs no password; **Switch back to super admin** asks for the
+  super admin password (wrong tries count towards the sign-in lock). Only a super admin's OWN account is entered without
+  a password – a doctor login linked by email still asks for its own password, so no one steps into another doctor's
+  account. Both switches are in the audit log ("Switched between super admin and own doctor account"). Changes the
+  owner's decision of 13 Oct 2026 (the doctor password asked every time) for the own account only – **owner to confirm**.
+  Code: `routes/auth.js` (/me/doctor-account, /switch-to-doctor, /switch-to-super-admin), `User.ownedBy`, the session
+  cookie's `via`; website `AppLayout.jsx` (DoctorAccountDialog, SwitchBackDialog). Tests:
+  `server/tests/superadmin-doctor-switch.test.js`, `client/src/components/switchAccount.test.jsx`.
 - **Ready for AWS (21 Oct 2026):** `docs/DEPLOY_AWS.md` – one EC2 server in Mumbai, Caddy for HTTPS, MongoDB Atlas,
   with `deploy/perinexa.service`, `deploy/Caddyfile` and `deploy/deploy.sh` (updates, builds, restarts, and goes back
   to the version before if the health check fails). CI on GitHub (`.github/workflows/ci.yml`): every test and the
