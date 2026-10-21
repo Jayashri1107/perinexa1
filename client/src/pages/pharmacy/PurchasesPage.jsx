@@ -302,7 +302,7 @@ export function NewPurchasePage() {
 
 // ---------- Medicines ----------
 
-const emptyMedicine = { name: '', generic: '', form: 'tablet', strength: '', unit: 'tablet', hsn: '3004', gstRate: 12, schedule: '', reorderLevel: 0, barcodes: [] };
+const emptyMedicine = { name: '', generic: '', form: 'tablet', strength: '', unit: 'tablet', hsn: '3004', gstRate: 5, schedule: '', reorderLevel: 0, barcodes: [] };
 const MAX_BARCODES = 10;
 
 /**
@@ -368,6 +368,7 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
   const pending = cleanBarcode(typedBarcode);
   const barcodes = pending && isBarcode(pending) && !m.barcodes.includes(pending) ? [...m.barcodes, pending] : m.barcodes;
   const barcodeError = Object.entries(s.fields).find(([k]) => k === 'barcodes' || k.startsWith('barcodes.'))?.[1];
+  const gstRates = lists?.gstRates ?? [0, 5, 18];
   const body = { name: m.name.trim(), generic: m.generic.trim(), form: m.form, strength: m.strength.trim(), unit: m.unit.trim(), hsn: m.hsn.trim(), gstRate: Number(m.gstRate), schedule: m.schedule, reorderLevel: Number(m.reorderLevel) || 0, barcodes };
   return (
     <Modal id="ph-med" title={medicine ? `Change ${medicine.name}` : 'Add a medicine'} onClose={onClose} wide>
@@ -397,9 +398,10 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
         <Field label="HSN code" id="med-hsn" error={s.fields.hsn} hint="4, 6 or 8 digits. The e-invoice file of a sale to a business needs 6 or 8.">
           <input id="med-hsn" inputMode="numeric" value={m.hsn} maxLength={8} onChange={f('hsn')} />
         </Field>
-        <Field label="GST rate" id="med-gst">
+        <Field label="GST rate" id="med-gst" error={s.fields.gstRate} hint="Medicines 5 % since 22 September 2025; nil for listed life-saving drugs; 18 % for non-medicine items.">
           <select id="med-gst" value={m.gstRate} onChange={f('gstRate')}>
-            {(lists?.gstRates ?? [0, 5, 12, 18]).map((r) => (
+            {gstRates.includes(Number(m.gstRate)) ? null : <option value={m.gstRate}>{m.gstRate}% (no longer in use – choose another)</option>}
+            {gstRates.map((r) => (
               <option key={r} value={r}>
                 {r}%
               </option>

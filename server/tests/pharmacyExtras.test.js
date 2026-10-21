@@ -69,7 +69,7 @@ const ok = (res, status = 200) => {
 };
 
 async function medicine(fields, who = 'pharm') {
-  return ok(await ph('post', '/medicines', { form: 'tablet', unit: 'tablet', gstRate: 12, ...fields }, who), 201).medicine;
+  return ok(await ph('post', '/medicines', { form: 'tablet', unit: 'tablet', gstRate: 5, ...fields }, who), 201).medicine;
 }
 async function supplier(fields = {}, who = 'pharm') {
   return ok(await ph('post', '/suppliers', { name: 'Sample Distributors', ...fields }, who), 201).supplier;
@@ -426,7 +426,7 @@ describe('returns to a supplier', () => {
     ok(await ph('put', '/settings', { gstin: PHARMACY_GSTIN }));
     const sup = await supplier({ gstin: gstin('27DDDDD3333D1Z') });
     const elsewhere = await supplier({ name: 'Second Supplier' });
-    const a = await medicine({ name: 'Return Tab', generic: 'Sampleol', hsn: '3004', gstRate: 12 });
+    const a = await medicine({ name: 'Return Tab', generic: 'Sampleol', hsn: '3004', gstRate: 5 });
     const b = await medicine({ name: 'Free Units Tab', hsn: '30049099', gstRate: 5 });
     const c = await medicine({ name: 'Elsewhere Tab' });
     const pu = await purchase(sup, [line(a, { batch: 'RA1', expiry: '2026-10', qty: 100, ratePaise: 500 }), line(b, { batch: 'RB1', qty: 90, freeQty: 10, ratePaise: 1000, mrpPaise: 2000 })], { invoiceNo: 'SUP-77' });
@@ -439,7 +439,7 @@ describe('returns to a supplier', () => {
     const offer = ok(await ph('get', `/supplier-returns/batches?supplierId=${sup.id}`));
     expect(offer.interState).toBe(false);
     expect(offer.batches.map((x) => [x.name, x.batch, x.qtyLeft, x.ratePaise, x.gstRate, x.hsn, x.invoiceNo])).toEqual([
-      ['Return Tab', 'RA1', 100, 500, 12, '3004', 'SUP-77'],
+      ['Return Tab', 'RA1', 100, 500, 5, '3004', 'SUP-77'],
       ['Free Units Tab', 'RB1', 100, 900, 5, '30049099', 'SUP-77'], // ₹10 × 90 paid, spread over the 100 units that came
     ]);
     const batchOf = (name) => offer.batches.find((x) => x.name === name);
@@ -461,10 +461,10 @@ describe('returns to a supplier', () => {
     const ret = ok(res, 201).return;
     expect(ret).toMatchObject({ number: 'SR-000001', reason: 'expired', reasonLabel: 'Expired', note: 'Collected by the supplier’s van', interState: false, controlled: false, byName: 'Sample pharm', supplier: { name: 'Sample Distributors' } });
     expect(ret.lines).toEqual([
-      expect.objectContaining({ name: 'Return Tab', hsn: '3004', batch: 'RA1', expiry: '2026-10-31', qty: 40, ratePaise: 500, gstRate: 12, taxablePaise: 20000, cgstPaise: 1200, sgstPaise: 1200, igstPaise: 0, amountPaise: 22400, purchaseNumber: 'PU-000001', invoiceNo: 'SUP-77', invoiceDate: '2026-09-27' }),
+      expect.objectContaining({ name: 'Return Tab', hsn: '3004', batch: 'RA1', expiry: '2026-10-31', qty: 40, ratePaise: 500, gstRate: 5, taxablePaise: 20000, cgstPaise: 500, sgstPaise: 500, igstPaise: 0, amountPaise: 21000, purchaseNumber: 'PU-000001', invoiceNo: 'SUP-77', invoiceDate: '2026-09-27' }),
       expect.objectContaining({ name: 'Free Units Tab', hsn: '30049099', batch: 'RB1', qty: 10, ratePaise: 900, gstRate: 5, taxablePaise: 9000, cgstPaise: 225, sgstPaise: 225, amountPaise: 9450 }),
     ]);
-    expect(ret.totals).toEqual({ qty: 50, taxablePaise: 29000, gstPaise: 2850, cgstPaise: 1425, sgstPaise: 1425, igstPaise: 0, amountPaise: 31850 });
+    expect(ret.totals).toEqual({ qty: 50, taxablePaise: 29000, gstPaise: 1450, cgstPaise: 725, sgstPaise: 725, igstPaise: 0, amountPaise: 30450 });
 
     // The stock went out with its own kind of move; the purchase can no longer be cancelled
     const stock = ok(await ph('get', `/stock/${a.id}`));
@@ -477,11 +477,11 @@ describe('returns to a supplier', () => {
     expect(seen.return.number).toBe('SR-000001');
     expect(seen.settings).toMatchObject({ gstin: PHARMACY_GSTIN });
     ok(await ph('post', `/supplier-returns/${ret.id}/printed`, {}, 'admin'));
-    expect(ok(await ph('get', '/supplier-returns', undefined, 'admin')).returns.map((r) => [r.number, r.totals.amountPaise])).toEqual([['SR-000001', 31850]]);
+    expect(ok(await ph('get', '/supplier-returns', undefined, 'admin')).returns.map((r) => [r.number, r.totals.amountPaise])).toEqual([['SR-000001', 30450]]);
     for (const who of ['drA', 'nurse', 'reception']) expect((await ph('get', '/supplier-returns', undefined, who)).status).toBe(403);
 
     // The audit log: ids, numbers and amounts – never the typed note or a name
-    expect(await audits('PHARMACY_SUPPLIER_RETURNED')).toEqual([{ returnId: ret.id, number: 'SR-000001', supplierId: sup.id, reason: 'expired', lines: 2, qty: 50, amountPaise: 31850, controlled: false }]);
+    expect(await audits('PHARMACY_SUPPLIER_RETURNED')).toEqual([{ returnId: ret.id, number: 'SR-000001', supplierId: sup.id, reason: 'expired', lines: 2, qty: 50, amountPaise: 30450, controlled: false }]);
     expect(await audits('PHARMACY_DEBIT_NOTE_PRINTED')).toEqual([{ returnId: ret.id, number: 'SR-000001' }]);
     expect(JSON.stringify(await AuditLog.find({ action: /SUPPLIER_RETURNED|DEBIT_NOTE/ }).lean())).not.toMatch(/van|Return Tab|Sample Distributors/);
   });
@@ -489,13 +489,13 @@ describe('returns to a supplier', () => {
   it('a supplier in another state gets IGST on the debit note', async () => {
     ok(await ph('put', '/settings', { gstin: PHARMACY_GSTIN }));
     const far = await supplier({ name: 'Far Supplier', gstin: FAR_SUPPLIER_GSTIN });
-    const a = await medicine({ name: 'Far Tab', gstRate: 12 });
+    const a = await medicine({ name: 'Far Tab', gstRate: 5 });
     await purchase(far, [line(a, { qty: 10, ratePaise: 1000 })]);
     const offer = ok(await ph('get', `/supplier-returns/batches?supplierId=${far.id}`));
     expect(offer.interState).toBe(true);
     const ret = ok(await ph('post', '/supplier-returns', { supplierId: far.id, reason: 'wrong_item', lines: [{ batchId: offer.batches[0].id, qty: 10 }] }), 201).return;
     expect(ret).toMatchObject({ interState: true, reasonLabel: 'Wrong item' });
-    expect(ret.totals).toMatchObject({ taxablePaise: 10000, cgstPaise: 0, sgstPaise: 0, igstPaise: 1200, amountPaise: 11200 });
+    expect(ret.totals).toMatchObject({ taxablePaise: 10000, cgstPaise: 0, sgstPaise: 0, igstPaise: 500, amountPaise: 10500 });
   });
 
   it('Schedule H1, X and narcotic returns are in their registers with the balance; X and narcotic need a witness', async () => {
@@ -575,7 +575,7 @@ describe('returns to a supplier', () => {
     const csv = await ph('get', '/export?from=2026-09-01&to=2026-09-30&what=supplier_returns', undefined, 'admin');
     const rows = csv.text.split('\r\n').filter(Boolean);
     expect(rows[0]).toMatch(/,Amount,Status$/);
-    expect(rows[1]).toMatch(/SR-000001,.*,504\.00,Cancelled$/);
+    expect(rows[1]).toMatch(/SR-000001,.*,472\.50,Cancelled$/);
 
     // A narcotic that comes back into stock needs a witness, as the return did; both are in its register with the balance
     const back = ok(await ph('post', '/supplier-returns', { supplierId: sup.id, reason: 'recalled', witness: 'Sister Sample', lines: [{ batchId: batch('Morphine 10 mg/ml').id, qty: 4 }] }), 201).return;
@@ -598,7 +598,7 @@ describe('returns to a supplier', () => {
 
     // The audit log: ids, numbers and amounts – never the reason or the witness that was typed
     expect(await audits('PHARMACY_SUPPLIER_RETURN_CANCELLED')).toEqual([
-      { returnId: ret.id, number: 'SR-000001', supplierId: sup.id, lines: 1, qty: 90, amountPaise: 50400, controlled: false },
+      { returnId: ret.id, number: 'SR-000001', supplierId: sup.id, lines: 1, qty: 90, amountPaise: 47250, controlled: false },
       { returnId: back.id, number: 'SR-000002', supplierId: sup.id, lines: 1, qty: 4, amountPaise: expect.any(Number), controlled: true },
     ]);
     expect(JSON.stringify(await AuditLog.find({ action: 'PHARMACY_SUPPLIER_RETURN_CANCELLED' }).lean())).not.toMatch(/Typed 90|Wrong batch|Sister/);
@@ -746,7 +746,7 @@ describe('barcodes', () => {
     const clash = await ph('patch', `/medicines/${b.id}`, { barcodes: ['8900000000024', ' 8900 0000 00017'] });
     expect(clash.status).toBe(409);
     expect(clash.body.error).toMatchObject({ code: 'DUPLICATE', message: 'Barcode 8900000000017 is already on First Holder. A barcode belongs to one medicine only.' });
-    expect((await ph('post', '/medicines', { name: 'Third Holder', form: 'tablet', unit: 'tablet', gstRate: 12, barcodes: ['8900000000017'] })).status).toBe(409);
+    expect((await ph('post', '/medicines', { name: 'Third Holder', form: 'tablet', unit: 'tablet', gstRate: 5, barcodes: ['8900000000017'] })).status).toBe(409);
     expect(ok(await ph('get', `/stock/${b.id}`)).medicine.barcodes).toEqual([]); // nothing was saved
     // Saving a medicine again with its own barcode is fine
     expect(ok(await ph('patch', `/medicines/${a.id}`, { barcodes: ['8900000000017'], reorderLevel: 5 })).medicine.barcodes).toEqual(['8900000000017']);
@@ -770,10 +770,10 @@ describe('the e-invoice file of a sale to a business', () => {
   const BUYER = { name: 'Sample Clinic LLP', gstin: BUYER_GSTIN, address: '2 Sample Lane', place: 'Nashik', pin: '422001' };
   async function stocked() {
     const sup = await supplier();
-    const m = await medicine({ name: 'Rate Twelve', generic: 'Sampleol', hsn: '300490', gstRate: 12 });
+    const m = await medicine({ name: 'Rate Eighteen', generic: 'Sampleol', hsn: '300490', gstRate: 18 });
     const noHsn = await medicine({ name: 'No Code Tab', hsn: '', gstRate: 5 });
     const shortHsn = await medicine({ name: 'Short Code Tab', hsn: '3004', gstRate: 5 }); // 4 digits: as a new medicine starts
-    await purchase(sup, [line(m, { batch: 'B12', qty: 50, ratePaise: 5000, mrpPaise: 11200 }), line(noHsn, { batch: 'NC1', qty: 50, ratePaise: 50, mrpPaise: 105 }), line(shortHsn, { batch: 'SC1', qty: 50, ratePaise: 50, mrpPaise: 105 })]);
+    await purchase(sup, [line(m, { batch: 'B12', qty: 50, ratePaise: 5000, mrpPaise: 11800 }), line(noHsn, { batch: 'NC1', qty: 50, ratePaise: 50, mrpPaise: 105 }), line(shortHsn, { batch: 'SC1', qty: 50, ratePaise: 50, mrpPaise: 105 })]);
     return { m, noHsn, shortHsn };
   }
   const sale = (body, who = 'pharm') => ph('post', '/invoices', { kind: 'sale', customer: { name: 'Sample Buyer' }, payment: { mode: 'upi', reference: 'U1' }, ...body }, who);
@@ -794,7 +794,7 @@ describe('the e-invoice file of a sale to a business', () => {
     expect(await stockOf(m)).toBe(50); // nothing was sold on the refused tries
 
     const inv = ok(await sale({ lines, buyer: { ...BUYER, gstin: ` ${BUYER_GSTIN.toLowerCase()} ` } }), 201).invoice;
-    expect(inv).toMatchObject({ number: 'PH-000001', customer: { name: 'Sample Buyer' }, buyer: { ...BUYER, state: 'Maharashtra', stateCode: '27' }, netPaise: 112000 });
+    expect(inv).toMatchObject({ number: 'PH-000001', customer: { name: 'Sample Buyer' }, buyer: { ...BUYER, state: 'Maharashtra', stateCode: '27' }, netPaise: 118000 });
     expect(ok(await sale({ lines }), 201).invoice.buyer).toBeNull(); // an ordinary walk-in sale still has no buyer
     expect(ok(await ph('get', '/invoices?search=Sample%20Clinic')).invoices.map((v) => v.number)).toEqual(['PH-000001']);
     expect((await audits('PHARMACY_SOLD'))[0]).toMatchObject({ walkIn: true, business: true });
@@ -834,8 +834,8 @@ describe('the e-invoice file of a sale to a business', () => {
       DocDtls: { Typ: 'INV', No: 'PH-000001', Dt: '28/09/2026' },
       SellerDtls: { Gstin: PHARMACY_GSTIN, LglNm: 'Sample Pharmacy', Addr1: '1 Sample Road, Pune', Loc: 'Pune', Pin: 411001, Stcd: '27', Ph: '02000000000' },
       BuyerDtls: { Gstin: BUYER_GSTIN, LglNm: 'Sample Clinic LLP', Addr1: '2 Sample Lane', Loc: 'Nashik', Pin: 422001, Stcd: '27', Pos: '27' },
-      ItemList: [{ SlNo: '1', PrdDesc: 'Rate Twelve – Sampleol', HsnCd: '300490', Qty: 10, Unit: 'TBS', UnitPrice: 100, TotAmt: 1000, AssAmt: 1000, GstRt: 12, CgstAmt: 60, SgstAmt: 60, IgstAmt: 0, TotItemVal: 1120, BchDtls: { Nm: 'B12', ExpDt: '31/12/2027' } }],
-      ValDtls: { AssVal: 1000, CgstVal: 60, SgstVal: 60, IgstVal: 0, TotInvVal: 1120 },
+      ItemList: [{ SlNo: '1', PrdDesc: 'Rate Eighteen – Sampleol', HsnCd: '300490', Qty: 10, Unit: 'TBS', UnitPrice: 100, TotAmt: 1000, AssAmt: 1000, GstRt: 18, CgstAmt: 90, SgstAmt: 90, IgstAmt: 0, TotItemVal: 1180, BchDtls: { Nm: 'B12', ExpDt: '31/12/2027' } }],
+      ValDtls: { AssVal: 1000, CgstVal: 90, SgstVal: 90, IgstVal: 0, TotInvVal: 1180 },
     });
     expect(file.body[0].RefDtls).toBeUndefined();
 
@@ -844,10 +844,10 @@ describe('the e-invoice file of a sale to a business', () => {
     const note = await ph('get', `/invoices/${inv.id}/einvoice?creditNote=CN-000001`, undefined, 'admin');
     expect(note.status, JSON.stringify(note.body)).toBe(200);
     expect(note.headers['content-disposition']).toContain('einvoice-CN-000001.json');
-    expect(note.body[0]).toMatchObject({ DocDtls: { Typ: 'CRN', No: 'CN-000001', Dt: '28/09/2026' }, RefDtls: { PrecDocDtls: [{ InvNo: 'PH-000001', InvDt: '28/09/2026' }] }, ItemList: [{ Qty: 4, AssAmt: 400, CgstAmt: 24, SgstAmt: 24, TotItemVal: 448 }], ValDtls: { AssVal: 400, TotInvVal: 448 } });
+    expect(note.body[0]).toMatchObject({ DocDtls: { Typ: 'CRN', No: 'CN-000001', Dt: '28/09/2026' }, RefDtls: { PrecDocDtls: [{ InvNo: 'PH-000001', InvDt: '28/09/2026' }] }, ItemList: [{ Qty: 4, AssAmt: 400, CgstAmt: 36, SgstAmt: 36, TotItemVal: 472 }], ValDtls: { AssVal: 400, TotInvVal: 472 } });
     expect((await ph('get', `/invoices/${inv.id}/einvoice?creditNote=CN-000009`, undefined, 'admin')).status).toBe(404);
     // The invoice's own file still says what was sold
-    expect((await ph('get', `/invoices/${inv.id}/einvoice`, undefined, 'admin')).body[0].ValDtls.TotInvVal).toBe(1120);
+    expect((await ph('get', `/invoices/${inv.id}/einvoice`, undefined, 'admin')).body[0].ValDtls.TotInvVal).toBe(1180);
 
     // A medicine without an HSN code: the file is refused until the code is added to the medicine
     const second = ok(await sale({ lines: [{ medicineId: noHsn.id, qty: 10 }], buyer: BUYER }), 201).invoice;

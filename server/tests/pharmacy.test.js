@@ -5,9 +5,11 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { lineMoney, suggestedQty } from '../src/pharmacy/gst.js';
+import { fixOldGstRates } from '../src/pharmacy/gstRateFix.js';
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { Medicine } from '../src/models/Pharmacy.js';
 import { User } from '../src/models/User.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
@@ -52,7 +54,7 @@ async function register(name) {
   return res.body.patient;
 }
 async function medicine(fields) {
-  const res = await ph('post', '/medicines', { form: 'tablet', unit: 'tablet', gstRate: 12, ...fields });
+  const res = await ph('post', '/medicines', { form: 'tablet', unit: 'tablet', gstRate: 5, ...fields });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body.medicine;
 }
@@ -96,7 +98,31 @@ describe('the pharmacist and who may do what', () => {
     expect((await ph('get', '/stock', undefined, 'admin')).status).toBe(200);
     const m = await medicine({ name: 'Admin Tab' });
     expect((await sell({ customer: { name: 'Walk In' }, payment: { mode: 'cash' }, lines: [{ medicineId: m.id, qty: 1 }] }, 'admin')).status).toBe(403);
-    expect((await ph('post', '/medicines', { name: 'By Admin', form: 'tablet', unit: 'tablet', gstRate: 12 }, 'admin')).status).toBe(201);
+    expect((await ph('post', '/medicines', { name: 'By Admin', form: 'tablet', unit: 'tablet', gstRate: 5 }, 'admin')).status).toBe(201);
+  });
+});
+
+describe('GST rates since 22 September 2025', () => {
+  it('offers 0, 5 and 18 %; a new medicine starts at 5 %; 12 % is refused', async () => {
+    expect((await ph('get', '/settings')).body.lists.gstRates).toEqual([0, 5, 18]);
+    const res = await ph('post', '/medicines', { name: 'No Rate Tab', form: 'tablet', unit: 'tablet' });
+    expect(res.status, JSON.stringify(res.body)).toBe(400);
+    const twelve = await ph('post', '/medicines', { name: 'Old Rate Tab', form: 'tablet', unit: 'tablet', gstRate: 12 });
+    expect(twelve.status).toBe(400);
+    expect(twelve.body.error.fields.gstRate).toMatch(/0, 5, 18 % since 22 September 2025/);
+    expect((await Medicine.create({ tenantId: hospital._id, name: 'Default Tab' })).gstRate).toBe(5);
+  });
+  it('npm run fix:gst-rates moves medicines still on 12 % to 5 %, in the audit log; sold invoices keep their rate', async () => {
+    const old = await medicine({ name: 'Saved Before Tab' });
+    const kept = await medicine({ name: 'Cosmetic Cream', gstRate: 18 });
+    await Medicine.collection.updateOne({ _id: Medicine.castObject({ _id: old.id })._id }, { $set: { gstRate: 12 } });
+    // a medicine still on 12 % can be changed without its rate (it is not refused for the old rate)
+    expect((await ph('patch', `/medicines/${old.id}`, { reorderLevel: 5 })).status).toBe(200);
+    expect(await fixOldGstRates()).toEqual([{ hospital: 'Pharmacy Hospital', medicines: ['Saved Before Tab'] }]);
+    expect((await Medicine.findOne({ tenantId: hospital._id, _id: old.id }).lean()).gstRate).toBe(5);
+    expect((await Medicine.findOne({ tenantId: hospital._id, _id: kept.id }).lean()).gstRate).toBe(18);
+    expect((await AuditLog.findOne({ action: 'PHARMACY_MEDICINE_CHANGED', 'details.by': 'fix:gst-rates' }).lean()).details).toMatchObject({ medicineId: old.id, from: 12, to: 5 });
+    expect(await fixOldGstRates()).toEqual([]);
   });
 });
 
@@ -122,10 +148,10 @@ describe('purchases and batches', () => {
 describe('selling at the counter', () => {
   it('sells from her prescription: the doctor comes with it, first-to-expire batches, GST invoice, on her bill', async () => {
     const sup = await supplier();
-    const folic = await medicine({ name: 'Folvite 5', generic: 'Folic acid', strength: '5 mg', hsn: '3004', gstRate: 12 });
+    const folic = await medicine({ name: 'Folvite 5', generic: 'Folic acid', strength: '5 mg', hsn: '3004', gstRate: 5 });
     await purchase(sup, [
-      { medicineId: folic.id, batch: 'LATE', expiry: '2028-01', qty: 50, ratePaise: 100, mrpPaise: 224 },
-      { medicineId: folic.id, batch: 'SOON', expiry: '2027-01', qty: 4, ratePaise: 100, mrpPaise: 224 },
+      { medicineId: folic.id, batch: 'LATE', expiry: '2028-01', qty: 50, ratePaise: 100, mrpPaise: 210 },
+      { medicineId: folic.id, batch: 'SOON', expiry: '2027-01', qty: 4, ratePaise: 100, mrpPaise: 210 },
     ]);
     const p = await register('Counter Mother');
     const v = await prescribe(p, [{ drug: 'Folic acid', form: 'tab', strength: '5 mg', dose: '1', frequency: '1-0-0', durationValue: 10, durationUnit: 'days' }]);
@@ -137,15 +163,15 @@ describe('selling at the counter', () => {
     const res = await sell({ patientId: p.id, visitId: v.id, lines: [{ medicineId: folic.id, qty: 10 }] });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     const inv = res.body.invoice;
-    expect(inv).toMatchObject({ number: 'PH-000001', doctor: { name: 'Sample drA', reg: 'MMC-12345' }, fromPrescription: true, netPaise: 2240, balancePaise: null });
+    expect(inv).toMatchObject({ number: 'PH-000001', doctor: { name: 'Sample drA', reg: 'MMC-12345' }, fromPrescription: true, netPaise: 2100, balancePaise: null });
     expect(inv.lines.map((l) => [l.batch, l.qty])).toEqual([
       ['SOON', 4],
       ['LATE', 6],
     ]);
-    expect(inv.lines[0]).toMatchObject({ hsn: '3004', gstRate: 12, amountPaise: 896, taxablePaise: 800, cgstPaise: 48, sgstPaise: 48 });
+    expect(inv.lines[0]).toMatchObject({ hsn: '3004', gstRate: 5, amountPaise: 840, taxablePaise: 800, cgstPaise: 20, sgstPaise: 20 });
     const bills = (await (await as('reception')).get(`/api/billing/patient/${p.id}`)).body.bills;
     const bill = (await (await as('reception')).get(`/api/billing/bills/${bills[0].id}`)).body.bill;
-    expect(bill.lines.find((l) => l.group === 'medicine')).toMatchObject({ name: 'Pharmacy – invoice PH-000001', amountPaise: 2240 });
+    expect(bill.lines.find((l) => l.group === 'medicine')).toMatchObject({ name: 'Pharmacy – invoice PH-000001', amountPaise: 2100 });
     expect(await AuditLog.countDocuments({ action: 'PHARMACY_PRESCRIPTIONS_VIEWED' })).toBe(1);
   });
 
@@ -163,7 +189,7 @@ describe('selling at the counter', () => {
 
   it('a walk-in pays at the counter; Schedule H needs a prescription seen; a discount needs a reason', async () => {
     const sup = await supplier();
-    const h = await medicine({ name: 'Antibio Cap', form: 'capsule', unit: 'capsule', schedule: 'H', gstRate: 12 });
+    const h = await medicine({ name: 'Antibio Cap', form: 'capsule', unit: 'capsule', schedule: 'H', gstRate: 5 });
     await purchase(sup, [{ medicineId: h.id, batch: 'H1B', expiry: '2027-12', qty: 30, ratePaise: 500, mrpPaise: 1120 }]);
     const base = { customer: { name: 'Walk In Customer', phone: '90000 00000' }, lines: [{ medicineId: h.id, qty: 10 }] };
     expect((await sell(base)).status).toBe(400); // no payment
@@ -186,7 +212,7 @@ describe('selling at the counter', () => {
 describe('narcotic and Schedule X medicines', () => {
   it('only for registered patients, with the doctor’s registration number; their register keeps the balance; counts need a witness', async () => {
     const sup = await supplier();
-    const n = await medicine({ name: 'Pethidine 50 mg/ml', form: 'injection', unit: 'ampoule', schedule: 'narcotic', gstRate: 12 });
+    const n = await medicine({ name: 'Pethidine 50 mg/ml', form: 'injection', unit: 'ampoule', schedule: 'narcotic', gstRate: 5 });
     await purchase(sup, [{ medicineId: n.id, batch: 'N1', expiry: '2027-06', qty: 10, ratePaise: 2000, mrpPaise: 3000 }]);
     const p = await register('Narcotic Mother');
     expect((await sell({ customer: { name: 'Walk In' }, payment: { mode: 'cash' }, rxSeen: true, doctor: { name: 'Dr. X', reg: 'R1' }, lines: [{ medicineId: n.id, qty: 1 }] })).body.error.message).toMatch(/only to a registered patient/);
@@ -236,10 +262,10 @@ describe('reports and the export', () => {
   it('sales and GST by rate after returns, purchases by supplier, the H1 register, the export (admin only)', async () => {
     const sup = await supplier();
     const a = await medicine({ name: 'Rate Five', gstRate: 5 });
-    const b = await medicine({ name: 'Rate Twelve H1', gstRate: 12, schedule: 'H1' });
+    const b = await medicine({ name: 'Rate Eighteen H1', gstRate: 18, schedule: 'H1' });
     await purchase(sup, [
       { medicineId: a.id, batch: 'A', expiry: '2027-12', qty: 50, ratePaise: 50, mrpPaise: 105 },
-      { medicineId: b.id, batch: 'B', expiry: '2027-12', qty: 50, ratePaise: 50, mrpPaise: 112 },
+      { medicineId: b.id, batch: 'B', expiry: '2027-12', qty: 50, ratePaise: 50, mrpPaise: 118 },
     ]);
     const p = await register('Report Mother');
     const sale = await sell({ patientId: p.id, rxSeen: true, doctor: { name: 'Dr. Outside' }, lines: [{ medicineId: a.id, qty: 10 }, { medicineId: b.id, qty: 10 }] });
@@ -247,13 +273,13 @@ describe('reports and the export', () => {
     const sales = (await ph('get', '/reports/sales?from=2026-09-01&to=2026-09-30')).body;
     expect(sales.gst).toEqual([
       { rate: 5, taxablePaise: 1000, cgstPaise: 25, sgstPaise: 25, amountPaise: 1050 },
-      { rate: 12, taxablePaise: 500, cgstPaise: 30, sgstPaise: 30, amountPaise: 560 },
+      { rate: 18, taxablePaise: 500, cgstPaise: 45, sgstPaise: 45, amountPaise: 590 },
     ]);
-    expect(sales.byDay).toEqual([{ date: '2026-09-28', salePaise: 2170, issuePaise: 0, returnedPaise: 560, invoices: 1 }]);
+    expect(sales.byDay).toEqual([{ date: '2026-09-28', salePaise: 2230, issuePaise: 0, returnedPaise: 590, invoices: 1 }]);
     // (since 4 Oct 2026 also what went back to each supplier – tests/pharmacyExtras.test.js)
     expect((await ph('get', '/reports/purchases?from=2026-09-01&to=2026-09-30')).body.bySupplier).toEqual([{ supplier: 'Sample Distributors', invoices: 1, totalPaise: 5000, returns: 0, returnedPaise: 0, netPaise: 5000 }]);
     const h1 = (await ph('get', '/reports/register?type=H1&from=2026-09-01&to=2026-09-30')).body;
-    expect(h1.pages.map((x) => [x.medicine.name, x.rows.map((r) => [r.kind, r.out, r.in])])).toEqual([['Rate Twelve H1', [['sale', 10, 0], ['return', 0, 5]]]]);
+    expect(h1.pages.map((x) => [x.medicine.name, x.rows.map((r) => [r.kind, r.out, r.in])])).toEqual([['Rate Eighteen H1', [['sale', 10, 0], ['return', 0, 5]]]]);
     expect((await ph('get', '/export?from=2026-09-01&to=2026-09-30&what=sales')).status).toBe(403);
     const csv = await ph('get', '/export?from=2026-09-01&to=2026-09-30&what=sales', undefined, 'admin');
     expect(csv.text.split('\r\n').filter(Boolean)).toHaveLength(3);

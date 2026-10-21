@@ -1079,7 +1079,7 @@ describe('money, medicines and the consultation type', () => {
   it('the pharmacy sells on the main record – also against a prescription written on the earlier record – and never on the duplicate', async () => {
     const { main, dup } = await pair();
     const ph = async (method, path, body) => (await as('pharmacist'))[method](`/api/pharmacy${path}`).send(body);
-    const med = (await ph('post', '/medicines', { name: 'Folvite 5', generic: 'Folic acid', strength: '5 mg', form: 'tablet', unit: 'tablet', gstRate: 12 })).body.medicine;
+    const med = (await ph('post', '/medicines', { name: 'Folvite 5', generic: 'Folic acid', strength: '5 mg', form: 'tablet', unit: 'tablet', gstRate: 5 })).body.medicine;
     const sup = (await ph('post', '/suppliers', { name: 'Sample Distributors', gstin: '27ABCDE1234F1Z5' })).body.supplier;
     expect((await ph('post', '/purchases', { supplierId: sup.id, invoiceNo: 'INV-1', invoiceDate: '2026-09-27', lines: [{ medicineId: med.id, batch: 'B1', expiry: '2028-01', qty: 50, ratePaise: 100, mrpPaise: 224 }] })).status).toBe(201);
     // A prescription written on the record that is then marked as the duplicate (the visit is signed first)

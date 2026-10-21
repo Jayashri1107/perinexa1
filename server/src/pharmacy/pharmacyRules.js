@@ -9,7 +9,14 @@ export const PHARMACY_REPORT_ROLES = ['pharmacist', 'admin'];
 export const PHARMACY_EXPORT_ROLES = ['admin'];
 
 export const FORMS = ['tablet', 'capsule', 'syrup', 'suspension', 'drops', 'injection', 'infusion', 'cream', 'ointment', 'gel', 'pessary', 'suppository', 'inhaler', 'sachet', 'other'];
-export const GST_RATES = [0, 5, 12, 18];
+// GST rates since 22 September 2025 (56th GST Council; Notifications 9/2025 and 10/2025 – Central Tax (Rate)): the
+// 12 % rate is gone. Drugs and medicines are 5 %, named life-saving drugs nil, and 18 % is left for non-medicine items
+// (sanitiser, cosmetics, mouthwash and the like). A new medicine starts at 5 %.
+export const GST_RATES = [0, 5, 18];
+export const DEFAULT_GST_RATE = 5;
+// Rates no longer in use. Medicines saved before the change may still hold one (npm run fix:gst-rates moves them to
+// 5 %); invoices, purchases and returns made then keep theirs, as printed.
+export const OLD_GST_RATES = [12];
 // Schedules: '' none (over the counter), G, H, H1, X, and narcotic (NDPS). X and narcotic: own register, a
 // prescription with the doctor's registration number, registered patients only, a witness for stock counts.
 export const SCHEDULES = ['', 'G', 'H', 'H1', 'X', 'narcotic'];
