@@ -81,6 +81,11 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **Medicine GST rates brought up to date (21 Oct 2026):** the pharmacy now offers 0, 5 and 18 % (the 12 % rate ended
+  on 22 Sept 2025, 56th GST Council) and a new medicine starts at 5 %. Medicines saved earlier at 12 % keep working;
+  `npm run fix:gst-rates` moves them to 5 % in every hospital, lists them, and writes each change to the audit log –
+  the pharmacist then checks the list (a non-medicine item such as sanitiser or a cosmetic is 18 %). Invoices,
+  purchases and returns already made keep the rate they were made with. Hospital services stay without GST.
 - Project rules saved in `CLAUDE.md`.
 - **Phase 0 – computer set up.** macOS 26.6 (Intel), Node.js v24 (LTS), npm 11, git 2.50,
   MongoDB 8.0 running locally (data in `.mongo-data/`, only reachable from this computer).

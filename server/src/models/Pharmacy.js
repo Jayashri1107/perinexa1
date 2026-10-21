@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { COUNTER_MODES, FORMS, GST_RATES, ORDER_STATUSES, SCHEDULES, SUPPLIER_RETURN_REASONS } from '../pharmacy/pharmacyRules.js';
+import { COUNTER_MODES, DEFAULT_GST_RATE, FORMS, GST_RATES, OLD_GST_RATES, ORDER_STATUSES, SCHEDULES, SUPPLIER_RETURN_REASONS } from '../pharmacy/pharmacyRules.js';
 import { tenantScoped } from '../utils/tenantScope.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md). All hospital-scoped. Amounts are whole paise; quantities are
@@ -23,7 +23,7 @@ const medicineSchema = new mongoose.Schema(
     strength: text(60),
     unit: { type: String, trim: true, maxlength: 30, default: 'tablet' }, // the unit of sale
     hsn: text(12),
-    gstRate: { type: Number, enum: GST_RATES, default: 12 },
+    gstRate: { type: Number, enum: [...GST_RATES, ...OLD_GST_RATES], default: DEFAULT_GST_RATE }, // new choices: GST_RATES only (routes)
     schedule: { type: String, enum: SCHEDULES, default: '' },
     reorderLevel: { type: Number, min: 0, default: 0 },
     // The barcodes printed on its packs (typed or scanned), without spaces and in capitals. Found by exact match.

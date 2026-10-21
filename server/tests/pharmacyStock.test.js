@@ -41,7 +41,7 @@ const ph = async (method, path, body, who = 'pharm') => (await as(who))[method](
 const check = async (medicines, who = 'drA') => (await as(who)).post('/api/pharmacy-stock/check').send({ medicines });
 
 async function medicine(fields, who = 'pharm') {
-  const res = await ph('post', '/medicines', { form: 'tablet', unit: 'tablet', gstRate: 12, ...fields }, who);
+  const res = await ph('post', '/medicines', { form: 'tablet', unit: 'tablet', gstRate: 5, ...fields }, who);
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body.medicine;
 }

@@ -239,7 +239,7 @@ What becomes an entry is exactly the table under "How it will work", with these 
 
 **Still to do before real use** (the developer, with the accountant): step 0 of the build order – compare one entry of
 each kind with an entry made by hand in the accountant's own TallyPrime (a scratch company) and adjust the tags if Tally
-refuses anything (see "Still to verify" below); matter 1 (the medicine GST rates) is being corrected in its own task.
+refuses anything (see "Still to verify" below); matter 1 (the medicine GST rates) was corrected on 21 Oct 2026 (0 / 5 / 18 %, default 5 %; `npm run fix:gst-rates`).
 Known and accepted for now: Tally works its GST out from the taxable value per rate and may list a pharmacy invoice
 under GSTR-1 "mismatch in tax amount" by a paisa (Perinexa's per-line rounding) – the accountant resolves it as "accept
 as is" or allows a small tax difference in Tally; the day the books start must be on or after the Tally company's

@@ -106,7 +106,7 @@ const medicineFields = {
   strength: z.string().trim().max(60),
   unit: z.string().trim().min(1).max(30),
   hsn: z.string().trim().regex(/^(\d{4}|\d{6}|\d{8})?$/, 'An HSN code has 4, 6 or 8 digits.'),
-  gstRate: z.union(GST_RATES.map((r) => z.literal(r))),
+  gstRate: z.union(GST_RATES.map((r) => z.literal(r)), { error: `GST is ${GST_RATES.join(', ')} % since 22 September 2025 (medicines 5 %).` }),
   schedule: z.enum(SCHEDULES),
   reorderLevel: z.number().int().min(0).max(MAX_QTY),
   // The barcodes on its packs (typed, or scanned: a scanner types the digits). Kept without spaces, in capitals.
