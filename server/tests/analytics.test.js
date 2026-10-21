@@ -1639,7 +1639,7 @@ describe('pcpndt', () => {
 
   it('only metrics/sexAtBirth.js and load.js may mention sex, and only sexAtBirth.js reads its rows', () => {
     const dir = fileURLToPath(new URL('../src/analytics/', import.meta.url));
-    const files = readdirSync(dir, { recursive: true }).filter((f) => f.endsWith('.js'));
+    const files = readdirSync(dir, { recursive: true }).filter((f) => f.endsWith('.js')).map((f) => f.replaceAll('\\', '/')); // (Windows lists metrics\x.js)
     expect(files.length).toBeGreaterThan(10);
     const offenders = files.filter((f) => !['metrics/sexAtBirth.js', 'load.js'].includes(f) && /\bsex\b/.test(readFileSync(`${dir}${f}`, 'utf8')));
     expect(offenders).toEqual([]);

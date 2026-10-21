@@ -88,7 +88,7 @@ describe('the folder', () => {
     await expect(checkOutputFolder(PROJECT_ROOT)).rejects.toThrow(/inside the Perinexa folder/);
     await expect(checkOutputFolder('server', { cwd: PROJECT_ROOT })).rejects.toThrow(/inside the Perinexa folder/);
     const link = path.join(temp, 'link-into-project');
-    await symlink(path.join(PROJECT_ROOT, 'server'), link);
+    await symlink(path.join(PROJECT_ROOT, 'server'), link, 'junction'); // (a junction on Windows: no administrator needed; the type is ignored elsewhere)
     await expect(checkOutputFolder(path.join(link, 'new-export'))).rejects.toThrow(/inside the Perinexa folder/);
 
     const full = path.join(temp, 'full');

@@ -383,12 +383,16 @@ export async function exportHospital({ tenant, out, now = new Date(), projectRoo
   };
   /** Makes the folder (and any missing folders above it), noting each one made for removing it again. */
   const makeFolder = async (dir) => {
-    const first = await mkdir(dir, { recursive: true, mode: 0o700 }); // the first folder made (undefined: none)
-    if (!first) return;
+    const madeFirst = await mkdir(dir, { recursive: true, mode: 0o700 }); // the first folder made (undefined: none)
+    if (!madeFirst) return;
+    // (Windows answers with a long-path prefix, \\?\C:\…: without it, the walk up below never met the first folder
+    // made and noted folders that were there before – an export that went wrong then removed them if empty)
+    const first = madeFirst.replace(/^\\\\\?\\/, '');
     const made = [];
     for (let at = dir; ; at = path.dirname(at)) {
+      if (!inside(at, first)) break; // never a folder above the first one made
       made.push(at);
-      if (at === first || path.dirname(at) === at) break;
+      if (norm(at) === norm(first)) break;
     }
     written.push(...made.reverse().map((d) => ({ dir: d })));
   };
