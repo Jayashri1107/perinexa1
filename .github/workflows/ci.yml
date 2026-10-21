@@ -1,0 +1,38 @@
+# Every push to main and every pull request: all tests and the website build, on a clean computer (docs/DEPLOY_AWS.md).
+# No secrets and no AWS access: the tests use a throw-away database (perinexa_test) in MongoDB started for this run –
+# scripts/db.mjs sees it already running – and their own fake settings (server/vitest.config.js). Never add real keys.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # As scripts/db.mjs starts it on a computer: 64 index builds at once, or a fresh test database's indexes take
+      # longer than the tests' setup limit. (A "services:" container cannot be given this setting.)
+      - name: Start MongoDB
+        run: |
+          docker run -d --name mongo -p 127.0.0.1:27017:27017 mongo:8.0 --setParameter maxNumActiveUserIndexBuilds=64
+          for i in $(seq 1 30); do docker exec mongo mongosh --quiet --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1 && exit 0; sleep 2; done
+          docker logs mongo; exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

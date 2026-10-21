@@ -48,7 +48,7 @@ npm install
 cp server/.env.example server/.env   # then fill in JWT_SECRET, SUPER_ADMIN_*, DEMO_PASSWORD
 npm run seed                         # the first super admin
 the demo script (removed 12 Oct 2026)                    # fake demo hospitals, staff and patients
-npm run dev                          # http://localhost:5173 (API on :4000, Vite proxies /api)
+npm run dev                          # http://localhost:5174 (API on :4001, Vite proxies /api)
 ```
 
 `npm run dev` first starts a local `mongod` (data in `./.mongo-data`, listening on 127.0.0.1:27017 only;

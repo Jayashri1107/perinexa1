@@ -1,0 +1,17 @@
+# /etc/caddy/Caddyfile – HTTPS in front of Perinexa on the AWS server (docs/DEPLOY_AWS.md).
+# Replace app.yourdomain.in with the real address (the GoDaddy A record points it at the Elastic IP). Caddy gets and
+# renews the HTTPS certificate by itself once that record works and ports 80 and 443 are open.
+# server/.env must have TRUST_PROXY=1 and CLIENT_URL=https://<this address>.
+
+app.yourdomain.in {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:4000
+	# Large enough for the biggest upload Perinexa accepts.
+	request_body {
+		max_size 32MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+}
