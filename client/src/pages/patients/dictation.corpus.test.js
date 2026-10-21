@@ -281,7 +281,7 @@ describe('phrases that must change nothing (negative corpus)', () => {
       }
     }
     expect(changed).toEqual([]);
-  });
+  }, 30_000); // 4 phrases per name: more than the usual 5 seconds on a slower computer
 });
 
 describe('ordinary sentences change and tick nothing (random, seeded)', () => {

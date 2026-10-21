@@ -87,7 +87,7 @@ describe('the Marathi and Hindi wording to be checked by fluent speakers', () =>
     for (const file of FILES) {
       // the first lines, as one text (a sentence may run over two comment lines)
       const header = read(file)
-        .split('\n')
+        .split(/\r?\n/) // (Windows checks files out with \r\n)
         .slice(0, 15)
         .map((l) => l.replace(/^\s*(\/\/|\/?\*+\/?)\s?/, ''))
         .join(' ');
