@@ -361,7 +361,7 @@
 .lab-sheet { display: flex; flex-direction: column; }
 .lab-sheet:not(:last-child) { break-after: page; }
 .lab-sheet-head { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 0 6mm; padding: 1.5mm 0; border-top: 1px solid var(--print-ink); border-bottom: 1px solid var(--print-ink); margin-bottom: 2mm; }
-.lab-sheet-head dl { display: grid; grid-template-columns: 37mm minmax(0, 1fr); gap: 0.4mm 2mm; margin: 0; }
+.lab-sheet-head dl { display: grid; grid-template-columns: 34mm minmax(0, 1fr); gap: 0.4mm 2mm; margin: 0; }
 .lab-sheet-head dl > div { display: contents; }
 .lab-sheet-head dt { font-size: var(--fs-print-small); text-transform: uppercase; letter-spacing: 0.02em; font-weight: 600; color: var(--print-ink); }
 .lab-sheet-head dd { margin: 0; overflow-wrap: anywhere; }
@@ -378,11 +378,14 @@
 .lab-sheet-section td { font-weight: 700; padding-top: 1.5mm; }
 .lab-sheet-indent { padding-left: 4mm !important; }
 .pdoc .lab-sheet-small { margin: 1mm 0 0; font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
-.lab-sheet-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; margin-top: 6mm; break-inside: avoid; }
+.lab-sheet-foot { display: flex; justify-content: flex-end; align-items: flex-end; margin-top: 3mm; break-inside: avoid; }
 .lab-sheet-foot .barcode { width: 45mm; }
 .lab-sheet-signer { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
 .lab-sheet-signer .lab-report-signature { margin: 0 0 1mm; max-height: 14mm; }
-.lab-sheet-sign-line { display: block; width: 45mm; height: 10mm; border-bottom: 1px solid var(--print-ink); margin-bottom: 1mm; }
+.lab-sheet-sign-line { display: block; width: 45mm; height: 8mm; border-bottom: 1px solid var(--print-ink); margin-bottom: 0.5mm; }
 .lab-paper, .lab-paper-space { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
 .lab-paper-space label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-label); }
 .lab-paper-space input { width: 5.5em; }
+.lab-sheet-head-left { display: flex; flex-direction: column; justify-content: space-between; gap: 1.5mm; }
+.lab-sheet-head-left .barcode { width: 40mm; }
+.lab-sheet:first-child .lab-sheet-test-name { margin-top: 2mm; }

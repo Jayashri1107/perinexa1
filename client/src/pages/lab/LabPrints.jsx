@@ -370,8 +370,11 @@ export function LabReportDocument({ order, catalogue, letterhead, withConfidenti
 // the results as Test Name · Obtained Value · Unit · Bio. Ref. Interval, the sample's barcode and the signature, laid
 // out tightly so a full CBC fits on one page. DRAFT ranges stay marked DRAFT; HIV prints under its neutral name.
 
-/** The patient and sample block at the top of every sheet. */
-function SheetHead({ order, sample }) {
+/**
+ * The patient and sample block – only at the top of the first page (22 Oct 2026, developer), with the reporting
+ * doctor's name, qualification and registration number and the sample's barcode.
+ */
+function SheetHead({ order, sample, signer }) {
   const p = order.patient;
   const ageSex = p.careType === 'newborn' ? 'Baby' : `${p.age != null ? `${p.age} Years` : '—'} / ${p.sex === 'male' ? 'Male' : 'Female'}`;
   const refBy = order.source === 'walk_in' ? (order.referrer?.name ?? 'Self') : order.ordered.byName;
@@ -387,6 +390,7 @@ function SheetHead({ order, sample }) {
     ['Reporting date', order.reported ? formatDateTime(order.reported.at) : ''],
     ['Sample type', sample ?? ''],
     ['Sample no.', order.sampleNo ?? ''],
+    ['Reported by', signer ? [signer.name, signer.qualification, signer.regNo && `Reg. No. ${signer.regNo}`].filter(Boolean).join(', ') : (order.verified?.byName ?? '')],
   ];
   const rows = (list) =>
     list.map(([k, v]) => (
@@ -397,7 +401,10 @@ function SheetHead({ order, sample }) {
     ));
   return (
     <div className="lab-sheet-head">
-      <dl>{rows(left)}</dl>
+      <div className="lab-sheet-head-left">
+        <dl>{rows(left)}</dl>
+        {order.sampleNo && <Barcode value={order.sampleNo} height={7} />}
+      </div>
       <dl>{rows(right)}</dl>
     </div>
   );
@@ -470,38 +477,28 @@ function SheetTest({ t, def }) {
   );
 }
 
-/** The foot of a sheet: the sample's barcode on the left, the signer on the right. */
-function SheetFoot({ order, signer }) {
+/** The foot of a sheet: the signature only (the picture, or a line to sign on) – the doctor's name is at the top. */
+function SheetFoot({ signer }) {
   return (
     <div className="lab-sheet-foot">
-      <div>{order.sampleNo && <Barcode value={order.sampleNo} height={8} />}</div>
       <div className="lab-sheet-signer">
-        {signer?.signature && <img className="lab-report-signature" src={signer.signature} alt={`Signature of ${signer.name}`} />}
-        {signer ? (
-          <>
-            <strong>{signer.name}</strong>
-            {signer.qualification && <span>{signer.qualification}</span>}
-            {signer.regNo && <span>Reg. No. {signer.regNo}</span>}
-          </>
-        ) : (
-          <>
-            <span className="lab-sheet-sign-line" />
-            <span>{order.verified ? order.verified.byName : 'Signature'}</span>
-          </>
-        )}
+        {signer?.signature ? <img className="lab-report-signature" src={signer.signature} alt={`Signature of ${signer.name}`} /> : <span className="lab-sheet-sign-line" />}
+        <span>Signature</span>
       </div>
     </div>
   );
 }
 
 /**
- * The report on the lab's letterhead paper: one sheet per test (or all tests on one sheet when `together`), each with
- * the patient block, the results, the sample barcode and the signature. Nothing else: no letterhead, no footer.
+ * The report on the lab's letterhead paper: one sheet per test (or all tests on one sheet when `together`); the patient
+ * block (with the doctor and the barcode) on the first page only, then each test with its signature. Nothing else: no
+ * letterhead, no footer, no page numbers.
  */
 export function LabReportSheets({ order, catalogue, withConfidential, signer = null, together = false }) {
   const tests = order.tests.filter((t) => withConfidential || !isConfidential(t));
   const left = order.tests.length - tests.length;
   const sheets = together ? [tests] : tests.map((t) => [t]);
+  const samples = [...new Set(tests.map((t) => testDef(catalogue, t.key)?.sample).filter(Boolean))].join(', ');
   const draftOf = (list) =>
     list.some((t) => {
       const def = testDef(catalogue, t.key);
@@ -511,10 +508,9 @@ export function LabReportSheets({ order, catalogue, withConfidential, signer = n
     <div className="pdoc lab-sheets">
       {sheets.map((list, i) => {
         const last = i === sheets.length - 1;
-        const samples = [...new Set(list.map((t) => testDef(catalogue, t.key)?.sample).filter(Boolean))];
         return (
           <section key={list.map((t) => t.key).join('+') || i} className="lab-sheet">
-            <SheetHead order={order} sample={samples.join(', ')} />
+            {i === 0 && <SheetHead order={order} sample={samples} signer={signer} />}
             {list.map((t, ti) => (
               <SheetTest key={`${t.key}-${ti}`} t={t} def={testDef(catalogue, t.key)} />
             ))}
@@ -526,7 +522,7 @@ export function LabReportSheets({ order, catalogue, withConfidential, signer = n
               </p>
             )}
             {draftOf(list) && <p className="lab-sheet-small">Ranges and notes marked DRAFT are not yet approved by the hospital&rsquo;s doctor.</p>}
-            <SheetFoot order={order} signer={signer} />
+            <SheetFoot signer={signer} />
           </section>
         );
       })}
@@ -585,7 +581,7 @@ export function LabReportPrint({ order, catalogue, signer = null, onClose }) {
     <PrintPreview
       pdf={pdf}
       docKey={ready ? `${order.id}-${withConfidential}-${layout}` : null}
-      pageNumbers
+      pageNumbers={!onLetterhead} // on the lab's letterhead paper: no page numbers (22 Oct 2026)
       page={onLetterhead ? { size: 'A4', margin: `${paper.top}mm 12mm ${paper.bottom}mm` } : undefined}
       title="Lab report – print preview"
       hint={onLetterhead ? 'Put the lab’s letterhead paper in the printer: only the report prints, in the space between its header and footer.' : 'Check it, then print on plain A4 paper.'}

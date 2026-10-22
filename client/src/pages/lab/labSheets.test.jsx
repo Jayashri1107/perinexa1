@@ -1,6 +1,7 @@
-// The lab report on the lab's own letterhead paper (22 Oct 2026): the report only – no letterhead, hospital name or
-// footer – one test per sheet, each with the patient block, the four columns of a lab report, the sample barcode and
-// the signature. DRAFT ranges stay marked; a confidential test is left out unless chosen, then neutral. Made-up data.
+// The lab report on the lab's own letterhead paper (22 Oct 2026): the report only – no letterhead, hospital name,
+// footer or page numbers – one test per sheet; the patient block with the reporting doctor and the sample barcode on
+// the first page only; each test then ends with its signature. DRAFT ranges stay marked; a confidential test is left
+// out unless chosen, then neutral. Made-up data.
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -29,16 +30,19 @@ const text = (html) => html.replace(/&#x27;|&rsquo;/g, "'").replace(/&amp;/g, '&
 const render = (props = {}) => renderToStaticMarkup(<LabReportSheets order={order} catalogue={catalogue} withConfidential={false} signer={signer} {...props} />);
 
 describe('the lab report on the lab’s letterhead paper', () => {
-  it('one sheet per test, each with the patient block, the four columns, the barcode and the signer', () => {
+  it('one sheet per test; the patient block, the doctor and the barcode only once, at the top', () => {
     const html = render();
     expect(html.match(/class="lab-sheet"/g)).toHaveLength(2); // HIV left out: 2 sheets
-    expect(html.match(/class="lab-sheet-head"/g)).toHaveLength(2);
+    expect(html.match(/class="lab-sheet-head"/g)).toHaveLength(1);
+    expect(html.indexOf('lab-sheet-head')).toBeLessThan(html.indexOf('lab-sheet-test'));
     const shown = text(html);
     expect(shown).toMatch(/Test Name Obtained Value Unit Bio\. Ref\. Interval/);
-    expect(shown).toMatch(/Patient name Test Patient One/);
-    expect(shown).toMatch(/Sample type EDTA whole blood/);
-    expect(shown).toContain('Dr Sample Pathologist');
-    expect(html.match(/aria-label="Barcode S-000123"/g)).toHaveLength(2);
+    expect(shown.match(/Test Patient One/g)).toHaveLength(1);
+    expect(shown).toMatch(/Sample type EDTA whole blood, Serum/);
+    expect(shown).toMatch(/Reported by Dr Sample Pathologist, MD \(Pathology\), Reg\. No\. SAMPLE-0000/);
+    expect(shown.match(/Dr Sample Pathologist/g)).toHaveLength(1); // not again at the bottom
+    expect(html.match(/aria-label="Barcode S-000123"/g)).toHaveLength(1);
+    expect(html.match(/class="lab-sheet-foot"/g)).toHaveLength(2); // each test signed
   });
 
   it('prints the report only: no letterhead, hospital name, footer or page chrome', () => {
