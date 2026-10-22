@@ -17,7 +17,7 @@ vi.mock('../hooks/useFetch.js', () => ({
   }),
 }));
 
-const { DoctorAccountDialog, SwitchBackDialog, switchLabel, switchTitle } = await import('./AppLayout.jsx');
+const { AdminSwitchDialog, DoctorAccountDialog, SwitchBackDialog, roleSwitchLabel, switchLabel, switchTitle } = await import('./AppLayout.jsx');
 
 const words = (html) => html.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const text = (html) => words(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -25,7 +25,7 @@ const render = (node) => renderToStaticMarkup(<MemoryRouter>{node}</MemoryRouter
 const primaries = (html) => (html.match(/class="btn btn-primary"/g) ?? []).length;
 
 beforeEach(() => {
-  auth = { platform: null, makeDoctorAccount: vi.fn(), switchToDoctor: vi.fn(), switchToSuperAdmin: vi.fn() };
+  auth = { platform: null, makeDoctorAccount: vi.fn(), switchToDoctor: vi.fn(), switchToSuperAdmin: vi.fn(), switchToAdmin: vi.fn() };
 });
 
 describe('switching between super admin and their own doctor account', () => {
@@ -65,5 +65,20 @@ describe('switching between super admin and their own doctor account', () => {
     expect(text(html)).toMatch(/Super admin password/);
     expect(html).toMatch(/id="switch-back-password"/);
     expect(primaries(html)).toBe(1);
+  });
+});
+
+describe('admin or clinical work (22 Oct 2026)', () => {
+  it('says where the switch goes: to admin, or back to the clinical roles', () => {
+    expect(roleSwitchLabel(null, { clinicalRoles: ['doctor'] })).toBe('Switch to admin');
+    expect(roleSwitchLabel('admin', { clinicalRoles: ['doctor'] })).toBe('Switch to Doctor');
+    expect(roleSwitchLabel('admin', { clinicalRoles: [] })).toBe('Switch to clinical work');
+  });
+  it('"Switch to admin" asks for the password and says the admin sees no patient records', () => {
+    const html = render(<AdminSwitchDialog onClose={() => {}} />);
+    expect(text(html)).toMatch(/Your password/);
+    expect(text(html)).toMatch(/no patient records/);
+    expect(primaries(html)).toBe(1);
+    expect(text(render(<AdminSwitchDialog superAdminPassword onClose={() => {}} />))).toMatch(/Super admin password/);
   });
 });

@@ -19,8 +19,8 @@ const ACCESS_OPTIONS = [
   { value: 'inactive', label: 'Removed' },
 ];
 
-function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel }) {
-  const [form, setForm] = useState({ email: '', name: '', roles: defaultRoles });
+function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = false }) {
+  const [form, setForm] = useState({ email: '', name: '', roles: noAdmin ? defaultRoles.filter((r) => r !== 'admin') : defaultRoles });
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -65,7 +65,8 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel }) {
       </div>
       <fieldset className="fieldset">
         <legend>Roles in this hospital</legend>
-        <RolePicker value={form.roles} onChange={(roles) => setForm({ ...form, roles })} idPrefix="member-role" />
+        <RolePicker value={form.roles} onChange={(roles) => setForm({ ...form, roles })} idPrefix="member-role" without={noAdmin ? ['admin'] : []} />
+        {noAdmin && <p className="hint">Only the super admin makes someone a hospital admin.</p>}
         <FieldError>{fieldErrors.roles}</FieldError>
       </fieldset>
       <div className="row add-form-actions">
@@ -87,10 +88,11 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel }) {
  * - linkToUser: super admins get a link to the person's full account page
  */
 export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser = false, defaultRoles = ['doctor'], onChanged, title = 'Staff' }) {
-  const { user: me, platform } = useAuth();
-  // New people are added by the super admin, or a platform admin given "User accounts" (owner, 12 Oct 2026) –
-  // a hospital's own admin sees and manages its staff but no longer adds people.
-  const canAdd = canEditArea(platform, 'users');
+  const { user: me, platform, activeMembership } = useAuth();
+  // New people are added by the super admin, a platform admin given "User accounts" (owner, 12 Oct 2026), or – since
+  // 22 Oct 2026 – a hospital admin the super admin gave "Add people" (staff only, never another admin).
+  const hospitalAdderOnly = !platform && Boolean(activeMembership?.adminRights?.includes('addPeople'));
+  const canAdd = canEditArea(platform, 'users') || hospitalAdderOnly;
   const [params, setParams, reset] = useListParams(DEFAULTS);
   const { data, error: loadError, loading, reload } = useFetch(basePath, params);
   const [error, setError] = useState(null);
@@ -271,7 +273,7 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
         {success}
       </Alert>
       {tempPassword && <TemporaryPassword {...tempPassword} onClose={() => setTempPassword(null)} />}
-      {showAdd && <AddMemberForm basePath={basePath} defaultRoles={defaultRoles} onAdded={onAdded} onCancel={() => setShowAdd(false)} />}
+      {showAdd && <AddMemberForm basePath={basePath} defaultRoles={defaultRoles} onAdded={onAdded} onCancel={() => setShowAdd(false)} noAdmin={hospitalAdderOnly} />}
       {editing && (
         <RolesDialog
           title={`Roles for ${editing.user.name}`}

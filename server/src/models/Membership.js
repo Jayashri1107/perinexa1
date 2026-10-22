@@ -9,7 +9,8 @@ export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 
 
 // What a hospital admin may do to the hospital's staff – only what the super admin gave them (owner, 12 Oct 2026):
 // reset a password, remove or restore access, change roles, edit name and email. Without it they see who works there.
-export const ADMIN_RIGHTS = ['resetPassword', 'access', 'roles', 'details'];
+// addPeople (22 Oct 2026): add new staff to the hospital – never another admin (only the super admin makes admins).
+export const ADMIN_RIGHTS = ['addPeople', 'resetPassword', 'access', 'roles', 'details'];
 
 // Links a user to a hospital ("tagging"), with the roles they have there.
 // One user can have memberships in several hospitals, and one or more roles in each

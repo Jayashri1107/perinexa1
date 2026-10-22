@@ -50,6 +50,7 @@ export const AUDIT_LABELS = {
   LINKED_ACCOUNT_CHANGED: 'Linked doctor account changed',
   ACCOUNT_SWITCHED: 'Switched between super admin and own doctor account',
   LIST_EXPORTED: 'List exported (CSV)',
+  ROLE_MODE_SWITCHED: 'Switched between clinical work and admin',
   TENANT_CREATED: 'Hospital created',
   TENANT_UPDATED: 'Hospital renamed',
   TENANT_ACTIVATED: 'Hospital reactivated',

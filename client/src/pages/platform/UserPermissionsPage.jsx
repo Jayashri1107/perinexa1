@@ -135,7 +135,12 @@ export function UserPermissionsPage() {
           </dl>
         </section>
         <PermissionTable people={data?.users} loading={loading} editable={editable} onSaved={saved} />
-        <HospitalAdminRights editable={editable || canEditArea(platform, 'hospitalAdmins')} onSaved={setFlash} />
+        <section className="card">
+          <h2>Hospital admins</h2>
+          <p className="hint">
+            What each hospital's admin may do to its staff – adding people among it – is on <Link to="/platform/users/admin-permissions">Admin permissions</Link>.
+          </p>
+        </section>
         {editable && (
           <form className="card" onSubmit={add} noValidate>
             <h2>Add a platform admin</h2>
@@ -213,7 +218,55 @@ function PermissionTableRow(props) {
 
 // Hospital admins' rights over their staff (owner, 12 Oct 2026): every hospital admin, with a tick per right. Without a
 // right the hospital admin still sees the staff, and is told to ask the super admin.
-const ADMIN_RIGHT_LABELS = { resetPassword: 'Reset password', access: 'Remove / restore access', roles: 'Change roles', details: 'Edit name and email' };
+const ADMIN_RIGHT_LABELS = { addPeople: 'Add people', resetPassword: 'Reset password', access: 'Remove / restore access', roles: 'Change roles', details: 'Edit name and email' };
+const ADMIN_RIGHT_HELP = {
+  addPeople: 'Add new staff to their hospital – doctors, RMOs, nurses, reception, lab, pharmacy, billing, referral desk. Never another admin: only you make admins.',
+  resetPassword: 'Give a temporary password to someone who works only at their hospital',
+  access: "Remove someone's access to their hospital, or give it back",
+  roles: "Change someone's roles there – never making or removing an admin",
+  details: 'Correct a name or an email',
+};
+const ROLE_WORDS = { doctor: 'Doctor', rmo: 'RMO', nurse: 'Nurse', receptionist: 'Reception', lab: 'Lab', pharmacist: 'Pharmacist', billing: 'Billing', referral_desk: 'Referral desk' };
+
+/**
+ * Admin permissions (22 Oct 2026): every hospital admin in one table, a tick per permission – the super admin (or a
+ * platform admin given "Hospital admins' access") ticks; platform admins without it can look. An admin who is also
+ * clinical staff (a doctor, say) works as one or the other and switches to admin with their password.
+ */
+export function AdminPermissionsPage() {
+  const { platform } = useAuth();
+  const editable = platform?.role === 'superadmin' || canEditArea(platform, 'hospitalAdmins');
+  const [flash, setFlash] = useState(null);
+  return (
+    <>
+      <PageHeader
+        breadcrumbs={[{ label: 'Users & access', to: '/platform/users' }, { label: 'Admin permissions' }]}
+        title="Admin permissions"
+        subtitle="What each hospital's admin may do to its staff. Without a tick they see the staff and are told to ask you."
+        tabs={platformTabs('users', platform)}
+      />
+      <div className="pf-content">
+        <Alert type="success" onClose={() => setFlash(null)}>
+          {flash}
+        </Alert>
+        {!editable && <Alert type="info">Only a super admin (or an admin given Hospital admins' access) changes these. You can look.</Alert>}
+        <section className="card">
+          <h2>What each permission allows</h2>
+          <dl className="details">
+            {Object.keys(ADMIN_RIGHT_LABELS).map((r) => (
+              <div key={r}>
+                <dt>{ADMIN_RIGHT_LABELS[r]}</dt>
+                <dd>{ADMIN_RIGHT_HELP[r]}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="hint">A doctor you also made an admin works as a doctor or as the admin, one at a time, and switches to admin with their password. As the admin they see no patient records.</p>
+        </section>
+        <HospitalAdminRights editable={editable} onSaved={setFlash} />
+      </div>
+    </>
+  );
+}
 const ADMIN_RIGHTS = Object.keys(ADMIN_RIGHT_LABELS);
 
 function HospitalAdminRights({ editable, onSaved }) {
@@ -292,6 +345,9 @@ function AdminRightsRow({ admin, editable, onSaved }) {
           <Link to={`/platform/users/${admin.user.id}`}>{admin.user.name}</Link>
         </strong>
         <div className="cell-sub">{admin.user.email}</div>
+        {admin.roles.some((r) => r !== 'admin') && (
+          <div className="cell-sub">Also {admin.roles.filter((r) => r !== 'admin').map((r) => ROLE_WORDS[r] ?? r).join(', ')} – switches to admin with their password</div>
+        )}
         {error && <span className="field-error">{error}</span>}
       </td>
       <td data-label="Hospital">{admin.tenantName}</td>

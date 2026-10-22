@@ -18,6 +18,8 @@ export const AUDIT_ACTIONS = [
   'LINKED_ACCOUNT_CHANGED',
   // A super admin switched to their own doctor account and back (one login – 21 Oct 2026)
   'ACCOUNT_SWITCHED',
+  // A doctor who is also a hospital admin switched to admin work (with their password) or back (22 Oct 2026)
+  'ROLE_MODE_SWITCHED',
   // A list saved as a CSV file by a doctor – what, the dates and how many rows (routes/exports.js, 21 Oct 2026)
   'LIST_EXPORTED',
   'TENANT_CREATED',
@@ -377,6 +379,7 @@ export const AUDIT_CATEGORIES = {
     'PLATFORM_ADMIN_CHANGED',
     'LINKED_ACCOUNT_CHANGED',
     'ACCOUNT_SWITCHED',
+    'ROLE_MODE_SWITCHED',
     'PORTAL_LOGIN_FAILED',
     'HOSPITAL_DATA_EXPORTED',
     'LIST_EXPORTED',
