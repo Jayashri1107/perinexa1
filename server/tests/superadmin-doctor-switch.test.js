@@ -142,6 +142,32 @@ describe('a super admin who is also a doctor – one login', () => {
     expect(ended.body.error.code).toBe('SWITCH_ENDED');
   });
 
+  it('a doctor login linked by email shows "switch back" however it is reached, and goes up only with the super admin password (22 Oct 2026)', async () => {
+    const a = await createTenant('Switch Hospital A');
+    const sa = await createSuperAdmin({ email: 'linked.sa@example.com' });
+    const doctor = await createUser({ email: 'linked.doctor@example.com' });
+    await addMember(doctor, a, 'doctor');
+    const root = await loginAs(sa);
+    expect((await root.patch(`/api/platform/users/${sa._id}/linked-account`).send({ email: 'linked.doctor@example.com' })).status).toBe(200);
+
+    // Signed in to the doctor account with its own password (the older switch, or directly)
+    const d = await loginAs(doctor);
+    expect(d.body.switchBack).toBe(true);
+    expect((await d.get('/api/auth/me')).body.switchBack).toBe(true);
+    const wrong = await d.post('/api/auth/switch-to-super-admin').send({ password: 'the-doctors-own-password-is-not-it' });
+    expect(wrong.status).toBe(400);
+    const up = await d.post('/api/auth/switch-to-super-admin').send({ password: PASSWORD });
+    expect(up.status, JSON.stringify(up.body)).toBe(200);
+    expect(up.body.user).toMatchObject({ email: 'linked.sa@example.com', isSuperAdmin: true });
+
+    // A doctor no super admin linked never sees it
+    const plain = await createUser();
+    await addMember(plain, a, 'doctor');
+    const p = await loginAs(plain);
+    expect(p.body.switchBack).toBeUndefined();
+    expect((await p.post('/api/auth/switch-to-super-admin').send({ password: PASSWORD })).body.error.code).toBe('NOT_SWITCHED');
+  });
+
   it('cannot sign in to the doctor account with a password nobody knows', async () => {
     const a = await createTenant('Switch Hospital A');
     const sa = await createSuperAdmin({ email: 'meera.sa@example.com' });

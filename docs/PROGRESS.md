@@ -81,6 +81,11 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **Switch back to super admin, however the doctor account was reached (22 Oct 2026):** a doctor account a super admin
+  linked as their own – made with Work as a doctor, or an existing doctor login linked by email – now shows **Switch
+  back to super admin** whether it was reached by the switch, by signing in with its own password, or directly; going
+  up always asks the super admin password. A doctor no super admin linked never sees it. `superAdminBehind` in
+  `routes/auth.js`.
 - **Admin or clinical work, one at a time; Add people; Admin permissions (22 Oct 2026, developer):** a doctor (or other
   clinical staff) whom the super admin also made a hospital admin now works as one or the other: they start in clinical
   work (patients, no admin pages); **Switch to admin** asks their password and gives the admin pages only (no patient
