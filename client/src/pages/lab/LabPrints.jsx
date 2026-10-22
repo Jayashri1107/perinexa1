@@ -363,11 +363,209 @@ export function LabReportDocument({ order, catalogue, letterhead, withConfidenti
   );
 }
 
+// ---------- On the lab's own letterhead paper (22 Oct 2026) ----------
+// The lab prints on paper that already carries its logo, name and address at the top and bottom. Then Perinexa prints
+// the report only: no letterhead, no hospital name, no footer – the top and bottom margins are left blank for the
+// printed header and footer. One test per sheet (one report per page), each sheet with the patient and sample details,
+// the results as Test Name · Obtained Value · Unit · Bio. Ref. Interval, the sample's barcode and the signature, laid
+// out tightly so a full CBC fits on one page. DRAFT ranges stay marked DRAFT; HIV prints under its neutral name.
+
+/** The patient and sample block at the top of every sheet. */
+function SheetHead({ order, sample }) {
+  const p = order.patient;
+  const ageSex = p.careType === 'newborn' ? 'Baby' : `${p.age != null ? `${p.age} Years` : '—'} / ${p.sex === 'male' ? 'Male' : 'Female'}`;
+  const refBy = order.source === 'walk_in' ? (order.referrer?.name ?? 'Self') : order.ordered.byName;
+  const left = [
+    ['Patient name', p.fullName],
+    ['Age / Sex', ageSex],
+    ['Patient ID', p.mrn],
+    [order.source === 'walk_in' ? 'Referring Dr' : 'Ordered by', refBy],
+  ];
+  const right = [
+    ['Registration date', formatDateTime(order.ordered.at)],
+    ['Sample drawn date', order.collected ? formatDateTime(order.collected.at) : ''],
+    ['Reporting date', order.reported ? formatDateTime(order.reported.at) : ''],
+    ['Sample type', sample ?? ''],
+    ['Sample no.', order.sampleNo ?? ''],
+  ];
+  const rows = (list) =>
+    list.map(([k, v]) => (
+      <div key={k}>
+        <dt>{k}</dt>
+        <dd>{v || '—'}</dd>
+      </div>
+    ));
+  return (
+    <div className="lab-sheet-head">
+      <dl>{rows(left)}</dl>
+      <dl>{rows(right)}</dl>
+    </div>
+  );
+}
+
+/** A table test on a sheet: the four columns of a lab report, its sections as sub-headings. */
+function SheetTable({ t, def, draft }) {
+  const values = t.values.filter((v) => v.value !== '');
+  return (
+    <table className="ptable lab-sheet-table">
+      <thead>
+        <tr>
+          <th scope="col">Test Name</th>
+          <th scope="col">Obtained Value</th>
+          <th scope="col">Unit</th>
+          <th scope="col">Bio. Ref. Interval</th>
+        </tr>
+      </thead>
+      <tbody>
+        {bySection(values).flatMap(([section, list]) => [
+          ...(section
+            ? [
+                <tr key={`s-${section}`} className="lab-sheet-section">
+                  <td colSpan={4}>{section}</td>
+                </tr>,
+              ]
+            : []),
+          ...list.map((v) => {
+            const w = valueWords(v, def);
+            return (
+              <tr key={v.key}>
+                <td className={section ? 'lab-sheet-indent' : undefined}>{isConfidential(t) ? 'Result' : w.name}</td>
+                <td>{def?.fields?.find((f) => f.key === v.key)?.long ? <span className="pre-line">{v.value}</span> : <Result v={v} />}</td>
+                <td>{w.unit}</td>
+                <td>
+                  {w.range}
+                  {w.range && draft ? ' (DRAFT)' : ''}
+                </td>
+              </tr>
+            );
+          }),
+        ])}
+      </tbody>
+    </table>
+  );
+}
+
+/** One test on a sheet: its name as the heading, then its results by its template. */
+function SheetTest({ t, def }) {
+  const template = def?.report?.template ?? 'table';
+  const Part = template === 'table' ? SheetTable : (TEMPLATE_PARTS[template] ?? SheetTable);
+  const draft = def?.status === 'draft';
+  const method = t.method ?? def?.report?.method ?? '';
+  const notes = t.notes ?? def?.report?.notes ?? '';
+  const values = t.values.filter((v) => v.value !== '');
+  return (
+    <section className="lab-sheet-test">
+      <h2 className="lab-sheet-test-name">{shownName(t)}</h2>
+      {t.outside && <p className="lab-sheet-small">Done at {t.outside.labName}</p>}
+      {values.length > 0 || t.antibiotics?.length ? <Part t={t} def={def} draft={draft} method={method} /> : null}
+      {t.text && <p className="pre-line">{t.text}</p>}
+      {!values.length && !t.text && !t.antibiotics?.length && <p className="lab-sheet-small">See the attached report.</p>}
+      {method && template !== 'serology' && <p className="lab-sheet-small">Method: {method}</p>}
+      {notes && (
+        <p className="lab-sheet-small">
+          Note{draft ? ' (DRAFT)' : ''}: {notes}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** The foot of a sheet: the sample's barcode on the left, the signer on the right. */
+function SheetFoot({ order, signer }) {
+  return (
+    <div className="lab-sheet-foot">
+      <div>{order.sampleNo && <Barcode value={order.sampleNo} height={8} />}</div>
+      <div className="lab-sheet-signer">
+        {signer?.signature && <img className="lab-report-signature" src={signer.signature} alt={`Signature of ${signer.name}`} />}
+        {signer ? (
+          <>
+            <strong>{signer.name}</strong>
+            {signer.qualification && <span>{signer.qualification}</span>}
+            {signer.regNo && <span>Reg. No. {signer.regNo}</span>}
+          </>
+        ) : (
+          <>
+            <span className="lab-sheet-sign-line" />
+            <span>{order.verified ? order.verified.byName : 'Signature'}</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The report on the lab's letterhead paper: one sheet per test (or all tests on one sheet when `together`), each with
+ * the patient block, the results, the sample barcode and the signature. Nothing else: no letterhead, no footer.
+ */
+export function LabReportSheets({ order, catalogue, withConfidential, signer = null, together = false }) {
+  const tests = order.tests.filter((t) => withConfidential || !isConfidential(t));
+  const left = order.tests.length - tests.length;
+  const sheets = together ? [tests] : tests.map((t) => [t]);
+  const draftOf = (list) =>
+    list.some((t) => {
+      const def = testDef(catalogue, t.key);
+      return def?.status === 'draft' && (t.values.some((v) => v.value !== '' && valueWords(v, def).range) || Boolean(t.notes ?? def?.report?.notes));
+    });
+  return (
+    <div className="pdoc lab-sheets">
+      {sheets.map((list, i) => {
+        const last = i === sheets.length - 1;
+        const samples = [...new Set(list.map((t) => testDef(catalogue, t.key)?.sample).filter(Boolean))];
+        return (
+          <section key={list.map((t) => t.key).join('+') || i} className="lab-sheet">
+            <SheetHead order={order} sample={samples.join(', ')} />
+            {list.map((t, ti) => (
+              <SheetTest key={`${t.key}-${ti}`} t={t} def={testDef(catalogue, t.key)} />
+            ))}
+            {last && left > 0 && <p className="lab-sheet-small">{left === 1 ? 'One confidential test is' : `${left} confidential tests are`} not on this printout. The doctor has the result.</p>}
+            {last && order.labNote && (
+              <p className="lab-sheet-small">
+                <strong>Lab remark: </strong>
+                {order.labNote}
+              </p>
+            )}
+            {draftOf(list) && <p className="lab-sheet-small">Ranges and notes marked DRAFT are not yet approved by the hospital&rsquo;s doctor.</p>}
+            <SheetFoot order={order} signer={signer} />
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+// The paper the lab prints on, remembered in this browser: 'letterhead' (the lab's own pre-printed paper – the
+// report only, the top and bottom left blank) or 'plain' (plain A4 – Perinexa prints the hospital's letterhead).
+const PAPER_KEY = 'perinexa:labPaper';
+const DEFAULT_PAPER = { kind: 'letterhead', top: 45, bottom: 30 };
+export function readLabPaper() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PAPER_KEY) ?? 'null');
+    if (saved && (saved.kind === 'letterhead' || saved.kind === 'plain')) return { ...DEFAULT_PAPER, ...saved };
+  } catch {
+    /* the default paper */
+  }
+  return DEFAULT_PAPER;
+}
+const clampMm = (n, fallback) => (Number.isFinite(n) ? Math.min(120, Math.max(5, Math.round(n))) : fallback);
+
 export function LabReportPrint({ order, catalogue, signer = null, onClose }) {
-  const lh = useFetch('/tenant/settings/letterhead');
+  // The paper (22 Oct 2026): the lab's own letterhead paper by default – the report only, one test per page
+  const [paper, setPaperState] = useState(readLabPaper);
+  const setPaper = (next) => {
+    setPaperState(next);
+    try {
+      localStorage.setItem(PAPER_KEY, JSON.stringify(next));
+    } catch {
+      /* remembered for this print only */
+    }
+  };
+  const onLetterhead = paper.kind === 'letterhead';
+  const lh = useFetch(onLetterhead ? null : '/tenant/settings/letterhead');
   const hasConfidential = order.tests.some(isConfidential);
   const [withConfidential, setWithConfidential] = useState(false);
   const [eachOnOwnPage, setEachOnOwnPage] = useState(false);
+  const [together, setTogether] = useState(false);
   const record = () => api(`/lab/orders/${order.id}/report-printed`, { method: 'POST', body: { confidential: hasConfidential && withConfidential } });
   // On WhatsApp in one click once a doctor reviewed it, with her agreement – never with the confidential test
   const offer = useFetch(order.status === 'reviewed' || (order.source === 'walk_in' && order.status === 'reported') ? `/lab/orders/${order.id}/whatsapp` : null);
@@ -380,24 +578,51 @@ export function LabReportPrint({ order, catalogue, signer = null, onClose }) {
         ? { label: offer.data.label, practice: offer.data.practice, send: async (blob) => api(`/lab/orders/${order.id}/whatsapp`, { method: 'POST', body: { pdf: await blobToBase64(blob), confidential: false } }) }
         : null,
   };
+  const ready = onLetterhead || Boolean(lh.data);
+  const layout = onLetterhead ? `lh-${paper.top}-${paper.bottom}-${together}` : `plain-${eachOnOwnPage}`;
+  const mm = (key) => (e) => setPaper({ ...paper, [key]: clampMm(Number(e.target.value), DEFAULT_PAPER[key]) });
   return (
     <PrintPreview
       pdf={pdf}
-      docKey={lh.data ? `${order.id}-${withConfidential}-${eachOnOwnPage}` : null}
+      docKey={ready ? `${order.id}-${withConfidential}-${layout}` : null}
       pageNumbers
+      page={onLetterhead ? { size: 'A4', margin: `${paper.top}mm 12mm ${paper.bottom}mm` } : undefined}
       title="Lab report – print preview"
-      hint="Check it, then print on A4 paper. Use only fake sample data until the app has been reviewed."
+      hint={onLetterhead ? 'Put the lab’s letterhead paper in the printer: only the report prints, in the space between its header and footer.' : 'Check it, then print on plain A4 paper.'}
       controls={
         <>
+          <div className="lab-paper" role="radiogroup" aria-label="Paper">
+            <label className="check">
+              <input type="radio" name="lab-paper" checked={onLetterhead} onChange={() => setPaper({ ...paper, kind: 'letterhead' })} /> The lab&rsquo;s letterhead paper – print the report only
+            </label>
+            <label className="check">
+              <input type="radio" name="lab-paper" checked={!onLetterhead} onChange={() => setPaper({ ...paper, kind: 'plain' })} /> Plain A4 – with the hospital&rsquo;s letterhead
+            </label>
+          </div>
+          {onLetterhead && (
+            <div className="lab-paper-space">
+              <label>
+                Space for the printed header (mm) <input type="number" min={5} max={120} value={paper.top} onChange={mm('top')} />
+              </label>
+              <label>
+                Space for the printed footer (mm) <input type="number" min={5} max={120} value={paper.bottom} onChange={mm('bottom')} />
+              </label>
+            </div>
+          )}
+          {order.tests.length > 1 &&
+            (onLetterhead ? (
+              <label className="check">
+                <input type="checkbox" checked={together} onChange={(e) => setTogether(e.target.checked)} /> All tests on one sheet (otherwise each test on its own page)
+              </label>
+            ) : (
+              <label className="check">
+                <input type="checkbox" checked={eachOnOwnPage} onChange={(e) => setEachOnOwnPage(e.target.checked)} /> Each test on its own page
+              </label>
+            ))}
           {hasConfidential && (
             <label className="check">
               <input type="checkbox" checked={withConfidential} onChange={(e) => setWithConfidential(e.target.checked)} /> Include the confidential test (printed as “Lab test
               (confidential)”)
-            </label>
-          )}
-          {order.tests.length > 1 && (
-            <label className="check">
-              <input type="checkbox" checked={eachOnOwnPage} onChange={(e) => setEachOnOwnPage(e.target.checked)} /> Each test on its own page
             </label>
           )}
         </>
@@ -405,8 +630,14 @@ export function LabReportPrint({ order, catalogue, signer = null, onClose }) {
       onPrint={record}
       onClose={onClose}
     >
-      {lh.error && <Alert type="error">{lh.error}</Alert>}
-      {!lh.data && !lh.error ? <p className="muted">Preparing the report…</p> : <LabReportDocument order={order} catalogue={catalogue} letterhead={lh.data?.letterhead} withConfidential={withConfidential} signer={signer} eachOnOwnPage={eachOnOwnPage} />}
+      {!onLetterhead && lh.error && <Alert type="error">{lh.error}</Alert>}
+      {onLetterhead ? (
+        <LabReportSheets order={order} catalogue={catalogue} withConfidential={withConfidential} signer={signer} together={together} />
+      ) : !lh.data && !lh.error ? (
+        <p className="muted">Preparing the report…</p>
+      ) : (
+        <LabReportDocument order={order} catalogue={catalogue} letterhead={lh.data?.letterhead} withConfidential={withConfidential} signer={signer} eachOnOwnPage={eachOnOwnPage} />
+      )}
     </PrintPreview>
   );
 }

@@ -510,6 +510,22 @@ export function LabOrderPage() {
   };
   const catalogue = data?.catalogue;
   const back = inRecord ? `/patients/${outlet.patient.id}/lab` : '/lab';
+
+  // Ctrl+P on a lab order prints the report, never this page with its buttons (22 Oct 2026). While a print preview
+  // is open, Ctrl+P prints that preview as usual.
+  const canPrintReport = Boolean(order?.access?.canPrint);
+  const previewOpen = useRef(false);
+  previewOpen.current = printing !== null;
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 'p' || previewOpen.current) return;
+      e.preventDefault();
+      if (canPrintReport) setPrinting('report');
+      else setNotice('The report can be printed once its results are entered.');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canPrintReport]);
   const header = !inRecord && (
     <PageHeader tabs={HOSPITAL_LAB.tabs} breadcrumbs={[{ label: 'Lab', to: '/lab' }, { label: 'Lab order' }]} title={order ? order.patient.fullName : 'Lab order'} documentTitle="Lab order" />
   );

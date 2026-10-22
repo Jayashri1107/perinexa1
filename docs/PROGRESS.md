@@ -81,6 +81,14 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **Lab report on the lab's own letterhead paper (22 Oct 2026):** Print report now offers the paper – **the lab's
+  letterhead paper** (the default, remembered in this browser) prints the report only: no letterhead, hospital name or
+  footer, the top and bottom left blank for the printed header and footer (45 mm and 30 mm, adjustable), **one test
+  per page**, each sheet with the patient and sample block, Test Name · Obtained Value · Unit · Bio. Ref. Interval, the
+  sample barcode and the signature; tight rows so a full CBC fits on one page (204 of 222 mm). "All tests on one sheet"
+  is a choice. Plain A4 with the hospital letterhead stays as before. **Ctrl+P on a lab order** now opens the report
+  print instead of printing the page with its buttons. DRAFT ranges stay marked; HIV stays neutral.
+  `LabPrints.jsx` (LabReportSheets), `pages-lab.css`, `LabOrderPage.jsx`; test `labSheets.test.jsx`.
 - **Switch back to super admin, however the doctor account was reached (22 Oct 2026):** a doctor account a super admin
   linked as their own – made with Work as a doctor, or an existing doctor login linked by email – now shows **Switch
   back to super admin** whether it was reached by the switch, by signing in with its own password, or directly; going
