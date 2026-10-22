@@ -7,9 +7,11 @@ import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PLATFORM_AREA_LABELS, canEditArea, platformTabs } from '../../platform/modules.js';
 
-// User permissions (owner's request, 12 Oct 2026): one table of every platform admin and what each may change –
-// the super admin ticks and unticks, and makes someone a platform admin or takes it away. Platform admins can look.
-// A platform admin always sees every platform page (never patient records); a ticked area is what they may change.
+// User permissions (owner's request, 12 Oct 2026): every platform admin and what each may change – the super admin
+// ticks and unticks, and makes someone a platform admin or takes it away. Platform admins can look. A platform admin
+// always sees every platform page (never patient records); a ticked area is what they may change. Laid out like Admin
+// permissions (22 Oct 2026): each person's permissions as tick chips that wrap – no table to scroll sideways – and
+// Save appears once something changed.
 const AREA_HELP = {
   hospitals: 'Create hospitals, rename them, deactivate and reactivate them',
   users: 'Create accounts, add people to hospitals, change their roles, deactivate them, reset passwords',
@@ -18,109 +20,32 @@ const AREA_HELP = {
 };
 const AREAS = Object.keys(PLATFORM_AREA_LABELS);
 
-/** One platform admin's row: their own ticks until Save. */
-function usePermissionRow({ person, editable, onSaved }) {
-  const [areas, setAreas] = useState(person.platformPermissions ?? []);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const changed = [...areas].sort().join() !== [...(person.platformPermissions ?? [])].sort().join();
-  const save = async (isPlatformAdmin) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await api(`/platform/users/${person.id}/platform-admin`, { method: 'PATCH', body: { isPlatformAdmin, permissions: isPlatformAdmin ? areas : [] } });
-      onSaved(isPlatformAdmin ? `Permissions of ${person.name} saved.` : `${person.name} is no longer a platform admin.`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return {
-    name: (
-      <span className="name-cell-text">
-        <strong>
-          <Link to={`/platform/users/${person.id}`}>{person.name}</Link>
-        </strong>
-        <span className="cell-sub">{person.email}</span>
-        {!person.isActive && <StatusPill tone="inactive">Deactivated</StatusPill>}
-        {error && <span className="field-error">{error}</span>}
-      </span>
-    ),
-    ...Object.fromEntries(
-      AREAS.map((a) => [
-        a,
-        <input
-          key={a}
-          type="checkbox"
-          aria-label={`${person.name}: ${PLATFORM_AREA_LABELS[a]}`}
-          checked={areas.includes(a)}
-          disabled={!editable || busy}
-          onChange={() => setAreas((list) => (list.includes(a) ? list.filter((x) => x !== a) : [...list, a]))}
-        />,
-      ]),
-    ),
-    actions: editable && (
-      <span className="row-actions">
-        <button type="button" className="btn btn-secondary btn-sm" disabled={busy || !changed} onClick={() => save(true)}>
-          Save
-        </button>
-        <button type="button" className="btn btn-link btn-sm" disabled={busy} onClick={() => save(false)}>
-          Remove platform admin
-        </button>
-      </span>
-    ),
-  };
-}
-
 export function UserPermissionsPage() {
   const { platform } = useAuth();
   const editable = platform?.role === 'superadmin';
   const { data, error, loading, reload } = useFetch('/platform/users', { type: 'platformadmin', limit: 100, sort: 'name' });
   const [flash, setFlash] = useState(null);
-  const [email, setEmail] = useState('');
-  const [addError, setAddError] = useState(null);
-  const [busy, setBusy] = useState(false);
   const saved = (message) => {
     setFlash(message);
     reload();
   };
-
-  // Make an existing account (one with no hospital) a platform admin – view only until areas are ticked
-  const add = async (e) => {
-    e.preventDefault();
-    setAddError(null);
-    setBusy(true);
-    try {
-      const found = await api(`/platform/users?search=${encodeURIComponent(email.trim())}&limit=5`);
-      const person = found.users.find((u) => u.email === email.trim().toLowerCase());
-      if (!person) throw new Error('No account with this email. Create it first under New account.');
-      await api(`/platform/users/${person.id}/platform-admin`, { method: 'PATCH', body: { isPlatformAdmin: true, permissions: [] } });
-      setEmail('');
-      saved(`${person.name} is now a platform admin (view only until you tick what they may change).`);
-    } catch (err) {
-      setAddError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
+  const people = data?.users ?? [];
   return (
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Users & access', to: '/platform/users' }, { label: 'User permissions' }]}
         title="User permissions"
-        subtitle="Platform admins see every hospital and every account – never patient records – and change only what is ticked here."
+        subtitle="Platform admins help you run Perinexa. They see every hospital and account – never patient records – and change only what you tick."
         tabs={platformTabs('users', platform)}
       />
-      <div className="pf-content">
+      <div className="pf-content ap-page">
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
         <Alert type="error">{error}</Alert>
         {!editable && <Alert type="info">Only a super admin changes permissions. You can look.</Alert>}
-        <section className="card">
-          <h2>What each permission allows</h2>
+        <details className="card ap-help">
+          <summary>What each permission allows</summary>
           <dl className="details">
             {AREAS.map((a) => (
               <div key={a}>
@@ -133,86 +58,142 @@ export function UserPermissionsPage() {
               <dd>Everything above, and giving or removing these permissions. Never patient records.</dd>
             </div>
           </dl>
-        </section>
-        <PermissionTable people={data?.users} loading={loading} editable={editable} onSaved={saved} />
-        <section className="card">
-          <h2>Hospital admins</h2>
           <p className="hint">
-            What each hospital's admin may do to its staff – adding people among it – is on <Link to="/platform/users/admin-permissions">Admin permissions</Link>.
+            What each hospital&rsquo;s own admin may do to its staff is on <Link to="/platform/users/admin-permissions">Admin permissions</Link>.
           </p>
+        </details>
+        <section className="card" aria-labelledby="pa-title">
+          <div className="ap-hospital-head">
+            <h2 id="pa-title">Platform admins</h2>
+            <span className="cell-sub">{data ? `${people.length} ${people.length === 1 ? 'person' : 'people'}` : ''}</span>
+          </div>
+          {loading && !data && <p className="hint">Loading…</p>}
+          {data && people.length === 0 && <p className="hint">No platform admins yet. Add one below.</p>}
+          <ul className="ap-admins">
+            {people.map((p) => (
+              <PlatformAdminRow key={`${p.id}:${(p.platformPermissions ?? []).join()}`} person={p} editable={editable} onSaved={saved} />
+            ))}
+          </ul>
         </section>
-        {editable && (
-          <form className="card" onSubmit={add} noValidate>
-            <h2>Add a platform admin</h2>
-            <p className="hint">An existing account that works at no hospital. They start view only; tick what they may change above.</p>
-            <Alert type="error">{addError}</Alert>
-            <div className="row">
-              <Field label="Email of the account" id="pa-email">
-                <input id="pa-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} placeholder="name@example.com" />
-              </Field>
-              <button type="submit" className="btn btn-primary" disabled={busy || !email.trim()}>
-                Make platform admin
-              </button>
-            </div>
-          </form>
-        )}
+        {editable && <AddPlatformAdmin onSaved={saved} />}
       </div>
     </>
   );
 }
 
-// The table: one PermissionRow (its own ticks and Save) per platform admin
-function PermissionTable({ people, loading, editable, onSaved }) {
+/** One platform admin: who they are, their permissions as tick chips, Save and Undo once something changed. */
+function PlatformAdminRow({ person, editable, onSaved }) {
+  const start = person.platformPermissions ?? [];
+  const [areas, setAreas] = useState(start);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  const changed = [...areas].sort().join() !== [...start].sort().join();
+  const toggle = (a) => setAreas((list) => (list.includes(a) ? list.filter((x) => x !== a) : AREAS.filter((x) => x === a || list.includes(x))));
+  const save = async (isPlatformAdmin) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/platform/users/${person.id}/platform-admin`, { method: 'PATCH', body: { isPlatformAdmin, permissions: isPlatformAdmin ? areas : [] } });
+      onSaved(isPlatformAdmin ? `Permissions of ${person.name} saved.` : `${person.name} is no longer a platform admin.`);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
   return (
-    <section className="dt-card">
-      <div className="dt-wrap" aria-busy={loading}>
-        <table className="dt perm-table">
-          <caption className="sr-only">Platform admins and what each may change</caption>
-          <thead>
-            <tr>
-              <th scope="col">Platform admin</th>
-              {AREAS.map((a) => (
-                <th key={a} scope="col" className="perm-col">
-                  {PLATFORM_AREA_LABELS[a]}
-                </th>
-              ))}
-              <th scope="col">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {(people ?? []).map((p) => (
-              <PermissionTableRow key={`${p.id}:${(p.platformPermissions ?? []).join()}`} person={p} editable={editable} onSaved={onSaved} />
-            ))}
-            {people && people.length === 0 && (
-              <tr>
-                <td colSpan={AREAS.length + 2} className="dt-empty">
-                  No platform admins yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+    <li className="ap-admin">
+      <div className="ap-who-row">
+        <div className="ap-who">
+          <div className="ap-name">
+            <Link to={`/platform/users/${person.id}`}>{person.name}</Link>
+            {!person.isActive && <StatusPill tone="inactive">Deactivated</StatusPill>}
+            {areas.length === 0 && <span className="pill">View only</span>}
+          </div>
+          <div className="cell-sub">{person.email}</div>
+        </div>
+        {editable &&
+          (confirming ? (
+            <span className="ap-actions">
+              <span className="cell-sub">Remove {person.name} as platform admin?</span>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => save(false)}>
+                Remove
+              </button>
+              <button type="button" className="btn btn-link btn-sm" disabled={busy} onClick={() => setConfirming(false)}>
+                Keep
+              </button>
+            </span>
+          ) : (
+            <button type="button" className="btn btn-link btn-sm" disabled={busy} onClick={() => setConfirming(true)}>
+              Remove platform admin
+            </button>
+          ))}
       </div>
-    </section>
+      <div className="role-picker ap-rights" role="group" aria-label={`What ${person.name} may change`}>
+        {AREAS.map((a) => (
+          <label key={a} className={`role-option ${areas.includes(a) ? 'checked' : ''}`} title={AREA_HELP[a]}>
+            <input type="checkbox" checked={areas.includes(a)} disabled={!editable || busy} onChange={() => toggle(a)} />
+            <span>
+              <strong>{PLATFORM_AREA_LABELS[a]}</strong>
+            </span>
+          </label>
+        ))}
+      </div>
+      {(changed || error) && (
+        <div className="ap-actions">
+          {error && <span className="field-error">{error}</span>}
+          {editable && changed && (
+            <>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => save(true)}>
+                {busy ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" className="btn btn-link btn-sm" disabled={busy} onClick={() => setAreas(start)}>
+                Undo
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </li>
   );
 }
 
-function PermissionTableRow(props) {
-  const cells = usePermissionRow(props);
+/** Make an existing account (one with no hospital) a platform admin – view only until areas are ticked. */
+function AddPlatformAdmin({ onSaved }) {
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const add = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      const found = await api(`/platform/users?search=${encodeURIComponent(email.trim())}&limit=5`);
+      const person = found.users.find((u) => u.email === email.trim().toLowerCase());
+      if (!person) throw new Error('No account with this email. Create it first under New account.');
+      await api(`/platform/users/${person.id}/platform-admin`, { method: 'PATCH', body: { isPlatformAdmin: true, permissions: [] } });
+      setEmail('');
+      onSaved(`${person.name} is now a platform admin (view only until you tick what they may change).`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <tr>
-      <td data-label="Platform admin" className="wrap">
-        {cells.name}
-      </td>
-      {AREAS.map((a) => (
-        <td key={a} data-label={PLATFORM_AREA_LABELS[a]} className="perm-col">
-          {cells[a]}
-        </td>
-      ))}
-      <td className="actions">{cells.actions}</td>
-    </tr>
+    <form className="card" onSubmit={add} noValidate>
+      <h2>Add a platform admin</h2>
+      <p className="hint">An existing account that works at no hospital. They start view only; tick what they may change above.</p>
+      <Alert type="error">{error}</Alert>
+      <div className="ap-add-row">
+        <Field label="Email of the account" id="pa-email">
+          <input id="pa-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} placeholder="name@example.com" />
+        </Field>
+        <button type="submit" className="btn btn-primary" disabled={busy || !email.trim()}>
+          {busy ? 'Adding…' : 'Make platform admin'}
+        </button>
+      </div>
+    </form>
   );
 }
 

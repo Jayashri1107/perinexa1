@@ -556,6 +556,7 @@ export function DoctorAccountDialog({ error: startError, onOtherLogin, onClose }
     try {
       await makeDoctorAccount(tenantId);
       await switchToDoctor();
+      onClose();
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.message);
@@ -622,6 +623,7 @@ export function SwitchBackDialog({ onClose }) {
     setError(null);
     try {
       await switchToSuperAdmin(password);
+      onClose();
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.fields?.password ?? err.message);
@@ -668,6 +670,7 @@ export function AdminSwitchDialog({ superAdminPassword = false, onClose }) {
     setError(null);
     try {
       await switchToAdmin(password);
+      onClose(); // the switch button stays (now "Switch to Doctor"), so the box closes itself
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.fields?.password ?? err.message);
