@@ -38,6 +38,8 @@ export function AuthProvider({ children }) {
   const [platform, setPlatform] = useState(null);
   // A super admin working in their own doctor account: "Switch back to super admin" is offered (21 Oct 2026)
   const [switchBack, setSwitchBack] = useState(false);
+  // 'admin' while a doctor who is also the hospital's admin works as the admin (22 Oct 2026); null: clinical work
+  const [roleMode, setRoleMode] = useState(null);
   const [activeTenantId, setActiveTenantId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeoutMinutes, setTimeoutMinutes] = useState(30);
@@ -52,6 +54,7 @@ export function AuthProvider({ children }) {
     setMemberships(data.memberships ?? []);
     setPlatform(data.platform ?? null);
     setSwitchBack(Boolean(data.switchBack));
+    setRoleMode(data.roleMode === 'admin' ? 'admin' : null);
     setActiveTenantId(data.activeTenantId ?? null);
     if (data.sessionTimeoutMinutes) setTimeoutMinutes(data.sessionTimeoutMinutes);
   }, []);
@@ -62,6 +65,7 @@ export function AuthProvider({ children }) {
     setMemberships([]);
     setPlatform(null);
     setSwitchBack(false);
+    setRoleMode(null);
     setActiveTenantId(null);
     setSecondsLeft(null);
     setTenantNotice(null);
@@ -287,6 +291,18 @@ export function AuthProvider({ children }) {
     channel.current?.postMessage({ type: 'account' });
   };
 
+  // Admin or clinical work, one at a time (22 Oct 2026): to admin with the person's password, back without.
+  const switchToAdmin = async (password) => {
+    const data = await api('/auth/switch-to-admin', { method: 'POST', body: { password } });
+    applySession(data);
+    channel.current?.postMessage({ type: 'account' });
+  };
+  const switchToClinical = async () => {
+    const data = await api('/auth/switch-to-clinical', { method: 'POST', body: {} });
+    applySession(data);
+    channel.current?.postMessage({ type: 'account' });
+  };
+
   const value = {
     user,
     setUser,
@@ -309,6 +325,9 @@ export function AuthProvider({ children }) {
     makeDoctorAccount,
     switchToDoctor,
     switchToSuperAdmin,
+    roleMode,
+    switchToAdmin,
+    switchToClinical,
     saveAppearance,
     tenantNotice,
     clearTenantNotice: () => setTenantNotice(null),

@@ -73,7 +73,16 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
 
   // A hospital's own admin changes its staff only as far as the super admin allowed (owner, 12 Oct 2026). Super admins
   // and platform admins have their own rights (platform permissions).
-  const RIGHT_WORDS = { resetPassword: 'reset passwords', access: "remove or restore someone's access", roles: 'change roles', details: 'edit names and emails' };
+  const RIGHT_WORDS = { addPeople: 'add people', resetPassword: 'reset passwords', access: "remove or restore someone's access", roles: 'change roles', details: 'edit names and emails' };
+
+  // Only the super admin (or a platform admin given "Hospital admins' access") makes someone a hospital admin, or takes
+  // it away (22 Oct 2026): a hospital's own admin – even with "Add people" or "Change roles" – never creates admins.
+  function assertNotAdminRole(req, ...roleLists) {
+    if (isPlatformUser(req.user)) return;
+    if (roleLists.some((list) => list?.includes('admin'))) {
+      throw new HttpError(403, 'Only the super admin makes someone a hospital admin, or takes it away.', 'ADMIN_ROLE_SUPER_ADMIN_ONLY');
+    }
+  }
   function assertAdminRight(req, right) {
     if (isPlatformUser(req.user)) return;
     if (!req.membership?.adminRights?.includes(right)) {
@@ -171,8 +180,12 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
   // temporary password. If they already have one (e.g. from another hospital), it is simply linked.
   router.post('/', async (req, res) => {
     const data = parse(addSchema, req.body);
-    if (!canEditPlatform(req.user, 'users')) {
-      throw new HttpError(403, 'New people are added by the super admin (or an admin given "User accounts"). Ask the super admin.', 'ADD_PEOPLE_RIGHT');
+    // The super admin, a platform admin given "User accounts", or (22 Oct 2026) a hospital admin given "Add people"
+    if (isPlatformUser(req.user)) {
+      if (!canEditPlatform(req.user, 'users')) throw new HttpError(403, 'New people are added by the super admin (or an admin given "User accounts"). Ask the super admin.', 'ADD_PEOPLE_RIGHT');
+    } else {
+      assertAdminRight(req, 'addPeople');
+      assertNotAdminRole(req, data.roles);
     }
     assertHospitalAdminRight(req, data.roles);
     let user = await User.findOne({ email: data.email });
@@ -224,6 +237,7 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     assertAdminRight(req, 'roles');
     const from = [...m.roles];
     assertHospitalAdminRight(req, from, newRoles);
+    if (from.includes('admin') !== newRoles.includes('admin')) assertNotAdminRole(req, ['admin']);
     if (from.join() === newRoles.join()) return res.json({ member: toMember(m) });
     if (from.includes('admin') && !newRoles.includes('admin') && m.isActive) await assertAnotherActiveAdmin(req, m);
 

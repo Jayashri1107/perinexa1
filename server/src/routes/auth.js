@@ -17,6 +17,7 @@ import {
   clearAuthCookie,
   COOKIE_NAME,
   findActiveMembership,
+  hasAdminSwitch,
   listActiveMemberships,
   pickTenant,
   requireAuth,
@@ -77,12 +78,14 @@ const INVALID_LOGIN = 'Invalid email or password.';
 
 // What the website needs to know about the logged-in person.
 // switchBack: a super admin working in their own doctor account – the website offers "Switch back to super admin".
-const sessionBody = (user, memberships, activeTenantId, platform = null, switchBack = false) => ({
+// roleMode: 'admin' while someone who is both a hospital admin and clinical staff works as the admin (22 Oct 2026).
+const sessionBody = (user, memberships, activeTenantId, platform = null, switchBack = false, roleMode = null) => ({
   user,
   memberships,
   activeTenantId,
   ...(platform ? { platform } : {}),
   ...(switchBack ? { switchBack: true } : {}),
+  ...(roleMode === 'admin' ? { roleMode: 'admin' } : {}),
   sessionTimeoutMinutes: config.SESSION_TIMEOUT_MINUTES,
 });
 
@@ -113,6 +116,21 @@ const openHospitalSchema = z.object({ tenantId: objectId.nullable() });
 // audit log, see a doctor; the super admin never becomes a hospital member.
 const ownDoctorAccount = (superAdmin, linked) =>
   Boolean(superAdmin?.isSuperAdmin && linked?.ownedBy && linked.ownedBy.equals(superAdmin._id) && superAdmin.linkedAccountId?.equals(linked._id));
+/**
+ * The super admin behind this doctor account, who may switch back up (22 Oct 2026) – or null. A switched session names
+ * them (via: still signed in, same session); otherwise it is the super admin who linked this account as their own
+ * doctor account – their own one, or one linked by email – so "Switch back to super admin" shows however the doctor
+ * account was reached (switched, signed in with its password, or directly). Going up always asks the super admin's
+ * password. withPassword: also read the password hash (to check it).
+ */
+async function superAdminBehind(user, via, { withPassword = false } = {}) {
+  if (!user || isPlatformUser(user)) return null;
+  const q = via ? User.findById(via.id) : User.findOne({ linkedAccountId: user._id, isSuperAdmin: true, isActive: true });
+  const sa = await (withPassword ? q.select('+passwordHash') : q);
+  if (!sa || !sa.isActive || !sa.isSuperAdmin || !sa.linkedAccountId?.equals(user._id)) return null;
+  if (via && sa.tokenVersion !== via.tv) return null; // the super admin signed out or changed password meanwhile
+  return sa;
+}
 /** The doctor account's email: the super admin's own with "+doctor" (name@x.in → name+doctor@x.in). */
 export const doctorEmailOf = (email) => {
   const at = email.lastIndexOf('@');
@@ -120,6 +138,7 @@ export const doctorEmailOf = (email) => {
 };
 const doctorAccountSchema = z.object({ tenantId: objectId }).strict();
 const switchUpSchema = z.object({ password: z.string().min(1, 'Type your super admin password.').max(128) }).strict();
+const switchAdminSchema = z.object({ password: z.string().min(1, 'Type your password.').max(128) }).strict();
 const superAdminOnly = (req) => {
   if (!req.user.isSuperAdmin || req.via) throw new HttpError(403, 'Only a super admin can do this.', 'FORBIDDEN');
   if (req.user.mustChangePassword) throw new HttpError(403, 'You must change your password before continuing.', 'PASSWORD_CHANGE_REQUIRED');
@@ -205,7 +224,7 @@ export function authRouter({ loginRateLimitMax }) {
     await user.save();
     await audit(req, 'LOGIN_SUCCESS', { actor: user, target: user, tenantId: activeTenantId });
     setAuthCookie(res, user, activeTenantId);
-    res.json(sessionBody(user, memberships, activeTenantId, await platformInfo(user, null)));
+    res.json(sessionBody(user, memberships, activeTenantId, await platformInfo(user, null), Boolean(await superAdminBehind(user, null))));
   });
 
   // Is there a super admin yet? (No login needed: the sign-in page asks before anyone exists.)
@@ -258,14 +277,14 @@ export function authRouter({ loginRateLimitMax }) {
   });
 
   router.get('/me', requireAuth, async (req, res) => {
-    const memberships = await listActiveMemberships(req.user);
+    const memberships = await listActiveMemberships(req.user, req.mode);
     let activeTenantId = req.tenantId ? String(req.tenantId) : null;
     if (!activeTenantId && memberships.length) {
       // Session has no (valid) hospital: pick one, e.g. after access to the previous one was removed.
       activeTenantId = pickTenant(memberships, req.user.lastTenantId);
-      setAuthCookie(res, req.user, activeTenantId, req.via);
+      setAuthCookie(res, req.user, activeTenantId, req.via, req.mode);
     }
-    res.json(sessionBody(req.user, memberships, activeTenantId, await platformInfo(req.user, req.tenant), Boolean(req.via)));
+    res.json(sessionBody(req.user, memberships, activeTenantId, await platformInfo(req.user, req.tenant), Boolean(await superAdminBehind(req.user, req.via)), req.mode));
   });
 
   // A super admin or platform admin opens a hospital's setup (Hospital admin pages only – never its patients), or
@@ -298,8 +317,8 @@ export function authRouter({ loginRateLimitMax }) {
     if (from !== tenantId) {
       await audit(req, 'TENANT_SWITCHED', { tenantId: found.tenant._id, details: { from, to: tenantId } });
     }
-    setAuthCookie(res, req.user, found.tenant._id, req.via);
-    res.json(sessionBody(req.user, await listActiveMemberships(req.user), tenantId, null, Boolean(req.via)));
+    setAuthCookie(res, req.user, found.tenant._id, req.via, req.mode);
+    res.json(sessionBody(req.user, await listActiveMemberships(req.user, req.mode), tenantId, null, Boolean(await superAdminBehind(req.user, req.via)), req.mode));
   });
 
   // A person's own professional details (qualification, medical registration number).
@@ -417,12 +436,11 @@ export function authRouter({ loginRateLimitMax }) {
   // "Switch back to super admin": asks the super admin's password (every hospital is behind it). Wrong tries count
   // towards the same lock as signing in with that email.
   router.post('/switch-to-super-admin', requireAuth, async (req, res) => {
-    if (!req.via) throw new HttpError(403, 'This is not a switched session. Please sign in as super admin.', 'NOT_SWITCHED');
     const { password } = parse(switchUpSchema, req.body);
     const now = req.now ?? new Date();
-    const me = await User.findById(req.via.id).select('+passwordHash');
-    const valid = me && me.isActive && me.isSuperAdmin && me.tokenVersion === req.via.tv && ownDoctorAccount(me, req.user);
-    if (!valid) throw new HttpError(403, 'Your super admin session has ended. Please sign out and sign in as super admin.', 'SWITCH_ENDED');
+    const me = await superAdminBehind(req.user, req.via, { withPassword: true });
+    if (!me && req.via) throw new HttpError(403, 'Your super admin session has ended. Please sign out and sign in as super admin.', 'SWITCH_ENDED');
+    if (!me) throw new HttpError(403, 'This account is not linked to a super admin. Please sign in as super admin.', 'NOT_SWITCHED');
     const left = await staffLockLeft(me.email, now);
     if (left) throw lockedError(left);
     if (!(await verifyPassword(password, me.passwordHash))) {
@@ -436,6 +454,45 @@ export function authRouter({ loginRateLimitMax }) {
     await audit(req, 'ACCOUNT_SWITCHED', { actor: me, target: req.user, tenantId: req.tenantId, details: { to: 'superadmin' } });
     setAuthCookie(res, me, null);
     res.json(sessionBody(me, [], null, await platformInfo(me, null)));
+  });
+
+  // ---------- Admin or clinical work (22 Oct 2026) ----------
+  // A doctor (or other clinical staff) whom the super admin also made this hospital's admin works in one at a time.
+  // "Switch to admin" asks their password (the admin pages: staff, settings, money); going back to clinical work does
+  // not. A super admin working in their own doctor account types the super admin password (that account has none).
+  router.post('/switch-to-admin', requireAuth, async (req, res) => {
+    if (!req.membership || req.membership.platform || !hasAdminSwitch(req.membershipRoles)) {
+      throw new HttpError(403, 'Only someone who is also an admin of this hospital can switch to admin.', 'NO_ADMIN_ROLE');
+    }
+    if (req.mode === 'admin') throw new HttpError(409, 'You are already working as the admin.', 'ALREADY_ADMIN');
+    if (req.user.mustChangePassword) throw new HttpError(403, 'You must change your password before continuing.', 'PASSWORD_CHANGE_REQUIRED');
+    const { password } = parse(switchAdminSchema, req.body);
+    const now = req.now ?? new Date();
+    const ownAccount = req.via && req.user.ownedBy && String(req.user.ownedBy) === String(req.via.id);
+    const checker = await User.findById(ownAccount ? req.via.id : req.user._id).select('+passwordHash');
+    if (!checker?.isActive) throw new HttpError(403, 'Your session has ended. Please sign in again.', 'SWITCH_ENDED');
+    const left = await staffLockLeft(checker.email, now);
+    if (left) throw lockedError(left);
+    if (!(await verifyPassword(password, checker.passwordHash))) {
+      const { lockedFor } = await staffFailed(checker.email, now);
+      await audit(req, 'LOGIN_FAILED', { actor: req.user, target: req.user, details: { email: checker.email, reason: 'wrong_password_switch_to_admin' } });
+      if (lockedFor) throw lockedError(lockedFor);
+      const message = ownAccount ? 'That is not your super admin password.' : 'That is not your password.';
+      throw Object.assign(new HttpError(400, message, 'VALIDATION'), { fields: { password: message } });
+    }
+    await staffSignedIn(checker.email);
+    await audit(req, 'ROLE_MODE_SWITCHED', { details: { to: 'admin' } });
+    setAuthCookie(res, req.user, req.tenantId, req.via, 'admin');
+    res.json(sessionBody(req.user, await listActiveMemberships(req.user, 'admin'), String(req.tenantId), null, Boolean(await superAdminBehind(req.user, req.via)), 'admin'));
+  });
+
+  // Back to clinical work (patients) – no password.
+  router.post('/switch-to-clinical', requireAuth, async (req, res) => {
+    if (req.mode !== 'admin') throw new HttpError(409, 'You are not working as the admin.', 'NOT_ADMIN_MODE');
+    await audit(req, 'ROLE_MODE_SWITCHED', { details: { to: 'clinical' } });
+    setAuthCookie(res, req.user, req.tenantId, req.via, null);
+    const memberships = await listActiveMemberships(req.user, null);
+    res.json(sessionBody(req.user, memberships, req.tenantId ? String(req.tenantId) : null, null, Boolean(await superAdminBehind(req.user, req.via)), null));
   });
 
   router.post('/change-password', requireAuth, async (req, res) => {
@@ -452,7 +509,7 @@ export function authRouter({ loginRateLimitMax }) {
     user.tokenVersion += 1; // signs out any other sessions
     await user.save();
     await audit(req, 'PASSWORD_CHANGED', { actor: user, target: user });
-    setAuthCookie(res, user, req.tenantId, req.via);
+    setAuthCookie(res, user, req.tenantId, req.via, req.mode);
     res.json({ user });
   });
 

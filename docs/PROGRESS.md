@@ -81,6 +81,23 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **Switch back to super admin, however the doctor account was reached (22 Oct 2026):** a doctor account a super admin
+  linked as their own – made with Work as a doctor, or an existing doctor login linked by email – now shows **Switch
+  back to super admin** whether it was reached by the switch, by signing in with its own password, or directly; going
+  up always asks the super admin password. A doctor no super admin linked never sees it. `superAdminBehind` in
+  `routes/auth.js`.
+- **Admin or clinical work, one at a time; Add people; Admin permissions (22 Oct 2026, developer):** a doctor (or other
+  clinical staff) whom the super admin also made a hospital admin now works as one or the other: they start in clinical
+  work (patients, no admin pages); **Switch to admin** asks their password and gives the admin pages only (no patient
+  records, like every hospital admin); **Switch to Doctor** goes back without a password. Both in the audit log
+  ("Switched between clinical work and admin"); the stored roles never change. A super admin in their own doctor
+  account types the super admin password. New hospital-admin permission **Add people**: such an admin adds staff (a
+  temporary password is shown) but never another admin – and "Change roles" no longer makes or removes admins either;
+  only the super admin does. The super admin gives the permissions on the new **Users & access → Admin permissions**
+  page (every hospital admin, a tick per permission). Changes the owner's decision of 12 Oct 2026 that only the super
+  admin adds people (now: or an admin they allow) – **owner to confirm**. Code: `middleware/auth.js` (workingRoles,
+  the session's `mode`), `routes/auth.js` (/switch-to-admin, /switch-to-clinical), `routes/members.js`,
+  `UserPermissionsPage.jsx` (AdminPermissionsPage), `MembersPanel.jsx`, `AppLayout.jsx`. Tests: `server/tests/admin-mode.test.js`.
 - **Export lists as Excel-ready CSV (21 Oct 2026, developer):** an **Export** button on Patients, Appointments, Beds, Lab,
   Scans and Referrals saves a list for the dates chosen (patients: all, or registered between two dates). Exports show
   exactly what the person may already see: **doctors, their own patients** – their appointments, and the stays, lab

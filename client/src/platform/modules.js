@@ -69,6 +69,7 @@ export const PLATFORM_MODULES = [
       { label: 'Super admins', to: '/platform/users/super-admins', end: true },
       { label: 'Platform admins', to: '/platform/users/platform-admins', end: true },
       { label: 'User permissions', to: '/platform/users/permissions', end: true },
+      { label: 'Admin permissions', to: '/platform/users/admin-permissions', end: true },
       { label: 'Hospital staff', to: '/platform/users/staff', end: true },
       { label: 'Pending first login', to: '/platform/users/pending', end: true },
       { label: 'New account', to: '/platform/users/new', end: true },

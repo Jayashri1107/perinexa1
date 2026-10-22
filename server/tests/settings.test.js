@@ -6,7 +6,7 @@ import { Membership } from '../src/models/Membership.js';
 import { Referral } from '../src/models/Referral.js';
 import { Tenant } from '../src/models/Tenant.js';
 import { User } from '../src/models/User.js';
-import { addMember, connectTestDb, createSuperAdmin, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb } from './helpers.js';
+import { PASSWORD, addMember, connectTestDb, createSuperAdmin, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb } from './helpers.js';
 
 const app = createApp();
 let home;
@@ -44,6 +44,9 @@ describe('hospital letterhead', () => {
     const admin = await createUser();
     await addMember(admin, home, ['admin', 'doctor']);
     const a = await loginAs(admin, { app });
+    // A doctor who is also the admin changes the letterhead as the admin (22 Oct 2026)
+    expect((await a.agent.put('/api/tenant/settings/letterhead').set('X-Tenant-Id', a.activeTenantId).send(LETTERHEAD)).status).toBe(403);
+    expect((await a.post('/api/auth/switch-to-admin').send({ password: PASSWORD })).status).toBe(200);
     const res = await a.agent.put('/api/tenant/settings/letterhead').set('X-Tenant-Id', a.activeTenantId).send(LETTERHEAD);
     expect(res.status).toBe(200);
     expect(res.body.letterhead).toMatchObject({ name: 'Home Maternity Hospital', email: 'info@example.com' });

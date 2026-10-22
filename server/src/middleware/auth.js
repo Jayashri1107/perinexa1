@@ -19,9 +19,17 @@ const cookieOptions = () => ({
 // The session ends after SESSION_TIMEOUT_MINUTES without any request.
 // `via` (21 Oct 2026): a super admin working in their own doctor account – { id, tv } of the super admin, so they can
 // switch back (with their password); kept as the session is renewed.
-export function setAuthCookie(res, user, tenantId = null, via = null) {
+// `mode` (22 Oct 2026): 'admin' while a person who is both a hospital admin and clinical staff works as the admin
+// (switched with their password); otherwise they work in their clinical roles. Kept as the session is renewed.
+export function setAuthCookie(res, user, tenantId = null, via = null, mode = null) {
   const maxAgeMs = config.SESSION_TIMEOUT_MINUTES * 60 * 1000;
-  const payload = { sub: user._id.toString(), tv: user.tokenVersion, tid: tenantId ? String(tenantId) : null, ...(via ? { via: String(via.id), vtv: via.tv } : {}) };
+  const payload = {
+    sub: user._id.toString(),
+    tv: user.tokenVersion,
+    tid: tenantId ? String(tenantId) : null,
+    ...(via ? { via: String(via.id), vtv: via.tv } : {}),
+    ...(mode === 'admin' ? { mode: 'admin' } : {}),
+  };
   const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: config.SESSION_TIMEOUT_MINUTES * 60 });
   res.cookie(COOKIE_NAME, token, { ...cookieOptions(), maxAge: maxAgeMs });
 }
@@ -43,6 +51,18 @@ const platformMembership = (user, tenant) => ({
   readOnly: !canEditPlatform(user, 'hospitalSetup'),
 });
 
+// ---------- Admin or clinical work: one at a time (22 Oct 2026) ----------
+// A person who is a hospital admin AND clinical staff (a doctor the super admin also made an admin) works in one of the
+// two at a time: their clinical roles (patients, no admin pages) or, after "Switch to admin" with their password, the
+// admin role only (admin pages, no patient records – like every hospital admin). Everyone else keeps all their roles.
+/** Both an admin and something else here: the switch applies. */
+export const hasAdminSwitch = (roles) => Array.isArray(roles) && roles.includes('admin') && roles.some((r) => r !== 'admin');
+/** The roles a person works with now (mode 'admin' or null). PURE. */
+export const workingRoles = (roles, mode) => {
+  if (!hasAdminSwitch(roles)) return roles;
+  return mode === 'admin' ? ['admin'] : roles.filter((r) => r !== 'admin');
+};
+
 // The person's active membership in a hospital, or null if they don't (or no longer) have access there.
 export async function findActiveMembership(user, tenantId) {
   if (!tenantId) return null;
@@ -57,8 +77,9 @@ export async function findActiveMembership(user, tenantId) {
   return membership && tenant ? { membership, tenant } : null;
 }
 
-// All hospitals the person can currently work in, sorted by name.
-export async function listActiveMemberships(user) {
+// All hospitals the person can currently work in, sorted by name – with the roles they work with now (mode), whether
+// they can switch between admin and clinical work there, and an admin's rights (what the super admin allowed).
+export async function listActiveMemberships(user, mode = null) {
   if (isPlatformUser(user)) return [];
   const memberships = await Membership.find({ userId: user._id, isActive: true }).lean();
   const tenants = await Tenant.find({ _id: { $in: memberships.map((m) => m.tenantId) }, isActive: true })
@@ -67,9 +88,20 @@ export async function listActiveMemberships(user) {
   return tenants.map((t) => ({
     tenantId: t._id.toString(),
     tenantName: t.name,
-    roles: memberships.find((m) => m.tenantId.equals(t._id)).roles,
+    ...placeView(memberships.find((m) => m.tenantId.equals(t._id)), mode),
     joinedAt: memberships.find((m) => m.tenantId.equals(t._id)).createdAt ?? null, // shown on My profile
   }));
+}
+
+/** One hospital's roles for the website: those worked with now, the switch, the clinical roles, an admin's rights. */
+function placeView(m, mode) {
+  const roles = workingRoles(m.roles, mode);
+  return {
+    roles,
+    adminSwitch: hasAdminSwitch(m.roles),
+    ...(hasAdminSwitch(m.roles) ? { clinicalRoles: m.roles.filter((r) => r !== 'admin') } : {}),
+    adminRights: roles.includes('admin') ? [...(m.adminRights ?? [])] : [],
+  };
 }
 
 // Picks the first preferred hospital the person still has access to, otherwise the first one.
@@ -102,6 +134,7 @@ export async function requireAuth(req, res, next) {
 
   req.user = user;
   req.via = payload.via ? { id: payload.via, tv: payload.vtv } : null; // a super admin in their own doctor account
+  req.mode = payload.mode === 'admin' ? 'admin' : null; // admin or clinical work (see workingRoles)
   req.tenantId = null;
   req.tenant = null;
   req.membership = null;
@@ -110,11 +143,16 @@ export async function requireAuth(req, res, next) {
     req.tenantId = found.tenant._id;
     req.tenant = found.tenant;
     req.membership = found.membership;
+    // Admin or clinical work: the roles of this request are those worked with now (the stored ones stay as they are)
+    req.membershipRoles = [...found.membership.roles];
+    if (!found.membership.platform && hasAdminSwitch(found.membership.roles)) {
+      req.membership = { ...found.membership.toObject(), roles: workingRoles(found.membership.roles, req.mode) };
+    }
   }
 
   // Sliding session: activity keeps you logged in. If access to the hospital was removed,
   // the renewed cookie no longer points at it.
-  setAuthCookie(res, user, req.tenantId, req.via);
+  setAuthCookie(res, user, req.tenantId, req.via, req.mode);
   next();
 }
 

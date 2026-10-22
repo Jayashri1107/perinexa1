@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, Stethoscope, UserCog } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, ShieldCheck, Stethoscope, UserCog } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
@@ -150,8 +150,8 @@ function HelpLink() {
 }
 
 // The profile circle beside "Log out": click it for the name, email and role, Change password and My settings.
-function ProfileMenu({ locked, onSwitch, onDoctorSetup }) {
-  const { user, activeMembership, platform, switchBack } = useAuth();
+function ProfileMenu({ locked, onSwitch, onDoctorSetup, onRoleSwitch }) {
+  const { user, activeMembership, platform, switchBack, roleMode } = useAuth();
   const [open, setOpen] = useState(false);
   const [changing, setChanging] = useState(false); // Change password, in a pop-up
   const box = useRef(null);
@@ -222,6 +222,18 @@ function ProfileMenu({ locked, onSwitch, onDoctorSetup }) {
                 <ArrowLeftRight aria-hidden="true" /> {switchLabel(switchBack)}
               </button>
             )}
+            {activeMembership?.adminSwitch && !locked && (
+              <button
+                type="button"
+                className="pm-link"
+                onClick={() => {
+                  setOpen(false);
+                  onRoleSwitch();
+                }}
+              >
+                <ShieldCheck aria-hidden="true" /> {roleSwitchLabel(roleMode, activeMembership)}
+              </button>
+            )}
             {user?.isSuperAdmin && !locked && (!platform?.linkedAccount || platform.linkedAccount.own) && (
               <button
                 type="button"
@@ -248,11 +260,24 @@ function ProfileMenu({ locked, onSwitch, onDoctorSetup }) {
  * white top bar with the hospital being worked in on the left and Help, the profile circle and Log out on the right.
  */
 export function AppLayout() {
-  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice, isPlatform, platform, openHospital, switchBack, switchToDoctor } = useAuth();
+  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice, isPlatform, platform, openHospital, switchBack, switchToDoctor, roleMode, switchToClinical } = useAuth();
   // Which switch dialog is open: 'down' (a doctor login linked by email – its password), 'up' (back to super admin – their
   // password), 'setup' (a super admin's own doctor account: choose the hospital); null: none
   const [switching, setSwitching] = useState(null);
   const [setupError, setSetupError] = useState(null);
+  const [roleError, setRoleError] = useState(null);
+  // Admin or clinical work (22 Oct 2026): to admin asks the password (a dialog), back to clinical work does not.
+  const startRoleSwitch = async () => {
+    setRoleError(null);
+    if (roleMode !== 'admin') return setSwitching('admin');
+    try {
+      await switchToClinical();
+      navigate('/', { replace: true });
+    } catch (err) {
+      setRoleError(err.message);
+    }
+    return undefined;
+  };
   // "Switch to your doctor account" / "Switch back to super admin" (21 Oct 2026): a super admin's OWN doctor account
   // is entered at once, without a password; going back up asks for the super admin password.
   const startSwitch = async () => {
@@ -375,6 +400,11 @@ export function AppLayout() {
           <div className="pf-topbar-actions">
             {/* One box for everything (Ctrl+K) – hospital staff (doctor ideas #1) */}
             {!isPlatform && !locked && <CommandBox key={activeTenantId} modules={modules} roles={activeMembership?.roles ?? []} />}
+            {activeMembership?.adminSwitch && !locked && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={startRoleSwitch} title={roleMode === 'admin' ? 'Back to your patients – no password needed' : 'Admin pages (staff, settings, money) – asks for your password; no patient records there'}>
+                <ShieldCheck aria-hidden="true" /> {roleSwitchLabel(roleMode, activeMembership)}
+              </button>
+            )}
             {(canSwitch(user, platform) || switchBack) && !locked && (
               <button type="button" className="btn btn-secondary btn-sm" onClick={startSwitch} title={switchTitle(platform, switchBack)}>
                 <ArrowLeftRight aria-hidden="true" /> {switchLabel(switchBack)}
@@ -387,7 +417,7 @@ export function AppLayout() {
             )}
             {!isPlatform && !locked && activeMembership && <NotificationBell key={`bell-${activeTenantId}`} />}
             {!locked && <HelpLink />}
-            <ProfileMenu locked={locked} onSwitch={startSwitch} onDoctorSetup={() => setSwitching('setup')} />
+            <ProfileMenu locked={locked} onSwitch={startSwitch} onDoctorSetup={() => setSwitching('setup')} onRoleSwitch={startRoleSwitch} />
             <button type="button" className="btn btn-sm pf-logout" onClick={() => logout('manual')}>
               <LogOut aria-hidden="true" /> Log out
             </button>
@@ -406,6 +436,13 @@ export function AppLayout() {
               </Alert>
             </div>
           )}
+          {roleError && (
+            <div className="pf-notice">
+              <Alert type="error" onClose={() => setRoleError(null)}>
+                {roleError}
+              </Alert>
+            </div>
+          )}
           {tenantNotice && (
             <div className="pf-notice">
               <Alert type="warning" onClose={clearTenantNotice}>
@@ -420,6 +457,7 @@ export function AppLayout() {
       <IdleWarning />
       {switching === 'down' && canSwitch(user, platform) && <SwitchAccountDialog email={platform?.linkedAccount?.email ?? null} onClose={() => setSwitching(null)} />}
       {switching === 'up' && switchBack && <SwitchBackDialog onClose={() => setSwitching(null)} />}
+      {switching === 'admin' && activeMembership?.adminSwitch && <AdminSwitchDialog superAdminPassword={switchBack} onClose={() => setSwitching(null)} />}
       {switching === 'setup' && user?.isSuperAdmin && (
         <DoctorAccountDialog error={setupError} onOtherLogin={platform?.linkedAccount ? null : () => setSwitching('down')} onClose={() => setSwitching(null)} />
       )}
@@ -434,6 +472,8 @@ export function AppLayout() {
 // Who sees "Switch to your doctor account": anyone with a linked doctor account, and every super admin – who gives the
 // doctor account's email the first time (owner, 13 Oct 2026).
 const canSwitch = (user, platform) => Boolean(platform?.linkedAccount || user?.isSuperAdmin);
+/** The admin / clinical switch's words: to admin, or back to the clinical roles (e.g. "Switch to Doctor"). */
+export const roleSwitchLabel = (roleMode, membership) => (roleMode === 'admin' ? `Switch to ${rolesLabel(membership?.clinicalRoles ?? []) || 'clinical work'}` : 'Switch to admin');
 export const switchLabel = (switchBack) => (switchBack ? 'Switch back to super admin' : 'Switch to your doctor account');
 export const switchTitle = (platform, switchBack) => {
   if (switchBack) return 'Back to the super admin pages – asks for your super admin password';
@@ -516,6 +556,7 @@ export function DoctorAccountDialog({ error: startError, onOtherLogin, onClose }
     try {
       await makeDoctorAccount(tenantId);
       await switchToDoctor();
+      onClose();
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.message);
@@ -582,6 +623,7 @@ export function SwitchBackDialog({ onClose }) {
     setError(null);
     try {
       await switchToSuperAdmin(password);
+      onClose();
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.fields?.password ?? err.message);
@@ -600,6 +642,53 @@ export function SwitchBackDialog({ onClose }) {
         <div className="row">
           <button type="submit" className="btn btn-primary" disabled={!password || busy}>
             <ArrowLeftRight aria-hidden="true" /> {busy ? 'Switching…' : 'Switch back'}
+          </button>
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/**
+ * "Switch to admin" (22 Oct 2026): a doctor whom the super admin also made the hospital's admin types their password;
+ * this browser then works as the admin – admin pages only, no patient records. A super admin in their own doctor
+ * account types the super admin password.
+ */
+export function AdminSwitchDialog({ superAdminPassword = false, onClose }) {
+  const { switchToAdmin } = useAuth();
+  const navigate = useNavigate();
+  const ref = useDialogFocus(onClose);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await switchToAdmin(password);
+      onClose(); // the switch button stays (now "Switch to Doctor"), so the box closes itself
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err.fields?.password ?? err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="admin-switch-title" onSubmit={submit} noValidate>
+        <h2 id="admin-switch-title">Switch to admin</h2>
+        <p>The admin pages: staff, settings, price list and reports. As the admin you see no patient records; switching back to your patients needs no password.</p>
+        <Alert type="error">{error}</Alert>
+        <Field label={superAdminPassword ? 'Super admin password' : 'Your password'} id="admin-switch-password">
+          <PasswordInput id="admin-switch-password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+        </Field>
+        <div className="row">
+          <button type="submit" className="btn btn-primary" disabled={!password || busy}>
+            <ShieldCheck aria-hidden="true" /> {busy ? 'Switching…' : 'Switch to admin'}
           </button>
           <button type="button" className="btn btn-link" onClick={onClose}>
             Cancel
