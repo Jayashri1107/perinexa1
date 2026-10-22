@@ -101,10 +101,11 @@ describe('listing members', () => {
 });
 
 describe('adding people', () => {
-  it("a hospital's own admin no longer adds people – the super admin does", async () => {
+  it("a hospital's own admin adds people only with the super admin's permission (Add people, 22 Oct 2026)", async () => {
     const res = await s.post('/api/tenant/members').send({ name: 'New Nurse', email: 'nurse.x@example.com', roles: ['nurse'] });
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('ADD_PEOPLE_RIGHT');
+    expect(res.body.error.code).toBe('NEEDS_PERMISSION');
+    expect(res.body.error.message).toMatch(/permission to add people/);
   });
 
   it('creates a new account with a temporary password', async () => {
@@ -161,12 +162,14 @@ describe('roles and status', () => {
     expect((await s.patch(`/api/tenant/members/${mine._id}/roles`).send({ roles: ['nurse'] })).status).toBe(400);
     expect((await s.patch(`/api/tenant/members/${mine._id}/status`).send({ isActive: false })).status).toBe(400);
 
-    // A second admin can remove the first; the survivor is then the last admin and is protected.
+    // Another admin never takes away an admin role (22 Oct 2026: only the super admin makes or removes admins)
     const second = await createUser();
     await addMember(second, home, 'admin', { adminRights: ['roles', 'access'] });
     const s2 = await loginAs(second, { app });
-    expect((await s2.patch(`/api/tenant/members/${mine._id}/roles`).send({ roles: ['doctor'] })).status).toBe(200);
-    expect(await Membership.countDocuments({ tenantId: home._id, roles: 'admin', isActive: true })).toBe(1);
+    const refused = await s2.patch(`/api/tenant/members/${mine._id}/roles`).send({ roles: ['doctor'] });
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.code).toBe('ADMIN_ROLE_SUPER_ADMIN_ONLY');
+    expect(await Membership.countDocuments({ tenantId: home._id, roles: 'admin', isActive: true })).toBe(2);
   });
 
   it('cannot touch memberships of another hospital (not found)', async () => {
@@ -209,24 +212,27 @@ describe('several roles per person', () => {
   });
 
 
-  it('a doctor who is also admin can manage staff', async () => {
+  it('a doctor who is also admin manages staff after switching to admin (22 Oct 2026)', async () => {
     const both = await createUser();
     await addMember(both, home, ['doctor', 'admin']);
     const b = await loginAs(both, { app });
-    expect(b.body.memberships[0].roles).toEqual(['admin', 'doctor']);
+    expect(b.body.memberships[0]).toMatchObject({ roles: ['doctor'], adminSwitch: true }); // starts in clinical work
+    expect((await b.get('/api/tenant/members')).status).toBe(403);
+    expect((await b.post('/api/auth/switch-to-admin').send({ password: PASSWORD })).status).toBe(200);
     expect((await b.get('/api/tenant/members')).status).toBe(200);
   });
 
-  it('keeps the last admin when roles change and records old and new roles', async () => {
-    const m = await Membership.findOne({ userId: admin._id });
+  it('records old and new roles; an admin never changes their own roles', async () => {
+    const doctor = await createUser();
+    const m = await addMember(doctor, home, 'doctor');
     const second = await createUser();
     await addMember(second, home, ['admin', 'doctor'], { adminRights: ['roles'] });
     const s2 = await loginAs(second, { app });
+    expect((await s2.post('/api/auth/switch-to-admin').send({ password: PASSWORD })).status).toBe(200);
     const res = await s2.patch(`/api/tenant/members/${m._id}/roles`).send({ roles: ['doctor', 'rmo'] });
     expect(res.body.member.roles).toEqual(['doctor', 'rmo']);
     const entry = await AuditLog.findOne({ action: 'MEMBER_ROLE_CHANGED' });
-    expect(entry.details).toEqual({ from: ['admin'], to: ['doctor', 'rmo'] });
-    // second is now the only admin and can't drop their own admin role
+    expect(entry.details).toEqual({ from: ['doctor'], to: ['doctor', 'rmo'] });
     const own = await Membership.findOne({ userId: second._id });
     expect((await s2.patch(`/api/tenant/members/${own._id}/roles`).send({ roles: ['doctor'] })).status).toBe(400);
   });
