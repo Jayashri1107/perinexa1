@@ -183,7 +183,7 @@ describe('"Switch to your doctor account"', () => {
     expect(await AuditLog.exists({ action: 'LINKED_ACCOUNT_CHANGED', target: owner._id })).toBeTruthy();
 
     const o = await loginAs(owner, { app });
-    expect(o.body.platform.linkedAccount).toEqual({ email: doctor.email, name: 'Dr. Alpha' });
+    expect(o.body.platform.linkedAccount).toEqual({ email: doctor.email, name: 'Dr. Alpha', own: false }); // not their own: its password is asked
     // Switching still needs the doctor's password: a wrong one is refused
     expect((await request(app).post('/api/auth/login').send({ email: doctor.email, password: 'not-the-password-1' })).status).toBe(401);
   });

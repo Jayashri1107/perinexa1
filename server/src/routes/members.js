@@ -6,6 +6,7 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
 import { generateTemporaryPassword, hashPassword } from '../utils/password.js';
+import { capitalizeName } from '../utils/personName.js';
 
 const role = z.enum(TENANT_ROLES, `Role must be one of: ${TENANT_ROLES.join(', ')}`);
 const roles = z
@@ -14,7 +15,7 @@ const roles = z
   .max(TENANT_ROLES.length)
   .transform((list) => TENANT_ROLES.filter((r) => list.includes(r)));
 const email = z.string().trim().toLowerCase().pipe(z.email('Please enter a valid email address').max(254));
-const name = z.string().trim().min(1, 'Name is required').max(100, 'Name is too long');
+const name = z.string().trim().min(1, 'Name is required').max(100, 'Name is too long').transform(capitalizeName);
 
 const listSchema = z.object({
   search: z.string().trim().max(100).default(''),
@@ -23,7 +24,7 @@ const listSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
-const addSchema = z.object({ email, name: z.string().trim().max(100).optional(), roles });
+const addSchema = z.object({ email, name: z.string().trim().max(100).transform(capitalizeName).optional(), roles });
 const editSchema = z
   .object({ name: name.optional(), email: email.optional() })
   .refine((d) => d.name !== undefined || d.email !== undefined, 'Nothing to update');

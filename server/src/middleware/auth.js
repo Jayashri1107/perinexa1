@@ -17,9 +17,11 @@ const cookieOptions = () => ({
 
 // Issues (or renews) the login cookie. It remembers who you are and which hospital you're working in.
 // The session ends after SESSION_TIMEOUT_MINUTES without any request.
-export function setAuthCookie(res, user, tenantId = null) {
+// `via` (21 Oct 2026): a super admin working in their own doctor account – { id, tv } of the super admin, so they can
+// switch back (with their password); kept as the session is renewed.
+export function setAuthCookie(res, user, tenantId = null, via = null) {
   const maxAgeMs = config.SESSION_TIMEOUT_MINUTES * 60 * 1000;
-  const payload = { sub: user._id.toString(), tv: user.tokenVersion, tid: tenantId ? String(tenantId) : null };
+  const payload = { sub: user._id.toString(), tv: user.tokenVersion, tid: tenantId ? String(tenantId) : null, ...(via ? { via: String(via.id), vtv: via.tv } : {}) };
   const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: config.SESSION_TIMEOUT_MINUTES * 60 });
   res.cookie(COOKIE_NAME, token, { ...cookieOptions(), maxAge: maxAgeMs });
 }
@@ -99,6 +101,7 @@ export async function requireAuth(req, res, next) {
   }
 
   req.user = user;
+  req.via = payload.via ? { id: payload.via, tv: payload.vtv } : null; // a super admin in their own doctor account
   req.tenantId = null;
   req.tenant = null;
   req.membership = null;
@@ -111,7 +114,7 @@ export async function requireAuth(req, res, next) {
 
   // Sliding session: activity keeps you logged in. If access to the hospital was removed,
   // the renewed cookie no longer points at it.
-  setAuthCookie(res, user, req.tenantId);
+  setAuthCookie(res, user, req.tenantId, req.via);
   next();
 }
 

@@ -81,6 +81,33 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **How to test:** see "How to test the modules brought from C:\Perinexa" below.
 
 ## Done
+- **Export lists as Excel-ready CSV (21 Oct 2026, developer):** an **Export** button on Patients, Appointments, Beds, Lab,
+  Scans and Referrals saves a list for the dates chosen (patients: all, or registered between two dates). Exports show
+  exactly what the person may already see: **doctors, their own patients** – their appointments, and the stays, lab
+  orders (tests and status, HIV under its neutral name, never results), scans (study and status, never the report) and
+  referrals (as consultant) of their own patients. A hospital admin with no clinical role sees no patient data, so has
+  no export (an admin who is also a doctor exports as that doctor); nor has a platform user who opened the hospital.
+  At most 366 days and 20,000 rows per file; cells that start like a formula get an apostrophe; every file saved is in
+  the audit log (what, the dates, how many rows – no names). The dialog warns that the file holds names and phone
+  numbers. Code: `server/src/routes/exports.js`, `server/src/utils/csv.js`, `client/src/components/ExportButton.jsx`.
+  Tests: `server/tests/exports.test.js`, `client/src/components/exportButton.test.jsx`.
+- **Names start with capitals (21 Oct 2026, developer):** people's names are saved with every word starting with a
+  capital letter – "jayashri sable" → "Jayashri Sable" – for patients, emergency contacts, staff (added, or their own
+  name on My profile), portal sign-ups, referral and appointment guests, referring doctors, pharmacy customers, doctors on
+  walk-in sales, pharmacists and witnesses. Only the first letter after a space changes ("McDonald", "A.K.", "Walk-in" keep
+  theirs; "of" stays small, so "Baby of Asha Patil"); Marathi and Hindi are left as they are; medicine, hospital and business names stay as typed. Names saved
+  before keep their spelling until changed. `server/src/utils/personName.js`, `server/tests/person-names.test.js`.
+- **A super admin who is also a doctor – one login (21 Oct 2026, developer):** profile menu → **Work as a doctor…** →
+  choose a hospital: the super admin's own doctor account is made once (their email with "+doctor", a random password
+  nobody knows – no second email or password to remember) and added to that hospital's staff as a doctor; this browser
+  switches to it. **Switch to your doctor account** then needs no password; **Switch back to super admin** asks for the
+  super admin password (wrong tries count towards the sign-in lock). Only a super admin's OWN account is entered without
+  a password – a doctor login linked by email still asks for its own password, so no one steps into another doctor's
+  account. Both switches are in the audit log ("Switched between super admin and own doctor account"). Changes the
+  owner's decision of 13 Oct 2026 (the doctor password asked every time) for the own account only – **owner to confirm**.
+  Code: `routes/auth.js` (/me/doctor-account, /switch-to-doctor, /switch-to-super-admin), `User.ownedBy`, the session
+  cookie's `via`; website `AppLayout.jsx` (DoctorAccountDialog, SwitchBackDialog). Tests:
+  `server/tests/superadmin-doctor-switch.test.js`, `client/src/components/switchAccount.test.jsx`.
 - **Ready for AWS (21 Oct 2026):** `docs/DEPLOY_AWS.md` – one EC2 server in Mumbai, Caddy for HTTPS, MongoDB Atlas,
   with `deploy/perinexa.service`, `deploy/Caddyfile` and `deploy/deploy.sh` (updates, builds, restarts, and goes back
   to the version before if the health check fails). CI on GitHub (`.github/workflows/ci.yml`): every test and the

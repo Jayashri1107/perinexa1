@@ -374,7 +374,7 @@ describe('risk level in the app', () => {
       const names = async (who, doctor) => (await s[who].get(`/api/patients?risk=review&doctor=${doctor}`)).body.patients.map((p) => p.fullName).sort();
       expect(await names('drA', 'mine_or_unassigned')).toEqual(['Own', 'Unassigned']);
       expect(await names('drA', 'me')).toEqual(['Own']);
-      expect(await names('drB', 'mine_or_unassigned')).toEqual(['Of drB', 'Unassigned']);
+      expect(await names('drB', 'mine_or_unassigned')).toEqual(['Of DrB', 'Unassigned']); // names start every word with a capital (21 Oct 2026)
     });
 
     it('cannot be used by reception, lab or admin-only accounts to find out who is high risk', async () => {

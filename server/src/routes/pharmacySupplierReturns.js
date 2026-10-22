@@ -6,6 +6,7 @@ import { CONTROLLED, SUPPLIER_RETURN_REASONS, SUPPLIER_RETURN_REASON_LABELS } fr
 import { cancelSupplierReturn, createSupplierReturn, returnTotals, returnableBatches, supplierReturnViews } from '../pharmacy/supplierReturnsService.js';
 import { audit } from '../utils/audit.js';
 import { objectId, parse } from '../utils/validate.js';
+import { capitalizeName } from '../utils/personName.js';
 
 // Stock returned to a supplier: /api/pharmacy/supplier-returns (mounted inside routes/pharmacy.js, after its
 // "pharmacists and the hospital admin only" check). The pharmacist sends stock back (it leaves the stock, like a
@@ -20,7 +21,7 @@ const returnSchema = z
     supplierId: objectId,
     reason: z.enum(SUPPLIER_RETURN_REASONS, 'Choose the reason.'),
     note: z.string().trim().max(200).default(''),
-    witness: z.string().trim().max(150).default(''),
+    witness: z.string().trim().max(150).transform(capitalizeName).default(''),
     lines: z.array(z.object({ batchId: objectId, qty }).strict()).min(1, 'Choose at least one batch.').max(100),
   })
   .strict();
@@ -65,7 +66,7 @@ pharmacySupplierReturnsRouter.get('/:id', async (req, res) => {
 // A return entered by mistake: kept, marked cancelled, and its stock put back on its batches (the pharmacist).
 pharmacySupplierReturnsRouter.post('/:id/cancel', async (req, res) => {
   desk(req);
-  const body = parse(z.object({ reason: reason('Cancelling a return'), witness: z.string().trim().max(150).default('') }).strict(), req.body);
+  const body = parse(z.object({ reason: reason('Cancelling a return'), witness: z.string().trim().max(150).transform(capitalizeName).default('') }).strict(), req.body);
   const ret = await cancelSupplierReturn(req, await loadReturn(req), body);
   const t = returnTotals(ret);
   await audit(req, 'PHARMACY_SUPPLIER_RETURN_CANCELLED', { details: { returnId: String(ret._id), number: ret.number, supplierId: String(ret.supplierId), lines: ret.lines.length, qty: t.qty, amountPaise: t.amountPaise, controlled: ret.lines.some((l) => CONTROLLED.includes(l.schedule)) } });

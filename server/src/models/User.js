@@ -22,6 +22,10 @@ const userSchema = new mongoose.Schema(
     // A super admin's or platform admin's own hospital account (the same person as a doctor, say): "Switch to your
     // doctor account" signs them out and opens the sign-in with that account's email – its password is still asked.
     linkedAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // A super admin's own doctor account, made by them for themselves (21 Oct 2026): one login – they switch into it
+    // without a password and back with theirs (routes/auth.js). Its email is theirs with "+doctor"; its password is
+    // random, so it is reached only through that switch (or a password a hospital admin resets).
+    ownedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // My profile (owner, 13 Oct 2026): the person's own work phone, staff number and photo – staff details, never a
     // patient's. The photo is a small JPEG/PNG/WebP made in the browser (a data URL, at most about 90 KB).
     phone: { type: String, trim: true, maxlength: 30, default: '' },
@@ -65,6 +69,7 @@ userSchema.set('toJSON', {
     delete ret.tokenVersion;
     delete ret.lastTenantId;
     if (ret.linkedAccountId) ret.linkedAccountId = ret.linkedAccountId.toString();
+    if (ret.ownedBy) ret.ownedBy = ret.ownedBy.toString();
     return ret;
   },
 });

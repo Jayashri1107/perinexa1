@@ -22,6 +22,7 @@ import { Visit } from '../models/Visit.js';
 import { designFor } from '../visits/designs.js';
 import { portalAudit, portalSession } from './portal.js';
 import { letterheadFor } from './settings.js';
+import { capitalizeName } from '../utils/personName.js';
 
 // Her own records in the patient portal (docs/PATIENT_SIGNUP_PLAN.md, approved 16 Oct 2026). The rule: she sees
 // online only what she has already been given on paper, and only once it is final – the same rules as sharing
@@ -283,7 +284,7 @@ const contactSchema = z
     city: z.string().trim().max(60),
     state: z.string().trim().max(60),
     pinCode: z.string().trim().regex(/^(\d{6})?$/, 'A PIN code has 6 digits.'),
-    emergencyContact: z.object({ name: z.string().trim().max(100), relation: z.string().trim().max(50), phone: z.string().trim().max(30).regex(/^[0-9+()\-\s]*$/, 'A phone number has only digits.') }).strict(),
+    emergencyContact: z.object({ name: z.string().trim().max(100).transform(capitalizeName), relation: z.string().trim().max(50), phone: z.string().trim().max(30).regex(/^[0-9+()\-\s]*$/, 'A phone number has only digits.') }).strict(),
   })
   .strict();
 
@@ -304,7 +305,7 @@ portalRecordsRouter.put('/profile/contact', async (req, res) => {
 
 const requestSchema = z
   .object({
-    fullName: z.string().trim().min(2, 'Please write your full name.').max(150).optional(),
+    fullName: z.string().trim().min(2, 'Please write your full name.').max(150).transform(capitalizeName).optional(),
     ageYears: z.coerce.number().int('Age is a whole number.').min(10, 'Please check the age.').max(120, 'Please check the age.').optional(),
     phone: z.string().trim().max(20).optional(),
     email: z.string().trim().toLowerCase().email('Please check the email.').max(254).optional(),

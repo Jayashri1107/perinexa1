@@ -7,6 +7,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
 import { BookDialog, CancelDialog, FeeDialog, MoveDialog, NewAppointmentDialog } from './AppointmentDialogs.jsx';
 import { NEEDS_TIME_LOOK, STATUS_LOOK, VISIT_TYPE_LABELS, addDaysIso, dayLabel, dayList, firstName, slotGroups, timeLabel, whenLabel, whoLabel } from './appointmentFormat.js';
+import { ExportButton } from '../../components/ExportButton.jsx';
 
 // Appointment booking (docs/APPOINTMENTS_PLAN.md): one doctor's day in 10-minute slots. Reception and doctors click
 // a free time to book (a registered patient, or a new one with name and phone), and move or cancel bookings. RMOs
@@ -184,11 +185,14 @@ export function AppointmentsPage() {
         subtitle={[doctor?.name, date ? dayLabel(date) : null].filter(Boolean).join(' · ')}
         tabs={appointmentTabs(info?.canBook)}
         actions={
-          info?.canBook && doctors.length > 0 ? (
-            <button type="button" className="btn btn-primary" onClick={() => setChoosing(true)}>
-              <CalendarPlus aria-hidden="true" /> New appointment
-            </button>
-          ) : null
+          <>
+            <ExportButton what="appointments" />
+            {info?.canBook && doctors.length > 0 ? (
+              <button type="button" className="btn btn-primary" onClick={() => setChoosing(true)}>
+                <CalendarPlus aria-hidden="true" /> New appointment
+              </button>
+            ) : null}
+          </>
         }
       />
       <div className="pf-content appt-page">

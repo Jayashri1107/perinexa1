@@ -36,6 +36,8 @@ export function AuthProvider({ children }) {
   const [memberships, setMemberships] = useState([]);
   // Super admins and platform admins: role, rights, the hospital whose setup is open, the linked hospital account
   const [platform, setPlatform] = useState(null);
+  // A super admin working in their own doctor account: "Switch back to super admin" is offered (21 Oct 2026)
+  const [switchBack, setSwitchBack] = useState(false);
   const [activeTenantId, setActiveTenantId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeoutMinutes, setTimeoutMinutes] = useState(30);
@@ -49,6 +51,7 @@ export function AuthProvider({ children }) {
     setUser(data.user);
     setMemberships(data.memberships ?? []);
     setPlatform(data.platform ?? null);
+    setSwitchBack(Boolean(data.switchBack));
     setActiveTenantId(data.activeTenantId ?? null);
     if (data.sessionTimeoutMinutes) setTimeoutMinutes(data.sessionTimeoutMinutes);
   }, []);
@@ -58,6 +61,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     setMemberships([]);
     setPlatform(null);
+    setSwitchBack(false);
     setActiveTenantId(null);
     setSecondsLeft(null);
     setTenantNotice(null);
@@ -82,6 +86,7 @@ export function AuthProvider({ children }) {
     channel.current.onmessage = async (e) => {
       if (e.data?.type === 'logout') endSession(e.data.reason);
       if (e.data?.type === 'appearance') refresh(); // changed on My settings → Appearance in another tab
+      if (e.data?.type === 'account') refresh(); // switched between super admin and their doctor account in another tab
       if (e.data?.type === 'tenant') {
         const data = await refresh();
         const name = data?.memberships.find((m) => m.tenantId === data.activeTenantId)?.tenantName;
@@ -262,6 +267,26 @@ export function AuthProvider({ children }) {
     await logout('switch');
   };
 
+  // A super admin who is also a doctor – one login (21 Oct 2026). Their own doctor account: made for a hospital here,
+  // entered without a password; going back up asks for the super admin password. Every tab follows.
+  const makeDoctorAccount = async (tenantId) => {
+    const data = await api('/auth/me/doctor-account', { method: 'POST', body: { tenantId } });
+    setPlatform(data.platform ?? null);
+    return data;
+  };
+  const switchToDoctor = async () => {
+    const data = await api('/auth/switch-to-doctor', { method: 'POST', body: {} });
+    applySession(data);
+    setTenantNotice(null);
+    channel.current?.postMessage({ type: 'account' });
+  };
+  const switchToSuperAdmin = async (password) => {
+    const data = await api('/auth/switch-to-super-admin', { method: 'POST', body: { password } });
+    applySession(data);
+    setTenantNotice(null);
+    channel.current?.postMessage({ type: 'account' });
+  };
+
   const value = {
     user,
     setUser,
@@ -280,6 +305,10 @@ export function AuthProvider({ children }) {
     isPlatform: Boolean(user?.isSuperAdmin || user?.isPlatformAdmin),
     openHospital,
     switchToLinkedAccount,
+    switchBack,
+    makeDoctorAccount,
+    switchToDoctor,
+    switchToSuperAdmin,
     saveAppearance,
     tenantNotice,
     clearTenantNotice: () => setTenantNotice(null),

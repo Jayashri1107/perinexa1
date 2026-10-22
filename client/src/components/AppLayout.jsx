@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, UserCog } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, Stethoscope, UserCog } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { useFetch } from '../hooks/useFetch.js';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
 import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
 import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
@@ -149,8 +150,8 @@ function HelpLink() {
 }
 
 // The profile circle beside "Log out": click it for the name, email and role, Change password and My settings.
-function ProfileMenu({ locked, onSwitch }) {
-  const { user, activeMembership, platform } = useAuth();
+function ProfileMenu({ locked, onSwitch, onDoctorSetup }) {
+  const { user, activeMembership, platform, switchBack } = useAuth();
   const [open, setOpen] = useState(false);
   const [changing, setChanging] = useState(false); // Change password, in a pop-up
   const box = useRef(null);
@@ -209,7 +210,7 @@ function ProfileMenu({ locked, onSwitch }) {
                 <UserCog aria-hidden="true" /> My settings
               </Link>
             )}
-            {canSwitch(user, platform) && (
+            {(canSwitch(user, platform) || switchBack) && (
               <button
                 type="button"
                 className="pm-link"
@@ -218,7 +219,19 @@ function ProfileMenu({ locked, onSwitch }) {
                   onSwitch();
                 }}
               >
-                <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
+                <ArrowLeftRight aria-hidden="true" /> {switchLabel(switchBack)}
+              </button>
+            )}
+            {user?.isSuperAdmin && !locked && (!platform?.linkedAccount || platform.linkedAccount.own) && (
+              <button
+                type="button"
+                className="pm-link"
+                onClick={() => {
+                  setOpen(false);
+                  onDoctorSetup();
+                }}
+              >
+                <Stethoscope aria-hidden="true" /> Work as a doctor…
               </button>
             )}
           </div>
@@ -235,8 +248,28 @@ function ProfileMenu({ locked, onSwitch }) {
  * white top bar with the hospital being worked in on the left and Help, the profile circle and Log out on the right.
  */
 export function AppLayout() {
-  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice, isPlatform, platform, openHospital } = useAuth();
-  const [switching, setSwitching] = useState(false); // Switch to your doctor account (asks for its password)
+  const { user, logout, activeMembership, activeTenantId, tenantNotice, clearTenantNotice, isPlatform, platform, openHospital, switchBack, switchToDoctor } = useAuth();
+  // Which switch dialog is open: 'down' (a doctor login linked by email – its password), 'up' (back to super admin – their
+  // password), 'setup' (a super admin's own doctor account: choose the hospital); null: none
+  const [switching, setSwitching] = useState(null);
+  const [setupError, setSetupError] = useState(null);
+  // "Switch to your doctor account" / "Switch back to super admin" (21 Oct 2026): a super admin's OWN doctor account
+  // is entered at once, without a password; going back up asks for the super admin password.
+  const startSwitch = async () => {
+    setSetupError(null);
+    if (switchBack) return setSwitching('up');
+    if (platform?.linkedAccount?.own) {
+      try {
+        await switchToDoctor();
+        navigate('/', { replace: true });
+      } catch (err) {
+        setSetupError(err.message);
+        setSwitching('setup');
+      }
+      return undefined;
+    }
+    return setSwitching(user?.isSuperAdmin && !platform?.linkedAccount ? 'setup' : 'down');
+  };
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(readCollapsed);
@@ -342,14 +375,9 @@ export function AppLayout() {
           <div className="pf-topbar-actions">
             {/* One box for everything (Ctrl+K) – hospital staff (doctor ideas #1) */}
             {!isPlatform && !locked && <CommandBox key={activeTenantId} modules={modules} roles={activeMembership?.roles ?? []} />}
-            {canSwitch(user, platform) && !locked && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => setSwitching(true)}
-                title={platform?.linkedAccount ? `Switch to ${platform.linkedAccount.email} – asks for its password` : 'Sign in to your doctor account with its own password'}
-              >
-                <ArrowLeftRight aria-hidden="true" /> Switch to your doctor account
+            {(canSwitch(user, platform) || switchBack) && !locked && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={startSwitch} title={switchTitle(platform, switchBack)}>
+                <ArrowLeftRight aria-hidden="true" /> {switchLabel(switchBack)}
               </button>
             )}
             {viewOnly && (
@@ -359,7 +387,7 @@ export function AppLayout() {
             )}
             {!isPlatform && !locked && activeMembership && <NotificationBell key={`bell-${activeTenantId}`} />}
             {!locked && <HelpLink />}
-            <ProfileMenu locked={locked} onSwitch={() => setSwitching(true)} />
+            <ProfileMenu locked={locked} onSwitch={startSwitch} onDoctorSetup={() => setSwitching('setup')} />
             <button type="button" className="btn btn-sm pf-logout" onClick={() => logout('manual')}>
               <LogOut aria-hidden="true" /> Log out
             </button>
@@ -390,7 +418,11 @@ export function AppLayout() {
         </main>
       </div>
       <IdleWarning />
-      {switching && canSwitch(user, platform) && <SwitchAccountDialog email={platform?.linkedAccount?.email ?? null} onClose={() => setSwitching(false)} />}
+      {switching === 'down' && canSwitch(user, platform) && <SwitchAccountDialog email={platform?.linkedAccount?.email ?? null} onClose={() => setSwitching(null)} />}
+      {switching === 'up' && switchBack && <SwitchBackDialog onClose={() => setSwitching(null)} />}
+      {switching === 'setup' && user?.isSuperAdmin && (
+        <DoctorAccountDialog error={setupError} onOtherLogin={platform?.linkedAccount ? null : () => setSwitching('down')} onClose={() => setSwitching(null)} />
+      )}
     </div>
   );
 }
@@ -402,6 +434,12 @@ export function AppLayout() {
 // Who sees "Switch to your doctor account": anyone with a linked doctor account, and every super admin – who gives the
 // doctor account's email the first time (owner, 13 Oct 2026).
 const canSwitch = (user, platform) => Boolean(platform?.linkedAccount || user?.isSuperAdmin);
+export const switchLabel = (switchBack) => (switchBack ? 'Switch back to super admin' : 'Switch to your doctor account');
+export const switchTitle = (platform, switchBack) => {
+  if (switchBack) return 'Back to the super admin pages – asks for your super admin password';
+  if (platform?.linkedAccount?.own) return 'Work as a doctor – no password needed (your own doctor account)';
+  return platform?.linkedAccount ? `Switch to ${platform.linkedAccount.email} – asks for its password` : 'Set up your doctor account';
+};
 
 function SwitchAccountDialog({ email, onClose }) {
   const { switchToLinkedAccount } = useAuth();
@@ -446,6 +484,122 @@ function SwitchAccountDialog({ email, onClose }) {
         <div className="row">
           <button type="submit" className="btn btn-primary" disabled={!password || (!email && !firstEmail.trim()) || busy}>
             <ArrowLeftRight aria-hidden="true" /> {busy ? 'Switching…' : 'Switch'}
+          </button>
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/**
+ * "Work as a doctor" (21 Oct 2026): a super admin who is also a doctor gets their own doctor account – one login, no
+ * second email or password (it is their email with "+doctor") – tagged as a doctor in the hospital chosen here, and
+ * this browser switches to it. Again later for another hospital.
+ */
+export function DoctorAccountDialog({ error: startError, onOtherLogin, onClose }) {
+  const { platform, makeDoctorAccount, switchToDoctor } = useAuth();
+  const navigate = useNavigate();
+  const ref = useDialogFocus(onClose);
+  const hospitals = useFetch('/platform/tenants', { limit: 100, sort: 'name' });
+  const active = (hospitals.data?.tenants ?? []).filter((t) => t.isActive);
+  const [tenantId, setTenantId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(startError);
+  const own = platform?.linkedAccount?.own ? platform.linkedAccount : null;
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await makeDoctorAccount(tenantId);
+      await switchToDoctor();
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="doctor-setup-title" onSubmit={submit} noValidate>
+        <h2 id="doctor-setup-title">Work as a doctor</h2>
+        <p>
+          {own ? (
+            <>
+              Your doctor account is <strong>{own.email}</strong>. Choose a hospital to work in as a doctor – it is added to that hospital's staff.
+            </>
+          ) : (
+            <>Uses your own login: no second email or password. Your doctor account is made once and added to the chosen hospital's staff as a doctor.</>
+          )}{' '}
+          Switching back to super admin asks for your password.
+        </p>
+        <Alert type="error">{error}</Alert>
+        <Field label="Hospital" id="doctor-setup-hospital">
+          <select id="doctor-setup-hospital" value={tenantId} onChange={(e) => setTenantId(e.target.value)} disabled={hospitals.loading}>
+            <option value="">{hospitals.loading ? 'Loading hospitals…' : 'Choose a hospital'}</option>
+            {active.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="row">
+          <button type="submit" className="btn btn-primary" disabled={!tenantId || busy}>
+            <Stethoscope aria-hidden="true" /> {busy ? 'Switching…' : 'Work as a doctor here'}
+          </button>
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+        {onOtherLogin && (
+          <p className="muted">
+            Already have a separate doctor login with its own email?{' '}
+            <button type="button" className="btn btn-link" onClick={onOtherLogin}>
+              Use that login
+            </button>
+          </p>
+        )}
+      </form>
+    </div>
+  );
+}
+
+/** "Switch back to super admin": a super admin working in their own doctor account types their super admin password. */
+export function SwitchBackDialog({ onClose }) {
+  const { switchToSuperAdmin } = useAuth();
+  const navigate = useNavigate();
+  const ref = useDialogFocus(onClose);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await switchToSuperAdmin(password);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err.fields?.password ?? err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="switch-back-title" onSubmit={submit} noValidate>
+        <h2 id="switch-back-title">Switch back to super admin</h2>
+        <p>Type your super admin password. It is asked because the super admin pages reach every hospital.</p>
+        <Alert type="error">{error}</Alert>
+        <Field label="Super admin password" id="switch-back-password">
+          <PasswordInput id="switch-back-password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+        </Field>
+        <div className="row">
+          <button type="submit" className="btn btn-primary" disabled={!password || busy}>
+            <ArrowLeftRight aria-hidden="true" /> {busy ? 'Switching…' : 'Switch back'}
           </button>
           <button type="button" className="btn btn-link" onClick={onClose}>
             Cancel

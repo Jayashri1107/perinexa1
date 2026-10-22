@@ -7,8 +7,9 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, idParams, objectId, pageParams, paged, parse, sortParam, toMongoSort } from '../utils/validate.js';
 import { generateTemporaryPassword, hashPassword } from '../utils/password.js';
+import { capitalizeName } from '../utils/personName.js';
 
-const name = z.string().trim().min(1, 'Name is required').max(100, 'Name is too long');
+const name = z.string().trim().min(1, 'Name is required').max(100, 'Name is too long').transform(capitalizeName);
 const email = z.string().trim().toLowerCase().pipe(z.email('Please enter a valid email address').max(254));
 
 const listSchema = z.object({
