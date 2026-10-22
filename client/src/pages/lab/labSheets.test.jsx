@@ -64,7 +64,7 @@ describe('the lab report on the lab’s letterhead paper', () => {
     expect(render({ together: true }).match(/class="lab-sheet"/g)).toHaveLength(1);
   });
 
-  it('remembers the paper; the lab’s letterhead paper is the default', () => {
-    expect(readLabPaper()).toEqual({ kind: 'letterhead', top: 45, bottom: 30 });
+  it('remembers the paper; report only, no blank space, is the default', () => {
+    expect(readLabPaper()).toEqual({ kind: 'letterhead', top: 12, bottom: 12 }); // no blank space by default
   });
 });

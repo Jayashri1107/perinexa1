@@ -530,10 +530,12 @@ export function LabReportSheets({ order, catalogue, withConfidential, signer = n
   );
 }
 
-// The paper the lab prints on, remembered in this browser: 'letterhead' (the lab's own pre-printed paper – the
-// report only, the top and bottom left blank) or 'plain' (plain A4 – Perinexa prints the hospital's letterhead).
-const PAPER_KEY = 'perinexa:labPaper';
-const DEFAULT_PAPER = { kind: 'letterhead', top: 45, bottom: 30 };
+// How the lab report prints, remembered in this browser: 'letterhead' (the report only – no letterhead, header or
+// footer) or 'plain' (plain A4 – Perinexa prints the hospital's letterhead). No blank space at the top or bottom by
+// default (developer, 22 Oct 2026: the normal 12 mm print edge); more can be set for paper with a printed header.
+// (A new key: an earlier browser may remember the first default of 45 / 30 mm.)
+const PAPER_KEY = 'perinexa:labPaper:v2';
+const DEFAULT_PAPER = { kind: 'letterhead', top: 12, bottom: 12 };
 export function readLabPaper() {
   try {
     const saved = JSON.parse(localStorage.getItem(PAPER_KEY) ?? 'null');
@@ -561,7 +563,7 @@ export function LabReportPrint({ order, catalogue, signer = null, onClose }) {
   const hasConfidential = order.tests.some(isConfidential);
   const [withConfidential, setWithConfidential] = useState(false);
   const [eachOnOwnPage, setEachOnOwnPage] = useState(false);
-  const [together, setTogether] = useState(false);
+  const [together, setTogether] = useState(true); // all tests on one page (developer, 22 Oct 2026)
   const record = () => api(`/lab/orders/${order.id}/report-printed`, { method: 'POST', body: { confidential: hasConfidential && withConfidential } });
   // On WhatsApp in one click once a doctor reviewed it, with her agreement – never with the confidential test
   const offer = useFetch(order.status === 'reviewed' || (order.source === 'walk_in' && order.status === 'reported') ? `/lab/orders/${order.id}/whatsapp` : null);
@@ -584,12 +586,12 @@ export function LabReportPrint({ order, catalogue, signer = null, onClose }) {
       pageNumbers={!onLetterhead} // on the lab's letterhead paper: no page numbers (22 Oct 2026)
       page={onLetterhead ? { size: 'A4', margin: `${paper.top}mm 12mm ${paper.bottom}mm` } : undefined}
       title="Lab report – print preview"
-      hint={onLetterhead ? 'Put the lab’s letterhead paper in the printer: only the report prints, in the space between its header and footer.' : 'Check it, then print on plain A4 paper.'}
+      hint={onLetterhead ? 'Only the report prints – no letterhead, header, footer or page numbers. In Chrome’s print window: scale 100 %, headers and footers off.' : 'Check it, then print on plain A4 paper.'}
       controls={
         <>
           <div className="lab-paper" role="radiogroup" aria-label="Paper">
             <label className="check">
-              <input type="radio" name="lab-paper" checked={onLetterhead} onChange={() => setPaper({ ...paper, kind: 'letterhead' })} /> The lab&rsquo;s letterhead paper – print the report only
+              <input type="radio" name="lab-paper" checked={onLetterhead} onChange={() => setPaper({ ...paper, kind: 'letterhead' })} /> Report only – no letterhead, header or footer
             </label>
             <label className="check">
               <input type="radio" name="lab-paper" checked={!onLetterhead} onChange={() => setPaper({ ...paper, kind: 'plain' })} /> Plain A4 – with the hospital&rsquo;s letterhead
@@ -598,17 +600,17 @@ export function LabReportPrint({ order, catalogue, signer = null, onClose }) {
           {onLetterhead && (
             <div className="lab-paper-space">
               <label>
-                Space for the printed header (mm) <input type="number" min={5} max={120} value={paper.top} onChange={mm('top')} />
+                Space at the top (mm) <input type="number" min={5} max={120} value={paper.top} onChange={mm('top')} />
               </label>
               <label>
-                Space for the printed footer (mm) <input type="number" min={5} max={120} value={paper.bottom} onChange={mm('bottom')} />
+                Space at the bottom (mm) <input type="number" min={5} max={120} value={paper.bottom} onChange={mm('bottom')} />
               </label>
             </div>
           )}
           {order.tests.length > 1 &&
             (onLetterhead ? (
               <label className="check">
-                <input type="checkbox" checked={together} onChange={(e) => setTogether(e.target.checked)} /> All tests on one sheet (otherwise each test on its own page)
+                <input type="checkbox" checked={!together} onChange={(e) => setTogether(!e.target.checked)} /> Each test on its own page
               </label>
             ) : (
               <label className="check">
