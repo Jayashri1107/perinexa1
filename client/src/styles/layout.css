@@ -611,6 +611,13 @@
 .lab-reg-bill .bill-sums .bill-balance th, .lab-reg-bill .bill-sums .bill-balance td { border-bottom: 0; border-top: 2px solid var(--ink); }
 .lab-reg-bill .fieldset { margin: 0; }
 .lab-reg-save { width: 100%; justify-content: center; }
+/* Referral: who referred her and the prescription side by side, the note below; the bill's small fields in pairs,
+   the amounts right-aligned (the general table rule would put them left) */
+.lab-reg-ref { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lab-reg-ref > .field:nth-child(n + 3), .lab-reg-bill .form-grid > .field:nth-child(n + 3) { grid-column: 1 / -1; }
+.lab-reg-bill .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-3); }
+.lab-reg-bill .fieldset legend { font-weight: 600; }
+.lab-reg-bill .bill-sums td { text-align: right; }
 
 .lab-res-list { display: grid; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
 .lab-res-card { padding: var(--space-4); }
@@ -661,6 +668,7 @@
   .lab-track-word { margin: 0; }
   .lab-reg-pick { grid-template-columns: minmax(0, 1fr) auto auto; }
   .lab-reg-pick .muted { display: none; }
+  .lab-reg-ref { grid-template-columns: 1fr; }
 }
 
 /* ---------- Lab QC, stock, tests and referrers as tables (owner, 19 Oct 2026) ---------- */

@@ -38,7 +38,8 @@ export function LabRegistrationPage() {
   const [sample, setSample] = useState('now'); // now | later | home
   const [homeForm, setHomeForm] = useState(EMPTY_HOME);
   const [disc, setDisc] = useState({ mode: 'amount', value: '', reason: '' });
-  const [pay, setPay] = useState({ take: true, mode: 'cash', amount: '', reference: '' });
+  // No payment mode chosen in advance: the desk picks how she paid (developer, 22 Oct 2026)
+  const [pay, setPay] = useState({ take: true, mode: '', amount: '', reference: '' });
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
   const [busy, setBusy] = useState(false);
@@ -63,6 +64,11 @@ export function LabRegistrationPage() {
   };
 
   const save = async () => {
+    if (pay.take && amount > 0 && !pay.mode) {
+      setFields({ 'payment.mode': 'Choose how she paid.' });
+      document.getElementById('reg-pay-mode')?.focus();
+      return;
+    }
     setBusy(true);
     setError(null);
     setFields({});
@@ -155,7 +161,7 @@ export function LabRegistrationPage() {
 
             <section className="card lab-reg-card" aria-labelledby="reg-ref">
               <h2 id="reg-ref">2. Referral</h2>
-              <div className="form-grid">
+              <div className="form-grid lab-reg-ref">
                 <Field label="Referred by" id="reg-referrer" error={fields.referrerId} hint="Add doctors and centres under Lab → Referrers.">
                   <select id="reg-referrer" value={ref.referrerId} onChange={(e) => setRef({ ...ref, referrerId: e.target.value })}>
                     <option value="">No referrer (self)</option>
@@ -169,7 +175,14 @@ export function LabRegistrationPage() {
                       ))}
                   </select>
                 </Field>
-                <Field label={ref.referrerId ? 'Prescription (optional)' : 'Prescription'} id="reg-rx" error={fields.prescription} hint='e.g. "Prescription of 19 Oct" or "Self – no prescription".'>
+                {/* Without a referring doctor the lab still records on whose prescription it works (owner, 17 Oct 2026) */}
+                <Field
+                  label={ref.referrerId ? 'Prescription (optional)' : 'Prescription'}
+                  id="reg-rx"
+                  error={fields.prescription}
+                  keepHint={!ref.referrerId}
+                  hint={ref.referrerId ? 'e.g. "Prescription of 19 Oct".' : 'Needed when no doctor is chosen above: whose prescription it is and its date, or "Self – no prescription" and what she asked for.'}
+                >
                   <input id="reg-rx" maxLength={200} value={ref.prescription} onChange={(e) => setRef({ ...ref, prescription: e.target.value })} />
                 </Field>
                 <Field label="Note for the lab (optional)" id="reg-note">
@@ -313,8 +326,11 @@ export function LabRegistrationPage() {
               </label>
               {pay.take && (
                 <div className="form-grid">
-                  <Field label="Paid by" id="reg-pay-mode">
+                  <Field label="Paid by" id="reg-pay-mode" error={fields['payment.mode']}>
                     <select id="reg-pay-mode" value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })}>
+                      <option value="" disabled>
+                        Choose…
+                      </option>
                       <option value="cash">Cash</option>
                       <option value="upi">UPI</option>
                       <option value="card">Card</option>
@@ -323,7 +339,7 @@ export function LabRegistrationPage() {
                   <Field label="Amount (₹)" id="reg-pay-amount" error={fields['payment.amountPaise']} hint={`Empty = ${rupees(net)}.`}>
                     <input id="reg-pay-amount" inputMode="decimal" className="tabular" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} />
                   </Field>
-                  {pay.mode !== 'cash' && (
+                  {(pay.mode === 'upi' || pay.mode === 'card') && (
                     <Field label="UPI or card reference (optional)" id="reg-pay-ref">
                       <input id="reg-pay-ref" maxLength={80} value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} />
                     </Field>
