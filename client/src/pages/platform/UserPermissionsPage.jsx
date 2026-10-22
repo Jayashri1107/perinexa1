@@ -226,149 +226,148 @@ const ADMIN_RIGHT_HELP = {
   roles: "Change someone's roles there – never making or removing an admin",
   details: 'Correct a name or an email',
 };
+const ADMIN_RIGHTS = Object.keys(ADMIN_RIGHT_LABELS);
 const ROLE_WORDS = { doctor: 'Doctor', rmo: 'RMO', nurse: 'Nurse', receptionist: 'Reception', lab: 'Lab', pharmacist: 'Pharmacist', billing: 'Billing', referral_desk: 'Referral desk' };
 
 /**
- * Admin permissions (22 Oct 2026): every hospital admin in one table, a tick per permission – the super admin (or a
- * platform admin given "Hospital admins' access") ticks; platform admins without it can look. An admin who is also
- * clinical staff (a doctor, say) works as one or the other and switches to admin with their password.
+ * Admin permissions (22 Oct 2026): what each hospital's admin may do to its staff. One card per hospital, its admins
+ * inside; each admin's permissions are tick chips that wrap (no table to scroll sideways) and Save appears once
+ * something changed. The super admin (or a platform admin given "Hospital admins' access") changes them; other
+ * platform admins can look. An admin who is also clinical staff works as one or the other and switches to admin with
+ * their password.
  */
 export function AdminPermissionsPage() {
   const { platform } = useAuth();
   const editable = platform?.role === 'superadmin' || canEditArea(platform, 'hospitalAdmins');
+  const { data, error, loading, reload } = useFetch('/platform/users/hospital-admins');
   const [flash, setFlash] = useState(null);
+  const hospitals = groupByHospital(data?.admins ?? []);
+  const saved = (message) => {
+    setFlash(message);
+    reload();
+  };
   return (
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Users & access', to: '/platform/users' }, { label: 'Admin permissions' }]}
         title="Admin permissions"
-        subtitle="What each hospital's admin may do to its staff. Without a tick they see the staff and are told to ask you."
+        subtitle="Choose what each hospital's admin may do to its staff. Without a tick they see the staff and are told to ask you."
         tabs={platformTabs('users', platform)}
       />
-      <div className="pf-content">
+      <div className="pf-content ap-page">
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
-        {!editable && <Alert type="info">Only a super admin (or an admin given Hospital admins' access) changes these. You can look.</Alert>}
-        <section className="card">
-          <h2>What each permission allows</h2>
+        <Alert type="error">{error}</Alert>
+        {!editable && <Alert type="info">Only a super admin (or an admin given Hospital admins&rsquo; access) changes these. You can look.</Alert>}
+        <details className="card ap-help">
+          <summary>What each permission allows</summary>
           <dl className="details">
-            {Object.keys(ADMIN_RIGHT_LABELS).map((r) => (
+            {ADMIN_RIGHTS.map((r) => (
               <div key={r}>
                 <dt>{ADMIN_RIGHT_LABELS[r]}</dt>
                 <dd>{ADMIN_RIGHT_HELP[r]}</dd>
               </div>
             ))}
           </dl>
-          <p className="hint">A doctor you also made an admin works as a doctor or as the admin, one at a time, and switches to admin with their password. As the admin they see no patient records.</p>
-        </section>
-        <HospitalAdminRights editable={editable} onSaved={setFlash} />
+          <p className="hint">
+            To make a doctor an admin, open the hospital&rsquo;s Staff page and tick Admin as well as Doctor. They then work as one or the other: Switch to admin asks their
+            password and shows no patient records; Switch to Doctor goes back.
+          </p>
+        </details>
+        {loading && !data && <p className="hint">Loading the hospital admins…</p>}
+        {data && hospitals.length === 0 && (
+          <section className="card">
+            <p>No hospital admins yet. Make someone an admin on a hospital&rsquo;s Staff page (Hospitals → the hospital → Staff).</p>
+          </section>
+        )}
+        {hospitals.map((h) => (
+          <section key={h.tenantId} className="card ap-hospital" aria-labelledby={`ap-${h.tenantId}`}>
+            <div className="ap-hospital-head">
+              <h2 id={`ap-${h.tenantId}`}>{h.tenantName}</h2>
+              <Link to={`/platform/hospitals/${h.tenantId}`} className="btn btn-link btn-sm">
+                Staff and setup
+              </Link>
+            </div>
+            <ul className="ap-admins">
+              {h.admins.map((a) => (
+                <AdminPermissionRow key={`${a.memberId}:${a.adminRights.join()}`} admin={a} editable={editable} onSaved={saved} />
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
     </>
   );
 }
-const ADMIN_RIGHTS = Object.keys(ADMIN_RIGHT_LABELS);
 
-function HospitalAdminRights({ editable, onSaved }) {
-  const { data, error, loading, reload } = useFetch('/platform/users/hospital-admins');
-  return (
-    <section className="dt-card">
-      <div className="card-head-plain">
-        <h2>Hospital admins' rights</h2>
-        <p className="hint">What each hospital's admin may do to its staff. Without a tick, they see the staff but are told they need your permission.</p>
-      </div>
-      <Alert type="error">{error}</Alert>
-      <div className="dt-wrap" aria-busy={loading}>
-        <table className="dt perm-table">
-          <caption className="sr-only">Hospital admins and their rights over the staff</caption>
-          <thead>
-            <tr>
-              <th scope="col">Hospital admin</th>
-              <th scope="col">Hospital</th>
-              {ADMIN_RIGHTS.map((r) => (
-                <th key={r} scope="col" className="perm-col">
-                  {ADMIN_RIGHT_LABELS[r]}
-                </th>
-              ))}
-              <th scope="col">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data?.admins ?? []).map((a) => (
-              <AdminRightsRow
-                key={`${a.memberId}:${a.adminRights.join()}`}
-                admin={a}
-                editable={editable}
-                onSaved={(m) => {
-                  onSaved(m);
-                  reload();
-                }}
-              />
-            ))}
-            {data && data.admins.length === 0 && (
-              <tr>
-                <td colSpan={ADMIN_RIGHTS.length + 3} className="dt-empty">
-                  No hospital admins yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
+/** The admins, by hospital (A to Z), each hospital's admins A to Z. PURE. */
+export function groupByHospital(admins) {
+  const byId = new Map();
+  for (const a of admins) {
+    if (!byId.has(a.tenantId)) byId.set(a.tenantId, { tenantId: a.tenantId, tenantName: a.tenantName, admins: [] });
+    byId.get(a.tenantId).admins.push(a);
+  }
+  return [...byId.values()].sort((x, y) => x.tenantName.localeCompare(y.tenantName)).map((h) => ({ ...h, admins: [...h.admins].sort((x, y) => x.user.name.localeCompare(y.user.name)) }));
 }
 
-function AdminRightsRow({ admin, editable, onSaved }) {
+/** One admin: who they are, their permissions as tick chips, Save when something changed. */
+function AdminPermissionRow({ admin, editable, onSaved }) {
   const [rights, setRights] = useState(admin.adminRights);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const changed = [...rights].sort().join() !== [...admin.adminRights].sort().join();
+  const clinical = admin.roles.filter((r) => r !== 'admin');
+  const toggle = (r) => setRights((list) => (list.includes(r) ? list.filter((x) => x !== r) : ADMIN_RIGHTS.filter((x) => x === r || list.includes(x))));
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
       await api(`/platform/tenants/${admin.tenantId}/members/${admin.memberId}/admin-rights`, { method: 'PATCH', body: { rights } });
-      onSaved(`Rights of ${admin.user.name} at ${admin.tenantName} saved.`);
+      onSaved(`Permissions of ${admin.user.name} at ${admin.tenantName} saved.`);
     } catch (err) {
       setError(err.message);
-    } finally {
       setBusy(false);
     }
   };
   return (
-    <tr>
-      <td data-label="Hospital admin" className="wrap">
-        <strong>
+    <li className="ap-admin">
+      <div className="ap-who">
+        <div className="ap-name">
           <Link to={`/platform/users/${admin.user.id}`}>{admin.user.name}</Link>
-        </strong>
+          {clinical.length > 0 && (
+            <span className="pill" title="Works as one or the other; switches to admin with their password">
+              Also {clinical.map((r) => ROLE_WORDS[r] ?? r).join(', ')}
+            </span>
+          )}
+        </div>
         <div className="cell-sub">{admin.user.email}</div>
-        {admin.roles.some((r) => r !== 'admin') && (
-          <div className="cell-sub">Also {admin.roles.filter((r) => r !== 'admin').map((r) => ROLE_WORDS[r] ?? r).join(', ')} – switches to admin with their password</div>
-        )}
-        {error && <span className="field-error">{error}</span>}
-      </td>
-      <td data-label="Hospital">{admin.tenantName}</td>
-      {ADMIN_RIGHTS.map((r) => (
-        <td key={r} data-label={ADMIN_RIGHT_LABELS[r]} className="perm-col">
-          <input
-            type="checkbox"
-            aria-label={`${admin.user.name}, ${admin.tenantName}: ${ADMIN_RIGHT_LABELS[r]}`}
-            checked={rights.includes(r)}
-            disabled={!editable || busy}
-            onChange={() => setRights((list) => (list.includes(r) ? list.filter((x) => x !== r) : [...list, r]))}
-          />
-        </td>
-      ))}
-      <td className="actions">
-        {editable && (
-          <button type="button" className="btn btn-secondary btn-sm" disabled={busy || !changed} onClick={save}>
-            Save
-          </button>
-        )}
-      </td>
-    </tr>
+      </div>
+      <div className="role-picker ap-rights" role="group" aria-label={`Permissions of ${admin.user.name} at ${admin.tenantName}`}>
+        {ADMIN_RIGHTS.map((r) => (
+          <label key={r} className={`role-option ${rights.includes(r) ? 'checked' : ''}`} title={ADMIN_RIGHT_HELP[r]}>
+            <input type="checkbox" checked={rights.includes(r)} disabled={!editable || busy} onChange={() => toggle(r)} />
+            <span>
+              <strong>{ADMIN_RIGHT_LABELS[r]}</strong>
+            </span>
+          </label>
+        ))}
+      </div>
+      {(changed || error) && (
+        <div className="ap-actions">
+          {error && <span className="field-error">{error}</span>}
+          {editable && changed && (
+            <>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={save}>
+                {busy ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" className="btn btn-link btn-sm" disabled={busy} onClick={() => setRights(admin.adminRights)}>
+                Undo
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </li>
   );
 }
