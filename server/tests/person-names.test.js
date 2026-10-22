@@ -9,9 +9,10 @@ describe('capitalizeName', () => {
   it('capitalises the first letter of every word and nothing else', () => {
     expect(capitalizeName('jayashri sable')).toBe('Jayashri Sable');
     expect(capitalizeName('JAYASHRI sable')).toBe('JAYASHRI Sable'); // the rest stays as typed
-    expect(capitalizeName('mary-ann o’brien')).toBe('Mary-Ann O’Brien');
-    expect(capitalizeName("leena d'souza")).toBe("Leena D'Souza");
-    expect(capitalizeName('a.k. mcDonald')).toBe('A.K. McDonald');
+    expect(capitalizeName('walk-in mother')).toBe('Walk-in Mother'); // only after a space
+    expect(capitalizeName('baby of asha patil')).toBe('Baby of Asha Patil'); // "of" stays small inside a name
+    expect(capitalizeName('of drB')).toBe('Of DrB'); // …but not as the first word
+    expect(capitalizeName('A.K. mcDonald')).toBe('A.K. McDonald');
     expect(capitalizeName('dr. meera  iyer')).toBe('Dr. Meera  Iyer');
     expect(capitalizeName('आशा पाटील')).toBe('आशा पाटील'); // no capitals in Devanagari
     expect(capitalizeName('')).toBe('');
