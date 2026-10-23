@@ -156,6 +156,18 @@ export function installSpeech(Recognition, lang) {
   return Promise.resolve(pending).then((ok) => (ok === true ? 'ready' : 'failed'), failed);
 }
 
+// Start recording on a website Chrome hasn't set speech up for yet (it asks once per website, even when the model is
+// already on this computer): installSpeech's answer, or 'slow' if it takes longer than `ms` (a download – the caller
+// waits for it instead of starting the recording much later by itself).
+// → Promise<'ready'|'failed'|'needs-click'|'slow'>
+export function setupWithin(installing, ms, timers = globalThis) {
+  let timer;
+  const slow = new Promise((done) => {
+    timer = timers.setTimeout(() => done('slow'), ms);
+  });
+  return Promise.race([installing, slow]).finally(() => timers.clearTimeout(timer));
+}
+
 // The words Chrome should listen out for ([{ text, boost }]). One bad phrase (e.g. an odd learned word) is skipped,
 // never the whole list; boosts are kept within Chrome's 0–10.
 export function buildPhrases(Phrase, list) {
