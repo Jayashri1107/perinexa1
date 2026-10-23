@@ -20,6 +20,13 @@ Aadhaar-sized sample codes (about 150 squares across), blurred like a webcam pic
 per square (the QR about half the height of a Full-HD picture); jsQR about 4 sharp ones. Laptop webcams that cannot
 focus closer than ~30 cm may still fail – then a USB QR scanner, a phone camera or a close photo.
 
+**Real cards (23 Oct 2026).** On the live site most real cards failed while the demo card read. Now: the Secure QR is
+unpacked in pieces and what came out before a problem is kept (Chrome's unpacker refused the whole QR for extra or
+damaged bytes after the packed data, where zlib-based readers stop quietly); the start of the fields is found by the
+date of birth and gender, so a version with more fields before the name reads; the short `<QPDB … />` XML of some
+e-Aadhaar/mAadhaar copies is read; spaces and line breaks in the number are ignored; photos are also tried with
+ZXing's other black-and-white methods and smaller. Tests rebuild each case with fake details (`aadhaarQr.test.js`).
+
 **Not done yet – for the developer.**
 - The UIDAI digital signature in the Secure QR is **not checked** (it needs UIDAI's public certificate). A made-up QR
   would fill the form with its own words, so staff still compare with the card. The screen says so.
