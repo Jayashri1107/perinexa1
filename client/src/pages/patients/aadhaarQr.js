@@ -26,18 +26,64 @@ export function decimalToBytes(text) {
   return out;
 }
 
+// Unpacked in small pieces, keeping what came out before any problem (23 Oct 2026, live: real cards failed where the
+// demo card read). Chrome's unpacker refuses the WHOLE QR when anything is wrong after the packed data – extra bytes
+// at the end, a damaged check sum, a QR read with its last part wrong – while other Aadhaar readers (zlib) simply stop
+// there. The text fields come first, so they are almost always whole.
+const PIECE = 256;
 async function gunzip(bytes) {
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const ds = new DecompressionStream('gzip');
+  const writer = ds.writable.getWriter();
+  const reader = ds.readable.getReader();
+  writer.closed.catch(() => {});
+  reader.closed.catch(() => {});
+  const out = [];
+  const reading = (async () => {
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        out.push(value);
+      }
+    } catch {
+      // damaged or extra bytes further on: what came out so far stays
+    }
+  })();
+  try {
+    for (let i = 0; i < bytes.length; i += PIECE) await writer.write(bytes.subarray(i, i + PIECE));
+    await writer.close();
+  } catch {
+    // as above
+  }
+  await reading;
+  const all = new Uint8Array(out.reduce((n, c) => n + c.length, 0));
+  let at = 0;
+  for (const c of out) {
+    all.set(c, at);
+    at += c.length;
+  }
+  if (!all.length) throw new Error('not packed');
+  return all;
 }
 
-// The text fields at the start (ISO-8859-1), stopping before the photo
+// One field's text: UTF-8 where it is valid UTF-8, otherwise ISO-8859-1 (UIDAI's own)
+const utf8 = typeof TextDecoder === 'undefined' ? null : new TextDecoder('utf-8', { fatal: true });
+function fieldText(part) {
+  try {
+    if (utf8) return utf8.decode(part);
+  } catch {
+    // not UTF-8
+  }
+  return Array.from(part, (b) => String.fromCharCode(b)).join('');
+}
+
+// The text fields at the start, stopping before the photo
 function textFields(bytes, count) {
   const fields = [];
   let start = 0;
   for (let i = 0; i < bytes.length && fields.length < count; i += 1) {
     if (bytes[i] !== SEP) continue;
-    fields.push(Array.from(bytes.subarray(start, i), (b) => String.fromCharCode(b)).join(''));
+    fields.push(fieldText(bytes.subarray(start, i)));
     start = i + 1;
   }
   return fields;
@@ -95,11 +141,45 @@ function fromParts(p, today) {
   };
 }
 
+const xmlAttr = (text) => (name) => {
+  const m = new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, 'i').exec(text) ?? new RegExp(`\\s${name}\\s*=\\s*'([^']*)'`, 'i').exec(text);
+  return m ? m[1].replace(/&amp;/g, '&').replace(/&apos;/g, "'").replace(/&quot;/g, '"') : '';
+};
+
+const STATES = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi', 'NCT of Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Orissa', 'Puducherry', 'Pondicherry',
+  'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'Uttaranchal', 'West Bengal',
+];
+const isState = (s) => STATES.some((x) => x.toLowerCase() === s.replace(/&/g, 'and').replace(/\s+/g, ' ').trim().toLowerCase());
+
+// The short XML QR of some e-Aadhaar and mAadhaar copies (2017–2018): <QPDB u="xxxxxxxx1234" n="…" g="F" d="DD-MM-YYYY"
+// a="C/O …, house, street, …, city, district, state, PIN" …/>. The address is one text: split at its commas.
+function parseShortXml(text, today) {
+  const attr = xmlAttr(text);
+  const uid = attr('u').replace(/\D/g, '');
+  let parts = attr('a').split(',').map(clean).filter(Boolean);
+  let pc = '';
+  parts = parts.flatMap((p) => {
+    const pin = /(?:^|\D)(\d{6})$/.exec(p.replace(/\s/g, ''));
+    if (!pin) return [p];
+    pc = pin[1];
+    const rest = clean(p.replace(/\d[\d\s]{5,}$/, '').replace(/[-–]\s*$/, ''));
+    return rest ? [rest] : [];
+  });
+  const co = parts.find((p) => /^(c\/o|w\/o|d\/o|s\/o|care of|wife of|daughter of|son of)\b/i.test(p)) ?? '';
+  parts = parts.filter((p) => p !== co);
+  const si = parts.findLastIndex(isState);
+  const state = si >= 0 ? parts[si] : '';
+  if (si >= 0) parts.splice(si, 1);
+  const city = parts.length > 1 ? parts.pop() : '';
+  const dob = attr('d');
+  return fromParts({ name: attr('n'), dob, yob: /^\d{4}$/.test(dob) ? dob : '', co, house: parts.join(', '), vtc: city, state, pc, last4: uid.length >= 4 ? uid.slice(-4) : '' }, today);
+}
+
 function parseXml(text, today) {
-  const attr = (name) => {
-    const m = new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, 'i').exec(text) ?? new RegExp(`\\s${name}\\s*=\\s*'([^']*)'`, 'i').exec(text);
-    return m ? m[1].replace(/&amp;/g, '&').replace(/&apos;/g, "'").replace(/&quot;/g, '"') : '';
-  };
+  const attr = xmlAttr(text);
   const uid = attr('uid').replace(/\D/g, '');
   return fromParts(
     {
@@ -111,12 +191,17 @@ function parseXml(text, today) {
   );
 }
 
+const DOB = /^(?:\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{4})$/;
+const GENDER = /^(?:M|F|T|MALE|FEMALE|TRANSGENDER)$/i;
+
 async function parseSecure(text, today) {
-  const fields = textFields(await gunzip(decimalToBytes(text)), 18);
-  const v2 = /^V\d$/.test(fields[0] ?? '');
-  const f = v2 ? fields.slice(1) : fields;
+  const fields = textFields(await gunzip(decimalToBytes(text)), 26);
   // f: 0 indicator, 1 reference id, 2 name, 3 dob, 4 gender, 5 care of, 6 district, 7 landmark, 8 house, 9 location,
   //    10 PIN, 11 post office, 12 state, 13 street, 14 sub-district, 15 village/town/city
+  // The start is found by the date of birth followed by the gender, so a version with more (or fewer) fields before
+  // the name still reads ("V2" today; 23 Oct 2026). Otherwise UIDAI's own order: a "V<n>" first, or not.
+  const dobAt = fields.findIndex((x, i) => i >= 3 && i <= 8 && DOB.test(clean(x)) && GENDER.test(clean(fields[i + 1])));
+  const f = dobAt >= 0 ? fields.slice(dobAt - 3) : /^V\d+$/.test(fields[0] ?? '') ? fields.slice(1) : fields;
   if (f.length < 16) throw new Error('short');
   return fromParts(
     { name: f[2], dob: f[3], co: f[5], dist: f[6], lm: f[7], house: f[8], loc: f[9], pc: f[10], po: f[11], state: f[12], street: f[13], subdist: f[14], vtc: f[15], last4: f[1].slice(0, 4) },
@@ -129,11 +214,17 @@ async function parseSecure(text, today) {
  * contactRelation } (text, '' when missing). Throws Error('NOT_AADHAAR') for any other QR.
  */
 export async function parseAadhaarQr(text, today = new Date()) {
-  const t = String(text ?? '').trim();
+  const t = String(text ?? '').replace(/^﻿/, '').trim();
   try {
-    if (/<PrintLetterBarcodeData/i.test(t)) return parseXml(t, today);
-    if (/^\d{100,}$/.test(t)) {
-      const out = await parseSecure(t, today);
+    if (/<PrintLetterBarcodeData\b/i.test(t)) return parseXml(t, today);
+    if (/<QPD[AB]\b/i.test(t)) {
+      const out = parseShortXml(t, today);
+      if (out.fullName) return out;
+    }
+    // The Secure QR's number; a scanner or copy may add spaces or line breaks
+    const digits = /^[\d\s]+$/.test(t) ? t.replace(/\s/g, '') : t;
+    if (/^\d{100,}$/.test(digits)) {
+      const out = await parseSecure(digits, today);
       if (out.fullName) return out;
     }
   } catch {
@@ -261,8 +352,19 @@ export async function readQrFrom(source, w, h, { quick = false, deep = false, fr
     return jsQR(d.data, d.width, d.height, { inversionAttempts: 'dontInvert' })?.data ?? null;
   }
   // A photo: every way, the surest first
-  for (const [area, scale, max] of [[whole, 1, 4000], [middle, 2, 3600], [whole, 0.5, 4000]]) {
-    const text = await zxingRead(pixels(source, area, scale, c, max));
+  // (23 Oct 2026: photos of real cards – shade, glare, a printed copy – also with the other ways of telling black from
+  // white, and the card smaller in a large photo)
+  const photoTries = [
+    [whole, 1, 4000, {}],
+    [middle, 2, 3600, {}],
+    [whole, 0.5, 4000, {}],
+    [whole, 1, 4000, { binarizer: 'GlobalHistogram' }],
+    [middle, 2, 3600, { binarizer: 'GlobalHistogram' }],
+    [whole, 1, 4000, { binarizer: 'FixedThreshold' }],
+    [whole, 0.35, 4000, {}],
+  ];
+  for (const [area, scale, max, extra] of photoTries) {
+    const text = await zxingRead(pixels(source, area, scale, c, max), extra);
     if (text) return text;
   }
   const jsQR = await loadJsQR();

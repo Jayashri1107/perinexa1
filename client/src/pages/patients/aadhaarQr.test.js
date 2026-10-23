@@ -29,6 +29,48 @@ describe('the Secure QR', () => {
   });
 });
 
+// Real cards that failed on the live site while the demo card read (23 Oct 2026) – rebuilt here with fake details
+describe('real-card Secure QRs that used to fail', () => {
+  // A fake photo of some size (as on a real card), so the fields are well before the end of the packed data
+  let seed = 12345;
+  const photo = Buffer.from(Array.from({ length: 3000 }, () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) >> 16) & 255)); // hardly packs, like a photo
+  const packed = (fields) => gzipSync(Buffer.concat([...fields.flatMap((f) => [Buffer.from(f, 'latin1'), Buffer.from([255])]), photo]));
+  const asNumber = (buf) => BigInt(`0x${buf.toString('hex')}`).toString(10);
+
+  it('extra bytes after the packed data', async () => {
+    const qr = asNumber(Buffer.concat([packed(['V2', ...FIELDS, '0000']), Buffer.from([0, 1, 2, 3, 4, 5, 6, 7])]));
+    expect((await parseAadhaarQr(qr, TODAY)).fullName).toBe('Asha Sample');
+  });
+  it('the end of the packed data damaged (photo and check sum): the details at the start still read', async () => {
+    const buf = packed(['V2', ...FIELDS, '0000']);
+    buf[buf.length - 6] ^= 0xff; // the check sum
+    expect((await parseAadhaarQr(asNumber(buf), TODAY)).fullName).toBe('Asha Sample');
+    expect((await parseAadhaarQr(asNumber(buf.subarray(0, buf.length - 400)), TODAY)).pinCode).toBe('411038'); // cut short
+  });
+  it('a newer version with one field more before the name', async () => {
+    const out = await parseAadhaarQr(asNumber(packed(['V3', 'X', ...FIELDS, '0000'])), TODAY);
+    expect(out).toMatchObject({ fullName: 'Asha Sample', ageYears: '30', pinCode: '411038', city: 'Pune', state: 'Maharashtra', last4: '1234' });
+  });
+  it('spaces or line breaks in the number from a scanner', async () => {
+    const qr = secureQr(['V2', ...FIELDS, '0000']);
+    expect((await parseAadhaarQr(`${qr.slice(0, 200)}\n${qr.slice(200)} \n`, TODAY)).fullName).toBe('Asha Sample');
+  });
+  it('a name in UTF-8', async () => {
+    const f = [...FIELDS];
+    f[2] = 'Asha Sämple';
+    const raw = Buffer.concat([...['V2', ...f, '0000'].flatMap((x) => [Buffer.from(x, 'utf8'), Buffer.from([255])]), photo]);
+    expect((await parseAadhaarQr(asNumber(gzipSync(raw)), TODAY)).fullName).toBe('Asha Sämple');
+  });
+});
+
+describe('the short XML QR (QPDB)', () => {
+  it('name, age, address split into city, state and PIN; last 4 digits only', async () => {
+    const xml = '<?xml version="1.0" encoding="UTF-8"?><QPDB u="xxxxxxxx5678" n="Kavita Sample" g="F" d="02-03-1992" a="W/O Anil Sample, 7, Lake Road, Pune, Maharashtra - 411001" x="" s="ABC"/>';
+    const out = await parseAadhaarQr(xml, TODAY);
+    expect(out).toEqual({ fullName: 'Kavita Sample', ageYears: '34', address: '7, Lake Road', pinCode: '411001', city: 'Pune', state: 'Maharashtra', last4: '5678', contactName: 'Anil Sample', contactRelation: 'Husband' });
+  });
+});
+
 describe('the old XML QR', () => {
   it('reads the attributes; of the number only the last 4 digits are kept', async () => {
     const xml = '<?xml version="1.0" encoding="UTF-8"?><PrintLetterBarcodeData uid="999988887777" name="Meena Sample" gender="F" yob="1990" co="D/O Sample" house="4" street="Station Road" lm="" loc="Shivaji Nagar" vtc="Nashik" po="Nashik" dist="Nashik" subdist="Nashik" state="Maharashtra" pc="422001"/>';
