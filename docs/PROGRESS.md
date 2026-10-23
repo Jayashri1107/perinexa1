@@ -4019,6 +4019,22 @@ Branch `lab-templates`. Plan and decisions: `docs/LAB_TEMPLATES_PLAN.md`.
 6. Lab → Tests → **Histopathology** → layout Paragraphs. Order it for a fake patient, type the specimen and diagnosis →
    the report prints them as paragraphs.
 
+## Pathology rate list in every hospital's price list (owner, 23 Oct 2026)
+
+- The hospital's rate list ("PATHOLOGY RATE LIST-6.pdf") is in `server/src/billing/pathologyRates.js`. On the server,
+  `npm run load:lab-rates` puts it into every hospital's price list (safe to run again; each change in the audit log).
+- 36 of the app's own lab tests get their price (ordering one charges it). Owner's choices: HIV and HBsAg at the card
+  price; a test made of several is their sum (Day 2–3 hormones ₹4,200); HVS culture as pus culture; histopathology
+  as small biopsy. Tests not on the list (anti-TPO, lupus anticoagulant, the baby's sepsis screen …) keep their price.
+- The 130 other tests on the list are added to the price list under Lab test, for reception to add to a bill. They
+  can't be ordered in the Lab until each is set up in Lab → Tests (fields and ranges: the doctor approves). HIV's other
+  methods show only as "Lab test (confidential) – Duo Ultra / Chemi".
+
+### How to test (fake data only)
+1. On the server (or your computer): `npm run load:lab-rates` → one line per hospital with what changed.
+2. As the hospital admin: Billing → Price list → Lab test: CBC ₹300, Day 2–3 hormones ₹4,200, Vitamin D ₹1,500.
+3. Order a CBC for a fake patient in the Lab → her bill has CBC ₹300.
+
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
 - Run MongoDB with authentication and as a replica set (enables transactions); encrypted backups.
