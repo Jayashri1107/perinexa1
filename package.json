@@ -17,7 +17,8 @@
     "build": "npm run build -w client",
     "start": "npm start -w server",
     "export:hospital": "node scripts/db.mjs start && node server/scripts/export-hospital.js",
-    "fix:gst-rates": "node scripts/db.mjs start && node server/scripts/fix-gst-rates.js"
+    "fix:gst-rates": "node scripts/db.mjs start && node server/scripts/fix-gst-rates.js",
+    "load:lab-rates": "node scripts/db.mjs start && node server/scripts/load-lab-rates.js"
   },
   "engines": {
     "node": ">=22"

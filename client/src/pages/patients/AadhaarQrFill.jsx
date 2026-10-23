@@ -42,7 +42,10 @@ export const AADHAAR_WORDS = {
   reading: 'Reading the QR code…',
   close: 'Close',
   filled: (list) => `Filled from the Aadhaar QR: ${list}. Please check them against the card – the card's digital signature is not checked.`,
-  noQr: 'No QR code found in this picture. Please upload a clearer photo of the side with the QR code, or type the details.',
+  // (23 Oct 2026) What makes a photo readable: the QR big and sharp. A photo of a phone screen, or a photo forwarded on
+  // WhatsApp (made smaller), is usually too small or blurred.
+  noQr:
+    'The QR code could not be read – it is too small or blurred in this picture. Take the photo again close up: the QR code fills about half the picture, in focus, no glare. For an e-Aadhaar, upload a screenshot zoomed in on the QR code, not a photo of the screen. Or type the details.',
   notAadhaar: 'This QR code is not an Aadhaar QR code. Please type the details.',
   notImage: 'This file could not be opened as a picture. Please upload a photo (JPG or PNG) or a screenshot.',
 };
