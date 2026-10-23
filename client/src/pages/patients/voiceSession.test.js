@@ -9,6 +9,7 @@ import {
   installSpeech,
   microphoneConstraints,
   microphoneFrom,
+  setupWithin,
   speechEnvironment,
   speechResults,
 } from './voiceSession.js';
@@ -995,5 +996,19 @@ describe('checking Chrome before recording', () => {
       throw new TypeError('bad');
     });
     expect(await installSpeech(Recognition, 'en-IN')).toBe('failed');
+  });
+
+  it('Start recording on a new website: set up at once when the model is already here, "slow" when it downloads', async () => {
+    vi.useFakeTimers();
+    try {
+      expect(await setupWithin(Promise.resolve('ready'), 3000)).toBe('ready');
+      expect(await setupWithin(Promise.resolve('needs-click'), 3000)).toBe('needs-click');
+      const downloading = setupWithin(new Promise(() => {}), 3000);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(await downloading).toBe('slow');
+      expect(vi.getTimerCount()).toBe(0); // no timer left behind
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

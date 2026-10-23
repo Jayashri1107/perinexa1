@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AudioLines, ChevronUp, Download, Loader, Mic, MicOff, Pause, Sparkles, Square, TriangleAlert, Undo2 } from 'lucide-react';
+import { AudioLines, ChevronUp, Loader, Mic, MicOff, Pause, Sparkles, Square, TriangleAlert, Undo2 } from 'lucide-react';
 import { api } from '../../api.js';
 import { Alert, Field, InfoToggle, StatusPill } from '../../components/ui.jsx';
 import { startAiRecording, transcribeRecording } from './aiDictation.js';
@@ -18,6 +18,7 @@ import {
   endMessage,
   installSpeech,
   microphoneFrom,
+  setupWithin,
   speechActivity,
   speechEnvironment,
 } from './voiceSession.js';
@@ -118,12 +119,11 @@ export function VoiceBar({ status, onStop }) {
 }
 
 const SETUP_NOTES = {
-  first: 'The first time, Chrome adds English speech recognition to this computer (about 100 MB, once). The recording itself is never sent.',
   downloading: 'Chrome is adding English speech recognition to this computer. This needs the internet once. Nothing you say is sent.',
   slow: 'Still downloading (about 100 MB, once). You can type the details meanwhile. If an IT person manages this computer, Chrome downloads may be blocked.',
-  failed: 'The download did not finish. Check the internet connection, free about 150 MB of disk space, and press Try again.',
-  'needs-click': 'Press Set up speech recognition again.',
-  again: ERROR_MESSAGES['error:language-not-supported'],
+  failed: 'The download did not finish. Check the internet connection, free about 150 MB of disk space, and press Start recording again.',
+  'needs-click': 'Press Start recording again.',
+  again: 'Speech recognition needs to be set up again. Press Start recording.',
   ready: 'Ready. Press Start recording.',
 };
 
@@ -559,17 +559,32 @@ export function VoiceEntry({
     }
   }, [careType]);
 
-  // One-time download of the speech model to this computer (no patient information is involved).
-  const setUp = () => {
-    const installing = installSpeech(Recognition, speech.lang); // first: Chrome allows it only straight after the click
-    setError(null);
-    setSetupNote(null);
-    setSpeech({ status: 'setting-up', lang: speech.lang });
-    watchSetup(speech.lang, installing);
+  // Chrome's speech model is set up once per website (app.perinexa.com even when localhost already has it): Start
+  // recording does it. Ready within a few seconds (the model is already on this computer): the recording starts.
+  // Longer (a download of about 100 MB): the set-up is watched and the person presses Start again once it is ready.
+  // → { status: 'ready', lang }, or null when the recording does not start now.
+  const setUpOnStart = async (lang, installing, token) => {
+    const result = await setupWithin(installing, SETUP_NOTE_MS);
+    if (!alive.current || starting.current !== token) return null; // closed, or Stop / another type of care meanwhile
+    if (result === 'ready') return { status: 'ready', lang };
+    starting.current = null;
+    setPhase('idle');
+    if (result === 'slow') {
+      setSpeech({ status: 'setting-up', lang });
+      setSetupNote('downloading');
+      watchSetup(lang, installing);
+    } else {
+      setSpeech({ status: 'needs-setup', lang });
+      setSetupNote(result === 'needs-click' ? 'needs-click' : 'failed');
+    }
+    return null;
   };
 
   const start = async () => {
     if (recording || session.current || starting.current) return;
+    // First, before any await: Chrome allows the set-up only straight after the click
+    const { status: known, lang: knownLang } = latest.current.speech;
+    const installing = known === 'needs-setup' ? installSpeech(Recognition, knownLang) : null;
     setError(null);
     setPaused(null);
     setNoWords(false);
@@ -580,8 +595,19 @@ export function VoiceEntry({
     setPhase('starting');
     const token = {};
     starting.current = token;
-    const s = await checkSpeech(Recognition); // before every start: the model can expire
-    if (!alive.current || starting.current !== token) return; // closed, or Stop / another type of care while checking
+    let s;
+    if (installing) {
+      s = await setUpOnStart(knownLang, installing, token);
+      if (!s) return;
+    } else {
+      s = await checkSpeech(Recognition); // before every start: the model can expire
+      if (!alive.current || starting.current !== token) return; // closed, or Stop / another type of care while checking
+      // Expired since the page opened: set it up again (still within Chrome's moment after the click)
+      if (s.status === 'needs-setup') {
+        s = await setUpOnStart(s.lang, installSpeech(Recognition, s.lang), token);
+        if (!s) return;
+      }
+    }
     starting.current = null;
     if (s.status !== 'ready') {
       setPhase('idle');
@@ -780,6 +806,18 @@ export function VoiceEntry({
   const toConfirm = shown.filter((q) => q.group === 'confirm');
   const toCheck = shown.filter((q) => q.group !== 'confirm');
   const unused = summary?.unused ?? [];
+  // Ask AI where these belong: only the parts not understood (never one about the baby's sex)
+  const aiParts = unused.filter((u) => !u.sex);
+  const canAskAi = aiOn && !recording && !aiHelp?.busy && !aiHelp?.items?.length && aiParts.length > 0;
+  const askAiHint = !aiOn
+    ? 'AI is not set up for this hospital.'
+    : !text.trim()
+      ? 'Say or type the details first. Parts Perinexa does not understand can then be placed by AI.'
+      : aiHelp?.items?.length
+        ? 'Check the AI suggestions under Not understood.'
+        : aiParts.length
+          ? 'Only the parts not understood are sent to OpenAI. You accept each suggestion yourself.'
+          : 'Everything said was understood – nothing to ask AI.';
   // Each word once; Undo only where every use of it allows it (not for a number: it is changed in the form itself)
   const same = (a, b) => a.heard.toLowerCase() === b.heard.toLowerCase() && a.to === b.to;
   const changed = summary?.corrections ?? [];
@@ -807,7 +845,7 @@ export function VoiceEntry({
       : speech.status === 'unavailable'
         ? ERROR_MESSAGES.unavailable
         : null;
-  const note = setupNote ?? (speech.status === 'needs-setup' && !recording ? 'first' : null);
+  const note = setupNote;
 
   return (
     <section className="card form-section voice-card" aria-labelledby="voice-title">
@@ -833,13 +871,9 @@ export function VoiceEntry({
           <button type="button" className="btn btn-secondary" onClick={pressStop} disabled={phase === 'finishing' || aiPhase === 'starting' || aiPhase === 'writing'}>
             <Square aria-hidden="true" /> Stop recording
           </button>
-        ) : speech.status === 'ready' ? (
+        ) : speech.status === 'ready' || speech.status === 'needs-setup' ? (
           <button type="button" className="btn btn-secondary" onClick={start}>
             <Mic aria-hidden="true" /> Start recording
-          </button>
-        ) : speech.status === 'needs-setup' ? (
-          <button type="button" className="btn btn-secondary" onClick={setUp}>
-            <Download aria-hidden="true" /> {setupNote === 'failed' ? 'Try again' : 'Set up speech recognition'}
           </button>
         ) : speech.status === 'setting-up' ? (
           <button type="button" className="btn btn-secondary" disabled>
@@ -916,6 +950,13 @@ export function VoiceEntry({
         >
           Fill in the form
         </button>
+      </div>
+      {/* Ask AI where these belong: always here (owner, 23 Oct 2026), usable once there are parts not understood */}
+      <div className="voice-ai-help">
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => askAiAbout(aiParts)} disabled={!canAskAi}>
+          <Sparkles aria-hidden="true" /> {aiHelp?.busy ? 'Asking AI…' : 'Ask AI where these belong'}
+        </button>
+        <span className="hint">{askAiHint}</span>
       </div>
       {!cannot && (
         <div className="voice-more">
@@ -1071,15 +1112,7 @@ export function VoiceEntry({
           <section className="voice-unused" aria-labelledby="voice-unused-title">
             <h3 id="voice-unused-title">Not understood</h3>
             <p className="hint">Nothing was filled in from these parts. Enter them by hand, say them with the detail's name, or ask AI.</p>
-            {unused.some((u) => !u.sex) && !aiHelp?.items?.length && (
-              <div className="voice-ai-help">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => askAiAbout(unused.filter((u) => !u.sex))} disabled={recording || aiHelp?.busy}>
-                  <Sparkles aria-hidden="true" /> {aiHelp?.busy ? 'Asking AI…' : 'Ask AI where these belong'}
-                </button>
-                <span className="hint">Only these parts are sent to OpenAI. You accept each suggestion yourself.</span>
-                {aiHelp?.none && <p className="hint">AI could not place these parts either – enter them by hand.</p>}
-              </div>
-            )}
+            {aiHelp?.none && <p className="hint">AI could not place these parts either – enter them by hand.</p>}
             {aiHelp?.items?.length > 0 && (
               <div className="voice-ai-suggestions">
                 <h4>AI suggestions – check each one</h4>
