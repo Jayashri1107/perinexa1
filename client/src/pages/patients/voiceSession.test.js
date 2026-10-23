@@ -138,6 +138,29 @@ describe('every word said is kept', () => {
     expect(h.add(event(['Asha Patil', 'age 28'], ['phone 98765 43210'], 2))).toEqual({ finals: 'Asha Patil age 28', interim: 'phone 98765 43210' });
   });
 
+  it('keeps unfinished words when Chrome starts again before finishing them (live, 23 Oct 2026)', () => {
+    const h = speechResults();
+    h.add(event([], ['name Asha']));
+    expect(h.add(event([], ['name Asha Patil age 28']))).toEqual({ finals: '', interim: 'name Asha Patil age 28' });
+    // Chrome's new list, nothing of the old one was ever final
+    expect(h.add(event([], ['phone']))).toEqual({ finals: 'name Asha Patil age 28', interim: 'phone' });
+    expect(h.add(event(['phone 98229 37420']))).toEqual({ finals: 'name Asha Patil age 28 phone 98229 37420', interim: '' });
+  });
+
+  it('keeps the unfinished words beside finished ones when Chrome starts again', () => {
+    const h = speechResults();
+    h.add(event(['name Asha Patil'], ['age 28']));
+    expect(h.add(event([], ['phone']))).toEqual({ finals: 'name Asha Patil age 28', interim: 'phone' });
+  });
+
+  it('a correction of unfinished words is still a correction, not a new start', () => {
+    const h = speechResults();
+    h.add(event([], ['my name is Asha']));
+    expect(h.add(event([], ['my name is Asha Patil']))).toEqual({ finals: '', interim: 'my name is Asha Patil' });
+    expect(h.add(event([], ['my name is Asia']))).toEqual({ finals: '', interim: 'my name is Asia' }); // same start
+    expect(h.add(event([], ['mine aim is Asia Patil']))).toEqual({ finals: '', interim: 'mine aim is Asia Patil' }); // not fewer words
+  });
+
   it('a recording keeps the name through Chrome starting its list again', () => {
     const t = setup();
     t.session.start('');

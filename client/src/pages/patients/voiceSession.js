@@ -215,6 +215,14 @@ export function speechActivity(signal, now = () => Date.now()) {
  * marked final are therefore kept here, even when a later event leaves them out; words not final yet are replaced.
  * Returns { add(event) → { finals, interim } }. PURE (exported for the tests).
  */
+const wordsOf = (t) => t.toLowerCase().split(/\s+/).filter(Boolean);
+// Words not final yet (`was`, 3 words or more) replaced by `now`: fewer words with another first word is a new start
+const isFreshStart = (was, now) => {
+  const a = wordsOf(was);
+  const b = wordsOf(now);
+  return a.length >= 3 && b.length > 0 && b.length < a.length && a[0] !== b[0];
+};
+
 export function speechResults() {
   const kept = []; // finals from an earlier list Chrome started again
   let list = []; // this list: { text, final } by Chrome's index
@@ -223,11 +231,20 @@ export function speechResults() {
       const results = e?.results ?? [];
       const from = Math.max(0, Math.min(e?.resultIndex ?? 0, results.length));
       const said = (i) => results[i]?.[0]?.transcript?.trim() ?? '';
-      // A final result never changes: a different one at its place (or a shorter list) means Chrome started again
+      // A final result never changes: a different one at its place (or a shorter list) means Chrome started again.
+      // So does an unfinished one replaced by fewer words that begin differently (23 Oct 2026, live: "name … age …"
+      // still unfinished when Chrome started again, and only "Phone number …" was left) – a correction of words not
+      // final yet keeps their start or grows.
       let again = results.length < list.filter((x) => x?.final).length;
-      for (let i = from; i < results.length && !again; i += 1) if (list[i]?.final && said(i) !== list[i].text) again = true;
+      for (let i = from; i < results.length && !again; i += 1) {
+        const before = list[i];
+        if (!before?.text) continue;
+        if (before.final) again = said(i) !== before.text;
+        else again = isFreshStart(before.text, said(i));
+      }
       if (again) {
-        kept.push(...list.filter((x) => x?.final && x.text).map((x) => x.text));
+        // Every word heard so far stays: the finished ones and those Chrome had not finished yet
+        kept.push(...list.filter((x) => x?.text).map((x) => x.text));
         list = [];
       }
       const start = again ? 0 : from;

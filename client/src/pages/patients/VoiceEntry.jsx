@@ -81,8 +81,9 @@ const Turning = (props) => <Loader {...props} className="voice-turning" />;
 // Status while recording: colour + icon + word
 const PHASES = {
   'asking-mic': { tone: 'inactive', icon: Mic, label: 'Allow the microphone' },
-  starting: { tone: 'inactive', icon: Turning, label: 'Starting microphone' },
-  listening: { tone: 'brand', icon: Mic, label: 'Listening' },
+  // Words said before "Listening" are not heard by Chrome: the labels say when to begin (23 Oct 2026)
+  starting: { tone: 'inactive', icon: Turning, label: 'Starting microphone – wait' },
+  listening: { tone: 'brand', icon: Mic, label: 'Listening – speak now' },
   hearing: { tone: 'stable', icon: AudioLines, label: 'Hearing you' },
   finishing: { tone: 'inactive', icon: Turning, label: 'Finishing' },
 };
