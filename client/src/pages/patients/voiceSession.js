@@ -216,11 +216,15 @@ export function speechActivity(signal, now = () => Date.now()) {
  * Returns { add(event) → { finals, interim } }. PURE (exported for the tests).
  */
 const wordsOf = (t) => t.toLowerCase().split(/\s+/).filter(Boolean);
-// Words not final yet (`was`, 3 words or more) replaced by `now`: fewer words with another first word is a new start
+// Words not final yet (`was`, 2 words or more) replaced by `now`: no more words, another first word and hardly a word in
+// common is a new start ("Asha Patil" → "age"). A correction keeps its start, grows, or keeps most words ("my name is
+// Asha" → "my name is Asia"; "mine aim is Asia Patil").
 const isFreshStart = (was, now) => {
   const a = wordsOf(was);
   const b = wordsOf(now);
-  return a.length >= 3 && b.length > 0 && b.length < a.length && a[0] !== b[0];
+  if (a.length < 2 || !b.length || b.length > a.length || a[0] === b[0]) return false;
+  const shared = b.filter((w) => a.includes(w)).length;
+  return shared / a.length < 0.34;
 };
 
 export function speechResults() {

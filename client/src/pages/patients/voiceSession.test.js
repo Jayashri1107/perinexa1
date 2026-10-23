@@ -147,6 +147,13 @@ describe('every word said is kept', () => {
     expect(h.add(event(['phone 98229 37420']))).toEqual({ finals: 'name Asha Patil age 28 phone 98229 37420', interim: '' });
   });
 
+  it('keeps a short unfinished name when Chrome starts again (2 words)', () => {
+    const h = speechResults();
+    h.add(event([], ['Asha Patil']));
+    expect(h.add(event([], ['age']))).toEqual({ finals: 'Asha Patil', interim: 'age' });
+    expect(h.add(event(['age 28']))).toEqual({ finals: 'Asha Patil age 28', interim: '' });
+  });
+
   it('keeps the unfinished words beside finished ones when Chrome starts again', () => {
     const h = speechResults();
     h.add(event(['name Asha Patil'], ['age 28']));
