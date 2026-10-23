@@ -315,6 +315,47 @@ function pixels(source, [sx, sy, sw, sh], scale, canvas, max = 3600) {
 }
 
 /**
+ * Part of the picture in grey, enlarged k times and sharpened (unsharp mask of strength `amount`). For a phone photo
+ * of a card, slightly blurred and small (23 Oct 2026, measured with a fake Secure QR blurred by 1 dot and saved as
+ * JPEG: plain reading needed about 2.7 camera dots per square; enlarged and sharpened, 2.2 read).
+ */
+// `wide`: how far the blur reaches, in enlarged dots per original dot (2 for a more blurred photo).
+function sharpened(source, [sx, sy, sw, sh], k, amount, wide, canvas, max = 3600) {
+  const scale = Math.min(k, max / Math.max(sw, sh));
+  const d = pixels(source, [sx, sy, sw, sh], scale, canvas, max);
+  const W = d.width;
+  const H = d.height;
+  const g = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i += 1) g[i] = 0.299 * d.data[i * 4] + 0.587 * d.data[i * 4 + 1] + 0.114 * d.data[i * 4 + 2];
+  // a box blur (rows, then columns) as the "unsharp" picture
+  const r = Math.max(1, Math.round(scale * wide));
+  const n = 2 * r + 1;
+  const at = (v, top) => Math.min(top - 1, Math.max(0, v));
+  const rows = new Float32Array(W * H);
+  for (let y = 0; y < H; y += 1) {
+    let s = 0;
+    for (let x = -r; x <= r; x += 1) s += g[y * W + at(x, W)];
+    for (let x = 0; x < W; x += 1) {
+      rows[y * W + x] = s / n;
+      s += g[y * W + at(x + r + 1, W)] - g[y * W + at(x - r, W)];
+    }
+  }
+  for (let x = 0; x < W; x += 1) {
+    let s = 0;
+    for (let y = -r; y <= r; y += 1) s += rows[at(y, H) * W + x];
+    for (let y = 0; y < H; y += 1) {
+      const i = y * W + x;
+      const v = Math.max(0, Math.min(255, g[i] + amount * (g[i] - s / n)));
+      d.data[i * 4] = v;
+      d.data[i * 4 + 1] = v;
+      d.data[i * 4 + 2] = v;
+      s += rows[at(y + r + 1, H) * W + x] - rows[at(y - r, H) * W + x];
+    }
+  }
+  return d;
+}
+
+/**
  * Reads a QR from something that can be drawn (an image or a video frame) of w × h, or null.
  * quick: one try per camera frame (`frame` counts them – whole picture and enlarged middle in turn).
  * deep: a camera frame looked at more closely (every ~2 seconds, and Capture): a smaller QR (the card held further away,
@@ -341,7 +382,8 @@ export async function readQrFrom(source, w, h, { quick = false, deep = false, fr
       const text = await zxingRead(pixels(source, area, scale, c, 3600), extra);
       if (text) return text;
     }
-    return null;
+    return zxingRead(sharpened(source, middle, 2, 1.5, 1, c)); // a slightly blurred camera picture
+
   }
   if (quick) {
     const text = frame % 2 === 0 ? await zxingRead(pixels(source, whole, 1, c, 2560)) : await zxingRead(pixels(source, middle, 2, c));
@@ -366,6 +408,14 @@ export async function readQrFrom(source, w, h, { quick = false, deep = false, fr
   for (const [area, scale, max, extra] of photoTries) {
     const text = await zxingRead(pixels(source, area, scale, c, max), extra);
     if (text) return text;
+  }
+  // A small, slightly blurred QR (a phone photo of the card): each part enlarged and sharpened
+  for (const area of [middle, ...searchAreas(w, h).slice(2)]) {
+    // light, strong over a wider reach, enlarged more (measured 23 Oct 2026: blur up to 1.5 dots read)
+    for (const [k, amount, wide] of [[2, 1.5, 1], [2, 4, 2], [3, 2.5, 2]]) {
+      const text = await zxingRead(sharpened(source, area, k, amount, wide, c));
+      if (text) return text;
+    }
   }
   const jsQR = await loadJsQR();
   for (const area of searchAreas(w, h)) {
