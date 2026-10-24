@@ -369,7 +369,7 @@ describe('names', () => {
 
   it('a newborn’s mother, said as "mother name"', () => {
     const r = voice('mother name Hema Kulkarni born today at 9 am', 'newborn');
-    expect(r.values).toMatchObject({ fullName: 'Baby of Hema Kulkarni', motherName: 'Hema Kulkarni' });
+    expect(r.values).toMatchObject({ fullName: 'B/o Hema Kulkarni', motherName: 'Hema Kulkarni' });
   });
 
   it('drops titles, keeps initials, and never takes "MS" (mitral stenosis) as a title', () => {

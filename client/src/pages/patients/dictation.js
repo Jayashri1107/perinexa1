@@ -1780,7 +1780,8 @@ export function extractPatientDetails(text, { careType, now = new Date(), words 
   const identityEnds = []; // where her name and age end (a plain "for" after them starts why she came)
   if (name) identityEnds.push(s.slice(0, name.end).replace(/\s+$/, '').length);
   if (name || motherMatch) {
-    put(f, 'fullName', name?.name ?? `Baby of ${motherMatch.name}`);
+    // A baby's name in the short form hospitals use: "B/o Asha Sample" (baby of – owner, 24 Oct 2026)
+    put(f, 'fullName', (name?.name ?? `Baby of ${motherMatch.name}`).replace(/^baby of\s+/i, 'B/o '));
     for (const got of [name, motherMatch]) if (got) use(got.start, got.end);
   }
   if (!isNewborn) {

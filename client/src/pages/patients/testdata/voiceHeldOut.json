@@ -499,7 +499,7 @@
       "text": "baby of Nandini Iyer born today at 8 40 am birth weight 3 kilo 150 grams baby boy",
       "expected": {
         "values": {
-          "fullName": "Baby of Nandini Iyer",
+          "fullName": "B/o Nandini Iyer",
           "motherName": "Nandini Iyer",
           "newborn.birthAt": "2026-09-28T08:40",
           "newborn.birthWeightGrams": "3150",
@@ -515,7 +515,7 @@
       "text": "mother name Tasneem Ansari baby delivered yesterday at 11 15 at night weight two thousand seven hundred grams female baby",
       "expected": {
         "values": {
-          "fullName": "Baby of Tasneem Ansari",
+          "fullName": "B/o Tasneem Ansari",
           "motherName": "Tasneem Ansari",
           "newborn.birthAt": "2026-09-27T23:15",
           "newborn.birthWeightGrams": "2700",

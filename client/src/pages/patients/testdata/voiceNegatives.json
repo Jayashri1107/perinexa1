@@ -32,7 +32,7 @@
   { "id": "N24", "careType": "antenatal", "text": "referred by Dr Asthana from Sai Hospital", "expected": { "values": {} } },
   { "id": "N25", "careType": "gynaecology", "text": "referred by Dr Sugandha Mehta", "expected": { "values": {} } },
   { "id": "N26", "careType": "antenatal", "text": "w/o Premchand Yadav", "expected": { "values": {} } },
-  { "id": "N27", "careType": "newborn", "text": "mother name Hema Kulkarni", "expected": { "values": { "fullName": "Baby of Hema Kulkarni", "motherName": "Hema Kulkarni" } } },
+  { "id": "N27", "careType": "newborn", "text": "mother name Hema Kulkarni", "expected": { "values": { "fullName": "B/o Hema Kulkarni", "motherName": "Hema Kulkarni" } } },
   { "id": "N28", "careType": "antenatal", "text": "came from Ruby Hall Clinic", "expected": { "values": {} } },
   { "id": "N29", "careType": "infertility", "text": "husband Anand Tiwari", "expected": { "values": {} } },
   { "id": "N30", "careType": "antenatal", "text": "T B Lakshmi", "expected": { "values": {} } },
