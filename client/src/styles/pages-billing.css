@@ -162,3 +162,16 @@
   .bill-page .bill-pay-table td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-label); color: var(--slate-600); }
   .bill-page .bill-pay-history { display: block !important; }
 }
+
+/* Billing → Accounts → Account names (owner, 24 Oct 2026): one name per line – the label on the left, the box on the
+   right, its explanation under the box; the cards wide enough to read */
+.tally-names { display: grid; gap: var(--space-4); border: 0; margin: 0; padding: 0; min-width: 0; }
+.tally-names > .card.narrow { max-width: 960px; margin: 0; padding: var(--space-4) var(--space-5, 20px); }
+.tally-names .form-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
+.tally-names .form-grid > .field { display: grid; grid-template-columns: minmax(180px, 280px) minmax(0, 1fr); column-gap: var(--space-4); row-gap: 0; align-items: start; margin: 0; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.tally-names .form-grid > .field:last-child { border-bottom: 0; }
+.tally-names .form-grid > .field > label { grid-column: 1; grid-row: 1 / span 3; margin: 0; padding-top: 10px; }
+.tally-names .form-grid > .field > :not(label) { grid-column: 2; }
+.tally-names .form-grid > .field input, .tally-names .form-grid > .field select { width: 100%; max-width: 420px; }
+.tally-names .form-grid > .field .hint, .tally-names .form-grid > .field .field-hint { margin: var(--space-1) 0 0; }
+@media (max-width: 700px) { .tally-names .form-grid > .field { grid-template-columns: 1fr; } .tally-names .form-grid > .field > * { grid-column: 1 !important; } }
