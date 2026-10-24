@@ -115,6 +115,7 @@ function initialValues(p) {
       birthWeightGrams: str(p?.newborn?.birthWeightGrams),
       sex: p?.newborn?.sex ?? '',
       mother: p?.newborn?.mother ?? '',
+      fatherName: p?.newborn?.fatherName ?? '',
     },
     notes: p?.notes ?? '',
     // A delivery at another hospital (postnatal); locked when it comes from a delivery note confirmed here.
@@ -833,6 +834,15 @@ export function PatientForm({
                     error={fe('newborn.mother')}
                     suggest={motherSuggestion}
                   />
+                  {/* The baby's parents (owner, 24 Oct 2026): the mother above, the father's name here */}
+                  <Field label="Father's name (optional)" id="nb-father" error={fe('newborn.fatherName')}>
+                    <input
+                      id="nb-father"
+                      maxLength={150}
+                      value={v.newborn.fatherName}
+                      onChange={asName((e) => setV({ ...v, newborn: { ...v.newborn, fatherName: e.target.value } }))}
+                    />
+                  </Field>
                 </section>
               )}
 

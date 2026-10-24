@@ -296,6 +296,7 @@ const patientSchema = new mongoose.Schema(
       birthWeightGrams: num(200, 7000),
       sex: { type: String, enum: [...NEWBORN_SEX, ''], default: '' },
       mother: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', default: null },
+      fatherName: { type: String, trim: true, maxlength: 150, default: '' }, // owner, 24 Oct 2026 – the parents on the baby's record
     },
     // A baby's care after birth (only on a baby's record; a clinical detail – reception sees the birth details above,
     // not these): admission to the NICU or SNCU with its dates, and breastfeeding at discharge. Every field has a
