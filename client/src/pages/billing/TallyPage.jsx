@@ -509,7 +509,7 @@ export function TallySettingsPage() {
         {saved && !form && <Alert type="success">Saved.</Alert>}
         {v && res.data?.canEdit === false && <Alert type="info">Only the hospital admin changes the account names. Tell the admin if a name here does not match Tally.</Alert>}
         {v && (
-          <fieldset className="fieldset" disabled={res.data?.canEdit === false}>
+          <fieldset className="fieldset tally-names" disabled={res.data?.canEdit === false}>
             <section className="card bill-section narrow" aria-labelledby="tally-company">
               <h2 id="tally-company">The Tally company and the books</h2>
               <div className="form-grid">
