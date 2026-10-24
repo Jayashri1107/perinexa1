@@ -189,6 +189,11 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   nothing else on it – `docs/LAB_DASHBOARD_PLAN.md`.
 - **Sign-in wait (19 Oct 2026)**: 3 wrong passwords in a row → 2 minutes' wait with a countdown, for staff (by email)
   and patients (code, account); this replaces 5 tries / 30 minutes for patients – `docs/LOGIN_LOCK_PLAN.md`.
+- **Feature freeze lifted for sonography (24 Oct 2026)**: ideas 17–22 of `docs/IDEAS_FOR_LATER.md` – a sonography
+  staff login, scans ordered by reception and from the ANC care plan, scan images in the report, the machine sending
+  its readings (once its make, model and export are known), the dashboard, and two-step approval (written, then signed
+  by an authorised doctor). This replaces "Scans is for doctors and RMOs only" (19 Oct 2026). Built in Scans
+  (`ImagingOrder`), not as a second system. The fetal-sex protection stays.
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

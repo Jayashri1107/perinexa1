@@ -28,6 +28,25 @@ const imagingSchema = new mongoose.Schema(
     signed: stamp(),
     cancelled: { type: new mongoose.Schema({ ...byFields, reason: String }, { _id: false }), default: null },
     amendments: { type: [new mongoose.Schema({ ...byFields, reason: String, report: reportSchema }, { _id: false })], default: [] },
+    // Pictures from the machine (24 Oct 2026): the file is a StoredFile (kind scan_image), never deleted; one taken off
+    // the report keeps its record with who, when and why. inPrint: printed with the signed report.
+    images: {
+      type: [
+        new mongoose.Schema(
+          {
+            fileId: { type: ObjectId, required: true },
+            fileName: String,
+            mediaType: String,
+            size: Number,
+            ...byFields,
+            inPrint: { type: Boolean, default: true },
+            removed: { type: new mongoose.Schema({ ...byFields, reason: String }, { _id: false }), default: null },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     rev: { type: Number, default: 0 },
     clientRequestId: { type: String, required: true, maxlength: 64 },
   },

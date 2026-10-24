@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileText, Printer, ScanLine, Siren } from 'lucide-react';
+import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileText, ImagePlus, Printer, ScanLine, Siren } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
+import { Alert, Field, KpiCard, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CALC_SOURCES, draftReport, gaWords, ordinal, workOut } from './usgCalc.js';
 import { ExportButton } from '../../components/ExportButton.jsx';
+import { fileBody, fileSize } from '../../components/fileUpload.js';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): the worklist (to schedule, scheduled, to report,
 // signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
@@ -43,6 +44,22 @@ const localInput = (d) => {
   return x.toISOString().slice(0, 16);
 };
 
+// The day at a glance (24 Oct 2026, docs/IDEAS_FOR_LATER.md 21): counts only; each opens its list
+function ScanDashboard() {
+  const { data } = useFetch('/imaging/dashboard');
+  const c = data?.counts;
+  if (!c) return null;
+  return (
+    <div className="kpi-grid" aria-label="Scans today">
+      <KpiCard to="/scans?list=scheduled" tone="due" icon={CalendarClock} label="Booked today" value={c.bookedToday} />
+      <KpiCard to="/scans" tone="due" icon={Clock} label="To scan" value={c.toScan} sub="Ordered or scheduled" />
+      <KpiCard to="/scans?list=report" tone="watch" icon={FilePen} label="To report" value={c.toReport} />
+      <KpiCard to="/scans?list=report" tone="watch" icon={FileText} label="To sign" value={c.toSign} sub="Report written" />
+      <KpiCard to="/scans?list=signed" tone="stable" icon={CircleCheck} label="Signed today" value={c.signedToday} />
+    </div>
+  );
+}
+
 export function ImagingWorklistPage() {
   const [params, setParams] = useSearchParams();
   const list = LISTS.some(([k]) => k === params.get('list')) ? params.get('list') : 'ordered';
@@ -51,6 +68,7 @@ export function ImagingWorklistPage() {
     <>
       <PageHeader title="Scans" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
       <div className="pf-content">
+        <ScanDashboard />
         <div className="segmented" aria-label="Scan lists">
           {LISTS.map(([k, w]) => (
             <button key={k} type="button" aria-pressed={k === list} onClick={() => setParams(k === 'ordered' ? {} : { list: k }, { replace: true })}>
@@ -201,6 +219,107 @@ function ReportForm({ s, template, onSaved, onError, onAsk = null }) {
   );
 }
 
+const imageUrl = (s, i) => `/api/imaging/${s.id}/images/${i.fileId}`;
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+// Pictures from the machine (24 Oct 2026, docs/IDEAS_FOR_LATER.md 19): JPEG, PNG or WebP exported from the machine,
+// added once the study is done and before it is signed; ticked ones print with the report. Taking one off needs a
+// reason and keeps it in the record. PCPNDT: never a picture that shows the baby's sex – it cannot be checked by Perinexa.
+function ScanImages({ s, onSaved, onError }) {
+  const input = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState(null);
+  const [removing, setRemoving] = useState(null); // { fileId, reason }
+  const images = s.images ?? [];
+  const can = s.access.canImages;
+  const change = async (i, body) => {
+    try {
+      onSaved((await api(`/imaging/${s.id}/images/${i.fileId}`, { method: 'PATCH', body: { rev: s.rev, ...body } })).study, body.remove ? 'Picture taken off the report.' : 'Saved.');
+    } catch (err) {
+      onError(err);
+    }
+  };
+  const add = async (e) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    setProblem(null);
+    let study = s;
+    setBusy(true);
+    try {
+      for (const file of files) {
+        if (!IMAGE_TYPES.includes(file.type)) throw new Error(`${file.name}: choose a picture (JPEG, PNG or WebP). DICOM files are not read yet.`);
+        if (file.size > MAX_IMAGE_BYTES) throw new Error(`${file.name}: the picture is too large (at most 5 MB).`);
+        study = (await api(`/imaging/${s.id}/images`, { method: 'POST', body: { rev: study.rev, ...(await fileBody(file)) } })).study;
+      }
+      if (files.length) onSaved(study, files.length === 1 ? 'Picture added.' : `${files.length} pictures added.`);
+    } catch (err) {
+      if (study !== s) onSaved(study, null);
+      if (err.status) onError(err);
+      else setProblem(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!can && !images.length) return null;
+  return (
+    <section className="card" aria-labelledby="img-pictures">
+      <div className="plan-card-head">
+        <h2 id="img-pictures">Pictures</h2>
+        {can && (
+          <>
+            <input ref={input} type="file" accept={IMAGE_TYPES.join(',')} multiple className="sr-only" onChange={add} tabIndex={-1} aria-label="Add pictures" />
+            <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => input.current?.click()}>
+              <ImagePlus aria-hidden="true" /> {busy ? 'Adding…' : 'Add pictures'}
+            </button>
+          </>
+        )}
+      </div>
+      {can && <p className="hint">Pictures exported from the machine (JPEG, PNG or WebP, up to 5 MB each, at most 12). Never a picture that shows the baby&apos;s sex.</p>}
+      <Alert type="warning">{problem}</Alert>
+      {images.length === 0 ? (
+        <p className="muted">No pictures yet.</p>
+      ) : (
+        <ul className="img-pictures">
+          {images.map((i) => (
+            <li key={i.fileId}>
+              <a href={imageUrl(s, i)} target="_blank" rel="noopener noreferrer">
+                <img src={imageUrl(s, i)} alt={i.fileName} loading="lazy" />
+              </a>
+              <span className="hint">
+                {i.fileName} · {fileSize(i.size)} · {i.byName}
+              </span>
+              {can ? (
+                <span className="row">
+                  <label className="check">
+                    <input type="checkbox" checked={i.inPrint} onChange={(e) => change(i, { inPrint: e.target.checked })} /> In the printed report
+                  </label>
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => setRemoving({ fileId: i.fileId, reason: '' })}>
+                    Take off
+                  </button>
+                </span>
+              ) : (
+                <span className="hint">{i.inPrint ? 'In the printed report' : 'Not printed'}</span>
+              )}
+              {can && removing?.fileId === i.fileId && (
+                <span className="row">
+                  <input aria-label="Why is it taken off?" placeholder="Why is it taken off?" maxLength={300} value={removing.reason} onChange={(e) => setRemoving({ ...removing, reason: e.target.value })} />
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={removing.reason.trim().length < 3} onClick={() => change(i, { remove: removing.reason.trim() }).then(() => setRemoving(null))}>
+                    Take it off
+                  </button>
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => setRemoving(null)}>
+                    Keep it
+                  </button>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function ReportPrint({ s, template, onClose, autoPrint = false }) {
   const lh = useFetch('/tenant/settings/letterhead');
   const record = () => api(`/imaging/${s.id}/printed`, { method: 'POST' });
@@ -234,6 +353,15 @@ function ReportPrint({ s, template, onClose, autoPrint = false }) {
               <h2 className="pdoc-sig-title">Impression</h2>
               <p className="pre-line">{s.report.impression}</p>
             </>
+          )}
+          {s.images?.some((i) => i.inPrint) && (
+            <div className="img-print-pictures">
+              {s.images
+                .filter((i) => i.inPrint)
+                .map((i) => (
+                  <img key={i.fileId} src={imageUrl(s, i)} alt={i.fileName} />
+                ))}
+            </div>
           )}
           <p className="pdoc-small">The sex of the fetus is not determined or disclosed (PCPNDT Act, 1994).</p>
           <div className="pdoc-sigs">
@@ -339,6 +467,7 @@ export function ImagingStudyPage() {
             )}
           </div>
         </section>
+        <ScanImages s={s} onSaved={saved} onError={failed} />
         {a.canReport && <ReportForm key={`${s.rev}`} s={s} template={data?.template} onSaved={saved} onError={failed} onAsk={() => setAsking(true)} />}
         {asking && s.status === 'done' && (
           // Asked once the report is saved (owner, 19 Oct 2026): complete – the doctor signs and it prints by itself
