@@ -14,6 +14,7 @@ import { authRouter } from './routes/auth.js';
 import { platformTenantsRouter } from './routes/platformTenants.js';
 import { platformUsersRouter } from './routes/platformUsers.js';
 import { platformStatsRouter } from './routes/platformStats.js';
+import { platformPatientsRouter } from './routes/platformPatients.js';
 import { membersRouter } from './routes/members.js';
 import { auditLogsRouter } from './routes/auditLogs.js';
 import { doctorsRouter, patientsRouter } from './routes/patients.js';
@@ -134,6 +135,7 @@ export function createApp({
   app.use('/api/ai/transcribe', express.json({ limit: '12mb' }));
   // A lab report file (PDF or photo, at most 5 MB; base64 makes it about a third larger).
   app.use(/^\/api\/lab\/orders\/[^/]+\/files$/, express.json({ limit: '8mb' }));
+  app.use(/^\/api\/imaging\/[^/]+\/images$/, express.json({ limit: '8mb' })); // a picture from the ultrasound machine
   app.use(/^\/api\/patients\/[^/]+\/consents\/[^/]+\/scans$/, express.json({ limit: '8mb' }));
   app.use(/^\/api\/patients\/[^/]+\/visits\/[^/]+\/whatsapp$/, express.json({ limit: '8mb' })); // the PDF to send
   // A referral's files: the referring doctor's note or reports, and the PDF of a consultant note or discharge card
@@ -220,6 +222,8 @@ export function createApp({
   app.use('/api/platform/audit-logs', ...platform(null), auditLogsRouter({ scope: 'platform' }));
   // Analytics totals per hospital and for all hospitals: numbers only, never a patient (analytics/platformTotals.js).
   app.use('/api/platform/analytics', ...platform(null), platformAnalyticsRouter);
+  // Patients of every hospital, identity only, for super admins (routes/platformPatients.js; owner, 24 Oct 2026)
+  app.use('/api/platform/patients', ...platform(null), platformPatientsRouter);
 
   // Hospital data: always limited to the hospital selected in the session.
   // A super admin or platform admin in a hospital reaches its setup only (platformHospitalGuard).

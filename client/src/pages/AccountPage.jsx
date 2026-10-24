@@ -9,6 +9,7 @@ import { accountTabs, isPrescriber } from '../platform/modules.js';
 import { AppearanceSection } from './AppearancePage.jsx';
 import { ProfessionalDetailsSection } from './ProfessionalDetailsPage.jsx';
 import { departmentOf, deviceLabel, squarePhoto } from './profileFormat.js';
+import { asName } from '../personName.js';
 
 const PLATFORM_ROLE = { superadmin: 'Super admin', platformadmin: 'Platform admin' };
 const TABS = [
@@ -164,7 +165,7 @@ function AccountCard() {
         <Alert type="error">{error}</Alert>
         <div className="prof-form-grid">
           <Field label="Full name" id="prof-name" error={fields.name}>
-            <input id="prof-name" value={form.name} onChange={set('name')} maxLength={100} autoComplete="name" />
+            <input id="prof-name" value={form.name} onChange={asName(set('name'))} maxLength={100} autoComplete="name" />
           </Field>
           <Field label="Email" id="prof-email" hint="Your login – the super admin changes it." keepHint>
             <input id="prof-email" value={user.email} readOnly />

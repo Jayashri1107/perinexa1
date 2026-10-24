@@ -60,6 +60,7 @@ import { StaffByRolePage } from './pages/platform/StaffByRolePage.jsx';
 import { AdminPermissionsPage, UserPermissionsPage } from './pages/platform/UserPermissionsPage.jsx';
 import { UserActivityTab, UserHospitalsTab, UserProfileTab, UserWorkspace } from './pages/platform/UserWorkspace.jsx';
 import { AuditPage } from './pages/platform/AuditPage.jsx';
+import { PlatformPatientsPage } from './pages/platform/PlatformPatientsPage.jsx';
 import { TemplatesPage } from './pages/careplans/TemplatesPage.jsx';
 import { TemplateDetailPage } from './pages/careplans/TemplateDetailPage.jsx';
 import { TemplateEditPage } from './pages/careplans/TemplateEditPage.jsx';
@@ -184,6 +185,7 @@ export function App() {
                 <Route path="activity" element={<HospitalActivityTab />} />
               </Route>
 
+              <Route path="patients" element={<PlatformPatientsPage />} />
               <Route path="users" element={<UsersListPage key="all" variant="all" />} />
               <Route path="users/by-role" element={<Navigate to="/platform/staff" replace />} />
               <Route path="staff" element={<StaffByRolePage />} />

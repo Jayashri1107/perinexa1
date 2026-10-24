@@ -8,7 +8,8 @@ import { tenantScoped } from '../utils/tenantScope.js';
 // the consultant note and the discharge card released to the referral desk (routes/referrals.js).
 // Register scans (removed 2 Oct 2026) stay stored; never saved or read again.
 
-export const FILE_KINDS = ['lab_report', 'signed_consent', 'referral_attachment', 'referral_release'];
+// scan_image (24 Oct 2026): a picture from the ultrasound machine attached to a scan (routes/imaging.js)
+export const FILE_KINDS = ['lab_report', 'signed_consent', 'referral_attachment', 'referral_release', 'scan_image'];
 // A referral can arrive before she is registered: its files may have no patient (the referral says whose they are
 // once it is linked to her record). Every other file belongs to a patient from the start.
 export const NO_PATIENT_KINDS = ['referral_attachment', 'referral_release'];

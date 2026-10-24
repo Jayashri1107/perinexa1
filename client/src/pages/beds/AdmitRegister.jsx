@@ -4,6 +4,7 @@ import { api } from '../../api.js';
 import { Alert, Field } from '../../components/ui.jsx';
 import { AadhaarQrFill } from '../patients/AadhaarQrFill.jsx';
 import { CARE_TYPE_LABELS, CARE_TYPES } from '../patients/patientFormat.js';
+import { asName } from '../../personName.js';
 
 // Admitting someone not registered yet (owner, 17 Oct 2026: Aadhaar upload "at registration and admission"): her details
 // from the Aadhaar card's QR (or typed), registered here, then admitted in the same dialog. The phone is typed – the
@@ -93,7 +94,7 @@ export function AdmitRegister({ onRegistered }) {
           </select>
         </Field>
         <Field label="Full name" id="ar-name" error={fields.fullName}>
-          <input id="ar-name" value={v.fullName} onChange={set('fullName')} maxLength={150} />
+          <input id="ar-name" value={v.fullName} onChange={asName(set('fullName'))} maxLength={150} />
         </Field>
         <Field label="Age (years)" id="ar-age" error={fields.ageYears}>
           <input id="ar-age" inputMode="numeric" value={v.ageYears} onChange={set('ageYears')} maxLength={3} />
