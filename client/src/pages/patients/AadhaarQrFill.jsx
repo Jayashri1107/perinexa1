@@ -41,14 +41,30 @@ export const AADHAAR_WORDS = {
   upload: 'Upload a photo instead',
   reading: 'Reading the QR code…',
   close: 'Close',
-  filled: (list) => `Filled from the Aadhaar QR: ${list}. Please check them against the card – the card's digital signature is not checked.`,
+  filled: (list) => `Filled from the Aadhaar QR: ${list}. Please check them against the card.`,
+  // The Secure QR's UIDAI signature (24 Oct 2026, aadhaarSignature.js)
+  signedOk: 'UIDAI signature checked: these details are as UIDAI issued them.',
+  signedNot: 'The UIDAI signature could not be confirmed. Compare every detail with the card before saving.',
+  signedNone: 'This older QR code has no UIDAI signature. Compare the details with the card before saving.',
   // (23 Oct 2026) What makes a photo readable: the QR big and sharp. A photo of a phone screen, or a photo forwarded on
   // WhatsApp (made smaller), is usually too small or blurred.
   noQr:
     'The QR code could not be read – it is too small or blurred in this picture. Take the photo again close up: the QR code fills about half the picture, in focus, no glare. For an e-Aadhaar, upload a screenshot zoomed in on the QR code, not a photo of the screen. Or type the details.',
   notAadhaar: 'This QR code is not an Aadhaar QR code. Please type the details.',
   notImage: 'This file could not be opened as a picture. Please upload a photo (JPG or PNG) or a screenshot.',
+  pdf: 'A PDF cannot be read here (an e-Aadhaar PDF is locked with a password). Open it, take a screenshot zoomed in on the QR code, and upload that.',
+  tooBig: 'This file is too large (over 25 MB). Please upload a smaller photo or a screenshot.',
 };
+
+// What a photo of the card may be (24 Oct 2026): pictures Chrome can open, at most 25 MB
+const PICTURE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp', 'image/gif'];
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
+export function fileProblem(file) {
+  if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name ?? '')) return 'PDF';
+  if (file.size > MAX_FILE_BYTES) return 'TOO_BIG';
+  if (file.type && !PICTURE_TYPES.includes(file.type)) return 'NOT_IMAGE';
+  return null;
+}
 
 // The camera's still photo (often sharper and larger than its live picture), else the frame shown now
 async function stillFrom(track, v) {
@@ -236,9 +252,10 @@ function CameraScan({ words, onText, onBlocked, deviceId = '', facing = 'environ
  * onFill({ fullName, ageYears, address, pinCode, city, state, last4 }) with what the card holds ('' when missing).
  * scanner: offer the USB QR scanner box (staff desks; not on the patient's own sign-up).
  */
-export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS, scanner = true }) {
+// signature: say whether the UIDAI signature was checked (staff; the patient's sign-up has no wording for it yet)
+export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS, scanner = true, signature = true }) {
   const t = { ...AADHAAR_WORDS, ...words };
-  const problem = { NO_QR: t.noQr, NOT_AADHAAR: t.notAadhaar, NOT_IMAGE: t.notImage };
+  const problem = { NO_QR: t.noQr, NOT_AADHAAR: t.notAadhaar, NOT_IMAGE: t.notImage, PDF: t.pdf, TOO_BIG: t.tooBig };
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [camera, setCamera] = useState(false);
@@ -298,7 +315,7 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
     });
   };
   const [scanned, setScanned] = useState('');
-  const [result, setResult] = useState(null); // { ok: [labels] } or { problem }
+  const [result, setResult] = useState(null); // { ok: [labels], signature } or { problem }
   const input = useRef(null);
   const labels = t.fields ?? AADHAAR_FIELD_LABELS;
 
@@ -307,9 +324,9 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
     setBusy(true);
     setResult(null);
     try {
-      const values = await parseAadhaarQr(await getText());
+      const { signature: signed, ...values } = await parseAadhaarQr(await getText());
       onFill(values);
-      setResult({ ok: Object.keys(labels).filter((k) => values[k]).map((k) => labels[k]) });
+      setResult({ ok: Object.keys(labels).filter((k) => values[k]).map((k) => labels[k]), signature: signed });
     } catch (err) {
       setResult({ problem: problem[err.message] ?? problem.NO_QR });
     } finally {
@@ -319,10 +336,11 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
   const fromFile = (e) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // the picture is not kept, even in the file box
-    if (file) {
-      setCamera(false);
-      use(() => readQrFromImage(file));
-    }
+    if (!file) return;
+    setCamera(false);
+    const wrong = fileProblem(file);
+    if (wrong) setResult({ problem: problem[wrong] });
+    else use(() => readQrFromImage(file));
   };
   const fromCamera = (text) => {
     setCamera(false); // off by itself once read
@@ -403,6 +421,9 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
       )}
       {camera && oneCamera && <Alert type="info">{t.oneCamera}</Alert>}
       {result?.ok && <Alert type="success">{t.filled(result.ok.join(', '))}</Alert>}
+      {result?.ok && signature && result.signature === 'verified' && <Alert type="success">{t.signedOk}</Alert>}
+      {result?.ok && signature && result.signature === 'not-verified' && <Alert type="warning">{t.signedNot}</Alert>}
+      {result?.ok && signature && result.signature === 'none' && <Alert type="info">{t.signedNone}</Alert>}
       {result?.problem && <Alert type="warning">{result.problem}</Alert>}
       {busy && <p className="hint" role="status">{t.reading}</p>}
       <div className="row">
@@ -411,7 +432,7 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
             <Camera aria-hidden="true" /> {t.scanAgain}
           </button>
         )}
-        <input ref={input} type="file" accept="image/*" className="sr-only" onChange={fromFile} aria-label={t.upload} tabIndex={-1} />
+        <input ref={input} type="file" accept="image/*,application/pdf" className="sr-only" onChange={fromFile} aria-label={t.upload} tabIndex={-1} />
         <button type="button" className="btn btn-link btn-sm" disabled={!can} onClick={() => input.current?.click()}>
           <Upload aria-hidden="true" /> {t.upload}
         </button>
