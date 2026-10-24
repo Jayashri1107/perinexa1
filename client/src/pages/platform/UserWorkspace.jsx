@@ -11,6 +11,7 @@ import { RolesDialog } from '../../components/RolesDialog.jsx';
 import { Alert, Avatar, Field, RoleBadges, RolePicker, StatusPill, TemporaryPassword, formatDateTime, rolesLabel, useConfirm } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PLATFORM_AREA_LABELS, canEditArea } from '../../platform/modules.js';
+import { asName } from '../../personName.js';
 
 // An account's status: colour + icon + word.
 const AccountStatus = ({ active }) =>
@@ -201,7 +202,7 @@ export function UserProfileTab() {
         <Alert type="success">{saved && 'Changes saved.'}</Alert>
         <Alert type="error">{error}</Alert>
         <Field label="Full name" id="name" error={fieldErrors.name}>
-          <input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={100} />
+          <input id="name" value={form.name} onChange={asName((e) => setForm({ ...form, name: e.target.value }))} maxLength={100} />
         </Field>
         <Field label="Email" id="email" error={fieldErrors.email}>
           <input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} />

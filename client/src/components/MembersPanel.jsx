@@ -9,6 +9,7 @@ import { useListParams } from '../hooks/useListParams.js';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination } from './DataTable.jsx';
 import { RolesDialog } from './RolesDialog.jsx';
 import { Alert, Avatar, Field, FieldError, ROLE_LABELS, RoleBadges, RolePicker, StatusPill, TemporaryPassword, formatDateTime, rolesLabel, useConfirm } from './ui.jsx';
+import { asName } from '../personName.js';
 
 const ROLES = Object.keys(ROLE_LABELS);
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }));
@@ -60,7 +61,7 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
           <input id="member-email" type="email" value={form.email} onChange={update('email')} placeholder="name@example.com" required autoFocus />
         </Field>
         <Field label="Full name (for new accounts)" id="member-name" error={fieldErrors.name}>
-          <input id="member-name" value={form.name} onChange={update('name')} maxLength={100} />
+          <input id="member-name" value={form.name} onChange={asName(update('name'))} maxLength={100} />
         </Field>
       </div>
       <fieldset className="fieldset">

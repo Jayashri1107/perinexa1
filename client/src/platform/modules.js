@@ -59,6 +59,15 @@ export const PLATFORM_MODULES = [
       { label: 'New hospital', to: '/platform/hospitals/new', end: true },
     ],
   },
+  // Every hospital's patients, identity only (owner, 24 Oct 2026): super admins only (superAdminOnly)
+  {
+    key: 'patients',
+    label: 'Patients',
+    icon: HeartPulse,
+    to: '/platform/patients',
+    superAdminOnly: true,
+    tabs: [{ label: 'All patients', to: '/platform/patients', end: true }],
+  },
   {
     key: 'users',
     label: 'Users & access',
@@ -452,5 +461,5 @@ export const PLATFORM_AREA_LABELS = { hospitals: 'Hospitals', users: 'User accou
 /** May this super admin or platform admin change this area? (session.platform from the server) */
 export const canEditArea = (platform, area) => platform?.role === 'superadmin' || Boolean(area && platform?.permissions?.includes(area));
 export const platformModules = (platform) =>
-  PLATFORM_MODULES.map((m) => ({ ...m, tabs: m.tabs.filter((t) => !PLATFORM_TAB_AREAS[t.to] || canEditArea(platform, PLATFORM_TAB_AREAS[t.to])) }));
+  PLATFORM_MODULES.filter((m) => !m.superAdminOnly || platform?.role === 'superadmin').map((m) => ({ ...m, tabs: m.tabs.filter((t) => !PLATFORM_TAB_AREAS[t.to] || canEditArea(platform, PLATFORM_TAB_AREAS[t.to])) }));
 export const platformTabs = (key, platform) => platformModules(platform).find((m) => m.key === key)?.tabs ?? [];

@@ -194,6 +194,10 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   its readings (once its make, model and export are known), the dashboard, and two-step approval (written, then signed
   by an authorised doctor). This replaces "Scans is for doctors and RMOs only" (19 Oct 2026). Built in Scans
   (`ImagingOrder`), not as a second system. The fetal-sex protection stays.
+- **Super admin: every hospital's patients on one page (24 Oct 2026)**: Platform → Patients, super admins only (not
+  platform admins). Identity only – name, patient number, hospital, type of care, who added her and when; never the
+  phone, address, age or anything medical. Opening one opens her hospital, where her record is seen and audited as
+  before; each list shown is written to the audit log of every hospital in it (how many, never who).
 - **Fake data only.** Test patient P-000003 in "Sunrise General Hospital (Demo)" is fake but uses the owner's own phone
   number and address: never copy those anywhere shared.
 

@@ -8,6 +8,7 @@ import { Alert, Field, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
 import { CANCEL_REASONS, VISIT_TYPES, VISIT_TYPE_LABELS, dayLabel, timeLabel, whenLabel, whoLabel } from './appointmentFormat.js';
+import { asName } from '../../personName.js';
 
 // The booking dialogs of appointment booking: Book (a registered patient, or a quick booking with name and phone),
 // Move (another day, time or doctor – also giving a "needs a time" booking its time) and Cancel. A warning the
@@ -188,7 +189,7 @@ export function BookDialog({ doctor, date, start, patient: preset = null, length
       {mode === 'guest' && (
         <div className="form-grid appt-guest">
           <Field label="Her name" id="appt-guest-name">
-            <input id="appt-guest-name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} maxLength={150} autoFocus />
+            <input id="appt-guest-name" value={guest.name} onChange={asName((e) => setGuest({ ...guest, name: e.target.value }))} maxLength={150} autoFocus />
           </Field>
           <Field label="Phone number" id="appt-guest-phone" hint={canRegister ? 'Next, her full registration form opens to fill in all her details.' : 'Reception registers her in full.'}>
             <input id="appt-guest-phone" type="tel" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} maxLength={30} />

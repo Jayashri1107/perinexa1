@@ -9,6 +9,7 @@ import { Alert, Avatar, Field, ROLE_LABELS, RolePicker, StatusPill, TemporaryPas
 import { useFetch } from '../../hooks/useFetch.js';
 import { useListParams } from '../../hooks/useListParams.js';
 import { STAFF_ROLE_PAGES, canEditArea, platformTabs } from '../../platform/modules.js';
+import { asName } from '../../personName.js';
 
 const crumbs = [{ label: 'Users & access', to: '/platform/users' }];
 
@@ -272,7 +273,7 @@ export function UserNewPage() {
           )}
           <div className="form-grid">
             <Field label="Full name" id="new-name" error={fieldErrors.name}>
-              <input id="new-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={100} autoFocus />
+              <input id="new-name" value={form.name} onChange={asName((e) => setForm({ ...form, name: e.target.value }))} maxLength={100} autoFocus />
             </Field>
             <Field label="Email" id="new-email" error={fieldErrors.email} hint="Use a made-up address, e.g. name@example.com" keepHint>
               <input id="new-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={254} />

@@ -13,6 +13,14 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **24 Oct 2026:** (1) Voice entry takes Chrome's corrections as they are (no repeated or lost words). (2) Fill from
+  Aadhaar checks the UIDAI signature; PDFs and large files get their own message (`docs/AADHAAR_QR.md`). (3)
+  Sonography (freeze lifted for ideas 17–22): the Scans dashboard (booked today, to scan, to report, to sign, signed
+  today) and scan pictures in the report (add, choose for print, take off with a reason). (4) Super admin → Patients:
+  every hospital's patients, identity only, with the hospital and who added her. (5) Names get a capital at the start
+  of each word while typing. **How to test:** Scans → the tiles at the top; open a study marked done → Pictures → Add
+  pictures (a JPEG), untick "In the printed report", sign and print. Sign in as the super admin → Patients → filter by
+  hospital → click a row (her hospital opens). New patient → type "asha patil" → the box shows "Asha Patil".
 - **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
   built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the
