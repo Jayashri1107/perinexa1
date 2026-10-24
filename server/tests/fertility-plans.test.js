@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
 import * as fields from '../src/fertility/fertilityFields.js';
+import { COUNTER_FOR_PROTOCOL, LADDER_STEPS, PROCEDURES, SWITCH_TARGETS, counterFor, stepOf } from '../src/fertility/ladder.js';
 import { BODIES, GROUPS, PROTOCOLS, SECTION_KEYS, composePlan, protocolByKey } from '../src/fertility/protocols.js';
 import { fertilityFacts, suggestProtocols } from '../src/fertility/suggest.js';
 import { AuditLog } from '../src/models/AuditLog.js';
@@ -17,7 +18,7 @@ const woman = (fertility, extra = {}) => ({ careType: 'infertility', ageYears: 2
 
 describe('the protocol library', () => {
   it('has one entry per situation, every section named, its sources known, and no exclamation marks', () => {
-    expect(PROTOCOLS.length).toBe(20);
+    expect(PROTOCOLS.length).toBe(21);
     for (const p of PROTOCOLS) {
       expect(p.key && p.name && p.short && p.summary && p.whenToUse).toBeTruthy();
       expect(Object.keys(GROUPS)).toContain(p.group);
@@ -46,6 +47,23 @@ describe('the protocol library', () => {
     // The preconception protocol IS the general advice, so it is not added twice
     expect(composePlan(['preconception']).sections.some((s) => s.key === 'general')).toBe(false);
     expect(composePlan(['nope'])).toMatchObject({ title: '', sections: [], sources: [] });
+  });
+
+  it('has a ladder – follicular study, IUI, IVF – and the other procedures, each naming a protocol', () => {
+    expect(LADDER_STEPS.map((s) => [s.key, s.counter])).toEqual([
+      ['follicular_study', 'oiCycles'],
+      ['iui', 'iuiCycles'],
+      ['ivf', 'ivfCycles'],
+    ]);
+    expect(PROCEDURES.map((p) => p.key)).toEqual(['los', 'tubal', 'uterine', 'endometriosis', 'varicocele', 'sperm_retrieval', 'donor', 'preservation']);
+    for (const t of SWITCH_TARGETS) for (const k of t.protocols) expect(protocolByKey.has(k), `${t.key}: ${k}`).toBe(true);
+    for (const k of Object.keys(COUNTER_FOR_PROTOCOL)) expect(protocolByKey.has(k), k).toBe(true);
+    expect(stepOf(['oi_letrozole', 'preconception'])).toBe('follicular_study');
+    expect(stepOf(['iui', 'male_mild'])).toBe('iui');
+    expect(stepOf(['oi_letrozole', 'ivf'])).toBe('ivf');
+    expect(stepOf(['tubal'])).toBeNull();
+    expect(counterFor(['iui'])).toBe('iuiCycles');
+    expect(counterFor(['uterine'])).toBeNull();
   });
 
   it('keeps the same lists as the website', () => {
@@ -214,7 +232,7 @@ describe('a treatment plan', () => {
     res = await dr.get(url(p, '/suggestions'));
     expect(res.status).toBe(200);
     expect(res.body.options[0]).toMatchObject({ key: 'evaluation', fit: 'recommended' });
-    expect(res.body.library).toHaveLength(20);
+    expect(res.body.library).toHaveLength(21);
     expect(res.body.draftNote).toMatch(/^DRAFT/);
     // With her history: letrozole first
     await history('drA', p);
@@ -304,9 +322,66 @@ describe('a treatment plan', () => {
     const entries = await AuditLog.find({ action: /^FERTILITY_PLAN_/ }).lean();
     expect(entries.map((e) => e.action)).toEqual(expect.arrayContaining(['FERTILITY_PLAN_VIEWED', 'FERTILITY_PLAN_CREATED', 'FERTILITY_PLAN_EDITED', 'FERTILITY_PLAN_STATUS_CHANGED']));
     for (const e of entries) {
-      for (const k of Object.keys(e.details)) expect(['patientId', 'mrn', 'planId', 'protocols', 'status']).toContain(k);
+      for (const k of Object.keys(e.details)) expect(['patientId', 'mrn', 'planId', 'protocols', 'status', 'fromPlanId']).toContain(k);
       expect(JSON.stringify(e.details)).not.toMatch(/letrozole|iui|gonadotrophin/i);
     }
+  });
+
+  it('switches up the ladder: the old plan is closed as moved on, the cycles done go to her record, and the next plan says where it came from', async () => {
+    const p = await register();
+    await history('drA', p);
+    const dr = await as('drA');
+    // Start directly with a step of the ladder (no protocol keys needed)
+    let res = await dr.post(url(p)).send({ clientRequestId: randomUUID(), target: 'follicular_study' });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    let plan = res.body.plan;
+    expect(plan).toMatchObject({ protocolKeys: ['follicular_study'], step: 'follicular_study', switchedFrom: null });
+    expect((await dr.post(url(p)).send({ clientRequestId: randomUUID(), target: 'iui', protocolKeys: ['ivf'] })).status).toBe(400); // one or the other
+    expect((await dr.post(url(p)).send({ clientRequestId: randomUUID() })).status).toBe(400);
+    res = await dr.post(url(p, `/${plan.id}/status`)).send({ rev: plan.rev, status: 'active' });
+    plan = res.body.plan;
+
+    // Switch to IUI after four cycles (a stale version is refused; another plan in progress is not made)
+    expect((await dr.post(url(p)).send({ clientRequestId: randomUUID(), target: 'iui', switchFrom: { planId: plan.id, rev: 0, cyclesDone: 4 } })).status).toBe(409);
+    res = await dr.post(url(p)).send({ clientRequestId: randomUUID(), target: 'iui', switchFrom: { planId: plan.id, rev: plan.rev, cyclesDone: 4, note: 'Ovulated every cycle, no pregnancy.' } });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const iui = res.body.plan;
+    expect(iui).toMatchObject({ status: 'draft', protocolKeys: ['iui'], step: 'iui', switchedFrom: { planId: plan.id, title: plan.title } });
+    expect(iui.sections[0].key).toBe('aim');
+    expect(iui.sections[0].text).toMatch(/^• Switched from “Follicular study with timed intercourse \(natural or stimulated cycle\)” on 20 Oct 2026: Ovulated every cycle, no pregnancy\./);
+    expect(res.body.closed).toMatchObject({ id: plan.id, status: 'completed', outcome: { kind: 'next_step', note: 'Switched to “Intrauterine insemination with ovarian stimulation” – Ovulated every cycle, no pregnancy.' } });
+    expect(res.body.cyclesRecorded).toEqual({ counter: 'oiCycles', total: 4 });
+    const record = (await dr.get(`/api/patients/${p.id}`)).body.patient;
+    expect(record.fertility.oiCycles).toBe(4);
+    res = await dr.get(url(p));
+    expect(res.body.plan.id).toBe(iui.id);
+    expect(res.body.earlier.map((e) => [e.id, e.status, e.outcome.kind])).toEqual([[plan.id, 'completed', 'next_step']]);
+    expect(res.body.ladder.steps.map((s) => s.key)).toEqual(['follicular_study', 'iui', 'ivf']);
+    expect(res.body.ladder.procedures.length).toBe(8);
+
+    // A draft that is switched away from is discarded, not completed; IUI cycles go to the IUI counter; after three
+    // IUI cycles the suggestions move to IVF
+    res = await dr.post(url(p)).send({ clientRequestId: randomUUID(), target: 'ivf', switchFrom: { planId: iui.id, rev: iui.rev, cyclesDone: 3 } });
+    expect(res.status).toBe(201);
+    expect(res.body.closed).toMatchObject({ status: 'stopped', outcome: { kind: 'discarded' } });
+    expect(res.body.cyclesRecorded).toEqual({ counter: 'iuiCycles', total: 3 });
+    expect(res.body.plan.step).toBe('ivf');
+    const sugg = await dr.get(url(p, '/suggestions'));
+    expect(sugg.body.options.find((o) => o.key === 'ivf').fit).toBe('recommended');
+    // A procedure: no cycle counter, the old plan closed all the same
+    const ivf = res.body.plan;
+    res = await dr.post(url(p)).send({ clientRequestId: randomUUID(), target: 'uterine', switchFrom: { planId: ivf.id, rev: ivf.rev, cyclesDone: 1 } });
+    expect(res.status).toBe(201);
+    expect(res.body.plan.step).toBeNull();
+    expect(res.body.cyclesRecorded).toEqual({ counter: 'ivfCycles', total: 1 }); // the IVF plan's cycle
+    const uterine = res.body.plan;
+    res = await dr.post(url(p)).send({ clientRequestId: randomUUID(), target: 'donor', switchFrom: { planId: uterine.id, rev: uterine.rev, cyclesDone: 2 } });
+    expect(res.body.cyclesRecorded).toBeNull(); // a procedure has no cycles to count
+    // Switching from a finished plan is refused
+    expect((await dr.post(url(p)).send({ clientRequestId: randomUUID(), target: 'iui', switchFrom: { planId: plan.id, rev: plan.rev + 1, cyclesDone: 0 } })).body.error.code).toBe('PLAN_CLOSED');
+    // The audit log: the switch is a status change and a creation, ids only
+    const entries = await AuditLog.find({ action: /^FERTILITY_PLAN_/ }).lean();
+    for (const e of entries) for (const k of Object.keys(e.details)) expect(['patientId', 'mrn', 'planId', 'protocols', 'status', 'fromPlanId']).toContain(k);
   });
 
   it('is seen and changed only by those with her medical details, on her own hospital’s record', async () => {

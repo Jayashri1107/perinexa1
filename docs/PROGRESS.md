@@ -26,6 +26,11 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   international PCOS guideline, FOGSI practice points, the WHO semen manual 2021 and India's ART Act, Rules and
   Regulations – every dose or day the texts do not give is marked "doctor to confirm". In the record copy and the
   hospital export; audit log with ids and the plan's status only. How to test: "How to test fertility treatment plans".
+  **Switch to…** (same day, owner's request): from a current plan the doctor moves up the ladder – follicular study with
+  timed intercourse → IUI → IVF/ICSI – or to another procedure (ovarian drilling, tubal or hysteroscopic surgery,
+  endometriosis surgery, varicocele repair, sperm retrieval with ICSI, donor gametes, fertility preservation): the old
+  plan is completed as moved to the next step, the cycles done under it are added to her record, and the next draft is
+  built; **Start with a step…** when there is no plan yet. A **Follicular study** protocol joins the library (21).
 - **24 Oct 2026:** (1) Voice entry takes Chrome's corrections as they are (no repeated or lost words). (2) Fill from
   Aadhaar checks the UIDAI signature; PDFs and large files get their own message (`docs/AADHAAR_QR.md`). (3)
   Sonography (freeze lifted for ideas 17–22): the Scans dashboard (booked today, to scan, to report, to sign, signed
@@ -4219,7 +4224,12 @@ the four demo fertility records a made-up history; on an older database enter on
 5. Change the history (Edit details: tubes *Hydrosalpinx*) → Suggest plans: *Tubal factor* and *IVF or ICSI* lead,
    with "salpingectomy or tubal occlusion before IVF". Set her age to 52 in Edit details → the IVF card carries the ART
    Act caution (upper age 50).
-6. As the demo nurse (Lakeside Clinic) the tab is missing on a sensitive record; remove the sensitive marking (More →
+6. **Switch to…** on a confirmed plan → *IUI with ovarian stimulation*, 4 cycles completed, a reason → **Switch**: the
+   IUI draft opens with "Switched from …" as its first line, the earlier plan sits under Earlier plans as *Completed –
+   Moved to the next step*, and the Overview's Fertility history shows "Ovulation induction 4". Switch again to
+   *IVF or ICSI* with 3 IUI cycles; **Suggest plans** now puts IVF first. With no plan, **Start with a step…** builds the
+   first plan from the ladder.
+7. As the demo nurse (Lakeside Clinic) the tab is missing on a sensitive record; remove the sensitive marking (More →
    Remove sensitive marking) and the nurse reads the plan without buttons. **More → Copy of the whole record** has the
    parts **Fertility history** and **Fertility treatment plans**. Hospital admin → Audit log: "Fertility treatment plan
    opened / built / edited / confirmed or ended" with the record number only.

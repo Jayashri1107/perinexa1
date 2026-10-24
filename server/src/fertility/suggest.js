@@ -207,6 +207,9 @@ export function suggestProtocols(patient, now = new Date()) {
     if (age != null && age >= 40) add('ivf', 'recommended', `At ${age} the stepped pathway is shortened: IVF without ICSI is the effective step (WHO 2025; NICE 2026).`);
   }
 
+  // 6b. Enough IUI cycles, whatever the cause: IVF rather than more IUI (WHO 2025 after failed stimulated IUI; NICE 2026 up to 4 cycles)
+  if (x.iuiCycles >= 3 && !tubesBlocked) add('ivf', 'recommended', `${x.iuiCycles} IUI cycles done without pregnancy: IVF rather than more IUI (WHO 2025; NICE 2026 – up to 4 cycles).`);
+
   // 7. Age and reserve
   if (older || lowReserve) {
     const parts = [];

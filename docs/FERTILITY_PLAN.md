@@ -14,7 +14,8 @@ protocols that fit her, the doctor picks one or more, and the plan built from th
 | Part | Where |
 | --- | --- |
 | Fertility history on the record (Infertility type of care): kind and months of infertility, cycles, ovulation, tubes, uterus, endometriosis, the partner's semen (WHO 2021 ranges), diagnoses already made, AMH / AFC / FSH / prolactin / TSH, cycles done before, previous treatment | `server/src/fertility/fertilityFields.js`, `models/Patient.js` (`fertility`), `routes/patients.js`; form section `client/src/pages/patients/FertilitySection.jsx`; Overview card "Fertility history" |
-| The protocol library (20 protocols, each with its sources, cautions and the sections of a plan) | `server/src/fertility/protocols.js` |
+| The protocol library (21 protocols, each with its sources, cautions and the sections of a plan) | `server/src/fertility/protocols.js` |
+| The treatment ladder (follicular study → IUI → IVF/ICSI) and the other procedures; switching from a plan | `server/src/fertility/ladder.js`, `routes/fertilityPlans.js` (POST with `switchFrom`) |
 | The suggestion rules: which protocols fit her record and why, best fit first; what the record still lacks | `server/src/fertility/suggest.js` |
 | The plan: built from the chosen protocols, edited as text per section, confirmed by a doctor, ended with an outcome; every save keeps the earlier text | `models/FertilityPlan.js`, `routes/fertilityPlans.js`; the **Treatment plan** tab `client/src/pages/patients/FertilityPlanTab.jsx` |
 | Copy of the whole record: the fertility history and the plans | `patients/recordCopyView.js`, `routes/recordCopy.js`, `RecordCopy.jsx` |
@@ -41,6 +42,7 @@ plan is the decision that follows it.
 5. **Confirm plan** (a doctor; an RMO drafts and edits). Then **Record outcome** – pregnant, moved to the next step –
    or **Stop** (no response, the couple's choice, other, with a reason). One plan at a time; the earlier ones stay
    below, and a new plan can be built for the next step.
+6. **Switch to…** (section 6): the next step of the ladder or another procedure, in one move.
 
 Who may do what: seen with the medical details (infertility records are sensitive, so her doctor and RMOs; a nurse
 reads a plan on a record that is not sensitive); drafted and edited by her doctor (any doctor while she has none) or
@@ -94,7 +96,7 @@ Read for this draft (24 Oct 2026):
   oocytes, insured; sperm donor 21–55; one donor to one couple), ART Regulations 2023 (1–2 embryos per transfer,
   3 only in exceptional cases), Surrogacy (Regulation) Act 2021, PC-PNDT Act 1994.
 
-The 20 protocols: Evaluation of the couple · Lifestyle and preconception care · Letrozole ovulation induction ·
+The 21 protocols: Evaluation of the couple · Lifestyle and preconception care · Follicular study with timed intercourse · Letrozole ovulation induction ·
 Gonadotrophin induction (low-dose step-up) · Laparoscopic ovarian surgery · Hypogonadotropic hypogonadism (WHO group I)
 · Hyperprolactinaemia · Unexplained infertility · Tubal factor · Mild to moderate male factor · Severe male factor and
 azoospermia · Endometriosis · Uterine factor · Older age or diminished reserve · Premature ovarian insufficiency · IUI
@@ -125,6 +127,31 @@ gametes under the ART Act.
 - Two or more pregnancy losses → **Recurrent loss** to consider (recommended from three).
 - Cautions, never refusals: above 50 (or a partner above 55) the ART Act's upper age; under 21; a BMI of 30 or more
   with PCOS; a raised TSH; tuberculosis in the medical background.
+
+## 6. The treatment ladder: switching from follicular study to IUI to IVF, or to a procedure
+
+Added on 24 Oct 2026 at the owner's request. On a current plan, **Switch to…** offers:
+
+- **The ladder:** *Follicular study with timed intercourse* → *IUI with ovarian stimulation* → *IVF or ICSI* (the plan's own
+  step is left out). The plan's step is shown under its title; a plan built from other protocols stands beside the
+  ladder as "Procedure or work-up".
+- **Other procedures:** laparoscopy with ovarian drilling; tubal surgery or surgery for a hydrosalpinx; hysteroscopic
+  surgery (septum, fibroid, polyp, adhesions); endometriosis surgery; varicocele repair and the male work-up; surgical
+  sperm retrieval with ICSI; donor gametes; fertility preservation – each the protocol that describes it.
+- **Anything else:** the full chooser with the suggestions for her, with the switch carried along.
+
+What a switch does, in one request (`POST /api/patients/:id/fertility-plan` with `target` and `switchFrom`):
+1. the new draft is built from the step's protocol, its first line saying "Switched from “…” on … : why";
+2. the current plan is closed – a confirmed plan is **completed as moved to the next step**, a draft is discarded –
+   with "Switched to …" and the reason as its outcome note;
+3. the **cycles completed** under the old plan (asked in the dialog) are added to the matching counter on her record
+   – ovulation induction cycles for a follicular study or induction plan, IUI cycles, IVF or ICSI cycles – so the next
+   suggestions count them (after three IUI cycles the rules move to IVF). A procedure has no cycles to count.
+
+With no current plan, **Start with a step…** builds the first plan straight from the ladder. The new **Follicular
+study** protocol carries the caution that WHO 2025 and NICE 2026 do not recommend ovarian stimulation with timed
+intercourse as a stand-alone treatment for unexplained infertility: there it is monitoring of a natural cycle for a few
+months, and the next step is stimulated IUI.
 
 ## 5. Decisions and open points for the owner
 

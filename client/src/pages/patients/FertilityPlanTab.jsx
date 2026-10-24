@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BadgeCheck, Check, CircleMinus, FileText, Info, ListChecks, Pencil, Sparkles, TriangleAlert, X } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Check, CircleMinus, FileText, Info, ListChecks, Pencil, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { Alert, Field, StatusPill, formatDate, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
@@ -11,17 +11,23 @@ import {
   MAX_PROTOCOLS,
   OUTCOME_LABELS,
   PLAN_STATUS_LOOK,
+  STEP_ORDER,
+  STEP_WORDS,
+  counterWords,
   missingText,
   outcomeText,
   planDatesText,
   sectionLines,
+  switchFlash,
 } from './fertilityFormat.js';
 import { toDateInput } from './patientFormat.js';
 
 // The Treatment plan tab on an infertility record (docs/FERTILITY_PLAN.md – DRAFT protocol library):
 //  1. no plan: what her record still lacks, and "Suggest plans";
 //  2. the suggestions: the protocols that fit her record, best fit first, with why – the doctor ticks one or more;
-//  3. the plan built from them: every section as text the doctor edits; a doctor confirms it; it ends with an outcome.
+//  3. the plan built from them: every section as text the doctor edits; a doctor confirms it; it ends with an outcome;
+//  4. "Switch to": the ladder – follicular study → IUI → IVF/ICSI – or another procedure; the old plan is closed as moved
+//     on, the cycles done under it go to her record, and the next draft is built (fertility/ladder.js on the server).
 // Earlier plans stay below. The server decides who may see or change what (access flags in its answers); nurses read.
 
 const STATUS_ICONS = { draft: Pencil, active: BadgeCheck, completed: Check, stopped: CircleMinus };
@@ -77,6 +83,102 @@ function PlanSections({ sections }) {
       <SectionText text={s.text} />
     </div>
   ));
+}
+
+/** The ladder under a plan's title: follicular study → IUI → IVF / ICSI, the plan's step marked; a procedure stands beside it. */
+function LadderLine({ step }) {
+  return (
+    <p className="fp-ladder" aria-label="Treatment ladder">
+      <span>Step:</span>
+      {STEP_ORDER.map((k, i) => (
+        <span key={k} className="fp-ladder-item">
+          {i > 0 && (
+            <span className="fp-ladder-arrow" aria-hidden="true">
+              →{' '}
+            </span>
+          )}
+          <span className={`fp-ladder-step ${step === k ? 'is-current' : ''}`.trim()} aria-current={step === k ? 'step' : undefined}>
+            {STEP_WORDS[k]}
+          </span>
+        </span>
+      ))}
+      {!step && <span className="fp-ladder-step is-current">Procedure or work-up</span>}
+    </p>
+  );
+}
+
+/**
+ * "Switch to…" from the current plan, or "Start with…" when there is none: a step of the ladder or another procedure.
+ * With a plan: the cycles completed under it (added to the matching counter on her record) and why. "Choose from all
+ * protocols" hands over to the full chooser with the same switch.
+ */
+function SwitchDialog({ patient, plan, ladder, onDone, onChooseAll, onCancel }) {
+  const steps = ladder.steps.filter((s) => s.key !== plan?.step);
+  const [target, setTarget] = useState(steps[0]?.key ?? 'all');
+  const [cyclesDone, setCyclesDone] = useState('0');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const ref = useDialogFocus(onCancel);
+  const requestId = useRef(newRequestId());
+  const counter = plan ? ladder.steps.find((s) => s.key === plan.step)?.counter ?? null : null;
+  const switchFrom = plan ? { planId: plan.id, rev: plan.rev, cyclesDone: counter ? Number(cyclesDone || 0) : 0, note: note.trim() } : undefined;
+  const submit = async (e) => {
+    e.preventDefault();
+    if (target === 'all') return onChooseAll(switchFrom);
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await api(`/patients/${patient.id}/fertility-plan`, { method: 'POST', body: { clientRequestId: requestId.current, target, ...(switchFrom ? { switchFrom } : {}) } });
+      onDone(res);
+    } catch (err) {
+      setError(err.message);
+      setFieldErrors(err.fields ?? {});
+      setSaving(false);
+    }
+    return undefined;
+  };
+  const option = (key, label) => (
+    <label key={key} className="check">
+      <input type="radio" name="fp-target" value={key} checked={target === key} onChange={() => setTarget(key)} /> {label}
+    </label>
+  );
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="fp-switch-title" onSubmit={submit} noValidate>
+        <h2 id="fp-switch-title">{plan ? 'Switch to another step or procedure' : 'Start with a step of the ladder'}</h2>
+        <Alert type="error">{error}</Alert>
+        {plan && <p className="hint">Her current plan “{plan.title}” is {plan.status === 'active' ? 'completed as moved to the next step' : 'discarded (it was still a draft)'}; the new plan opens as a draft to edit and confirm.</p>}
+        <div className="fp-switch-list" role="radiogroup" aria-labelledby="fp-switch-title">
+          <p className="fp-switch-group">The ladder</p>
+          {steps.map((s) => option(s.key, s.label))}
+          <p className="fp-switch-group">Other procedures</p>
+          {ladder.procedures.map((s) => option(s.key, s.label))}
+          <p className="fp-switch-group">Anything else</p>
+          {option('all', 'Choose from all protocols, with the suggestions for her')}
+        </div>
+        {counter && (
+          <Field label={`Cycles completed under the current plan (${counterWords(counter)})`} id="fp-cycles" error={fieldErrors['switchFrom.cyclesDone']} hint="Added to her record, so the next suggestions count them.">
+            <input id="fp-cycles" inputMode="numeric" maxLength={2} value={cyclesDone} onChange={(e) => setCyclesDone(e.target.value)} />
+          </Field>
+        )}
+        {plan && (
+          <Field label="Why (optional)" id="fp-switch-note" error={fieldErrors['switchFrom.note']}>
+            <textarea id="fp-switch-note" rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
+          </Field>
+        )}
+        <div className="row">
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            <ArrowRight aria-hidden="true" /> {saving ? 'Switching…' : target === 'all' ? 'Choose protocols' : plan ? 'Switch' : 'Start'}
+          </button>
+          <button type="button" className="btn btn-link" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }
 
 // ---------- The suggestions ----------
@@ -150,7 +252,7 @@ function OptionCard({ option, protocol, picked, onToggle, disabled }) {
   );
 }
 
-function SuggestPanel({ patient, onBuilt, onCancel }) {
+function SuggestPanel({ patient, switchFrom = null, onBuilt, onCancel }) {
   const { data, error, loading } = useFetch(`/patients/${patient.id}/fertility-plan/suggestions`);
   const [picked, setPicked] = useState([]);
   const [building, setBuilding] = useState(false);
@@ -161,7 +263,7 @@ function SuggestPanel({ patient, onBuilt, onCancel }) {
     setBuilding(true);
     setBuildError(null);
     try {
-      const res = await api(`/patients/${patient.id}/fertility-plan`, { method: 'POST', body: { clientRequestId: requestId.current, protocolKeys: picked } });
+      const res = await api(`/patients/${patient.id}/fertility-plan`, { method: 'POST', body: { clientRequestId: requestId.current, protocolKeys: picked, ...(switchFrom ? { switchFrom } : {}) } });
       onBuilt(res);
     } catch (err) {
       setBuildError(err.message);
@@ -186,6 +288,11 @@ function SuggestPanel({ patient, onBuilt, onCancel }) {
         </div>
       </div>
       <DraftNote text={data.draftNote} />
+      {switchFrom && (
+        <Alert type="info" icon={Info}>
+          This replaces her current plan: it is closed as moved to the next step when the new plan is built.
+        </Alert>
+      )}
       {missing && (
         <Alert type="info" icon={Info}>
           {missing} The suggestions are read from what is recorded; add the rest in <Link to={`/patients/${patient.id}/edit`}>Edit details</Link> for a fuller picture.
@@ -349,8 +456,9 @@ function OutcomeDialog({ patient, plan, kind: firstKind, onDone, onCancel }) {
   );
 }
 
-function PlanView({ patient, plan, access, onChanged, onEdit, setFlash }) {
+function PlanView({ patient, plan, access, ladder, onChanged, onSwitched, onChooseAll, onEdit, setFlash }) {
   const [ending, setEnding] = useState(null); // the outcome kind the dialog opens with
+  const [switching, setSwitching] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState(null);
   const confirm = async () => {
@@ -384,6 +492,9 @@ function PlanView({ patient, plan, access, onChanged, onEdit, setFlash }) {
                 <BadgeCheck aria-hidden="true" /> {confirming ? 'Confirming…' : 'Confirm plan'}
               </button>
             )}
+            <button type="button" className="btn btn-secondary" onClick={() => setSwitching(true)}>
+              <ArrowRight aria-hidden="true" /> Switch to…
+            </button>
             {plan.status === 'active' && (
               <button type="button" className="btn btn-secondary" onClick={() => setEnding('pregnant')}>
                 <Check aria-hidden="true" /> Record outcome
@@ -398,8 +509,10 @@ function PlanView({ patient, plan, access, onChanged, onEdit, setFlash }) {
       <Alert type="error" onClose={() => setError(null)}>
         {error}
       </Alert>
+      <LadderLine step={plan.step} />
       <p className="fp-meta">
         <span>{planDatesText(plan, formatDate)}</span>
+        {plan.switchedFrom && <span>Switched from “{plan.switchedFrom.title}” on {formatDate(plan.switchedFrom.at)}</span>}
         <span>Built by {plan.created?.byName ?? 'staff'} on {formatDate(plan.created?.at)}</span>
         {plan.lastEdited && <span>Edited by {plan.lastEdited.byName} on {formatDateTime(plan.lastEdited.at)}</span>}
         {plan.activated && <span>Confirmed by {plan.activated.byName} on {formatDate(plan.activated.at)}</span>}
@@ -437,6 +550,22 @@ function PlanView({ patient, plan, access, onChanged, onEdit, setFlash }) {
           ))}
         </details>
       )}
+      {switching && (
+        <SwitchDialog
+          patient={patient}
+          plan={plan}
+          ladder={ladder}
+          onCancel={() => setSwitching(false)}
+          onDone={(res) => {
+            setSwitching(false);
+            onSwitched(res);
+          }}
+          onChooseAll={(switchFrom) => {
+            setSwitching(false);
+            onChooseAll(switchFrom);
+          }}
+        />
+      )}
       {ending && (
         <OutcomeDialog
           patient={patient}
@@ -466,6 +595,7 @@ function EarlierPlans({ plans }) {
               <summary className="fp-earlier-line">
                 <span className="fp-earlier-title">{p.title}</span>
                 <PlanStatus plan={p} />
+                {p.step && <StatusPill tone="neutral">{STEP_WORDS[p.step]}</StatusPill>}
                 <span className="muted tabular">{planDatesText(p, formatDate)}</span>
               </summary>
               <p className="fp-outcome">{outcomeText(p, formatDate)}</p>
@@ -478,7 +608,7 @@ function EarlierPlans({ plans }) {
   );
 }
 
-function NoPlanCard({ patient, data, onSuggest }) {
+function NoPlanCard({ patient, data, onSuggest, onStart }) {
   const missing = missingText(data.facts);
   return (
     <section className="card" aria-labelledby="fp-none-title">
@@ -488,6 +618,9 @@ function NoPlanCard({ patient, data, onSuggest }) {
         </h2>
         {data.access.canCreate && (
           <div className="fp-head-actions">
+            <button type="button" className="btn btn-secondary" onClick={onStart}>
+              <ArrowRight aria-hidden="true" /> Start with a step…
+            </button>
             <button type="button" className="btn btn-primary" onClick={onSuggest}>
               <Sparkles aria-hidden="true" /> Suggest plans
             </button>
@@ -515,6 +648,8 @@ export function PatientFertilityPlanTab() {
   const [mode, setMode] = useState('view'); // 'view' | 'suggest' | 'edit'
   const [local, setLocal] = useState(null); // the latest answer after a change, until the tab is read again
   const [note, setNote] = useState(null);
+  const [switchFrom, setSwitchFrom] = useState(null); // a switch carried into the full chooser
+  const [starting, setStarting] = useState(false); // "Start with a step…" when there is no plan
   useEffect(() => setLocal(null), [data]);
   if (!patient.access?.canViewFertilityPlan) return <div className="card">Her treatment plan is not part of your role for this patient.</div>;
   if (error && !data) return <Alert type="error">{error}</Alert>;
@@ -522,6 +657,7 @@ export function PatientFertilityPlanTab() {
   const plan = local?.plan ?? data.plan;
   const access = local?.access ?? data.access;
   const changed = (res) => {
+    setSwitchFrom(null);
     if (!res) {
       reload();
       setMode('view');
@@ -531,12 +667,28 @@ export function PatientFertilityPlanTab() {
     setMode('view');
     reload(); // the earlier plans and the access flags follow
   };
+  // A switch or a start: the new draft opens for editing, with what happened said once
+  const switched = (res) => {
+    changed(res);
+    setMode('edit');
+    setNote(switchFlash(res));
+  };
   return (
     <div className="fp-tab">
       <Alert type="success" onClose={() => setNote(null)}>
         {note}
       </Alert>
-      {mode === 'suggest' && <SuggestPanel patient={patient} onCancel={() => setMode('view')} onBuilt={(res) => { changed(res); setMode('edit'); setNote('Draft plan built – read and edit it, then confirm.'); }} />}
+      {mode === 'suggest' && (
+        <SuggestPanel
+          patient={patient}
+          switchFrom={switchFrom}
+          onCancel={() => {
+            setSwitchFrom(null);
+            setMode('view');
+          }}
+          onBuilt={(res) => (res.closed ? switched(res) : (changed(res), setMode('edit'), setNote('Draft plan built – read and edit it, then confirm.')))}
+        />
+      )}
       {mode === 'edit' && plan && (
         <PlanEditor
           patient={patient}
@@ -554,8 +706,39 @@ export function PatientFertilityPlanTab() {
           }}
         />
       )}
-      {mode === 'view' && plan && <PlanView patient={patient} plan={plan} access={access} onChanged={changed} onEdit={() => setMode('edit')} setFlash={setNote} />}
-      {mode === 'view' && !plan && <NoPlanCard patient={patient} data={{ ...data, access }} onSuggest={() => setMode('suggest')} />}
+      {mode === 'view' && plan && (
+        <PlanView
+          patient={patient}
+          plan={plan}
+          access={access}
+          ladder={data.ladder}
+          onChanged={changed}
+          onSwitched={switched}
+          onChooseAll={(from) => {
+            setSwitchFrom(from);
+            setMode('suggest');
+          }}
+          onEdit={() => setMode('edit')}
+          setFlash={setNote}
+        />
+      )}
+      {mode === 'view' && !plan && <NoPlanCard patient={patient} data={{ ...data, access }} onSuggest={() => setMode('suggest')} onStart={() => setStarting(true)} />}
+      {starting && !plan && (
+        <SwitchDialog
+          patient={patient}
+          plan={null}
+          ladder={data.ladder}
+          onCancel={() => setStarting(false)}
+          onDone={(res) => {
+            setStarting(false);
+            switched(res);
+          }}
+          onChooseAll={() => {
+            setStarting(false);
+            setMode('suggest');
+          }}
+        />
+      )}
       {mode === 'view' && !plan && <DraftNote text={data.draftNote} />}
       <EarlierPlans plans={data.earlier} />
     </div>

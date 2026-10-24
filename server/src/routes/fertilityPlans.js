@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { hospitalToday } from '../careplans/dates.js';
-import { fertilityEmpty } from '../fertility/fertilityFields.js';
+import { FERTILITY_NUMBERS, fertilityEmpty } from '../fertility/fertilityFields.js';
+import { LADDER_STEPS, PROCEDURES, SWITCH_KEYS, counterFor, stepOf, targetByKey } from '../fertility/ladder.js';
+import { dateWords } from '../careplans/dates.js';
 import { DRAFT_NOTE, FERTILITY_LIBRARY_VERSION, PROTOCOL_KEYS, SECTION_ORDER, composePlan, libraryView } from '../fertility/protocols.js';
 import { fertilityFacts, suggestProtocols } from '../fertility/suggest.js';
 import { COMPLETED_KINDS, FertilityPlan, MAX_SECTION_TEXT, MAX_VERSIONS, OUTCOME_KINDS, STOPPED_KINDS } from '../models/FertilityPlan.js';
@@ -18,7 +20,9 @@ import { dateOnly, objectId, parse } from '../utils/validate.js';
 // Mounted inside the patients router after its role gate (mergeParams gives the patient id).
 //   GET  /              her current plan (draft or active), the earlier ones, what the record still lacks
 //   GET  /suggestions   the protocols that fit her record, best fit first, with the whole library to browse
-//   POST /              build a draft plan from the chosen protocols (one current plan at a time)
+//   POST /              build a draft plan from the chosen protocols (one current plan at a time); with `switchFrom`
+//                       the current plan is closed as "moved to the next step" and the cycles done under it are added
+//                       to her record (the ladder: follicular study → IUI → IVF, or another procedure – fertility/ladder.js)
 //   PUT  /:planId       edit the title, dates and section texts (every save keeps the previous version)
 //   POST /:planId/status  confirm (draft → active, a doctor), complete or stop (with the outcome)
 // Who may do what: seen by those who see her medical details (on an infertility record, or one with a fertility
@@ -58,6 +62,8 @@ export function planView(plan) {
     id: String(p._id),
     status: p.status,
     protocolKeys: p.protocolKeys ?? [],
+    step: stepOf(p.protocolKeys ?? []), // the ladder step the plan stands on, or null for a procedure or work-up
+    switchedFrom: p.switchedFrom?.planId ? { planId: String(p.switchedFrom.planId), title: p.switchedFrom.title ?? '', at: p.switchedFrom.at ?? null } : null,
     libraryVersion: p.libraryVersion,
     title: p.title,
     startOn: p.startOn ?? null,
@@ -112,6 +118,7 @@ fertilityPlanRouter.get('/', async (req, res) => {
     access: { canEdit: access.write && Boolean(current), canActivate: access.activate && current?.status === 'draft', canCreate: access.create && !current, canSuggest: access.write && patient.careType === 'infertility' },
     libraryVersion: FERTILITY_LIBRARY_VERSION,
     sectionOrder: SECTION_ORDER,
+    ladder: { steps: LADDER_STEPS, procedures: PROCEDURES },
     draftNote: DRAFT_NOTE,
   });
 });
@@ -126,10 +133,24 @@ fertilityPlanRouter.get('/suggestions', async (req, res) => {
 const createSchema = z
   .object({
     clientRequestId: z.string().min(8).max(64),
-    protocolKeys: z.array(z.enum(PROTOCOL_KEYS, 'Choose protocols from the list')).min(1, 'Choose at least one protocol').max(5, 'Choose at most five protocols'),
+    // Either the protocols themselves, or a step of the ladder / a procedure (fertility/ladder.js) that names them
+    protocolKeys: z.array(z.enum(PROTOCOL_KEYS, 'Choose protocols from the list')).min(1, 'Choose at least one protocol').max(5, 'Choose at most five protocols').optional(),
+    target: z.enum(SWITCH_KEYS, 'Choose a step or procedure from the list').optional(),
     startOn: z.preprocess(emptyToNull, dateOnly('Start date')).optional(),
+    // Switching from her current plan: it is closed as moved to the next step (a draft is discarded), and the cycles
+    // completed under it are added to the matching counter on her record
+    switchFrom: z
+      .object({
+        planId: objectId,
+        rev,
+        cyclesDone: z.coerce.number('Cycles must be a number').int('Cycles must be a whole number').min(0, "Cycles can't be negative").max(50, 'Too many cycles').default(0),
+        note: z.string().trim().max(500, 'The note is too long').default(''),
+      })
+      .strict()
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine((b) => Boolean(b.protocolKeys?.length) !== Boolean(b.target), { path: ['protocolKeys'], message: 'Choose protocols, or one step of the ladder' });
 
 // Build a draft plan from the chosen protocols. One current plan at a time; a repeated request (double click) answers
 // with the plan already made.
@@ -141,11 +162,27 @@ fertilityPlanRouter.post('/', async (req, res) => {
   refuseNewOnDuplicate(patient, 'a treatment plan');
   const existing = await FertilityPlan.findOne({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
   if (existing) return res.status(200).json(answer(patient, existing, access));
-  if (await FertilityPlan.exists({ tenantId: req.tenantId, patientId: patient._id, status: { $in: ['draft', 'active'] } })) {
+  // Switching: the plan she is on now, checked before anything is written
+  let from = null;
+  if (body.switchFrom) {
+    from = await FertilityPlan.findOne({ _id: body.switchFrom.planId, tenantId: req.tenantId, patientId: patient._id });
+    if (!from) throw notFound();
+    if (!isCurrent(from)) throw conflict('This plan is already finished; start the next plan from Suggest plans.', 'PLAN_CLOSED');
+    if (from.rev !== body.switchFrom.rev) throw conflict('Someone changed this plan meanwhile – the latest version is shown; please try again.', 'CONFLICT');
+  }
+  if (await FertilityPlan.exists({ tenantId: req.tenantId, patientId: patient._id, status: { $in: ['draft', 'active'] }, ...(from ? { _id: { $ne: from._id } } : {}) })) {
     throw conflict('She already has a treatment plan in progress – complete or stop it before starting another.', 'PLAN_EXISTS');
   }
-  const keys = [...new Set(body.protocolKeys)];
+  const keys = [...new Set(body.protocolKeys ?? targetByKey.get(body.target).protocols)];
   const composed = composePlan(keys);
+  if (from) {
+    // The chain stays readable on the new plan: where it came from, and why
+    const why = body.switchFrom.note ? `: ${body.switchFrom.note}` : '';
+    const line = `• Switched from “${from.title}” on ${dateWords(req.now ?? new Date())}${why}`;
+    const aim = composed.sections.find((s) => s.key === 'aim');
+    if (aim) aim.text = `${line}\n${aim.text}`;
+    else composed.sections.unshift({ key: 'aim', title: 'Aim and basis', text: line });
+  }
   const suggested = suggestProtocols(patient, req.now).options.filter((o) => o.fit !== 'other').map(({ key, fit }) => ({ key, fit }));
   let plan;
   try {
@@ -161,6 +198,7 @@ fertilityPlanRouter.post('/', async (req, res) => {
       sections: composed.sections,
       sources: composed.sources,
       suggested,
+      switchedFrom: from ? { planId: from._id, title: from.title, at: req.now ?? new Date() } : null,
       created: stampOf(req),
       clientRequestId: body.clientRequestId,
     });
@@ -170,8 +208,34 @@ fertilityPlanRouter.post('/', async (req, res) => {
     if (!again) throw e;
     return res.status(200).json(answer(patient, again, access));
   }
-  await audit(req, 'FERTILITY_PLAN_CREATED', { details: ids(patient, plan, { protocols: keys.length }) });
-  return res.status(201).json(answer(patient, plan, access));
+  await audit(req, 'FERTILITY_PLAN_CREATED', { details: ids(patient, plan, { protocols: keys.length, ...(from ? { fromPlanId: String(from._id) } : {}) }) });
+  let cyclesRecorded = null;
+  if (from) {
+    // The old plan is closed – completed as moved to the next step, or a draft discarded – with the switch as its note
+    const note = [`Switched to “${composed.title}”`, body.switchFrom.note].filter(Boolean).join(' – ').slice(0, 500);
+    const stamp = stampOf(req);
+    if (from.status === 'active') {
+      from.status = 'completed';
+      from.outcome = { kind: 'next_step', note, ...stamp };
+    } else {
+      from.status = 'stopped';
+      from.outcome = { kind: 'discarded', note, ...stamp };
+    }
+    from.rev += 1;
+    await from.save();
+    await audit(req, 'FERTILITY_PLAN_STATUS_CHANGED', { details: ids(patient, from, { status: from.status }) });
+    // The cycles completed under the old plan go to the matching counter on her record (the suggestions read them)
+    const counter = counterFor(from.protocolKeys);
+    if (counter && body.switchFrom.cyclesDone > 0) {
+      const f = patient.fertility?.toObject?.() ?? patient.fertility ?? {};
+      const total = Math.min(FERTILITY_NUMBERS[counter].max, (f[counter] ?? 0) + body.switchFrom.cyclesDone);
+      patient.fertility = { ...f, [counter]: total };
+      await patient.save();
+      await audit(req, 'PATIENT_UPDATED', { details: { patientId: String(patient._id), mrn: patient.mrn, fields: ['fertility'] } });
+      cyclesRecorded = { counter, total };
+    }
+  }
+  return res.status(201).json(answer(patient, plan, access, { closed: from ? planView(from) : null, cyclesRecorded }));
 });
 
 const sectionSchema = z

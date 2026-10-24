@@ -206,7 +206,7 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - Care-plan templates: antenatal (50 items) and the postnatal, newborn, gynaecology, infertility and pregnancy-loss
   templates; the 25 decisions in `docs/CARE_PLAN_DECISIONS.md`.
 - Risk rules (`docs/RISK_RULES_RESEARCH.md`), red-flag rules, the medicine safety list, prescription sets, test packages.
-- The fertility treatment protocol library (20 protocols from WHO 2025, NICE NG257 2026, ESHRE, the 2023 PCOS guideline,
+- The fertility treatment protocol library (21 protocols from WHO 2025, NICE NG257 2026, ESHRE, the 2023 PCOS guideline,
   FOGSI and the ART Act) and its suggestion rules (`docs/FERTILITY_PLAN.md`, `server/src/fertility/`): doses and days marked
   "doctor to confirm" are common practice, not the bodies' own words.
 - Lab usual ranges (adult; the newborn values need a paediatrician).

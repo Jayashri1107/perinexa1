@@ -143,6 +143,37 @@ export const PROTOCOLS = [
     },
   },
   {
+    key: 'follicular_study',
+    name: 'Follicular study with timed intercourse (natural or stimulated cycle)',
+    short: 'Follicular study',
+    group: 'ovulation',
+    summary: 'Serial scans from day 9–10 to time intercourse to ovulation, in a natural cycle or with letrozole or clomiphene; a decided number of cycles before IUI.',
+    whenToUse: 'The first step of the ladder: anovulation or oligo-ovulation on oral induction (the scan confirms the response and sets the dose), or a short, counted trial of timing in a couple whose tests are normal. At least one patent tube and semen that allows natural conception.',
+    bodies: ['nice2026', 'who2025', 'pcos2023', 'fogsiIui'],
+    cautions: [
+      'For unexplained infertility WHO 2025 and NICE 2026 advise against ovarian stimulation with timed intercourse as a stand-alone treatment (NICE NG257 1.38.2): a follicular study is then the monitoring of a natural cycle for a few months, not a treatment, and the next step is stimulated IUI.',
+      'Cancel the cycle and advise against unprotected intercourse when more than 2 follicles reach 14 mm (multiple pregnancy) (PCOS 2023 5.5.8).',
+    ],
+    sections: {
+      aim: ['Show whether and when she ovulates, time intercourse to it, and set the induction dose from what the scans show; move to IUI after a counted number of cycles (FOGSI Focus on ovulation induction; NICE NG257 1.33.2 for monitored cycles).'],
+      investigations: ['Baseline scan on day 2–3 (no cyst over 20–25 mm, antral follicle count); semen within the WHO ranges or mild changes only; tubal patency known, or decided case by case (PCOS 2023 5.2.1); TSH and prolactin when cycles are irregular.'],
+      treatment: [
+        'Natural cycle: scans from day 9–10 (earlier in short cycles) every 2–3 days until the dominant follicle is 18–20 mm; intercourse every 1–2 days from a 16 mm follicle, and 24–36 hours after the LH surge or the trigger.',
+        'Stimulated cycle: letrozole or clomiphene as in the induction protocol, the scans from day 10–12 confirming one dominant follicle and setting the dose for the next cycle (PCOS 2023; WHO 2025).',
+        'Trigger: hCG when the lead follicle is 18 mm or more, or the natural LH surge (urinary LH kit) – the doctor’s choice (doctor to confirm); luteal support with vaginal progesterone is optional in stimulated cycles.',
+        'Ovulation confirmed at the next scan (follicle collapse, free fluid, a corpus luteum) or by mid-luteal progesterone; a pregnancy test when the period is 7 days late.',
+        'Number of cycles: 3–6, then IUI with stimulation – sooner (after 3) from age 35, with a mild male factor, or when ovulation is confirmed but no pregnancy follows; IVF after IUI (WHO 2025; NICE 2026).',
+      ],
+      medicines: ['None in a natural cycle. Letrozole 2.5–7.5 mg or clomiphene 50–150 mg daily for 5 days from day 2–5 in a stimulated cycle; hCG 5,000–10,000 IU (250 micrograms recombinant) when triggered; progesterone 200–400 mg vaginally daily for luteal support where chosen (doctor to confirm).'],
+      monitoring: [
+        'Each scan records the day, every follicle over 10 mm with its size, the endometrial thickness and pattern, and the advice given; the cycle sheet ends with the trigger or surge day and the outcome.',
+        'Cancel when more than 2 follicles reach 14 mm; note a thin endometrium (under 7 mm at trigger) or a luteinised unruptured follicle for the next cycle’s plan.',
+      ],
+      review: ['Review after each cycle; after 3 cycles review the plan with the couple; after 6 cycles (or sooner by age or a male factor) move to IUI – the cycles done are recorded on her record when the plan is switched.'],
+      counselling: ['Per-cycle chance about 10–20 % when she ovulates and semen and tubes are normal; the scans add visits and cost; what the study shows (follicle growth, ovulation, endometrium) and what it does not (egg quality, tubal function).'],
+    },
+  },
+  {
     key: 'oi_letrozole',
     name: 'Ovulation induction with letrozole – first line for PCOS and WHO group II',
     short: 'Letrozole induction',

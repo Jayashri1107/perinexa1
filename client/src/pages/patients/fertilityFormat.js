@@ -192,3 +192,18 @@ export function missingText(facts) {
   if (!list.length) return '';
   return `Not yet on her record: ${list.map((m) => m.label).join('; ')}.`;
 }
+
+// ---------- The treatment ladder (server/src/fertility/ladder.js sends the steps and procedures with the plan) ----------
+
+export const STEP_WORDS = { follicular_study: 'Follicular study', iui: 'IUI', ivf: 'IVF / ICSI' };
+export const STEP_ORDER = ['follicular_study', 'iui', 'ivf'];
+const COUNTER_WORDS = { oiCycles: 'ovulation induction cycles', iuiCycles: 'IUI cycles', ivfCycles: 'IVF or ICSI cycles' };
+/** "Cycles completed under the current plan" – the counter the switch adds them to, in words. */
+export const counterWords = (counter) => COUNTER_WORDS[counter] ?? 'cycles';
+/** The message after a switch: what was built, what happened to the old plan, and what was recorded on her record. */
+export function switchFlash(res) {
+  const parts = [res.closed ? `Switched to “${res.plan.title}” – read and edit the draft, then confirm.` : `Draft plan built from “${res.plan.title}” – read and edit it, then confirm.`];
+  if (res.closed) parts.push(res.closed.status === 'completed' ? 'The earlier plan is completed as moved to the next step.' : 'The earlier draft was discarded.');
+  if (res.cyclesRecorded) parts.push(`${res.cyclesRecorded.total} ${counterWords(res.cyclesRecorded.counter)} now on her record.`);
+  return parts.join(' ');
+}

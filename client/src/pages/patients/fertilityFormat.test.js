@@ -15,6 +15,9 @@ import {
   outcomeText,
   planDatesText,
   sectionLines,
+  switchFlash,
+  counterWords,
+  STEP_ORDER,
 } from './fertilityFormat.js';
 
 const formatDate = (d) => new Date(d).toISOString().slice(0, 10);
@@ -61,6 +64,16 @@ describe('the fertility history on the form', () => {
 });
 
 describe('the treatment plan words', () => {
+  it('says what a switch up the ladder did', () => {
+    expect(STEP_ORDER).toEqual(['follicular_study', 'iui', 'ivf']);
+    expect(counterWords('oiCycles')).toBe('ovulation induction cycles');
+    expect(switchFlash({ plan: { title: 'IUI plan' }, closed: { status: 'completed' }, cyclesRecorded: { counter: 'oiCycles', total: 4 } })).toBe(
+      'Switched to “IUI plan” – read and edit the draft, then confirm. The earlier plan is completed as moved to the next step. 4 ovulation induction cycles now on her record.',
+    );
+    expect(switchFlash({ plan: { title: 'IVF plan' }, closed: { status: 'stopped' }, cyclesRecorded: null })).toBe('Switched to “IVF plan” – read and edit the draft, then confirm. The earlier draft was discarded.');
+    expect(switchFlash({ plan: { title: 'First plan' }, closed: null, cyclesRecorded: null })).toBe('Draft plan built from “First plan” – read and edit it, then confirm.');
+  });
+
   it('turns a section’s text into headings and items, and says how a plan ended', () => {
     expect(sectionLines('Letrozole induction\n• one\n•two\n\n')).toEqual([
       { kind: 'heading', text: 'Letrozole induction' },

@@ -40,6 +40,8 @@ const fertilityPlanSchema = new mongoose.Schema(
     reviewOn: { type: Date, default: null }, // the agreed review date
     sections: { type: [sectionSchema], default: [] },
     sources: { type: [new mongoose.Schema({ key: String, label: String, bodies: String }, { _id: false })], default: [] },
+    // The plan this one was switched from (the ladder: follicular study → IUI → IVF, or a procedure), when it was
+    switchedFrom: { type: new mongoose.Schema({ planId: { type: ObjectId, ref: 'FertilityPlan' }, title: String, at: Date }, { _id: false }), default: null },
     // What the rules suggested when the plan was built (keys and fit only), so the choice can be read later
     suggested: { type: [new mongoose.Schema({ key: String, fit: String }, { _id: false })], default: [] },
     outcome: { type: new mongoose.Schema({ kind: { type: String, enum: OUTCOME_KINDS }, note: { type: String, default: '', maxlength: 500 }, ...byFields }, { _id: false }), default: null },
