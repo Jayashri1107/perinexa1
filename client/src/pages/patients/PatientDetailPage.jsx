@@ -297,30 +297,30 @@ export function PatientDetailPage() {
   const canAdmitHere = open && !patient.currentAdmission && (isReception || (a.canEditClinical && hasRole(activeMembership, 'doctor', 'rmo')));
   const bookHere = () => navigate('/appointments', { state: { bookFor: { id: patient.id, fullName: patient.fullName, mrn: patient.mrn, phone: patient.phone ?? '' } } });
   const more = [
-    ...(!isReception && canBookHere ? [{ label: 'Book an appointment', icon: CalendarPlus, onSelect: bookHere }] : []),
-    ...(!isReception && canAdmitHere ? [{ label: 'Admit to a bed', icon: BedDouble, onSelect: () => setAdmitting(true) }] : []),
-    ...(editInMenu ? [{ label: 'Edit details', icon: Pencil, onSelect: () => navigate(`${base}/edit`) }] : []),
-    ...(a.canAssign ? [{ label: 'Change doctor', icon: UserRound, onSelect: () => setChangingDoctor(true) }] : []),
-    ...(a.canMarkSensitive ? [{ label: patient.sensitive ? 'Remove sensitive marking' : 'Mark sensitive', icon: Lock, onSelect: () => setConfirmSensitive(true) }] : []),
-    ...(a.canEditClinical && hasRole(activeMembership, 'doctor', 'rmo') ? [{ label: 'Write a letter', icon: FileText, onSelect: () => setWritingLetter(true) }] : []),
-    ...(a.canAddEmergencyNote ? [{ label: 'Emergency note', icon: Siren, onSelect: () => setEmergencyOpen(true) }] : []),
+    ...(!isReception && canBookHere ? [{ group: 'This record', label: 'Book an appointment', icon: CalendarPlus, onSelect: bookHere }] : []),
+    ...(!isReception && canAdmitHere ? [{ group: 'This record', label: 'Admit to a bed', icon: BedDouble, onSelect: () => setAdmitting(true) }] : []),
+    ...(editInMenu ? [{ group: 'This record', label: 'Edit details', icon: Pencil, onSelect: () => navigate(`${base}/edit`) }] : []),
+    ...(a.canAssign ? [{ group: 'This record', label: 'Change doctor', icon: UserRound, onSelect: () => setChangingDoctor(true) }] : []),
+    ...(a.canMarkSensitive ? [{ label: patient.sensitive ? 'Remove sensitive marking' : 'Mark sensitive', group: 'This record', icon: Lock, onSelect: () => setConfirmSensitive(true) }] : []),
+    ...(a.canAddEmergencyNote ? [{ group: 'This record', label: 'Emergency note', icon: Siren, onSelect: () => setEmergencyOpen(true) }] : []),
+    ...(a.canEditClinical && hasRole(activeMembership, 'doctor', 'rmo') ? [{ group: 'Print and send', label: 'Write a letter', icon: FileText, onSelect: () => setWritingLetter(true) }] : []),
     // The patient card: her name, number, doctor and appointments to keep (reception, the referral desk, doctors, RMOs,
     // nurses) – never for a record marked as a duplicate (her card carries the number of her main record), nor for a
     // closed record
     ...(patient.phone !== undefined && !patient.duplicateOf && !patient.closed && hasRole(activeMembership, 'receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse')
-      ? [{ label: 'Print patient card', icon: IdCard, onSelect: () => setPrintingCard(true) }]
+      ? [{ group: 'Print and send', label: 'Print patient card', icon: IdCard, onSelect: () => setPrintingCard(true) }]
       : []),
     // Automatic reminders and the patient portal (Version 2): staff who see her phone number – not on a closed record,
     // which gets no message of any kind (closing it stopped the waiting messages and ended the portal access)
-    ...((a.canEditIdentity || a.canViewVisits) && !patient.closed ? [{ label: 'Reminders and portal', icon: MessageCircle, onSelect: () => setMessaging(true) }] : []),
-    // Two records of one person: her doctor or an RMO marks one as a duplicate of the other, or undoes it
-    ...(a.canMarkDuplicate ? [{ label: 'Mark as a duplicate', icon: Copy, onSelect: () => setMarkingDuplicate(true) }] : []),
-    ...(a.canUndoDuplicate ? [{ label: 'Undo duplicate marking', icon: Undo2, onSelect: () => setUndoingDuplicate(true) }] : []),
+    ...((a.canEditIdentity || a.canViewVisits) && !patient.closed ? [{ group: 'Print and send', label: 'Reminders and portal', icon: MessageCircle, onSelect: () => setMessaging(true) }] : []),
     // Everything in the record as one printout or PDF, for the patient herself or a referral: her doctor or an RMO
-    ...(a.canCopyRecord ? [{ label: 'Copy of the whole record', icon: Files, onSelect: () => setCopyingRecord(true) }] : []),
+    ...(a.canCopyRecord ? [{ group: 'Print and send', label: 'Copy of the whole record', icon: Files, onSelect: () => setCopyingRecord(true) }] : []),
+    // Two records of one person: her doctor or an RMO marks one as a duplicate of the other, or undoes it
+    ...(a.canMarkDuplicate ? [{ group: 'Take care', danger: true, label: 'Mark as a duplicate', icon: Copy, onSelect: () => setMarkingDuplicate(true) }] : []),
+    ...(a.canUndoDuplicate ? [{ group: 'Take care', label: 'Undo duplicate marking', icon: Undo2, onSelect: () => setUndoingDuplicate(true) }] : []),
     // A death, recorded by a doctor of the record (the record is then closed), and undone when it was recorded in error
-    ...(a.canRecordDeath ? [{ label: 'Record a death', icon: Archive, onSelect: () => setRecordingDeath(true) }] : []),
-    ...(a.canUndoDeath ? [{ label: 'Undo recorded death', icon: Undo2, onSelect: () => setUndoingDeath(true) }] : []),
+    ...(a.canRecordDeath ? [{ group: 'Take care', danger: true, label: 'Record a death', icon: Archive, onSelect: () => setRecordingDeath(true) }] : []),
+    ...(a.canUndoDeath ? [{ group: 'Take care', label: 'Undo recorded death', icon: Undo2, onSelect: () => setUndoingDeath(true) }] : []),
   ];
 
   // Runs after the person confirms in the dialog.
@@ -379,7 +379,7 @@ export function PatientDetailPage() {
         subtitle={<span className="tabular">{subtitle}</span>}
         actions={
           <>
-            {more.length > 0 && <MenuButton className="btn btn-secondary" icon={MoreHorizontal} label="More" items={more} align="end" ariaLabel="More actions for this patient" />}
+            {more.length > 0 && <MenuButton className="btn btn-secondary" icon={MoreHorizontal} label="More" items={more} align="end" ariaLabel="More actions for this patient" wide />}
             {isReception && canAdmitHere && (
               <button type="button" className="btn btn-secondary" onClick={() => setAdmitting(true)}>
                 <BedDouble aria-hidden="true" /> Admit
