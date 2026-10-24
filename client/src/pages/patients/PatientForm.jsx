@@ -302,7 +302,7 @@ function MotherPicker({ value, initial, onChange, error, suggest }) {
                 type="button"
                 onClick={() => {
                   setPicked({ fullName: p.fullName, mrn: p.mrn });
-                  onChange(p.id, `${p.fullName} (${p.mrn})`);
+                  onChange(p.id, `${p.fullName} (${p.mrn})`, p.fullName);
                   setSearch('');
                 }}
               >
@@ -825,7 +825,10 @@ export function PatientForm({
                   <MotherPicker
                     value={v.newborn.mother}
                     initial={patient?.motherInfo ? { fullName: patient.motherInfo.fullName, mrn: patient.motherInfo.mrn } : null}
-                    onChange={(id) => setV({ ...v, newborn: { ...v.newborn, mother: id } })}
+                    onChange={(id, _label, motherName) =>
+                      // Her name fills the baby's as "Baby of …" (owner, 24 Oct 2026) – never over a name typed by hand
+                      setV({ ...v, newborn: { ...v.newborn, mother: id }, ...(motherName && (!v.fullName.trim() || /^baby of\b/i.test(v.fullName.trim())) ? { fullName: `Baby of ${motherName}` } : {}) })
+                    }
                     error={fe('newborn.mother')}
                     suggest={motherSuggestion}
                   />
