@@ -300,3 +300,18 @@
 .td-staff-tile:hover { border-color: var(--indigo-700); color: var(--indigo-700); }
 .td-staff-tile:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .td-staff-tile.is-none strong { color: var(--slate-600); }
+
+/* The Today dashboard (owner, 24 Oct 2026): At a glance is one row of equal cards – the numbers, then Your day so far
+   and the AI brief – the same height; the handover a slim card across the page. */
+.td-top { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); align-items: stretch; }
+.td-top > .kpi, .td-top > .card { height: 100%; margin: 0; }
+.td-top > .card { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.td-top .myday h2, .td-top .ai-brief h2 { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.td-top .myday-lead, .td-top .ai-brief-intro, .td-top .myday-list { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+.td-top .ai-card-head { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.td-top .ai-brief .ai-points { font-size: var(--fs-label); line-height: var(--lh-label); }
+.td-page > .ward-handover { padding: var(--space-3) var(--space-4); }
+.td-page > .ward-handover .ward-handover-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
+.td-page > .ward-handover h2 { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+.td-page > .ward-handover .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.td-page > .ward-handover > p.muted { margin: var(--space-1) 0 0; }

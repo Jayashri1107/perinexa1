@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Tip } from '../components/Tip.jsx';
 import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, ClockAlert, DoorOpen, FileOutput, FilePen, FlaskConical, MessageCircleReply, PhoneCall, Receipt, Send, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { formatNumber } from '../components/DataTable.jsx';
@@ -56,6 +56,7 @@ const STAFF_ROLE_TILES = [
   { role: 'nurse', label: 'Nurses' },
   { role: 'receptionist', label: 'Receptionists' },
   { role: 'lab', label: 'Lab' },
+  { role: 'sonographer', label: 'Sonography' },
   { role: 'pharmacist', label: 'Pharmacy' },
   { role: 'billing', label: 'Accounts' },
 ];
@@ -186,6 +187,10 @@ export function TodayPage() {
   if (!lenses.length && all.includes('admin') && !all.some((r) => ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing'].includes(r))) {
     return <OverviewToday roles={all} />;
   }
+  // Sonography staff start on their own dashboard (owner, 24 Oct 2026), as the lab does
+  if (!lenses.length && all.includes('sonographer') && !all.some((r) => ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing', 'referral_desk'].includes(r))) {
+    return <Navigate to="/scans" replace />;
+  }
   if (!lenses.length) return <RoleToday roles={all} />;
   const lens = lenses.find((l) => l.key === params.get('view')) ?? lenses[0];
   const choose = (key) => setParams(key === 'overview' ? {} : { view: key }, { replace: true });
@@ -210,7 +215,6 @@ export function TodayPage() {
  * For a hospital admin (no patient data) every number comes without a name (the server sends counts only).
  */
 function OverviewToday({ roles, lensBar = null }) {
-  const { user } = useAuth();
   const front = canSeeCalendar(roles); // doctors, RMOs, reception: today's list itself
   const isAdmin = roles.includes('admin');
   const today = useFetch(front ? '/today' : null);
@@ -233,11 +237,10 @@ function OverviewToday({ roles, lensBar = null }) {
       : null;
   const going = stays.data ? (stays.data.goingHomeCount ?? stays.data.goingHome.length) : 0;
   const gone = stays.data ? (stays.data.dischargedTodayCount ?? stays.data.dischargedToday.length) : 0;
-  const day = today.data?.today ?? desk.data?.today;
   const areas = hospitalModules(roles).filter((m) => m.key !== 'today');
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: 'Today' }]} title="Today" subtitle={[day ? formatDate(day) : null, `Welcome, ${user.name}`].filter(Boolean).join(' · ')} />
+      <PageHeader breadcrumbs={[{ label: 'Today' }]} title="Today" />
       <div className="pf-content wl-page td-page">
         {lensBar}
         <section className="td-group" aria-labelledby="td-glance">
@@ -340,7 +343,6 @@ function OverviewToday({ roles, lensBar = null }) {
 
 /** Today for the given roles (all of the person's roles, or the one view chosen above). */
 function RoleToday({ roles, lensBar = null }) {
-  const { user } = useAuth();
   const location = useLocation();
   // A number card opens its list further down the page (e.g. "/#td-overdue"): open the box and bring it into view.
   useEffect(() => {
@@ -565,9 +567,7 @@ function RoleToday({ roles, lensBar = null }) {
       <PageHeader
         breadcrumbs={[{ label: 'Today' }]}
         title="Today"
-        subtitle={[day ? formatDate(day) : null, `Welcome, ${user.name}`, canChooseScope ? (scope === 'mine' ? 'Your patients and unassigned patients' : 'All patients') : null]
-          .filter(Boolean)
-          .join(' · ')}
+        subtitle={canChooseScope ? (scope === 'mine' ? 'Your patients and unassigned patients' : 'All patients') : undefined}
         actions={
           <>
             {canChooseScope && (
@@ -594,7 +594,6 @@ function RoleToday({ roles, lensBar = null }) {
         <SignupsNotice roles={roles} />
         <ContinueVisits enabled={has(roles, ['doctor', 'rmo', 'nurse'])} />
         <Tip ids={has(roles, ['doctor', 'rmo']) ? ['cmdk-2026-10', 'myday-2026-10'] : ['cmdk-2026-10']} />
-        <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
@@ -623,20 +622,24 @@ function RoleToday({ roles, lensBar = null }) {
           </Alert>
         )}
         {canBookAppointments(roles) && <NeedsTimeNotice />}
-        {canBrief && (
-          <AiBriefCard
-            endpoint="/ai/brief/today"
-            body={asked ? { scope: asked } : {}}
-            resetKey={`${asked ?? ''}:${day ?? ''}`}
-            intro="What to look at first in today's lists."
-          />
-        )}
-        {tiles.length > 0 && (
+        {(tiles.length > 0 || canBrief) && (
+          // One row of equal cards (owner, 24 Oct 2026): the numbers first, then Your day so far and the AI brief
           <section className="td-group" aria-labelledby="td-glance">
             <h2 className="td-group-title" id="td-glance">
               At a glance
             </h2>
-            <div className={`kpi-grid${tiles.length === 5 ? ' kpi-grid-5' : ''}`}>{tiles}</div>
+            <div className="td-top">
+              {tiles}
+              <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
+              {canBrief && (
+                <AiBriefCard
+                  endpoint="/ai/brief/today"
+                  body={asked ? { scope: asked } : {}}
+                  resetKey={`${asked ?? ''}:${day ?? ''}`}
+                  intro="What to look at first in today's lists."
+                />
+              )}
+            </div>
           </section>
         )}
         {(roles.includes('nurse') || roles.includes('rmo')) && <WardToday inpatients={inpatients.data} rmo={roles.includes('rmo')} />}

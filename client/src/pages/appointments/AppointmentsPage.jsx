@@ -182,7 +182,6 @@ export function AppointmentsPage() {
       <PageHeader
         breadcrumbs={[{ label: 'Appointments' }]}
         title="Appointments"
-        subtitle={[doctor?.name, date ? dayLabel(date) : null].filter(Boolean).join(' · ')}
         tabs={appointmentTabs(info?.canBook)}
         actions={
           <>

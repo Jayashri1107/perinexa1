@@ -326,6 +326,7 @@
 .ws-text { display: grid; min-width: 0; max-width: 280px; line-height: 1.25; }
 .ws-label { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
 .ws-name { color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-who { color: var(--ink); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ws-meta { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ws-switch select {
   height: var(--control-height); max-width: 260px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md);
