@@ -249,8 +249,8 @@ export function PatientDetailPage() {
     seesReferrals && a.canViewVisits && (referrals.data?.referrals?.length > 0 || /\/referrals\/?$/.test(location.pathname));
   const carePlanSummary = localSummary ?? patient.carePlanSummary;
   const planTab = showsCarePlan(patient, carePlanSummary);
+  // (her patient number is in the breadcrumb above the name – once is enough, owner 24 Oct 2026)
   const subtitle = [
-    patient.mrn,
     patient.currentAge !== undefined || patient.newborn ? ageText(patient) : null,
     patient.careType === 'antenatal' && patient.gestationalAge ? `${formatGestationShort(patient.gestationalAge)} pregnant` : null,
     patient.careType === 'abortion' ? (LOSS_LABELS[patient.abortion?.lossType] ?? null) : null,
