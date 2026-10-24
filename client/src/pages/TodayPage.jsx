@@ -623,12 +623,11 @@ function RoleToday({ roles, lensBar = null }) {
         )}
         {canBookAppointments(roles) && <NeedsTimeNotice />}
         {(tiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
-          // One grid of small cards (owner, 24 Oct 2026): To approve first, the other numbers, Your day so far, the AI
-          // brief, then the handover
+          // One line of small cards (owner, 24 Oct 2026): the handover, the AI brief, Your day so far, then the numbers
+          // with To approve last
           <section className="td-group" aria-label="At a glance">
             <div className="td-top">
-              {[...tiles].sort((a, b) => (b.key === 'approve') - (a.key === 'approve'))}
-              <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
+              {clinicalWork && inpatients.data && <HandoverList inpatients={inpatients.data} />}
               {canBrief && (
                 <AiBriefCard
                   endpoint="/ai/brief/today"
@@ -637,7 +636,8 @@ function RoleToday({ roles, lensBar = null }) {
                   intro="What to look at first in today's lists."
                 />
               )}
-              {clinicalWork && inpatients.data && <HandoverList inpatients={inpatients.data} />}
+              <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
+              {[...tiles].sort((x, y) => (x.key === 'approve') - (y.key === 'approve'))}
             </div>
           </section>
         )}
