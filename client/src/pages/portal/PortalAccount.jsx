@@ -8,6 +8,7 @@ import { AadhaarQrFill } from '../patients/AadhaarQrFill.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
 import { portalError, portalWords } from './portalWords.js';
+import { asName } from '../../personName.js';
 
 // A patient's own account on the hospital's portal (owner, 16 Oct 2026 – docs/PATIENT_ACCOUNTS_PLAN.md): Sign in with
 // mobile number + OTP or email + password, or Sign up (name, age, mobile; email and password optional) – the registration then
@@ -190,7 +191,7 @@ function SignUp({ hospitalKey, hospital, lang, onBack }) {
       <LockNotice seconds={step.locked} lang={lang} />
       <AadhaarQrFill onFill={fromAadhaar} words={w.aadhaar} scanner={false} signature={false} />
       <Field label={w.fullName} id="signup-name" error={fields.fullName}>
-        <input id="signup-name" autoComplete="name" value={form.fullName} onChange={set('fullName')} maxLength={150} />
+        <input id="signup-name" autoComplete="name" value={form.fullName} onChange={asName(set('fullName'))} maxLength={150} />
       </Field>
       <div className="auth-grid">
         <Field label={w.mobile} id="signup-mobile" error={fields.mobile}>

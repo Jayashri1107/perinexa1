@@ -12,6 +12,7 @@ import { PasswordInput } from '../components/PasswordInput.jsx';
 import { Alert, Field } from '../components/ui.jsx';
 import { HospitalEntry } from './portal/PortalAccount.jsx';
 import { portal } from './portal/portalApi.js';
+import { asName } from '../personName.js';
 
 const REASONS = {
   idle: { type: 'warning', text: 'You were logged out automatically after a period of inactivity. Log in again to continue.' },
@@ -311,7 +312,7 @@ function FirstSuperAdminForm({ onDone, needsCode = false }) {
         </Field>
       )}
       <Field label="Full name" id="setup-name" error={fieldErrors.name}>
-        <input id="setup-name" value={form.name} onChange={set('name')} maxLength={100} autoComplete="name" required autoFocus={!needsCode} />
+        <input id="setup-name" value={form.name} onChange={asName(set('name'))} maxLength={100} autoComplete="name" required autoFocus={!needsCode} />
       </Field>
       <Field label="Email" id="setup-email" error={fieldErrors.email}>
         <input id="setup-email" type="email" value={form.email} onChange={set('email')} maxLength={254} autoComplete="username" required />

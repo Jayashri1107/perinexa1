@@ -36,6 +36,7 @@ import { AbortionSection, abortionEmpty, abortionFindingErrors, abortionPayload,
 import { THREATENED_HINT, currentLossFindings, lmpCarryOver, lossRulesOn, obstetricHint, presentationWeeks } from './abortionFormat.js';
 import { mentionsFetalSex, PCPNDT_MESSAGE } from '../../pcpndtWords.js';
 import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
+import { asName } from '../../personName.js';
 
 const str = (v) => (v == null ? '' : String(v));
 
@@ -656,7 +657,7 @@ export function PatientForm({
                     </Field>
                   )}
                   <Field label="Full name" id="fullName" error={fe('fullName')} hint={isNewborn ? 'e.g. "Baby of Asha Sample"' : undefined}>
-                    <input id="fullName" className={vc('fullName')} value={v.fullName} onChange={set('fullName')} maxLength={150} placeholder={isNewborn ? undefined : 'First and last name'} />
+                    <input id="fullName" className={vc('fullName')} value={v.fullName} onChange={asName(set('fullName'))} maxLength={150} placeholder={isNewborn ? undefined : 'First and last name'} />
                     {vm('fullName')}
                   </Field>
                   {!isNewborn && (
@@ -729,7 +730,7 @@ export function PatientForm({
                   <h3 className="pf-group-title">Emergency contact</h3>
                   <div className="form-grid">
                     <Field label="Contact name" id="ecName" error={fe('emergencyContact.name')} hint="A relative or attendant to call">
-                      <input id="ecName" value={v.emergencyContact.name} onChange={setIn('emergencyContact', 'name')} maxLength={100} />
+                      <input id="ecName" value={v.emergencyContact.name} onChange={asName(setIn('emergencyContact', 'name'))} maxLength={100} />
                     </Field>
                     <Field label="Relation" id="ecRelation" error={fe('emergencyContact.relation')} hint="For example husband, mother">
                       <input id="ecRelation" value={v.emergencyContact.relation} onChange={setIn('emergencyContact', 'relation')} maxLength={50} />

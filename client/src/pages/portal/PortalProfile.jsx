@@ -6,6 +6,7 @@ import { RecordsTab } from './PortalRecords.jsx';
 import { accountWords } from './portalAccountWords.js';
 import { portal } from './portalApi.js';
 import { portalError } from './portalWords.js';
+import { asName } from '../../personName.js';
 
 // My profile (owner, 19 Oct 2026): her details – the contact details she changes herself, and a request to reception
 // for her name, age, mobile or email (reception checks who she is) – and, in tabs, her visits, care plan, sonography
@@ -130,7 +131,7 @@ function Details({ lang }) {
           <h3>{t.emergencyTitle}</h3>
           <div className="form-grid">
             <Field label={t.ecName} id="pp-ec-name">
-              <input id="pp-ec-name" maxLength={100} value={contact.emergencyContact.name} onChange={setE('name')} />
+              <input id="pp-ec-name" maxLength={100} value={contact.emergencyContact.name} onChange={asName(setE('name'))} />
             </Field>
             <Field label={t.ecRelation} id="pp-ec-rel">
               <input id="pp-ec-rel" maxLength={50} value={contact.emergencyContact.relation} onChange={setE('relation')} />
@@ -177,7 +178,7 @@ function Details({ lang }) {
           <form onSubmit={sendRequest} noValidate>
             <div className="form-grid">
               <Field label={t.newName} id="pp-new-name" error={errs.fullName}>
-                <input id="pp-new-name" maxLength={150} value={ask.fullName} onChange={(e) => setAsk({ ...ask, fullName: e.target.value })} />
+                <input id="pp-new-name" maxLength={150} value={ask.fullName} onChange={asName((e) => setAsk({ ...ask, fullName: e.target.value }))} />
               </Field>
               <Field label={t.newAge} id="pp-new-age" error={errs.ageYears}>
                 <input id="pp-new-age" inputMode="numeric" maxLength={3} value={ask.ageYears} onChange={(e) => setAsk({ ...ask, ageYears: e.target.value.replace(/\D/g, '') })} />

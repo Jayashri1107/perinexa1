@@ -37,6 +37,7 @@ import { CARE_TYPE_LABELS } from '../patients/patientFormat.js';
 import { blobToBase64, showWhatsappNumber, whatsappLink, whatsappNumber } from '../visits/whatsapp.js';
 import { GuestFields, IntakeFields, guestBody, intakeBody, intakeForm, intakeHasFetalSex } from './NewReferralPage.jsx';
 import { PromisePill, promiseWhen, useNow } from './ReferralsDeskPage.jsx';
+import { asName } from '../../personName.js';
 import {
   MESSAGE_LABELS,
   MISSED_STATES,
@@ -352,7 +353,7 @@ function RegisterForm({ form, setForm, fields, error, busy, doctors, onSubmit, o
             </select>
           </Field>
           <Field label="Full name" id="ref-reg-name" error={fields.fullName}>
-            <input id="ref-reg-name" maxLength={150} value={form.fullName} onChange={set('fullName')} autoFocus />
+            <input id="ref-reg-name" maxLength={150} value={form.fullName} onChange={asName(set('fullName'))} autoFocus />
           </Field>
           <Field label="Age (years)" id="ref-reg-age" error={fields.ageYears}>
             <input id="ref-reg-age" inputMode="numeric" className="tabular" maxLength={3} value={form.ageYears} onChange={(e) => setForm((f) => ({ ...f, ageYears: e.target.value.replace(/\D/g, '') }))} />
