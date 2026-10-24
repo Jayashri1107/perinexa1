@@ -477,3 +477,9 @@
   .img-report-form > .card:last-child { grid-column: 2; grid-row: 2; }
   .img-study-main > :not(form) { grid-column: 1; }
 }
+/* The readings card as tall as the pictures and report beside it, the boxes spaced evenly (owner, 24 Oct 2026) */
+@media (min-width: 1200px) {
+  .img-report-form > .card:first-child { align-self: stretch; align-content: start; }
+}
+.img-report-form > .card:first-child .form-grid { row-gap: var(--space-5, 20px); margin-top: var(--space-2); }
+.img-report-form .form-grid input, .img-report-form .form-grid select { min-height: 44px; }
