@@ -175,3 +175,9 @@
 .tally-names .form-grid > .field input, .tally-names .form-grid > .field select { width: 100%; max-width: 420px; }
 .tally-names .form-grid > .field .hint, .tally-names .form-grid > .field .field-hint { margin: var(--space-1) 0 0; }
 @media (max-width: 700px) { .tally-names .form-grid > .field { grid-template-columns: 1fr; } .tally-names .form-grid > .field > * { grid-column: 1 !important; } }
+/* Two cards to a row on a wide screen (owner, 24 Oct 2026) */
+@media (min-width: 1100px) {
+  .tally-names { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+  .tally-names > .card.narrow { max-width: none; }
+  .tally-names .form-grid > .field { grid-template-columns: minmax(130px, 190px) minmax(0, 1fr); }
+}
