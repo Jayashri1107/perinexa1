@@ -14,7 +14,8 @@ import { NavLink, useLocation } from 'react-router-dom';
  * - active: shows the button as the current tab
  * - align: 'start' (list under the left edge) or 'end' (under the right edge, for buttons on the right)
  */
-export function MenuButton({ label, icon: Icon, items, className = '', active = false, align = 'start', ariaLabel }) {
+// wide: the list in two columns; an item's `group` starts a heading when it changes (owner, 24 Oct 2026)
+export function MenuButton({ label, icon: Icon, items, className = '', active = false, align = 'start', ariaLabel, wide = false }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
   const buttonRef = useRef(null);
@@ -82,8 +83,15 @@ export function MenuButton({ label, icon: Icon, items, className = '', active = 
       {open && (
         // A mouse press keeps focus where it is: Safari does not focus buttons or links on click, and the blur
         // would close the list before the click.
-        <ul id={listId} className="menu-list" onKeyDown={onListKey} onMouseDown={(e) => e.preventDefault()}>
-          {items.map((item) => (
+        <ul id={listId} className={`menu-list${wide ? ' menu-list-wide' : ''}`} onKeyDown={onListKey} onMouseDown={(e) => e.preventDefault()}>
+          {items.flatMap((item, i) => [
+            ...(item.group && item.group !== items[i - 1]?.group
+              ? [
+                  <li key={`group-${item.group}`} className="menu-group" role="presentation">
+                    {item.group}
+                  </li>,
+                ]
+              : []),
             <li key={item.to ?? item.label}>
               {item.href ? (
                 <a
@@ -119,8 +127,8 @@ export function MenuButton({ label, icon: Icon, items, className = '', active = 
                   {item.label}
                 </NavLink>
               )}
-            </li>
-          ))}
+            </li>,
+          ])}
         </ul>
       )}
     </div>

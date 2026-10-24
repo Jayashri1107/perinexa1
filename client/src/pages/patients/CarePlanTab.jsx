@@ -124,8 +124,10 @@ function RowActions({ item, plan, decision, onAction }) {
     quick.push({ key: 'done', label: 'Mark done', aria: `Mark ${name} done`, icon: Check, run: () => onAction('done', item) });
   }
 
-  const inQuick = new Set(quick.map((q) => q.key));
-  const more = [];
+  // One main button on the row; the other quick ones lead its More
+  const extra = quick.splice(1);
+  const inQuick = new Set([...quick, ...extra].map((q) => q.key)); // (those in More already are not added twice)
+  const more = extra.map((q) => ({ label: q.label, icon: q.icon, onSelect: q.run }));
   // An item added for this patient can be corrected (name, wording, due window, note) instead of marked not needed and
   // added again – while it is open, on an active plan
   if (canEditItem(item, plan)) more.push({ label: 'Edit item', icon: Pencil, onSelect: () => onAction('edit', item) });
