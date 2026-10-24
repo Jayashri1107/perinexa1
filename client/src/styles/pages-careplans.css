@@ -293,3 +293,18 @@
   .plan-actions .btn { white-space: nowrap; }
 }
 .plan-later { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 0; color: var(--slate-600); }
+
+/* The care plan's summary card (owner, 24 Oct 2026) */
+.plan-summary { display: grid; gap: var(--space-3); }
+.plan-summary-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2) var(--space-3); margin: 0; }
+.plan-summary-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.plan-summary-actions .plan-summary-links { margin: 0; }
+.plan-summary-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-2); margin: 0; }
+.plan-summary-facts > div { display: grid; gap: 2px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--mist-50); border: 1px solid var(--border); min-width: 0; }
+.plan-summary-facts dt { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.plan-summary-facts dd { margin: 0; color: var(--ink); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; overflow-wrap: anywhere; }
+@media (min-width: 900px) { .plan-summary-facts .plan-summary-from { grid-column: span 2; } }
+.plan-summary-next { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--teal-100); }
+.plan-summary-next > * { margin: 0; }
+.plan-summary .plan-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
+.plan-summary-note { margin-left: auto; font-size: var(--fs-caption); line-height: var(--lh-caption); }
