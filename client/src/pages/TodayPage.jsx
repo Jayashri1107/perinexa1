@@ -623,11 +623,10 @@ function RoleToday({ roles, lensBar = null }) {
         )}
         {canBookAppointments(roles) && <NeedsTimeNotice />}
         {(tiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
-          // One line of small cards (owner, 24 Oct 2026): the handover, the AI brief, Your day so far, then the numbers
-          // with To approve last
+          // One line of small cards (owner, 24 Oct 2026): the AI brief, Your day so far, the numbers (To approve after
+          // them), then the handover last
           <section className="td-group" aria-label="At a glance">
             <div className="td-top">
-              {clinicalWork && inpatients.data && <HandoverList inpatients={inpatients.data} />}
               {canBrief && (
                 <AiBriefCard
                   endpoint="/ai/brief/today"
@@ -638,6 +637,7 @@ function RoleToday({ roles, lensBar = null }) {
               )}
               <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
               {[...tiles].sort((x, y) => (x.key === 'approve') - (y.key === 'approve'))}
+              {clinicalWork && inpatients.data && <HandoverList inpatients={inpatients.data} />}
             </div>
           </section>
         )}
