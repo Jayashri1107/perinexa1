@@ -120,7 +120,7 @@ describe('dates (G2)', () => {
   it('a newborn’s date of birth said straight after "born on" or "DOB"', () => {
     expect(voice('baby of rekha born on 25 9 2026 at 10 pm weight 3 kg', 'newborn').values.newborn).toEqual({ birthAt: '2026-09-25T22:00', birthWeightGrams: '3000' });
     const r = voice('baby of priya DOB 26th September TOB 2:30 pm BW 2.6 kg', 'newborn');
-    expect(r.values).toMatchObject({ fullName: 'Baby of Priya', newborn: { birthAt: '2026-09-26T14:30', birthWeightGrams: '2600' } });
+    expect(r.values).toMatchObject({ fullName: 'B/o Priya', newborn: { birthAt: '2026-09-26T14:30', birthWeightGrams: '2600' } });
   });
 
   it('a newborn’s date of birth said after the time is never replaced by today', () => {
@@ -168,9 +168,9 @@ describe('names and addresses (G3)', () => {
   });
 
   it('a newborn’s mother: "time of birth", DOB, TOB and BW end her name, and "baby of mother" is read', () => {
-    expect(voice('baby of rekha time of birth 9 45 am weight 3 kg', 'newborn').values.fullName).toBe('Baby of Rekha');
+    expect(voice('baby of rekha time of birth 9 45 am weight 3 kg', 'newborn').values.fullName).toBe('B/o Rekha');
     const r = voice('baby of mother anjali gupta born today at 8:20 am weight 3 kg', 'newborn');
-    expect(r.values).toMatchObject({ fullName: 'Baby of Anjali Gupta', motherName: 'Anjali Gupta' });
+    expect(r.values).toMatchObject({ fullName: 'B/o Anjali Gupta', motherName: 'Anjali Gupta' });
   });
 
   it('an address keeps words that start a detail only when said with it ("Blood Bank", "Old Age Home", "Dr Ambedkar")', () => {

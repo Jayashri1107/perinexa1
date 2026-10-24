@@ -229,7 +229,7 @@ describe('labels (plan 2.3 step 1)', () => {
     for (const text of ['baby off feeds, baby of Rekha', 'baby off phototherapy today, mother Sunita Rao', 'baby off feeds since morning', 'baby off oxygen now']) {
       expect(normaliseLabels(text).text, text).toBe(text);
     }
-    expect(voice('baby off feeds, baby of Rekha born today 9 am', 'newborn').values).toMatchObject({ fullName: 'Baby of Rekha', motherName: 'Rekha' });
+    expect(voice('baby off feeds, baby of Rekha born today 9 am', 'newborn').values).toMatchObject({ fullName: 'B/o Rekha', motherName: 'Rekha' });
     expect(voice('baby off feeds since morning, born today 4 am', 'newborn').values.motherName).toBeUndefined();
   });
 });
