@@ -209,6 +209,7 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - The fertility treatment protocol library (21 protocols from WHO 2025, NICE NG257 2026, ESHRE, the 2023 PCOS guideline,
   FOGSI and the ART Act) and its suggestion rules (`docs/FERTILITY_PLAN.md`, `server/src/fertility/`): doses and days marked
   "doctor to confirm" are common practice, not the bodies' own words.
+- The Marathi and Hindi words of the follicular study report (`client/src/pages/patients/fertilityCycleFormat.js`).
 - Lab usual ranges (adult; the newborn values need a paediatrician).
 - Lab report templates (`docs/LAB_TEMPLATES_PLAN.md`): the new values and ranges, the ranges for men, each test's
   method and interpretation notes.

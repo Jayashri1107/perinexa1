@@ -31,6 +31,11 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   endometriosis surgery, varicocele repair, sperm retrieval with ICSI, donor gametes, fertility preservation): the old
   plan is completed as moved to the next step, the cycles done under it are added to her record, and the next draft is
   built; **Start with a step…** when there is no plan yet. A **Follicular study** protocol joins the library (21).
+  **Cycle (follicular study) sheets** (same day, owner's go-ahead for idea F1): under a confirmed plan, one sheet per
+  cycle – day 1, the medicines, the scan days with each ovary's follicles and the endometrium, the trigger, timed
+  relations or IUI with the post-wash count, luteal support, a cancellation, the outcome; the state follows what is
+  filled in and a completed cycle is counted on her record by itself; **Print report** gives the couple the follicular
+  study report on the letterhead in English with Marathi or Hindi (draft wording). Section 7 of `docs/FERTILITY_PLAN.md`.
 - **24 Oct 2026:** (1) Voice entry takes Chrome's corrections as they are (no repeated or lost words). (2) Fill from
   Aadhaar checks the UIDAI signature; PDFs and large files get their own message (`docs/AADHAAR_QR.md`). (3)
   Sonography (freeze lifted for ideas 17–22): the Scans dashboard (booked today, to scan, to report, to sign, signed
@@ -4229,7 +4234,14 @@ the four demo fertility records a made-up history; on an older database enter on
    Moved to the next step*, and the Overview's Fertility history shows "Ovulation induction 4". Switch again to
    *IVF or ICSI* with 3 IUI cycles; **Suggest plans** now puts IVF first. With no plan, **Start with a step…** builds the
    first plan from the ladder.
-7. As the demo nurse (Lakeside Clinic) the tab is missing on a sensitive record; remove the sensitive marking (More →
+7. On a confirmed plan → **Start a cycle** (day 1 and the medicines) → the sheet opens: **Add scan day** twice (dates
+   after day 1, follicles "12, 10" and "16, 11", endometrium 8), the trigger (hCG, a date), *Insemination (IUI)* with
+   a date and post-wash count 12 → **Save the sheet**: the state is "After trigger" and each scan day shows who
+   entered it. **Print report** → मराठी: the follicular study report with the scan table, the trigger and the IUI
+   under their Marathi labels, advice typed in the preview, the doctor's signature. Enter the pregnancy test
+   (negative, a date) → Save: "Completed", and the Fertility history card shows one more ovulation induction cycle.
+   Back on the plan the sheet is listed under "Cycle sheets"; **Start a cycle** again is offered only now.
+8. As the demo nurse (Lakeside Clinic) the tab is missing on a sensitive record; remove the sensitive marking (More →
    Remove sensitive marking) and the nurse reads the plan without buttons. **More → Copy of the whole record** has the
    parts **Fertility history** and **Fertility treatment plans**. Hospital admin → Audit log: "Fertility treatment plan
    opened / built / edited / confirmed or ended" with the record number only.

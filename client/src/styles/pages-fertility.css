@@ -66,3 +66,20 @@
 .fp-switch-list { display: flex; flex-direction: column; gap: var(--space-1); margin: 0 0 var(--space-3); }
 .fp-switch-list .check { min-height: 44px; display: flex; align-items: center; gap: var(--space-2); }
 .fp-switch-group { margin: var(--space-3) 0 var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+
+/* The cycle (follicular study) sheet: the scan-day table with small inputs */
+.fc-table-wrap { overflow-x: auto; }
+.fc-entries { min-width: 1180px; }
+.fc-entries th { white-space: nowrap; }
+.fc-entries td { padding: var(--space-1) var(--space-1); vertical-align: top; }
+.fc-entries input, .fc-entries select { width: 100%; min-width: 72px; min-height: 44px; }
+.fc-entries input[type='date'] { min-width: 150px; }
+.fc-entries input.is-invalid { box-shadow: inset 0 0 0 2px var(--status-high-fg); }
+.fc-day { padding-top: var(--space-3); text-align: center; font-weight: 500; }
+.fc-by { white-space: nowrap; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.fc-by .icon-btn { margin-left: var(--space-1); }
+.fc-cycles { list-style: none; margin: 0; padding: 0; }
+.fc-cycles > li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.fc-cycles > li:last-child { border-bottom: none; }
+.fc-cycles .fc-cycle-link { flex: 1 1 320px; font-weight: 500; }
+.fc-cycles .fc-cycle-sub { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }

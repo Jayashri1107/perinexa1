@@ -26,6 +26,7 @@ import {
   notInCopy,
   noteBlock,
   nursingRows,
+  fertilityCycleBlock,
   fertilityHistoryRows,
   fertilityPlanBlock,
   obstetricRows,
@@ -152,6 +153,7 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
   const labNote = labFlagNote(copy);
   const fertility = fertilityHistoryRows(copy);
   const fertilityPlans = copy.fertilityPlans ?? [];
+  const fertilityCycles = copy.fertilityCycles ?? [];
   return (
     <PrintDocument
       className="rc-doc"
@@ -265,11 +267,21 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
       {/* (only an infertility record has treatment plans: the part is left out of the others unless one is there) */}
       {(p.careType === 'infertility' || fertilityPlans.length > 0) && (
         <Part title="Fertility treatment plans" empty={!fertilityPlans.length}>
-          {fertilityPlans.map(fertilityPlanBlock).map((b) => (
-            <Entry key={b.key} title={b.title} status={b.status}>
-              <Rows rows={b.rows} />
-            </Entry>
-          ))}
+          {fertilityPlans.map((plan) => {
+            const b = fertilityPlanBlock(plan);
+            const sheets = fertilityCycles.filter((c) => c.planId === plan.id).map(fertilityCycleBlock);
+            return (
+              <Entry key={b.key} title={b.title} status={b.status}>
+                <Rows rows={b.rows} />
+                {sheets.length > 0 && <p className="rc-sub">Cycle sheets</p>}
+                {sheets.map((c) => (
+                  <Entry key={c.key} title={c.title} status={c.status}>
+                    <Rows rows={c.rows} />
+                  </Entry>
+                ))}
+              </Entry>
+            );
+          })}
         </Part>
       )}
 

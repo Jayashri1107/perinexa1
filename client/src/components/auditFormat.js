@@ -139,6 +139,8 @@ export const AUDIT_LABELS = {
   FERTILITY_PLAN_CREATED: 'Fertility treatment plan built',
   FERTILITY_PLAN_EDITED: 'Fertility treatment plan edited',
   FERTILITY_PLAN_STATUS_CHANGED: 'Fertility treatment plan confirmed or ended',
+  FERTILITY_CYCLE_CHANGED: 'Fertility cycle sheet changed',
+  FERTILITY_CYCLE_PRINTED: 'Follicular study report printed',
   CONSENT_FORM_CREATED: 'Consent form created',
   CONSENT_FORM_UPDATED: 'Consent form changed',
   CONSENT_FORM_APPROVED: 'Consent form approved',
@@ -423,6 +425,8 @@ export const AUDIT_TONES = {
   FERTILITY_PLAN_CREATED: 'patient',
   FERTILITY_PLAN_EDITED: 'patient',
   FERTILITY_PLAN_STATUS_CHANGED: 'patient',
+  FERTILITY_CYCLE_CHANGED: 'patient',
+  FERTILITY_CYCLE_PRINTED: 'patient',
   CONSENTS_VIEWED: 'patient',
   CONSENT_FORM_PRINTED: 'patient',
   CONSENT_SIGNED_RECORDED: 'patient',
@@ -639,6 +643,8 @@ const CATEGORY_ICONS = {
   FERTILITY_PLAN_CREATED: FileText,
   FERTILITY_PLAN_EDITED: FileText,
   FERTILITY_PLAN_STATUS_CHANGED: FileText,
+  FERTILITY_CYCLE_CHANGED: FileText,
+  FERTILITY_CYCLE_PRINTED: Printer,
   CONSENTS_VIEWED: FileText,
   CONSENT_FORM_PRINTED: Printer,
   CONSENT_SIGNED_RECORDED: FileText,
@@ -793,6 +799,7 @@ const shownValue = (v) => (v === null || v === undefined || v === '' ? '(none)' 
 // Care-plan changes in plain words. The audit log holds only these words and record numbers: never item
 // names, dates or reasons, and plan-level changes (booking date, protocol, EDD decision, close, reopen) are
 // all "plan updated", so the log never reveals a pregnancy outcome.
+const FERTILITY_CYCLE_CHANGES = { started: 'started', edited: 'edited', completed: 'completed', cancelled: 'cancelled' };
 const FERTILITY_PLAN_STATUS = { active: 'confirmed by a doctor', completed: 'completed', stopped: 'stopped' };
 const CARE_PLAN_CHANGES = {
   item_done: 'item marked done',
@@ -1020,6 +1027,10 @@ export function describeAudit(entry) {
       return record(d);
     case 'FERTILITY_PLAN_STATUS_CHANGED':
       return `${record(d)}${d.status ? `: ${FERTILITY_PLAN_STATUS[d.status] ?? d.status}` : ''}`;
+    case 'FERTILITY_CYCLE_CHANGED':
+      return `${record(d)}${d.change ? `: cycle ${FERTILITY_CYCLE_CHANGES[d.change] ?? d.change}` : ''}`;
+    case 'FERTILITY_CYCLE_PRINTED':
+      return `${record(d)}${d.language && d.language !== 'en' ? ` (${d.language === 'mr' ? 'English + Marathi' : 'English + Hindi'})` : ''}`;
     case 'CONSENT_FORM_CREATED':
     case 'CONSENT_FORM_UPDATED':
     case 'CONSENT_FORM_APPROVED':

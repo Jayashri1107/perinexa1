@@ -202,6 +202,9 @@ export const AUDIT_ACTIONS = [
   'FERTILITY_PLAN_CREATED',
   'FERTILITY_PLAN_EDITED',
   'FERTILITY_PLAN_STATUS_CHANGED',
+  // A cycle (follicular study) sheet started, edited, completed or cancelled, and its report printed (ids only)
+  'FERTILITY_CYCLE_CHANGED',
+  'FERTILITY_CYCLE_PRINTED',
   'CONSENT_FORM_CREATED',
   'CONSENT_FORM_UPDATED',
   'CONSENT_FORM_APPROVED',

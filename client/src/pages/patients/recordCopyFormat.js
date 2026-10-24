@@ -4,6 +4,7 @@
 // holds (server/src/patients/recordCopyView.js); nothing is added or worked out here beyond wording.
 import { formatDate, formatDateTime } from '../../components/ui.jsx';
 import { PLAN_STATUS_LOOK, fertilityRows, outcomeText, planDatesText } from './fertilityFormat.js';
+import { CANCEL_REASON_LABELS, CLINICAL_LABELS, CYCLE_STATUS_LOOK, PATTERN_WORDS, TEST_RESULT_WORDS, TIMING_WORDS, protocolText } from './fertilityCycleFormat.js';
 import { STATUS_LOOK, VISIT_TYPE_LABELS, whenLabel } from '../appointments/appointmentFormat.js';
 import { DOCTOR_CONFIRMS, DELIVERY_MODE_LABELS, KIND_LABELS, vitalsLine } from '../inpatient/inpatientFormat.js';
 import { FLAG_LOOK, ORDER_STATUS, resultLine } from '../lab/labFormat.js';
@@ -198,6 +199,31 @@ export function fertilityPlanBlock(plan) {
       ...(plan.sections ?? []).map((s) => [s.title, s.text]),
       ['Earlier versions', plan.versions ? `${plan.versions} kept on the record` : ''],
       ['Library', `${plan.libraryVersion} – DRAFT, to be reviewed by the doctor`],
+    ]),
+  };
+}
+
+/** One cycle (follicular study) sheet of the copy: heading, state and its rows – the scan days as lines. */
+export function fertilityCycleBlock(c) {
+  const mm = (sizes) => (sizes?.length ? [...sizes].sort((a, b) => b - a).join(', ') : '—');
+  const scans = (c.entries ?? []).map((e) => `${formatDate(e.on)} (day ${e.day}): right ${mm(e.right)} mm · left ${mm(e.left)} mm · endometrium ${e.endometriumMm ?? '—'} mm${e.pattern ? ` ${PATTERN_WORDS[e.pattern]?.en ?? e.pattern}` : ''}${e.given ? ` · given ${e.given}` : ''}${e.note ? ` · ${e.note}` : ''} – ${e.byName ?? 'staff'}`);
+  return {
+    key: c.id,
+    title: `Cycle ${c.number} – day 1 ${formatDate(c.day1)}`,
+    status: CYCLE_STATUS_LOOK[c.status]?.word ?? c.status,
+    rows: filled([
+      ['Medicines of the cycle', protocolText(c.protocol)],
+      ['Scan days', scans.join('\n')],
+      ['Trigger', c.trigger?.drug || c.trigger?.at ? `${[c.trigger.drug, c.trigger.dose].filter(Boolean).join(' ')}${c.trigger.at ? ` – ${formatDate(c.trigger.at)} (day ${c.trigger.day})` : ''}` : ''],
+      ['Relations or IUI', c.timing?.kind ? `${TIMING_WORDS[c.timing.kind]?.en ?? c.timing.kind}${c.timing.on ? ` – ${formatDate(c.timing.on)} (day ${c.timing.day})` : ''}${c.timing.postWashMillions != null ? ` · post-wash ${c.timing.postWashMillions} million` : ''}${c.timing.note ? ` · ${c.timing.note}` : ''}` : ''],
+      ['Luteal support', c.luteal],
+      ['Stopped', c.cancelled ? `${CANCEL_REASON_LABELS[c.cancelled.reason] ?? c.cancelled.reason}${c.cancelled.note ? ` – ${c.cancelled.note}` : ''} (${c.cancelled.byName ?? 'staff'}, ${formatDate(c.cancelled.at)})` : ''],
+      ['Pregnancy test', c.outcome?.test ? `${TEST_RESULT_WORDS[c.outcome.test]?.en ?? c.outcome.test}${c.outcome.testOn ? ` – ${formatDate(c.outcome.testOn)}` : ''}` : ''],
+      ['Beta hCG', c.outcome?.betaHcg != null ? `${c.outcome.betaHcg} IU/L${c.outcome.betaHcgOn ? ` – ${formatDate(c.outcome.betaHcgOn)}` : ''}` : ''],
+      ['Clinical pregnancy', c.outcome?.clinical ? `${CLINICAL_LABELS[c.outcome.clinical] ?? c.outcome.clinical}${c.outcome.scanOn ? ` – ${formatDate(c.outcome.scanOn)}` : ''}` : ''],
+      ['Outcome note', c.outcome?.note],
+      ['Started', c.created?.at ? `by ${c.created.byName ?? 'staff'}, ${formatDate(c.created.at)}` : ''],
+      ['Counted on the record', c.counted ? 'Yes' : ''],
     ]),
   };
 }

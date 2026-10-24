@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, BadgeCheck, Check, CircleMinus, FileText, Info, ListChecks, Pencil, Sparkles, TriangleAlert, X } from 'lucide-react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { ArrowRight, BadgeCheck, CalendarPlus, Check, CircleMinus, FileText, Info, ListChecks, Pencil, Sparkles, TriangleAlert, X } from 'lucide-react';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { Alert, Field, StatusPill, formatDate, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -21,13 +21,16 @@ import {
   switchFlash,
 } from './fertilityFormat.js';
 import { toDateInput } from './patientFormat.js';
+import { CYCLE_STATUS_LOOK, PROTOCOL_KIND_WORDS, cycleSummary, leadFollicleText } from './fertilityCycleFormat.js';
 
 // The Treatment plan tab on an infertility record (docs/FERTILITY_PLAN.md – DRAFT protocol library):
 //  1. no plan: what her record still lacks, and "Suggest plans";
 //  2. the suggestions: the protocols that fit her record, best fit first, with why – the doctor ticks one or more;
 //  3. the plan built from them: every section as text the doctor edits; a doctor confirms it; it ends with an outcome;
 //  4. "Switch to": the ladder – follicular study → IUI → IVF/ICSI – or another procedure; the old plan is closed as moved
-//     on, the cycles done under it go to her record, and the next draft is built (fertility/ladder.js on the server).
+//     on, the cycles done under it go to her record, and the next draft is built (fertility/ladder.js on the server);
+//  5. the cycle (follicular study) sheets under a confirmed plan: started here, filled on their own page
+//     (FertilityCyclePage.jsx); a completed cycle is counted on her record by itself.
 // Earlier plans stay below. The server decides who may see or change what (access flags in its answers); nurses read.
 
 const STATUS_ICONS = { draft: Pencil, active: BadgeCheck, completed: Check, stopped: CircleMinus };
@@ -112,7 +115,7 @@ function LadderLine({ step }) {
  * With a plan: the cycles completed under it (added to the matching counter on her record) and why. "Choose from all
  * protocols" hands over to the full chooser with the same switch.
  */
-function SwitchDialog({ patient, plan, ladder, onDone, onChooseAll, onCancel }) {
+function SwitchDialog({ patient, plan, ladder, countedCycles = 0, onDone, onChooseAll, onCancel }) {
   const steps = ladder.steps.filter((s) => s.key !== plan?.step);
   const [target, setTarget] = useState(steps[0]?.key ?? 'all');
   const [cyclesDone, setCyclesDone] = useState('0');
@@ -159,7 +162,12 @@ function SwitchDialog({ patient, plan, ladder, onDone, onChooseAll, onCancel }) 
           {option('all', 'Choose from all protocols, with the suggestions for her')}
         </div>
         {counter && (
-          <Field label={`Cycles completed under the current plan (${counterWords(counter)})`} id="fp-cycles" error={fieldErrors['switchFrom.cyclesDone']} hint="Added to her record, so the next suggestions count them.">
+          <Field
+            label={`Cycles completed under the current plan without a sheet (${counterWords(counter)})`}
+            id="fp-cycles"
+            error={fieldErrors['switchFrom.cyclesDone']}
+            hint={`Added to her record, so the next suggestions count them.${countedCycles ? ` ${countedCycles} cycle${countedCycles === 1 ? '' : 's'} from the sheets ${countedCycles === 1 ? 'is' : 'are'} counted already – enter only the rest.` : ''}`}
+          >
             <input id="fp-cycles" inputMode="numeric" maxLength={2} value={cyclesDone} onChange={(e) => setCyclesDone(e.target.value)} />
           </Field>
         )}
@@ -456,7 +464,96 @@ function OutcomeDialog({ patient, plan, kind: firstKind, onDone, onCancel }) {
   );
 }
 
-function PlanView({ patient, plan, access, ladder, onChanged, onSwitched, onChooseAll, onEdit, setFlash }) {
+/** "Start a cycle": day 1 and the medicines of the cycle; the sheet then opens on its own page. */
+function StartCycleDialog({ patient, plan, onDone, onCancel }) {
+  const guess = plan.protocolKeys.includes('oi_letrozole') || plan.protocolKeys.includes('follicular_study') ? 'letrozole' : plan.protocolKeys.includes('oi_gonadotrophins') ? 'gonadotrophins' : '';
+  const [day1, setDay1] = useState('');
+  const [protocol, setProtocol] = useState({ kind: guess, drug: guess === 'letrozole' ? 'Letrozole' : '', dose: '', days: '' });
+  const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const ref = useDialogFocus(onCancel);
+  const requestId = useRef(newRequestId());
+  const set = (key) => (e) => setProtocol((cur) => ({ ...cur, [key]: e.target.value }));
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!day1) return setFieldErrors({ day1: 'Give day 1 of the cycle (the first day of the period).' });
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await api(`/patients/${patient.id}/fertility-plan/${plan.id}/cycles`, { method: 'POST', body: { clientRequestId: requestId.current, day1, protocol } });
+      onDone(res);
+    } catch (err) {
+      setError(err.message);
+      setFieldErrors(err.fields ?? {});
+      setSaving(false);
+    }
+    return undefined;
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="fc-start-title" onSubmit={submit} noValidate>
+        <h2 id="fc-start-title">Start a cycle</h2>
+        <Alert type="error">{error}</Alert>
+        <Field label="Day 1 of the cycle (first day of the period)" id="fc-start-day1" error={fieldErrors.day1}>
+          <input id="fc-start-day1" type="date" value={day1} onChange={(e) => setDay1(e.target.value)} />
+        </Field>
+        <Field label="Medicines of the cycle" id="fc-start-kind" error={fieldErrors['protocol.kind']}>
+          <select id="fc-start-kind" value={protocol.kind} onChange={set('kind')}>
+            <option value="">Not decided yet</option>
+            {Object.entries(PROTOCOL_KIND_WORDS).map(([k, w]) => (
+              <option key={k} value={k}>
+                {w.en}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="fp-dates">
+          <Field label="Medicine" id="fc-start-drug" error={fieldErrors['protocol.drug']}>
+            <input id="fc-start-drug" maxLength={120} value={protocol.drug} onChange={set('drug')} />
+          </Field>
+          <Field label="Dose" id="fc-start-dose" error={fieldErrors['protocol.dose']}>
+            <input id="fc-start-dose" maxLength={120} value={protocol.dose} onChange={set('dose')} />
+          </Field>
+          <Field label="Days" id="fc-start-days" error={fieldErrors['protocol.days']} hint="e.g. day 3 to 7">
+            <input id="fc-start-days" maxLength={60} value={protocol.days} onChange={set('days')} />
+          </Field>
+        </div>
+        <p className="hint">The scan days, the trigger, the IUI and the outcome are filled on the sheet that opens next. One cycle is open at a time.</p>
+        <div className="row">
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            <CalendarPlus aria-hidden="true" /> {saving ? 'Starting…' : 'Start the cycle'}
+          </button>
+          <button type="button" className="btn btn-link" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/** The cycle sheets of a plan, newest first, each a link to its page. */
+function CycleList({ patient, cycles }) {
+  if (!cycles.length) return <p className="muted">No cycle sheets yet.</p>;
+  return (
+    <ul className="fc-cycles">
+      {cycles.map((c) => (
+        <li key={c.id}>
+          <Link className="fc-cycle-link" to={`/patients/${patient.id}/fertility-plan/cycles/${c.id}`}>
+            Cycle {c.number} – day 1 {formatDate(c.day1)}
+          </Link>
+          <StatusPill tone={CYCLE_STATUS_LOOK[c.status].tone}>{CYCLE_STATUS_LOOK[c.status].word}</StatusPill>
+          <span className="fc-cycle-sub">{[cycleSummary(c, formatDate).replace(/^Cycle \d+ · /, ''), leadFollicleText(c)].filter(Boolean).join(' · ')}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PlanView({ patient, plan, access, ladder, cycles = [], canStartCycle = false, onChanged, onSwitched, onChooseAll, onEdit, setFlash }) {
+  const navigate = useNavigate();
+  const [startingCycle, setStartingCycle] = useState(false);
   const [ending, setEnding] = useState(null); // the outcome kind the dialog opens with
   const [switching, setSwitching] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -523,6 +620,20 @@ function PlanView({ patient, plan, access, ladder, onChanged, onSwitched, onChoo
         </Alert>
       )}
       <PlanSections sections={plan.sections} />
+      <div className="fp-section" aria-labelledby="fc-list-title">
+        <div className="fp-head">
+          <h3 id="fc-list-title">Cycle sheets (follicular study)</h3>
+          {canStartCycle && (
+            <div className="fp-head-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setStartingCycle(true)}>
+                <CalendarPlus aria-hidden="true" /> Start a cycle
+              </button>
+            </div>
+          )}
+        </div>
+        {plan.status === 'draft' && <p className="hint">Cycle sheets start once the plan is confirmed.</p>}
+        <CycleList patient={patient} cycles={cycles} />
+      </div>
       {plan.sources.length > 0 && (
         <div className="fp-sources">
           Built from{' '}
@@ -550,11 +661,24 @@ function PlanView({ patient, plan, access, ladder, onChanged, onSwitched, onChoo
           ))}
         </details>
       )}
+      {startingCycle && (
+        <StartCycleDialog
+          patient={patient}
+          plan={plan}
+          onCancel={() => setStartingCycle(false)}
+          onDone={(res) => {
+            setStartingCycle(false);
+            setFlash('Cycle started – fill the sheet as the scans are done.');
+            navigate(`/patients/${patient.id}/fertility-plan/cycles/${res.cycle.id}`);
+          }}
+        />
+      )}
       {switching && (
         <SwitchDialog
           patient={patient}
           plan={plan}
           ladder={ladder}
+          countedCycles={cycles.filter((c) => c.counted).length}
           onCancel={() => setSwitching(false)}
           onDone={(res) => {
             setSwitching(false);
@@ -583,7 +707,7 @@ function PlanView({ patient, plan, access, ladder, onChanged, onSwitched, onChoo
   );
 }
 
-function EarlierPlans({ plans }) {
+function EarlierPlans({ patient, plans, cycles = [] }) {
   if (!plans.length) return null;
   return (
     <section className="card" aria-labelledby="fp-earlier-title">
@@ -599,6 +723,12 @@ function EarlierPlans({ plans }) {
                 <span className="muted tabular">{planDatesText(p, formatDate)}</span>
               </summary>
               <p className="fp-outcome">{outcomeText(p, formatDate)}</p>
+              {cycles.some((c) => c.planId === p.id) && (
+                <div className="fp-section">
+                  <h3>Cycle sheets</h3>
+                  <CycleList patient={patient} cycles={cycles.filter((c) => c.planId === p.id)} />
+                </div>
+              )}
               <PlanSections sections={p.sections} />
             </details>
           </li>
@@ -712,6 +842,8 @@ export function PatientFertilityPlanTab() {
           plan={plan}
           access={access}
           ladder={data.ladder}
+          cycles={(data.cycles ?? []).filter((c) => c.planId === plan.id)}
+          canStartCycle={Boolean(data.access.canStartCycle) && plan.status === 'active'}
           onChanged={changed}
           onSwitched={switched}
           onChooseAll={(from) => {
@@ -740,7 +872,7 @@ export function PatientFertilityPlanTab() {
         />
       )}
       {mode === 'view' && !plan && <DraftNote text={data.draftNote} />}
-      <EarlierPlans plans={data.earlier} />
+      <EarlierPlans patient={patient} plans={data.earlier} cycles={data.cycles ?? []} />
     </div>
   );
 }

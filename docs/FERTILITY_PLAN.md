@@ -16,6 +16,7 @@ protocols that fit her, the doctor picks one or more, and the plan built from th
 | Fertility history on the record (Infertility type of care): kind and months of infertility, cycles, ovulation, tubes, uterus, endometriosis, the partner's semen (WHO 2021 ranges), diagnoses already made, AMH / AFC / FSH / prolactin / TSH, cycles done before, previous treatment | `server/src/fertility/fertilityFields.js`, `models/Patient.js` (`fertility`), `routes/patients.js`; form section `client/src/pages/patients/FertilitySection.jsx`; Overview card "Fertility history" |
 | The protocol library (21 protocols, each with its sources, cautions and the sections of a plan) | `server/src/fertility/protocols.js` |
 | The treatment ladder (follicular study → IUI → IVF/ICSI) and the other procedures; switching from a plan | `server/src/fertility/ladder.js`, `routes/fertilityPlans.js` (POST with `switchFrom`) |
+| The cycle (follicular study) sheet with its bilingual printed report (section 7) | `server/src/fertility/cycleFields.js`, `models/FertilityCycle.js`, the cycle routes in `routes/fertilityPlans.js`; `client/src/pages/patients/FertilityCyclePage.jsx`, `fertilityCycleFormat.js` |
 | The suggestion rules: which protocols fit her record and why, best fit first; what the record still lacks | `server/src/fertility/suggest.js` |
 | The plan: built from the chosen protocols, edited as text per section, confirmed by a doctor, ended with an outcome; every save keeps the earlier text | `models/FertilityPlan.js`, `routes/fertilityPlans.js`; the **Treatment plan** tab `client/src/pages/patients/FertilityPlanTab.jsx` |
 | Copy of the whole record: the fertility history and the plans | `patients/recordCopyView.js`, `routes/recordCopy.js`, `RecordCopy.jsx` |
@@ -152,6 +153,32 @@ With no current plan, **Start with a step…** builds the first plan straight fr
 study** protocol carries the caution that WHO 2025 and NICE 2026 do not recommend ovarian stimulation with timed
 intercourse as a stand-alone treatment for unexplained infertility: there it is monitoring of a natural cycle for a few
 months, and the next step is stimulated IUI.
+
+## 7. The cycle (follicular study) sheet and its printed report
+
+Added on 24 Oct 2026 at the owner's request (idea F1 of `docs/FERTILITY_APPS_REVIEW.md`). Under a **confirmed** plan,
+**Start a cycle** opens one sheet per cycle (one open at a time):
+
+- **Day 1** (the first day of the period) and the **medicines of the cycle** – natural, letrozole, clomiphene,
+  gonadotrophins, letrozole with gonadotrophins, other – with the medicine, dose and days as typed.
+- **Scan days**: the date (the cycle day is worked out from day 1), each ovary's follicles in mm (typed "16, 12"),
+  the endometrium in mm and its pattern, E2 / LH / P4 when measured, the medicine given or advised, a note – and who
+  entered the day (an unchanged day keeps its name; a changed one is restamped).
+- The **trigger** (medicine, dose, date), **timed relations or IUI** (date, the post-wash motile count for an IUI),
+  **luteal support**, a **cancellation** with its reason (more than 2 follicles of 14 mm, no response, ovulated early,
+  the couple's choice, other), and the **outcome** (pregnancy test and date, beta hCG, clinical pregnancy on scan).
+- The **state** follows what is filled in: monitoring → after trigger → completed (a test result or a scan answer) or
+  cancelled. A **completed cycle is counted once** on her record's counter for the plan's ladder step (ovulation
+  induction, IUI or IVF cycles), so the suggestions count it; a cancelled cycle is not counted. The switch dialog then
+  asks only for cycles that were not on a sheet.
+- **Print report**: the *Follicular study report* for the couple on the letterhead, in English or English with
+  Marathi or Hindi (the patient's recorded language first), with the scan table, the trigger, relations or IUI, the
+  medicines after ovulation, the pregnancy test, the doctor's advice and the next visit typed in the preview (printed,
+  never saved), the explanation and the emergency line, and the doctor's signature block. The printout is recorded in
+  the audit log with the language only. The Marathi and Hindi words are a draft (`docs/TRANSLATIONS_TO_CHECK.md`).
+- Who: seen with the medical details; filled by her doctor or an RMO; a nurse reads the sheet and may record a
+  printout. In the copy of the whole record (under each plan) and the hospital export (`fertility-cycles.json`).
+  Nothing on the sheet names a child's sex; a positive test prompts the doctor to record the plan's outcome.
 
 ## 5. Decisions and open points for the owner
 
