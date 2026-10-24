@@ -28,7 +28,23 @@ e-Aadhaar/mAadhaar copies is read; spaces and line breaks in the number are igno
 ZXing's other black-and-white methods and smaller. Tests rebuild each case with fake details (`aadhaarQr.test.js`).
 
 **Not done yet – for the developer.**
-- The UIDAI digital signature in the Secure QR is **not checked** (it needs UIDAI's public certificate). A made-up QR
-  would fill the form with its own words, so staff still compare with the card. The screen says so.
-- e-Aadhaar PDFs are password-protected: staff upload a screenshot of the QR instead.
+- e-Aadhaar PDFs are password-protected: staff upload a screenshot of the QR instead (a PDF now gets that message).
+- The "verified" result has only been tested with a key made in the tests: confirm it with a real card (on a phone of
+  staff, never in a test or a chat) before relying on it. Which UIDAI key signs today's cards is not published.
+- The patient's sign-up (portal) does not show the signature result yet: it needs wording in her languages (owner).
 - Camera: starts when the agreement is ticked, reads by itself, turns off; asks for the camera's sharpest picture and continuous focus where the camera has it.
+
+**UIDAI signature (24 Oct 2026).** The Secure QR's signature is now checked in the browser (`aadhaarSignature.js`,
+Web Crypto, no add-on): the last 256 bytes of the unpacked QR are an RSA-2048 SHA-256 signature over every byte before
+them. UIDAI's certificates are in `client/src/pages/patients/uidai-keys/` (PEM), downloaded on 24 Oct 2026 from
+uidai.gov.in "Data and Downloads" (Secure QR: `uidai_12_06_18_cer`, `uidai_prod_cdup`; Offline e-KYC: the five
+`uidai_offline_publickey_*`; digital signature: `uidai_auth_sign_Prod_2026`, `uidai_auth_sign_prod_2023`). Every key is
+tried; an expired certificate still checks cards printed while it was in use. Staff see "UIDAI signature checked",
+"could not be confirmed – compare every detail with the card", or, for the old XML QR, "has no UIDAI signature". The
+form is filled in every case; staff decide. When UIDAI publishes a new key, add its PEM to `uidai-keys/`.
+
+**Photos (24 Oct 2026).** Measured with a fake Aadhaar-sized Secure QR (~145 squares) photographed in the browser:
+read at 2 camera dots per square and more while the blur stays under about half a square, at any angle, with skew,
+shade and strong JPEG; stronger sharpening with light evened out now also reads blur of 2 dots at 3 dots per square.
+More blur than that does not read: take the photo again closer and in focus, or use the camera. Upload checks: a PDF
+or a file over 25 MB gets its own message; HEIC (iPhone) is not a picture Chrome opens.

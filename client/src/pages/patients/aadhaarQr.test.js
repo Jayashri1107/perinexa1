@@ -17,7 +17,7 @@ const FIELDS = ['3', '123420191231120000000', 'Asha Sample', '15-08-1996', 'F', 
 describe('the Secure QR', () => {
   it('version 2: name, age from the date of birth, address, PIN, city, state and only the last 4 digits', async () => {
     const out = await parseAadhaarQr(secureQr(['V2', ...FIELDS, '0000']), TODAY);
-    expect(out).toEqual({ fullName: 'Asha Sample', ageYears: '30', address: '12, MG Road, Near Temple, Kothrud, Haveli', pinCode: '411038', city: 'Pune', state: 'Maharashtra', last4: '1234', contactName: 'Ravi Sample', contactRelation: 'Husband' });
+    expect(out).toEqual({ fullName: 'Asha Sample', ageYears: '30', address: '12, MG Road, Near Temple, Kothrud, Haveli', pinCode: '411038', city: 'Pune', state: 'Maharashtra', last4: '1234', contactName: 'Ravi Sample', contactRelation: 'Husband', signature: 'not-verified' });
     expect(JSON.stringify(out)).not.toContain('W/O'); // care of: her husband, as her contact person
   });
   it('version 1 (no "V2" at the start) reads the same', async () => {
@@ -67,7 +67,7 @@ describe('the short XML QR (QPDB)', () => {
   it('name, age, address split into city, state and PIN; last 4 digits only', async () => {
     const xml = '<?xml version="1.0" encoding="UTF-8"?><QPDB u="xxxxxxxx5678" n="Kavita Sample" g="F" d="02-03-1992" a="W/O Anil Sample, 7, Lake Road, Pune, Maharashtra - 411001" x="" s="ABC"/>';
     const out = await parseAadhaarQr(xml, TODAY);
-    expect(out).toEqual({ fullName: 'Kavita Sample', ageYears: '34', address: '7, Lake Road', pinCode: '411001', city: 'Pune', state: 'Maharashtra', last4: '5678', contactName: 'Anil Sample', contactRelation: 'Husband' });
+    expect(out).toEqual({ fullName: 'Kavita Sample', ageYears: '34', address: '7, Lake Road', pinCode: '411001', city: 'Pune', state: 'Maharashtra', last4: '5678', contactName: 'Anil Sample', contactRelation: 'Husband', signature: 'none' });
   });
 });
 
@@ -75,7 +75,7 @@ describe('the old XML QR', () => {
   it('reads the attributes; of the number only the last 4 digits are kept', async () => {
     const xml = '<?xml version="1.0" encoding="UTF-8"?><PrintLetterBarcodeData uid="999988887777" name="Meena Sample" gender="F" yob="1990" co="D/O Sample" house="4" street="Station Road" lm="" loc="Shivaji Nagar" vtc="Nashik" po="Nashik" dist="Nashik" subdist="Nashik" state="Maharashtra" pc="422001"/>';
     const out = await parseAadhaarQr(xml, TODAY);
-    expect(out).toEqual({ fullName: 'Meena Sample', ageYears: '36', address: '4, Station Road, Shivaji Nagar', pinCode: '422001', city: 'Nashik', state: 'Maharashtra', last4: '7777', contactName: 'Sample', contactRelation: 'Father' });
+    expect(out).toEqual({ fullName: 'Meena Sample', ageYears: '36', address: '4, Station Road, Shivaji Nagar', pinCode: '422001', city: 'Nashik', state: 'Maharashtra', last4: '7777', contactName: 'Sample', contactRelation: 'Father', signature: 'none' });
     expect(JSON.stringify(out)).not.toContain('99998888');
   });
 });
