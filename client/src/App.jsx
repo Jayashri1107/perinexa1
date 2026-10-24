@@ -54,6 +54,7 @@ import { PregnancyWheelPage } from './pages/PregnancyWheelPage.jsx';
 import { NewPatientClinicalPage, PatientNewPage } from './pages/patients/PatientNewPage.jsx';
 import { PatientDetailPage, PatientEditTab, PatientOverviewTab } from './pages/patients/PatientDetailPage.jsx';
 import { PatientCarePlanTab } from './pages/patients/CarePlanTab.jsx';
+import { PatientFertilityPlanTab } from './pages/patients/FertilityPlanTab.jsx';
 import { AuditCategoryRedirect, HospitalAuditLogPage, StaffPage } from './pages/admin/StaffPage.jsx';
 import { OverviewPage } from './pages/platform/OverviewPage.jsx';
 import { HospitalNewPage, HospitalsListPage } from './pages/platform/HospitalsListPage.jsx';
@@ -240,6 +241,8 @@ export function App() {
               <Route path="patients/:id" element={<PatientDetailPage />}>
                 <Route index element={<PatientOverviewTab />} />
                 <Route path="care-plan" element={<PatientCarePlanTab />} />
+                {/* Her fertility treatment plan (infertility patients; docs/FERTILITY_PLAN.md) */}
+                <Route path="fertility-plan" element={<PatientFertilityPlanTab />} />
                 <Route path="visits" element={<PatientVisitsTab />} />
                 <Route path="visits/:visitId" element={<VisitPage />} />
                 <Route path="appointments" element={<PatientAppointmentsTab />} />

@@ -29,6 +29,7 @@ import { InformationDue } from '../consents/InformationDue.jsx';
 import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { ANTI_D, ECTOPIC_SITES, HISTOLOGY, LOSS_LABELS, MANAGEMENT, MOLE_KINDS, OUTCOME_LABELS, RETIRED_LOSS_MESSAGE, gaText, isRetiredLoss, lossFlagsText, lossRulesOn, showsPregnancyFields } from './abortionFormat.js';
 import { LossFindingsList } from './LossFindings.jsx';
+import { fertilityEmpty as fertilityHistoryEmpty, fertilityRows } from './fertilityFormat.js';
 import {
   CARE_TYPE_SHORT,
   BREASTFEEDING_LABELS,
@@ -341,6 +342,8 @@ export function PatientDetailPage() {
   const opdSections = [
     ...(a.canViewVisits ? [{ label: 'Visits', to: `${base}/visits`, end: false }] : []),
     ...(planTab ? [{ label: 'Care plan', to: `${base}/care-plan`, end: true }] : []),
+    // Her fertility treatment plan (infertility patients): with the medical details
+    ...(a.canViewFertilityPlan ? [{ label: 'Treatment plan', to: `${base}/fertility-plan`, end: true }] : []),
     // Appointment booking: for reception, the referral desk, doctors, RMOs and nurses who may see her phone number
     ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse') ? [{ label: 'Appointments', to: `${base}/appointments`, end: true }] : []),
     ...(a.canViewVisits ? [{ label: 'Lab and scans', to: `${base}/lab`, end: false }] : []),
@@ -777,6 +780,32 @@ function PregnancyLossCard({ patient: p }) {
   );
 }
 
+// The fertility history (Infertility type of care), for those who see the medical details; the Treatment plan tab
+// reads it to suggest protocols (docs/FERTILITY_PLAN.md).
+function FertilityCard({ patient: p }) {
+  const f = p.fertility;
+  const editLink = p.access.canEditClinical ? <Link to={`/patients/${p.id}/edit`}>Edit details</Link> : 'Edit details (her doctor or an RMO)';
+  return (
+    <section className="card" aria-labelledby="fertility-card-title">
+      <h2 id="fertility-card-title">Fertility history</h2>
+      {!f || fertilityHistoryEmpty(f) ? (
+        <Alert type="warning">The fertility history is not entered yet – add it in {editLink}; the Treatment plan tab then suggests the protocols that fit.</Alert>
+      ) : (
+        <Details rows={fertilityRows(f)} />
+      )}
+      <p className="hint">
+        <Link to={`/patients/${p.id}/fertility-plan`}>Treatment plan</Link>
+        {p.access.canEditClinical ? (
+          <>
+            {' '}
+            · <Link to={`/patients/${p.id}/edit`}>Change the history in Edit details</Link>
+          </>
+        ) : null}
+      </p>
+    </section>
+  );
+}
+
 export function PatientOverviewTab() {
   const { patient, notesVersion, reload, setFlash, carePlanSummary, onPlanChanged } = useOutletContext();
   const { activeMembership } = useAuth();
@@ -841,6 +870,8 @@ export function PatientOverviewTab() {
         )}
 
         {p.careType === 'abortion' && has('abortion') && <PregnancyLossCard patient={p} />}
+
+        {p.careType === 'infertility' && has('fertility') && <FertilityCard patient={p} />}
 
         {p.careType === 'postnatal' && has('postnatal') && (
           <section className="card">

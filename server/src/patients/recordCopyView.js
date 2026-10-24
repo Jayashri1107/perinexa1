@@ -96,6 +96,8 @@ export function patientForCopy(p) {
           complicationsReviewed: Boolean(o.complicationsReviewed),
         },
     notes: p.notes ?? '', // the notes on the record (not a visit's private note)
+    // The fertility history (Infertility type of care; docs/FERTILITY_PLAN.md), as recorded
+    fertility: p.fertility ? { ...p.fertility, diagnoses: list(p.fertility.diagnoses) } : null,
     pregnancy: hasPregnancy
       ? {
           lmp: preg.lmp ?? null,
@@ -332,4 +334,27 @@ export const noteForCopy = (n) => ({ id: String(n._id ?? n.id), at: n.createdAt 
 export function planForCopy(v) {
   const { log: _log, recentChanges: _recent, canEdit: _e, canChangePlan: _c, canClose: _x, canReopen: _r, readOnly: _o, items, ...plan } = v;
   return { ...plan, items: list(items).map(({ history: _h, rev: _rev, ...it }) => it) };
+}
+
+/**
+ * A fertility treatment plan for the copy (routes/fertilityPlans.js planView): the plan as it stands – title, status,
+ * dates, every section's text, the protocols it was built from, who built, edited and confirmed it, and how it
+ * ended. The earlier versions of the text are left out (the current text is what was decided).
+ */
+export function fertilityPlanForCopy(v) {
+  return {
+    id: v.id,
+    status: v.status,
+    title: v.title,
+    libraryVersion: v.libraryVersion,
+    startOn: v.startOn ?? null,
+    reviewOn: v.reviewOn ?? null,
+    sections: list(v.sections).map((s) => ({ key: s.key, title: s.title, text: s.text ?? '' })),
+    sources: list(v.sources).map((s) => ({ key: s.key, label: s.label, bodies: s.bodies })),
+    created: v.created ?? null,
+    lastEdited: v.lastEdited ?? null,
+    activated: v.activated ?? null,
+    outcome: v.outcome ?? null,
+    versions: list(v.versions).length,
+  };
 }

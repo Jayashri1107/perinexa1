@@ -39,6 +39,8 @@ import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { asName } from '../../personName.js';
 import { lookupPin } from './pinLookup.js';
 import { DEPARTMENTS } from '../../platform/departments.js';
+import { FertilitySection } from './FertilitySection.jsx';
+import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
 
 const str = (v) => (v == null ? '' : String(v));
 
@@ -94,6 +96,8 @@ function initialValues(p) {
       findingsSeen: currentFindings(p).map((f) => f.key),
     },
     abortion: abortionValues(p?.abortion),
+    // The fertility history (Infertility type of care): every field may stay empty
+    fertility: fertilityValues(p?.fertility),
     obstetric: {
       gravida: str(p?.obstetric?.gravida),
       para: str(p?.obstetric?.para),
@@ -180,6 +184,8 @@ export function toPayload(v, isEdit, access, part, loaded = null) {
       // (sent as a whole once anything is entered in it).
       if (v.careType === 'antenatal') payload.pregnancy = v.pregnancy;
       if (v.careType === 'abortion' && !abortionEmpty(v.abortion)) payload.abortion = abortionPayload(v.abortion);
+      // The fertility history only for the Infertility type of care (the server merges it field by field)
+      if (v.careType === 'infertility') payload.fertility = fertilityPayload(v.fertility);
     } else {
       payload.medical = { bloodGroup: v.medical.bloodGroup };
     }
@@ -474,6 +480,10 @@ export function PatientForm({
       });
     });
   };
+  const setFertility = (key, value) => {
+    unmark(`fertility.${key}`);
+    setV((cur) => ({ ...cur, fertility: { ...cur.fertility, [key]: value } }));
+  };
   const setAbortion = (key, value) => {
     unmark(`abortion.${key}`);
     setV((cur) => ({ ...cur, abortion: { ...cur.abortion, [key]: value } }));
@@ -584,8 +594,9 @@ export function PatientForm({
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    // A scan measurement of the pregnancy loss must be a number of millimetres (the server checks it too)
-    const findingErrors = showClinical && clinical && type === 'abortion' ? abortionFindingErrors(v.abortion) : {};
+    // A scan measurement of the pregnancy loss must be a number of millimetres, and a fertility number a number in its
+    // range (the server checks both too)
+    const findingErrors = showClinical && clinical ? (type === 'abortion' ? abortionFindingErrors(v.abortion) : type === 'infertility' ? fertilityNumberErrors(v.fertility) : {}) : {};
     if (Object.keys(findingErrors).length) {
       setError('Please check the highlighted fields.');
       setFieldErrors(findingErrors);
@@ -1091,6 +1102,8 @@ export function PatientForm({
                   </div>
                 </section>
               )}
+
+              {showClinical && clinical && type === 'infertility' && <FertilitySection values={v.fertility} set={setFertility} fe={fe} />}
 
               {showClinical && !isNewborn && clinical && (
                 <section className="card form-section">

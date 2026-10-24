@@ -3,6 +3,7 @@
 // (RecordCopy.jsx). Plain functions, so they can be tested without a browser. The server decides what a copy
 // holds (server/src/patients/recordCopyView.js); nothing is added or worked out here beyond wording.
 import { formatDate, formatDateTime } from '../../components/ui.jsx';
+import { PLAN_STATUS_LOOK, fertilityRows, outcomeText, planDatesText } from './fertilityFormat.js';
 import { STATUS_LOOK, VISIT_TYPE_LABELS, whenLabel } from '../appointments/appointmentFormat.js';
 import { DOCTOR_CONFIRMS, DELIVERY_MODE_LABELS, KIND_LABELS, vitalsLine } from '../inpatient/inpatientFormat.js';
 import { FLAG_LOOK, ORDER_STATUS, resultLine } from '../lab/labFormat.js';
@@ -171,6 +172,34 @@ export function medicalRows(copy) {
     ['Allergies', m.allergies?.trim() || NOT_RECORDED],
     ['Notes on the record', p.notes],
   ]);
+}
+
+/** The fertility history (an infertility record), as the Overview card shows it. */
+export function fertilityHistoryRows(copy) {
+  const f = copy.patient.fertility;
+  if (!f) return [];
+  return filled(fertilityRows(f));
+}
+
+/** One fertility treatment plan of the copy: its heading, status words and rows (the sections as text). */
+export function fertilityPlanBlock(plan) {
+  const who = (s, word) => (s?.at ? `${word} ${s.byName ?? 'staff'}, ${formatDate(s.at)}` : '');
+  return {
+    key: plan.id,
+    title: plan.title,
+    status: PLAN_STATUS_LOOK[plan.status]?.word ?? plan.status,
+    rows: filled([
+      ['Dates', planDatesText(plan, formatDate)],
+      ['Built', who(plan.created, 'by')],
+      ['Last edited', who(plan.lastEdited, 'by')],
+      ['Confirmed', who(plan.activated, 'by')],
+      ['Outcome', plan.outcome ? outcomeText(plan, formatDate) : ''],
+      ['Built from', (plan.sources ?? []).map((s) => `${s.label} (${s.bodies})`).join('; ')],
+      ...(plan.sections ?? []).map((s) => [s.title, s.text]),
+      ['Earlier versions', plan.versions ? `${plan.versions} kept on the record` : ''],
+      ['Library', `${plan.libraryVersion} – DRAFT, to be reviewed by the doctor`],
+    ]),
+  };
 }
 
 /** Obstetric history (not for a baby). The babies registered here are named by patient number only. */

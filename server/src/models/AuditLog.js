@@ -197,6 +197,11 @@ export const AUDIT_ACTIONS = [
   'CARE_PLAN_VIEWED',
   'CARE_PLAN_CHANGED',
   'CARE_PLAN_PRINTED',
+  // Fertility treatment plans (routes/fertilityPlans.js): ids and the plan's status only – never a protocol name
+  'FERTILITY_PLAN_VIEWED',
+  'FERTILITY_PLAN_CREATED',
+  'FERTILITY_PLAN_EDITED',
+  'FERTILITY_PLAN_STATUS_CHANGED',
   'CONSENT_FORM_CREATED',
   'CONSENT_FORM_UPDATED',
   'CONSENT_FORM_APPROVED',

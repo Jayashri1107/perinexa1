@@ -13,6 +13,19 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **Fertility treatment plans (24 Oct 2026, owner's request – another exception to the feature pause):** on an
+  infertility record, a **Fertility history** section in Edit details (kind and months of infertility, cycles,
+  ovulation, tubes, uterus, endometriosis, the partner's semen against the WHO 2021 ranges, diagnoses, AMH / AFC / FSH
+  / prolactin / TSH, cycles done before) and a **Treatment plan** tab: **Suggest plans** reads her record and offers
+  the protocols that fit, with why ("Suggested for her", "May also apply", the rest of the library); the doctor ticks
+  one or more; the plan is built from their text (aim, cautions, investigations, treatment steps, medicines and doses,
+  monitoring, review, what to explain, general advice), edited as text with every earlier version kept, confirmed by a
+  doctor, and ended as pregnant, next step or stopped with a reason. The library (`docs/FERTILITY_PLAN.md`) is DRAFT:
+  20 protocols written from the WHO infertility guideline (Nov 2025), NICE NG257 (Mar 2026), ESHRE (unexplained
+  infertility 2023, endometriosis 2022, recurrent loss 2022, ovarian insufficiency 2024, stimulation 2025), the 2023
+  international PCOS guideline, FOGSI practice points, the WHO semen manual 2021 and India's ART Act, Rules and
+  Regulations – every dose or day the texts do not give is marked "doctor to confirm". In the record copy and the
+  hospital export; audit log with ids and the plan's status only. How to test: "How to test fertility treatment plans".
 - **24 Oct 2026:** (1) Voice entry takes Chrome's corrections as they are (no repeated or lost words). (2) Fill from
   Aadhaar checks the UIDAI signature; PDFs and large files get their own message (`docs/AADHAAR_QR.md`). (3)
   Sonography (freeze lifted for ideas 17–22): the Scans dashboard (booked today, to scan, to report, to sign, signed
@@ -4186,6 +4199,32 @@ Branch `lab-templates`. Plan and decisions: `docs/LAB_TEMPLATES_PLAN.md`.
 1. On the server (or your computer): `npm run load:lab-rates` → one line per hospital with what changed.
 2. As the hospital admin: Billing → Price list → Lab test: CBC ₹300, Day 2–3 hormones ₹4,200, Vitamin D ₹1,500.
 3. Order a CBC for a fake patient in the Lab → her bill has CBC ₹300.
+
+## How to test fertility treatment plans (fake data only)
+Log in as Dr. Riley Demo (demo.doctor@example.com) at Sunrise General Hospital (Demo). (A fresh `npm run seed:demo` gives
+the four demo fertility records a made-up history; on an older database enter one yourself in step 1.)
+1. Open **Sample Fertility 02 (Demo)** (an infertility record, sensitive) → **Edit details** → the new **Fertility
+   history** section: choose *Primary*, 20 months, *Irregular* cycles, ovulation *Anovulation*, tubes *Both tubes
+   patent*, semen *Within the WHO 2021 ranges*, tick **PCOS**, AMH 6 → **Save changes**. The Overview now has a
+   **Fertility history** card.
+2. **Treatment plan** tab → **Suggest plans**: "Suggested for her" shows *Ovulation induction with letrozole* with the
+   reason (PCOS with anovulation; letrozole first line – PCOS 2023, WHO 2025, FOGSI 2024) and, with a BMI of 30 or
+   more, a weight caution; the other protocols are under "Show the other … protocols". Open **What this protocol
+   contains** to read the text and its sources. Tick letrozole and *Lifestyle and preconception care* → **Build the
+   plan from the selected**.
+3. The draft opens for editing: change a line under *Medicines and doses*, set a review date → **Save the plan**. The
+   plan shows **Draft**; **Earlier versions of this plan (1)** holds the text before your edit.
+4. **Confirm plan** (a doctor; as the demo RMO the button is not there and the server refuses). Then **Record outcome**
+   → *Pregnant* → **Mark completed**: the plan moves to **Earlier plans**, and **Suggest plans** is offered again.
+5. Change the history (Edit details: tubes *Hydrosalpinx*) → Suggest plans: *Tubal factor* and *IVF or ICSI* lead,
+   with "salpingectomy or tubal occlusion before IVF". Set her age to 52 in Edit details → the IVF card carries the ART
+   Act caution (upper age 50).
+6. As the demo nurse (Lakeside Clinic) the tab is missing on a sensitive record; remove the sensitive marking (More →
+   Remove sensitive marking) and the nurse reads the plan without buttons. **More → Copy of the whole record** has the
+   parts **Fertility history** and **Fertility treatment plans**. Hospital admin → Audit log: "Fertility treatment plan
+   opened / built / edited / confirmed or ended" with the record number only.
+Nothing in a plan is prescribed or ordered; prescriptions and orders are written on the visit as before.
+
 
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).
