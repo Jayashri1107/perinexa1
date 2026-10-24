@@ -11,6 +11,8 @@ import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CALC_SOURCES, draftReport, gaWords, ordinal, workOut } from './usgCalc.js';
 import { ExportButton } from '../../components/ExportButton.jsx';
 import { fileBody, fileSize } from '../../components/fileUpload.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { SCAN_ROLES } from '../../platform/modules.js';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): the worklist (to schedule, scheduled, to report,
 // signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
@@ -45,28 +47,48 @@ const localInput = (d) => {
 };
 
 // The day at a glance (24 Oct 2026, docs/IDEAS_FOR_LATER.md 21): counts only; each opens its list
-function ScanDashboard() {
+// links: false for the hospital admin, who sees the counts only (owner, 24 Oct 2026)
+function ScanDashboard({ links = true }) {
   const { data } = useFetch('/imaging/dashboard');
   const c = data?.counts;
   if (!c) return null;
+  const to = (path) => (links ? path : undefined);
   return (
     <div className="kpi-grid" aria-label="Scans today">
-      <KpiCard to="/scans?list=scheduled" tone="due" icon={CalendarClock} label="Booked today" value={c.bookedToday} />
-      <KpiCard to="/scans" tone="due" icon={Clock} label="To scan" value={c.toScan} sub="Ordered or scheduled" />
-      <KpiCard to="/scans?list=report" tone="watch" icon={FilePen} label="To report" value={c.toReport} />
-      <KpiCard to="/scans?list=report" tone="watch" icon={FileText} label="To sign" value={c.toSign} sub="Report written" />
-      <KpiCard to="/scans?list=signed" tone="stable" icon={CircleCheck} label="Signed today" value={c.signedToday} />
+      <KpiCard to={to('/scans?list=scheduled')} tone="due" icon={CalendarClock} label="Booked today" value={c.bookedToday} />
+      <KpiCard to={to('/scans')} tone="due" icon={Clock} label="To scan" value={c.toScan} sub="Ordered or scheduled" />
+      <KpiCard to={to('/scans?list=report')} tone="watch" icon={FilePen} label="To report" value={c.toReport} />
+      <KpiCard to={to('/scans?list=report')} tone="watch" icon={FileText} label="To sign" value={c.toSign} sub="Report written" />
+      <KpiCard to={to('/scans?list=signed')} tone="stable" icon={CircleCheck} label="Signed today" value={c.signedToday} />
     </div>
   );
 }
 
+// The hospital admin with no scan role: the day's numbers, no patient (owner, 24 Oct 2026)
+function ScanCountsOnly() {
+  return (
+    <>
+      <PageHeader title="Sonography" help="Today's scans in numbers. The scan list and reports are for doctors, RMOs and sonography staff." />
+      <div className="pf-content">
+        <ScanDashboard links={false} />
+      </div>
+    </>
+  );
+}
+
 export function ImagingWorklistPage() {
+  const { activeMembership } = useAuth();
+  if (!activeMembership?.roles?.some((r) => SCAN_ROLES.includes(r))) return <ScanCountsOnly />;
+  return <ScanWorklist />;
+}
+
+function ScanWorklist() {
   const [params, setParams] = useSearchParams();
   const list = LISTS.some(([k]) => k === params.get('list')) ? params.get('list') : 'ordered';
   const { data, error, loading } = useFetch('/imaging/worklist', { list });
   return (
     <>
-      <PageHeader title="Scans" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
+      <PageHeader title="Sonography" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
       <div className="pf-content">
         <ScanDashboard />
         <div className="segmented" aria-label="Scan lists">

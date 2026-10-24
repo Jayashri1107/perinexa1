@@ -11,7 +11,7 @@ import { AuditLog } from '../src/models/AuditLog.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-10-17T05:00:00Z');
-const ROLES = { drA: 'doctor', rmo: 'rmo', nurse: 'nurse', reception: 'receptionist', lab: 'lab', lab2: 'lab', admin: 'admin' };
+const ROLES = { drA: 'doctor', rmo: 'rmo', nurse: 'nurse', reception: 'receptionist', lab: 'lab', lab2: 'lab', admin: 'admin', sono: 'sonographer' };
 let app;
 let hospital;
 let people;
@@ -280,5 +280,40 @@ describe('USG and radiology', () => {
     expect((await add('drA', s)).status).toBe(403); // signed: change the report first
     const actions = (await AuditLog.find({ action: /^IMAGING_IMAGE_/ }).lean()).map((e) => e.action);
     expect(actions).toEqual(expect.arrayContaining(['IMAGING_IMAGE_ADDED', 'IMAGING_IMAGE_VIEWED', 'IMAGING_IMAGE_CHANGED', 'IMAGING_IMAGE_REMOVED']));
+  });
+
+  it('sonography staff (24 Oct 2026): the scan list, scan, pictures and report – a doctor signs; never the rest of her record', async () => {
+    const p = await antenatal();
+    let s = (await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_nt', indication: 'NT screening' })).body.study;
+    expect((await (await as('sono')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_nt' })).status).toBe(403); // a doctor orders
+    expect((await (await as('sono')).get('/api/imaging/worklist?list=ordered')).body.studies.map((x) => x.id)).toEqual([s.id]);
+    s = (await (await as('sono')).post(`/api/imaging/${s.id}/schedule`).send({ rev: s.rev, scheduledFor: '2026-10-17T08:00:00.000Z' })).body.study;
+    s = (await (await as('sono')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).body.study;
+    const page = (await (await as('sono')).get(`/api/imaging/${s.id}`)).body.study;
+    expect(page).toMatchObject({ indication: 'NT screening', access: { canReport: true, canImages: true, canSign: false } });
+    expect(page.patient.eddByDates).toBeTruthy();
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(100)]).toString('base64');
+    s = (await (await as('sono')).post(`/api/imaging/${s.id}/images`).send({ rev: s.rev, fileName: 'nt.jpg', mediaType: 'image/jpeg', data: jpeg })).body.study;
+    expect((await (await as('sono')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, impression: 'It is a girl' })).status).toBe(400); // PCPNDT
+    const written = await (await as('sono')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, values: { crl: '62', nt: '1.4' }, impression: 'Low-risk NT.' });
+    expect(written.status, JSON.stringify(written.body)).toBe(200);
+    s = written.body.study;
+    expect((await (await as('sono')).post(`/api/imaging/${s.id}/sign`).send({ rev: s.rev })).status).toBe(403);
+    expect((await (await as('drA')).post(`/api/imaging/${s.id}/sign`).send({ rev: s.rev })).body.study.status).toBe('signed');
+    // Her record: name, number, type of care and age only
+    const record = (await (await as('sono')).get(`/api/patients/${p.id}`)).body.patient;
+    expect(record).toMatchObject({ fullName: 'Scan Mother' });
+    for (const key of ['phone', 'address', 'pregnancy', 'medical', 'obstetric', 'notes']) expect(record, key).not.toHaveProperty(key);
+    expect((await (await as('sono')).get(`/api/patients/${p.id}/visits`)).status).toBe(403);
+  });
+
+  it('the hospital admin sees the sonography dashboard counts only – no list, no study', async () => {
+    const p = await antenatal();
+    const s = (await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_nt' })).body.study;
+    const res = await (await as('admin')).get('/api/imaging/dashboard');
+    expect(res.status).toBe(200);
+    expect(res.body.counts.toScan).toBe(1);
+    expect((await (await as('admin')).get('/api/imaging/worklist?list=ordered')).status).toBe(403);
+    expect((await (await as('admin')).get(`/api/imaging/${s.id}`)).status).toBe(403);
   });
 });

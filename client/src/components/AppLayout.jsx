@@ -83,8 +83,10 @@ function SideLink({ module, rail, onNavigate }) {
 }
 
 // Top bar, left: the hospital being worked in ("Working in"), with a switch for people who work at more than one.
+const todayWords = () => new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }).replace(',', '');
+
 function Workspace() {
-  const { memberships, activeTenantId, activeMembership, switchTenant } = useAuth();
+  const { user, memberships, activeTenantId, activeMembership, switchTenant } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [busy, setBusy] = useState(false);
@@ -117,6 +119,7 @@ function Workspace() {
       <div className="ws-text">
         <span className="ws-label">Working in</span>
         <strong className="ws-name">{activeMembership.tenantName}</strong>
+        <span className="ws-who">{[user?.name, todayWords()].filter(Boolean).join(' · ')}</span>
         <span className="ws-meta">{activeMembership.platform ? 'Every role – records you open are audited' : rolesLabel(activeMembership.roles)}</span>
       </div>
       {memberships.length > 1 && (
