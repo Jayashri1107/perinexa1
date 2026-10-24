@@ -158,9 +158,10 @@ describe('registering a newborn', () => {
     const res = await s.post('/api/patients').send({
       careType: 'newborn',
       fullName: 'Baby of Mother One',
-      newborn: { birthAt, birthWeightGrams: 3100, sex: 'female', mother: mother.id },
+      newborn: { birthAt, birthWeightGrams: 3100, sex: 'female', mother: mother.id, fatherName: 'ravi sample' },
     });
     expect(res.status).toBe(201);
+    expect(res.body.patient.newborn.fatherName).toBe('Ravi Sample'); // the parents on her record (24 Oct 2026)
     expect(res.body.patient.motherInfo).toMatchObject({ fullName: 'Mother One', mrn: mother.mrn });
     expect(res.body.patient.ageYears).toBeNull();
     const detail = await s.get(`/api/patients/${mother.id}`);

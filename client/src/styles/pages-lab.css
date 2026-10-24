@@ -395,3 +395,85 @@
 .lab-sheet-head-left { display: flex; flex-direction: column; justify-content: space-between; gap: 1.5mm; }
 .lab-sheet-head-left .barcode { width: 40mm; }
 .lab-sheet:first-child .lab-sheet-test-name { margin-top: 2mm; }
+
+/* Cash handover, Lab settings and Sonography tidied (owner, 24 Oct 2026) */
+.ch-day { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-label); color: var(--slate-600); }
+.ch-day input { width: auto; min-width: 10rem; }
+.ch-page { display: grid; gap: var(--space-4); max-width: 960px; }
+.ch-page > .card { margin: 0; }
+.lab-settings-page { display: grid; gap: var(--space-4); align-items: start; }
+@media (min-width: 1100px) { .lab-settings-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .lab-settings-page > .alert { grid-column: 1 / -1; } }
+.lab-settings-page > .card { margin: 0; }
+.lab-settings-page .check-grid { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.img-tiles { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-3); margin: 0 0 var(--space-4); }
+.img-tiles .kpi { padding: var(--space-4); gap: var(--space-2); }
+.img-tiles .kpi .kpi-sub { margin-top: auto; }
+.img-lists { margin: 0 0 var(--space-4); flex-wrap: wrap; }
+.img-lists + .alert, .img-lists + section.card, .img-lists ~ section.card { margin-top: 0; }
+
+/* The scan page (owner, 24 Oct 2026): the study on top; the readings and the report as their own cards; the pictures
+   beside them on a wide screen */
+.img-study { display: grid; gap: var(--space-4); align-items: start; }
+@media (min-width: 1200px) { .img-study { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); } }
+.img-study-main, .img-study-side { display: grid; gap: var(--space-4); min-width: 0; }
+.img-study-main > .card, .img-study-side > .card { margin: 0; }
+.img-report-form { display: grid; gap: var(--space-4); }
+.img-report-form > .card { margin: 0; display: grid; gap: var(--space-3); }
+.img-report-form > .card > h2 { margin: 0; }
+.img-study-side .img-pictures { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.ai-brief-modal { max-width: 640px; }
+.ai-brief-modal h2 { display: flex; align-items: center; gap: var(--space-2); margin-top: 0; }
+.ai-brief-modal h2 svg.lucide { width: 22px; height: 22px; color: var(--indigo-700); }
+
+/* Monthly report (owner, 24 Oct 2026): the 12-month charts on top; under them the parts (tabs) and the chosen part as
+   two cards of the same width and height */
+.rep-trend { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); }
+.rep-trend .rep-charts-title { margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.rep-trend .rep-charts { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-3); }
+/* All the 12-month charts on one line on a wide screen (owner, 24 Oct 2026) */
+@media (min-width: 1200px) { .rep-trend .rep-charts { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); } }
+.an-table-modal { max-width: 480px; }
+.an-table-modal h2 { margin-top: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.an-table-modal .an-table-wrap { max-height: 60vh; overflow: auto; }
+.rep-trend .rep-charts > .card { margin: 0; padding: var(--space-3) var(--space-4); }
+.rep-trend .rep-charts h3 { font-size: var(--fs-label); line-height: var(--lh-label); margin: 0 0 var(--space-2); }
+.rep-layout { display: grid; gap: var(--space-4); align-items: stretch; }
+@media (min-width: 900px) { .rep-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.rep-layout > .card { margin: 0; }
+.rep-nav { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); }
+@media (max-width: 899px) { .rep-nav { flex-direction: row; overflow-x: auto; } .rep-nav button { white-space: nowrap; } }
+.rep-nav button { display: block; width: 100%; padding: 8px var(--space-3); border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink); font: inherit; font-size: var(--fs-label); line-height: var(--lh-label); text-align: left; cursor: pointer; }
+.rep-nav button:hover { background: var(--mist-100); }
+.rep-nav button[aria-pressed='true'] { background: var(--indigo-100); color: var(--indigo-700); font-weight: 600; }
+.rep-nav button:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.rep-layout > .rep-section { padding: var(--space-4) var(--space-5, 20px); }
+.rep-section h2 { margin: 0 0 var(--space-3); font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.rep-table th, .rep-table td { padding: 8px var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); }
+.rep-table tr:nth-child(even) th, .rep-table tr:nth-child(even) td { background: var(--mist-50); }
+.rep-table tr:last-child th, .rep-table tr:last-child td { border-bottom: 0; }
+.rep-table td { font-weight: 600; color: var(--ink); }
+.rep-sub th { padding-left: 24px; font-size: var(--fs-caption); }
+/* Scan readings in a tidy grid (owner, 24 Oct 2026): every box on the same line whatever the label's length */
+.img-report-form .form-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-3) var(--space-4); align-items: end; }
+.img-report-form .form-grid > .field { margin: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.img-report-form .form-grid > .field > label { min-height: calc(2 * var(--lh-label)); display: flex; align-items: flex-end; margin-bottom: var(--space-1); }
+.img-report-form .form-grid input, .img-report-form .form-grid select { width: 100%; }
+.img-report-form .img-worked { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--teal-100); }
+.img-report-form .card > .row { flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.img-report-form .card > .field { margin: 0; }
+/* The scan page aligned (owner, 24 Oct 2026): space under the study card, the pictures card's parts apart, and the
+   pictures staying beside the readings while the page scrolls */
+.img-study { margin-top: var(--space-4); }
+.img-study-side > .card { display: grid; gap: var(--space-2); }
+.img-study-side > .card > .plan-card-head { margin: 0; }
+.img-study-side > .card > .hint, .img-study-side > .card > .muted { margin: 0; }
+.img-study-main > .card, .img-report-form > .card { padding: var(--space-4) var(--space-5, 20px); }
+/* Readings on the left; the pictures and, under them, the report on the right (owner, 24 Oct 2026) */
+@media (min-width: 1200px) {
+  .img-study { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
+  .img-study-main, .img-report-form { display: contents; }
+  .img-report-form > .card:first-child { grid-column: 1; grid-row: 1 / span 2; }
+  .img-study-side { grid-column: 2; grid-row: 1; }
+  .img-report-form > .card:last-child { grid-column: 2; grid-row: 2; }
+  .img-study-main > :not(form) { grid-column: 1; }
+}

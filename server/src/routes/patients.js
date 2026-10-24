@@ -322,6 +322,7 @@ const newbornSchema = z.object({
   birthWeightGrams: z.preprocess(emptyToNull, optionalNumber('Birth weight', 200, 7000)).default(null),
   sex: z.enum([...NEWBORN_SEX, ''], 'Please choose an option').default(''),
   mother: z.preprocess(emptyToNull, z.union([objectId, z.null()])).default(null),
+  fatherName: z.string().trim().max(150, "The father's name is too long").regex(/^\P{Cc}*$/u, "The father's name has a character that cannot be saved.").transform(capitalizeName).default(''),
 });
 
 // A baby's care after birth (a baby's record only; a clinical detail): admitted to the NICU or SNCU – yes, no or ''

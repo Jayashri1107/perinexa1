@@ -397,7 +397,8 @@ describe('messages to the patient', () => {
     const appt = (await book('reception', { doctorId: id('drA'), date: '2026-09-30', start: '17:30', patientId: p.id })).body.appointment;
     await book('reception', { doctorId: id('drA'), date: '2026-09-30', start: '17:40', patientId: quiet.id }); // no agreement
     await book('reception', { doctorId: id('drA'), date: '2026-09-30', start: '17:50', guest: { name: 'Caller', phone: '98765 43210' } }); // not registered
-    await (await as('reception')).post(`/api/appointments/${appt.id}/move`).send({ date: '2026-10-01', start: '10:20' });
+    const moved = await (await as('reception')).post(`/api/appointments/${appt.id}/move`).send({ date: '2026-10-01', start: '10:20' });
+    expect(moved.body.messaged).toBe(true); // reception is told she gets a message (24 Oct 2026)
     await (await as('reception')).post(`/api/appointments/${appt.id}/cancel`).send({ reason: 'patient_asked' });
     const messages = await ReminderMessage.find({ tenantId: hospital._id }).sort({ createdAt: 1, _id: 1 }).lean();
     // A change that has not gone out yet is replaced by the newer one: only the cancellation will be sent

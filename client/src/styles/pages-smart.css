@@ -197,7 +197,7 @@
 .td-page > .td-group-title { margin-bottom: calc(-1 * var(--space-1)); }
 
 /* The number cards: an even grid, each card the same height, the number and its words lined up */
-.td-page .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin: 0; }
+.td-page .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3); margin: 0; }
 .td-page .kpi { gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); }
 .td-page .kpi > .pill { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
 .td-page .kpi-value { margin-top: var(--space-1); }
@@ -303,9 +303,14 @@
 
 /* The Today dashboard (owner, 24 Oct 2026): At a glance is one row of equal cards – the numbers, then Your day so far
    and the AI brief – the same height; the handover a slim card across the page. */
-.td-top { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: stretch; align-content: start; }
-/* Up to five cards on one line on a laptop screen and wider */
-@media (min-width: 1200px) { .td-top { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); } }
+.td-top { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); align-items: stretch; align-content: start; }
+/* All the cards on one line on a laptop screen and wider (owner, 24 Oct 2026) */
+@media (min-width: 1100px) { .td-top { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
+/* Wide, short cards (owner, 24 Oct 2026): the label and the number on one line, the note under them */
+.td-top > .kpi { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
+.td-top > .kpi .kpi-value { margin-left: auto; font-size: var(--fs-h1); line-height: var(--lh-h1); }
+.td-top > .kpi .kpi-sub { flex-basis: 100%; margin-top: 0; }
+.td-top > .kpi > .pill svg.lucide { width: 36px; height: 36px; padding: 8px; }
 .td-top > .kpi, .td-top > .card { margin: 0; min-height: 0; }
 .td-top > .kpi { padding: var(--space-4); gap: var(--space-2); }
 .td-top > .kpi .kpi-sub { margin-top: auto; }

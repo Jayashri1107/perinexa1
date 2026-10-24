@@ -30,14 +30,14 @@ describe('the cash handover screen', () => {
     expect(html).toContain('Your collection');
     expect(html).toContain('Hand over the cash');
     expect(html).toMatch(/UPI ₹\s?200/);
-    expect(html).not.toContain('Handed over on this day');
+    expect(html).not.toContain('Handed over on ');
   });
 
   it("a doctor: the day's handovers, a difference shown, Count and confirm", () => {
     roles = ['doctor'];
     answers['/cash-handover'] = { date: '2026-10-17', today: '2026-10-17', modes, mine: null, handovers: [handover(), handover({ id: 'h2', userId: 'u-doctor', userName: 'Sample Doctor' })], canHandOver: false, canConfirm: true };
     const html = render();
-    expect(html).toContain('Handed over on this day');
+    expect(html).toContain('Handed over on ');
     expect(html).toContain('Sample Reception');
     expect(html).toContain('less by');
     expect(html).toContain('Waiting for confirmation');

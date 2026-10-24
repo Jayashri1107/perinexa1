@@ -31,7 +31,7 @@ export function AppointmentsMonthPage() {
 
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: 'Appointments', to: '/appointments' }, { label: 'Month' }]} title="Appointments" subtitle={[doctor?.name, month ? monthLabel(month) : null].filter(Boolean).join(' · ')} tabs={appointmentTabs(info?.canBook)} />
+      <PageHeader breadcrumbs={[{ label: 'Appointments', to: '/appointments' }, { label: 'Month' }]} title="Appointments" tabs={appointmentTabs(info?.canBook)} />
       <div className="pf-content appt-month-page">
         {doctorsRes.error && <Alert type="error">{doctorsRes.error}</Alert>}
         {res.error && <Alert type="error">{res.error}</Alert>}
