@@ -458,3 +458,9 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); align-items: stretch; }
 .kpi-grid > .kpi { padding: var(--space-4); gap: var(--space-2); }
 .kpi-grid > .kpi .kpi-sub { margin-top: auto; }
+
+/* The More menu in two columns with headings (owner, 24 Oct 2026) */
+.menu-button .menu-list.menu-list-wide { display: grid; grid-template-columns: repeat(2, minmax(200px, 1fr)); min-width: 460px; column-gap: var(--space-2); padding: var(--space-2); }
+.menu-button .menu-list .menu-group { grid-column: 1 / -1; padding: var(--space-2) var(--space-3) 2px; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.menu-button .menu-list .menu-group:not(:first-child) { margin-top: var(--space-1); border-top: 1px solid var(--border); padding-top: var(--space-2); }
+@media (max-width: 600px) { .menu-button .menu-list.menu-list-wide { grid-template-columns: 1fr; min-width: 0; } }
