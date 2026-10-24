@@ -134,6 +134,7 @@ export function createApp({
   app.use('/api/ai/transcribe', express.json({ limit: '12mb' }));
   // A lab report file (PDF or photo, at most 5 MB; base64 makes it about a third larger).
   app.use(/^\/api\/lab\/orders\/[^/]+\/files$/, express.json({ limit: '8mb' }));
+  app.use(/^\/api\/imaging\/[^/]+\/images$/, express.json({ limit: '8mb' })); // a picture from the ultrasound machine
   app.use(/^\/api\/patients\/[^/]+\/consents\/[^/]+\/scans$/, express.json({ limit: '8mb' }));
   app.use(/^\/api\/patients\/[^/]+\/visits\/[^/]+\/whatsapp$/, express.json({ limit: '8mb' })); // the PDF to send
   // A referral's files: the referring doctor's note or reports, and the PDF of a consultant note or discharge card

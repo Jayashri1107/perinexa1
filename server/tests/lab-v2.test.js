@@ -247,4 +247,38 @@ describe('USG and radiology', () => {
     expect(res.body).toEqual({ counts: { bookedToday: 1, toScan: 3, toReport: 1, toSign: 1, signedToday: 1 } });
     expect((await (await as('reception')).get('/api/imaging/dashboard')).status).toBe(403);
   });
+
+  it('pictures from the machine: added once done, chosen for print, taken off with a reason (kept), closed once signed', async () => {
+    const p = await antenatal();
+    let s = (await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_nt' })).body.study;
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200)]).toString('base64');
+    const add = (who, study, body = {}) => as(who).then((a) => a.post(`/api/imaging/${study.id}/images`).send({ rev: study.rev, fileName: 'nt-1.jpg', mediaType: 'image/jpeg', data: jpeg, ...body }));
+    expect((await add('drA', s)).status).toBe(403); // not done yet
+    s = (await (await as('drA')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).body.study;
+    expect((await add('reception', s)).status).toBe(403);
+    expect((await add('drA', s, { mediaType: 'application/pdf' })).status).toBe(400); // pictures only
+    expect((await add('drA', s, { data: Buffer.from('not a picture at all').toString('base64') })).status).toBe(400);
+    const added = await add('rmo', s);
+    expect(added.status, JSON.stringify(added.body)).toBe(201);
+    s = added.body.study;
+    expect(s.images).toMatchObject([{ fileName: 'nt-1.jpg', mediaType: 'image/jpeg', inPrint: true, byName: 'Sample rmo' }]);
+    const fileId = s.images[0].fileId;
+    const opened = await (await as('drA')).get(`/api/imaging/${s.id}/images/${fileId}`);
+    expect(opened.status).toBe(200);
+    expect(opened.headers['content-type']).toBe('image/jpeg');
+    expect((await (await as('reception')).get(`/api/imaging/${s.id}/images/${fileId}`)).status).toBe(403);
+    s = (await (await as('drA')).patch(`/api/imaging/${s.id}/images/${fileId}`).send({ rev: s.rev, inPrint: false })).body.study;
+    expect(s.images[0].inPrint).toBe(false);
+    expect((await (await as('drA')).patch(`/api/imaging/${s.id}/images/${fileId}`).send({ rev: s.rev, remove: 'x' })).status).toBe(400); // a reason
+    s = (await (await as('drA')).patch(`/api/imaging/${s.id}/images/${fileId}`).send({ rev: s.rev, remove: 'Wrong patient picture' })).body.study;
+    expect(s.images).toEqual([]);
+    expect((await (await as('drA')).get(`/api/imaging/${s.id}/images/${fileId}`)).status).toBe(404);
+    s = (await add('drA', s)).body.study;
+    s = (await (await as('drA')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, impression: 'Normal.' })).body.study;
+    s = (await (await as('drA')).post(`/api/imaging/${s.id}/sign`).send({ rev: s.rev })).body.study;
+    expect(s.access.canImages).toBe(false);
+    expect((await add('drA', s)).status).toBe(403); // signed: change the report first
+    const actions = (await AuditLog.find({ action: /^IMAGING_IMAGE_/ }).lean()).map((e) => e.action);
+    expect(actions).toEqual(expect.arrayContaining(['IMAGING_IMAGE_ADDED', 'IMAGING_IMAGE_VIEWED', 'IMAGING_IMAGE_CHANGED', 'IMAGING_IMAGE_REMOVED']));
+  });
 });
