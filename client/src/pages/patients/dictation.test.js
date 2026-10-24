@@ -197,7 +197,7 @@ describe('a newborn', () => {
   it('fills the birth details and suggests the mother', () => {
     const r = read('Baby of Asha Sample, born today at 9:15 am, birth weight 3.1 kg, baby girl, blood group B positive', 'newborn');
     expect(r.values).toMatchObject({
-      fullName: 'Baby of Asha Sample',
+      fullName: 'B/o Asha Sample',
       motherName: 'Asha Sample',
       newborn: { birthAt: '2026-09-28T09:15', birthWeightGrams: '3100', sex: 'female' },
       medical: { bloodGroup: 'B+' },
@@ -216,7 +216,7 @@ describe('a newborn', () => {
     const r = read('baby boy born at 2:30 pm today weighing 2900 grams mother Meera Twostep Sample', 'newborn');
     expect(r.values.newborn).toEqual({ birthWeightGrams: '2900', sex: 'male' });
     expect(r.notes.join(' ')).toMatch(/in the future/);
-    expect(r.values.fullName).toBe('Baby of Meera Twostep Sample');
+    expect(r.values.fullName).toBe('B/o Meera Twostep Sample');
   });
 });
 
@@ -587,7 +587,7 @@ describe('words and short forms used in Indian OBGY practice', () => {
 
   it('reads B/O and BW for a newborn', () => {
     const r = read('B/O Kavita Sample, male child, born at 10:40 am today by LSCS, BW 2.8 kg, APGAR 8/9, cried immediately', 'newborn');
-    expect(r.values).toMatchObject({ fullName: 'Baby of Kavita Sample', newborn: { birthAt: '2026-09-28T10:40', birthWeightGrams: '2800', sex: 'male' } });
+    expect(r.values).toMatchObject({ fullName: 'B/o Kavita Sample', newborn: { birthAt: '2026-09-28T10:40', birthWeightGrams: '2800', sex: 'male' } });
     expect(r.unused.map((u) => u.text)).toEqual(['cried immediately']);
   });
 

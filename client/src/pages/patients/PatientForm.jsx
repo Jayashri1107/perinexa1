@@ -656,7 +656,7 @@ export function PatientForm({
                       </select>
                     </Field>
                   )}
-                  <Field label="Full name" id="fullName" error={fe('fullName')} hint={isNewborn ? 'e.g. "Baby of Asha Sample"' : undefined}>
+                  <Field label="Full name" id="fullName" error={fe('fullName')} hint={isNewborn ? 'e.g. "B/o Asha Sample" (baby of)' : undefined}>
                     <input id="fullName" className={vc('fullName')} value={v.fullName} onChange={asName(set('fullName'))} maxLength={150} placeholder={isNewborn ? undefined : 'First and last name'} />
                     {vm('fullName')}
                   </Field>
@@ -826,8 +826,9 @@ export function PatientForm({
                     value={v.newborn.mother}
                     initial={patient?.motherInfo ? { fullName: patient.motherInfo.fullName, mrn: patient.motherInfo.mrn } : null}
                     onChange={(id, _label, motherName) =>
-                      // Her name fills the baby's as "Baby of …" (owner, 24 Oct 2026) – never over a name typed by hand
-                      setV({ ...v, newborn: { ...v.newborn, mother: id }, ...(motherName && (!v.fullName.trim() || /^baby of\b/i.test(v.fullName.trim())) ? { fullName: `Baby of ${motherName}` } : {}) })
+                      // Her name fills the baby's as "B/o …" – baby of, the short form hospitals use (owner, 24 Oct 2026) –
+                      // never over a name typed by hand
+                      setV({ ...v, newborn: { ...v.newborn, mother: id }, ...(motherName && (!v.fullName.trim() || /^(?:baby of|b\/o)\s/i.test(v.fullName.trim())) ? { fullName: `B/o ${motherName}` } : {}) })
                     }
                     error={fe('newborn.mother')}
                     suggest={motherSuggestion}
