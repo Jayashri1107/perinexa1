@@ -110,7 +110,7 @@ import { ByDoctorPage } from './pages/analytics/ByDoctorPage.jsx';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
 import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 import { ReferralSettingsPage } from './pages/settings/ReferralSettingsPage.jsx';
 import { ReferralsDeskPage } from './pages/referrals/ReferralsDeskPage.jsx';
 import { NewReferralPage } from './pages/referrals/NewReferralPage.jsx';
@@ -274,7 +274,7 @@ export function App() {
               {/* The registers were removed on 2 Oct 2026; old links go to the monthly report in Analytics. */}
               <Route path="registers/*" element={<RegistersRedirect />} />
               {/* USG and radiology (Lab version 2) */}
-              <Route path="scans" element={<RequireTenantRole roles={SCAN_ROLES} message="Scans are for doctors and RMOs." />}>
+              <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="Sonography is for doctors, RMOs and sonography staff." />}>
                 <Route index element={<ImagingWorklistPage />} />
                 <Route path=":id" element={<ImagingStudyPage />} />
               </Route>

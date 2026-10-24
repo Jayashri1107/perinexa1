@@ -5,7 +5,9 @@ import mongoose from 'mongoose';
 // "billing" = the billing department (bills, payments, billing reports – no medical details);
 // "referral_desk" = the referral desk: logs referrals from other doctors, books appointments and sends replies – never
 // the medical record (utils/patientAccess.js, routes/referrals.js; docs/REFERRALS_PLAN.md).
-export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing', 'referral_desk'];
+// "sonographer" = sonography staff (owner, 24 Oct 2026 – docs/IDEAS_FOR_LATER.md 17): the scan list, does scans, adds
+// pictures and writes reports for a doctor to sign; never the rest of the medical record (routes/imaging.js).
+export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk'];
 
 // What a hospital admin may do to the hospital's staff – only what the super admin gave them (owner, 12 Oct 2026):
 // reset a password, remove or restore access, change roles, edit name and email. Without it they see who works there.
