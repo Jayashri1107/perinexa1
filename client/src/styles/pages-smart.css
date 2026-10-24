@@ -313,8 +313,8 @@
 .td-top .ai-card-head { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
 .td-top .ai-card-head > * { flex: none; } /* their row sizes (e.g. the intro's 280 px) would become heights here */
 .td-top .ai-brief .ai-points { font-size: var(--fs-label); line-height: var(--lh-label); }
-.td-page > .ward-handover { padding: var(--space-3) var(--space-4); }
-.td-page > .ward-handover .ward-handover-head { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: baseline; gap: var(--space-1) var(--space-3); }
-.td-page > .ward-handover h2 { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
-.td-page > .ward-handover .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
-.td-page > .ward-handover > p.muted { margin: var(--space-1) 0 0; }
+.td-top > .ward-handover { padding: var(--space-4); }
+.td-top > .ward-handover .ward-handover-head { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.td-top > .ward-handover h2 { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+.td-top > .ward-handover .muted, .td-top > .ward-handover .ward-handover-list { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.td-top > .ward-handover > p.muted { margin: 0; }
