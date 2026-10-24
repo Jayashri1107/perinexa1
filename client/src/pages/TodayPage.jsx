@@ -622,14 +622,12 @@ function RoleToday({ roles, lensBar = null }) {
           </Alert>
         )}
         {canBookAppointments(roles) && <NeedsTimeNotice />}
-        {(tiles.length > 0 || canBrief) && (
-          // One row of equal cards (owner, 24 Oct 2026): the numbers first, then Your day so far and the AI brief
-          <section className="td-group" aria-labelledby="td-glance">
-            <h2 className="td-group-title" id="td-glance">
-              At a glance
-            </h2>
+        {(tiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
+          // One grid of small cards (owner, 24 Oct 2026): To approve first, the other numbers, Your day so far, the AI
+          // brief, then the handover
+          <section className="td-group" aria-label="At a glance">
             <div className="td-top">
-              {tiles}
+              {[...tiles].sort((a, b) => (b.key === 'approve') - (a.key === 'approve'))}
               <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
               {canBrief && (
                 <AiBriefCard
@@ -639,11 +637,11 @@ function RoleToday({ roles, lensBar = null }) {
                   intro="What to look at first in today's lists."
                 />
               )}
+              {clinicalWork && inpatients.data && <HandoverList inpatients={inpatients.data} />}
             </div>
           </section>
         )}
         {(roles.includes('nurse') || roles.includes('rmo')) && <WardToday inpatients={inpatients.data} rmo={roles.includes('rmo')} />}
-        {clinicalWork && inpatients.data && <HandoverList inpatients={inpatients.data} />}
         {roles.includes('pharmacist') && <PharmacyToday />}
         {isBillingDesk && <BillingToday />}
         {isReception && (
