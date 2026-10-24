@@ -510,31 +510,12 @@ function PlanSummary({ plan, filter, onFilter, onOpen }) {
   const t = plan.template;
   return (
     <section className="card plan-summary" aria-labelledby="plan-summary-title">
-      <div className="plan-card-head">
+      <div className="plan-card-head plan-summary-head">
         <h2 id="plan-summary-title" tabIndex={-1}>
           <ListChecks aria-hidden="true" /> {planTitle(plan)}
         </h2>
-        <PlanApproval template={t} />
-      </div>
-      <p className="plan-summary-facts">
-        <span>Today {sinceText(plan, plan.gestationToday) || '—'}</span>
-        <span aria-hidden="true">·</span>
-        <span>{basisText(plan)}</span>
-        {isAntenatalPlan(plan) && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span>
-              Booked {formatDate(plan.bookedOn)}
-              {plan.bookedAt ? ` at ${gaText(plan.bookedAt)}` : ''}
-            </span>
-          </>
-        )}
-        <span aria-hidden="true">·</span>
-        <span>
-          From: {t.name} – v{t.version}
-        </span>
-      </p>
-      <p className="hint">Suggested schedule – the treating doctor decides. Statuses as of {formatDate(plan.today)}.</p>
+        <div className="plan-summary-actions">
+          <PlanApproval template={t} />
       {(plan.canChangePlan || plan.canClose) && (
         <div className="plan-summary-links">
           {/* Used rarely: one menu */}
@@ -552,10 +533,40 @@ function PlanSummary({ plan, filter, onFilter, onOpen }) {
                 : []),
               ...(plan.canClose ? [{ label: 'Close plan', icon: CircleMinus, danger: true, onSelect: () => onOpen('close') }] : []),
             ]}
+            align="end"
           />
         </div>
       )}
-      <NextVisitLine next={plan.next} />
+        </div>
+      </div>
+      <dl className="plan-summary-facts">
+        <div>
+          <dt>Today</dt>
+          <dd>{sinceText(plan, plan.gestationToday) || '—'}</dd>
+        </div>
+        <div>
+          <dt>Dates</dt>
+          <dd>{basisText(plan)}</dd>
+        </div>
+        {isAntenatalPlan(plan) && (
+          <div>
+            <dt>Booked</dt>
+            <dd>
+              {formatDate(plan.bookedOn)}
+              {plan.bookedAt ? ` at ${gaText(plan.bookedAt)}` : ''}
+            </dd>
+          </div>
+        )}
+        <div className="plan-summary-from">
+          <dt>Protocol</dt>
+          <dd>
+            {t.name} – v{t.version}
+          </dd>
+        </div>
+      </dl>
+      <div className="plan-summary-next">
+        <NextVisitLine next={plan.next} />
+      </div>
       <div className="plan-chips" role="group" aria-label="Show only">
         {chips.map((c) => (
           <button key={c.key} type="button" className="plan-chip" aria-pressed={filter === c.key} onClick={() => onFilter(filter === c.key ? '' : c.key)}>
@@ -569,6 +580,7 @@ function PlanSummary({ plan, filter, onFilter, onOpen }) {
             Done <span className="tabular">{counts.done}</span> of <span className="tabular">{counts.total}</span>
           </StatusPill>
         </button>
+        <span className="hint plan-summary-note">Suggested schedule – the treating doctor decides. Statuses as of {formatDate(plan.today)}.</span>
       </div>
     </section>
   );
