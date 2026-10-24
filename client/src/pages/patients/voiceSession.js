@@ -213,20 +213,10 @@ export function speechActivity(signal, now = () => Date.now()) {
  * each event; but Chrome's on-device recogniser can start its list again after a pause, so the next event no longer
  * holds the words before the pause ("Asha Patil … age 28" became "age 28": the name was lost). Words Chrome has
  * marked final are therefore kept here, even when a later event leaves them out; words not final yet are replaced.
+ * Unfinished words are never guessed at (24 Oct 2026): Chrome rewrites them all the time ("twenty eight years" →
+ * "28 years"), and treating a rewrite as a new start repeated words and lost others.
  * Returns { add(event) → { finals, interim } }. PURE (exported for the tests).
  */
-const wordsOf = (t) => t.toLowerCase().split(/\s+/).filter(Boolean);
-// Words not final yet (`was`, 2 words or more) replaced by `now`: no more words, another first word and hardly a word in
-// common is a new start ("Asha Patil" → "age"). A correction keeps its start, grows, or keeps most words ("my name is
-// Asha" → "my name is Asia"; "mine aim is Asia Patil").
-const isFreshStart = (was, now) => {
-  const a = wordsOf(was);
-  const b = wordsOf(now);
-  if (a.length < 2 || !b.length || b.length > a.length || a[0] === b[0]) return false;
-  const shared = b.filter((w) => a.includes(w)).length;
-  return shared / a.length < 0.34;
-};
-
 export function speechResults() {
   const kept = []; // finals from an earlier list Chrome started again
   let list = []; // this list: { text, final } by Chrome's index
@@ -236,19 +226,13 @@ export function speechResults() {
       const from = Math.max(0, Math.min(e?.resultIndex ?? 0, results.length));
       const said = (i) => results[i]?.[0]?.transcript?.trim() ?? '';
       // A final result never changes: a different one at its place (or a shorter list) means Chrome started again.
-      // So does an unfinished one replaced by fewer words that begin differently (23 Oct 2026, live: "name … age …"
-      // still unfinished when Chrome started again, and only "Phone number …" was left) – a correction of words not
-      // final yet keeps their start or grows.
       let again = results.length < list.filter((x) => x?.final).length;
       for (let i = from; i < results.length && !again; i += 1) {
         const before = list[i];
-        if (!before?.text) continue;
-        if (before.final) again = said(i) !== before.text;
-        else again = isFreshStart(before.text, said(i));
+        if (before?.final && before.text) again = said(i) !== before.text;
       }
       if (again) {
-        // Every word heard so far stays: the finished ones and those Chrome had not finished yet
-        kept.push(...list.filter((x) => x?.text).map((x) => x.text));
+        kept.push(...list.filter((x) => x?.final && x.text).map((x) => x.text));
         list = [];
       }
       const start = again ? 0 : from;
