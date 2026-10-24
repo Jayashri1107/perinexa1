@@ -9,11 +9,12 @@
 //    the last 4 of the Aadhaar number), name, date of birth, gender, care of, district, landmark, house, location, PIN
 //    code, post office, state, street, sub-district, village/town/city, …, the photo and a digital signature.
 //  - the old XML QR: <PrintLetterBarcodeData uid="…" name="…" yob="…" … />.
-// The UIDAI signature is NOT checked (that needs UIDAI's certificate): a forged QR would fill the form with its words,
-// so staff still look at the card as before. Developer: see docs/AADHAAR_QR.md.
+// The Secure QR's UIDAI signature is checked here (aadhaarSignature.js, 24 Oct 2026): 'verified' or 'not-verified'
+// comes with the details; the old XML QR has none ('none'). Staff still look at the card. Developer: docs/AADHAAR_QR.md.
 
 // The address of ZXing's program file, served by this app (just a text; the file loads only when a QR is read)
 import zxingWasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url';
+import { verifySecureQr } from './aadhaarSignature.js';
 
 const SEP = 255;
 
@@ -195,7 +196,8 @@ const DOB = /^(?:\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{
 const GENDER = /^(?:M|F|T|MALE|FEMALE|TRANSGENDER)$/i;
 
 async function parseSecure(text, today) {
-  const fields = textFields(await gunzip(decimalToBytes(text)), 26);
+  const bytes = await gunzip(decimalToBytes(text));
+  const fields = textFields(bytes, 26);
   // f: 0 indicator, 1 reference id, 2 name, 3 dob, 4 gender, 5 care of, 6 district, 7 landmark, 8 house, 9 location,
   //    10 PIN, 11 post office, 12 state, 13 street, 14 sub-district, 15 village/town/city
   // The start is found by the date of birth followed by the gender, so a version with more (or fewer) fields before
@@ -203,23 +205,25 @@ async function parseSecure(text, today) {
   const dobAt = fields.findIndex((x, i) => i >= 3 && i <= 8 && DOB.test(clean(x)) && GENDER.test(clean(fields[i + 1])));
   const f = dobAt >= 0 ? fields.slice(dobAt - 3) : /^V\d+$/.test(fields[0] ?? '') ? fields.slice(1) : fields;
   if (f.length < 16) throw new Error('short');
-  return fromParts(
+  const values = fromParts(
     { name: f[2], dob: f[3], co: f[5], dist: f[6], lm: f[7], house: f[8], loc: f[9], pc: f[10], po: f[11], state: f[12], street: f[13], subdist: f[14], vtc: f[15], last4: f[1].slice(0, 4) },
     today,
   );
+  return { ...values, signature: await verifySecureQr(bytes) };
 }
 
 /**
  * The text read from an Aadhaar QR → { fullName, ageYears, address, pinCode, city, state, last4, contactName,
- * contactRelation } (text, '' when missing). Throws Error('NOT_AADHAAR') for any other QR.
+ * contactRelation } (text, '' when missing) and signature: 'verified' | 'not-verified' (Secure QR) | 'none' (XML QR,
+ * which has no signature). Throws Error('NOT_AADHAAR') for any other QR.
  */
 export async function parseAadhaarQr(text, today = new Date()) {
   const t = String(text ?? '').replace(/^﻿/, '').trim();
   try {
-    if (/<PrintLetterBarcodeData\b/i.test(t)) return parseXml(t, today);
+    if (/<PrintLetterBarcodeData\b/i.test(t)) return { ...parseXml(t, today), signature: 'none' };
     if (/<QPD[AB]\b/i.test(t)) {
       const out = parseShortXml(t, today);
-      if (out.fullName) return out;
+      if (out.fullName) return { ...out, signature: 'none' };
     }
     // The Secure QR's number; a scanner or copy may add spaces or line breaks
     const digits = /^[\d\s]+$/.test(t) ? t.replace(/\s/g, '') : t;
@@ -320,37 +324,50 @@ function pixels(source, [sx, sy, sw, sh], scale, canvas, max = 3600) {
  * JPEG: plain reading needed about 2.7 camera dots per square; enlarged and sharpened, 2.2 read).
  */
 // `wide`: how far the blur reaches, in enlarged dots per original dot (2 for a more blurred photo).
-function sharpened(source, [sx, sy, sw, sh], k, amount, wide, canvas, max = 3600) {
-  const scale = Math.min(k, max / Math.max(sw, sh));
-  const d = pixels(source, [sx, sy, sw, sh], scale, canvas, max);
-  const W = d.width;
-  const H = d.height;
-  const g = new Float32Array(W * H);
-  for (let i = 0; i < W * H; i += 1) g[i] = 0.299 * d.data[i * 4] + 0.587 * d.data[i * 4 + 1] + 0.114 * d.data[i * 4 + 2];
-  // a box blur (rows, then columns) as the "unsharp" picture
-  const r = Math.max(1, Math.round(scale * wide));
+// `even` (24 Oct 2026): also evens out light and shade over about that many original dots, so a strongly sharpened,
+// more blurred photo (blur about 2/3 of a square) still tells black from white; measured with a fake Secure QR.
+function boxBlur(a, W, H, r) {
   const n = 2 * r + 1;
   const at = (v, top) => Math.min(top - 1, Math.max(0, v));
   const rows = new Float32Array(W * H);
+  const out = new Float32Array(W * H);
   for (let y = 0; y < H; y += 1) {
     let s = 0;
-    for (let x = -r; x <= r; x += 1) s += g[y * W + at(x, W)];
+    for (let x = -r; x <= r; x += 1) s += a[y * W + at(x, W)];
     for (let x = 0; x < W; x += 1) {
       rows[y * W + x] = s / n;
-      s += g[y * W + at(x + r + 1, W)] - g[y * W + at(x - r, W)];
+      s += a[y * W + at(x + r + 1, W)] - a[y * W + at(x - r, W)];
     }
   }
   for (let x = 0; x < W; x += 1) {
     let s = 0;
     for (let y = -r; y <= r; y += 1) s += rows[at(y, H) * W + x];
     for (let y = 0; y < H; y += 1) {
-      const i = y * W + x;
-      const v = Math.max(0, Math.min(255, g[i] + amount * (g[i] - s / n)));
-      d.data[i * 4] = v;
-      d.data[i * 4 + 1] = v;
-      d.data[i * 4 + 2] = v;
+      out[y * W + x] = s / n;
       s += rows[at(y + r + 1, H) * W + x] - rows[at(y - r, H) * W + x];
     }
+  }
+  return out;
+}
+function sharpened(source, [sx, sy, sw, sh], k, amount, wide, canvas, max = 3600, even = 0) {
+  const scale = Math.min(k, max / Math.max(sw, sh));
+  const d = pixels(source, [sx, sy, sw, sh], scale, canvas, max);
+  const W = d.width;
+  const H = d.height;
+  const g = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i += 1) g[i] = 0.299 * d.data[i * 4] + 0.587 * d.data[i * 4 + 1] + 0.114 * d.data[i * 4 + 2];
+  // a box blur as the "unsharp" picture
+  const b = boxBlur(g, W, H, Math.max(1, Math.round(scale * wide)));
+  for (let i = 0; i < W * H; i += 1) g[i] += amount * (g[i] - b[i]);
+  if (even) {
+    const m = boxBlur(g, W, H, Math.max(1, Math.round(scale * even)));
+    for (let i = 0; i < W * H; i += 1) g[i] = 128 + 2 * (g[i] - m[i]);
+  }
+  for (let i = 0; i < W * H; i += 1) {
+    const v = Math.max(0, Math.min(255, g[i]));
+    d.data[i * 4] = v;
+    d.data[i * 4 + 1] = v;
+    d.data[i * 4 + 2] = v;
   }
   return d;
 }
@@ -411,9 +428,11 @@ export async function readQrFrom(source, w, h, { quick = false, deep = false, fr
   }
   // A small, slightly blurred QR (a phone photo of the card): each part enlarged and sharpened
   for (const area of [middle, ...searchAreas(w, h).slice(2)]) {
-    // light, strong over a wider reach, enlarged more (measured 23 Oct 2026: blur up to 1.5 dots read)
-    for (const [k, amount, wide] of [[2, 1.5, 1], [2, 4, 2], [3, 2.5, 2]]) {
-      const text = await zxingRead(sharpened(source, area, k, amount, wide, c));
+    // light, strong over a wider reach, enlarged more (measured 23 Oct 2026: blur up to 1.5 dots read); then stronger
+    // with light and shade evened out (24 Oct 2026: blur up to 2 dots at 3 dots per square read)
+    const ways = area === middle ? [[2, 1.5, 1, 0], [2, 4, 2, 0], [3, 2.5, 2, 0], [3, 4, 1, 4], [3, 8, 2, 4], [4, 8, 2, 0]] : [[2, 1.5, 1, 0], [2, 4, 2, 0], [3, 2.5, 2, 0], [3, 4, 1, 4]];
+    for (const [k, amount, wide, even] of ways) {
+      const text = await zxingRead(sharpened(source, area, k, amount, wide, c, 3600, even));
       if (text) return text;
     }
   }
