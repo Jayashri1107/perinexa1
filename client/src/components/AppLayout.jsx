@@ -117,10 +117,10 @@ function Workspace() {
         <Building2 />
       </span>
       <div className="ws-text">
-        <span className="ws-label">Working in</span>
-        <strong className="ws-name">{activeMembership.tenantName}</strong>
+        <strong className="ws-name" title={activeMembership.platform ? 'Every role – records you open are audited' : rolesLabel(activeMembership.roles)}>
+          {activeMembership.tenantName}
+        </strong>
         <span className="ws-who">{[user?.name, todayWords()].filter(Boolean).join(' · ')}</span>
-        <span className="ws-meta">{activeMembership.platform ? 'Every role – records you open are audited' : rolesLabel(activeMembership.roles)}</span>
       </div>
       {memberships.length > 1 && (
         <label className="ws-switch">
@@ -146,8 +146,8 @@ function Workspace() {
 /** "Help": opens the Help page (how to use Perinexa; the explanations on every screen are switched on there). */
 function HelpLink() {
   return (
-    <NavLink to="/help" className={({ isActive }) => `btn btn-secondary btn-sm pf-help${isActive ? ' is-on' : ''}`} title="How to use Perinexa">
-      <CircleHelp aria-hidden="true" /> Help
+    <NavLink to="/help" className={({ isActive }) => `icon-btn pf-icon-btn pf-help${isActive ? ' is-on' : ''}`} title="Help – how to use Perinexa" aria-label="Help">
+      <CircleHelp aria-hidden="true" />
     </NavLink>
   );
 }
@@ -421,8 +421,8 @@ export function AppLayout() {
             {!isPlatform && !locked && activeMembership && <NotificationBell key={`bell-${activeTenantId}`} />}
             {!locked && <HelpLink />}
             <ProfileMenu locked={locked} onSwitch={startSwitch} onDoctorSetup={() => setSwitching('setup')} onRoleSwitch={startRoleSwitch} />
-            <button type="button" className="btn btn-sm pf-logout" onClick={() => logout('manual')}>
-              <LogOut aria-hidden="true" /> Log out
+            <button type="button" className="icon-btn pf-icon-btn pf-logout" onClick={() => logout('manual')} title="Log out" aria-label="Log out">
+              <LogOut aria-hidden="true" />
             </button>
           </div>
         </header>
