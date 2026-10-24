@@ -242,6 +242,7 @@ export const AUDIT_LABELS = {
   IMAGING_IMAGE_VIEWED: 'Scan picture opened',
   IMAGING_IMAGE_CHANGED: 'Scan picture print choice changed',
   IMAGING_IMAGE_REMOVED: 'Scan picture taken off the report',
+  PLATFORM_PATIENTS_LISTED: "Super admin listed this hospital's patients",
   LAB_REFERRER_CHANGED: 'Lab referrer added or changed',
   LAB_QC_LOT_CHANGED: 'QC lot added or changed',
   LAB_QC_RUN: 'QC run entered',
@@ -491,6 +492,7 @@ export const AUDIT_TONES = {
   IMAGING_IMAGE_VIEWED: 'patient',
   IMAGING_IMAGE_CHANGED: 'patient',
   IMAGING_IMAGE_REMOVED: 'patient',
+  PLATFORM_PATIENTS_LISTED: 'patient',
   LAB_QC_ACTION: 'info',
   ADMISSION_REQUESTED: 'patient',
   ADMISSION_REQUEST_CANCELLED: 'patient',
@@ -1127,6 +1129,8 @@ export function describeAudit(entry) {
     case 'IMAGING_IMAGE_CHANGED':
     case 'IMAGING_IMAGE_REMOVED':
       return record(d);
+    case 'PLATFORM_PATIENTS_LISTED':
+      return d.count != null ? `${d.count} patient${d.count === 1 ? '' : 's'} listed` : '';
     case 'LAB_HOME_COLLECTION':
       return `${record(d)}${d.status ? ` – ${String(d.status).replace(/_/g, ' ')}` : ''}`;
     case 'LAB_QC_RUN':

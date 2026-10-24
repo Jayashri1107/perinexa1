@@ -1,6 +1,6 @@
 // The left menu and the Clinic library's tabs, by role (no browser needed).
 import { describe, expect, it } from 'vitest';
-import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, newPatientLinks, patientTabs } from './modules.js';
+import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, newPatientLinks, patientTabs, platformModules } from './modules.js';
 
 const menu = (roles) => hospitalModules(roles).map((m) => m.label);
 
@@ -93,7 +93,10 @@ describe('the left menu by role', () => {
   });
 
   it('the super admin has the platform Analytics as the second item', () => {
-    expect(PLATFORM_MODULES.map((m) => m.label)).toEqual(['Overview', 'Analytics', 'Hospitals', 'Users & access', 'Staff', 'Audit & compliance']);
+    expect(PLATFORM_MODULES.map((m) => m.label)).toEqual(['Overview', 'Analytics', 'Hospitals', 'Patients', 'Users & access', 'Staff', 'Audit & compliance']);
+    // Every hospital's patients: super admins only (owner, 24 Oct 2026)
+    expect(platformModules({ role: 'superadmin' }).map((m) => m.key)).toContain('patients');
+    expect(platformModules({ role: 'platformadmin', permissions: ['hospitals', 'users'] }).map((m) => m.key)).not.toContain('patients');
     expect(moduleByKey('platform-analytics').to).toBe('/platform/analytics');
     expect(moduleByKey('analytics').to).toBe('/analytics');
   });
