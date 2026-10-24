@@ -21,8 +21,8 @@ const shortMonth = (key) => {
   return `${MONTHS[m - 1]} ${y}`;
 };
 
-function ReportTables({ report }) {
-  return report.sections.map((s) => (
+function ReportTables({ report, only = null }) {
+  return report.sections.filter((s) => !only || s.key === only).map((s) => (
     <section key={s.key} className="card rep-section" aria-labelledby={`rep-${s.key}`}>
       <h2 id={`rep-${s.key}`}>{s.title}</h2>
       <table className="rep-table">
@@ -81,6 +81,9 @@ export function MonthlyReportPage() {
   const { data, error, loading } = useFetch('/analytics/report/monthly', { month });
   const trend = useFetch('/analytics/report/trend', { month });
   const [printing, setPrinting] = useState(false);
+  const parts = (data?.sections ?? []).map((s) => ({ key: s.key, title: s.title }));
+  const part = parts.some((x) => x.key === params.get('part')) ? params.get('part') : parts[0]?.key;
+  const choose = (key) => setParams({ ...(params.get('month') ? { month: params.get('month') } : {}), part: key }, { replace: true });
 
   return (
     <>
@@ -95,7 +98,7 @@ export function MonthlyReportPage() {
         <Alert type="error">{error ?? trend.error}</Alert>
         <div className="row reg-toolbar">
           <Field label="Month" id="rep-month">
-            <input id="rep-month" type="month" value={month} max={thisMonth()} onChange={(e) => e.target.value && setParams({ month: e.target.value }, { replace: true })} />
+            <input id="rep-month" type="month" value={month} max={thisMonth()} onChange={(e) => e.target.value && setParams({ month: e.target.value, ...(part ? { part } : {}) }, { replace: true })} />
           </Field>
           <button type="button" className="btn btn-secondary" disabled={!data} onClick={() => setPrinting(true)}>
             <Printer aria-hidden="true" /> Print the report
@@ -103,21 +106,11 @@ export function MonthlyReportPage() {
         </div>
         {month === thisMonth() && <p className="hint">This month is not over yet: the numbers grow until its last day.</p>}
         {loading && !data && <p className="muted">Loading…</p>}
-        {data?.month === month && (
-          <>
-            <div className="rep-grid">
-              <ReportTables report={data} />
-            </div>
-            {data.notes?.map((n) => (
-              <p key={n} className="hint">
-                {n}
-              </p>
-            ))}
-          </>
-        )}
         {trend.data && (
-          <>
-            <h2 className="rep-charts-title">The last 12 months</h2>
+          <section className="rep-trend" aria-labelledby="rep-trend-title">
+            <h2 id="rep-trend-title" className="rep-charts-title">
+              The last 12 months
+            </h2>
             <div className="rep-charts">
               {trend.data.series.map((s) => {
                 const columns = trend.data.months.map((k, i) => ({ key: k, label: shortMonth(k), value: s.values[i] }));
@@ -130,7 +123,19 @@ export function MonthlyReportPage() {
                 );
               })}
             </div>
-          </>
+          </section>
+        )}
+        {data?.month === month && (
+          <div className="rep-layout">
+            <nav className="card rep-nav" aria-label="Parts of the report">
+              {parts.map((x) => (
+                <button key={x.key} type="button" aria-pressed={x.key === part} onClick={() => choose(x.key)}>
+                  {x.title}
+                </button>
+              ))}
+            </nav>
+            <ReportTables report={data} only={part} />
+          </div>
         )}
       </div>
       {printing && data && <ReportPrint report={data} onClose={() => setPrinting(false)} />}

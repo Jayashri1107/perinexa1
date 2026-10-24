@@ -452,3 +452,9 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .pw-eye:hover { color: var(--indigo-700); background: var(--mist-50); }
 .pw-eye:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .pw-eye svg.lucide { width: 18px; height: 18px; }
+
+/* Every dashboard's number cards (owner, 24 Oct 2026 – reception, lab, billing, pharmacy, nurses, admin): as many to a
+   line as fit, the same size, compact – the label and number together, the note under them */
+.kpi-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); align-items: stretch; }
+.kpi-grid > .kpi { padding: var(--space-4); gap: var(--space-2); }
+.kpi-grid > .kpi .kpi-sub { margin-top: auto; }

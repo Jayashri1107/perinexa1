@@ -221,3 +221,26 @@
   .an-wide .an-card-body:has(> table.barlist):has(> .an-show-table) > .an-facts { grid-column: 1; }
   .an-wide .an-card-body:has(> table.barlist):has(> .an-show-table) > .an-show-table { grid-column: 2; grid-row: span 2; }
 }
+
+/* Overview made compact (owner, 24 Oct 2026): three cards across on a wide screen, less padding and space */
+.an-page .an-grid { gap: var(--space-4); margin-bottom: var(--space-4); }
+@media (min-width: 1400px) { .an-page .an-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.an-page .an-card-head { padding: var(--space-3) var(--space-4); }
+.an-page .an-card-head h2 { font-size: var(--fs-body); line-height: var(--lh-body); }
+.an-page .an-card-body { padding: var(--space-3) var(--space-4); gap: var(--space-2); }
+.an-page .an-card-notes { padding: 0 var(--space-4) var(--space-3); }
+.an-page .an-group-head { margin: 0 0 var(--space-3); }
+.an-page .an-headline { gap: var(--space-3); }
+.an-page .an-headline .kpi { padding: var(--space-3) var(--space-4); gap: var(--space-1); }
+.an-page .an-headline .kpi-value { font-size: var(--fs-h1); line-height: var(--lh-h1); }
+.an-page .an-fact, .an-page .an-fact-link { min-height: 32px; }
+
+/* Every Analytics page (owner, 24 Oct 2026): the cards in a row all the same height (no gaps under a short one), the
+   number tiles on one line, compact cards */
+.an-page .an-grid { align-items: stretch; }
+.an-page .an-grid > .an-card { margin: 0; }
+.an-page .an-card-body { flex: 1; }
+.an-page .an-headline, .an-page .an-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.an-page .an-headline .kpi, .an-page .an-kpis .kpi { padding: var(--space-3) var(--space-4); gap: var(--space-1); }
+.an-page .an-group-block { margin-bottom: var(--space-2); }
+.an-page .an-filters { margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); }

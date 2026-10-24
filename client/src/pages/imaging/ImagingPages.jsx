@@ -54,7 +54,7 @@ function ScanDashboard({ links = true }) {
   if (!c) return null;
   const to = (path) => (links ? path : undefined);
   return (
-    <div className="kpi-grid" aria-label="Scans today">
+    <div className="kpi-grid img-tiles" aria-label="Scans today">
       <KpiCard to={to('/scans?list=scheduled')} tone="due" icon={CalendarClock} label="Booked today" value={c.bookedToday} />
       <KpiCard to={to('/scans')} tone="due" icon={Clock} label="To scan" value={c.toScan} sub="Ordered or scheduled" />
       <KpiCard to={to('/scans?list=report')} tone="watch" icon={FilePen} label="To report" value={c.toReport} />
@@ -91,7 +91,7 @@ function ScanWorklist() {
       <PageHeader title="Sonography" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
       <div className="pf-content">
         <ScanDashboard />
-        <div className="segmented" aria-label="Scan lists">
+        <div className="segmented img-lists" aria-label="Scan lists">
           {LISTS.map(([k, w]) => (
             <button key={k} type="button" aria-pressed={k === list} onClick={() => setParams(k === 'ordered' ? {} : { list: k }, { replace: true })}>
               {w}
@@ -182,8 +182,9 @@ function ReportForm({ s, template, onSaved, onError, onAsk = null }) {
   };
   const worked = [calc.ga && `${gaWords(calc.ga)} by ${calc.gaFrom}`, calc.edd && `EDD by scan ${calc.edd}`, calc.efw && `weight ${calc.efw} g`, calc.efwCentile && `${ordinal(calc.efwCentile)} centile by dates`].filter(Boolean);
   return (
-    <form className="card" onSubmit={save} noValidate aria-labelledby="img-report-title">
-      <h2 id="img-report-title">Report</h2>
+    <form className="img-report-form" onSubmit={save} noValidate aria-labelledby="img-report-title">
+      <section className="card" aria-labelledby="img-readings-title">
+      <h2 id="img-readings-title">Readings</h2>
       <p className="hint">DRAFT template – for the doctor to check and approve. No field records the sex of a fetus (PCPNDT Act).</p>
       <div className="form-grid">
         {(template?.fields ?? []).map((f) => (
@@ -215,6 +216,9 @@ function ReportForm({ s, template, onSaved, onError, onAsk = null }) {
           <Calculator aria-hidden="true" /> Worked out from the readings: {worked.join(' · ')}. {CALC_SOURCES}.
         </p>
       )}
+      </section>
+      <section className="card" aria-labelledby="img-report-title">
+      <h2 id="img-report-title">Report</h2>
       <div className="row">
         <button type="button" className="btn btn-secondary btn-sm" onClick={writeReport}>
           <FileText aria-hidden="true" /> Write the report from the readings
@@ -237,6 +241,7 @@ function ReportForm({ s, template, onSaved, onError, onAsk = null }) {
           {busy ? 'Saving…' : 'Save the report'}
         </button>
       </div>
+      </section>
     </form>
   );
 }
@@ -489,7 +494,8 @@ export function ImagingStudyPage() {
             )}
           </div>
         </section>
-        <ScanImages s={s} onSaved={saved} onError={failed} />
+        <div className="img-study">
+        <div className="img-study-main">
         {a.canReport && <ReportForm key={`${s.rev}`} s={s} template={data?.template} onSaved={saved} onError={failed} onAsk={() => setAsking(true)} />}
         {asking && s.status === 'done' && (
           // Asked once the report is saved (owner, 19 Oct 2026): complete – the doctor signs and it prints by itself
@@ -515,6 +521,11 @@ export function ImagingStudyPage() {
             {s.report.impression && <p>{s.report.impression}</p>}
           </section>
         )}
+        </div>
+        <aside className="img-study-side">
+          <ScanImages s={s} onSaved={saved} onError={failed} />
+        </aside>
+        </div>
       </div>
       {printing && <ReportPrint s={s} template={data?.template} autoPrint={printing === 'auto'} onClose={() => setPrinting(false)} />}
     </>
