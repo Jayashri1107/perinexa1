@@ -59,6 +59,12 @@ second system, so the bill, the history and the audit stay in one place.
 | 21 | **Sonography dashboard**: today's scans, waiting, reports waiting for signature, done | Can be built on the existing scan list. Which counts the owner wants |
 | 22 | **Two-step approval**: whoever writes the report sends it, an authorised doctor signs it | Only with idea 17. Who may sign which scan types (owner) |
 
+## Aadhaar: scan with a phone, fill in on this computer (asked 24 Oct 2026)
+
+| # | Idea | What to decide first |
+| --- | --- | --- |
+| 23 | **Scan Aadhaar with your phone and send it to this computer**: the New patient form on the reception computer shows a short-lived QR code; reception scans it with their own phone (already signed in to Perinexa), the phone's camera reads the Aadhaar QR live the way PhonePe does, and the details appear in the form on the computer for reception to check and save. Why: laptop webcams cannot focus close enough for the dense Aadhaar Secure QR (about 5 times denser than a UPI QR), and photos forwarded on WhatsApp are too blurred to read | **Privacy (developer and owner):** today nothing of the card leaves the computer; this would send the details through the server. So: only the fields the form uses (name, age, address, PIN, city, state, last 4 digits, the signature result) – never the whole Aadhaar number, the photo in the QR, gender or the QR itself; the pairing code works once, for one form, for about 2 minutes, and only for the same staff member in the same hospital; the details are held in memory only until the computer collects them (never saved in the database, never in logs or error reports), over HTTPS only; the audit log records that a card was scanned, without its details; the patient's agreement is asked on the phone before the camera opens. **Simpler first:** a USB 2D QR scanner (about ₹2,000–4,000) already works with nothing sent anywhere, and opening Perinexa on the phone itself already scans live |
+
 ## Keep in mind
 
 - **"Fun" must fit the brand rules** (`docs/BRAND.md`): no emoji and no exclamation marks. The fun should come from things
