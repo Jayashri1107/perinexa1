@@ -395,7 +395,7 @@ appointmentsRouter.post('/:id/move', async (req, res) => {
   const from = { date: isoDay(appt.on), start: appt.start, doctorId: String(appt.doctorId) };
   await moveSlot(req, appt, body);
   await audit(req, 'APPOINTMENT_MOVED', { details: ids(appt, { start: appt.start, from }) });
-  res.json({ appointment: await viewOf(req, appt) });
+  res.json({ appointment: await viewOf(req, appt), messaged: Boolean(appt.$locals.messaged) });
 });
 
 appointmentsRouter.post('/:id/cancel', async (req, res) => {

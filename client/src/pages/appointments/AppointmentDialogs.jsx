@@ -296,17 +296,17 @@ const DAY_PARTS = [
 ];
 const minutesOf = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
-/** Move an appointment, or give a "needs a time" booking its time. */
+/** Reschedule an appointment (owner, 24 Oct 2026: "Reschedule"), or give a "needs a time" booking its time. */
 export function MoveDialog({ appointment: a, doctors, today, onClose, onMoved }) {
   const [doctorId, setDoctorId] = useState(a.doctor.id);
   const [date, setDate] = useState(a.date >= today ? a.date : today);
   const [start, setStart] = useState(null);
   const send = useSend(async (confirm) => {
-    const { appointment } = await api(`/appointments/${a.id}/move`, { method: 'POST', body: { doctorId, date, start, confirm } });
-    onMoved(appointment);
+    const { appointment, messaged } = await api(`/appointments/${a.id}/move`, { method: 'POST', body: { doctorId, date, start, confirm } });
+    onMoved(appointment, messaged);
   });
   return (
-    <Modal id="appt-move" title={a.needsTime ? `Give ${whoLabel(a)} a time` : `Move ${whoLabel(a)}'s appointment`} onClose={onClose} wide>
+    <Modal id="appt-move" title={a.needsTime ? `Give ${whoLabel(a)} a time` : `Reschedule ${whoLabel(a)}'s appointment`} onClose={onClose} wide>
       <p className="muted">
         Now: {dayLabel(a.date)} · {whenLabel(a)} · {a.doctor.name}
       </p>
@@ -345,7 +345,7 @@ export function MoveDialog({ appointment: a, doctors, today, onClose, onMoved })
       <WarningBox warning={send.warning} busy={send.busy} onConfirm={() => send.run(true)} confirmLabel="Book anyway" />
       <div className="row">
         <button type="button" className="btn btn-primary" disabled={!start || send.busy || Boolean(send.warning)} onClick={() => send.run(false)}>
-          <CalendarCheck aria-hidden="true" /> {send.busy ? 'Saving…' : a.needsTime ? 'Book this time' : 'Move here'}
+          <CalendarCheck aria-hidden="true" /> {send.busy ? 'Saving…' : a.needsTime ? 'Book this time' : 'Reschedule to this time'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
           Cancel

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CircleCheck, Clock, HandCoins, TriangleAlert } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { ArrowLeft, CircleCheck, Clock, HandCoins, TriangleAlert } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -205,26 +205,33 @@ export function CashHandoverPage() {
   return (
     <>
       <PageHeader
+        breadcrumbs={isBilling ? [{ label: 'Billing', to: '/billing' }, { label: 'Cash handover' }] : [{ label: 'Today', to: '/' }, { label: 'Cash handover' }]}
         title="Cash handover"
         documentTitle="Cash handover"
-        subtitle={data ? dayLabel(data.date) : undefined}
         tabs={isBilling ? billingTabs(roles) : undefined}
         help="At the end of the day: hand over the cash you took; a doctor or the hospital admin counts it and confirms."
+        actions={
+          <>
+            <label className="ch-day" htmlFor="ch-date">
+              <span>Day</span>
+              <input id="ch-date" type="date" value={data?.date ?? date} max={data?.today} onChange={(e) => setParams(e.target.value ? { date: e.target.value } : {}, { replace: true })} />
+            </label>
+            <Link to={isBilling ? '/billing' : '/'} className="btn btn-secondary btn-sm">
+              <ArrowLeft aria-hidden="true" /> Back
+            </Link>
+          </>
+        }
       />
-      <div className="pf-content">
+      <div className="pf-content ch-page">
         <Alert type="error">{error}</Alert>
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}
         </Alert>
-        <label className="lab-filter" htmlFor="ch-date">
-          <span>Day</span>
-          <input id="ch-date" type="date" value={data?.date ?? date} max={data?.today} onChange={(e) => setParams(e.target.value ? { date: e.target.value } : {}, { replace: true })} />
-        </label>
         {!data && !error && <p className="muted">Loading…</p>}
         {data?.mine && data.canHandOver && <HandOverForm key={`${data.date}-${data.mine.handover?.handed?.at ?? ''}`} data={data} onSaved={saved} />}
         {data?.canConfirm && (
           <section className="card" aria-labelledby="ch-all">
-            <h2 id="ch-all">Handed over on this day</h2>
+            <h2 id="ch-all">Handed over on {data ? dayLabel(data.date) : 'this day'}</h2>
             {data.handovers.length === 0 ? (
               <p className="muted">Nothing handed over yet.</p>
             ) : (

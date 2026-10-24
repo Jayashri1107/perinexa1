@@ -27,7 +27,7 @@ export const appointmentTabs = (canBook) => [
   ...(canBook !== false ? [{ label: 'OPD settings', to: '/appointments/timings', end: true }] : []),
 ];
 
-/** One booking in a list: who, visit type, status, and Move / Cancel. */
+/** One booking in a list: who, visit type, status, and Reschedule / Cancel (doctors and reception). */
 export function AppointmentLine({ a, canBook, onMove, onCancel, onFee = null, showWhen = false, showDoctor = false }) {
   const look = a.needsTime ? NEEDS_TIME_LOOK : STATUS_LOOK[a.status];
   const changeable = canBook && a.kind === 'slot' && a.status === 'booked';
@@ -83,7 +83,7 @@ export function AppointmentLine({ a, canBook, onMove, onCancel, onFee = null, sh
         {changeable && (
           <>
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMove(a)}>
-              {a.needsTime ? 'Give a time' : 'Move'}
+              {a.needsTime ? 'Give a time' : 'Reschedule'}
             </button>
             <button type="button" className="btn btn-link btn-sm" onClick={() => onCancel(a)} aria-label={`Cancel the appointment of ${whoLabel(a)}`}>
               Cancel
@@ -120,7 +120,9 @@ export function useAppointmentDialogs({ doctors, today, onDone }) {
       doctors={doctors}
       today={today}
       onClose={() => setDialog(null)}
-      onMoved={(a) => done(`${whoLabel(a)} is now booked for ${dayLabel(a.date)} at ${timeLabel(a.start)} with ${a.doctor.name}.`)}
+      onMoved={(a, messaged) =>
+        done(`${whoLabel(a)} is now booked for ${dayLabel(a.date)} at ${timeLabel(a.start)} with ${a.doctor.name}.${messaged ? ' She is sent a message with the new time.' : ''}`)
+      }
     />
   ) : dialog.kind === 'fee' ? (
     <FeeDialog

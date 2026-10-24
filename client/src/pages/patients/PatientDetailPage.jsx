@@ -872,6 +872,7 @@ export function PatientOverviewTab() {
                     'Not linked'
                   ),
                 ],
+                ['Father', p.newborn?.fatherName ?? ''],
               ]}
             />
           </section>

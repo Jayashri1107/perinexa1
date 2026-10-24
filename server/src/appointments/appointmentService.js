@@ -336,7 +336,8 @@ export async function moveSlot(req, appt, body) {
   appt.changes += 1;
   appt.updated = who(req);
   await appt.save();
-  await queueChangeMessage(req.tenantId, appt, hadTime ? 'moved' : 'booked', req.now);
+  // Whether she gets a message with the new day and time (reception and the doctor are told – 24 Oct 2026)
+  appt.$locals.messaged = await queueChangeMessage(req.tenantId, appt, hadTime ? 'moved' : 'booked', req.now);
   return appt;
 }
 

@@ -41,7 +41,7 @@ export function LabSettingsPage() {
   return (
     <>
       <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab settings" documentTitle="Lab settings" help="Whether a second person checks lab results before they go to the doctor. A doctor changes this." />
-      <div className="pf-content">
+      <div className="pf-content lab-settings-page">
         <Alert type="error">{error || saveError}</Alert>
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}
