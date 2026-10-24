@@ -158,6 +158,24 @@ imagingRouter.get('/worklist', async (req, res) => {
   res.json({ list, studies: rows.map((o) => view(req, o, patients.get(String(o.patientId)))).filter((v) => v.patient), counts });
 });
 
+// The sonography dashboard (24 Oct 2026, docs/IDEAS_FOR_LATER.md 21): counts only, no patient. Today: studies booked
+// for today (not cancelled); to scan: ordered or scheduled; to report: done, no report yet; to sign: done with a report;
+// signed today.
+imagingRouter.get('/dashboard', async (req, res) => {
+  const today = hospitalToday(req.now);
+  const from = hospitalDayStart(today);
+  const to = hospitalDayStart(addDays(today, 1));
+  const count = (where) => ImagingOrder.countDocuments({ tenantId: req.tenantId, ...where });
+  const [bookedToday, toScan, toReport, toSign, signedToday] = await Promise.all([
+    count({ status: { $ne: 'cancelled' }, scheduledFor: { $gte: from, $lt: to } }),
+    count({ status: { $in: ['ordered', 'scheduled'] } }),
+    count({ status: 'done', report: null }),
+    count({ status: 'done', report: { $ne: null } }),
+    count({ status: 'signed', 'signed.at': { $gte: from, $lt: to } }),
+  ]);
+  res.json({ counts: { bookedToday, toScan, toReport, toSign, signedToday } });
+});
+
 imagingRouter.get('/:id', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   await audit(req, 'IMAGING_VIEWED', { details: ids(o, patient) });

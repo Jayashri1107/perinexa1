@@ -5,7 +5,7 @@ import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
+import { Alert, Field, KpiCard, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CALC_SOURCES, draftReport, gaWords, ordinal, workOut } from './usgCalc.js';
@@ -43,6 +43,22 @@ const localInput = (d) => {
   return x.toISOString().slice(0, 16);
 };
 
+// The day at a glance (24 Oct 2026, docs/IDEAS_FOR_LATER.md 21): counts only; each opens its list
+function ScanDashboard() {
+  const { data } = useFetch('/imaging/dashboard');
+  const c = data?.counts;
+  if (!c) return null;
+  return (
+    <div className="kpi-grid" aria-label="Scans today">
+      <KpiCard to="/scans?list=scheduled" tone="due" icon={CalendarClock} label="Booked today" value={c.bookedToday} />
+      <KpiCard to="/scans" tone="due" icon={Clock} label="To scan" value={c.toScan} sub="Ordered or scheduled" />
+      <KpiCard to="/scans?list=report" tone="watch" icon={FilePen} label="To report" value={c.toReport} />
+      <KpiCard to="/scans?list=report" tone="watch" icon={FileText} label="To sign" value={c.toSign} sub="Report written" />
+      <KpiCard to="/scans?list=signed" tone="stable" icon={CircleCheck} label="Signed today" value={c.signedToday} />
+    </div>
+  );
+}
+
 export function ImagingWorklistPage() {
   const [params, setParams] = useSearchParams();
   const list = LISTS.some(([k]) => k === params.get('list')) ? params.get('list') : 'ordered';
@@ -51,6 +67,7 @@ export function ImagingWorklistPage() {
     <>
       <PageHeader title="Scans" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
       <div className="pf-content">
+        <ScanDashboard />
         <div className="segmented" aria-label="Scan lists">
           {LISTS.map(([k, w]) => (
             <button key={k} type="button" aria-pressed={k === list} onClick={() => setParams(k === 'ordered' ? {} : { list: k }, { replace: true })}>

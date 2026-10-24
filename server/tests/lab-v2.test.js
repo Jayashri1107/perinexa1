@@ -226,4 +226,25 @@ describe('USG and radiology', () => {
     const studies = (await (await as('drA')).get('/api/imaging/studies')).body.studies;
     expect(JSON.stringify(studies)).not.toMatch(/\bsex\b|gender/i);
   });
+
+  it('the dashboard counts booked today, to scan, to report, to sign and signed today – no patient in it', async () => {
+    const p = await antenatal();
+    const order = async (body = {}) => (await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_nt', ...body })).body.study;
+    const doneOne = async () => (await (await as('drA')).post(`/api/imaging/${(await order()).id}/done`).send({ rev: 0 })).body.study;
+    const reported = async () => {
+      const s = await doneOne();
+      return (await (await as('drA')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, impression: 'Normal.' })).body.study;
+    };
+    await order(); // to scan
+    await order({ scheduledFor: '2026-10-17T08:00:00.000Z' }); // booked today, to scan
+    await order({ scheduledFor: '2026-10-18T08:00:00.000Z' }); // tomorrow, to scan
+    await doneOne(); // to report
+    await reported(); // to sign
+    const r = await reported();
+    expect((await (await as('drA')).post(`/api/imaging/${r.id}/sign`).send({ rev: r.rev })).status).toBe(200); // signed today
+    const res = await (await as('rmo')).get('/api/imaging/dashboard');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ counts: { bookedToday: 1, toScan: 3, toReport: 1, toSign: 1, signedToday: 1 } });
+    expect((await (await as('reception')).get('/api/imaging/dashboard')).status).toBe(403);
+  });
 });
