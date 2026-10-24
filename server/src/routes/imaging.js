@@ -23,13 +23,16 @@ import { objectId, parse } from '../utils/validate.js';
 //  - imagingRouter, /api/imaging: the study list and DRAFT templates, the worklist (to schedule, scheduled today, done
 //    and to report, signed), one study: scheduled, done, the report saved (doctors, RMOs) and signed (a doctor),
 //    changed after signing with a reason (the earlier report kept), cancelled with a reason, printed.
-// Doctors and RMOs only (owner, 19 Oct 2026: "sonography login only doctor and RMO"): reception and nurses no longer
-// open Scans. A pregnancy scan's page has her EDD (by her dates) for the weight centile – for those who see her details.
+// Doctors, RMOs and sonography staff (owner, 24 Oct 2026 – the sonographer role replaces "doctors and RMOs only" of
+// 19 Oct 2026): sonography staff schedule, do the scan, add pictures and write the report; a doctor signs. They see
+// what a scan needs (indication, EDD by dates, report) for a record that is not sensitive – never the rest of her
+// record. The hospital admin sees the dashboard counts only. Reception and nurses do not open Scans. A pregnancy scan's page has her EDD (by her dates) for the weight centile – for those who see her details.
 // PCPNDT: no field holds a fetus's sex; any text about it is refused. The audit log gets ids only.
 
 export const imagingRouter = Router();
 export const patientImagingRouter = Router({ mergeParams: true });
-const WORK_ROLES = ['doctor', 'rmo'];
+const WORK_ROLES = ['doctor', 'rmo', 'sonographer'];
+const REPORT_ROLES = ['doctor', 'rmo', 'sonographer'];
 const forbidden = (m) => new HttpError(403, m, 'FORBIDDEN');
 const conflict = (m) => new HttpError(409, m, 'CONFLICT');
 const invalid = (fields, message = 'Please check the highlighted fields.') => Object.assign(new HttpError(400, message, 'VALIDATION'), { fields });
@@ -37,7 +40,7 @@ const stampOf = (req) => ({ by: req.user._id, byName: req.user.name, at: req.now
 const stampView = (s) => (s ? { byName: s.byName, at: s.at } : null);
 const ids = (o, patient, extra = {}) => ({ patientId: String(o.patientId), mrn: patient?.mrn, imagingId: String(o._id), ...extra });
 
-const clinicalOf = (req, patient) => patientAccess(req, patient).view.has('pregnancy');
+const clinicalOf = (req, patient) => patientAccess(req, patient).view.has('pregnancy') || (hasRole(req.membership, 'sonographer') && !patient.sensitive);
 const reportView = (r) => (r ? { values: r.values ?? {}, findings: r.findings ?? '', impression: r.impression ?? '' } : null);
 
 // The pictures still on the report (one taken off is kept in the record, not listed)
@@ -78,11 +81,11 @@ function view(req, o, patient) {
     access: {
       canSchedule: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
       canDone: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
-      canReport: clinical && hasRole(req.membership, 'doctor', 'rmo') && ['done', 'signed'].includes(o.status),
+      canReport: clinical && hasRole(req.membership, ...REPORT_ROLES) && ['done', 'signed'].includes(o.status),
       canSign: clinical && hasRole(req.membership, 'doctor') && o.status === 'done' && Boolean(o.report),
       canCancel: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
       canPrint: clinical && o.status === 'signed',
-      canImages: clinical && hasRole(req.membership, 'doctor', 'rmo') && o.status === 'done',
+      canImages: clinical && hasRole(req.membership, ...REPORT_ROLES) && o.status === 'done',
     },
   };
 }
@@ -140,7 +143,9 @@ patientImagingRouter.post('/', async (req, res) => {
 // ---------- The department ----------
 
 imagingRouter.use((req, _res, next) => {
-  if (!hasRole(req.membership, ...WORK_ROLES)) throw forbidden('Scans are for doctors and RMOs.');
+  // The hospital admin: the dashboard's counts only (owner, 24 Oct 2026)
+  if (req.method === 'GET' && req.path === '/dashboard' && hasRole(req.membership, 'admin')) return next();
+  if (!hasRole(req.membership, ...WORK_ROLES)) throw forbidden('Scans are for doctors, RMOs and sonography staff.');
   next();
 });
 
@@ -242,7 +247,7 @@ imagingRouter.put('/:id/report', async (req, res) => {
     z.object({ rev: z.number().int().min(0), values: z.record(z.string().max(40), z.union([z.string().max(300), z.number(), z.null()])).default({}), findings: safeText('Findings', 4000).default(''), impression: safeText('Impression', 1000).default(''), reason: safeText('Reason', 300).default('') }).strict(),
     req.body,
   );
-  if (!view(req, o, patient).access.canReport) throw forbidden('A doctor or RMO writes the report once the study is done.');
+  if (!view(req, o, patient).access.canReport) throw forbidden('A doctor, RMO or sonography staff writes the report once the study is done.');
   checkRev(o, body.rev);
   const report = checkedReport(o, body);
   if (o.status === 'signed') {
@@ -293,7 +298,7 @@ const imageOf = (o, fileId) => (o.images ?? []).find((i) => String(i.fileId) ===
 imagingRouter.post('/:id/images', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   const { rev, ...file } = parse(fileUploadSchema.omit({ reason: true }).extend({ rev: z.number().int().min(0) }).strict(), req.body);
-  if (!view(req, o, patient).access.canImages) throw forbidden('Pictures are added by a doctor or RMO once the study is done, before it is signed.');
+  if (!view(req, o, patient).access.canImages) throw forbidden('Pictures are added by a doctor, RMO or sonography staff once the study is done, before it is signed.');
   checkRev(o, rev);
   if ((o.images ?? []).filter((i) => !i.removed).length >= MAX_IMAGES) throw invalid({ file: `At most ${MAX_IMAGES} pictures per study.` });
   const stored = await storeFile(req, { patientId: patient._id, kind: 'scan_image', ownerId: o._id, body: file, types: IMAGE_TYPES });
@@ -318,7 +323,7 @@ imagingRouter.get('/:id/images/:fileId', async (req, res) => {
 imagingRouter.patch('/:id/images/:fileId', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   const body = parse(z.object({ rev: z.number().int().min(0), inPrint: z.boolean().optional(), remove: safeText('Reason', 300).optional() }).strict(), req.body);
-  if (!view(req, o, patient).access.canImages) throw forbidden('Pictures are changed by a doctor or RMO before the report is signed.');
+  if (!view(req, o, patient).access.canImages) throw forbidden('Pictures are changed by a doctor, RMO or sonography staff before the report is signed.');
   checkRev(o, body.rev);
   const image = imageOf(o, parse(objectId, req.params.fileId));
   if (!image) throw new HttpError(404, 'This picture was not found.', 'NOT_FOUND');

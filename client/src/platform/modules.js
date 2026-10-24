@@ -28,6 +28,7 @@ export const STAFF_ROLE_PAGES = [
   { role: 'nurse', label: 'Nurses' },
   { role: 'receptionist', label: 'Receptionists' },
   { role: 'lab', label: 'Lab' },
+  { role: 'sonographer', label: 'Sonography' },
   { role: 'pharmacist', label: 'Pharmacy' },
   { role: 'billing', label: 'Accounts' },
   { role: 'admin', label: 'Hospital admins' },
@@ -154,10 +155,13 @@ export const HOSPITAL_LAB = {
 };
 
 // USG and radiology (Lab version 2 part 8): the scan worklist and reports. Same list as server/src/routes/imaging.js.
-export const SCAN_ROLES = ['doctor', 'rmo']; // owner, 19 Oct 2026: sonography for doctors and RMOs only
+// Sonography (owner, 24 Oct 2026): doctors, RMOs and sonography staff work the scans; the hospital admin sees the
+// dashboard's counts only. Same list as server/src/routes/imaging.js.
+export const SCAN_ROLES = ['doctor', 'rmo', 'sonographer'];
+export const SCAN_PAGE_ROLES = [...SCAN_ROLES, 'admin'];
 const HOSPITAL_SCANS = {
   key: 'scans',
-  label: 'Scans',
+  label: 'Sonography',
   icon: ScanLine,
   to: '/scans',
   tabs: [{ label: 'Scans', to: '/scans', end: false }],
@@ -383,7 +387,7 @@ const HOSPITAL_BEDS = {
 // Roles that work with patient records, and those that may register new patients.
 // The referral desk registers a referred patient with her identity details only (name, age, phone, type of care,
 // doctor), as reception does (brought over 19 Oct 2026).
-export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing', 'referral_desk'];
+export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk'];
 export const REGISTER_ROLES = ['doctor', 'rmo', 'receptionist', 'referral_desk'];
 const any = (roles, list) => roles.some((r) => list.includes(r));
 // Babies (their birth details and their mother) are registered by reception, doctors and RMOs; the referral desk
@@ -416,7 +420,7 @@ export function hospitalModules(roles = []) {
   if (any(roles, BED_MENU_ROLES)) modules.push(HOSPITAL_BEDS);
   // Lab staff start on the lab's dashboard (owner, 19 Oct 2026); doctors, RMOs and nurses on the worklist
   if (any(roles, LAB_ROLES)) modules.push(roles.includes('lab') ? { ...HOSPITAL_LAB, to: '/lab/dashboard', activeFor: '/lab' } : HOSPITAL_LAB);
-  if (any(roles, SCAN_ROLES)) modules.push(HOSPITAL_SCANS);
+  if (any(roles, SCAN_PAGE_ROLES)) modules.push(HOSPITAL_SCANS);
   if (any(roles, REFERRAL_ROLES)) modules.push(HOSPITAL_REFERRALS);
   if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);
   if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: roles.includes('pharmacist') ? '/pharmacy' : '/pharmacy/stock' });

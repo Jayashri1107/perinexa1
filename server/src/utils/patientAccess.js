@@ -17,10 +17,13 @@
 //   doctor and whether the record is closed – no address, reminders, ABHA, pregnancy or anything medical, on every
 //   record (sensitive or not). Her referrals through routes/referrals.js; never the medical record.
 // - Everyone but lab staff sees whether a record is closed after a death – never why or when (clinical details).
+// - Sonography staff (owner, 24 Oct 2026): name, patient number, type of care and age – no phone, address or anything
+//   medical in her record. What a scan needs (the indication, her EDD by dates, the report) comes through
+//   routes/imaging.js for her studies only.
 // - Hospital admin (with no clinical role): no patient data.
 // A person with several roles gets everything any of their roles allows.
 
-export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing', 'referral_desk'];
+export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk'];
 
 // duplicateOf: the record is marked as a duplicate of another (that record's number, who marked it and when) –
 // everyone who may open the record sees it, so nobody works on the wrong record. earlierRecords: on the main
@@ -151,6 +154,8 @@ function forRole(role, patient, userId) {
       return { ...NONE, view: [...IDENTITY_FIELDS, ...NEWBORN_FIELDS], editIdentity: true, editNewborn: true, assign: true };
     case 'lab':
       return { ...NONE, view: LAB_FIELDS };
+    case 'sonographer':
+      return { ...NONE, view: [...LAB_FIELDS, 'ageYears', 'ageRecordedOn', 'currentAge'] };
     case 'pharmacist':
       return { ...NONE, view: [...LAB_FIELDS, 'closed', 'phone', 'assignedDoctor', 'assignedDoctorName'] };
     case 'billing':
