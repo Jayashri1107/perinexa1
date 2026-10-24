@@ -95,7 +95,6 @@ export function OpdTimingsPage({ admin = false }) {
       <PageHeader
         breadcrumbs={admin ? [{ label: 'Hospital admin', to: '/admin/staff' }, { label: 'OPD timings' }] : [{ label: 'Appointments', to: '/appointments' }, { label: 'OPD timings' }]}
         title="OPD timings"
-        subtitle={doctor?.name}
         tabs={admin ? undefined : appointmentTabs(info?.canBook)}
         actions={
           canEdit && (
