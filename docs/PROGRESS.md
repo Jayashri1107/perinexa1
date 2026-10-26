@@ -89,6 +89,18 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   (QueueBoard). **How to test:** as reception → Today → Mark arrived on two booked patients → Emergency on the second:
   she moves to the top, red, and first under Waiting to be seen → as a nurse start the first one's visit → back as
   reception within 30 seconds she shows With the doctor → Mark done → Done; Undo done.
+- **26 Oct 2026, same branch – reception's dashboard laid out as the owner's sketch** (`client/src/pages/
+  ReceptionDashboard.jsx`, `styles/pages-reception-dashboard.css`; brand colours instead of the sketch's pink, no
+  exclamation mark or emoji): a greeting; three number cards (Today's patients – arrived and waiting; Appointments –
+  completed and upcoming; Collection today – payments); quick-action tiles (Book appointment, Admit to bed, Billing
+  and payments, Follow-ups, More); **Today's patients** as a table – tabs All / Expected / Waiting / In consultation /
+  Completed with counts, a search box (name, patient number, phone; anyone not on today's list is offered below with
+  Check in, Book, Edit info, or Register new patient), a doctor filter, one row each (initials, name and number,
+  age, time or token, visit type, state, **Check in** or **View**, and a menu: Emergency, Mark done, the undos, Edit
+  info, Book, token slip); the day's other lists as **one row of small cards** (name and count, only those with
+  someone in them; a card opens its list below); beside it To do, **Doctors today** (state, hours, expected /
+  waiting / seen on their own lines) and **Upcoming appointments**. Today's patients now also carry her age and her
+  booking's visit type (`routes/today.js`). The queue's words: In consultation, Completed.
 - **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
   built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the

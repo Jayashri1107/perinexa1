@@ -1,35 +1,5 @@
-/* Reception's desk on Today (ReceptionDesk.jsx, 26 Oct 2026): the search box first, then the numbers, then today's
-   patients beside a short To do list. Colours only from tokens.css. */
-
-/* The search box: large, the first thing on the page */
-.rc-search { margin-bottom: var(--space-6); }
-.rc-search-box {
-  position: relative; display: flex; align-items: center;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
-}
-.rc-search-box:focus-within { border-color: var(--indigo-700); box-shadow: var(--focus-ring, 0 0 0 3px var(--indigo-100)), var(--shadow-card); }
-.rc-search-box svg.lucide { position: absolute; left: var(--space-6); width: 22px; height: 22px; color: var(--indigo-700); pointer-events: none; }
-.rc-search-box input {
-  width: 100%; border: 0; background: transparent; border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-6) var(--space-4) calc(var(--space-6) * 2 + 22px);
-  font-size: var(--fs-h2); line-height: var(--lh-h2); color: var(--ink);
-}
-.rc-search-box input:focus { outline: none; }
-.rc-results { list-style: none; margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-6); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
-.rc-result { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
-.rc-result:first-child { border-top: 0; }
-.rc-who { display: flex; flex-direction: column; flex: 1 1 240px; }
-.rc-who a { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; }
-.rc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.rc-new { justify-content: space-between; }
-
-/* Two columns: the main work, and To do with the doctors */
-.rc-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--space-6); align-items: start; margin-bottom: var(--space-6); }
-.rc-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
-.rc-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
-@media (max-width: 1000px) { .rc-columns { grid-template-columns: 1fr; } }
-
-/* To do: one short list, each row opening its list */
+/* Reception's desk: To do (ReceptionDesk.jsx, 26 Oct 2026) – the desk's jobs as one short list, each row opening its
+   list or dialog. The rest of the dashboard: pages-reception-dashboard.css. Colours only from tokens.css. */
 .rc-todo { padding: var(--space-6); }
 .rc-todo h2 { margin: 0 0 var(--space-3); font-size: var(--fs-h2); line-height: var(--lh-h2); }
 .rc-todo ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
@@ -38,7 +8,7 @@
   font: inherit; color: var(--ink); text-decoration: none; background: var(--mist-50); border: 1px solid transparent; border-radius: var(--radius-md); cursor: pointer;
 }
 .rc-todo-row:hover { border-color: var(--indigo-200); background: var(--indigo-100); }
-.rc-todo-row:focus-visible { outline: none; box-shadow: var(--focus-ring-inset, inset 0 0 0 2px var(--indigo-700)); }
+.rc-todo-row:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
 .rc-todo-icon { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
 .rc-todo-icon.is-watch { background: var(--status-watch-bg); color: var(--status-watch-fg); }
 .rc-todo-icon svg { width: 18px; height: 18px; }
@@ -48,52 +18,3 @@
 .rc-todo-go { width: 18px; height: 18px; color: var(--slate-600); flex: 0 0 auto; }
 .rc-done { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--status-stable-bg); color: var(--status-stable-fg); }
 .rc-done svg { width: 18px; height: 18px; }
-
-/* The lists in the main column take the full width and look like cards */
-.rc-main > .wl-fold, .rc-main > section { width: 100%; }
-.rc-side .desk-doctors { margin: 0; }
-
-/* The live queue (QueueBoard): the strip of states, then one row per patient – time, who, state, buttons */
-.rc-queue { padding: var(--space-6); }
-.rc-queue:focus { outline: none; }
-.rc-queue-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }
-.rc-queue-head h2 { margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
-.rc-updated { margin-left: auto; display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); font-size: var(--fs-caption); line-height: var(--lh-caption); }
-.rc-updated .btn svg.lucide { width: 14px; height: 14px; }
-
-.rc-strip { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
-.rc-strip button {
-  display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--ink);
-  font: inherit; font-size: var(--fs-label); line-height: var(--lh-label); cursor: pointer;
-}
-.rc-strip button svg.lucide { width: 16px; height: 16px; }
-.rc-strip button:hover { border-color: var(--indigo-200); background: var(--mist-50); }
-.rc-strip button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.rc-strip-count { font-weight: 600; font-size: var(--fs-h3); }
-.rc-strip .is-expected svg { color: var(--status-due-fg); }
-.rc-strip .is-waiting svg { color: var(--status-watch-fg); }
-.rc-strip .is-with_doctor svg { color: var(--status-admitted-fg); }
-.rc-strip .is-done svg { color: var(--status-stable-fg); }
-.rc-strip button[aria-pressed='true'] { border-color: var(--indigo-700); background: var(--indigo-100); box-shadow: inset 0 0 0 1px var(--indigo-700); }
-
-.rc-queue-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.rc-queue-row {
-  display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; grid-template-areas: 'when who state' 'when actions actions';
-  gap: var(--space-1) var(--space-3); align-items: center; padding: var(--space-3);
-  border: 1px solid var(--border); border-left: 4px solid var(--status-due-fg); border-radius: var(--radius-md); background: var(--surface);
-}
-.rc-queue-row.is-waiting { border-left-color: var(--status-watch-fg); }
-.rc-queue-row.is-with_doctor { border-left-color: var(--status-admitted-fg); }
-.rc-queue-row.is-done { border-left-color: var(--status-stable-fg); background: var(--mist-50); }
-.rc-queue-row.is-emergency { border-color: var(--status-high-fg); border-left: 6px solid var(--status-high-solid); background: var(--status-high-bg); }
-.rc-queue-when { grid-area: when; align-self: start; font-weight: 600; color: var(--ink); }
-.rc-queue-row .rc-who { grid-area: who; flex: none; }
-.rc-queue-state { grid-area: state; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); }
-.rc-queue-row .rc-actions { grid-area: actions; }
-.rc-queue-row .rc-actions .btn svg.lucide { width: 16px; height: 16px; }
-@media (max-width: 640px) {
-  .rc-queue-row { grid-template-columns: 1fr; grid-template-areas: 'when' 'who' 'state' 'actions'; }
-  .rc-queue-state { justify-content: flex-start; }
-  .rc-updated { margin-left: 0; }
-}

@@ -13,7 +13,7 @@ import { Appointment } from '../models/Appointment.js';
 import { Arrival } from '../models/Arrival.js';
 import { CarePlan } from '../models/CarePlan.js';
 import { hasRole } from '../models/Membership.js';
-import { Patient } from '../models/Patient.js';
+import { Patient, currentAge } from '../models/Patient.js';
 import { IN_USE } from '../patients/deathRules.js';
 import { patientsWithMissingDetails } from '../patients/missingDetails.js';
 import { User } from '../models/User.js';
@@ -97,7 +97,7 @@ export async function todayFor(req, askedScope) {
   const ids = [...new Set([...bookings.keys(), ...firstVisit.keys(), ...arrivals.keys()])];
   // (a record marked as a duplicate of another is not on today's lists: she is expected on her main record; nor is a
   // record closed after a death)
-  const found = ids.length ? await Patient.find({ tenantId, _id: { $in: ids }, ...IN_USE }).select(PATIENT_FIELDS).lean() : [];
+  const found = ids.length ? await Patient.find({ tenantId, _id: { $in: ids }, ...IN_USE }).select(`${PATIENT_FIELDS} ageYears ageRecordedOn createdAt`).lean() : [];
   const shown = found.map((p) => ({ p, level: calendarLevel(req, p) })).filter(({ p, level }) => level && inScope(req, scope, p));
 
   // The call lists (reception).
@@ -109,11 +109,11 @@ export async function todayFor(req, askedScope) {
 
   // Today's appointments (appointment booking): the time or walk-in token and the doctor of each patient, and the
   // quick bookings of new patients not registered yet.
-  const appts = await Appointment.find({ tenantId, on: today, status: 'booked' }, { patientId: 1, guest: 1, doctorId: 1, kind: 1, start: 1, token: 1, done: 1 })
+  const appts = await Appointment.find({ tenantId, on: today, status: 'booked' }, { patientId: 1, guest: 1, doctorId: 1, kind: 1, start: 1, token: 1, done: 1, visitType: 1 })
     .sort({ kind: 1, start: 1, token: 1 })
     .lean();
   const apptNames = await doctorNames(appts.map((a) => ({ assignedDoctor: a.doctorId })));
-  const apptView = (a) => ({ id: String(a._id), kind: a.kind, start: a.start ?? null, token: a.token ?? null, needsTime: a.kind === 'slot' && !a.start, doctorId: String(a.doctorId), doctorName: apptNames.get(String(a.doctorId)) ?? null });
+  const apptView = (a) => ({ id: String(a._id), kind: a.kind, start: a.start ?? null, token: a.token ?? null, needsTime: a.kind === 'slot' && !a.start, visitType: a.visitType ?? null, doctorId: String(a.doctorId), doctorName: apptNames.get(String(a.doctorId)) ?? null });
   const apptOf = new Map();
   for (const a of appts) if (a.patientId && !apptOf.has(String(a.patientId))) apptOf.set(String(a.patientId), apptView(a));
   const checkupDone = new Set(appts.filter((a) => a.patientId && a.done).map((a) => String(a.patientId)));
@@ -139,6 +139,9 @@ export async function todayFor(req, askedScope) {
         queue: marked?.left || signedToday.has(id) || checkupDone.has(id) ? 'done' : visit ? 'with_doctor' : arrived ? 'waiting' : 'expected',
         emergency: Boolean(marked?.emergency),
         leftMarked: Boolean(marked?.left), // reception's "Done – she left" (can be undone)
+        // Her age today (identity, as on her card) – a baby's record says baby instead (reception's table)
+        age: p.careType === 'newborn' ? null : currentAge(p, req.now ?? new Date()),
+        baby: p.careType === 'newborn',
         // The visit to open: doctors and RMOs who may see this patient's visits only.
         ...(level === 'clinical' && visit ? { visitId: String(visit._id) } : {}),
       };

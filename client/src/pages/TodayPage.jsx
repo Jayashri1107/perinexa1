@@ -32,7 +32,8 @@ import { RedFlagItems, RedFlagRulesNote } from './redflags/RedFlagList.jsx';
 import { notCheckedCareText } from './redflags/redFlagFormat.js';
 import { CarePlanSection, FlagCountPill, PatientRow, RedFlagsSection, Section, SectionOpenDefault, VaccinationsOverdueSection, VisitProgress, VisitsTodaySection } from './worklist/WorklistSections.jsx';
 import { DetailsMissing } from './DetailsMissing.jsx';
-import { DeskSearch, QUEUE_LOOK, QueueBoard, TodoPanel } from './ReceptionDesk.jsx';
+import { QUEUE_LOOK, TodoPanel, queueCounts } from './ReceptionDesk.jsx';
+import { DeskNumbers, DoctorsPanel, Greeting, ListCards, PatientsTable, QuickTiles, UpcomingPanel } from './ReceptionDashboard.jsx';
 
 // The start page: one place for the day (Dashboard, Worklist and today's Calendar together, plus Feature 10's
 // daily lists). In this order, each part only for the roles it is for:
@@ -368,6 +369,8 @@ function RoleToday({ roles, lensBar = null }) {
     return () => clearTimeout(timer);
   }, [location.hash, location.key]);
   const [flash, setFlash] = useState(location.state?.flash ?? null);
+  const [openList, setOpenList] = useState(null); // reception's dashboard: the list opened from its small card
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const [reminding, setReminding] = useState(null);
   const [marking, setMarking] = useState(null); // the patient being marked arrived (or undone)
@@ -492,6 +495,10 @@ function RoleToday({ roles, lensBar = null }) {
     stays.reload();
     beds.reload();
   };
+  // A list opened from its small card (or To do): brought into view
+  useEffect(() => {
+    if (openList) document.getElementById('rd-open-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [openList]);
   const [updatedAt, setUpdatedAt] = useState(null);
   useEffect(() => {
     if (today.data) setUpdatedAt(new Date());
@@ -635,6 +642,66 @@ function RoleToday({ roles, lensBar = null }) {
     />
   );
   const guestsList = today.data?.guests && <QuickBookingsSection guests={today.data.guests} canRegister={canRegisterPatients(roles)} />;
+  // The day's lists, each on its own: in the boxes below, or for reception's dashboard one at a time, opened from its
+  // small card (ListCards)
+  const lists = {
+    waiting: waitingLists,
+    guests: guestsList,
+    // Reception's call lists; the whole week and the babies due soon are on Follow-ups
+    due: today.data?.dueNow && (
+      <CallList
+        id="td-due"
+        icon={CalendarClock}
+        title="Visits due now – not booked"
+        rows={today.data.dueNow}
+        empty="Nobody to call: every patient with a visit due is booked or has come."
+        line={(r) => `Visit due from ${formatDate(r.dueFrom)}`}
+      />
+    ),
+    overdue: today.data?.overdue && <CallList id="td-overdue" icon={CalendarX2} title="Overdue – not booked" rows={today.data.overdue} empty="No overdue visits." line={overdueLine} />,
+    // Reception's general list of babies to call; clinical staff get the vaccines by name further down
+    babies: today.data?.babiesDue && !clinicalWork && (
+      <CallList id="td-babies" icon={Baby} title="Babies due – not booked" rows={today.data.babiesDue} empty="No babies to call." line={babyDueLine} note={babiesDueNote(today.data.babiesDue)} />
+    ),
+    // Reception: bills to settle now – a patient here today, or a stay that has ended (owner, 13 Oct 2026)
+    collect: isReception && unpaid.data && today.data && (
+      <Section id="td-collect" icon={Wallet} title="Payments to collect" count={collect.length} empty="Nothing to collect now: nobody here today or discharged owes money.">
+        <ul className="wl-list">
+          {collect.map(({ bill, why }) => (
+            <PatientRow
+              key={bill.id}
+              patient={bill.patient}
+              to={`/billing/bills/${bill.id}`}
+              openLabel="Open the bill"
+              marker={
+                <StatusPill tone="watch" icon={Wallet}>
+                  {rupees(bill.balance)} to pay
+                </StatusPill>
+              }
+            >
+              <p className="hint">
+                Bill {bill.number} · {why === 'discharged' ? `Discharged${bill.stay?.dischargedAt ? ` ${formatDate(bill.stay.dischargedAt)}` : ''} – the bill is not settled` : 'Here today'}
+              </p>
+            </PatientRow>
+          ))}
+        </ul>
+      </Section>
+    ),
+    discharges: isReception && stays.data && <DischargesSection desk={stays.data} bills={unpaid.data?.bills} />,
+    tomorrow: isReception && desk.data && <TomorrowCalls list={desk.data.tomorrowList} tomorrow={desk.data.tomorrow} />,
+  };
+  const queueN = queueCounts(today.data?.patients ?? []);
+  // The small cards of reception's dashboard: only lists with someone in them
+  const listCards = [
+    { key: 'waiting', icon: Users, label: 'Waiting to be seen', count: queueN.waiting },
+    { key: 'guests', icon: UserPlus, label: 'New bookings to register', count: today.data?.guests?.length ?? 0 },
+    { key: 'due', icon: CalendarClock, label: 'Visits due now', count: today.data?.dueNow?.length ?? 0 },
+    { key: 'overdue', icon: CalendarX2, label: 'Overdue – not booked', count: today.data?.overdue?.length ?? 0 },
+    { key: 'babies', icon: Baby, label: 'Babies due', count: today.data?.babiesDue?.length ?? 0 },
+    { key: 'collect', icon: Wallet, label: 'Payments to collect', count: collect.length },
+    { key: 'discharges', icon: DoorOpen, label: 'Discharges', count: (stays.data?.goingHome?.length ?? 0) + (stays.data?.dischargedToday?.length ?? 0) },
+    { key: 'tomorrow', icon: CalendarPlus, label: 'Tomorrow – to confirm', count: desk.data?.tomorrowList?.length ?? 0 },
+  ];
   const deskSaved = (message) => {
     setFlash(message);
     listsChanged();
@@ -700,9 +767,15 @@ function RoleToday({ roles, lensBar = null }) {
           </Alert>
         )}
         {canBookAppointments(roles) && <NeedsTimeNotice />}
-        {/* Reception's desk: the search box first – phone, name or patient number */}
-        {simple && <DeskSearch todayRows={today.data?.patients} onArrive={(p, row) => arrival('POST', p, row)} busyId={marking} onSaved={deskSaved} />}
-        {(tiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
+        {/* Reception's dashboard (the owner's sketch): greeting, three numbers, quick-action tiles */}
+        {simple && (
+          <>
+            <Greeting name={user?.name} />
+            <DeskNumbers rows={today.data?.patients ?? []} collected={collected.data} />
+            <QuickTiles />
+          </>
+        )}
+        {!simple && (tiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
           // One line of small cards (owner, 24 Oct 2026): the AI brief, Your day so far, the numbers (To approve after
           // them), then the handover last
           <section className="td-group" aria-label="At a glance">
@@ -724,7 +797,7 @@ function RoleToday({ roles, lensBar = null }) {
         {(roles.includes('nurse') || roles.includes('rmo')) && <WardToday inpatients={inpatients.data} rmo={roles.includes('rmo')} />}
         {roles.includes('pharmacist') && <PharmacyToday />}
         {isBillingDesk && <BillingToday />}
-        {isReception && (
+        {isReception && !simple && (
           <nav className="td-quick" aria-label="Quick actions">
             <Link to="/appointments" className="btn btn-secondary btn-sm">
               <CalendarPlus aria-hidden="true" /> Book an appointment
@@ -767,9 +840,9 @@ function RoleToday({ roles, lensBar = null }) {
 
         {/* Reception's desk: today's patients and the waiting lists (open), beside the jobs To do and the doctors */}
         {simple && today.data && (
-          <div className="rc-columns">
-            <div className="rc-main">
-              <QueueBoard
+          <div className="rd-layout">
+            <div className="rd-main">
+              <PatientsTable
                 rows={today.data.patients}
                 canMark={today.data.canMarkArrived}
                 onMark={(p, row) => arrival('POST', p, row)}
@@ -779,13 +852,16 @@ function RoleToday({ roles, lensBar = null }) {
                 busy={marking}
                 updatedAt={updatedAt}
                 onRefresh={refreshDesk}
+                onSaved={deskSaved}
               />
-              <SectionOpenDefault.Provider value>
-                {waitingLists}
-                {guestsList}
-              </SectionOpenDefault.Provider>
+              <ListCards cards={listCards} open={openList} onOpen={setOpenList} />
+              {openList && lists[openList] && (
+                <SectionOpenDefault.Provider value>
+                  <div className="rd-open-list" id="rd-open-list">{lists[openList]}</div>
+                </SectionOpenDefault.Provider>
+              )}
             </div>
-            <aside className="rc-side" aria-label="To do and doctors">
+            <aside className="rd-side" aria-label="To do, doctors and the next appointments">
               <TodoPanel
                 calls={counts.calls}
                 incomplete={today.data.incomplete ?? []}
@@ -793,15 +869,17 @@ function RoleToday({ roles, lensBar = null }) {
                 toCollect={collect.length}
                 toConfirm={desk.data?.tomorrowList?.length ?? 0}
                 discharges={stays.data?.goingHome?.length ?? 0}
+                onOpenList={setOpenList}
                 onSaved={deskSaved}
               />
-              {desk.data && <DoctorsToday doctors={desk.data.doctors} />}
+              {desk.data && <DoctorsPanel doctors={desk.data.doctors} />}
+              <UpcomingPanel rows={today.data.patients} />
             </aside>
           </div>
         )}
 
         {/* The lists: boxes with a heading and a count, opened with a click */}
-        {(worklist.data || today.data || inpatients.data || labReview.data) && <h2 className="td-group-title">{simple ? 'More lists' : 'Today’s lists'}</h2>}
+        {!simple && (worklist.data || today.data || inpatients.data || labReview.data) && <h2 className="td-group-title">Today&apos;s lists</h2>}
         {/* Reception (not also clinical staff): only the lists with someone in them, open, one under the other */}
         <SectionOpenDefault.Provider value={simple}>
         <div className={`td-sections${simple ? ' td-simple' : ''}`}>
@@ -903,49 +981,12 @@ function RoleToday({ roles, lensBar = null }) {
         {!simple && patientsList}
         {/* Reception's call lists, right under today's patients (26 Oct 2026: they were last and hard to find); the
             whole week and the babies due soon are on Follow-ups */}
-        {today.data?.dueNow && (
-          <CallList
-            id="td-due"
-            icon={CalendarClock}
-            title="Visits due now – not booked"
-            rows={today.data.dueNow}
-            empty="Nobody to call: every patient with a visit due is booked or has come."
-            line={(r) => `Visit due from ${formatDate(r.dueFrom)}`}
-          />
-        )}
-        {today.data?.overdue && (
-          <CallList id="td-overdue" icon={CalendarX2} title="Overdue – not booked" rows={today.data.overdue} empty="No overdue visits." line={overdueLine} />
-        )}
-        {/* Reception's general list of babies to call; clinical staff get the vaccines by name further down */}
-        {today.data?.babiesDue && !clinicalWork && (
-          <CallList id="td-babies" icon={Baby} title="Babies due – not booked" rows={today.data.babiesDue} empty="No babies to call." line={babyDueLine} note={babiesDueNote(today.data.babiesDue)} />
-        )}
-        {/* Reception: bills to settle now – a patient here today, or a stay that has ended (owner, 13 Oct 2026) */}
-        {isReception && unpaid.data && today.data && (
-          <Section id="td-collect" icon={Wallet} title="Payments to collect" count={collect.length} empty="Nothing to collect now: nobody here today or discharged owes money.">
-            <ul className="wl-list">
-              {collect.map(({ bill, why }) => (
-                <PatientRow
-                  key={bill.id}
-                  patient={bill.patient}
-                  to={`/billing/bills/${bill.id}`}
-                  openLabel="Open the bill"
-                  marker={
-                    <StatusPill tone="watch" icon={Wallet}>
-                      {rupees(bill.balance)} to pay
-                    </StatusPill>
-                  }
-                >
-                  <p className="hint">
-                    Bill {bill.number} · {why === 'discharged' ? `Discharged${bill.stay?.dischargedAt ? ` ${formatDate(bill.stay.dischargedAt)}` : ''} – the bill is not settled` : 'Here today'}
-                  </p>
-                </PatientRow>
-              ))}
-            </ul>
-          </Section>
-        )}
-        {isReception && stays.data && <DischargesSection desk={stays.data} bills={unpaid.data?.bills} />}
-        {isReception && desk.data && <TomorrowCalls list={desk.data.tomorrowList} tomorrow={desk.data.tomorrow} />}
+        {!simple && lists.due}
+        {!simple && lists.overdue}
+        {!simple && lists.babies}
+        {!simple && lists.collect}
+        {!simple && lists.discharges}
+        {!simple && lists.tomorrow}
         {has(roles, ['receptionist', 'doctor']) && <ScanShareSection />}
         {has(roles, ['receptionist']) && <SignupsSection />}
         {!simple && guestsList}
@@ -969,7 +1010,6 @@ function RoleToday({ roles, lensBar = null }) {
         {worklist.data && !rmoOnly && <VaccinationsOverdueSection data={worklist.data} />}
         </div>
         </SectionOpenDefault.Provider>
-        {simple && today.data && <p className="hint td-simple-clear">Nothing to do in today&apos;s lists: nobody is waiting, nobody to call, nothing to collect.</p>}
 
         {(worklist.data || today.data) && (
           <p className="hint wl-footnote">

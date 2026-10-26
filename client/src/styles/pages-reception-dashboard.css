@@ -1,0 +1,128 @@
+/* Reception's dashboard (ReceptionDashboard.jsx, 26 Oct 2026, the owner's sketch). Colours only from tokens.css. */
+.rd-greeting { margin-bottom: var(--space-6); }
+.rd-greeting h2 { margin: 0; font-size: var(--fs-display); line-height: var(--lh-display); }
+.rd-greeting p { margin: var(--space-1) 0 0; }
+
+/* Pastel icon tiles (brand guide: an icon on a wash) */
+.rd-icon { display: grid; place-items: center; flex: 0 0 auto; width: 48px; height: 48px; border-radius: var(--radius-md); }
+.rd-icon svg { width: 24px; height: 24px; }
+.rd-icon.is-indigo { background: var(--indigo-100); color: var(--indigo-700); }
+.rd-icon.is-teal { background: var(--teal-100); color: var(--teal-700); }
+.rd-icon.is-stable { background: var(--status-stable-bg); color: var(--status-stable-fg); }
+.rd-icon.is-due { background: var(--status-due-bg); color: var(--status-due-fg); }
+.rd-icon.is-admitted { background: var(--status-admitted-bg); color: var(--status-admitted-fg); }
+
+/* The three numbers */
+.rd-numbers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4); }
+.rd-number { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-6); color: var(--ink); text-decoration: none; transition: box-shadow 0.15s; }
+.rd-number:hover { box-shadow: var(--shadow-pop); }
+.rd-number:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rd-number-text { display: flex; flex-direction: column; min-width: 0; }
+.rd-number-label { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.rd-number-value { font-size: var(--fs-kpi); line-height: var(--lh-kpi); font-weight: 600; }
+.rd-number-text .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+/* Quick-action tiles */
+.rd-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: var(--space-3); margin-bottom: var(--space-6); }
+.rd-tiles > .rd-tile, .rd-tiles .rd-tile {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); height: 100%;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  color: var(--ink); font: inherit; font-weight: 500; text-decoration: none; cursor: pointer;
+}
+.rd-tile .rd-icon { width: 40px; height: 40px; }
+.rd-tile .rd-icon svg { width: 20px; height: 20px; }
+.rd-tile:hover { border-color: var(--indigo-200); box-shadow: var(--shadow-pop); }
+.rd-tile:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rd-tile-more { justify-content: center; min-width: 120px; }
+
+/* Two columns: the patients table, and the side cards */
+.rd-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: var(--space-4); align-items: start; margin-bottom: var(--space-6); }
+.rd-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.rd-side > .rc-todo { padding: var(--space-6); }
+.rd-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }
+.rd-card-head h2 { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.rd-card-head h2 svg { width: 22px; height: 22px; color: var(--indigo-700); }
+.rd-view-all { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-label); font-weight: 500; }
+.rd-view-all svg { width: 16px; height: 16px; }
+.rd-side-card { padding: var(--space-6); }
+.rd-none { margin: 0; }
+
+/* The patients table */
+.rd-patients { padding: var(--space-6); min-width: 0; }
+.rd-patients:focus { outline: none; }
+.rd-updated { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.rd-updated .btn svg.lucide { width: 14px; height: 14px; }
+.rd-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); border-bottom: 1px solid var(--border); margin-bottom: var(--space-4); }
+.rd-tabs button { padding: var(--space-2) var(--space-3); border: 0; border-bottom: 3px solid transparent; background: none; color: var(--slate-600); font: inherit; font-weight: 500; cursor: pointer; }
+.rd-tabs button:hover { color: var(--ink); }
+.rd-tabs button[aria-selected='true'] { color: var(--indigo-700); border-bottom-color: var(--indigo-700); font-weight: 600; }
+.rd-tabs button:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.rd-filters { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-3); }
+.rd-search { position: relative; flex: 1 1 260px; display: flex; }
+.rd-search svg.lucide { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--slate-600); }
+.rd-search input { width: 100%; padding-left: calc(var(--space-3) * 2 + 18px); }
+.rd-filter select { min-width: 160px; }
+.rd-table-wrap { border: 1px solid var(--border); border-radius: var(--radius-md); overflow-x: auto; }
+.rd-table { width: 100%; border-collapse: collapse; }
+.rd-table th { padding: var(--space-2) var(--space-3); background: var(--mist-50); text-align: left; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); white-space: nowrap; }
+.rd-table td { padding: var(--space-3); border-top: 1px solid var(--border); vertical-align: middle; }
+.rd-row.is-done td { background: var(--mist-50); }
+.rd-row.is-emergency td { background: var(--status-high-bg); }
+.rd-row.is-emergency td:first-child { box-shadow: inset 4px 0 0 var(--status-high-solid); }
+.rd-person { display: flex; align-items: center; gap: var(--space-3); min-width: 180px; }
+.rd-person-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rd-person-text a { font-weight: 600; }
+.rd-person-text .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.rd-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; background: var(--indigo-100); color: var(--indigo-700); font-size: var(--fs-label); font-weight: 600; }
+.rd-avatar.is-doctor { width: 40px; height: 40px; background: var(--teal-100); color: var(--teal-700); }
+.rd-sub { display: block; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.rd-visit { display: inline-block; padding: 2px var(--space-2); border-radius: var(--radius-pill); background: var(--indigo-100); color: var(--indigo-700); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; white-space: nowrap; }
+.rd-status { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.rd-actions { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.rd-actions .btn svg.lucide { width: 16px; height: 16px; }
+.rd-more { width: 32px; height: 32px; }
+
+/* Patients found who are not on today's list */
+.rd-others { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.rd-others h3 { margin: 0 0 var(--space-2); font-size: var(--fs-h3); }
+.rd-other { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) 0; }
+
+/* Doctors today */
+.rd-doctors { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rd-doctors li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-1) var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.rd-doctors li:first-child { border-top: 0; padding-top: 0; }
+.rd-doctors .rd-person-text { align-items: flex-start; }
+.rd-doctor-counts { grid-column: 2; display: flex; gap: var(--space-4); font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--slate-600); }
+.rd-doctor-counts strong { display: block; font-size: var(--fs-h3); line-height: var(--lh-h3); color: var(--ink); }
+
+/* Upcoming appointments */
+.rd-upcoming { list-style: none; margin: 0; padding: 0; }
+.rd-upcoming li { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.rd-upcoming li:first-child { border-top: 0; }
+.rd-up-time { font-weight: 600; font-size: var(--fs-label); }
+
+@media (max-width: 1100px) {
+  .rd-layout { grid-template-columns: 1fr; }
+  .rd-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .rd-numbers { grid-template-columns: 1fr; }
+  .rd-tiles { grid-template-columns: 1fr; }
+}
+
+/* The day's other lists: one row of small cards; the chosen one opens below */
+.rd-lists { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-3); margin-top: var(--space-4); }
+.rd-list-card {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2);
+  padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);
+  color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow-card);
+}
+.rd-list-card:hover { border-color: var(--indigo-200); }
+.rd-list-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rd-list-card[aria-pressed='true'] { border-color: var(--indigo-700); background: var(--indigo-100); }
+.rd-list-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--indigo-100); color: var(--indigo-700); }
+.rd-list-icon svg { width: 18px; height: 18px; }
+.rd-list-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.rd-list-count { min-width: 28px; padding: 2px var(--space-2); border-radius: var(--radius-pill); background: var(--indigo-700); color: var(--surface); text-align: center; font-size: var(--fs-label); font-weight: 600; }
+.rd-open-list { margin-top: var(--space-3); scroll-margin-top: var(--space-6); }
+.rd-main { display: flex; flex-direction: column; min-width: 0; }

@@ -86,7 +86,7 @@ describe('today', () => {
       {
         patient: { id: booked.id, fullName: 'Booked Mother', mrn: booked.mrn, phone: '+91 00000 00000', doctorName: 'Sample drA' },
         // The next visit booked itself (appointment booking); drA has no OPD timings, so it still needs a time
-        appointment: expect.objectContaining({ kind: 'slot', start: null, needsTime: true, doctorName: 'Sample drA' }),
+        appointment: expect.objectContaining({ kind: 'slot', start: null, needsTime: true, doctorName: 'Sample drA', visitType: 'follow_up' }),
         booked: true,
         arrivedAt: null,
         arrivalMarked: false,
@@ -94,6 +94,8 @@ describe('today', () => {
         queue: 'expected',
         emergency: false,
         leftMarked: false,
+        age: 28,
+        baby: false,
       },
     ]);
 
