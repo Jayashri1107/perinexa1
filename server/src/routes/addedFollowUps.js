@@ -101,7 +101,8 @@ addedFollowUpsRouter.post('/', async (req, res) => {
     doctorId: doctor.id,
     purpose: body.purpose,
     note: body.note,
-    from: body.from ? utcDay(new Date(`${body.from}T00:00:00Z`)) : null,
+    // The day she comes from: required on the form; none given means today (owner, 26 Oct 2026)
+    from: body.from ? utcDay(new Date(`${body.from}T00:00:00Z`)) : hospitalToday(req.now),
     created: { by: req.user._id, byName: req.user.name, at: req.now ?? new Date() },
   });
   await audit(req, 'FOLLOW_UP_ADDED', { details: { followUpId: String(f._id), patientId: String(patient._id), mrn: patient.mrn, doctorId: doctor.id, purpose: body.purpose } });

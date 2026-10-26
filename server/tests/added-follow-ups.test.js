@@ -83,4 +83,11 @@ describe('follow-ups added by hand', () => {
     expect((await add('reception', { patientId: p.id, doctorId: people.drA._id.toString(), purpose: 'other', note: 'x'.repeat(121) })).status).toBe(400);
     expect((await add('reception', { patientId: p.id, doctorId: people.reception._id.toString(), purpose: 'other' })).status).toBe(400); // not a doctor
   });
+
+  it('a follow-up always has a day: none given means today (owner, 26 Oct 2026)', async () => {
+    const p = await register('Today Sample');
+    const res = await add('reception', { patientId: p.id, doctorId: people.drA._id.toString(), purpose: 'consultation' });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.followUp.from).toBe('2026-10-22'); // the test's clock: 22 Oct 2026, 11:30 in the hospital
+  });
 });

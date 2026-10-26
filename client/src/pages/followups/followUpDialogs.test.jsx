@@ -29,7 +29,7 @@ describe('why she comes', () => {
 
   it('Add follow-up: for a patient – her doctor, from which day, what for; without one, find her first', () => {
     const shown = text(<AddFollowUpDialog patient={asha} onClose={() => {}} onAdded={() => {}} />);
-    expect(shown).toMatch(/Add a follow-up – Asha Sample Doctor From \(optional\).* What for/);
+    expect(shown).toMatch(/Add a follow-up – Asha Sample Doctor From(?! \(optional\)).* What for/);
     expect(shown).toContain('Add follow-up');
     expect(text(<AddFollowUpDialog onClose={() => {}} onAdded={() => {}} />)).toContain('Find the patient');
   });

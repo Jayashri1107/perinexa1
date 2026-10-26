@@ -44,11 +44,13 @@ export function AddFollowUpDialog({ patient: given = null, today = '', onClose, 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const chosenDoctor = doctorId || own?.id || list[0]?.id || '';
+  // The day is required (owner, 26 Oct 2026): today unless another is chosen
+  const day = from || today;
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
-      const { followUp } = await api('/added-follow-ups', { method: 'POST', body: { patientId: patient.id, doctorId: chosenDoctor, purpose, note: note.trim(), ...(from ? { from } : {}) } });
+      const { followUp } = await api('/added-follow-ups', { method: 'POST', body: { patientId: patient.id, doctorId: chosenDoctor, purpose, note: note.trim(), from: day } });
       onAdded(followUp);
     } catch (err) {
       setError(err.message);
@@ -75,8 +77,8 @@ export function AddFollowUpDialog({ patient: given = null, today = '', onClose, 
                   ))}
                 </select>
               </Field>
-              <Field label="From (optional)" id="fu-add-from" hint="The day she is asked to come from. Empty: any day.">
-                <input id="fu-add-from" type="date" min={today || undefined} value={from} onChange={(e) => setFrom(e.target.value)} />
+              <Field label="From" id="fu-add-from" hint="The day she is asked to come from – today unless you choose another day.">
+                <input id="fu-add-from" type="date" required min={today || undefined} value={day} onChange={(e) => setFrom(e.target.value)} />
               </Field>
             </div>
             <PurposeChoice idPrefix="fu-add" value={purpose} onChange={setPurpose} note={note} onNote={setNote} />
@@ -84,7 +86,7 @@ export function AddFollowUpDialog({ patient: given = null, today = '', onClose, 
         )}
         <div className="row">
           {patient && (
-            <button type="button" className="btn btn-primary" onClick={save} disabled={busy || !chosenDoctor}>
+            <button type="button" className="btn btn-primary" onClick={save} disabled={busy || !chosenDoctor || !day}>
               <CalendarPlus aria-hidden="true" /> {busy ? 'Saving…' : 'Add follow-up'}
             </button>
           )}
