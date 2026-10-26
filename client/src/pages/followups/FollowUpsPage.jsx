@@ -8,6 +8,7 @@ import { Alert, KpiCard, StatusPill, formatDate } from '../../components/ui.jsx'
 import { useFetch } from '../../hooks/useFetch.js';
 import { HOSPITAL_FOLLOW_UPS } from '../../platform/modules.js';
 import { PURPOSE_LABELS, dayLabel } from '../appointments/appointmentFormat.js';
+import { BookAndBillDialog } from './BookAndBillDialog.jsx';
 import { AddFollowUpDialog } from './FollowUpDialogs.jsx';
 import { SETTING_CHOICES, SETTING_LABELS, bookingTime, callRows, comingUpGroups, filterFollowUps, followUpCounts, visitTypeLabel } from './followUpsFormat.js';
 
@@ -39,10 +40,11 @@ const patientCell = (r) => (
   </span>
 );
 
-const bookLink = (r) => (
-  <Link to={`/patients/${r.patient.id}/appointments`} className="btn btn-secondary btn-sm">
+// Book: the popup that books her visit, adds the charges and makes the bill (owner, 26 Oct 2026)
+const bookButton = (onBook) => (r) => (
+  <button type="button" className="btn btn-secondary btn-sm" onClick={() => onBook(r)} aria-label={`Book and bill ${r.patient.fullName}`}>
     Book
-  </Link>
+  </button>
 );
 
 const NO_MATCH = 'No patient matches the filter.';
@@ -124,7 +126,7 @@ function Panel({ id, icon: Icon, title, count, hint, children }) {
  * Follow-ups added by hand (26 Oct 2026): she will come back to a doctor, for something (a fixed purpose and a short
  * note) from a day. Open until she checks in (then they leave this list) or reception cancels one.
  */
-function AddedFollowUps({ added, filterText, onCancelled }) {
+function AddedFollowUps({ added, filterText, onCancelled, onBook }) {
   const [error, setError] = useState(null);
   const t = filterText.trim().toLowerCase();
   const rows = (added?.followUps ?? []).filter((f) => !t || [f.patient.fullName, f.patient.mrn, f.patient.phone, f.doctor.name].some((w) => (w ?? '').toLowerCase().includes(t)));
@@ -165,7 +167,7 @@ function AddedFollowUps({ added, filterText, onCancelled }) {
             header: <span className="sr-only">Actions</span>,
             render: (f) => (
               <span className="fu-why">
-                {bookLink(f)}
+                {bookButton(onBook)(f)}
                 <button type="button" className="btn btn-link btn-sm" onClick={() => cancel(f)} aria-label={`Cancel the follow-up of ${f.patient.fullName}`}>
                   Cancel
                 </button>
@@ -182,6 +184,7 @@ export function FollowUpsPage() {
   const res = useFetch('/follow-ups');
   const added = useFetch('/added-follow-ups');
   const [adding, setAdding] = useState(false);
+  const [booking, setBooking] = useState(null); // { patient, doctorId?, purpose?, note?, from? }
   const [note, setNote] = useState(null);
   const filter = useFilter();
   const data = filterFollowUps(res.data, filter);
@@ -207,11 +210,25 @@ export function FollowUpsPage() {
         <AddedFollowUps
           added={added.data ?? (added.error ? { error: added.error } : null)}
           filterText={filter.text}
+          onBook={(f) => setBooking({ patient: f.patient, doctorId: f.doctor.id, purpose: f.purpose, note: f.note, from: f.from })}
           onCancelled={(f) => {
             setNote(`Cancelled: the follow-up of ${f.patient.fullName}.`);
             added.reload();
           }}
         />
+        {booking && (
+          <BookAndBillDialog
+            who={booking}
+            today={data?.today ?? new Date().toISOString().slice(0, 10)}
+            onClose={() => setBooking(null)}
+            onDone={({ appointment, bill }) => {
+              setBooking(null);
+              setNote(`${booking.patient.fullName}: ${appointment ? 'booked, and ' : ''}bill ${bill.number} made.`);
+              res.reload();
+              added.reload();
+            }}
+          />
+        )}
         {adding && (
           <AddFollowUpDialog
             today={data?.today}
@@ -249,7 +266,7 @@ export function FollowUpsPage() {
                   </span>
                 ),
               },
-              { key: 'book', header: <span className="sr-only">Book</span>, render: bookLink },
+              { key: 'book', header: <span className="sr-only">Book</span>, render: bookButton((r) => setBooking({ patient: r.patient })) },
             ]}
           />
         </Panel>
@@ -293,7 +310,7 @@ export function FollowUpsPage() {
   );
 }
 
-const babyColumns = (soon) => [
+const babyColumns = (soon, onBook) => [
   { key: 'patient', header: 'Baby', render: patientCell },
   { key: 'phone', header: 'Phone', render: (r) => phoneLink(r.patient.phone) },
   { key: 'doctor', header: 'Doctor', render: (r) => r.patient.doctorName ?? <span className="muted">Not assigned</span> },
@@ -318,7 +335,7 @@ const babyColumns = (soon) => [
       </span>
     ),
   },
-  { key: 'book', header: <span className="sr-only">Book</span>, render: bookLink },
+  { key: 'book', header: <span className="sr-only">Book</span>, render: bookButton(onBook) },
 ];
 
 /** Vaccinations tab: babies overdue, then babies due in the next 7 days – nothing booked. */
@@ -328,18 +345,36 @@ export function VaccinationFollowUpsPage() {
   const data = filterFollowUps(res.data, filter);
   const withId = (rows) => rows?.map((r) => ({ ...r, id: r.patient.id }));
   const draft = [...(data?.babiesDue ?? []), ...(data?.babiesSoon ?? [])].some((r) => r.draft);
+  const [booking, setBooking] = useState(null);
+  const [note, setNote] = useState(null);
+  const book = (r) => setBooking({ patient: r.patient });
   return (
     <>
       <Header data={data} />
       <div className="pf-content fu-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
+        <Alert type="success" onClose={() => setNote(null)}>
+          {note}
+        </Alert>
+        {booking && (
+          <BookAndBillDialog
+            who={booking}
+            today={data?.today ?? new Date().toISOString().slice(0, 10)}
+            onClose={() => setBooking(null)}
+            onDone={({ appointment, bill }) => {
+              setBooking(null);
+              setNote(`${booking.patient.fullName}: ${appointment ? 'booked, and ' : ''}bill ${bill.number} made.`);
+              res.reload();
+            }}
+          />
+        )}
         <FilterBar filter={filter} />
         {data && <Counts data={data} />}
         <Panel id="fu-babies-due" icon={Baby} title="Overdue – not booked" count={data?.babiesDue?.length ?? 0} hint="Babies for whom a check-up or test became overdue in the last 6 weeks and nothing is booked. A baby in hospital is not listed.">
-          <DataTable caption="Babies overdue" loading={res.loading} rows={withId(data?.babiesDue)} emptyText={filter.active ? NO_MATCH : 'No baby is overdue.'} columns={babyColumns(false)} />
+          <DataTable caption="Babies overdue" loading={res.loading} rows={withId(data?.babiesDue)} emptyText={filter.active ? NO_MATCH : 'No baby is overdue.'} columns={babyColumns(false, book)} />
         </Panel>
         <Panel id="fu-babies-soon" icon={Baby} title="Due in the next 7 days – not booked" count={data?.babiesSoon?.length ?? 0} hint="Book these before they are late.">
-          <DataTable caption="Babies due soon" loading={res.loading} rows={withId(data?.babiesSoon)} emptyText={filter.active ? NO_MATCH : 'No baby is due in the next 7 days without a booking.'} columns={babyColumns(true)} />
+          <DataTable caption="Babies due soon" loading={res.loading} rows={withId(data?.babiesSoon)} emptyText={filter.active ? NO_MATCH : 'No baby is due in the next 7 days without a booking.'} columns={babyColumns(true, book)} />
         </Panel>
         {draft && <p className="hint">"Draft schedule": the date comes from a schedule no doctor has approved yet – ask the doctor before calling.</p>}
       </div>

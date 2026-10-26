@@ -846,6 +846,13 @@ function RoleToday({ roles, lensBar = null }) {
         {simple && today.data && (
           <div className="rd-layout">
             <div className="rd-main">
+              {/* The day's other lists first (owner, 26 Oct 2026: no empty space under the table); the chosen one opens here */}
+              <ListCards cards={listCards} open={openList} onOpen={setOpenList} />
+              {openList && lists[openList] && (
+                <SectionOpenDefault.Provider value>
+                  <div className="rd-open-list" id="rd-open-list">{lists[openList]}</div>
+                </SectionOpenDefault.Provider>
+              )}
               <PatientsTable
                 rows={today.data.patients}
                 canMark={today.data.canMarkArrived}
@@ -858,12 +865,6 @@ function RoleToday({ roles, lensBar = null }) {
                 onRefresh={refreshDesk}
                 onSaved={deskSaved}
               />
-              <ListCards cards={listCards} open={openList} onOpen={setOpenList} />
-              {openList && lists[openList] && (
-                <SectionOpenDefault.Provider value>
-                  <div className="rd-open-list" id="rd-open-list">{lists[openList]}</div>
-                </SectionOpenDefault.Provider>
-              )}
             </div>
             <aside className="rd-side" aria-label="To do, doctors and the next appointments">
               <TodoPanel
