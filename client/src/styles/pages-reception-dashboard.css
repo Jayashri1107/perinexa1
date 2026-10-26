@@ -22,18 +22,6 @@
 .rd-number-value { font-size: var(--fs-kpi); line-height: var(--lh-kpi); font-weight: 600; }
 .rd-number-text .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
 
-/* Quick-action tiles */
-.rd-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: var(--space-3); margin-bottom: var(--space-6); }
-.rd-tiles > .rd-tile, .rd-tiles .rd-tile {
-  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); height: 100%;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
-  color: var(--ink); font: inherit; font-weight: 500; text-decoration: none; cursor: pointer;
-}
-.rd-tile .rd-icon { width: 40px; height: 40px; }
-.rd-tile .rd-icon svg { width: 20px; height: 20px; }
-.rd-tile:hover { border-color: var(--indigo-200); box-shadow: var(--shadow-pop); }
-.rd-tile:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.rd-tile-more { justify-content: center; min-width: 120px; }
 
 /* Two columns: the patients table, and the side cards */
 .rd-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: var(--space-4); align-items: start; margin-bottom: var(--space-6); }
@@ -103,27 +91,11 @@
 
 @media (max-width: 1100px) {
   .rd-layout { grid-template-columns: 1fr; }
-  .rd-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
   .rd-numbers { grid-template-columns: 1fr; }
-  .rd-tiles { grid-template-columns: 1fr; }
 }
 
-/* The day's other lists: one row of small cards; the chosen one opens below */
-.rd-lists { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-3); margin-top: var(--space-4); }
-.rd-list-card {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2);
-  padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);
-  color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow-card);
-}
-.rd-list-card:hover { border-color: var(--indigo-200); }
-.rd-list-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.rd-list-card[aria-pressed='true'] { border-color: var(--indigo-700); background: var(--indigo-100); }
-.rd-list-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--indigo-100); color: var(--indigo-700); }
-.rd-list-icon svg { width: 18px; height: 18px; }
-.rd-list-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
-.rd-list-count { min-width: 28px; padding: 2px var(--space-2); border-radius: var(--radius-pill); background: var(--indigo-700); color: var(--surface); text-align: center; font-size: var(--fs-label); font-weight: 600; }
 .rd-open-list { margin-top: var(--space-3); scroll-margin-top: var(--space-6); }
 .rd-main { display: flex; flex-direction: column; min-width: 0; }
 
@@ -133,15 +105,15 @@
 .rd-numbers { gap: var(--space-3); margin-bottom: var(--space-3); }
 .rd-number { padding: var(--space-3) var(--space-4); gap: var(--space-3); }
 .rd-number .rd-icon { width: 40px; height: 40px; }
-.rd-tiles { gap: var(--space-2); margin-bottom: var(--space-4); }
-.rd-tiles > .rd-tile, .rd-tiles .rd-tile { padding: var(--space-2) var(--space-3); }
 .rd-layout { gap: var(--space-3); margin-bottom: var(--space-4); }
 .rd-side { gap: var(--space-3); }
 .rd-patients, .rd-side-card, .rd-side > .rc-todo { padding: var(--space-4); }
 .rd-card-head { margin-bottom: var(--space-2); }
 .rd-tabs { margin-bottom: var(--space-3); }
-.rd-lists { margin: 0 0 var(--space-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-2); }
-.rd-list-card { padding: var(--space-2) var(--space-3); }
 .rd-open-list { margin: 0 0 var(--space-3); }
 .rd-table .dt-empty { padding: var(--space-4); }
 .rd-doctors li { padding: var(--space-2) 0; }
+
+/* A booking made by name and phone (not registered yet): a soft amber row with Register */
+.rd-row.is-guest td { background: var(--status-watch-bg); }
+.rd-row.is-guest .rd-avatar { background: var(--surface); color: var(--status-watch-fg); }

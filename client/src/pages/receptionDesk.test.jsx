@@ -2,10 +2,9 @@
 // states, the patients table, the small list cards and To do (rendered to HTML, no browser). Fake data only.
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { Users } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 import { TodoPanel, prefillFrom, queueCounts, queueWhen } from './ReceptionDesk.jsx';
-import { DeskNumbers, DoctorsPanel, ListCards, PatientsTable, UpcomingPanel, greeting, rowMatches } from './ReceptionDashboard.jsx';
+import { DeskNumbers, DoctorsPanel, PatientsTable, UpcomingPanel, greeting, guestRow, rowMatches } from './ReceptionDashboard.jsx';
 
 const text = (el) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>).replace(/<[^>]+>/g, ' ').replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, ' ');
 const who = (id, fullName) => ({ id, fullName, mrn: `P-00000${id}`, phone: '98765 43210', doctorName: 'Sample Doctor' });
@@ -59,29 +58,20 @@ describe('reception: the patients table', () => {
     expect(shown).toContain('1 emergency');
     expect(shown).toContain('every 30 seconds');
   });
+  it('a booking made by name and phone is a row too – not registered yet, with Register, counted as expected', () => {
+    const g = guestRow({ id: 'a9', kind: 'slot', start: '12:00', visitType: 'new', doctorId: 'd1', doctorName: 'Sample Doctor', guest: { name: 'Ishanvi Sample', phone: '98986 53256' } });
+    const shown = table({ rows: [...rows, g] });
+    expect(shown).toContain('All (5) Expected (2)');
+    expect(shown).toMatch(/IS Ishanvi Sample Not registered yet · 98986 53256 · Sample Doctor .* 12:00 PM New Expected Register/);
+    expect(queueCounts([g]).expected).toBe(1);
+  });
+
   it('no Check in for those who may not mark arrivals', () => {
     expect(table({ canMark: false })).not.toContain('Check in');
   });
 });
 
 describe('reception: the side and the lists', () => {
-  it('the small list cards show only lists with someone in them; the open one is marked', () => {
-    const html = renderToStaticMarkup(
-      <ListCards
-        open="due"
-        onOpen={() => {}}
-        cards={[
-          { key: 'due', icon: Users, label: 'Visits due now', count: 2 },
-          { key: 'overdue', icon: Users, label: 'Overdue – not booked', count: 0 },
-        ]}
-      />,
-    );
-    expect(html).toContain('Visits due now');
-    expect(html).not.toContain('Overdue');
-    expect(html).toContain('aria-pressed="true"');
-    expect(renderToStaticMarkup(<ListCards cards={[{ key: 'x', icon: Users, label: 'X', count: 0 }]} onOpen={() => {}} />)).toBe('');
-  });
-
   it('Doctors today: name, state and hours, then expected, waiting and seen', () => {
     const shown = text(<DoctorsPanel doctors={[{ id: 'd1', name: 'Jayashri Sample', hasTimings: true, sessions: [{ from: '10:00', to: '13:00' }], leave: null, expected: 3, waiting: 1, seen: 2 }]} />);
     expect(shown).toMatch(/JS Jayashri Sample In OPD 10:00 AM–1:00 PM 3 Expected 1 Waiting 2 Seen/);
@@ -91,6 +81,7 @@ describe('reception: the side and the lists', () => {
     const shown = text(<UpcomingPanel rows={rows} />);
     expect(shown).toMatch(/11:30 AM Expected Sample New/);
     expect(shown).not.toContain('With Sample');
+    expect(renderToStaticMarkup(<MemoryRouter><UpcomingPanel rows={[]} /></MemoryRouter>)).toBe(''); // no empty card
   });
 
   it('To do lists only the jobs with someone in them; nothing waiting says so', () => {

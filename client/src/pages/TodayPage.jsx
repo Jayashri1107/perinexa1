@@ -34,8 +34,8 @@ import { RedFlagItems, RedFlagRulesNote } from './redflags/RedFlagList.jsx';
 import { notCheckedCareText } from './redflags/redFlagFormat.js';
 import { CarePlanSection, FlagCountPill, PatientRow, RedFlagsSection, Section, SectionOpenDefault, VaccinationsOverdueSection, VisitProgress, VisitsTodaySection } from './worklist/WorklistSections.jsx';
 import { DetailsMissing } from './DetailsMissing.jsx';
-import { QUEUE_LOOK, TodoPanel, queueCounts } from './ReceptionDesk.jsx';
-import { DeskNumbers, DoctorsPanel, ListCards, PatientsTable, QuickTiles, UpcomingPanel } from './ReceptionDashboard.jsx';
+import { QUEUE_LOOK, TodoPanel } from './ReceptionDesk.jsx';
+import { DeskNumbers, DoctorsPanel, PatientsTable, UpcomingPanel, guestRow } from './ReceptionDashboard.jsx';
 
 // The start page: one place for the day (Dashboard, Worklist and today's Calendar together, plus Feature 10's
 // daily lists). In this order, each part only for the roles it is for:
@@ -645,8 +645,7 @@ function RoleToday({ roles, lensBar = null }) {
     />
   );
   const guestsList = today.data?.guests && <QuickBookingsSection guests={today.data.guests} canRegister={canRegisterPatients(roles)} />;
-  // The day's lists, each on its own: in the boxes below, or for reception's dashboard one at a time, opened from its
-  // small card (ListCards)
+  // The day's lists, each on its own: in the boxes below, or for reception's dashboard one at a time, opened from To do
   const lists = {
     waiting: waitingLists,
     guests: guestsList,
@@ -693,18 +692,9 @@ function RoleToday({ roles, lensBar = null }) {
     discharges: isReception && stays.data && <DischargesSection desk={stays.data} bills={unpaid.data?.bills} />,
     tomorrow: isReception && desk.data && <TomorrowCalls list={desk.data.tomorrowList} tomorrow={desk.data.tomorrow} />,
   };
-  const queueN = queueCounts(today.data?.patients ?? []);
-  // The small cards of reception's dashboard: only lists with someone in them
-  const listCards = [
-    { key: 'waiting', icon: Users, label: 'Waiting to be seen', count: queueN.waiting },
-    { key: 'guests', icon: UserPlus, label: 'New bookings to register', count: today.data?.guests?.length ?? 0 },
-    { key: 'due', icon: CalendarClock, label: 'Visits due now', count: today.data?.dueNow?.length ?? 0 },
-    { key: 'overdue', icon: CalendarX2, label: 'Overdue – not booked', count: today.data?.overdue?.length ?? 0 },
-    { key: 'babies', icon: Baby, label: 'Babies due', count: today.data?.babiesDue?.length ?? 0 },
-    { key: 'collect', icon: Wallet, label: 'Payments to collect', count: collect.length },
-    { key: 'discharges', icon: DoorOpen, label: 'Discharges', count: (stays.data?.goingHome?.length ?? 0) + (stays.data?.dischargedToday?.length ?? 0) },
-    { key: 'tomorrow', icon: CalendarPlus, label: 'Tomorrow – to confirm', count: desk.data?.tomorrowList?.length ?? 0 },
-  ];
+  // Reception's table: today's patients and the bookings made by name and phone (not registered yet), so the table, the
+  // numbers and Doctors today always agree (26 Oct 2026: "Nobody is booked" while 3 were)
+  const deskRows = [...(today.data?.patients ?? []), ...(today.data?.guests ?? []).map(guestRow)];
   const deskSaved = (message) => {
     setFlash(message);
     listsChanged();
@@ -732,6 +722,12 @@ function RoleToday({ roles, lensBar = null }) {
               <button type="button" className="btn btn-secondary" onClick={() => setArriving({ patient: null })}>
                 <Hash aria-hidden="true" /> Walk-in token
               </button>
+            )}
+            {/* Reception's dashboard: booking is one click away (the quick tiles are gone – the sidebar has the rest) */}
+            {simple && (
+              <Link to="/appointments" className="btn btn-secondary">
+                <CalendarPlus aria-hidden="true" /> Book appointment
+              </Link>
             )}
             {canRegisterPatients(roles) && <MenuButton className="btn btn-primary" icon={UserPlus} label="New patient" items={newPatientLinks(roles)} align="end" />}
           </>
@@ -770,13 +766,9 @@ function RoleToday({ roles, lensBar = null }) {
           </Alert>
         )}
         {canBookAppointments(roles) && <NeedsTimeNotice />}
-        {/* Reception's dashboard (the owner's sketch): three numbers, quick-action tiles – no greeting (owner, 26 Oct 2026) */}
-        {simple && (
-          <>
-            <DeskNumbers rows={today.data?.patients ?? []} collected={collected.data} />
-            <QuickTiles />
-          </>
-        )}
+        {/* Reception's dashboard: three numbers, then the patients beside To do (26 Oct 2026: "more simple") – no
+            greeting, no quick tiles (the sidebar has them) and no second row of list cards (To do opens the lists) */}
+        {simple && <DeskNumbers rows={deskRows} collected={collected.data} />}
         {!simple && (tiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
           // One line of small cards (owner, 24 Oct 2026): the AI brief, Your day so far, the numbers (To approve after
           // them), then the handover last
@@ -847,15 +839,19 @@ function RoleToday({ roles, lensBar = null }) {
         {simple && today.data && (
           <div className="rd-layout">
             <div className="rd-main">
-              {/* The day's other lists first (owner, 26 Oct 2026: no empty space under the table); the chosen one opens here */}
-              <ListCards cards={listCards} open={openList} onOpen={setOpenList} />
+              {/* A list opened from To do shows here, above the patients */}
               {openList && lists[openList] && (
                 <SectionOpenDefault.Provider value>
-                  <div className="rd-open-list" id="rd-open-list">{lists[openList]}</div>
+                  <div className="rd-open-list" id="rd-open-list">
+                    {lists[openList]}
+                    <button type="button" className="btn btn-link btn-sm" onClick={() => setOpenList(null)}>
+                      Close this list
+                    </button>
+                  </div>
                 </SectionOpenDefault.Provider>
               )}
               <PatientsTable
-                rows={today.data.patients}
+                rows={deskRows}
                 canMark={today.data.canMarkArrived}
                 onMark={(p, row) => arrival('POST', p, row)}
                 onUndo={(p) => arrival('DELETE', p)}
@@ -879,7 +875,7 @@ function RoleToday({ roles, lensBar = null }) {
                 onSaved={deskSaved}
               />
               {desk.data && <DoctorsPanel doctors={desk.data.doctors} />}
-              <UpcomingPanel rows={today.data.patients} />
+              <UpcomingPanel rows={deskRows} />
             </aside>
           </div>
         )}

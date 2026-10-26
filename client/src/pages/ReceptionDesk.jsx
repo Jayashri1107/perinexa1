@@ -61,6 +61,16 @@ function Dialog({ id, title, onClose, children }) {
   );
 }
 
+/** Register the patient of a booking made by name and phone (reception's table): her booking joins her record. */
+export function RegisterBookingDialog({ appointment: a, onClose, onRegistered }) {
+  return (
+    <Dialog id="rc-register-booking" title={`Register ${a.guest?.name ?? 'the patient'}`} onClose={onClose}>
+      <p className="muted">Booked by name and phone. Fill in her details; her booking joins her record.</p>
+      <RegisterAndBook doctor={{ id: a.doctorId, name: a.doctorName }} appointment={a} onBooked={(_, p) => onRegistered(p)} onCancel={onClose} />
+    </Dialog>
+  );
+}
+
 /** Register a new patient in a dialog, with the phone or name already typed (reception's search boxes). */
 export function RegisterDialog({ text = '', onClose, onRegistered }) {
   return (
