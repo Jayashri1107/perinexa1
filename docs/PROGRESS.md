@@ -131,6 +131,10 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   patient's record is offered from the table. A registered patient whose details are missing has "Details missing" and
   **Fill info** (her own form, the missing items said at the top); none once everything is filled in. The rows are white
   like the others (`routes/today.js`: guests[].registered, samePhone).
+- **26 Oct 2026, branch `pharmacy-today-compact` – the pharmacist's Today made compact ("not too much space"):** one
+  line for "someone from another day" (patient number or phone; still audited) with the quick actions beside it; the
+  pharmacy's seven numbers as one row of small cards (value and short name; what each means on pointing at it); then
+  the day's register as before. Same order as the owner chose. Website only.
 - **26 Oct 2026 (branch `pharmacy-register`, not merged – an exception to the feature freeze at the owner's request,
   for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
   holds the pharmacy's sections: New bill, Pharmacy bills, Suppliers, Purchase bills, Stock, Medicines, Reports,
