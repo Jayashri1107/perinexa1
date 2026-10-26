@@ -155,7 +155,7 @@ describe('purchase orders', () => {
     expect(shown).toContain('Receive order PO-000001');
     expect(shown).toContain('Receiving against order PO-000001');
     expect(shown).toContain('Order Tab A'); // still to come: 40
-    expect(html).toContain('aria-label="Quantity" inputMode="numeric" value="40"');
+    expect(html).toContain('aria-label="Quantity (packs)" inputMode="numeric" value="40"');
     expect(shown).not.toContain('Order Tab B'); // all of it has arrived
     expect(html).toMatch(/<select id="pu-sup"[^>]*disabled/);
     expect(shown).toContain('Scan or type a barcode');

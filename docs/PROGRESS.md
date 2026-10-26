@@ -135,6 +135,17 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   Suppliers → click a supplier → Add bill → the supplier is filled in; save an invoice number that supplier already
   has → refused. Find "P-000001" under "Someone from another day". Not done (ideas list): saving a purchase as a
   draft before stock comes in, attaching the supplier's PDF, supplier payment status.
+  **Purchase bill (GRN), same day (owner's photo and video of the earlier software):** Add a purchase bill now asks
+  for everything the earlier software did: the store, the supplier (its address, phone, GSTIN and drug licence shown),
+  invoice number, gate entry number, invoice date, the time it is entered, CGST + SGST or IGST (chosen from the two
+  GSTINs, changeable), direct purchase or against a purchase order, credit or cash; for each medicine its unit (UOM),
+  HSN, batch, expiry, pack size (ConvF), quantity and free quantity in packs, MRP and rate per pack, discount % and
+  GST %, with its total and GST; and scheme discount, discount %, credit note adjusted, other charges, surcharge,
+  freight, received by and remark – worked out to total, less, add, CGST/SGST or IGST, GST, rounding and the net
+  amount to pay (`server/src/pharmacy/grn.js`). The stock still counts units of sale (packs × pack size; the unit
+  MRP rounded down so it is never above the pack's). Saved bills show all of it. **How to test:** Suppliers → a
+  supplier → Add bill → a medicine with Pack of 10, Qty 2, Free 1, MRP 45, Rate 30, Disc 10, GST 5 → freight 5 →
+  the net to pay changes as you type → Save → the bill shows the sums; Stock shows 30 tablets.
 - **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
   built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the

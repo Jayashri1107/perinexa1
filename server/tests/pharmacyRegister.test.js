@@ -158,3 +158,34 @@ describe('a supplier’s bills', () => {
     expect((await ph('post', '/purchases', { supplierId: sup.id, invoiceNo: 'INV-1', invoiceDate: '2026-09-27', lines: [line] })).status).toBe(201);
   });
 });
+
+describe('the purchase bill (GRN) as in the earlier software', () => {
+  it('takes packs, discounts, GST and charges; works out the net to pay; the stock gets units of sale', async () => {
+    const { m, sup } = await inStock();
+    const res = await ph('post', '/purchases', {
+      supplierId: sup.id,
+      invoiceNo: 'GRN-7',
+      invoiceDate: '2026-09-27',
+      // 2 strips of 10 (+ 1 free), ₹30 a strip, MRP ₹45 a strip, 10 % off, GST 5 %
+      lines: [{ medicineId: m.id, batch: 'S1', expiry: '2028-01', conv: 10, qty: 2, freeQty: 1, ratePaise: 3000, mrpPaise: 4500, discPercent: 10, gstRate: 5 }],
+      grn: { gateEntryNo: 'G-12', taxType: 'igst', payment: 'cash', receivedBy: 'Sample Store', remark: 'Sample', schemeDiscPaise: 500, discPercent: 2, otherChargesPaise: 1000, freightPaise: 500 },
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const p = res.body.purchase;
+    // total 60.00 − (item 6.00 + scheme 5.00 + 2 % of 54.00 = 1.08) + (10.00 + 5.00) + GST 2.70 = 65.62 → 66.00
+    expect(p.grn).toMatchObject({ gateEntryNo: 'G-12', taxType: 'igst', payment: 'cash', receivedBy: 'Sample Store', totalPaise: 6000, itemDiscPaise: 600, discPaise: 108, lessPaise: 1208, addPaise: 1500, gstPaise: 270, igstPaise: 270, cgstPaise: 0, roundingPaise: 38, netPaise: 6600 });
+    expect(p.lines[0]).toMatchObject({ qty: 20, freeQty: 10, ratePaise: 300, mrpPaise: 450, gstRate: 5, pack: { conv: 10, qty: 2, freeQty: 1, ratePaise: 3000, mrpPaise: 4500, totalPaise: 6000, gstPaise: 270 } });
+    const batches = (await ph('get', `/medicines/${m.id}/batches`)).body.batches;
+    expect(batches.find((b) => b.batch === 'S1')).toMatchObject({ qtyLeft: 30, mrpPaise: 450 });
+  });
+  it('splits GST into CGST and SGST, and refuses discounts bigger than the bill', async () => {
+    const { m, sup } = await inStock();
+    const line = { medicineId: m.id, batch: 'S2', expiry: '2028-01', qty: 3, ratePaise: 333, mrpPaise: 500 };
+    const same = await ph('post', '/purchases', { supplierId: sup.id, invoiceNo: 'GRN-8', invoiceDate: '2026-09-27', lines: [line], grn: {} });
+    // 9.99 + GST 5 % (the medicine's) 0.50 → CGST 0.25 + SGST 0.25, net 10.00
+    expect(same.body.purchase.grn).toMatchObject({ taxType: 'cgst_sgst', payment: 'credit', gstPaise: 50, cgstPaise: 25, sgstPaise: 25, netPaise: 1000 });
+    const tooMuch = await ph('post', '/purchases', { supplierId: sup.id, invoiceNo: 'GRN-9', invoiceDate: '2026-09-27', lines: [line], grn: { crnAdjPaise: 5000 } });
+    expect(tooMuch.status).toBe(400);
+    expect(tooMuch.body.error.message).toMatch(/discounts are more than the bill/);
+  });
+});
