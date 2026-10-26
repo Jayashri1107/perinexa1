@@ -82,7 +82,9 @@ describe('the left menu by role', () => {
     for (const roles of [['receptionist'], ['doctor'], ['rmo'], ['referral_desk', 'receptionist']]) expect(newPatientLinks(roles).map((l) => l.to), roles.join()).toContain('/patients/new/newborn');
     for (const roles of [['nurse'], ['receptionist'], ['lab'], ['pharmacist'], ['admin']]) expect(menu(roles), roles[0]).not.toContain('Referrals');
     expect(moduleByKey('referrals').tabs.map((t) => t.to)).toEqual(['/referrals', '/referrals/doctors', '/referrals/review', '/referrals/slip']);
-    expect(menu(['pharmacist'])).toEqual(['Today', 'Patients', 'Pharmacy']);
+    // The pharmacist (owner, 26 Oct 2026): the pharmacy's sections in the sidebar, no whole patient list
+    expect(menu(['pharmacist'])).toEqual(['Today', 'Daily register', 'New bill', 'Pharmacy bills', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings']);
+    expect(menu(['pharmacist', 'receptionist'])).toContain('Patients');
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists
     expect(menu(['receptionist', 'lab'])).not.toContain('Analytics');
     expect(hospitalModules(['nurse', 'rmo']).find((m) => m.label === 'Analytics').tabs.map((t) => t.label)).toEqual(['Ask your records']);

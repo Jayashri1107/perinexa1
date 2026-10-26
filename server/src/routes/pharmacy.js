@@ -40,6 +40,7 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { pharmacyOrdersRouter } from './pharmacyOrders.js';
+import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
 
@@ -55,6 +56,8 @@ import { capitalizeName } from '../utils/personName.js';
 // Pharmacy extras (4 Oct 2026):
 //  - /api/pharmacy/orders            purchase orders to suppliers (routes/pharmacyOrders.js)
 //  - /api/pharmacy/supplier-returns  stock returned to a supplier, with debit notes (routes/pharmacySupplierReturns.js)
+// The daily register (26 Oct 2026):
+//  - /api/pharmacy/register          today's OPD, IPD and External patients, and finding someone else (routes/pharmacyRegister.js)
 //  - /api/pharmacy/barcode/:code     the medicine a barcode belongs to (exact match)
 //  - /api/pharmacy/invoices/:id/einvoice   the e-invoice file of a sale to a business with a GSTIN (hospital admin)
 // Pharmacists see patients' names, numbers and phones, and the medicines prescribed – never diagnoses or notes.
@@ -67,6 +70,7 @@ pharmacyRouter.use((req, _res, next) => {
 });
 pharmacyRouter.use('/orders', pharmacyOrdersRouter);
 pharmacyRouter.use('/supplier-returns', pharmacySupplierReturnsRouter);
+pharmacyRouter.use('/register', pharmacyRegisterRouter);
 
 // ---------- The pharmacy's details ----------
 
@@ -282,12 +286,17 @@ async function purchaseViews(req, list) {
 }
 
 pharmacyRouter.get('/purchases', async (req, res) => {
-  const list = await Purchase.find({ tenantId: req.tenantId }).sort({ invoiceDate: -1, createdAt: -1 }).limit(200).lean();
+  // supplierId: one supplier's bills (its page under Suppliers)
+  const q = parse(z.object({ supplierId: objectId.optional() }).strict(), req.query);
+  const list = await Purchase.find({ tenantId: req.tenantId, ...(q.supplierId ? { supplierId: q.supplierId } : {}) }).sort({ invoiceDate: -1, createdAt: -1 }).limit(200).lean();
   res.json({ purchases: await purchaseViews(req, list) });
 });
 pharmacyRouter.post('/purchases', async (req, res) => {
   desk(req);
   const body = parse(purchaseSchema, req.body);
+  // The same supplier's invoice is entered once (26 Oct 2026): entering it again would add its stock twice
+  const twice = await Purchase.findOne({ tenantId: req.tenantId, supplierId: body.supplierId, status: { $ne: 'cancelled' }, invoiceNo: new RegExp(`^${escapeRegex(body.invoiceNo)}$`, 'i') }, { number: 1 }).lean();
+  if (twice) throw new HttpError(409, `This supplier's invoice ${body.invoiceNo} is already entered (${twice.number}). Cancel that purchase first if it was wrong.`, 'DUPLICATE');
   // Received against a purchase order: the order is checked before any stock comes in
   const order = body.orderId ? await orderToReceive(req, body.orderId, body) : null;
   const p = await createPurchase(req, body);

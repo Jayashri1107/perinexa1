@@ -21,6 +21,24 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   of each word while typing. **How to test:** Scans → the tiles at the top; open a study marked done → Pictures → Add
   pictures (a JPEG), untick "In the printed report", sign and print. Sign in as the super admin → Patients → filter by
   hospital → click a row (her hospital opens). New patient → type "asha patil" → the box shows "Asha Patil".
+- **26 Oct 2026 (branch `pharmacy-register`, not merged – an exception to the feature freeze at the owner's request,
+  for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
+  holds the pharmacy's sections: Daily register, New bill, Pharmacy bills, Suppliers, Purchase bills, Stock,
+  Medicines, Reports, Pharmacy settings (the hospital admin keeps one Pharmacy item with tabs). (2) **Daily register**
+  (`/pharmacy/register`): only the day's patients – OPD (arrived today or prescribed today), IPD (admitted) and
+  External (walk-in customers billed today) – with counts, an All/OPD/IPD/External filter, a day picker (today or
+  earlier) and what the pharmacy has done (prescription waiting, billed, issued). Someone from another day is found
+  by her **exact patient number or phone number** only; each search is in the audit log. (3) A pharmacist with no
+  other patient role no longer sees the hospital's patient list or its search (the server refuses it too).
+  (4) **New bill** asks OPD / IPD / External: OPD lists today's register, IPD issues to her stay as before, External
+  is a walk-in whose name and phone stay on the bill only (no new patient record). (5) **Suppliers**: each supplier
+  has its own page with its details, its bills and **Add bill** (the supplier already chosen). (6) The same supplier
+  invoice number can't be entered twice for one supplier (its stock would come in twice). **How to test:** sign in as
+  a pharmacist → the sidebar shows the sections → Daily register → Make bill on an OPD patient (she is already
+  chosen) → New external bill → name, phone, a medicine → Make the invoice → back on the register under External.
+  Suppliers → click a supplier → Add bill → the supplier is filled in; save an invoice number that supplier already
+  has → refused. Find "P-000001" under "Someone from another day". Not done (ideas list): saving a purchase as a
+  draft before stock comes in, attaching the supplier's PDF, supplier payment status.
 - **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
   built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the

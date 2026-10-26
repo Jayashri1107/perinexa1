@@ -165,11 +165,15 @@ describe('purchase orders', () => {
     answers[`/pharmacy/orders/${OID}`] = { order: order({ status: 'received', can: { edit: false, send: false, receive: false, cancel: false, close: false } }), settings: SETTINGS };
     const closed = text(at(`/pharmacy/purchases/new?order=${OID}`, '/pharmacy/purchases/new', <NewPurchasePage />));
     expect(closed).toContain('Nothing can be received against order PO-000001 (received)');
-    expect(closed).toContain('Enter a purchase');
+    expect(closed).toContain('Add a purchase bill');
     // Without an order the form is as before
     const plain = at('/pharmacy/purchases/new', '/pharmacy/purchases/new', <NewPurchasePage />);
-    expect(text(plain)).toContain('Enter a purchase');
+    expect(text(plain)).toContain('Add a purchase bill');
     expect(plain).not.toMatch(/<select id="pu-sup"[^>]*disabled/);
+    // "Add bill" on a supplier's page: that supplier is chosen (and can still be changed)
+    const fromSupplier = at(`/pharmacy/purchases/new?supplier=${SUPPLIER.id}`, '/pharmacy/purchases/new', <NewPurchasePage />);
+    expect(fromSupplier).toMatch(new RegExp(`<option value="${SUPPLIER.id}" selected`));
+    expect(fromSupplier).not.toMatch(/<select id="pu-sup"[^>]*disabled/);
   });
 
   it('the printout carries the pharmacy’s details, the supplier and each medicine with its quantity', () => {
