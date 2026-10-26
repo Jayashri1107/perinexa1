@@ -42,7 +42,7 @@ const patientCell = (r) => (
 
 // Book: the popup that books her visit, adds the charges and makes the bill (owner, 26 Oct 2026)
 const bookButton = (onBook) => (r) => (
-  <button type="button" className="btn btn-secondary btn-sm" onClick={() => onBook(r)} aria-label={`Book and bill ${r.patient.fullName}`}>
+  <button type="button" className="btn btn-secondary btn-sm" onClick={() => onBook(r)} aria-label={`Book a follow-up for ${r.patient.fullName}`}>
     Book
   </button>
 );
