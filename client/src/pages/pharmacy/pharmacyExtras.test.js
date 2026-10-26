@@ -249,7 +249,7 @@ describe('the pharmacy’s tabs', () => {
     const tab = pharmacyTabs(['pharmacist']).find((t) => t.label === 'Purchases');
     expect(tab.activeFor).toEqual(BUYING_PATHS);
     expect(buyingSections().map((x) => [x.label, x.to])).toEqual([
-      ['Purchases', '/pharmacy/purchases'],
+      ['Purchase bills', '/pharmacy/purchases'],
       ['Orders', '/pharmacy/orders'],
       ['Returns to supplier', '/pharmacy/supplier-returns'],
     ]);

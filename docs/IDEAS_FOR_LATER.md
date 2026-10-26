@@ -65,6 +65,28 @@ second system, so the bill, the history and the audit stay in one place.
 | --- | --- | --- |
 | 23 | **Scan Aadhaar with your phone and send it to this computer**: the New patient form on the reception computer shows a short-lived QR code; reception scans it with their own phone (already signed in to Perinexa), the phone's camera reads the Aadhaar QR live the way PhonePe does, and the details appear in the form on the computer for reception to check and save. Why: laptop webcams cannot focus close enough for the dense Aadhaar Secure QR (about 5 times denser than a UPI QR), and photos forwarded on WhatsApp are too blurred to read | **Privacy (developer and owner):** today nothing of the card leaves the computer; this would send the details through the server. So: only the fields the form uses (name, age, address, PIN, city, state, last 4 digits, the signature result) – never the whole Aadhaar number, the photo in the QR, gender or the QR itself; the pairing code works once, for one form, for about 2 minutes, and only for the same staff member in the same hospital; the details are held in memory only until the computer collects them (never saved in the database, never in logs or error reports), over HTTPS only; the audit log records that a card was scanned, without its details; the patient's agreement is asked on the phone before the camera opens. **Simpler first:** a USB 2D QR scanner (about ₹2,000–4,000) already works with nothing sent anywhere, and opening Perinexa on the phone itself already scans live |
 
+## Reception: follow-ups and vaccinations hard to see (asked 26 Oct 2026)
+
+Reception cannot clearly see who should come back. On reception's Today page the call lists ("Visits due now – not
+booked", "Overdue – not booked", "Babies due – not booked") come last, below today's patients, payments, discharges,
+tomorrow's calls, Scan & Share, sign-ups and quick bookings; the "calls" number card at the top is the only way to
+them. They list only people already late with nothing booked (`server/src/routes/today.js`, `callLists` and
+`babiesDue`). Compared with Docterz, whose Reception app shows the day's queue at a glance and whose Vaccine Manager
+works out each child's schedule and sends reminders by itself.
+
+> **26 Oct 2026: ideas 24, 25 and 27 are built** on branch `reception-followups` (not merged): Follow-ups in
+> reception's menu (`docs/PROGRESS.md`, 26 Oct 2026). For 27, only the babies due in the next 7 days; babies overdue
+> for longer than 6 weeks still drop off reception's list (owner decision). 26, 28 and 29 are not built.
+
+| # | Idea | What to decide first |
+| --- | --- | --- |
+| 24 | **Call lists higher on reception's Today**: "Follow-ups and vaccinations to call" right under today's patients, or a tab beside them, with the counts on the top card | Layout only. Which order reception wants (owner) |
+| 25 | **Follow-ups coming up**: everyone with a next visit today, tomorrow and this week (booked, or only written as "next visit on" by the doctor), marked as follow-up, so reception can confirm or remind | Shows bookings, never the reason for the visit. Sensitive records as on the calendar |
+| 26 | **Follow-ups for every type of care**: today the due and overdue lists come only from antenatal care plans; gynaecology, infertility and general patients appear only after a missed booked day | **Owner decision:** which care types' plan windows reception may see |
+| 27 | **Babies' vaccinations due soon**: babies with a vaccination due in the next 7 days and nothing booked, so reception books them before they are late; and babies overdue for longer than 6 weeks, who drop off reception's list today (they stay only on the baby's care plan) | **Owner decision:** reception sees "a check-up or test is due", never the vaccine (privacy rule of 4 Oct 2026); showing vaccine names to reception would reverse it. A draft schedule still says "ask the doctor before calling" |
+| 28 | **(clinical) Vaccination reminders sent by themselves** to the parents in their language (Marathi, Hindi and others) until the schedule ends | Wording approved by the owner. Which channel (SMS, WhatsApp) and the parents' consent. The message names no vaccine unless the owner agrees |
+| 29 | **Vaccine stock**: vaccines ordered, given and left, and what to order | Belongs with the pharmacy stock. Who keeps it (owner) |
+
 ## Keep in mind
 
 - **"Fun" must fit the brand rules** (`docs/BRAND.md`): no emoji and no exclamation marks. The fun should come from things

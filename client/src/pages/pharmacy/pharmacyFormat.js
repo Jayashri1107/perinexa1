@@ -39,7 +39,7 @@ export const medicineLabel = (m) => [m.name, [m.generic, m.strength].filter(Bool
 // Buying from suppliers: purchases (their invoices), purchase orders and returns to a supplier share the Purchases tab.
 export const BUYING_PATHS = ['/pharmacy/purchases', '/pharmacy/orders', '/pharmacy/supplier-returns'];
 export const buyingSections = () => [
-  { label: 'Purchases', to: '/pharmacy/purchases', end: false },
+  { label: 'Purchase bills', to: '/pharmacy/purchases', end: false },
   { label: 'Orders', to: '/pharmacy/orders', end: false },
   { label: 'Returns to supplier', to: '/pharmacy/supplier-returns', end: false },
 ];

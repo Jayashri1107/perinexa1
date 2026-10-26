@@ -8,6 +8,13 @@ export const BOOKING_ROLES = ['receptionist', 'referral_desk', 'doctor'];
 export const QUEUE_ROLES = ['receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse'];
 export const VISIT_TYPES = ['new', 'follow_up', 'scan', 'other'];
 export const VISIT_TYPE_LABELS = { new: 'New', follow_up: 'Follow-up', scan: 'Scan', other: 'Other' };
+// Why a patient comes (26 Oct 2026): a follow-up added by hand, and the reason marked at check-in. A short fixed list –
+// reception sees it, so never a medical detail. Same list as server/src/appointments/visitPurpose.js.
+export const VISIT_PURPOSES = ['consultation', 'reports', 'test', 'procedure', 'prescription', 'other'];
+export const PURPOSE_LABELS = { consultation: 'Follow-up consultation', reports: 'Show reports', test: 'Test or scan', procedure: 'Dressing or procedure', prescription: 'Prescription', other: 'Other' };
+export const PURPOSE_NOTE_MAX = 120;
+/** "Show reports (bring the blood report)". */
+export const purposeText = (p) => (p?.kind || p?.purpose ? `${PURPOSE_LABELS[p.kind ?? p.purpose]}${p.note ? ` (${p.note})` : ''}` : '');
 export const CANCEL_REASONS = [
   { value: 'patient_asked', label: 'The patient asked' },
   { value: 'doctor_leave', label: 'Doctor on leave' },

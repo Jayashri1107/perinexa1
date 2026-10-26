@@ -1,0 +1,50 @@
+/* Reception's Follow-ups page (pages/followups/FollowUpsPage.jsx): the lists to call and the coming week. Colours
+   only from tokens.css. */
+.fu-panel { margin-bottom: var(--space-6); }
+.fu-title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); }
+.fu-title svg { width: 20px; height: 20px; color: var(--slate-600); }
+.fu-day { margin-bottom: var(--space-4); }
+.fu-day-title { margin: var(--space-4) 0 var(--space-2); font-size: var(--fs-label); }
+.fu-patient { display: flex; flex-direction: column; }
+.fu-why { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.fu-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-bottom: var(--space-6); }
+.fu-search { flex: 1 1 280px; max-width: 420px; }
+
+/* Follow-ups added by hand and why she came (FollowUpDialogs.jsx, 26 Oct 2026) */
+.fu-purpose { border: 0; margin: var(--space-3) 0 0; padding: 0; min-width: 0; }
+.fu-purpose legend { margin-bottom: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.fu-purpose-options { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+.fu-purpose-option { padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-label); cursor: pointer; }
+.fu-purpose-option:hover { border-color: var(--indigo-200); background: var(--mist-50); }
+.fu-purpose-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.fu-purpose-option[aria-checked='true'] { border-color: var(--indigo-700); background: var(--indigo-100); color: var(--indigo-700); font-weight: 600; }
+.fu-followup-note { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--status-due-bg); color: var(--status-due-fg); }
+.fu-followup-note svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.fu-came-for { margin: var(--space-1) 0 0; font-weight: 500; }
+.fu-came-chip { background: var(--status-due-bg); color: var(--status-due-fg); }
+.rd-followup { color: var(--status-due-fg); font-weight: 500; }
+
+/* Book and bill (owner, 26 Oct 2026): the visit, the charges and the payment in one popup */
+.fu-bookbill { max-width: 860px; }
+.fu-bb-who { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; margin: 0 0 var(--space-3); }
+.fu-bb-step { padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.fu-bb-step h3 { margin: 0 0 var(--space-2); font-size: var(--fs-body); }
+.fu-bb-add { display: flex; gap: var(--space-2); align-items: center; margin-top: var(--space-2); }
+.fu-bb-add select { flex: 1; min-width: 0; }
+.fu-bb-lines { margin-bottom: var(--space-2); }
+.fu-bb-done p { display: flex; gap: var(--space-2); align-items: flex-start; }
+.fu-bb-done svg { flex: none; color: var(--status-stable-fg); width: 20px; height: 20px; }
+/* The simpler bill (owner, 26 Oct 2026): the fee, other charges, then the total and how she pays */
+.fu-bb-fee { display: grid; gap: var(--space-2); max-width: 520px; }
+.fu-bb-extra { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-2); }
+.fu-bb-more { justify-self: start; }
+.fu-bb-pay { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-top: var(--space-3); }
+.fu-bb-total strong { font-size: var(--fs-h3); margin-left: var(--space-1); }
+.fu-bb-ok { width: 18px; height: 18px; vertical-align: -3px; color: var(--status-stable-fg); }
+/* The doctor's follow-ups on her Today */
+.fu-doctor { padding: var(--space-4); margin-bottom: var(--space-4); }
+.fu-doctor-list { list-style: none; margin: 0; padding: 0; }
+.fu-doctor-list li { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto minmax(0, 1fr); gap: var(--space-3); align-items: center; padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.fu-doctor-list li:first-child { border-top: 0; }
+.fu-doctor-when { font-weight: 600; }
+@media (max-width: 700px) { .fu-doctor-list li { grid-template-columns: 1fr; gap: var(--space-1); } }

@@ -254,7 +254,9 @@ describe('purchase orders', () => {
     const b = await medicine({ name: 'Recv Tab B' });
     const extra = await medicine({ name: 'Not Ordered Tab' });
     const o = await order(sup, [{ medicineId: a.id, qty: 100 }, { medicineId: b.id, qty: 20 }]);
-    const body = (lines, supplierId = sup.id) => ({ supplierId, invoiceNo: 'S-1', invoiceDate: '2026-09-27', orderId: o.id, lines });
+    // each delivery is its own supplier invoice (the same invoice is never entered twice)
+    let delivery = 0;
+    const body = (lines, supplierId = sup.id) => ({ supplierId, invoiceNo: `S-1-${(delivery += 1)}`, invoiceDate: '2026-09-27', orderId: o.id, lines });
 
     // Not while it is a draft; not from another supplier; not when nothing of it is on the order; not by the admin
     expect((await ph('post', '/purchases', body([line(a)]))).body.error).toMatchObject({ code: 'WRONG_STATUS', message: expect.stringMatching(/still a draft/) });
@@ -273,7 +275,7 @@ describe('purchase orders', () => {
       ['Recv Tab A', 100, 60, 40],
       ['Recv Tab B', 20, 20, 0],
     ]);
-    expect(now.purchases).toEqual([expect.objectContaining({ number: 'PU-000001', invoiceNo: 'S-1', status: 'active' })]);
+    expect(now.purchases).toEqual([expect.objectContaining({ number: 'PU-000001', invoiceNo: expect.stringMatching(/^S-1-/), status: 'active' })]);
     expect(now.can).toMatchObject({ receive: true, cancel: false, close: true });
     expect((await ph('post', `/orders/${o.id}/cancel`, { reason: 'Changed our mind' })).body.error.code).toBe('WRONG_STATUS');
     expect(ok(await ph('get', '/purchases')).purchases[0].order).toEqual({ id: o.id, number: 'PO-000001' });

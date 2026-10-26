@@ -21,6 +21,132 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   of each word while typing. **How to test:** Scans → the tiles at the top; open a study marked done → Pictures → Add
   pictures (a JPEG), untick "In the printed report", sign and print. Sign in as the super admin → Patients → filter by
   hospital → click a row (her hospital opens). New patient → type "asha patil" → the box shows "Asha Patil".
+- **26 Oct 2026 (branch `reception-followups`, not merged – an exception to the feature freeze, the owner's
+  go-ahead to be recorded before merging):** reception could not clearly see follow-ups and vaccinations (ideas 24,
+  25 and 27 in `docs/IDEAS_FOR_LATER.md`). (1) **Follow-ups** in reception's left menu, with two tabs: *Follow-ups* –
+  the patients to call (a visit due or overdue, nothing booked) and everyone booked for the next 7 days, by day, with
+  the time, the doctor, New or Follow-up and Arrived; *Vaccinations* – babies overdue, and babies whose vaccination is
+  due in the next 7 days with nothing booked, in general words only ("a check-up or test"), never the vaccine.
+  `GET /api/follow-ups` (reception only, `server/src/routes/followUps.js`). Both tabs have a **filter**: part of the
+  patient's name, patient number, phone or doctor, and **All / OPD / IPD / Day care** (IPD or day care: her latest stay
+  is still going or ended in the last 90 days; everyone else is OPD), kept in the address bar (`?q=`, `?type=`). (2)
+  On reception's Today the call lists
+  now come right under Today's patients, with a link to Follow-ups. **How to test:** sign in as reception → Follow-ups
+  → the four numbers at the top, "To call – not booked", "Coming up – next 7 days" (a doctor's next visit shows on its
+  day as Follow-up, "Needs a time" until it has a time) → Vaccinations: a baby registered today is under "Due in the
+  next 7 days"; press Book, book the visit, and the baby moves to Coming up. As a doctor or nurse there is no
+  Follow-ups in the menu and `/follow-ups` says it is for reception.
+- **26 Oct 2026, same branch – registering and editing in dialogs on Appointments (as Docterz's reception):** (1)
+  **Book → New patient** no longer goes to the registration page: the dialog asks the type of care and the visit
+  type, then shows her full registration form (page 1 of Patients → New patient, with Fill from Aadhaar); **Register
+  and book** saves her and books the time for her record ("She may already be registered" books it for the record
+  chosen; a slot taken meanwhile asks "Book anyway"). Clinical details are added later from her record. Those who do
+  not register patients still book by name and phone. (2) On every booking: **Edit details** (her registration
+  details in a dialog, saved as on her record's Edit tab) and, for a booking "Not registered yet", **Register** (the
+  same form filled in with that name and phone; the booking joins her record). `client/src/pages/appointments/
+  RegisterAndBook.jsx`. **How to test:** as reception → Appointments → a free time → New patient → Gynaecology →
+  fill in a fake name and phone → Register and book: she is booked, no page change. Press Edit details on her line,
+  change the address, Save changes. On a line "Not registered yet" press Register.
+- **26 Oct 2026, same branch – reception's Today made simpler, and "Details missing":** (1) For reception (not also
+  clinical staff) Today shows only the lists with someone in them, open, one under the other (empty lists are hidden;
+  "Nothing to do in today's lists" when all are empty); a list closed by hand stays closed. Follow-ups is a quick
+  button at the top. (2) **Details missing**: a warning box near the top lists patients registered in the last 30
+  days (and anyone on today's list) whose registration details are not all filled in – address (or city), emergency
+  contact's phone, doctor, and age or phone on older records – with what is missing in words and **Fill details**
+  (her details in a dialog; saved, she leaves the list). Identity details only. `server/src/patients/
+  missingDetails.js`, `client/src/pages/DetailsMissing.jsx`. **How to test:** as reception → Patients → New patient →
+  Gynaecology → only name, age and phone → Register → Today: "Details missing (1)" with "Address, emergency contact and
+  doctor missing" → Fill details → add them → Save changes: the box is gone.
+- **26 Oct 2026, same branch – reception's Today redesigned as a desk** (`client/src/pages/ReceptionDesk.jsx`,
+  `styles/pages-reception.css`; reception only, not also clinical staff): (1) a large search box first – phone, name
+  or patient number – each patient found with **Mark arrived**, **Book** and **Edit details**; nobody found or not
+  the right person: **Register new patient** in a dialog with the phone or name already typed in; (2) the number
+  cards (Today's patients, Calls to make, Money today, Free beds); (3) two columns: today's patients, the waiting
+  lists and the bookings to register (open), beside a short **To do** – calls to make, details missing (opens its
+  list in a dialog, replacing the big box), bookings to register, payments to collect, tomorrow's calls,
+  discharges, only those with someone in them ("Nothing waiting" when all are done) – and Doctors today; (4) the
+  other lists under "More lists", only with someone in them. **How to test:** as reception → Today → type a fake
+  patient's phone → Mark arrived; type a new number → Register new patient → she is found at once; To do → Details
+  missing → Fill details.
+- **26 Oct 2026, same branch – Appointments page redesigned:** the day's counts as coloured pills (booked, free, seen);
+  the times with a legend (free – click to book, booked with an indigo edge, kept for walk-ins dashed, passed); each
+  patient of the day as a card – time on the left, her initials, name and details, the status on the right, a
+  coloured edge for her state (booked blue, arrived green, done grey, did not come or needs a time amber, next
+  indigo) – and the actions on one row: **Edit info** (one button for everyone: her details, or for a booking "Not
+  registered yet" her registration with that name and phone), Take fee, Reschedule, and Cancel last. **How to
+  test:** as reception → Appointments → a day with bookings → Edit info on a "Not registered yet" card → Gynaecology
+  → Register: the card shows her patient number.
+- **26 Oct 2026, same branch – the live queue on reception's desk:** each patient of the day is **Expected**,
+  **Waiting** (arrived), **With the doctor** (her visit started) or **Done** (the visit signed, the checkup marked done,
+  or reception's **Mark done** – she left; can be undone). **Emergency** (reception, nurses, doctors, RMOs, for a
+  patient who has arrived) puts her first on Today and in her doctor's waiting line, in red with the word; audited
+  (ARRIVAL_EMERGENCY_CHANGED, PATIENT_LEFT_MARKED, ids only). Reception's desk shows **Today's queue**: a strip with
+  the count of each state (click to show only that state), then one row per patient – time or token, name, doctor,
+  state and the buttons (Mark arrived, Emergency, Mark done, Undo arrival, Undo done, Slip), nothing to open. The desk
+  reloads every 30 seconds while it is in front and no dialog is open ("Updated 10:32", Refresh now); the old rows
+  stay while the new ones load. `POST /api/arrivals/:patientId/emergency|left`, `server/src/routes/today.js`
+  (queue, emergency), `appointments/slots.js` (waitingOrder: emergencies first), `client/src/pages/ReceptionDesk.jsx`
+  (QueueBoard). **How to test:** as reception → Today → Mark arrived on two booked patients → Emergency on the second:
+  she moves to the top, red, and first under Waiting to be seen → as a nurse start the first one's visit → back as
+  reception within 30 seconds she shows With the doctor → Mark done → Done; Undo done.
+- **26 Oct 2026, same branch – reception's dashboard laid out as the owner's sketch** (`client/src/pages/
+  ReceptionDashboard.jsx`, `styles/pages-reception-dashboard.css`; brand colours instead of the sketch's pink, no
+  exclamation mark or emoji): a greeting; three number cards (Today's patients – arrived and waiting; Appointments –
+  completed and upcoming; Collection today – payments); quick-action tiles (Book appointment, Admit to bed, Billing
+  and payments, Follow-ups, More); **Today's patients** as a table – tabs All / Expected / Waiting / In consultation /
+  Completed with counts, a search box (name, patient number, phone; anyone not on today's list is offered below with
+  Check in, Book, Edit info, or Register new patient), a doctor filter, one row each (initials, name and number,
+  age, time or token, visit type, state, **Check in** or **View**, and a menu: Emergency, Mark done, the undos, Edit
+  info, Book, token slip); the day's other lists as **one row of small cards** (name and count, only those with
+  someone in them; a card opens its list below); beside it To do, **Doctors today** (state, hours, expected /
+  waiting / seen on their own lines) and **Upcoming appointments**. Today's patients now also carry her age and her
+  booking's visit type (`routes/today.js`). The queue's words: In consultation, Completed.
+- **26 Oct 2026, same branch – follow-ups added by hand, and why she came:** a patient registered on Monday comes
+  back on Friday to show her reports. (1) **Add follow-up** (Follow-ups page button, or a row's menu on the desk):
+  her doctor, what for – a fixed list (Follow-up consultation, Show reports, Test or scan, Dressing or procedure,
+  Prescription, Other) and a short note (at most 120 characters, "no medical details – reception sees this"), and
+  from which day; listed under **Follow-ups added** (Book, Cancel). Reception, doctors and RMOs; audited
+  (FOLLOW_UP_ADDED, FOLLOW_UP_CANCELLED, ids and the purpose only). `server/src/models/FollowUp.js`,
+  `routes/addedFollowUps.js` (`/api/added-follow-ups`). (2) **Check in** now always asks **"Why did she come?"** (the
+  same list, filled in from her follow-up, with the follow-up shown); a booked patient only chooses why, a walk-in
+  also the doctor for a token. Her follow-ups due by today are marked "came". (3) **Her doctor's notification**
+  says why: "Asha Sample has arrived. Came for: Show reports (bring the blood report)." – the doctor of her
+  appointment, or of her follow-up when she has none; the doctor's waiting line shows it beside her time. (4) The
+  desk's table shows "Follow-up: Show reports" before she comes and why she came after. **Privacy:** reception never
+  got the medical reason for a visit; this is a short fixed list and a short note on purpose – the owner to confirm
+  the list's words. **How to test:** as reception → Follow-ups → Add follow-up → a fake patient, Dr A, Show reports,
+  "bring the blood report", from today → Today → find her → Check in: "Show reports" is chosen → Check in → sign in
+  as Dr A: the bell says why she came.
+- **26 Oct 2026 (branch `pharmacy-register`, not merged – an exception to the feature freeze at the owner's request,
+  for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
+  holds the pharmacy's sections: New bill, Pharmacy bills, Suppliers, Purchase bills, Stock, Medicines, Reports,
+  Pharmacy settings (the hospital admin keeps one Pharmacy item with tabs). (2) **Daily register**, on the
+  pharmacist's **Today** page (owner: not a menu item of its own; "Someone from another day" and "Pharmacy at a
+  glance" on top, then the list – no heading or count cards): only the day's patients – OPD (arrived today or prescribed today), IPD (admitted) and
+  External (walk-in customers billed today) – with counts, an All/OPD/IPD/External filter, a day picker (today or
+  earlier) and what the pharmacy has done (prescription waiting, billed, issued). Someone from another day is found
+  by her **exact patient number or phone number** only; each search is in the audit log. (3) A pharmacist with no
+  other patient role no longer sees the hospital's patient list or its search (the server refuses it too).
+  (4) **New bill** asks OPD / IPD / External: OPD lists today's register, IPD issues to her stay as before, External
+  is a walk-in whose name and phone stay on the bill only (no new patient record). (5) **Suppliers**: each supplier
+  has its own page with its details, its bills and **Add bill** (the supplier already chosen). (6) The same supplier
+  invoice number can't be entered twice for one supplier (its stock would come in twice). **How to test:** sign in as
+  a pharmacist → the sidebar shows the sections → Today shows the Daily register → Make bill on an OPD patient (she is already
+  chosen) → New external bill → name, phone, a medicine → Make the invoice → back on the register under External.
+  Suppliers → click a supplier → Add bill → the supplier is filled in; save an invoice number that supplier already
+  has → refused. Find "P-000001" under "Someone from another day". Not done (ideas list): saving a purchase as a
+  draft before stock comes in, attaching the supplier's PDF, supplier payment status.
+  **Purchase bill (GRN), same day (owner's photo and video of the earlier software):** Add a purchase bill now asks
+  for everything the earlier software did: the store, the supplier (its address, phone, GSTIN and drug licence shown),
+  invoice number, gate entry number, invoice date, the time it is entered, CGST + SGST or IGST (chosen from the two
+  GSTINs, changeable), direct purchase or against a purchase order, credit or cash; for each medicine its unit (UOM),
+  HSN, batch, expiry, pack size (ConvF), quantity and free quantity in packs, MRP and rate per pack, discount % and
+  GST %, with its total and GST; and scheme discount, discount %, credit note adjusted, other charges, surcharge,
+  freight, received by and remark – worked out to total, less, add, CGST/SGST or IGST, GST, rounding and the net
+  amount to pay (`server/src/pharmacy/grn.js`). The stock still counts units of sale (packs × pack size; the unit
+  MRP rounded down so it is never above the pack's). Saved bills show all of it. **How to test:** Suppliers → a
+  supplier → Add bill → a medicine with Pack of 10, Qty 2, Free 1, MRP 45, Rate 30, Disc 10, GST 5 → freight 5 →
+  the net to pay changes as you type → Save → the bill shows the sums; Stock shows 30 tablets.
 - **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
   built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the

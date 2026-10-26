@@ -133,14 +133,17 @@ export function timetableProblems(schedule, slotMinutes = SLOT_MINUTES) {
  * The order a doctor calls the patients who are waiting (owner: booked patients go in at their time, walk-ins
  * fill the gaps in token order). entries: [{ kind: 'slot' | 'token', start, token, arrivedAt }]. Booked patients
  * whose time has come go first (earliest slot first, then the one who came first); then walk-ins by token; then
- * booked patients who came early (their time not yet come) and bookings with no time. Returns a new array.
+ * booked patients who came early (their time not yet come) and bookings with no time. An emergency (e.emergency, the
+ * live queue of 26 Oct 2026) goes before all of them, in the order they arrived. Returns a new array.
  */
 export function waitingOrder(entries, nowMinutes) {
   const due = [];
   const walkIns = [];
   const early = [];
+  const urgent = [];
   for (const e of entries) {
-    if (e.kind === 'token') walkIns.push(e);
+    if (e.emergency) urgent.push(e); // an emergency (the live queue): first, in the order they arrived
+    else if (e.kind === 'token') walkIns.push(e);
     else if (e.start && minutesOf(e.start) <= nowMinutes) due.push(e);
     else early.push(e);
   }
@@ -148,5 +151,6 @@ export function waitingOrder(entries, nowMinutes) {
   due.sort((a, b) => a.start.localeCompare(b.start) || byArrival(a, b));
   walkIns.sort((a, b) => a.token - b.token);
   early.sort((a, b) => (a.start ?? '99:99').localeCompare(b.start ?? '99:99') || byArrival(a, b));
-  return [...due, ...walkIns, ...early];
+  urgent.sort(byArrival);
+  return [...urgent, ...due, ...walkIns, ...early];
 }

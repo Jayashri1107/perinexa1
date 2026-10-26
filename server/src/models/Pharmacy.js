@@ -70,7 +70,41 @@ const purchaseLineSchema = new mongoose.Schema({
   // stock goes back to the supplier). Not recorded on older purchases: the medicine's present ones are used.
   hsn: { type: String, default: '' },
   gstRate: { type: Number, default: null },
+  // The line as written on the supplier's bill (GRN, 26 Oct 2026): a pack of `conv` units, its quantity, free
+  // quantity, MRP and rate per pack, the discount, and the sums (server/src/pharmacy/grn.js). Not on older purchases.
+  pack: {
+    type: new mongoose.Schema({ conv: Number, qty: Number, freeQty: Number, ratePaise: Number, mrpPaise: Number, discPercent: Number, totalPaise: Number, discPaise: Number, taxablePaise: Number, gstPaise: Number }, { _id: false }),
+    default: null,
+  },
 });
+// The bill's own details and sums (GRN, 26 Oct 2026). Not on older purchases.
+const grnSchema = new mongoose.Schema(
+  {
+    gateEntryNo: { type: String, default: '' },
+    taxType: { type: String, enum: ['cgst_sgst', 'igst'], default: 'cgst_sgst' },
+    payment: { type: String, enum: ['credit', 'cash'], default: 'credit' },
+    receivedBy: { type: String, default: '' },
+    remark: { type: String, default: '' },
+    schemeDiscPaise: Number,
+    discPercent: Number,
+    crnAdjPaise: Number,
+    otherChargesPaise: Number,
+    surchargePaise: Number,
+    freightPaise: Number,
+    totalPaise: Number,
+    itemDiscPaise: Number,
+    discPaise: Number,
+    lessPaise: Number,
+    addPaise: Number,
+    gstPaise: Number,
+    cgstPaise: Number,
+    sgstPaise: Number,
+    igstPaise: Number,
+    roundingPaise: Number,
+    netPaise: Number,
+  },
+  { _id: false },
+);
 const purchaseSchema = new mongoose.Schema(
   {
     number: { type: String, required: true }, // PU-000001
@@ -81,6 +115,7 @@ const purchaseSchema = new mongoose.Schema(
     totalPaise: { type: Number, default: 0 }, // purchase value (rate × quantity)
     // The purchase order this delivery was received against (PO-000001), if any.
     orderId: { type: ObjectId, ref: 'PurchaseOrder', default: null },
+    grn: { type: grnSchema, default: null },
     status: { type: String, enum: ['active', 'cancelled'], default: 'active' },
     cancelled: { type: reasonStamp, default: null },
     created: { type: stampSchema, required: true },

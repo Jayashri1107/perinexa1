@@ -9,6 +9,7 @@ import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { einvoiceHsn, einvoiceOf, einvoiceProblems } from '../pharmacy/einvoice.js';
+import { PAYMENT_MODES, TAX_TYPES, grnTotals, perUnit } from '../pharmacy/grn.js';
 import { byRate, suggestedQty, sum } from '../pharmacy/gst.js';
 import { cleanGstin, gstinProblem, gstinState } from '../pharmacy/gstin.js';
 import { applyPurchase, countPurchaseOnOrder, orderToReceive } from '../pharmacy/ordersService.js';
@@ -22,6 +23,7 @@ import {
   FORMS,
   GST_RATES,
   MAX_BARCODES,
+  OLD_GST_RATES,
   MAX_QTY,
   MIN_REASON,
   PHARMACY_EINVOICE_ROLES,
@@ -40,6 +42,7 @@ import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { pharmacyOrdersRouter } from './pharmacyOrders.js';
+import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
 
@@ -55,6 +58,8 @@ import { capitalizeName } from '../utils/personName.js';
 // Pharmacy extras (4 Oct 2026):
 //  - /api/pharmacy/orders            purchase orders to suppliers (routes/pharmacyOrders.js)
 //  - /api/pharmacy/supplier-returns  stock returned to a supplier, with debit notes (routes/pharmacySupplierReturns.js)
+// The daily register (26 Oct 2026):
+//  - /api/pharmacy/register          today's OPD, IPD and External patients, and finding someone else (routes/pharmacyRegister.js)
 //  - /api/pharmacy/barcode/:code     the medicine a barcode belongs to (exact match)
 //  - /api/pharmacy/invoices/:id/einvoice   the e-invoice file of a sale to a business with a GSTIN (hospital admin)
 // Pharmacists see patients' names, numbers and phones, and the medicines prescribed – never diagnoses or notes.
@@ -67,6 +72,7 @@ pharmacyRouter.use((req, _res, next) => {
 });
 pharmacyRouter.use('/orders', pharmacyOrdersRouter);
 pharmacyRouter.use('/supplier-returns', pharmacySupplierReturnsRouter);
+pharmacyRouter.use('/register', pharmacyRegisterRouter);
 
 // ---------- The pharmacy's details ----------
 
@@ -254,13 +260,57 @@ const purchaseSchema = z
             freeQty: z.number().int().min(0).max(MAX_QTY).default(0),
             ratePaise: paise,
             mrpPaise: paise.min(1, 'Enter the MRP.'),
+            // The bill (GRN, 26 Oct 2026): quantities, rate and MRP above are per pack of `conv` units of sale
+            conv: z.number().int().min(1, 'Pack size: at least 1.').max(1000).default(1),
+            discPercent: z.number().min(0).max(100).default(0),
+            gstRate: z.number().refine((r) => [...GST_RATES, ...OLD_GST_RATES].includes(r), 'Choose the GST rate on the bill.').optional(),
           })
           .strict(),
       )
       .min(1, 'Add at least one medicine.')
       .max(100),
+    // The bill's own details, discounts and charges (GRN, 26 Oct 2026)
+    grn: z
+      .object({
+        gateEntryNo: z.string().trim().max(40).default(''),
+        taxType: z.enum(TAX_TYPES).default('cgst_sgst'),
+        payment: z.enum(PAYMENT_MODES).default('credit'),
+        receivedBy: z.string().trim().max(100).default(''),
+        remark: z.string().trim().max(300).default(''),
+        schemeDiscPaise: paise.default(0),
+        discPercent: z.number().min(0).max(100).default(0),
+        crnAdjPaise: paise.default(0),
+        otherChargesPaise: paise.default(0),
+        surchargePaise: paise.default(0),
+        freightPaise: paise.default(0),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
+
+/**
+ * The bill as entered → what the stock keeps: lines per unit of sale (with the line as on the bill in `pack`), and
+ * the bill's sums. A line without its GST rate takes the medicine's. A bill whose discounts are more than its value
+ * is refused.
+ */
+async function asStock(req, body) {
+  const rates = new Map((await Medicine.find({ tenantId: req.tenantId, _id: { $in: body.lines.map((l) => l.medicineId) } }, { gstRate: 1 }).lean()).map((m) => [String(m._id), m.gstRate]));
+  body.lines.forEach((l) => {
+    l.gstRate ??= rates.get(String(l.medicineId)) ?? 0;
+  });
+  const lines = body.lines;
+  const sums = grnTotals(lines, body.grn ?? {});
+  if (sums.netPaise < 0) throw new HttpError(400, 'The discounts are more than the bill: check the scheme discount, the discount and the credit note.', 'VALIDATION_ERROR');
+  return {
+    ...body,
+    lines: body.lines.map((l, i) => {
+      const { conv, discPercent, ...rest } = l;
+      return { ...rest, ...perUnit(l), pack: { conv, qty: l.qty, freeQty: l.freeQty, ratePaise: l.ratePaise, mrpPaise: l.mrpPaise, discPercent, ...sums.lines[i] } };
+    }),
+    grn: body.grn ? { ...body.grn, ...Object.fromEntries(Object.entries(sums).filter(([k]) => k !== 'lines')) } : null,
+  };
+}
 
 async function purchaseViews(req, list) {
   const suppliers = new Map((await Supplier.find({ tenantId: req.tenantId, _id: { $in: list.map((p) => p.supplierId) } }, { name: 1 }).lean()).map((s) => [String(s._id), s.name]));
@@ -277,22 +327,30 @@ async function purchaseViews(req, list) {
     status: p.status,
     cancelled: p.cancelled ? { reason: p.cancelled.reason, byName: p.cancelled.byName, at: p.cancelled.at } : null,
     byName: p.created?.byName ?? '',
-    lines: p.lines.map((l) => ({ name: l.name, batch: l.batch, expiry: isoDay(l.expiry), qty: l.qty, freeQty: l.freeQty, ratePaise: l.ratePaise, mrpPaise: l.mrpPaise })),
+    at: p.created?.at ?? null,
+    // The bill's details and sums (GRN), and each line as on the bill (pack) – null on older purchases
+    grn: p.grn ?? null,
+    lines: p.lines.map((l) => ({ name: l.name, batch: l.batch, expiry: isoDay(l.expiry), qty: l.qty, freeQty: l.freeQty, ratePaise: l.ratePaise, mrpPaise: l.mrpPaise, hsn: l.hsn ?? '', gstRate: l.gstRate ?? null, pack: l.pack ?? null })),
   }));
 }
 
 pharmacyRouter.get('/purchases', async (req, res) => {
-  const list = await Purchase.find({ tenantId: req.tenantId }).sort({ invoiceDate: -1, createdAt: -1 }).limit(200).lean();
+  // supplierId: one supplier's bills (its page under Suppliers)
+  const q = parse(z.object({ supplierId: objectId.optional() }).strict(), req.query);
+  const list = await Purchase.find({ tenantId: req.tenantId, ...(q.supplierId ? { supplierId: q.supplierId } : {}) }).sort({ invoiceDate: -1, createdAt: -1 }).limit(200).lean();
   res.json({ purchases: await purchaseViews(req, list) });
 });
 pharmacyRouter.post('/purchases', async (req, res) => {
   desk(req);
-  const body = parse(purchaseSchema, req.body);
+  const body = await asStock(req, parse(purchaseSchema, req.body));
+  // The same supplier's invoice is entered once (26 Oct 2026): entering it again would add its stock twice
+  const twice = await Purchase.findOne({ tenantId: req.tenantId, supplierId: body.supplierId, status: { $ne: 'cancelled' }, invoiceNo: new RegExp(`^${escapeRegex(body.invoiceNo)}$`, 'i') }, { number: 1 }).lean();
+  if (twice) throw new HttpError(409, `This supplier's invoice ${body.invoiceNo} is already entered (${twice.number}). Cancel that purchase first if it was wrong.`, 'DUPLICATE');
   // Received against a purchase order: the order is checked before any stock comes in
   const order = body.orderId ? await orderToReceive(req, body.orderId, body) : null;
   const p = await createPurchase(req, body);
   // The stock is in: that is in the audit log first, with the order it was entered against
-  await audit(req, 'PHARMACY_PURCHASE_ENTERED', { details: { purchaseId: String(p._id), number: p.number, lines: p.lines.length, totalPaise: p.totalPaise, ...(order ? { orderId: String(order._id), order: order.number } : {}) } });
+  await audit(req, 'PHARMACY_PURCHASE_ENTERED', { details: { purchaseId: String(p._id), number: p.number, lines: p.lines.length, totalPaise: p.totalPaise, ...(p.grn ? { netPaise: p.grn.netPaise } : {}), ...(order ? { orderId: String(order._id), order: order.number } : {}) } });
   // Now the order counts it – unless it was cancelled or closed at this very moment: the purchase then stays without
   // the order, and the answer and the audit log (notCounted) say so.
   const got = order ? await countPurchaseOnOrder(req, order._id, p) : null;

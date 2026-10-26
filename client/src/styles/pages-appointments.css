@@ -317,3 +317,62 @@ button.appt-chip-main:focus-visible, .appt-chip-add:focus-visible { outline: non
 .signup-new.is-only { border-color: var(--indigo-700); }
 .signup-new .hint { margin: 2px 0 0; }
 .signup-sub { margin: 0 0 var(--space-2); font-size: var(--fs-body); }
+/* Register and book (26 Oct 2026): her full registration form inside the Book dialog */
+.modal.modal-register { max-width: 1040px; }
+.modal-register .appt-register > .form-grid { margin-bottom: var(--space-4); }
+.modal-register .sticky-actions { position: static; }
+
+/* ---------- Appointments, redesigned (26 Oct 2026: "more professional, attractive cards, easy") ---------- */
+/* The day's counts as soft pills */
+.appt-summary { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.appt-stat { display: inline-flex; align-items: baseline; gap: var(--space-1); padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); font-size: var(--fs-label); line-height: var(--lh-label); }
+.appt-stat strong { font-size: var(--fs-h3); }
+.appt-stat.is-booked { background: var(--status-due-bg); color: var(--status-due-fg); }
+.appt-stat.is-free { background: var(--teal-100); color: var(--teal-700); }
+.appt-stat.is-seen { background: var(--status-inactive-bg); color: var(--status-inactive-fg); }
+
+/* The times: free (white, teal time), booked (lavender with an indigo edge), kept for walk-ins (dashed), passed (mist) */
+.appt-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); list-style: none; margin: 0 0 var(--space-3); padding: 0; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--slate-600); }
+.appt-legend li { display: inline-flex; align-items: center; gap: var(--space-1); }
+.appt-legend li::before { content: ''; width: 12px; height: 12px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); }
+.appt-legend li.is-booked::before { background: var(--indigo-100); border-color: var(--indigo-700); }
+.appt-legend li.is-walkin::before { border-style: dashed; border-color: var(--teal-700); }
+.appt-legend li.is-past::before { background: var(--mist-50); }
+.appt-chip { transition: border-color 0.15s, box-shadow 0.15s; }
+.appt-chip.is-free:not(.is-past):hover { border-color: var(--teal-700); box-shadow: var(--shadow-card); }
+button.appt-chip-main:hover { background: var(--teal-100); }
+.appt-chip.is-booked { border-color: var(--indigo-200); border-left: 3px solid var(--indigo-700); background: var(--indigo-100); }
+.appt-chip.is-walkin { border-style: dashed; border-color: var(--teal-700); }
+.appt-chip.is-past { opacity: 1; background: var(--mist-50); border-color: transparent; }
+.appt-chip.is-past .appt-chip-time, .appt-chip.is-past .appt-chip-who { color: var(--slate-600); }
+
+/* The patients of the day: one card each – time on the left, a coloured edge for her state */
+.appt-people .appt-lines { gap: var(--space-2); }
+.appt-people .appt-lines > li.appt-card {
+  display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: var(--space-3); align-items: start;
+  margin: 0; padding: var(--space-3); border: 1px solid var(--border); border-left: 4px solid var(--status-due-fg);
+  border-radius: var(--radius-md); background: var(--surface); box-shadow: none;
+}
+.appt-people .appt-card.is-arrived { border-left-color: var(--status-stable-fg); }
+.appt-people .appt-card.is-seen, .appt-people .appt-card.is-cancelled { border-left-color: var(--slate-300); background: var(--mist-50); }
+.appt-people .appt-card.is-no_show, .appt-people .appt-card.is-needs-time { border-left-color: var(--status-watch-fg); }
+.appt-people .appt-lines > li.appt-card.is-next { margin: 0; padding: var(--space-3); border-color: var(--indigo-200); border-left: 4px solid var(--indigo-700); background: var(--indigo-100); box-shadow: var(--shadow-card); }
+.appt-card .appt-slot-time { display: flex; flex-direction: column; font-size: var(--fs-body); line-height: var(--lh-body); }
+.appt-card-length { font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; color: var(--slate-600); }
+.appt-card .appt-person { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; }
+
+/* One booking: initials, name and details, the status on the right; the actions on one row below */
+.appt-line { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: var(--space-2); width: 100%; }
+.appt-line-top { display: flex; align-items: flex-start; gap: var(--space-3); min-width: 0; }
+.appt-line-top .appt-line-who { flex: 1 1 auto; }
+.appt-line-who > a strong, .appt-line-who > strong { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.appt-line-pills { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); flex: 0 0 auto; }
+.appt-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; background: var(--indigo-700); color: var(--surface); font-size: var(--fs-label); font-weight: 600; }
+.appt-avatar.is-guest { background: var(--status-watch-bg); color: var(--status-watch-fg); }
+.appt-line-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.appt-line-actions .btn svg.lucide { width: 16px; height: 16px; }
+.appt-line-actions .appt-cancel { margin-left: auto; color: var(--status-high-fg); }
+@media (max-width: 600px) {
+  .appt-people .appt-lines > li.appt-card { grid-template-columns: 1fr; }
+  .appt-line-top { flex-wrap: wrap; }
+}

@@ -41,6 +41,7 @@ import { Admission } from '../models/Admission.js';
 import { Bed } from '../models/Bed.js';
 import { Appointment } from '../models/Appointment.js';
 import { Arrival } from '../models/Arrival.js';
+import { FollowUp } from '../models/FollowUp.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { Bill } from '../models/Bill.js';
 import { CarePlan } from '../models/CarePlan.js';
@@ -116,6 +117,7 @@ export const KINDS = [
   { file: 'consents.json', model: PatientConsent, what: 'Consent forms and information sheets printed for a patient, with what was typed into them, and when the signed copy came back. Scanned signed copies are in the "files" folder.' },
   { file: 'appointments.json', model: Appointment, what: 'Appointments and walk-in tokens, and what became of them.' },
   { file: 'arrivals.json', model: Arrival, what: 'Patients marked as arrived at reception, by day.' },
+  { file: 'follow-ups.json', model: FollowUp, what: 'Follow-ups added by hand: with which doctor, what for, from which day, and whether she came.' },
   { file: 'referrals.json', model: Referral, what: 'Referrals from other doctors: the referring doctor, when and how it came, urgent or routine, the centre, the patient (or her name, phone and age before she was registered), the reasons and the question, what the doctor sent, the consultant, her appointment, her Yes or No to sharing the note and the discharge summary, when she was first seen and discharged, the consultant note (draft or signed, with additions), the PDFs released to the referral desk, the messages marked sent, the weekly review notes, and closing or cancelling. The attached and released files are in the "files" folder.' },
   { file: 'referring-doctors.json', model: ReferringDoctor, what: 'The doctors who refer patients to the hospital: name, qualification, clinic, area, phone, e-mail, registration number, notes, what they joined (the partner programme) and whether they are still active.' },
   { file: 'reminder-messages.json', model: ReminderMessage, what: 'Reminder messages to patients by SMS or WhatsApp: the text, the phone number, and whether they were sent.' },

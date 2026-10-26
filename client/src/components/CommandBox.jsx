@@ -3,7 +3,7 @@ import { ArrowRight, CalendarPlus, Search, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { CARE_TYPE_SHORT, NEW_PATIENT_LINKS, ageText } from '../pages/patients/patientFormat.js';
-import { canRegisterPatients, canSeePatients } from '../platform/modules.js';
+import { canRegisterPatients, seesPatientList } from '../platform/modules.js';
 import { bookingDay, commandsFrom, matchCommands, patientTerm } from './commandBox.js';
 import { formatDate, useDialogFocus } from './ui.jsx';
 
@@ -33,7 +33,7 @@ function Box({ modules, roles, onClose }) {
     [modules, roles],
   );
   const term = patientTerm(text);
-  const seesPatients = canSeePatients(roles);
+  const seesPatients = seesPatientList(roles);
   useEffect(() => {
     if (!seesPatients || term.length < 2) {
       setFound(null);

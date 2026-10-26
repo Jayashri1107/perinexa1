@@ -27,6 +27,7 @@ import { AppointmentsPage, NeedsTimePage } from './pages/appointments/Appointmen
 import { OpdTimingsPage } from './pages/appointments/OpdTimingsPage.jsx';
 import { AppointmentsMonthPage } from './pages/appointments/AppointmentsMonthPage.jsx';
 import { BedBoardPage } from './pages/beds/BedBoardPage.jsx';
+import { FollowUpsPage, VaccinationFollowUpsPage } from './pages/followups/FollowUpsPage.jsx';
 import { BedSetupPage } from './pages/beds/BedSetupPage.jsx';
 import { DisplayPage } from './pages/appointments/DisplayPage.jsx';
 import { PatientAppointmentsTab } from './pages/appointments/PatientAppointmentsTab.jsx';
@@ -35,8 +36,9 @@ import { PatientAbhaTab } from './pages/abdm/PatientAbhaTab.jsx';
 import { AbdmSettingsPage } from './pages/abdm/ScanShare.jsx';
 import { InvoicePage, InvoicesPage } from './pages/pharmacy/InvoicesPage.jsx';
 import { OrderFormPage, OrderPage, OrdersPage } from './pages/pharmacy/OrdersPage.jsx';
-import { MedicinesPage, NewPurchasePage, PurchasesPage, SuppliersPage } from './pages/pharmacy/PurchasesPage.jsx';
+import { MedicinesPage, NewPurchasePage, PurchasesPage, SupplierPage, SuppliersPage } from './pages/pharmacy/PurchasesPage.jsx';
 import { PharmacySettingsPage, ReportsPage } from './pages/pharmacy/ReportsPage.jsx';
+import { RegisterRedirect } from './pages/pharmacy/RegisterPage.jsx';
 import { SellPage } from './pages/pharmacy/SellPage.jsx';
 import { MedicineStockPage, StockPage } from './pages/pharmacy/StockPage.jsx';
 import { NewSupplierReturnPage, SupplierReturnPage, SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
@@ -110,7 +112,7 @@ import { ByDoctorPage } from './pages/analytics/ByDoctorPage.jsx';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
 import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 import { ReferralSettingsPage } from './pages/settings/ReferralSettingsPage.jsx';
 import { ReferralsDeskPage } from './pages/referrals/ReferralsDeskPage.jsx';
 import { NewReferralPage } from './pages/referrals/NewReferralPage.jsx';
@@ -281,6 +283,11 @@ export function App() {
               <Route path="beds" element={<RequireTenantRole roles={BED_ROLES} message="The bed board is for reception, doctors, RMOs and nurses." />}>
                 <Route index element={<BedBoardPage />} />
               </Route>
+              {/* Reception's follow-ups: who to call and who is coming, babies due (routes/followUps.js) */}
+              <Route path="follow-ups" element={<RequireTenantRole roles={FOLLOW_UP_ROLES} message="The follow-ups list is for reception." />}>
+                <Route index element={<FollowUpsPage />} />
+                <Route path="vaccinations" element={<VaccinationFollowUpsPage />} />
+              </Route>
               {/* Referrals from other doctors (docs/REFERRALS_PLAN.md): the referral desk, doctors and RMOs */}
               <Route path="referrals" element={<RequireTenantRole roles={REFERRAL_ROLES} message="Referrals are for the referral desk, doctors and RMOs." />}>
                 <Route index element={<ReferralsDeskPage />} />
@@ -301,6 +308,8 @@ export function App() {
                 <Route element={<RequireTenantRole roles={['pharmacist']} message="Selling and issuing medicines is for the pharmacist." />}>
                   <Route index element={<SellPage key="sale" kind="sale" />} />
                   <Route path="issue" element={<SellPage key="issue" kind="issue" />} />
+                  {/* The day's OPD, IPD and External patients are on Today (owner, 26 Oct 2026) */}
+                  <Route path="register" element={<RegisterRedirect />} />
                   <Route path="purchases/new" element={<NewPurchasePage />} />
                   <Route path="supplier-returns/new" element={<NewSupplierReturnPage />} />
                 </Route>
@@ -318,6 +327,7 @@ export function App() {
                 <Route path="supplier-returns/:id" element={<SupplierReturnPage />} />
                 <Route path="medicines" element={<MedicinesPage />} />
                 <Route path="suppliers" element={<SuppliersPage />} />
+                <Route path="suppliers/:id" element={<SupplierPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="settings" element={<PharmacySettingsPage />} />
               </Route>

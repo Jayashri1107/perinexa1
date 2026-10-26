@@ -73,6 +73,10 @@ export const AUDIT_LABELS = {
   PATIENT_RECORD_COPY_PDF_SAVED: 'Copy of the whole record saved as PDF',
   PATIENT_ARRIVED: 'Patient marked arrived',
   PATIENT_ARRIVAL_UNDONE: 'Arrival undone',
+  ARRIVAL_EMERGENCY_CHANGED: 'Emergency in the queue changed',
+  PATIENT_LEFT_MARKED: 'Patient marked done (left)',
+  FOLLOW_UP_ADDED: 'Follow-up added',
+  FOLLOW_UP_CANCELLED: 'Follow-up cancelled',
   APPOINTMENT_BOOKED: 'Appointment booked',
   APPOINTMENT_MOVED: 'Appointment moved',
   APPOINTMENT_CANCELLED: 'Appointment cancelled',
@@ -110,6 +114,7 @@ export const AUDIT_LABELS = {
   PHARMACY_RETURNED: 'Medicines returned to the pharmacy',
   PHARMACY_PRINTED: 'Pharmacy invoice or credit note printed',
   PHARMACY_REGISTER_VIEWED: 'Pharmacy register opened',
+  PHARMACY_PATIENT_LOOKED_UP: 'Patient looked up in the pharmacy',
   PHARMACY_EXPORTED: 'Pharmacy export downloaded',
   TENANT_SETTINGS_UPDATED: 'Letterhead changed',
   PROFILE_UPDATED: 'Professional details changed',
@@ -381,6 +386,10 @@ export const AUDIT_TONES = {
   PATIENT_RECORD_COPY_PDF_SAVED: 'patient',
   PATIENT_ARRIVED: 'patient',
   PATIENT_ARRIVAL_UNDONE: 'patient',
+  ARRIVAL_EMERGENCY_CHANGED: 'patient',
+  PATIENT_LEFT_MARKED: 'patient',
+  FOLLOW_UP_ADDED: 'patient',
+  FOLLOW_UP_CANCELLED: 'patient',
   APPOINTMENT_BOOKED: 'patient',
   APPOINTMENT_MOVED: 'patient',
   APPOINTMENT_CANCELLED: 'patient',
@@ -929,6 +938,10 @@ export function describeAudit(entry) {
       return '';
     case 'PATIENT_ARRIVED':
     case 'PATIENT_ARRIVAL_UNDONE':
+    case 'ARRIVAL_EMERGENCY_CHANGED':
+    case 'PATIENT_LEFT_MARKED':
+    case 'FOLLOW_UP_ADDED':
+    case 'FOLLOW_UP_CANCELLED':
     case 'PATIENT_CARD_PRINTED':
       return d.mrn ? record(d) : '';
     // A copy of the whole record: which record only – never what the copy held
@@ -1381,6 +1394,8 @@ export function describeAudit(entry) {
       return d.what === 'credit_note' ? `Credit note of ${d.number ? `invoice ${d.number}` : 'an invoice'}` : invoiceOf(d);
     case 'PHARMACY_REGISTER_VIEWED':
       return joined(`${SCHEDULE_WORDS[d.type] ?? 'Drug'} register`, periodOf(d));
+    case 'PHARMACY_PATIENT_LOOKED_UP':
+      return joined(d.by === 'phone' ? 'By phone number' : 'By patient number', count(d.patientIds?.length ?? 0, 'record'), d.walkInBills ? count(d.walkInBills, 'walk-in bill') : '');
     case 'PHARMACY_EXPORTED':
       return joined(PHARMACY_EXPORT_WORDS[d.what] ?? 'export', periodOf(d), d.rows != null ? count(d.rows, 'row') : '');
     default:

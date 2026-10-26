@@ -6,7 +6,7 @@ import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useFetch } from '../hooks/useFetch.js';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
-import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, canSeePatients, hospitalModules, platformModules } from '../platform/modules.js';
+import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, hospitalModules, platformModules, seesPatientList } from '../platform/modules.js';
 import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
 import { useTextShortcuts } from '../shortcuts/useTextShortcuts.js';
 import { CommandBox } from './CommandBox.jsx';
@@ -334,7 +334,7 @@ export function AppLayout() {
 
   const locked = user.mustChangePassword; // only the password screen until they choose their own
   // "Find a patient" in the top bar: hospital staff who work with patient records.
-  const searchable = !locked && canSeePatients(activeMembership?.roles ?? []);
+  const searchable = !locked && seesPatientList(activeMembership?.roles ?? []);
   // Super admins and platform admins: the platform menu, or – with a hospital's setup open – its Hospital admin pages only
   const inSetup = Boolean(activeMembership?.platform);
   const modules = locked ? [] : isPlatform && !inSetup ? platformModules(platform) : hospitalModules(activeMembership?.roles);

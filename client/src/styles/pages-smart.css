@@ -325,3 +325,18 @@
 .td-top > .ward-handover h2 { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
 .td-top > .ward-handover .muted, .td-top > .ward-handover .ward-handover-list { font-size: var(--fs-caption); line-height: var(--lh-caption); }
 .td-top > .ward-handover > p.muted { margin: 0; }
+
+/* Reception's Today, made simpler (26 Oct 2026): only the lists with someone in them, open, one under the other */
+.td-simple { grid-template-columns: 1fr !important; }
+.td-simple > .wl-fold:not(.has-items) { display: none; }
+.td-simple-clear { display: none; }
+.td-simple:not(:has(> .wl-fold.has-items)) + .td-simple-clear { display: block; }
+
+/* Details missing (DetailsMissing.jsx): a warning box near the top of reception's Today */
+.dm-panel { border: 1px solid var(--border); border-left: 4px solid var(--status-watch-fg); border-radius: var(--radius-lg); background: var(--surface); padding: var(--space-4) var(--space-6); margin-bottom: var(--space-6); }
+.dm-title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-1); font-size: var(--fs-h3, 1.1rem); }
+.dm-title svg { width: 20px; height: 20px; color: var(--status-watch-fg); }
+.dm-list { list-style: none; margin: var(--space-3) 0 0; padding: 0; }
+.dm-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.dm-who { display: flex; flex-direction: column; flex: 1 1 220px; }
+.dm-missing { flex: 1 1 220px; }

@@ -67,7 +67,9 @@ export async function moveStock(req, batch, qty, meta) {
 
 /**
  * Saves a supplier invoice and adds its stock, batch by batch. body: { supplierId, invoiceNo, invoiceDate, lines,
- * orderId? } – orderId: the purchase order it is received against (checked by the caller, ordersService.js).
+ * orderId?, grn? } – orderId: the purchase order it is received against (checked by the caller, ordersService.js);
+ * lines per unit of sale (a line may carry its GST rate from the bill and `pack`, the line as on the bill); grn: the
+ * bill's details and sums (pharmacy/grn.js).
  */
 export async function createPurchase(req, body) {
   const supplier = await Supplier.findOne({ tenantId: req.tenantId, _id: body.supplierId, active: true }).lean();
@@ -92,10 +94,11 @@ export async function createPurchase(req, body) {
     // Each line keeps the medicine's HSN code and GST rate of today: a debit note (a return to the supplier) uses them
     lines: body.lines.map((l) => {
       const m = meds.get(String(l.medicineId));
-      return { ...l, name: m.name, expiry: endOfMonth(l.expiry), hsn: m.hsn ?? '', gstRate: m.gstRate };
+      return { ...l, name: m.name, expiry: endOfMonth(l.expiry), hsn: m.hsn ?? '', gstRate: l.gstRate ?? m.gstRate };
     }),
     totalPaise: body.lines.reduce((s, l) => s + l.ratePaise * l.qty, 0),
     orderId: body.orderId ?? null,
+    grn: body.grn ?? null,
     created: stampOf(req),
   });
   for (const line of purchase.lines) {
