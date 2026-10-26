@@ -344,14 +344,19 @@ describe('returns to a supplier', () => {
       settings: SETTINGS,
       pages: [{ medicine: med('m1', 'H1 Tab', { schedule: 'H1' }), opening: 0, closing: 15, rows: [{ date: '2026-10-04', time: '11:30', kind: 'supplier_return', ref: 'SR-000001', batch: 'H1B', in: 0, out: 5, balance: 15, patient: '', doctor: '', supplier: 'Sample Distributors', reason: 'Recalled', witness: '', byName: 'Sample Pharmacist' }] }],
     };
-    const html = at('/pharmacy/reports', '/pharmacy/reports', <ReportsPage />);
-    const shown = text(html);
-    expect(shown).toContain('Purchases by supplier, net of returns');
-    expect(shown).toContain('Sample Distributors 1 ₹50,000 −₹15,000 (2 returns) ₹35,000');
-    expect(shown).toContain('Returned to supplier SR-000001');
-    expect(shown).toContain('Recalled · balance 15 · Sample Pharmacist');
-    expect(shown).toContain('Returns to suppliers'); // the export
-    brand(html);
+    // One report at a time (owner, 26 Oct 2026): the tab is in the address
+    const view = (v) => at(`/pharmacy/reports?view=${v}`, '/pharmacy/reports', <ReportsPage />);
+    const first = at('/pharmacy/reports', '/pharmacy/reports', <ReportsPage />);
+    expect(text(first)).toContain('Stock alerts Sales & GST Purchases Registers Export'); // Export: the admin only
+    expect(text(first)).toContain('Bought from suppliers ₹35,000');
+    brand(first);
+    const purchases = text(view('purchases'));
+    expect(purchases).toContain('Purchases by supplier');
+    expect(purchases).toContain('Sample Distributors 1 ₹50,000 −₹15,000 (2 returns) ₹35,000');
+    const registers = text(view('registers'));
+    expect(registers).toContain('Returned to supplier SR-000001');
+    expect(registers).toContain('Recalled · balance 15 · Sample Pharmacist');
+    expect(text(view('export'))).toContain('Returns to suppliers'); // the export
   });
 });
 

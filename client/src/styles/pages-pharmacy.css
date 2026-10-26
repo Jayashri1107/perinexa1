@@ -127,3 +127,10 @@
 .ph-grn-net th, .ph-grn-net td { font-weight: 700; border-top: 1px solid var(--border); }
 .ph-grn-facts { margin: 0 0 var(--space-3); }
 @media (max-width: 860px) { .ph-grn-head, .ph-grn-foot { grid-template-columns: minmax(0, 1fr); } }
+/* Pharmacy reports (owner, 26 Oct 2026): the period in one row, the reports as tabs, the two stock alerts side by side */
+.ph-rep-period { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-4); }
+.ph-rep-date { display: grid; gap: var(--space-1); font-size: var(--fs-label); color: var(--slate-600); }
+.ph-rep-tabs { margin-bottom: var(--space-4); }
+.ph-rep-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+.ph-rep-ok { width: 16px; height: 16px; vertical-align: -3px; color: var(--status-stable-fg); }
+@media (max-width: 1000px) { .ph-rep-two { grid-template-columns: minmax(0, 1fr); } }
