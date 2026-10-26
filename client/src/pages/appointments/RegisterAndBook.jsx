@@ -23,12 +23,12 @@ import { VISIT_TYPES, VISIT_TYPE_LABELS } from './appointmentFormat.js';
 /** registered: her record once saved; booking errors after that keep it, so the time is booked for her, not again. */
 // registerOnly (reception's search box on Today): no doctor or time – she is registered, then onBooked(null, patient).
 // prefill: details already typed there (her phone or name).
-export function RegisterAndBook({ doctor = null, date, start, lengths = null, appointment = null, registerOnly = false, prefill = null, onBooked, onCancel }) {
+export function RegisterAndBook({ doctor = null, date, start, lengths = null, appointment = null, registerOnly = false, prefill = null, defaultCareType = null, onBooked, onCancel }) {
   const { activeMembership } = useAuth();
   const roles = activeMembership?.roles ?? [];
   const clinical = roles.includes('doctor') || roles.includes('rmo');
   const links = newPatientLinks(roles);
-  const [careType, setCareType] = useState('');
+  const [careType, setCareType] = useState(defaultCareType ?? '');
   const [visitType, setVisitType] = useState(appointment?.visitType ?? 'new');
   const [registered, setRegistered] = useState(null);
   const [matches, setMatches] = useState(null); // { list, total, payload }
@@ -194,7 +194,7 @@ export function RegisterAndBook({ doctor = null, date, start, lengths = null, ap
  * change (reception: her identity and contact details, never clinical ones). Opening it reads her record (audited as
  * every view of a record).
  */
-export function EditPatientDialog({ patientId, onClose, onSaved }) {
+export function EditPatientDialog({ patientId, missing = null, onClose, onSaved }) {
   const ref = useDialogFocus(onClose);
   const res = useFetch(`/patients/${patientId}`);
   const patient = res.data?.patient;
@@ -205,8 +205,9 @@ export function EditPatientDialog({ patientId, onClose, onSaved }) {
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={ref} tabIndex={-1} className="modal modal-wide modal-register" role="dialog" aria-modal="true" aria-labelledby="appt-edit-title">
-        <h2 id="appt-edit-title">{patient ? `Edit info – ${patient.fullName}` : 'Edit info'}</h2>
+        <h2 id="appt-edit-title">{patient ? `${missing ? 'Fill info' : 'Edit info'} – ${patient.fullName}` : missing ? 'Fill info' : 'Edit info'}</h2>
         <Alert type="error">{res.error}</Alert>
+        {missing && <Alert type="warning">{missing} – fill it in below and save.</Alert>}
         {!patient && !res.error && (
           <p className="muted" aria-busy="true">
             Opening her details…
