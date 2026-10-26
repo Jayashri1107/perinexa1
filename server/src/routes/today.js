@@ -15,6 +15,7 @@ import { CarePlan } from '../models/CarePlan.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { IN_USE } from '../patients/deathRules.js';
+import { patientsWithMissingDetails } from '../patients/missingDetails.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { inHospitalNow } from '../reminders/generalReminders.js';
@@ -38,6 +39,9 @@ import { parse } from '../utils/validate.js';
 
 export const todayRouter = Router();
 
+// What the Details missing list reads of a patient: identity only
+const MISSING_SELECT = 'fullName mrn phone assignedDoctor careType ageYears address city emergencyContact.phone createdAt';
+
 const MAX_PLANS = 1000;
 const MAX_BABIES = 200;
 const MISSED_BOOKING_DAYS = 28;
@@ -50,14 +54,14 @@ todayRouter.use((req, _res, next) => {
 
 const inScope = (req, scope, patient) => scope === 'all' || !patient.assignedDoctor || String(patient.assignedDoctor) === String(req.user._id);
 
-async function doctorNames(patients) {
+export async function doctorNames(patients) {
   const ids = [...new Set(patients.map((p) => p.assignedDoctor && String(p.assignedDoctor)).filter(Boolean))];
   const users = ids.length ? await User.find({ _id: { $in: ids } }, { name: 1 }).lean() : [];
   return new Map(users.map((u) => [String(u._id), u.name]));
 }
 
 // Name, patient number, phone and doctor – the same for every level (reception may see these).
-const who = (p, names) => ({
+export const who = (p, names) => ({
   id: String(p._id),
   fullName: p.fullName,
   mrn: p.mrn,
@@ -99,6 +103,8 @@ export async function todayFor(req, askedScope) {
   const seenToday = new Set([...firstVisit.keys(), ...arrivals.keys()]);
   const calls = hasRole(req.membership, 'receptionist') ? await callLists(req, today, seenToday) : null;
   const babies = hasRole(req.membership, 'receptionist') ? await babiesDue(req, today, seenToday) : null;
+  // Reception: patients registered with details still missing (recent ones, and anyone on today's list)
+  const incomplete = hasRole(req.membership, 'receptionist') ? await patientsWithMissingDetails(tenantId, { now: req.now, alsoIds: ids, select: MISSING_SELECT }) : null;
 
   // Today's appointments (appointment booking): the time or walk-in token and the doctor of each patient, and the
   // quick bookings of new patients not registered yet.
@@ -110,7 +116,7 @@ export async function todayFor(req, askedScope) {
   const apptOf = new Map();
   for (const a of appts) if (a.patientId && !apptOf.has(String(a.patientId))) apptOf.set(String(a.patientId), apptView(a));
 
-  const names = await doctorNames([...shown.map((s) => s.p), ...(calls?.patients ?? []), ...(babies?.rows ?? []).map((r) => r.p)]);
+  const names = await doctorNames([...shown.map((s) => s.p), ...(calls?.patients ?? []), ...(babies?.rows ?? []).map((r) => r.p), ...(incomplete?.rows ?? []).map((r) => r.p)]);
   const patients = shown
     .map(({ p, level }) => {
       const id = String(p._id);
@@ -152,7 +158,9 @@ export async function todayFor(req, askedScope) {
     // Reception's general list of babies to call: who, and the first day it was due – never what is due. draft: the
     // baby's schedule has not been approved by a doctor yet (the date comes from content nobody reviewed).
     babiesDue: babies ? babies.rows.map((r) => ({ patient: who(r.p, names), dueFrom: r.dueFrom, draft: r.draft })) : null,
-    cut: Boolean(calls?.cut || babies?.cut),
+    // Reception: registration details still missing – who, what (patients/missingDetails.js) and when registered
+    incomplete: incomplete ? incomplete.rows.map((r) => ({ patient: who(r.p, names), missing: r.missing, registeredOn: isoDay(r.p.createdAt) })) : null,
+    cut: Boolean(calls?.cut || babies?.cut || incomplete?.cut),
   };
 }
 
@@ -163,7 +171,7 @@ export async function todayFor(req, askedScope) {
  * care-plan date – a sensitive record. Only the first day it was due and whether the schedule is still a draft
  * leave this function, never the vaccine's name.
  */
-async function babiesDue(req, today, seenToday) {
+export async function babiesDue(req, today, seenToday) {
   // withOlder: "was due from" is the first day ANYTHING was due for this baby, also when that is longer ago
   const { rows, cut } = await overduePlanItems(req.tenantId, { now: req.now, kindsFor: babyVaccinations, careTypes: ['newborn'], overdueSince: addDays(today, -VACCINATION_LIST_DAYS), withOlder: true, limit: MAX_BABIES });
   const waiting = rows.filter((r) => !seenToday.has(String(r.patient._id)));
@@ -184,7 +192,7 @@ async function babiesDue(req, today, seenToday) {
  * Patients to call: an open care-plan visit window (due now), a window that has passed (overdue) or a booked day in
  * the last 4 weeks with no visit. Not listed: anyone with a visit today or a booking from today on.
  */
-async function callLists(req, today, seenToday) {
+export async function callLists(req, today, seenToday) {
   const tenantId = req.tenantId;
   await refreshStalePlans(tenantId, req.now);
   const plans = await CarePlan.find(

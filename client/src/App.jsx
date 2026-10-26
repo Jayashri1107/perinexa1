@@ -27,6 +27,7 @@ import { AppointmentsPage, NeedsTimePage } from './pages/appointments/Appointmen
 import { OpdTimingsPage } from './pages/appointments/OpdTimingsPage.jsx';
 import { AppointmentsMonthPage } from './pages/appointments/AppointmentsMonthPage.jsx';
 import { BedBoardPage } from './pages/beds/BedBoardPage.jsx';
+import { FollowUpsPage, VaccinationFollowUpsPage } from './pages/followups/FollowUpsPage.jsx';
 import { BedSetupPage } from './pages/beds/BedSetupPage.jsx';
 import { DisplayPage } from './pages/appointments/DisplayPage.jsx';
 import { PatientAppointmentsTab } from './pages/appointments/PatientAppointmentsTab.jsx';
@@ -110,7 +111,7 @@ import { ByDoctorPage } from './pages/analytics/ByDoctorPage.jsx';
 import { AnalyticsPage } from './pages/analytics/AnalyticsPage.jsx';
 import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 import { ReferralSettingsPage } from './pages/settings/ReferralSettingsPage.jsx';
 import { ReferralsDeskPage } from './pages/referrals/ReferralsDeskPage.jsx';
 import { NewReferralPage } from './pages/referrals/NewReferralPage.jsx';
@@ -280,6 +281,11 @@ export function App() {
               </Route>
               <Route path="beds" element={<RequireTenantRole roles={BED_ROLES} message="The bed board is for reception, doctors, RMOs and nurses." />}>
                 <Route index element={<BedBoardPage />} />
+              </Route>
+              {/* Reception's follow-ups: who to call and who is coming, babies due (routes/followUps.js) */}
+              <Route path="follow-ups" element={<RequireTenantRole roles={FOLLOW_UP_ROLES} message="The follow-ups list is for reception." />}>
+                <Route index element={<FollowUpsPage />} />
+                <Route path="vaccinations" element={<VaccinationFollowUpsPage />} />
               </Route>
               {/* Referrals from other doctors (docs/REFERRALS_PLAN.md): the referral desk, doctors and RMOs */}
               <Route path="referrals" element={<RequireTenantRole roles={REFERRAL_ROLES} message="Referrals are for the referral desk, doctors and RMOs." />}>

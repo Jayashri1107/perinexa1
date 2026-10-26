@@ -183,3 +183,25 @@ describe('marking arrived', () => {
     expect(body.patients.find((r) => r.patient.id === gyn.id)).toMatchObject({ booked: false, arrivalMarked: true });
   });
 });
+
+describe('details missing (reception)', () => {
+  it('lists recent registrations with a detail missing – what is missing, never anything clinical – until it is filled in', async () => {
+    const quick = await register('Quick Patient', { careType: 'gynaecology' }); // name, age, phone, address, doctor: no emergency contact
+    const bare = (await (await as('reception')).post('/api/patients').send({ careType: 'gynaecology', fullName: 'Bare Patient', ageYears: 25, phone: '98765 43210', registerAnyway: true })).body.patient;
+    expect(bare?.id).toBeTruthy();
+    const full = (await (await as('drA')).post('/api/patients').send(samplePatient({ fullName: 'Full Patient', assignedDoctor: people.drA._id.toString(), emergencyContact: { name: 'Sample Relative', relation: 'Husband', phone: '90000 00001' } }))).body.patient;
+
+    let body = (await today('reception')).body;
+    const rows = Object.fromEntries(body.incomplete.map((r) => [r.patient.fullName, r.missing]));
+    expect(rows).toEqual({ 'Quick Patient': ['emergencyContact'], 'Bare Patient': ['address', 'emergencyContact', 'doctor'] });
+    expect(body.incomplete.find((r) => r.patient.id === bare.id)).toEqual({ patient: { id: bare.id, fullName: 'Bare Patient', mrn: bare.mrn, phone: '98765 43210', doctorName: null }, missing: ['address', 'emergencyContact', 'doctor'], registeredOn: '2026-09-28' });
+    expect(full.id).toBeTruthy();
+    expect(quick.id).toBeTruthy();
+
+    // Filled in: off the list. Doctors get no such list.
+    expect((await (await as('reception')).patch(`/api/patients/${quick.id}`).send({ emergencyContact: { name: 'Sample Relative', relation: 'Mother', phone: '90000 00002' } })).status).toBe(200);
+    body = (await today('reception')).body;
+    expect(body.incomplete.map((r) => r.patient.fullName)).toEqual(['Bare Patient']);
+    expect((await today('drA')).body.incomplete).toBeNull();
+  });
+});

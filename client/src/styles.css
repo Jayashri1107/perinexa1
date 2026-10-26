@@ -21,6 +21,8 @@
 @import './styles/pages-beds.css';
 @import './styles/pages-billing.css';
 @import './styles/pages-pharmacy.css';
+@import './styles/pages-followups.css';
+@import './styles/pages-reception.css';
 @import './styles/look-perinexa1.css';
 @import './styles/print.css';
 @import './styles/print-rx.css';

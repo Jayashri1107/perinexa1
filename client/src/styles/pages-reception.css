@@ -1,0 +1,54 @@
+/* Reception's desk on Today (ReceptionDesk.jsx, 26 Oct 2026): the search box first, then the numbers, then today's
+   patients beside a short To do list. Colours only from tokens.css. */
+
+/* The search box: large, the first thing on the page */
+.rc-search { margin-bottom: var(--space-6); }
+.rc-search-box {
+  position: relative; display: flex; align-items: center;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+}
+.rc-search-box:focus-within { border-color: var(--indigo-700); box-shadow: var(--focus-ring, 0 0 0 3px var(--indigo-100)), var(--shadow-card); }
+.rc-search-box svg.lucide { position: absolute; left: var(--space-6); width: 22px; height: 22px; color: var(--indigo-700); pointer-events: none; }
+.rc-search-box input {
+  width: 100%; border: 0; background: transparent; border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-6) var(--space-4) calc(var(--space-6) * 2 + 22px);
+  font-size: var(--fs-h2); line-height: var(--lh-h2); color: var(--ink);
+}
+.rc-search-box input:focus { outline: none; }
+.rc-results { list-style: none; margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-6); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.rc-result { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.rc-result:first-child { border-top: 0; }
+.rc-who { display: flex; flex-direction: column; flex: 1 1 240px; }
+.rc-who a { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; }
+.rc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.rc-new { justify-content: space-between; }
+
+/* Two columns: the main work, and To do with the doctors */
+.rc-columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--space-6); align-items: start; margin-bottom: var(--space-6); }
+.rc-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.rc-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+@media (max-width: 1000px) { .rc-columns { grid-template-columns: 1fr; } }
+
+/* To do: one short list, each row opening its list */
+.rc-todo { padding: var(--space-6); }
+.rc-todo h2 { margin: 0 0 var(--space-3); font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.rc-todo ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.rc-todo-row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3); text-align: left;
+  font: inherit; color: var(--ink); text-decoration: none; background: var(--mist-50); border: 1px solid transparent; border-radius: var(--radius-md); cursor: pointer;
+}
+.rc-todo-row:hover { border-color: var(--indigo-200); background: var(--indigo-100); }
+.rc-todo-row:focus-visible { outline: none; box-shadow: var(--focus-ring-inset, inset 0 0 0 2px var(--indigo-700)); }
+.rc-todo-icon { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
+.rc-todo-icon.is-watch { background: var(--status-watch-bg); color: var(--status-watch-fg); }
+.rc-todo-icon svg { width: 18px; height: 18px; }
+.rc-todo-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.rc-todo-text .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.rc-todo-count { min-width: 32px; padding: 2px var(--space-2); border-radius: var(--radius-pill); background: var(--indigo-700); color: var(--surface); text-align: center; font-weight: 600; font-size: var(--fs-label); }
+.rc-todo-go { width: 18px; height: 18px; color: var(--slate-600); flex: 0 0 auto; }
+.rc-done { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--status-stable-bg); color: var(--status-stable-fg); }
+.rc-done svg { width: 18px; height: 18px; }
+
+/* The lists in the main column take the full width and look like cards */
+.rc-main > .wl-fold, .rc-main > section { width: 100%; }
+.rc-side .desk-doctors { margin: 0; }

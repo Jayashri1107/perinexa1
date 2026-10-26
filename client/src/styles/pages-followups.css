@@ -1,0 +1,11 @@
+/* Reception's Follow-ups page (pages/followups/FollowUpsPage.jsx): the lists to call and the coming week. Colours
+   only from tokens.css. */
+.fu-panel { margin-bottom: var(--space-6); }
+.fu-title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); }
+.fu-title svg { width: 20px; height: 20px; color: var(--slate-600); }
+.fu-day { margin-bottom: var(--space-4); }
+.fu-day-title { margin: var(--space-4) 0 var(--space-2); font-size: var(--fs-label); }
+.fu-patient { display: flex; flex-direction: column; }
+.fu-why { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.fu-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-bottom: var(--space-6); }
+.fu-search { flex: 1 1 280px; max-width: 420px; }

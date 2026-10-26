@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { CalendarX2, Check, ChevronDown, MessageCircle, Phone, Siren, Stethoscope, Syringe, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
@@ -70,21 +70,25 @@ export function Who({ patient, to }) {
 
 // Which lists the person left open on Today (this browser only; closed when it can't be read).
 const openKey = (id) => `perinexa.open.${id}`;
-function readOpen(id) {
+function readOpen(id, fallback = false) {
   try {
-    return localStorage.getItem(openKey(id)) === '1';
+    const v = localStorage.getItem(openKey(id));
+    return v === null ? fallback : v === '1';
   } catch {
-    return false;
+    return fallback;
   }
 }
 function saveOpen(id, open) {
   try {
-    if (open) localStorage.setItem(openKey(id), '1');
-    else localStorage.removeItem(openKey(id));
+    // '0' too: a list closed by hand stays closed where lists open at first (SectionOpenDefault)
+    localStorage.setItem(openKey(id), open ? '1' : '0');
   } catch {
     // not remembered – nothing else changes
   }
 }
+
+/** true: lists with someone in them start open, unless closed by hand (reception's simpler Today, 26 Oct 2026). */
+export const SectionOpenDefault = createContext(false);
 
 /**
  * A list on Today: a box with the heading and how many, which opens and closes when clicked (closed at first;
@@ -92,7 +96,8 @@ function saveOpen(id, open) {
  * remember={false}: not remembered (e.g. the days of a week), defaultOpen then decides. badge: beside the title.
  */
 export function Section({ id, icon: Icon, title, count, empty, collapsible = true, remember = true, defaultOpen = false, badge = null, children }) {
-  const [open, setOpen] = useState(() => !collapsible || (remember ? readOpen(id) : defaultOpen));
+  const openAtFirst = useContext(SectionOpenDefault);
+  const [open, setOpen] = useState(() => !collapsible || (remember ? readOpen(id, openAtFirst && count > 0) : defaultOpen));
   const toggle = () => {
     if (remember) saveOpen(id, !open);
     setOpen(!open);

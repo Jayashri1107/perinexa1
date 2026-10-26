@@ -1,0 +1,253 @@
+import { Baby, CalendarClock, CalendarX2, Check, Phone, PhoneCall, Search, TriangleAlert, UserCheck } from 'lucide-react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { DataTable } from '../../components/DataTable.jsx';
+import { PageHeader } from '../../components/PageHeader.jsx';
+import { Alert, KpiCard, StatusPill, formatDate } from '../../components/ui.jsx';
+import { useFetch } from '../../hooks/useFetch.js';
+import { HOSPITAL_FOLLOW_UPS } from '../../platform/modules.js';
+import { SETTING_CHOICES, SETTING_LABELS, bookingTime, callRows, comingUpGroups, filterFollowUps, followUpCounts, visitTypeLabel } from './followUpsFormat.js';
+
+// Reception's Follow-ups (26 Oct 2026, docs/IDEAS_FOR_LATER.md ideas 24, 25 and 27), from GET /api/follow-ups:
+//  - Follow-ups: the patients to call (a visit due or overdue, nothing booked) and everyone booked for the next 7 days,
+//    by day – the time, the doctor, New or Follow-up, arrived;
+//  - Vaccinations: babies whose vaccination is overdue, or due in the next 7 days, with nothing booked – in general
+//    words only ("a check-up or test"), never the vaccine; "Draft schedule": ask the doctor before calling.
+// Names, phone numbers and dates only: never the reason for a visit.
+// The filter (both tabs, kept in the address bar as ?q= and ?type=): part of her name, patient number, phone or
+// doctor, and OPD / IPD / Day care (IPD and day care: a stay still going or ended in the last 90 days).
+
+const phoneLink = (phone) =>
+  phone ? (
+    <a className="btn btn-link btn-sm" href={`tel:${phone.replace(/\s+/g, '')}`}>
+      <Phone aria-hidden="true" /> {phone}
+    </a>
+  ) : (
+    <span className="muted">No phone</span>
+  );
+
+const patientCell = (r) => (
+  <span className="fu-patient">
+    <Link to={`/patients/${r.patient.id}`}>{r.patient.fullName}</Link>
+    <span className="muted tabular">
+      {r.patient.mrn}
+      {r.patient.setting && r.patient.setting !== 'opd' ? ` · ${SETTING_LABELS[r.patient.setting]}` : ''}
+    </span>
+  </span>
+);
+
+const bookLink = (r) => (
+  <Link to={`/patients/${r.patient.id}/appointments`} className="btn btn-secondary btn-sm">
+    Book
+  </Link>
+);
+
+const NO_MATCH = 'No patient matches the filter.';
+
+/** The filter in the address bar: { text, setting, set(key, value) } – the same on both tabs. */
+function useFilter() {
+  const [params, setParams] = useSearchParams();
+  const setting = SETTING_CHOICES.some(([k]) => k && k === params.get('type')) ? params.get('type') : '';
+  const set = (key, value) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setParams(next, { replace: true });
+  };
+  const text = params.get('q') ?? '';
+  return { text, setting, set, active: Boolean(text.trim() || setting) };
+}
+
+function FilterBar({ filter }) {
+  return (
+    <div className="fu-filter" role="search">
+      <label className="bill-search fu-search">
+        <Search aria-hidden="true" />
+        <span className="sr-only">Filter</span>
+        <input type="search" placeholder="Patient name, number, phone or doctor" value={filter.text} onChange={(e) => filter.set('q', e.target.value)} />
+      </label>
+      <div className="segmented" role="group" aria-label="OPD, IPD or day care">
+        {SETTING_CHOICES.map(([key, label]) => (
+          <button key={label} type="button" aria-pressed={filter.setting === key} onClick={() => filter.set('type', key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Header({ data }) {
+  const { search } = useLocation();
+  return (
+    <PageHeader
+      breadcrumbs={[{ label: 'Follow-ups' }]}
+      title="Follow-ups"
+      subtitle="Who to call and who is coming. Names, phone numbers and dates only."
+      tabs={HOSPITAL_FOLLOW_UPS.tabs.map((t) => ({ ...t, to: t.to + search }))}
+      documentTitle="Follow-ups"
+      badges={data?.cut ? <StatusPill tone="watch">List cut short</StatusPill> : null}
+    />
+  );
+}
+
+function Counts({ data }) {
+  const n = followUpCounts(data);
+  return (
+    <div className="kpi-grid">
+      <KpiCard to="/follow-ups#fu-call" tone={n.toCall ? 'watch' : 'stable'} icon={PhoneCall} label="To call – not booked" value={n.toCall} />
+      <KpiCard to="/follow-ups/vaccinations" tone={n.babies ? 'watch' : 'stable'} icon={Baby} label="Babies to call" value={n.babies} />
+      <KpiCard to="/follow-ups#fu-coming" tone="due" icon={CalendarClock} label="Booked today" value={n.today} />
+      <KpiCard to="/follow-ups#fu-coming" tone="neutral" icon={CalendarClock} label={`Booked, next ${data?.days ?? 7} days`} value={n.comingUp} />
+    </div>
+  );
+}
+
+function Panel({ id, icon: Icon, title, count, hint, children }) {
+  return (
+    <section className="fu-panel" aria-labelledby={id}>
+      <h2 id={id} className="fu-title">
+        <Icon aria-hidden="true" /> {title} <span className="muted tabular">({count})</span>
+      </h2>
+      {hint && <p className="hint">{hint}</p>}
+      {children}
+    </section>
+  );
+}
+
+/** Follow-ups tab: the patients to call, then the coming week's bookings by day. */
+export function FollowUpsPage() {
+  const res = useFetch('/follow-ups');
+  const filter = useFilter();
+  const data = filterFollowUps(res.data, filter);
+  const calls = data ? callRows(data, formatDate) : null;
+  const groups = data ? comingUpGroups(data.comingUp, data.today) : [];
+  return (
+    <>
+      <Header data={data} />
+      <div className="pf-content fu-page">
+        {res.error && <Alert type="error">{res.error}</Alert>}
+        <FilterBar filter={filter} />
+        {data && <Counts data={data} />}
+        <Panel id="fu-call" icon={CalendarX2} title="To call – not booked" count={calls?.length ?? 0} hint="A visit is due or overdue and nothing is booked. Overdue first. Call, then book.">
+          <DataTable
+            caption="Patients to call"
+            loading={res.loading}
+            rows={calls}
+            emptyText={filter.active ? NO_MATCH : 'Nobody to call: every patient with a visit due is booked or has come.'}
+            columns={[
+              { key: 'patient', header: 'Patient', render: patientCell },
+              { key: 'phone', header: 'Phone', render: (r) => phoneLink(r.patient.phone) },
+              { key: 'doctor', header: 'Doctor', render: (r) => r.patient.doctorName ?? <span className="muted">Not assigned</span> },
+              {
+                key: 'why',
+                header: 'Why',
+                render: (r) => (
+                  <span className="fu-why">
+                    {r.late ? (
+                      <StatusPill tone="high" icon={TriangleAlert}>
+                        Overdue
+                      </StatusPill>
+                    ) : (
+                      <StatusPill tone="due">Due now</StatusPill>
+                    )}
+                    <span>{r.why}</span>
+                  </span>
+                ),
+              },
+              { key: 'book', header: <span className="sr-only">Book</span>, render: bookLink },
+            ]}
+          />
+        </Panel>
+        <Panel id="fu-coming" icon={CalendarClock} title={`Coming up – next ${data?.days ?? 7} days`} count={data?.comingUp?.length ?? 0} hint="Booked appointments and next visits the doctor wrote. Confirm or remind them by phone.">
+          {data && groups.length === 0 && <p className="panel-empty">{filter.active ? NO_MATCH : 'Nobody is booked for the coming days.'}</p>}
+          {groups.map((g) => (
+            <div key={g.date} className="fu-day">
+              <h3 className="fu-day-title">
+                {g.label} <span className="muted tabular">({g.rows.length})</span>
+              </h3>
+              <DataTable
+                caption={`Booked for ${g.label}`}
+                rows={g.rows.map((r, i) => ({ ...r, id: `${r.patient.id}-${i}` }))}
+                columns={[
+                  { key: 'time', header: 'Time', render: (r) => (r.needsTime ? <Link to="/appointments/needs-time">Needs a time</Link> : bookingTime(r)) },
+                  { key: 'patient', header: 'Patient', render: patientCell },
+                  { key: 'phone', header: 'Phone', render: (r) => phoneLink(r.patient.phone) },
+                  { key: 'doctor', header: 'Doctor', render: (r) => r.doctorName ?? r.patient.doctorName ?? <span className="muted">Not assigned</span> },
+                  { key: 'type', header: 'Visit', render: (r) => <StatusPill tone={r.visitType === 'new' ? 'brand' : 'neutral'} icon={null}>{visitTypeLabel(r)}</StatusPill> },
+                  {
+                    key: 'state',
+                    header: 'Status',
+                    render: (r) =>
+                      r.arrived ? (
+                        <StatusPill tone="stable" icon={UserCheck}>
+                          Arrived
+                        </StatusPill>
+                      ) : (
+                        <StatusPill tone="due" icon={Check}>
+                          Booked
+                        </StatusPill>
+                      ),
+                  },
+                ]}
+              />
+            </div>
+          ))}
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+const babyColumns = (soon) => [
+  { key: 'patient', header: 'Baby', render: patientCell },
+  { key: 'phone', header: 'Phone', render: (r) => phoneLink(r.patient.phone) },
+  { key: 'doctor', header: 'Doctor', render: (r) => r.patient.doctorName ?? <span className="muted">Not assigned</span> },
+  {
+    key: 'due',
+    header: 'Due',
+    render: (r) => (
+      <span className="fu-why">
+        {soon ? (
+          <StatusPill tone="due">Due soon</StatusPill>
+        ) : (
+          <StatusPill tone="high" icon={TriangleAlert}>
+            Overdue
+          </StatusPill>
+        )}
+        <span>{soon ? `A check-up or test is due from ${formatDate(r.dueFrom)}` : `A check-up or test was due from ${formatDate(r.dueFrom)}`}</span>
+        {r.draft && (
+          <StatusPill tone="watch" icon={TriangleAlert} title="The date comes from a schedule no doctor has approved yet – ask the doctor before calling">
+            Draft schedule
+          </StatusPill>
+        )}
+      </span>
+    ),
+  },
+  { key: 'book', header: <span className="sr-only">Book</span>, render: bookLink },
+];
+
+/** Vaccinations tab: babies overdue, then babies due in the next 7 days – nothing booked. */
+export function VaccinationFollowUpsPage() {
+  const res = useFetch('/follow-ups');
+  const filter = useFilter();
+  const data = filterFollowUps(res.data, filter);
+  const withId = (rows) => rows?.map((r) => ({ ...r, id: r.patient.id }));
+  const draft = [...(data?.babiesDue ?? []), ...(data?.babiesSoon ?? [])].some((r) => r.draft);
+  return (
+    <>
+      <Header data={data} />
+      <div className="pf-content fu-page">
+        {res.error && <Alert type="error">{res.error}</Alert>}
+        <FilterBar filter={filter} />
+        {data && <Counts data={data} />}
+        <Panel id="fu-babies-due" icon={Baby} title="Overdue – not booked" count={data?.babiesDue?.length ?? 0} hint="Babies for whom a check-up or test became overdue in the last 6 weeks and nothing is booked. A baby in hospital is not listed.">
+          <DataTable caption="Babies overdue" loading={res.loading} rows={withId(data?.babiesDue)} emptyText={filter.active ? NO_MATCH : 'No baby is overdue.'} columns={babyColumns(false)} />
+        </Panel>
+        <Panel id="fu-babies-soon" icon={Baby} title="Due in the next 7 days – not booked" count={data?.babiesSoon?.length ?? 0} hint="Book these before they are late.">
+          <DataTable caption="Babies due soon" loading={res.loading} rows={withId(data?.babiesSoon)} emptyText={filter.active ? NO_MATCH : 'No baby is due in the next 7 days without a booking.'} columns={babyColumns(true)} />
+        </Panel>
+        {draft && <p className="hint">"Draft schedule": the date comes from a schedule no doctor has approved yet – ask the doctor before calling.</p>}
+      </div>
+    </>
+  );
+}

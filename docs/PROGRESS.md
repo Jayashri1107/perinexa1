@@ -21,6 +21,61 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   of each word while typing. **How to test:** Scans → the tiles at the top; open a study marked done → Pictures → Add
   pictures (a JPEG), untick "In the printed report", sign and print. Sign in as the super admin → Patients → filter by
   hospital → click a row (her hospital opens). New patient → type "asha patil" → the box shows "Asha Patil".
+- **26 Oct 2026 (branch `reception-followups`, not merged – an exception to the feature freeze, the owner's
+  go-ahead to be recorded before merging):** reception could not clearly see follow-ups and vaccinations (ideas 24,
+  25 and 27 in `docs/IDEAS_FOR_LATER.md`). (1) **Follow-ups** in reception's left menu, with two tabs: *Follow-ups* –
+  the patients to call (a visit due or overdue, nothing booked) and everyone booked for the next 7 days, by day, with
+  the time, the doctor, New or Follow-up and Arrived; *Vaccinations* – babies overdue, and babies whose vaccination is
+  due in the next 7 days with nothing booked, in general words only ("a check-up or test"), never the vaccine.
+  `GET /api/follow-ups` (reception only, `server/src/routes/followUps.js`). Both tabs have a **filter**: part of the
+  patient's name, patient number, phone or doctor, and **All / OPD / IPD / Day care** (IPD or day care: her latest stay
+  is still going or ended in the last 90 days; everyone else is OPD), kept in the address bar (`?q=`, `?type=`). (2)
+  On reception's Today the call lists
+  now come right under Today's patients, with a link to Follow-ups. **How to test:** sign in as reception → Follow-ups
+  → the four numbers at the top, "To call – not booked", "Coming up – next 7 days" (a doctor's next visit shows on its
+  day as Follow-up, "Needs a time" until it has a time) → Vaccinations: a baby registered today is under "Due in the
+  next 7 days"; press Book, book the visit, and the baby moves to Coming up. As a doctor or nurse there is no
+  Follow-ups in the menu and `/follow-ups` says it is for reception.
+- **26 Oct 2026, same branch – registering and editing in dialogs on Appointments (as Docterz's reception):** (1)
+  **Book → New patient** no longer goes to the registration page: the dialog asks the type of care and the visit
+  type, then shows her full registration form (page 1 of Patients → New patient, with Fill from Aadhaar); **Register
+  and book** saves her and books the time for her record ("She may already be registered" books it for the record
+  chosen; a slot taken meanwhile asks "Book anyway"). Clinical details are added later from her record. Those who do
+  not register patients still book by name and phone. (2) On every booking: **Edit details** (her registration
+  details in a dialog, saved as on her record's Edit tab) and, for a booking "Not registered yet", **Register** (the
+  same form filled in with that name and phone; the booking joins her record). `client/src/pages/appointments/
+  RegisterAndBook.jsx`. **How to test:** as reception → Appointments → a free time → New patient → Gynaecology →
+  fill in a fake name and phone → Register and book: she is booked, no page change. Press Edit details on her line,
+  change the address, Save changes. On a line "Not registered yet" press Register.
+- **26 Oct 2026, same branch – reception's Today made simpler, and "Details missing":** (1) For reception (not also
+  clinical staff) Today shows only the lists with someone in them, open, one under the other (empty lists are hidden;
+  "Nothing to do in today's lists" when all are empty); a list closed by hand stays closed. Follow-ups is a quick
+  button at the top. (2) **Details missing**: a warning box near the top lists patients registered in the last 30
+  days (and anyone on today's list) whose registration details are not all filled in – address (or city), emergency
+  contact's phone, doctor, and age or phone on older records – with what is missing in words and **Fill details**
+  (her details in a dialog; saved, she leaves the list). Identity details only. `server/src/patients/
+  missingDetails.js`, `client/src/pages/DetailsMissing.jsx`. **How to test:** as reception → Patients → New patient →
+  Gynaecology → only name, age and phone → Register → Today: "Details missing (1)" with "Address, emergency contact and
+  doctor missing" → Fill details → add them → Save changes: the box is gone.
+- **26 Oct 2026, same branch – reception's Today redesigned as a desk** (`client/src/pages/ReceptionDesk.jsx`,
+  `styles/pages-reception.css`; reception only, not also clinical staff): (1) a large search box first – phone, name
+  or patient number – each patient found with **Mark arrived**, **Book** and **Edit details**; nobody found or not
+  the right person: **Register new patient** in a dialog with the phone or name already typed in; (2) the number
+  cards (Today's patients, Calls to make, Money today, Free beds); (3) two columns: today's patients, the waiting
+  lists and the bookings to register (open), beside a short **To do** – calls to make, details missing (opens its
+  list in a dialog, replacing the big box), bookings to register, payments to collect, tomorrow's calls,
+  discharges, only those with someone in them ("Nothing waiting" when all are done) – and Doctors today; (4) the
+  other lists under "More lists", only with someone in them. **How to test:** as reception → Today → type a fake
+  patient's phone → Mark arrived; type a new number → Register new patient → she is found at once; To do → Details
+  missing → Fill details.
+- **26 Oct 2026, same branch – Appointments page redesigned:** the day's counts as coloured pills (booked, free, seen);
+  the times with a legend (free – click to book, booked with an indigo edge, kept for walk-ins dashed, passed); each
+  patient of the day as a card – time on the left, her initials, name and details, the status on the right, a
+  coloured edge for her state (booked blue, arrived green, done grey, did not come or needs a time amber, next
+  indigo) – and the actions on one row: **Edit info** (one button for everyone: her details, or for a booking "Not
+  registered yet" her registration with that name and phone), Take fee, Reschedule, and Cancel last. **How to
+  test:** as reception → Appointments → a day with bookings → Edit info on a "Not registered yet" card → Gynaecology
+  → Register: the card shows her patient number.
 - **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
   built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the

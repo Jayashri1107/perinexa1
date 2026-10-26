@@ -1,4 +1,4 @@
-import { BedDouble, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
+import { BedDouble, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PhoneCall, Pill, Receipt, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -115,6 +115,21 @@ const HOSPITAL_TODAY = {
   to: '/',
   end: true,
   tabs: [{ label: 'Today', to: '/', end: true }],
+};
+
+// Reception's follow-ups (26 Oct 2026, docs/IDEAS_FOR_LATER.md ideas 24, 25 and 27): who is booked for the coming week
+// and who to call, and the babies whose vaccinations are overdue or due soon – in general words, never the vaccine.
+// Same list as server/src/routes/followUps.js.
+export const FOLLOW_UP_ROLES = ['receptionist'];
+export const HOSPITAL_FOLLOW_UPS = {
+  key: 'follow-ups',
+  label: 'Follow-ups',
+  icon: PhoneCall,
+  to: '/follow-ups',
+  tabs: [
+    { label: 'Follow-ups', to: '/follow-ups', end: true },
+    { label: 'Vaccinations', to: '/follow-ups/vaccinations', end: true },
+  ],
 };
 
 const HOSPITAL_PATIENTS = {
@@ -412,6 +427,7 @@ export const canAskRecords = (roles = []) => any(roles, CARE_PLAN_ROLES);
 export function hospitalModules(roles = []) {
   if (!roles.length) return [];
   const modules = [HOSPITAL_TODAY];
+  if (any(roles, FOLLOW_UP_ROLES)) modules.push(HOSPITAL_FOLLOW_UPS);
   if (canSeePatients(roles)) modules.push(HOSPITAL_PATIENTS);
   if (canSeeAppointments(roles)) modules.push(HOSPITAL_APPOINTMENTS);
   // An RMO alone does not get the calendar in the menu (follow-up reminders and booking are front-desk work – owner,
@@ -456,7 +472,7 @@ export const accountTabs = (memberships = []) => {
 /** Doctors and RMOs (anywhere): their professional details print on prescriptions. */
 export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRESCRIBER_ROLES);
 
-const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
+const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.
