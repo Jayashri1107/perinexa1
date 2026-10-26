@@ -134,3 +134,26 @@
 .ph-rep-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
 .ph-rep-ok { width: 16px; height: 16px; vertical-align: -3px; color: var(--status-stable-fg); }
 @media (max-width: 1000px) { .ph-rep-two { grid-template-columns: minmax(0, 1fr); } }
+
+/* The pharmacist's Today, compact (26 Oct 2026): one toolbar line – someone from another day and the quick actions –
+   then the numbers as one row of small cards, then the day's register */
+.ph-topbar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-3); }
+.ph-find-slim { flex: 1 1 360px; min-width: 0; }
+.ph-find-slim .bill-toolbar { margin: 0; }
+.ph-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ph-actions .btn svg.lucide { width: 16px; height: 16px; }
+.ph-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3); }
+.ph-stat {
+  display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--ink); text-decoration: none;
+}
+.ph-stat:hover { border-color: var(--indigo-200); box-shadow: var(--shadow-card); }
+.ph-stat:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ph-stat-icon { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--indigo-100); color: var(--indigo-700); }
+.ph-stat-icon svg { width: 18px; height: 18px; }
+.ph-stat.is-due .ph-stat-icon { background: var(--status-due-bg); color: var(--status-due-fg); }
+.ph-stat.is-watch .ph-stat-icon { background: var(--status-watch-bg); color: var(--status-watch-fg); }
+.ph-stat.is-high .ph-stat-icon { background: var(--status-high-bg); color: var(--status-high-fg); }
+.ph-stat-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.ph-stat-text strong { font-size: var(--fs-h3); }
+.ph-stat-text span { font-size: var(--fs-caption); color: var(--slate-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
