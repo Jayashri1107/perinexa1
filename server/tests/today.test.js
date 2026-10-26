@@ -264,3 +264,18 @@ describe('the live queue (reception)', () => {
     expect(await AuditLog.countDocuments({ action: 'PATIENT_LEFT_MARKED' })).toBe(2);
   });
 });
+
+describe('bookings by name and phone (reception)', () => {
+  it('one already registered is matched to her record (same phone and name); another name on that phone is only "same phone"', async () => {
+    const { Appointment } = await import('../src/models/Appointment.js');
+    const asha = (await (await as('reception')).post('/api/patients').send(samplePatient({ fullName: 'Asha Sample', phone: '98765 43210' }))).body.patient;
+    const booking = (name, start) =>
+      Appointment.create({ tenantId: hospital._id, doctorId: people.drA._id, on: new Date('2026-09-28T00:00:00Z'), kind: 'slot', start, minutes: 10, source: 'booked', guest: { name, phone: '+91 98765 43210' }, created: { by: people.reception._id, byName: 'Sample reception', at: new Date() } });
+    await booking('asha sample', '10:30');
+    await booking('Meena Sample', '10:40');
+    const guests = (await today('reception')).body.guests;
+    const byName = Object.fromEntries(guests.map((g) => [g.guest.name, g]));
+    expect(byName['asha sample']).toMatchObject({ registered: { id: asha.id, fullName: 'Asha Sample', mrn: asha.mrn }, samePhone: [] });
+    expect(byName['Meena Sample']).toMatchObject({ registered: null, samePhone: [{ id: asha.id, fullName: 'Asha Sample', mrn: asha.mrn }] });
+  });
+});

@@ -62,7 +62,16 @@ describe('reception: the patients table', () => {
     const g = guestRow({ id: 'a9', kind: 'slot', start: '12:00', visitType: 'new', doctorId: 'd1', doctorName: 'Sample Doctor', guest: { name: 'Ishanvi Sample', phone: '98986 53256' } });
     const shown = table({ rows: [...rows, g] });
     expect(shown).toContain('All (5) Expected (2)');
-    expect(shown).toMatch(/IS Ishanvi Sample Not registered yet · 98986 53256 · Sample Doctor .* 12:00 PM New Expected Register/);
+    expect(shown).toMatch(/IS Ishanvi Sample Booked by phone · 98986 53256 · Sample Doctor .* 12:00 PM New Expected Not registered Register/);
+    // Already registered (the same phone and name): Use her record instead of Register; another name on the phone is told
+    const known = guestRow({ id: 'a8', kind: 'slot', start: '12:10', visitType: 'new', doctorName: 'Sample Doctor', guest: { name: 'asha sample', phone: '98765 43210' }, registered: { id: 'p1', fullName: 'Asha Sample', mrn: 'P-000001' }, samePhone: [] });
+    const knownShown = table({ rows: [known] });
+    expect(knownShown).toMatch(/Registered · P-000001 .* Expected Use her record/);
+    expect(knownShown).not.toMatch(/Not registered|>Register</);
+    const family = guestRow({ id: 'a7', kind: 'slot', start: '12:20', visitType: 'new', guest: { name: 'Meena Sample', phone: '98765 43210' }, registered: null, samePhone: [{ id: 'p1', fullName: 'Asha Sample', mrn: 'P-000001' }] });
+    const familyShown = table({ rows: [family] });
+    expect(familyShown).toContain('Same phone as: Asha Sample (P-000001)');
+    expect(familyShown).toContain('Not registered Register');
     expect(queueCounts([g]).expected).toBe(1);
   });
 

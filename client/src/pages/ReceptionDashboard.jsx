@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRupee, MoreVertical, RefreshCw, Search, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
+import { CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRupee, Link2, MoreVertical, RefreshCw, Search, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { MenuButton } from '../components/MenuButton.jsx';
@@ -132,6 +132,20 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
   const [editing, setEditing] = useState(null);
   const [addingFor, setAddingFor] = useState(null); // Add follow-up
   const [registering, setRegistering] = useState(null); // a booking made by name and phone
+  const [linking, setLinking] = useState(null); // "Use her record": the booking being joined to her record
+  const [linkError, setLinkError] = useState(null);
+  const joinRecord = async (a) => {
+    setLinking(a.id);
+    setLinkError(null);
+    try {
+      await api(`/appointments/${a.id}/link`, { method: 'POST', body: { patientId: a.registered.id } });
+      onSaved(`${a.registered.fullName}'s booking is now on her record (${a.registered.mrn}). Press Check in when she is here.`);
+    } catch (err) {
+      setLinkError(`${a.registered.fullName}: ${err.message}`);
+    } finally {
+      setLinking(null);
+    }
+  };
   const n = queueCounts(rows);
   const doctors = useMemo(() => [...new Set(rows.map((r) => r.appointment?.doctorName ?? r.patient.doctorName).filter(Boolean))].sort(), [rows]);
   const shown = rows.filter((r) => (!tab || (r.queue ?? 'expected') === tab) && (!doctor || (r.appointment?.doctorName ?? r.patient.doctorName) === doctor) && rowMatches(r, text));
@@ -182,6 +196,9 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
           </label>
         )}
       </div>
+      <Alert type="error" onClose={() => setLinkError(null)}>
+        {linkError}
+      </Alert>
       <div className="dt-wrap rd-table-wrap">
         <table className="rd-table">
           <caption className="sr-only">Today&apos;s patients</caption>
@@ -227,10 +244,14 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                       <span className="rd-person-text">
                         {r.guest ? <strong>{p.fullName}</strong> : <Link to={`/patients/${p.id}`}>{p.fullName}</Link>}
                         <span className="muted tabular">
-                          {r.guest ? 'Not registered yet' : p.mrn}
+                          {r.guest ? (r.appointment?.registered ? `Registered · ${r.appointment.registered.mrn}` : 'Booked by phone') : p.mrn}
                           {r.guest && p.phone ? ` · ${p.phone}` : ''}
                           {r.appointment?.doctorName ?? p.doctorName ? ` · ${r.appointment?.doctorName ?? p.doctorName}` : ''}
                         </span>
+                        {/* Another patient on the same phone (family members share one): reception decides */}
+                        {r.guest && r.appointment?.samePhone?.length > 0 && (
+                          <span className="hint">Same phone as: {r.appointment.samePhone.map((m) => `${m.fullName} (${m.mrn})`).join(', ')}</span>
+                        )}
                       </span>
                     </span>
                   </td>
@@ -259,11 +280,21 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                       <StatusPill tone={look.tone} icon={look.icon}>
                         {look.label}
                       </StatusPill>
+                      {r.guest && !r.appointment?.registered && (
+                        <StatusPill tone="watch" icon={UserPlus}>
+                          Not registered
+                        </StatusPill>
+                      )}
                     </span>
                   </td>
                   <td>
                     <span className="rd-actions">
-                      {r.guest ? (
+                      {r.guest && r.appointment?.registered ? (
+                        // Already registered (the same phone and name): one click joins the booking to her record
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => joinRecord(r.appointment)} disabled={linking === r.appointment.id}>
+                          <Link2 aria-hidden="true" /> {linking === r.appointment.id ? 'Saving…' : 'Use her record'}
+                        </button>
+                      ) : r.guest ? (
                         // Booked by name and phone: register her (the booking joins her record), then Check in
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRegistering(r.appointment)}>
                           <UserPlus aria-hidden="true" /> Register
