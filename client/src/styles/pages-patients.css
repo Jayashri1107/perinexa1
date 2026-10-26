@@ -358,4 +358,4 @@
 @media (max-width: 720px) { .pf-place-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* New patient: OPD, IPD or day care (owner, 26 Oct 2026) */
-.pn-setting { display: grid; gap: var(--space-1); margin-bottom: var(--space-4); }
+.pn-setting { display: grid; justify-items: start; gap: var(--space-1); margin-bottom: var(--space-4); }
