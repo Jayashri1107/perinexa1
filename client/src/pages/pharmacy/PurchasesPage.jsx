@@ -109,7 +109,7 @@ function PurchaseCards({ res, desk, empty = 'No purchases yet.' }) {
                       <td>{expiryLabel(l.expiry)}</td>
                       {/* As on the bill (packs) when it was entered so; the stock's units under it */}
                       <td className="num">
-                        {l.pack && l.pack.conv > 1 ? `${l.pack.qty}${l.pack.freeQty ? ` + ${l.pack.freeQty}` : ''} × ${l.pack.conv} = ` : ''}
+                        {l.pack && l.pack.conv > 1 ? `${l.pack.qty}${l.pack.freeQty ? ` + ${l.pack.freeQty}` : ''} packs × ${l.pack.conv} = ` : ''}
                         {l.qty}
                         {l.freeQty ? ` + ${l.freeQty}` : ''}
                       </td>
