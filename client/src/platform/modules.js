@@ -1,4 +1,4 @@
-import { BedDouble, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, Pill, Receipt, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, UserCog, Users } from 'lucide-react';
+import { BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, Truck, UserCog, Users } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -115,6 +115,21 @@ const HOSPITAL_TODAY = {
   to: '/',
   end: true,
   tabs: [{ label: 'Today', to: '/', end: true }],
+};
+
+// Reception's follow-ups (26 Oct 2026, docs/IDEAS_FOR_LATER.md ideas 24, 25 and 27): who is booked for the coming week
+// and who to call, and the babies whose vaccinations are overdue or due soon – in general words, never the vaccine.
+// Same list as server/src/routes/followUps.js.
+export const FOLLOW_UP_ROLES = ['receptionist'];
+export const HOSPITAL_FOLLOW_UPS = {
+  key: 'follow-ups',
+  label: 'Follow-ups',
+  icon: PhoneCall,
+  to: '/follow-ups',
+  tabs: [
+    { label: 'Follow-ups', to: '/follow-ups', end: true },
+    { label: 'Vaccinations', to: '/follow-ups/vaccinations', end: true },
+  ],
 };
 
 const HOSPITAL_PATIENTS = {
@@ -247,6 +262,18 @@ const HOSPITAL_PHARMACY = {
   to: '/pharmacy',
   tabs: [{ label: 'Pharmacy', to: '/pharmacy', end: false }],
 };
+// The pharmacist's menu (owner, 26 Oct 2026): the pharmacy's sections in the sidebar itself; the day's register (OPD,
+// IPD and External patients) is on Today. "New bill" keeps the key 'pharmacy' (Help's guide).
+const PHARMACIST_MENU = [
+  { key: 'pharmacy', label: 'New bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: '/pharmacy/issue' },
+  { key: 'pharmacy-bills', label: 'Pharmacy bills', icon: FileText, to: '/pharmacy/invoices' },
+  { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },
+  { key: 'pharmacy-purchases', label: 'Purchase bills', icon: PackagePlus, to: '/pharmacy/purchases', activeFor: ['/pharmacy/orders', '/pharmacy/supplier-returns'] },
+  { key: 'pharmacy-stock', label: 'Stock', icon: Boxes, to: '/pharmacy/stock' },
+  { key: 'pharmacy-medicines', label: 'Medicines', icon: Pill, to: '/pharmacy/medicines' },
+  { key: 'pharmacy-reports', label: 'Reports', icon: ChartColumn, to: '/pharmacy/reports' },
+  { key: 'pharmacy-settings', label: 'Pharmacy settings', icon: Settings, to: '/pharmacy/settings' },
+].map((m) => ({ ...m, tabs: [{ label: m.label, to: m.to, end: m.end ?? false }] }));
 
 // Analytics (Feature 11): doctors and hospital admins (ANALYTICS_ROLES).
 const HOSPITAL_ANALYTICS = {
@@ -396,6 +423,11 @@ const BABY_REGISTER_ROLES = ['doctor', 'rmo', 'receptionist'];
 /** The "New patient" menu (type of care) for this person: without Newborn for the referral desk. */
 export const newPatientLinks = (roles = []) => (any(roles, BABY_REGISTER_ROLES) ? NEW_PATIENT_LINKS : NEW_PATIENT_LINKS.filter((l) => l.to !== '/patients/new/newborn'));
 export const canSeePatients = (roles = []) => any(roles, PATIENT_ROLES);
+/**
+ * The hospital's patient list and search: everyone who sees patients, except a pharmacist with no other patient
+ * role – the pharmacy finds patients from its daily register (owner, 26 Oct 2026; the server refuses the list too).
+ */
+export const seesPatientList = (roles = []) => any(roles, PATIENT_ROLES.filter((r) => r !== 'pharmacist'));
 export const canRegisterPatients = (roles = []) => any(roles, REGISTER_ROLES);
 export const canSeeCalendar = (roles = []) => any(roles, CALENDAR_ROLES);
 export const canSeeAppointments = (roles = []) => any(roles, APPOINTMENT_ROLES);
@@ -412,7 +444,8 @@ export const canAskRecords = (roles = []) => any(roles, CARE_PLAN_ROLES);
 export function hospitalModules(roles = []) {
   if (!roles.length) return [];
   const modules = [HOSPITAL_TODAY];
-  if (canSeePatients(roles)) modules.push(HOSPITAL_PATIENTS);
+  if (any(roles, FOLLOW_UP_ROLES)) modules.push(HOSPITAL_FOLLOW_UPS);
+  if (seesPatientList(roles)) modules.push(HOSPITAL_PATIENTS);
   if (canSeeAppointments(roles)) modules.push(HOSPITAL_APPOINTMENTS);
   // An RMO alone does not get the calendar in the menu (follow-up reminders and booking are front-desk work – owner,
   // 13 Oct 2026); their Today still lists today's patients and who is waiting.
@@ -423,7 +456,8 @@ export function hospitalModules(roles = []) {
   if (any(roles, SCAN_PAGE_ROLES)) modules.push(HOSPITAL_SCANS);
   if (any(roles, REFERRAL_ROLES)) modules.push(HOSPITAL_REFERRALS);
   if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);
-  if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: roles.includes('pharmacist') ? '/pharmacy' : '/pharmacy/stock' });
+  if (roles.includes('pharmacist')) modules.push(...PHARMACIST_MENU);
+  else if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: '/pharmacy/stock' });
   if (any(roles, ANALYTICS_ROLES)) modules.push(HOSPITAL_ANALYTICS); // after Patients and Calendar, or after Today for an admin
   else if (any(roles, CARE_PLAN_ROLES)) modules.push(HOSPITAL_ASK_ONLY);
   if (any(roles, CARE_PLAN_ROLES)) modules.push(HOSPITAL_KNOWLEDGE);
@@ -456,7 +490,7 @@ export const accountTabs = (memberships = []) => {
 /** Doctors and RMOs (anywhere): their professional details print on prescriptions. */
 export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRESCRIBER_ROLES);
 
-const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
+const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.

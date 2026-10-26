@@ -577,7 +577,12 @@ async function byDueDate(filter, q, fieldsShown) {
   return ids.map((r) => byId.get(String(r._id))).filter(Boolean);
 }
 
+// A pharmacist with no other patient role finds patients through the pharmacy's daily register only (owner, 26 Oct
+// 2026: routes/pharmacyRegister.js) – never the hospital's whole list or its search.
+const onlyPharmacist = (roles = []) => roles.includes('pharmacist') && !roles.some((r) => r !== 'pharmacist' && PATIENT_ROLES.includes(r));
+
 patientsRouter.get('/', async (req, res) => {
+  if (onlyPharmacist(req.membership?.roles)) throw forbidden('The pharmacy finds patients from its daily register.');
   const q = parse(listSchema, req.query);
   const filter = { tenantId: req.tenantId };
   if (q.careType) filter.careType = q.careType;

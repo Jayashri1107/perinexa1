@@ -5,6 +5,8 @@ import { cancelAppointment, giveToken, hospitalDoctor, viewsOf } from '../appoin
 import { hospitalToday } from '../careplans/dates.js';
 import { Appointment } from '../models/Appointment.js';
 import { Arrival } from '../models/Arrival.js';
+import { FollowUp } from '../models/FollowUp.js';
+import { PURPOSE_LABELS, PURPOSE_NOTE_MAX, VISIT_PURPOSES } from '../appointments/visitPurpose.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { audit } from '../utils/audit.js';
@@ -39,7 +41,17 @@ async function patientOf(req, id) {
 }
 
 arrivalsRouter.post('/', async (req, res) => {
-  const { patientId, doctorId } = parse(z.object({ patientId: objectId, doctorId: objectId.optional() }).strict(), req.body);
+  const { patientId, doctorId, purpose } = parse(
+    z
+      .object({
+        patientId: objectId,
+        doctorId: objectId.optional(),
+        // Why she came (26 Oct 2026): a fixed purpose and a short note – never a medical detail
+        purpose: z.object({ kind: z.enum(VISIT_PURPOSES), note: z.string().trim().max(PURPOSE_NOTE_MAX, `At most ${PURPOSE_NOTE_MAX} characters – no medical details here.`).optional().default('') }).strict().optional(),
+      })
+      .strict(),
+    req.body,
+  );
   const patient = await patientOf(req, patientId);
   // A record marked as a duplicate is not marked arrived (no token, no visit): she arrives on her main record
   refuseNewOnDuplicate(patient, 'arrival');
@@ -53,7 +65,14 @@ arrivalsRouter.post('/', async (req, res) => {
     if (e?.code !== 11000) throw e;
     // Already marked today (e.g. at the other desk): kept as it was.
   }
+  // Why she came: kept with today's arrival (a second check-in may correct it)
+  if (purpose) await Arrival.updateOne({ tenantId: req.tenantId, patientId: patient._id, on }, { $set: { purpose } });
   let arrival = await Arrival.findOne({ tenantId: req.tenantId, patientId: patient._id, on }).lean();
+  // Her follow-ups due by today: she came (the reason was marked above, from them when she had one)
+  const dueFollowUps = await FollowUp.find({ tenantId: req.tenantId, patientId: patient._id, status: 'open', $or: [{ from: null }, { from: { $lte: on } }] }).lean();
+  if (dueFollowUps.length) {
+    await FollowUp.updateMany({ tenantId: req.tenantId, _id: { $in: dueFollowUps.map((f) => f._id) } }, { $set: { status: 'came', came: { by: req.user._id, byName: req.user.name, at, on } } });
+  }
   // The day's OPD number (docs/ADMISSION_DESK_PLAN.md), given once – also to an arrival marked before it existed
   if (!arrival.opdNo) {
     await Arrival.updateOne({ _id: arrival._id, tenantId: req.tenantId, opdNo: null }, { $set: { opdNo: await nextOpdNo(req.tenantId, at) } });
@@ -67,13 +86,16 @@ arrivalsRouter.post('/', async (req, res) => {
   }
   await audit(req, 'PATIENT_ARRIVED', { details: { patientId: String(patient._id), mrn: patient.mrn } });
   const [appointment] = appt ? await viewsOf(req.tenantId, [appt], on) : [null];
-  if (appointment) {
+  // Her doctor is told she has arrived – and why she came (the doctor of her appointment, or of her follow-up)
+  const told = appointment?.doctor?.id ? [appointment.doctor.id] : [...new Set(dueFollowUps.map((f) => String(f.doctorId)))];
+  if (told.length) {
     const name = (await Patient.findOne({ tenantId: req.tenantId, _id: patient._id }, { fullName: 1 }).lean())?.fullName ?? 'A patient';
-    await notify(req, { userIds: [appointment.doctor?.id] }, { kind: 'arrived', text: `${name} has arrived${appointment.token ? ` – token ${appointment.token}` : appointment.start ? ` for ${appointment.start}` : ''}.`, link: '/' });
+    const why = arrival.purpose?.kind ? ` Came for: ${PURPOSE_LABELS[arrival.purpose.kind]}${arrival.purpose.note ? ` (${arrival.purpose.note})` : ''}.` : '';
+    await notify(req, { userIds: told }, { kind: 'arrived', text: `${name} has arrived${appointment?.token ? ` – token ${appointment.token}` : appointment?.start ? ` for ${appointment.start}` : ''}.${why}`, link: '/' });
   }
   // Her place in the queue and about when she goes in, on WhatsApp (when the hospital switched it on and she agreed)
   const queueTime = appt ? await sendQueueTime(req, patient._id, appt._id) : { sent: false, reason: 'no_appointment' };
-  res.status(201).json({ queueTime, arrival: { patientId: String(patient._id), at: arrival.at, byName: arrival.byName, opdNo: arrival.opdNo }, appointment });
+  res.status(201).json({ queueTime, arrival: { patientId: String(patient._id), at: arrival.at, byName: arrival.byName, opdNo: arrival.opdNo, purpose: arrival.purpose ?? null }, appointment, followUpsCame: dueFollowUps.length });
 });
 
 // The OPD case paper of today's visit (docs/ADMISSION_DESK_PLAN.md): the OPD number, the day, her token or time and
@@ -117,6 +139,23 @@ arrivalsRouter.post('/:patientId/case-paper/printed', async (req, res) => {
   await audit(req, 'OPD_CASE_PAPER_PRINTED', { details: { patientId: String(patient._id), mrn: patient.mrn, opdNo: arrival?.opdNo ?? null } });
   res.json({ ok: true });
 });
+
+// The live queue (26 Oct 2026): POST /api/arrivals/:patientId/emergency { emergency } – she goes first in her doctor's
+// waiting list (or back to her place); POST /api/arrivals/:patientId/left { left } – "Done – she left" (or undone).
+// Today's arrival only. Audited with ids only.
+async function setFlag(req, res, key, action) {
+  const { patientId } = parse(z.object({ patientId: objectId }), req.params);
+  const { [key]: on } = parse(z.object({ [key]: z.boolean() }).strict(), req.body);
+  const patient = await patientOf(req, patientId);
+  const day = hospitalToday(req.now);
+  const value = on ? { at: req.now ?? new Date(), by: req.user._id, byName: req.user.name } : null;
+  const arrival = await Arrival.findOneAndUpdate({ tenantId: req.tenantId, patientId: patient._id, on: day }, { $set: { [key]: value } }, { new: true }).lean();
+  if (!arrival) throw new HttpError(409, 'Mark her arrived first.', 'NOT_ARRIVED');
+  await audit(req, action, { details: { patientId: String(patient._id), mrn: patient.mrn, [key]: on } });
+  res.json({ arrival: { patientId: String(patient._id), emergency: Boolean(arrival.emergency), left: Boolean(arrival.left) } });
+}
+arrivalsRouter.post('/:patientId/emergency', (req, res) => setFlag(req, res, 'emergency', 'ARRIVAL_EMERGENCY_CHANGED'));
+arrivalsRouter.post('/:patientId/left', (req, res) => setFlag(req, res, 'left', 'PATIENT_LEFT_MARKED'));
 
 arrivalsRouter.delete('/:patientId', async (req, res) => {
   const { patientId } = parse(z.object({ patientId: objectId }), req.params);

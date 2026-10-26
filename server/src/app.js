@@ -28,6 +28,8 @@ import { templatesRouter } from './routes/templates.js';
 import { redFlagRulesRouter } from './routes/redFlagRules.js';
 import { worklistRouter } from './routes/worklist.js';
 import { todayRouter } from './routes/today.js';
+import { followUpsRouter } from './routes/followUps.js';
+import { addedFollowUpsRouter } from './routes/addedFollowUps.js';
 import { arrivalsRouter } from './routes/arrivals.js';
 import { appointmentsRouter } from './routes/appointments.js';
 import { billingRouter } from './routes/billing.js';
@@ -241,6 +243,10 @@ export function createApp({
   app.use('/api/red-flag-rules', ...inTenant, redFlagRulesRouter);
   app.use('/api/worklist', ...inTenant, worklistRouter);
   app.use('/api/today', ...inTenant, todayRouter);
+  // Reception's Follow-ups page: who is coming up, who to call, babies due (routes/followUps.js)
+  app.use('/api/follow-ups', ...inTenant, followUpsRouter);
+  // Follow-ups added by hand: with which doctor and what for (routes/addedFollowUps.js)
+  app.use('/api/added-follow-ups', ...inTenant, addedFollowUpsRouter);
   app.use('/api/arrivals', ...inTenant, arrivalsRouter);
   app.use('/api/appointments', ...inTenant, appointmentsRouter);
   app.use('/api/billing', ...inTenant, billingRouter);

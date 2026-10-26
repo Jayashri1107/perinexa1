@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { CalendarCheck, IndianRupee, Search, TriangleAlert, UserPlus } from 'lucide-react';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -9,16 +8,17 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
 import { CANCEL_REASONS, VISIT_TYPES, VISIT_TYPE_LABELS, dayLabel, timeLabel, whenLabel, whoLabel } from './appointmentFormat.js';
 import { asName } from '../../personName.js';
+import { RegisterAndBook } from './RegisterAndBook.jsx';
 
 // The booking dialogs of appointment booking: Book (a registered patient, or a quick booking with name and phone),
 // Move (another day, time or doctor – also giving a "needs a time" booking its time) and Cancel. A warning the
 // server can be talked past (slot already taken, a second booking that day) is shown with "Book anyway".
 
-function Modal({ id, title, onClose, wide = false, children }) {
+function Modal({ id, title, onClose, wide = false, className = '', children }) {
   const ref = useDialogFocus(onClose);
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} tabIndex={-1} className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
+      <div ref={ref} tabIndex={-1} className={`modal ${wide ? 'modal-wide' : ''} ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
         <h2 id={`${id}-title`}>{title}</h2>
         {children}
       </div>
@@ -122,26 +122,20 @@ export function BookDialog({ doctor, date, start, patient: preset = null, length
   const [patient, setPatient] = useState(preset);
   const [guest, setGuest] = useState({ name: '', phone: '' });
   const [visitType, setVisitType] = useState('follow_up');
-  const navigate = useNavigate();
   const { activeMembership } = useAuth();
   const canRegister = canRegisterPatients(activeMembership?.roles ?? []);
+  // A quick booking (name and phone only) for those who may not register patients; reception, doctors and RMOs
+  // register her in full inside this dialog instead (RegisterAndBook, 26 Oct 2026 – no page change).
   const send = useSend(async (confirm) => {
     const body = { doctorId: doctor.id, date, start, visitType, confirm, ...(mode === 'guest' ? { guest } : { patientId: patient.id }) };
     const { appointment } = await api('/appointments', { method: 'POST', body });
-    if (mode === 'guest' && canRegister) {
-      // A new patient: the time is kept, then her full registration form opens with the name, phone and doctor
-      // filled in; once she is saved the appointment joins her record (the same as "Register" on Today).
-      navigate(`/patients/new?appointment=${appointment.id}`, {
-        state: { fromBooking: { id: appointment.id, name: guest.name.trim(), phone: guest.phone.trim(), doctorId: doctor.id } },
-      });
-      return;
-    }
     onBooked(appointment);
   });
   const ready = mode === 'guest' ? guest.name.trim().length >= 2 && guest.phone.trim().length >= 6 : mode === 'patient' && patient;
+  const registering = mode === 'guest' && canRegister;
 
   return (
-    <Modal id="appt-book" title="Book an appointment" onClose={onClose} wide>
+    <Modal id="appt-book" title={registering ? 'Register and book' : 'Book an appointment'} onClose={onClose} wide className={registering ? 'modal-register' : ''}>
       <p className="appt-when">
         <CalendarCheck aria-hidden="true" /> {dayLabel(date)} · {timeLabel(start)} · {doctor.name}
       </p>
@@ -186,17 +180,18 @@ export function BookDialog({ doctor, date, start, patient: preset = null, length
           )}
         </div>
       )}
-      {mode === 'guest' && (
+      {registering && <RegisterAndBook doctor={doctor} date={date} start={start} lengths={lengths} onBooked={(a) => onBooked(a)} onCancel={onClose} />}
+      {mode === 'guest' && !registering && (
         <div className="form-grid appt-guest">
           <Field label="Her name" id="appt-guest-name">
             <input id="appt-guest-name" value={guest.name} onChange={asName((e) => setGuest({ ...guest, name: e.target.value }))} maxLength={150} autoFocus />
           </Field>
-          <Field label="Phone number" id="appt-guest-phone" hint={canRegister ? 'Next, her full registration form opens to fill in all her details.' : 'Reception registers her in full.'}>
+          <Field label="Phone number" id="appt-guest-phone" hint="Reception registers her in full.">
             <input id="appt-guest-phone" type="tel" value={guest.phone} onChange={(e) => setGuest({ ...guest, phone: e.target.value })} maxLength={30} />
           </Field>
         </div>
       )}
-      {(mode === 'patient' || mode === 'guest') && (
+      {(mode === 'patient' || (mode === 'guest' && !registering)) && (
         <Field
           label="Visit type"
           id="appt-type"
@@ -212,20 +207,19 @@ export function BookDialog({ doctor, date, start, patient: preset = null, length
           </select>
         </Field>
       )}
-      <WarningBox warning={send.warning} busy={send.busy} onConfirm={() => send.run(true)} confirmLabel="Book anyway" />
-      <div className="row">
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={!ready || send.busy || Boolean(send.warning)}
-          onClick={() => send.run(false)}
-        >
-          <CalendarCheck aria-hidden="true" /> {send.busy ? 'Booking…' : mode === 'guest' && canRegister ? 'Book and register' : 'Book'}
-        </button>
-        <button type="button" className="btn btn-link" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
+      {!registering && (
+        <>
+          <WarningBox warning={send.warning} busy={send.busy} onConfirm={() => send.run(true)} confirmLabel="Book anyway" />
+          <div className="row">
+            <button type="button" className="btn btn-primary" disabled={!ready || send.busy || Boolean(send.warning)} onClick={() => send.run(false)}>
+              <CalendarCheck aria-hidden="true" /> {send.busy ? 'Booking…' : 'Book'}
+            </button>
+            <button type="button" className="btn btn-link" onClick={onClose}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }

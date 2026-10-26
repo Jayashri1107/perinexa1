@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Baby, Check, ChevronRight, HeartHandshake, HeartPulse, Flower2, Mic, Stethoscope, UserPlus, Users } from 'lucide-react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Baby, BedDouble, Check, ChevronRight, HeartHandshake, HeartPulse, Flower2, Mic, Stethoscope, Sun, UserPlus, Users } from 'lucide-react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../../auth/guards.jsx';
@@ -8,6 +8,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { canRegisterPatients, patientTabs } from '../../platform/modules.js';
+import { AdmitDialog } from '../beds/BedBoardPage.jsx';
 import { PatientForm } from './PatientForm.jsx';
 import { VoiceEntry } from './VoiceEntry.jsx';
 import { careTypeFromSpeech, withoutCareTypeWords } from './careTypeSpeech.js';
@@ -140,10 +141,21 @@ function RegistrationSteps({ step, mrn, careType }) {
 }
 
 // Step 1: the patient's details, for the type of care chosen from the menu (/patients/new/antenatal …).
+// OPD, IPD or day care (owner, 26 Oct 2026, as in the hospital's earlier software): asked with the form; an IPD or
+// day-care patient is admitted right after she is registered (the Admit popup, with the admission type filled in).
+const SETTINGS = [
+  ['opd', 'OPD', Stethoscope],
+  ['ipd', 'IPD', BedDouble],
+  ['day_care', 'Day care', Sun],
+];
+
 export function PatientNewPage() {
   const { careType: chosen } = useParams();
   const { user, activeMembership } = useAuth();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const setting = SETTINGS.some(([k]) => k === params.get('as')) ? params.get('as') : 'opd';
+  const [admitting, setAdmitting] = useState(null); // { patient, registered, go } – registered as IPD or day care
   const location = useLocation();
   // A quick booking being registered (appointment booking: "Register" on the Today page): its name, phone and doctor
   // fill in the form, and once she is saved the booking joins her record. Carried in the page's navigation state.
@@ -263,6 +275,14 @@ export function PatientNewPage() {
         registered += ` Her appointment could not be added to her record (${err.message}) – book her again on the Appointments page.`;
       }
     }
+    if (setting !== 'opd') {
+      const go = (note) => {
+        setAdmitting(null);
+        navigate(`/patients/${patient.id}`, { replace: true, state: { flash: `${registered}${note}` } });
+      };
+      setAdmitting({ patient, go });
+      return;
+    }
     if (another && !patient.access.canEditClinical && !booking && !fromAbha && !fromSignup) {
       setMatches(null);
       setChoosing(null);
@@ -332,6 +352,29 @@ export function PatientNewPage() {
                 Registering {booking.name}, booked by phone. Her appointment joins her record once she is saved.
               </Alert>
             )}
+            <div className="pn-setting">
+              <span className="field-label" id="pn-setting-label">
+                Patient type
+              </span>
+              <div className="segmented" role="group" aria-labelledby="pn-setting-label">
+                {SETTINGS.map(([k, label, Icon]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={setting === k}
+                    onClick={() => {
+                      const next = new URLSearchParams(params);
+                      if (k === 'opd') next.delete('as');
+                      else next.set('as', k);
+                      setParams(next, { replace: true, state: linkState });
+                    }}
+                  >
+                    <Icon aria-hidden="true" /> {label}
+                  </button>
+                ))}
+              </div>
+              {setting !== 'opd' && <p className="hint">After she is registered, choose her bed: the admission opens as {setting === 'ipd' ? 'an inpatient stay' : 'day care'}.</p>}
+            </div>
             <PatientForm
               key={booking?.id ?? fromAbha?.id ?? fromSignup?.id ?? `new-${round}`}
               spoken={round === 0 ? spoken.text : ''}
@@ -363,6 +406,14 @@ export function PatientNewPage() {
           onOpen={openExisting}
           onRegisterAnyway={registerAnyway}
           onBack={() => setMatches(null)}
+        />
+      )}
+      {admitting && (
+        <AdmitDialog
+          patient={admitting.patient}
+          admissionType={setting === 'day_care' ? 'day_care' : 'planned'}
+          onClose={() => admitting.go(' She is not admitted yet: admit her from Beds when her bed is ready.')}
+          onAdmitted={(a) => admitting.go(` Admitted${setting === 'day_care' ? ' for day care' : ''}: ${a.ward}, bed ${a.bed}${a.ipdNo ? ` (${a.ipdNo})` : ''}.`)}
         />
       )}
     </>

@@ -21,7 +21,7 @@ import { CarePlan } from '../models/CarePlan.js';
 import { CarePlanTemplate, TEMPLATE_CARE_TYPES } from '../models/CarePlanTemplate.js';
 import { Patient } from '../models/Patient.js';
 import { IN_USE } from '../patients/deathRules.js';
-import { daysBetween, hospitalToday, utcDay } from './dates.js';
+import { addDays, daysBetween, hospitalToday, utcDay } from './dates.js';
 import { planApproval } from './hashes.js';
 import { itemId, planFacts, planStatuses } from './planEngine.js';
 import { PLAN_ENGINE_VERSION, POST_DATES_DAYS } from './planRules.js';
@@ -98,7 +98,63 @@ export async function overduePlanItems(tenantId, { now = new Date(), kindsFor, c
   ]);
   const cut = order.length > limit;
   const wanted = order.slice(0, limit).map((o) => o._id);
-  if (!wanted.length) return { rows: [], cut };
+  const rows = await planRows(tenantId, wanted, now, (plan, statuses) => {
+    if (skipPostDates && plan.careType === 'antenatal' && daysBetween(utcDay(plan.basis.edd), today) >= POST_DATES_DAYS) return [];
+    const kindsOfPlan = kindsFor(plan.careType);
+    const overdue = (plan.items ?? []).filter((it) => kindsOfPlan.includes(it.kind) && it.state === 'open' && statuses.get(it)?.status === 'overdue');
+    const recent = since ? overdue.filter((it) => utcDay(it.auto.dueBy) >= since) : overdue;
+    return recent.length ? (withOlder ? overdue : recent) : [];
+  });
+  return { rows, cut };
+}
+
+/**
+ * Patients whose current, active care plan has an item due soon: open, not overdue yet, and its window opens by
+ * `withinDays` days from today (reception's "Babies due soon", 26 Oct 2026). Same options as overduePlanItems
+ * (now, kindsFor, careTypes, limit); same rows, each with the items due soon, the earliest first. A plan with
+ * an overdue item of these kinds is left out: it is on the overdue lists. cut: true when there were more plans
+ * than the limit (the ones whose window opens first are kept).
+ */
+export async function dueSoonPlanItems(tenantId, { now = new Date(), kindsFor, careTypes = TEMPLATE_CARE_TYPES, withinDays = 7, limit = 1000 }) {
+  const today = hospitalToday(now);
+  const until = addDays(today, withinDays);
+  const types = careTypes.filter((t) => kindsFor(t).length);
+  if (!types.length) return { rows: [], cut: false };
+  const kinds = [...new Set(types.flatMap((t) => kindsFor(t)))];
+  const oid = (v) => new mongoose.Types.ObjectId(String(v._id ?? v));
+  const counts = (it) => ({ $and: [{ $in: [`${it}.kind`, kinds] }, { $eq: [`${it}.state`, 'open'] }, { $eq: [`${it}.auto.phase`, 'open'] }, { $gte: [`${it}.auto.dueBy`, today] }, { $lte: [`${it}.auto.dueFrom`, until] }] });
+  const order = await CarePlan.aggregate([
+    {
+      $match: {
+        tenantId: oid(tenantId),
+        current: true,
+        status: 'active',
+        careType: { $in: types },
+        items: { $elemMatch: { kind: { $in: kinds }, state: 'open', 'auto.phase': 'open', 'auto.dueBy': { $gte: today }, 'auto.dueFrom': { $lte: until } } },
+      },
+    },
+    { $project: { first: { $min: { $map: { input: { $filter: { input: '$items', as: 'it', cond: counts('$$it') } }, as: 'it', in: '$$it.auto.dueFrom' } } } } },
+    { $sort: { first: 1, _id: 1 } },
+    { $limit: limit + 1 },
+  ]);
+  const cut = order.length > limit;
+  const rows = await planRows(tenantId, order.slice(0, limit).map((o) => o._id), now, (plan, statuses) => {
+    const ofKind = (plan.items ?? []).filter((it) => kindsFor(plan.careType).includes(it.kind) && it.state === 'open');
+    if (ofKind.some((it) => statuses.get(it)?.status === 'overdue')) return [];
+    return ofKind.filter((it) => ['due', 'upcoming'].includes(statuses.get(it)?.status) && it.auto?.dueFrom && utcDay(it.auto.dueFrom) <= until);
+  });
+  const first = (r) => Math.min(...r.items.map((it) => it.dueFrom.getTime()));
+  rows.sort((a, b) => first(a) - first(b));
+  return { rows, cut };
+}
+
+/**
+ * The rows of overduePlanItems and dueSoonPlanItems, for these plan ids (kept in their order): each plan brought up
+ * to date when it is behind its patient, then pick(plan, statuses) chooses its items ([] leaves the plan out).
+ */
+async function planRows(tenantId, wanted, now, pick) {
+  if (!wanted.length) return [];
+  const today = hospitalToday(now);
   const place = new Map(wanted.map((id, i) => [String(id), i]));
   const plans = (await CarePlan.find({ tenantId, _id: { $in: wanted } }, PLAN_FIELDS).lean()).sort((a, b) => place.get(String(a._id)) - place.get(String(b._id)));
   // (never a record marked as a duplicate of another, nor a record closed after a death: its plan is not followed any more)
@@ -119,17 +175,13 @@ export async function overduePlanItems(tenantId, { now = new Date(), kindsFor, c
       plan = await CarePlan.findOne({ tenantId, patientId: stored.patientId, careType: stored.careType, current: true, status: 'active' }, PLAN_FIELDS).lean();
       if (!plan) continue;
     }
-    if (skipPostDates && plan.careType === 'antenatal' && daysBetween(utcDay(plan.basis.edd), today) >= POST_DATES_DAYS) continue;
-    const kindsOfPlan = kindsFor(plan.careType);
-    const statuses = planStatuses(plan, today);
-    const overdue = (plan.items ?? []).filter((it) => kindsOfPlan.includes(it.kind) && it.state === 'open' && statuses.get(it)?.status === 'overdue');
-    const recent = since ? overdue.filter((it) => utcDay(it.auto.dueBy) >= since) : overdue;
-    if (!recent.length) continue;
-    const items = (withOlder ? overdue : recent)
+    const picked = pick(plan, planStatuses(plan, today));
+    if (!picked.length) continue;
+    const items = [...picked]
       .sort((a, b) => utcDay(a.auto.dueBy) - utcDay(b.auto.dueBy))
       .map((it) => ({ itemId: itemId(it), kind: it.kind, name: it.name, dueFrom: utcDay(it.auto.dueFrom), dueBy: utcDay(it.auto.dueBy) }));
     const { approved } = planApproval(plan, { srcT: templateOf.get(String(plan.source.templateId)) ?? null, stdT: standardOf.get(plan.careType) ?? null, patient });
     rows.push({ patient, planId: String(plan._id), careType: plan.careType, approved, items });
   }
-  return { rows, cut };
+  return rows;
 }

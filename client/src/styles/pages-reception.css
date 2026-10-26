@@ -1,0 +1,20 @@
+/* Reception's desk: To do (ReceptionDesk.jsx, 26 Oct 2026) – the desk's jobs as one short list, each row opening its
+   list or dialog. The rest of the dashboard: pages-reception-dashboard.css. Colours only from tokens.css. */
+.rc-todo { padding: var(--space-6); }
+.rc-todo h2 { margin: 0 0 var(--space-3); font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.rc-todo ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.rc-todo-row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3); text-align: left;
+  font: inherit; color: var(--ink); text-decoration: none; background: var(--mist-50); border: 1px solid transparent; border-radius: var(--radius-md); cursor: pointer;
+}
+.rc-todo-row:hover { border-color: var(--indigo-200); background: var(--indigo-100); }
+.rc-todo-row:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+.rc-todo-icon { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
+.rc-todo-icon.is-watch { background: var(--status-watch-bg); color: var(--status-watch-fg); }
+.rc-todo-icon svg { width: 18px; height: 18px; }
+.rc-todo-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.rc-todo-text .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+.rc-todo-count { min-width: 32px; padding: 2px var(--space-2); border-radius: var(--radius-pill); background: var(--indigo-700); color: var(--surface); text-align: center; font-weight: 600; font-size: var(--fs-label); }
+.rc-todo-go { width: 18px; height: 18px; color: var(--slate-600); flex: 0 0 auto; }
+.rc-done { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--status-stable-bg); color: var(--status-stable-fg); }
+.rc-done svg { width: 18px; height: 18px; }

@@ -74,6 +74,10 @@ them. They list only people already late with nothing booked (`server/src/routes
 `babiesDue`). Compared with Docterz, whose Reception app shows the day's queue at a glance and whose Vaccine Manager
 works out each child's schedule and sends reminders by itself.
 
+> **26 Oct 2026: ideas 24, 25 and 27 are built** on branch `reception-followups` (not merged): Follow-ups in
+> reception's menu (`docs/PROGRESS.md`, 26 Oct 2026). For 27, only the babies due in the next 7 days; babies overdue
+> for longer than 6 weeks still drop off reception's list (owner decision). 26, 28 and 29 are not built.
+
 | # | Idea | What to decide first |
 | --- | --- | --- |
 | 24 | **Call lists higher on reception's Today**: "Follow-ups and vaccinations to call" right under today's patients, or a tab beside them, with the counts on the top card | Layout only. Which order reception wants (owner) |

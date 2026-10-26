@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, Footprints, IndianRupee, Plane, Plus, Settings, UserCheck } from 'lucide-react';
+import { CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, Footprints, IndianRupee, PenLine, Plane, Plus, Settings, UserCheck } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
-import { Alert, StatusPill } from '../../components/ui.jsx';
+import { Alert, StatusPill, useDialogFocus } from '../../components/ui.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { canRegisterPatients } from '../../platform/modules.js';
 import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
 import { BookDialog, CancelDialog, FeeDialog, MoveDialog, NewAppointmentDialog } from './AppointmentDialogs.jsx';
+import { EditPatientDialog, RegisterAndBook } from './RegisterAndBook.jsx';
 import { NEEDS_TIME_LOOK, STATUS_LOOK, VISIT_TYPE_LABELS, addDaysIso, dayLabel, dayList, firstName, slotGroups, timeLabel, whenLabel, whoLabel } from './appointmentFormat.js';
 import { ExportButton } from '../../components/ExportButton.jsx';
 
@@ -27,14 +30,37 @@ export const appointmentTabs = (canBook) => [
   ...(canBook !== false ? [{ label: 'OPD settings', to: '/appointments/timings', end: true }] : []),
 ];
 
-/** One booking in a list: who, visit type, status, and Reschedule / Cancel (doctors and reception). */
-export function AppointmentLine({ a, canBook, onMove, onCancel, onFee = null, showWhen = false, showDoctor = false }) {
+/** Up to two initials of a name, for the round badge beside it ("Asha Sample" → "AS"). */
+export const initialsOf = (name = '') =>
+  name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('');
+
+/**
+ * One booking in a list: who, visit type, status, then the actions on one row – Edit info, Take fee, Reschedule, and
+ * Cancel last (doctors and reception). Edit info (those who register patients, 26 Oct 2026), in a dialog on this page:
+ * her details (onEdit), or for a booking "Not registered yet" her registration with that name and phone (onRegister).
+ * avatar: the initials in a round badge (the day's list of patients).
+ */
+export function AppointmentLine({ a, canBook, onMove, onCancel, onFee = null, onEdit = null, onRegister = null, showWhen = false, showDoctor = false, avatar = false }) {
   const look = a.needsTime ? NEEDS_TIME_LOOK : STATUS_LOOK[a.status];
   const changeable = canBook && a.kind === 'slot' && a.status === 'booked';
   // Reception may take the consultation fee in advance: a registered patient's New or Follow-up visit, not yet seen
   const feeDue = onFee && !a.fee && a.patient && a.kind === 'slot' && ['booked', 'arrived'].includes(a.status) && ['new', 'follow_up'].includes(a.visitType);
+  const editInfo = a.patient ? onEdit && (() => onEdit(a)) : onRegister && a.guest && ['booked', 'arrived'].includes(a.status) && (() => onRegister(a));
+  const hasActions = Boolean(editInfo || feeDue || changeable);
   return (
     <div className="appt-line">
+      <div className="appt-line-top">
+        {avatar && (
+          <span className={`appt-avatar${a.patient ? '' : ' is-guest'}`} aria-hidden="true">
+            {initialsOf(whoLabel(a))}
+          </span>
+        )}
       <div className="appt-line-who">
         {a.patient ? (
           <Link to={`/patients/${a.patient.id}`}>
@@ -57,40 +83,50 @@ export function AppointmentLine({ a, canBook, onMove, onCancel, onFee = null, sh
             .join(' · ')}
         </span>
       </div>
-      <div className="appt-line-actions">
-        {look && (
-          <StatusPill tone={look.tone} icon={look.icon}>
-            {look.label}
-          </StatusPill>
-        )}
-        {a.fee &&
-          (onFee ? (
-            <Link to={`/billing/bills/${a.fee.billId}`} className="appt-fee-paid" title={`Bill ${a.fee.number}`}>
-              <StatusPill tone="stable" icon={Check}>
-                Fee paid {rupees(a.fee.amountPaise)}
-              </StatusPill>
-            </Link>
-          ) : (
-            <StatusPill tone="stable" icon={Check}>
-              Fee paid
+        <div className="appt-line-pills">
+          {look && (
+            <StatusPill tone={look.tone} icon={look.icon}>
+              {look.label}
             </StatusPill>
-          ))}
-        {feeDue && (
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onFee(a)}>
-            <IndianRupee aria-hidden="true" /> Take fee
-          </button>
-        )}
-        {changeable && (
-          <>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMove(a)}>
-              {a.needsTime ? 'Give a time' : 'Reschedule'}
-            </button>
-            <button type="button" className="btn btn-link btn-sm" onClick={() => onCancel(a)} aria-label={`Cancel the appointment of ${whoLabel(a)}`}>
-              Cancel
-            </button>
-          </>
-        )}
+          )}
+          {a.fee &&
+            (onFee ? (
+              <Link to={`/billing/bills/${a.fee.billId}`} className="appt-fee-paid" title={`Bill ${a.fee.number}`}>
+                <StatusPill tone="stable" icon={Check}>
+                  Fee paid {rupees(a.fee.amountPaise)}
+                </StatusPill>
+              </Link>
+            ) : (
+              <StatusPill tone="stable" icon={Check}>
+                Fee paid
+              </StatusPill>
+            ))}
+        </div>
       </div>
+      {hasActions && (
+        <div className="appt-line-actions">
+          {editInfo && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={editInfo} aria-label={`Edit the information of ${whoLabel(a)}`}>
+              <PenLine aria-hidden="true" /> Edit info
+            </button>
+          )}
+          {feeDue && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onFee(a)}>
+              <IndianRupee aria-hidden="true" /> Take fee
+            </button>
+          )}
+          {changeable && (
+            <>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMove(a)}>
+                <CalendarClock aria-hidden="true" /> {a.needsTime ? 'Give a time' : 'Reschedule'}
+              </button>
+              <button type="button" className="btn btn-link btn-sm appt-cancel" onClick={() => onCancel(a)} aria-label={`Cancel the appointment of ${whoLabel(a)}`}>
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -124,6 +160,14 @@ export function useAppointmentDialogs({ doctors, today, onDone }) {
         done(`${whoLabel(a)} is now booked for ${dayLabel(a.date)} at ${timeLabel(a.start)} with ${a.doctor.name}.${messaged ? ' She is sent a message with the new time.' : ''}`)
       }
     />
+  ) : dialog.kind === 'edit' ? (
+    <EditPatientDialog
+      patientId={dialog.appointment.patient.id}
+      onClose={() => setDialog(null)}
+      onSaved={(p) => done(`Saved: the details of ${p?.fullName ?? whoLabel(dialog.appointment)}.`)}
+    />
+  ) : dialog.kind === 'register' ? (
+    <RegisterDialog appointment={dialog.appointment} onClose={() => setDialog(null)} onDone={(a, p) => done(`${p.fullName} is registered as ${p.mrn}; her booking of ${dayLabel(a.date)} is on her record.`)} />
   ) : dialog.kind === 'fee' ? (
     <FeeDialog
       appointment={dialog.appointment}
@@ -145,11 +189,31 @@ export function useAppointmentDialogs({ doctors, today, onDone }) {
     move: (appointment) => setDialog({ kind: 'move', appointment }),
     cancel: (appointment) => setDialog({ kind: 'cancel', appointment }),
     fee: (appointment) => setDialog({ kind: 'fee', appointment }),
+    edit: (appointment) => setDialog({ kind: 'edit', appointment }),
+    register: (appointment) => setDialog({ kind: 'register', appointment }),
   };
+}
+
+/** Register the patient of a booking made by name and phone, in a dialog (RegisterAndBook with the booking). */
+function RegisterDialog({ appointment: a, onClose, onDone }) {
+  const ref = useDialogFocus(onClose);
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} tabIndex={-1} className="modal modal-wide modal-register" role="dialog" aria-modal="true" aria-labelledby="appt-register-title">
+        <h2 id="appt-register-title">Edit info – {whoLabel(a)}</h2>
+        <p className="muted">Not registered yet: fill in her details to register her. Her booking joins her record.</p>
+        <p className="appt-when">
+          <CalendarClock aria-hidden="true" /> Booked: {dayLabel(a.date)} · {whenLabel(a)} · {a.doctor.name}
+        </p>
+        <RegisterAndBook doctor={a.doctor} date={a.date} start={a.start} appointment={a} onBooked={onDone} onCancel={onClose} />
+      </div>
+    </div>
+  );
 }
 
 export function AppointmentsPage() {
   const [params, setParams] = useSearchParams();
+  const registers = canRegisterPatients(useAuth()?.activeMembership?.roles ?? []); // Edit details / Register in a dialog
   const location = useLocation();
   const doctorsRes = useFetch('/appointments/doctors');
   const info = doctorsRes.data;
@@ -240,13 +304,13 @@ export function AppointmentsPage() {
 
         {d && d.hasTimings && (
           <p className="appt-summary" role="status">
-            <span>
+            <span className="appt-stat is-booked">
               <strong>{live}</strong> booked
             </span>
-            <span>
+            <span className="appt-stat is-free">
               <strong>{free}</strong> free
             </span>
-            <span>
+            <span className="appt-stat is-seen">
               <strong>{seen}</strong> seen
             </span>
             {needsTime.data?.appointments.length > 0 && (
@@ -292,6 +356,13 @@ export function AppointmentsPage() {
                   <CalendarClock aria-hidden="true" /> Times
                   <span className="muted appt-count">{d.slotMinutes}-minute slots</span>
                 </h2>
+                {/* What the colours of the times mean – in words too */}
+                <ul className="appt-legend" aria-label="What the times show">
+                  <li className="is-free">Free – click to book</li>
+                  <li className="is-booked">Booked</li>
+                  <li className="is-walkin">Kept for walk-ins</li>
+                  <li className="is-past">Passed</li>
+                </ul>
                 {groups.map((g) => (
                   <div key={g.label} className="appt-part">
                     <h3>{g.label}</h3>
@@ -342,15 +413,18 @@ export function AppointmentsPage() {
               ) : (
                 <ul className="appt-lines">
                   {people.list.map((a) => (
-                    <li key={a.id} className={`appt-token-row ${a === people.next ? 'is-next' : ''}`}>
-                      <span className="appt-slot-time">{whenLabel(a)}</span>
+                    <li key={a.id} className={`appt-token-row appt-card is-${a.needsTime ? 'needs-time' : a.status}${a === people.next ? ' is-next' : ''}`}>
+                      <span className="appt-slot-time">
+                        {whenLabel(a)}
+                        {a.minutes > 10 && <span className="appt-card-length">{a.minutes} min</span>}
+                      </span>
                       <div className="appt-person">
                         {a === people.next && (
                           <StatusPill tone="brand" icon={ChevronRight}>
                             Next
                           </StatusPill>
                         )}
-                        <AppointmentLine a={a} canBook={canBook && a.kind !== 'token'} onMove={dialogs.move} onCancel={dialogs.cancel} onFee={d.canTakeFee ? dialogs.fee : null} />
+                        <AppointmentLine avatar a={a} canBook={canBook && a.kind !== 'token'} onMove={dialogs.move} onCancel={dialogs.cancel} onFee={d.canTakeFee ? dialogs.fee : null} onEdit={registers ? dialogs.edit : null} onRegister={registers ? dialogs.register : null} />
                       </div>
                     </li>
                   ))}
@@ -380,6 +454,7 @@ export function AppointmentsPage() {
 
 /** "Needs a time": next visits the app could not place, from today on – reception gives each a time. */
 export function NeedsTimePage() {
+  const registers = canRegisterPatients(useAuth()?.activeMembership?.roles ?? []);
   const doctorsRes = useFetch('/appointments/doctors');
   const list = useFetch('/appointments/needs-time');
   const info = doctorsRes.data;
@@ -405,7 +480,7 @@ export function NeedsTimePage() {
           <ul className="appt-lines">
             {rows.map((a) => (
               <li key={a.id}>
-                <AppointmentLine a={a} canBook={list.data.canBook} onMove={dialogs.move} onCancel={dialogs.cancel} showWhen showDoctor />
+                <AppointmentLine a={a} canBook={list.data.canBook} onMove={dialogs.move} onCancel={dialogs.cancel} onEdit={registers ? dialogs.edit : null} onRegister={registers ? dialogs.register : null} showWhen showDoctor />
               </li>
             ))}
           </ul>

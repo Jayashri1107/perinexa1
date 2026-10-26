@@ -512,10 +512,13 @@ describe('a record marked as a duplicate', () => {
       const only = await list(who, '&duplicates=only');
       expect(only.body.patients.map((p) => [p.id, p.duplicateOf?.mrn]), who).toEqual([[dup.id, 'P-000001']]);
     }
-    for (const who of ['reception', 'nurse', 'lab', 'pharmacist']) {
+    for (const who of ['reception', 'nurse', 'lab']) {
       const res = await list(who, '&duplicates=include');
       expect([res.status, res.body.error.message], who).toEqual([403, 'Only doctors and RMOs can list the records marked as duplicates.']);
     }
+    // A pharmacist has no patient list at all (owner, 26 Oct 2026: the pharmacy's daily register instead)
+    const pharm = await list('pharmacist', '&duplicates=include');
+    expect([pharm.status, pharm.body.error.message]).toEqual([403, 'The pharmacy finds patients from its daily register.']);
     expect((await list('drA', '&duplicates=yes')).status).toBe(400);
   });
 

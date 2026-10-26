@@ -1,21 +1,48 @@
 import { useState } from 'react';
-import { BedDouble, ClipboardList, Receipt, Trash2, UserPlus, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { BedDouble, ClipboardList, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
 import { CONTROLLED, FREQUENCY_WORDS, MODE_LABELS, einvoiceHsnOk, expiryLabel, medicineLabel, scannedForList } from './pharmacyFormat.js';
 import { FindMedicine, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { FindElsewhere, TypePill } from './RegisterPage.jsx';
 
-// Pharmacy → Sell (counter) and → Issue to ward (kind 'issue', admitted patients only): choose the patient (or a
-// walk-in customer at the counter), take medicines from her prescription or find them on the stock list, choose
+// Pharmacy → New bill (counter) and → Issue to ward (kind 'issue', admitted patients only): choose OPD, IPD or External
+// (owner, 26 Oct 2026) – an OPD patient from today's register (or found by her number or phone), an admitted patient,
+// or a walk-in customer – or come from the Daily register with her already chosen, take medicines from her prescription or find them on the stock list, choose
 // quantities (batches: the earliest-expiring first unless one is chosen), then make the GST tax invoice. A registered
 // patient's invoice goes on her hospital bill; a walk-in pays here. A walk-in sale may be to a business that gives its
 // GSTIN (its details go on the tax invoice, and the hospital admin can download an e-invoice file for it).
 
 const NEEDS_RX = ['H', 'H1', 'X', 'narcotic'];
+
+/** Today's OPD patients from the daily register (never the whole patient list), and finding someone from another day. */
+function TodayOpdPicker({ onPick }) {
+  const navigate = useNavigate();
+  const res = useFetch('/pharmacy/register');
+  const opd = (res.data?.rows ?? []).filter((r) => r.type === 'opd');
+  return (
+    <>
+      {res.error && <Alert type="error">{res.error}</Alert>}
+      {res.data && !opd.length && <p className="muted">No OPD patient on today's register yet.</p>}
+      <ul className="appt-pick-list" aria-label="Today's OPD patients">
+        {opd.map((r) => (
+          <li key={r.patient.id}>
+            <button type="button" className="appt-pick" onClick={() => onPick(r.patient)}>
+              <strong>{r.patient.fullName}</strong>
+              <span className="muted">
+                {[r.patient.mrn, r.doctor, r.prescription ? 'prescription written today' : 'no prescription yet', r.bills.length ? `billed ${r.bills.map((b) => b.number).join(', ')}` : ''].filter(Boolean).join(' · ')}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? navigate('/pharmacy/issue', { state: { patient } }) : onPick(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} />
+    </>
+  );
+}
 
 function BatchPicker({ line, onChange }) {
   const res = useFetch(`/pharmacy/medicines/${line.medicine.id}/batches`);
@@ -142,10 +169,12 @@ export const buyerComplete = (buyer) => buyer.name.trim().length >= 3 && Boolean
 
 export function SellPage({ kind = 'sale' }) {
   const navigate = useNavigate();
+  // From the Daily register: { patient } already chosen, or { type: 'external' }
+  const start = useLocation().state ?? {};
   const issue = kind === 'issue';
   const inpatients = useFetch(issue ? '/pharmacy/inpatients' : null);
-  const [who, setWho] = useState(issue ? 'inpatient' : 'patient'); // patient | walkin | inpatient
-  const [patient, setPatient] = useState(null);
+  const [who, setWho] = useState(issue ? 'inpatient' : start.type === 'external' ? 'walkin' : 'patient'); // patient (OPD) | walkin (External) | inpatient (IPD)
+  const [patient, setPatient] = useState(start.patient ?? null);
   const [customer, setCustomer] = useState({ name: '', phone: '' });
   const [visitId, setVisitId] = useState(null);
   const [doctor, setDoctor] = useState({ name: '', reg: '' });
@@ -209,32 +238,36 @@ export function SellPage({ kind = 'sale' }) {
 
   return (
     <>
-      <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'Sell at the counter'} crumb={issue ? 'Issue to ward' : 'Sell'} />
+      <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'New bill'} crumb={issue ? 'Issue to ward' : 'New bill'} />
       <div className="pf-content bill-page">
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
         </Alert>
 
         <section className="card bill-section" aria-labelledby="ph-who">
-          <h2 id="ph-who">{issue ? 'Admitted patient' : 'Who is it for'}</h2>
-          {!issue && !patient && (
-            <div className="segmented" role="group" aria-label="Who is it for">
-              <button type="button" aria-pressed={who === 'patient'} onClick={() => setWho('patient')}>
-                <Users aria-hidden="true" /> Registered patient
+          <h2 id="ph-who">Who is it for</h2>
+          {!patient && (
+            <div className="segmented" role="group" aria-label="Type of patient">
+              <button type="button" aria-pressed={who === 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
+                <Stethoscope aria-hidden="true" /> OPD patient
+              </button>
+              <button type="button" aria-pressed={who === 'inpatient'} onClick={() => !issue && navigate('/pharmacy/issue')}>
+                <BedDouble aria-hidden="true" /> IPD patient
               </button>
               <button
                 type="button"
                 aria-pressed={who === 'walkin'}
                 onClick={() => {
+                  if (issue) return navigate('/pharmacy', { state: { type: 'external' } });
                   setWho('walkin');
                   reset();
                 }}
               >
-                <UserPlus aria-hidden="true" /> Walk-in customer
+                <UserPlus aria-hidden="true" /> External (walk-in)
               </button>
             </div>
           )}
-          {who === 'patient' && !patient && <PatientFinder onPick={setPatient} />}
+          {who === 'patient' && !patient && <TodayOpdPicker onPick={setPatient} />}
           {who === 'inpatient' && !patient && (
             <>
               {inpatients.error && <Alert type="error">{inpatients.error}</Alert>}
@@ -258,6 +291,7 @@ export function SellPage({ kind = 'sale' }) {
           )}
           {patient && (
             <div className="appt-chosen">
+              <TypePill type={issue ? 'ipd' : 'opd'} />
               <strong>{patient.fullName}</strong>
               <span className="muted">
                 {patient.mrn}

@@ -155,7 +155,7 @@ describe('purchase orders', () => {
     expect(shown).toContain('Receive order PO-000001');
     expect(shown).toContain('Receiving against order PO-000001');
     expect(shown).toContain('Order Tab A'); // still to come: 40
-    expect(html).toContain('aria-label="Quantity" inputMode="numeric" value="40"');
+    expect(html).toContain('aria-label="Quantity (packs)" inputMode="numeric" value="40"');
     expect(shown).not.toContain('Order Tab B'); // all of it has arrived
     expect(html).toMatch(/<select id="pu-sup"[^>]*disabled/);
     expect(shown).toContain('Scan or type a barcode');
@@ -165,11 +165,15 @@ describe('purchase orders', () => {
     answers[`/pharmacy/orders/${OID}`] = { order: order({ status: 'received', can: { edit: false, send: false, receive: false, cancel: false, close: false } }), settings: SETTINGS };
     const closed = text(at(`/pharmacy/purchases/new?order=${OID}`, '/pharmacy/purchases/new', <NewPurchasePage />));
     expect(closed).toContain('Nothing can be received against order PO-000001 (received)');
-    expect(closed).toContain('Enter a purchase');
+    expect(closed).toContain('Add a purchase bill');
     // Without an order the form is as before
     const plain = at('/pharmacy/purchases/new', '/pharmacy/purchases/new', <NewPurchasePage />);
-    expect(text(plain)).toContain('Enter a purchase');
+    expect(text(plain)).toContain('Add a purchase bill');
     expect(plain).not.toMatch(/<select id="pu-sup"[^>]*disabled/);
+    // "Add bill" on a supplier's page: that supplier is chosen (and can still be changed)
+    const fromSupplier = at(`/pharmacy/purchases/new?supplier=${SUPPLIER.id}`, '/pharmacy/purchases/new', <NewPurchasePage />);
+    expect(fromSupplier).toMatch(new RegExp(`<option value="${SUPPLIER.id}" selected`));
+    expect(fromSupplier).not.toMatch(/<select id="pu-sup"[^>]*disabled/);
   });
 
   it('the printout carries the pharmacy’s details, the supplier and each medicine with its quantity', () => {
@@ -340,14 +344,19 @@ describe('returns to a supplier', () => {
       settings: SETTINGS,
       pages: [{ medicine: med('m1', 'H1 Tab', { schedule: 'H1' }), opening: 0, closing: 15, rows: [{ date: '2026-10-04', time: '11:30', kind: 'supplier_return', ref: 'SR-000001', batch: 'H1B', in: 0, out: 5, balance: 15, patient: '', doctor: '', supplier: 'Sample Distributors', reason: 'Recalled', witness: '', byName: 'Sample Pharmacist' }] }],
     };
-    const html = at('/pharmacy/reports', '/pharmacy/reports', <ReportsPage />);
-    const shown = text(html);
-    expect(shown).toContain('Purchases by supplier, net of returns');
-    expect(shown).toContain('Sample Distributors 1 ₹50,000 −₹15,000 (2 returns) ₹35,000');
-    expect(shown).toContain('Returned to supplier SR-000001');
-    expect(shown).toContain('Recalled · balance 15 · Sample Pharmacist');
-    expect(shown).toContain('Returns to suppliers'); // the export
-    brand(html);
+    // One report at a time (owner, 26 Oct 2026): the tab is in the address
+    const view = (v) => at(`/pharmacy/reports?view=${v}`, '/pharmacy/reports', <ReportsPage />);
+    const first = at('/pharmacy/reports', '/pharmacy/reports', <ReportsPage />);
+    expect(text(first)).toContain('Stock alerts Sales & GST Purchases Registers Export'); // Export: the admin only
+    expect(text(first)).toContain('Bought from suppliers ₹35,000');
+    brand(first);
+    const purchases = text(view('purchases'));
+    expect(purchases).toContain('Purchases by supplier');
+    expect(purchases).toContain('Sample Distributors 1 ₹50,000 −₹15,000 (2 returns) ₹35,000');
+    const registers = text(view('registers'));
+    expect(registers).toContain('Returned to supplier SR-000001');
+    expect(registers).toContain('Recalled · balance 15 · Sample Pharmacist');
+    expect(text(view('export'))).toContain('Returns to suppliers'); // the export
   });
 });
 
@@ -371,7 +380,7 @@ describe('barcodes', () => {
     brand(stock);
     for (const kind of ['sale', 'issue']) {
       const page = at('/pharmacy', '/pharmacy', <SellPage kind={kind} />);
-      expect(text(page)).toContain(kind === 'sale' ? 'Who is it for' : 'Admitted patient');
+      expect(text(page)).toContain('Who is it for'); // OPD, IPD or External on both (owner, 26 Oct 2026)
       expect(page).not.toContain(box); // nobody chosen yet: no medicines card
       brand(page);
     }
