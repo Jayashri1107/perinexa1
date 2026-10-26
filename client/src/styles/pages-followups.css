@@ -34,3 +34,17 @@
 .fu-bb-lines { margin-bottom: var(--space-2); }
 .fu-bb-done p { display: flex; gap: var(--space-2); align-items: flex-start; }
 .fu-bb-done svg { flex: none; color: var(--status-stable-fg); width: 20px; height: 20px; }
+/* The simpler bill (owner, 26 Oct 2026): the fee, other charges, then the total and how she pays */
+.fu-bb-fee { display: grid; gap: var(--space-2); max-width: 520px; }
+.fu-bb-extra { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-2); }
+.fu-bb-more { justify-self: start; }
+.fu-bb-pay { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-top: var(--space-3); }
+.fu-bb-total strong { font-size: var(--fs-h3); margin-left: var(--space-1); }
+.fu-bb-ok { width: 18px; height: 18px; vertical-align: -3px; color: var(--status-stable-fg); }
+/* The doctor's follow-ups on her Today */
+.fu-doctor { padding: var(--space-4); margin-bottom: var(--space-4); }
+.fu-doctor-list { list-style: none; margin: 0; padding: 0; }
+.fu-doctor-list li { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto minmax(0, 1fr); gap: var(--space-3); align-items: center; padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.fu-doctor-list li:first-child { border-top: 0; }
+.fu-doctor-when { font-weight: 600; }
+@media (max-width: 700px) { .fu-doctor-list li { grid-template-columns: 1fr; gap: var(--space-1); } }

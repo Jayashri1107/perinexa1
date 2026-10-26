@@ -20,6 +20,12 @@ const followUpSchema = new mongoose.Schema(
     created: { type: new mongoose.Schema(byWhom, { _id: false }), required: true },
     came: { type: new mongoose.Schema({ ...byWhom, on: { type: Date, required: true } }, { _id: false }), default: null },
     cancelled: { type: new mongoose.Schema(byWhom, { _id: false }), default: null },
+    // Booked (owner, 26 Oct 2026): the day and time she comes for it – her appointment in the doctor's day, so the
+    // doctor sees her; still a follow-up (open until she checks in). A cancelled appointment leaves it unbooked.
+    booked: {
+      type: new mongoose.Schema({ appointmentId: { type: ObjectId, ref: 'Appointment', required: true }, on: { type: Date, required: true }, start: { type: String, default: null }, ...byWhom }, { _id: false }),
+      default: null,
+    },
   },
   { timestamps: false },
 );

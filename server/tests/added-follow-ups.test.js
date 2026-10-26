@@ -3,6 +3,7 @@
 // marked, her follow-up is done, and her doctor is told why she came. Fake data only.
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
+import { Appointment } from '../src/models/Appointment.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { FollowUp } from '../src/models/FollowUp.js';
 import { Notification } from '../src/models/Notification.js';
@@ -89,5 +90,28 @@ describe('follow-ups added by hand', () => {
     const res = await add('reception', { patientId: p.id, doctorId: people.drA._id.toString(), purpose: 'consultation' });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     expect(res.body.followUp.from).toBe('2026-10-22'); // the test's clock: 22 Oct 2026, 11:30 in the hospital
+  });
+
+  it('booked: her day and time stay on the follow-up, her doctor sees it; a cancelled appointment unbooks it', async () => {
+    const p = await register('Booked Sample');
+    const f = (await add('reception', { patientId: p.id, doctorId: people.drA._id.toString(), purpose: 'reports', from: '2026-10-24' })).body.followUp;
+    expect(f.booked).toBeNull();
+    const a = await Appointment.create({ tenantId: hospital._id, patientId: p.id, doctorId: people.drA._id, on: new Date('2026-10-24T00:00:00Z'), start: '17:00', visitType: 'follow_up', kind: 'slot', source: 'booked', created: { by: people.reception._id, byName: 'Sample reception', at: new Date() } });
+    const booked = await (await as('reception')).post(`/api/added-follow-ups/${f.id}/booked`).send({ appointmentId: String(a._id) });
+    expect(booked.status, JSON.stringify(booked.body)).toBe(200);
+    expect(booked.body.followUp).toMatchObject({ status: 'open', booked: { appointmentId: String(a._id), date: '2026-10-24', start: '17:00' }, doctor: { name: 'Sample drA' } });
+    // Her doctor's own follow-ups (?mine=1); another doctor's list does not have her
+    const mine = (await (await as('drA')).get('/api/added-follow-ups?mine=1')).body.followUps;
+    expect(mine.map((x) => [x.patient.fullName, x.booked?.start])).toEqual([['Booked Sample', '17:00']]);
+    // Moved: the follow-up follows; cancelled: unbooked again
+    await Appointment.updateOne({ tenantId: hospital._id, _id: a._id }, { $set: { start: '17:30' } });
+    expect((await (await as('reception')).get('/api/added-follow-ups')).body.followUps[0].booked.start).toBe('17:30');
+    await Appointment.updateOne({ tenantId: hospital._id, _id: a._id }, { $set: { status: 'cancelled' } });
+    expect((await (await as('reception')).get('/api/added-follow-ups')).body.followUps[0].booked).toBeNull();
+    // Only a booked appointment of the same patient
+    const other = await register('Other Sample');
+    const b = await Appointment.create({ tenantId: hospital._id, patientId: other.id, doctorId: people.drA._id, on: new Date('2026-10-24T00:00:00Z'), start: '17:10', visitType: 'follow_up', kind: 'slot', source: 'booked', created: { by: people.reception._id, byName: 'Sample reception', at: new Date() } });
+    expect((await (await as('reception')).post(`/api/added-follow-ups/${f.id}/booked`).send({ appointmentId: String(b._id) })).status).toBe(400);
+    expect((await (await as('lab')).get('/api/added-follow-ups?mine=1')).status).toBe(403);
   });
 });

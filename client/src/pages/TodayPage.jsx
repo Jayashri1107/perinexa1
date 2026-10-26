@@ -18,6 +18,7 @@ import { MyDayCard } from './MyDayCard.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { DailyRegister } from './pharmacy/RegisterPage.jsx';
+import { DoctorFollowUps } from './followups/DoctorFollowUps.jsx';
 import { HandoverList, VITALS_DUE_HOURS, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
 import { timeLabel } from './appointments/appointmentFormat.js';
 import { OpdCasePaper } from './beds/AdmissionDesk.jsx';
@@ -798,6 +799,8 @@ function RoleToday({ roles, lensBar = null }) {
         {(roles.includes('nurse') || roles.includes('rmo')) && <WardToday inpatients={inpatients.data} rmo={roles.includes('rmo')} />}
         {/* The pharmacist: the day's OPD, IPD and External patients first, then the pharmacy's numbers (owner, 26 Oct 2026) */}
         {roles.includes('pharmacist') && <DailyRegister glance={<PharmacyToday />} />}
+        {/* The doctor's follow-ups, booked by day and time (owner, 26 Oct 2026) */}
+        {roles.includes('doctor') && <DoctorFollowUps />}
         {isBillingDesk && <BillingToday />}
         {isReception && !simple && (
           <nav className="td-quick" aria-label="Quick actions">

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { hospitalDoctor, hospitalDoctors } from '../appointments/appointmentService.js';
 import { PURPOSE_NOTE_MAX, VISIT_PURPOSES } from '../appointments/visitPurpose.js';
 import { hospitalToday, isoDay, utcDay } from '../careplans/dates.js';
+import { Appointment } from '../models/Appointment.js';
 import { FollowUp } from '../models/FollowUp.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
@@ -40,6 +41,8 @@ export function followUpView(f, { patients = new Map(), doctors = new Map() } = 
     note: f.note ?? '',
     from: f.from ? isoDay(f.from) : null,
     status: f.status,
+    // Booked for a day and time (her appointment), or null
+    booked: f.booked ? { appointmentId: String(f.booked.appointmentId), date: isoDay(f.booked.on), start: f.booked.start ?? null } : null,
     addedBy: f.created?.byName ?? '',
     addedOn: f.created?.at ? isoDay(f.created.at) : null,
   };
@@ -68,12 +71,27 @@ async function patientFor(req, id) {
   return patient;
 }
 
-// The open follow-ups: of one patient (?patientId=), or of everyone (the Follow-ups page), the earliest first
+/** A booking whose appointment was cancelled (or moved to another patient) no longer counts: the follow-up is unbooked. */
+async function withLiveBookings(tenantId, rows) {
+  const ids = rows.filter((f) => f.booked).map((f) => f.booked.appointmentId);
+  if (!ids.length) return rows;
+  const live = new Map((await Appointment.find({ tenantId, _id: { $in: ids }, status: 'booked' }, { on: 1, start: 1, patientId: 1 }).lean()).map((a) => [String(a._id), a]));
+  return rows.map((f) => {
+    if (!f.booked) return f;
+    const a = live.get(String(f.booked.appointmentId));
+    // A moved appointment keeps the follow-up booked at its new day and time
+    return a && String(a.patientId) === String(f.patientId) ? { ...f, booked: { ...f.booked, on: a.on, start: a.start } } : { ...f, booked: null };
+  });
+}
+
+// The open follow-ups: of one patient (?patientId=), of everyone (the Follow-ups page), or the logged-in doctor's own
+// (?mine=1, her Today), the earliest first
 addedFollowUpsRouter.get('/', async (req, res) => {
-  const { patientId } = parse(z.object({ patientId: objectId.optional() }).strict(), req.query);
+  const { patientId, mine } = parse(z.object({ patientId: objectId.optional(), mine: z.enum(['1']).optional() }).strict(), req.query);
   const filter = { tenantId: req.tenantId, status: 'open' };
   if (patientId) filter.patientId = (await patientFor(req, patientId))._id;
-  const rows = await FollowUp.find(filter).sort({ from: 1, 'created.at': 1 }).limit(MAX_ROWS + 1).lean();
+  if (mine) filter.doctorId = req.user._id;
+  const rows = await withLiveBookings(req.tenantId, await FollowUp.find(filter).sort({ from: 1, 'created.at': 1 }).limit(MAX_ROWS + 1).lean());
   const patients = new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: rows.map((f) => f.patientId) } }, { fullName: 1, mrn: 1, phone: 1 }).lean()).map((p) => [String(p._id), p]));
   const doctors = new Map((await hospitalDoctors(req.tenantId)).map((d) => [d.id, d.name]));
   res.json({ today: isoDay(hospitalToday(req.now)), followUps: rows.slice(0, MAX_ROWS).map((f) => followUpView(f, { patients, doctors })), cut: rows.length > MAX_ROWS });
@@ -107,6 +125,24 @@ addedFollowUpsRouter.post('/', async (req, res) => {
   });
   await audit(req, 'FOLLOW_UP_ADDED', { details: { followUpId: String(f._id), patientId: String(patient._id), mrn: patient.mrn, doctorId: doctor.id, purpose: body.purpose } });
   res.status(201).json({ followUp: followUpView(f.toObject(), { patients: new Map([[String(patient._id), patient]]), doctors: new Map([[doctor.id, doctor.name]]) }) });
+});
+
+// Booked: her appointment for this follow-up (made with POST /api/appointments, visit type follow-up) is kept on it
+addedFollowUpsRouter.post('/:id/booked', async (req, res) => {
+  const { id } = parse(z.object({ id: objectId }), req.params);
+  const { appointmentId } = parse(z.object({ appointmentId: objectId }).strict(), req.body);
+  const f = await FollowUp.findOne({ tenantId: req.tenantId, _id: id });
+  if (!f) throw new HttpError(404, 'Follow-up not found.', 'NOT_FOUND');
+  const patient = await patientFor(req, f.patientId);
+  if (f.status !== 'open') throw new HttpError(409, f.status === 'came' ? 'She has already come for this follow-up.' : 'This follow-up is cancelled.', 'NOT_OPEN');
+  const a = await Appointment.findOne({ tenantId: req.tenantId, _id: appointmentId, patientId: f.patientId, status: 'booked' }, { on: 1, start: 1, doctorId: 1 }).lean();
+  if (!a) throw new HttpError(400, 'Choose a booked appointment of this patient.', 'VALIDATION_ERROR');
+  f.booked = { appointmentId: a._id, on: a.on, start: a.start ?? null, by: req.user._id, byName: req.user.name, at: req.now ?? new Date() };
+  // The doctor of the booking is the follow-up's doctor
+  f.doctorId = a.doctorId;
+  await f.save();
+  const doctors = new Map((await hospitalDoctors(req.tenantId)).map((d) => [d.id, d.name]));
+  res.json({ followUp: followUpView(f.toObject(), { patients: new Map([[String(patient._id), patient]]), doctors }) });
 });
 
 addedFollowUpsRouter.post('/:id/cancel', async (req, res) => {

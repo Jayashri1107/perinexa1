@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, KpiCard, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { HOSPITAL_FOLLOW_UPS } from '../../platform/modules.js';
-import { PURPOSE_LABELS, dayLabel } from '../appointments/appointmentFormat.js';
+import { PURPOSE_LABELS, dayLabel, timeLabel } from '../appointments/appointmentFormat.js';
 import { BookAndBillDialog } from './BookAndBillDialog.jsx';
 import { AddFollowUpDialog } from './FollowUpDialogs.jsx';
 import { SETTING_CHOICES, SETTING_LABELS, bookingTime, callRows, comingUpGroups, filterFollowUps, followUpCounts, visitTypeLabel } from './followUpsFormat.js';
@@ -140,7 +140,7 @@ function AddedFollowUps({ added, filterText, today = '', onCancelled, onBook }) 
     }
   };
   return (
-    <Panel id="fu-added" icon={ClipboardList} title="Follow-ups added" count={rows.length} hint="Patients asked to come back – with which doctor and what for. When she checks in, it is marked and her doctor is told.">
+    <Panel id="fu-added" icon={ClipboardList} title="Follow-ups" count={rows.length} hint="Patients asked to come back – with which doctor, what for and, once booked, the day and time. Her doctor sees them on Today. When she checks in, it is marked.">
       <Alert type="error">{error ?? added?.error}</Alert>
       <DataTable
         caption="Follow-ups added"
@@ -168,7 +168,15 @@ function AddedFollowUps({ added, filterText, today = '', onCancelled, onBook }) 
             header: <span className="sr-only">Actions</span>,
             render: (f) => (
               <span className="fu-why">
-                {bookButton(onBook)(f)}
+                {/* Booked: her day and time (owner, 26 Oct 2026); not yet: Book */}
+                {f.booked ? (
+                  <StatusPill tone="stable" icon={Check}>
+                    Booked · {dayLabel(f.booked.date)}
+                    {f.booked.start ? `, ${timeLabel(f.booked.start)}` : ''}
+                  </StatusPill>
+                ) : (
+                  bookButton(onBook)(f)
+                )}
                 <button type="button" className="btn btn-link btn-sm" onClick={() => cancel(f)} aria-label={`Cancel the follow-up of ${f.patient.fullName}`}>
                   Cancel
                 </button>
@@ -212,7 +220,7 @@ export function FollowUpsPage() {
           added={added.data ?? (added.error ? { error: added.error } : null)}
           filterText={filter.text}
           today={data?.today ?? ''}
-          onBook={(f) => setBooking({ patient: f.patient, doctorId: f.doctor.id, purpose: f.purpose, note: f.note, from: f.from })}
+          onBook={(f) => setBooking({ patient: f.patient, followUpId: f.id, doctorId: f.doctor.id, purpose: f.purpose, note: f.note, from: f.from })}
           onCancelled={(f) => {
             setNote(`Cancelled: the follow-up of ${f.patient.fullName}.`);
             added.reload();
@@ -225,7 +233,7 @@ export function FollowUpsPage() {
             onClose={() => setBooking(null)}
             onDone={({ appointment, bill }) => {
               setBooking(null);
-              setNote(`${booking.patient.fullName}: ${appointment ? 'booked, and ' : ''}bill ${bill.number} made.`);
+              setNote(`${booking.patient.fullName}: follow-up booked for ${dayLabel(appointment.date)}${appointment.start ? `, ${timeLabel(appointment.start)}` : ''}${bill ? `, bill ${bill.number} made` : ''}.`);
               res.reload();
               added.reload();
             }}
@@ -365,7 +373,7 @@ export function VaccinationFollowUpsPage() {
             onClose={() => setBooking(null)}
             onDone={({ appointment, bill }) => {
               setBooking(null);
-              setNote(`${booking.patient.fullName}: ${appointment ? 'booked, and ' : ''}bill ${bill.number} made.`);
+              setNote(`${booking.patient.fullName}: follow-up booked for ${dayLabel(appointment.date)}${appointment.start ? `, ${timeLabel(appointment.start)}` : ''}${bill ? `, bill ${bill.number} made` : ''}.`);
               res.reload();
             }}
           />
