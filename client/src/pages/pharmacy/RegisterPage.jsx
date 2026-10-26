@@ -42,8 +42,11 @@ const detailsOf = (r) => {
   return [r.customer.phone, formatDateTime(r.at)].filter(Boolean).join(' · ');
 };
 
-/** Find someone who is not on the day's register: her exact patient number, or her phone number. bare: inside another card. */
-export function FindElsewhere({ onPick, onOpenBill, bare = false }) {
+/**
+ * Find someone who is not on the day's register: her exact patient number, or her phone number. bare: inside another
+ * card; slim: one line, no heading (the pharmacist's Today toolbar, 26 Oct 2026).
+ */
+export function FindElsewhere({ onPick, onOpenBill, bare = false, slim = false }) {
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -59,17 +62,17 @@ export function FindElsewhere({ onPick, onOpenBill, bare = false }) {
     }
   };
   const nothing = result && !result.error && !result.patients.length && !result.external.length;
-  const Box = bare ? 'div' : 'section';
+  const Box = bare || slim ? 'div' : 'section';
   const Heading = bare ? 'h3' : 'h2';
   return (
-    <Box className={bare ? 'ph-elsewhere' : 'card bill-section'} aria-labelledby="ph-find">
-      <Heading id="ph-find">Someone from another day</Heading>
-      <p className="hint">Type her full patient number (as on her card) or her phone number. Each search is kept in the audit log.</p>
+    <Box className={slim ? 'ph-find-slim' : bare ? 'ph-elsewhere' : 'card bill-section'} aria-labelledby={slim ? undefined : 'ph-find'} aria-label={slim ? 'Someone from another day' : undefined}>
+      {!slim && <Heading id="ph-find">Someone from another day</Heading>}
+      {!slim && <p className="hint">Type her full patient number (as on her card) or her phone number. Each search is kept in the audit log.</p>}
       <form className="bill-toolbar" onSubmit={find}>
-        <label className="bill-search">
+        <label className="bill-search" title="Her full patient number (as on her card) or her phone number. Each search is kept in the audit log.">
           <Search aria-hidden="true" />
-          <span className="sr-only">Patient number or phone number</span>
-          <input type="search" placeholder="Patient number or phone number" value={text} maxLength={40} onChange={(e) => setText(e.target.value)} />
+          <span className="sr-only">Someone from another day: patient number or phone number (each search is kept in the audit log)</span>
+          <input type="search" placeholder={slim ? 'Someone from another day: patient number or phone' : 'Patient number or phone number'} value={text} maxLength={40} onChange={(e) => setText(e.target.value)} />
         </label>
         <button type="submit" className="btn btn-secondary" disabled={busy || text.trim().length < 3}>
           <Search aria-hidden="true" /> Find
@@ -120,7 +123,7 @@ export function RegisterRedirect() {
  * then `glance` (the pharmacy's numbers), then the day's list – no heading or count cards of its own (the filter
  * buttons carry the counts).
  */
-export function DailyRegister({ glance = null }) {
+export function DailyRegister({ glance = null, actions = null }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [text, setText] = useState('');
@@ -168,7 +171,11 @@ export function DailyRegister({ glance = null }) {
   return (
     <section className="td-group" aria-label="Daily register">
       <div className="ph-register">
-        <FindElsewhere onPick={open} onOpenBill={openBill} />
+        {/* One slim line: someone from another day, and the day's quick actions (26 Oct 2026: less space) */}
+        <div className="ph-topbar">
+          <FindElsewhere slim onPick={open} onOpenBill={openBill} />
+          {actions}
+        </div>
         {glance}
         {res.error && <Alert type="error">{res.error}</Alert>}
         <DataTable
