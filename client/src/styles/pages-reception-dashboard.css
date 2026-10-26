@@ -140,7 +140,7 @@
 .rd-patients, .rd-side-card, .rd-side > .rc-todo { padding: var(--space-4); }
 .rd-card-head { margin-bottom: var(--space-2); }
 .rd-tabs { margin-bottom: var(--space-3); }
-.rd-lists { margin: 0 0 var(--space-3); grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-2); }
+.rd-lists { margin: 0 0 var(--space-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-2); }
 .rd-list-card { padding: var(--space-2) var(--space-3); }
 .rd-open-list { margin: 0 0 var(--space-3); }
 .rd-table .dt-empty { padding: var(--space-4); }

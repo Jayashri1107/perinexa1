@@ -268,7 +268,7 @@ export function BookAndBillDialog({ who, today, onClose, onDone }) {
                       ))}
                     </select>
                   </Field>
-                  <Field label="Amount ₹" id="fu-bb-amount" error={payOk ? undefined : 'At most the total of the charges.'}>
+                  <Field label="Amount ₹" id="fu-bb-amount" error={payOk || !total ? undefined : 'At most the total of the charges.'}>
                     <input id="fu-bb-amount" inputMode="decimal" value={amount ?? (total ? String(total / 100) : '')} onChange={(e) => setAmount(e.target.value)} />
                   </Field>
                   {mode !== 'cash' && (
