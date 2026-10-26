@@ -469,6 +469,8 @@ export function UpcomingVisits({ refreshKey = 0, max = 10 }) {
   if (res.error) return <Alert type="error">{res.error}</Alert>;
   if (!res.data) return null;
   const { groups, total, shown } = upcomingVisits(res.data.comingUp, res.data.today, max);
+  // Nothing booked for the coming days: no card (only what is needed)
+  if (total === 0) return null;
   return (
     <section className="card rd-coming" aria-labelledby="rd-coming-title">
       <div className="rd-card-head">
@@ -480,71 +482,30 @@ export function UpcomingVisits({ refreshKey = 0, max = 10 }) {
           View all <ChevronRight aria-hidden="true" />
         </Link>
       </div>
-      {total === 0 ? (
-        <p className="muted rd-none">Nobody is booked for the coming days yet.</p>
-      ) : (
-        <>
-          {groups.map((g) => (
-            <div key={g.date} className="rd-coming-day">
-              <h3>
-                {g.label} <span className="muted tabular">({g.rows.length})</span>
-              </h3>
-              <ul className="rd-coming-list">
-                {g.rows.map((r, i) => (
-                  <li key={`${r.patient.id}-${i}`}>
-                    <span className="tabular rd-coming-time">{r.needsTime ? <Link to="/appointments/needs-time">Needs a time</Link> : bookingTime(r)}</span>
-                    <span className="rd-person-text">
-                      <Link to={`/patients/${r.patient.id}`}>{r.patient.fullName}</Link>
-                      <span className="muted tabular">{[r.patient.mrn, r.patient.phone, r.doctorName ?? r.patient.doctorName].filter(Boolean).join(' · ')}</span>
-                    </span>
-                    <span className="rd-visit">{visitTypeLabel(r)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-          {total > shown && (
-            <Link to="/follow-ups#fu-coming" className="btn btn-link btn-sm">
-              Show all {total} upcoming visits
-            </Link>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
-
-/** The next appointments of the day (not arrived yet, with a time), the earliest first. */
-export function UpcomingPanel({ rows = [], max = 5 }) {
-  const next = rows
-    .filter((r) => (r.queue ?? 'expected') === 'expected' && r.appointment?.start)
-    .sort((a, b) => a.appointment.start.localeCompare(b.appointment.start))
-    .slice(0, max);
-  if (!next.length) return null;
-  return (
-    <section className="card rd-side-card" aria-labelledby="rd-upcoming-title">
-      <div className="rd-card-head">
-        <h2 id="rd-upcoming-title">
-          <CalendarDays aria-hidden="true" /> Upcoming appointments
-        </h2>
-        <Link to="/appointments" className="rd-view-all">
-          View all <ChevronRight aria-hidden="true" />
+      {groups.map((g) => (
+        <div key={g.date} className="rd-coming-day">
+          <h3>
+            {g.label} <span className="muted tabular">({g.rows.length})</span>
+          </h3>
+          <ul className="rd-coming-list">
+            {g.rows.map((r, i) => (
+              <li key={`${r.patient.id}-${i}`}>
+                <span className="tabular rd-coming-time">{r.needsTime ? <Link to="/appointments/needs-time">Needs a time</Link> : bookingTime(r)}</span>
+                <span className="rd-person-text">
+                  <Link to={`/patients/${r.patient.id}`}>{r.patient.fullName}</Link>
+                  <span className="muted tabular">{[r.patient.mrn, r.patient.phone, r.doctorName ?? r.patient.doctorName].filter(Boolean).join(' · ')}</span>
+                </span>
+                <span className="rd-visit">{visitTypeLabel(r)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {total > shown && (
+        <Link to="/follow-ups#fu-coming" className="btn btn-link btn-sm">
+          Show all {total} upcoming visits
         </Link>
-      </div>
-      {next.length === 0 ? (
-        <p className="muted rd-none">No more appointments with a time today.</p>
-      ) : (
-        <ul className="rd-upcoming">
-          {next.map((r) => (
-            <li key={r.patient.id}>
-              <span className="tabular rd-up-time">{timeLabel(r.appointment.start)}</span>
-              <Link to={`/patients/${r.patient.id}`}>{r.patient.fullName}</Link>
-              <span className="rd-visit">{visitText(r)}</span>
-            </li>
-          ))}
-        </ul>
       )}
     </section>
   );
 }
-

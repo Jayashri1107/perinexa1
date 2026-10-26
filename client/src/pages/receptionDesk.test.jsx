@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { TodoPanel, prefillFrom, queueCounts, queueWhen } from './ReceptionDesk.jsx';
-import { DeskNumbers, DoctorsPanel, PatientsTable, UpcomingPanel, greeting, guestRow, rowMatches, upcomingVisits } from './ReceptionDashboard.jsx';
+import { DeskNumbers, DoctorsPanel, PatientsTable, greeting, guestRow, rowMatches, upcomingVisits } from './ReceptionDashboard.jsx';
 
 const text = (el) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>).replace(/<[^>]+>/g, ' ').replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, ' ');
 const who = (id, fullName) => ({ id, fullName, mrn: `P-00000${id}`, phone: '98765 43210', doctorName: 'Sample Doctor' });
@@ -75,13 +75,6 @@ describe('reception: the side and the lists', () => {
   it('Doctors today: name, state and hours, then expected, waiting and seen', () => {
     const shown = text(<DoctorsPanel doctors={[{ id: 'd1', name: 'Jayashri Sample', hasTimings: true, sessions: [{ from: '10:00', to: '13:00' }], leave: null, expected: 3, waiting: 1, seen: 2 }]} />);
     expect(shown).toMatch(/JS Jayashri Sample In OPD 10:00 AM–1:00 PM 3 Expected 1 Waiting 2 Seen/);
-  });
-
-  it('Upcoming appointments: those still expected with a time, the earliest first', () => {
-    const shown = text(<UpcomingPanel rows={rows} />);
-    expect(shown).toMatch(/11:30 AM Expected Sample New/);
-    expect(shown).not.toContain('With Sample');
-    expect(renderToStaticMarkup(<MemoryRouter><UpcomingPanel rows={[]} /></MemoryRouter>)).toBe(''); // no empty card
   });
 
   it('To do lists only the jobs with someone in them; nothing waiting says so', () => {

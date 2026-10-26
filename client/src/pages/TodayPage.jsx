@@ -35,7 +35,7 @@ import { notCheckedCareText } from './redflags/redFlagFormat.js';
 import { CarePlanSection, FlagCountPill, PatientRow, RedFlagsSection, Section, SectionOpenDefault, VaccinationsOverdueSection, VisitProgress, VisitsTodaySection } from './worklist/WorklistSections.jsx';
 import { DetailsMissing } from './DetailsMissing.jsx';
 import { QUEUE_LOOK, TodoPanel } from './ReceptionDesk.jsx';
-import { DeskNumbers, DoctorsPanel, PatientsTable, UpcomingPanel, UpcomingVisits, guestRow } from './ReceptionDashboard.jsx';
+import { DeskNumbers, DoctorsPanel, PatientsTable, UpcomingVisits, guestRow } from './ReceptionDashboard.jsx';
 
 // The start page: one place for the day (Dashboard, Worklist and today's Calendar together, plus Feature 10's
 // daily lists). In this order, each part only for the roles it is for:
@@ -865,7 +865,7 @@ function RoleToday({ roles, lensBar = null }) {
               {/* The next days' bookings, under today's patients (26 Oct 2026) */}
               <UpcomingVisits refreshKey={queueKey} />
             </div>
-            <aside className="rd-side" aria-label="To do, doctors and the next appointments">
+            <aside className="rd-side" aria-label="To do and doctors">
               <TodoPanel
                 calls={counts.calls}
                 incomplete={today.data.incomplete ?? []}
@@ -877,7 +877,6 @@ function RoleToday({ roles, lensBar = null }) {
                 onSaved={deskSaved}
               />
               {desk.data && <DoctorsPanel doctors={desk.data.doctors} />}
-              <UpcomingPanel rows={deskRows} />
             </aside>
           </div>
         )}
