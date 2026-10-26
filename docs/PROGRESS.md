@@ -125,11 +125,12 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   Upcoming appointments is hidden when nobody is left. Website only. **Upcoming visits** under Today's patients: the next
   days' bookings (from tomorrow, 6 days), by day – time, patient, phone, doctor, New or Follow-up – the first 10, all
   of them under Follow-ups; hidden when nobody is booked. The side card "Upcoming appointments" (today's later bookings)
-  is gone: they are already rows of Today's patients. A booking by name and phone whose patient is already registered (the
-  registration's duplicate check: the same phone and name) shows "Registered · P-…" with **Use her record** (one click
-  joins the booking) instead of Register; another name on the same phone shows "Phone matches: Aradhya (P-000004)"
-  with **Use Aradhya's record** first and **Register new** as a link (a sister or daughter on the same phone). The rows
-  are white like the others, "Booked by phone" under the name, no extra pill (`routes/today.js`: guests[].registered, samePhone).
+  is gone: they are already rows of Today's patients. A booking by name and phone is a row with "Details missing" and **Fill info**: her
+  details form at once (name and phone filled in, the type of care set to Gynaecology and changeable); saved, her
+  record is made and the booking joins it (the form's own check still says "She may already be registered"). No other
+  patient's record is offered from the table. A registered patient whose details are missing has "Details missing" and
+  **Fill info** (her own form, the missing items said at the top); none once everything is filled in. The rows are white
+  like the others (`routes/today.js`: guests[].registered, samePhone).
 - **26 Oct 2026 (branch `pharmacy-register`, not merged – an exception to the feature freeze at the owner's request,
   for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
   holds the pharmacy's sections: New bill, Pharmacy bills, Suppliers, Purchase bills, Stock, Medicines, Reports,

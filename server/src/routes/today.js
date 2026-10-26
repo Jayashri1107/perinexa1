@@ -16,7 +16,6 @@ import { hasRole } from '../models/Membership.js';
 import { Patient, currentAge } from '../models/Patient.js';
 import { IN_USE } from '../patients/deathRules.js';
 import { patientsWithMissingDetails } from '../patients/missingDetails.js';
-import { possibleMatches } from '../patients/duplicateService.js';
 import { openFollowUpsOf } from './addedFollowUps.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
@@ -162,20 +161,10 @@ export async function todayFor(req, askedScope) {
       if (a.arrivedAt || b.arrivedAt) return a.arrivedAt ? -1 : 1;
       return (a.appointment?.start ?? '99:99').localeCompare(b.appointment?.start ?? '99:99') || a.patient.fullName.localeCompare(b.patient.fullName);
     });
-  const guestsBooked = appts
+  const guests = appts
     .filter((a) => !a.patientId && a.guest)
     .map((a) => ({ ...apptView(a), guest: { name: a.guest.name, phone: a.guest.phone } }))
     .filter((g) => scope === 'all' || g.doctorId === String(req.user._id));
-  // A booking by name and phone whose patient is already registered (26 Oct 2026: "why Register again?"): the
-  // registration's own duplicate check – the same phone and name is her record (one click joins the booking); the same
-  // phone with another name is shown as such (family members share a phone). Only records this person may see.
-  const guests = [];
-  for (const g of guestsBooked) {
-    const { matches } = await possibleMatches(req, { fullName: g.guest.name, phone: g.guest.phone });
-    const pick = (m) => ({ id: m.id, fullName: m.fullName, mrn: m.mrn });
-    const registered = matches.find((m) => m.matchedOn.includes('phone') && m.matchedOn.includes('name'));
-    guests.push({ ...g, registered: registered ? pick(registered) : null, samePhone: registered ? [] : matches.filter((m) => m.matchedOn.includes('phone')).map(pick) });
-  }
 
   return {
     today: isoDay(today),

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRupee, Link2, MoreVertical, RefreshCw, Search, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
+import { CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRupee, MoreVertical, PenLine, RefreshCw, Search, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { MenuButton } from '../components/MenuButton.jsx';
@@ -7,6 +7,7 @@ import { Alert, StatusPill, formatTime } from '../components/ui.jsx';
 import { EditPatientDialog } from './appointments/RegisterAndBook.jsx';
 import { PURPOSE_LABELS, VISIT_TYPE_LABELS, timeLabel } from './appointments/appointmentFormat.js';
 import { AddFollowUpDialog } from './followups/FollowUpDialogs.jsx';
+import { missingText } from './DetailsMissing.jsx';
 import { doctorToday } from './appointments/DeskToday.jsx';
 import { rupees } from './billing/billingFormat.js';
 import { useFetch } from '../hooks/useFetch.js';
@@ -78,8 +79,8 @@ export function DeskNumbers({ rows = [], collected = null }) {
 
 
 /**
- * A booking made by name and phone (GET /api/today: guests) as a row of the table: expected, "Booked by phone",
- * with Register instead of Check in – so the table, the numbers and Doctors today count the same people.
+ * A booking made by name and phone (GET /api/today: guests) as a row of the table: expected, "Details missing", with
+ * Fill info instead of Check in – so the table, the numbers and Doctors today count the same people.
  */
 export const guestRow = (g) => ({
   patient: { id: `guest-${g.id}`, fullName: g.guest?.name ?? 'Patient', mrn: '', phone: g.guest?.phone ?? '', doctorName: g.doctorName ?? null },
@@ -125,28 +126,16 @@ const visitText = (r) =>
  * those expected, View for the others, and the rest in the row's menu (Emergency, Mark done, the undos, Edit info,
  * Book, Slip). Emergencies first, in red with the word.
  */
-export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFlag, onSlip, busy = null, updatedAt = null, onRefresh, onSaved }) {
+export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMark, onUndo, onFlag, onSlip, busy = null, updatedAt = null, onRefresh, onSaved }) {
   const [tab, setTab] = useState('');
   const [text, setText] = useState('');
   const [doctor, setDoctor] = useState('');
   const [editing, setEditing] = useState(null);
   const [addingFor, setAddingFor] = useState(null); // Add follow-up
   const [registering, setRegistering] = useState(null); // a booking made by name and phone
-  const [linking, setLinking] = useState(null); // "Use her record": the booking being joined to her record
-  const [linkError, setLinkError] = useState(null);
-  // The booking joins this patient's record (m: the registered match, or one on the same phone reception chose)
-  const joinRecord = async (a, m) => {
-    setLinking(a.id);
-    setLinkError(null);
-    try {
-      await api(`/appointments/${a.id}/link`, { method: 'POST', body: { patientId: m.id } });
-      onSaved(`The booking is now on ${m.fullName}'s record (${m.mrn}). Press Check in when she is here.`);
-    } catch (err) {
-      setLinkError(`${m.fullName}: ${err.message}`);
-    } finally {
-      setLinking(null);
-    }
-  };
+  // Registered patients whose details are not all filled in (GET /api/today: incomplete): Fill info, until they are
+  const missingOf = new Map(incomplete.map((m) => [m.patient.id, m.missing]));
+  const [filling, setFilling] = useState(null); // { patient, missing }
   const n = queueCounts(rows);
   const doctors = useMemo(() => [...new Set(rows.map((r) => r.appointment?.doctorName ?? r.patient.doctorName).filter(Boolean))].sort(), [rows]);
   const shown = rows.filter((r) => (!tab || (r.queue ?? 'expected') === tab) && (!doctor || (r.appointment?.doctorName ?? r.patient.doctorName) === doctor) && rowMatches(r, text));
@@ -197,9 +186,6 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
           </label>
         )}
       </div>
-      <Alert type="error" onClose={() => setLinkError(null)}>
-        {linkError}
-      </Alert>
       <div className="dt-wrap rd-table-wrap">
         <table className="rd-table">
           <caption className="sr-only">Today&apos;s patients</caption>
@@ -245,14 +231,11 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                       <span className="rd-person-text">
                         {r.guest ? <strong>{p.fullName}</strong> : <Link to={`/patients/${p.id}`}>{p.fullName}</Link>}
                         <span className="muted tabular">
-                          {r.guest ? (r.appointment?.registered ? `Registered · ${r.appointment.registered.mrn}` : 'Booked by phone') : p.mrn}
+                          {r.guest ? <span className="rd-missing">Details missing</span> : p.mrn}
+                          {!r.guest && missingOf.has(p.id) ? <span className="rd-missing"> · Details missing</span> : null}
                           {r.guest && p.phone ? ` · ${p.phone}` : ''}
                           {r.appointment?.doctorName ?? p.doctorName ? ` · ${r.appointment?.doctorName ?? p.doctorName}` : ''}
                         </span>
-                        {/* A registered patient on the same phone under another name: reception decides (her record, or new) */}
-                        {r.guest && r.appointment?.samePhone?.length > 0 && (
-                          <span className="hint">Phone matches: {r.appointment.samePhone.map((m) => `${m.fullName} (${m.mrn})`).join(', ')}</span>
-                        )}
                       </span>
                     </span>
                   </td>
@@ -285,27 +268,11 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                   </td>
                   <td>
                     <span className="rd-actions">
-                      {r.guest && r.appointment?.registered ? (
-                        // Already registered (the same phone and name): one click joins the booking to her record
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => joinRecord(r.appointment, r.appointment.registered)} disabled={linking === r.appointment.id}>
-                          <Link2 aria-hidden="true" /> {linking === r.appointment.id ? 'Saving…' : 'Use her record'}
-                        </button>
-                      ) : r.guest && r.appointment?.samePhone?.length > 0 ? (
-                        // The phone matches a registered patient under another name: her record first, or a new one
-                        <span className="rd-actions-stack">
-                          {r.appointment.samePhone.map((m) => (
-                            <button key={m.id} type="button" className="btn btn-secondary btn-sm" onClick={() => joinRecord(r.appointment, m)} disabled={linking === r.appointment.id}>
-                              <Link2 aria-hidden="true" /> {linking === r.appointment.id ? 'Saving…' : `Use ${m.fullName.split(/\s+/)[0]}'s record`}
-                            </button>
-                          ))}
-                          <button type="button" className="btn btn-link btn-sm" onClick={() => setRegistering(r.appointment)}>
-                            Register new
-                          </button>
-                        </span>
-                      ) : r.guest ? (
-                        // Booked by name and phone: register her (the booking joins her record), then Check in
+                      {r.guest ? (
+                        // Booked by name and phone, details still missing: fill them in (her record is made and the
+                        // booking joins it), then Check in
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRegistering(r.appointment)}>
-                          <UserPlus aria-hidden="true" /> Register
+                          <PenLine aria-hidden="true" /> Fill info
                         </button>
                       ) : canMark && state === 'expected' ? (
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMark(p, r)} disabled={saving}>
@@ -315,6 +282,11 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                         <Link to={r.visitId ? `/patients/${p.id}/visits/${r.visitId}` : `/patients/${p.id}`} className="btn btn-secondary btn-sm">
                           <Eye aria-hidden="true" /> View
                         </Link>
+                      )}
+                      {!r.guest && missingOf.has(p.id) && (
+                        <button type="button" className="btn btn-link btn-sm" onClick={() => setFilling({ patient: p, missing: missingOf.get(p.id) })}>
+                          <PenLine aria-hidden="true" /> Fill info
+                        </button>
                       )}
                       {!r.guest && <MenuButton label="" icon={MoreVertical} className="icon-btn rd-more" align="end" ariaLabel={`More for ${p.fullName}`} items={menu} />}
                     </span>
@@ -343,13 +315,25 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
           }}
         />
       )}
+      {filling && (
+        <EditPatientDialog
+          patientId={filling.patient.id}
+          missing={missingText(filling.missing)}
+          onClose={() => setFilling(null)}
+          onSaved={() => {
+            const who = filling.patient.fullName;
+            setFilling(null);
+            onSaved(`Saved: ${who}'s details.`);
+          }}
+        />
+      )}
       {registering && (
         <RegisterBookingDialog
           appointment={registering}
           onClose={() => setRegistering(null)}
           onRegistered={(p) => {
             setRegistering(null);
-            onSaved(`${p.fullName} is registered as ${p.mrn}; her booking is on her record. Press Check in when she is here.`);
+            onSaved(`Saved: ${p.fullName}'s details (${p.mrn}); her booking is on her record. Press Check in when she is here.`);
           }}
         />
       )}

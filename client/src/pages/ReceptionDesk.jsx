@@ -64,9 +64,9 @@ function Dialog({ id, title, onClose, children }) {
 /** Register the patient of a booking made by name and phone (reception's table): her booking joins her record. */
 export function RegisterBookingDialog({ appointment: a, onClose, onRegistered }) {
   return (
-    <Dialog id="rc-register-booking" title={`Register ${a.guest?.name ?? 'the patient'}`} onClose={onClose}>
-      <p className="muted">Booked by name and phone. Fill in her details; her booking joins her record.</p>
-      <RegisterAndBook doctor={{ id: a.doctorId, name: a.doctorName }} appointment={a} onBooked={(_, p) => onRegistered(p)} onCancel={onClose} />
+    <Dialog id="rc-register-booking" title={`Fill info – ${a.guest?.name ?? 'the patient'}`} onClose={onClose}>
+      <p className="muted">Booked by name and phone. Fill in her details and save: her booking joins her record.</p>
+      <RegisterAndBook doctor={{ id: a.doctorId, name: a.doctorName }} appointment={a} defaultCareType="gynaecology" onBooked={(_, p) => onRegistered(p)} onCancel={onClose} />
     </Dialog>
   );
 }
@@ -89,7 +89,7 @@ export function TodoPanel({ calls = 0, incomplete = [], toRegister = 0, toCollec
   const rows = [
     calls > 0 && { key: 'calls', icon: PhoneCall, label: 'Calls to make', sub: 'Visits due or overdue, babies – not booked', count: calls, to: '/follow-ups' },
     incomplete.length > 0 && { key: 'missing', icon: TriangleAlert, label: 'Details missing', sub: 'Registered without all their details', count: incomplete.length, onClick: () => setMissingOpen(true), watch: true },
-    toRegister > 0 && { key: 'guests', icon: UserPlus, label: 'Bookings to register', sub: 'Booked by name and phone today', count: toRegister, to: '/#td-guests', list: 'guests' },
+    toRegister > 0 && { key: 'guests', icon: UserPlus, label: 'Details to fill', sub: 'Booked by name and phone today', count: toRegister, to: '/#td-guests', list: 'guests' },
     toCollect > 0 && { key: 'collect', icon: Wallet, label: 'Payments to collect', sub: 'Here today or discharged, bill not settled', count: toCollect, to: '/#td-collect', list: 'collect' },
     toConfirm > 0 && { key: 'tomorrow', icon: CalendarPlus, label: 'Tomorrow – call to confirm', sub: "Tomorrow's bookings", count: toConfirm, to: '/#td-tomorrow', list: 'tomorrow' },
     discharges > 0 && { key: 'discharges', icon: DoorOpen, label: 'Discharges', sub: 'Being discharged today', count: discharges, to: '/#td-discharges', list: 'discharges' },

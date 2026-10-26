@@ -58,23 +58,21 @@ describe('reception: the patients table', () => {
     expect(shown).toContain('1 emergency');
     expect(shown).toContain('every 30 seconds');
   });
-  it('a booking made by name and phone is a row too – not registered yet, with Register, counted as expected', () => {
+  it('a booking made by name and phone is a row too – details missing, with Fill info, counted as expected', () => {
     const g = guestRow({ id: 'a9', kind: 'slot', start: '12:00', visitType: 'new', doctorId: 'd1', doctorName: 'Sample Doctor', guest: { name: 'Ishanvi Sample', phone: '98986 53256' } });
     const shown = table({ rows: [...rows, g] });
     expect(shown).toContain('All (5) Expected (2)');
-    expect(shown).toMatch(/IS Ishanvi Sample Booked by phone · 98986 53256 · Sample Doctor .* 12:00 PM New Expected Register/);
-    // Already registered (the same phone and name): Use her record instead of Register; another name on the phone is told
-    const known = guestRow({ id: 'a8', kind: 'slot', start: '12:10', visitType: 'new', doctorName: 'Sample Doctor', guest: { name: 'asha sample', phone: '98765 43210' }, registered: { id: 'p1', fullName: 'Asha Sample', mrn: 'P-000001' }, samePhone: [] });
-    const knownShown = table({ rows: [known] });
-    expect(knownShown).toMatch(/Registered · P-000001 .* Expected Use her record/);
-    expect(knownShown).not.toMatch(/Not registered|>Register</);
-    expect(knownShown).not.toContain('Register new');
-    const family = guestRow({ id: 'a7', kind: 'slot', start: '12:20', visitType: 'new', guest: { name: 'Meena Sample', phone: '98765 43210' }, registered: null, samePhone: [{ id: 'p1', fullName: 'Asha Sample', mrn: 'P-000001' }] });
-    const familyShown = table({ rows: [family] });
-    expect(familyShown).toContain('Phone matches: Asha Sample (P-000001)');
-    expect(familyShown).toContain("Use Asha's record Register new");
-    expect(familyShown).not.toContain('Not registered');
+    expect(shown).toMatch(/IS Ishanvi Sample Details missing · 98986 53256 · Sample Doctor .* 12:00 PM New Expected Fill info/);
+    // Never another patient's record from here, nor a second Register: only Fill info
+    expect(shown).not.toMatch(/Use .*record|Register new|Phone matches/);
     expect(queueCounts([g]).expected).toBe(1);
+  });
+
+  it('Fill info only on a registered patient whose details are missing; none once they are all filled in', () => {
+    const withMissing = table({ incomplete: [{ patient: { id: '3' }, missing: ['address', 'emergencyContact'] }] });
+    expect(withMissing).toMatch(/Expected Sample P-000003 · Details missing/);
+    expect(withMissing.match(/Fill info/g)).toHaveLength(1);
+    expect(table()).not.toContain('Fill info');
   });
 
   it('no Check in for those who may not mark arrivals', () => {

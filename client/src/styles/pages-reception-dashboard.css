@@ -109,8 +109,8 @@
 .rd-table .dt-empty { padding: var(--space-4); }
 .rd-doctors li { padding: var(--space-2) 0; }
 
-/* A booking made by name and phone: a row like the others ("Booked by phone" says it); her record or a new one */
-.rd-actions-stack { display: inline-flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); }
+/* A booking made by name and phone: a row like the others, "Details missing" under the name and Fill info */
+.rd-missing { color: var(--status-watch-fg); font-weight: 500; }
 .rd-person-text .hint { font-size: var(--fs-caption); line-height: var(--lh-caption); }
 
 /* Upcoming visits, under Today's patients: the next days' bookings by day */

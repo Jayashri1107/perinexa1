@@ -852,6 +852,7 @@ function RoleToday({ roles, lensBar = null }) {
               )}
               <PatientsTable
                 rows={deskRows}
+                incomplete={today.data.incomplete ?? []}
                 canMark={today.data.canMarkArrived}
                 onMark={(p, row) => arrival('POST', p, row)}
                 onUndo={(p) => arrival('DELETE', p)}
