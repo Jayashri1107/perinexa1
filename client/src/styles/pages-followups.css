@@ -9,3 +9,17 @@
 .fu-why { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .fu-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-bottom: var(--space-6); }
 .fu-search { flex: 1 1 280px; max-width: 420px; }
+
+/* Follow-ups added by hand and why she came (FollowUpDialogs.jsx, 26 Oct 2026) */
+.fu-purpose { border: 0; margin: var(--space-3) 0 0; padding: 0; min-width: 0; }
+.fu-purpose legend { margin-bottom: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.fu-purpose-options { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+.fu-purpose-option { padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-label); cursor: pointer; }
+.fu-purpose-option:hover { border-color: var(--indigo-200); background: var(--mist-50); }
+.fu-purpose-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.fu-purpose-option[aria-checked='true'] { border-color: var(--indigo-700); background: var(--indigo-100); color: var(--indigo-700); font-weight: 600; }
+.fu-followup-note { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--status-due-bg); color: var(--status-due-fg); }
+.fu-followup-note svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.fu-came-for { margin: var(--space-1) 0 0; font-weight: 500; }
+.fu-came-chip { background: var(--status-due-bg); color: var(--status-due-fg); }
+.rd-followup { color: var(--status-due-fg); font-weight: 500; }

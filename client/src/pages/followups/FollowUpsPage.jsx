@@ -1,10 +1,14 @@
-import { Baby, CalendarClock, CalendarX2, Check, Phone, PhoneCall, Search, TriangleAlert, UserCheck } from 'lucide-react';
+import { useState } from 'react';
+import { Baby, CalendarClock, CalendarPlus, CalendarX2, Check, ClipboardList, Phone, PhoneCall, Search, TriangleAlert, UserCheck } from 'lucide-react';
+import { api } from '../../api.js';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, KpiCard, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { HOSPITAL_FOLLOW_UPS } from '../../platform/modules.js';
+import { PURPOSE_LABELS, dayLabel } from '../appointments/appointmentFormat.js';
+import { AddFollowUpDialog } from './FollowUpDialogs.jsx';
 import { SETTING_CHOICES, SETTING_LABELS, bookingTime, callRows, comingUpGroups, filterFollowUps, followUpCounts, visitTypeLabel } from './followUpsFormat.js';
 
 // Reception's Follow-ups (26 Oct 2026, docs/IDEAS_FOR_LATER.md ideas 24, 25 and 27), from GET /api/follow-ups:
@@ -76,10 +80,11 @@ function FilterBar({ filter }) {
   );
 }
 
-function Header({ data }) {
+function Header({ data, actions = null }) {
   const { search } = useLocation();
   return (
     <PageHeader
+      actions={actions}
       breadcrumbs={[{ label: 'Follow-ups' }]}
       title="Follow-ups"
       subtitle="Who to call and who is coming. Names, phone numbers and dates only."
@@ -115,19 +120,109 @@ function Panel({ id, icon: Icon, title, count, hint, children }) {
 }
 
 /** Follow-ups tab: the patients to call, then the coming week's bookings by day. */
+/**
+ * Follow-ups added by hand (26 Oct 2026): she will come back to a doctor, for something (a fixed purpose and a short
+ * note) from a day. Open until she checks in (then they leave this list) or reception cancels one.
+ */
+function AddedFollowUps({ added, filterText, onCancelled }) {
+  const [error, setError] = useState(null);
+  const t = filterText.trim().toLowerCase();
+  const rows = (added?.followUps ?? []).filter((f) => !t || [f.patient.fullName, f.patient.mrn, f.patient.phone, f.doctor.name].some((w) => (w ?? '').toLowerCase().includes(t)));
+  const cancel = async (f) => {
+    setError(null);
+    try {
+      await api(`/added-follow-ups/${f.id}/cancel`, { method: 'POST' });
+      onCancelled(f);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  return (
+    <Panel id="fu-added" icon={ClipboardList} title="Follow-ups added" count={rows.length} hint="Patients asked to come back – with which doctor and what for. When she checks in, it is marked and her doctor is told.">
+      <Alert type="error">{error ?? added?.error}</Alert>
+      <DataTable
+        caption="Follow-ups added"
+        loading={!added}
+        rows={added ? rows : null}
+        emptyText="No follow-ups added. Use Add follow-up when a doctor asks a patient to come back."
+        columns={[
+          { key: 'patient', header: 'Patient', render: patientCell },
+          { key: 'phone', header: 'Phone', render: (f) => phoneLink(f.patient.phone) },
+          { key: 'doctor', header: 'Doctor', render: (f) => f.doctor.name },
+          {
+            key: 'for',
+            header: 'For',
+            render: (f) => (
+              <span className="fu-why">
+                <StatusPill tone="due">{PURPOSE_LABELS[f.purpose]}</StatusPill>
+                {f.note && <span className="muted">{f.note}</span>}
+              </span>
+            ),
+          },
+          { key: 'from', header: 'From', render: (f) => (f.from ? dayLabel(f.from) : <span className="muted">Any day</span>) },
+          {
+            key: 'actions',
+            header: <span className="sr-only">Actions</span>,
+            render: (f) => (
+              <span className="fu-why">
+                {bookLink(f)}
+                <button type="button" className="btn btn-link btn-sm" onClick={() => cancel(f)} aria-label={`Cancel the follow-up of ${f.patient.fullName}`}>
+                  Cancel
+                </button>
+              </span>
+            ),
+          },
+        ]}
+      />
+    </Panel>
+  );
+}
+
 export function FollowUpsPage() {
   const res = useFetch('/follow-ups');
+  const added = useFetch('/added-follow-ups');
+  const [adding, setAdding] = useState(false);
+  const [note, setNote] = useState(null);
   const filter = useFilter();
   const data = filterFollowUps(res.data, filter);
   const calls = data ? callRows(data, formatDate) : null;
   const groups = data ? comingUpGroups(data.comingUp, data.today) : [];
   return (
     <>
-      <Header data={data} />
+      <Header
+        data={data}
+        actions={
+          <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
+            <CalendarPlus aria-hidden="true" /> Add follow-up
+          </button>
+        }
+      />
       <div className="pf-content fu-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
+        <Alert type="success" onClose={() => setNote(null)}>
+          {note}
+        </Alert>
         <FilterBar filter={filter} />
         {data && <Counts data={data} />}
+        <AddedFollowUps
+          added={added.data ?? (added.error ? { error: added.error } : null)}
+          filterText={filter.text}
+          onCancelled={(f) => {
+            setNote(`Cancelled: the follow-up of ${f.patient.fullName}.`);
+            added.reload();
+          }}
+        />
+        {adding && (
+          <AddFollowUpDialog
+            today={data?.today}
+            onClose={() => setAdding(false)}
+            onAdded={(f) => {
+              setAdding(false);
+              setNote(`Follow-up added for ${f.patient.fullName}: ${PURPOSE_LABELS[f.purpose]} with ${f.doctor.name}.`);
+              added.reload();
+            }}
+          />
+        )}
         <Panel id="fu-call" icon={CalendarX2} title="To call – not booked" count={calls?.length ?? 0} hint="A visit is due or overdue and nothing is booked. Overdue first. Call, then book.">
           <DataTable
             caption="Patients to call"

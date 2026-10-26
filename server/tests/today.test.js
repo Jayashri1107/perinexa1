@@ -96,6 +96,8 @@ describe('today', () => {
         leftMarked: false,
         age: 28,
         baby: false,
+        purpose: null,
+        followUp: null,
       },
     ]);
 

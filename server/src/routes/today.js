@@ -16,6 +16,7 @@ import { hasRole } from '../models/Membership.js';
 import { Patient, currentAge } from '../models/Patient.js';
 import { IN_USE } from '../patients/deathRules.js';
 import { patientsWithMissingDetails } from '../patients/missingDetails.js';
+import { openFollowUpsOf } from './addedFollowUps.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { inHospitalNow } from '../reminders/generalReminders.js';
@@ -92,13 +93,15 @@ export async function todayFor(req, askedScope) {
   const firstVisit = new Map();
   for (const v of todays) if (!firstVisit.has(String(v.patientId))) firstVisit.set(String(v.patientId), v);
   // Marked as arrived by reception (before any visit is started)
-  const arrivals = new Map((await Arrival.find({ tenantId, on: today }, { patientId: 1, at: 1, byName: 1, emergency: 1, left: 1 }).lean()).map((a) => [String(a.patientId), a]));
+  const arrivals = new Map((await Arrival.find({ tenantId, on: today }, { patientId: 1, at: 1, byName: 1, emergency: 1, left: 1, purpose: 1 }).lean()).map((a) => [String(a.patientId), a]));
 
   const ids = [...new Set([...bookings.keys(), ...firstVisit.keys(), ...arrivals.keys()])];
   // (a record marked as a duplicate of another is not on today's lists: she is expected on her main record; nor is a
   // record closed after a death)
   const found = ids.length ? await Patient.find({ tenantId, _id: { $in: ids }, ...IN_USE }).select(`${PATIENT_FIELDS} ageYears ageRecordedOn createdAt`).lean() : [];
   const shown = found.map((p) => ({ p, level: calendarLevel(req, p) })).filter(({ p, level }) => level && inScope(req, scope, p));
+  // Follow-ups added by hand that are still open (she has not checked in for them yet)
+  const followUps = await openFollowUpsOf(tenantId, shown.map(({ p }) => p._id));
 
   // The call lists (reception).
   const seenToday = new Set([...firstVisit.keys(), ...arrivals.keys()]);
@@ -142,6 +145,9 @@ export async function todayFor(req, askedScope) {
         // Her age today (identity, as on her card) – a baby's record says baby instead (reception's table)
         age: p.careType === 'newborn' ? null : currentAge(p, req.now ?? new Date()),
         baby: p.careType === 'newborn',
+        // Why she came (marked at check-in), and her open follow-up (with which doctor, what for)
+        purpose: marked?.purpose?.kind ? { kind: marked.purpose.kind, note: marked.purpose.note ?? '' } : null,
+        followUp: followUps.get(id)?.[0] ?? null,
         // The visit to open: doctors and RMOs who may see this patient's visits only.
         ...(level === 'clinical' && visit ? { visitId: String(visit._id) } : {}),
       };

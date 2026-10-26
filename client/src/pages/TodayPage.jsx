@@ -452,9 +452,11 @@ function RoleToday({ roles, lensBar = null }) {
   };
   // Mark arrived / Undo (reception, nurses, doctors, RMOs), then the lists again. A patient with no appointment
   // today is first asked which doctor she will see (a walk-in token).
+  // Check in (26 Oct 2026): always in the dialog – why she came (from her follow-up when she has one), and a doctor
+  // for a token when she has no appointment today
   const arrival = async (method, p, row) => {
-    if (method === 'POST' && !row?.appointment) {
-      setArriving({ patient: p, doctorName: p.doctorName });
+    if (method === 'POST') {
+      setArriving({ patient: p, doctorName: p.doctorName ?? p.assignedDoctorName, appointment: row?.appointment ?? null });
       return;
     }
     setMarking(p.id);
@@ -1027,6 +1029,7 @@ function RoleToday({ roles, lensBar = null }) {
         <ArrivalDialog
           patient={arriving.patient}
           doctorName={arriving.doctorName}
+          appointment={arriving.appointment ?? null}
           onClose={() => setArriving(null)}
           onDone={(appointment, queueTime, arrival) => {
             setArriving(null);

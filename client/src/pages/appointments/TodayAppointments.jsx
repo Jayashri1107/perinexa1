@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Clock, Hash, Printer, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, Clock, Hash, Printer, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -9,7 +9,8 @@ import { Alert, Field, StatusPill, formatTime, useDialogFocus } from '../../comp
 import { useFetch } from '../../hooks/useFetch.js';
 import { PatientFinder } from './AppointmentDialogs.jsx';
 import { PatientRow, Section } from '../worklist/WorklistSections.jsx';
-import { NEEDS_TIME_LOOK, TOKEN_LOOK, VISIT_TYPE_LABELS, dayLabel, timeLabel, whenLabel } from './appointmentFormat.js';
+import { NEEDS_TIME_LOOK, TOKEN_LOOK, VISIT_TYPE_LABELS, PURPOSE_LABELS, dayLabel, purposeText, timeLabel, whenLabel } from './appointmentFormat.js';
+import { PurposeChoice } from '../followups/FollowUpDialogs.jsx';
 
 // Appointment booking on the Today page: marking a walk-in arrived gives her a token for the doctor she will see,
 // with a slip to print; each doctor's waiting list in the order to call; quick bookings of the day (new patients
@@ -20,34 +21,73 @@ import { NEEDS_TIME_LOOK, TOKEN_LOOK, VISIT_TYPE_LABELS, dayLabel, timeLabel, wh
  * token. "Arrived, no token" marks her arrived without one (e.g. she came only for the lab). With no patient given
  * (the "Walk-in" button), she is found first.
  */
-export function ArrivalDialog({ patient: given = null, doctorName: givenDoctor = null, onClose, onDone }) {
+export function ArrivalDialog({ patient: given = null, doctorName: givenDoctor = null, appointment = null, onClose, onDone }) {
   const ref = useDialogFocus(onClose);
   const [found, setFound] = useState(null);
   const patient = given ?? found;
   const doctorName = givenDoctor ?? found?.assignedDoctorName ?? null;
-  const doctors = useFetch('/appointments/doctors');
+  const doctors = useFetch(appointment ? null : '/appointments/doctors');
   const list = doctors.data?.doctors ?? [];
   const own = list.find((d) => d.name === doctorName);
   const [chosen, setChosen] = useState(null);
   const doctorId = chosen ?? own?.id ?? list[0]?.id ?? '';
+  // Why she came (26 Oct 2026): her open follow-up fills it in (reception, doctors, RMOs see follow-ups; others choose)
+  const followUps = useFetch(patient ? '/added-follow-ups' : null, patient ? { patientId: patient.id } : undefined);
+  const followUp = followUps.data?.followUps?.[0] ?? null;
+  const [purpose, setPurpose] = useState(null);
+  const [note, setNote] = useState(null);
+  const kind = purpose ?? followUp?.purpose ?? (appointment ? 'consultation' : null);
+  const noteText = note ?? followUp?.note ?? '';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const mark = async (withToken) => {
     setBusy(true);
     setError(null);
     try {
-      const res = await api('/arrivals', { method: 'POST', body: { patientId: patient.id, ...(withToken && doctorId ? { doctorId } : {}) } });
+      const res = await api('/arrivals', {
+        method: 'POST',
+        body: { patientId: patient.id, ...(withToken && doctorId ? { doctorId } : {}), ...(kind ? { purpose: { kind, note: noteText.trim() } } : {}) },
+      });
       onDone(res.appointment, res.queueTime, res.arrival);
     } catch (err) {
       setError(err.message);
       setBusy(false);
     }
   };
+  const why = patient && (
+    <>
+      {followUp && (
+        <p className="fu-followup-note">
+          <CalendarCheck aria-hidden="true" /> Follow-up with {followUp.doctor.name}: {purposeText(followUp)}
+          {followUp.from ? ` · from ${dayLabel(followUp.from)}` : ''}
+        </p>
+      )}
+      <PurposeChoice idPrefix="arr-purpose" legend="Why did she come?" value={kind} onChange={setPurpose} note={noteText} onNote={setNote} />
+    </>
+  );
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="arr-title">
-        <h2 id="arr-title">{patient ? `${patient.fullName} has arrived` : 'A walk-in patient'}</h2>
+      <div ref={ref} tabIndex={-1} className={`modal${patient ? ' modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby="arr-title">
+        <h2 id="arr-title">{patient ? (appointment ? `Check in ${patient.fullName}` : `${patient.fullName} has arrived`) : 'A walk-in patient'}</h2>
         <Alert type="error">{error || doctors.error}</Alert>
+        {/* Booked today: only why she came, then Check in */}
+        {patient && appointment && (
+          <>
+            <p className="muted">
+              {appointment.kind === 'token' ? `Token ${appointment.token}` : appointment.start ? `Booked for ${timeLabel(appointment.start)}` : 'Booked for today'}
+              {appointment.doctorName ? ` with ${appointment.doctorName}` : ''}
+            </p>
+            {why}
+            <div className="row">
+              <button type="button" className="btn btn-primary" onClick={() => mark(false)} disabled={busy} autoFocus>
+                <UserCheck aria-hidden="true" /> {busy ? 'Saving…' : 'Check in'}
+              </button>
+              <button type="button" className="btn btn-link" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
         {!patient && (
           <>
             <p>Find her record. A new patient is registered first (New patient), then given a token here.</p>
@@ -59,9 +99,10 @@ export function ArrivalDialog({ patient: given = null, doctorName: givenDoctor =
             </div>
           </>
         )}
-        {patient && (
+        {patient && !appointment && (
           <>
             <p>{given ? 'She has no appointment today. ' : ''}Choose the doctor she will see: she gets the next walk-in token for that doctor. If she has an appointment today, she is marked arrived for it instead.</p>
+            {why}
             <Field label="Doctor" id="arr-doctor">
               <select id="arr-doctor" value={doctorId} onChange={(e) => setChosen(e.target.value)} disabled={!list.length}>
                 {list.map((d) => (
@@ -154,6 +195,7 @@ function WaitingLine({ w, next, canMarkDone, onDone }) {
             </StatusPill>
           )}
           <span className="appt-when-chip">{whenLabel(w)}</span>
+          {w.purpose && <span className="appt-when-chip fu-came-chip">{PURPOSE_LABELS[w.purpose.kind]}</span>}
         </span>
       }
     >
@@ -161,6 +203,8 @@ function WaitingLine({ w, next, canMarkDone, onDone }) {
         {w.kind === 'token' ? 'Walk-in' : `Booked · ${VISIT_TYPE_LABELS[w.visitType]}`}
         {w.arrivedAt ? ` · arrived ${formatTime(w.arrivedAt)}` : ''}
       </p>
+      {/* Why she came, marked at check-in (26 Oct 2026) */}
+      {w.purpose && <p className="fu-came-for">Came for: {purposeText(w.purpose)}</p>}
       {canMarkDone && (
         <button type="button" className="btn btn-secondary btn-sm" onClick={markDone} disabled={busy}>
           <CheckCircle2 aria-hidden="true" /> {busy ? 'Saving…' : 'Checkup done'}

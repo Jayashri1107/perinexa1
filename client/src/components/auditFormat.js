@@ -75,6 +75,8 @@ export const AUDIT_LABELS = {
   PATIENT_ARRIVAL_UNDONE: 'Arrival undone',
   ARRIVAL_EMERGENCY_CHANGED: 'Emergency in the queue changed',
   PATIENT_LEFT_MARKED: 'Patient marked done (left)',
+  FOLLOW_UP_ADDED: 'Follow-up added',
+  FOLLOW_UP_CANCELLED: 'Follow-up cancelled',
   APPOINTMENT_BOOKED: 'Appointment booked',
   APPOINTMENT_MOVED: 'Appointment moved',
   APPOINTMENT_CANCELLED: 'Appointment cancelled',
@@ -385,6 +387,8 @@ export const AUDIT_TONES = {
   PATIENT_ARRIVAL_UNDONE: 'patient',
   ARRIVAL_EMERGENCY_CHANGED: 'patient',
   PATIENT_LEFT_MARKED: 'patient',
+  FOLLOW_UP_ADDED: 'patient',
+  FOLLOW_UP_CANCELLED: 'patient',
   APPOINTMENT_BOOKED: 'patient',
   APPOINTMENT_MOVED: 'patient',
   APPOINTMENT_CANCELLED: 'patient',
@@ -935,6 +939,8 @@ export function describeAudit(entry) {
     case 'PATIENT_ARRIVAL_UNDONE':
     case 'ARRIVAL_EMERGENCY_CHANGED':
     case 'PATIENT_LEFT_MARKED':
+    case 'FOLLOW_UP_ADDED':
+    case 'FOLLOW_UP_CANCELLED':
     case 'PATIENT_CARD_PRINTED':
       return d.mrn ? record(d) : '';
     // A copy of the whole record: which record only – never what the copy held

@@ -96,7 +96,7 @@ export async function dayStates(tenantId, patientIds, day) {
   if (!ids.length) return out;
   const on = utcDay(day);
   const [arrivals, visits] = await Promise.all([
-    Arrival.find({ tenantId, on, patientId: { $in: ids } }, { patientId: 1, at: 1, emergency: 1 }).lean(),
+    Arrival.find({ tenantId, on, patientId: { $in: ids } }, { patientId: 1, at: 1, emergency: 1, purpose: 1 }).lean(),
     Visit.find({ tenantId, visitOn: on, status: 'active', patientId: { $in: ids } }, { patientId: 1, createdAt: 1 }).lean(),
   ]);
   const at = (pid) => out.get(pid) ?? out.set(pid, { arrivedAt: null, seen: false }).get(pid);
@@ -106,6 +106,7 @@ export async function dayStates(tenantId, patientIds, day) {
   for (const a of arrivals) {
     earliest(at(String(a.patientId)), a.at);
     if (a.emergency) at(String(a.patientId)).emergency = true; // the live queue: seen first
+    if (a.purpose?.kind) at(String(a.patientId)).purpose = { kind: a.purpose.kind, note: a.purpose.note ?? '' }; // why she came
   }
   for (const v of visits) {
     const s = at(String(v.patientId));
@@ -173,6 +174,8 @@ export function appointmentView(a, { patients, doctors, states, today, fees = nu
     arrivedAt: ['arrived', 'seen'].includes(status) ? (state?.arrivedAt ?? null) : null,
     // Marked as an emergency today (the live queue): first in the doctor's waiting list
     emergency: status === 'arrived' && Boolean(state?.emergency),
+    // Why she came, marked at check-in (a fixed purpose and a short note – never a medical detail)
+    purpose: ['arrived', 'seen'].includes(status) ? (state?.purpose ?? null) : null,
     source: a.source,
     fromVisit: Boolean(a.visitId),
     movedByHand: Boolean(a.movedByHand),

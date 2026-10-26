@@ -101,6 +101,22 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   someone in them; a card opens its list below); beside it To do, **Doctors today** (state, hours, expected /
   waiting / seen on their own lines) and **Upcoming appointments**. Today's patients now also carry her age and her
   booking's visit type (`routes/today.js`). The queue's words: In consultation, Completed.
+- **26 Oct 2026, same branch – follow-ups added by hand, and why she came:** a patient registered on Monday comes
+  back on Friday to show her reports. (1) **Add follow-up** (Follow-ups page button, or a row's menu on the desk):
+  her doctor, what for – a fixed list (Follow-up consultation, Show reports, Test or scan, Dressing or procedure,
+  Prescription, Other) and a short note (at most 120 characters, "no medical details – reception sees this"), and
+  from which day; listed under **Follow-ups added** (Book, Cancel). Reception, doctors and RMOs; audited
+  (FOLLOW_UP_ADDED, FOLLOW_UP_CANCELLED, ids and the purpose only). `server/src/models/FollowUp.js`,
+  `routes/addedFollowUps.js` (`/api/added-follow-ups`). (2) **Check in** now always asks **"Why did she come?"** (the
+  same list, filled in from her follow-up, with the follow-up shown); a booked patient only chooses why, a walk-in
+  also the doctor for a token. Her follow-ups due by today are marked "came". (3) **Her doctor's notification**
+  says why: "Asha Sample has arrived. Came for: Show reports (bring the blood report)." – the doctor of her
+  appointment, or of her follow-up when she has none; the doctor's waiting line shows it beside her time. (4) The
+  desk's table shows "Follow-up: Show reports" before she comes and why she came after. **Privacy:** reception never
+  got the medical reason for a visit; this is a short fixed list and a short note on purpose – the owner to confirm
+  the list's words. **How to test:** as reception → Follow-ups → Add follow-up → a fake patient, Dr A, Show reports,
+  "bring the blood report", from today → Today → find her → Check in: "Show reports" is chosen → Check in → sign in
+  as Dr A: the bell says why she came.
 - **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
   built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the

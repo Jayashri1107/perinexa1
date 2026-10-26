@@ -5,7 +5,8 @@ import { api } from '../api.js';
 import { MenuButton } from '../components/MenuButton.jsx';
 import { Alert, StatusPill, formatTime } from '../components/ui.jsx';
 import { EditPatientDialog } from './appointments/RegisterAndBook.jsx';
-import { VISIT_TYPE_LABELS, timeLabel } from './appointments/appointmentFormat.js';
+import { PURPOSE_LABELS, VISIT_TYPE_LABELS, timeLabel } from './appointments/appointmentFormat.js';
+import { AddFollowUpDialog } from './followups/FollowUpDialogs.jsx';
 import { doctorToday } from './appointments/DeskToday.jsx';
 import { rupees } from './billing/billingFormat.js';
 import { QUEUE_LOOK, QUEUE_ORDER, RegisterDialog, queueCounts, queueWhen } from './ReceptionDesk.jsx';
@@ -123,8 +124,11 @@ export function rowMatches(r, text) {
 
 /** Her age, or "Baby" for a newborn record. */
 const ageText = (r) => (r.baby ? 'Baby' : r.age != null ? `${r.age} yrs` : '–');
-/** Her visit type today. */
-const visitText = (r) => (r.appointment?.kind === 'token' ? 'Walk-in' : (VISIT_TYPE_LABELS[r.appointment?.visitType] ?? (r.appointment || r.booked ? 'Booked' : 'No booking')));
+/** Her visit today: why she came (marked at check-in), else the booking's visit type. */
+const visitText = (r) =>
+  r.purpose?.kind
+    ? PURPOSE_LABELS[r.purpose.kind]
+    : (r.appointment?.kind === 'token' ? 'Walk-in' : (VISIT_TYPE_LABELS[r.appointment?.visitType] ?? (r.appointment || r.booked ? 'Booked' : 'No booking')));
 
 /**
  * Today's patients as a table (the live queue): tabs by state with their counts, a search box (today's list first;
@@ -137,6 +141,7 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
   const [text, setText] = useState('');
   const [doctor, setDoctor] = useState('');
   const [editing, setEditing] = useState(null);
+  const [addingFor, setAddingFor] = useState(null); // Add follow-up
   const n = queueCounts(rows);
   const doctors = useMemo(() => [...new Set(rows.map((r) => r.appointment?.doctorName ?? r.patient.doctorName).filter(Boolean))].sort(), [rows]);
   const shown = rows.filter((r) => (!tab || (r.queue ?? 'expected') === tab) && (!doctor || (r.appointment?.doctorName ?? r.patient.doctorName) === doctor) && rowMatches(r, text));
@@ -217,6 +222,7 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                 canMark && state === 'waiting' && r.arrivalMarked && !r.visitStarted && { label: 'Undo arrival', onSelect: () => onUndo(p) },
                 canMark && state === 'done' && r.leftMarked && { label: 'Undo done', onSelect: () => onFlag(p, 'left', false) },
                 { label: 'Edit info', onSelect: () => setEditing(p) },
+                { label: 'Add follow-up', onSelect: () => setAddingFor(p) },
                 { label: 'Book an appointment', to: `/patients/${p.id}/appointments` },
                 r.appointment?.kind === 'token' && { label: 'Print token slip', onSelect: () => onSlip({ ...r.appointment, doctor: { name: r.appointment.doctorName } }) },
               ].filter(Boolean);
@@ -244,6 +250,13 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                   </td>
                   <td>
                     <span className="rd-visit">{visitText(r)}</span>
+                    {/* Her open follow-up (added by hand): with which doctor and what for */}
+                    {r.followUp && !r.purpose && (
+                      <span className="rd-sub rd-followup" title={r.followUp.note || undefined}>
+                        Follow-up: {PURPOSE_LABELS[r.followUp.purpose]}
+                      </span>
+                    )}
+                    {r.purpose?.note && <span className="rd-sub muted">{r.purpose.note}</span>}
                   </td>
                   <td>
                     <span className="rd-status">
@@ -292,6 +305,16 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
           onSaved={(saved) => {
             setEditing(null);
             onSaved(`Saved: the details of ${saved?.fullName ?? editing.fullName}.`);
+          }}
+        />
+      )}
+      {addingFor && (
+        <AddFollowUpDialog
+          patient={addingFor}
+          onClose={() => setAddingFor(null)}
+          onAdded={(f) => {
+            setAddingFor(null);
+            onSaved(`Follow-up added for ${addingFor.fullName}: ${PURPOSE_LABELS[f.purpose]} with ${f.doctor.name}${f.from ? ` from ${f.from}` : ''}.`);
           }}
         />
       )}
