@@ -104,3 +104,10 @@
 .abha-doc-lines li { margin-top: var(--space-1); overflow-wrap: anywhere; }
 .abha-doc-lines li.abha-doc-sub { margin-left: var(--space-6); list-style-type: circle; }
 .abha-withheld { display: block; color: var(--status-watch-fg); font-size: var(--fs-label); line-height: var(--lh-label); }
+
+/* A supplier's details (its page under Suppliers) and finding someone from another day inside the New bill card */
+.ph-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3); margin: 0; }
+.ph-facts dt { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.ph-facts dd { margin: 2px 0 0; color: var(--ink); overflow-wrap: anywhere; }
+.ph-elsewhere { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.ph-elsewhere h3 { margin: 0 0 var(--space-1); }

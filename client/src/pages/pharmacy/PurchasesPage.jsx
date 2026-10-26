@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { PackagePlus, Plus, Save, Trash2, X } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { CircleCheck, CircleSlash, PackagePlus, Plus, Save, Trash2, X } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -11,7 +11,8 @@ import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, med
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
 // Pharmacy → Purchases (supplier invoices: stock in, batch by batch – also received against a purchase order),
-// → Medicines (the stock list, with the barcodes on their packs) and → Suppliers.
+// → Medicines (the stock list, with the barcodes on their packs) and → Suppliers, each supplier with its own page:
+// its details, its bills and "Add bill" with the supplier already chosen (owner, 26 Oct 2026).
 
 function CancelPurchase({ purchase, onClose, onDone }) {
   const [reason, setReason] = useState('');
@@ -35,30 +36,14 @@ function CancelPurchase({ purchase, onClose, onDone }) {
   );
 }
 
-export function PurchasesPage() {
-  const navigate = useNavigate();
-  const { activeMembership } = useAuth();
-  const res = useFetch('/pharmacy/purchases');
+/** Supplier bills (purchases), each with its medicines; the pharmacist can cancel one. */
+function PurchaseCards({ res, desk, empty = 'No purchases yet.' }) {
   const [cancelling, setCancelling] = useState(null);
-  const desk = activeMembership.roles.includes('pharmacist');
   return (
     <>
-      <PharmacyHeader
-        title="Purchases"
-        crumb="Purchases"
-        buying
-        actions={
-          desk && (
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/pharmacy/purchases/new')}>
-              <PackagePlus aria-hidden="true" /> Enter a purchase
-            </button>
-          )
-        }
-      />
-      <div className="pf-content bill-page">
-        {res.error && <Alert type="error">{res.error}</Alert>}
-        {res.data && !res.data.purchases.length && <p className="muted">No purchases yet.</p>}
-        {(res.data?.purchases ?? []).map((p) => (
+      {res.error && <Alert type="error">{res.error}</Alert>}
+      {res.data && !res.data.purchases.length && <p className="muted">{empty}</p>}
+      {(res.data?.purchases ?? []).map((p) => (
           <section key={p.id} className={`card bill-section ${p.status === 'cancelled' ? 'bill-row-cancelled' : ''}`}>
             <div className="row-between">
               <h2>
@@ -115,7 +100,6 @@ export function PurchasesPage() {
             </p>
           </section>
         ))}
-      </div>
       {cancelling && (
         <CancelPurchase
           purchase={cancelling}
@@ -123,6 +107,128 @@ export function PurchasesPage() {
           onDone={() => {
             setCancelling(null);
             res.reload();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+export function PurchasesPage() {
+  const navigate = useNavigate();
+  const { activeMembership } = useAuth();
+  const res = useFetch('/pharmacy/purchases');
+  const desk = activeMembership.roles.includes('pharmacist');
+  return (
+    <>
+      <PharmacyHeader
+        title="Purchase bills"
+        crumb="Purchase bills"
+        buying
+        actions={
+          desk && (
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/pharmacy/purchases/new')}>
+              <PackagePlus aria-hidden="true" /> Add a purchase bill
+            </button>
+          )
+        }
+      />
+      <div className="pf-content bill-page">
+        <PurchaseCards res={res} desk={desk} />
+      </div>
+    </>
+  );
+}
+
+/** One supplier: its details, its bills, and "Add bill" with the supplier already chosen. */
+export function SupplierPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { activeMembership } = useAuth();
+  const desk = activeMembership.roles.includes('pharmacist');
+  const suppliers = useFetch('/pharmacy/suppliers');
+  const settings = useFetch('/pharmacy/settings');
+  const bills = useFetch('/pharmacy/purchases', { supplierId: id });
+  const [editing, setEditing] = useState(false);
+  const x = suppliers.data?.suppliers.find((s) => s.id === id);
+  const active = (bills.data?.purchases ?? []).filter((p) => p.status !== 'cancelled');
+  if (suppliers.data && !x) {
+    return (
+      <>
+        <PharmacyHeader title="Supplier" crumb="Suppliers" />
+        <div className="pf-content">
+          <Alert type="error">Supplier not found.</Alert>
+          <Link to="/pharmacy/suppliers">Back to the suppliers</Link>
+        </div>
+      </>
+    );
+  }
+  return (
+    <>
+      <PharmacyHeader
+        title={x?.name ?? 'Supplier'}
+        crumb="Suppliers"
+        badges={
+          x && (
+            <StatusPill tone={x.active ? 'stable' : 'inactive'} icon={x.active ? CircleCheck : CircleSlash}>
+              {x.active ? 'Active' : 'Stopped'}
+            </StatusPill>
+          )
+        }
+        actions={
+          desk &&
+          x?.active && (
+            <button type="button" className="btn btn-primary" onClick={() => navigate(`/pharmacy/purchases/new?supplier=${id}`)}>
+              <PackagePlus aria-hidden="true" /> Add bill
+            </button>
+          )
+        }
+      />
+      <div className="pf-content bill-page">
+        {suppliers.error && <Alert type="error">{suppliers.error}</Alert>}
+        {x && (
+          <section className="card bill-section" aria-labelledby="sup-details">
+            <div className="row-between">
+              <h2 id="sup-details">Details</h2>
+              <span className="row">
+                {desk && (
+                  <Link className="btn btn-link btn-sm" to={`/pharmacy/supplier-returns/new?supplier=${x.id}`}>
+                    Return stock
+                  </Link>
+                )}
+                {settings.data?.canEdit && (
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => setEditing(true)}>
+                    Change
+                  </button>
+                )}
+              </span>
+            </div>
+            <dl className="ph-facts">
+              {[
+                ['GSTIN', x.gstin],
+                ['Drug licence', x.drugLicence],
+                ['Phone', x.phone],
+                ['Address', x.address],
+                ['Bills', bills.data ? `${active.length} · ${money(active.reduce((t, p) => t + p.totalPaise, 0))} in all` : ''],
+              ].map(([k, v]) => (
+                <div key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v || '—'}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+        <h2 className="td-group-title">Bills from this supplier</h2>
+        <PurchaseCards res={bills} desk={desk} empty="No bills from this supplier yet. Press Add bill when a delivery comes." />
+      </div>
+      {editing && x && (
+        <SupplierDialog
+          supplier={x}
+          onClose={() => setEditing(false)}
+          onDone={() => {
+            setEditing(false);
+            suppliers.reload();
           }}
         />
       )}
@@ -144,7 +250,9 @@ export function NewPurchasePage() {
   const loaded = orderRes.data?.order ?? null;
   const order = loaded?.can.receive ? loaded : null;
   const suppliers = useFetch('/pharmacy/suppliers');
-  const [pickedSupplier, setSupplierId] = useState('');
+  // "Add bill" on a supplier's page comes here with ?supplier=<id>: that supplier is chosen, and saving goes back there
+  const fromSupplier = /^[a-f\d]{24}$/i.test(params.get('supplier') ?? '') ? params.get('supplier') : null;
+  const [pickedSupplier, setSupplierId] = useState(fromSupplier ?? '');
   const supplierId = order ? (order.supplier?.id ?? '') : pickedSupplier; // an order fixes the supplier
   const [invoiceNo, setInvoiceNo] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
@@ -154,7 +262,7 @@ export function NewPurchasePage() {
   const lines = changedLines ?? orderLines;
   const setLines = (change) => setChangedLines((ls) => change(ls ?? orderLines));
   const s = useSend((res) => {
-    if (!res.order) return navigate('/pharmacy/purchases');
+    if (!res.order) return navigate(fromSupplier && fromSupplier === supplierId ? `/pharmacy/suppliers/${fromSupplier}` : '/pharmacy/purchases');
     const said = receivedFlash(res);
     return navigate(`/pharmacy/orders/${res.order.id}`, { state: said.warning ? { warning: said.text } : { flash: said.text } });
   });
@@ -185,7 +293,7 @@ export function NewPurchasePage() {
   }
   return (
     <>
-      <PharmacyHeader title={order ? `Receive order ${order.number}` : 'Enter a purchase'} crumb={order ? `Receive ${order.number}` : 'New purchase'} buying />
+      <PharmacyHeader title={order ? `Receive order ${order.number}` : 'Add a purchase bill'} crumb={order ? `Receive ${order.number}` : 'New purchase bill'} buying />
       <div className="pf-content bill-page">
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
@@ -204,7 +312,7 @@ export function NewPurchasePage() {
         )}
         <section className="card bill-section">
           <h2>Supplier invoice</h2>
-          {suppliers.data && !suppliers.data.suppliers.length && <Alert type="warning">Add a supplier first (Suppliers tab).</Alert>}
+          {suppliers.data && !suppliers.data.suppliers.length && <Alert type="warning">Add a supplier first (Suppliers in the menu).</Alert>}
           <div className="form-grid">
             <Field label="Supplier" id="pu-sup" hint={order ? `The supplier of order ${order.number}.` : undefined}>
               <select id="pu-sup" value={supplierId} disabled={Boolean(order)} onChange={(e) => setSupplierId(e.target.value)}>
@@ -622,11 +730,18 @@ export function SuppliersPage() {
             <tbody>
               {(res.data?.suppliers ?? []).map((x) => (
                 <tr key={x.id} className={x.active ? '' : 'bill-row-cancelled'}>
-                  <td>{x.name}</td>
+                  <td>
+                    <Link to={`/pharmacy/suppliers/${x.id}`}>{x.name}</Link>
+                  </td>
                   <td>{x.gstin}</td>
                   <td>{x.drugLicence}</td>
                   <td>{x.phone}</td>
                   <td className="bill-price-actions">
+                    {desk && x.active && (
+                      <Link className="btn btn-secondary btn-sm" to={`/pharmacy/purchases/new?supplier=${x.id}`}>
+                        Add bill
+                      </Link>
+                    )}
                     {desk && (
                       <Link className="btn btn-link btn-sm" to={`/pharmacy/supplier-returns/new?supplier=${x.id}`}>
                         Return stock

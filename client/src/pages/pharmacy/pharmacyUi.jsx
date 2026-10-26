@@ -12,17 +12,21 @@ import { buyingSections, cleanBarcode, isBarcode, medicineLabel, pharmacyTabs, s
 // Small pieces shared by the pharmacy pages: the header with the pharmacy's tabs, a dialog frame, sending a change,
 // the schedule mark, finding a medicine on the stock list, and the "Scan or type a barcode" box.
 
-/** buying: the page belongs to the Purchases tab (purchases, orders, returns to a supplier) and shows its sections. */
+/**
+ * buying: the page belongs to the Purchases tab (purchases, orders, returns to a supplier) and shows its sections.
+ * A pharmacist has the pharmacy's sections in the sidebar (owner, 26 Oct 2026), so no tabs; the admin keeps them.
+ */
 export function PharmacyHeader({ title, crumb, actions, subtitle, badges, buying = false }) {
   const { activeMembership } = useAuth();
+  const pharmacist = activeMembership.roles.includes('pharmacist');
   return (
     <PageHeader
-      breadcrumbs={[{ label: 'Pharmacy', to: activeMembership.roles.includes('pharmacist') ? '/pharmacy' : '/pharmacy/stock' }, ...(crumb ? [{ label: crumb }] : [])]}
+      breadcrumbs={[{ label: 'Pharmacy', to: pharmacist ? '/pharmacy/register' : '/pharmacy/stock' }, ...(crumb ? [{ label: crumb }] : [])]}
       title={title}
       subtitle={subtitle}
       badges={badges}
       actions={actions}
-      tabs={pharmacyTabs(activeMembership.roles)}
+      tabs={pharmacist ? undefined : pharmacyTabs(activeMembership.roles)}
       subtabs={buying ? buyingSections() : undefined}
     />
   );

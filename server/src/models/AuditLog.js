@@ -133,6 +133,8 @@ export const AUDIT_ACTIONS = [
   'PHARMACY_PRINTED',
   'PHARMACY_REGISTER_VIEWED',
   'PHARMACY_EXPORTED',
+  // The pharmacy's daily register (26 Oct 2026): someone from another day found by her number or phone
+  'PHARMACY_PATIENT_LOOKED_UP',
   // Pharmacy extras (4 Oct 2026): purchase orders, returns to a supplier (debit notes), the e-invoice file
   'PHARMACY_ORDER_CREATED',
   'PHARMACY_ORDER_CHANGED',
