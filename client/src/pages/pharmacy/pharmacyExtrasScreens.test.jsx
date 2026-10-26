@@ -375,7 +375,7 @@ describe('barcodes', () => {
     brand(stock);
     for (const kind of ['sale', 'issue']) {
       const page = at('/pharmacy', '/pharmacy', <SellPage kind={kind} />);
-      expect(text(page)).toContain(kind === 'sale' ? 'Who is it for' : 'Admitted patient');
+      expect(text(page)).toContain('Who is it for'); // OPD, IPD or External on both (owner, 26 Oct 2026)
       expect(page).not.toContain(box); // nobody chosen yet: no medicines card
       brand(page);
     }

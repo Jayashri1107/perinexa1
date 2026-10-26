@@ -111,3 +111,4 @@
 .ph-facts dd { margin: 2px 0 0; color: var(--ink); overflow-wrap: anywhere; }
 .ph-elsewhere { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
 .ph-elsewhere h3 { margin: 0 0 var(--space-1); }
+.ph-register { display: grid; gap: var(--space-4); }

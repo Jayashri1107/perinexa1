@@ -21,7 +21,7 @@ export function PharmacyHeader({ title, crumb, actions, subtitle, badges, buying
   const pharmacist = activeMembership.roles.includes('pharmacist');
   return (
     <PageHeader
-      breadcrumbs={[{ label: 'Pharmacy', to: pharmacist ? '/pharmacy/register' : '/pharmacy/stock' }, ...(crumb ? [{ label: crumb }] : [])]}
+      breadcrumbs={[{ label: 'Pharmacy', to: pharmacist ? '/' : '/pharmacy/stock' }, ...(crumb ? [{ label: crumb }] : [])]}
       title={title}
       subtitle={subtitle}
       badges={badges}

@@ -1,4 +1,4 @@
-import { BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, ClipboardList, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, Truck, UserCog, Users } from 'lucide-react';
+import { BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, Truck, UserCog, Users } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -262,10 +262,9 @@ const HOSPITAL_PHARMACY = {
   to: '/pharmacy',
   tabs: [{ label: 'Pharmacy', to: '/pharmacy', end: false }],
 };
-// The pharmacist's menu (owner, 26 Oct 2026): the pharmacy's sections in the sidebar itself, starting with the day's
-// register (OPD, IPD and External patients). "New bill" keeps the key 'pharmacy' (Help's guide).
+// The pharmacist's menu (owner, 26 Oct 2026): the pharmacy's sections in the sidebar itself; the day's register (OPD,
+// IPD and External patients) is on Today. "New bill" keeps the key 'pharmacy' (Help's guide).
 const PHARMACIST_MENU = [
-  { key: 'pharmacy-register', label: 'Daily register', icon: ClipboardList, to: '/pharmacy/register', end: true },
   { key: 'pharmacy', label: 'New bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: '/pharmacy/issue' },
   { key: 'pharmacy-bills', label: 'Pharmacy bills', icon: FileText, to: '/pharmacy/invoices' },
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },

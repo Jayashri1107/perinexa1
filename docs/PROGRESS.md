@@ -119,9 +119,9 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   as Dr A: the bell says why she came.
 - **26 Oct 2026 (branch `pharmacy-register`, not merged – an exception to the feature freeze at the owner's request,
   for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
-  holds the pharmacy's sections: Daily register, New bill, Pharmacy bills, Suppliers, Purchase bills, Stock,
-  Medicines, Reports, Pharmacy settings (the hospital admin keeps one Pharmacy item with tabs). (2) **Daily register**
-  (`/pharmacy/register`): only the day's patients – OPD (arrived today or prescribed today), IPD (admitted) and
+  holds the pharmacy's sections: New bill, Pharmacy bills, Suppliers, Purchase bills, Stock, Medicines, Reports,
+  Pharmacy settings (the hospital admin keeps one Pharmacy item with tabs). (2) **Daily register**, on the
+  pharmacist's **Today** page (owner: not a menu item of its own): only the day's patients – OPD (arrived today or prescribed today), IPD (admitted) and
   External (walk-in customers billed today) – with counts, an All/OPD/IPD/External filter, a day picker (today or
   earlier) and what the pharmacy has done (prescription waiting, billed, issued). Someone from another day is found
   by her **exact patient number or phone number** only; each search is in the audit log. (3) A pharmacist with no
@@ -130,7 +130,7 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   is a walk-in whose name and phone stay on the bill only (no new patient record). (5) **Suppliers**: each supplier
   has its own page with its details, its bills and **Add bill** (the supplier already chosen). (6) The same supplier
   invoice number can't be entered twice for one supplier (its stock would come in twice). **How to test:** sign in as
-  a pharmacist → the sidebar shows the sections → Daily register → Make bill on an OPD patient (she is already
+  a pharmacist → the sidebar shows the sections → Today shows the Daily register → Make bill on an OPD patient (she is already
   chosen) → New external bill → name, phone, a medicine → Make the invoice → back on the register under External.
   Suppliers → click a supplier → Add bill → the supplier is filled in; save an invoice number that supplier already
   has → refused. Find "P-000001" under "Someone from another day". Not done (ideas list): saving a purchase as a

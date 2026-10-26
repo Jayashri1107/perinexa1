@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { BedDouble, ChevronLeft, ChevronRight, CircleCheck, CircleDashed, Clock, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { DataTable, formatNumber } from '../../components/DataTable.jsx';
 import { Alert, KpiCard, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
-import { PharmacyHeader, money } from './pharmacyUi.jsx';
+import { money } from './pharmacyUi.jsx';
 
-// Pharmacy → Daily register (owner, 26 Oct 2026): the day's patients who need the pharmacy, never the whole patient
-// list – OPD (arrived that day or prescribed that day), IPD (in hospital) and External (walk-in customers billed that
+// The pharmacy's daily register, on the pharmacist's Today page (owner, 26 Oct 2026): the day's patients who need the
+// pharmacy, never the whole patient list – OPD (arrived that day or prescribed that day), IPD (in hospital) and External (walk-in customers billed that
 // day), each with what the pharmacy has done and the next step: make her bill, issue her medicines, or open the bill.
 // Someone from another day is found by her exact patient number or phone number (in the audit log).
 
@@ -110,7 +110,13 @@ export function FindElsewhere({ onPick, onOpenBill, bare = false }) {
   );
 }
 
-export function RegisterPage() {
+/** The old address /pharmacy/register: the register is on Today now (its filters kept). */
+export function RegisterRedirect() {
+  return <Navigate to={`/${useLocation().search}`} replace />;
+}
+
+/** The daily register as a section of the pharmacist's Today page. */
+export function DailyRegister() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [text, setText] = useState('');
@@ -156,18 +162,19 @@ export function RegisterPage() {
   };
 
   return (
-    <>
-      <PharmacyHeader
-        title="Daily register"
-        crumb="Daily register"
-        subtitle={isToday || !day ? "Today's patients who need the pharmacy" : `Patients of ${day}`}
-        actions={
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/pharmacy', { state: { type: 'external' } })}>
-            <UserPlus aria-hidden="true" /> New external bill
-          </button>
-        }
-      />
-      <div className="pf-content bill-page">
+    <section className="td-group" aria-labelledby="ph-register">
+      <div className="row-between">
+        <div>
+          <h2 className="td-group-title" id="ph-register">
+            Daily register
+          </h2>
+          <p className="hint">{isToday || !day ? "Today's patients who need the pharmacy" : `Patients of ${day}`}</p>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/pharmacy', { state: { type: 'external' } })}>
+          <UserPlus aria-hidden="true" /> New external bill
+        </button>
+      </div>
+      <div className="ph-register">
         {res.error && <Alert type="error">{res.error}</Alert>}
         <div className="kpi-grid" aria-label="How many">
           <KpiCard icon={Stethoscope} tone="due" label="OPD" value={counts ? formatNumber(counts.opd) : '—'} sub="Outpatients" />
@@ -235,6 +242,6 @@ export function RegisterPage() {
         />
         <FindElsewhere onPick={open} onOpenBill={openBill} />
       </div>
-    </>
+    </section>
   );
 }

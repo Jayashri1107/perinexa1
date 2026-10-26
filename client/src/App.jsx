@@ -38,7 +38,7 @@ import { InvoicePage, InvoicesPage } from './pages/pharmacy/InvoicesPage.jsx';
 import { OrderFormPage, OrderPage, OrdersPage } from './pages/pharmacy/OrdersPage.jsx';
 import { MedicinesPage, NewPurchasePage, PurchasesPage, SupplierPage, SuppliersPage } from './pages/pharmacy/PurchasesPage.jsx';
 import { PharmacySettingsPage, ReportsPage } from './pages/pharmacy/ReportsPage.jsx';
-import { RegisterPage } from './pages/pharmacy/RegisterPage.jsx';
+import { RegisterRedirect } from './pages/pharmacy/RegisterPage.jsx';
 import { SellPage } from './pages/pharmacy/SellPage.jsx';
 import { MedicineStockPage, StockPage } from './pages/pharmacy/StockPage.jsx';
 import { NewSupplierReturnPage, SupplierReturnPage, SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
@@ -308,8 +308,8 @@ export function App() {
                 <Route element={<RequireTenantRole roles={['pharmacist']} message="Selling and issuing medicines is for the pharmacist." />}>
                   <Route index element={<SellPage key="sale" kind="sale" />} />
                   <Route path="issue" element={<SellPage key="issue" kind="issue" />} />
-                  {/* The day's OPD, IPD and External patients (owner, 26 Oct 2026) */}
-                  <Route path="register" element={<RegisterPage />} />
+                  {/* The day's OPD, IPD and External patients are on Today (owner, 26 Oct 2026) */}
+                  <Route path="register" element={<RegisterRedirect />} />
                   <Route path="purchases/new" element={<NewPurchasePage />} />
                   <Route path="supplier-returns/new" element={<NewSupplierReturnPage />} />
                 </Route>
