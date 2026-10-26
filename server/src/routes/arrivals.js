@@ -118,6 +118,23 @@ arrivalsRouter.post('/:patientId/case-paper/printed', async (req, res) => {
   res.json({ ok: true });
 });
 
+// The live queue (26 Oct 2026): POST /api/arrivals/:patientId/emergency { emergency } – she goes first in her doctor's
+// waiting list (or back to her place); POST /api/arrivals/:patientId/left { left } – "Done – she left" (or undone).
+// Today's arrival only. Audited with ids only.
+async function setFlag(req, res, key, action) {
+  const { patientId } = parse(z.object({ patientId: objectId }), req.params);
+  const { [key]: on } = parse(z.object({ [key]: z.boolean() }).strict(), req.body);
+  const patient = await patientOf(req, patientId);
+  const day = hospitalToday(req.now);
+  const value = on ? { at: req.now ?? new Date(), by: req.user._id, byName: req.user.name } : null;
+  const arrival = await Arrival.findOneAndUpdate({ tenantId: req.tenantId, patientId: patient._id, on: day }, { $set: { [key]: value } }, { new: true }).lean();
+  if (!arrival) throw new HttpError(409, 'Mark her arrived first.', 'NOT_ARRIVED');
+  await audit(req, action, { details: { patientId: String(patient._id), mrn: patient.mrn, [key]: on } });
+  res.json({ arrival: { patientId: String(patient._id), emergency: Boolean(arrival.emergency), left: Boolean(arrival.left) } });
+}
+arrivalsRouter.post('/:patientId/emergency', (req, res) => setFlag(req, res, 'emergency', 'ARRIVAL_EMERGENCY_CHANGED'));
+arrivalsRouter.post('/:patientId/left', (req, res) => setFlag(req, res, 'left', 'PATIENT_LEFT_MARKED'));
+
 arrivalsRouter.delete('/:patientId', async (req, res) => {
   const { patientId } = parse(z.object({ patientId: objectId }), req.params);
   const patient = await patientOf(req, patientId);

@@ -91,6 +91,9 @@ describe('today', () => {
         arrivedAt: null,
         arrivalMarked: false,
         visitStarted: false,
+        queue: 'expected',
+        emergency: false,
+        leftMarked: false,
       },
     ]);
 
@@ -203,5 +206,57 @@ describe('details missing (reception)', () => {
     body = (await today('reception')).body;
     expect(body.incomplete.map((r) => r.patient.fullName)).toEqual(['Bare Patient']);
     expect((await today('drA')).body.incomplete).toBeNull();
+  });
+});
+
+describe('the live queue (reception)', () => {
+  it('expected → waiting → with the doctor → done; an emergency goes first on Today and in the doctor’s line; audited', async () => {
+    const first = await register('First Mother');
+    const urgent = await register('Urgent Mother');
+    const later = await register('Later Mother');
+    for (const p of [first, urgent, later]) await visit('nurse', p, '2026-09-14', '2026-09-28'); // all booked for today
+    const row = async (p) => (await today('reception')).body.patients.find((r) => r.patient.id === p.id);
+    expect(await row(first)).toMatchObject({ queue: 'expected', emergency: false });
+
+    // Not arrived yet: no emergency, no "done"
+    expect((await (await as('reception')).post(`/api/arrivals/${first.id}/emergency`).send({ emergency: true })).status).toBe(409);
+
+    vi.setSystemTime(new Date('2026-09-28T06:05:00Z'));
+    await (await as('reception')).post('/api/arrivals').send({ patientId: first.id });
+    vi.setSystemTime(new Date('2026-09-28T06:06:00Z'));
+    await (await as('reception')).post('/api/arrivals').send({ patientId: urgent.id });
+    expect(await row(first)).toMatchObject({ queue: 'waiting' });
+
+    // The emergency: first on Today and in the doctor's waiting line
+    const set = await (await as('reception')).post(`/api/arrivals/${urgent.id}/emergency`).send({ emergency: true });
+    expect(set.status, JSON.stringify(set.body)).toBe(200);
+    let body = (await today('reception')).body;
+    expect(body.patients.map((r) => [r.patient.fullName, r.queue, r.emergency])).toEqual([
+      ['Urgent Mother', 'waiting', true],
+      ['First Mother', 'waiting', false],
+      ['Later Mother', 'expected', false],
+    ]);
+    const queue = (await (await as('reception')).get('/api/appointments/queue')).body.queues.find((q) => q.doctor.id === people.drA._id.toString());
+    expect(queue.waiting.map((w) => [w.patient.fullName, w.emergency])).toEqual([
+      ['Urgent Mother', true],
+      ['First Mother', false],
+    ]);
+
+    // Her visit started: with the doctor; reception marks she left: done (and can undo it)
+    await visit('nurse', first);
+    expect(await row(first)).toMatchObject({ queue: 'with_doctor' });
+    expect((await (await as('reception')).post(`/api/arrivals/${first.id}/left`).send({ left: true })).status).toBe(200);
+    expect(await row(first)).toMatchObject({ queue: 'done' });
+    expect((await (await as('reception')).post(`/api/arrivals/${first.id}/left`).send({ left: false })).status).toBe(200);
+    expect(await row(first)).toMatchObject({ queue: 'with_doctor' });
+
+    // Only those who mark arrivals; a wrong body is refused
+    expect((await (await as('lab')).post(`/api/arrivals/${urgent.id}/emergency`).send({ emergency: false })).status).toBe(403);
+    expect((await (await as('reception')).post(`/api/arrivals/${urgent.id}/emergency`).send({ emergency: 'yes' })).status).toBe(400);
+
+    const { AuditLog } = await import('../src/models/AuditLog.js');
+    const entry = await AuditLog.findOne({ action: 'ARRIVAL_EMERGENCY_CHANGED' }).lean();
+    expect(entry.details).toEqual({ patientId: urgent.id, mrn: urgent.mrn, emergency: true });
+    expect(await AuditLog.countDocuments({ action: 'PATIENT_LEFT_MARKED' })).toBe(2);
   });
 });

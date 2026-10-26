@@ -15,6 +15,11 @@ const arrivalSchema = new mongoose.Schema(
     // The OPD number of this visit (OP-2026-000001, per hospital and year – docs/ADMISSION_DESK_PLAN.md), printed on the
     // OPD case paper. Not set on older arrivals.
     opdNo: { type: String, default: null },
+    // The live queue (26 Oct 2026): an emergency goes first in her doctor's waiting list (reception, nurses, doctors,
+    // RMOs mark it; not a diagnosis – only that she is seen first); "left" is reception's "Done – she left" for a
+    // patient who goes without a signed visit. Who and when only.
+    emergency: { type: new mongoose.Schema({ at: Date, by: mongoose.Schema.Types.ObjectId, byName: String }, { _id: false }), default: null },
+    left: { type: new mongoose.Schema({ at: Date, by: mongoose.Schema.Types.ObjectId, byName: String }, { _id: false }), default: null },
   },
   { timestamps: false },
 );

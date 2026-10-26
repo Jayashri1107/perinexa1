@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CheckCircle2, Clock, Hash, Printer, UserCheck, UserPlus, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, Clock, Hash, Printer, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -143,6 +143,11 @@ function WaitingLine({ w, next, canMarkDone, onDone }) {
       openLabel="Open the record"
       marker={
         <span className="appt-row-marker">
+          {w.emergency && (
+            <StatusPill tone="high" icon={Siren}>
+              Emergency
+            </StatusPill>
+          )}
           {next && (
             <StatusPill tone="stable" icon={UserCheck}>
               Next
@@ -170,8 +175,13 @@ function WaitingLine({ w, next, canMarkDone, onDone }) {
  * Each doctor's waiting list (doctors, RMOs, nurses, reception): who has arrived, in the order to call them – booked
  * patients at their time, walk-ins in the gaps by token – then who is still expected. A doctor's own list comes first.
  */
-export function WaitingLists() {
+export function WaitingLists({ refreshKey = 0 }) {
   const queue = useFetch('/appointments/queue');
+  // A new refreshKey (a patient marked arrived, the desk's automatic refresh): load again, the old list staying meanwhile
+  const { reload } = queue;
+  useEffect(() => {
+    if (refreshKey) reload();
+  }, [refreshKey, reload]);
   const { activeMembership } = useAuth();
   const roles = activeMembership?.roles ?? [];
   const isDoctor = roles.includes('doctor') || roles.includes('rmo');

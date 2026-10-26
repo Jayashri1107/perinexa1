@@ -76,6 +76,19 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   registered yet" her registration with that name and phone), Take fee, Reschedule, and Cancel last. **How to
   test:** as reception → Appointments → a day with bookings → Edit info on a "Not registered yet" card → Gynaecology
   → Register: the card shows her patient number.
+- **26 Oct 2026, same branch – the live queue on reception's desk:** each patient of the day is **Expected**,
+  **Waiting** (arrived), **With the doctor** (her visit started) or **Done** (the visit signed, the checkup marked done,
+  or reception's **Mark done** – she left; can be undone). **Emergency** (reception, nurses, doctors, RMOs, for a
+  patient who has arrived) puts her first on Today and in her doctor's waiting line, in red with the word; audited
+  (ARRIVAL_EMERGENCY_CHANGED, PATIENT_LEFT_MARKED, ids only). Reception's desk shows **Today's queue**: a strip with
+  the count of each state (click to show only that state), then one row per patient – time or token, name, doctor,
+  state and the buttons (Mark arrived, Emergency, Mark done, Undo arrival, Undo done, Slip), nothing to open. The desk
+  reloads every 30 seconds while it is in front and no dialog is open ("Updated 10:32", Refresh now); the old rows
+  stay while the new ones load. `POST /api/arrivals/:patientId/emergency|left`, `server/src/routes/today.js`
+  (queue, emergency), `appointments/slots.js` (waitingOrder: emergencies first), `client/src/pages/ReceptionDesk.jsx`
+  (QueueBoard). **How to test:** as reception → Today → Mark arrived on two booked patients → Emergency on the second:
+  she moves to the top, red, and first under Waiting to be seen → as a nurse start the first one's visit → back as
+  reception within 30 seconds she shows With the doctor → Mark done → Done; Undo done.
 - **Ideas for later (owner, 15 Oct 2026):** saved in `docs/IDEAS_FOR_LATER.md`. Nothing on the list is approved or
   built; new features remain paused until the developer's health check and agreement on the first commercial version.
 - **New look (8 Oct 2026, branch `theme-premium-dashboard`, not merged yet – for the developer to review):** at the

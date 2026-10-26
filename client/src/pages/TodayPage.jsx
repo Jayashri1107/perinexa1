@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tip } from '../components/Tip.jsx';
-import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, ClockAlert, DoorOpen, FileOutput, FilePen, FlaskConical, MessageCircleReply, PhoneCall, Receipt, Send, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
+import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, ClockAlert, Siren, DoorOpen, FileOutput, FilePen, FlaskConical, MessageCircleReply, PhoneCall, Receipt, Send, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -32,7 +32,7 @@ import { RedFlagItems, RedFlagRulesNote } from './redflags/RedFlagList.jsx';
 import { notCheckedCareText } from './redflags/redFlagFormat.js';
 import { CarePlanSection, FlagCountPill, PatientRow, RedFlagsSection, Section, SectionOpenDefault, VaccinationsOverdueSection, VisitProgress, VisitsTodaySection } from './worklist/WorklistSections.jsx';
 import { DetailsMissing } from './DetailsMissing.jsx';
-import { DeskSearch, TodoPanel } from './ReceptionDesk.jsx';
+import { DeskSearch, QUEUE_LOOK, QueueBoard, TodoPanel } from './ReceptionDesk.jsx';
 
 // The start page: one place for the day (Dashboard, Worklist and today's Calendar together, plus Feature 10's
 // daily lists). In this order, each part only for the roles it is for:
@@ -50,6 +50,8 @@ import { DeskSearch, TodoPanel } from './ReceptionDesk.jsx';
 //    for doctors and RMOs the consultant notes to write and the PDFs to release (only when there are some).
 
 const has = (roles, list) => roles.some((r) => list.includes(r));
+// Reception's desk reloads its lists this often (the live queue)
+const REFRESH_MS = 30_000;
 
 // The hospital admin's dashboard: one tile per role (owner, 12 Oct 2026)
 const STAFF_ROLE_TILES = [
@@ -79,15 +81,21 @@ function TodaysPatients({ rows, progress, showDoctor, canMark, onMark, onUndo, o
             >
               <div className="wl-row-head">
                 <span className="wl-counts">
-                  {r.arrivedAt ? (
-                    <StatusPill tone="stable" icon={UserCheck}>
-                      Arrived · {formatTime(r.arrivedAt)}
-                    </StatusPill>
-                  ) : (
-                    <StatusPill tone="due" icon={Clock}>
-                      Expected
+                  {/* The live queue: her state (and Emergency), the time she arrived */}
+                  {r.emergency && r.queue !== 'done' && (
+                    <StatusPill tone="high" icon={Siren}>
+                      Emergency
                     </StatusPill>
                   )}
+                  {(() => {
+                    const look = QUEUE_LOOK[r.queue] ?? (r.arrivedAt ? QUEUE_LOOK.waiting : QUEUE_LOOK.expected);
+                    return (
+                      <StatusPill tone={look.tone} icon={look.icon}>
+                        {look.label}
+                        {r.arrivedAt ? ` · arrived ${formatTime(r.arrivedAt)}` : ''}
+                      </StatusPill>
+                    );
+                  })()}
                   {canMark && !r.arrivedAt && (
                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMark(r.patient)} disabled={busy === r.patient.id}>
                       <UserCheck aria-hidden="true" /> Mark arrived
@@ -461,6 +469,50 @@ function RoleToday({ roles, lensBar = null }) {
       setMarking(null);
     }
   };
+  // The live queue (26 Oct 2026): Emergency (seen first) or "Done – she left", and their undo
+  const flag = async (p, kind, on) => {
+    setMarking(p.id);
+    setMarkError(null);
+    try {
+      await api(`/arrivals/${p.id}/${kind}`, { method: 'POST', body: { [kind]: on } });
+      listsChanged();
+    } catch (err) {
+      setMarkError(`${p.fullName}: ${err.message}`);
+    } finally {
+      setMarking(null);
+    }
+  };
+  // Reception's desk refreshes itself every 30 seconds while the page is in front and no dialog is open (the old
+  // rows stay on screen while the new ones load), and on "Refresh now"
+  const refreshDesk = () => {
+    listsChanged();
+    unpaid.reload();
+    collected.reload();
+    desk.reload();
+    stays.reload();
+    beds.reload();
+  };
+  const [updatedAt, setUpdatedAt] = useState(null);
+  useEffect(() => {
+    if (today.data) setUpdatedAt(new Date());
+  }, [today.data]);
+  const dialogOpen = Boolean(arriving || casePaper || slip || reminding);
+  useEffect(() => {
+    if (!simple || dialogOpen) return undefined;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible' || document.querySelector('.modal-backdrop')) return;
+      today.reload();
+      setQueueKey((k) => k + 1);
+      unpaid.reload();
+      collected.reload();
+      desk.reload();
+      stays.reload();
+      beds.reload();
+    }, REFRESH_MS);
+    return () => clearInterval(timer);
+    // (the reload functions never change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simple, dialogOpen]);
 
   const counts = receptionCounts(today.data);
   const collect = isReception && unpaid.data && today.data ? paymentsToCollect(unpaid.data.bills, today.data.patients) : [];
@@ -569,7 +621,7 @@ function RoleToday({ roles, lensBar = null }) {
 
   // Today's patients, each doctor's waiting list and the bookings to register: in the lists below, or for reception
   // the main column of the desk (ReceptionDesk.jsx)
-  const waitingLists = queues && <WaitingLists key={queueKey} />;
+  const waitingLists = queues && <WaitingLists refreshKey={queueKey} />;
   const patientsList = today.data && (
     <TodaysPatients
       rows={today.data.patients}
@@ -717,8 +769,18 @@ function RoleToday({ roles, lensBar = null }) {
         {simple && today.data && (
           <div className="rc-columns">
             <div className="rc-main">
+              <QueueBoard
+                rows={today.data.patients}
+                canMark={today.data.canMarkArrived}
+                onMark={(p, row) => arrival('POST', p, row)}
+                onUndo={(p) => arrival('DELETE', p)}
+                onFlag={flag}
+                onSlip={setSlip}
+                busy={marking}
+                updatedAt={updatedAt}
+                onRefresh={refreshDesk}
+              />
               <SectionOpenDefault.Provider value>
-                {patientsList}
                 {waitingLists}
                 {guestsList}
               </SectionOpenDefault.Provider>

@@ -87,11 +87,12 @@ export async function todayFor(req, askedScope) {
   // Booked for today (with "arrived" from the calendar) and the visits started today.
   const booked = await loadCalendar(req, { view: 'day', from: today, to: today, types: ['booked'], scope: 'all' });
   const bookings = new Map(booked.events.filter((e) => e.type === 'booked').map((e) => [e.patientId, e]));
-  const todays = await Visit.find({ tenantId, visitOn: today, status: 'active' }, { patientId: 1, createdAt: 1 }).sort({ createdAt: 1 }).lean();
+  const todays = await Visit.find({ tenantId, visitOn: today, status: 'active' }, { patientId: 1, createdAt: 1, 'signed.at': 1 }).sort({ createdAt: 1 }).lean();
+  const signedToday = new Set(todays.filter((v) => v.signed?.at).map((v) => String(v.patientId)));
   const firstVisit = new Map();
   for (const v of todays) if (!firstVisit.has(String(v.patientId))) firstVisit.set(String(v.patientId), v);
   // Marked as arrived by reception (before any visit is started)
-  const arrivals = new Map((await Arrival.find({ tenantId, on: today }, { patientId: 1, at: 1, byName: 1 }).lean()).map((a) => [String(a.patientId), a]));
+  const arrivals = new Map((await Arrival.find({ tenantId, on: today }, { patientId: 1, at: 1, byName: 1, emergency: 1, left: 1 }).lean()).map((a) => [String(a.patientId), a]));
 
   const ids = [...new Set([...bookings.keys(), ...firstVisit.keys(), ...arrivals.keys()])];
   // (a record marked as a duplicate of another is not on today's lists: she is expected on her main record; nor is a
@@ -108,13 +109,14 @@ export async function todayFor(req, askedScope) {
 
   // Today's appointments (appointment booking): the time or walk-in token and the doctor of each patient, and the
   // quick bookings of new patients not registered yet.
-  const appts = await Appointment.find({ tenantId, on: today, status: 'booked' }, { patientId: 1, guest: 1, doctorId: 1, kind: 1, start: 1, token: 1 })
+  const appts = await Appointment.find({ tenantId, on: today, status: 'booked' }, { patientId: 1, guest: 1, doctorId: 1, kind: 1, start: 1, token: 1, done: 1 })
     .sort({ kind: 1, start: 1, token: 1 })
     .lean();
   const apptNames = await doctorNames(appts.map((a) => ({ assignedDoctor: a.doctorId })));
   const apptView = (a) => ({ id: String(a._id), kind: a.kind, start: a.start ?? null, token: a.token ?? null, needsTime: a.kind === 'slot' && !a.start, doctorId: String(a.doctorId), doctorName: apptNames.get(String(a.doctorId)) ?? null });
   const apptOf = new Map();
   for (const a of appts) if (a.patientId && !apptOf.has(String(a.patientId))) apptOf.set(String(a.patientId), apptView(a));
+  const checkupDone = new Set(appts.filter((a) => a.patientId && a.done).map((a) => String(a.patientId)));
 
   const names = await doctorNames([...shown.map((s) => s.p), ...(calls?.patients ?? []), ...(babies?.rows ?? []).map((r) => r.p), ...(incomplete?.rows ?? []).map((r) => r.p)]);
   const patients = shown
@@ -123,6 +125,7 @@ export async function todayFor(req, askedScope) {
       const visit = firstVisit.get(id);
       const marked = arrivals.get(id);
       const times = [marked?.at, visit?.createdAt].filter(Boolean);
+      const arrived = times.length > 0;
       return {
         patient: who(p, names),
         appointment: apptOf.get(id) ?? null,
@@ -131,12 +134,20 @@ export async function todayFor(req, askedScope) {
         arrivedAt: times.length ? new Date(Math.min(...times.map((t) => new Date(t).getTime()))) : null,
         arrivalMarked: Boolean(marked), // can be undone (until a visit is started)
         visitStarted: Boolean(visit),
+        // The live queue (26 Oct 2026): expected → waiting (arrived) → with the doctor (her visit started) → done (the
+        // visit signed, the checkup marked done, or reception marked that she left); emergency: seen first
+        queue: marked?.left || signedToday.has(id) || checkupDone.has(id) ? 'done' : visit ? 'with_doctor' : arrived ? 'waiting' : 'expected',
+        emergency: Boolean(marked?.emergency),
+        leftMarked: Boolean(marked?.left), // reception's "Done – she left" (can be undone)
         // The visit to open: doctors and RMOs who may see this patient's visits only.
         ...(level === 'clinical' && visit ? { visitId: String(visit._id) } : {}),
       };
     })
-    // Arrived first, in the order they came; then those still expected, by booked time, then name.
+    // Emergencies first (until done); then arrived, in the order they came; then those still expected, by booked
+    // time, then name.
     .sort((a, b) => {
+      const urgent = (r) => r.emergency && r.queue !== 'done';
+      if (urgent(a) !== urgent(b)) return urgent(a) ? -1 : 1;
       if (a.arrivedAt && b.arrivedAt) return a.arrivedAt - b.arrivedAt;
       if (a.arrivedAt || b.arrivedAt) return a.arrivedAt ? -1 : 1;
       return (a.appointment?.start ?? '99:99').localeCompare(b.appointment?.start ?? '99:99') || a.patient.fullName.localeCompare(b.patient.fullName);
