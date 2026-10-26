@@ -34,7 +34,7 @@ import { notCheckedCareText } from './redflags/redFlagFormat.js';
 import { CarePlanSection, FlagCountPill, PatientRow, RedFlagsSection, Section, SectionOpenDefault, VaccinationsOverdueSection, VisitProgress, VisitsTodaySection } from './worklist/WorklistSections.jsx';
 import { DetailsMissing } from './DetailsMissing.jsx';
 import { QUEUE_LOOK, TodoPanel, queueCounts } from './ReceptionDesk.jsx';
-import { DeskNumbers, DoctorsPanel, Greeting, ListCards, PatientsTable, QuickTiles, UpcomingPanel } from './ReceptionDashboard.jsx';
+import { DeskNumbers, DoctorsPanel, ListCards, PatientsTable, QuickTiles, UpcomingPanel } from './ReceptionDashboard.jsx';
 
 // The start page: one place for the day (Dashboard, Worklist and today's Calendar together, plus Feature 10's
 // daily lists). In this order, each part only for the roles it is for:
@@ -371,7 +371,6 @@ function RoleToday({ roles, lensBar = null }) {
   }, [location.hash, location.key]);
   const [flash, setFlash] = useState(location.state?.flash ?? null);
   const [openList, setOpenList] = useState(null); // reception's dashboard: the list opened from its small card
-  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const [reminding, setReminding] = useState(null);
   const [marking, setMarking] = useState(null); // the patient being marked arrived (or undone)
@@ -770,10 +769,9 @@ function RoleToday({ roles, lensBar = null }) {
           </Alert>
         )}
         {canBookAppointments(roles) && <NeedsTimeNotice />}
-        {/* Reception's dashboard (the owner's sketch): greeting, three numbers, quick-action tiles */}
+        {/* Reception's dashboard (the owner's sketch): three numbers, quick-action tiles – no greeting (owner, 26 Oct 2026) */}
         {simple && (
           <>
-            <Greeting name={user?.name} />
             <DeskNumbers rows={today.data?.patients ?? []} collected={collected.data} />
             <QuickTiles />
           </>

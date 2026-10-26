@@ -352,13 +352,14 @@ function Occupant({ stay, canBill, onMove, onPaper, onChecklist, moveLabel = 'Tr
 /**
  * Admit a patient: to the bed clicked on the board (bed), or – from her record (patient) – to a free bed chosen here.
  */
-export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, request = null, onClose, onAdmitted }) {
+// admissionType: the type to start with (a patient just registered as IPD or day care – PatientNewPage.jsx)
+export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, request = null, admissionType: startType = null, onClose, onAdmitted }) {
   const { activeMembership } = useAuth();
   const [patient, setPatient] = useState(preset);
   const freeList = useFetch(fixedBed ? null : '/beds', { free: '1' });
   const [bedId, setBedId] = useState('');
   const bed = fixedBed ?? freeList.data?.beds.find((b) => b.id === (bedId || freeList.data.beds[0]?.id)) ?? null;
-  const [form, setForm] = useState({ reasonCode: request?.reasonCode ?? 'labour', reasonNote: '', admittedAt: nowLocal(), admissionType: request?.admissionType ?? 'planned', mlc: false, mlcPolice: '' });
+  const [form, setForm] = useState({ reasonCode: request?.reasonCode ?? 'labour', reasonNote: '', admittedAt: nowLocal(), admissionType: request?.admissionType ?? startType ?? 'planned', mlc: false, mlcPolice: '' });
   // The checklist, first filled from her record (ID proof, payer, emergency contact); her open request, if any
   const record = useFetch(patient ? `/patients/${patient.id}` : null);
   const [checklist, setChecklist] = useState(null);

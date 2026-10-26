@@ -356,3 +356,6 @@
 /* PIN code, city and state under the address (owner, 14 Oct 2026) */
 .pf-place-grid { grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) minmax(0, 2fr); margin-top: var(--space-3); }
 @media (max-width: 720px) { .pf-place-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* New patient: OPD, IPD or day care (owner, 26 Oct 2026) */
+.pn-setting { display: grid; gap: var(--space-1); margin-bottom: var(--space-4); }
