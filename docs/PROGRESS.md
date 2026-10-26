@@ -122,7 +122,9 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   table, the numbers and Doctors today count the same people (before: "Nobody is booked" while Doctors today said 3);
   the quick-action tiles and the row of small list cards are gone (the sidebar has Appointments, Beds, Billing and
   Follow-ups; **Book appointment** is a button at the top; To do opens the lists, with "Close this list");
-  Upcoming appointments is hidden when nobody is left. Website only.
+  Upcoming appointments is hidden when nobody is left. Website only. **Upcoming visits** under Today's patients: the next
+  days' bookings (from tomorrow, 6 days), by day – time, patient, phone, doctor, New or Follow-up – the first 10, all
+  of them under Follow-ups.
 - **26 Oct 2026 (branch `pharmacy-register`, not merged – an exception to the feature freeze at the owner's request,
   for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
   holds the pharmacy's sections: New bill, Pharmacy bills, Suppliers, Purchase bills, Stock, Medicines, Reports,

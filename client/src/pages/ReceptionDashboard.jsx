@@ -9,6 +9,8 @@ import { PURPOSE_LABELS, VISIT_TYPE_LABELS, timeLabel } from './appointments/app
 import { AddFollowUpDialog } from './followups/FollowUpDialogs.jsx';
 import { doctorToday } from './appointments/DeskToday.jsx';
 import { rupees } from './billing/billingFormat.js';
+import { useFetch } from '../hooks/useFetch.js';
+import { bookingTime, comingUpGroups, visitTypeLabel } from './followups/followUpsFormat.js';
 import { QUEUE_LOOK, QUEUE_ORDER, RegisterBookingDialog, RegisterDialog, queueCounts, queueWhen } from './ReceptionDesk.jsx';
 
 // Reception's dashboard (26 Oct 2026, the owner's sketch, made simpler the same day): three number cards; the
@@ -441,6 +443,73 @@ export function DoctorsPanel({ doctors = [] }) {
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+/** The days after today, grouped, at most `max` rows (Upcoming visits): { groups, total, shown }. */
+export function upcomingVisits(comingUp = [], today, max = 10) {
+  const later = comingUp.filter((r) => r.date > today);
+  const groups = comingUpGroups(later.slice(0, max), today);
+  return { groups, total: later.length, shown: Math.min(later.length, max) };
+}
+
+/**
+ * Upcoming visits (26 Oct 2026, under Today's patients): everyone booked for the next days after today – an
+ * appointment, or a next visit the doctor wrote – by day: time, patient, phone, doctor, New or Follow-up. From the
+ * Follow-ups page's answer (GET /api/follow-ups, reception only); all of them under Follow-ups. refreshKey: reloads
+ * with the desk.
+ */
+export function UpcomingVisits({ refreshKey = 0, max = 10 }) {
+  const res = useFetch('/follow-ups');
+  const { reload } = res;
+  useEffect(() => {
+    if (refreshKey) reload();
+  }, [refreshKey, reload]);
+  if (res.error) return <Alert type="error">{res.error}</Alert>;
+  if (!res.data) return null;
+  const { groups, total, shown } = upcomingVisits(res.data.comingUp, res.data.today, max);
+  return (
+    <section className="card rd-coming" aria-labelledby="rd-coming-title">
+      <div className="rd-card-head">
+        <h2 id="rd-coming-title">
+          <CalendarDays aria-hidden="true" /> Upcoming visits <span className="muted tabular">({total})</span>
+        </h2>
+        <span className="muted rd-coming-days">Next {res.data.days - 1} days</span>
+        <Link to="/follow-ups#fu-coming" className="rd-view-all">
+          View all <ChevronRight aria-hidden="true" />
+        </Link>
+      </div>
+      {total === 0 ? (
+        <p className="muted rd-none">Nobody is booked for the coming days yet.</p>
+      ) : (
+        <>
+          {groups.map((g) => (
+            <div key={g.date} className="rd-coming-day">
+              <h3>
+                {g.label} <span className="muted tabular">({g.rows.length})</span>
+              </h3>
+              <ul className="rd-coming-list">
+                {g.rows.map((r, i) => (
+                  <li key={`${r.patient.id}-${i}`}>
+                    <span className="tabular rd-coming-time">{r.needsTime ? <Link to="/appointments/needs-time">Needs a time</Link> : bookingTime(r)}</span>
+                    <span className="rd-person-text">
+                      <Link to={`/patients/${r.patient.id}`}>{r.patient.fullName}</Link>
+                      <span className="muted tabular">{[r.patient.mrn, r.patient.phone, r.doctorName ?? r.patient.doctorName].filter(Boolean).join(' · ')}</span>
+                    </span>
+                    <span className="rd-visit">{visitTypeLabel(r)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          {total > shown && (
+            <Link to="/follow-ups#fu-coming" className="btn btn-link btn-sm">
+              Show all {total} upcoming visits
+            </Link>
+          )}
+        </>
+      )}
     </section>
   );
 }

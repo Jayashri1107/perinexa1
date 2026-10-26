@@ -117,3 +117,13 @@
 /* A booking made by name and phone (not registered yet): a soft amber row with Register */
 .rd-row.is-guest td { background: var(--status-watch-bg); }
 .rd-row.is-guest .rd-avatar { background: var(--surface); color: var(--status-watch-fg); }
+
+/* Upcoming visits, under Today's patients: the next days' bookings by day */
+.rd-coming { padding: var(--space-6); margin-top: var(--space-4); }
+.rd-coming-days { font-size: var(--fs-caption); }
+.rd-coming-day h3 { margin: var(--space-3) 0 var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.rd-coming-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.rd-coming-list li { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); }
+.rd-coming-list li:first-child { border-top: 0; }
+.rd-coming-time { font-weight: 600; font-size: var(--fs-label); }
+@media (max-width: 600px) { .rd-coming-list li { grid-template-columns: 1fr; } }

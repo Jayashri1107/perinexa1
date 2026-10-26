@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { TodoPanel, prefillFrom, queueCounts, queueWhen } from './ReceptionDesk.jsx';
-import { DeskNumbers, DoctorsPanel, PatientsTable, UpcomingPanel, greeting, guestRow, rowMatches } from './ReceptionDashboard.jsx';
+import { DeskNumbers, DoctorsPanel, PatientsTable, UpcomingPanel, greeting, guestRow, rowMatches, upcomingVisits } from './ReceptionDashboard.jsx';
 
 const text = (el) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>).replace(/<[^>]+>/g, ' ').replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, ' ');
 const who = (id, fullName) => ({ id, fullName, mrn: `P-00000${id}`, phone: '98765 43210', doctorName: 'Sample Doctor' });
@@ -91,5 +91,20 @@ describe('reception: the side and the lists', () => {
     expect(busy).toContain('Payments to collect');
     expect(busy).not.toContain('Discharges');
     expect(text(<TodoPanel onSaved={() => {}} />)).toContain('Nothing waiting.');
+  });
+});
+
+describe('reception: upcoming visits', () => {
+  const visit = (date, name) => ({ patient: who(name, name), date, start: '10:30', needsTime: false, visitType: 'follow_up' });
+  it('only the days after today, by day, at most the first ten; how many there are in all', () => {
+    const coming = [visit('2026-10-26', 'Today'), visit('2026-10-27', 'A'), visit('2026-10-27', 'B'), visit('2026-10-29', 'C')];
+    const out = upcomingVisits(coming, '2026-10-26');
+    expect(out.groups.map((g) => [g.label, g.rows.map((r) => r.patient.fullName)])).toEqual([
+      ['Tomorrow', ['A', 'B']],
+      ['Thursday 29 Oct 2026', ['C']],
+    ]);
+    expect(out).toMatchObject({ total: 3, shown: 3 });
+    const many = Array.from({ length: 12 }, (_, i) => visit('2026-10-28', `P${i}`));
+    expect(upcomingVisits(many, '2026-10-26')).toMatchObject({ total: 12, shown: 10 });
   });
 });
