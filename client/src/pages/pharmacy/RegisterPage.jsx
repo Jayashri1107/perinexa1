@@ -3,7 +3,7 @@ import { BedDouble, ChevronLeft, ChevronRight, CircleCheck, CircleDashed, Clock,
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { DataTable, formatNumber } from '../../components/DataTable.jsx';
-import { Alert, KpiCard, StatusPill, formatDateTime } from '../../components/ui.jsx';
+import { Alert, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
 import { money } from './pharmacyUi.jsx';
@@ -115,8 +115,12 @@ export function RegisterRedirect() {
   return <Navigate to={`/${useLocation().search}`} replace />;
 }
 
-/** The daily register as a section of the pharmacist's Today page. */
-export function DailyRegister() {
+/**
+ * The daily register on the pharmacist's Today page (owner, 26 Oct 2026): finding someone from another day first,
+ * then `glance` (the pharmacy's numbers), then the day's list – no heading or count cards of its own (the filter
+ * buttons carry the counts).
+ */
+export function DailyRegister({ glance = null }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [text, setText] = useState('');
@@ -162,25 +166,11 @@ export function DailyRegister() {
   };
 
   return (
-    <section className="td-group" aria-labelledby="ph-register">
-      <div className="row-between">
-        <div>
-          <h2 className="td-group-title" id="ph-register">
-            Daily register
-          </h2>
-          <p className="hint">{isToday || !day ? "Today's patients who need the pharmacy" : `Patients of ${day}`}</p>
-        </div>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/pharmacy', { state: { type: 'external' } })}>
-          <UserPlus aria-hidden="true" /> New external bill
-        </button>
-      </div>
+    <section className="td-group" aria-label="Daily register">
       <div className="ph-register">
+        <FindElsewhere onPick={open} onOpenBill={openBill} />
+        {glance}
         {res.error && <Alert type="error">{res.error}</Alert>}
-        <div className="kpi-grid" aria-label="How many">
-          <KpiCard icon={Stethoscope} tone="due" label="OPD" value={counts ? formatNumber(counts.opd) : '—'} sub="Outpatients" />
-          <KpiCard icon={BedDouble} tone="admitted" label="IPD" value={counts ? formatNumber(counts.ipd) : '—'} sub={isToday || !day ? 'Admitted now' : 'In hospital that day'} />
-          <KpiCard icon={UserPlus} label="External" value={counts ? formatNumber(counts.external) : '—'} sub="Walk-in customers billed" />
-        </div>
         <DataTable
           caption="Daily patient register"
           rows={res.data ? rows : undefined}
@@ -240,7 +230,6 @@ export function DailyRegister() {
             { key: 'action', header: 'Next step', align: 'right', render: action },
           ]}
         />
-        <FindElsewhere onPick={open} onOpenBill={openBill} />
       </div>
     </section>
   );

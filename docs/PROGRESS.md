@@ -121,7 +121,8 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
   holds the pharmacy's sections: New bill, Pharmacy bills, Suppliers, Purchase bills, Stock, Medicines, Reports,
   Pharmacy settings (the hospital admin keeps one Pharmacy item with tabs). (2) **Daily register**, on the
-  pharmacist's **Today** page (owner: not a menu item of its own): only the day's patients – OPD (arrived today or prescribed today), IPD (admitted) and
+  pharmacist's **Today** page (owner: not a menu item of its own; "Someone from another day" and "Pharmacy at a
+  glance" on top, then the list – no heading or count cards): only the day's patients – OPD (arrived today or prescribed today), IPD (admitted) and
   External (walk-in customers billed today) – with counts, an All/OPD/IPD/External filter, a day picker (today or
   earlier) and what the pharmacy has done (prescription waiting, billed, issued). Someone from another day is found
   by her **exact patient number or phone number** only; each search is in the audit log. (3) A pharmacist with no
