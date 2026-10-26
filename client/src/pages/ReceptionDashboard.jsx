@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BedDouble, CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRupee, MoreVertical, PhoneCall, Receipt, RefreshCw, Search, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
+import { CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRupee, MoreVertical, PenLine, RefreshCw, Search, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { MenuButton } from '../components/MenuButton.jsx';
@@ -7,11 +7,14 @@ import { Alert, StatusPill, formatTime } from '../components/ui.jsx';
 import { EditPatientDialog } from './appointments/RegisterAndBook.jsx';
 import { PURPOSE_LABELS, VISIT_TYPE_LABELS, timeLabel } from './appointments/appointmentFormat.js';
 import { AddFollowUpDialog } from './followups/FollowUpDialogs.jsx';
+import { missingText } from './DetailsMissing.jsx';
 import { doctorToday } from './appointments/DeskToday.jsx';
 import { rupees } from './billing/billingFormat.js';
-import { QUEUE_LOOK, QUEUE_ORDER, RegisterDialog, queueCounts, queueWhen } from './ReceptionDesk.jsx';
+import { useFetch } from '../hooks/useFetch.js';
+import { bookingTime, comingUpGroups, visitTypeLabel } from './followups/followUpsFormat.js';
+import { QUEUE_LOOK, QUEUE_ORDER, RegisterBookingDialog, RegisterDialog, queueCounts, queueWhen } from './ReceptionDesk.jsx';
 
-// Reception's dashboard (26 Oct 2026, the owner's sketch): a greeting; three number cards; quick-action tiles; the
+// Reception's dashboard (26 Oct 2026, the owner's sketch, made simpler the same day): three number cards; the
 // day's patients as a table – tabs by state, a search box, a doctor filter, one row each with Check in or View and a
 // menu of the rest; beside it To do, Doctors today and the next appointments. The brand's colours (tokens.css), every
 // state in colour + icon + word, one primary button on the screen (New patient, in the page header).
@@ -74,40 +77,27 @@ export function DeskNumbers({ rows = [], collected = null }) {
   );
 }
 
-/** The quick actions, as tiles; the rest under More. */
-export function QuickTiles() {
-  const tiles = [
-    { to: '/appointments', icon: CalendarPlus, tone: 'indigo', label: 'Book appointment' },
-    { to: '/beds', icon: BedDouble, tone: 'due', label: 'Admit to bed' },
-    { to: '/billing', icon: Receipt, tone: 'stable', label: 'Billing and payments' },
-    { to: '/follow-ups', icon: PhoneCall, tone: 'admitted', label: 'Follow-ups' },
-  ];
-  return (
-    <nav className="rd-tiles" aria-label="Quick actions">
-      {tiles.map((t) => (
-        <Link key={t.to} to={t.to} className="rd-tile">
-          <span className={`rd-icon is-${t.tone}`} aria-hidden="true">
-            <t.icon />
-          </span>
-          {t.label}
-        </Link>
-      ))}
-      <MenuButton
-        label="More"
-        icon={MoreVertical}
-        className="rd-tile rd-tile-more"
-        align="end"
-        items={[
-          { label: 'Discharges', to: '/#td-discharges' },
-          { label: 'Calendar', to: '/calendar' },
-          { label: 'Daily summary', to: '/billing/daily' },
-          { label: 'Cash handover', to: '/cash-handover' },
-          { label: 'All patients', to: '/patients' },
-        ]}
-      />
-    </nav>
-  );
-}
+
+/**
+ * A booking made by name and phone (GET /api/today: guests) as a row of the table: expected, "Details missing", with
+ * Fill info instead of Check in – so the table, the numbers and Doctors today count the same people.
+ */
+export const guestRow = (g) => ({
+  patient: { id: `guest-${g.id}`, fullName: g.guest?.name ?? 'Patient', mrn: '', phone: g.guest?.phone ?? '', doctorName: g.doctorName ?? null },
+  appointment: g,
+  booked: true,
+  guest: true,
+  queue: 'expected',
+  arrivedAt: null,
+  arrivalMarked: false,
+  visitStarted: false,
+  emergency: false,
+  leftMarked: false,
+  age: null,
+  baby: false,
+  purpose: null,
+  followUp: null,
+});
 
 const TABS = [['', 'All'], ...QUEUE_ORDER.map((k) => [k, QUEUE_LOOK[k].label])];
 const digitsOf = (s) => String(s ?? '').replace(/\D/g, '');
@@ -136,12 +126,16 @@ const visitText = (r) =>
  * those expected, View for the others, and the rest in the row's menu (Emergency, Mark done, the undos, Edit info,
  * Book, Slip). Emergencies first, in red with the word.
  */
-export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFlag, onSlip, busy = null, updatedAt = null, onRefresh, onSaved }) {
+export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMark, onUndo, onFlag, onSlip, busy = null, updatedAt = null, onRefresh, onSaved }) {
   const [tab, setTab] = useState('');
   const [text, setText] = useState('');
   const [doctor, setDoctor] = useState('');
   const [editing, setEditing] = useState(null);
   const [addingFor, setAddingFor] = useState(null); // Add follow-up
+  const [registering, setRegistering] = useState(null); // a booking made by name and phone
+  // Registered patients whose details are not all filled in (GET /api/today: incomplete): Fill info, until they are
+  const missingOf = new Map(incomplete.map((m) => [m.patient.id, m.missing]));
+  const [filling, setFilling] = useState(null); // { patient, missing }
   const n = queueCounts(rows);
   const doctors = useMemo(() => [...new Set(rows.map((r) => r.appointment?.doctorName ?? r.patient.doctorName).filter(Boolean))].sort(), [rows]);
   const shown = rows.filter((r) => (!tab || (r.queue ?? 'expected') === tab) && (!doctor || (r.appointment?.doctorName ?? r.patient.doctorName) === doctor) && rowMatches(r, text));
@@ -227,7 +221,7 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                 r.appointment?.kind === 'token' && { label: 'Print token slip', onSelect: () => onSlip({ ...r.appointment, doctor: { name: r.appointment.doctorName } }) },
               ].filter(Boolean);
               return (
-                <tr key={p.id} className={`rd-row is-${state}${urgent ? ' is-emergency' : ''}`}>
+                <tr key={p.id} className={`rd-row is-${state}${urgent ? ' is-emergency' : ''}${r.guest ? ' is-guest' : ''}`}>
                   <td className="tabular muted">{i + 1}</td>
                   <td>
                     <span className="rd-person">
@@ -235,9 +229,11 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                         {initials(p.fullName)}
                       </span>
                       <span className="rd-person-text">
-                        <Link to={`/patients/${p.id}`}>{p.fullName}</Link>
+                        {r.guest ? <strong>{p.fullName}</strong> : <Link to={`/patients/${p.id}`}>{p.fullName}</Link>}
                         <span className="muted tabular">
-                          {p.mrn}
+                          {r.guest ? <span className="rd-missing">Details missing</span> : p.mrn}
+                          {!r.guest && missingOf.has(p.id) ? <span className="rd-missing"> · Details missing</span> : null}
+                          {r.guest && p.phone ? ` · ${p.phone}` : ''}
                           {r.appointment?.doctorName ?? p.doctorName ? ` · ${r.appointment?.doctorName ?? p.doctorName}` : ''}
                         </span>
                       </span>
@@ -272,7 +268,13 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                   </td>
                   <td>
                     <span className="rd-actions">
-                      {canMark && state === 'expected' ? (
+                      {r.guest ? (
+                        // Booked by name and phone, details still missing: fill them in (her record is made and the
+                        // booking joins it), then Check in
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRegistering(r.appointment)}>
+                          <PenLine aria-hidden="true" /> Fill info
+                        </button>
+                      ) : canMark && state === 'expected' ? (
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMark(p, r)} disabled={saving}>
                           <UserCheck aria-hidden="true" /> Check in
                         </button>
@@ -281,7 +283,12 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                           <Eye aria-hidden="true" /> View
                         </Link>
                       )}
-                      <MenuButton label="" icon={MoreVertical} className="icon-btn rd-more" align="end" ariaLabel={`More for ${p.fullName}`} items={menu} />
+                      {!r.guest && missingOf.has(p.id) && (
+                        <button type="button" className="btn btn-link btn-sm" onClick={() => setFilling({ patient: p, missing: missingOf.get(p.id) })}>
+                          <PenLine aria-hidden="true" /> Fill info
+                        </button>
+                      )}
+                      {!r.guest && <MenuButton label="" icon={MoreVertical} className="icon-btn rd-more" align="end" ariaLabel={`More for ${p.fullName}`} items={menu} />}
                     </span>
                   </td>
                 </tr>
@@ -305,6 +312,28 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
           onSaved={(saved) => {
             setEditing(null);
             onSaved(`Saved: the details of ${saved?.fullName ?? editing.fullName}.`);
+          }}
+        />
+      )}
+      {filling && (
+        <EditPatientDialog
+          patientId={filling.patient.id}
+          missing={missingText(filling.missing)}
+          onClose={() => setFilling(null)}
+          onSaved={() => {
+            const who = filling.patient.fullName;
+            setFilling(null);
+            onSaved(`Saved: ${who}'s details.`);
+          }}
+        />
+      )}
+      {registering && (
+        <RegisterBookingDialog
+          appointment={registering}
+          onClose={() => setRegistering(null)}
+          onRegistered={(p) => {
+            setRegistering(null);
+            onSaved(`Saved: ${p.fullName}'s details (${p.mrn}); her booking is on her record. Press Check in when she is here.`);
           }}
         />
       )}
@@ -396,28 +425,6 @@ function OtherPatients({ term, skip, onArrive, busy, onSaved, onEdit }) {
   );
 }
 
-/**
- * The day's other lists as one row of small cards – icon, name and how many – only those with someone in them. A card
- * opens its list under the row (onOpen(key)); the open one is marked, a second click closes it.
- */
-export function ListCards({ cards = [], open = null, onOpen }) {
-  const shown = cards.filter((c) => c.count > 0);
-  if (!shown.length) return null;
-  return (
-    <section className="rd-lists" aria-label="Today's lists">
-      {shown.map((c) => (
-        <button key={c.key} type="button" className="rd-list-card" aria-pressed={open === c.key} aria-controls="rd-open-list" onClick={() => onOpen(open === c.key ? null : c.key)}>
-          <span className="rd-list-icon" aria-hidden="true">
-            <c.icon />
-          </span>
-          <span className="rd-list-label">{c.label}</span>
-          <span className="rd-list-count tabular">{c.count}</span>
-        </button>
-      ))}
-    </section>
-  );
-}
-
 /** Doctors today: initials, name, state and hours, and how many are expected, waiting and seen. */
 export function DoctorsPanel({ doctors = [] }) {
   if (!doctors.length) return null;
@@ -463,36 +470,65 @@ export function DoctorsPanel({ doctors = [] }) {
   );
 }
 
-/** The next appointments of the day (not arrived yet, with a time), the earliest first. */
-export function UpcomingPanel({ rows = [], max = 5 }) {
-  const next = rows
-    .filter((r) => (r.queue ?? 'expected') === 'expected' && r.appointment?.start)
-    .sort((a, b) => a.appointment.start.localeCompare(b.appointment.start))
-    .slice(0, max);
+/** The days after today, grouped, at most `max` rows (Upcoming visits): { groups, total, shown }. */
+export function upcomingVisits(comingUp = [], today, max = 10) {
+  const later = comingUp.filter((r) => r.date > today);
+  const groups = comingUpGroups(later.slice(0, max), today);
+  return { groups, total: later.length, shown: Math.min(later.length, max) };
+}
+
+/**
+ * Upcoming visits (26 Oct 2026, under Today's patients): everyone booked for the next days after today – an
+ * appointment, or a next visit the doctor wrote – by day: time, patient, phone, doctor, New or Follow-up. From the
+ * Follow-ups page's answer (GET /api/follow-ups, reception only); all of them under Follow-ups. refreshKey: reloads
+ * with the desk.
+ */
+export function UpcomingVisits({ refreshKey = 0, max = 10 }) {
+  const res = useFetch('/follow-ups');
+  const { reload } = res;
+  useEffect(() => {
+    if (refreshKey) reload();
+  }, [refreshKey, reload]);
+  if (res.error) return <Alert type="error">{res.error}</Alert>;
+  if (!res.data) return null;
+  const { groups, total, shown } = upcomingVisits(res.data.comingUp, res.data.today, max);
+  // Nothing booked for the coming days: no card (only what is needed)
+  if (total === 0) return null;
   return (
-    <section className="card rd-side-card" aria-labelledby="rd-upcoming-title">
+    <section className="card rd-coming" aria-labelledby="rd-coming-title">
       <div className="rd-card-head">
-        <h2 id="rd-upcoming-title">
-          <CalendarDays aria-hidden="true" /> Upcoming appointments
+        <h2 id="rd-coming-title">
+          <CalendarDays aria-hidden="true" /> Upcoming visits <span className="muted tabular">({total})</span>
         </h2>
-        <Link to="/appointments" className="rd-view-all">
+        <span className="muted rd-coming-days">Next {res.data.days - 1} days</span>
+        <Link to="/follow-ups#fu-coming" className="rd-view-all">
           View all <ChevronRight aria-hidden="true" />
         </Link>
       </div>
-      {next.length === 0 ? (
-        <p className="muted rd-none">No more appointments with a time today.</p>
-      ) : (
-        <ul className="rd-upcoming">
-          {next.map((r) => (
-            <li key={r.patient.id}>
-              <span className="tabular rd-up-time">{timeLabel(r.appointment.start)}</span>
-              <Link to={`/patients/${r.patient.id}`}>{r.patient.fullName}</Link>
-              <span className="rd-visit">{visitText(r)}</span>
-            </li>
-          ))}
-        </ul>
+      {groups.map((g) => (
+        <div key={g.date} className="rd-coming-day">
+          <h3>
+            {g.label} <span className="muted tabular">({g.rows.length})</span>
+          </h3>
+          <ul className="rd-coming-list">
+            {g.rows.map((r, i) => (
+              <li key={`${r.patient.id}-${i}`}>
+                <span className="tabular rd-coming-time">{r.needsTime ? <Link to="/appointments/needs-time">Needs a time</Link> : bookingTime(r)}</span>
+                <span className="rd-person-text">
+                  <Link to={`/patients/${r.patient.id}`}>{r.patient.fullName}</Link>
+                  <span className="muted tabular">{[r.patient.mrn, r.patient.phone, r.doctorName ?? r.patient.doctorName].filter(Boolean).join(' · ')}</span>
+                </span>
+                <span className="rd-visit">{visitTypeLabel(r)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {total > shown && (
+        <Link to="/follow-ups#fu-coming" className="btn btn-link btn-sm">
+          Show all {total} upcoming visits
+        </Link>
       )}
     </section>
   );
 }
-

@@ -117,6 +117,20 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   the list's words. **How to test:** as reception → Follow-ups → Add follow-up → a fake patient, Dr A, Show reports,
   "bring the blood report", from today → Today → find her → Check in: "Show reports" is chosen → Check in → sign in
   as Dr A: the bell says why she came.
+- **26 Oct 2026, branch `reception-simpler` – reception's Today made simpler:** the bookings made by name and phone are
+  rows of Today's patients too ("Not registered yet", amber, with **Register** – the booking joins her record), so the
+  table, the numbers and Doctors today count the same people (before: "Nobody is booked" while Doctors today said 3);
+  the quick-action tiles and the row of small list cards are gone (the sidebar has Appointments, Beds, Billing and
+  Follow-ups; **Book appointment** is a button at the top; To do opens the lists, with "Close this list");
+  Upcoming appointments is hidden when nobody is left. Website only. **Upcoming visits** under Today's patients: the next
+  days' bookings (from tomorrow, 6 days), by day – time, patient, phone, doctor, New or Follow-up – the first 10, all
+  of them under Follow-ups; hidden when nobody is booked. The side card "Upcoming appointments" (today's later bookings)
+  is gone: they are already rows of Today's patients. A booking by name and phone is a row with "Details missing" and **Fill info**: her
+  details form at once (name and phone filled in, the type of care set to Gynaecology and changeable); saved, her
+  record is made and the booking joins it (the form's own check still says "She may already be registered"). No other
+  patient's record is offered from the table. A registered patient whose details are missing has "Details missing" and
+  **Fill info** (her own form, the missing items said at the top); none once everything is filled in. The rows are white
+  like the others (`routes/today.js`: guests[].registered, samePhone).
 - **26 Oct 2026 (branch `pharmacy-register`, not merged – an exception to the feature freeze at the owner's request,
   for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
   holds the pharmacy's sections: New bill, Pharmacy bills, Suppliers, Purchase bills, Stock, Medicines, Reports,

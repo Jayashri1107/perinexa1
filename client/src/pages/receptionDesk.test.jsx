@@ -2,10 +2,9 @@
 // states, the patients table, the small list cards and To do (rendered to HTML, no browser). Fake data only.
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { Users } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 import { TodoPanel, prefillFrom, queueCounts, queueWhen } from './ReceptionDesk.jsx';
-import { DeskNumbers, DoctorsPanel, ListCards, PatientsTable, UpcomingPanel, greeting, rowMatches } from './ReceptionDashboard.jsx';
+import { DeskNumbers, DoctorsPanel, PatientsTable, greeting, guestRow, rowMatches, upcomingVisits } from './ReceptionDashboard.jsx';
 
 const text = (el) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>).replace(/<[^>]+>/g, ' ').replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, ' ');
 const who = (id, fullName) => ({ id, fullName, mrn: `P-00000${id}`, phone: '98765 43210', doctorName: 'Sample Doctor' });
@@ -59,38 +58,32 @@ describe('reception: the patients table', () => {
     expect(shown).toContain('1 emergency');
     expect(shown).toContain('every 30 seconds');
   });
+  it('a booking made by name and phone is a row too – details missing, with Fill info, counted as expected', () => {
+    const g = guestRow({ id: 'a9', kind: 'slot', start: '12:00', visitType: 'new', doctorId: 'd1', doctorName: 'Sample Doctor', guest: { name: 'Ishanvi Sample', phone: '98986 53256' } });
+    const shown = table({ rows: [...rows, g] });
+    expect(shown).toContain('All (5) Expected (2)');
+    expect(shown).toMatch(/IS Ishanvi Sample Details missing · 98986 53256 · Sample Doctor .* 12:00 PM New Expected Fill info/);
+    // Never another patient's record from here, nor a second Register: only Fill info
+    expect(shown).not.toMatch(/Use .*record|Register new|Phone matches/);
+    expect(queueCounts([g]).expected).toBe(1);
+  });
+
+  it('Fill info only on a registered patient whose details are missing; none once they are all filled in', () => {
+    const withMissing = table({ incomplete: [{ patient: { id: '3' }, missing: ['address', 'emergencyContact'] }] });
+    expect(withMissing).toMatch(/Expected Sample P-000003 · Details missing/);
+    expect(withMissing.match(/Fill info/g)).toHaveLength(1);
+    expect(table()).not.toContain('Fill info');
+  });
+
   it('no Check in for those who may not mark arrivals', () => {
     expect(table({ canMark: false })).not.toContain('Check in');
   });
 });
 
 describe('reception: the side and the lists', () => {
-  it('the small list cards show only lists with someone in them; the open one is marked', () => {
-    const html = renderToStaticMarkup(
-      <ListCards
-        open="due"
-        onOpen={() => {}}
-        cards={[
-          { key: 'due', icon: Users, label: 'Visits due now', count: 2 },
-          { key: 'overdue', icon: Users, label: 'Overdue – not booked', count: 0 },
-        ]}
-      />,
-    );
-    expect(html).toContain('Visits due now');
-    expect(html).not.toContain('Overdue');
-    expect(html).toContain('aria-pressed="true"');
-    expect(renderToStaticMarkup(<ListCards cards={[{ key: 'x', icon: Users, label: 'X', count: 0 }]} onOpen={() => {}} />)).toBe('');
-  });
-
   it('Doctors today: name, state and hours, then expected, waiting and seen', () => {
     const shown = text(<DoctorsPanel doctors={[{ id: 'd1', name: 'Jayashri Sample', hasTimings: true, sessions: [{ from: '10:00', to: '13:00' }], leave: null, expected: 3, waiting: 1, seen: 2 }]} />);
     expect(shown).toMatch(/JS Jayashri Sample In OPD 10:00 AM–1:00 PM 3 Expected 1 Waiting 2 Seen/);
-  });
-
-  it('Upcoming appointments: those still expected with a time, the earliest first', () => {
-    const shown = text(<UpcomingPanel rows={rows} />);
-    expect(shown).toMatch(/11:30 AM Expected Sample New/);
-    expect(shown).not.toContain('With Sample');
   });
 
   it('To do lists only the jobs with someone in them; nothing waiting says so', () => {
@@ -100,5 +93,20 @@ describe('reception: the side and the lists', () => {
     expect(busy).toContain('Payments to collect');
     expect(busy).not.toContain('Discharges');
     expect(text(<TodoPanel onSaved={() => {}} />)).toContain('Nothing waiting.');
+  });
+});
+
+describe('reception: upcoming visits', () => {
+  const visit = (date, name) => ({ patient: who(name, name), date, start: '10:30', needsTime: false, visitType: 'follow_up' });
+  it('only the days after today, by day, at most the first ten; how many there are in all', () => {
+    const coming = [visit('2026-10-26', 'Today'), visit('2026-10-27', 'A'), visit('2026-10-27', 'B'), visit('2026-10-29', 'C')];
+    const out = upcomingVisits(coming, '2026-10-26');
+    expect(out.groups.map((g) => [g.label, g.rows.map((r) => r.patient.fullName)])).toEqual([
+      ['Tomorrow', ['A', 'B']],
+      ['Thursday 29 Oct 2026', ['C']],
+    ]);
+    expect(out).toMatchObject({ total: 3, shown: 3 });
+    const many = Array.from({ length: 12 }, (_, i) => visit('2026-10-28', `P${i}`));
+    expect(upcomingVisits(many, '2026-10-26')).toMatchObject({ total: 12, shown: 10 });
   });
 });
