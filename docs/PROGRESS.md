@@ -127,8 +127,9 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   of them under Follow-ups; hidden when nobody is booked. The side card "Upcoming appointments" (today's later bookings)
   is gone: they are already rows of Today's patients. A booking by name and phone whose patient is already registered (the
   registration's duplicate check: the same phone and name) shows "Registered · P-…" with **Use her record** (one click
-  joins the booking) instead of Register; another name on the same phone is shown as "Same phone as: …". The rows are
-  white like the others, with a "Not registered" pill (`routes/today.js`: guests[].registered, samePhone).
+  joins the booking) instead of Register; another name on the same phone shows "Phone matches: Aradhya (P-000004)"
+  with **Use Aradhya's record** first and **Register new** as a link (a sister or daughter on the same phone). The rows
+  are white like the others, "Booked by phone" under the name, no extra pill (`routes/today.js`: guests[].registered, samePhone).
 - **26 Oct 2026 (branch `pharmacy-register`, not merged – an exception to the feature freeze at the owner's request,
   for the developer to read before merging):** the pharmacy as the owner described it. (1) A pharmacist's sidebar
   holds the pharmacy's sections: New bill, Pharmacy bills, Suppliers, Purchase bills, Stock, Medicines, Reports,

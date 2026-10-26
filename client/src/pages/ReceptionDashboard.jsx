@@ -78,7 +78,7 @@ export function DeskNumbers({ rows = [], collected = null }) {
 
 
 /**
- * A booking made by name and phone (GET /api/today: guests) as a row of the table: expected, "Not registered yet",
+ * A booking made by name and phone (GET /api/today: guests) as a row of the table: expected, "Booked by phone",
  * with Register instead of Check in – so the table, the numbers and Doctors today count the same people.
  */
 export const guestRow = (g) => ({
@@ -134,14 +134,15 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
   const [registering, setRegistering] = useState(null); // a booking made by name and phone
   const [linking, setLinking] = useState(null); // "Use her record": the booking being joined to her record
   const [linkError, setLinkError] = useState(null);
-  const joinRecord = async (a) => {
+  // The booking joins this patient's record (m: the registered match, or one on the same phone reception chose)
+  const joinRecord = async (a, m) => {
     setLinking(a.id);
     setLinkError(null);
     try {
-      await api(`/appointments/${a.id}/link`, { method: 'POST', body: { patientId: a.registered.id } });
-      onSaved(`${a.registered.fullName}'s booking is now on her record (${a.registered.mrn}). Press Check in when she is here.`);
+      await api(`/appointments/${a.id}/link`, { method: 'POST', body: { patientId: m.id } });
+      onSaved(`The booking is now on ${m.fullName}'s record (${m.mrn}). Press Check in when she is here.`);
     } catch (err) {
-      setLinkError(`${a.registered.fullName}: ${err.message}`);
+      setLinkError(`${m.fullName}: ${err.message}`);
     } finally {
       setLinking(null);
     }
@@ -248,9 +249,9 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                           {r.guest && p.phone ? ` · ${p.phone}` : ''}
                           {r.appointment?.doctorName ?? p.doctorName ? ` · ${r.appointment?.doctorName ?? p.doctorName}` : ''}
                         </span>
-                        {/* Another patient on the same phone (family members share one): reception decides */}
+                        {/* A registered patient on the same phone under another name: reception decides (her record, or new) */}
                         {r.guest && r.appointment?.samePhone?.length > 0 && (
-                          <span className="hint">Same phone as: {r.appointment.samePhone.map((m) => `${m.fullName} (${m.mrn})`).join(', ')}</span>
+                          <span className="hint">Phone matches: {r.appointment.samePhone.map((m) => `${m.fullName} (${m.mrn})`).join(', ')}</span>
                         )}
                       </span>
                     </span>
@@ -280,20 +281,27 @@ export function PatientsTable({ rows = [], canMark = true, onMark, onUndo, onFla
                       <StatusPill tone={look.tone} icon={look.icon}>
                         {look.label}
                       </StatusPill>
-                      {r.guest && !r.appointment?.registered && (
-                        <StatusPill tone="watch" icon={UserPlus}>
-                          Not registered
-                        </StatusPill>
-                      )}
                     </span>
                   </td>
                   <td>
                     <span className="rd-actions">
                       {r.guest && r.appointment?.registered ? (
                         // Already registered (the same phone and name): one click joins the booking to her record
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => joinRecord(r.appointment)} disabled={linking === r.appointment.id}>
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => joinRecord(r.appointment, r.appointment.registered)} disabled={linking === r.appointment.id}>
                           <Link2 aria-hidden="true" /> {linking === r.appointment.id ? 'Saving…' : 'Use her record'}
                         </button>
+                      ) : r.guest && r.appointment?.samePhone?.length > 0 ? (
+                        // The phone matches a registered patient under another name: her record first, or a new one
+                        <span className="rd-actions-stack">
+                          {r.appointment.samePhone.map((m) => (
+                            <button key={m.id} type="button" className="btn btn-secondary btn-sm" onClick={() => joinRecord(r.appointment, m)} disabled={linking === r.appointment.id}>
+                              <Link2 aria-hidden="true" /> {linking === r.appointment.id ? 'Saving…' : `Use ${m.fullName.split(/\s+/)[0]}'s record`}
+                            </button>
+                          ))}
+                          <button type="button" className="btn btn-link btn-sm" onClick={() => setRegistering(r.appointment)}>
+                            Register new
+                          </button>
+                        </span>
                       ) : r.guest ? (
                         // Booked by name and phone: register her (the booking joins her record), then Check in
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRegistering(r.appointment)}>
