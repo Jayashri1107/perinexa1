@@ -1,9 +1,9 @@
-# New patient as a history-taking sheet – layout draft (nothing built)
+# New patient as a history-taking sheet – layout agreed 27 Oct 2026 (nothing built)
 
-Drafted 27 Oct 2026 at the owner's request, and redrawn the same day from the owner's paper template: when a new
-patient's details are entered, the history should be **one short page in the words a doctor dictates**, so that
-dictating it fills the form, with everything else **hidden in drop-downs** the doctor opens only for reference.
-The layout is to be finalised first; whether it is built is a separate decision (the feature pause holds).
+Drafted 27 Oct 2026 at the owner's request, redrawn the same day from the owner's paper template, and agreed by the
+owner the same day (section 7): when a new patient's details are entered, the history is **one short page in the
+words a doctor dictates**, so that dictating it fills the form, with everything else **hidden in drop-downs** the
+doctor opens only for reference. Whether and when it is built is a separate decision; the feature pause holds.
 
 Mock-up to click through: https://claude.ai/artifact/3UpmfFjA44UBpqDT8nJaK2 (private – share it from its Share menu
 before the developer can open it). Board 1 is the sheet as dictated, drop-downs closed; board 2 is the same sheet
@@ -33,10 +33,12 @@ Voice = the app's voice entry reads it today (rules, not AI – see section 4).
 | **Obstetric history – Married since ___ Consanguinity ___** | years; Yes / No | new | no |
 | **Previous deliveries ___** | free text, as written on paper ("one full-term normal delivery in 2023, 2.9 kg, alive and well") | new; G P L A exist in the drop-down | G P L A and caesareans yes |
 | **Any other personal, medical, operative or family history ___** | one line of free text | new; conditions, allergies, blood group exist in the drop-down | conditions, allergies, blood group yes |
+| *Infertility only:* **Trying to conceive since ___** | months or years | existing (the fertility history's "months trying") | no |
+| *Postnatal only:* **Delivered on ___ by ___** | date; mode | existing (the delivery section) | no |
 
-Below the last line: **Save the history** (the one primary button), **Print the sheet** (to decide), and a link
-back to Patient information. A small grey strip under the heading shows what was heard the last time Dictate was
-pressed, so the doctor can compare it with the blanks.
+Below the last line: **Save the history** (the one primary button) and a link back to Patient information. A small
+grey strip under the heading shows what was heard the last time Dictate was pressed, so the doctor can compare it
+with the blanks. There is no separate print of the sheet (decision 9).
 
 ## 3. What the three drop-downs hold (closed until clicked)
 
@@ -65,9 +67,9 @@ Numbers said as words, Indian English and the doctor's own taught words are hand
 
 Today's voice entry already fills LMP, G P L A, previous caesareans, conditions, allergies, blood group and the
 problems in previous pregnancies; the anchors for the complaint, the cycle, married since, consanguinity, the
-previous-deliveries text and the last line would be new. The drop-down fields fill from the same dictation where
-the words are there (for example *G2 P1 L1* or *allergic to penicillin* said in the sentence); otherwise they stay
-empty until the doctor opens the drop-down.
+previous-deliveries text, the last line and the two type-of-care lines would be new. The drop-down fields fill from
+the same dictation where the words are there (for example *G2 P1 L1* or *allergic to penicillin* said in the
+sentence); otherwise they stay empty until the doctor opens the drop-down.
 
 ## 5. What is hidden, and what stays
 
@@ -78,43 +80,54 @@ only extra control; the heard strip is the only extra text.
 
 Stays, because it protects the record: the duplicate check on page 1 ("She may already be registered"); the
 allergy answer, asked once at Save if the drop-down was never opened (an empty answer is not "none"); and the silent
-check of free text for words about the baby's sex (PC-PNDT Act) – the sheet refuses such a word with one line.
-That last check has a catch on this page: *Previous deliveries* is free text, and a doctor may naturally write
-"male child, 2.9 kg". Today the app refuses such words in patient free text (fertility free text excepted). Keeping
-the refusal means writing "2.9 kg, alive and well"; allowing the words for born children is an owner decision.
+check of free text for words about the baby's sex (PC-PNDT Act).
+
+**The one exception the owner decided (decision 4):** in *Previous deliveries* a doctor may write "male child,
+2.9 kg" about a child already born, and the owner wants that allowed. Today the app refuses such words in all patient
+free text except fertility text. The exception must be built so that the protection of **this** pregnancy is not
+weakened: the words are allowed in the *Previous deliveries* line and the rows of the previous-pregnancies table
+only; every other field, note, visit and scan text keeps the refusal; the exception is reviewed by the developer
+with the owner before it is built, and the fetal-sex tests are extended rather than loosened. `CLAUDE.md` lists the
+fetal-sex protection among the things never to weaken – this is a narrowing of where the check applies, decided by
+the owner, not a change to what it protects.
 
 ## 6. How it behaves
 
 - One Save for the whole page; leaving with unsaved blanks asks once. Required to save: only the name, age and type
-  of care from page 1 and the allergy answer (to decide: anything else).
+  of care from page 1 and the allergy answer.
 - Reception fills page 1 only (as today); a doctor or RMO fills the page; a nurse reads it on the record.
 - The same page replaces **Edit details** on an existing record, so a history can be completed over visits.
 - The Overview keeps its cards; the new blanks show on it as a read-only "History" card in the same lines, and in the
   copy of the whole record.
-- Printing the sheet, if wanted, prints the lines and only the drop-downs that have anything in them.
+- **Printing**: not the sheet on its own. The owner wants **one printed page in template form** that carries this
+  history, the visit's vitals and the prescription (the tablets) together, for the paper file. Its layout is to be
+  finalised after all the changes to the sheet are done (a later draft, like this one).
 
-## 7. To decide before anything is built
+## 7. Decisions of 27 Oct 2026 (the owner, one at a time)
 
-1. The wording of the lines – they follow the paper template; change any word.
-2. What each of the three drop-downs holds.
-3. Previous deliveries: one line of text as on paper, the table in the drop-down, or both (the draft keeps both and
-   does not check one against the other).
-4. A child's sex in *Previous deliveries*: keep today's refusal of such words, or allow them for born children.
-5. Allergies: in the drop-down with one question at Save when empty, or a visible line on the page.
-6. One Dictate button for the whole page, or a microphone on each line.
-7. An extra line for infertility (*trying to conceive since …*) and postnatal (*delivered on … by …*) patients.
-8. The same page for Edit details on existing records (the draft says yes).
-9. Print the sheet for the paper file.
+1. **Wording** – the lines keep the paper wording.
+2. **Drop-downs** – three, holding what section 3 lists.
+3. **Previous deliveries** – the line of text, plus the table of each pregnancy in the drop-down (the two are not
+   checked against each other).
+4. **Words about a born child's sex** – allowed in *Previous deliveries* only, under the conditions in section 5.
+5. **Allergies** – inside the drop-down; asked once at Save when never answered.
+6. **Dictate** – one button for the whole page.
+7. **Extra line by type of care** – *Trying to conceive since …* for infertility, *Delivered on … by …* for postnatal
+   care; the other types of care have the five lines only.
+8. **Edit details** – the same page replaces it on existing records.
+9. **Print** – no separate print of the sheet; one page in template form with history, vitals and prescription, to
+   be finalised later.
 
 ## 8. If it is built
 
 New fields on the patient record (complaint, cycle, married since, consanguinity, previous-deliveries text, the
 other-history text, the drop-down fields), the same need-to-know rules as the rest of the record, the copy of the
 whole record and the hospital export extended, new dictation anchors with their tests (the dictation corpus and
-safety tests exist), the pregnancy details moved from the registration page to the visit, the risk rules reading the
-new facts only where the owner approves a rule for them, and the registration page and Edit details rebuilt as the
-one-page sheet. The developer's health check decides the slot; the clinical content of the tick lists is the
-owner's to approve.
+safety tests exist), the pregnancy details moved from the registration page to the visit, the previous-deliveries
+exception to the fetal-sex word check (section 5), the risk rules reading the new facts only where the owner approves
+a rule for them, and the registration page and Edit details rebuilt as the one-page sheet. The combined one-page
+printout (decision 9) is a separate piece with its own draft. The developer's health check decides the slot; the
+clinical content of the tick lists is the owner's to approve.
 
 ## 9. Earlier draft
 

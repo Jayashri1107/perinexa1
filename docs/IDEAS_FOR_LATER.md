@@ -120,6 +120,7 @@ ovulation induction and IUI and refers IVF out:
 The owner wants a new patient's history taken on one short page in the words of the paper template (patient is …
 with complaints of …, LMP and cycle, married since and consanguinity, previous deliveries, any other personal, medical,
 operative or family history), dictated in one go, with everything else in drop-downs the doctor opens only for reference and
-every hint, example, risk warning and AI check hidden until Save. The layout draft and
-its open decisions are in `docs/HISTORY_SHEET_LAYOUT.md`; whether it is built is decided after the layout is agreed.
+every hint, example, risk warning and AI check hidden until Save. The agreed layout and
+the owner's nine decisions are in `docs/HISTORY_SHEET_LAYOUT.md`; whether and when it is built is a separate decision.
+Still to draft: one printed page in template form with the history, the visit's vitals and the prescription.
 
