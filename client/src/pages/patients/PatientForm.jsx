@@ -37,6 +37,8 @@ import { THREATENED_HINT, currentLossFindings, lmpCarryOver, lossRulesOn, obstet
 import { mentionsFetalSex, PCPNDT_MESSAGE } from '../../pcpndtWords.js';
 import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { asName } from '../../personName.js';
+import { lookupPin } from './pinLookup.js';
+import { DEPARTMENTS } from '../../platform/departments.js';
 
 const str = (v) => (v == null ? '' : String(v));
 
@@ -343,6 +345,7 @@ function MotherPicker({ value, initial, onChange, error, suggest }) {
  * - dictated: details said on the previous page ({ values, paths, found }), filled in and marked "From voice"
  * - spoken: what was said on the New patient chooser, read into the form when it opens (voice entry open)
  * - onDictatedClinical(details | null): registration – clinical details said on this page, for the next page
+ * - beforeActions: shown above the Save buttons (registration: the service charges, owner 27 Oct 2026)
  * - anotherLabel: registration without a clinical page – a second button ("Save and register another"); onSubmit
  *   then gets { another: true } as its second argument when it was pressed
  */
@@ -363,6 +366,7 @@ export function PatientForm({
   onDictatedClinical,
   prefill = null, // a new patient's details already known (a quick booking: name, phone, doctor)
   anotherLabel = null,
+  beforeActions = null,
 }) {
   const another = useRef(false); // which save button was pressed
   const isEdit = Boolean(patient);
@@ -386,6 +390,9 @@ export function PatientForm({
   const memory = useRef(null);
   if (!memory.current) memory.current = newFillMemory(dictated);
   const doctors = useFetch(isEdit ? null : '/tenant/doctors');
+  const allDoctors = doctors.data?.doctors ?? [];
+  // Only the departments that have a doctor (all in the list's order)
+  const departments = DEPARTMENTS.filter((d) => allDoctors.some((x) => x.department === d));
 
   // Another page (or another type of care from the New patient menu): the recording stops, so the microphone
   // never stays on for a page that is no longer being filled in.
@@ -445,6 +452,27 @@ export function PatientForm({
     if (carry.pregnancyLmp) out.pregnancy = { ...v.pregnancy, lmp: carry.pregnancyLmp };
     setLmpCopied(carry.pregnancyLmp ?? '');
     setV(out);
+  };
+  // PIN code → city and state (owner, 27 Oct 2026): filled when empty, or when they still hold what an earlier PIN
+  // filled in – never over what was typed by hand.
+  const pinFilled = useRef({ city: '', state: '' });
+  // Registration: the department first, then only its doctors (owner, 27 Oct 2026) – a filter, not saved on the record
+  const [department, setDepartment] = useState('');
+  const setPinCode = (e) => {
+    const pin = e.target.value.replace(/\D/g, '').slice(0, 6);
+    unmark('pinCode');
+    setV((cur) => ({ ...cur, pinCode: pin }));
+    if (pin.length !== 6) return;
+    lookupPin(pin).then((place) => {
+      if (!place) return;
+      setV((cur) => {
+        if (cur.pinCode !== pin) return cur; // changed again meanwhile
+        const free = (key) => !cur[key].trim() || cur[key] === pinFilled.current[key];
+        const next = { ...cur, city: free('city') ? place.city : cur.city, state: free('state') ? place.state : cur.state };
+        pinFilled.current = { city: next.city === place.city ? place.city : pinFilled.current.city, state: next.state === place.state ? place.state : pinFilled.current.state };
+        return next;
+      });
+    });
   };
   const setAbortion = (key, value) => {
     unmark(`abortion.${key}`);
@@ -697,8 +725,8 @@ export function PatientForm({
                   </Field>
                 </div>
                 <div className="form-grid pf-place-grid">
-                  <Field label="PIN code" id="pinCode" error={fe('pinCode')}>
-                    <input id="pinCode" inputMode="numeric" value={v.pinCode} onChange={(e) => set('pinCode')({ target: { value: e.target.value.replace(/\D/g, '').slice(0, 6) } })} maxLength={6} placeholder="6 digits" />
+                  <Field label="PIN code" id="pinCode" error={fe('pinCode')} hint="Fills the city and state">
+                    <input id="pinCode" inputMode="numeric" value={v.pinCode} onChange={setPinCode} maxLength={6} placeholder="6 digits" />
                   </Field>
                   <Field label="City, town or village" id="city" error={fe('city')}>
                     <input id="city" value={v.city} onChange={set('city')} maxLength={60} />
@@ -778,11 +806,33 @@ export function PatientForm({
                         </Field>
                       </>
                     )}
+                    {!isEdit && departments.length > 0 && (
+                      <Field label="Department" id="department">
+                        <select
+                          id="department"
+                          value={department}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setDepartment(next);
+                            // a doctor of another department is no longer offered
+                            const chosen = allDoctors.find((d) => d.id === v.assignedDoctor);
+                            if (next && chosen && chosen.department !== next) setV((cur) => ({ ...cur, assignedDoctor: '' }));
+                          }}
+                        >
+                          <option value="">All departments</option>
+                          {departments.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
                     {!isEdit && (
                       <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={doctorHint}>
                         <select id="assignedDoctor" value={v.assignedDoctor} onChange={set('assignedDoctor')}>
                           <option value="">Not assigned yet</option>
-                          {(doctors.data?.doctors ?? []).map((d) => (
+                          {allDoctors.filter((d) => !department || d.department === department).map((d) => (
                             <option key={d.id} value={d.id}>
                               {d.name}
                               {d.qualification ? ` (${d.qualification})` : ''}
@@ -1179,6 +1229,7 @@ export function PatientForm({
                   </Field>
                 </section>
               )}
+              {beforeActions}
               <div className="sticky-actions">
                 {recording && <VoiceBar status={voiceStatus} onStop={() => voiceControl.current?.stop()} />}
                 <button type="submit" className="btn btn-primary" disabled={submitting || recording} aria-describedby={recording ? 'save-wait' : undefined} onClick={() => (another.current = false)}>

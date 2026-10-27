@@ -9,6 +9,7 @@ import { Alert, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { canRegisterPatients, patientTabs } from '../../platform/modules.js';
 import { AdmitDialog } from '../beds/BedBoardPage.jsx';
+import { ChargeLines, billCharges, billedText, chargesOk, useChargeItems } from '../billing/ServiceChargeDialog.jsx';
 import { PatientForm } from './PatientForm.jsx';
 import { VoiceEntry } from './VoiceEntry.jsx';
 import { careTypeFromSpeech, withoutCareTypeWords } from './careTypeSpeech.js';
@@ -149,6 +150,21 @@ const SETTINGS = [
   ['day_care', 'Day care', Sun],
 ];
 
+// Service charges on the registration form (owner, 27 Oct 2026): billed as soon as she is saved – no trip to Billing.
+// The registration fee itself is added by the app.
+function RegistrationCharges({ charges, onCharges }) {
+  const { items, error } = useChargeItems();
+  return (
+    <section className="card form-section" aria-labelledby="reg-charges">
+      <h2 id="reg-charges">Service charges (optional)</h2>
+      <p className="hint">Consultation, procedures or other services to bill today. The registration fee is added by itself.</p>
+      <Alert type="error">{error}</Alert>
+      <ChargeLines idPrefix="reg-charge" items={items} lines={charges.lines} onLines={(lines) => onCharges({ ...charges, lines })} pay={charges.pay} onPay={(pay) => onCharges({ ...charges, pay })} />
+    </section>
+  );
+}
+const NO_CHARGES = { lines: [], pay: 'cash' };
+
 export function PatientNewPage() {
   const { careType: chosen } = useParams();
   const { user, activeMembership } = useAuth();
@@ -167,6 +183,8 @@ export function PatientNewPage() {
   // in the form; once saved (or an existing record chosen) her sign-up is approved for that record.
   const fromSignup = location.state?.fromSignup ?? null;
   const roles = activeMembership.roles;
+  const canCharge = ['receptionist', 'billing', 'admin'].some((r) => roles.includes(r));
+  const [charges, setCharges] = useState(NO_CHARGES);
   const clinical = roles.includes('doctor') || roles.includes('rmo');
   const careType = CARE_TYPES.includes(chosen) ? chosen : null;
   const dictatedClinical = useRef(null);
@@ -201,6 +219,7 @@ export function PatientNewPage() {
 
   // Saves the patient's details. Records with the same phone number or name: nothing is saved – the warning opens.
   const save = async (payload, { another = false } = {}) => {
+    if (!chargesOk(charges.lines)) throw new Error('Enter the amount for each service charge, or remove it.');
     let patient;
     try {
       ({ patient } = await api('/patients', { method: 'POST', body: payload }));
@@ -267,6 +286,16 @@ export function PatientNewPage() {
       }
     }
     if (fromSignup) registered += ` ${await approveSignup(patient.id)}`;
+    if (charges.lines.length) {
+      try {
+        registered += ` ${billedText(await billCharges(patient.id, charges.lines, charges.pay))}`;
+      } catch (err) {
+        registered += err.bill
+          ? ` The service charges are on bill ${err.bill.number}, but the payment was not saved (${err.message}) – take it under Billing.`
+          : ` The service charges could not be billed (${err.message}) – add them from Patients → Add service charge.`;
+      }
+      setCharges(NO_CHARGES);
+    }
     if (booking) {
       try {
         await api(`/appointments/${booking.id}/link`, { method: 'POST', body: { patientId: patient.id } });
@@ -380,6 +409,7 @@ export function PatientNewPage() {
               spoken={round === 0 ? spoken.text : ''}
               prefill={booking ? { fullName: booking.name, phone: booking.phone, assignedDoctor: booking.doctorId ?? '' } : fromAbha ? { fullName: fromAbha.name, phone: fromAbha.phone ?? '', ageYears: fromAbha.age ?? '' } : fromSignup ? { fullName: fromSignup.name, phone: fromSignup.phone ?? '', ageYears: fromSignup.age ?? '' } : null}
               careType={careType}
+              beforeActions={canCharge && careType ? <RegistrationCharges charges={charges} onCharges={setCharges} /> : null}
               onCareTypeChange={(type) => navigate({ pathname: `/patients/new/${type}`, search: location.search }, { replace: true, state: location.state })}
               part="info"
               onSubmit={save}
