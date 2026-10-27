@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { canEditArea } from '../platform/modules.js';
+import { DEPARTMENTS } from '../platform/departments.js';
 import { useFetch } from '../hooks/useFetch.js';
 import { useListParams } from '../hooks/useListParams.js';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination } from './DataTable.jsx';
@@ -211,6 +212,29 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
           >
             Edit<span className="sr-only"> roles for {m.user.name}</span>
           </button>
+          {/* A doctor's department (owner, 27 Oct 2026): registration offers a department's doctors */}
+          {m.roles.includes('doctor') && (
+            <select
+              className="member-department"
+              aria-label={`Department of ${m.user.name}`}
+              value={m.department ?? ''}
+              disabled={busyId === m.id}
+              onChange={(e) => {
+                const department = e.target.value;
+                run(m, async () => {
+                  await api(`${basePath}/${m.id}/department`, { method: 'PATCH', body: { department } });
+                  setSuccess(department ? `${m.user.name} is now in ${department}.` : `${m.user.name}'s department is cleared.`);
+                });
+              }}
+            >
+              <option value="">No department</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          )}
         </span>
       ),
     },
