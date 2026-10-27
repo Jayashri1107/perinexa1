@@ -249,6 +249,11 @@ async function checkSlot(req, { doctor, day, start, visitType, patientId, except
   if (day < today) throw new HttpError(400, 'That day has passed. Please choose today or a later day.', 'DAY_PASSED');
   if (day > addDays(today, MAX_DAYS_AHEAD)) throw new HttpError(400, 'Appointments can be booked up to a year ahead.', 'TOO_FAR');
   const schedule = await scheduleOf(req.tenantId, doctor.id);
+  // Booked for the day without a time (bookSlot only): no slot to check – only a second booking for her that day
+  if (start === null) {
+    if (!confirm) await assertNoOtherThatDay(req, { patientId, day, exceptId });
+    return schedule ? lengthFor(schedule, visitType) : null;
+  }
   if (!schedule) throw new HttpError(400, `${doctor.name} has not set OPD timings yet (Appointments → OPD timings).`, 'NO_TIMINGS');
   const minutes = lengthFor(schedule, visitType);
   const check = slotCheck(schedule, day, start, minutes);
@@ -268,11 +273,14 @@ async function checkSlot(req, { doctor, day, start, visitType, patientId, except
     const when = taken.start === start ? `${timeWords(start)} is already booked` : `${timeWords(taken.start)} is booked`;
     throw conflict(`${when} for ${p?.fullName ?? taken.guest?.name ?? 'another patient'}${minutes > SLOT_MINUTES && taken.start !== start ? `, and this visit takes ${minutes} minutes` : ''}. Book anyway?`, 'SLOT_TAKEN', { confirmable: true });
   }
-  if (patientId) {
-    const same = await Appointment.findOne({ tenantId: req.tenantId, patientId, on: day, status: 'booked', ...(exceptId ? { _id: { $ne: exceptId } } : {}) }, { start: 1, token: 1 }).lean();
-    if (same) throw conflict(`She already has an appointment that day${same.start ? ` at ${timeWords(same.start)}` : ''}. Book another anyway?`, 'ALREADY_BOOKED', { confirmable: true });
-  }
+  await assertNoOtherThatDay(req, { patientId, day, exceptId });
   return minutes;
+}
+
+async function assertNoOtherThatDay(req, { patientId, day, exceptId }) {
+  if (!patientId) return;
+  const same = await Appointment.findOne({ tenantId: req.tenantId, patientId, on: day, status: 'booked', ...(exceptId ? { _id: { $ne: exceptId } } : {}) }, { start: 1, token: 1 }).lean();
+  if (same) throw conflict(`She already has an appointment that day${same.start ? ` at ${timeWords(same.start)}` : ''}. Book another anyway?`, 'ALREADY_BOOKED', { confirmable: true });
 }
 
 /** Books a time slot (Appointments page). body: { doctorId, date, start, patientId | guest, visitType, confirm }. */
@@ -304,7 +312,7 @@ export async function bookSlot(req, body) {
   await queueChangeMessage(req.tenantId, appt, 'booked', req.now);
   // The doctor is told (not when the doctor booked it): name, day and time – never why she comes
   const bookedName = patientId ? (await Patient.findOne({ tenantId: req.tenantId, _id: patientId }, { fullName: 1 }).lean())?.fullName : body.guest?.name;
-  await notify(req, { userIds: [doctor.id] }, { kind: 'appointment', text: `New appointment: ${bookedName ?? 'a patient'}, ${isoDay(day)} at ${body.start}${body.source === 'portal' ? ' (booked online)' : ''}.`, link: '/appointments' });
+  await notify(req, { userIds: [doctor.id] }, { kind: 'appointment', text: `New appointment: ${bookedName ?? 'a patient'}, ${isoDay(day)}${body.start ? ` at ${body.start}` : ' (time to be set)'}${body.source === 'portal' ? ' (booked online)' : ''}.`, link: '/appointments' });
   return appt;
 }
 

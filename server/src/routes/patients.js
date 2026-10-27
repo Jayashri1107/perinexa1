@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { billRegistered } from '../billing/hooks.js';
 import { z } from 'zod';
+import { Appointment } from '../models/Appointment.js';
 import { nextNumber } from '../models/Counter.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { PatientNote } from '../models/PatientNote.js';
@@ -29,6 +30,7 @@ import { OVERRIDE_LEVELS } from '../careplans/risk.js';
 import { carePlanSummaryFor, currentPlanItems, planCtx, syncPlanSafely } from '../careplans/plansService.js';
 import { redFlagsForPatient, redFlagsForPatients } from '../redflags/redFlagService.js';
 import { applyCurrentRisk, ensureStandardTemplates, refreshDueRisks, riskTemplateFor } from '../careplans/templatesService.js';
+import { QUEUE_ROLES } from '../appointments/appointmentRules.js';
 import { BLOOD_GROUPS, BREASTFEEDING, CARE_TYPES, CONDITIONS, FEEDING_AT_DISCHARGE, NEWBORN_SEX, NICU_ADMITTED, ID_PROOF_TYPES, PAST_COMPLICATIONS, PAYER_TYPES, Patient, currentAge } from '../models/Patient.js';
 import { PREGNANCY_FINDINGS, currentFindings, eddInUse, setFinding, setFindings, suggestedFindings } from '../patients/pregnancyFindings.js';
 import { endLossFindings, setLossFindings } from '../patients/lossFindings.js';
@@ -448,6 +450,8 @@ const listSchema = z.object({
   // Registered on or after / on or before these days (owner, 13 Oct 2026: More filters → Registered)
   registeredFrom: requiredDateOnly('Registered from').optional(),
   registeredTo: requiredDateOnly('Registered to').optional(),
+  // Today's patients (like Docterz): registered today, booked for today, or seen today – the list staff start with
+  day: z.enum(['today']).optional(),
   sort: sortParam(['mrn', 'fullName', 'createdAt', 'pregnancy.effectiveEdd', 'lastVisitOn'], '-createdAt'),
   ...pageParams,
 });
@@ -606,6 +610,22 @@ patientsRouter.get('/', async (req, res) => {
     else filter['risk.level'] = q.risk;
     and.push({ careType: 'antenatal' }); // added to (not replacing) any care-type filter chosen
     if (Object.keys(visible).length) and.push(visible);
+  }
+  if (q.day === 'today') {
+    const today = hospitalToday(req.now ?? new Date());
+    const legs = [{ createdAt: { $gte: hospitalDayStart(today), $lt: hospitalDayStart(addDays(today, 1)) } }];
+    // Booked for today: only for those who may see the appointments
+    if (hasRole(req.membership, ...QUEUE_ROLES)) {
+      const booked = await Appointment.distinct('patientId', { tenantId: req.tenantId, on: today, status: 'booked', patientId: { $ne: null } });
+      if (booked.length) legs.push({ _id: { $in: booked } });
+    }
+    // Seen today: a visit is a clinical detail, so only over the records whose visits this person may see
+    const visible = riskVisibleFilter(req);
+    if (visible) {
+      await backfillLastVisits(req.tenantId);
+      legs.push(Object.keys(visible).length ? { $and: [{ lastVisitOn: today }, visible] } : { lastVisitOn: today });
+    }
+    and.push({ $or: legs });
   }
   if (q.search) {
     const rx = new RegExp(escapeRegex(q.search), 'i');

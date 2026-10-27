@@ -350,7 +350,9 @@ const bookSchema = z
   .object({
     doctorId: objectId,
     date: requiredDateOnly('Date'),
-    start: time,
+    // null: booked for the day without a time – the doctor has no OPD times set, or none free that day (Follow-ups →
+    // Book, owner 27 Oct 2026: the follow-up and its bill are made at once). It waits under Needs a time.
+    start: time.nullable().default(null),
     patientId: objectId.optional(),
     guest: z.object({ name: z.string().trim().min(2, 'Please enter her name.').max(150).transform(capitalizeName), phone: z.string().trim().min(6, 'Please enter a phone number.').max(30) }).strict().optional(),
     visitType: z.enum(VISIT_TYPES).default('follow_up'),
