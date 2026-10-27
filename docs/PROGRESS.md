@@ -13,6 +13,29 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **Fertility treatment plans (24 Oct 2026, owner's request – another exception to the feature pause):** on an
+  infertility record, a **Fertility history** section in Edit details (kind and months of infertility, cycles,
+  ovulation, tubes, uterus, endometriosis, the partner's semen against the WHO 2021 ranges, diagnoses, AMH / AFC / FSH
+  / prolactin / TSH, cycles done before) and a **Treatment plan** tab: **Suggest plans** reads her record and offers
+  the protocols that fit, with why ("Suggested for her", "May also apply", the rest of the library); the doctor ticks
+  one or more; the plan is built from their text (aim, cautions, investigations, treatment steps, medicines and doses,
+  monitoring, review, what to explain, general advice), edited as text with every earlier version kept, confirmed by a
+  doctor, and ended as pregnant, next step or stopped with a reason. The library (`docs/FERTILITY_PLAN.md`) is DRAFT:
+  20 protocols written from the WHO infertility guideline (Nov 2025), NICE NG257 (Mar 2026), ESHRE (unexplained
+  infertility 2023, endometriosis 2022, recurrent loss 2022, ovarian insufficiency 2024, stimulation 2025), the 2023
+  international PCOS guideline, FOGSI practice points, the WHO semen manual 2021 and India's ART Act, Rules and
+  Regulations – every dose or day the texts do not give is marked "doctor to confirm". In the record copy and the
+  hospital export; audit log with ids and the plan's status only. How to test: "How to test fertility treatment plans".
+  **Switch to…** (same day, owner's request): from a current plan the doctor moves up the ladder – follicular study with
+  timed intercourse → IUI → IVF/ICSI – or to another procedure (ovarian drilling, tubal or hysteroscopic surgery,
+  endometriosis surgery, varicocele repair, sperm retrieval with ICSI, donor gametes, fertility preservation): the old
+  plan is completed as moved to the next step, the cycles done under it are added to her record, and the next draft is
+  built; **Start with a step…** when there is no plan yet. A **Follicular study** protocol joins the library (21).
+  **Cycle (follicular study) sheets** (same day, owner's go-ahead for idea F1): under a confirmed plan, one sheet per
+  cycle – day 1, the medicines, the scan days with each ovary's follicles and the endometrium, the trigger, timed
+  relations or IUI with the post-wash count, luteal support, a cancellation, the outcome; the state follows what is
+  filled in and a completed cycle is counted on her record by itself; **Print report** gives the couple the follicular
+  study report on the letterhead in English with Marathi or Hindi (draft wording). Section 7 of `docs/FERTILITY_PLAN.md`.
 - **24 Oct 2026:** (1) Voice entry takes Chrome's corrections as they are (no repeated or lost words). (2) Fill from
   Aadhaar checks the UIDAI signature; PDFs and large files get their own message (`docs/AADHAAR_QR.md`). (3)
   Sonography (freeze lifted for ideas 17–22): the Scans dashboard (booked today, to scan, to report, to sign, signed
@@ -998,6 +1021,14 @@ Agreed order (one step at a time, each tested and committed):
 owner's or an expert's check: the care-plan templates, the lab's usual ranges, the HMIS rows, the reminder wording in Marathi and Hindi. Use fake data only until the app has been reviewed.
 
 ## Next
+- **Layout agreed, nothing built – a new patient as a history-taking sheet (27 Oct 2026).** The owner asked that the tabs
+  for a new patient's details ask only for the history, with every hint, example, voice panel, risk warning and AI
+  check hidden, and that the layout be agreed before anything is built. The draft is in
+  `docs/HISTORY_SHEET_LAYOUT.md` (one page in the words of the owner's paper template, a Dictate button, three drop-downs
+  for the rest, what is hidden, what stays for safety, and the owner's nine decisions of 27 Oct 2026 – among them
+  one printed page in template form with history, vitals and prescription, to be drafted later) with a click-through
+  mock-up (link in the document). **Nothing is built**; the feature pause holds until the owner and the developer
+  decide whether and when it goes ahead.
 - ✅ **ABDM milestones M2 (share her records through ABHA) and M3 (fetch her records from other hospitals), in
   practice mode** (built at the owner's request, October 2026). The two steps after ABHA linking (M1, below). Like
   M1 it works only in **practice mode** for now: a built-in stand-in for ABDM, and nothing leaves the computer.
@@ -4186,6 +4217,44 @@ Branch `lab-templates`. Plan and decisions: `docs/LAB_TEMPLATES_PLAN.md`.
 1. On the server (or your computer): `npm run load:lab-rates` → one line per hospital with what changed.
 2. As the hospital admin: Billing → Price list → Lab test: CBC ₹300, Day 2–3 hormones ₹4,200, Vitamin D ₹1,500.
 3. Order a CBC for a fake patient in the Lab → her bill has CBC ₹300.
+
+## How to test fertility treatment plans (fake data only)
+Log in as Dr. Riley Demo (demo.doctor@example.com) at Sunrise General Hospital (Demo). (A fresh `npm run seed:demo` gives
+the four demo fertility records a made-up history; on an older database enter one yourself in step 1.)
+1. Open **Sample Fertility 02 (Demo)** (an infertility record, sensitive) → **Edit details** → the new **Fertility
+   history** section: choose *Primary*, 20 months, *Irregular* cycles, ovulation *Anovulation*, tubes *Both tubes
+   patent*, semen *Within the WHO 2021 ranges*, tick **PCOS**, AMH 6 → **Save changes**. The Overview now has a
+   **Fertility history** card.
+2. **Treatment plan** tab → **Suggest plans**: "Suggested for her" shows *Ovulation induction with letrozole* with the
+   reason (PCOS with anovulation; letrozole first line – PCOS 2023, WHO 2025, FOGSI 2024) and, with a BMI of 30 or
+   more, a weight caution; the other protocols are under "Show the other … protocols". Open **What this protocol
+   contains** to read the text and its sources. Tick letrozole and *Lifestyle and preconception care* → **Build the
+   plan from the selected**.
+3. The draft opens for editing: change a line under *Medicines and doses*, set a review date → **Save the plan**. The
+   plan shows **Draft**; **Earlier versions of this plan (1)** holds the text before your edit.
+4. **Confirm plan** (a doctor; as the demo RMO the button is not there and the server refuses). Then **Record outcome**
+   → *Pregnant* → **Mark completed**: the plan moves to **Earlier plans**, and **Suggest plans** is offered again.
+5. Change the history (Edit details: tubes *Hydrosalpinx*) → Suggest plans: *Tubal factor* and *IVF or ICSI* lead,
+   with "salpingectomy or tubal occlusion before IVF". Set her age to 52 in Edit details → the IVF card carries the ART
+   Act caution (upper age 50).
+6. **Switch to…** on a confirmed plan → *IUI with ovarian stimulation*, 4 cycles completed, a reason → **Switch**: the
+   IUI draft opens with "Switched from …" as its first line, the earlier plan sits under Earlier plans as *Completed –
+   Moved to the next step*, and the Overview's Fertility history shows "Ovulation induction 4". Switch again to
+   *IVF or ICSI* with 3 IUI cycles; **Suggest plans** now puts IVF first. With no plan, **Start with a step…** builds the
+   first plan from the ladder.
+7. On a confirmed plan → **Start a cycle** (day 1 and the medicines) → the sheet opens: **Add scan day** twice (dates
+   after day 1, follicles "12, 10" and "16, 11", endometrium 8), the trigger (hCG, a date), *Insemination (IUI)* with
+   a date and post-wash count 12 → **Save the sheet**: the state is "After trigger" and each scan day shows who
+   entered it. **Print report** → मराठी: the follicular study report with the scan table, the trigger and the IUI
+   under their Marathi labels, advice typed in the preview, the doctor's signature. Enter the pregnancy test
+   (negative, a date) → Save: "Completed", and the Fertility history card shows one more ovulation induction cycle.
+   Back on the plan the sheet is listed under "Cycle sheets"; **Start a cycle** again is offered only now.
+8. As the demo nurse (Lakeside Clinic) the tab is missing on a sensitive record; remove the sensitive marking (More →
+   Remove sensitive marking) and the nurse reads the plan without buttons. **More → Copy of the whole record** has the
+   parts **Fertility history** and **Fertility treatment plans**. Hospital admin → Audit log: "Fertility treatment plan
+   opened / built / edited / confirmed or ended" with the record number only.
+Nothing in a plan is prescribed or ordered; prescriptions and orders are written on the visit as before.
+
 
 ## Ideas for later (security hardening before any real use)
 - Lock an account temporarily after many failed logins (in addition to the current rate limit).

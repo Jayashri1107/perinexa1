@@ -26,6 +26,9 @@ import {
   notInCopy,
   noteBlock,
   nursingRows,
+  fertilityCycleBlock,
+  fertilityHistoryRows,
+  fertilityPlanBlock,
   obstetricRows,
   planBlock,
   pregnancyRows,
@@ -148,6 +151,9 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
   const consents = consentRows(copy.consents);
   const appointments = appointmentRows(copy.appointments);
   const labNote = labFlagNote(copy);
+  const fertility = fertilityHistoryRows(copy);
+  const fertilityPlans = copy.fertilityPlans ?? [];
+  const fertilityCycles = copy.fertilityCycles ?? [];
   return (
     <PrintDocument
       className="rc-doc"
@@ -187,6 +193,11 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
       {!baby && (
         <Part title="Obstetric history">
           <Rows rows={obstetricRows(copy)} />
+        </Part>
+      )}
+      {fertility.length > 0 && (
+        <Part title="Fertility history">
+          <Rows rows={fertility} />
         </Part>
       )}
       {(pregnancy.length > 0 || risk.length > 0 || p.careType === 'antenatal') && (
@@ -252,6 +263,27 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
           );
         })}
       </Part>
+
+      {/* (only an infertility record has treatment plans: the part is left out of the others unless one is there) */}
+      {(p.careType === 'infertility' || fertilityPlans.length > 0) && (
+        <Part title="Fertility treatment plans" empty={!fertilityPlans.length}>
+          {fertilityPlans.map((plan) => {
+            const b = fertilityPlanBlock(plan);
+            const sheets = fertilityCycles.filter((c) => c.planId === plan.id).map(fertilityCycleBlock);
+            return (
+              <Entry key={b.key} title={b.title} status={b.status}>
+                <Rows rows={b.rows} />
+                {sheets.length > 0 && <p className="rc-sub">Cycle sheets</p>}
+                {sheets.map((c) => (
+                  <Entry key={c.key} title={c.title} status={c.status}>
+                    <Rows rows={c.rows} />
+                  </Entry>
+                ))}
+              </Entry>
+            );
+          })}
+        </Part>
+      )}
 
       <Part title="Lab orders and results" empty={!copy.labOrders.length}>
         {labNote && <p className="pdoc-note">{labNote}</p>}

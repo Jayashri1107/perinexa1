@@ -26,6 +26,7 @@ import {
   STORED_LOSS_TYPE_KEYS,
 } from '../patients/abortionRules.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
+import { CYCLE_PATTERNS, ENDOMETRIOSIS_STATUS, FERTILITY_DIAGNOSES, FERTILITY_NUMBERS, FERTILITY_TEXTS, FERTILITY_TYPES, OVULATION_STATUS, SEMEN_STATUS, TUBAL_STATUS, UTERINE_FINDINGS } from '../fertility/fertilityFields.js';
 import { OVERRIDE_LEVELS } from '../careplans/risk.js';
 import { carePlanSummaryFor, currentPlanItems, planCtx, syncPlanSafely } from '../careplans/plansService.js';
 import { redFlagsForPatient, redFlagsForPatients } from '../redflags/redFlagService.js';
@@ -50,6 +51,7 @@ import { DELIVERY_MODES } from '../inpatient/docSchemas.js';
 import { dateOnly, escapeRegex, requiredDateOnly, objectId, pageParams, paged, parse, sortParam, toMongoSort } from '../utils/validate.js';
 import { findPatient, loadPatientForPlan } from '../utils/patientLookup.js';
 import { carePlanRouter } from './carePlans.js';
+import { fertilityPlanRouter } from './fertilityPlans.js';
 import { patientConsentsRouter } from './patientConsents.js';
 import { patientAiRouter } from './ai.js';
 import { remindersRouter } from './reminders.js';
@@ -317,6 +319,35 @@ const medicalSchema = z.object({
   otherConditions: text('Other conditions', 500).default(''),
 });
 
+
+// The fertility history (Infertility type of care only; docs/FERTILITY_PLAN.md): choices from the lists in
+// fertility/fertilityFields.js ('' = not recorded), numbers within their ranges, and three short texts. Infertility
+// notes are not checked for words about a baby's sex (they may say "male factor"), as the record's other free text.
+const INTEGER_FACTS = ['durationMonths', 'partnerAgeYears', 'cycleLengthDays', 'afc', 'oiCycles', 'iuiCycles', 'ivfCycles'];
+const fertilityChoice = (keys, label) => z.preprocess((v) => v ?? '', z.enum([...keys, ''], `Choose ${label} from the list`)).default('');
+const fertilityNumber = (key) => {
+  const { min, max, label } = FERTILITY_NUMBERS[key];
+  const n = INTEGER_FACTS.includes(key)
+    ? z.coerce.number(`${label} must be a number`).int(`${label} must be a whole number`).min(min, `${label} is too low`).max(max, `${label} is too high`)
+    : z.coerce.number(`${label} must be a number`).min(min, `${label} is too low`).max(max, `${label} is too high`);
+  return z.preprocess(emptyToNull, z.union([z.null(), n])).default(null);
+};
+const fertilitySchema = z
+  .object({
+    type: fertilityChoice(FERTILITY_TYPES, 'primary or secondary'),
+    cycle: fertilityChoice(CYCLE_PATTERNS, 'the cycle pattern'),
+    ovulation: fertilityChoice(OVULATION_STATUS, 'the ovulation status'),
+    tubes: fertilityChoice(TUBAL_STATUS, 'the tubal status'),
+    uterus: fertilityChoice(UTERINE_FINDINGS, 'the uterine finding'),
+    endometriosis: fertilityChoice(ENDOMETRIOSIS_STATUS, 'the endometriosis status'),
+    semen: fertilityChoice(SEMEN_STATUS, 'the semen analysis result'),
+    diagnoses: z.array(z.enum(FERTILITY_DIAGNOSES, 'Choose a diagnosis from the list')).max(FERTILITY_DIAGNOSES.length).default([]),
+    ...Object.fromEntries(Object.keys(FERTILITY_NUMBERS).map((k) => [k, fertilityNumber(k)])),
+    ...Object.fromEntries(Object.entries(FERTILITY_TEXTS).map(([k, t]) => [k, text(t.label, t.max).default('')])),
+  })
+  .strict();
+const FERTILITY_ONLY = 'The fertility history is recorded only for the Infertility type of care.';
+
 const newbornSchema = z.object({
   birthAt: z.preprocess(
     emptyToNull,
@@ -363,6 +394,7 @@ const makeCreateSchema = ({ requireDates }) => z
     medical: medicalSchema.default({}),
     newborn: newbornSchema.optional(),
     abortion: abortionSchema.optional(),
+    fertility: fertilitySchema.optional(),
     notes: text('Notes', 2000).default(''),
     // "Register as a new patient anyway": sent only after the possible matches were shown (see POST below).
     registerAnyway: z.boolean('registerAnyway must be true or false').default(false),
@@ -371,6 +403,7 @@ const makeCreateSchema = ({ requireDates }) => z
     if (d.abortion !== undefined && d.careType !== 'abortion') {
       ctx.addIssue({ code: 'custom', path: ['abortion', 'lossType'], message: ABORTION_ONLY });
     }
+    if (d.fertility !== undefined && d.careType !== 'infertility') ctx.addIssue({ code: 'custom', path: ['fertility', 'type'], message: FERTILITY_ONLY });
     for (const issue of pregnancyDateIssues(d.pregnancy, null)) ctx.addIssue(issue);
     if (d.careType !== 'antenatal' && d.pregnancy?.findings?.length) ctx.addIssue({ code: 'custom', path: ['pregnancy', 'findings'], message: FINDINGS_ANTENATAL_ONLY });
     // On registration an empty date seen means today, so the pregnancy-loss checks can run here.
@@ -436,6 +469,8 @@ const updateSchema = z.object({
   postnatal: z.object({ breastfeeding: z.preprocess((v) => v ?? '', z.enum(BREASTFEEDING, 'Choose yes, no or not recorded')) }).strict().optional(),
   // A baby's care after birth (babies' records): NICU or SNCU admission with its dates, breastfeeding at discharge.
   newbornCare: newbornCareSchema.optional(),
+  // The fertility history (infertility patients): merged field by field, as the medical background.
+  fertility: fertilitySchema.optional(),
 });
 
 const listSchema = z.object({
@@ -528,6 +563,8 @@ patientsRouter.use((req, _res, next) => {
 // The patient's care plan (/api/patients/:id/care-plan), consent forms (/consents) and visits (/visits),
 // behind the same role gate.
 patientsRouter.use('/:id/care-plan', carePlanRouter);
+// Her fertility treatment plan (infertility patients; docs/FERTILITY_PLAN.md)
+patientsRouter.use('/:id/fertility-plan', fertilityPlanRouter);
 patientsRouter.use('/:id/consents', patientConsentsRouter);
 patientsRouter.use('/:id/visits', visitsRouter);
 patientsRouter.use('/:id/admissions', admissionsRouter);
@@ -712,7 +749,7 @@ export async function registerPatient(req, body) {
   const data = parse(sentPregnancy ? createSchemas.withDates : createSchemas.basic, body);
   if (!can.clinical) {
     // Reception registers identity (and newborn birth details); medical details come from clinicians.
-    for (const section of ['pregnancy', 'obstetric', 'medical', 'abortion']) delete data[section];
+    for (const section of ['pregnancy', 'obstetric', 'medical', 'abortion', 'fertility']) delete data[section];
     data.notes = '';
   }
   if (!can.fullIdentity) {
@@ -992,6 +1029,7 @@ patientsRouter.patch('/:id', async (req, res) => {
   if (data.newbornCare !== undefined && careTypeAfter !== 'newborn') {
     throw validation(NEWBORN_CARE_ONLY, { 'newbornCare.nicu.admitted': "Only on a baby's record", 'newbornCare.feedingAtDischarge': "Only on a baby's record" });
   }
+  if (data.fertility !== undefined && careTypeAfter !== 'infertility') throw validation(FERTILITY_ONLY, { 'fertility.type': FERTILITY_ONLY });
   // Dates and free text are checked only where they changed (D19): an older record can still be saved. A record
   // that becomes antenatal has its pregnancy dates checked in full (stored ones too): a stale LMP, e.g. of a
   // pregnancy that ended, must not start a new antenatal plan.
@@ -1022,7 +1060,7 @@ patientsRouter.patch('/:id', async (req, res) => {
     patient.ageRecordedOn = data.ageYears == null ? null : new Date();
   }
   if (data.ageYears !== undefined && !ageChanged) delete data.ageYears; // not a change (also for the audit)
-  for (const section of ['pregnancy', 'obstetric', 'medical', 'newborn']) {
+  for (const section of ['pregnancy', 'obstetric', 'medical', 'newborn', 'fertility']) {
     if (data[section]) patient[section] = { ...(patient[section]?.toObject?.() ?? {}), ...data[section] };
   }
   // The section is replaced as a whole – except its findings, which keep who recorded each of them: only what the
@@ -1100,7 +1138,7 @@ patientsRouter.patch('/:id', async (req, res) => {
           ...(data.abortion ? { abortion: withoutFindings(stored.abortion) } : {}),
           ...(data.newbornCare ? { newbornCare: stored.newbornCare } : {}),
         },
-      ).map((f) => (f.startsWith('newbornCare.') ? 'newbornCare' : f)),
+      ).map((f) => (f.startsWith('newbornCare.') ? 'newbornCare' : f.startsWith('fertility.') ? 'fertility' : f)),
     ),
   ];
   if (findingsChanged) fields.push('pregnancy.findings');

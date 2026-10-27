@@ -14,6 +14,7 @@ import { NursingEntry } from '../models/NursingEntry.js';
 import { Patient } from '../models/Patient.js';
 import { PatientConsent } from '../models/PatientConsent.js';
 import { PatientNote } from '../models/PatientNote.js';
+import { FertilityPlan } from '../models/FertilityPlan.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { WorkDone } from '../models/WorkDone.js';
@@ -29,6 +30,7 @@ import {
   nursingEntryForCopy,
   patientForCopy,
   planForCopy,
+  fertilityPlanForCopy,
   stayForCopy,
   visitForCopy,
   workForCopy,
@@ -40,6 +42,8 @@ import { findPatient, loadPatientForPlan } from '../utils/patientLookup.js';
 import { parse } from '../utils/validate.js';
 import { visitView } from '../visits/visitView.js';
 import { labAccess, orderView } from './lab.js';
+import { cycleView as fertilityCycleView, planView as fertilityPlanView } from './fertilityPlans.js';
+import { FertilityCycle } from '../models/FertilityCycle.js';
 import { workDoneView } from './workDone.js';
 
 // A complete copy of one patient's record: /api/patients/:id/record-copy. Mounted inside the patients router, after
@@ -61,7 +65,7 @@ const forbidden = (message) => new HttpError(403, message, 'FORBIDDEN');
 
 // A copy must be complete. A record has far fewer entries than this; if one ever has more, the newest are copied
 // and the copy says which part is not complete (`cut`) – it never looks complete when it is not.
-export const COPY_LIMITS = { visits: 1000, labOrders: 1000, stays: 200, documents: 3000, nursing: 10000, consents: 1000, appointments: 1000, workDone: 1000, notes: 500, carePlans: 50 };
+export const COPY_LIMITS = { visits: 1000, labOrders: 1000, stays: 200, documents: 3000, nursing: 10000, consents: 1000, appointments: 1000, workDone: 1000, notes: 500, carePlans: 50, fertilityPlans: 50, fertilityCycles: 300 };
 
 function assertCanCopy(req, patient) {
   const access = patientAccess(req, patient);
@@ -103,6 +107,20 @@ async function patientPart(req, patient, access) {
   };
   // projectPatient first (the need-to-know rules), then only what belongs on a copy
   return patientForCopy(projectPatient(full, access));
+}
+
+/** Her fertility treatment plans (an infertility record), oldest first – the text as it stands and how each ended. */
+async function fertilityPlansPart(req, patient, cut) {
+  const found = await newest(FertilityPlan.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ createdAt: -1, _id: -1 }), COPY_LIMITS.fertilityPlans);
+  if (found.more) cut.push('fertilityPlans');
+  return found.rows.map((plan) => fertilityPlanForCopy(fertilityPlanView(plan)));
+}
+
+/** Her cycle (follicular study) sheets, oldest first, as their pages show them (names, never staff ids). */
+async function fertilityCyclesPart(req, patient, cut) {
+  const found = await newest(FertilityCycle.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ number: -1, _id: -1 }), COPY_LIMITS.fertilityCycles);
+  if (found.more) cut.push('fertilityCycles');
+  return found.rows.map(fertilityCycleView);
 }
 
 /** Her stays, each with its documents and nursing chart, oldest first. */
@@ -159,7 +177,7 @@ recordCopyRouter.get('/', async (req, res) => {
   // rest of the record, which only reads.
   const plans = await carePlansForCopy(planCtx(req), patient, { limit: COPY_LIMITS.carePlans });
   if (plans.more) cut.push('carePlans');
-  const [patientView, visits, orders, work, notes, consents, stays, appointments] = await Promise.all([
+  const [patientView, visits, orders, work, notes, consents, stays, appointments, fertilityPlans, fertilityCycles] = await Promise.all([
     patientPart(req, patient, access),
     newest(Visit.find(own).sort({ visitOn: -1, createdAt: -1, _id: -1 }), COPY_LIMITS.visits),
     newest(LabOrder.find(own).sort({ createdAt: -1, _id: -1 }), COPY_LIMITS.labOrders),
@@ -169,6 +187,8 @@ recordCopyRouter.get('/', async (req, res) => {
     newest(PatientConsent.find({ ...own, formKey: { $nin: RETIRED_FORM_KEYS }, formId: { $nin: [...retired] } }).sort({ printedAt: -1, _id: -1 }).lean(), COPY_LIMITS.consents),
     staysPart(req, patient, cut),
     appointmentsPart(req, patient, cut),
+    fertilityPlansPart(req, patient, cut),
+    fertilityCyclesPart(req, patient, cut),
   ]);
   for (const [key, part] of Object.entries({ visits, labOrders: orders, workDone: work, notes, consents })) if (part.more) cut.push(key);
 
@@ -187,6 +207,8 @@ recordCopyRouter.get('/', async (req, res) => {
     stays,
     consents: consents.rows.map(consentForCopy),
     appointments,
+    fertilityPlans,
+    fertilityCycles,
     cut,
   };
   await audit(req, 'PATIENT_RECORD_COPIED', { details: ids(patient, access) });

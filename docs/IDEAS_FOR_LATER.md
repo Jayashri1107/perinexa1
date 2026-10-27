@@ -93,3 +93,34 @@ works out each child's schedule and sends reminders by itself.
   being fast and satisfying, not from badges, points or confetti.
 - **Never weaken** the protections listed in `CLAUDE.md` (hospital separation, need-to-know access, the audit log,
   fetal-sex protection and the others) while building any of these.
+
+## Fertility and IVF: what the leading applications offer (24 Oct 2026)
+
+The owner asked which features the best infertility and IVF applications have that Perinexa could add. The review of
+eIVF, BabySentry, IDEAS, MedITEX, the Indian ARTis, Healcon and MedART, the patient apps Salve and Embie, the AI tools of
+Alife and Fairtility, the SART and Aberdeen counselling calculators, the Vienna laboratory KPIs and India's ART Act is in
+`docs/FERTILITY_APPS_REVIEW.md`. Its candidate list, in the order it would pay off for an OBGY clinic that does
+ovulation induction and IUI and refers IVF out:
+
+| # | Idea | Why it helps |
+| --- | --- | --- |
+| F1 | **Cycle (follicular study) sheet** on the Treatment plan, with a printable bilingual report **(clinical)** | The daily work of OI and IUI; every product read has it; the cycle counters fill themselves |
+| F2 | **Semen analysis panel** in the lab module against the WHO 2021 limits, with the post-wash count **(clinical)** | A standard report, flags, and the record's semen field set with the doctor's confirmation |
+| F3 | **Counselling numbers** by age band and step (NICE / HFEA, SART bands) **(clinical)** | Honest chances per cycle on the plan and its copy |
+| F4 | **Fertility information sheets** (OI, monitoring, IUI, IVF/ICSI, ART Act points, donor gametes, OHSS, two-week wait) **(clinical)** | Bilingual, signed as informed, like the pregnancy sheets |
+| F5 | **Cycle reminders** (scan days, injections, test day) through the consented SMS/WhatsApp channel | What the patient apps do, with what exists |
+| F6 | **Prescription sets for OI and IUI** **(clinical)** | One tap from the cycle sheet, checked by the medicine safety list |
+| F7 | **Next scan booked from the cycle sheet**; a monitoring-load day view | Cycle-aware scheduling |
+| F8 | **Fertility analytics tab** (cycles per step, pregnancies per cycle, time to pregnancy, switches) | Outcomes by protocol, as the leaders report |
+| F9–F14 | Partner (male) record with consent; cycle packages and refunds; ART Act consent forms; teleconsultation; a patient copy of the plan; donor and partner screening checklist | Bigger pieces – privacy, money and legal review first |
+| F15–F17 | Embryology lab, cryostorage and witnessing; donor and surrogacy modules and registry exports; AI embryo or dose tools | Only with an in-house IVF laboratory; AI not recommended until independent trials show a gain |
+
+## A new patient as a history-taking sheet (27 Oct 2026, layout only)
+
+The owner wants a new patient's history taken on one short page in the words of the paper template (patient is …
+with complaints of …, LMP and cycle, married since and consanguinity, previous deliveries, any other personal, medical,
+operative or family history), dictated in one go, with everything else in drop-downs the doctor opens only for reference and
+every hint, example, risk warning and AI check hidden until Save. The agreed layout and
+the owner's nine decisions are in `docs/HISTORY_SHEET_LAYOUT.md`; whether and when it is built is a separate decision.
+Still to draft: one printed page in template form with the history, the visit's vitals and the prescription.
+

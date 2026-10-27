@@ -8,6 +8,7 @@
 @import './styles/layout.css';
 @import './styles/pages-patients.css';
 @import './styles/pages-careplans.css';
+@import './styles/pages-fertility.css';
 @import './styles/pages-consents.css';
 @import './styles/pages-visits.css';
 @import './styles/pages-calendar.css';
