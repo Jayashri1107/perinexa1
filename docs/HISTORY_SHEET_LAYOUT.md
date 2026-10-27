@@ -140,7 +140,7 @@ The first draft of the morning had ten tabs (Complaint, Menstrual, Marital, Obst
 Personal, the type-of-care tab, Review). The owner's paper template replaced it with the one page above; the tab
 boards remain in versions 2 to 5 of the mock-up's history.
 
-## 10. The printed page – history, vitals and prescription (draft of 27 Oct 2026, to finalise)
+## 10. The printed page – history, vitals and prescription (agreed 27 Oct 2026)
 
 Decision 9 asked for one printed page in template form instead of a print of the sheet. Board 3 of the mock-up
 draws it: **one A4 page per visit**, with
@@ -152,7 +152,7 @@ draws it: **one A4 page per visit**, with
 3. **History** – the five template lines as saved on the record, blanks filled and underlined, so the page reads
    like the paper sheet ("Patient is 28-year-old, second pregnancy with complaints of …");
 4. **Vitals** of this visit – blood pressure, pulse, weight, temperature, SpO2, Hb, urine albumin, urine sugar
-   (the fields the visit records today);
+   (the fields the visit records today), then the **Diagnosis** line when the doctor has written one;
 5. **Prescription** – the ℞ symbol and the medicine table of today's design (medicine in capitals with strength,
    dose, how often in the 1-0-1 style with words, when, for how long, a note under the medicine), then the general
    instructions;
@@ -164,13 +164,18 @@ pre-printed pad. The board shows the Classic design, Indigo, A4, English. The hi
 saved once and printed on every visit's page); the vitals and the prescription come from the visit. Nothing new is
 asked of the doctor: the page prints from what the sheet and the visit already hold.
 
-To finalise (owner):
+Decisions of 27 Oct 2026 (the owner, one at a time):
 
-1. Which of Advice, Next visit and the pregnancy line print – today each is a tick in the doctor's design.
-2. Marathi or Hindi under the medicines, as the design allows today.
-3. When the history is long: smaller text, or the prescription moves to a second page (the owner asked for one page).
-4. Whether a Diagnosis line is wanted between the vitals and the prescription.
-5. Whether the ℞ symbol stays.
+1. **Advice, Next visit, the pregnancy line** – the doctor's own ticks in the design, all **on** unless the doctor
+   unticks one (as the design defaults are today).
+2. **Language** – **Marathi under the medicines by default**: a new design starts with English plus Marathi under
+   each medicine's dose, timing and duration; a doctor can change it to Hindi or English alone. (The Marathi and
+   Hindi words under the medicines are draft translations – `docs/TRANSLATIONS_TO_CHECK.md` – for the owner to
+   confirm.)
+3. **When the page does not fit** – normal text always; the prescription continues on a **second page**.
+4. **Diagnosis** – one line "Diagnosis: …" prints after the vitals when the doctor has written one; the design
+   tick controls it, on by default.
+5. **℞ symbol** – stays; the design tick can remove it.
 
 If built, this is a new part of the printed prescription ("history") in the doctor's design, printed from the saved
-history; no new field on the record.
+history, plus the default language of a new design changed to Marathi; no new field on the record.
