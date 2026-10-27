@@ -24,22 +24,22 @@ export const chargesOk = (lines) => lines.every((x) => rateOf(x) > 0);
 export const chargesTotal = (lines) => (chargesOk(lines) ? lines.reduce((s, x) => s + rateOf(x), 0) : 0);
 
 /** The price list's items a service charge may use (not the inpatient ones), or null while loading. */
-export function useChargeItems() {
-  const prices = useFetch('/billing/prices');
+export function useChargeItems(enabled = true) {
+  const prices = useFetch(enabled ? '/billing/prices' : null);
   return { items: prices.data ? prices.data.items.filter((i) => i.active && i.group !== 'inpatient') : null, error: prices.error };
 }
 
 /**
- * Puts the services on her bill for today and, unless paid later, records the payment. Returns the bill. If adding the
- * services worked but the payment did not, the error carries `bill`.
+ * Puts the services on her bill for today (with the doctor they are for, when given) and, unless paid later, records
+ * the payment. Returns the bill. If adding the services worked but the payment did not, the error carries `bill`.
  */
-export async function billCharges(patientId, lines, pay, existingBill = null) {
+export async function billCharges(patientId, lines, pay, existingBill = null, doctorId = null) {
   let bill = existingBill;
   if (!bill) {
     ({ bill } = await api('/billing/bills', { method: 'POST', body: { patientId } }));
     for (const x of lines) {
       // A priced item keeps its price; an item with none takes the amount typed
-      ({ bill } = await api(`/billing/bills/${bill.id}/lines`, { method: 'POST', body: { priceItemId: x.item.id, qty: 1, ...(x.item.pricePaise ? {} : { ratePaise: rateOf(x) }) } }));
+      ({ bill } = await api(`/billing/bills/${bill.id}/lines`, { method: 'POST', body: { priceItemId: x.item.id, qty: 1, ...(x.item.pricePaise ? {} : { ratePaise: rateOf(x) }), ...(doctorId ? { doctorId } : {}) } }));
     }
   }
   try {

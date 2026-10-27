@@ -448,22 +448,17 @@ export const canAskRecords = (roles = []) => any(roles, CARE_PLAN_ROLES);
 export function patientMenu(roles = []) {
   const onList = (pathname) => pathname === '/patients';
   const under = (prefix) => (pathname) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+  // Only what the main menu does not already have (owner, 27 Oct 2026): Appointments, Follow-ups, Beds and Billing
+  // keep their own places in the menu and are not repeated here.
   const opd = [
-    ...(canRegisterPatients(roles) ? [{ label: 'OPD registration', to: '/patients/new', match: under('/patients/new') }] : []),
+    // New registration or a registered patient – the question first (OpdRegistrationPage)
+    ...(seesPatientList(roles) && any(roles, [...REGISTER_ROLES, 'receptionist', 'nurse', 'billing'])
+      ? [{ label: 'OPD registration', to: '/patients/opd', match: (p) => under('/patients/opd')(p) || under('/patients/new')(p) }]
+      : []),
     { label: "Today's OPD patients", to: '/patients', match: (p, q) => onList(p) && q.get('dept') !== 'ipd' && q.get('day') !== 'all' },
     { label: 'All OPD patients', to: '/patients?day=all', match: (p, q) => onList(p) && q.get('dept') !== 'ipd' && q.get('day') === 'all' },
-    ...(canSeeAppointments(roles) ? [{ label: 'Appointments & queue', to: '/appointments', match: under('/appointments') }] : []),
-    ...(any(roles, FOLLOW_UP_ROLES) ? [{ label: 'Follow-up patients', to: '/follow-ups', match: under('/follow-ups') }] : []),
-    ...(any(roles, BILLING_MODULE_ROLES) ? [{ label: 'OPD bills', to: '/billing?kind=opd', match: (p, q) => p === '/billing' && q.get('kind') === 'opd' }] : []),
   ];
-  const ipd = any(roles, BED_ROLES)
-    ? [
-        // Admit, choose the ward and bed, move to another bed and clear for discharge: all on the bed board
-        { label: 'Admission & beds', to: '/beds', match: under('/beds') },
-        { label: 'Admitted patients', to: '/patients?dept=ipd', match: (p, q) => onList(p) && q.get('dept') === 'ipd' },
-        ...(any(roles, BILLING_MODULE_ROLES) ? [{ label: 'IPD bills', to: '/billing?kind=ipd', match: (p, q) => p === '/billing' && q.get('kind') === 'ipd' }] : []),
-      ]
-    : [];
+  const ipd = any(roles, BED_ROLES) ? [{ label: 'Admitted patients', to: '/patients?dept=ipd', match: (p, q) => onList(p) && q.get('dept') === 'ipd' }] : [];
   return [
     { key: 'opd', label: 'OPD', items: opd },
     ...(ipd.length ? [{ key: 'ipd', label: 'IPD', items: ipd }] : []),
