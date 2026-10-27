@@ -500,7 +500,7 @@ describe('the claim form and the PM-JAY claim sheet', () => {
 describe('billing settings: the UPI ID and the payee name', () => {
   it('everyone who bills reads them; only the hospital admin changes them, with the format checked', async () => {
     const before = (await (await as('reception')).get('/api/billing/settings')).body;
-    expect(before).toEqual({ settings: { upiId: '', payeeName: '', updatedByName: '', updatedAt: null, upiReady: false }, canEdit: false });
+    expect(before).toEqual({ settings: { upiId: '', payeeName: '', billNotes: '', updatedByName: '', updatedAt: null, upiReady: false }, canEdit: false });
     expect((await upiSet(UPI, 'reception')).status).toBe(403);
     for (const who of ['drA', 'nurse', 'lab', 'pharmacist']) expect((await (await as(who)).get('/api/billing/settings')).status, who).toBe(403);
 
@@ -512,7 +512,7 @@ describe('billing settings: the UPI ID and the payee name', () => {
 
     const saved = await upiSet();
     expect(saved.status, JSON.stringify(saved.body)).toBe(200);
-    expect(saved.body.settings).toEqual({ ...UPI, updatedByName: 'Sample admin', updatedAt: NOW.toISOString(), upiReady: true });
+    expect(saved.body.settings).toEqual({ ...UPI, billNotes: '', updatedByName: 'Sample admin', updatedAt: NOW.toISOString(), upiReady: true });
     expect((await (await as('reception')).get('/api/billing/settings')).body).toMatchObject({ settings: { ...UPI, upiReady: true }, canEdit: false });
     await upiSet(); // saved again unchanged: no second entry
     // Both empty switches the links off again

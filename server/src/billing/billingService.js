@@ -419,7 +419,8 @@ export async function billingSettings(tenantId) {
   const t = await Tenant.findById(tenantId, { billing: 1 }).lean();
   const b = t?.billing ?? {};
   const [upiId, payeeName] = [b.upiId ?? '', b.payeeName ?? ''];
-  return { upiId, payeeName, updatedByName: b.updatedByName ?? '', updatedAt: b.updatedAt ?? null, upiReady: !upiIdProblem(upiId) && !payeeNameProblem(payeeName) };
+  // billNotes: lines printed at the foot of every bill and receipt, e.g. the consultation fees (owner, 27 Oct 2026)
+  return { upiId, payeeName, billNotes: b.billNotes ?? '', updatedByName: b.updatedByName ?? '', updatedAt: b.updatedAt ?? null, upiReady: !upiIdProblem(upiId) && !payeeNameProblem(payeeName) };
 }
 
 /**
@@ -526,13 +527,16 @@ async function lookups(tenantId, bills) {
   const pids = [...new Set(bills.map((b) => String(b.patientId)))];
   const aids = [...new Set(bills.map((b) => b.admissionId && String(b.admissionId)).filter(Boolean))];
   const [patients, stays, doctors] = await Promise.all([
-    pids.length ? Patient.find({ tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, assignedDoctor: 1 }).lean() : [],
+    pids.length ? Patient.find({ tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, assignedDoctor: 1, careType: 1, ageYears: 1, ageRecordedOn: 1, createdAt: 1 }).lean() : [],
     aids.length ? Admission.find({ tenantId, _id: { $in: aids } }, { admittedAt: 1, dischargedAt: 1, ward: 1, bed: 1, status: 1 }).lean() : [],
     // Each line's doctor, and her own doctor, by name (owner, 17 Oct 2026: the doctor's name shows on the bill)
     userNames(bills.flatMap((b) => (b.lines ?? []).map((l) => l.doctorId))),
   ]);
   const own = await userNames(patients.map((p) => p.assignedDoctor));
-  return { patients: new Map(patients.map((p) => [String(p._id), p])), stays: new Map(stays.map((s) => [String(s._id), s])), doctors: new Map([...doctors, ...own]) };
+  // Her doctor's department, printed on the bill as on a hospital's OPD receipt (owner, 27 Oct 2026)
+  const ownIds = [...new Set(patients.map((p) => p.assignedDoctor && String(p.assignedDoctor)).filter(Boolean))];
+  const departments = ownIds.length ? new Map((await Membership.find({ tenantId, userId: { $in: ownIds } }, { userId: 1, department: 1 }).lean()).map((m) => [String(m.userId), m.department ?? ''])) : new Map();
+  return { patients: new Map(patients.map((p) => [String(p._id), p])), stays: new Map(stays.map((s) => [String(s._id), s])), doctors: new Map([...doctors, ...own]), departments };
 }
 
 const lineView = (l, doctors = new Map()) => ({
@@ -573,7 +577,7 @@ function lastPayment(b) {
 }
 
 /** One bill as the website gets it; `full` adds the lines and payments. */
-export function billView(b, { patients, stays, doctors = new Map() }, { full = true } = {}) {
+export function billView(b, { patients, stays, doctors = new Map(), departments = new Map() }, { full = true } = {}) {
   const p = patients.get(String(b.patientId));
   const s = b.admissionId ? stays.get(String(b.admissionId)) : null;
   const t = totals(b);
@@ -584,7 +588,9 @@ export function billView(b, { patients, stays, doctors = new Map() }, { full = t
     date: isoDay(b.on),
     // duplicateOf: this bill is on a record marked as a duplicate – the note reception sees ({ id, mrn } of the main record)
     doctorName: p?.assignedDoctor ? (doctors.get(String(p.assignedDoctor)) ?? '') : '',
-    patient: p ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn, phone: p.phone ?? '', duplicateOf: isDuplicate(p) ? { id: String(p.duplicateOf.patient), mrn: p.duplicateOf.mrn } : null } : null,
+    doctorDepartment: p?.assignedDoctor ? (departments.get(String(p.assignedDoctor)) ?? '') : '',
+    // age: as printed on the bill (a baby's record has none here)
+    patient: p ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn, phone: p.phone ?? '', age: p.careType === 'newborn' ? null : currentAge(p), duplicateOf: isDuplicate(p) ? { id: String(p.duplicateOf.patient), mrn: p.duplicateOf.mrn } : null } : null,
     stay: s ? { ward: s.ward ?? '', bed: s.bed ?? '', admittedAt: s.admittedAt, dischargedAt: s.dischargedAt ?? null, inHospital: s.status === 'admitted' } : null,
     ...t,
     items: (b.lines ?? []).filter((l) => !l.removed).length,
