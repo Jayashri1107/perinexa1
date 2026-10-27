@@ -77,12 +77,14 @@ const NEWBORN_FIELDS = ['newborn', 'motherInfo', 'babies'];
 // sees the birth details in `newborn`, not these).
 // death, deathHistory: the death recorded on the record (date, place or timing, who recorded it), and deaths that
 // were recorded in error and undone with their reason – only with the medical details. Everyone else sees `closed`.
-// fertility: her fertility history (Infertility type of care) – a clinical detail; its treatment plans through
+// history: the history-taking sheet (complaint, periods, marriage, previous deliveries, other history) – a clinical
+// detail. fertility: her fertility history (Infertility type of care) – a clinical detail; its treatment plans through
 // routes/fertilityPlans.js.
 const CLINICAL_FIELDS = [
   'pregnancy',
   'abortion',
   'fertility',
+  'history',
   'gestationalAge',
   'obstetric',
   'medical',
@@ -110,7 +112,8 @@ export const NEWBORN_EDIT = ['newborn'];
 // postnatal: whether she is breastfeeding (postnatal patients).
 // newbornCare: a baby's NICU or SNCU admission and breastfeeding at discharge (babies' records).
 // fertility: the fertility history (infertility patients).
-export const CLINICAL_EDIT = ['pregnancy', 'abortion', 'obstetric', 'medical', 'notes', 'delivery', 'postnatal', 'newbornCare', 'fertility'];
+// history: the history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md).
+export const CLINICAL_EDIT = ['pregnancy', 'abortion', 'obstetric', 'medical', 'notes', 'delivery', 'postnatal', 'newbornCare', 'fertility', 'history'];
 
 const NONE = { view: [], editIdentity: false, editNewborn: false, editClinical: false, emergencyNote: false, viewNotes: false, assign: false, markSensitive: false, overrideRisk: false, recordVitals: false };
 

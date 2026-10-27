@@ -30,6 +30,7 @@ import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { ANTI_D, ECTOPIC_SITES, HISTOLOGY, LOSS_LABELS, MANAGEMENT, MOLE_KINDS, OUTCOME_LABELS, RETIRED_LOSS_MESSAGE, gaText, isRetiredLoss, lossFlagsText, lossRulesOn, showsPregnancyFields } from './abortionFormat.js';
 import { LossFindingsList } from './LossFindings.jsx';
 import { fertilityEmpty as fertilityHistoryEmpty, fertilityRows } from './fertilityFormat.js';
+import { historyLines } from './historyFormat.js';
 import {
   CARE_TYPE_SHORT,
   BREASTFEEDING_LABELS,
@@ -780,6 +781,18 @@ function PregnancyLossCard({ patient: p }) {
   );
 }
 
+// The history-taking sheet, read-only, in the paper template's lines (docs/HISTORY_SHEET_LAYOUT.md); written in Edit
+// details by her doctor or an RMO.
+function HistoryCard({ patient: p }) {
+  const lines = historyLines(p.history);
+  return (
+    <section className="card" aria-labelledby="history-card-title">
+      <h2 id="history-card-title">History</h2>
+      {lines.length ? <Details rows={lines} /> : <p className="muted">Not written yet.{p.access.canEditClinical ? <> Write it in <Link to={`/patients/${p.id}/edit`}>Edit details</Link>.</> : null}</p>}
+    </section>
+  );
+}
+
 // The fertility history (Infertility type of care), for those who see the medical details; the Treatment plan tab
 // reads it to suggest protocols (docs/FERTILITY_PLAN.md).
 function FertilityCard({ patient: p }) {
@@ -870,6 +883,8 @@ export function PatientOverviewTab() {
         )}
 
         {p.careType === 'abortion' && has('abortion') && <PregnancyLossCard patient={p} />}
+
+        {p.careType !== 'newborn' && has('history') && <HistoryCard patient={p} />}
 
         {p.careType === 'infertility' && has('fertility') && <FertilityCard patient={p} />}
 
