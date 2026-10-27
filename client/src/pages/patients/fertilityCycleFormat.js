@@ -98,6 +98,14 @@ export function parseMm(text) {
 export const mmText = (sizes) => [...(sizes ?? [])].sort((a, b) => b - a).map((n) => String(n)).join(', ');
 
 /** The cycle day of a date, counted from day 1 (day 1 = 1). */
+/** The date (YYYY-MM-DD) of cycle day n, counted from day 1 (fertility idea F7: the next scan booked by cycle day). */
+export function dateOfCycleDay(day1, n) {
+  if (!day1 || !Number.isInteger(n) || n < 1 || n > 60) return '';
+  const d = new Date(`${toDay(day1)}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 export function cycleDay(day1, on) {
   if (!day1 || !on) return null;
   const a = new Date(`${toDay(day1)}T00:00:00Z`);
