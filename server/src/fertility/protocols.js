@@ -1,9 +1,9 @@
-// The fertility treatment protocol library (docs/FERTILITY_PLAN.md) – DRAFT, not approved for clinical use.
+// The fertility treatment protocol library (docs/FERTILITY_PLAN.md) – approved by the owner, a doctor, on 27 Oct 2026.
 // Each protocol is a written summary of what the standard bodies recommend for one clinical situation, with its
 // sources, so that a doctor can pick one or more for a patient and edit the plan that is built from them
 // (fertility/suggest.js chooses which to offer from her record; routes/fertilityPlans.js builds and keeps the plan).
 //
-// Sources read for this draft (24 Oct 2026) – the owner, a doctor, reviews every line before it is approved:
+// Sources read for the library (24 Oct 2026; approved as written by the owner on 27 Oct 2026):
 //   WHO. Guideline for the prevention, diagnosis and treatment of infertility (28 Nov 2025) – 40 recommendations,
 //     the summary table in the WHO policy brief. Nearly all are conditional on low or very low certainty evidence.
 //   NICE NG257. Fertility problems: assessment and treatment (31 Mar 2026; replaces CG156). Recommendation numbers
@@ -27,9 +27,10 @@
 // Words: doctor to doctor, as in docs/BRAND.md. Nothing here names the sex of a child, and no protocol is for sex
 // selection (PC-PNDT Act). The protocols are not care-plan templates: they produce one editable text plan per patient.
 
-export const FERTILITY_LIBRARY_VERSION = 'draft-2026-10-24';
-export const DRAFT_NOTE =
-  'DRAFT – drawn from published guidance (WHO 2025, NICE 2026, ESHRE, the 2023 PCOS guideline, FOGSI, the ART Act) and not yet reviewed or approved by the doctor. Every regimen and every step is the treating doctor’s decision.';
+// Plans built before the approval keep their stamp 'draft-2026-10-24'
+export const FERTILITY_LIBRARY_VERSION = '2026-10-27';
+export const LIBRARY_NOTE =
+  'Protocol library approved by the hospital’s doctor on 27 Oct 2026 – drawn from published guidance (WHO 2025, NICE 2026, ESHRE, the 2023 PCOS guideline, FOGSI, the ART Act). Doses and days marked “doctor to confirm” are common practice, not a recommendation of the body cited. Every regimen and every step is the treating doctor’s decision.';
 
 // The sections of a plan, in the order they are shown. `general` is the shared preconception advice, added to every plan.
 export const SECTION_ORDER = [

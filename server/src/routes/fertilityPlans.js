@@ -4,7 +4,7 @@ import { hospitalToday } from '../careplans/dates.js';
 import { FERTILITY_NUMBERS, fertilityEmpty } from '../fertility/fertilityFields.js';
 import { LADDER_STEPS, PROCEDURES, SWITCH_KEYS, counterFor, stepOf, targetByKey } from '../fertility/ladder.js';
 import { dateWords } from '../careplans/dates.js';
-import { DRAFT_NOTE, FERTILITY_LIBRARY_VERSION, PROTOCOL_KEYS, SECTION_ORDER, composePlan, libraryView } from '../fertility/protocols.js';
+import { FERTILITY_LIBRARY_VERSION, LIBRARY_NOTE, PROTOCOL_KEYS, SECTION_ORDER, composePlan, libraryView } from '../fertility/protocols.js';
 import { fertilityFacts, suggestProtocols } from '../fertility/suggest.js';
 import { COMPLETED_KINDS, FertilityPlan, MAX_SECTION_TEXT, MAX_VERSIONS, OUTCOME_KINDS, STOPPED_KINDS } from '../models/FertilityPlan.js';
 import { FertilityCycle } from '../models/FertilityCycle.js';
@@ -19,7 +19,7 @@ import { patientAccess } from '../utils/patientAccess.js';
 import { findPatient } from '../utils/patientLookup.js';
 import { dateOnly, objectId, parse } from '../utils/validate.js';
 
-// A patient's fertility treatment plan: /api/patients/:id/fertility-plan (docs/FERTILITY_PLAN.md – DRAFT library).
+// A patient's fertility treatment plan: /api/patients/:id/fertility-plan (docs/FERTILITY_PLAN.md – the approved library).
 // Mounted inside the patients router after its role gate (mergeParams gives the patient id).
 //   GET  /              her current plan (draft or active), the earlier ones, what the record still lacks
 //   GET  /suggestions   the protocols that fit her record, best fit first, with the whole library to browse
@@ -137,7 +137,7 @@ fertilityPlanRouter.get('/', async (req, res) => {
     libraryVersion: FERTILITY_LIBRARY_VERSION,
     sectionOrder: SECTION_ORDER,
     ladder: { steps: LADDER_STEPS, procedures: PROCEDURES },
-    draftNote: DRAFT_NOTE,
+    libraryNote: LIBRARY_NOTE,
   });
 });
 
@@ -145,7 +145,7 @@ fertilityPlanRouter.get('/', async (req, res) => {
 fertilityPlanRouter.get('/suggestions', async (req, res) => {
   const { patient } = await loadPatientAndAccess(req, { need: 'write', message: 'Only her doctor or an RMO asks for plan suggestions.' });
   const { options, facts } = suggestProtocols(patient, req.now);
-  res.json({ options, facts, library: libraryView(), libraryVersion: FERTILITY_LIBRARY_VERSION, draftNote: DRAFT_NOTE });
+  res.json({ options, facts, library: libraryView(), libraryVersion: FERTILITY_LIBRARY_VERSION, libraryNote: LIBRARY_NOTE });
 });
 
 const createSchema = z

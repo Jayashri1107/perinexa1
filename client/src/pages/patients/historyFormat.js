@@ -110,6 +110,24 @@ export function historyPrintLines(h, { age = '', lmp = '' } = {}) {
   return out;
 }
 
+// This pregnancy's details, recorded at the visit (the owner, 27 Oct 2026 – server/src/patients/historyFields.js PLANNED,
+// CONCEPTION, FOLIC_ACID): kept with the pregnancy on her record, not on the history sheet.
+export const PLANNED_LABELS = { yes: 'Planned', no: 'Not planned' };
+export const CONCEPTION_LABELS = { natural: 'Natural', ovulation_induction: 'Ovulation induction', iui: 'IUI', ivf: 'IVF or ICSI' };
+export const FOLIC_ACID_LABELS = { before: 'Started before pregnancy', after: 'Started in pregnancy', not_taken: 'Not taken' };
+
+/** This pregnancy's details as [label, text], for those recorded (the dates are shown with the EDD). */
+export function pregnancyDetailLines(p) {
+  if (!p) return [];
+  return [
+    ['Planned', PLANNED_LABELS[p.planned] ?? ''],
+    ['Conception', CONCEPTION_LABELS[p.conception] ?? ''],
+    ['Folic acid', FOLIC_ACID_LABELS[p.folicAcid] ?? ''],
+    ['Medicines taken so far', p.medicinesTaken?.trim() ?? ''],
+    ['Symptoms so far', p.symptoms?.trim() ?? ''],
+  ].filter(([, v]) => v);
+}
+
 // ---------- Reading a dictated sentence (rules, not AI: nothing leaves the computer) ----------
 // The paper template's own words are the anchors: what follows "with complaints of" is the complaint, "cycle regular"
 // sets the cycle, "married since" the years, "consanguinity" yes or no, what follows "previous deliveries" goes into

@@ -1,3 +1,4 @@
+import { ThisPregnancyCard } from './ThisPregnancyCard.jsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Tip } from '../../components/Tip.jsx';
 import { ArrowLeft, BadgeCheck, CircleMinus, FileSearch, FileText, Languages, MoreHorizontal, Pill, Printer, Sparkles } from 'lucide-react';
@@ -556,6 +557,16 @@ export function VisitPage() {
         title="Other red flags on the record"
         titleId="rf-other-title"
         about={patient.careType === 'abortion' ? 'From her record, lab results, the nursing chart or another visit' : 'From lab results, the nursing chart or another visit'}
+      />
+      {/* This pregnancy's details – recorded at the visit, not on the history sheet (the owner, 27 Oct 2026) */}
+      <ThisPregnancyCard
+        key={`preg-${patient.id}-${patient.pregnancy?.scanEdd ?? ''}-${patient.pregnancy?.planned ?? ''}-${patient.pregnancy?.conception ?? ''}-${patient.pregnancy?.folicAcid ?? ''}`}
+        patient={patient}
+        page={page}
+        onSaved={(text) => {
+          setNotice({ type: 'success', text });
+          reloadPatient();
+        }}
       />
       {/* A finding of this pregnancy the saved vital signs suggest: the doctor or RMO adds it with one click */}
       <FindingOffers

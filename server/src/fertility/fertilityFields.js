@@ -1,4 +1,4 @@
-// The fertility history on an infertility record (docs/FERTILITY_PLAN.md – DRAFT): the facts the treatment-plan
+// The fertility history on an infertility record (docs/FERTILITY_PLAN.md): the facts the treatment-plan
 // suggestions are worked out from. One list for the Patient model, the patient routes and the suggestion rules; the
 // website keeps the same lists with their labels in client/src/pages/patients/fertilityFormat.js (a test compares them).
 // Every choice has a "not recorded" state ('' or null), which is what every record from before these fields has.
