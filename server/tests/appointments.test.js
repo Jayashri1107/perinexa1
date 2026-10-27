@@ -126,6 +126,16 @@ describe('booking a time slot', () => {
     expect(audit.details).toMatchObject({ patientId: p.id, doctorId: id('drA'), date: '2026-09-29', start: '10:00' });
   });
 
+  it('books a day without a time – before timings are set – and it waits under Needs a time (Follow-ups → Book)', async () => {
+    const p = await register('No Time Mother');
+    const res = await book('reception', { doctorId: id('drA'), date: '2026-09-28', start: null, visitType: 'follow_up', patientId: p.id });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(await Appointment.findOne({ tenantId: hospital._id, _id: res.body.appointment.id }).lean()).toMatchObject({ kind: 'slot', start: null, status: 'booked' });
+    // A second booking for her that day is still asked about first
+    expect((await book('reception', { doctorId: id('drA'), date: '2026-09-28', patientId: p.id })).body.error.code).toBe('ALREADY_BOOKED');
+    expect((await book('reception', { doctorId: id('drA'), date: '2026-09-27', patientId: p.id })).body.error.code).toBe('DAY_PASSED');
+  });
+
   it("refuses times outside the doctor's OPD, on leave, already past today, or before timings are set", async () => {
     const p = await register('Careful Mother');
     const at = (date, start) => book('reception', { doctorId: id('drA'), date, start, patientId: p.id });

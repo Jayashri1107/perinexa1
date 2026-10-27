@@ -36,6 +36,10 @@ export function BookAndBillDialog({ who, today, onClose, onDone }) {
   const doctor = list.find((d) => d.id === chosenDoctor);
   const [date, setDate] = useState(who.from && who.from > today ? who.from : today);
   const [start, setStart] = useState(null);
+  // No time to choose – the doctor has not set OPD timings, has no OPD that day, or every time has passed: she is
+  // booked for the day without a time and the bill is made at once (owner, 27 Oct 2026). Not on a day of leave.
+  const day = useFetch(chosenDoctor && date ? '/appointments/day' : null, { doctorId: chosenDoctor, date });
+  const noTimes = Boolean(day.data && !day.data.leave && !day.data.slots.some((s) => !s.past));
   const items = (prices.data?.items ?? []).filter((i) => i.active && i.group !== 'inpatient');
   const feeItem = items.find((i) => i.key === 'consult_follow');
   const [fee, setFee] = useState(null); // ₹ typed; starts at the price list's follow-up fee
@@ -52,7 +56,7 @@ export function BookAndBillDialog({ who, today, onClose, onDone }) {
   const rateOf = (x) => (x.item.pricePaise ? x.item.pricePaise : toPaise(x.rate));
   const chargesOk = feePaise !== null && (feePaise === 0 || Boolean(feeItem)) && extras.every((x) => rateOf(x) > 0);
   const total = chargesOk ? feePaise + extras.reduce((s, x) => s + rateOf(x), 0) : 0;
-  const ready = chosenDoctor && start && chargesOk && !busy;
+  const ready = chosenDoctor && (start || noTimes) && chargesOk && !busy;
 
   const run = async (confirm = false) => {
     setBusy(true);
@@ -61,7 +65,7 @@ export function BookAndBillDialog({ who, today, onClose, onDone }) {
     try {
       if (!appointment) {
         try {
-          appointment = (await api('/appointments', { method: 'POST', body: { doctorId: chosenDoctor, date, start, visitType: 'follow_up', confirm, patientId: p.id } })).appointment;
+          appointment = (await api('/appointments', { method: 'POST', body: { doctorId: chosenDoctor, date, start: noTimes ? null : start, visitType: 'follow_up', confirm, patientId: p.id } })).appointment;
         } catch (err) {
           if (err.status === 409 && ['SLOT_TAKEN', 'ALREADY_BOOKED'].includes(err.code)) {
             setWarning(err.message);
@@ -173,6 +177,7 @@ export function BookAndBillDialog({ who, today, onClose, onDone }) {
                     </Field>
                   </div>
                   <SlotChooser doctorId={chosenDoctor} date={date} value={start} onChange={setStart} />
+                  {noTimes && <p className="hint">You can still book her follow-up for this day without a time and make the bill. The time can be set later under Appointments → Needs a time.</p>}
                 </>
               )}
             </section>
