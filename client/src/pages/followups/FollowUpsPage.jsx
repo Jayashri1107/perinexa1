@@ -126,7 +126,7 @@ function Panel({ id, icon: Icon, title, count, hint, children }) {
  * Follow-ups added by hand (26 Oct 2026): she will come back to a doctor, for something (a fixed purpose and a short
  * note) from a day. Open until she checks in (then they leave this list) or reception cancels one.
  */
-function AddedFollowUps({ added, filterText, today = '', onCancelled, onBook }) {
+function AddedFollowUps({ added, filterText, onCancelled, onBook }) {
   const [error, setError] = useState(null);
   const t = filterText.trim().toLowerCase();
   const rows = (added?.followUps ?? []).filter((f) => !t || [f.patient.fullName, f.patient.mrn, f.patient.phone, f.doctor.name].some((w) => (w ?? '').toLowerCase().includes(t)));
@@ -161,8 +161,8 @@ function AddedFollowUps({ added, filterText, today = '', onCancelled, onBook }) 
               </span>
             ),
           },
-          // Today (or earlier, still open) shows as Today; older follow-ups saved without a day too
-          { key: 'from', header: 'From', render: (f) => (f.from && f.from > today ? dayLabel(f.from) : 'Today') },
+          // The day she comes from, as a date (owner, 27 Oct 2026); older follow-ups saved without a day show Today
+          { key: 'from', header: 'From', render: (f) => (f.from ? dayLabel(f.from) : 'Today') },
           {
             key: 'actions',
             header: <span className="sr-only">Actions</span>,
@@ -219,7 +219,6 @@ export function FollowUpsPage() {
         <AddedFollowUps
           added={added.data ?? (added.error ? { error: added.error } : null)}
           filterText={filter.text}
-          today={data?.today ?? ''}
           onBook={(f) => setBooking({ patient: f.patient, followUpId: f.id, doctorId: f.doctor.id, purpose: f.purpose, note: f.note, from: f.from })}
           onCancelled={(f) => {
             setNote(`Cancelled: the follow-up of ${f.patient.fullName}.`);
