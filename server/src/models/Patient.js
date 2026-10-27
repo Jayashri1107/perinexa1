@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { addDays, gaOn, hospitalToday, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { tenantScoped } from '../utils/tenantScope.js';
+import { BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, YES_NO } from '../patients/historyFields.js';
 import { CYCLE_PATTERNS, ENDOMETRIOSIS_STATUS, FERTILITY_DIAGNOSES, FERTILITY_NUMBERS, FERTILITY_TEXTS, FERTILITY_TYPES, OVULATION_STATUS, SEMEN_STATUS, TUBAL_STATUS, UTERINE_FINDINGS } from '../fertility/fertilityFields.js';
 import { ANTI_D, ECTOPIC_SITES, HISTOLOGY, LOSS_FINDING_KEYS, MANAGEMENT, MAX_WEEKS, MOLE_KINDS, OUTCOME_LABELS, STORED_LOSS_TYPE_KEYS, gaFrom } from '../patients/abortionRules.js';
 import { FINDING_VIA, MAX_FINDING_ENTRIES, PREGNANCY_FINDINGS, findingsView } from '../patients/pregnancyFindings.js';
@@ -79,6 +80,44 @@ const fertilitySchema = new mongoose.Schema(
     diagnoses: { type: [{ type: String, enum: FERTILITY_DIAGNOSES }], default: [] },
     ...Object.fromEntries(Object.entries(FERTILITY_NUMBERS).map(([k, r]) => [k, num(r.min, r.max)])),
     ...Object.fromEntries(Object.entries(FERTILITY_TEXTS).map(([k, t]) => [k, { type: String, trim: true, maxlength: t.max, default: '' }])),
+  },
+  { _id: false },
+);
+
+// The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md, owner 27 Oct 2026): the five lines of the paper template
+// and the three drop-downs. A clinical detail, like the medical background. Every field optional.
+const previousPregnancySchema = new mongoose.Schema(
+  {
+    year: num(PREGNANCY_NUMBERS.year.min, PREGNANCY_NUMBERS.year.max),
+    outcome: choice(PREGNANCY_OUTCOMES),
+    weeks: num(PREGNANCY_NUMBERS.weeks.min, PREGNANCY_NUMBERS.weeks.max),
+    mode: choice(BIRTH_MODES),
+    place: { type: String, trim: true, maxlength: 80, default: '' },
+    weightGrams: num(PREGNANCY_NUMBERS.weightGrams.min, PREGNANCY_NUMBERS.weightGrams.max),
+    aliveNow: choice(YES_NO),
+    problems: { type: String, trim: true, maxlength: 200, default: '' },
+  },
+  { _id: false },
+);
+const historySchema = new mongoose.Schema(
+  {
+    cycle: choice(CYCLE_KINDS),
+    consanguinity: choice(YES_NO),
+    previousPeriod: { type: Date, default: null }, // the period before the LMP (a day)
+    flow: choice(FLOW),
+    pain: choice(PERIOD_PAIN),
+    lmpCertain: choice(YES_NO),
+    transfusion: choice(YES_NO),
+    td: choice(IMMUNISATION_STATUS),
+    rubella: choice(IMMUNISATION_STATUS),
+    hepB: choice(IMMUNISATION_STATUS),
+    diet: choice(DIETS),
+    tobacco: choice(HABIT),
+    alcohol: choice(HABIT),
+    family: { type: [{ type: String, enum: FAMILY_HISTORY }], default: [] },
+    pregnancies: { type: [previousPregnancySchema], default: [] },
+    ...Object.fromEntries(Object.entries(HISTORY_NUMBERS).map(([k, r]) => [k, num(r.min, r.max)])),
+    ...Object.fromEntries(Object.entries(HISTORY_TEXTS).map(([k, t]) => [k, { type: String, trim: true, maxlength: t.max, default: '' }])),
   },
   { _id: false },
 );
@@ -240,6 +279,8 @@ const patientSchema = new mongoose.Schema(
 
     // Her fertility history (Infertility type of care): null until a doctor or RMO enters it.
     fertility: { type: fertilitySchema, default: null },
+    // The history-taking sheet (any type of care but a baby's record): null until a doctor or RMO writes it.
+    history: { type: historySchema, default: null },
 
     obstetric: {
       gravida: num(0, 30),

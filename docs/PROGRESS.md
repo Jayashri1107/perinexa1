@@ -13,6 +13,22 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **27 Oct 2026 (developer's requests, in perinexa1):** (1) **OPD and IPD**: the Patients list has OPD (Today's
+  patients first, All patients, New registration, Add service charge) and IPD (in hospital now); the patient record's
+  tabs are grouped under OPD and IPD; the left menu's Patients opens OPD and IPD lists. (2) **Registration**: the type of
+  care can be corrected on the form; a PIN code fills the city and state (India Post's directory kept inside Perinexa,
+  `client/public/pincodes.json`); doctors' departments (Admin → Users) with the department first on registration;
+  service charges billed at registration. (3) **Billing**: the bill printed as the hospital's OPD receipt (logo,
+  consultant, department, amount in words, the hospital's notes); the hospital's logo on the letterhead; **Reports**
+  (21 OPD, IPD and collection MIS reports; print, PDF, Excel); the **Daily collection** redesigned with the **day's
+  expenses** taken off the total (`Expense`, cancelled with a reason, never deleted; in the hospital export). (4) The
+  owner's **fertility treatment plans** brought over from `girishsolanke/perinexa`. (5) The **history-taking sheet**
+  (`docs/HISTORY_SHEET_LAYOUT.md`): the five template lines on page 2 and in Edit details, Dictate with the template's
+  words as anchors, three closed drop-downs, a History card on the Overview. **Not built:** decision 4 (words about a
+  born child's sex allowed in Previous deliveries – waits for the developer's review with the owner), moving this
+  pregnancy's details to the visit, risk rules reading the new facts, the combined one-page print (decision 9).
+  **How to test:** Patients → Edit details on a sample patient → History → type the sentence of the paper template in
+  the grey box → Fill the blanks → Save; Billing → Daily summary → Add expense; Billing → Reports.
 - **Fertility treatment plans (24 Oct 2026, owner's request – another exception to the feature pause):** on an
   infertility record, a **Fertility history** section in Edit details (kind and months of infertility, cycles,
   ovulation, tubes, uterus, endometriosis, the partner's semen against the WHO 2021 ranges, diagnoses, AMH / AFC / FSH

@@ -211,27 +211,93 @@
 .pdoc .bill-doc-box .bill-doc-sums { min-width: 50%; }
 .pdoc .bill-doc-box .bill-doc-sums td { font-weight: 600; }
 
-/* Billing → Reports: the list of reports beside the chosen one (owner, 27 Oct 2026) */
-.mis-layout { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: var(--space-4); align-items: start; }
-.mis-menu { padding: var(--space-3); }
-.mis-menu h2 { margin: var(--space-3) var(--space-2) var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-600); }
-.mis-menu section:first-child h2 { margin-top: 0; }
-.mis-menu ul { list-style: none; margin: 0; padding: 0; }
-.mis-menu button { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: 6px var(--space-2); border: 0; border-radius: var(--radius-md); background: none; color: var(--ink); font: inherit; font-size: var(--fs-label); text-align: left; cursor: pointer; }
-.mis-menu button svg.lucide { width: 16px; height: 16px; flex-shrink: 0; color: var(--slate-600); }
-.mis-menu button:hover { background: var(--indigo-100); }
-.mis-menu button.active { background: var(--indigo-700); color: var(--on-solid); font-weight: 600; }
-.mis-menu button.active svg.lucide { color: var(--on-solid); }
-.mis-menu button:focus-visible { box-shadow: var(--focus-ring); outline: none; }
-.mis-body { min-width: 0; }
-.mis-body > h2 { margin-top: 0; }
-.mis-dates { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin-bottom: var(--space-3); }
-.mis-dates label { display: flex; flex-direction: column; gap: 4px; }
-.mis-body .table-scroll { overflow-x: auto; }
+/* Billing → Reports, redesigned (owner, 27 Oct 2026): the list of reports (with a search) beside the chosen one */
+.mis-layout { display: grid; grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.mis-menu { position: sticky; top: var(--space-4); padding: var(--space-3); max-height: calc(100vh - 140px); overflow-y: auto; }
+.mis-find { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); margin-bottom: var(--space-2); border: 1px solid var(--card-border); border-radius: var(--radius-pill); background: var(--surface); }
+.mis-find svg.lucide { width: 16px; height: 16px; color: var(--slate-600); flex-shrink: 0; }
+.mis-find input { border: 0; background: none; padding: 7px 0; width: 100%; min-width: 0; }
+.mis-find input:focus { outline: none; }
+.mis-find:focus-within { box-shadow: var(--focus-ring); }
+.mis-group + .mis-group { margin-top: var(--space-1); border-top: 1px solid var(--card-border); padding-top: var(--space-1); }
+.mis-group-head { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-2); border: 0; border-radius: var(--radius-md); background: none; color: var(--slate-600); font: inherit; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; cursor: pointer; }
+.mis-group-head svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
+.mis-group-head:hover { color: var(--ink); }
+.mis-group-head:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.mis-count { margin-left: auto; min-width: 22px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--indigo-100); color: var(--indigo-800); font-size: var(--fs-label); text-align: center; letter-spacing: 0; }
+.mis-chevron { transition: transform 0.15s ease; }
+.mis-chevron.is-open { transform: rotate(180deg); }
+.mis-menu ul { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
+.mis-menu li button { display: block; width: 100%; padding: 6px var(--space-3) 6px calc(var(--space-2) + 24px); border: 0; border-left: 3px solid transparent; border-radius: 0 var(--radius-md) var(--radius-md) 0; background: none; color: var(--ink); font: inherit; font-size: var(--fs-label); line-height: var(--lh-label); text-align: left; cursor: pointer; }
+.mis-menu li button:hover { background: var(--indigo-100); }
+.mis-menu li button.active { border-left-color: var(--indigo-700); background: var(--indigo-100); color: var(--indigo-800); font-weight: 600; }
+.mis-menu li button:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.mis-none { padding: var(--space-2); }
+.mis-main { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.mis-head { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.mis-head h2 { margin: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
+.mis-desc { margin: var(--space-1) 0 0; color: var(--slate-600); }
+.mis-dates { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3); }
+.mis-range { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.mis-range label { display: flex; flex-direction: column; gap: 4px; }
+.mis-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); margin-bottom: 0; }
+.mis-body { min-width: 0; padding: var(--space-4); }
+.mis-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-3); }
+.mis-scroll { overflow: auto; max-height: 65vh; border: 1px solid var(--card-border); border-radius: var(--radius-md); }
+.mis-table { width: 100%; margin: 0; }
 .mis-table td, .mis-table th { white-space: nowrap; }
-.mis-period { margin: 0 0 2mm; text-align: center; }
-@media (max-width: 900px) { .mis-layout { grid-template-columns: 1fr; } }
+.mis-table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); box-shadow: inset 0 -1px 0 var(--card-border); }
+.mis-table tbody tr:nth-child(even) td { background: var(--mist-100); }
+.mis-table tbody tr:hover td { background: var(--indigo-100); }
+.mis-table tfoot td { position: sticky; bottom: 0; background: var(--surface); box-shadow: inset 0 1px 0 var(--card-border); font-weight: 600; }
+.mis-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.mis-empty { padding: var(--space-8) var(--space-4) !important; text-align: center; color: var(--slate-600); white-space: normal !important; }
+@media (max-width: 1100px) { .mis-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .mis-layout { grid-template-columns: 1fr; } .mis-menu { position: static; max-height: none; } }
+@media (prefers-reduced-motion: reduce) { .mis-chevron { transition: none; } }
+.pdoc .mis-table thead th, .pdoc .mis-table tfoot td { position: static; box-shadow: none; }
+.pdoc .mis-table tbody tr:nth-child(even) td { background: none; }
 .pdoc .bill-doc-box .bill-doc-sums { width: auto; min-width: 55%; margin-left: auto; margin-right: 0; }
 .pdoc .bill-doc-box .bill-doc-sums td { text-align: right; padding-left: 8mm; }
 .pdoc .mis-table th, .pdoc .mis-table td { white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; font-size: var(--fs-print-small); line-height: var(--lh-print-small); padding: 1mm 1.2mm; }
 .pdoc .mis-table { width: 100%; table-layout: auto; }
+
+/* Billing → Daily collection, redesigned (owner, 27 Oct 2026): the day at a glance, then the money, the expenses, who
+   collected and every receipt */
+.dc-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.dc-daybar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); padding: var(--space-3) var(--space-4); }
+.dc-dayname { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.dc-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-4); margin-bottom: 0; }
+.dc-kpis .kpi-value { font-variant-numeric: tabular-nums; }
+.dc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+.dc-grid > .dc-section:nth-child(2) { grid-row: span 2; }
+.dc-section { min-width: 0; padding: var(--space-4); }
+.dc-section > h2, .dc-section-head h2 { margin: 0 0 var(--space-3); font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.dc-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.dc-section-head h2 { margin: 0; }
+.dc-table { width: 100%; margin-bottom: var(--space-4); }
+.dc-table caption { text-align: left; font-weight: 600; padding-bottom: var(--space-1); }
+.dc-table .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dc-wrap { white-space: normal; }
+.dc-cancelled td { color: var(--slate-600); text-decoration: line-through; }
+.dc-cancelled .dc-cancel-note { display: block; text-decoration: none; font-size: var(--fs-label); }
+.dc-expense-form { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); margin-bottom: var(--space-4); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); }
+.dc-expense-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.dc-expense-form .btn { align-self: flex-start; }
+.dc-search { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-pill); background: var(--surface); }
+.dc-search svg.lucide { width: 16px; height: 16px; color: var(--slate-600); }
+.dc-search input { border: 0; background: none; min-width: 220px; padding: 6px 0; }
+.dc-search input:focus { outline: none; }
+.dc-search:focus-within { box-shadow: var(--focus-ring); }
+.dc-print-sums { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; border: 1px solid var(--print-ink); }
+.pdoc .dc-print-sums th, .pdoc .dc-print-sums td { padding: 1.2mm 2mm; text-align: left; border: 0; background: none; }
+.pdoc .dc-print-sums th { font-weight: 400; width: 1%; white-space: nowrap; }
+.pdoc .dc-table { margin-bottom: 3mm; }
+.pdoc .dc-table th, .pdoc .dc-table td { font-size: var(--fs-print-small); padding: 1mm 1.5mm; white-space: normal; }
+@media (max-width: 1200px) { .dc-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .dc-grid { grid-template-columns: 1fr; } .dc-grid > .dc-section:nth-child(2) { grid-row: auto; } .dc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .dc-expense-grid { grid-template-columns: 1fr; } .dc-search input { min-width: 0; } }
+.mis-period { margin: 0 0 2mm; text-align: center; }
+/* A table wider than its card scrolls inside the card, never over its edge */
+.dc-section { overflow-x: auto; }
+.dc-section .dc-table th, .dc-section .dc-table td { padding-left: var(--space-2); padding-right: var(--space-2); }

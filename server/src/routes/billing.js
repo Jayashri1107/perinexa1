@@ -13,6 +13,7 @@ import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { PriceItem } from '../models/PriceItem.js';
 import { Tenant } from '../models/Tenant.js';
+import { EXPENSE_CATEGORIES, EXPENSE_MODES, Expense } from '../models/Expense.js';
 import { MIS_KEYS, MIS_REPORTS, misReport } from '../billing/misReports.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
@@ -594,11 +595,19 @@ billingRouter.get('/reports/daily', async (req, res) => {
     }
   }
   const servicesOf = (bill) => [...new Set(liveLines(bill).map((l) => l.name))].join(', ');
+  // The day's expenses: taken off what was collected (cancelled ones listed, never counted)
+  const expenses = (await Expense.find({ tenantId: req.tenantId, day }).sort({ createdAt: 1 }).lean()).map(expenseView);
+  const spent = expenses.filter((e) => !e.cancelled);
+  const expenseTotal = spent.reduce((s, e) => s + e.amountPaise, 0);
+  const expenseCash = spent.filter((e) => e.mode === 'cash').reduce((s, e) => s + e.amountPaise, 0);
   const totalIn = Object.values(byMode).reduce((s, m) => s + m.in, 0);
   const totalOut = Object.values(byMode).reduce((s, m) => s + m.out, 0);
   res.json({
     date: isoDay(day),
-    totals: { in: totalIn, out: totalOut, net: totalIn - totalOut },
+    totals: { in: totalIn, out: totalOut, net: totalIn - totalOut, expenses: expenseTotal, balance: totalIn - totalOut - expenseTotal },
+    // The cash that should be in the drawer: cash taken, less cash given back and cash paid out
+    cashInHand: byMode.cash.in - byMode.cash.out - expenseCash,
+    expenses,
     byMode: PAYMENT_MODES.map((m) => ({ mode: m, label: MODE_LABELS[m], ...byMode[m], net: byMode[m].in - byMode[m].out })),
     byPerson: [...byPerson.values()].sort((a, b) => a.name.localeCompare(b.name)),
     byKind: ['opd', 'ipd'].map((k) => ({ kind: k, ...byKind[k], net: byKind[k].in - byKind[k].out })),
@@ -614,16 +623,77 @@ billingRouter.get('/reports/daily', async (req, res) => {
   });
 });
 
+// ---------- The day's expenses (owner, 27 Oct 2026) ----------
+// Money paid out from the counter (tea, courier, stationery…), taken off the day's collection on the daily summary.
+// Never deleted: cancelled with a reason.
+
+const expenseView = (e) => ({
+  id: String(e._id),
+  date: isoDay(e.day),
+  category: e.category,
+  description: e.description ?? '',
+  paidTo: e.paidTo ?? '',
+  mode: e.mode,
+  amountPaise: e.amountPaise,
+  byName: e.added?.byName ?? '',
+  at: e.added?.at ?? null,
+  cancelled: e.cancelled ? { byName: e.cancelled.byName ?? '', at: e.cancelled.at ?? null, reason: e.cancelled.reason ?? '' } : null,
+});
+
+const expenseSchema = z
+  .object({
+    date: requiredDateOnly('Date').optional(),
+    category: z.enum(EXPENSE_CATEGORIES, 'Choose what it was for'),
+    description: z.string().trim().max(200, 'Keep it to 200 characters.').default(''),
+    paidTo: z.string().trim().max(100, 'Keep it to 100 characters.').default(''),
+    mode: z.enum(EXPENSE_MODES, 'Choose how it was paid'),
+    amountPaise: z.number().int().min(100, 'Enter the amount, at least ₹1.').max(MAX_PAISE, 'The amount is too large.'),
+  })
+  .strict();
+
+billingRouter.get('/expenses', async (req, res) => {
+  const { date } = parse(z.object({ date: requiredDateOnly('Date').optional() }).strict(), req.query);
+  const day = date ?? hospitalToday(req.now);
+  const list = await Expense.find({ tenantId: req.tenantId, day }).sort({ createdAt: 1 }).lean();
+  res.json({ date: isoDay(day), expenses: list.map(expenseView) });
+});
+
+billingRouter.post('/expenses', async (req, res) => {
+  const body = parse(expenseSchema, req.body);
+  const today = hospitalToday(req.now);
+  const day = body.date ?? today;
+  if (day > today) throw Object.assign(new HttpError(400, 'An expense cannot be for a day still to come.', 'VALIDATION'), { fields: { date: 'Choose today or an earlier day.' } });
+  if (daysBetween(day, today) > 31) throw Object.assign(new HttpError(400, 'Expenses are entered within a month of the day.', 'VALIDATION'), { fields: { date: 'Choose a day in the last month.' } });
+  const { date: _date, ...fields } = body;
+  const e = await Expense.create({ tenantId: req.tenantId, day, ...fields, added: { by: req.user._id, byName: req.user.name, at: req.now ?? new Date() } });
+  await audit(req, 'EXPENSE_RECORDED', { details: { expenseId: String(e._id), date: isoDay(day), category: e.category, mode: e.mode, amountPaise: e.amountPaise } });
+  res.status(201).json({ expense: expenseView(e) });
+});
+
+billingRouter.post('/expenses/:id/cancel', async (req, res) => {
+  const { id } = parse(z.object({ id: objectId }), req.params);
+  const { reason } = parse(z.object({ reason: z.string().trim().min(MIN_REASON, 'Write why it is cancelled.').max(200) }).strict(), req.body);
+  const e = await Expense.findOne({ tenantId: req.tenantId, _id: id });
+  if (!e) throw new HttpError(404, 'Expense not found.', 'NOT_FOUND');
+  if (e.cancelled) throw conflict('This expense was already cancelled.', 'CANCELLED');
+  // The person who entered it, or the hospital admin / billing department
+  if (String(e.added.by) !== String(req.user._id) && !hasRole(req.membership, ...REPORT_ROLES)) throw forbidden('Only the person who entered it, the billing department or the hospital admin can cancel an expense.');
+  e.cancelled = { by: req.user._id, byName: req.user.name, at: req.now ?? new Date(), reason };
+  await e.save();
+  await audit(req, 'EXPENSE_CANCELLED', { details: { expenseId: String(e._id), date: isoDay(e.day), amountPaise: e.amountPaise } });
+  res.json({ expense: expenseView(e) });
+});
+
 // Billing → Reports (owner, 27 Oct 2026): the hospital's OPD, IPD and collection MIS reports, for a range of days
 billingRouter.get('/reports/mis', async (req, res) => {
   const q = parse(z.object({ report: z.enum(MIS_KEYS, 'Choose a report from the list'), from: requiredDateOnly('From'), to: requiredDateOnly('To') }).strict(), req.query);
   if (q.to < q.from || daysBetween(q.from, q.to) > 366) throw new HttpError(400, 'Choose a period of at most one year, ending after it starts.', 'VALIDATION');
   const report = await misReport(req, q.report, q.from, q.to);
   await audit(req, 'REPORT_VIEWED', { details: { report: q.report, from: isoDay(q.from), to: isoDay(q.to), rows: report.rows.length } });
-  res.json({ report, menu: MIS_REPORTS.map((g) => ({ group: g.group, reports: g.reports.map(([key, label]) => ({ key, label })) })) });
+  res.json({ report, menu: MIS_REPORTS.map((g) => ({ group: g.group, reports: g.reports.map(([key, label, description]) => ({ key, label, description })) })) });
 });
 billingRouter.get('/reports/mis/menu', (req, res) => {
-  res.json({ menu: MIS_REPORTS.map((g) => ({ group: g.group, reports: g.reports.map(([key, label]) => ({ key, label })) })) });
+  res.json({ menu: MIS_REPORTS.map((g) => ({ group: g.group, reports: g.reports.map(([key, label, description]) => ({ key, label, description })) })) });
 });
 // A report saved as a PDF or a spreadsheet (made in the browser): written down, as every export is
 billingRouter.post('/reports/mis/saved', async (req, res) => {

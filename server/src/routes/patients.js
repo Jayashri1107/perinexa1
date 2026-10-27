@@ -26,6 +26,7 @@ import {
   STORED_LOSS_TYPE_KEYS,
 } from '../patients/abortionRules.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
+import { BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, MAX_PREGNANCIES, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, YES_NO } from '../patients/historyFields.js';
 import { CYCLE_PATTERNS, ENDOMETRIOSIS_STATUS, FERTILITY_DIAGNOSES, FERTILITY_NUMBERS, FERTILITY_TEXTS, FERTILITY_TYPES, OVULATION_STATUS, SEMEN_STATUS, TUBAL_STATUS, UTERINE_FINDINGS } from '../fertility/fertilityFields.js';
 import { OVERRIDE_LEVELS } from '../careplans/risk.js';
 import { carePlanSummaryFor, currentPlanItems, planCtx, syncPlanSafely } from '../careplans/plansService.js';
@@ -278,15 +279,21 @@ function tidyAbortion(a) {
 
 // The baby's sex must never be written in a pregnancy record (PCPNDT). The record's own free text is checked for
 // antenatal and abortion care only: infertility and gynaecology notes may say "male factor".
-const FETAL_SEX_TEXT = [['notes'], ['medical', 'allergies'], ['medical', 'otherConditions']];
+const FETAL_SEX_TEXT = [['notes'], ['medical', 'allergies'], ['medical', 'otherConditions'], ...Object.keys(HISTORY_TEXTS).map((k) => ['history', k])];
 const isPregnancyCare = (careType) => careType === 'antenatal' || careType === 'abortion';
 function fetalSexIssues(careType, data, stored) {
   if (!isPregnancyCare(careType)) return [];
   const at = (o, path) => path.reduce((v, k) => v?.[k], o);
-  return FETAL_SEX_TEXT.filter((path) => {
+  const texts = FETAL_SEX_TEXT.filter((path) => {
     const v = at(data, path);
     return typeof v === 'string' && v !== (at(stored, path) ?? '') && mentionsFetalSex(v);
   }).map((path) => ({ code: 'custom', path, message: PCPNDT_MESSAGE }));
+  // The rows of previous pregnancies too. The owner's exception for a child already born (decision 4 of 27 Oct 2026)
+  // is not built: it waits for the developer's review with the owner (docs/HISTORY_SHEET_LAYOUT.md section 5).
+  const rows = (data?.history?.pregnancies ?? []).flatMap((r, i) =>
+    ['place', 'problems'].filter((k) => typeof r?.[k] === 'string' && mentionsFetalSex(r[k])).map((k) => ({ code: 'custom', path: ['history', 'pregnancies', i, k], message: PCPNDT_MESSAGE })),
+  );
+  return [...texts, ...rows];
 }
 
 const obstetricSchema = z
@@ -348,6 +355,47 @@ const fertilitySchema = z
   .strict();
 const FERTILITY_ONLY = 'The fertility history is recorded only for the Infertility type of care.';
 
+// The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md, owner 27 Oct 2026): choices from the lists in
+// patients/historyFields.js ('' = not recorded), numbers within their ranges, a table of previous pregnancies and short
+// texts. Not on a baby's record. Its free text is checked for words about a baby's sex like the record's other text.
+const historyChoice = (keys, label) => z.preprocess((v) => v ?? '', z.enum([...keys, ''], `Choose ${label} from the list`)).default('');
+const rangedNumber = ({ min, max, label }) =>
+  z.preprocess(emptyToNull, z.union([z.null(), z.coerce.number(`${label} must be a number`).int(`${label} must be a whole number`).min(min, `${label}: at least ${min}`).max(max, `${label}: at most ${max}`)])).default(null);
+const previousPregnancySchema = z
+  .object({
+    year: rangedNumber(PREGNANCY_NUMBERS.year),
+    outcome: historyChoice(PREGNANCY_OUTCOMES, 'the outcome'),
+    weeks: rangedNumber(PREGNANCY_NUMBERS.weeks),
+    mode: historyChoice(BIRTH_MODES, 'the mode'),
+    place: text('Place', 80).default(''),
+    weightGrams: rangedNumber(PREGNANCY_NUMBERS.weightGrams),
+    aliveNow: historyChoice(YES_NO, 'yes or no'),
+    problems: text('Problems', 200).default(''),
+  })
+  .strict();
+const historySchema = z
+  .object({
+    cycle: historyChoice(CYCLE_KINDS, 'regular or irregular'),
+    consanguinity: historyChoice(YES_NO, 'yes or no'),
+    previousPeriod: z.preprocess(emptyToNull, dateOnly('Period before the LMP')).default(null),
+    flow: historyChoice(FLOW, 'the amount'),
+    pain: historyChoice(PERIOD_PAIN, 'the pain'),
+    lmpCertain: historyChoice(YES_NO, 'yes or no'),
+    transfusion: historyChoice(YES_NO, 'yes or no'),
+    td: historyChoice(IMMUNISATION_STATUS, 'done, not done or not known'),
+    rubella: historyChoice(IMMUNISATION_STATUS, 'done, not done or not known'),
+    hepB: historyChoice(IMMUNISATION_STATUS, 'done, not done or not known'),
+    diet: historyChoice(DIETS, 'the diet'),
+    tobacco: historyChoice(HABIT, 'never, past or current'),
+    alcohol: historyChoice(HABIT, 'never, past or current'),
+    family: z.array(z.enum(FAMILY_HISTORY, 'Choose from the list')).max(FAMILY_HISTORY.length).default([]),
+    pregnancies: z.array(previousPregnancySchema).max(MAX_PREGNANCIES, `At most ${MAX_PREGNANCIES} previous pregnancies`).default([]),
+    ...Object.fromEntries(Object.entries(HISTORY_NUMBERS).map(([k, r]) => [k, rangedNumber(r)])),
+    ...Object.fromEntries(Object.entries(HISTORY_TEXTS).map(([k, t]) => [k, text(t.label, t.max).default('')])),
+  })
+  .strict();
+const HISTORY_NOT_NEWBORN = "The history-taking sheet is not for a baby's record.";
+
 const newbornSchema = z.object({
   birthAt: z.preprocess(
     emptyToNull,
@@ -395,6 +443,7 @@ const makeCreateSchema = ({ requireDates }) => z
     newborn: newbornSchema.optional(),
     abortion: abortionSchema.optional(),
     fertility: fertilitySchema.optional(),
+    history: historySchema.optional(),
     notes: text('Notes', 2000).default(''),
     // "Register as a new patient anyway": sent only after the possible matches were shown (see POST below).
     registerAnyway: z.boolean('registerAnyway must be true or false').default(false),
@@ -404,6 +453,7 @@ const makeCreateSchema = ({ requireDates }) => z
       ctx.addIssue({ code: 'custom', path: ['abortion', 'lossType'], message: ABORTION_ONLY });
     }
     if (d.fertility !== undefined && d.careType !== 'infertility') ctx.addIssue({ code: 'custom', path: ['fertility', 'type'], message: FERTILITY_ONLY });
+    if (d.history !== undefined && d.careType === 'newborn') ctx.addIssue({ code: 'custom', path: ['history', 'complaint'], message: HISTORY_NOT_NEWBORN });
     for (const issue of pregnancyDateIssues(d.pregnancy, null)) ctx.addIssue(issue);
     if (d.careType !== 'antenatal' && d.pregnancy?.findings?.length) ctx.addIssue({ code: 'custom', path: ['pregnancy', 'findings'], message: FINDINGS_ANTENATAL_ONLY });
     // On registration an empty date seen means today, so the pregnancy-loss checks can run here.
@@ -471,6 +521,8 @@ const updateSchema = z.object({
   newbornCare: newbornCareSchema.optional(),
   // The fertility history (infertility patients): merged field by field, as the medical background.
   fertility: fertilitySchema.optional(),
+  // The history-taking sheet: merged field by field (the table of previous pregnancies is sent whole).
+  history: historySchema.optional(),
 });
 
 const listSchema = z.object({
@@ -749,7 +801,7 @@ export async function registerPatient(req, body) {
   const data = parse(sentPregnancy ? createSchemas.withDates : createSchemas.basic, body);
   if (!can.clinical) {
     // Reception registers identity (and newborn birth details); medical details come from clinicians.
-    for (const section of ['pregnancy', 'obstetric', 'medical', 'abortion', 'fertility']) delete data[section];
+    for (const section of ['pregnancy', 'obstetric', 'medical', 'abortion', 'fertility', 'history']) delete data[section];
     data.notes = '';
   }
   if (!can.fullIdentity) {
@@ -1030,6 +1082,7 @@ patientsRouter.patch('/:id', async (req, res) => {
     throw validation(NEWBORN_CARE_ONLY, { 'newbornCare.nicu.admitted': "Only on a baby's record", 'newbornCare.feedingAtDischarge': "Only on a baby's record" });
   }
   if (data.fertility !== undefined && careTypeAfter !== 'infertility') throw validation(FERTILITY_ONLY, { 'fertility.type': FERTILITY_ONLY });
+  if (data.history !== undefined && careTypeAfter === 'newborn') throw validation(HISTORY_NOT_NEWBORN, { 'history.complaint': HISTORY_NOT_NEWBORN });
   // Dates and free text are checked only where they changed (D19): an older record can still be saved. A record
   // that becomes antenatal has its pregnancy dates checked in full (stored ones too): a stale LMP, e.g. of a
   // pregnancy that ended, must not start a new antenatal plan.
@@ -1060,7 +1113,7 @@ patientsRouter.patch('/:id', async (req, res) => {
     patient.ageRecordedOn = data.ageYears == null ? null : new Date();
   }
   if (data.ageYears !== undefined && !ageChanged) delete data.ageYears; // not a change (also for the audit)
-  for (const section of ['pregnancy', 'obstetric', 'medical', 'newborn', 'fertility']) {
+  for (const section of ['pregnancy', 'obstetric', 'medical', 'newborn', 'fertility', 'history']) {
     if (data[section]) patient[section] = { ...(patient[section]?.toObject?.() ?? {}), ...data[section] };
   }
   // The section is replaced as a whole – except its findings, which keep who recorded each of them: only what the
@@ -1138,7 +1191,7 @@ patientsRouter.patch('/:id', async (req, res) => {
           ...(data.abortion ? { abortion: withoutFindings(stored.abortion) } : {}),
           ...(data.newbornCare ? { newbornCare: stored.newbornCare } : {}),
         },
-      ).map((f) => (f.startsWith('newbornCare.') ? 'newbornCare' : f.startsWith('fertility.') ? 'fertility' : f)),
+      ).map((f) => (f.startsWith('newbornCare.') ? 'newbornCare' : f.startsWith('fertility.') ? 'fertility' : f.startsWith('history.') ? 'history' : f)),
     ),
   ];
   if (findingsChanged) fields.push('pregnancy.findings');

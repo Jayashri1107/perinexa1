@@ -98,6 +98,8 @@ export function patientForCopy(p) {
     notes: p.notes ?? '', // the notes on the record (not a visit's private note)
     // The fertility history (Infertility type of care; docs/FERTILITY_PLAN.md), as recorded
     fertility: p.fertility ? { ...p.fertility, diagnoses: list(p.fertility.diagnoses) } : null,
+    // The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md), as written
+    history: p.history ? { ...p.history, family: list(p.history.family), pregnancies: list(p.history.pregnancies).map((r) => ({ ...r })) } : null,
     pregnancy: hasPregnancy
       ? {
           lmp: preg.lmp ?? null,
