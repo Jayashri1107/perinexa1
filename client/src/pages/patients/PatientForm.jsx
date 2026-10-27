@@ -329,6 +329,8 @@ function MotherPicker({ value, initial, onChange, error, suggest }) {
  * Registration / edit form for an OBGY patient. Shows only the sections that apply to the type of care.
  * - patient: existing patient when editing
  * - careType: registering – the type of care chosen from the "New patient" menu
+ * - onCareTypeChange(type): registering – another type of care chosen on the form (a wrong menu choice corrected,
+ *   owner 27 Oct 2026); what was typed stays
  * - part: what the form shows and saves – 'info' (patient and birth details), 'clinical' (pregnancy, history,
  *   medical background, notes) or 'all' (both, with the type of care, for editing a record)
  * - onSubmit(payload): saves; should throw an ApiError on failure
@@ -347,6 +349,7 @@ function MotherPicker({ value, initial, onChange, error, suggest }) {
 export function PatientForm({
   patient,
   careType,
+  onCareTypeChange,
   part = 'all',
   onSubmit,
   submitLabel = 'Save',
@@ -645,7 +648,19 @@ export function PatientForm({
                 <h3 className="pf-group-title">Basic details</h3>
                 {!isNewborn && access.canEditIdentity && <AadhaarQrFill onFill={fillFromAadhaar} />}
                 <div className={isEdit ? 'form-grid form-grid-fill' : 'form-grid'}>
-                  {/* Editing a record: the type of care can be changed here. Registering: it was chosen from the New patient menu. */}
+                  {/* Editing a record: the type of care can be changed here. Registering: chosen from the New patient menu, and
+                      changed here if the menu choice was wrong. */}
+                  {!isEdit && onCareTypeChange && (
+                    <Field label="Type of care" id="careType" hint={CARE_TYPE_HINTS[type]}>
+                      <select id="careType" value={type} onChange={(e) => onCareTypeChange(e.target.value)}>
+                        {CARE_TYPES.map((t) => (
+                          <option key={t} value={t}>
+                            {CARE_TYPE_LABELS[t]}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
                   {isEdit && (
                     <Field label="Type of care" id="careType" error={fe('careType')} hint={CARE_TYPE_HINTS[type]}>
                       <select id="careType" value={type} onChange={setCareType}>
