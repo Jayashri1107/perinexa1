@@ -710,3 +710,20 @@
 .pf-icon-btn svg.lucide { width: 20px; height: 20px; }
 .pf-icon-btn:hover, .pf-icon-btn.is-on { background: var(--indigo-100); }
 .pf-icon-btn:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+
+/* ---------- Patients → OPD and IPD in the left menu (owner, 27 Oct 2026) ---------- */
+.sb-chevron { width: 18px; height: 18px; margin-left: auto; flex-shrink: 0; transition: transform 0.15s ease; }
+.sb-chevron.is-open { transform: rotate(180deg); }
+.sb-sub, .sb-sub-items { list-style: none; margin: 0; padding: 0; }
+.sb-sub { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 var(--space-1) calc(var(--nav-tile-size) / 2 + var(--space-1)); padding-left: var(--space-3); border-left: 1px solid var(--nav-tile); }
+.sb-sub-head {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-2) var(--space-2); border: none; border-radius: var(--radius-md);
+  background: none; color: var(--on-dark); font: inherit; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; text-align: left; cursor: pointer;
+}
+.sb-sub-head:hover { background: var(--nav-row-hover); }
+.sb-sub-items { display: flex; flex-direction: column; gap: 2px; padding-left: var(--space-2); }
+.sb-sub-link { display: block; padding: 6px var(--space-2); border-radius: var(--radius-md); color: var(--indigo-200); font-size: var(--fs-label); line-height: var(--lh-label); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-sub-link:hover { background: var(--nav-row-hover); color: var(--on-dark); }
+.sb-sub-link.active { background: var(--nav-row-active); color: var(--on-dark); font-weight: 600; }
+.sb-sub-head:focus-visible, .sb-sub-link:focus-visible { box-shadow: var(--focus-ring-on-dark); outline: none; }
+@media (prefers-reduced-motion: reduce) { .sb-chevron { transition: none; } }

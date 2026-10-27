@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftRight, Building2, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, ShieldCheck, Stethoscope, UserCog } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Building2, ChevronDown, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, ShieldCheck, Stethoscope, UserCog } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
@@ -79,6 +79,64 @@ function SideLink({ module, rail, onNavigate }) {
       </span>
       <span className="sb-label">{module.label}</span>
     </NavLink>
+  );
+}
+
+// A menu item that opens a list (Patients → OPD and IPD, owner 27 Oct 2026). Clicking it only opens or closes the list;
+// in the icon rail, where there is no room for the list, it is a plain link to its page.
+function SideGroup({ module, rail, onNavigate }) {
+  const Icon = module.icon;
+  const { pathname, search } = useLocation();
+  const query = new URLSearchParams(search);
+  const current = (item) => item.match(pathname, query);
+  const openNow = module.groups.some((g) => g.items.some(current));
+  const [open, setOpen] = useState(openNow);
+  const [openGroups, setOpenGroups] = useState(() => Object.fromEntries(module.groups.map((g) => [g.key, g.items.some(current)])));
+  // Opening another page of the list (e.g. from a link on the page) opens it here too
+  useEffect(() => {
+    if (!openNow) return;
+    setOpen(true);
+    setOpenGroups((was) => ({ ...was, ...Object.fromEntries(module.groups.filter((g) => g.items.some((i) => i.match(pathname, new URLSearchParams(search)))).map((g) => [g.key, true])) }));
+    // (module.groups is made again on every render: only a change of page runs this)
+  }, [openNow, pathname, search]);
+  if (rail) return <SideLink module={module} rail onNavigate={onNavigate} />;
+  const listId = `sb-sub-${module.key}`;
+  return (
+    <>
+      <button type="button" className={`sb-link ${openNow ? 'active' : ''}`} aria-expanded={open} aria-controls={listId} onClick={() => setOpen(!open)}>
+        <span className="sb-tile" aria-hidden="true">
+          <Icon />
+        </span>
+        <span className="sb-label">{module.label}</span>
+        <ChevronDown className={`sb-chevron ${open ? 'is-open' : ''}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <ul className="sb-sub" id={listId}>
+          {module.groups.map((g) => {
+            const gOpen = openGroups[g.key];
+            return (
+              <li key={g.key}>
+                <button type="button" className="sb-sub-head" aria-expanded={Boolean(gOpen)} aria-controls={`${listId}-${g.key}`} onClick={() => setOpenGroups({ ...openGroups, [g.key]: !gOpen })}>
+                  {g.label}
+                  <ChevronDown className={`sb-chevron ${gOpen ? 'is-open' : ''}`} aria-hidden="true" />
+                </button>
+                {gOpen && (
+                  <ul className="sb-sub-items" id={`${listId}-${g.key}`}>
+                    {g.items.map((item) => (
+                      <li key={item.to}>
+                        <Link to={item.to} className={`sb-sub-link ${current(item) ? 'active' : ''}`} aria-current={current(item) ? 'page' : undefined} onClick={onNavigate}>
+                          {item.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
   );
 }
 
@@ -374,9 +432,7 @@ export function AppLayout() {
         )}
 
         <nav className="sb-nav">
-          {modules.map((m) => (
-            <SideLink key={m.key} module={m} rail={rail} onNavigate={closeMobile} />
-          ))}
+          {modules.map((m) => (m.groups ? <SideGroup key={m.key} module={m} rail={rail} onNavigate={closeMobile} /> : <SideLink key={m.key} module={m} rail={rail} onNavigate={closeMobile} />))}
           {!locked && <SideLink module={ACCOUNT_MODULE} rail={rail} onNavigate={closeMobile} />}
         </nav>
         {foot && (
