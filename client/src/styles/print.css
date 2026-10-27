@@ -53,6 +53,7 @@
 /* The letterhead at print sizes */
 .pdoc .lh { padding-bottom: var(--space-2); }
 .pdoc .lh-mark { width: 36px; height: 36px; }
+.pdoc .lh-logo { height: 18mm; max-width: 32mm; }
 .pdoc .lh-mark svg.lucide { width: 20px; height: 20px; }
 .pdoc .lh-name { color: var(--print-ink); font-size: var(--fs-print-h1); line-height: var(--lh-print-h1); }
 .pdoc .lh-tagline { font-size: var(--fs-print-body); line-height: var(--lh-print-body); }

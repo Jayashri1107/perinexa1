@@ -1,3 +1,4 @@
+import { checkedImage } from '../utils/imageData.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { Membership, hasRole } from '../models/Membership.js';
@@ -26,11 +27,14 @@ export const letterheadSchema = z.object({
     .default(''),
   registrationNumber: text('Registration number', 80),
   footer: text('Footer', 300),
+  // The hospital's logo (owner, 27 Oct 2026): a PNG or JPEG picture, checked when saved
+  logo: z.string().max(220_000, 'The logo picture is too big: at most 150 KB.').default(''),
   // Printed next to English on consent forms: Marathi or Hindi.
   consentLanguage: z.enum(['mr', 'hi'], 'Choose Marathi or Hindi').default('mr'),
 });
 
 const FIELDS = Object.keys(letterheadSchema.shape);
+const MAX_LOGO_BYTES = 150 * 1024;
 
 // The fields as stored (only the ones in use; an old PC-PNDT number, removed 2 Oct 2026, is never returned).
 const savedFields = (tenant) => Object.fromEntries(FIELDS.map((k) => [k, tenant.letterhead?.[k] ?? '']));
@@ -54,6 +58,8 @@ tenantSettingsRouter.get('/letterhead', async (req, res) => {
 // Only the hospital admin can change it.
 tenantSettingsRouter.put('/letterhead', requireTenantRole('admin'), async (req, res) => {
   const data = parse(letterheadSchema, req.body);
+  data.logo = checkedImage(data.logo, MAX_LOGO_BYTES);
+  if (data.logo === null) throw Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields: { logo: 'Choose a PNG or JPEG picture of the logo, at most 150 KB.' } });
   const tenant = await Tenant.findById(req.tenantId);
   const before = letterheadFor(tenant);
   // One field at a time, so stored values that are no longer used (e.g. the old PC-PNDT number) are kept, not wiped.
@@ -61,7 +67,8 @@ tenantSettingsRouter.put('/letterhead', requireTenantRole('admin'), async (req, 
   await tenant.save();
   const after = letterheadFor(tenant);
   const changes = {};
-  for (const k of FIELDS) if (before[k] !== after[k]) changes[k] = { from: before[k], to: after[k] };
+  // the logo: only THAT it changed – the audit log keeps no pictures
+  for (const k of FIELDS) if (before[k] !== after[k]) changes[k] = k === 'logo' ? { changed: true } : { from: before[k], to: after[k] };
   if (Object.keys(changes).length) await audit(req, 'TENANT_SETTINGS_UPDATED', { details: { changes } });
   res.json({ letterhead: after, saved: savedFields(tenant), hospitalName: tenant.name });
 });

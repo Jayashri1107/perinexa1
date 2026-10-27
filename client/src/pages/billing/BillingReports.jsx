@@ -367,7 +367,7 @@ export function DailySummaryPage() {
           onClose={() => setPrinting(false)}
         >
           <PrintDocument className="bill-doc bill-daily-doc">
-            {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
+            {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} centered />}
             <div className="bill-doc-titlebar">
               <h1 className="pdoc-title">Daily collection – {dayLabel(d.date)}</h1>
               <span className="pdoc-small">Print date {formatDateTime(new Date())}</span>

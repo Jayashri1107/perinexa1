@@ -46,6 +46,8 @@ export const billingTabs = (roles = []) => [
   { label: 'Bills', to: '/billing', end: false, activeFor: '/billing/bills' },
   { label: 'Unpaid', to: '/billing/unpaid', end: true },
   { label: 'Daily summary', to: '/billing/daily', end: true },
+  // The hospital's OPD, IPD and collection MIS reports (owner, 27 Oct 2026)
+  { label: 'Reports', to: '/billing/reports', end: true },
   { label: 'Cash handover', to: '/cash-handover', end: true },
   ...(roles.some((r) => REPORT_ROLES.includes(r)) ? [{ label: 'Monthly', to: '/billing/monthly', end: true }] : []),
   { label: 'Price list', to: '/billing/prices', end: true },

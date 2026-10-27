@@ -17,6 +17,9 @@ const tenantSchema = new mongoose.Schema(
       registrationNumber: { type: String, trim: true, maxlength: 80, default: '' }, // hospital registration
       // PC-PNDT number removed 2 Oct 2026: old stored values are never read.
       footer: { type: String, trim: true, maxlength: 300, default: '' },
+      // The hospital's logo printed at the top of its documents (owner, 27 Oct 2026): a PNG or JPEG data: address,
+      // at most 150 KB (utils/imageData.js)
+      logo: { type: String, default: '' },
       // The language printed next to English on consent forms (the doctor can choose the other when printing).
       consentLanguage: { type: String, enum: ['mr', 'hi'], default: 'mr' },
     },

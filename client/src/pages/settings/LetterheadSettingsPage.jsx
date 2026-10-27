@@ -8,7 +8,16 @@ import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { moduleByKey } from '../../platform/modules.js';
 
-const EMPTY = { name: '', tagline: '', address: '', phone: '', email: '', registrationNumber: '', footer: '', consentLanguage: 'mr' };
+const EMPTY = { name: '', tagline: '', address: '', phone: '', email: '', registrationNumber: '', footer: '', logo: '', consentLanguage: 'mr' };
+const MAX_LOGO_BYTES = 150 * 1024;
+
+const readDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('The picture could not be read.'));
+    r.readAsDataURL(file);
+  });
 
 // Hospital admins: the letterhead printed on this hospital's documents, with a live preview.
 export function LetterheadSettingsPage() {
@@ -52,6 +61,20 @@ export function LetterheadSettingsPage() {
     setForm({ ...form, [key]: e.target.value });
   };
 
+  // The hospital's logo (owner, 27 Oct 2026): a PNG or JPEG, at most 150 KB
+  const pickLogo = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > MAX_LOGO_BYTES) {
+      setFieldErrors({ ...fieldErrors, logo: 'Choose a PNG or JPEG picture of the logo, at most 150 KB.' });
+      return;
+    }
+    setFieldErrors({ ...fieldErrors, logo: undefined });
+    setSaved(false);
+    setForm({ ...form, logo: await readDataUrl(file) });
+  };
+
   const save = async (e) => {
     e.preventDefault();
     setError(null);
@@ -81,6 +104,17 @@ export function LetterheadSettingsPage() {
             <Alert type="error">{error && `Couldn't save the letterhead. ${error}`}</Alert>
             <Field label="Hospital name as printed" id="lh-name" error={fieldErrors.name} hint={`Leave empty to use "${data.hospitalName}".`}>
               <input id="lh-name" value={form.name} onChange={update('name')} maxLength={150} />
+            </Field>
+            <Field label="Logo (optional)" id="lh-logo" error={fieldErrors.logo} hint="A PNG or JPEG picture, at most 150 KB. It prints at the top left of bills, receipts and other documents.">
+              <span className="lh-logo-pick">
+                {form.logo && <img className="lh-logo-thumb" src={form.logo} alt="The hospital's logo" />}
+                <input id="lh-logo" type="file" accept="image/png,image/jpeg" onChange={pickLogo} />
+                {form.logo && (
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => { setSaved(false); setForm({ ...form, logo: '' }); }}>
+                    Remove the logo
+                  </button>
+                )}
+              </span>
             </Field>
             <Field label="Tagline (optional)" id="lh-tagline" error={fieldErrors.tagline} hint="e.g. Maternity & Women's Care">
               <input id="lh-tagline" value={form.tagline} onChange={update('tagline')} maxLength={150} />

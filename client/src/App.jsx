@@ -43,6 +43,7 @@ import { SellPage } from './pages/pharmacy/SellPage.jsx';
 import { MedicineStockPage, StockPage } from './pages/pharmacy/StockPage.jsx';
 import { NewSupplierReturnPage, SupplierReturnPage, SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
 import { BillsPage } from './pages/billing/BillsPage.jsx';
+import { MisReportsPage } from './pages/billing/MisReportsPage.jsx';
 import { BillingSettingsPage } from './pages/billing/BillingExtras.jsx';
 import { TallyBatchPage, TallyBatchesPage, TallyControlPage, TallyExceptionsPage, TallySettingsPage } from './pages/billing/TallyPage.jsx';
 import { DailySummaryPage, MonthlyPage, PatientBillsTab, PriceListPage, UnpaidPage } from './pages/billing/BillingReports.jsx';
@@ -340,6 +341,7 @@ export function App() {
                 <Route path="bills/:id" element={<BillPage />} />
                 <Route path="unpaid" element={<UnpaidPage />} />
                 <Route path="daily" element={<DailySummaryPage />} />
+                <Route path="reports" element={<MisReportsPage />} />
                 <Route path="prices" element={<PriceListPage />} />
                 <Route path="monthly" element={<RequireTenantRole roles={['admin', 'billing']} message="The monthly report is for the hospital admin and the billing department." />}>
                   <Route index element={<MonthlyPage />} />
