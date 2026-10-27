@@ -1043,7 +1043,7 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
   check hidden, and that the layout be agreed before anything is built. The draft is in
   `docs/HISTORY_SHEET_LAYOUT.md` (one page in the words of the owner's paper template, a Dictate button, three drop-downs
   for the rest, what is hidden, what stays for safety, and the owner's nine decisions of 27 Oct 2026 – among them
-  one printed page in template form with history, vitals and prescription, to be drafted later) with a click-through
+  one printed page in template form with history, vitals and prescription, drafted as board 3 of the mock-up and its five points decided) with a click-through
   mock-up (link in the document). **Nothing is built**; the feature pause holds until the owner and the developer
   decide whether and when it goes ahead.
 - ✅ **ABDM milestones M2 (share her records through ABHA) and M3 (fetch her records from other hospitals), in

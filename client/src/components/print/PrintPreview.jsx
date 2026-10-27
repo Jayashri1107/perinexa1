@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileDown, MessageCircle, Printer, Send, Share2, TriangleAlert } from 'lucide-react';
+import { FileDown, FileText, MessageCircle, Printer, Send, Share2, TriangleAlert } from 'lucide-react';
 import { MenuButton } from '../MenuButton.jsx';
 import { Alert, useDialogFocus } from '../ui.jsx';
 import { FITS, canSharePdf, downloadFile, makePdf, paperPages } from './pdfExport.js';
@@ -202,8 +202,14 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
   return createPortal(
     <div ref={ref} tabIndex={-1} className="pv" role="dialog" aria-modal="true" aria-labelledby="pv-title">
       <div className="pv-bar">
+        <span className="pv-bar-icon" aria-hidden="true">
+          <FileText />
+        </span>
         <div className="pv-bar-text">
-          <h2 id="pv-title">{title}</h2>
+          <h2 id="pv-title">
+            {title}
+            {counted && <span className="pv-pages-pill">{pagesWord(counted.pages)}</span>}
+          </h2>
           <p className="hint">{hint ?? 'Check the page, then print it on A4 paper.'}</p>
           {counted && (
             <p className="hint pv-pages">

@@ -600,7 +600,16 @@ export function DailySummaryPage() {
             {(d.expenses ?? []).length > 0 && <ExpensesTable expenses={d.expenses} />}
             <SmallTables d={d} />
             {d.payments.length > 0 && <ReceiptsTable payments={d.payments} />}
-            <p className="bill-sign">Handed over by: ____________________ &nbsp; Received by: ____________________</p>
+            <div className="bill-sign">
+              <span className="dc-sig">
+                <span className="dc-sig-line" />
+                Handed over by
+              </span>
+              <span className="dc-sig">
+                <span className="dc-sig-line" />
+                Received by
+              </span>
+            </div>
           </PrintDocument>
         </PrintPreview>
       )}

@@ -190,7 +190,7 @@ function VisitPrintPreview({ patient, page, copy, onCopy, onClose, aiNote = null
           design={design}
           letterhead={letterhead}
           doctor={doctor}
-          patient={{ fullName: patient.fullName, ageText: ageText(patient), mrn: patient.mrn, careType: patient.careType, allergies: allergyPrintLine(patient) }}
+          patient={{ fullName: patient.fullName, ageText: ageText(patient), mrn: patient.mrn, careType: patient.careType, allergies: allergyPrintLine(patient), history: patient.history ?? null }}
           visit={{
             visitOn: v.visitOn,
             ga: antenatal && edd ? gaOn(edd, v.visitOn) : null,
