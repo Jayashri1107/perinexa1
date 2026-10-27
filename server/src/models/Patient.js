@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { addDays, gaOn, hospitalToday, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { tenantScoped } from '../utils/tenantScope.js';
+import { CYCLE_PATTERNS, ENDOMETRIOSIS_STATUS, FERTILITY_DIAGNOSES, FERTILITY_NUMBERS, FERTILITY_TEXTS, FERTILITY_TYPES, OVULATION_STATUS, SEMEN_STATUS, TUBAL_STATUS, UTERINE_FINDINGS } from '../fertility/fertilityFields.js';
 import { ANTI_D, ECTOPIC_SITES, HISTOLOGY, LOSS_FINDING_KEYS, MANAGEMENT, MAX_WEEKS, MOLE_KINDS, OUTCOME_LABELS, STORED_LOSS_TYPE_KEYS, gaFrom } from '../patients/abortionRules.js';
 import { FINDING_VIA, MAX_FINDING_ENTRIES, PREGNANCY_FINDINGS, findingsView } from '../patients/pregnancyFindings.js';
 import { DEATH_PLACES, DEATH_TIMINGS, ageInDays, deathHistoryView, deathView } from '../patients/deathRules.js';
@@ -61,6 +62,26 @@ const DAY = 24 * 60 * 60 * 1000;
 export const PREGNANCY_DAYS = 280; // Naegele's rule: EDD = LMP + 280 days
 
 const num = (min, max) => ({ type: Number, min, max, default: null });
+
+// The fertility history (Infertility type of care only; docs/FERTILITY_PLAN.md – DRAFT): the facts the treatment-plan
+// suggestions read (fertility/suggest.js). Every choice has a "not recorded" state ('' or null), which is what every
+// record from before these fields has. Nothing here names a child's sex, and the partner is not identified.
+const choice = (keys) => ({ type: String, enum: [...keys, ''], default: '' });
+const fertilitySchema = new mongoose.Schema(
+  {
+    type: choice(FERTILITY_TYPES), // primary or secondary infertility
+    cycle: choice(CYCLE_PATTERNS),
+    ovulation: choice(OVULATION_STATUS),
+    tubes: choice(TUBAL_STATUS),
+    uterus: choice(UTERINE_FINDINGS),
+    endometriosis: choice(ENDOMETRIOSIS_STATUS),
+    semen: choice(SEMEN_STATUS),
+    diagnoses: { type: [{ type: String, enum: FERTILITY_DIAGNOSES }], default: [] },
+    ...Object.fromEntries(Object.entries(FERTILITY_NUMBERS).map(([k, r]) => [k, num(r.min, r.max)])),
+    ...Object.fromEntries(Object.entries(FERTILITY_TEXTS).map(([k, t]) => [k, { type: String, trim: true, maxlength: t.max, default: '' }])),
+  },
+  { _id: false },
+);
 
 // One finding made in this pregnancy (patients/pregnancyFindings.js): who recorded it and when; unticking ends it.
 const findingSchema = new mongoose.Schema(
@@ -216,6 +237,9 @@ const patientSchema = new mongoose.Schema(
       ),
       default: null,
     },
+
+    // Her fertility history (Infertility type of care): null until a doctor or RMO enters it.
+    fertility: { type: fertilitySchema, default: null },
 
     obstetric: {
       gravida: num(0, 30),

@@ -80,8 +80,8 @@ server/src/
   routes/             One router per area (48 files)
   models/             39 Mongoose models
   utils/              audit.js, auditDetails.js, patientAccess.js, tenantScope.js, pcpndt.js, storedFiles.js, validate.js …
-  abdm/ ai/ analytics/ appointments/ billing/ calendar/ careplans/ consents/ inpatient/ lab/ medsafety/
-  patients/ pharmacy/ redflags/ reminders/ reports/ visits/      domain logic per area
+  abdm/ ai/ analytics/ appointments/ billing/ calendar/ careplans/ consents/ fertility/ inpatient/ lab/
+  medsafety/ patients/ pharmacy/ redflags/ reminders/ reports/ visits/      domain logic per area
 server/scripts/       seed.js, seed-demo.js, export-hospital.js
 server/tests/         API tests (vitest + supertest)
 client/src/
@@ -206,6 +206,10 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - Care-plan templates: antenatal (50 items) and the postnatal, newborn, gynaecology, infertility and pregnancy-loss
   templates; the 25 decisions in `docs/CARE_PLAN_DECISIONS.md`.
 - Risk rules (`docs/RISK_RULES_RESEARCH.md`), red-flag rules, the medicine safety list, prescription sets, test packages.
+- The fertility treatment protocol library (21 protocols from WHO 2025, NICE NG257 2026, ESHRE, the 2023 PCOS guideline,
+  FOGSI and the ART Act) and its suggestion rules (`docs/FERTILITY_PLAN.md`, `server/src/fertility/`): doses and days marked
+  "doctor to confirm" are common practice, not the bodies' own words.
+- The Marathi and Hindi words of the follicular study report (`client/src/pages/patients/fertilityCycleFormat.js`).
 - Lab usual ranges (adult; the newborn values need a paediatrician).
 - Lab report templates (`docs/LAB_TEMPLATES_PLAN.md`): the new values and ranges, the ranges for men, each test's
   method and interpretation notes.

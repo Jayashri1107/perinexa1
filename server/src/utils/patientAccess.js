@@ -1,3 +1,5 @@
+import { fertilityEmpty } from '../fertility/fertilityFields.js';
+
 // "Need to know" rules for patient records: what each role may see and change for ONE patient.
 // Everything here is decided on the server, so it can't be bypassed from the browser.
 //
@@ -75,9 +77,12 @@ const NEWBORN_FIELDS = ['newborn', 'motherInfo', 'babies'];
 // sees the birth details in `newborn`, not these).
 // death, deathHistory: the death recorded on the record (date, place or timing, who recorded it), and deaths that
 // were recorded in error and undone with their reason – only with the medical details. Everyone else sees `closed`.
+// fertility: her fertility history (Infertility type of care) – a clinical detail; its treatment plans through
+// routes/fertilityPlans.js.
 const CLINICAL_FIELDS = [
   'pregnancy',
   'abortion',
+  'fertility',
   'gestationalAge',
   'obstetric',
   'medical',
@@ -104,7 +109,8 @@ export const NEWBORN_EDIT = ['newborn'];
 // delivery: a delivery at another hospital (no delivery note here), so the postnatal plan can start from it.
 // postnatal: whether she is breastfeeding (postnatal patients).
 // newbornCare: a baby's NICU or SNCU admission and breastfeeding at discharge (babies' records).
-export const CLINICAL_EDIT = ['pregnancy', 'abortion', 'obstetric', 'medical', 'notes', 'delivery', 'postnatal', 'newbornCare'];
+// fertility: the fertility history (infertility patients).
+export const CLINICAL_EDIT = ['pregnancy', 'abortion', 'obstetric', 'medical', 'notes', 'delivery', 'postnatal', 'newbornCare', 'fertility'];
 
 const NONE = { view: [], editIdentity: false, editNewborn: false, editClinical: false, emergencyNote: false, viewNotes: false, assign: false, markSensitive: false, overrideRisk: false, recordVitals: false };
 
@@ -240,6 +246,11 @@ export function projectPatient(json, access) {
     canUndoDeath: access.recordDeath === true && Boolean(json.closed),
     // More → "Copy of the whole record": her doctor or an RMO (see mayCopyRecord)
     canCopyRecord: mayCopyRecord(access),
+    // Fertility treatment plans (routes/fertilityPlans.js): on an infertility record, seen with the medical details,
+    // drafted and edited by those who may change the clinical details; a doctor confirms a plan.
+    // (a record that was infertility care and still carries the history – she conceived – keeps the tab, read-only)
+    canViewFertilityPlan: access.view.has('pregnancy') && (json.careType === 'infertility' || !fertilityEmpty(json.fertility)),
+    canEditFertilityPlan: json.careType === 'infertility' && access.editClinical === true,
   };
   return out;
 }

@@ -615,3 +615,10 @@ File: `client/src/pages/portal/portalAccountWords.js` (`home`). DRAFT – to be 
 | `stepPay` | {amount} still to pay | {amount} भरायचे बाकी | {amount} भरना बाकी |
 | `stepAllDone` | Nothing is waiting for you right now. | सध्या तुमच्यासाठी काहीही बाकी नाही. | अभी आपके लिए कुछ भी बाकी नहीं है। |
 | `open` | Open | उघडा | खोलें |
+## Follicular study report (24 Oct 2026)
+
+`client/src/pages/patients/fertilityCycleFormat.js` – the headings and standard lines of the report printed for the
+couple after a treatment cycle (REPORT_WORDS), the medicines of a cycle (PROTOCOL_KIND_WORDS), the endometrial pattern
+(PATTERN_WORDS), relations or IUI (TIMING_WORDS) and the pregnancy test result (TEST_RESULT_WORDS), each in Marathi and
+Hindi. Written by Claude, not yet checked by a fluent speaker; the report shows "Language for the patient" with the
+draft hint until they are.
