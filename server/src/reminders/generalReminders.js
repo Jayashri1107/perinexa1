@@ -36,6 +36,7 @@
 //  - every query carries the hospital's tenantId; nothing is written to the log.
 
 import mongoose from 'mongoose';
+import { cycleTestDue } from '../fertility/cycleReminders.js';
 import { bookedAhead, statesFor, statusOf } from '../appointments/appointmentService.js';
 import { addDays, dayZero, hospitalDayStart, hospitalToday, isoDay, sameDay, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { overduePlanItems } from '../careplans/overdue.js';
@@ -328,6 +329,8 @@ export async function queueCareDue(tenant, now = new Date()) {
     limit: GENERAL_MAX_PATIENTS,
   });
   const due = new Map(rows.map((r) => [idOf(r.patient), maySend(r)]));
+  // A fertility cycle's pregnancy-test day counts as "a test is due" too (fertility/cycleReminders.js, idea F5)
+  for (const id of await cycleTestDue(tenantId, agreed.map((p) => p._id), today)) due.set(id, true);
   // Not a woman whose delivery is already recorded while her record still says antenatal
   const patients = agreed.filter((p) => due.has(idOf(p)) && !deliveredThisPregnancy(p));
   if (!patients.length) return { added: 0, heldBack: 0 };
@@ -418,7 +421,7 @@ export async function cancelStaleGeneral(tenant, now = new Date()) {
     staysFor(tenantId, [...new Set(missedOpen.map((m) => String(m.patientId)))], earliest, made.length ? new Date(Math.min(...made.map((t) => new Date(t).getTime()))) : null),
     overduePlanItems(tenantId, { now, kindsFor: careDueKinds, patientIds: careDueIds, skipPostDates: true, limit: GENERAL_MAX_PATIENTS }),
   ]);
-  const stillDue = new Set(overdue.rows.filter(maySend).map((r) => idOf(r.patient)));
+  const stillDue = new Set([...overdue.rows.filter(maySend).map((r) => idOf(r.patient)), ...(await cycleTestDue(tenantId, careDueIds, today))]);
   const words = hospitalWords(tenant);
   let cancelled = 0;
   for (const m of open) {
