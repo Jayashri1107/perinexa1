@@ -1,6 +1,7 @@
 // The patient list: More filters → Registered from / to (owner, 13 Oct 2026).
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
+import { Admission } from '../src/models/Admission.js';
 import { Appointment } from '../src/models/Appointment.js';
 import { Patient } from '../src/models/Patient.js';
 import { hospitalToday } from '../src/careplans/dates.js';
@@ -70,5 +71,26 @@ describe("today's patients", () => {
     expect(await names(s, '')).toEqual(['Booked Sample', 'New Sample', 'Old Sample', 'Seen Sample']);
     expect(await names(s, '&search=Old')).toEqual(['Old Sample']);
     expect((await s.get('/api/patients?day=yesterday')).status).toBe(400);
+  });
+});
+
+// IPD (owner, 27 Oct 2026): only the patients in hospital now, with the stay – for those who see the bed board
+describe('IPD: the patients in hospital', () => {
+  it('lists those with a current stay, with ward, bed and IPD number; not for billing', async () => {
+    for (const name of ['Admitted Sample', 'Discharged Sample', 'Outpatient Sample']) {
+      expect((await s.post('/api/patients').send(samplePatient({ fullName: name }))).status).toBe(201);
+    }
+    const idOf = async (name) => (await Patient.findOne({ tenantId: hospital._id, fullName: name }))._id;
+    const stay = (name, status) => idOf(name).then((patientId) => Admission.collection.insertOne({ tenantId: hospital._id, patientId, careType: 'gynaecology', admittedAt: new Date(), ward: 'Ward A', bed: '3', reason: 'Sample', ipdNo: `IPD-${name[0]}`, clientRequestId: name, status }));
+    await stay('Admitted Sample', 'admitted');
+    await stay('Discharged Sample', 'discharged');
+    const res = await s.get('/api/patients?doctor=all&stay=admitted');
+    expect(res.status).toBe(200);
+    expect(res.body.patients.map((p) => p.fullName)).toEqual(['Admitted Sample']);
+    expect(res.body.patients[0].stay).toMatchObject({ ward: 'Ward A', bed: '3', ipdNo: 'IPD-A' });
+    expect((await s.get('/api/patients?doctor=all')).body.patients[0].stay).toBeUndefined();
+    const billing = await createUser({ name: 'Sample Billing' });
+    await addMember(billing, hospital, 'billing');
+    expect((await (await loginAs(billing, { app: createApp() })).get('/api/patients?stay=admitted')).status).toBe(403);
   });
 });

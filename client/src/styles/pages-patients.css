@@ -276,6 +276,8 @@
 .pt-risk { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
 
 /* The Patients list (simplified): quick choices in view, a plain summary, few columns. */
+.pt-dept { margin-bottom: var(--space-3); }
+.pt-dept button { min-width: 88px; font-weight: 600; }
 .pt-quick { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-bottom: var(--space-3); }
 /* Quick filters are pills: white with a subtle edge, the active one solid indigo */
 .pt-quick .btn { border-radius: var(--radius-pill); border-color: var(--card-border); background: var(--surface); color: var(--ink); padding: 0 var(--space-4); }
