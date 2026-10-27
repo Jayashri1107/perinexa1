@@ -122,5 +122,5 @@ with complaints of …, LMP and cycle, married since and consanguinity, previous
 operative or family history), dictated in one go, with everything else in drop-downs the doctor opens only for reference and
 every hint, example, risk warning and AI check hidden until Save. The agreed layout and
 the owner's nine decisions are in `docs/HISTORY_SHEET_LAYOUT.md`; whether and when it is built is a separate decision.
-Still to draft: one printed page in template form with the history, the visit's vitals and the prescription.
+The printed page in template form (history, vitals, prescription) is drafted as board 3 of the mock-up, to finalise.
 
