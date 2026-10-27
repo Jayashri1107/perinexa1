@@ -380,6 +380,7 @@ export function PatientNewPage() {
               spoken={round === 0 ? spoken.text : ''}
               prefill={booking ? { fullName: booking.name, phone: booking.phone, assignedDoctor: booking.doctorId ?? '' } : fromAbha ? { fullName: fromAbha.name, phone: fromAbha.phone ?? '', ageYears: fromAbha.age ?? '' } : fromSignup ? { fullName: fromSignup.name, phone: fromSignup.phone ?? '', ageYears: fromSignup.age ?? '' } : null}
               careType={careType}
+              onCareTypeChange={(type) => navigate({ pathname: `/patients/new/${type}`, search: location.search }, { replace: true, state: location.state })}
               part="info"
               onSubmit={save}
               submitLabel="Register patient"

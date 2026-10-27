@@ -440,12 +440,42 @@ export const patientTabs = (roles = []) =>
 /** Ask your records: doctors, RMOs and nurses. */
 export const canAskRecords = (roles = []) => any(roles, CARE_PLAN_ROLES);
 
+/**
+ * Patients in the left menu (owner, 27 Oct 2026): it opens OPD and IPD, each with its own list – links to the pages that
+ * already do that work, for those whose role opens them. An item: { label, to, match } – match(pathname, query) says
+ * when it is the current page (a list told apart by its ?dept= or ?day=).
+ */
+export function patientMenu(roles = []) {
+  const onList = (pathname) => pathname === '/patients';
+  const under = (prefix) => (pathname) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+  const opd = [
+    ...(canRegisterPatients(roles) ? [{ label: 'OPD registration', to: '/patients/new', match: under('/patients/new') }] : []),
+    { label: "Today's OPD patients", to: '/patients', match: (p, q) => onList(p) && q.get('dept') !== 'ipd' && q.get('day') !== 'all' },
+    { label: 'All OPD patients', to: '/patients?day=all', match: (p, q) => onList(p) && q.get('dept') !== 'ipd' && q.get('day') === 'all' },
+    ...(canSeeAppointments(roles) ? [{ label: 'Appointments & queue', to: '/appointments', match: under('/appointments') }] : []),
+    ...(any(roles, FOLLOW_UP_ROLES) ? [{ label: 'Follow-up patients', to: '/follow-ups', match: under('/follow-ups') }] : []),
+    ...(any(roles, BILLING_MODULE_ROLES) ? [{ label: 'OPD bills', to: '/billing?kind=opd', match: (p, q) => p === '/billing' && q.get('kind') === 'opd' }] : []),
+  ];
+  const ipd = any(roles, BED_ROLES)
+    ? [
+        // Admit, choose the ward and bed, move to another bed and clear for discharge: all on the bed board
+        { label: 'Admission & beds', to: '/beds', match: under('/beds') },
+        { label: 'Admitted patients', to: '/patients?dept=ipd', match: (p, q) => onList(p) && q.get('dept') === 'ipd' },
+        ...(any(roles, BILLING_MODULE_ROLES) ? [{ label: 'IPD bills', to: '/billing?kind=ipd', match: (p, q) => p === '/billing' && q.get('kind') === 'ipd' }] : []),
+      ]
+    : [];
+  return [
+    { key: 'opd', label: 'OPD', items: opd },
+    ...(ipd.length ? [{ key: 'ipd', label: 'IPD', items: ipd }] : []),
+  ];
+}
+
 // Menu for someone working in a hospital, based on ALL their roles there.
 export function hospitalModules(roles = []) {
   if (!roles.length) return [];
   const modules = [HOSPITAL_TODAY];
   if (any(roles, FOLLOW_UP_ROLES)) modules.push(HOSPITAL_FOLLOW_UPS);
-  if (seesPatientList(roles)) modules.push(HOSPITAL_PATIENTS);
+  if (seesPatientList(roles)) modules.push({ ...HOSPITAL_PATIENTS, groups: patientMenu(roles) });
   if (canSeeAppointments(roles)) modules.push(HOSPITAL_APPOINTMENTS);
   // An RMO alone does not get the calendar in the menu (follow-up reminders and booking are front-desk work – owner,
   // 13 Oct 2026); their Today still lists today's patients and who is waiting.
