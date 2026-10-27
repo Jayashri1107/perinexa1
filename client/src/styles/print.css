@@ -185,3 +185,29 @@
   .pdoc-clauses.pdoc-two td:last-child { grid-column: 2; }
   .pdoc-sigs { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---------- A more professional look for every print (owner, 27 Oct 2026) ---------- */
+/* The preview: a viewer – a grey desk, the white sheet with a deep shadow, a clear toolbar */
+@media screen {
+  .pv { background: var(--slate-300); }
+  .pv-bar { align-items: center; padding: var(--space-3) var(--space-5, var(--space-4)); border: 1px solid var(--card-border); }
+  .pv-bar-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
+  .pv-bar-icon svg.lucide { width: 22px; height: 22px; }
+  .pv-bar h2 { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+  .pv-pages-pill { padding: 2px var(--space-2); border-radius: var(--radius-pill); background: var(--mist-100); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+  .pv-bar .pv-pages { display: none; } /* the pill says it */
+  .pv-sheet { box-shadow: 0 6px 24px rgba(15, 23, 42, 0.25), 0 1px 3px rgba(15, 23, 42, 0.2); border-radius: 2px; }
+}
+/* The paper: a firm letterhead rule, the title in capitals, ruled tables with a shaded heading row */
+.pdoc .lh { border-bottom: 2px solid var(--print-ink); padding-bottom: var(--space-2); margin-bottom: var(--space-1); }
+.pdoc .lh-name { font-weight: 700; letter-spacing: 0.01em; }
+.pdoc .pdoc-title { text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.pdoc .bill-report, .pdoc .pdoc-table, .pdoc .bill-doc-lines, .pdoc .mis-table { border-collapse: collapse; }
+.pdoc .bill-report thead th, .pdoc .pdoc-table thead th, .pdoc .bill-doc-lines thead th, .pdoc .mis-table thead th {
+  background: var(--mist-100); border-top: 1px solid var(--print-ink); border-bottom: 1px solid var(--print-ink); font-weight: 600;
+}
+.pdoc .bill-report caption { caption-side: top; padding: var(--space-2) 0 var(--space-1); text-align: left; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--fs-print-small); }
+.pdoc .bill-report td, .pdoc .bill-report th { border-bottom: 1px solid var(--print-rule); }
+.pdoc .bill-report-total td, .pdoc .bill-report-total th, .pdoc .mis-table tfoot td { border-top: 1.5px solid var(--print-ink); border-bottom: 1.5px solid var(--print-ink); font-weight: 700; }
+.pdoc .bill-report tr, .pdoc .mis-table tr { break-inside: avoid; }
+.pdoc .bill-sign { margin-top: var(--space-8); padding-top: var(--space-4); display: flex; justify-content: space-between; }

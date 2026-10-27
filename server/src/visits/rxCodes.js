@@ -39,4 +39,5 @@ export const RX_LINE_SPACINGS = ['compact', 'standard', 'relaxed'];
 /** Section titles a doctor may write in their own words (empty: the printed words in English and the chosen language). */
 export const RX_TITLES = ['medicines', 'instructions', 'tests', 'advice', 'nextVisit'];
 /** Parts of the visit the doctor can choose to print or leave out. The private note is never printed. */
-export const RX_SHOW = ['vitals', 'complaints', 'examination', 'diagnosis', 'investigations', 'advice', 'nextVisit', 'planItems', 'pregnancy', 'signature', 'rxSymbol'];
+// history: the history-taking sheet's lines, printed on every visit's page (docs/HISTORY_SHEET_LAYOUT.md section 10)
+export const RX_SHOW = ['history', 'vitals', 'complaints', 'examination', 'diagnosis', 'investigations', 'advice', 'nextVisit', 'planItems', 'pregnancy', 'signature', 'rxSymbol'];

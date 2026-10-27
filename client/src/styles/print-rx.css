@@ -177,3 +177,10 @@
 }
 /* Allergies: always printed with the patient's details */
 .rx .rx-allergies b { font-weight: 700; }
+
+/* The history-taking sheet's lines on the printed page (the owner's printed page, 27 Oct 2026): the template's words
+   with the blanks filled, under a small heading, before the vitals */
+.rx-history { padding: 0.3em 0 0.4em; border-bottom: 1px solid var(--print-rule); break-inside: avoid; }
+.rx-findings > .rx-history { padding-top: 0; margin-bottom: 0.3em; }
+.rx-history-title { font-size: 0.85em; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--rx-accent, var(--print-ink)); }
+.rx-history .rx-line { margin: 0.15em 0 0; }

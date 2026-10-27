@@ -1,6 +1,6 @@
 // The history-taking sheet: a dictated sentence read into the five blanks, and what is sent (fake sample data).
 import { describe, expect, it } from 'vitest';
-import { EMPTY_PREGNANCY, historyEmpty, historyLines, historyPayload, historyValues, readSentence } from './historyFormat.js';
+import { EMPTY_PREGNANCY, historyEmpty, historyLines, historyPayload, historyPrintLines, historyValues, readSentence } from './historyFormat.js';
 
 describe('reading the sentence as written on the paper template', () => {
   it('fills each blank from the words that follow its anchor', () => {
@@ -40,5 +40,18 @@ describe('the sheet sent and shown', () => {
       ['Family history', 'Thyroid disease – Mother'],
     ]);
     expect(historyEmpty(historyPayload(historyValues(null)))).toBe(true);
+  });
+});
+
+describe('the history on the printed page', () => {
+  it('reads like the paper template, only the lines written', () => {
+    expect(historyPrintLines({ complaint: 'pain for 3 days', cycle: 'regular', marriedSinceYears: 4, consanguinity: 'no', previousDeliveries: 'one normal delivery in 2023' }, { age: '28 yrs', lmp: '2 Oct 2026' })).toEqual([
+      'Patient is 28 years with complaints of pain for 3 days',
+      'Menstrual history – LMP 2 Oct 2026 · Cycle regular',
+      'Obstetric history – Married since 4 years · Consanguinity no',
+      'Previous deliveries – one normal delivery in 2023',
+    ]);
+    expect(historyPrintLines(null)).toEqual([]);
+    expect(historyPrintLines({ complaint: ' ' })).toEqual([]);
   });
 });

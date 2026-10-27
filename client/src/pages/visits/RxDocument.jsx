@@ -1,3 +1,4 @@
+import { historyPrintLines } from '../patients/historyFormat.js';
 import { CalendarDays, Moon, Sun, Sunrise, Sunset } from 'lucide-react';
 import { PrintDocument } from '../../components/print/PrintPreview.jsx';
 import { formatDate, formatDateTime } from '../../components/ui.jsx';
@@ -136,8 +137,28 @@ function PatientBox({ patient, visit, pregnancy, d }) {
   );
 }
 
+/**
+ * The history-taking sheet's lines (the owner's printed page, 27 Oct 2026 – docs/HISTORY_SHEET_LAYOUT.md section 10):
+ * saved once on the record, printed on every visit's page before the vitals, while the design's History tick is on.
+ */
+function History({ patient, pregnancy, d }) {
+  if (d.show.history === false) return null;
+  const lines = historyPrintLines(patient.history, { age: patient.ageText, lmp: pregnancy?.lmp ? formatDate(pregnancy.lmp) : '' });
+  if (!lines.length) return null;
+  return (
+    <section className="rx-history">
+      <div className="rx-history-title">History</div>
+      {lines.map((t) => (
+        <p key={t} className="rx-line rx-pre">
+          {t}
+        </p>
+      ))}
+    </section>
+  );
+}
+
 /** Vital signs, the pregnancy check, complaints, findings and diagnosis – each only when chosen and written. */
-function Findings({ visit, d, skip = [] }) {
+function Findings({ visit, d, skip = [], patient, pregnancy }) {
   const det = visit.details ?? {};
   const vitals = d.show.vitals && !skip.includes('vitals') ? vitalsText(visit.vitals) : '';
   const check = d.show.examination && !skip.includes('check') ? pregnancyCheckText(det) : '';
@@ -147,9 +168,11 @@ function Findings({ visit, d, skip = [] }) {
     d.show.examination && (has(det.examination) || check) && ['O/E', [check, det.examination].filter(has).join(' · ')],
     d.show.diagnosis && has(det.diagnosis) && ['Diagnosis', det.diagnosis],
   ].filter(Boolean);
-  if (!rows.length) return null;
+  const history = patient && !skip.includes('history') ? <History patient={patient} pregnancy={pregnancy} d={d} /> : null;
+  if (!rows.length) return history;
   return (
     <div className="rx-findings">
+      {history}
       {rows.map(([k, v]) => (
         <p key={k} className="rx-line">
           <b>{k}:</b> <span className="rx-pre">{v}</span>
@@ -552,6 +575,7 @@ function TwoColumn(c) {
       <SummaryTitle {...c} />
       <div className="rx-cols">
         <aside className="rx-col-notes">
+          <History {...c} />
           {notes.map(([k, v]) => (
             <section key={k}>
               <div className="rx-col-title">{k}</div>
@@ -582,8 +606,9 @@ function Table(c) {
       </header>
       <PatientBox {...c} />
       <SummaryTitle {...c} />
+      <History {...c} />
       <VitalsBoxes {...c} />
-      <Findings {...c} skip={['vitals']} />
+      <Findings {...c} skip={['vitals', 'history']} />
       <MedicineTable {...c} />
       <RxNotes {...c} />
       {wide ? (
@@ -705,8 +730,9 @@ function PregnancyCard(c) {
           ))}
         </dl>
       )}
+      <History {...c} />
       <VitalsBoxes {...c} withCheck />
-      <Findings {...c} skip={['vitals']} />
+      <Findings {...c} skip={['vitals', 'history']} />
       <RxBlock {...c} />
       <RxNotes {...c} />
       <NextVisit {...c} />

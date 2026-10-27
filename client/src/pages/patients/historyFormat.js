@@ -91,6 +91,25 @@ export function historyLines(h) {
   return lines.filter(([, t]) => t && String(t).trim());
 }
 
+/**
+ * The sheet as the printed page reads it (the owner's printed page, 27 Oct 2026): the paper template's lines with the
+ * blanks filled – only the lines written. `age`: as printed in the patient line ("28 yrs"); `lmp`: a day, when known.
+ */
+export function historyPrintLines(h, { age = '', lmp = '' } = {}) {
+  if (!h || historyEmpty(h)) return [];
+  const L = HISTORY_LABELS;
+  const years = String(age ?? '').replace(/\s*yrs?$/, '');
+  const out = [];
+  if (h.complaint?.trim()) out.push(`Patient is ${years ? `${years} years` : '…'} with complaints of ${h.complaint.trim()}`);
+  const menstrual = [lmp ? `LMP ${lmp}` : '', h.cycle ? `Cycle ${L.CYCLE_KINDS[h.cycle].toLowerCase()}` : ''].filter(Boolean).join(' · ');
+  if (menstrual) out.push(`Menstrual history – ${menstrual}`);
+  const married = [h.marriedSinceYears != null && h.marriedSinceYears !== '' ? `Married since ${h.marriedSinceYears} years` : '', h.consanguinity ? `Consanguinity ${L.YES_NO[h.consanguinity].toLowerCase()}` : ''].filter(Boolean).join(' · ');
+  if (married) out.push(`Obstetric history – ${married}`);
+  if (h.previousDeliveries?.trim()) out.push(`Previous deliveries – ${h.previousDeliveries.trim()}`);
+  if (h.otherHistory?.trim()) out.push(`Any other personal, medical, operative or family history – ${h.otherHistory.trim()}`);
+  return out;
+}
+
 // ---------- Reading a dictated sentence (rules, not AI: nothing leaves the computer) ----------
 // The paper template's own words are the anchors: what follows "with complaints of" is the complaint, "cycle regular"
 // sets the cycle, "married since" the years, "consanguinity" yes or no, what follows "previous deliveries" goes into
