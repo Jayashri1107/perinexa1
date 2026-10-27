@@ -67,8 +67,8 @@ describe('the UPI ID and the billing settings', () => {
   });
 
   it('shows the Settings tab to the hospital admin only', () => {
-    expect(billingTabs(['receptionist']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Cash handover', 'Price list']);
-    expect(billingTabs(['admin']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Cash handover', 'Monthly', 'Price list', 'Settings', 'Accounts']);
-    expect(billingTabs(['billing']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Cash handover', 'Monthly', 'Price list', 'Accounts']); // the accounts staff download the Tally file (19 Oct 2026)
+    expect(billingTabs(['receptionist']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Reports', 'Cash handover', 'Price list']);
+    expect(billingTabs(['admin']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Reports', 'Cash handover', 'Monthly', 'Price list', 'Settings', 'Accounts']);
+    expect(billingTabs(['billing']).map((t) => t.label)).toEqual(['Bills', 'Unpaid', 'Daily summary', 'Reports', 'Cash handover', 'Monthly', 'Price list', 'Accounts']); // the accounts staff download the Tally file (19 Oct 2026)
   });
 });

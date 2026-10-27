@@ -413,3 +413,36 @@ describe('the printed bill and the daily collection', () => {
     expect(await AuditLog.countDocuments({ action: 'BILLING_EXPORTED', 'details.what': 'daily-summary' })).toBe(1);
   });
 });
+
+// Billing → Reports: the hospital's OPD, IPD and collection MIS reports (owner, 27 Oct 2026)
+describe('the MIS reports', () => {
+  it('runs every report for a range of days, with totals, for billing staff only', async () => {
+    await prices({ consult_new: 50000, 'lab:cbc': 25000 });
+    const p = await register('Report Mother');
+    await startVisit(p);
+    await order(p, ['cbc']);
+    const [b] = await billsOf(p);
+    await pay(b.id, { mode: 'cash', amountPaise: 50000 });
+    const menu = (await (await as('reception')).get('/api/billing/reports/mis/menu')).body.menu;
+    const keys = menu.flatMap((g) => g.reports.map((r) => r.key));
+    expect(keys).toHaveLength(21);
+    for (const report of keys) {
+      const res = await (await as('reception')).get(`/api/billing/reports/mis?report=${report}&from=2026-09-01&to=2026-09-30`);
+      expect(res.status, `${report}: ${JSON.stringify(res.body)}`).toBe(200);
+      expect(Array.isArray(res.body.report.rows)).toBe(true);
+    }
+    const run = async (report) => (await (await as('billing')).get(`/api/billing/reports/mis?report=${report}&from=2026-09-28&to=2026-09-28`)).body.report;
+    expect((await run('opd-daily-collection')).totals.amount).toBe(50000);
+    expect((await run('opd-credit-bills')).rows.map((r) => [r.patient, r.balance])).toEqual([['Report Mother', 25000]]);
+    expect((await run('group-wise')).rows.map((r) => [r.group, r.amount])).toEqual([
+      ['Consultation', 50000],
+      ['Lab test', 25000],
+    ]);
+    expect((await run('registration')).rows.map((r) => r.patient)).toEqual(['Report Mother']);
+    expect((await run('doctorwise-visits')).rows[0]).toMatchObject({ doctor: 'Sample drA', visits: 1, newConsults: 1, amount: 50000 });
+    expect((await (await as('drA')).get('/api/billing/reports/mis?report=registration&from=2026-09-28&to=2026-09-28')).status).toBe(403);
+    expect((await (await as('reception')).get('/api/billing/reports/mis?report=nothing&from=2026-09-28&to=2026-09-28')).status).toBe(400);
+    expect((await (await as('reception')).post('/api/billing/reports/mis/saved').send({ report: 'registration', from: '2026-09-28', to: '2026-09-28', as: 'pdf' })).status).toBe(200);
+    expect(await AuditLog.countDocuments({ action: 'BILLING_EXPORTED', 'details.what': 'mis:registration' })).toBe(1);
+  });
+});
