@@ -1,3 +1,4 @@
+import { historyLines } from './historyFormat.js';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -193,6 +194,11 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
       {!baby && (
         <Part title="Obstetric history">
           <Rows rows={obstetricRows(copy)} />
+        </Part>
+      )}
+      {historyLines(p.history).length > 0 && (
+        <Part title="History">
+          <Rows rows={historyLines(p.history)} />
         </Part>
       )}
       {fertility.length > 0 && (

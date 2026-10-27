@@ -361,3 +361,41 @@
 
 /* New patient: OPD, IPD or day care (owner, 26 Oct 2026) */
 .pn-setting { display: grid; justify-items: start; gap: var(--space-1); margin-bottom: var(--space-4); }
+
+/* The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md): the paper template's lines with blanks, the heard strip,
+   and three closed drop-downs */
+.hs-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.hs-top h2 { margin: 0; }
+.hs-heard { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); }
+.hs-heard textarea { flex: 1 1 100%; min-height: 2.5em; border: 0; background: none; resize: vertical; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.hs-heard textarea:focus { outline: none; color: var(--ink); }
+.hs-filled { color: var(--slate-600); font-size: var(--fs-label); }
+.hs-lines { display: flex; flex-direction: column; gap: var(--space-3); }
+.hs-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+.hs-line-block { flex-direction: column; align-items: stretch; }
+.hs-words { color: var(--ink); font-weight: 500; }
+.hs-muted { color: var(--slate-600); font-size: var(--fs-label); }
+.hs-blank { border: 0; border-bottom: 1.5px dashed var(--slate-300); border-radius: 0; background: none; padding: 4px 2px; min-width: 120px; }
+.hs-blank:focus { outline: none; border-bottom: 1.5px solid var(--indigo-700); background: var(--surface); }
+textarea.hs-blank { border: 1px dashed var(--slate-300); border-radius: var(--radius-sm); padding: var(--space-2); }
+.hs-wide { flex: 1 1 260px; }
+.hs-num { width: 4.5em; min-width: 0; text-align: center; }
+.hs-heard-mark, .hs-heard-mark .hs-choice { background: var(--status-due-bg); }
+.hs-choice { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.hs-choice label { display: inline-flex; align-items: center; gap: 4px; padding: 2px var(--space-2); border: 1px solid var(--card-border); border-radius: var(--radius-pill); cursor: pointer; font-size: var(--fs-label); }
+.hs-choice label.is-on { border-color: var(--indigo-700); background: var(--indigo-100); color: var(--indigo-800); font-weight: 600; }
+.hs-choice input { margin: 0; }
+.hs-more { margin-top: var(--space-3); border-top: 1px solid var(--card-border); }
+.hs-more-head { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-3) 0; border: 0; background: none; color: var(--indigo-700); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.hs-more-head:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.hs-more-chevron { width: 18px; height: 18px; transition: transform 0.15s ease; }
+.hs-more.is-open .hs-more-chevron { transform: rotate(180deg); }
+.hs-more-body { padding-bottom: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.hs-existing { display: flex; flex-direction: column; gap: var(--space-3); }
+.hs-table { width: 100%; border-collapse: collapse; }
+.hs-table th, .hs-table td { padding: 4px; text-align: left; font-size: var(--fs-label); vertical-align: middle; }
+.hs-table input, .hs-table select { width: 100%; min-width: 70px; }
+.hs-table .hs-num { min-width: 56px; }
+.hs-note { margin-top: var(--space-3); }
+@media (prefers-reduced-motion: reduce) { .hs-more-chevron { transition: none; } }
+textarea.hs-blank { min-height: 0; height: 4.2em; }

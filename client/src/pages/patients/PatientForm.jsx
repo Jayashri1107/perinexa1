@@ -38,6 +38,8 @@ import { mentionsFetalSex, PCPNDT_MESSAGE } from '../../pcpndtWords.js';
 import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { asName } from '../../personName.js';
 import { lookupPin } from './pinLookup.js';
+import { HistorySheet } from './HistorySheet.jsx';
+import { historyEmpty, historyPayload, historyValues } from './historyFormat.js';
 import { DEPARTMENTS } from '../../platform/departments.js';
 import { FertilitySection } from './FertilitySection.jsx';
 import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
@@ -98,6 +100,8 @@ function initialValues(p) {
     abortion: abortionValues(p?.abortion),
     // The fertility history (Infertility type of care): every field may stay empty
     fertility: fertilityValues(p?.fertility),
+    // The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md): every field may stay empty
+    history: historyValues(p?.history),
     obstetric: {
       gravida: str(p?.obstetric?.gravida),
       para: str(p?.obstetric?.para),
@@ -186,6 +190,9 @@ export function toPayload(v, isEdit, access, part, loaded = null) {
       if (v.careType === 'abortion' && !abortionEmpty(v.abortion)) payload.abortion = abortionPayload(v.abortion);
       // The fertility history only for the Infertility type of care (the server merges it field by field)
       if (v.careType === 'infertility') payload.fertility = fertilityPayload(v.fertility);
+      // The history-taking sheet: once something is written on it, or to clear what was written before
+      const sheet = historyPayload(v.history);
+      if (!historyEmpty(sheet) || (loaded && !historyEmpty(historyPayload(loaded.history)))) payload.history = sheet;
     } else {
       payload.medical = { bloodGroup: v.medical.bloodGroup };
     }
@@ -483,6 +490,10 @@ export function PatientForm({
   const setFertility = (key, value) => {
     unmark(`fertility.${key}`);
     setV((cur) => ({ ...cur, fertility: { ...cur.fertility, [key]: value } }));
+  };
+  const setHistory = (key, value) => {
+    unmark(`history.${key}`);
+    setV((cur) => ({ ...cur, history: { ...cur.history, [key]: value } }));
   };
   const setAbortion = (key, value) => {
     unmark(`abortion.${key}`);
@@ -929,6 +940,168 @@ export function PatientForm({
                 </section>
               )}
 
+              {showClinical && !isNewborn && clinical && (
+                <HistorySheet
+                  values={v.history}
+                  set={setHistory}
+                  setPregnancies={(rows) => setHistory('pregnancies', rows)}
+                  fe={fe}
+                  careType={type}
+                  age={v.ageYears}
+                  lmp={type === 'antenatal' ? v.pregnancy.lmp : type === 'abortion' ? v.abortion.lmp : ''}
+                  onLmp={type === 'antenatal' ? (x) => setV((cur) => ({ ...cur, pregnancy: { ...cur.pregnancy, lmp: x } })) : type === 'abortion' ? (x) => setAbortion('lmp', x) : null}
+                  medicalOpen={Boolean(fe('medical.allergies'))}
+                  extraLine={
+                    type === 'infertility' ? (
+                      <p className="hs-line">
+                        <span className="hs-words">Trying to conceive since</span>
+                        <input aria-label="Trying to conceive since (months)" inputMode="numeric" className="hs-blank hs-num" value={v.fertility.durationMonths} onChange={(e) => setFertility('durationMonths', e.target.value.replace(/\D/g, '').slice(0, 3))} />
+                        <span className="hs-words">months</span>
+                      </p>
+                    ) : type === 'postnatal' && isEdit && !v.delivery.locked ? (
+                      <p className="hs-line">
+                        <span className="hs-words">Delivered on</span>
+                        <input type="date" aria-label="Delivered on" className="hs-blank" value={v.delivery.on} onChange={(e) => setV((cur) => ({ ...cur, delivery: { ...cur.delivery, on: e.target.value } }))} />
+                        <span className="hs-words">by</span>
+                        <select aria-label="Mode of delivery" className="hs-blank" value={v.delivery.mode} onChange={(e) => setV((cur) => ({ ...cur, delivery: { ...cur.delivery, mode: e.target.value } }))}>
+                          <option value="">–</option>
+                          {Object.entries(DELIVERY_MODE_LABELS).map(([k, label]) => (
+                            <option key={k} value={k}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </p>
+                    ) : null
+                  }
+                  obstetric={
+                    <div className="hs-existing">
+                  <div className="form-grid form-grid-5">
+                    {[
+                      ['gravida', 'Gravida (G)', 'All pregnancies incl. current'],
+                      ['para', 'Para (P)', 'Deliveries'],
+                      ['living', 'Living children (L)', ''],
+                      ['abortions', 'Abortions (A)', 'Pregnancies that ended before 20 weeks (any cause)'],
+                      ['previousCaesareans', 'Previous caesareans', ''],
+                    ].map(([key, label, hint]) => (
+                      <Field key={key} label={label} id={`ob-${key}`} error={fe(`obstetric.${key}`)} hint={hint || undefined} keepHint>
+                        <input id={`ob-${key}`} className={vc(`obstetric.${key}`)} inputMode="numeric" value={v.obstetric[key]} onChange={setIn('obstetric', key)} maxLength={2} />
+                        {vm(`obstetric.${key}`)}
+                      </Field>
+                    ))}
+                  </div>
+                  {type === 'abortion' && (
+                    <p className="hint">
+                      {obstetricHint(v.abortion.lossType, presentationWeeks(v.abortion, v.abortion.presentedOn || toDateInput(patient?.abortion?.presentedOn) || localToday()))}
+                    </p>
+                  )}
+                  <fieldset className="fieldset">
+                    <legend>Problems in previous pregnancies</legend>
+                    {firstPregnancy ? (
+                      <p className="hint">Not needed – this is the first pregnancy (Gravida 1, no earlier deliveries or abortions).</p>
+                    ) : (
+                      <>
+                        <div className="check-grid">
+                          {Object.entries(PAST_COMPLICATION_LABELS).map(([k, label]) => (
+                            <label key={k} className={checkClass(`obstetric.pastComplications.${k}`)}>
+                              <input type="checkbox" checked={v.obstetric.pastComplications.includes(k)} onChange={() => toggleComplication(k)} /> {label}
+                              {voiceTag(`obstetric.pastComplications.${k}`)}
+                            </label>
+                          ))}
+                        </div>
+                        <label className={`check-none ${checkClass('obstetric.complicationsReviewed')}`}>
+                          <input
+                            type="checkbox"
+                            checked={v.obstetric.complicationsReviewed}
+                            disabled={v.obstetric.pastComplications.length > 0}
+                            onChange={(e) => {
+                              unmark('obstetric.complicationsReviewed');
+                              setV({ ...v, obstetric: { ...v.obstetric, complicationsReviewed: e.target.checked } });
+                            }}
+                          />{' '}
+                          <strong>None of these</strong> – asked, and there were no problems in previous pregnancies
+                          {voiceTag('obstetric.complicationsReviewed')}
+                        </label>
+                      </>
+                    )}
+                  </fieldset>
+                    </div>
+                  }
+                  medical={
+                    <div className="hs-existing">
+                  <div className="allergy-field">
+                    <Field label="Allergies (required)" id="allergies" error={fe('medical.allergies')} hint='e.g. "Penicillin – rash". If she has none, tick "None known".'>
+                      <input
+                        id="allergies"
+                        className={vc('medical.allergies')}
+                        value={v.medical.allergies}
+                        onChange={setIn('medical', 'allergies')}
+                        maxLength={500}
+                      />
+                      {vm('medical.allergies')}
+                    </Field>
+                    <label className="check check-none">
+                      <input type="checkbox" checked={noAllergies} disabled={allergyStatus(v.medical.allergies) === 'recorded'} onChange={setNoAllergies} />{' '}
+                      <strong>None known</strong> – asked, and she has no allergies
+                    </label>
+                  </div>
+                  <div className="form-grid">
+                    <Field label="Blood group and Rh" id="bloodGroup" error={fe('medical.bloodGroup')} hint={type === 'abortion' ? 'Rh negative: anti-D may be needed' : undefined} keepHint>
+                      <select id="bloodGroup" className={vc('medical.bloodGroup')} value={v.medical.bloodGroup} onChange={setIn('medical', 'bloodGroup')}>
+                        <option value="">Not known yet</option>
+                        {BLOOD_GROUPS.map((b) => (
+                          <option key={b} value={b}>
+                            {b}
+                          </option>
+                        ))}
+                      </select>
+                      {vm('medical.bloodGroup')}
+                    </Field>
+                    <Field label="Height (cm)" id="heightCm" error={fe('medical.heightCm')}>
+                      <input id="heightCm" className={vc('medical.heightCm')} inputMode="decimal" value={v.medical.heightCm} onChange={setIn('medical', 'heightCm')} maxLength={5} />
+                      {vm('medical.heightCm')}
+                    </Field>
+                    <Field label="Weight (kg)" id="weightKg" error={fe('medical.weightKg')}>
+                      <input id="weightKg" className={vc('medical.weightKg')} inputMode="decimal" value={v.medical.weightKg} onChange={setIn('medical', 'weightKg')} maxLength={5} />
+                      {vm('medical.weightKg')}
+                    </Field>
+                  </div>
+                  <fieldset className="fieldset">
+                    <legend>Existing conditions</legend>
+                    <div className="check-grid">
+                      {Object.entries(CONDITION_LABELS).map(([k, label]) => (
+                        <label key={k} className={checkClass(`medical.conditions.${k}`)}>
+                          <input type="checkbox" checked={v.medical.conditions.includes(k)} onChange={() => toggleCondition(k)} /> {label}
+                          {voiceTag(`medical.conditions.${k}`)}
+                        </label>
+                      ))}
+                    </div>
+                    <label className={`check-none ${checkClass('medical.conditionsReviewed')}`}>
+                      <input
+                        type="checkbox"
+                        checked={v.medical.conditionsReviewed}
+                        disabled={v.medical.conditions.length > 0}
+                        onChange={(e) => {
+                          unmark('medical.conditionsReviewed');
+                          setV({ ...v, medical: { ...v.medical, conditionsReviewed: e.target.checked } });
+                        }}
+                      />{' '}
+                      <strong>No known conditions</strong> – asked, and none of these apply
+                      {voiceTag('medical.conditionsReviewed')}
+                    </label>
+                    <p className="hint">Leaving everything unticked is not the same as “none”: the risk level stays “Incomplete” until one of these is ticked.</p>
+                  </fieldset>
+                  <div className="form-grid">
+                    <Field label="Other conditions" id="otherConditions" error={fe('medical.otherConditions')} hint="Free text is not checked by the risk rules – the doctor must assess it." keepHint>
+                      <input id="otherConditions" className={vc('medical.otherConditions')} value={v.medical.otherConditions} onChange={setIn('medical', 'otherConditions')} maxLength={500} />
+                      {vm('medical.otherConditions')}
+                    </Field>
+                  </div>
+                    </div>
+                  }
+                />
+              )}
+
               {showPregnancy && (
                 <section className="card form-section">
                   <h2>Pregnancy</h2>
@@ -1104,135 +1277,6 @@ export function PatientForm({
               )}
 
               {showClinical && clinical && type === 'infertility' && <FertilitySection values={v.fertility} set={setFertility} fe={fe} />}
-
-              {showClinical && !isNewborn && clinical && (
-                <section className="card form-section">
-                  <h2>Obstetric history</h2>
-                  <div className="form-grid form-grid-5">
-                    {[
-                      ['gravida', 'Gravida (G)', 'All pregnancies incl. current'],
-                      ['para', 'Para (P)', 'Deliveries'],
-                      ['living', 'Living children (L)', ''],
-                      ['abortions', 'Abortions (A)', 'Pregnancies that ended before 20 weeks (any cause)'],
-                      ['previousCaesareans', 'Previous caesareans', ''],
-                    ].map(([key, label, hint]) => (
-                      <Field key={key} label={label} id={`ob-${key}`} error={fe(`obstetric.${key}`)} hint={hint || undefined} keepHint>
-                        <input id={`ob-${key}`} className={vc(`obstetric.${key}`)} inputMode="numeric" value={v.obstetric[key]} onChange={setIn('obstetric', key)} maxLength={2} />
-                        {vm(`obstetric.${key}`)}
-                      </Field>
-                    ))}
-                  </div>
-                  {type === 'abortion' && (
-                    <p className="hint">
-                      {obstetricHint(v.abortion.lossType, presentationWeeks(v.abortion, v.abortion.presentedOn || toDateInput(patient?.abortion?.presentedOn) || localToday()))}
-                    </p>
-                  )}
-                  <fieldset className="fieldset">
-                    <legend>Problems in previous pregnancies</legend>
-                    {firstPregnancy ? (
-                      <p className="hint">Not needed – this is the first pregnancy (Gravida 1, no earlier deliveries or abortions).</p>
-                    ) : (
-                      <>
-                        <div className="check-grid">
-                          {Object.entries(PAST_COMPLICATION_LABELS).map(([k, label]) => (
-                            <label key={k} className={checkClass(`obstetric.pastComplications.${k}`)}>
-                              <input type="checkbox" checked={v.obstetric.pastComplications.includes(k)} onChange={() => toggleComplication(k)} /> {label}
-                              {voiceTag(`obstetric.pastComplications.${k}`)}
-                            </label>
-                          ))}
-                        </div>
-                        <label className={`check-none ${checkClass('obstetric.complicationsReviewed')}`}>
-                          <input
-                            type="checkbox"
-                            checked={v.obstetric.complicationsReviewed}
-                            disabled={v.obstetric.pastComplications.length > 0}
-                            onChange={(e) => {
-                              unmark('obstetric.complicationsReviewed');
-                              setV({ ...v, obstetric: { ...v.obstetric, complicationsReviewed: e.target.checked } });
-                            }}
-                          />{' '}
-                          <strong>None of these</strong> – asked, and there were no problems in previous pregnancies
-                          {voiceTag('obstetric.complicationsReviewed')}
-                        </label>
-                      </>
-                    )}
-                  </fieldset>
-                </section>
-              )}
-
-              {showMedical && (
-                <section className="card form-section">
-                  <h2>Medical background</h2>
-                  <div className="allergy-field">
-                    <Field label="Allergies (required)" id="allergies" error={fe('medical.allergies')} hint='e.g. "Penicillin – rash". If she has none, tick "None known".'>
-                      <input
-                        id="allergies"
-                        className={vc('medical.allergies')}
-                        value={v.medical.allergies}
-                        onChange={setIn('medical', 'allergies')}
-                        maxLength={500}
-                      />
-                      {vm('medical.allergies')}
-                    </Field>
-                    <label className="check check-none">
-                      <input type="checkbox" checked={noAllergies} disabled={allergyStatus(v.medical.allergies) === 'recorded'} onChange={setNoAllergies} />{' '}
-                      <strong>None known</strong> – asked, and she has no allergies
-                    </label>
-                  </div>
-                  <div className="form-grid">
-                    <Field label="Blood group and Rh" id="bloodGroup" error={fe('medical.bloodGroup')} hint={type === 'abortion' ? 'Rh negative: anti-D may be needed' : undefined} keepHint>
-                      <select id="bloodGroup" className={vc('medical.bloodGroup')} value={v.medical.bloodGroup} onChange={setIn('medical', 'bloodGroup')}>
-                        <option value="">Not known yet</option>
-                        {BLOOD_GROUPS.map((b) => (
-                          <option key={b} value={b}>
-                            {b}
-                          </option>
-                        ))}
-                      </select>
-                      {vm('medical.bloodGroup')}
-                    </Field>
-                    <Field label="Height (cm)" id="heightCm" error={fe('medical.heightCm')}>
-                      <input id="heightCm" className={vc('medical.heightCm')} inputMode="decimal" value={v.medical.heightCm} onChange={setIn('medical', 'heightCm')} maxLength={5} />
-                      {vm('medical.heightCm')}
-                    </Field>
-                    <Field label="Weight (kg)" id="weightKg" error={fe('medical.weightKg')}>
-                      <input id="weightKg" className={vc('medical.weightKg')} inputMode="decimal" value={v.medical.weightKg} onChange={setIn('medical', 'weightKg')} maxLength={5} />
-                      {vm('medical.weightKg')}
-                    </Field>
-                  </div>
-                  <fieldset className="fieldset">
-                    <legend>Existing conditions</legend>
-                    <div className="check-grid">
-                      {Object.entries(CONDITION_LABELS).map(([k, label]) => (
-                        <label key={k} className={checkClass(`medical.conditions.${k}`)}>
-                          <input type="checkbox" checked={v.medical.conditions.includes(k)} onChange={() => toggleCondition(k)} /> {label}
-                          {voiceTag(`medical.conditions.${k}`)}
-                        </label>
-                      ))}
-                    </div>
-                    <label className={`check-none ${checkClass('medical.conditionsReviewed')}`}>
-                      <input
-                        type="checkbox"
-                        checked={v.medical.conditionsReviewed}
-                        disabled={v.medical.conditions.length > 0}
-                        onChange={(e) => {
-                          unmark('medical.conditionsReviewed');
-                          setV({ ...v, medical: { ...v.medical, conditionsReviewed: e.target.checked } });
-                        }}
-                      />{' '}
-                      <strong>No known conditions</strong> – asked, and none of these apply
-                      {voiceTag('medical.conditionsReviewed')}
-                    </label>
-                    <p className="hint">Leaving everything unticked is not the same as “none”: the risk level stays “Incomplete” until one of these is ticked.</p>
-                  </fieldset>
-                  <div className="form-grid">
-                    <Field label="Other conditions" id="otherConditions" error={fe('medical.otherConditions')} hint="Free text is not checked by the risk rules – the doctor must assess it." keepHint>
-                      <input id="otherConditions" className={vc('medical.otherConditions')} value={v.medical.otherConditions} onChange={setIn('medical', 'otherConditions')} maxLength={500} />
-                      {vm('medical.otherConditions')}
-                    </Field>
-                  </div>
-                </section>
-              )}
 
               {showClinical && clinical && (
                 <section className="card form-section">
