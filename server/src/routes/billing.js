@@ -12,6 +12,7 @@ import { nextNumber } from '../models/Counter.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { PriceItem } from '../models/PriceItem.js';
+import { Tenant } from '../models/Tenant.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
@@ -164,10 +165,12 @@ billingRouter.get('/bills/:id', async (req, res) => {
   const { id } = parse(z.object({ id: objectId }), req.params);
   const bill = await freshBill(req, await findBill(req, id));
   await audit(req, 'BILL_VIEWED', { details: ids(bill) });
+  const settings = await billingSettings(req.tenantId);
   res.json({
     bill: await viewOf(req, bill),
     modes: PAYMENT_MODES.map((m) => ({ key: m, label: MODE_LABELS[m] })),
-    upiReady: (await billingSettings(req.tenantId)).upiReady, // can a UPI payment link be made (Billing → Settings)
+    upiReady: settings.upiReady, // can a UPI payment link be made (Billing → Settings)
+    billNotes: settings.billNotes, // printed at the foot of the bill and its receipts
     earlierInsurance: await earlierInsurance(req, bill), // her insurance on an earlier bill, to fill in again
   });
 });
@@ -520,6 +523,19 @@ billingRouter.get('/settings', async (req, res) => {
 
 const settingsSchema = z.object({ upiId: z.string().trim().max(UPI_ID_MAX, 'The UPI ID is too long.'), payeeName: z.string().trim().max(PAYEE_NAME_MAX, 'The payee name is too long.') }).strict();
 
+// The lines printed at the foot of every bill and receipt (owner, 27 Oct 2026) – the hospital admin
+billingRouter.put('/settings/bill-notes', async (req, res) => {
+  assertRole(req, SETTINGS_ROLES, 'The billing settings are kept by the hospital admin.');
+  const { billNotes } = parse(z.object({ billNotes: z.string().trim().max(600, 'Keep the notes to 600 characters.') }).strict(), req.body);
+  if (mentionsFetalSex(billNotes)) throw Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields: { billNotes: BILL_PCPNDT_MESSAGE } });
+  const before = (await billingSettings(req.tenantId)).billNotes;
+  if (before !== billNotes) {
+    await Tenant.updateOne({ _id: req.tenantId }, { $set: { 'billing.billNotes': billNotes } });
+    await audit(req, 'BILLING_SETTINGS_CHANGED', { details: { fields: ['billNotes'] } });
+  }
+  res.json(await settingsAnswer(req));
+});
+
 billingRouter.put('/settings', async (req, res) => {
   assertRole(req, SETTINGS_ROLES, 'The billing settings are kept by the hospital admin.');
   const body = parse(settingsSchema, req.body);
@@ -563,6 +579,20 @@ billingRouter.get('/reports/daily', async (req, res) => {
     }
   }
   const views = new Map((await billViews(req.tenantId, bills, { full: false })).map((v) => [v.id, v]));
+  // OPD and IPD apart, and what was charged this day by service group (owner, 27 Oct 2026: like the hospital's
+  // "Daily collection" and "Group wise summary")
+  const byKind = { opd: { in: 0, out: 0 }, ipd: { in: 0, out: 0 } };
+  for (const { bill, p } of payments) byKind[bill.kind === 'ipd' ? 'ipd' : 'opd'][p.kind === 'refund' ? 'out' : 'in'] += p.amountPaise;
+  const charged = await Bill.find({ tenantId: req.tenantId, status: { $ne: 'cancelled' }, 'lines.added.at': { $gte: from, $lt: to } }, { lines: 1 }).lean();
+  const byGroup = Object.fromEntries(GROUPS.map((g) => [g, { count: 0, amount: 0 }]));
+  for (const b of charged) {
+    for (const l of b.lines ?? []) {
+      if (l.removed || !inDay(l.added?.at) || !byGroup[l.group]) continue;
+      byGroup[l.group].count += l.qty ?? 1;
+      byGroup[l.group].amount += l.amountPaise;
+    }
+  }
+  const servicesOf = (bill) => [...new Set(liveLines(bill).map((l) => l.name))].join(', ');
   const totalIn = Object.values(byMode).reduce((s, m) => s + m.in, 0);
   const totalOut = Object.values(byMode).reduce((s, m) => s + m.out, 0);
   res.json({
@@ -570,12 +600,24 @@ billingRouter.get('/reports/daily', async (req, res) => {
     totals: { in: totalIn, out: totalOut, net: totalIn - totalOut },
     byMode: PAYMENT_MODES.map((m) => ({ mode: m, label: MODE_LABELS[m], ...byMode[m], net: byMode[m].in - byMode[m].out })),
     byPerson: [...byPerson.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    byKind: ['opd', 'ipd'].map((k) => ({ kind: k, ...byKind[k], net: byKind[k].in - byKind[k].out })),
+    byGroup: GROUPS.filter((g) => byGroup[g].count).map((g) => ({ group: g, label: GROUP_LABELS[g], ...byGroup[g] })),
     payments: payments
       .sort((a, b) => a.p.at - b.p.at)
-      .map(({ bill, p }) => ({ receipt: p.receipt, at: p.at, kind: p.kind, mode: p.mode, amountPaise: p.amountPaise, byName: p.byName, billId: String(bill._id), number: bill.number, patient: views.get(String(bill._id))?.patient ?? null })),
+      .map(({ bill, p }) => {
+        const v = views.get(String(bill._id));
+        return { receipt: p.receipt, at: p.at, kind: p.kind, mode: p.mode, amountPaise: p.amountPaise, byName: p.byName, billId: String(bill._id), number: bill.number, billKind: bill.kind, doctorName: v?.doctorName ?? '', services: servicesOf(bill), patient: v?.patient ?? null };
+      }),
     discounts: bills.filter((b) => inDay(b.discount?.at)).map((b) => ({ billId: String(b._id), number: b.number, patient: views.get(String(b._id))?.patient ?? null, discountPaise: b.discount.paise, reason: b.discount.reason ?? '', byName: b.discount.byName ?? '' })),
     cancelled: bills.filter((b) => inDay(b.cancelled?.at)).map((b) => ({ billId: String(b._id), number: b.number, patient: views.get(String(b._id))?.patient ?? null, reason: b.cancelled.reason ?? '', byName: b.cancelled.byName ?? '' })),
   });
+});
+
+// The daily summary saved as a PDF (Download PDF on its print preview): written down, as every export is.
+billingRouter.post('/reports/daily/saved', async (req, res) => {
+  const { date } = parse(z.object({ date: requiredDateOnly('Date') }).strict(), req.body);
+  await audit(req, 'BILLING_EXPORTED', { details: { what: 'daily-summary', from: isoDay(date), to: isoDay(date) } });
+  res.json({ ok: true });
 });
 
 // Unpaid bills: who owes how much, since when (oldest first).

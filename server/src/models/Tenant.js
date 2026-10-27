@@ -40,6 +40,8 @@ const tenantSchema = new mongoose.Schema(
     billing: {
       upiId: { type: String, trim: true, maxlength: 100, default: '' },
       payeeName: { type: String, trim: true, maxlength: 80, default: '' },
+      // Lines printed at the foot of every bill and receipt (e.g. "First consultation – Rs 500"), set by the admin
+      billNotes: { type: String, trim: true, maxlength: 600, default: '' },
       updatedByName: { type: String, trim: true, maxlength: 100, default: '' },
       updatedAt: { type: Date, default: null },
       // Every change of the UPI ID or the payee name, oldest first (the last 50): what they were set to, by whom and

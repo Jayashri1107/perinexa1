@@ -181,3 +181,24 @@
   .tally-names > .card.narrow { max-width: none; }
   .tally-names .form-grid > .field { grid-template-columns: minmax(130px, 190px) minmax(0, 1fr); }
 }
+
+/* The printed bill as the hospital's OPD receipt (owner, 27 Oct 2026) */
+.bill-doc-titlebar { display: flex; align-items: baseline; justify-content: space-between; gap: 4mm; }
+.bill-doc-titlebar .pdoc-title { margin: 2mm 0; }
+.bill-doc-box { border: 1px solid var(--print-ink); padding: 2mm 3mm; margin-bottom: 3mm; }
+.bill-doc-box .bill-doc-head { margin-bottom: 2mm; }
+.bill-doc-box .bill-doc-lines { border-top: 1px solid var(--print-ink); }
+.bill-doc-lines thead th { border-bottom: 1px solid var(--print-ink); font-weight: 600; }
+.bill-doc-group th { font-weight: 600; text-decoration: underline; padding-top: 2mm; }
+.bill-doc-group td, .bill-doc-group th { border-bottom: 0; }
+.bill-doc-words { margin: 2mm 0; }
+.bill-doc-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; margin: 4mm 0 2mm; }
+.bill-doc-notes { margin: 0; padding-left: 5mm; font-size: var(--fs-print-small); }
+.bill-doc-sign { display: flex; flex-direction: column; align-items: center; gap: 4mm; min-width: 40mm; text-align: center; }
+/* The daily collection: every receipt, with its services (wrapped) – on A4 the long list stays readable */
+.bill-receipts .bill-receipts-services { white-space: normal; min-width: 140px; }
+.bill-daily-doc .bill-receipts th, .bill-daily-doc .bill-receipts td { font-size: var(--fs-print-small); padding: 1mm 1.2mm; }
+.pdoc .bill-doc-box th, .pdoc .bill-doc-box td { padding: 0.8mm 1.5mm; line-height: var(--lh-print-small); vertical-align: top; }
+.pdoc .bill-doc-box .bill-doc-head th { width: 1%; white-space: nowrap; font-size: var(--fs-print-small); }
+.pdoc .bill-doc-box .bill-doc-group th { padding-top: 1.5mm; }
+.pdoc .bill-doc-box .bill-doc-sums { margin-bottom: 0; }
