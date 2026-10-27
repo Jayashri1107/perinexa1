@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildPhrases,
+  cannotRecordMessage,
   careTypeChange,
   checkSpeech,
   createVoiceSession,
@@ -669,7 +670,7 @@ describe('privacy check before every start', () => {
 
   it('never uses webkitSpeechRecognition', () => {
     const { Recognition, nav } = fakeChrome();
-    expect(speechEnvironment({ isSecureContext: true, navigator: nav, webkitSpeechRecognition: Recognition })).toEqual({ ok: false, reason: 'no-speech' });
+    expect(speechEnvironment({ isSecureContext: true, navigator: nav, webkitSpeechRecognition: Recognition })).toEqual({ ok: false, reason: 'no-speech', version: '155' });
   });
 });
 
@@ -972,10 +973,43 @@ describe('checking Chrome before recording', () => {
     expect(speechEnvironment({ isSecureContext: false, navigator: nav, SpeechRecognition: Recognition })).toEqual({ ok: false, reason: 'insecure' });
     expect(speechEnvironment({ isSecureContext: true, navigator: fakeChrome({ brands: ['Brave'] }).nav, SpeechRecognition: Recognition })).toEqual({
       ok: false,
-      reason: 'not-chrome',
+      reason: 'brave',
     });
-    expect(speechEnvironment(withSpeech(fakeChrome({ local: 'missing' }).Recognition))).toEqual({ ok: false, reason: 'old-chrome' });
+    expect(speechEnvironment(withSpeech(fakeChrome({ local: 'missing' }).Recognition))).toEqual({ ok: false, reason: 'old-chrome', version: '155' });
     expect(speechEnvironment(withSpeech(Recognition))).toEqual({ ok: true });
+  });
+
+  it('names the browser that cannot record, so the message says what to do', () => {
+    const { Recognition } = fakeChrome();
+    Recognition.available = async () => 'available';
+    const reason = (navigator) => speechEnvironment({ isSecureContext: true, navigator, SpeechRecognition: Recognition }).reason;
+    const edge = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0';
+    expect(reason({ userAgent: edge, userAgentData: { mobile: false, brands: [{ brand: 'Microsoft Edge', version: '141' }, { brand: 'Chromium', version: '141' }] } })).toBe('edge');
+    expect(reason({ userAgent: edge })).toBe('edge');
+    expect(reason({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0' })).toBe('firefox');
+    expect(reason({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15' })).toBe('safari');
+    expect(reason({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 OPR/122.0.0.0' })).toBe('opera');
+    expect(reason({ userAgent: 'Something else/1.0' })).toBe('not-chrome');
+    // Phones and tablets, Google Chrome on Android included, and an iPad that says it is a Mac
+    expect(reason({ userAgentData: { mobile: true, brands: [{ brand: 'Google Chrome', version: '141' }] } })).toBe('phone');
+    expect(reason({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/141.0 Mobile/15E148 Safari/604.1' })).toBe('phone');
+    expect(reason({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15', maxTouchPoints: 5 })).toBe('phone');
+    // Google Chrome on a computer is not stopped here
+    expect(reason(fakeChrome().nav)).toBeUndefined();
+  });
+
+  it('says which browser it is and what to do', () => {
+    expect(cannotRecordMessage({ reason: 'edge' })).toBe(
+      'This is Microsoft Edge. Recording needs Google Chrome, so that speech stays on this computer. Open this page in Google Chrome (if it is not installed, get it from google.com/chrome). You can still type or paste the details in the box.',
+    );
+    expect(cannotRecordMessage({ reason: 'firefox' })).toMatch(/^This is Firefox\. /);
+    expect(cannotRecordMessage({ reason: 'safari' })).toMatch(/^This is Safari\. /);
+    expect(cannotRecordMessage({ reason: 'phone' })).toMatch(/not on a phone or tablet/);
+    expect(cannotRecordMessage({ reason: 'old-chrome', version: '120' })).toMatch(/^This is Chrome 120\. Recording needs Chrome 139 or newer\./);
+    expect(cannotRecordMessage({ reason: 'no-speech', version: '110' })).toMatch(/^This is Chrome 110\./);
+    expect(cannotRecordMessage({ reason: 'old-chrome' })).toMatch(/^Update Google Chrome/);
+    expect(cannotRecordMessage({})).toMatch(/^Update Google Chrome/);
+    for (const reason of ['phone', 'edge', 'firefox', 'safari', 'opera', 'brave', 'not-chrome']) expect(cannotRecordMessage({ reason })).not.toMatch(/!/);
   });
 
   it('asks for en-IN first and en-US only when en-IN is unavailable', async () => {
