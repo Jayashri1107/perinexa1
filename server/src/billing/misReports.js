@@ -26,42 +26,43 @@ export const MIS_REPORTS = [
   {
     group: 'OPD MIS',
     reports: [
-      ['opd-daily-collection', 'OPD daily collection'],
-      ['opd-billing-summary', 'OPD billing summary'],
-      ['doctorwise-visits', 'Doctorwise visit details'],
-      ['reference-doctor', 'Reference doctor'],
-      ['opd-refund', 'OPD refund'],
-      ['datewise-bills', 'Datewise bills'],
-      ['opd-credit-bills', 'OPD credit bills'],
-      ['followup-datewise', 'OPD follow-up datewise'],
-      ['registration', 'Registration'],
-      ['appointment-list', 'Appointment list'],
+      ['opd-daily-collection', 'OPD daily collection', 'Every payment, advance and refund on outpatient bills, with the receipt, patient, consultant and mode.'],
+      ['opd-billing-summary', 'OPD billing summary', 'One line a day: outpatient bills made, charged, discount, net, paid and still due.'],
+      ['doctorwise-visits', 'Doctorwise visit details', 'For each doctor: visits started, new and follow-up consultations charged, and their amount.'],
+      ['reference-doctor', 'Reference doctor', 'Patients registered in these days, by the doctor or clinic who referred them.'],
+      ['opd-refund', 'OPD refund', 'Money given back on outpatient bills.'],
+      ['datewise-bills', 'Datewise bills', 'Every bill made in these days, OPD and IPD, with what was paid and what is still due.'],
+      ['opd-credit-bills', 'OPD credit bills', 'Outpatient bills of these days with money still to come.'],
+      ['followup-datewise', 'OPD follow-up datewise', 'Follow-ups due from these days: who, with which doctor, for what, and whether booked.'],
+      ['registration', 'Registration', 'Patients registered in these days, with their number, age, phone, doctor and referrer.'],
+      ['appointment-list', 'Appointment list', 'Appointments and walk-in tokens of these days, by doctor and time.'],
     ],
   },
   {
     group: 'IPD MIS',
     reports: [
-      ['admission-list', 'Admission list'],
-      ['admission-ref-doctor', 'Admission list ref. doctorwise'],
-      ['discharge-typewise', 'Discharge typewise'],
-      ['advance-report', 'Advance report'],
-      ['ipd-daily-collection', 'IPD daily collection'],
-      ['ipd-admitted-now', 'IPD admission list (in hospital now)'],
-      ['discharge-register', 'Discharge register'],
+      ['admission-list', 'Admission list', 'Patients admitted in these days, with IPD number, ward and bed, and when they left.'],
+      ['admission-ref-doctor', 'Admission list ref. doctorwise', 'Admissions of these days, by the doctor or clinic who referred the patient.'],
+      ['discharge-typewise', 'Discharge typewise', 'Discharges of these days, by how the patient was admitted (planned, emergency, day care).'],
+      ['advance-report', 'Advance report', 'Advances (deposits) taken in these days.'],
+      ['ipd-daily-collection', 'IPD daily collection', 'Every payment, advance and refund on inpatient bills.'],
+      ['ipd-admitted-now', 'IPD admission list (in hospital now)', 'The patients in hospital now, with ward, bed and days so far.'],
+      ['discharge-register', 'Discharge register', 'Patients discharged in these days, with admission and discharge times and days stayed.'],
     ],
   },
   {
     group: 'Collection MIS',
     reports: [
-      ['daily-collection', 'Daily collection'],
-      ['group-wise', 'Group wise summary'],
-      ['service-wise', 'Service wise report'],
-      ['credit-report', 'Credit report'],
+      ['daily-collection', 'Daily collection', 'One line a day: money in by mode, refunds and the net.'],
+      ['group-wise', 'Group wise summary', 'What was charged in these days, by service group.'],
+      ['service-wise', 'Service wise report', 'What was charged in these days, service by service.'],
+      ['credit-report', 'Credit report', 'Every bill with money still to come, whatever its date.'],
     ],
   },
 ];
 export const MIS_KEYS = MIS_REPORTS.flatMap((g) => g.reports.map(([k]) => k));
-const TITLE = Object.fromEntries(MIS_REPORTS.flatMap((g) => g.reports));
+const TITLE = Object.fromEntries(MIS_REPORTS.flatMap((g) => g.reports.map(([k, label]) => [k, label])));
+const DESCRIPTION = Object.fromEntries(MIS_REPORTS.flatMap((g) => g.reports.map(([k, , d]) => [k, d])));
 
 /** Every payment, advance or refund in the range: [{ bill, p }] by time; kind: 'opd' | 'ipd' | null (both). */
 async function moneyIn(tenantId, from, to, kind) {
@@ -337,5 +338,5 @@ export async function misReport(req, key, fromDay, toDay) {
       return null;
   }
   const totalsRow = Object.fromEntries(columns.filter((c) => c.money).map((c) => [c.key, rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0)]));
-  return { key, title: TITLE[key], from: isoDay(fromDay), to: isoDay(toDay), columns, rows, totals: totalsRow };
+  return { key, title: TITLE[key], description: DESCRIPTION[key], from: isoDay(fromDay), to: isoDay(toDay), columns, rows, totals: totalsRow };
 }

@@ -256,7 +256,7 @@ describe('reports and the export', () => {
     await pay(billB.id, { mode: 'upi', amountPaise: 20000, reference: 'U1' });
 
     const daily = (await (await as('reception')).get('/api/billing/reports/daily?date=2026-09-28')).body;
-    expect(daily.totals).toEqual({ in: 70000, out: 0, net: 70000 });
+    expect(daily.totals).toEqual({ in: 70000, out: 0, net: 70000, expenses: 0, balance: 70000 });
     expect(daily.byMode.find((m) => m.mode === 'upi')).toMatchObject({ in: 20000 });
     expect(daily.byPerson).toEqual([{ name: 'Sample reception', in: 70000, out: 0, count: 2 }]);
 
@@ -444,5 +444,41 @@ describe('the MIS reports', () => {
     expect((await (await as('reception')).get('/api/billing/reports/mis?report=nothing&from=2026-09-28&to=2026-09-28')).status).toBe(400);
     expect((await (await as('reception')).post('/api/billing/reports/mis/saved').send({ report: 'registration', from: '2026-09-28', to: '2026-09-28', as: 'pdf' })).status).toBe(200);
     expect(await AuditLog.countDocuments({ action: 'BILLING_EXPORTED', 'details.what': 'mis:registration' })).toBe(1);
+  });
+});
+
+// The day's expenses on the daily collection (owner, 27 Oct 2026)
+describe("the day's expenses", () => {
+  it('are taken off the day, cash ones off the cash in the drawer; a cancelled one stays listed and counts nothing', async () => {
+    await prices({ consult_new: 50000 });
+    const p = await register('Expense Mother');
+    await startVisit(p);
+    const [b] = await billsOf(p);
+    await pay(b.id, { mode: 'cash', amountPaise: 50000 });
+    const desk = await as('reception');
+    const tea = await desk.post('/api/billing/expenses').send({ category: 'refreshments', mode: 'cash', amountPaise: 12000, paidTo: 'Tea stall' });
+    expect(tea.status, JSON.stringify(tea.body)).toBe(201);
+    expect((await desk.post('/api/billing/expenses').send({ category: 'courier', mode: 'upi', amountPaise: 8000 })).status).toBe(201);
+    const wrong = (await desk.post('/api/billing/expenses').send({ category: 'other', mode: 'cash', amountPaise: 99900 })).body.expense;
+    expect((await desk.post('/api/billing/expenses').send({ category: 'other', mode: 'cash', amountPaise: 50 })).status).toBe(400);
+    expect((await desk.post('/api/billing/expenses').send({ date: '2026-09-29', category: 'other', mode: 'cash', amountPaise: 1000 })).status).toBe(400);
+    // Only the person who entered it, billing or the admin cancels; a reason is needed
+    expect((await (await as('nurse')).post(`/api/billing/expenses/${wrong.id}/cancel`).send({ reason: 'twice' })).status).toBe(403);
+    expect((await desk.post(`/api/billing/expenses/${wrong.id}/cancel`).send({ reason: '' })).status).toBe(400);
+    expect((await desk.post(`/api/billing/expenses/${wrong.id}/cancel`).send({ reason: 'Entered twice' })).status).toBe(200);
+    expect((await desk.post(`/api/billing/expenses/${wrong.id}/cancel`).send({ reason: 'Again' })).status).toBe(409);
+
+    const daily = (await desk.get('/api/billing/reports/daily?date=2026-09-28')).body;
+    expect(daily.totals).toMatchObject({ in: 50000, net: 50000, expenses: 20000, balance: 30000 });
+    expect(daily.cashInHand).toBe(38000);
+    expect(daily.expenses.map((e) => [e.category, e.amountPaise, Boolean(e.cancelled)])).toEqual([
+      ['refreshments', 12000, false],
+      ['courier', 8000, false],
+      ['other', 99900, true],
+    ]);
+    expect((await desk.get('/api/billing/expenses?date=2026-09-28')).body.expenses).toHaveLength(3);
+    expect(await AuditLog.countDocuments({ action: 'EXPENSE_RECORDED' })).toBe(3);
+    expect(await AuditLog.countDocuments({ action: 'EXPENSE_CANCELLED' })).toBe(1);
+    expect((await (await as('drA')).get('/api/billing/expenses')).status).toBe(403);
   });
 });

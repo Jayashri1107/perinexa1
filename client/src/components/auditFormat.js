@@ -272,6 +272,8 @@ export const AUDIT_LABELS = {
   BILL_SENT_WHATSAPP: 'Bill sent on WhatsApp',
   LAB_REPORT_SENT_WHATSAPP: 'Lab report sent on WhatsApp',
   CASH_HANDED_OVER: 'Cash handed over',
+  EXPENSE_RECORDED: 'Expense entered',
+  EXPENSE_CANCELLED: 'Expense cancelled',
   CASH_HANDOVER_CONFIRMED: 'Cash handover confirmed',
   LAB_LABELS_PRINTED: 'Lab sample labels printed',
   LAB_SAMPLE_REJECTED: 'Lab sample rejected',
@@ -1144,6 +1146,9 @@ export function describeAudit(entry) {
       return `${d.receipt ? `Receipt ${d.receipt}` : `Bill ${d.number ?? ''}`}${d.practice ? ' (practice – not really sent)' : ''}`;
     case 'CASH_HANDED_OVER':
       return `${d.day ?? ''}: ₹${((d.handedPaise ?? 0) / 100).toLocaleString('en-IN')} handed over (Perinexa counted ₹${((d.cashPaise ?? 0) / 100).toLocaleString('en-IN')})`;
+    case 'EXPENSE_RECORDED':
+    case 'EXPENSE_CANCELLED':
+      return `${d.date ?? ''}: ₹${((d.amountPaise ?? 0) / 100).toLocaleString('en-IN')}${d.mode ? ` by ${d.mode}` : ''}`;
     case 'CASH_HANDOVER_CONFIRMED':
       return `${d.day ?? ''}: ₹${((d.receivedPaise ?? 0) / 100).toLocaleString('en-IN')} received (₹${((d.handedPaise ?? 0) / 100).toLocaleString('en-IN')} handed over)`;
     case 'ADMISSION_REQUESTED':
