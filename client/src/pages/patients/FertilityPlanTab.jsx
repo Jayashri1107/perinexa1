@@ -22,6 +22,7 @@ import {
 } from './fertilityFormat.js';
 import { toDateInput } from './patientFormat.js';
 import { SemenResultCard } from './SemenResultCard.jsx';
+import { CounsellingNumbers } from './CounsellingNumbers.jsx';
 import { CYCLE_STATUS_LOOK, PROTOCOL_KIND_WORDS, cycleSummary, leadFollicleText } from './fertilityCycleFormat.js';
 
 // The Treatment plan tab on an infertility record (docs/FERTILITY_PLAN.md – the approved protocol library):
@@ -873,6 +874,7 @@ export function PatientFertilityPlanTab() {
         />
       )}
       {mode === 'view' && !plan && <LibraryNote text={data.libraryNote} />}
+      {mode === 'view' && <CounsellingNumbers ageYears={patient.currentAge ?? patient.ageYears} />}
       {mode === 'view' && (
         <SemenResultCard
           patient={patient}
