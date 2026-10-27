@@ -13,6 +13,8 @@ import { addDays, hospitalDayStart, isoDay, utcDay } from '../careplans/dates.js
 import { CarePlan } from '../models/CarePlan.js';
 import { CarePlanTemplate } from '../models/CarePlanTemplate.js';
 import { ClinicalDocument } from '../models/ClinicalDocument.js';
+import { FertilityCycle } from '../models/FertilityCycle.js';
+import { FertilityPlan } from '../models/FertilityPlan.js';
 import { Patient } from '../models/Patient.js';
 import { NOT_DUPLICATE } from '../patients/duplicateRules.js';
 import { mainRecordOf } from '../patients/duplicateService.js';
@@ -137,7 +139,7 @@ export function windowFromOf(period, today) {
 // 'visitVitals': the window's visits also carry their vitals and examination findings (only the cards that read
 // them ask for it; the others get the visits' dates and types only, which is much less to load).
 // 'deliveries': the delivery notes a doctor confirmed, delivered around the period (Deliveries tab).
-export const NEEDS = ['patients', 'visitSummary', 'windowVisits', 'visitVitals', 'cancelled', 'plansLight', 'plansFull', 'template', 'g2Rows', 'deliveries'];
+export const NEEDS = ['patients', 'visitSummary', 'windowVisits', 'visitVitals', 'cancelled', 'plansLight', 'plansFull', 'template', 'g2Rows', 'deliveries', 'fertility'];
 
 /**
  * One hospital's rows. opts: { now, today, windowFrom, periodFrom, periodTo, needs }.
@@ -148,7 +150,7 @@ export async function loadHospital(tenantId, { now, today, windowFrom, periodFro
   if (!(tenantId instanceof mongoose.Types.ObjectId)) throw new Error('loadHospital needs the hospital id as an ObjectId');
   const need = new Set(needs);
   for (const n of need) if (!NEEDS.includes(n)) throw new Error(`Unknown analytics load: ${n}`);
-  const data = { tenantId, patients: [], visitSummary: [], windowVisits: [], cancelledVisits: [], plans: [], fullPlans: [], template: null, g2Rows: [], deliveries: [] };
+  const data = { tenantId, patients: [], visitSummary: [], windowVisits: [], cancelledVisits: [], plans: [], fullPlans: [], template: null, g2Rows: [], deliveries: [], fertilityCycles: [], fertilityPlans: [] };
   const jobs = [];
 
   if (need.has('patients')) {
@@ -288,6 +290,25 @@ export async function loadHospital(tenantId, { now, today, windowFrom, periodFro
         .lean()
         .then((rows) => {
           data.deliveries = rows;
+        }),
+    );
+  }
+  if (need.has('fertility')) {
+    // The Fertility tab (metrics/fertility.js): cycles that ended (completed or cancelled) and every treatment plan
+    // (her first plan's day is read for the time to pregnancy). Only states, steps, reasons and days – never the
+    // plan's text, the scan values or any note. Every query has the hospital's id.
+    jobs.push(
+      FertilityCycle.find({ tenantId, $or: [{ status: 'completed' }, { cancelled: { $ne: null } }] })
+        .select('_id patientId step status cancelled.reason cancelled.at outcome.test outcome.testOn outcome.betaHcgOn outcome.scanOn lastEdited.at updatedAt')
+        .lean()
+        .then((rows) => {
+          data.fertilityCycles = rows;
+        }),
+      FertilityPlan.find({ tenantId })
+        .select('_id patientId status outcome.kind outcome.at createdAt updatedAt')
+        .lean()
+        .then((rows) => {
+          data.fertilityPlans = rows;
         }),
     );
   }

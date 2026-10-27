@@ -5,9 +5,10 @@ import { formatNumber } from '../../components/DataTable.jsx';
 import { formatDate } from '../../components/ui.jsx';
 import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { formatGestation } from '../patients/patientFormat.js';
+import { OUTCOME_LABELS as PLAN_OUTCOME_WORDS, STEP_WORDS as CYCLE_STEP_WORDS } from '../patients/fertilityFormat.js';
 
 // The tabs, in page order (the server has the same ones: server/src/analytics/registry.js SECTIONS).
-export const SECTIONS = ['overview', 'pregnancy', 'risk', 'care', 'deliveries', 'newborn'];
+export const SECTIONS = ['overview', 'pregnancy', 'risk', 'care', 'deliveries', 'newborn', 'fertility'];
 export const SECTION_LABELS = {
   overview: 'Overview',
   pregnancy: 'Pregnancy',
@@ -15,6 +16,7 @@ export const SECTION_LABELS = {
   care: 'Care plans & visits',
   deliveries: 'Deliveries',
   newborn: 'Newborn',
+  fertility: 'Fertility',
 };
 
 /**
@@ -24,7 +26,7 @@ export const SECTION_LABELS = {
  */
 export function notInThisVersion(audience) {
   return [
-    'Not counted in this version: birth doses; the GDM rate and lab results as numbers; clinical measures for infertility and gynaecology; the postnatal schedule.',
+    'Not counted in this version: birth doses; the GDM rate and lab results as numbers; clinical measures for gynaecology; the postnatal schedule. Fertility treatment cycles and plans are on the Fertility tab.',
     "Planned for later: doctors' changes to the risk level, problems in earlier pregnancies, reduced fetal movements, and whether women came back on the date given.",
     audience === 'admin'
       ? 'Deliveries, the mode of delivery and postpartum haemorrhage are on the Deliveries tab. Births, stillbirths, deaths and the other newborn numbers there are only for doctors.'
@@ -133,6 +135,11 @@ export function listDetailText(detail) {
         .join(' · ');
     case 'death':
       return `Died ${formatDate(detail.on)}`;
+    // Fertility tab: a row per cycle or plan (a woman with two cycles in the period has two rows)
+    case 'cycle':
+      return [`Cycle ended ${formatDate(detail.on)}`, CYCLE_STEP_WORDS[detail.step] ?? null].filter(Boolean).join(' · ');
+    case 'plan':
+      return [`Plan ended ${formatDate(detail.on)}`, PLAN_OUTCOME_WORDS[detail.outcome] ?? null].filter(Boolean).join(' · ');
     default:
       return '—';
   }

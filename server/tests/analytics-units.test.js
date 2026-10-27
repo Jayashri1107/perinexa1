@@ -167,7 +167,7 @@ const plan = (o) => ({ _id: oid(), current: false, status: 'closed', closed: nul
  * What load.js returns, over synthetic rows. patients: rows; plans; visits (active, all history); cancelled;
  * deliveries: confirmed delivery notes ({ _id, patientId, content }) – the cards keep those of the period.
  */
-function dataOf({ patients, plans = [], fullPlans = [], template = null, visits = [], cancelled = [], deliveries = [], period = parsePeriod({ period: '12m' }, { audience: 'doctor', today: T }) }) {
+function dataOf({ patients, plans = [], fullPlans = [], template = null, visits = [], cancelled = [], deliveries = [], fertilityCycles = [], fertilityPlans = [], period = parsePeriod({ period: '12m' }, { audience: 'doctor', today: T }) }) {
   const active = visits.filter((v) => v.status !== 'cancelled');
   const byPatient = new Map();
   for (const v of [...active].sort((a, b) => a.visitOn - b.visitOn || a.createdAt - b.createdAt)) {
@@ -200,6 +200,8 @@ function dataOf({ patients, plans = [], fullPlans = [], template = null, visits 
     fullPlans,
     template,
     deliveries,
+    fertilityCycles,
+    fertilityPlans,
     // What load.js's own query of born babies returns (card G2 only).
     g2Rows: patients
       .filter((p) => p.careType === 'newborn' && p.newborn?.birthAt && p.newborn.birthAt <= NOW)
@@ -678,8 +680,64 @@ function randomHospital(seed) {
       p.death = p.careType === 'newborn' ? { on, ageDays: pick2([0, 3, 6, 7, 20, 27, 28, 60, null]) } : { on, timing: pick2(['pregnancy', 'delivery', 'postpartum', 'other']) };
     }
   }
-  return { patients, plans, fullPlans, visits, doctors, template: STANDARD_TEMPLATE, deliveries };
+  // Fertility tab: cycles and plans of the infertility patients (and a few others), from a stream of their own too
+  const r3 = mulberry32(seed * 104729 + 31);
+  const int3 = (a, b) => a + Math.floor(r3() * (b - a + 1));
+  const pick3 = (xs) => xs[int3(0, xs.length - 1)];
+  const fertilityCycles = [];
+  const fertilityPlans = [];
+  const ago = (days) => new Date(NOW.getTime() - days * 86_400_000 - int3(0, 23) * 3_600_000);
+  for (const p of patients) {
+    if (p.careType === 'newborn' || (p.careType !== 'infertility' && r3() < 0.85)) continue;
+    for (let k = int3(1, 3); k > 0; k -= 1) {
+      const outcomeKind = pick3([null, 'pregnant', 'next_step', 'next_step', 'no_response', 'patient_choice', 'discarded', 'other']);
+      fertilityPlans.push({ _id: oid(), patientId: p._id, status: outcomeKind ? 'completed' : 'active', outcome: outcomeKind ? { kind: outcomeKind, at: ago(int3(0, 420)) } : null, createdAt: ago(int3(200, 900)), updatedAt: ago(int3(0, 200)) });
+    }
+    for (let k = int3(0, 4); k > 0; k -= 1) {
+      const cancelled = r3() < 0.3 ? { reason: pick3(['too_many_follicles', 'no_response', 'ovulated_early', 'patient_choice', 'other']), at: ago(int3(0, 420)) } : null;
+      fertilityCycles.push({
+        _id: oid(),
+        patientId: p._id,
+        step: pick3(['follicular_study', 'iui', 'iui', 'ivf', null]),
+        status: cancelled ? 'cancelled' : 'completed',
+        cancelled,
+        outcome: { test: pick3(['positive', 'negative', 'negative', 'not_done', '']), testOn: r3() < 0.7 ? addDays(T, -int3(0, 420)) : null, betaHcgOn: null, scanOn: null },
+        lastEdited: { at: ago(int3(0, 420)) },
+        updatedAt: ago(int3(0, 420)),
+      });
+    }
+  }
+  return { patients, plans, fullPlans, visits, doctors, template: STANDARD_TEMPLATE, deliveries, fertilityCycles, fertilityPlans };
 }
+
+describe('the Fertility tab (idea F8)', () => {
+  it('counts cycles and plans that ended in the period, one row each, only of visible women', () => {
+    const a = pt({ careType: 'infertility', createdAt: d('2025-01-01') });
+    const b = pt({ careType: 'infertility', createdAt: d('2025-01-01') });
+    const cyc = (p, o) => ({ _id: oid(), patientId: p._id, step: 'iui', status: 'completed', cancelled: null, outcome: { test: '', testOn: null }, updatedAt: NOW, ...o });
+    const fertilityCycles = [
+      cyc(a, { outcome: { test: 'positive', testOn: d('2026-09-20') } }),
+      cyc(a, { step: 'follicular_study', outcome: { test: 'negative', testOn: d('2026-08-01') } }),
+      cyc(a, { step: null, status: 'cancelled', cancelled: { reason: 'too_many_follicles', at: d('2026-07-01') } }),
+      cyc(a, { outcome: { test: 'negative', testOn: d('2024-01-01') } }), // before the period
+      cyc(b, { outcome: { test: 'positive', testOn: d('2026-09-01') } }),
+    ];
+    const fertilityPlans = [
+      { _id: oid(), patientId: a._id, createdAt: d('2026-03-01'), outcome: { kind: 'next_step', at: d('2026-05-01') } },
+      { _id: oid(), patientId: a._id, createdAt: d('2026-05-01'), outcome: { kind: 'pregnant', at: d('2026-10-01') } }, // 7 months after her first plan
+      { _id: oid(), patientId: a._id, createdAt: d('2026-10-02'), outcome: null },
+    ];
+    const ctx = ctxOf({ patients: [a, b], fertilityCycles, fertilityPlans, visible: new Set([String(a._id)]) });
+    computeSections(ctx, ['fertility']);
+    const n = (id) => rawValue(ctx, id)?.size;
+    expect([n('K1.total'), n('K1.iui'), n('K1.follicular_study'), n('K1.noStep')]).toEqual([3, 1, 1, 1]);
+    expect([n('K2.total'), n('K2.positive'), n('K2.negative'), n('K2.tested')]).toEqual([2, 1, 1, 2]);
+    expect([n('K3.total'), n('K3.too_many_follicles')]).toEqual([1, 1]);
+    expect([n('K4.total'), n('K4.pregnant'), n('K4.next_step')]).toEqual([2, 1, 1]);
+    expect([n('K5.m12'), n('K5.m3')]).toEqual([1, 0]);
+    expect(patientOfUnit([...rawValue(ctx, 'K1.iui')][0])).toBe(String(a._id));
+  });
+});
 
 describe('registry', () => {
   const sampleCtx = (o = {}) => ctxOf({ patients: [], ...o });
@@ -714,8 +772,11 @@ describe('registry', () => {
     expect(metricsOfSection('deliveries', 'admin').map((m) => m.id)).toEqual(['H1', 'H2']);
     for (const id of ['H3', 'H4', 'H5', 'H6', 'H7']) expect(roles.ADMIN_HIDDEN, id).toContain(id);
     expect(metricsOfSection('deliveries', 'platform').map((m) => m.id)).toEqual(['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7']);
+    // Fertility (idea F8): hospital admins see how many cycles ended, never their outcomes
+    expect(metricsOfSection('fertility', 'admin').map((m) => m.id)).toEqual(['K1']);
+    expect(metricsOfSection('fertility', 'platform').map((m) => m.id)).toEqual(['K1', 'K2', 'K3', 'K4', 'K5']);
     // A new tab is worked out last (the protection of the numbers before it stays as it was).
-    expect(SECTIONS.at(-1)).toBe('deliveries');
+    expect(SECTIONS.at(-1)).toBe('fertility');
   });
 
   it('the website has the same tabs (Deliveries before Newborn on the page)', () => {
@@ -723,7 +784,7 @@ describe('registry', () => {
     const text = readFileSync(new URL('../../client/src/pages/analytics/analyticsFormat.js', import.meta.url), 'utf8');
     const website = JSON.parse(text.match(/export const SECTIONS = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
     expect([...website].sort()).toEqual([...SECTIONS].sort());
-    expect(website.slice(-2)).toEqual(['deliveries', 'newborn']);
+    expect(website.slice(-3)).toEqual(['deliveries', 'newborn', 'fertility']);
     expect(text).toMatch(/deliveries: 'Deliveries'/);
   });
 

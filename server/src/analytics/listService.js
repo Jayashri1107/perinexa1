@@ -59,6 +59,8 @@ export const LIST_ORDERS = {
   // Deliveries tab: the latest delivery first (the babies of one delivery then in their order on the note)
   deliveredDesc: { dir: -1, fields: [], value: ({ detail }) => (['delivery', 'birth'].includes(detail?.type) ? detail.on : null) },
   diedDesc: { dir: -1, fields: [], value: ({ detail }) => (detail?.type === 'death' ? detail.on : null) }, // the latest death first
+  // Fertility tab: the latest cycle or plan to end first
+  endedDesc: { dir: -1, fields: [], value: ({ detail }) => (['cycle', 'plan'].includes(detail?.type) ? detail.on : null) },
 };
 // The tie-breakers read these loaded fields too.
 export const LIST_TIE_FIELDS = ['createdAt', '_id'];
