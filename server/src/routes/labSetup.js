@@ -1,3 +1,4 @@
+import { checkedImage } from '../utils/imageData.js';
 import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -339,16 +340,7 @@ labSetupRouter.put('/settings', async (req, res) => {
 
 const MAX_SIGNATURE_BYTES = 150 * 1024;
 /** A signature picture: a PNG or JPEG data: address, checked from its first bytes (not from what it says it is). */
-function checkedSignature(data) {
-  if (!data) return '';
-  const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(data);
-  if (!m) return null;
-  const bytes = Buffer.from(m[2], 'base64');
-  if (!bytes.length || bytes.length > MAX_SIGNATURE_BYTES) return null;
-  const png = bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-  return (m[1] === 'png' && png) || (m[1] === 'jpeg' && jpeg) ? data : null;
-}
+const checkedSignature = (data) => checkedImage(data, MAX_SIGNATURE_BYTES);
 const signatorySchema = z
   .object({
     name: safeText('Name', 100).refine((t) => t.trim().length >= 2, 'Write the name'),

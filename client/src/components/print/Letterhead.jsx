@@ -2,14 +2,20 @@ import { Hospital } from 'lucide-react';
 
 // The hospital letterhead for the top of this hospital's printed documents.
 // Printed pages stay print-friendly: dark text on white, Jost (Mukta for Hindi/Marathi), an indigo rule.
-export function Letterhead({ letterhead }) {
+// The hospital's own logo when the admin has added one (owner, 27 Oct 2026), else a plain hospital mark.
+// centered: the name and address in the middle with the logo on the left – the hospital's bills and receipts.
+export function Letterhead({ letterhead, centered = false }) {
   const lh = letterhead ?? {};
   const contact = [lh.phone && `Phone: ${lh.phone}`, lh.email && `Email: ${lh.email}`].filter(Boolean).join('  ·  ');
   return (
-    <header className="lh">
-      <div className="lh-mark" aria-hidden="true">
-        <Hospital />
-      </div>
+    <header className={centered ? 'lh lh-centered' : 'lh'}>
+      {lh.logo ? (
+        <img className="lh-logo" src={lh.logo} alt="" />
+      ) : (
+        <div className="lh-mark" aria-hidden="true">
+          <Hospital />
+        </div>
+      )}
       <div className="lh-text">
         <div className="lh-name">{lh.name || 'Hospital name'}</div>
         {lh.tagline && <div className="lh-tagline">{lh.tagline}</div>}

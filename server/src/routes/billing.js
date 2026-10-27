@@ -13,6 +13,7 @@ import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { PriceItem } from '../models/PriceItem.js';
 import { Tenant } from '../models/Tenant.js';
+import { MIS_KEYS, MIS_REPORTS, misReport } from '../billing/misReports.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
@@ -611,6 +612,24 @@ billingRouter.get('/reports/daily', async (req, res) => {
     discounts: bills.filter((b) => inDay(b.discount?.at)).map((b) => ({ billId: String(b._id), number: b.number, patient: views.get(String(b._id))?.patient ?? null, discountPaise: b.discount.paise, reason: b.discount.reason ?? '', byName: b.discount.byName ?? '' })),
     cancelled: bills.filter((b) => inDay(b.cancelled?.at)).map((b) => ({ billId: String(b._id), number: b.number, patient: views.get(String(b._id))?.patient ?? null, reason: b.cancelled.reason ?? '', byName: b.cancelled.byName ?? '' })),
   });
+});
+
+// Billing → Reports (owner, 27 Oct 2026): the hospital's OPD, IPD and collection MIS reports, for a range of days
+billingRouter.get('/reports/mis', async (req, res) => {
+  const q = parse(z.object({ report: z.enum(MIS_KEYS, 'Choose a report from the list'), from: requiredDateOnly('From'), to: requiredDateOnly('To') }).strict(), req.query);
+  if (q.to < q.from || daysBetween(q.from, q.to) > 366) throw new HttpError(400, 'Choose a period of at most one year, ending after it starts.', 'VALIDATION');
+  const report = await misReport(req, q.report, q.from, q.to);
+  await audit(req, 'REPORT_VIEWED', { details: { report: q.report, from: isoDay(q.from), to: isoDay(q.to), rows: report.rows.length } });
+  res.json({ report, menu: MIS_REPORTS.map((g) => ({ group: g.group, reports: g.reports.map(([key, label]) => ({ key, label })) })) });
+});
+billingRouter.get('/reports/mis/menu', (req, res) => {
+  res.json({ menu: MIS_REPORTS.map((g) => ({ group: g.group, reports: g.reports.map(([key, label]) => ({ key, label })) })) });
+});
+// A report saved as a PDF or a spreadsheet (made in the browser): written down, as every export is
+billingRouter.post('/reports/mis/saved', async (req, res) => {
+  const q = parse(z.object({ report: z.enum(MIS_KEYS), from: requiredDateOnly('From'), to: requiredDateOnly('To'), as: z.enum(['pdf', 'excel']) }).strict(), req.body);
+  await audit(req, 'BILLING_EXPORTED', { details: { what: `mis:${q.report}`, as: q.as, from: isoDay(q.from), to: isoDay(q.to) } });
+  res.json({ ok: true });
 });
 
 // The daily summary saved as a PDF (Download PDF on its print preview): written down, as every export is.
