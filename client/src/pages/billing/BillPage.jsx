@@ -16,6 +16,7 @@ import { BillStatus } from './BillsPage.jsx';
 import { TallyMarks } from './TallyPage.jsx';
 import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
 import { Modal, useSend } from './billingUi.jsx';
+import { DEPARTMENTS } from '../../platform/departments.js';
 import { amountInWords } from './amountWords.js';
 
 // One bill (billing): its items (added by the work done, or by reception from the price list), discount, payments,
@@ -28,27 +29,28 @@ import { amountInWords } from './amountWords.js';
 // letters or tap a common item, it goes into a list; change the quantity with − and +; choose the doctor once; one
 // button adds them all. Lab tests, scans, beds, nursing, ward rounds and medicines come onto the bill by themselves.
 const QUICK_GROUPS = ['consultation', 'procedure', 'inpatient', 'other'];
-const MAX_SHOWN = 40;
 
 function AddItemDialog({ bill, onClose, onDone }) {
   const prices = useFetch('/billing/prices');
-  const doctors = useFetch('/appointments/doctors'); // not for the billing department: then no doctor is asked
+  const doctors = useFetch('/tenant/doctors'); // with each doctor's department (Admin → Users)
   const [query, setQuery] = useState('');
-  const [group, setGroup] = useState('');
   const [basket, setBasket] = useState([]); // { item, qty, amount, name }
   const [doctorId, setDoctorId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const all = (prices.data?.items ?? []).filter((i) => i.active);
-  const doctorList = doctors.data?.doctors ?? [];
-  const chosenDoctor = doctorId ?? doctorList.find((d) => d.name === bill.doctorName)?.id ?? '';
+  const allDoctors = doctors.data?.doctors ?? [];
+  const ownDoctor = allDoctors.find((d) => d.name === bill.doctorName);
+  const departments = DEPARTMENTS.filter((d) => allDoctors.some((x) => x.department === d));
+  const [department, setDepartment] = useState(null); // null: her doctor's department
+  const dept = department ?? ownDoctor?.department ?? '';
+  const doctorList = allDoctors.filter((d) => !dept || d.department === dept);
+  const chosenDoctor = doctorId ?? (doctorList.some((d) => d.id === ownDoctor?.id) ? ownDoctor.id : '');
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const searching = words.length > 0 || group;
-  const found = all.filter((i) => (!group || i.group === group) && words.every((w) => i.name.toLowerCase().includes(w)));
+  const found = all.filter((i) => words.every((w) => i.name.toLowerCase().includes(w)));
   // Common items: those with a price in the groups reception adds by hand (consultation first); if none is priced yet, the consultations
   const priced = all.filter((i) => QUICK_GROUPS.includes(i.group) && i.pricePaise > 0).sort((x, y) => QUICK_GROUPS.indexOf(x.group) - QUICK_GROUPS.indexOf(y.group));
   const quick = (priced.length ? priced : all.filter((i) => i.group === 'consultation')).slice(0, 12);
-  const shown = searching ? found.slice(0, MAX_SHOWN) : quick;
 
   const add = (item) =>
     setBasket((list) => (list.some((r) => r.item.id === item.id) ? list.map((r) => (r.item.id === item.id ? { ...r, qty: r.qty + 1 } : r)) : [...list, { item, qty: 1, amount: '', name: '' }]));
@@ -57,7 +59,7 @@ function AddItemDialog({ bill, onClose, onDone }) {
   const rateOf = (r) => (r.item.pricePaise ? r.item.pricePaise : toPaise(r.amount));
   const ready = basket.length > 0 && basket.every((r) => Number.isInteger(r.qty) && r.qty >= 1 && rateOf(r) > 0);
   const total = basket.reduce((sum, r) => sum + (rateOf(r) > 0 ? rateOf(r) * r.qty : 0), 0);
-  const hasMedicine = basket.some((r) => r.item.group === 'medicine') || group === 'medicine';
+  const hasMedicine = basket.some((r) => r.item.group === 'medicine');
 
   const addAll = async () => {
     setBusy(true);
@@ -90,39 +92,99 @@ function AddItemDialog({ bill, onClose, onDone }) {
   };
 
   return (
-    <Modal id="bill-add" title="Add items" onClose={onClose}>
+    <Modal id="bill-add" title="Add items" wide onClose={onClose}>
       <Alert type="error">{error || prices.error}</Alert>
-      <div className="bill-add-search">
-        <Search aria-hidden="true" />
-        <label htmlFor="bill-add-q" className="sr-only">
-          Find an item
-        </label>
-        <input id="bill-add-q" type="search" placeholder="Type to find – e.g. consult, CTG, delivery" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus autoComplete="off" />
-      </div>
-      <div className="bill-add-groups" role="group" aria-label="Group">
-        {[{ key: '', label: 'Common' }, ...(prices.data?.groups ?? [])].map((g) => (
-          <button key={g.key || 'all'} type="button" className={`bill-add-chip${group === g.key ? ' is-on' : ''}`} aria-pressed={group === g.key} onClick={() => setGroup(g.key)}>
-            {g.key ? g.label : words.length ? 'All groups' : 'Common'}
-          </button>
-        ))}
-      </div>
-      <ul className="bill-add-results" aria-label={searching ? 'Items found' : 'Common items'}>
-        {shown.map((i) => {
-          const inList = basket.find((r) => r.item.id === i.id);
-          return (
-            <li key={i.id}>
-              <button type="button" className={`bill-add-pick${inList ? ' is-in' : ''}`} onClick={() => add(i)}>
-                <span className="bill-add-pick-name">{i.name}</span>
-                <span className="muted">{i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}</span>
-                <Plus aria-hidden="true" />
-                {inList && <span className="sr-only">(in the list: {inList.qty})</span>}
+      {/* Owner, 27 Oct 2026: first the service from a list, then the doctor (of a department) – then what is to be added */}
+      <section className="bill-add-step" aria-labelledby="bill-add-s1">
+        <h3 id="bill-add-s1" className="bill-add-title">
+          <span className="bill-add-num">1</span> Service
+        </h3>
+        <div className="bill-add-pickrow">
+          <div className="bill-add-search">
+            <Search aria-hidden="true" />
+            <label htmlFor="bill-add-q" className="sr-only">
+              Narrow the list
+            </label>
+            <input id="bill-add-q" type="search" placeholder="Narrow the list – e.g. consult, CTG" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
+          </div>
+          <label htmlFor="bill-add-service" className="sr-only">
+            Choose a service
+          </label>
+          <select
+            id="bill-add-service"
+            className="bill-add-select"
+            value=""
+            autoFocus
+            onChange={(e) => {
+              const item = all.find((i) => i.id === e.target.value);
+              if (item) add(item);
+            }}
+          >
+            <option value="">{prices.data ? `Choose a service${words.length ? ` (${found.length} found)` : ''}…` : 'Loading the price list…'}</option>
+            {(prices.data?.groups ?? [])
+              .filter((g) => found.some((i) => i.group === g.key))
+              .map((g) => (
+                <optgroup key={g.key} label={g.label}>
+                  {found
+                    .filter((i) => i.group === g.key)
+                    .map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.name} – {i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+          </select>
+        </div>
+        {quick.length > 0 && !words.length && (
+          <div className="bill-add-groups" role="group" aria-label="Common services">
+            {quick.slice(0, 6).map((i) => (
+              <button key={i.id} type="button" className="bill-add-chip" onClick={() => add(i)}>
+                <Plus aria-hidden="true" /> {i.name}
               </button>
-            </li>
-          );
-        })}
-        {searching && !found.length && <li className="muted">Nothing found. The hospital admin adds new items in Billing → Price list.</li>}
-        {searching && found.length > MAX_SHOWN && <li className="muted">{found.length - MAX_SHOWN} more – type a little more to narrow the list.</li>}
-      </ul>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="bill-add-step" aria-labelledby="bill-add-s2">
+        <h3 id="bill-add-s2" className="bill-add-title">
+          <span className="bill-add-num">2</span> Doctor
+        </h3>
+        <div className="form-grid">
+          {departments.length > 0 && (
+            <Field label="Department" id="bill-add-dept">
+              <select
+                id="bill-add-dept"
+                value={dept}
+                onChange={(e) => {
+                  setDepartment(e.target.value);
+                  setDoctorId(null);
+                }}
+              >
+                <option value="">All departments</option>
+                {departments.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <Field label="Doctor" id="bill-add-doctor" hint="Printed with these items on the bill.">
+            <select id="bill-add-doctor" value={chosenDoctor} onChange={(e) => setDoctorId(e.target.value)}>
+              <option value="">No doctor</option>
+              {doctorList.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                  {d.id === ownDoctor?.id ? ' (her doctor)' : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </section>
+
       {/* Medicines come from the pharmacy stock (owner, 13 Oct 2026): sold there, they come onto this bill by themselves */}
       {hasMedicine && (
         <Alert type="info">
@@ -131,9 +193,11 @@ function AddItemDialog({ bill, onClose, onDone }) {
         </Alert>
       )}
 
-      <h3 className="bill-add-title">To add {basket.length > 0 && <span className="muted">· {basket.length}</span>}</h3>
+      <h3 className="bill-add-title">
+        <span className="bill-add-num">3</span> To add {basket.length > 0 && <span className="muted">· {basket.length}</span>}
+      </h3>
       {basket.length === 0 ? (
-        <p className="muted">Tap an item above to put it here.</p>
+        <p className="muted">Choose a service above to put it here.</p>
       ) : (
         <ul className="bill-add-basket">
           {basket.map((r) => (
@@ -167,19 +231,6 @@ function AddItemDialog({ bill, onClose, onDone }) {
             </li>
           ))}
         </ul>
-      )}
-      {doctorList.length > 0 && (
-        <Field label="Doctor" id="bill-add-doctor" hint="Printed with these items on the bill.">
-          <select id="bill-add-doctor" value={chosenDoctor} onChange={(e) => setDoctorId(e.target.value)}>
-            <option value="">No doctor</option>
-            {doctorList.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-                {d.name === bill.doctorName ? ' (her doctor)' : ''}
-              </option>
-            ))}
-          </select>
-        </Field>
       )}
       <div className="row">
         <button type="button" className="btn btn-primary" disabled={!ready || busy} onClick={addAll}>

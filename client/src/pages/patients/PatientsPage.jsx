@@ -273,7 +273,7 @@ export function PatientsPage() {
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Patients' }]}
-        title="Patients"
+        title={ipd ? 'Admitted patients (IPD)' : 'OPD patients'}
         help={`Click a patient to open her record. Use the choices above the list to show only some patients.${seesDuplicates ? ' Records marked as a duplicate of another are hidden: More filters shows them.' : ''}`}
         actions={
           <>
@@ -288,16 +288,6 @@ export function PatientsPage() {
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}
         </Alert>
-        {seesIpd && (
-          <div className="segmented pt-dept" role="group" aria-label="OPD or IPD">
-            <button type="button" aria-pressed={!ipd} onClick={() => setParams({ dept: 'opd' })}>
-              OPD
-            </button>
-            <button type="button" aria-pressed={ipd} onClick={() => setParams({ dept: 'ipd' })}>
-              IPD
-            </button>
-          </div>
-        )}
         <div className="pt-quick">
           {!ipd && (
           <div className="segmented" role="group" aria-label="Which day">
