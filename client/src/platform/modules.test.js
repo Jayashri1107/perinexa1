@@ -118,19 +118,19 @@ describe('the Lab item', () => {
 describe('the Patients menu', () => {
   const labels = (roles) => Object.fromEntries(patientMenu(roles).map((g) => [g.label, g.items.map((i) => i.label)]));
   it('shows only what the main menu does not already have', () => {
-    expect(labels(['receptionist'])).toEqual({ OPD: ['OPD registration', "Today's OPD patients", 'All OPD patients'], IPD: ['Admitted patients'] });
+    expect(labels(['receptionist'])).toEqual({ OPD: ['OPD registration', 'OPD patients'], IPD: ['Admitted patients'] });
     // none of them is a page the main menu already links to (Patients itself only opens this list)
     const main = new Set(hospitalModules(['receptionist']).filter((m) => m.key !== 'patients').map((m) => m.to.split('?')[0]));
     for (const item of patientMenu(['receptionist']).flatMap((g) => g.items)) expect(main.has(item.to.split('?')[0]), item.label).toBe(false);
   });
   it('gives the billing department OPD registration (registered patients) and no IPD', () => {
-    expect(labels(['billing'])).toEqual({ OPD: ['OPD registration', "Today's OPD patients", 'All OPD patients'] });
+    expect(labels(['billing'])).toEqual({ OPD: ['OPD registration', 'OPD patients'] });
   });
   it("tells registration, today's, all and the admitted patients apart by the address", () => {
     const items = patientMenu(['rmo']).flatMap((g) => g.items);
     const current = (path, search) => items.filter((i) => i.match(path, new URLSearchParams(search))).map((i) => i.label);
-    expect(current('/patients', '')).toEqual(["Today's OPD patients"]);
-    expect(current('/patients', '?day=all')).toEqual(['All OPD patients']);
+    expect(current('/patients', '')).toEqual(['OPD patients']);
+    expect(current('/patients', '?day=all')).toEqual(['OPD patients']);
     expect(current('/patients', '?dept=ipd')).toEqual(['Admitted patients']);
     expect(current('/patients/opd', '?as=registered')).toEqual(['OPD registration']);
     expect(current('/patients/new/antenatal', '')).toEqual(['OPD registration']);

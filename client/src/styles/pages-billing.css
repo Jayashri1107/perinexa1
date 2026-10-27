@@ -301,3 +301,22 @@
 /* A table wider than its card scrolls inside the card, never over its edge */
 .dc-section { overflow-x: auto; }
 .dc-section .dc-table th, .dc-section .dc-table td { padding-left: var(--space-2); padding-right: var(--space-2); }
+
+/* The bill page, tidied (owner, 27 Oct 2026): the amount beside the items, staying in view; the Add items dialog in
+   three steps – service, doctor, what is to be added */
+.bill-body { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: start; }
+.bill-body > .bill-totals { justify-self: stretch; width: auto; position: sticky; top: var(--space-4); }
+.bill-totals .bill-sums { width: 100%; }
+.bill-totals .bill-balance th, .bill-totals .bill-balance td { font-size: var(--fs-h3); line-height: var(--lh-h3); padding-top: var(--space-2); }
+.bill-head { box-shadow: var(--shadow-card); }
+.bill-head-grid dd { font-size: var(--fs-body); }
+@media (max-width: 1100px) { .bill-body { grid-template-columns: 1fr; } .bill-body > .bill-totals { position: static; justify-self: end; width: min(100%, 420px); } }
+.bill-add-step { padding-bottom: var(--space-3); margin-bottom: var(--space-3); border-bottom: 1px solid var(--card-border); }
+.bill-add-title { display: flex; align-items: center; gap: var(--space-2); }
+.bill-add-num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--indigo-700); color: var(--on-solid); font-size: var(--fs-label); font-weight: 600; flex-shrink: 0; }
+.bill-add-pickrow { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr); gap: var(--space-3); align-items: center; }
+.bill-add-pickrow .bill-add-search { margin: 0; }
+.bill-add-select { width: 100%; min-height: var(--control-height); }
+.bill-add-step .bill-add-groups { margin-top: var(--space-2); }
+.bill-add-chip svg.lucide { width: 14px; height: 14px; }
+@media (max-width: 640px) { .bill-add-pickrow { grid-template-columns: 1fr; } }

@@ -455,8 +455,8 @@ export function patientMenu(roles = []) {
     ...(seesPatientList(roles) && any(roles, [...REGISTER_ROLES, 'receptionist', 'nurse', 'billing'])
       ? [{ label: 'OPD registration', to: '/patients/opd', match: (p) => under('/patients/opd')(p) || under('/patients/new')(p) }]
       : []),
-    { label: "Today's OPD patients", to: '/patients', match: (p, q) => onList(p) && q.get('dept') !== 'ipd' && q.get('day') !== 'all' },
-    { label: 'All OPD patients', to: '/patients?day=all', match: (p, q) => onList(p) && q.get('dept') !== 'ipd' && q.get('day') === 'all' },
+    // One item: the list opens on today's patients, with All patients one click away on the page
+    { label: 'OPD patients', to: '/patients', match: (p, q) => onList(p) && q.get('dept') !== 'ipd' },
   ];
   const ipd = any(roles, BED_ROLES) ? [{ label: 'Admitted patients', to: '/patients?dept=ipd', match: (p, q) => onList(p) && q.get('dept') === 'ipd' }] : [];
   return [

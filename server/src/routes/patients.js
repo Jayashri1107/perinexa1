@@ -959,6 +959,8 @@ patientsRouter.get('/:id', async (req, res) => {
     // In hospital now (Version 2): the current stay, for the header's "Admitted" badge
     const stay = await Admission.findOne({ tenantId: req.tenantId, patientId: patient._id, status: 'admitted' });
     projected.currentAdmission = stay ? admissionView(stay) : null;
+    // Ever in hospital here: the record shows its tabs under OPD and IPD only then (owner, 27 Oct 2026)
+    projected.hadStay = Boolean(stay) || Boolean(await Admission.exists({ tenantId: req.tenantId, patientId: patient._id }));
   }
   res.json({ patient: projected });
 });
