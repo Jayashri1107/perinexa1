@@ -115,3 +115,10 @@ ovulation induction and IUI and refers IVF out:
 | F9–F14 | Partner (male) record with consent; cycle packages and refunds; ART Act consent forms; teleconsultation; a patient copy of the plan; donor and partner screening checklist | Bigger pieces – privacy, money and legal review first |
 | F15–F17 | Embryology lab, cryostorage and witnessing; donor and surrogacy modules and registry exports; AI embryo or dose tools | Only with an in-house IVF laboratory; AI not recommended until independent trials show a gain |
 
+## A new patient as a history-taking sheet (27 Oct 2026, layout only)
+
+The owner wants the tabs for a new patient's details to be a history-taking sheet: only the history is asked, in the
+order a doctor takes it (complaint, menstrual, marital, obstetric, past history, family, personal, the type-of-care
+tab, review), with every hint, example, voice panel, risk warning and AI check hidden until Save. The layout draft and
+its open decisions are in `docs/HISTORY_SHEET_LAYOUT.md`; whether it is built is decided after the layout is agreed.
+

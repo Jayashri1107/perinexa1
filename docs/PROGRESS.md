@@ -1021,6 +1021,12 @@ Agreed order (one step at a time, each tested and committed):
 owner's or an expert's check: the care-plan templates, the lab's usual ranges, the HMIS rows, the reminder wording in Marathi and Hindi. Use fake data only until the app has been reviewed.
 
 ## Next
+- **Layout draft only – a new patient as a history-taking sheet (27 Oct 2026).** The owner asked that the tabs
+  for a new patient's details ask only for the history, with every hint, example, voice panel, risk warning and AI
+  check hidden, and that the layout be agreed before anything is built. The draft is in
+  `docs/HISTORY_SHEET_LAYOUT.md` (ten tabs, their fields, what is hidden, what stays for safety, the open decisions)
+  with a click-through mock-up of four of the tabs (link in the document). **Nothing is built**; the feature pause
+  holds until the owner has decided on the layout and whether it goes ahead.
 - ✅ **ABDM milestones M2 (share her records through ABHA) and M3 (fetch her records from other hospitals), in
   practice mode** (built at the owner's request, October 2026). The two steps after ABHA linking (M1, below). Like
   M1 it works only in **practice mode** for now: a built-in stand-in for ABDM, and nothing leaves the computer.
