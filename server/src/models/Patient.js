@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { addDays, gaOn, hospitalToday, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { tenantScoped } from '../utils/tenantScope.js';
-import { BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, YES_NO } from '../patients/historyFields.js';
+import { CONCEPTION, FOLIC_ACID, PLANNED, PREGNANCY_TEXTS, BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, YES_NO } from '../patients/historyFields.js';
 import { CYCLE_PATTERNS, ENDOMETRIOSIS_STATUS, FERTILITY_DIAGNOSES, FERTILITY_NUMBERS, FERTILITY_TEXTS, FERTILITY_TYPES, OVULATION_STATUS, SEMEN_STATUS, TUBAL_STATUS, UTERINE_FINDINGS } from '../fertility/fertilityFields.js';
 import { ANTI_D, ECTOPIC_SITES, HISTOLOGY, LOSS_FINDING_KEYS, MANAGEMENT, MAX_WEEKS, MOLE_KINDS, OUTCOME_LABELS, STORED_LOSS_TYPE_KEYS, gaFrom } from '../patients/abortionRules.js';
 import { FINDING_VIA, MAX_FINDING_ENTRIES, PREGNANCY_FINDINGS, findingsView } from '../patients/pregnancyFindings.js';
@@ -64,7 +64,7 @@ export const PREGNANCY_DAYS = 280; // Naegele's rule: EDD = LMP + 280 days
 
 const num = (min, max) => ({ type: Number, min, max, default: null });
 
-// The fertility history (Infertility type of care only; docs/FERTILITY_PLAN.md – DRAFT): the facts the treatment-plan
+// The fertility history (Infertility type of care only; docs/FERTILITY_PLAN.md): the facts the treatment-plan
 // suggestions read (fertility/suggest.js). Every choice has a "not recorded" state ('' or null), which is what every
 // record from before these fields has. Nothing here names a child's sex, and the partner is not identified.
 const choice = (keys) => ({ type: String, enum: [...keys, ''], default: '' });
@@ -223,6 +223,11 @@ const patientSchema = new mongoose.Schema(
       edd: { type: Date, default: null }, // from LMP (calculated)
       scanEdd: { type: Date, default: null }, // corrected by the dating scan
       effectiveEdd: { type: Date, default: null }, // scan EDD if given, otherwise LMP EDD (calculated)
+      // This pregnancy's details, recorded at the visit (the owner's go-ahead, 27 Oct 2026); '' = not recorded
+      planned: choice(PLANNED),
+      conception: choice(CONCEPTION),
+      folicAcid: choice(FOLIC_ACID),
+      ...Object.fromEntries(Object.entries(PREGNANCY_TEXTS).map(([k, t]) => [k, { type: String, trim: true, maxlength: t.max, default: '' }])),
       // Findings made in THIS pregnancy (GDM, high blood pressure, twins, low-lying placenta, bleeding): ticked or
       // unticked only by those who may edit the clinical details. They raise the risk level and switch on
       // care-plan items. Entries are never deleted (an unticked one is ended).

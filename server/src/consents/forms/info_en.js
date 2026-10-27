@@ -557,4 +557,74 @@ export const INFO_EN = {
       CLOSING,
     ],
   },
+
+  // Fertility (idea F4, the owner's go-ahead of 27 Oct 2026) – DRAFT like every sheet here
+  info_ovulation_induction: {
+    title: "Information: ovulation induction with tablets and follicular monitoring",
+    clauses: [
+      opening("I am to have ovulation induction: tablets (letrozole or clomiphene) to help an egg grow and be released, with scans to follow it (follicular monitoring)."),
+      "The tablets are taken for 5 days from day 2 to 5 of the period, as written on the prescription. Scans from about day 9 to 10 show how many eggs (follicles) are growing, how big they are, and the lining of the womb. An injection may be given to time the release of the egg, and the days for intercourse or IUI are then advised.",
+      "Letrozole is used off-label for this purpose in India (it is approved for another use); this has been explained to me. Side effects such as hot flushes, headache, tiredness, mood changes or bloating can happen and usually pass. With clomiphene, blurred vision or spots before the eyes must be reported at once and the tablet stopped.",
+      "The possible risks have been explained: more than one egg growing, with a chance of twins or more (the cycle may be cancelled and intercourse avoided if more than 2 follicles grow to 14 mm or more), ovarian cysts, rarely ovarian hyperstimulation (OHSS), and that a cycle may give no egg, or no pregnancy.",
+      "The chance of pregnancy in each cycle, the number of cycles planned, and the next step if there is no pregnancy, have been explained to me. The treatment does not choose or reveal the sex of a baby.",
+      "I must come to the hospital at once if I have severe pain or swelling of the abdomen, vomiting, breathlessness, passing very little urine, or heavy bleeding.",
+      CLOSING,
+    ],
+  },
+  info_iui: {
+    title: "Information: intrauterine insemination (IUI)",
+    clauses: [
+      opening("I am to have intrauterine insemination (IUI): my husband's washed semen sample is placed inside the womb with a thin tube around the time of ovulation."),
+      "IUI is usually done with tablets or injections to grow one or two eggs, scans to follow them, and an injection to time ovulation. The semen sample is collected on the day, washed and prepared in the laboratory, and the count after washing is recorded.",
+      "The procedure takes a few minutes, needs no anaesthesia and is usually not painful; mild cramps or a little spotting can follow. I can go home the same day and carry on with normal work.",
+      "The possible risks have been explained: twins or more when more than one egg grows (the cycle may be cancelled), ovarian hyperstimulation (OHSS) with injections, infection (rare), and that a cycle may not give a pregnancy.",
+      "The chance of pregnancy in each cycle, the number of IUI cycles planned (usually 3 to 6), and the next step if there is no pregnancy, have been explained to me. Only my husband's sample is used unless donor sperm has been separately agreed and consented. The treatment does not choose or reveal the sex of a baby.",
+      "A pregnancy test is done 14 days after the IUI if the period has not come. I must come to the hospital at once for severe pain, fever, heavy bleeding, vomiting or breathlessness.",
+      CLOSING,
+    ],
+  },
+  info_ivf_icsi: {
+    title: "Information: IVF and ICSI (in vitro fertilisation)",
+    clauses: [
+      opening("IVF or ICSI may be the next step for us: eggs are collected from the ovaries, joined with sperm in the laboratory (ICSI: one sperm placed into each egg), and an embryo is placed into the womb."),
+      "The steps have been explained: injections for about 10 to 12 days with scans and blood tests, an injection to mature the eggs, egg collection through the vagina under anaesthesia, fertilisation in the laboratory, transfer of an embryo after 3 to 5 days, and freezing of good extra embryos if we agree.",
+      "Under the Assisted Reproductive Technology (Regulation) Act 2021, IVF is done only at a registered ART clinic, with written consent of both partners, after counselling; the number of embryos transferred is limited; and the sex of an embryo is never tested or chosen. This hospital refers couples to such a clinic.",
+      "The possible risks have been explained: ovarian hyperstimulation (OHSS), bleeding or infection after egg collection, twins or more, ectopic pregnancy, miscarriage, and that a cycle may give no eggs, no embryos or no pregnancy.",
+      "The chance of a baby depends mainly on the woman's age and the number and quality of eggs; the costs, the time needed and the emotional strain have been explained, and support is available.",
+      CLOSING,
+    ],
+  },
+  info_donor_gametes: {
+    title: "Information: treatment with donor eggs or donor sperm",
+    clauses: [
+      opening("treatment with donor eggs or donor sperm has been suggested for us."),
+      "Under the Assisted Reproductive Technology (Regulation) Act 2021, donor eggs and sperm come only through a registered ART bank; the donor stays anonymous to us and we stay anonymous to the donor; the donor is screened for infections and genetic conditions; and both partners give written consent after counselling.",
+      "A child born from donated eggs or sperm is, in law, our child, with all the rights of a child born to us. The donor has no rights or duties towards the child.",
+      "The possible risks have been explained: those of IUI or IVF, a small chance of an infection or a genetic condition despite screening, and that treatment may not lead to a pregnancy.",
+      "We have been told about counselling for ourselves, now and later, including about what to tell the child, and that we may take time to decide.",
+      CLOSING,
+    ],
+  },
+  info_ohss: {
+    title: "Information: ovarian hyperstimulation syndrome (OHSS)",
+    clauses: [
+      opening("I am at risk of, or have, ovarian hyperstimulation syndrome (OHSS), a reaction of the ovaries to fertility medicines."),
+      "In OHSS the ovaries become large and fluid leaks into the abdomen and sometimes the chest. It usually starts within a few days of the injection that times ovulation, or early in a pregnancy, and most often settles by itself in 1 to 2 weeks.",
+      "The possible risks have been explained: dehydration, kidney problems, blood clots in the legs or lungs, fluid in the chest with breathlessness, and rarely twisting of an ovary or risk to life.",
+      "The care needed has been explained: drinking enough fluid, rest without lying still all day, paracetamol for pain (no anti-inflammatory painkillers), weighing myself and noting the urine passed, blood tests and scans, and admission to hospital if needed. The treatment cycle may be stopped or the embryos frozen to lower the risk.",
+      "I must come to the hospital at once for severe pain or swelling of the abdomen, vomiting so that I cannot keep fluids down, breathlessness, passing very little urine, pain or swelling of a leg, or feeling faint.",
+      CLOSING,
+    ],
+  },
+  info_two_week_wait: {
+    title: "Information: the two weeks before the pregnancy test",
+    clauses: [
+      opening("the treatment of this cycle is complete and a pregnancy test is due about 14 days after the IUI, the egg-release injection or the embryo transfer."),
+      "Normal activity and work can go on; there is no need for bed rest. The medicines advised (for example progesterone) must be continued until the test unless the doctor says otherwise.",
+      "Mild cramps, breast tenderness or a little spotting are common and do not tell whether the treatment has worked. A home test before the day advised can give a wrong answer.",
+      "The test is done on the day advised, and the result is told to the hospital. If it is positive, an early scan is planned; if it is negative, the next step is discussed. Feeling anxious or low in these days is common, and we can talk to the team.",
+      "I must come to the hospital at once for heavy bleeding, severe pain in the abdomen, pain in the shoulder tip, fainting, vomiting, breathlessness or swelling of the abdomen.",
+      CLOSING,
+    ],
+  },
 };

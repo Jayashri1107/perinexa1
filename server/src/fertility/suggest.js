@@ -1,4 +1,4 @@
-// Which protocols fit this patient (docs/FERTILITY_PLAN.md – DRAFT rules): read from her record – age, BMI, the
+// Which protocols fit this patient (docs/FERTILITY_PLAN.md – approved 27 Oct 2026): read from her record – age, BMI, the
 // medical background, the obstetric counts and the fertility history – and written as plain reasons the doctor can
 // check. Nothing here decides: the doctor picks the protocols, and the plan built from them is edited by hand.
 // Rules follow the bodies the library cites (fertility/protocols.js). A record with little recorded gets the

@@ -178,9 +178,23 @@ const ADULT_TESTS = [
     report: { template: 'culture', method: 'Gram stain; culture; sensitivity by disc diffusion (CLSI)', notes: 'The treating doctor chooses the antibiotic, taking pregnancy into account.', ownPage: true },
     antibiotics: SWAB_ANTIBIOTICS,
     fields: [text('gramStain', 'Gram stain'), choice('growth', 'Growth', ['No growth', 'Normal flora', 'Growth'], ['Growth']), text('organism', 'Organism isolated')] },
-  { key: 'semen', name: 'Semen analysis (partner)', group: 'other', sample: 'Semen', planKeys: ['inf_semen'],
-    report: { template: 'table', method: 'Manual, WHO laboratory manual (6th edition, 2021)', notes: 'The ranges are the WHO 2021 lower reference limits; one analysis is repeated before a conclusion.' },
-    fields: [num('count', 'Sperm concentration', 'million/mL', 16, null, '16 million/mL or more (WHO 2021)'), num('motility', 'Total motility', '%', 42, null, '42 % or more'), num('morphology', 'Normal forms', '%', 4, null, '4 % or more')] },
+  // The full WHO 2021 panel (fertility idea F2, the owner's go-ahead of 27 Oct 2026): the lower reference limits as NICE
+  // NG257 1.17.1 quotes them, the abstinence days, and the post-wash total motile count for IUI (no range: the doctor
+  // judges it). `count`, `motility` and `morphology` keep their keys from the first, shorter panel.
+  { key: 'semen', name: 'Semen analysis (partner)', group: 'other', sample: 'Semen, after 2–7 days of abstinence', planKeys: ['inf_semen'],
+    report: { template: 'table', method: 'Manual, WHO laboratory manual (6th edition, 2021)', notes: 'The ranges are the WHO 2021 lower reference limits; an abnormal result is repeated before a conclusion (NICE NG257 1.17.3).' },
+    fields: [
+      ...inSection('Sample', [num('abstinence', 'Days of abstinence', 'days', null, null, '2–7 days advised (WHO 2021)'), num('volume', 'Volume', 'mL', 1.4, null, '1.4 mL or more (WHO 2021)')]),
+      ...inSection('Sperm', [
+        num('count', 'Sperm concentration', 'million/mL', 16, null, '16 million/mL or more (WHO 2021)'),
+        num('totalCount', 'Total sperm number', 'million per ejaculate', 39, null, '39 million or more (WHO 2021)', { calc: 'totalCount' }),
+        num('motility', 'Total motility', '%', 42, null, '42 % or more'),
+        num('progressive', 'Progressive motility', '%', 30, null, '30 % or more'),
+        num('vitality', 'Vitality', '%', 54, null, '54 % or more'),
+        num('morphology', 'Normal forms', '%', 4, null, '4 % or more'),
+      ]),
+      ...inSection('For IUI', [num('postWashTmc', 'Post-wash total motile count', 'million', null, null, 'For IUI – the doctor judges it')]),
+    ] },
   // Reported in the Bethesda System 2014 layout (report templates, 19 Oct 2026). `result` and `details` keep their keys.
   { key: 'pap', name: 'Pap smear / cervical screening', group: 'other', sample: 'Cervical smear', planKeys: ['gyn_cervix', 'gyn_cervix_repeat'],
     report: { template: 'narrative', method: 'Conventional or liquid-based cytology, Papanicolaou stain; The Bethesda System 2014', notes: '', ownPage: true },

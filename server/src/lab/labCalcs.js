@@ -16,6 +16,7 @@ export const CALCS = {
   ldl: { inputs: ['totalChol', 'hdl', 'tg'], digits: 0, fn: (chol, hdl, tg) => (tg >= 400 ? NaN : chol - hdl - tg / 5) },
   vldl: { inputs: ['tg'], digits: 0, fn: (tg) => (tg >= 400 ? NaN : tg / 5) },
   cholHdlRatio: { inputs: ['totalChol', 'hdl'], digits: 1, fn: (chol, hdl) => chol / hdl },
+  totalCount: { inputs: ['volume', 'count'], digits: 1, fn: (volume, count) => volume * count }, // semen (WHO 2021)
 };
 
 /** In words, for the result form and the printed report. */
@@ -29,6 +30,7 @@ export const CALC_WORDS = {
   ldl: 'Friedewald: total cholesterol − HDL − triglycerides ÷ 5 (not with triglycerides of 400 or more)',
   vldl: 'triglycerides ÷ 5',
   cholHdlRatio: 'total cholesterol ÷ HDL',
+  totalCount: 'volume × concentration',
 };
 
 /**

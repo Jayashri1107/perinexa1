@@ -1,6 +1,6 @@
 // The cycle (follicular study) sheet's words and helpers (docs/FERTILITY_PLAN.md section 7). Fake sample data.
 import { describe, expect, it } from 'vitest';
-import { REPORT_WORDS, blankEntry, cycleDay, cycleErrors, cyclePayload, cycleSummary, cycleValues, leadFollicleText, mmText, parseMm, protocolText } from './fertilityCycleFormat.js';
+import { REPORT_WORDS, blankEntry, cycleDay, cycleErrors, cyclePayload, cycleSummary, cycleValues, leadFollicleText, mmText, parseMm, protocolText, dateOfCycleDay } from './fertilityCycleFormat.js';
 
 const formatDate = (d) => new Date(d).toISOString().slice(0, 10);
 const stored = {
@@ -30,6 +30,11 @@ describe('the cycle sheet helpers', () => {
     expect(cycleDay('2026-10-02', '2026-10-13')).toBe(12);
     expect(cycleDay('2026-10-02', '2026-10-02')).toBe(1);
     expect(cycleDay('', '2026-10-13')).toBeNull();
+    // F7: the date of a cycle day, for booking the next scan
+    expect(dateOfCycleDay('2026-10-02', 12)).toBe('2026-10-13');
+    expect(dateOfCycleDay('2026-10-30', 3)).toBe('2026-11-01');
+    expect(dateOfCycleDay('2026-10-02', 0)).toBe('');
+    expect(dateOfCycleDay('', 12)).toBe('');
   });
 
   it('turns a stored sheet into form values and back, checking the numbers first', () => {

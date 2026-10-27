@@ -58,6 +58,67 @@ const MEDICAL_NOTES =
 const MEDICAL_ADVICE = `Have someone with you on the day you take the tablets. Use pads, not tampons, until the bleeding stops. Call us if no bleeding has started within 48 hours. ${WARNING_SIGNS} ${NEXT_STEPS}`;
 const PREGNANCY_TEST_3_WEEKS = 'Urine pregnancy test 3 weeks after the tablets – come back if it is still positive.';
 
+// ---------- Fertility (fertility idea F6, the owner's go-ahead of 27 Oct 2026) ----------
+// Ovulation induction and IUI cycles, from the approved fertility protocol library (fertility/protocols.js): the
+// starting doses of its "usual regimen" lines. Drafts like every built-in set – a doctor checks each medicine and dose
+// and approves the set, and the medicine safety list checks it on her record. Chosen in the visit's Prescription (Ready-made sets).
+export const FERTILITY_SET_KEYS = ['inf_oi_letrozole', 'inf_oi_clomiphene', 'inf_trigger', 'inf_luteal'];
+const FOLIC = rx('Folic acid', 'tab', '400 mcg', '1', '1-0-0', 'after_food', [3, 'months']);
+const SCAN_FROM_DAY_9 = 'Follicular study (transvaginal scan) from day 9–10 of the cycle, as advised.';
+const OI_ADVICE =
+  'Take the tablet at the same time each day. Come for the scan on the day you are given. Hot flushes, headache or tiredness can happen and pass. Call us at once for severe pain or swelling of the abdomen, vomiting or breathlessness.';
+
+const FERTILITY_SETS = [
+  {
+    key: 'inf_oi_letrozole',
+    name: 'Ovulation induction – letrozole (one cycle)',
+    careTypes: ['infertility'],
+    order: 300,
+    items: [rx('Letrozole', 'tab', '2.5 mg', '1', '1-0-0', 'after_food', [5, 'days'], { instructions: 'From day 2 of the period, for 5 days' }), FOLIC],
+    notes: '',
+    investigations: SCAN_FROM_DAY_9,
+    advice: OI_ADVICE,
+    about:
+      'Fertility protocol library (oi_letrozole; PCOS 2023, NICE NG257, FOGSI): letrozole 2.5 mg daily for 5 days from day 2–5; if no ovulation, 5 mg and then 7.5 mg in the following cycles (usual regimen – doctor to confirm). Off-label in India: check the current CDSCO position and take written consent.',
+  },
+  {
+    key: 'inf_oi_clomiphene',
+    name: 'Ovulation induction – clomiphene (one cycle)',
+    careTypes: ['infertility'],
+    order: 310,
+    items: [rx('Clomiphene citrate', 'tab', '50 mg', '1', '1-0-0', 'after_food', [5, 'days'], { instructions: 'From day 2 of the period, for 5 days' }), FOLIC],
+    notes: '',
+    investigations: SCAN_FROM_DAY_9,
+    advice: `${OI_ADVICE} Tell us at once about blurred vision or spots before the eyes.`,
+    about:
+      'Fertility protocol library (oi_clomiphene; NICE 2013 practice, FOGSI): clomiphene citrate 50 mg daily for 5 days from day 2–5; if no ovulation, 100 mg then 150 mg; not beyond six ovulatory cycles in total (doctor to confirm). Stop it for visual symptoms.',
+  },
+  {
+    key: 'inf_trigger',
+    name: 'Ovulation trigger (hCG)',
+    careTypes: ['infertility'],
+    order: 320,
+    items: [rx('hCG (human chorionic gonadotrophin)', 'inj', '5,000 IU', '1', 'stat', '', null, { route: 'im', instructions: 'Once, at the time written by the doctor' })],
+    notes: 'Intercourse or IUI as advised by the doctor after the injection.',
+    investigations: 'Urine pregnancy test 14 days after the injection if the period has not come.',
+    advice: 'Take the injection exactly at the time written. Call us at once for severe pain or swelling of the abdomen, vomiting, breathlessness or passing very little urine.',
+    about:
+      'Fertility protocol library (natural and stimulated cycles, IUI): hCG 5,000–10,000 IU (or 250 micrograms recombinant) when the lead follicle is 18 mm or more; withhold it and cancel when more than 2 follicles reach 14 mm (doctor to confirm).',
+  },
+  {
+    key: 'inf_luteal',
+    name: 'Luteal support – vaginal progesterone',
+    careTypes: ['infertility'],
+    order: 330,
+    items: [rx('Progesterone (micronised)', 'cap', '200 mg', '1', '1-0-1', '', [14, 'days'], { route: 'vaginal', instructions: 'Into the vagina, from the day after the trigger or IUI' })],
+    notes: '',
+    investigations: 'Urine pregnancy test 14 days after the trigger or IUI.',
+    advice: 'Continue until the pregnancy test unless told otherwise. A little discharge from the capsules is expected. Call us for bleeding or pain.',
+    about:
+      'Fertility protocol library: progesterone 200–400 mg vaginally daily for luteal support where chosen; optional in OI and IUI cycles (doctor to confirm). Continue to the test; after a positive test, as the doctor decides.',
+  },
+];
+
 const LOSS_SETS = [
   {
     key: 'loss_complete',
@@ -283,4 +344,5 @@ export const BUILT_IN_SETS = [
       'NICE NG88: tranexamic acid 1 g three times a day for up to 4 days while bleeding is heavy; do not use it after a thrombosis. Rule out pregnancy; take an endometrial sample when indicated (for example at 45 or older when treatment fails, or with persistent bleeding between periods).',
   },
   ...LOSS_SETS,
+  ...FERTILITY_SETS,
 ];

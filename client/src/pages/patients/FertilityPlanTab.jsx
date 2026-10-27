@@ -21,9 +21,11 @@ import {
   switchFlash,
 } from './fertilityFormat.js';
 import { toDateInput } from './patientFormat.js';
+import { SemenResultCard } from './SemenResultCard.jsx';
+import { CounsellingNumbers } from './CounsellingNumbers.jsx';
 import { CYCLE_STATUS_LOOK, PROTOCOL_KIND_WORDS, cycleSummary, leadFollicleText } from './fertilityCycleFormat.js';
 
-// The Treatment plan tab on an infertility record (docs/FERTILITY_PLAN.md – DRAFT protocol library):
+// The Treatment plan tab on an infertility record (docs/FERTILITY_PLAN.md – the approved protocol library):
 //  1. no plan: what her record still lacks, and "Suggest plans";
 //  2. the suggestions: the protocols that fit her record, best fit first, with why – the doctor ticks one or more;
 //  3. the plan built from them: every section as text the doctor edits; a doctor confirms it; it ends with an outcome;
@@ -46,10 +48,10 @@ function PlanStatus({ plan }) {
   );
 }
 
-/** The DRAFT banner: the library is not approved for clinical use until the doctor has reviewed it. */
-function DraftNote({ text }) {
+/** The library's note (approved by the owner, 27 Oct 2026): what it is drawn from, and that the doctor decides. */
+function LibraryNote({ text }) {
   return (
-    <Alert type="warning" icon={TriangleAlert}>
+    <Alert type="info">
       <span className="fp-draft">{text}</span>
     </Alert>
   );
@@ -295,7 +297,7 @@ function SuggestPanel({ patient, switchFrom = null, onBuilt, onCancel }) {
           </button>
         </div>
       </div>
-      <DraftNote text={data.draftNote} />
+      <LibraryNote text={data.libraryNote} />
       {switchFrom && (
         <Alert type="info" icon={Info}>
           This replaces her current plan: it is closed as moved to the next step when the new plan is built.
@@ -643,7 +645,7 @@ function PlanView({ patient, plan, access, ladder, cycles = [], canStartCycle = 
               <strong>{s.label}</strong> ({s.bodies})
             </span>
           ))}
-          . Library version {plan.libraryVersion} – DRAFT, to be reviewed by the doctor.
+          . Library version {plan.libraryVersion}{plan.libraryVersion?.startsWith('draft') ? ' – built from the draft, before the library was approved' : ''}.
         </div>
       )}
       {plan.versions.length > 0 && (
@@ -773,7 +775,7 @@ function NoPlanCard({ patient, data, onSuggest, onStart }) {
 }
 
 export function PatientFertilityPlanTab() {
-  const { patient, setFlash } = useOutletContext();
+  const { patient, setFlash, reload: reloadPatient } = useOutletContext();
   const { data, error, loading, reload } = useFetch(patient.access?.canViewFertilityPlan ? `/patients/${patient.id}/fertility-plan` : null);
   const [mode, setMode] = useState('view'); // 'view' | 'suggest' | 'edit'
   const [local, setLocal] = useState(null); // the latest answer after a change, until the tab is read again
@@ -871,7 +873,19 @@ export function PatientFertilityPlanTab() {
           }}
         />
       )}
-      {mode === 'view' && !plan && <DraftNote text={data.draftNote} />}
+      {mode === 'view' && !plan && <LibraryNote text={data.libraryNote} />}
+      {mode === 'view' && <CounsellingNumbers ageYears={patient.currentAge ?? patient.ageYears} />}
+      {mode === 'view' && (
+        <SemenResultCard
+          patient={patient}
+          semen={data.semen}
+          onSet={(text) => {
+            setNote(text);
+            reload();
+            reloadPatient?.();
+          }}
+        />
+      )}
       <EarlierPlans patient={patient} plans={data.earlier} cycles={data.cycles ?? []} />
     </div>
   );

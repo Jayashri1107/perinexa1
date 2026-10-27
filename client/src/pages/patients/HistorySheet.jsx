@@ -344,7 +344,7 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, careType, age
           </div>
         </fieldset>
       </More>
-      {careType === 'antenatal' && <p className="hint hs-note">The details of this pregnancy (dates by scan, findings) are below.</p>}
+      {careType === 'antenatal' && <p className="hint hs-note">The details of this pregnancy (scan EDD, planned, conception, folic acid, medicines and symptoms so far) are recorded at the visit.</p>}
     </section>
   );
 }

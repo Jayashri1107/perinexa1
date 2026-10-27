@@ -1,4 +1,4 @@
-// Fertility treatment plans (docs/FERTILITY_PLAN.md – DRAFT library): the fertility history on an infertility record,
+// Fertility treatment plans (docs/FERTILITY_PLAN.md – approved library): the fertility history on an infertility record,
 // the protocol suggestions read from it, building a plan from the chosen protocols, editing it, a doctor confirming
 // it, ending it with an outcome, who may do what, and an audit log with ids only. All fake sample data.
 import { randomUUID } from 'node:crypto';
@@ -233,7 +233,10 @@ describe('a treatment plan', () => {
     expect(res.status).toBe(200);
     expect(res.body.options[0]).toMatchObject({ key: 'evaluation', fit: 'recommended' });
     expect(res.body.library).toHaveLength(21);
-    expect(res.body.draftNote).toMatch(/^DRAFT/);
+    // Approved by the owner on 27 Oct 2026: no DRAFT banner, the doctor-to-confirm note stays
+    expect(res.body.libraryNote).toMatch(/^Protocol library approved/);
+    expect(res.body.libraryNote).not.toMatch(/DRAFT/);
+    expect(res.body.libraryNote).toMatch(/doctor to confirm/);
     // With her history: letrozole first
     await history('drA', p);
     res = await dr.get(url(p, '/suggestions'));
@@ -247,7 +250,7 @@ describe('a treatment plan', () => {
     res = await build('drA', p, ['oi_letrozole', 'preconception']);
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     let plan = res.body.plan;
-    expect(plan).toMatchObject({ status: 'draft', protocolKeys: ['oi_letrozole', 'preconception'], rev: 0, libraryVersion: 'draft-2026-10-24' });
+    expect(plan).toMatchObject({ status: 'draft', protocolKeys: ['oi_letrozole', 'preconception'], rev: 0, libraryVersion: '2026-10-27' });
     expect(plan.startOn).toBe('2026-10-20T00:00:00.000Z');
     expect(plan.sections.map((s) => s.key)).toContain('medicines');
     expect(plan.sections.find((s) => s.key === 'medicines').text).toContain('Letrozole 2.5 mg');

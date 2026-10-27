@@ -5,7 +5,7 @@ import { createApp } from '../src/app.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { PrescriptionSet } from '../src/models/PrescriptionSet.js';
 import { mentionsFetalSex } from '../src/utils/pcpndt.js';
-import { BUILT_IN_SETS, BUILT_IN_SETS_VERSION } from '../src/visits/builtInSets.js';
+import { BUILT_IN_SETS, BUILT_IN_SETS_VERSION, FERTILITY_SET_KEYS } from '../src/visits/builtInSets.js';
 import { ensurePrescriptionSets } from '../src/visits/prescriptionSets.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb } from './helpers.js';
 
@@ -77,6 +77,13 @@ describe('the built-in sets', () => {
       expect(s.about, s.key).toBeTruthy(); // a note for the reviewing doctor: the source and what to check
       const texts = [s.name, s.about, s.notes, s.investigations, s.advice, ...s.items.flatMap((it) => [it.drug, it.strength, it.dose, it.frequencyText, it.instructions])];
       for (const t of texts) expect(mentionsFetalSex(t), `${s.key}: ${t}`).toBe(false);
+    }
+    // Fertility idea F6: the OI and IUI sets, for the Infertility type of care only, each pointing back to the library
+    const fertility = BUILT_IN_SETS.filter((s) => FERTILITY_SET_KEYS.includes(s.key));
+    expect(fertility.map((s) => s.key)).toEqual(FERTILITY_SET_KEYS);
+    for (const s of fertility) {
+      expect(s.careTypes, s.key).toEqual(['infertility']);
+      expect(s.about, s.key).toMatch(/doctor to confirm/);
     }
   });
 

@@ -26,7 +26,7 @@ import {
   STORED_LOSS_TYPE_KEYS,
 } from '../patients/abortionRules.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
-import { BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, MAX_PREGNANCIES, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, SEX_CHECKED_TEXTS, YES_NO } from '../patients/historyFields.js';
+import { CONCEPTION, FOLIC_ACID, PLANNED, PREGNANCY_TEXTS, BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, MAX_PREGNANCIES, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, SEX_CHECKED_TEXTS, YES_NO } from '../patients/historyFields.js';
 import { CYCLE_PATTERNS, ENDOMETRIOSIS_STATUS, FERTILITY_DIAGNOSES, FERTILITY_NUMBERS, FERTILITY_TEXTS, FERTILITY_TYPES, OVULATION_STATUS, SEMEN_STATUS, TUBAL_STATUS, UTERINE_FINDINGS } from '../fertility/fertilityFields.js';
 import { OVERRIDE_LEVELS } from '../careplans/risk.js';
 import { carePlanSummaryFor, currentPlanItems, planCtx, syncPlanSafely } from '../careplans/plansService.js';
@@ -142,6 +142,12 @@ const findingList = z.array(z.enum(PREGNANCY_FINDINGS, 'Choose a finding from th
 const pregnancySchema = z.object({
   lmp: z.preprocess(emptyToNull, dateOnly('LMP')).default(null),
   scanEdd: z.preprocess(emptyToNull, dateOnly('Scan EDD')).default(null),
+  // This pregnancy's details, recorded at the visit (the owner's go-ahead, 27 Oct 2026)
+  planned: z.preprocess((v) => v ?? '', z.enum([...PLANNED, ''], 'Choose yes, no or not recorded')).optional(),
+  conception: z.preprocess((v) => v ?? '', z.enum([...CONCEPTION, ''], 'Choose how she conceived from the list')).optional(),
+  folicAcid: z.preprocess((v) => v ?? '', z.enum([...FOLIC_ACID, ''], 'Choose from the list')).optional(),
+  medicinesTaken: text(PREGNANCY_TEXTS.medicinesTaken.label, PREGNANCY_TEXTS.medicinesTaken.max).optional(),
+  symptoms: text(PREGNANCY_TEXTS.symptoms.label, PREGNANCY_TEXTS.symptoms.max).optional(),
   findings: findingList.optional(),
   findingsSeen: findingList.optional(),
 });
@@ -280,7 +286,7 @@ function tidyAbortion(a) {
 // The baby's sex must never be written in a pregnancy record (PCPNDT). The record's own free text is checked for
 // antenatal and abortion care only: infertility and gynaecology notes may say "male factor".
 // The history-taking sheet: all its texts but those about a child already born (historyFields.js BORN_CHILD_TEXTS).
-const FETAL_SEX_TEXT = [['notes'], ['medical', 'allergies'], ['medical', 'otherConditions'], ...SEX_CHECKED_TEXTS.map((k) => ['history', k])];
+const FETAL_SEX_TEXT = [['notes'], ['medical', 'allergies'], ['medical', 'otherConditions'], ['pregnancy', 'medicinesTaken'], ['pregnancy', 'symptoms'], ...SEX_CHECKED_TEXTS.map((k) => ['history', k])];
 const isPregnancyCare = (careType) => careType === 'antenatal' || careType === 'abortion';
 function fetalSexIssues(careType, data, stored) {
   if (!isPregnancyCare(careType)) return [];

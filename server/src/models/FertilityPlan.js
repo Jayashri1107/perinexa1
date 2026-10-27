@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { tenantScoped } from '../utils/tenantScope.js';
 
-// A fertility treatment plan (docs/FERTILITY_PLAN.md – DRAFT library): built from one or more protocols of
+// A fertility treatment plan (docs/FERTILITY_PLAN.md): built from one or more protocols of
 // fertility/protocols.js that the doctor chose from the suggestions, then edited as free text per section.
 //   draft → active (a doctor confirmed it) → completed (pregnant, or moved to the next step as planned)
 //   draft or active → stopped (no response, the couple's choice, discarded, other)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Plus, Printer, Save, Trash2 } from 'lucide-react';
-import { Link, useOutletContext, useParams } from 'react-router-dom';
+import { ArrowLeft, CalendarPlus, Plus, Printer, Save, Trash2 } from 'lucide-react';
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { BiLabel, PrintLanguageChoice, Translation } from '../../components/print/Bilingual.jsx';
@@ -20,6 +20,7 @@ import {
   TIMING_WORDS,
   blankEntry,
   cycleDay,
+  dateOfCycleDay,
   cycleErrors,
   cyclePayload,
   cycleValues,
@@ -274,6 +275,32 @@ function EntryRow({ e, i, day1, set, remove, fe, disabled }) {
   );
 }
 
+/**
+ * The next scan booked from the cycle sheet (fertility idea F7, the owner's go-ahead of 27 Oct 2026): the cycle day,
+ * its date worked out from day 1, and Book – the Appointments page opens on that day with her doctor and her chosen.
+ */
+function NextScan({ patient, day1, today }) {
+  const navigate = useNavigate();
+  const [n, setN] = useState('');
+  const day = Number(n);
+  const on = dateOfCycleDay(day1, day);
+  const past = on && today && on < today;
+  const book = () =>
+    navigate(`/appointments?date=${on}${patient.assignedDoctor ? `&doctor=${patient.assignedDoctor}` : ''}`, {
+      state: { bookFor: { id: patient.id, fullName: patient.fullName, mrn: patient.mrn, phone: patient.phone ?? '' } },
+    });
+  return (
+    <div className="fc-next-scan">
+      <Field label="Next scan on cycle day" id="fc-next-day" hint={on ? `${formatDate(on)}${past ? ' – already past' : ''}` : 'Day 1 is the first day of the period.'} keepHint>
+        <input id="fc-next-day" inputMode="numeric" className="hs-num" value={n} onChange={(e) => setN(e.target.value.replace(/\D/g, '').slice(0, 2))} />
+      </Field>
+      <button type="button" className="btn btn-secondary" disabled={!on || past} onClick={book}>
+        <CalendarPlus aria-hidden="true" /> Book the next scan
+      </button>
+    </div>
+  );
+}
+
 export function FertilityCyclePage() {
   const { patient } = useOutletContext();
   const { cycleId } = useParams();
@@ -440,6 +467,7 @@ export function FertilityCyclePage() {
             </tbody>
           </table>
         </div>
+        {!disabled && !cycle.cancelled && cycle.status !== 'completed' && <NextScan patient={patient} day1={v.day1} today={new Date().toISOString().slice(0, 10)} />}
       </section>
 
       <section className="card" aria-labelledby="fc-after-title">
