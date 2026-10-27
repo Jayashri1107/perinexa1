@@ -272,3 +272,25 @@ describe('hospital audit log', () => {
     expect(sneaky.body.entries.every((e) => e.tenantId === home._id.toString())).toBe(true);
   });
 });
+
+// A doctor's department (owner, 27 Oct 2026): set by an admin with the roles right; registration filters by it
+describe("a doctor's department", () => {
+  it('is set and cleared by the admin, only for doctors, and listed with the doctors', async () => {
+    const doctor = await createUser({ name: 'Dept Doctor' });
+    const m = await addMember(doctor, home, 'doctor');
+    const set = (id, department) => s.patch(`/api/tenant/members/${id}/department`).send({ department });
+    const res = await set(m._id, 'Paediatrics');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.member.department).toBe('Paediatrics');
+    const doctors = (await s.get('/api/tenant/doctors')).body.doctors;
+    expect(doctors.find((d) => d.name === 'Dept Doctor').department).toBe('Paediatrics');
+    expect((await set(m._id, 'Astrology')).status).toBe(400);
+    const nurse = await addMember(await createUser({ name: 'Dept Nurse' }), home, 'nurse');
+    expect((await set(nurse._id, 'Paediatrics')).body.error.code).toBe('NOT_DOCTOR');
+    expect((await set(m._id, '')).body.member.department).toBe('');
+    const limited = await createUser({ name: 'No Roles Admin' });
+    await addMember(limited, home, 'admin');
+    expect((await (await loginAs(limited, { app })).patch(`/api/tenant/members/${m._id}/department`).send({ department: 'Paediatrics' })).status).toBe(403);
+    expect(await AuditLog.countDocuments({ action: 'MEMBER_ROLE_CHANGED', 'details.department.to': 'Paediatrics' })).toBe(1);
+  });
+});
