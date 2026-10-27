@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nextColumn } from '../../components/charts/ColumnChart.jsx';
 import { niceTicks } from '../../components/charts/niceTicks.js';
-import { formatMonth } from '../../components/ui.jsx';
+import { formatDate, formatMonth } from '../../components/ui.jsx';
 import { SECTIONS, SECTION_LABELS, TOO_FEW_TEXT, analyticsParams, analyticsSearch, analyticsTabs, cardNotes, cardWidths, formatCount, isLeftOutCard, isReportMonth, listDetailText, listHref, monthWords, notInThisVersion, perHospitalText, ratioText, shareText, tileWords } from './analyticsFormat.js';
 
 describe('formatCount', () => {
@@ -102,8 +102,9 @@ describe('analyticsSearch', () => {
       '/analytics/care?period=3m',
       '/analytics/deliveries?period=3m',
       '/analytics/newborn?period=3m',
+      '/analytics/fertility?period=3m',
     ]);
-    expect(analyticsTabs('/analytics').map((t) => t.label)).toEqual(['Overview', 'Pregnancy', 'Risk & conditions', 'Care plans & visits', 'Deliveries', 'Newborn']);
+    expect(analyticsTabs('/analytics').map((t) => t.label)).toEqual(['Overview', 'Pregnancy', 'Risk & conditions', 'Care plans & visits', 'Deliveries', 'Newborn', 'Fertility']);
   });
   it('the Monthly report tab (doctors) comes right before Ask your records, and only when asked for', () => {
     const labels = (opts) => analyticsTabs('/analytics', '?period=3m', opts).map((t) => t.label);
@@ -255,9 +256,12 @@ describe('the small-hospital switch on tiles and "by hospital" rows', () => {
 
 describe('the Deliveries tab', () => {
   it('is a tab of its own, before Newborn, with a label', () => {
-    expect(SECTIONS).toEqual(['overview', 'pregnancy', 'risk', 'care', 'deliveries', 'newborn']);
+    expect(SECTIONS).toEqual(['overview', 'pregnancy', 'risk', 'care', 'deliveries', 'newborn', 'fertility']);
     for (const s of SECTIONS) expect(SECTION_LABELS[s], s).toBeTruthy();
     expect(SECTION_LABELS.deliveries).toBe('Deliveries');
+    // Fertility (idea F8): a row per cycle or plan
+    expect(listDetailText({ type: 'cycle', on: '2026-10-01', step: 'iui' })).toBe(`Cycle ended ${formatDate('2026-10-01')} · IUI`);
+    expect(listDetailText({ type: 'plan', on: '2026-10-01', outcome: 'pregnant' })).toBe(`Plan ended ${formatDate('2026-10-01')} · Pregnant`);
   });
 
   it('"Not in this version" no longer lists what the Deliveries tab counts, and points to it', () => {

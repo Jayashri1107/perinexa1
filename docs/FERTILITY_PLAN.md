@@ -1,11 +1,11 @@
-# Fertility treatment plans – DRAFT protocol library and the plan on the record
+# Fertility treatment plans – the protocol library and the plan on the record
 
 Built on 24 Oct 2026 at the owner's request (an exception to the feature pause, like the ultrasound module): on an
 infertility record, after the patient's details and fertility history are entered, the app offers the treatment
 protocols that fit her, the doctor picks one or more, and the plan built from them is edited by the doctor.
 
-> **DRAFT.** Every protocol below is a written summary of published guidance, not yet reviewed or approved by the
-> owner (a doctor). Doses, days and numbers of cycles that the guideline texts do not spell out are marked
+> **Approved by the owner (a doctor) on 27 Oct 2026, as written** (library version `2026-10-27`; plans built before
+> keep `draft-2026-10-24`). Every protocol below is a written summary of published guidance. Doses, days and numbers of cycles that the guideline texts do not spell out are marked
 > "doctor to confirm" in the app. Nothing is prescribed, ordered or sent anywhere by a plan: it is a decided and
 > editable text on her record. Fake sample data only, as for the rest of Perinexa.
 
@@ -182,8 +182,8 @@ Added on 24 Oct 2026 at the owner's request (idea F1 of `docs/FERTILITY_APPS_REV
 
 ## 5. Decisions and open points for the owner
 
-1. **Approve or change the library.** Every protocol text, especially the doses and days marked "doctor to confirm".
-   The library's version (`draft-2026-10-24`) is stamped on every plan built from it.
+1. **Approve or change the library.** Decided 27 Oct 2026: approved as written; the "doctor to confirm" marks stay.
+   The library's version (`2026-10-27`; before it `draft-2026-10-24`) is stamped on every plan built from it.
 2. **Letrozole in India.** The app says letrozole is off-label and that the regulator restricted its infertility
    indication in 2011, and asks the doctor to check the current CDSCO position and take written consent. The owner
    decides the clinic's position.

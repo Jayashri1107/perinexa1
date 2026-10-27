@@ -38,6 +38,7 @@ import { mentionsFetalSex, PCPNDT_MESSAGE } from '../../pcpndtWords.js';
 import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { asName } from '../../personName.js';
 import { lookupPin } from './pinLookup.js';
+import { useUnsavedWarning } from '../../hooks/useUnsavedWarning.js';
 import { HistorySheet } from './HistorySheet.jsx';
 import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues } from './historyFormat.js';
 import { DEPARTMENTS } from '../../platform/departments.js';
@@ -395,6 +396,8 @@ export function PatientForm({
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  // Leaving with unsaved changes (the history sheet's blanks and everything else on the form) asks once first
+  useUnsavedWarning(!submitting && JSON.stringify(v) !== JSON.stringify(loaded));
   const [recording, setRecording] = useState(false); // voice entry is recording: saving waits for Stop
   const [voiceStatus, setVoiceStatus] = useState(null); // the recording's status, for the bar above Save
   const [lmpCopied, setLmpCopied] = useState(''); // the LMP copied from the pregnancy loss (to be checked), or ''
@@ -628,7 +631,9 @@ export function PatientForm({
     }
   };
 
-  const showPregnancy = showClinical && type === 'antenatal' && clinical;
+  // This pregnancy's details are recorded at the visit (the owner, 27 Oct 2026): the registration page has the LMP on
+  // the history sheet only; Edit details keeps the whole pregnancy section (the record's own copy)
+  const showPregnancy = showClinical && type === 'antenatal' && clinical && isEdit;
   const showLoss = showClinical && type === 'abortion' && clinical;
   const continues = clinicalStep?.(v) ?? false;
   // A doctor who assigns a colleague can't open that patient's clinical details afterwards (need-to-know).

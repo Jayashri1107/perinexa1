@@ -7,6 +7,7 @@
 //
 import { CARE_METRICS } from './metrics/care.js';
 import { DELIVERY_METRICS } from './metrics/deliveries.js';
+import { FERTILITY_METRICS } from './metrics/fertility.js';
 import { NEWBORN_METRICS } from './metrics/newborn.js';
 import { HEADLINE_TILES, OVERVIEW_METRICS } from './metrics/overview.js';
 import { PREGNANCY_METRICS } from './metrics/pregnancy.js';
@@ -16,12 +17,12 @@ import { G2 } from './metrics/sexAtBirth.js';
 // The tabs (the website has the same ones: client/src/pages/analytics/analyticsFormat.js, which also sets their
 // order on the page – Deliveries before Newborn). Here a new tab goes at the END: the hospital admin's numbers are
 // worked out in this order, and a tab added last leaves the protection of every number before it as it was.
-export const SECTIONS = ['overview', 'pregnancy', 'risk', 'care', 'newborn', 'deliveries'];
+export const SECTIONS = ['overview', 'pregnancy', 'risk', 'care', 'newborn', 'deliveries', 'fertility'];
 // Sections whose cards use risk levels: stored levels are brought up to date first (ages and rules change), as
 // the Patients list does, on the hospital path only. Overview needs it for the "High-risk pregnancies" tile.
 // A patient list does the same as the page its card is on.
 export const REFRESH_RISK_SECTIONS = ['overview', 'risk'];
-export const METRICS = [...OVERVIEW_METRICS, ...PREGNANCY_METRICS, ...RISK_METRICS, ...CARE_METRICS, ...NEWBORN_METRICS, G2, ...DELIVERY_METRICS];
+export const METRICS = [...OVERVIEW_METRICS, ...PREGNANCY_METRICS, ...RISK_METRICS, ...CARE_METRICS, ...NEWBORN_METRICS, G2, ...DELIVERY_METRICS, ...FERTILITY_METRICS];
 export { HEADLINE_TILES };
 
 const BY_ID = new Map(METRICS.map((m) => [m.id, m]));

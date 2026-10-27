@@ -238,6 +238,32 @@ hospital, so it must hold nothing about one patient. Each change is in the audit
 - Advice: Keep a note of how many pads you use each day. Come at once if you soak a pad every hour for more than 2 hours, pass large clots, or feel faint or breathless.
 - Notes for doctors: NICE NG88: tranexamic acid 1 g three times a day for up to 4 days while bleeding is heavy; do not use it after a thrombosis. Rule out pregnancy; take an endometrial sample when indicated (for example at 45 or older when treatment fails, or with persistent bleeding between periods).
 
+### Fertility – ovulation induction and IUI (fertility idea F6, added 27 Oct 2026)
+Drafts from the approved fertility protocol library (`server/src/fertility/protocols.js`), starting doses of its
+"usual regimen" lines – every dose is the doctor's to confirm before approving the set. Infertility type of care only.
+
+#### Ovulation induction – letrozole (one cycle) (Infertility)
+- **Tab. Letrozole 2.5 mg** – 1 tab · 1-0-0 (morning) · after food · for 5 days – *From day 2 of the period, for 5 days*
+- **Tab. Folic acid 400 mcg** – 1 tab · 1-0-0 (morning) · after food · for 3 months
+- Tests advised: Follicular study (transvaginal scan) from day 9–10 of the cycle, as advised.
+- Notes for doctors: 2.5 mg, then 5 mg and 7.5 mg in later cycles if no ovulation; off-label in India – check the CDSCO position and take written consent.
+
+#### Ovulation induction – clomiphene (one cycle) (Infertility)
+- **Tab. Clomiphene citrate 50 mg** – 1 tab · 1-0-0 (morning) · after food · for 5 days – *From day 2 of the period, for 5 days*
+- **Tab. Folic acid 400 mcg** – 1 tab · 1-0-0 (morning) · after food · for 3 months
+- Tests advised: Follicular study from day 9–10.
+- Notes for doctors: 50 mg, then 100 mg and 150 mg; not beyond six ovulatory cycles; stop for visual symptoms.
+
+#### Ovulation trigger (hCG) (Infertility)
+- **Inj. hCG 5,000 IU** – once, IM, at the time written by the doctor
+- Tests advised: Urine pregnancy test 14 days after the injection if the period has not come.
+- Notes for doctors: 5,000–10,000 IU (or 250 micrograms recombinant) when the lead follicle is 18 mm or more; withhold and cancel when more than 2 follicles reach 14 mm.
+
+#### Luteal support – vaginal progesterone (Infertility)
+- **Cap. Progesterone (micronised) 200 mg** – 1 · 1-0-1 · vaginal · for 14 days – *From the day after the trigger or IUI*
+- Tests advised: Urine pregnancy test 14 days after the trigger or IUI.
+- Notes for doctors: 200–400 mg daily where chosen; optional in OI and IUI cycles.
+
 ### Pregnancy-loss care (added in October 2026 – see `docs/PROGRESS.md`, Next)
 Only for a loss that has already happened or been diagnosed – never for ending a continuing pregnancy. Left out on
 purpose: methotrexate for an ectopic pregnancy (a specialist protocol, RCOG Green-top Guideline 21) and a threatened

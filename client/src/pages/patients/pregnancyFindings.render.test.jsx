@@ -105,9 +105,9 @@ describe('the edit form has the tick boxes', () => {
   it('only on an antenatal record, and only for those who may edit the clinical details', () => {
     expect(html(<PatientForm patient={patient({ careType: 'gynaecology' })} access={FULL} onSubmit={() => {}} />)).not.toContain('Findings in this pregnancy');
     expect(html(<PatientForm patient={patient()} access={{ canEditIdentity: true, canEditNewborn: true, canEditClinical: false }} onSubmit={() => {}} />)).not.toContain('Findings in this pregnancy');
-    // registering: nothing ticked yet
+    // registering: no pregnancy section – this pregnancy's details are recorded at the visit (the owner, 27 Oct 2026)
     const fresh = html(<PatientForm careType="antenatal" part="clinical" access={FULL} onSubmit={() => {}} />);
-    expect(boxes(fresh).map((b) => b[1])).toEqual([false, false, false, false, false]);
+    expect(fresh).not.toContain('Findings in this pregnancy');
   });
 });
 

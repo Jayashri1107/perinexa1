@@ -30,7 +30,7 @@ import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { ANTI_D, ECTOPIC_SITES, HISTOLOGY, LOSS_LABELS, MANAGEMENT, MOLE_KINDS, OUTCOME_LABELS, RETIRED_LOSS_MESSAGE, gaText, isRetiredLoss, lossFlagsText, lossRulesOn, showsPregnancyFields } from './abortionFormat.js';
 import { LossFindingsList } from './LossFindings.jsx';
 import { fertilityEmpty as fertilityHistoryEmpty, fertilityRows } from './fertilityFormat.js';
-import { historyLines } from './historyFormat.js';
+import { historyLines, pregnancyDetailLines } from './historyFormat.js';
 import {
   CARE_TYPE_SHORT,
   BREASTFEEDING_LABELS,
@@ -882,6 +882,8 @@ export function PatientOverviewTab() {
                 ['LMP', p.pregnancy?.lmp ? formatDate(p.pregnancy.lmp) : ''],
                 // The LMP's EDD only when the scan's is used instead, to compare
                 ...(p.pregnancy?.scanEdd && p.pregnancy?.edd ? [['EDD from LMP', formatDate(p.pregnancy.edd)]] : []),
+                // Recorded at the visit (the owner, 27 Oct 2026)
+                ...pregnancyDetailLines(p.pregnancy),
               ]}
             />
             <PregnancyFindings patient={p} carePlanSummary={carePlanSummary} />

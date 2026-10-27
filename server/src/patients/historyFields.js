@@ -53,6 +53,14 @@ export const BORN_CHILD_ROW_TEXTS = ['place', 'problems'];
 /** The sheet's texts checked for words about a baby's sex on a pregnancy record: all but the born-child ones. */
 export const SEX_CHECKED_TEXTS = Object.keys(HISTORY_TEXTS).filter((k) => !BORN_CHILD_TEXTS.includes(k));
 
+// This pregnancy's details – recorded at the visit, not on the history sheet (docs/HISTORY_SHEET_LAYOUT.md section 1,
+// the owner's go-ahead of 27 Oct 2026): planned or not, how she conceived, folic acid, medicines taken so far and
+// symptoms so far. Kept with the pregnancy on her record; '' = not recorded.
+export const PLANNED = ['yes', 'no'];
+export const CONCEPTION = ['natural', 'ovulation_induction', 'iui', 'ivf'];
+export const FOLIC_ACID = ['before', 'after', 'not_taken'];
+export const PREGNANCY_TEXTS = { medicinesTaken: { max: 300, label: 'Medicines taken so far' }, symptoms: { max: 300, label: 'Symptoms so far' } };
+
 /** True when nothing has been written on the sheet (every record from before it). */
 export function historyEmpty(h) {
   if (!h) return true;

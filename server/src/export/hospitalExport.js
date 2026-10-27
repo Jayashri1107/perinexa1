@@ -113,7 +113,7 @@ export const KINDS = [
   { file: 'emergency-notes.json', model: PatientNote, what: 'Emergency treatment notes written by a doctor who was not the patient\'s own doctor, with the reason.' },
   { file: 'care-plans.json', model: CarePlan, what: 'The care plans: each check-up, test or vaccination with its due dates and what was done, and each plan\'s history.' },
   { file: 'lab-orders.json', model: LabOrder, what: 'Lab orders: the tests, the sample, the results with their Low/High marks, the lab\'s remarks, the doctor\'s review, results changed after the report, and cancelled orders. The report files themselves are in the "files" folder.' },
-  { file: 'fertility-plans.json', model: FertilityPlan, what: 'Fertility treatment plans (DRAFT protocol library): the protocols chosen, the plan text as edited, its dates, who built, edited and confirmed it, the earlier versions of the text, and how it ended.' },
+  { file: 'fertility-plans.json', model: FertilityPlan, what: 'Fertility treatment plans: the protocols chosen, the plan text as edited, its dates, who built, edited and confirmed it, the earlier versions of the text, and how it ended.' },
   { file: 'fertility-cycles.json', model: FertilityCycle, what: 'Fertility treatment cycles (follicular study sheets): day 1, the medicines of the cycle, each scan day with the follicles and the endometrium, the trigger, timed intercourse or IUI, luteal support, a cancellation, the outcome, and who entered what.' },
   { file: 'scans-and-procedures.json', model: WorkDone, what: 'Scans and procedures recorded as done (what, when, by whom).' },
   { file: 'admissions.json', model: Admission, what: 'Stays in hospital: admission, ward and bed, reason, discharge.' },

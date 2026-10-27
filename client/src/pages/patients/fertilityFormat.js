@@ -1,4 +1,4 @@
-// Words and helpers for the fertility history and the fertility treatment plan (docs/FERTILITY_PLAN.md – DRAFT).
+// Words and helpers for the fertility history and the fertility treatment plan (docs/FERTILITY_PLAN.md).
 // The lists mirror server/src/fertility/fertilityFields.js (a server test compares the keys).
 
 export const FERTILITY_TYPE_LABELS = { primary: 'Primary (never conceived)', secondary: 'Secondary (conceived before)' };
