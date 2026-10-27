@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { ADMIN_RIGHTS, Membership, TENANT_ROLES } from '../models/Membership.js';
+import { ADMIN_RIGHTS, DEPARTMENTS, Membership, TENANT_ROLES } from '../models/Membership.js';
 import { User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
@@ -36,6 +36,7 @@ const toMember = (m, sharedUserIds = new Set()) => ({
   roles: m.roles,
   isActive: m.isActive,
   adminRights: m.roles.includes('admin') ? [...(m.adminRights ?? [])] : [],
+  department: m.roles.includes('doctor') ? (m.department ?? '') : '',
   createdAt: m.createdAt,
   user: m.userId.toJSON(),
   // Also works in another hospital: only a super admin may change their name, email or password.
@@ -244,6 +245,20 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
     m.roles = newRoles;
     await m.save();
     await audit(req, 'MEMBER_ROLE_CHANGED', { target: m.userId, tenantId: req.scopeTenantId, details: { from, to: newRoles } });
+    res.json({ member: toMember(m) });
+  });
+
+  // A doctor's department here (owner, 27 Oct 2026): those who may change roles may set it
+  router.patch('/:memberId/department', async (req, res) => {
+    const { department } = parse(z.object({ department: z.enum(['', ...DEPARTMENTS], 'Choose a department from the list') }), req.body);
+    const m = await findMember(req);
+    assertAdminRight(req, 'roles');
+    if (!m.roles.includes('doctor')) throw new HttpError(400, 'Only a doctor has a department.', 'NOT_DOCTOR');
+    const from = m.department ?? '';
+    if (from === department) return res.json({ member: toMember(m) });
+    m.department = department;
+    await m.save();
+    await audit(req, 'MEMBER_ROLE_CHANGED', { target: m.userId, tenantId: req.scopeTenantId, details: { department: { from, to: department } } });
     res.json({ member: toMember(m) });
   });
 

@@ -13,6 +13,13 @@ export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 
 // reset a password, remove or restore access, change roles, edit name and email. Without it they see who works there.
 // addPeople (22 Oct 2026): add new staff to the hospital – never another admin (only the super admin makes admins).
 export const ADMIN_RIGHTS = ['addPeople', 'resetPassword', 'access', 'roles', 'details'];
+// A doctor's department in this hospital (owner, 27 Oct 2026): registration shows the department first, then its
+// doctors. Set by the hospital admin; the same list is in client/src/platform/departments.js.
+export const DEPARTMENTS = [
+  'Obstetrics & Gynaecology', 'Paediatrics', 'Neonatology', 'General Medicine', 'General Surgery', 'Anaesthesia', 'Cardiology', 'Dietetics',
+  'Gastroenterology', 'Lactation', 'Neurology', 'Medical Oncology', 'Surgical Oncology', 'Orthopaedics', 'Pathology', 'Physiotherapy',
+  'Plastic & Reconstructive Surgery', 'Radiology', 'Interventional Radiology', 'Urology', 'Yoga',
+];
 
 // Links a user to a hospital ("tagging"), with the roles they have there.
 // One user can have memberships in several hospitals, and one or more roles in each
@@ -28,6 +35,8 @@ const membershipSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     // A hospital admin's rights over the staff (ADMIN_RIGHTS), set by the super admin
     adminRights: { type: [{ type: String, enum: ADMIN_RIGHTS }], default: [] },
+    // A doctor's department here (DEPARTMENTS); '' = not set
+    department: { type: String, enum: ['', ...DEPARTMENTS], default: '' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },

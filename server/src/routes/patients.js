@@ -1351,12 +1351,13 @@ patientsRouter.post('/:id/emergency-notes', async (req, res) => {
 // Doctors in this hospital (for the "assigned doctor" dropdown). Any staff member may read it.
 export const doctorsRouter = Router();
 doctorsRouter.get('/', async (req, res) => {
-  const memberships = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'doctor' }, { userId: 1 }).lean();
+  const memberships = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'doctor' }, { userId: 1, department: 1 }).lean();
+  const departmentOf = new Map(memberships.map((m) => [String(m.userId), m.department ?? '']));
   const users = await User.find({ _id: { $in: memberships.map((m) => m.userId) }, isActive: true }, { name: 1, professional: 1 })
     .sort({ name: 1 })
     .lean();
   res.json({
-    doctors: users.map((u) => ({ id: u._id.toString(), name: u.name, qualification: u.professional?.qualification ?? '' })),
+    doctors: users.map((u) => ({ id: u._id.toString(), name: u.name, qualification: u.professional?.qualification ?? '', department: departmentOf.get(String(u._id)) ?? '' })),
     me: hasRole(req.membership, 'doctor') ? req.user._id.toString() : null,
   });
 });
