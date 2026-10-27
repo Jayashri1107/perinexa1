@@ -8,11 +8,12 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, formatTime } from '../../components/ui.jsx';
+import { Alert, Field, formatDateTime, formatTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso, dayLabel } from '../appointments/appointmentFormat.js';
 import { billColumns } from './BillsPage.jsx';
-import { GROUP_LABELS, MODE_LABELS, PAYMENT_KIND_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
+import { GROUP_LABELS, MODE_LABELS, PAYMENT_KIND_LABELS, REPORT_ROLES, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
+import { amountInWords } from './amountWords.js';
 
 // Billing reports (docs/BILLING_PLAN.md): unpaid bills, the daily cash summary (printable for handing over the cash),
 // monthly income with the export for the accountant (hospital admin), and the price list.
@@ -74,7 +75,7 @@ export function UnpaidPage() {
   );
 }
 
-// ---------- Daily cash summary ----------
+// ---------- Daily collection ----------
 
 function DailyTables({ d }) {
   return (
@@ -112,6 +113,61 @@ function DailyTables({ d }) {
           </tr>
         </tbody>
       </table>
+      {/* OPD and IPD apart, and the day's charges by service group (owner, 27 Oct 2026) */}
+      {d.byKind && (
+        <table className="bill-report">
+          <caption>OPD and IPD</caption>
+          <thead>
+            <tr>
+              <th scope="col">Department</th>
+              <th scope="col" className="num">
+                In
+              </th>
+              <th scope="col" className="num">
+                Given back
+              </th>
+              <th scope="col" className="num">
+                Net
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.byKind.map((k) => (
+              <tr key={k.kind}>
+                <td>{k.kind === 'ipd' ? 'IPD (inpatient)' : 'OPD (outpatient)'}</td>
+                <td className="num">{rupees(k.in)}</td>
+                <td className="num">{rupees(k.out)}</td>
+                <td className="num">{rupees(k.net)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {d.byGroup?.length > 0 && (
+        <table className="bill-report">
+          <caption>Charged this day, by service group</caption>
+          <thead>
+            <tr>
+              <th scope="col">Group</th>
+              <th scope="col" className="num">
+                Services
+              </th>
+              <th scope="col" className="num">
+                Amount
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.byGroup.map((g) => (
+              <tr key={g.group}>
+                <td>{g.label}</td>
+                <td className="num">{g.count}</td>
+                <td className="num">{rupees(g.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <table className="bill-report">
         <caption>Collected by</caption>
         <thead>
@@ -183,30 +239,100 @@ function DailyTables({ d }) {
   );
 }
 
+/** Every receipt of the day, numbered – on the screen and in the printed daily collection. */
+function ReceiptsTable({ payments }) {
+  return (
+    <table className="bill-report bill-receipts">
+      <caption>Every receipt</caption>
+      <thead>
+        <tr>
+          <th scope="col">Sr.</th>
+          <th scope="col">Time</th>
+          <th scope="col">Receipt</th>
+          <th scope="col">Bill</th>
+          <th scope="col">Reg. no.</th>
+          <th scope="col">Patient</th>
+          <th scope="col">OPD / IPD</th>
+          <th scope="col">Services</th>
+          <th scope="col">Doctor</th>
+          <th scope="col">Mode</th>
+          <th scope="col" className="num">
+            Amount
+          </th>
+          <th scope="col">By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {payments.map((p, i) => (
+          <tr key={p.receipt}>
+            <td>{i + 1}</td>
+            <td>{formatTime(p.at)}</td>
+            <td>{p.receipt}</td>
+            <td>{p.number}</td>
+            <td>{p.patient?.mrn}</td>
+            <td>{p.patient?.fullName}</td>
+            <td>{p.billKind === 'ipd' ? 'IPD' : 'OPD'}</td>
+            <td className="bill-receipts-services">
+              {p.services}
+              {p.kind !== 'payment' ? ` (${PAYMENT_KIND_LABELS[p.kind].toLowerCase()})` : ''}
+            </td>
+            <td>{p.doctorName}</td>
+            <td>{MODE_LABELS[p.mode]}</td>
+            <td className="num">{p.kind === 'refund' ? `−${rupees(p.amountPaise)}` : rupees(p.amountPaise)}</td>
+            <td>{p.byName}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function DailySummaryPage() {
+  const { activeMembership } = useAuth();
   const [params, setParams] = useSearchParams();
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date') : undefined;
   const res = useFetch('/billing/reports/daily', { date });
   const lh = useFetch('/tenant/settings/letterhead');
   const [printing, setPrinting] = useState(false);
+  const [excel, setExcel] = useState({ busy: false, error: null });
   const d = res.data;
   const day = d?.date ?? date;
   const go = (x) => setParams({ date: x }, { replace: true });
+  // The day's receipts as a spreadsheet: the accountant's export, for the hospital admin and the billing department
+  const seesExport = activeMembership.roles.some((r) => REPORT_ROLES.includes(r));
+  const downloadExcel = async () => {
+    setExcel({ busy: true, error: null });
+    try {
+      const { blob, name } = await apiFile('/billing/export', { query: { from: day, to: day, what: 'payments' } });
+      downloadFile(blob, name);
+      setExcel({ busy: false, error: null });
+    } catch (err) {
+      setExcel({ busy: false, error: err.message });
+    }
+  };
   return (
     <>
       <Header
-        title="Daily cash summary"
+        title="Daily collection"
         crumb="Daily summary"
         actions={
           d && (
-            <button type="button" className="btn btn-primary" onClick={() => setPrinting(true)}>
-              <Printer aria-hidden="true" /> Print
-            </button>
+            <>
+              {seesExport && (
+                <button type="button" className="btn btn-secondary" onClick={downloadExcel} disabled={excel.busy}>
+                  <Download aria-hidden="true" /> {excel.busy ? 'Preparing…' : 'Download Excel'}
+                </button>
+              )}
+              <button type="button" className="btn btn-primary" onClick={() => setPrinting(true)}>
+                <Printer aria-hidden="true" /> Print or download PDF
+              </button>
+            </>
           )
         }
       />
       <div className="pf-content bill-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
+        {excel.error && <Alert type="error">{excel.error}</Alert>}
         {day && (
           <div className="card appt-toolbar">
             <div className="appt-daynav" role="group" aria-label="Day">
@@ -227,51 +353,30 @@ export function DailySummaryPage() {
               Net collected: <strong>{rupees(d.totals.net)}</strong>
             </p>
             <DailyTables d={d} />
-            {d.payments.length > 0 && (
-              <table className="bill-report">
-                <caption>Every receipt</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Time</th>
-                    <th scope="col">Receipt</th>
-                    <th scope="col">Bill</th>
-                    <th scope="col">Patient</th>
-                    <th scope="col">Kind</th>
-                    <th scope="col">Mode</th>
-                    <th scope="col" className="num">
-                      Amount
-                    </th>
-                    <th scope="col">By</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {d.payments.map((p) => (
-                    <tr key={p.receipt}>
-                      <td>{formatTime(p.at)}</td>
-                      <td>{p.receipt}</td>
-                      <td>{p.number}</td>
-                      <td>{p.patient?.fullName}</td>
-                      <td>{PAYMENT_KIND_LABELS[p.kind]}</td>
-                      <td>{MODE_LABELS[p.mode]}</td>
-                      <td className="num">{p.kind === 'refund' ? `−${rupees(p.amountPaise)}` : rupees(p.amountPaise)}</td>
-                      <td>{p.byName}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            {d.payments.length > 0 && <ReceiptsTable payments={d.payments} />}
           </section>
         )}
       </div>
       {printing && d && (
-        <PrintPreview title="Daily cash summary – print preview" hint="Print it to hand over the cash at the end of the day." onClose={() => setPrinting(false)}>
-          <PrintDocument className="bill-doc">
+        <PrintPreview
+          title="Daily collection – print preview"
+          hint="Print it to hand over the cash at the end of the day, or save it as a PDF."
+          pdf={{ fileName: `Daily collection ${d.date}.pdf`, title: `Daily collection ${d.date}`, share: false, onSaved: () => api('/billing/reports/daily/saved', { method: 'POST', body: { date: d.date } }) }}
+          docKey={lh.data ? d.date : null}
+          pageNumbers
+          onClose={() => setPrinting(false)}
+        >
+          <PrintDocument className="bill-doc bill-daily-doc">
             {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
-            <h1 className="pdoc-title">Daily cash summary – {dayLabel(d.date)}</h1>
+            <div className="bill-doc-titlebar">
+              <h1 className="pdoc-title">Daily collection – {dayLabel(d.date)}</h1>
+              <span className="pdoc-small">Print date {formatDateTime(new Date())}</span>
+            </div>
             <p>
-              Net collected: <strong>{rupees(d.totals.net)}</strong>
+              Net collected: <strong>{rupees(d.totals.net)}</strong> ({amountInWords(Math.max(0, d.totals.net))})
             </p>
             <DailyTables d={d} />
+            {d.payments.length > 0 && <ReceiptsTable payments={d.payments} />}
             <p className="bill-sign">Handed over by: ____________________ &nbsp; Received by: ____________________</p>
           </PrintDocument>
         </PrintPreview>

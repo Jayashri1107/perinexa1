@@ -7,6 +7,7 @@ import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { Admission } from '../src/models/Admission.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { Membership } from '../src/models/Membership.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-09-28T06:00:00Z'); // Monday 28 Sep 2026, 11:30 in the hospital
@@ -372,5 +373,43 @@ describe('the billing department (billing role, 7 Oct 2026)', () => {
     expect((await desk.patch(`/api/patients/${p.id}`).send({ fullName: 'Changed' })).status).toBe(403);
     expect((await desk.post('/api/patients').send(samplePatient({ fullName: 'New By Billing' }))).status).toBe(403);
     expect((await desk.get(`/api/patients/${p.id}/visits`)).status).toBe(403);
+  });
+});
+
+// The hospital's own OPD receipt and daily collection (owner, 27 Oct 2026)
+describe('the printed bill and the daily collection', () => {
+  it("gives the bill her age and her doctor's department, the hospital's notes, and the day by OPD/IPD and group", async () => {
+    await prices({ consult_new: 50000, 'lab:cbc': 25000 });
+    await Membership.updateOne({ tenantId: hospital._id, userId: people.drA._id }, { $set: { department: 'Obstetrics & Gynaecology' } });
+    const p = await register('Receipt Mother');
+    await startVisit(p);
+    await order(p, ['cbc']);
+    const [b] = await billsOf(p);
+    await pay(b.id, { mode: 'cash', amountPaise: 75000 });
+
+    const notes = await (await as('admin')).put('/api/billing/settings/bill-notes').send({ billNotes: 'First consultation – Rs 500\nFollow-up – Rs 300' });
+    expect(notes.status, JSON.stringify(notes.body)).toBe(200);
+    expect((await (await as('reception')).put('/api/billing/settings/bill-notes').send({ billNotes: 'x' })).status).toBe(403);
+    expect((await (await as('admin')).put('/api/billing/settings/bill-notes').send({ billNotes: 'Sex of the baby told here' })).status).toBe(400);
+
+    const one = (await (await as('reception')).get(`/api/billing/bills/${b.id}`)).body;
+    expect(one.billNotes).toBe('First consultation – Rs 500\nFollow-up – Rs 300');
+    expect(one.bill.doctorDepartment).toBe('Obstetrics & Gynaecology');
+    expect(typeof one.bill.patient.age).toBe('number');
+
+    const daily = (await (await as('reception')).get('/api/billing/reports/daily?date=2026-09-28')).body;
+    expect(daily.byKind).toEqual([
+      { kind: 'opd', in: 75000, out: 0, net: 75000 },
+      { kind: 'ipd', in: 0, out: 0, net: 0 },
+    ]);
+    expect(daily.byGroup.map((g) => [g.group, g.count, g.amount])).toEqual([
+      ['consultation', 1, 50000],
+      ['lab', 1, 25000],
+    ]);
+    expect(daily.payments[0]).toMatchObject({ billKind: 'opd', doctorName: 'Sample drA' });
+    expect(daily.payments[0].services).toContain('CBC');
+
+    expect((await (await as('reception')).post('/api/billing/reports/daily/saved').send({ date: '2026-09-28' })).status).toBe(200);
+    expect(await AuditLog.countDocuments({ action: 'BILLING_EXPORTED', 'details.what': 'daily-summary' })).toBe(1);
   });
 });

@@ -564,9 +564,38 @@ export function BillingSettingsPage() {
             )}
           </section>
         )}
+        {saved && <BillNotes saved={saved.billNotes ?? ''} canEdit={canEdit} />}
         {canEdit && <UpiHistory history={savedHistory ?? res.data?.history} />}
       </div>
     </>
+  );
+}
+
+/** The lines printed at the foot of every bill and receipt, e.g. the consultation fees (owner, 27 Oct 2026). */
+function BillNotes({ saved, canEdit }) {
+  const [text, setText] = useState(null);
+  const [savedNow, setSavedNow] = useState(null);
+  const s = useSend((out) => {
+    setSavedNow(out.settings.billNotes);
+    setText(null);
+  });
+  const current = savedNow ?? saved;
+  const v = text ?? current;
+  return (
+    <section className="card bill-section narrow" aria-labelledby="bill-set-notes">
+      <h2 id="bill-set-notes">Notes on the bill</h2>
+      <p>Printed at the foot of every bill and receipt, one line each – for example the consultation fees.</p>
+      <Alert type="error">{s.error}</Alert>
+      {savedNow !== null && text === null && <Alert type="success">Saved. Bills and receipts print these notes now.</Alert>}
+      <Field label="Notes (one per line)" id="bill-set-notes-text" hint="Up to 600 characters.">
+        <textarea id="bill-set-notes-text" rows={4} maxLength={600} value={v} onChange={(e) => setText(e.target.value)} disabled={!canEdit} placeholder={'First consultation – Rs 500\nFollow-up within 7 days – Rs 300'} />
+      </Field>
+      {canEdit && (
+        <button type="button" className="btn btn-secondary" disabled={text === null || text.trim() === current || s.busy} onClick={() => s.send('/billing/settings/bill-notes', { billNotes: v.trim() }, null, 'PUT')}>
+          <Save aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save the notes'}
+        </button>
+      )}
+    </section>
   );
 }
 

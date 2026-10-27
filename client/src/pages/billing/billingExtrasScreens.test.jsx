@@ -365,7 +365,7 @@ describe('Billing → Settings', () => {
     const html = at('/billing/settings', '/billing/settings', <BillingSettingsPage />);
     expect(text(html)).toContain('Only the hospital admin can change these settings.');
     expect(primaries(html)).toBe(0);
-    expect((html.match(/disabled=""/g) ?? []).length).toBe(2);
+    expect((html.match(/disabled=""/g) ?? []).length).toBe(3); // the UPI ID, the payee name and the notes on the bill
   });
 });
 

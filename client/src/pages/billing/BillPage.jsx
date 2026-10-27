@@ -16,6 +16,7 @@ import { BillStatus } from './BillsPage.jsx';
 import { TallyMarks } from './TallyPage.jsx';
 import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
 import { Modal, useSend } from './billingUi.jsx';
+import { amountInWords } from './amountWords.js';
 
 // One bill (billing): its items (added by the work done, or by reception from the price list), discount, payments,
 // deposits and refunds, and what is still to pay or to give back. Reception (and the hospital admin) do everything,
@@ -461,9 +462,22 @@ function SetPriceDialog({ bill, line, onClose, onDone }) {
   );
 }
 
-/** The printed bill (A5), or one receipt. */
-function BillPrint({ bill, receipt = null, onClose }) {
+/** The bill's live items by service group, in the price list's order (the printed bill's sections). */
+function linesByGroup(lines) {
+  const known = Object.keys(GROUP_LABELS);
+  const groups = known.map((g) => ({ group: g, lines: lines.filter((l) => l.group === g) }));
+  const rest = lines.filter((l) => !known.includes(l.group));
+  return [...groups, { group: 'more', lines: rest }].filter((x) => x.lines.length);
+}
+
+/**
+ * The printed bill (A5), or one receipt – laid out as the hospital's own OPD receipt (owner, 27 Oct 2026): the patient,
+ * her consultant and department on the left, the bill's numbers on the right; the services by group with doctor, rate,
+ * unit and amount; the sums, how it was paid and the amount in words; the hospital's notes and the signature.
+ */
+function BillPrint({ bill, receipt = null, notes = '', onClose }) {
   const lh = useFetch('/tenant/settings/letterhead');
+  const { user } = useAuth();
   const payment = receipt ? bill.payments.find((p) => p.receipt === receipt) : null;
   const lines = bill.lines.filter((l) => !l.removed);
   const record = () => api(`/billing/bills/${bill.id}/printed`, { method: 'POST', body: receipt ? { receipt } : {} });
@@ -478,10 +492,18 @@ function BillPrint({ bill, receipt = null, onClose }) {
       ? { label: offer.data.label, practice: offer.data.practice, send: async (blob) => api(`/billing/bills/${bill.id}/whatsapp`, { method: 'POST', body: { pdf: await blobToBase64(blob), ...(receipt ? { receipt } : {}) } }) }
       : null,
   };
+  const modes = [...new Set(bill.payments.filter((p) => p.kind !== 'refund').map((p) => MODE_LABELS[p.mode]))].join(', ');
+  const received = payment ? payment.amountPaise : Math.max(0, bill.paid);
+  const noteLines = notes
+    .split('\n')
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const title = receipt ? (payment?.corrections?.length ? 'Receipt (corrected)' : 'Receipt') : bill.kind === 'ipd' ? 'IPD Bill' : 'OPD Receipt';
+  let n = 0; // the items' numbers, across the groups
   return (
     <PrintPreview
       title={receipt ? 'Receipt – print preview' : 'Bill – print preview'}
-      hint="Check it, then print on A5 paper."
+      hint="Check it, then print on A5 paper – or save it as a PDF."
       page={{ size: 'A5', margin: '10mm' }}
       pdf={pdf}
       docKey={lh.data ? `${bill.id}-${receipt ?? ''}` : null}
@@ -490,129 +512,172 @@ function BillPrint({ bill, receipt = null, onClose }) {
     >
       <PrintDocument className="bill-doc">
         {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
-        <h1 className="pdoc-title">{receipt ? (payment?.corrections?.length ? 'Receipt (corrected)' : 'Receipt') : bill.kind === 'ipd' ? 'Inpatient bill' : 'Bill'}</h1>
-        <table className="bill-doc-head">
-          <tbody>
-            <tr>
-              <th scope="row">{receipt ? 'Receipt no.' : 'Bill no.'}</th>
-              <td>{receipt ?? bill.number}</td>
-              <th scope="row">Date</th>
-              <td>{payment ? formatDateTime(payment.at) : dayLabel(bill.date)}</td>
-            </tr>
-            <tr>
-              <th scope="row">Patient</th>
-              <td>{bill.patient?.fullName}</td>
-              <th scope="row">Patient no.</th>
-              <td>{bill.patient?.mrn}</td>
-            </tr>
-            {bill.doctorName && !receipt && (
-              <tr>
-                <th scope="row">Doctor</th>
-                <td>{bill.doctorName}</td>
-                <th scope="row" />
-                <td />
-              </tr>
-            )}
-            {receipt && (
-              <tr>
-                <th scope="row">Bill no.</th>
-                <td>{bill.number}</td>
-                <th scope="row" />
-                <td />
-              </tr>
-            )}
-            {bill.stay && !receipt && (
-              <tr>
-                <th scope="row">Admitted</th>
-                <td>{formatDateTime(bill.stay.admittedAt)}</td>
-                <th scope="row">Discharged</th>
-                <td>{bill.stay.dischargedAt ? formatDateTime(bill.stay.dischargedAt) : 'In hospital'}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        {payment ? (
-          <p className="bill-doc-receipt">
-            Received with thanks {rupees(payment.amountPaise)} by {MODE_LABELS[payment.mode]}
-            {payment.scheme ? ` (${payment.scheme})` : ''}
-            {payment.reference ? `, reference ${payment.reference}` : ''}
-            {payment.kind === 'deposit' ? ', as a deposit' : ''}
-            {payment.kind === 'refund' ? ' – refunded to the patient' : ''}.
-          </p>
-        ) : null}
-        {payment?.corrections?.length ? (
-          <p className="pdoc-small bill-doc-corrected">
-            {payment.corrections.map((c, i) => (
-              <span key={i}>
-                Corrected on {formatDateTime(c.at)} by {c.byName}: was {paidAs(c.before)} at {formatDateTime(c.before.at)}. Reason: {c.reason}.{' '}
-              </span>
-            ))}
-          </p>
-        ) : null}
-        {payment ? null : (
-          <table className="bill-doc-lines">
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col" className="num">
-                  Qty
-                </th>
-                <th scope="col" className="num">
-                  Rate
-                </th>
-                <th scope="col" className="num">
-                  Amount
-                </th>
-              </tr>
-            </thead>
+        <div className="bill-doc-titlebar">
+          <h1 className="pdoc-title">{title}</h1>
+          <span className="pdoc-small">Print date {formatDateTime(new Date())}</span>
+        </div>
+        <div className="bill-doc-box">
+          <table className="bill-doc-head">
             <tbody>
-              {lines.map((l) => (
-                <tr key={l.id}>
-                  <td>
-                    {l.name}
-                    {l.doctorName && !l.name.includes(l.doctorName) ? <span className="pdoc-small"> · {l.doctorName}</span> : null}
-                  </td>
-                  <td className="num">{l.qty}</td>
-                  <td className="num">{rupees(l.ratePaise)}</td>
-                  <td className="num">{rupees(l.amountPaise)}</td>
+              <tr>
+                <th scope="row">Patient name</th>
+                <td>{bill.patient?.fullName}</td>
+                <th scope="row">{receipt ? 'Receipt no.' : 'Bill no.'}</th>
+                <td>{receipt ?? bill.number}</td>
+              </tr>
+              <tr>
+                <th scope="row">Age</th>
+                <td>{bill.patient?.age != null ? `${bill.patient.age} Y` : ''}</td>
+                <th scope="row">{receipt ? 'Date' : 'Bill date'}</th>
+                <td>{payment ? formatDateTime(payment.at) : dayLabel(bill.date)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Consultant</th>
+                <td>{bill.doctorName}</td>
+                <th scope="row">Reg. no.</th>
+                <td>{bill.patient?.mrn}</td>
+              </tr>
+              <tr>
+                <th scope="row">Department</th>
+                <td>{bill.doctorDepartment}</td>
+                <th scope="row">Mob. no.</th>
+                <td>{bill.patient?.phone}</td>
+              </tr>
+              {receipt && (
+                <tr>
+                  <th scope="row" />
+                  <td />
+                  <th scope="row">Bill no.</th>
+                  <td>{bill.number}</td>
                 </tr>
-              ))}
+              )}
+              {bill.stay && !receipt && (
+                <tr>
+                  <th scope="row">Admitted</th>
+                  <td>{formatDateTime(bill.stay.admittedAt)}</td>
+                  <th scope="row">Discharged</th>
+                  <td>{bill.stay.dischargedAt ? formatDateTime(bill.stay.dischargedAt) : 'In hospital'}</td>
+                </tr>
+              )}
             </tbody>
           </table>
-        )}
-        <table className="bill-doc-sums">
-          <tbody>
-            {!payment && bill.discount > 0 && (
-              <>
+          {payment ? (
+            <p className="bill-doc-receipt">
+              Received {rupees(payment.amountPaise)} by {MODE_LABELS[payment.mode]}
+              {payment.scheme ? ` (${payment.scheme})` : ''}
+              {payment.reference ? `, reference ${payment.reference}` : ''}
+              {payment.kind === 'deposit' ? ', as a deposit' : ''}
+              {payment.kind === 'refund' ? ' – refunded to the patient' : ''}.
+            </p>
+          ) : (
+            <table className="bill-doc-lines">
+              <thead>
                 <tr>
-                  <th scope="row">Subtotal</th>
-                  <td>{rupees(bill.subtotal)}</td>
+                  <th scope="col">Sr. no.</th>
+                  <th scope="col">Service description</th>
+                  <th scope="col">Doctor name</th>
+                  <th scope="col" className="num">
+                    Rate
+                  </th>
+                  <th scope="col" className="num">
+                    Unit
+                  </th>
+                  <th scope="col" className="num">
+                    Amount
+                  </th>
                 </tr>
+              </thead>
+              {linesByGroup(lines).map((g) => (
+                <tbody key={g.group}>
+                  <tr className="bill-doc-group">
+                    <td />
+                    <th scope="rowgroup" colSpan={5}>
+                      {GROUP_LABELS[g.group] ?? 'Other'} charges
+                    </th>
+                  </tr>
+                  {g.lines.map((l) => (
+                    <tr key={l.id}>
+                      <td>{(n += 1)}</td>
+                      <td>{l.name}</td>
+                      <td>{l.doctorName}</td>
+                      <td className="num">{rupees(l.ratePaise)}</td>
+                      <td className="num">{l.qty}</td>
+                      <td className="num">{rupees(l.amountPaise)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
+            </table>
+          )}
+          {payment?.corrections?.length ? (
+            <p className="pdoc-small bill-doc-corrected">
+              {payment.corrections.map((c, i) => (
+                <span key={i}>
+                  Corrected on {formatDateTime(c.at)} by {c.byName}: was {paidAs(c.before)} at {formatDateTime(c.before.at)}. Reason: {c.reason}.{' '}
+                </span>
+              ))}
+            </p>
+          ) : null}
+          <table className="bill-doc-sums">
+            <tbody>
+              <tr>
+                <th scope="row">Bill amount</th>
+                <td>{rupees(bill.subtotal ?? bill.total)}</td>
+              </tr>
+              {bill.discount > 0 && (
                 <tr>
                   <th scope="row">Discount</th>
                   <td>−{rupees(bill.discount)}</td>
                 </tr>
-              </>
-            )}
-            <tr>
-              <th scope="row">Total</th>
-              <td>{rupees(bill.total)}</td>
-            </tr>
-            <tr>
-              <th scope="row">Paid</th>
-              <td>{rupees(bill.paid)}</td>
-            </tr>
-            <tr className="bill-doc-balance">
-              <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance'}</th>
-              <td>{rupees(Math.abs(bill.balance))}</td>
-            </tr>
-          </tbody>
-        </table>
-        {!payment && bill.payments.length > 0 && (
+              )}
+              <tr>
+                <th scope="row">Net payable amount</th>
+                <td>{rupees(bill.total)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Paid amount</th>
+                <td>{rupees(bill.paid)}</td>
+              </tr>
+              {(payment || modes) && (
+                <tr>
+                  <th scope="row">Payment mode</th>
+                  <td>{payment ? MODE_LABELS[payment.mode] : modes}</td>
+                </tr>
+              )}
+              {bill.balance !== 0 && (
+                <tr className="bill-doc-balance">
+                  <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance'}</th>
+                  <td>{rupees(Math.abs(bill.balance))}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {received > 0 && payment?.kind !== 'refund' && (
+          <p className="bill-doc-words">
+            <strong>Received with thanks:</strong> {amountInWords(received)}
+          </p>
+        )}
+        {!payment && bill.payments.length > 1 && (
           <p className="pdoc-small">
             Payments: {bill.payments.map((p) => `${p.receipt} ${PAYMENT_KIND_LABELS[p.kind].toLowerCase()} ${rupees(p.amountPaise)} (${MODE_LABELS[p.mode]}${p.corrections?.length ? ', corrected' : ''})`).join('; ')}.
           </p>
         )}
+        <div className="bill-doc-foot">
+          {noteLines.length > 0 ? (
+            <ol className="bill-doc-notes">
+              {noteLines.map((t, i) => (
+                <li key={i}>{t}</li>
+              ))}
+            </ol>
+          ) : (
+            <span />
+          )}
+          <div className="bill-doc-sign">
+            <strong>Signature</strong>
+            <span>{user?.name}</span>
+          </div>
+        </div>
         <p className="pdoc-small">This is a computer-generated {receipt ? 'receipt' : 'bill'}.</p>
       </PrintDocument>
     </PrintPreview>
@@ -1000,7 +1065,7 @@ export function BillPage() {
           onDone={done}
         />
       )}
-      {printing && !printing.claim && <BillPrint bill={b} receipt={printing.receipt ?? null} onClose={() => setPrinting(null)} />}
+      {printing && !printing.claim && <BillPrint bill={b} receipt={printing.receipt ?? null} notes={res.data?.billNotes ?? ''} onClose={() => setPrinting(null)} />}
       {printing?.claim && <ClaimFormPrint bill={b} layout={printing.claim} onClose={() => setPrinting(null)} />}
     </>
   );
