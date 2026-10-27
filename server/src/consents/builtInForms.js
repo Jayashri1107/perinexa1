@@ -118,6 +118,14 @@ const INFO_META = [
   { key: 'info_puerperal_sepsis', careTypes: ['antenatal', 'postnatal'], suggestWhen: 'none', description: `${INFO_REVIEW} After delivery. Not suggested automatically.` },
   { key: 'info_perineal_tear', careTypes: ['antenatal', 'postnatal'], suggestWhen: 'none', description: `${INFO_REVIEW} After delivery; the repair needs its own consent. Not suggested automatically.` },
   { key: 'info_postnatal_depression', careTypes: ['postnatal'], suggestWhen: 'none', description: `${INFO_REVIEW} Mental health information is confidential (Mental Healthcare Act 2017): relatives are informed only with her agreement. Not suggested automatically.` },
+  // Fertility information sheets (idea F4, the owner's go-ahead of 27 Oct 2026): signed as informed, like the pregnancy
+  // sheets; the ART Act points as the Act 2021 states them. Never a word about choosing a child's sex.
+  { key: 'info_ovulation_induction', careTypes: ['infertility'], suggestWhen: 'none', description: `${INFO_REVIEW} Ovulation induction with letrozole or clomiphene and follicular monitoring; the cancel rule (more than 2 follicles of 14 mm) and the letrozole off-label note follow the approved fertility protocol library.` },
+  { key: 'info_iui', careTypes: ['infertility'], suggestWhen: 'none', description: `${INFO_REVIEW} IUI with the husband's washed sample; donor sperm needs the ART Act consent separately.` },
+  { key: 'info_ivf_icsi', careTypes: ['infertility'], suggestWhen: 'none', description: `${INFO_REVIEW} Says the hospital refers IVF to a registered ART clinic – change it if the hospital is one. ART (Regulation) Act 2021.` },
+  { key: 'info_donor_gametes', careTypes: ['infertility'], suggestWhen: 'none', description: `${INFO_REVIEW} ART (Regulation) Act 2021: anonymity, screening, the child's legal status. Legal review needed.` },
+  { key: 'info_ohss', careTypes: ['infertility'], suggestWhen: 'none', description: `${INFO_REVIEW} Warning signs and care of OHSS (NICE NG257) – check against the hospital's protocol.` },
+  { key: 'info_two_week_wait', careTypes: ['infertility'], suggestWhen: 'none', description: `${INFO_REVIEW} After IUI, the trigger or an embryo transfer, until the pregnancy test.` },
   { key: 'info_condition', careTypes: [], suggestWhen: 'none', description: `${INFO_REVIEW} For any other condition or complication: the doctor types the condition when printing (or writes it in by hand).` },
 ];
 
@@ -147,6 +155,7 @@ const INFO_ORDER = [
   'info_preterm', 'info_reduced_movements', 'info_breech', 'info_postdates', 'info_iufd',
   'info_fetal_distress', 'info_prolonged_labour',
   'info_pph', 'info_puerperal_sepsis', 'info_perineal_tear', 'info_postnatal_depression',
+  'info_ovulation_induction', 'info_iui', 'info_two_week_wait', 'info_ohss', 'info_ivf_icsi', 'info_donor_gametes',
   'info_condition',
 ];
 const infoPlace = (m) => INFO_ORDER.indexOf(m.key);
