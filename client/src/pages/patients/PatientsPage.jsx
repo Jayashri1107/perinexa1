@@ -29,7 +29,9 @@ export function PatientsPage() {
   const defaultDoctor = isDoctor && !hasRole(activeMembership, 'rmo') ? 'me' : 'all';
   // Clinical staff: the most recently seen first; reception: the most recently registered first
   const clinicalList = hasRole(activeMembership, 'doctor', 'rmo', 'nurse');
-  const [params, setParams, resetParams] = useListParams({ careType: '', doctor: defaultDoctor, risk: '', duplicates: '', registeredFrom: '', registeredTo: '', sort: clinicalList ? '-lastVisitOn' : '-createdAt', page: 1, limit: 25 });
+  // Everyone starts with today's patients – registered, booked or seen today (owner, 27 Oct 2026, like Docterz);
+  // All patients is one click away. A search always looks through all patients.
+  const [params, setParams, resetParams] = useListParams({ day: 'today', careType: '', doctor: defaultDoctor, risk: '', duplicates: '', registeredFrom: '', registeredTo: '', sort: clinicalList ? '-lastVisitOn' : '-createdAt', page: 1, limit: 25 });
   // Records marked as a duplicate of another are left out of the list; doctors and RMOs may show them
   const seesDuplicates = hasRole(activeMembership, 'doctor', 'rmo');
   const duplicates = seesDuplicates && ['include', 'only'].includes(params.duplicates) ? params.duplicates : '';
@@ -60,7 +62,8 @@ export function PatientsPage() {
   const [admitting, setAdmitting] = useState(null); // the patient being admitted from her row
   const [admittedSlip, setAdmittedSlip] = useState(null);
   const [notice, setNotice] = useState(null);
-  const { data, error, loading } = useFetch('/patients', { ...params, duplicates, search });
+  const todayOnly = params.day === 'today' && !search && !params.registeredFrom && !params.registeredTo;
+  const { data, error, loading } = useFetch('/patients', { ...params, day: todayOnly ? 'today' : '', duplicates, search });
   const doctors = useFetch('/tenant/doctors');
   const canRegister = canRegisterPatients(roles);
 
@@ -214,7 +217,7 @@ export function PatientsPage() {
     '-pregnancy.effectiveEdd': 'due date latest first',
   };
   const WHOSE = { me: 'Your patients', mine_or_unassigned: 'Your and unassigned patients', all: 'All patients', unassigned: 'Patients without a doctor' };
-  const whose = WHOSE[params.doctor] ?? `Patients of ${doctors.data?.doctors?.find((d) => d.id === params.doctor)?.name ?? 'one doctor'}`;
+  const whose = `${todayOnly ? 'Today · ' : ''}${WHOSE[params.doctor] ?? `Patients of ${doctors.data?.doctors?.find((d) => d.id === params.doctor)?.name ?? 'one doctor'}`}`;
   const careWord = params.careType ? ` · ${QUICK_CARE.find(([k]) => k === params.careType)?.[1] ?? ''}` : '';
   const duplicateWord = { include: ' · duplicates shown', only: ' · only duplicates' }[duplicates] ?? '';
   const summary = data ? `${whose}${careWord}${params.risk === 'high' ? ' · high risk' : ''}${duplicateWord}: ${data.total} ${data.total === 1 ? (duplicates === 'only' ? 'record' : 'patient') : duplicates === 'only' ? 'records' : 'patients'}, ${SORT_WORDS[params.sort] ?? 'sorted'}.` : '';
@@ -252,6 +255,14 @@ export function PatientsPage() {
           {notice}
         </Alert>
         <div className="pt-quick">
+          <div className="segmented" role="group" aria-label="Which day">
+            <button type="button" aria-pressed={params.day === 'today'} onClick={() => setParams({ day: 'today' })}>
+              Today's patients
+            </button>
+            <button type="button" aria-pressed={params.day !== 'today'} onClick={() => setParams({ day: 'all' })}>
+              All patients
+            </button>
+          </div>
           {isDoctor && (
             <div className="segmented" role="group" aria-label="Whose patients">
               <button type="button" aria-pressed={params.doctor === 'me'} onClick={() => setParams({ doctor: 'me' })}>
@@ -290,6 +301,13 @@ export function PatientsPage() {
                 No patients match these filters.{' '}
                 <button type="button" className="btn btn-link btn-sm" onClick={reset}>
                   Clear the filters
+                </button>
+              </span>
+            ) : todayOnly ? (
+              <span className="pt-empty">
+                No patients registered, booked or seen today yet.{' '}
+                <button type="button" className="btn btn-link btn-sm" onClick={() => setParams({ day: 'all' })}>
+                  Show all patients
                 </button>
               </span>
             ) : (
