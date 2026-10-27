@@ -117,8 +117,9 @@ ovulation induction and IUI and refers IVF out:
 
 ## A new patient as a history-taking sheet (27 Oct 2026, layout only)
 
-The owner wants the tabs for a new patient's details to be a history-taking sheet: only the history is asked, in the
-order a doctor takes it (complaint, menstrual, marital, obstetric, past history, family, personal, the type-of-care
-tab, review), with every hint, example, voice panel, risk warning and AI check hidden until Save. The layout draft and
+The owner wants a new patient's history taken on one short page in the words of the paper template (patient is …
+with complaints of …, LMP and cycle, married since and consanguinity, previous deliveries, any other operative or
+medical history), dictated in one go, with everything else in drop-downs the doctor opens only for reference and
+every hint, example, risk warning and AI check hidden until Save. The layout draft and
 its open decisions are in `docs/HISTORY_SHEET_LAYOUT.md`; whether it is built is decided after the layout is agreed.
 
