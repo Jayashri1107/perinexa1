@@ -49,6 +49,7 @@ import { TallyBatchPage, TallyBatchesPage, TallyControlPage, TallyExceptionsPage
 import { MonthlyPage, PatientBillsTab, PriceListPage, UnpaidPage } from './pages/billing/BillingReports.jsx';
 import { DailySummaryPage } from './pages/billing/DailyCollectionPage.jsx';
 import { PatientsPage } from './pages/patients/PatientsPage.jsx';
+import { OpdRegistrationPage } from './pages/patients/OpdRegistrationPage.jsx';
 import { VoiceWordsPage } from './pages/VoiceWordsPage.jsx';
 import { TypingShortcutsPage } from './pages/TypingShortcutsPage.jsx';
 import { PregnancyWheelPage } from './pages/PregnancyWheelPage.jsx';
@@ -237,6 +238,7 @@ export function App() {
             <Route element={<RequireTenant />}>
               <Route path="patients" element={<PatientsPage />} />
               <Route path="patients/new" element={<PatientNewPage />} />
+              <Route path="patients/opd" element={<OpdRegistrationPage />} />
               <Route path="patients/sign-ups" element={<SignupsPage />} />
               <Route path="patients/new/:careType" element={<PatientNewPage />} />
               <Route path="patients/new/:id/clinical" element={<NewPatientClinicalPage />} />

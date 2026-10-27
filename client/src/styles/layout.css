@@ -727,3 +727,9 @@
 .sb-sub-link.active { background: var(--nav-row-active); color: var(--on-dark); font-weight: 600; }
 .sb-sub-head:focus-visible, .sb-sub-link:focus-visible { box-shadow: var(--focus-ring-on-dark); outline: none; }
 @media (prefers-reduced-motion: reduce) { .sb-chevron { transition: none; } }
+/* The Patients menu, tidied (owner, 27 Oct 2026): quieter group headings, no focus ring after a mouse click */
+.sb-sub-head { font-size: var(--fs-label); line-height: var(--lh-label); letter-spacing: 0.06em; text-transform: uppercase; color: var(--indigo-200); padding: var(--space-2); }
+.sb-sub-head:focus:not(:focus-visible) { box-shadow: none; outline: none; }
+.sb-sub-items { padding-left: var(--space-2); margin-bottom: var(--space-1); }
+.sb-sub-link { padding: 6px var(--space-3); }
+.sb-sub-link.active { box-shadow: inset 3px 0 0 var(--surface); }
