@@ -24,8 +24,9 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   expenses** taken off the total (`Expense`, cancelled with a reason, never deleted; in the hospital export). (4) The
   owner's **fertility treatment plans** brought over from `girishsolanke/perinexa`. (5) The **history-taking sheet**
   (`docs/HISTORY_SHEET_LAYOUT.md`): the five template lines on page 2 and in Edit details, Dictate with the template's
-  words as anchors, three closed drop-downs, a History card on the Overview. **Not built:** decision 4 (words about a
-  born child's sex allowed in Previous deliveries – waits for the developer's review with the owner), moving this
+  words as anchors, three closed drop-downs, a History card on the Overview. Decision 4 (words about a born child's sex allowed
+  in Previous deliveries and the table of previous pregnancies only) built after the developer's review with the owner,
+  with extended tests. **Not built:** moving this
   pregnancy's details to the visit, risk rules reading the new facts, the combined one-page print (decision 9).
   **How to test:** Patients → Edit details on a sample patient → History → type the sentence of the paper template in
   the grey box → Fill the blanks → Save; Billing → Daily summary → Add expense; Billing → Reports.

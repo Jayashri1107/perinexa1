@@ -82,6 +82,11 @@ Stays, because it protects the record: the duplicate check on page 1 ("She may a
 allergy answer, asked once at Save if the drop-down was never opened (an empty answer is not "none"); and the silent
 check of free text for words about the baby's sex (PC-PNDT Act).
 
+**Built on 27 Oct 2026, after the developer reviewed it with the owner:** the exception below is in place –
+`server/src/patients/historyFields.js` (BORN_CHILD_TEXTS, SEX_CHECKED_TEXTS), the website's check before saving, and
+tests that it is allowed in those two places only and still refused in every other text of the sheet, the notes and the
+medical text (`server/tests/history-sheet.test.js`).
+
 **The one exception the owner decided (decision 4):** in *Previous deliveries* a doctor may write "male child,
 2.9 kg" about a child already born, and the owner wants that allowed. Today the app refuses such words in all patient
 free text except fertility text. The exception must be built so that the protection of **this** pregnancy is not

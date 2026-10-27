@@ -43,6 +43,16 @@ export const HISTORY_TEXTS = {
   bowelBladder: { max: 120, label: 'Bowel and bladder' },
 };
 
+// Words about a child's sex (PCPNDT) – the owner's decision 4 of 27 Oct 2026, reviewed by the developer with the owner:
+// allowed ONLY where a child ALREADY BORN is described – the "Previous deliveries" line and the rows of the table of
+// previous pregnancies ("male child, 2.9 kg"). Every other text of the sheet, and every other field, note, visit and
+// scan text of the record, keeps the refusal on a pregnancy record. Narrowing where the check applies, never what it
+// protects: this pregnancy has no field here (its details are recorded at the visit).
+export const BORN_CHILD_TEXTS = ['previousDeliveries'];
+export const BORN_CHILD_ROW_TEXTS = ['place', 'problems'];
+/** The sheet's texts checked for words about a baby's sex on a pregnancy record: all but the born-child ones. */
+export const SEX_CHECKED_TEXTS = Object.keys(HISTORY_TEXTS).filter((k) => !BORN_CHILD_TEXTS.includes(k));
+
 /** True when nothing has been written on the sheet (every record from before it). */
 export function historyEmpty(h) {
   if (!h) return true;
