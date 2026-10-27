@@ -21,6 +21,7 @@ import {
   switchFlash,
 } from './fertilityFormat.js';
 import { toDateInput } from './patientFormat.js';
+import { SemenResultCard } from './SemenResultCard.jsx';
 import { CYCLE_STATUS_LOOK, PROTOCOL_KIND_WORDS, cycleSummary, leadFollicleText } from './fertilityCycleFormat.js';
 
 // The Treatment plan tab on an infertility record (docs/FERTILITY_PLAN.md – the approved protocol library):
@@ -773,7 +774,7 @@ function NoPlanCard({ patient, data, onSuggest, onStart }) {
 }
 
 export function PatientFertilityPlanTab() {
-  const { patient, setFlash } = useOutletContext();
+  const { patient, setFlash, reload: reloadPatient } = useOutletContext();
   const { data, error, loading, reload } = useFetch(patient.access?.canViewFertilityPlan ? `/patients/${patient.id}/fertility-plan` : null);
   const [mode, setMode] = useState('view'); // 'view' | 'suggest' | 'edit'
   const [local, setLocal] = useState(null); // the latest answer after a change, until the tab is read again
@@ -872,6 +873,17 @@ export function PatientFertilityPlanTab() {
         />
       )}
       {mode === 'view' && !plan && <LibraryNote text={data.libraryNote} />}
+      {mode === 'view' && (
+        <SemenResultCard
+          patient={patient}
+          semen={data.semen}
+          onSet={(text) => {
+            setNote(text);
+            reload();
+            reloadPatient?.();
+          }}
+        />
+      )}
       <EarlierPlans patient={patient} plans={data.earlier} cycles={data.cycles ?? []} />
     </div>
   );

@@ -5,6 +5,7 @@ import { FERTILITY_NUMBERS, fertilityEmpty } from '../fertility/fertilityFields.
 import { LADDER_STEPS, PROCEDURES, SWITCH_KEYS, counterFor, stepOf, targetByKey } from '../fertility/ladder.js';
 import { dateWords } from '../careplans/dates.js';
 import { FERTILITY_LIBRARY_VERSION, LIBRARY_NOTE, PROTOCOL_KEYS, SECTION_ORDER, composePlan, libraryView } from '../fertility/protocols.js';
+import { latestSemen } from '../fertility/semenResult.js';
 import { fertilityFacts, suggestProtocols } from '../fertility/suggest.js';
 import { COMPLETED_KINDS, FertilityPlan, MAX_SECTION_TEXT, MAX_VERSIONS, OUTCOME_KINDS, STOPPED_KINDS } from '../models/FertilityPlan.js';
 import { FertilityCycle } from '../models/FertilityCycle.js';
@@ -114,9 +115,10 @@ const answer = (patient, plan, access, extra = {}) => ({
 // Her current plan, the earlier ones, and what the record still lacks for a confident suggestion.
 fertilityPlanRouter.get('/', async (req, res) => {
   const { patient, access } = await loadPatientAndAccess(req, { need: 'view' });
-  const [plans, cycles] = await Promise.all([
+  const [plans, cycles, semen] = await Promise.all([
     FertilityPlan.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ createdAt: -1 }),
     FertilityCycle.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ number: -1 }),
+    latestSemen(req.tenantId, patient._id),
   ]);
   const current = plans.find(isCurrent) ?? null;
   const facts = fertilityFacts(patient, req.now);
@@ -126,6 +128,8 @@ fertilityPlanRouter.get('/', async (req, res) => {
     earlier: plans.filter((p) => p !== current).map(planView),
     cycles: cycles.map(cycleView),
     facts: { recorded: facts.recorded, missing: facts.missing },
+    // The latest semen analysis from the lab and the history's choice it suggests (F2); `recorded`: the history's now
+    semen: semen ? { ...semen, recorded: patient.fertility?.semen ?? '' } : null,
     access: {
       canEdit: access.write && Boolean(current),
       canActivate: access.activate && current?.status === 'draft',
