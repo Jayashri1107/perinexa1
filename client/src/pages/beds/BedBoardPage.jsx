@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ArrowRightLeft, BedDouble, BedSingle, Building2, Check, ChevronDown, ChevronUp, CircleSlash, ClipboardList, Eye, LogIn, Plus, Receipt, Search, User, Users } from 'lucide-react';
+import { ArrowRightLeft, BedDouble, BedSingle, Building2, Check, ChevronDown, ChevronUp, CircleSlash, ClipboardList, Eye, FileText, LogIn, Plus, Receipt, Search, Tag, User, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { MenuButton } from '../../components/MenuButton.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
@@ -12,7 +13,7 @@ import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { canRegisterPatients } from '../../platform/modules.js';
 import { AdmitRegister } from './AdmitRegister.jsx';
 import { REASONS, freeBeds, nowLocal } from './bedFormat.js';
-import { ChecklistDialog, ChecklistFields, EMPTY_CHECKLIST, RequestsSection, StayPaper, StayPaperButtons, ToClearSection, checklistFromPatient } from './AdmissionDesk.jsx';
+import { ChecklistDialog, ChecklistFields, EMPTY_CHECKLIST, RequestsSection, StayPaper, ToClearSection, checklistFromPatient } from './AdmissionDesk.jsx';
 import { ExportButton } from '../../components/ExportButton.jsx';
 
 // The bed board (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): each ward's beds, free or occupied, with who
@@ -96,9 +97,27 @@ export function BedBoardPage() {
   const wards = (data?.wards ?? []).filter((w) => !wardFilter || w.ward === wardFilter).map((w) => ({ ...w, shown: w.beds.filter(shows) }));
   const filtering = Boolean(q || statusFilter || wardFilter);
 
+  const occupiedN = data?.counts.occupied ?? 0;
+  const inUseN = (data?.counts.total ?? 0) - notInUse;
+  const pct = inUseN ? Math.round((occupiedN / inUseN) * 100) : 0;
+
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: 'Beds' }]} title="Beds" subtitle="Occupancy, available beds and who is staying, at a glance." actions={<ExportButton what="admissions" />} />
+      <PageHeader
+        breadcrumbs={[{ label: 'Beds' }]}
+        title="Beds"
+        subtitle="Who is in which bed, and which beds are free."
+        actions={
+          <>
+            <ExportButton what="admissions" />
+            {data?.canAdmit && (
+              <button type="button" className="btn btn-primary" onClick={() => setAdmitTo('any')} disabled={!free.length} title={free.length ? undefined : 'No bed is free'}>
+                <Plus aria-hidden="true" /> Admit a patient
+              </button>
+            )}
+          </>
+        }
+      />
       <div className="pf-content beds-page">
         <Alert type="error">{board.error}</Alert>
         <Alert type="success" onClose={() => setNotice(null)}>
@@ -113,57 +132,57 @@ export function BedBoardPage() {
         )}
         {data && (
           <>
-            <div className="beds-stats" role="list" aria-label="Beds today">
-              {[
-                ['total', BedDouble, 'Total beds', data.counts.total],
-                ['occupied', Users, 'Occupied', data.counts.occupied],
-                ['free', BedSingle, 'Available', data.counts.free],
-                ['off', CircleSlash, 'Not in use', notInUse],
-              ].map(([key, Icon, label, n]) => (
-                <div key={key} className={`card beds-stat is-${key}`} role="listitem">
-                  <span className="beds-stat-icon" aria-hidden="true">
-                    <Icon />
-                  </span>
-                  <span className="beds-stat-text">
-                    <span>{label}</span>
-                    <strong className="tabular">{n}</strong>
-                  </span>
-                </div>
-              ))}
-            </div>
+            {/* Redesigned (owner, 27 Oct 2026): one summary, one row of filters, simple bed tiles with one Actions menu */}
+            <section className="card bb-summary" aria-label="Beds today">
+              <div className="bb-occupancy">
+                <span className="bb-occupancy-text">
+                  <strong className="tabular">{occupiedN}</strong> of <strong className="tabular">{inUseN}</strong> beds occupied
+                </span>
+                <span className="bb-meter" role="img" aria-label={`${pct}% of the beds in use are occupied`}>
+                  <span style={{ width: `${pct}%` }} />
+                </span>
+              </div>
+              <ul className="bb-counts">
+                <li className="is-free">
+                  <BedSingle aria-hidden="true" /> <strong className="tabular">{data.counts.free}</strong> free
+                </li>
+                <li className="is-occupied">
+                  <Users aria-hidden="true" /> <strong className="tabular">{occupiedN}</strong> occupied
+                </li>
+                {notInUse > 0 && (
+                  <li className="is-off">
+                    <CircleSlash aria-hidden="true" /> <strong className="tabular">{notInUse}</strong> not in use
+                  </li>
+                )}
+              </ul>
+            </section>
 
-            <div className="card beds-filters">
-              <label className="beds-search">
+            <div className="bb-toolbar">
+              <div className="segmented" role="group" aria-label="Show">
+                {STATUS_FILTERS.filter(([k]) => k !== 'off' || notInUse > 0).map(([k, label]) => (
+                  <button key={k || 'all'} type="button" aria-pressed={statusFilter === k} onClick={() => setStatusFilter(k)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {data.wards.length > 1 && (
+                <label className="bb-ward-pick">
+                  <span className="sr-only">Ward</span>
+                  <select value={wardFilter} onChange={(e) => setWardFilter(e.target.value)}>
+                    <option value="">All wards</option>
+                    {data.wards.map((w) => (
+                      <option key={w.ward} value={w.ward}>
+                        {w.ward}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className="beds-search bb-search">
                 <Search aria-hidden="true" />
                 <span className="sr-only">Search</span>
-                <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by bed, patient name or number" />
+                <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Bed, patient name or number" />
               </label>
-              <label className="dt-filter">
-                <span className="dt-filter-label">Ward</span>
-                <select value={wardFilter} onChange={(e) => setWardFilter(e.target.value)}>
-                  <option value="">All wards</option>
-                  {data.wards.map((w) => (
-                    <option key={w.ward} value={w.ward}>
-                      {w.ward}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="dt-filter">
-                <span className="dt-filter-label">Status</span>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  {STATUS_FILTERS.map(([k, label]) => (
-                    <option key={k} value={k}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {data.canAdmit && (
-                <button type="button" className="btn btn-primary beds-register" onClick={() => setAdmitTo('any')} disabled={!free.length}>
-                  <Plus aria-hidden="true" /> Register admission
-                </button>
-              )}
             </div>
 
             <RequestsSection data={requests.data} onAdmit={data.canAdmit && free.length ? (r) => setFromRequest(r) : null} />
@@ -187,52 +206,27 @@ export function BedBoardPage() {
                 const occupied = w.beds.filter((b) => b.stay).length;
                 const open = !folded.has(w.ward);
                 const id = `ward-${w.ward.replace(/\W+/g, '-')}`;
+                const wardPct = inUse.length ? Math.round((occupied / inUse.length) * 100) : 0;
                 return (
-                  <section key={w.ward} className="card beds-ward" aria-labelledby={id}>
-                    <header className="beds-ward-head">
-                      <span className="beds-ward-icon" aria-hidden="true">
-                        <Building2 />
-                      </span>
+                  <section key={w.ward} className="card bb-ward" aria-labelledby={id}>
+                    <button type="button" className="bb-ward-head" aria-expanded={open} aria-controls={`${id}-beds`} onClick={() => toggle(w.ward)}>
+                      <Building2 className="bb-ward-icon" aria-hidden="true" />
                       <h2 id={id}>{w.ward}</h2>
-                      <span className="muted tabular beds-ward-counts">
-                        {inUse.length} {inUse.length === 1 ? 'bed' : 'beds'} · {occupied} occupied · {Math.max(0, inUse.length - occupied)} available
+                      <span className="bb-ward-counts tabular">
+                        {occupied} of {inUse.length} occupied · {Math.max(0, inUse.length - occupied)} free
                       </span>
-                      <button
-                        type="button"
-                        className="icon-btn beds-fold"
-                        aria-expanded={open}
-                        aria-controls={`${id}-beds`}
-                        aria-label={open ? `Fold ${w.ward}` : `Open ${w.ward}`}
-                        onClick={() => toggle(w.ward)}
-                      >
-                        {open ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
-                      </button>
-                    </header>
+                      <span className="bb-meter bb-meter-sm" aria-hidden="true">
+                        <span style={{ width: `${wardPct}%` }} />
+                      </span>
+                      {open ? <ChevronUp className="bb-chevron" aria-hidden="true" /> : <ChevronDown className="bb-chevron" aria-hidden="true" />}
+                    </button>
                     {open && (
-                      <ul className="beds-grid" id={`${id}-beds`}>
+                      <ul className="bb-grid" id={`${id}-beds`}>
                         {w.shown.map((b) => (
-                          <li key={b.id} className={`bed is-${bedState(b)}`}>
-                            <div className="bed-head">
-                              <span className="bed-title">
-                                <strong className="bed-name">{b.name}</strong>
-                                <span className="bed-ward">{w.ward}</span>
-                              </span>
-                              {b.stay ? (
-                                <StatusPill tone="admitted" icon={User}>
-                                  Occupied
-                                </StatusPill>
-                              ) : b.active ? (
-                                <StatusPill tone="stable" icon={Check}>
-                                  Available
-                                </StatusPill>
-                              ) : (
-                                <StatusPill tone="inactive" icon={CircleSlash}>
-                                  Not in use
-                                </StatusPill>
-                              )}
-                            </div>
+                          <li key={b.id} className={`bb-bed is-${bedState(b)}`}>
                             {b.stay ? (
                               <Occupant
+                                bedName={b.name}
                                 stay={b.stay}
                                 canBill={canBill}
                                 onMove={free.length ? () => setMoving({ stay: b.stay, from: `${w.ward} · ${b.name}` }) : null}
@@ -241,14 +235,20 @@ export function BedBoardPage() {
                               />
                             ) : (
                               <>
-                                <BedSingle className="bed-picture" aria-hidden="true" />
+                                <span className="bb-bed-top">
+                                  <strong className="bb-bed-name">{b.name}</strong>
+                                  {b.active ? (
+                                    <StatusPill tone="stable" icon={Check}>
+                                      Free
+                                    </StatusPill>
+                                  ) : (
+                                    <StatusPill tone="inactive" icon={CircleSlash}>
+                                      Not in use
+                                    </StatusPill>
+                                  )}
+                                </span>
                                 {b.active && data.canAdmit && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-secondary btn-sm bed-action"
-                                    onClick={() => setAdmitTo({ id: b.id, ward: w.ward, name: b.name })}
-                                    aria-label={`Admit a patient to ${w.ward} ${b.name}`}
-                                  >
+                                  <button type="button" className="btn btn-secondary btn-sm bb-admit" onClick={() => setAdmitTo({ id: b.id, ward: w.ward, name: b.name })} aria-label={`Admit a patient to ${w.ward} ${b.name}`}>
                                     <Plus aria-hidden="true" /> Admit
                                   </button>
                                 )}
@@ -263,24 +263,16 @@ export function BedBoardPage() {
               })}
 
             {data.elsewhere.length > 0 && !filtering && (
-              <section className="card beds-ward" aria-labelledby="beds-elsewhere">
-                <header className="beds-ward-head">
-                  <span className="beds-ward-icon" aria-hidden="true">
-                    <BedDouble />
-                  </span>
+              <section className="card bb-ward" aria-labelledby="beds-elsewhere">
+                <div className="bb-ward-head is-static">
+                  <BedDouble className="bb-ward-icon" aria-hidden="true" />
                   <h2 id="beds-elsewhere">Admitted without a bed from the list</h2>
-                  <span className="muted beds-ward-counts">Choose a bed for them with "Move to a bed".</span>
-                </header>
-                <ul className="beds-grid">
+                  <span className="bb-ward-counts">Choose a bed for them with "Move to a bed".</span>
+                </div>
+                <ul className="bb-grid">
                   {data.elsewhere.map((s) => (
-                    <li key={s.id} className="bed is-occupied">
-                      <div className="bed-head">
-                        <strong className="bed-name">{[s.ward, s.bed].filter(Boolean).join(' · ') || 'No bed written'}</strong>
-                        <StatusPill tone="admitted" icon={User}>
-                          Admitted
-                        </StatusPill>
-                      </div>
-                      <Occupant stay={s} canBill={canBill} moveLabel="Move to a bed" onMove={free.length ? () => setMoving({ stay: s, from: [s.ward, s.bed].filter(Boolean).join(' · ') }) : null} />
+                    <li key={s.id} className="bb-bed is-occupied">
+                      <Occupant bedName={[s.ward, s.bed].filter(Boolean).join(' · ') || 'No bed written'} stay={s} canBill={canBill} moveLabel="Move to a bed" onMove={free.length ? () => setMoving({ stay: s, from: [s.ward, s.bed].filter(Boolean).join(' · ') }) : null} />
                     </li>
                   ))}
                 </ul>
@@ -309,43 +301,42 @@ export function BedBoardPage() {
   );
 }
 
-/** Who is in the bed: name (a link to her record), patient number, doctor, since when, the reason when shown. */
-function Occupant({ stay, canBill, onMove, onPaper, onChecklist, moveLabel = 'Transfer' }) {
+/**
+ * An occupied bed: the bed, who is in it (a link to her record), her IPD number and how long she has stayed, her doctor,
+ * and one Actions menu – her record, the bill, the admission form, the wristband, the checklist, a transfer.
+ */
+function Occupant({ bedName, stay, canBill, onMove, onPaper, onChecklist, moveLabel = 'Transfer to another bed' }) {
   const p = stay.patient;
+  const items = [
+    { label: 'Open her record', icon: Eye, to: `/patients/${p.id}` },
+    ...(canBill ? [{ label: 'Bill', icon: Receipt, to: `/patients/${p.id}/bills` }] : []),
+    ...(onPaper ? [{ label: 'Admission form', icon: FileText, onSelect: () => onPaper('form') }, { label: 'Wristband', icon: Tag, onSelect: () => onPaper('wristband') }] : []),
+    ...(onPaper && stay.checklistIncomplete && stay.canMove ? [{ label: 'Complete the checklist', icon: ClipboardList, onSelect: onChecklist }] : []),
+    ...(stay.canMove && onMove ? [{ label: moveLabel, icon: ArrowRightLeft, onSelect: onMove }] : []),
+  ];
   return (
-    <div className="bed-who">
-      <strong className="bed-patient">{p.fullName}</strong>
-      <span className="muted">
-        {p.mrn}
-        {p.assignedDoctorName ? ` · ${p.assignedDoctorName}` : ''}
+    <>
+      <span className="bb-bed-top">
+        <strong className="bb-bed-name">{bedName}</strong>
+        <StatusPill tone="admitted" icon={User}>
+          {stayLength(stay.admittedAt)}
+        </StatusPill>
       </span>
-      <span className="muted">Admitted {formatDateTime(stay.admittedAt)}</span>
-      <span className="bed-stay">Stay: {stayLength(stay.admittedAt)}</span>
-      {stay.ipdNo && <span className="muted tabular">{stay.ipdNo}</span>}
+      <Link to={`/patients/${p.id}`} className="bb-patient">
+        {p.fullName}
+      </Link>
+      <span className="bb-line muted tabular">{[p.mrn, stay.ipdNo].filter(Boolean).join(' · ')}</span>
+      <span className="bb-line muted">Since {formatDateTime(stay.admittedAt)}</span>
+      {p.assignedDoctorName && <span className="bb-line">{p.assignedDoctorName}</span>}
+      {stay.reason && <span className="bb-line bb-reason">{stay.reason}</span>}
       {stay.checklistIncomplete && (
         <StatusPill tone="watch" icon={ClipboardList}>
           Checklist incomplete
         </StatusPill>
       )}
-      {stay.reason && <span className="bed-reason">{stay.reason}</span>}
       {p.closed && <span className="muted">Record closed</span>}
-      <div className="bed-actions">
-        <Link to={`/patients/${p.id}`} className="btn btn-link btn-sm">
-          <Eye aria-hidden="true" /> View
-        </Link>
-        {canBill && (
-          <Link to={`/patients/${p.id}/bills`} className="btn btn-link btn-sm">
-            <Receipt aria-hidden="true" /> Bill
-          </Link>
-        )}
-        {onPaper && <StayPaperButtons stay={stay} onPaper={onPaper} onChecklist={stay.canMove ? onChecklist : null} />}
-        {stay.canMove && onMove && (
-          <button type="button" className="btn btn-link btn-sm" onClick={onMove}>
-            <ArrowRightLeft aria-hidden="true" /> {moveLabel}
-          </button>
-        )}
-      </div>
-    </div>
+      <MenuButton className="btn btn-secondary btn-sm bb-actions" label="Actions" items={items} align="start" />
+    </>
   );
 }
 

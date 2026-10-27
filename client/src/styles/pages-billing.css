@@ -320,3 +320,6 @@
 .bill-add-step .bill-add-groups { margin-top: var(--space-2); }
 .bill-add-chip svg.lucide { width: 14px; height: 14px; }
 @media (max-width: 640px) { .bill-add-pickrow { grid-template-columns: 1fr; } }
+.dc-sig { display: flex; flex-direction: column; align-items: center; gap: 2mm; min-width: 55mm; font-size: var(--fs-print-small); }
+.dc-sig-line { width: 100%; border-top: 1px solid var(--print-ink); }
+.pdoc .dc-print-sums td strong { font-size: var(--fs-print-h2); }
