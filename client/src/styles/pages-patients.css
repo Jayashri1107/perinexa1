@@ -399,3 +399,49 @@ textarea.hs-blank { border: 1px dashed var(--slate-300); border-radius: var(--ra
 .hs-note { margin-top: var(--space-3); }
 @media (prefers-reduced-motion: reduce) { .hs-more-chevron { transition: none; } }
 textarea.hs-blank { min-height: 0; height: 4.2em; }
+
+/* Patients → OPD → OPD registration (owner, 27 Oct 2026): new or registered first, then the form or the search */
+.opd-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.opd-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); }
+.opd-choice-card { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-5, var(--space-4)); border: 2px solid var(--card-border); border-radius: var(--radius-lg, var(--radius-md)); background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow-card); }
+.opd-choice-card svg.lucide { width: 32px; height: 32px; flex-shrink: 0; padding: 8px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); box-sizing: content-box; }
+.opd-choice-card > span { display: flex; flex-direction: column; gap: 2px; }
+.opd-choice-card strong { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.opd-choice-card > span > span { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.opd-choice-card:hover { border-color: var(--indigo-200); }
+.opd-choice-card.is-on { border-color: var(--indigo-700); background: var(--indigo-100); }
+.opd-choice-card.is-on svg.lucide { background: var(--indigo-700); color: var(--on-solid); }
+.opd-choice-card:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.opd-new h2, .opd-find h2, .opd-visit h2 { margin-top: 0; }
+.opd-care-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.opd-care { display: flex; flex-direction: column; gap: 4px; padding: var(--space-3) var(--space-4); border: 1px solid var(--card-border); border-radius: var(--radius-md); color: var(--ink); text-decoration: none; }
+.opd-care:hover { border-color: var(--indigo-700); background: var(--indigo-100); }
+.opd-care .muted { font-size: var(--fs-label); line-height: var(--lh-label); }
+.opd-search { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4); border: 1px solid var(--card-border); border-radius: var(--radius-pill); background: var(--surface); }
+.opd-search svg.lucide { width: 18px; height: 18px; color: var(--slate-600); }
+.opd-search input { flex: 1; border: 0; background: none; padding: 10px 0; font-size: var(--fs-body); }
+.opd-search input:focus { outline: none; }
+.opd-search:focus-within { box-shadow: var(--focus-ring); }
+.opd-results { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.opd-results button { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-2) var(--space-3); border: 0; border-radius: var(--radius-md); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.opd-results button > span { display: flex; flex-direction: column; }
+.opd-results button:hover, .opd-results button:focus-visible { background: var(--indigo-100); outline: none; }
+.opd-result-doc { margin-left: auto; font-size: var(--fs-label); }
+.opd-none { padding: var(--space-3); }
+.opd-back { margin: 0; }
+.opd-grid { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: var(--space-4); align-items: start; }
+.opd-patient { display: flex; flex-direction: column; gap: var(--space-3); }
+.opd-patient-head { display: flex; align-items: center; gap: var(--space-3); }
+.opd-patient-head h2 { margin: 0; }
+.opd-details { margin: 0; }
+.opd-visit { display: flex; flex-direction: column; gap: var(--space-3); }
+.opd-services { border-top: 1px solid var(--card-border); padding-top: var(--space-3); }
+.opd-services-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); }
+.opd-services-head h3 { margin: 0; }
+.opd-quick { display: inline-flex; gap: var(--space-2); flex-wrap: wrap; }
+.opd-done p { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin-top: 0; }
+@media (max-width: 900px) { .opd-grid { grid-template-columns: 1fr; } }
+.opd-details.details { display: flex; flex-direction: column; gap: var(--space-2); columns: auto; grid-template-columns: none; }
+.opd-details > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--space-2); }
+.opd-details dt { color: var(--slate-600); font-size: var(--fs-label); }
+.opd-details dd { margin: 0; overflow-wrap: anywhere; word-break: normal; }

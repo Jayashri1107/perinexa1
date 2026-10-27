@@ -244,6 +244,10 @@ export async function chargeVisit(req, patient, visit) {
   if (!item) return;
   const doctorId = (await isDoctor(req.tenantId, visit.createdBy)) ? visit.createdBy : (patient.assignedDoctor ?? null);
   const bill = await openBillFor(req, patient._id, { day: visit.visitOn });
+  // Already charged at the desk (OPD registration → Registered, or Add service charge, owner 27 Oct 2026): a
+  // consultation put on this day's bill by hand, and no visit has charged one yet – not charged a second time
+  const live = (bill.lines ?? []).filter((l) => !l.removed);
+  if (live.some((l) => l.source === 'manual' && ['consult_new', 'consult_follow'].includes(l.key)) && !live.some((l) => l.ref?.kind === 'visit')) return;
   await pushLines(req, bill._id, [{ item, source: 'auto', ref: { kind: 'visit', id: visit._id }, doctorId }]);
 }
 

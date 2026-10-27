@@ -482,3 +482,26 @@ describe("the day's expenses", () => {
     expect((await (await as('drA')).get('/api/billing/expenses')).status).toBe(403);
   });
 });
+
+// OPD registration → Registered (owner, 27 Oct 2026): the consultation charged at the desk is not charged again when
+// the doctor starts the visit
+describe('a consultation charged at the desk', () => {
+  it('is not added a second time by the visit; a visit without one still charges it', async () => {
+    const list = await prices({ consult_new: 50000, consult_follow: 30000 });
+    const desk = await as('reception');
+    const p = await register('Desk Consult Mother');
+    const { bill } = (await desk.post('/api/billing/bills').send({ patientId: p.id })).body;
+    const item = list.find((i) => i.key === 'consult_new');
+    expect((await desk.post(`/api/billing/bills/${bill.id}/lines`).send({ priceItemId: item.id, qty: 1, doctorId: people.drA._id.toString() })).status).toBe(201);
+    await startVisit(p);
+    const [b] = await billsOf(p);
+    const consults = (await (await as('reception')).get(`/api/billing/bills/${b.id}`)).body.bill.lines.filter((l) => !l.removed && l.key?.startsWith('consult_'));
+    expect(consults).toHaveLength(1);
+    expect(consults[0].doctorName).toBe('Sample drA');
+
+    const q = await register('Visit Only Mother');
+    await startVisit(q);
+    const [c] = await billsOf(q);
+    expect((await (await as('reception')).get(`/api/billing/bills/${c.id}`)).body.bill.lines.filter((l) => l.key?.startsWith('consult_'))).toHaveLength(1);
+  });
+});
