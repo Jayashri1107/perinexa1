@@ -24,6 +24,9 @@ export const HISTORY_LABELS = {
   HABIT: { never: 'Never', past: 'In the past', current: 'Now' },
 };
 
+// Words about a child's sex are allowed only where a child already born is described (the owner's decision 4 of
+// 27 Oct 2026; server/src/patients/historyFields.js BORN_CHILD_TEXTS): every other text of the sheet is checked.
+export const SEX_CHECKED_TEXTS = ['complaint', 'otherHistory', 'periodsOther', 'contraception', 'operations', 'currentMedicines', 'familyWho', 'occupation', 'sleepAppetite', 'bowelBladder'];
 const TEXTS = ['complaint', 'previousDeliveries', 'otherHistory', 'periodsOther', 'contraception', 'operations', 'currentMedicines', 'familyWho', 'occupation', 'sleepAppetite', 'bowelBladder'];
 const NUMBERS = ['marriedSinceYears', 'menarcheAge', 'cycleLengthDays', 'bleedingDays'];
 const CHOICES = ['cycle', 'consanguinity', 'flow', 'pain', 'lmpCertain', 'transfusion', 'td', 'rubella', 'hepB', 'diet', 'tobacco', 'alcohol'];

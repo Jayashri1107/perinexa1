@@ -26,7 +26,7 @@ import {
   STORED_LOSS_TYPE_KEYS,
 } from '../patients/abortionRules.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
-import { BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, MAX_PREGNANCIES, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, YES_NO } from '../patients/historyFields.js';
+import { BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, MAX_PREGNANCIES, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, SEX_CHECKED_TEXTS, YES_NO } from '../patients/historyFields.js';
 import { CYCLE_PATTERNS, ENDOMETRIOSIS_STATUS, FERTILITY_DIAGNOSES, FERTILITY_NUMBERS, FERTILITY_TEXTS, FERTILITY_TYPES, OVULATION_STATUS, SEMEN_STATUS, TUBAL_STATUS, UTERINE_FINDINGS } from '../fertility/fertilityFields.js';
 import { OVERRIDE_LEVELS } from '../careplans/risk.js';
 import { carePlanSummaryFor, currentPlanItems, planCtx, syncPlanSafely } from '../careplans/plansService.js';
@@ -279,21 +279,18 @@ function tidyAbortion(a) {
 
 // The baby's sex must never be written in a pregnancy record (PCPNDT). The record's own free text is checked for
 // antenatal and abortion care only: infertility and gynaecology notes may say "male factor".
-const FETAL_SEX_TEXT = [['notes'], ['medical', 'allergies'], ['medical', 'otherConditions'], ...Object.keys(HISTORY_TEXTS).map((k) => ['history', k])];
+// The history-taking sheet: all its texts but those about a child already born (historyFields.js BORN_CHILD_TEXTS).
+const FETAL_SEX_TEXT = [['notes'], ['medical', 'allergies'], ['medical', 'otherConditions'], ...SEX_CHECKED_TEXTS.map((k) => ['history', k])];
 const isPregnancyCare = (careType) => careType === 'antenatal' || careType === 'abortion';
 function fetalSexIssues(careType, data, stored) {
   if (!isPregnancyCare(careType)) return [];
   const at = (o, path) => path.reduce((v, k) => v?.[k], o);
-  const texts = FETAL_SEX_TEXT.filter((path) => {
+  // "Previous deliveries" and the rows of the table of previous pregnancies describe children already born: not checked
+  // (the owner's decision 4 of 27 Oct 2026, reviewed by the developer with the owner – docs/HISTORY_SHEET_LAYOUT.md 5)
+  return FETAL_SEX_TEXT.filter((path) => {
     const v = at(data, path);
     return typeof v === 'string' && v !== (at(stored, path) ?? '') && mentionsFetalSex(v);
   }).map((path) => ({ code: 'custom', path, message: PCPNDT_MESSAGE }));
-  // The rows of previous pregnancies too. The owner's exception for a child already born (decision 4 of 27 Oct 2026)
-  // is not built: it waits for the developer's review with the owner (docs/HISTORY_SHEET_LAYOUT.md section 5).
-  const rows = (data?.history?.pregnancies ?? []).flatMap((r, i) =>
-    ['place', 'problems'].filter((k) => typeof r?.[k] === 'string' && mentionsFetalSex(r[k])).map((k) => ({ code: 'custom', path: ['history', 'pregnancies', i, k], message: PCPNDT_MESSAGE })),
-  );
-  return [...texts, ...rows];
 }
 
 const obstetricSchema = z
