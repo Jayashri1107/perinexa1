@@ -39,7 +39,7 @@ import { DELIVERY_MODE_LABELS } from '../inpatient/inpatientFormat.js';
 import { asName } from '../../personName.js';
 import { lookupPin } from './pinLookup.js';
 import { HistorySheet } from './HistorySheet.jsx';
-import { historyEmpty, historyPayload, historyValues } from './historyFormat.js';
+import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues } from './historyFormat.js';
 import { DEPARTMENTS } from '../../platform/departments.js';
 import { FertilitySection } from './FertilitySection.jsx';
 import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
@@ -220,6 +220,8 @@ function fetalSexErrors(type, v, stored) {
     ['notes', v.notes, stored?.notes],
     ['medical.allergies', v.medical.allergies, stored?.medical?.allergies],
     ['medical.otherConditions', v.medical.otherConditions, stored?.medical?.otherConditions],
+    // the history-taking sheet: all but "Previous deliveries" and the table of previous pregnancies (a child already born)
+    ...SEX_CHECKED_TEXTS.map((k) => [`history.${k}`, v.history?.[k] ?? '', stored?.history?.[k]]),
   ];
   for (const [path, text, before] of texts) if (text !== (before ?? '') && mentionsFetalSex(text)) out[path] = PCPNDT_MESSAGE;
   return type === 'abortion' ? { ...out, ...abortionTextErrors(v.abortion) } : out;

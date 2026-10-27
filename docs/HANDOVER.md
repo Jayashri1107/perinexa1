@@ -111,6 +111,10 @@ scripts/db.mjs        Local MongoDB start / stop
 - **Rules required by law or chosen for safety** (keep them): no recording or showing of the baby's sex before birth
   (PC-PNDT Act: `server/src/utils/pcpndt.js`, `client/src/pcpndtWords.js`, also stripped from voice entry); HIV tests
   shown and printed under a neutral name; staff are deactivated, never deleted; password hashes are never returned.
+  **One narrowing, decided by the owner and reviewed with the developer (27 Oct 2026):** on the history-taking sheet,
+  words about a child's sex are allowed only in *Previous deliveries* and the table of previous pregnancies (a child
+  already born: "male child, 2.9 kg"); every other text keeps the refusal (`server/src/patients/historyFields.js`
+  BORN_CHILD_TEXTS, tests in `server/tests/history-sheet.test.js`).
 - **Files** (lab reports, scanned consent forms) are stored inside MongoDB (`StoredFile`, `utils/storedFiles.js`).
 - **Taking data out.** `npm run export:hospital` writes one hospital's data to an unencrypted folder (README.md).
 

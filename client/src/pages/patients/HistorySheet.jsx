@@ -103,6 +103,8 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, careType, age
   }, [dictation.on]);
   const row = (i, k) => (e) => setPregnancies(h.pregnancies.map((r, j) => (j === i ? { ...r, [k]: e.target.value } : r)));
   const mark = (k) => (filled?.includes(k) ? ' hs-heard-mark' : '');
+  // A drop-down opens by itself when something in it was refused (e.g. words about a baby's sex), so it is seen
+  const anyError = (keys) => keys.some((k) => Boolean(fe(`history.${k}`)));
 
   return (
     <section className="card form-section hs" aria-labelledby="hs-title">
@@ -177,7 +179,7 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, careType, age
         {extraLine}
       </div>
 
-      <More id="hs-more-periods" title="More about her periods">
+      <More id="hs-more-periods" title="More about her periods" force={anyError(['periodsOther', 'menarcheAge', 'cycleLengthDays', 'bleedingDays', 'previousPeriod'])}>
         <div className="form-grid">
           <Field label="Age at first period" id="hs-menarche" error={fe('history.menarcheAge')}>
             <input id="hs-menarche" inputMode="numeric" value={h.menarcheAge} onChange={(e) => set('menarcheAge', e.target.value.replace(/\D/g, '').slice(0, 2))} />
@@ -206,7 +208,7 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, careType, age
         </Field>
       </More>
 
-      <More id="hs-more-obstetric" title="More: G P L A, each pregnancy, problems, contraception">
+      <More id="hs-more-obstetric" title="More: G P L A, each pregnancy, problems, contraception" force={anyError(['contraception', 'pregnancies'])}>
         {obstetric}
         <fieldset className="fieldset">
           <legend>Each previous pregnancy</legend>
@@ -278,7 +280,7 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, careType, age
         </Field>
       </More>
 
-      <More id="hs-more-medical" title="More: conditions, operations, medicines, allergies, immunisation, blood group, family, personal" force={medicalOpen}>
+      <More id="hs-more-medical" title="More: conditions, operations, medicines, allergies, immunisation, blood group, family, personal" force={medicalOpen || anyError(['operations', 'currentMedicines', 'familyWho', 'occupation', 'sleepAppetite', 'bowelBladder'])}>
         {medical}
         <div className="form-grid">
           <Field label="Operations, with the year" id="hs-operations" error={fe('history.operations')}>
