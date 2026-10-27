@@ -2,7 +2,15 @@
 // together: LMP 10 Apr 2026 → EDD 15 Jan 2027 → 24 w 3 d on 28 Sep 2026.
 
 export const SAMPLE = {
-  patient: { fullName: 'Sample Patient (Demo)', ageText: '28 yrs', mrn: 'P-000000', careType: 'antenatal', allergies: 'None known' },
+  patient: {
+    fullName: 'Sample Patient (Demo)',
+    ageText: '28 yrs',
+    mrn: 'P-000000',
+    careType: 'antenatal',
+    allergies: 'None known',
+    // The history-taking sheet, as saved on the record (fake sample)
+    history: { complaint: 'second pregnancy, mild backache for one week', cycle: 'regular', marriedSinceYears: 4, consanguinity: 'no', previousDeliveries: 'one full-term normal delivery in 2023, 2.9 kg, alive and well', otherHistory: 'no other history' },
+  },
   visit: {
     visitOn: '2026-09-28T00:00:00.000Z',
     ga: { weeks: 24, days: 3 },

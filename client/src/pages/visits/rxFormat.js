@@ -19,7 +19,7 @@ export const RX_ACCENTS = ['indigo', 'teal', 'maroon', 'green', 'charcoal'];
 export const RX_FONTS = ['standard', 'sans', 'serif'];
 export const RX_LINE_SPACINGS = ['compact', 'standard', 'relaxed'];
 export const RX_TITLES = ['medicines', 'instructions', 'tests', 'advice', 'nextVisit'];
-export const RX_SHOW = ['vitals', 'complaints', 'examination', 'diagnosis', 'investigations', 'advice', 'nextVisit', 'planItems', 'pregnancy', 'signature', 'rxSymbol'];
+export const RX_SHOW = ['history', 'vitals', 'complaints', 'examination', 'diagnosis', 'investigations', 'advice', 'nextVisit', 'planItems', 'pregnancy', 'signature', 'rxSymbol'];
 
 // ---------- Words on screen ----------
 
@@ -293,6 +293,7 @@ export const DESIGNS = {
 export const ACCENT_NAMES = { indigo: 'Indigo', teal: 'Teal', maroon: 'Maroon', green: 'Green', charcoal: 'Charcoal' };
 export const LANGUAGE_CHOICES = { en: 'English only', mr: 'English + मराठी (Marathi)', hi: 'English + हिंदी (Hindi)' };
 export const SHOW_LABELS = {
+  history: 'History (the history-taking sheet)',
   vitals: 'Vital signs',
   complaints: 'Complaints',
   examination: 'Examination findings and the pregnancy check',

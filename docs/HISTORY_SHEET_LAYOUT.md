@@ -142,6 +142,13 @@ boards remain in versions 2 to 5 of the mock-up's history.
 
 ## 10. The printed page – history, vitals and prescription (agreed 27 Oct 2026)
 
+**Built in perinexa1 on 27 Oct 2026:** a **History** part on every visit's printed page, in all ten designs, before
+the vitals (the template's lines as saved on the record), with its own tick in Prescription design ("History (the
+history-taking sheet)"), on unless the doctor unticks it. The other decisions were already how the prescription prints:
+Advice, Next visit and the pregnancy line on by default; a new design's instructions in the hospital's second language
+(Marathi by default); the Diagnosis line and the ℞ symbol each with their own tick; a long prescription continuing on a
+second page at normal text size.
+
 Decision 9 asked for one printed page in template form instead of a print of the sheet. Board 3 of the mock-up
 draws it: **one A4 page per visit**, with
 
