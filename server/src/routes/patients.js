@@ -31,6 +31,7 @@ import { carePlanSummaryFor, currentPlanItems, planCtx, syncPlanSafely } from '.
 import { redFlagsForPatient, redFlagsForPatients } from '../redflags/redFlagService.js';
 import { applyCurrentRisk, ensureStandardTemplates, refreshDueRisks, riskTemplateFor } from '../careplans/templatesService.js';
 import { QUEUE_ROLES } from '../appointments/appointmentRules.js';
+import { BOARD_ROLES } from '../inpatient/beds.js';
 import { BLOOD_GROUPS, BREASTFEEDING, CARE_TYPES, CONDITIONS, FEEDING_AT_DISCHARGE, NEWBORN_SEX, NICU_ADMITTED, ID_PROOF_TYPES, PAST_COMPLICATIONS, PAYER_TYPES, Patient, currentAge } from '../models/Patient.js';
 import { PREGNANCY_FINDINGS, currentFindings, eddInUse, setFinding, setFindings, suggestedFindings } from '../patients/pregnancyFindings.js';
 import { endLossFindings, setLossFindings } from '../patients/lossFindings.js';
@@ -452,6 +453,8 @@ const listSchema = z.object({
   registeredTo: requiredDateOnly('Registered to').optional(),
   // Today's patients (like Docterz): registered today, booked for today, or seen today – the list staff start with
   day: z.enum(['today']).optional(),
+  // IPD (owner, 27 Oct 2026): only the patients in hospital now – for those who see the bed board
+  stay: z.enum(['admitted']).optional(),
   sort: sortParam(['mrn', 'fullName', 'createdAt', 'pregnancy.effectiveEdd', 'lastVisitOn'], '-createdAt'),
   ...pageParams,
 });
@@ -611,6 +614,13 @@ patientsRouter.get('/', async (req, res) => {
     and.push({ careType: 'antenatal' }); // added to (not replacing) any care-type filter chosen
     if (Object.keys(visible).length) and.push(visible);
   }
+  let stays = null; // IPD: her current stay, by patient
+  if (q.stay === 'admitted') {
+    if (!hasRole(req.membership, ...BOARD_ROLES)) throw forbidden('The patients in hospital are for reception, doctors, RMOs and nurses.');
+    const current = await Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1, ipdNo: 1, ward: 1, bed: 1, admittedAt: 1 }).lean();
+    stays = new Map(current.map((a) => [String(a.patientId), a]));
+    and.push({ _id: { $in: current.map((a) => a.patientId) } });
+  }
   if (q.day === 'today') {
     const today = hospitalToday(req.now ?? new Date());
     const legs = [{ createdAt: { $gte: hospitalDayStart(today), $lt: hospitalDayStart(addDays(today, 1)) } }];
@@ -678,6 +688,12 @@ patientsRouter.get('/', async (req, res) => {
       row.lastVisitOn = lastOf.get(id) ?? null;
       const f = flags.byPatient.get(id);
       row.redFlags = f ? { count: f.flags.length, urgent: f.flags.filter((x) => x.level === 'urgent').length } : null;
+    });
+  }
+  if (stays) {
+    rows.forEach((row, i) => {
+      const a = stays.get(String(patients[i]._id));
+      if (a) row.stay = { id: String(a._id), ipdNo: a.ipdNo, ward: a.ward, bed: a.bed, admittedAt: a.admittedAt };
     });
   }
   res.json({ patients: rows, ...paged(q, total) });

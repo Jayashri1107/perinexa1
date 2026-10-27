@@ -1,6 +1,6 @@
 // The left menu and the Clinic library's tabs, by role (no browser needed).
 import { describe, expect, it } from 'vitest';
-import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, newPatientLinks, patientTabs, platformModules } from './modules.js';
+import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, newPatientLinks, patientMenu, patientTabs, platformModules } from './modules.js';
 
 const menu = (roles) => hospitalModules(roles).map((m) => m.label);
 
@@ -111,5 +111,27 @@ describe('the Lab item', () => {
     expect(hospitalModules(['lab']).find((m) => m.key === 'lab').to).toBe('/lab/dashboard');
     expect(hospitalModules(['doctor']).find((m) => m.key === 'lab').to).toBe('/lab');
     expect(moduleByKey('lab').tabs.map((t) => t.label).slice(0, 3)).toEqual(['Dashboard', 'Worklist', 'Result entry']);
+  });
+});
+
+// Patients → OPD and IPD in the left menu (owner, 27 Oct 2026): links to the pages each role already opens
+describe('the Patients menu', () => {
+  const labels = (roles) => Object.fromEntries(patientMenu(roles).map((g) => [g.label, g.items.map((i) => i.label)]));
+  it('gives reception registration, the lists, appointments, follow-ups, bills and the IPD', () => {
+    expect(labels(['receptionist'])).toEqual({
+      OPD: ['OPD registration', "Today's OPD patients", 'All OPD patients', 'Appointments & queue', 'Follow-up patients', 'OPD bills'],
+      IPD: ['Admission & beds', 'Admitted patients', 'IPD bills'],
+    });
+  });
+  it('gives the billing department no IPD and no registration', () => {
+    expect(labels(['billing'])).toEqual({ OPD: ["Today's OPD patients", 'All OPD patients', 'OPD bills'] });
+  });
+  it("tells today's, all and the admitted patients apart by the address", () => {
+    const items = patientMenu(['rmo']).flatMap((g) => g.items);
+    const current = (path, search) => items.filter((i) => i.match(path, new URLSearchParams(search))).map((i) => i.label);
+    expect(current('/patients', '')).toEqual(["Today's OPD patients"]);
+    expect(current('/patients', '?day=all')).toEqual(['All OPD patients']);
+    expect(current('/patients', '?dept=ipd')).toEqual(['Admitted patients']);
+    expect(current('/patients/new/antenatal', '')).toEqual(['OPD registration']);
   });
 });

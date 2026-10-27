@@ -337,6 +337,22 @@ export function PatientDetailPage() {
     }
   };
 
+  // OPD: her outpatient care – visits, care plan, appointments, lab and scans, referrals. IPD: her stays in hospital.
+  const opdSections = [
+    ...(a.canViewVisits ? [{ label: 'Visits', to: `${base}/visits`, end: false }] : []),
+    ...(planTab ? [{ label: 'Care plan', to: `${base}/care-plan`, end: true }] : []),
+    // Appointment booking: for reception, the referral desk, doctors, RMOs and nurses who may see her phone number
+    ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse') ? [{ label: 'Appointments', to: `${base}/appointments`, end: true }] : []),
+    ...(a.canViewVisits ? [{ label: 'Lab and scans', to: `${base}/lab`, end: false }] : []),
+    ...(referralsTab ? [{ label: 'Referrals', to: `${base}/referrals`, end: true }] : []),
+  ];
+  const ipdSections = a.canViewVisits
+    ? [
+        { label: 'Admissions', to: `${base}/stays`, end: true },
+        ...(patient.currentAdmission ? [{ label: 'Current stay', to: `${base}/stays/${patient.currentAdmission.id}`, end: false }] : []),
+      ]
+    : [];
+  const inSections = (list) => list.some((t) => location.pathname === t.to || location.pathname.startsWith(`${t.to}/`));
   return (
     <>
       <PageHeader
@@ -409,22 +425,19 @@ export function PatientDetailPage() {
         }
         tabs={[
           { label: 'Overview', to: base, end: true },
-          ...(planTab ? [{ label: 'Care plan', to: `${base}/care-plan`, end: true }] : []),
-          ...(a.canViewVisits ? [{ label: 'Visits', to: `${base}/visits`, end: false }] : []),
-          ...(a.canViewVisits ? [{ label: 'Stays', to: `${base}/stays`, end: false }] : []),
-          ...(a.canViewVisits ? [{ label: 'Lab and scans', to: `${base}/lab`, end: false }] : []),
-          ...(referralsTab ? [{ label: 'Referrals', to: `${base}/referrals`, end: true }] : []),
-          // Appointment booking: for reception, the referral desk, doctors, RMOs and nurses who may see her phone number
-          ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse') ? [{ label: 'Appointments', to: `${base}/appointments`, end: true }] : []),
-          // ABDM linking (M1): her ABHA – reception, doctors and RMOs
-          ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'doctor', 'rmo') ? [{ label: 'ABHA', to: `${base}/abha`, end: true }] : []),
+          // OPD and IPD apart (owner, 27 Oct 2026): each a tab, its sections in the row under it
+          ...(opdSections.length ? [{ label: 'OPD', to: opdSections[0].to, activeFor: opdSections.map((t) => t.to) }] : []),
+          ...(ipdSections.length ? [{ label: 'IPD', to: ipdSections[0].to, activeFor: [`${base}/stays`] }] : []),
           // Billing: reception and the billing department (the hospital admin opens bills from Billing)
           ...(hasRole(activeMembership, 'receptionist', 'billing') ? [{ label: 'Bills', to: `${base}/bills`, end: true }] : []),
+          // ABDM linking (M1): her ABHA – reception, doctors and RMOs
+          ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'doctor', 'rmo') ? [{ label: 'ABHA', to: `${base}/abha`, end: true }] : []),
           ...(a.canViewConsents ? [{ label: 'Consent forms', to: `${base}/consents`, end: true }] : []),
           ...(a.canViewConsents ? [{ label: 'Information given', to: `${base}/information`, end: true }] : []),
           // Edit details: in the header (More, or the main button) – no tab of its own, except while it is open
           ...(onEditTab ? [{ label: 'Edit details', to: `${base}/edit`, end: true }] : []),
         ]}
+        subtabs={inSections(opdSections) ? opdSections : inSections(ipdSections) ? ipdSections : undefined}
       />
       <div className="pf-content">
         <DuplicateBanner patient={patient} onUndo={() => setUndoingDuplicate(true)} />
