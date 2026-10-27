@@ -357,6 +357,8 @@ export function PatientDetailPage() {
       ]
     : [];
   const inSections = (list) => list.some((t) => location.pathname === t.to || location.pathname.startsWith(`${t.to}/`));
+  // In hospital now or before (or a stay page open): then OPD and IPD are shown apart
+  const grouped = ipdSections.length > 0 && (patient.hadStay || Boolean(patient.currentAdmission) || inSections(ipdSections));
   return (
     <>
       <PageHeader
@@ -429,9 +431,14 @@ export function PatientDetailPage() {
         }
         tabs={[
           { label: 'Overview', to: base, end: true },
-          // OPD and IPD apart (owner, 27 Oct 2026): each a tab, its sections in the row under it
-          ...(opdSections.length ? [{ label: 'OPD', to: opdSections[0].to, activeFor: opdSections.map((t) => t.to) }] : []),
-          ...(ipdSections.length ? [{ label: 'IPD', to: ipdSections[0].to, activeFor: [`${base}/stays`] }] : []),
+          // OPD and IPD apart (owner, 27 Oct 2026) – only for a patient who has been in hospital: each a tab, its
+          // sections in the row under it. Everyone else sees her OPD sections as plain tabs.
+          ...(grouped
+            ? [
+                ...(opdSections.length ? [{ label: 'OPD', to: opdSections[0].to, activeFor: opdSections.map((t) => t.to) }] : []),
+                { label: 'IPD', to: ipdSections[0].to, activeFor: [`${base}/stays`] },
+              ]
+            : opdSections),
           // Billing: reception and the billing department (the hospital admin opens bills from Billing)
           ...(hasRole(activeMembership, 'receptionist', 'billing') ? [{ label: 'Bills', to: `${base}/bills`, end: true }] : []),
           // ABDM linking (M1): her ABHA – reception, doctors and RMOs
@@ -441,7 +448,7 @@ export function PatientDetailPage() {
           // Edit details: in the header (More, or the main button) – no tab of its own, except while it is open
           ...(onEditTab ? [{ label: 'Edit details', to: `${base}/edit`, end: true }] : []),
         ]}
-        subtabs={inSections(opdSections) ? opdSections : inSections(ipdSections) ? ipdSections : undefined}
+        subtabs={!grouped ? undefined : inSections(opdSections) ? opdSections : inSections(ipdSections) ? ipdSections : undefined}
       />
       <div className="pf-content">
         <DuplicateBanner patient={patient} onUndo={() => setUndoingDuplicate(true)} />
