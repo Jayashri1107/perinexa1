@@ -51,6 +51,12 @@
   border-radius: var(--radius-md); background: var(--indigo-700); color: var(--on-solid);
 }
 .lh-mark svg.lucide { width: 24px; height: 24px; }
+/* The hospital's own logo (owner, 27 Oct 2026); centered: the name and address in the middle (bills and receipts) */
+.lh-logo { flex-shrink: 0; width: auto; height: 64px; max-width: 120px; object-fit: contain; }
+.lh-centered { align-items: center; }
+.lh-centered .lh-text { text-align: center; }
+.lh-logo-pick { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.lh-logo-thumb { height: 48px; width: auto; max-width: 120px; object-fit: contain; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px; background: var(--surface); }
 .lh-text { flex: 1; min-width: 0; }
 .lh-name { color: var(--ink); font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 600; overflow-wrap: anywhere; }
 .lh-tagline { color: var(--print-ink); font-size: var(--fs-body); line-height: var(--lh-body); }

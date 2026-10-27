@@ -104,6 +104,26 @@ describe('hospital letterhead', () => {
   });
 });
 
+// The hospital's logo on its letterhead (owner, 27 Oct 2026): a real PNG or JPEG, at most 150 KB, never in the audit log
+describe('the hospital logo', () => {
+  it('keeps a real picture, refuses anything else, and the audit log says only that it changed', async () => {
+    const admin = await createUser();
+    await addMember(admin, home, 'admin');
+    const a = await loginAs(admin, { app });
+    const put = (logo) => a.agent.put('/api/tenant/settings/letterhead').set('X-Tenant-Id', a.activeTenantId).send({ ...LETTERHEAD, logo });
+    const png = `data:image/png;base64,${Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]).toString('base64')}`;
+    const res = await put(png);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.letterhead.logo).toBe(png);
+    const fake = `data:image/png;base64,${Buffer.from('<svg onload=alert(1)>').toString('base64')}`;
+    expect((await put(fake)).body.error.fields.logo).toMatch(/PNG or JPEG/);
+    expect((await put('data:image/svg+xml;base64,AAAA')).status).toBe(400);
+    const entry = await AuditLog.findOne({ action: 'TENANT_SETTINGS_UPDATED', 'details.changes.logo': { $exists: true } }).lean();
+    expect(entry.details.changes.logo).toEqual({ changed: true });
+    expect((await put('')).body.letterhead.logo).toBe('');
+  });
+});
+
 describe('professional details', () => {
   it('a doctor sets their own qualification and registration number', async () => {
     const doc = await createUser();
