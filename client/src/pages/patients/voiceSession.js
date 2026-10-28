@@ -30,11 +30,21 @@ const ABORTED_WINDOW_MS = 30 * 1000; // a second unexpected "aborted" within thi
 // Errors that, in a background tab, mean Chrome stopped listening there (not a microphone or set-up problem)
 const HIDDEN_STOPS = new Set(['aborted', 'not-allowed', 'service-not-allowed']);
 
+function inAnotherBrowser(name) {
+  return `This is ${name}. Recording needs Google Chrome, so that speech stays on this computer. Open this page in Google Chrome (if it is not installed, get it from google.com/chrome). You can still type or paste the details in the box.`;
+}
+
 // What the person sees when a recording can't start or has ended. Keys: speechEnvironment() reasons, onEnd reasons.
 export const ERROR_MESSAGES = {
   // Before any recording
   insecure: "Voice entry needs Perinexa's secure (https) address.",
   'not-chrome': 'Recording needs Google Chrome on a Windows or Mac computer. You can still type or paste the details in the box.',
+  phone: 'Recording works only on a Windows or Mac computer, not on a phone or tablet. You can still type or paste the details in the box.',
+  edge: inAnotherBrowser('Microsoft Edge'),
+  firefox: inAnotherBrowser('Firefox'),
+  safari: inAnotherBrowser('Safari'),
+  opera: inAnotherBrowser('Opera'),
+  brave: inAnotherBrowser('Brave'),
   'old-chrome': 'Update Google Chrome (Settings → About Chrome). Chrome 139 or newer is needed, which needs Windows 10 or later, or a recent macOS.',
   'no-speech': 'Update Google Chrome (Settings → About Chrome). Chrome 139 or newer is needed, which needs Windows 10 or later, or a recent macOS.',
   unavailable: 'Chrome cannot turn speech into text on this computer. You can still type or paste the details in the box.',
@@ -113,14 +123,48 @@ export function staysOnThisComputer(Recognition, r, nav) {
   return Boolean(Recognition?.prototype) && 'processLocally' in Recognition.prototype && r.processLocally === true && isGoogleChrome(nav);
 }
 
-// Can this browser record at all? → { ok: true } | { ok: false, reason: 'insecure'|'not-chrome'|'old-chrome'|'no-speech' }
+// Which browser this is, only to say what to do when it can't record (never used to allow recording).
+// → 'phone'|'edge'|'opera'|'brave'|'firefox'|'safari'|'not-chrome' (any other browser)
+export function otherBrowser(nav) {
+  const ua = nav?.userAgent ?? '';
+  const brands = (nav?.userAgentData?.brands ?? []).map((b) => b.brand);
+  if (isPhone(nav)) return 'phone';
+  if (brands.includes('Microsoft Edge') || /Edg(e|A|iOS)?\//.test(ua)) return 'edge';
+  if (brands.includes('Opera') || /OPR\//.test(ua)) return 'opera';
+  if (brands.includes('Brave') || nav?.brave) return 'brave';
+  if (/Firefox\/|FxiOS\//.test(ua)) return 'firefox';
+  if (/Safari\//.test(ua) && !/Chrome|Chromium|CriOS/.test(ua)) return 'safari';
+  return 'not-chrome';
+}
+
+// A phone or tablet (an iPad says it is a Mac, but has a touch screen)
+function isPhone(nav) {
+  const ua = nav?.userAgent ?? '';
+  return nav?.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/.test(ua) || (/Macintosh/.test(ua) && nav?.maxTouchPoints > 1);
+}
+
+// The Chrome version, e.g. '120', when Chrome says it
+const chromeVersion = (nav) => nav?.userAgentData?.brands?.find((b) => b.brand === 'Google Chrome')?.version;
+
+// Can this browser record at all?
+// → { ok: true } | { ok: false, reason: 'insecure'|'phone'|'edge'|…|'not-chrome'|'old-chrome'|'no-speech', version? }
 export function speechEnvironment(win = globalThis) {
   if (!win?.isSecureContext) return { ok: false, reason: 'insecure' }; // (the browser name is only readable on https)
-  if (!isGoogleChrome(win.navigator)) return { ok: false, reason: 'not-chrome' };
+  if (isPhone(win.navigator)) return { ok: false, reason: 'phone' }; // Chrome on a phone has no on-device speech
+  if (!isGoogleChrome(win.navigator)) return { ok: false, reason: otherBrowser(win.navigator) };
+  const version = chromeVersion(win.navigator);
   const Recognition = win.SpeechRecognition; // never webkitSpeechRecognition: it may go online
-  if (!Recognition) return { ok: false, reason: 'no-speech' };
-  if (!('processLocally' in Recognition.prototype) || typeof Recognition.available !== 'function') return { ok: false, reason: 'old-chrome' };
+  if (!Recognition) return { ok: false, reason: 'no-speech', version };
+  if (!('processLocally' in Recognition.prototype) || typeof Recognition.available !== 'function') return { ok: false, reason: 'old-chrome', version };
   return { ok: true };
+}
+
+// The message for a browser that can't record ({ reason, version } from speechEnvironment)
+export function cannotRecordMessage({ reason, version } = {}) {
+  if ((reason === 'old-chrome' || reason === 'no-speech') && version) {
+    return `This is Chrome ${version}. Recording needs Chrome 139 or newer. Update it in Chrome: Settings → About Chrome, then Relaunch. Chrome 139 needs Windows 10 or later, or a recent macOS.`;
+  }
+  return ERROR_MESSAGES[reason] ?? ERROR_MESSAGES['old-chrome'];
 }
 
 // Is English speech recognition ready on this computer? en-IN first; en-US only if en-IN fails or is unavailable

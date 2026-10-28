@@ -274,6 +274,8 @@ export const AUDIT_LABELS = {
   CASH_HANDED_OVER: 'Cash handed over',
   EXPENSE_RECORDED: 'Expense entered',
   EXPENSE_CANCELLED: 'Expense cancelled',
+  EXPENSE_BILL_ATTACHED: "Expense's bill attached",
+  EXPENSE_HEADS_CHANGED: 'Expense heads changed',
   CASH_HANDOVER_CONFIRMED: 'Cash handover confirmed',
   LAB_LABELS_PRINTED: 'Lab sample labels printed',
   LAB_SAMPLE_REJECTED: 'Lab sample rejected',
@@ -1148,7 +1150,11 @@ export function describeAudit(entry) {
       return `${d.day ?? ''}: ₹${((d.handedPaise ?? 0) / 100).toLocaleString('en-IN')} handed over (Perinexa counted ₹${((d.cashPaise ?? 0) / 100).toLocaleString('en-IN')})`;
     case 'EXPENSE_RECORDED':
     case 'EXPENSE_CANCELLED':
-      return `${d.date ?? ''}: ₹${((d.amountPaise ?? 0) / 100).toLocaleString('en-IN')}${d.mode ? ` by ${d.mode}` : ''}`;
+      return `${d.date ?? ''}: ₹${((d.amountPaise ?? 0) / 100).toLocaleString('en-IN')}${d.mode ? ` by ${d.mode}` : ''}${d.head ? ` – ${d.head}` : ''}`;
+    case 'EXPENSE_BILL_ATTACHED':
+      return `Expense of ${d.date ?? ''}`;
+    case 'EXPENSE_HEADS_CHANGED':
+      return d.change ? `A head ${d.change}` : '';
     case 'CASH_HANDOVER_CONFIRMED':
       return `${d.day ?? ''}: ₹${((d.receivedPaise ?? 0) / 100).toLocaleString('en-IN')} received (₹${((d.handedPaise ?? 0) / 100).toLocaleString('en-IN')} handed over)`;
     case 'ADMISSION_REQUESTED':

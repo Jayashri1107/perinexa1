@@ -15,7 +15,7 @@ import { VoiceEntry } from './VoiceEntry.jsx';
 import { careTypeFromSpeech, withoutCareTypeWords } from './careTypeSpeech.js';
 import { hearingPhrases } from './obgyTerms.js';
 import { PossibleMatchesDialog } from './PossibleMatchesDialog.jsx';
-import { CARE_TYPE_HINTS, CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, ageText } from './patientFormat.js';
+import { CARE_TYPE_HINTS, CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, ageText, arrivesOnRegistration } from './patientFormat.js';
 
 // An icon for each type of care on the chooser
 const CARE_TYPE_ICONS = { antenatal: HeartPulse, postnatal: Users, infertility: Flower2, gynaecology: Stethoscope, abortion: HeartHandshake, newborn: Baby };
@@ -302,6 +302,16 @@ export function PatientNewPage() {
         registered += ' Her appointment is now on her record.';
       } catch (err) {
         registered += ` Her appointment could not be added to her record (${err.message}) – book her again on the Appointments page.`;
+      }
+    }
+    // Registered at the desk for OPD (28 Oct 2026): she is here – marked arrived, so she is on Today's patients with an
+    // OPD number, as from OPD registration
+    if (arrivesOnRegistration({ setting, booking, fromSignup, roles: activeMembership.roles })) {
+      try {
+        const res = await api('/arrivals', { method: 'POST', body: { patientId: patient.id } });
+        if (res.arrival?.opdNo) registered += ` OPD no. ${res.arrival.opdNo}.`;
+      } catch {
+        // Today's patients lists her anyway (registered today); she can be marked arrived there
       }
     }
     if (setting !== 'opd') {

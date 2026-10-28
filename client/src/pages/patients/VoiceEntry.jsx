@@ -13,6 +13,7 @@ import {
   MASKED_WORDS_NOTE,
   PAUSED_REASONS,
   careTypeChange,
+  cannotRecordMessage,
   checkSpeech,
   createVoiceSession,
   endMessage,
@@ -304,7 +305,7 @@ export function VoiceEntry({
 }) {
   const [env] = useState(() => speechEnvironment(typeof window === 'undefined' ? undefined : window));
   const [Recognition] = useState(() => (env.ok ? window.SpeechRecognition : undefined)); // never webkitSpeechRecognition
-  const [speech, setSpeech] = useState(env.ok ? { status: 'checking' } : { status: 'unsupported', reason: env.reason });
+  const [speech, setSpeech] = useState(env.ok ? { status: 'checking' } : { status: 'unsupported', reason: env.reason, version: env.version });
   const [setupNote, setSetupNote] = useState(null);
   const [phase, setPhase] = useState('idle'); // 'idle' or the recording's state
   const [paused, setPaused] = useState(null); // why the last recording paused
@@ -842,7 +843,7 @@ export function VoiceEntry({
             : null;
   // Without on-device speech, the AI dictation button still records (it works in any browser that can record)
   const cannot = speech.status === 'unsupported'
-      ? (ERROR_MESSAGES[speech.reason] ?? ERROR_MESSAGES['old-chrome'])
+      ? cannotRecordMessage(speech)
       : speech.status === 'unavailable'
         ? ERROR_MESSAGES.unavailable
         : null;
