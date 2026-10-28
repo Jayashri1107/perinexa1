@@ -13,6 +13,16 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **28 Oct 2026 – history-taking sheet, the gaps closed (`docs/HISTORY_SHEET_LAYOUT.md` sections 4 and 5):** one Dictate
+  for the page – the voice entry, which turns speech into text on this computer only (the sheet's own button, which
+  used the browser's online speech, is gone); its reading fills the five lines **and** the LMP, G P L A, caesareans,
+  allergies, blood group and conditions from the same sentence, and the type of care's line ("trying to conceive since 3
+  years"; "delivered on 20 October 2026 by caesarean" in Edit details of a postnatal record). The grey strip shows what
+  was heard (read-only). Hints under the history fields and the "From voice – check" marks are hidden on the sheet;
+  Edit details has Dictate too. The hospital export's note names the history sheet. **Still open (owner's choice):**
+  height and weight sit in the third drop-down although section 3 says they belong to the visit; the anti-D hint and
+  the abortion G P L A hint are kept as safety notes. **How to test:** Patients → a sample record → Edit details →
+  Dictate → type (or say) the example sentence in the voice card → the blanks and the drop-downs fill → Save.
 - **27 Oct 2026 (developer's requests, in perinexa1):** (1) **OPD and IPD**: the Patients list has OPD (Today's
   patients first, All patients, New registration, Add service charge) and IPD (in hospital now); the patient record's
   tabs are grouped under OPD and IPD; the left menu's Patients opens OPD and IPD lists. (2) **Registration**: the type of

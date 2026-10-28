@@ -364,12 +364,9 @@
 
 /* The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md): the paper template's lines with blanks, the heard strip,
    and three closed drop-downs */
-.hs-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.hs-top h2 { margin: 0; }
-.hs-heard { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); }
-.hs-heard textarea { flex: 1 1 100%; min-height: 2.5em; border: 0; background: none; resize: vertical; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
-.hs-heard textarea:focus { outline: none; color: var(--ink); }
-.hs-filled { color: var(--slate-600); font-size: var(--fs-label); }
+.hs-heard { margin: var(--space-3) 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+/* No "From voice – check" marks on the sheet (section 5): the blank's own colour shows what Dictate filled */
+.hs .voice-mark, .hs .voice-tag { display: none; }
 .hs-lines { display: flex; flex-direction: column; gap: var(--space-3); }
 .hs-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
 .hs-line-block { flex-direction: column; align-items: stretch; }
@@ -396,7 +393,6 @@ textarea.hs-blank { border: 1px dashed var(--slate-300); border-radius: var(--ra
 .hs-table th, .hs-table td { padding: 4px; text-align: left; font-size: var(--fs-label); vertical-align: middle; }
 .hs-table input, .hs-table select { width: 100%; min-width: 70px; }
 .hs-table .hs-num { min-width: 56px; }
-.hs-note { margin-top: var(--space-3); }
 @media (prefers-reduced-motion: reduce) { .hs-more-chevron { transition: none; } }
 textarea.hs-blank { min-height: 0; height: 4.2em; }
 

@@ -140,7 +140,21 @@ const ANCHORS = [
   ['deliveries', /\bprevious deliver(?:y|ies)\b/i],
   ['other', /\bany other\b|\bother (?:personal|medical|history)\b/i],
 ];
+// The one more line of a type of care (decision 7): infertility and postnatal care only, so the words end a blank there
+const CARE_ANCHORS = {
+  infertility: [['conceive', /\btrying (?:to|for) (?:conceive|conception|pregnancy)(?: since| for)?\b/i]],
+  postnatal: [['delivered', /\bdelivered on\b/i]],
+};
 const WORD_NUMBERS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20 };
+const NUMBER = '(\\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)';
+const number = (x) => WORD_NUMBERS[x.toLowerCase()] ?? Number(x);
+// "by normal delivery", "by caesarean" – the keys of the delivery section (inpatientFormat.js DELIVERY_MODE_LABELS)
+const DELIVERY_MODES = [
+  ['lscs', /\b(?:lscs|caesarean|cesarean|c[\s-]?section|section)\b/i],
+  ['vacuum', /\b(?:vacuum|ventouse)\b/i],
+  ['forceps', /\bforceps\b/i],
+  ['normal', /\b(?:normal|vaginal|nvd|ftnd)\b/i],
+];
 
 const clean = (t) =>
   t
@@ -148,22 +162,27 @@ const clean = (t) =>
     .replace(/^(?:is|are|of|since|history|-)\s+/i, '')
     .trim();
 
-/**
- * The blanks a sentence fills: { complaint, cycle, marriedSinceYears, consanguinity, previousDeliveries, otherHistory }
- * – only those it is sure of (anything else is left as it is in the form).
- */
-export function readSentence(text) {
+// The parts of a sentence, each from its anchor to the next one
+function parts(text, careType) {
   const said = ` ${text ?? ''} `.replace(/\s+/g, ' ');
-  const found = ANCHORS.map(([key, rx]) => {
-    const m = rx.exec(said);
-    return m ? { key, start: m.index, end: m.index + m[0].length } : null;
-  })
+  const found = [...ANCHORS, ...(CARE_ANCHORS[careType] ?? [])]
+    .map(([key, rx]) => {
+      const m = rx.exec(said);
+      return m ? { key, start: m.index, end: m.index + m[0].length } : null;
+    })
     .filter(Boolean)
     .sort((a, b) => a.start - b.start);
-  const part = (i) => said.slice(found[i].end, i + 1 < found.length ? found[i + 1].start : said.length);
+  return found.map((f, i) => ({ key: f.key, text: said.slice(f.end, i + 1 < found.length ? found[i + 1].start : said.length) }));
+}
+
+/**
+ * The blanks a sentence fills: { complaint, cycle, marriedSinceYears, consanguinity, previousDeliveries, otherHistory }
+ * – only those it is sure of (anything else is left as it is in the form). `careType`: its own line's words end a blank.
+ */
+export function readSentence(text, { careType } = {}) {
   const out = {};
-  found.forEach((f, i) => {
-    const t = part(i);
+  for (const f of parts(text, careType)) {
+    const t = f.text;
     if (f.key === 'complaint') {
       const c = clean(t.replace(/\b(?:menstrual|obstetric) history\b.*$/i, ''));
       if (c) out.complaint = c;
@@ -186,6 +205,72 @@ export function readSentence(text) {
       const o = clean(t.replace(/^\s*(?:personal|medical|operative|or|family|,|\s)*history\b/i, ''));
       if (o) out.otherHistory = o;
     }
-  });
+  }
   return out;
+}
+
+/**
+ * The type of care's own line: { durationMonths } for "trying to conceive since 2 years" (infertility), { on, mode } for
+ * "delivered on 20 October 2026 by caesarean" (postnatal). `readDate(text, now, when)` reads the date (dictation.js).
+ */
+export function readCareLine(text, careType, readDate, now = new Date()) {
+  const out = {};
+  for (const { key, text: t } of parts(text, careType)) {
+    if (key === 'conceive') {
+      const m = new RegExp(`\\b${NUMBER}\\s*(years?|yrs?|months?)\\b`, 'i').exec(t);
+      const months = m ? number(m[1]) * (/^y/i.test(m[2]) ? 12 : 1) : NaN;
+      if (months > 0 && months <= 360) out.durationMonths = String(months);
+    }
+    if (key === 'delivered') {
+      const date = readDate(t, now, 'past');
+      if (date) out.on = date.iso;
+      const by = /\bby\b(.*)$/i.exec(date ? t.slice(date.end) : t);
+      const mode = by && DELIVERY_MODES.find(([, rx]) => rx.test(by[1]));
+      if (mode) out.mode = mode[0];
+    }
+  }
+  return out;
+}
+
+const SHEET_LABELS = {
+  complaint: 'Complaints',
+  cycle: 'Cycle',
+  marriedSinceYears: 'Married since (years)',
+  consanguinity: 'Consanguinity',
+  previousDeliveries: 'Previous deliveries',
+  otherHistory: 'Any other history',
+};
+const plainWords = (x) =>
+  String(x ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/**
+ * One Dictate for the whole page (decision 6): the voice entry's reading of what was said (`result`, as
+ * extractPatientDetails returns it) with the history sheet's blanks added – the five lines, and the type of care's own
+ * line when it is on the page (`careLine`). What the sheet took is no longer listed as not understood.
+ */
+export function withHistorySheet(result, text, { careType, careLine = false, readDate, now = new Date() }) {
+  const sheet = readSentence(text, { careType });
+  const line = careLine ? readCareLine(text, careType, readDate, now) : {};
+  const values = { ...result.values };
+  const paths = [...result.paths];
+  const found = [...result.found];
+  const add = (section, key, value, label, shown = value) => {
+    values[section] = { ...values[section], [key]: value };
+    paths.push(`${section}.${key}`);
+    found.push({ label, text: shown, part: 'clinical', path: `${section}.${key}` });
+  };
+  const L = HISTORY_LABELS;
+  for (const [k, value] of Object.entries(sheet)) add('history', k, value, SHEET_LABELS[k], k === 'cycle' ? L.CYCLE_KINDS[value] : k === 'consanguinity' ? L.YES_NO[value] : value);
+  if (line.durationMonths) add('fertility', 'durationMonths', line.durationMonths, 'Trying to conceive since', `${line.durationMonths} months`);
+  if (line.on) add('delivery', 'on', line.on, 'Delivered on');
+  if (line.mode) add('delivery', 'mode', line.mode, 'Mode of delivery');
+  const taken = [...Object.values(sheet), ...Object.values(line)].map(plainWords).filter((t) => t.length > 2);
+  const covered = (u) => {
+    const t = plainWords(u.text);
+    return !t || taken.some((s) => s.includes(t) || t.includes(s));
+  };
+  return { ...result, values, paths: [...new Set(paths)], found, unused: (result.unused ?? []).filter((u) => !covered(u)) };
 }
