@@ -1050,8 +1050,8 @@ export function PatientEditTab() {
     navigate(`/patients/${patient.id}`);
   };
   return (
-    <div className="form-page">
-      <PatientForm patient={patient} onSubmit={save} submitLabel="Save changes" access={a} cancelTo={`/patients/${patient.id}`} />
+    <div className="form-page form-page-voice">
+      <PatientForm patient={patient} onSubmit={save} submitLabel="Save changes" access={a} cancelTo={`/patients/${patient.id}`} voice />
     </div>
   );
 }

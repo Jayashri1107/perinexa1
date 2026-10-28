@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { api } from '../../api.js';
 import { Alert, Avatar, Field, FieldError, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { dictatedFields, isInfoPath, keepForLater, mergeDictated, newFillMemory, noteHandEdit, noteTick, planFill, splitFound } from './dictation.js';
+import { dictatedFields, extractPatientDetails, isInfoPath, keepForLater, mergeDictated, newFillMemory, noteHandEdit, noteTick, planFill, readDate, splitFound } from './dictation.js';
 import {
   BLOOD_GROUPS,
   BREASTFEEDING_LABELS,
@@ -40,7 +40,7 @@ import { asName } from '../../personName.js';
 import { lookupPin } from './pinLookup.js';
 import { useUnsavedWarning } from '../../hooks/useUnsavedWarning.js';
 import { HistorySheet } from './HistorySheet.jsx';
-import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues } from './historyFormat.js';
+import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues, withHistorySheet } from './historyFormat.js';
 import { DEPARTMENTS } from '../../platform/departments.js';
 import { FertilitySection } from './FertilitySection.jsx';
 import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
@@ -252,6 +252,12 @@ const SAY = {
   ],
 };
 const voiceExample = (part, type, clinical) => (SAY[type] ?? SAY.other)[part === 'clinical' ? 2 : clinical ? 1 : 0];
+// With the history-taking sheet on the page: the owner's paper template, as the doctor says it
+const SHEET_EXAMPLE = {
+  infertility: '"Patient is 30 years with complaints of not conceiving. LMP 2 October 2026, cycle irregular. Married since 4 years, non-consanguineous. Trying to conceive since 3 years. Previous deliveries nil. Any other history thyroid on treatment."',
+  postnatal: '"Patient is 26 years with complaints of pain at the stitch line. Married since 3 years, non-consanguineous. Delivered on 20 October 2026 by caesarean. Previous deliveries one normal delivery in 2023. Any other history nil."',
+  other: '"Patient is 28 years with complaints of mild backache for one week. LMP 12 July 2026, cycle regular. Married since 4 years, non-consanguineous. Previous deliveries one full-term normal delivery in 2023. Any other history nil."',
+};
 
 // "From voice – check": under a field filled from what was said, until the field is changed.
 function VoiceMark() {
@@ -396,6 +402,7 @@ export function PatientForm({
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [heard, setHeard] = useState(''); // what the history sheet's strip shows: the text last read from Dictate
   // Leaving with unsaved changes (the history sheet's blanks and everything else on the form) asks once first
   useUnsavedWarning(!submitting && JSON.stringify(v) !== JSON.stringify(loaded));
   const [recording, setRecording] = useState(false); // voice entry is recording: saving waits for Stop
@@ -499,6 +506,10 @@ export function PatientForm({
   const setHistory = (key, value) => {
     unmark(`history.${key}`);
     setV((cur) => ({ ...cur, history: { ...cur.history, [key]: value } }));
+  };
+  const setDelivery = (key, value) => {
+    unmark(`delivery.${key}`);
+    setV((cur) => ({ ...cur, delivery: { ...cur.delivery, [key]: value } }));
   };
   const setAbortion = (key, value) => {
     unmark(`abortion.${key}`);
@@ -663,6 +674,14 @@ export function PatientForm({
       </span>
     );
 
+  // The history-taking sheet on this page (docs/HISTORY_SHEET_LAYOUT.md decision 6): the one Dictate is the voice entry
+  // (speech turned into text on this computer only), and its reading fills the sheet's blanks too
+  const sheetShown = showClinical && !isNewborn && clinical;
+  const careLine = type === 'infertility' || (type === 'postnatal' && isEdit && !v.delivery.locked);
+  const readWithSheet = (text, opts) => {
+    setHeard(String(text ?? '').trim());
+    return withHistorySheet(extractPatientDetails(text, opts), text, { careType: opts.careType, careLine, readDate });
+  };
   // Voice entry beside the form (pages-patients.css: side by side on a wide screen) – once opened with Dictate
   const sideBySide = Boolean(voice && type && voiceOpen);
   return (
@@ -686,7 +705,8 @@ export function PatientForm({
               onStatus={setVoiceStatus}
               control={voiceControl}
               canNote={clinical}
-              example={voiceExample(part, type, clinical)}
+              example={sheetShown ? (SHEET_EXAMPLE[type] ?? SHEET_EXAMPLE.other) : voiceExample(part, type, clinical)}
+              read={sheetShown ? readWithSheet : undefined}
               initial={dictated ? { here: dictated.found, later: [], notes: [], carried: true } : null}
               initialText={spoken}
             />
@@ -953,24 +973,25 @@ export function PatientForm({
                   set={setHistory}
                   setPregnancies={(rows) => setHistory('pregnancies', rows)}
                   fe={fe}
-                  careType={type}
                   age={v.ageYears}
                   lmp={type === 'antenatal' ? v.pregnancy.lmp : type === 'abortion' ? v.abortion.lmp : ''}
                   onLmp={type === 'antenatal' ? (x) => setV((cur) => ({ ...cur, pregnancy: { ...cur.pregnancy, lmp: x } })) : type === 'abortion' ? (x) => setAbortion('lmp', x) : null}
                   medicalOpen={Boolean(fe('medical.allergies'))}
+                  heard={heard}
+                  voiced={(k) => voiced(`history.${k}`)}
                   extraLine={
                     type === 'infertility' ? (
                       <p className="hs-line">
                         <span className="hs-words">Trying to conceive since</span>
-                        <input aria-label="Trying to conceive since (months)" inputMode="numeric" className="hs-blank hs-num" value={v.fertility.durationMonths} onChange={(e) => setFertility('durationMonths', e.target.value.replace(/\D/g, '').slice(0, 3))} />
+                        <input aria-label="Trying to conceive since (months)" inputMode="numeric" className={`hs-blank hs-num${voiced('fertility.durationMonths') ? ' hs-heard-mark' : ''}`} value={v.fertility.durationMonths} onChange={(e) => setFertility('durationMonths', e.target.value.replace(/\D/g, '').slice(0, 3))} />
                         <span className="hs-words">months</span>
                       </p>
                     ) : type === 'postnatal' && isEdit && !v.delivery.locked ? (
                       <p className="hs-line">
                         <span className="hs-words">Delivered on</span>
-                        <input type="date" aria-label="Delivered on" className="hs-blank" value={v.delivery.on} onChange={(e) => setV((cur) => ({ ...cur, delivery: { ...cur.delivery, on: e.target.value } }))} />
+                        <input type="date" aria-label="Delivered on" className={`hs-blank${voiced('delivery.on') ? ' hs-heard-mark' : ''}`} value={v.delivery.on} onChange={(e) => setDelivery('on', e.target.value)} />
                         <span className="hs-words">by</span>
-                        <select aria-label="Mode of delivery" className="hs-blank" value={v.delivery.mode} onChange={(e) => setV((cur) => ({ ...cur, delivery: { ...cur.delivery, mode: e.target.value } }))}>
+                        <select aria-label="Mode of delivery" className={`hs-blank${voiced('delivery.mode') ? ' hs-heard-mark' : ''}`} value={v.delivery.mode} onChange={(e) => setDelivery('mode', e.target.value)}>
                           <option value="">–</option>
                           {Object.entries(DELIVERY_MODE_LABELS).map(([k, label]) => (
                             <option key={k} value={k}>
@@ -985,13 +1006,13 @@ export function PatientForm({
                     <div className="hs-existing">
                   <div className="form-grid form-grid-5">
                     {[
-                      ['gravida', 'Gravida (G)', 'All pregnancies incl. current'],
-                      ['para', 'Para (P)', 'Deliveries'],
-                      ['living', 'Living children (L)', ''],
-                      ['abortions', 'Abortions (A)', 'Pregnancies that ended before 20 weeks (any cause)'],
-                      ['previousCaesareans', 'Previous caesareans', ''],
-                    ].map(([key, label, hint]) => (
-                      <Field key={key} label={label} id={`ob-${key}`} error={fe(`obstetric.${key}`)} hint={hint || undefined} keepHint>
+                      ['gravida', 'Gravida (G)'],
+                      ['para', 'Para (P)'],
+                      ['living', 'Living children (L)'],
+                      ['abortions', 'Abortions (A)'],
+                      ['previousCaesareans', 'Previous caesareans'],
+                    ].map(([key, label]) => (
+                      <Field key={key} label={label} id={`ob-${key}`} error={fe(`obstetric.${key}`)}>
                         <input id={`ob-${key}`} className={vc(`obstetric.${key}`)} inputMode="numeric" value={v.obstetric[key]} onChange={setIn('obstetric', key)} maxLength={2} />
                         {vm(`obstetric.${key}`)}
                       </Field>
@@ -1037,7 +1058,7 @@ export function PatientForm({
                   medical={
                     <div className="hs-existing">
                   <div className="allergy-field">
-                    <Field label="Allergies (required)" id="allergies" error={fe('medical.allergies')} hint='e.g. "Penicillin – rash". If she has none, tick "None known".'>
+                    <Field label="Allergies (required)" id="allergies" error={fe('medical.allergies')}>
                       <input
                         id="allergies"
                         className={vc('medical.allergies')}
@@ -1096,10 +1117,9 @@ export function PatientForm({
                       <strong>No known conditions</strong> – asked, and none of these apply
                       {voiceTag('medical.conditionsReviewed')}
                     </label>
-                    <p className="hint">Leaving everything unticked is not the same as “none”: the risk level stays “Incomplete” until one of these is ticked.</p>
                   </fieldset>
                   <div className="form-grid">
-                    <Field label="Other conditions" id="otherConditions" error={fe('medical.otherConditions')} hint="Free text is not checked by the risk rules – the doctor must assess it." keepHint>
+                    <Field label="Other conditions" id="otherConditions" error={fe('medical.otherConditions')}>
                       <input id="otherConditions" className={vc('medical.otherConditions')} value={v.medical.otherConditions} onChange={setIn('medical', 'otherConditions')} maxLength={500} />
                       {vm('medical.otherConditions')}
                     </Field>

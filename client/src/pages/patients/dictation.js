@@ -2911,6 +2911,12 @@ function findNewborn(s, now, f, use, note, ask, nameText = s) {
 }
 
 const TICK_LISTS = new Set(['medical.conditions', 'obstetric.pastComplications', 'pregnancy.findings']);
+// A copy of the form's values to fill in; the history sheet's sections only where the form has them
+const copyForm = (v) => {
+  const out = { ...v, newborn: { ...v.newborn }, pregnancy: { ...v.pregnancy }, abortion: { ...v.abortion }, obstetric: { ...v.obstetric }, medical: { ...v.medical } };
+  for (const k of ['history', 'fertility', 'delivery']) if (v[k]) out[k] = { ...v[k] };
+  return out;
+};
 const TEXT_LISTS = new Set(['medical.otherConditions', 'notes']);
 // The pieces of an "Other conditions" or notes text ("Twin pregnancy; CPD"), as kept in `added`
 const textPieces = (path, value) =>
@@ -2929,7 +2935,7 @@ const textPieces = (path, value) =>
  *   when the person has deleted them
  */
 export function mergeDictated(v, values, paths, { skip = [], unticked = [], added = [] } = {}) {
-  const out = { ...v, newborn: { ...v.newborn }, pregnancy: { ...v.pregnancy }, abortion: { ...v.abortion }, obstetric: { ...v.obstetric }, medical: { ...v.medical } };
+  const out = copyForm(v);
   const byHand = new Set(skip);
   const untickedSet = new Set(unticked);
   const addedSet = new Set(added);
@@ -2972,7 +2978,7 @@ export function mergeDictated(v, values, paths, { skip = [], unticked = [], adde
  */
 export function withoutDictated(v, fields, before = {}, pieces = []) {
   if (!fields.length && !pieces.length) return v;
-  const out = { ...v, newborn: { ...v.newborn }, pregnancy: { ...v.pregnancy }, abortion: { ...v.abortion }, obstetric: { ...v.obstetric }, medical: { ...v.medical } };
+  const out = copyForm(v);
   for (const field of fields) {
     const list = [...TICK_LISTS].find((l) => field.startsWith(`${l}.`));
     if (list) {
