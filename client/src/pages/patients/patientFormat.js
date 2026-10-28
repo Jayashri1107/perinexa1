@@ -260,3 +260,14 @@ export function sinceText(day, now = new Date()) {
   if (days < 730) return `${Math.round(days / 30.4)} months ago`;
   return `${Math.round(days / 365)} years ago`;
 }
+
+// Who may mark a patient arrived (as server/src/routes/arrivals.js)
+export const ARRIVAL_ROLES = ['receptionist', 'nurse', 'doctor', 'rmo'];
+
+/**
+ * Is a patient just registered here now, so marked arrived (on Today's patients, with an OPD number)? Registered for
+ * OPD by someone who marks arrivals (28 Oct 2026) – not for a stay (IPD, day care), not for a booking (which may be
+ * for another day), not from an online sign-up (she may be at home).
+ */
+export const arrivesOnRegistration = ({ setting, booking = null, fromSignup = null, roles = [] }) =>
+  setting === 'opd' && !booking && !fromSignup && roles.some((r) => ARRIVAL_ROLES.includes(r));
