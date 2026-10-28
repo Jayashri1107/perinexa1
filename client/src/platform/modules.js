@@ -1,4 +1,4 @@
-import { BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, Truck, UserCog, Users } from 'lucide-react';
+import { BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, Truck, UserCog, Users, Wallet } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -252,6 +252,9 @@ const HOSPITAL_BILLING = {
   ],
 };
 
+// Daily expenses (owner, 28 Oct 2026): money paid out from the counter, its own place in the menu after Billing
+const HOSPITAL_EXPENSES = { key: 'expenses', label: 'Daily expenses', icon: Wallet, to: '/expenses', tabs: [{ label: 'Daily expenses', to: '/expenses', end: true }] };
+
 // The pharmacy: the pharmacist's counter, stock and registers; the hospital admin sees stock and reports. Same lists as
 // server/src/pharmacy/pharmacyRules.js; the pages' own tabs come from pages/pharmacy/pharmacyFormat.js.
 export const PHARMACY_MODULE_ROLES = ['pharmacist', 'admin'];
@@ -480,7 +483,7 @@ export function hospitalModules(roles = []) {
   if (any(roles, LAB_ROLES)) modules.push(roles.includes('lab') ? { ...HOSPITAL_LAB, to: '/lab/dashboard', activeFor: '/lab' } : HOSPITAL_LAB);
   if (any(roles, SCAN_PAGE_ROLES)) modules.push(HOSPITAL_SCANS);
   if (any(roles, REFERRAL_ROLES)) modules.push(HOSPITAL_REFERRALS);
-  if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING);
+  if (any(roles, BILLING_MODULE_ROLES)) modules.push(HOSPITAL_BILLING, HOSPITAL_EXPENSES);
   if (roles.includes('pharmacist')) modules.push(...PHARMACIST_MENU);
   else if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: '/pharmacy/stock' });
   if (any(roles, ANALYTICS_ROLES)) modules.push(HOSPITAL_ANALYTICS); // after Patients and Calendar, or after Today for an admin
@@ -515,7 +518,7 @@ export const accountTabs = (memberships = []) => {
 /** Doctors and RMOs (anywhere): their professional details print on prescriptions. */
 export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRESCRIBER_ROLES);
 
-const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
+const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_EXPENSES, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.

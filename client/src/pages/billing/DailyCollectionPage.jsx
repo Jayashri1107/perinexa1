@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ban, Banknote, ChevronLeft, ChevronRight, Download, HandCoins, Plus, Printer, ReceiptText, RotateCcw, Search, Wallet } from 'lucide-react';
+import { Banknote, ChevronLeft, ChevronRight, Download, HandCoins, Printer, ReceiptText, RotateCcw, Search, Wallet } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -7,31 +7,18 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, KpiCard, StatusPill, formatDateTime, formatTime } from '../../components/ui.jsx';
+import { Alert, KpiCard, StatusPill, formatDateTime, formatTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso, dayLabel } from '../appointments/appointmentFormat.js';
 import { amountInWords } from './amountWords.js';
-import { MODE_LABELS, PAYMENT_KIND_LABELS, REPORT_ROLES, billingTabs, rupees, toPaise } from './billingFormat.js';
-import { Modal } from './billingUi.jsx';
+import { MODE_LABELS, PAYMENT_KIND_LABELS, REPORT_ROLES, billingTabs, rupees } from './billingFormat.js';
+import { CancelExpenseDialog, ExpenseEntryForm, ExpensesList } from './ExpenseEntry.jsx';
+import { EXPENSE_MODE_LABELS } from './expenseFormat.js';
 
 // Billing → Daily summary, redesigned (owner, 27 Oct 2026): the day at a glance – collected, given back, the day's
-// expenses and what is left – then the money by mode, OPD and IPD, the expenses paid from the counter (entered here,
-// taken off the total), who collected, the groups charged and every receipt. Printed or saved as a PDF for the
+// expenses and what is left – then the money by mode, OPD and IPD, the expenses paid from the counter (entered here
+// or on Daily expenses, taken off the total), who collected, the groups charged and every receipt. Printed or saved as a PDF for the
 // handover at the end of the day.
-
-export const EXPENSE_CATEGORY_LABELS = {
-  petty_cash: 'Petty cash',
-  refreshments: 'Tea and refreshments',
-  stationery: 'Stationery and printing',
-  courier: 'Courier and post',
-  transport: 'Transport',
-  cleaning: 'Cleaning and housekeeping',
-  repairs: 'Repairs and maintenance',
-  salary_advance: 'Staff advance',
-  other: 'Other',
-};
-const EXPENSE_MODE_LABELS = { cash: 'Cash', upi: 'UPI', card: 'Card', bank: 'Bank transfer' };
-const EMPTY_EXPENSE = { category: 'refreshments', amount: '', mode: 'cash', paidTo: '', description: '' };
 
 /** The day's figures, worked out from the server's summary (older summaries without expenses count none). */
 export function dayFigures(d) {
@@ -65,15 +52,17 @@ function ModeTable({ d }) {
             <td className="num">{rupees(m.net - (spentBy[m.mode] ?? 0))}</td>
           </tr>
         ))}
-        {spentBy.bank > 0 && (
-          <tr>
-            <td>Bank transfer</td>
-            <td className="num">{rupees(0)}</td>
-            <td className="num">{rupees(0)}</td>
-            <td className="num">−{rupees(spentBy.bank)}</td>
-            <td className="num">−{rupees(spentBy.bank)}</td>
-          </tr>
-        )}
+        {Object.entries(spentBy)
+          .filter(([mode, paise]) => paise > 0 && !d.byMode.some((m) => m.mode === mode))
+          .map(([mode, paise]) => (
+            <tr key={mode}>
+              <td>{EXPENSE_MODE_LABELS[mode] ?? mode}</td>
+              <td className="num">{rupees(0)}</td>
+              <td className="num">{rupees(0)}</td>
+              <td className="num">−{rupees(paise)}</td>
+              <td className="num">−{rupees(paise)}</td>
+            </tr>
+          ))}
         <tr className="bill-report-total">
           <th scope="row">Total</th>
           <td className="num">{rupees(f.collected)}</td>
@@ -108,70 +97,6 @@ function KindTable({ d }) {
             <td className="num">{rupees(k.net)}</td>
           </tr>
         ))}
-      </tbody>
-    </table>
-  );
-}
-
-function ExpensesTable({ expenses, onCancel }) {
-  const live = expenses.filter((e) => !e.cancelled);
-  return (
-    <table className="bill-report dc-table dc-expenses">
-      <caption>Expenses paid from the counter</caption>
-      <thead>
-        <tr>
-          <th scope="col">Time</th>
-          <th scope="col">For</th>
-          <th scope="col">Paid to / note</th>
-          <th scope="col">Mode</th>
-          <th scope="col" className="num">Amount</th>
-          <th scope="col">By</th>
-          {onCancel && <th scope="col"><span className="sr-only">Cancel</span></th>}
-        </tr>
-      </thead>
-      <tbody>
-        {expenses.map((e) => (
-          <tr key={e.id} className={e.cancelled ? 'dc-cancelled' : undefined}>
-            <td>{e.at ? formatTime(e.at) : ''}</td>
-            <td>{EXPENSE_CATEGORY_LABELS[e.category] ?? e.category}</td>
-            <td className="dc-wrap">
-              {[e.paidTo, e.description].filter(Boolean).join(' – ')}
-              {e.cancelled && (
-                <span className="dc-cancel-note">
-                  Cancelled by {e.cancelled.byName}: {e.cancelled.reason}
-                </span>
-              )}
-            </td>
-            <td>{EXPENSE_MODE_LABELS[e.mode] ?? e.mode}</td>
-            <td className="num">{rupees(e.amountPaise)}</td>
-            <td>{e.byName}</td>
-            {onCancel && (
-              <td>
-                {!e.cancelled && (
-                  <button type="button" className="icon-btn" aria-label={`Cancel the expense of ${rupees(e.amountPaise)}`} title="Cancel (entered by mistake)" onClick={() => onCancel(e)}>
-                    <Ban aria-hidden="true" />
-                  </button>
-                )}
-              </td>
-            )}
-          </tr>
-        ))}
-        {!expenses.length && (
-          <tr>
-            <td colSpan={onCancel ? 7 : 6} className="muted">
-              No expenses entered for this day.
-            </td>
-          </tr>
-        )}
-        {live.length > 0 && (
-          <tr className="bill-report-total">
-            <th scope="row" colSpan={4}>
-              Total expenses
-            </th>
-            <td className="num">{rupees(live.reduce((s, e) => s + e.amountPaise, 0))}</td>
-            <td colSpan={onCancel ? 2 : 1} />
-          </tr>
-        )}
       </tbody>
     </table>
   );
@@ -318,104 +243,6 @@ function ReceiptsTable({ payments }) {
   );
 }
 
-/** Enter one expense of the day. */
-function ExpenseForm({ date, onAdded }) {
-  const [v, setV] = useState(EMPTY_EXPENSE);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const [fields, setFields] = useState({});
-  const set = (k) => (e) => setV({ ...v, [k]: e.target.value });
-  const amountPaise = toPaise(v.amount);
-  const save = async (e) => {
-    e.preventDefault();
-    if (!amountPaise || amountPaise < 100) return setFields({ amountPaise: 'Enter the amount in rupees, for example 120.' });
-    setBusy(true);
-    setError(null);
-    setFields({});
-    try {
-      await api('/billing/expenses', { method: 'POST', body: { date, category: v.category, mode: v.mode, amountPaise, paidTo: v.paidTo.trim(), description: v.description.trim() } });
-      setV(EMPTY_EXPENSE);
-      onAdded();
-    } catch (err) {
-      setError(err.message);
-      setFields(err.fields ?? {});
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <form className="dc-expense-form" onSubmit={save} noValidate>
-      <Alert type="error">{error}</Alert>
-      <div className="dc-expense-grid">
-        <Field label="For" id="dc-exp-category" error={fields.category}>
-          <select id="dc-exp-category" value={v.category} onChange={set('category')}>
-            {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Amount ₹" id="dc-exp-amount" error={fields.amountPaise}>
-          <input id="dc-exp-amount" inputMode="decimal" value={v.amount} onChange={set('amount')} placeholder="e.g. 120" />
-        </Field>
-        <Field label="Paid by" id="dc-exp-mode" error={fields.mode}>
-          <select id="dc-exp-mode" value={v.mode} onChange={set('mode')}>
-            {Object.entries(EXPENSE_MODE_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Paid to (optional)" id="dc-exp-paidto" error={fields.paidTo}>
-          <input id="dc-exp-paidto" value={v.paidTo} onChange={set('paidTo')} maxLength={100} placeholder="e.g. tea stall" />
-        </Field>
-      </div>
-      <Field label="Note (optional)" id="dc-exp-note" error={fields.description} hint="Never a patient's name or details.">
-        <input id="dc-exp-note" value={v.description} onChange={set('description')} maxLength={200} />
-      </Field>
-      <button type="submit" className="btn btn-secondary" disabled={busy}>
-        <Plus aria-hidden="true" /> {busy ? 'Saving…' : 'Add expense'}
-      </button>
-    </form>
-  );
-}
-
-function CancelExpenseDialog({ expense, onClose, onDone }) {
-  const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const send = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await api(`/billing/expenses/${expense.id}/cancel`, { method: 'POST', body: { reason: reason.trim() } });
-      onDone();
-    } catch (err) {
-      setError(err.message);
-      setBusy(false);
-    }
-  };
-  return (
-    <Modal id="dc-cancel" title={`Cancel the expense of ${rupees(expense.amountPaise)}?`} onClose={onClose}>
-      <p>It stays listed, struck through, and is no longer taken off the day's total.</p>
-      <Alert type="error">{error}</Alert>
-      <Field label="Why is it cancelled" id="dc-cancel-reason">
-        <input id="dc-cancel-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder="e.g. entered twice" autoFocus />
-      </Field>
-      <div className="row">
-        <button type="button" className="btn btn-primary" disabled={reason.trim().length < 3 || busy} onClick={send}>
-          {busy ? 'Saving…' : 'Cancel the expense'}
-        </button>
-        <button type="button" className="btn btn-link" onClick={onClose}>
-          Keep it
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
 export function DailySummaryPage() {
   const { activeMembership } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -423,6 +250,7 @@ export function DailySummaryPage() {
   const res = useFetch('/billing/reports/daily', { date });
   const [version, setVersion] = useState(0); // a new print after an expense was added
   const lh = useFetch('/tenant/settings/letterhead');
+  const heads = useFetch('/billing/expense-heads');
   const [printing, setPrinting] = useState(false);
   const [cancelling, setCancelling] = useState(null);
   const [filter, setFilter] = useState('');
@@ -517,9 +345,9 @@ export function DailySummaryPage() {
                     {f.expenses ? `−${rupees(f.expenses)}` : 'None'}
                   </StatusPill>
                 </div>
-                <p className="hint">Money paid out from the counter today – it is taken off the day's balance.</p>
-                <ExpenseForm date={day} onAdded={reload} />
-                <ExpensesTable expenses={d.expenses ?? []} onCancel={setCancelling} />
+                <p className="hint">Money paid out from the counter today – it is taken off the day's balance. Also entered and listed on Daily expenses in the menu.</p>
+                <ExpenseEntryForm key={day} heads={heads.data?.heads ?? []} date={day} onAdded={reload} idPrefix="dc-exp" />
+                <ExpensesList expenses={d.expenses ?? []} onCancel={setCancelling} />
               </section>
 
               <section className="card dc-section" aria-labelledby="dc-people">
@@ -597,7 +425,7 @@ export function DailySummaryPage() {
             </table>
             <ModeTable d={d} />
             <KindTable d={d} />
-            {(d.expenses ?? []).length > 0 && <ExpensesTable expenses={d.expenses} />}
+            {(d.expenses ?? []).length > 0 && <ExpensesList expenses={d.expenses} />}
             <SmallTables d={d} />
             {d.payments.length > 0 && <ReceiptsTable payments={d.payments} />}
             <div className="bill-sign">
