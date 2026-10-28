@@ -13,6 +13,16 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **28 Oct 2026 – Pharmacy → Purchase bills as the earlier software's GRN screen (developer's request, from photos of the
+  old screen):** **GRN List** and **New GRN** tabs; New GRN has the supplier's invoice on the left (store, supplier,
+  invoice and gate entry numbers, dates, tax name, direct or purchase order, credit or cash) and the items on the right:
+  the item name (or a barcode) opens a **pop-up** for the medicine – batch, expiry, quantity, free quantity, conversion
+  factor, discount, rate, MRP, GST – with the disc amount, total, total quantity, GST amount, net amount, HSN code, sale
+  rate, landed rate and profit worked out; the list shows each line (Fill in when something is missing); under the
+  amounts: CRN adjust, Save and add to stock, Close. Saving and the sums are unchanged. **Not on the pop-up:** a scheme
+  amount per line and a separate sales rate (the stock sells at the MRP), and the Mfg barcode tick (barcodes are on the
+  medicine). **How to test:** Pharmacy → Purchases → New GRN → choose a supplier, write an invoice number → type a
+  medicine name → fill the pop-up → Add to the bill → Save and add to stock → GRN List.
 - **28 Oct 2026 – history-taking sheet, the gaps closed (`docs/HISTORY_SHEET_LAYOUT.md` sections 4 and 5):** one Dictate
   for the page – the voice entry, which turns speech into text on this computer only (the sheet's own button, which
   used the browser's online speech, is gone); its reading fills the five lines **and** the LMP, G P L A, caesareans,
