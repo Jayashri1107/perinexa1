@@ -149,6 +149,24 @@ export function scannedForList(medicine, alreadyOnList) {
   if (alreadyOnList) return { add: false, said: `${medicine.name} is already on the list: change its quantity there.` };
   return { add: true, said: `${medicineLabel(medicine)} added.` };
 }
+
+/**
+ * The bill's lines with a prescription's medicines on it (`rx` from /pharmacy/patients/:id/prescriptions): each
+ * prescribed medicine is matched to the stock list (one in stock first) with its suggested quantity and marked
+ * `prescribed` – it cannot be taken off the bill. The medicines of a prescription chosen before are replaced; those
+ * the pharmacist added stay (one already on the bill becomes prescribed). A medicine not on the stock list is left out.
+ */
+export function prescribedLines(lines, rx) {
+  const out = lines.filter((l) => !l.prescribed);
+  for (const it of rx.items) {
+    const best = it.matches.find((m) => m.inStock > 0) ?? it.matches[0];
+    if (!best) continue;
+    const i = out.findIndex((l) => l.medicine.id === best.id);
+    if (i >= 0) out[i] = { ...out[i], prescribed: true };
+    else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(it.suggestedQty ?? 1), batchId: null, prescribed: true });
+  }
+  return out;
+}
 /** The same for a new purchase, where a medicine may be on the list more than once (one line for each batch). */
 export function scannedForPurchase(medicine) {
   if (!medicine.active) return { add: false, said: { error: `${medicine.name} is no longer in use (Medicines → Use again).` } };

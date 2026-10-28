@@ -5,7 +5,7 @@ import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
-import { CONTROLLED, FREQUENCY_WORDS, MODE_LABELS, einvoiceHsnOk, expiryLabel, medicineLabel, scannedForList } from './pharmacyFormat.js';
+import { CONTROLLED, FREQUENCY_WORDS, MODE_LABELS, einvoiceHsnOk, expiryLabel, medicineLabel, prescribedLines, scannedForList } from './pharmacyFormat.js';
 import { FindMedicine, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { FindElsewhere, TypePill } from './RegisterPage.jsx';
 
@@ -197,14 +197,14 @@ export function SellPage({ kind = 'sale' }) {
   const s = useSend((res) => navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } }));
 
   const addMedicine = (m, qty = 1) => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null }]));
+  // The doctor's prescription on the bill (owner's developer, 28 Oct 2026): its medicines are marked `prescribed` and
+  // cannot be taken off – only their quantity and batch change; medicines the pharmacist adds can be. Another
+  // prescription chosen replaces the last one's medicines.
   const useRx = (rx) => {
     setVisitId(rx.visitId);
     setRxSeen(false);
     setDoctor(rx.doctor ?? { name: '', reg: '' });
-    for (const it of rx.items) {
-      const best = it.matches.find((m) => m.inStock > 0) ?? it.matches[0];
-      if (best) addMedicine(best, it.suggestedQty ?? 1);
-    }
+    setLines((ls) => prescribedLines(ls, rx));
   };
   const reset = () => {
     setPatient(null);
@@ -356,6 +356,7 @@ export function SellPage({ kind = 'sale' }) {
                       <td data-label="Medicine">
                         {medicineLabel(l.medicine)} <ScheduleMark schedule={l.medicine.schedule} />
                         <span className="muted"> · {l.medicine.inStock} in stock</span>
+                        {l.prescribed && l.medicine.inStock < Number(l.qty) && <span className="field-error ph-prescribed-short">Not enough in stock: it stays on the bill, so the invoice can be made once it is received.</span>}
                       </td>
                       <td data-label="Batch">
                         <BatchPicker line={l} onChange={(batchId) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, batchId } : x)))} />
@@ -364,9 +365,15 @@ export function SellPage({ kind = 'sale' }) {
                         <input className="bill-price-input" inputMode="numeric" aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, qty: e.target.value } : x)))} />
                       </td>
                       <td>
-                        <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
-                          <Trash2 aria-hidden="true" />
-                        </button>
+                        {l.prescribed ? (
+                          <span className="ph-prescribed" title="Prescribed by the doctor: it stays on the bill. Change the quantity or the batch.">
+                            <ClipboardList aria-hidden="true" /> Prescribed
+                          </span>
+                        ) : (
+                          <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
+                            <Trash2 aria-hidden="true" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
