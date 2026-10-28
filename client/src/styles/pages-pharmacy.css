@@ -114,7 +114,22 @@
 .ph-register { display: grid; gap: var(--space-4); }
 /* The purchase bill (GRN, owner 26 Oct 2026): the invoice beside its choices; the lines scroll sideways on a narrow
    screen; the amounts beside the sums */
-.ph-grn-head, .ph-grn-foot { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-6); align-items: start; }
+.ph-grn-foot { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-6); align-items: start; }
+/* New GRN as on the earlier software (28 Oct 2026): GRN List / New GRN tabs, the invoice on the left, the items on the
+   right, a pop-up per medicine, CRN adjust / Save / Close under the amounts */
+.ph-grn-tabs { margin-bottom: var(--space-4); }
+.ph-grn-layout { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 2.4fr); gap: var(--space-4); align-items: start; }
+.ph-grn-layout > .card { margin: 0; }
+.ph-grn-invoice .form-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.ph-grn-invoice .form-grid > :is(:nth-child(1), :nth-child(2), .ph-grn-supplier) { grid-column: 1 / -1; }
+.ph-grn-invoice .ph-grn-choices { margin-top: var(--space-4); }
+.ph-grn-row-actions { white-space: nowrap; text-align: right; }
+.ph-grn-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-4); }
+.modal:has(.ph-grn-pop) { max-width: 960px; }
+.ph-grn-pop { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); }
+.ph-grn-pop .ph-ro { font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 1100px) { .ph-grn-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) { .ph-grn-pop { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ph-grn-choices { display: grid; gap: var(--space-4); }
 .ph-choice { display: grid; gap: var(--space-1); }
 .ph-grn-supplier { grid-column: 1 / -1; margin: calc(-1 * var(--space-2)) 0 0; }
@@ -126,7 +141,7 @@
 .ph-grn-sums th { text-align: left; font-weight: 400; }
 .ph-grn-net th, .ph-grn-net td { font-weight: 700; border-top: 1px solid var(--border); }
 .ph-grn-facts { margin: 0 0 var(--space-3); }
-@media (max-width: 860px) { .ph-grn-head, .ph-grn-foot { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) { .ph-grn-foot { grid-template-columns: minmax(0, 1fr); } }
 /* Pharmacy reports (owner, 26 Oct 2026): the period in one row, the reports as tabs, the two stock alerts side by side */
 .ph-rep-period { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-4); }
 .ph-rep-date { display: grid; gap: var(--space-1); font-size: var(--fs-label); color: var(--slate-600); }

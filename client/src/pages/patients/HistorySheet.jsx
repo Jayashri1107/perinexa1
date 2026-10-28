@@ -1,17 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Mic, Plus, Square, Trash2, Wand2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { Field } from '../../components/ui.jsx';
-import { EMPTY_PREGNANCY, HISTORY_LABELS, readSentence } from './historyFormat.js';
+import { EMPTY_PREGNANCY, HISTORY_LABELS } from './historyFormat.js';
 
 // The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md, layout agreed by the owner on 27 Oct 2026): one page in the
 // words of the owner's paper template – five lines with blanks, one more line for infertility (trying to conceive
-// since) or postnatal care (delivered on … by …) – a Dictate button for the whole page with a strip showing what was
-// heard, and three closed drop-downs with the rest of the history for reference. The record's existing obstetric and
-// medical sections sit inside drop-downs 2 and 3 (`obstetric`, `medical`); the allergy answer opens drop-down 3 when
-// it is missing at Save (`medicalOpen`).
+// since) or postnatal care (delivered on … by …) – a strip showing what was heard by the page's one Dictate (the
+// voice entry, on this computer only; PatientForm reads the sheet's blanks from it), and three closed drop-downs with
+// the rest of the history for reference. The record's existing obstetric and medical sections sit inside drop-downs
+// 2 and 3 (`obstetric`, `medical`); the allergy answer opens drop-down 3 when it is missing at Save (`medicalOpen`).
 
 const L = HISTORY_LABELS;
-const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition ?? window.webkitSpeechRecognition) : null;
 
 function Choice({ name, value, options, onChange, label }) {
   return (
@@ -56,83 +55,21 @@ function More({ id, title, force = false, children }) {
   );
 }
 
-/** Dictate for the whole page: the browser's own speech recognition (Chrome, Edge), then the sentence is read by rules. */
-function useDictation(onHeard) {
-  const [on, setOn] = useState(false);
-  const rec = useRef(null);
-  useEffect(() => () => rec.current?.stop(), []);
-  const start = () => {
-    if (!SpeechRecognition) return;
-    const r = new SpeechRecognition();
-    r.lang = 'en-IN';
-    r.continuous = true;
-    r.interimResults = false;
-    r.onresult = (e) => {
-      const text = [...e.results]
-        .slice(e.resultIndex)
-        .filter((x) => x.isFinal)
-        .map((x) => x[0].transcript)
-        .join(' ');
-      if (text.trim()) onHeard(text.trim());
-    };
-    r.onend = () => setOn(false);
-    r.onerror = () => setOn(false);
-    rec.current = r;
-    r.start();
-    setOn(true);
-  };
-  const stop = () => rec.current?.stop();
-  return { available: Boolean(SpeechRecognition), on, start, stop };
-}
-
-export function HistorySheet({ values: h, set, setPregnancies, fe, careType, age, lmp, onLmp, extraLine, obstetric, medical, medicalOpen = false }) {
-  const [heard, setHeard] = useState('');
-  const [filled, setFilled] = useState(null); // which blanks the last reading filled
-  const apply = (text) => {
-    const got = readSentence(text);
-    for (const [k, v] of Object.entries(got)) set(k, v);
-    setFilled(Object.keys(got));
-  };
-  const dictation = useDictation((text) => setHeard((cur) => `${cur} ${text}`.trim()));
-  const wasOn = useRef(false);
-  useEffect(() => {
-    // When dictation stops, what was heard fills the blanks
-    if (wasOn.current && !dictation.on && heard.trim()) apply(heard);
-    wasOn.current = dictation.on;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dictation.on]);
+export function HistorySheet({ values: h, set, setPregnancies, fe, age, lmp, onLmp, extraLine, obstetric, medical, medicalOpen = false, heard = '', voiced = () => false }) {
   const row = (i, k) => (e) => setPregnancies(h.pregnancies.map((r, j) => (j === i ? { ...r, [k]: e.target.value } : r)));
-  const mark = (k) => (filled?.includes(k) ? ' hs-heard-mark' : '');
+  const mark = (k) => (voiced(k) ? ' hs-heard-mark' : '');
   // A drop-down opens by itself when something in it was refused (e.g. words about a baby's sex), so it is seen
   const anyError = (keys) => keys.some((k) => Boolean(fe(`history.${k}`)));
 
   return (
     <section className="card form-section hs" aria-labelledby="hs-title">
-      <div className="hs-top">
-        <h2 id="hs-title">History</h2>
-        {dictation.available && (
-          <button type="button" className={`btn ${dictation.on ? 'btn-primary' : 'btn-secondary'} btn-sm`} onClick={dictation.on ? dictation.stop : dictation.start}>
-            {dictation.on ? <Square aria-hidden="true" /> : <Mic aria-hidden="true" />} {dictation.on ? 'Stop' : 'Dictate'}
-          </button>
-        )}
-      </div>
-
-      <div className="hs-heard">
-        <label htmlFor="hs-heard-text" className="sr-only">
-          What was said
-        </label>
-        <textarea
-          id="hs-heard-text"
-          rows={2}
-          value={heard}
-          onChange={(e) => setHeard(e.target.value)}
-          placeholder="Dictate, or type the history as written on the paper: “Patient is … with complaints of … Menstrual history LMP … cycle regular. Married since … Previous deliveries … Any other history …”"
-        />
-        <button type="button" className="btn btn-link btn-sm" disabled={!heard.trim()} onClick={() => apply(heard)}>
-          <Wand2 aria-hidden="true" /> Fill the blanks
-        </button>
-        {filled && <span className="hs-filled">{filled.length ? `Filled: ${filled.length} blank${filled.length > 1 ? 's' : ''} – check them.` : 'No blank was recognised – fill them by hand.'}</span>}
-      </div>
+      <h2 id="hs-title">History</h2>
+      {heard && (
+        <p className="hs-heard">
+          <span className="sr-only">Heard: </span>
+          {heard}
+        </p>
+      )}
 
       <div className="hs-lines">
         <p className="hs-line">
@@ -344,7 +281,6 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, careType, age
           </div>
         </fieldset>
       </More>
-      {careType === 'antenatal' && <p className="hint hs-note">The details of this pregnancy (scan EDD, planned, conception, folic acid, medicines and symptoms so far) are recorded at the visit.</p>}
     </section>
   );
 }

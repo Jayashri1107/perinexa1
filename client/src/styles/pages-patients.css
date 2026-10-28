@@ -364,12 +364,9 @@
 
 /* The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md): the paper template's lines with blanks, the heard strip,
    and three closed drop-downs */
-.hs-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.hs-top h2 { margin: 0; }
-.hs-heard { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); }
-.hs-heard textarea { flex: 1 1 100%; min-height: 2.5em; border: 0; background: none; resize: vertical; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
-.hs-heard textarea:focus { outline: none; color: var(--ink); }
-.hs-filled { color: var(--slate-600); font-size: var(--fs-label); }
+.hs-heard { margin: var(--space-3) 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+/* No "From voice – check" marks on the sheet (section 5): the blank's own colour shows what Dictate filled */
+.hs .voice-mark, .hs .voice-tag { display: none; }
 .hs-lines { display: flex; flex-direction: column; gap: var(--space-3); }
 .hs-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
 .hs-line-block { flex-direction: column; align-items: stretch; }
@@ -379,6 +376,9 @@
 .hs-blank:focus { outline: none; border-bottom: 1.5px solid var(--indigo-700); background: var(--surface); }
 textarea.hs-blank { border: 1px dashed var(--slate-300); border-radius: var(--radius-sm); padding: var(--space-2); }
 .hs-wide { flex: 1 1 260px; }
+/* In a line of its own (Previous deliveries, Any other history) the box is two lines tall, not 260px: the column's
+   flex size would set its height */
+.hs-line-block .hs-wide { flex: none; }
 .hs-num { width: 4.5em; min-width: 0; text-align: center; }
 .hs-heard-mark, .hs-heard-mark .hs-choice { background: var(--status-due-bg); }
 .hs-choice { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
@@ -391,12 +391,12 @@ textarea.hs-blank { border: 1px dashed var(--slate-300); border-radius: var(--ra
 .hs-more-chevron { width: 18px; height: 18px; transition: transform 0.15s ease; }
 .hs-more.is-open .hs-more-chevron { transform: rotate(180deg); }
 .hs-more-body { padding-bottom: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.hs-more-body[hidden] { display: none; } /* closed until clicked (section 3): display: flex above would show it */
 .hs-existing { display: flex; flex-direction: column; gap: var(--space-3); }
 .hs-table { width: 100%; border-collapse: collapse; }
 .hs-table th, .hs-table td { padding: 4px; text-align: left; font-size: var(--fs-label); vertical-align: middle; }
 .hs-table input, .hs-table select { width: 100%; min-width: 70px; }
 .hs-table .hs-num { min-width: 56px; }
-.hs-note { margin-top: var(--space-3); }
 @media (prefers-reduced-motion: reduce) { .hs-more-chevron { transition: none; } }
 textarea.hs-blank { min-height: 0; height: 4.2em; }
 

@@ -53,6 +53,7 @@ async function prescribe(p) {
   const v = (await (await as('drA')).post(`/api/patients/${p.id}/visits`).send({ clientRequestId: randomUUID() })).body.visit;
   const res = await (await as('drA')).put(`/api/patients/${p.id}/visits/${v.id}/prescription`).send({ rev: 0, items: [{ drug: 'Folic acid', strength: '5 mg', form: 'tab', dose: '1', frequency: '1-0-0', durationValue: 10, durationUnit: 'days' }] });
   expect(res.status, JSON.stringify(res.body)).toBe(200);
+  return v.id;
 }
 async function inStock() {
   const m = (await ph('post', '/medicines', { name: 'Folvite 5', generic: 'Folic acid', strength: '5 mg', form: 'tablet', unit: 'tablet', gstRate: 5 })).body.medicine;
@@ -70,7 +71,7 @@ describe('the daily register', () => {
     const admitted = await register('Admitted Mother');
     await register('Not Today Mother');
     await arrive(arrived);
-    await prescribe(written);
+    const writtenVisit = await prescribe(written);
     await (await as('drA')).post(`/api/patients/${admitted.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour room', bed: '4', reason: 'In labour' });
     expect((await ph('post', '/invoices', { kind: 'sale', customer: { name: 'Walk In', phone: '9876500011' }, payment: { mode: 'cash' }, lines: [{ medicineId: m.id, qty: 2 }] })).status).toBe(201);
 
@@ -78,7 +79,8 @@ describe('the daily register', () => {
     expect(reg).toMatchObject({ date: '2026-09-28', today: '2026-09-28', counts: { opd: 2, ipd: 1, external: 1 } });
     const row = (name) => reg.rows.find((r) => (r.patient?.fullName ?? r.customer?.name) === name);
     expect(row('Arrived Mother')).toMatchObject({ type: 'opd', prescription: false, status: 'no_rx', doctor: 'Sample drA' });
-    expect(row('Prescribed Mother')).toMatchObject({ type: 'opd', prescription: true, status: 'rx_waiting' });
+    expect(row('Prescribed Mother')).toMatchObject({ type: 'opd', prescription: true, status: 'rx_waiting', prescriptionVisitId: writtenVisit });
+    expect(row('Arrived Mother').prescriptionVisitId).toBeNull(); // nothing to bill from
     expect(row('Admitted Mother')).toMatchObject({ type: 'ipd', ward: 'Labour room', bed: '4', status: 'not_issued' });
     expect(row('Walk In')).toMatchObject({ type: 'external', customer: { phone: '9876500011' }, status: 'billed', bills: [{ netPaise: 400 }] });
     expect(row('Not Today Mother')).toBeUndefined();

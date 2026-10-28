@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BedDouble, ClipboardList, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
@@ -60,8 +60,16 @@ function BatchPicker({ line, onChange }) {
   );
 }
 
-function Prescriptions({ patientId, onUse, chosenVisit }) {
+function Prescriptions({ patientId, onUse, chosenVisit, useFirst = null }) {
   const res = useFetch(`/pharmacy/patients/${patientId}/prescriptions`);
+  // "Bill the prescription" on the register: that prescription goes on the bill by itself, once
+  const used = useRef(false);
+  const first = useFirst && res.data && !res.data.patient?.duplicateOf && !res.data.patient?.closed ? res.data.prescriptions.find((rx) => rx.visitId === useFirst) : null;
+  useEffect(() => {
+    if (!first || used.current) return;
+    used.current = true;
+    onUse(first);
+  }, [first, onUse]);
   if (res.error) return <Alert type="error">{res.error}</Alert>;
   if (!res.data) return <p className="muted">Loading her prescriptions…</p>;
   // A record marked as a duplicate takes no sale: the pharmacist is sent to her main record, where the
@@ -320,7 +328,7 @@ export function SellPage({ kind = 'sale' }) {
         {patient && (
           <section className="card bill-section" aria-labelledby="ph-rx">
             <h2 id="ph-rx">Her prescriptions</h2>
-            <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} />
+            <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} useFirst={start.patient?.id === patient.id ? (start.visitId ?? null) : null} />
           </section>
         )}
 

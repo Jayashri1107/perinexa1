@@ -155,7 +155,11 @@ describe('purchase orders', () => {
     expect(shown).toContain('Receive order PO-000001');
     expect(shown).toContain('Receiving against order PO-000001');
     expect(shown).toContain('Order Tab A'); // still to come: 40
-    expect(html).toContain('aria-label="Quantity (packs)" inputMode="numeric" value="40"');
+    expect(html).toMatch(/<td data-label="Qty"[^>]*>40<\/td>/); // the list of items; batch and prices in the pop-up
+    expect(shown).toContain('Fill in');
+    expect(shown).toContain('1 line still to fill in');
+    expect(shown).toContain('GRN List');
+    expect(shown).toContain('New GRN');
     expect(shown).not.toContain('Order Tab B'); // all of it has arrived
     expect(html).toMatch(/<select id="pu-sup"[^>]*disabled/);
     expect(shown).toContain('Scan or type a barcode');
@@ -536,6 +540,20 @@ describe('a sale to a business, and its e-invoice file', () => {
     expect(shown).toContain('PIN code');
     expect(shown).toContain('Please check: This GSTIN has a typing mistake');
     expect(shown).toContain('needed only for the e-invoice file of a sale to a business');
+    brand(html);
+  });
+});
+
+describe("a prescription saved by the doctor, on the pharmacist's register", () => {
+  it('shows Bill the prescription for a waiting prescription, and Make bill when there is none', async () => {
+    const { DailyRegister } = await import('./RegisterPage.jsx');
+    const opd = (id, name, status) => ({ type: 'opd', patient: { id, fullName: name, mrn: `P-00000${id.slice(0, 1)}`, phone: '' }, at: '2026-10-28T04:30:00.000Z', opdNo: '', doctor: 'Sample Doctor', prescription: status === 'rx_waiting', prescriptionVisitId: status === 'rx_waiting' ? 'c'.repeat(24) : null, bills: [], status });
+    answers['/pharmacy/register'] = { date: '2026-10-28', today: '2026-10-28', counts: { all: 2, opd: 2, ipd: 0, external: 0 }, rows: [opd('1'.repeat(24), 'Waiting Mother', 'rx_waiting'), opd('2'.repeat(24), 'Arrived Mother', 'no_rx')] };
+    const html = at('/', '/', <DailyRegister />);
+    const shown = text(html);
+    expect(shown).toContain('Prescription waiting');
+    expect(shown).toContain('Bill the prescription');
+    expect(shown).toContain('Make bill');
     brand(html);
   });
 });

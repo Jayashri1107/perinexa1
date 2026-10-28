@@ -66,3 +66,20 @@ export function perUnit(line) {
     mrpPaise: Math.floor(line.mrpPaise / conv),
   };
 }
+
+/**
+ * The figures the medicine's pop-up shows as it is filled in (website only; laid out like the pharmacy's earlier
+ * software): the line's total, discount, GST and net, the units of sale received with the free ones, the sale rate
+ * and the landed rate per unit (net ÷ units, the free units bring it down), and the profit on the MRP in %.
+ * line: { conv, qty, freeQty, ratePaise, mrpPaise, discPercent, gstRate } as numbers; null where not yet known.
+ */
+export function grnLineFigures({ conv = 1, qty = 0, freeQty = 0, ratePaise = 0, mrpPaise = 0, discPercent = 0, gstRate = 0 }) {
+  const { totalPaise, discPaise, taxablePaise, gstPaise } = grnLine({ qty, ratePaise, discPercent, gstRate });
+  const netPaise = taxablePaise + gstPaise;
+  const units = (qty + freeQty) * conv;
+  const unit = conv >= 1 ? perUnit({ conv, qty, freeQty, ratePaise, mrpPaise }) : null;
+  const landedPaise = units > 0 ? Math.round(netPaise / units) : null;
+  const saleRatePaise = unit && mrpPaise > 0 ? unit.mrpPaise : null;
+  const profitPercent = landedPaise && saleRatePaise != null ? Math.round(((saleRatePaise - landedPaise) / landedPaise) * 1000) / 10 : null;
+  return { totalPaise, discPaise, gstPaise, netPaise, units, landedPaise, saleRatePaise, profitPercent };
+}

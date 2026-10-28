@@ -59,10 +59,11 @@ pharmacyRegisterRouter.get('/', async (req, res) => {
 
   // OPD: everyone who arrived that day or had a prescription written that day, in the order they came
   const opd = new Map();
-  for (const a of arrivals) opd.set(String(a.patientId), { at: a.at, opdNo: a.opdNo ?? '', rxBy: null, rx: false });
-  for (const v of visits) {
-    const row = opd.get(String(v.patientId)) ?? { at: v.createdAt, opdNo: '', rxBy: null, rx: false };
-    opd.set(String(v.patientId), { ...row, rx: true, rxBy: v.prescription?.by ?? row.rxBy });
+  for (const a of arrivals) opd.set(String(a.patientId), { at: a.at, opdNo: a.opdNo ?? '', rxBy: null, rx: false, rxVisit: null });
+  // The day's latest prescription is the one "Bill the prescription" puts on the bill
+  for (const v of [...visits].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))) {
+    const row = opd.get(String(v.patientId)) ?? { at: v.createdAt, opdNo: '', rxBy: null, rx: false, rxVisit: null };
+    opd.set(String(v.patientId), { ...row, rx: true, rxBy: v.prescription?.by ?? row.rxBy, rxVisit: String(v._id) });
   }
   const opdRows = [...opd.entries()]
     .filter(([pid]) => patients.has(pid))
@@ -77,6 +78,7 @@ pharmacyRegisterRouter.get('/', async (req, res) => {
         opdNo: r.opdNo,
         doctor: doctorId ? (doctors.get(String(doctorId)) ?? '') : '',
         prescription: r.rx,
+        prescriptionVisitId: r.rxVisit,
         bills,
         status: bills.length ? 'billed' : r.rx ? 'rx_waiting' : 'no_rx',
       };
