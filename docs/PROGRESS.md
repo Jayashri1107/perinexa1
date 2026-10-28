@@ -13,6 +13,12 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **28 Oct 2026 – a doctor's saved prescription billed at the pharmacy in one step (developer's request):** on the
+  pharmacist's Today register, a patient whose prescription was saved today shows Prescription waiting with **Bill the
+  prescription**: it opens the sale with her and that prescription's medicines already on the bill (the pharmacist checks
+  the quantities and batches, then makes the invoice). Today's register reads itself again every 30 seconds while in
+  view, so a prescription just saved appears without reloading. **How to test:** as a doctor, save a prescription on a
+  sample patient's visit; as the pharmacist, open Today → Bill the prescription → check the lines → make the invoice.
 - **28 Oct 2026 – Pharmacy → Purchase bills as the earlier software's GRN screen (developer's request, from photos of the
   old screen):** **GRN List** and **New GRN** tabs; New GRN has the supplier's invoice on the left (store, supplier,
   invoice and gate entry numbers, dates, tax name, direct or purchase order, credit or cash) and the items on the right:

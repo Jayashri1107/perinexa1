@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BedDouble, ChevronLeft, ChevronRight, CircleCheck, CircleDashed, Clock, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -31,6 +31,9 @@ export function TypePill({ type }) {
     </StatusPill>
   );
 }
+
+/** How often today's register is read again, so a prescription the doctor has just saved appears. */
+export const REFRESH_SECONDS = 30;
 
 /** Where a patient's next bill is made: OPD at the counter, IPD as an issue to her stay. */
 export const billPath = (type) => (type === 'ipd' ? '/pharmacy/issue' : '/pharmacy');
@@ -135,7 +138,17 @@ export function DailyRegister({ glance = null, actions = null }) {
   const set = (next) => setParams({ ...(date ? { date } : {}), ...(type !== 'all' ? { type } : {}), ...next }, { replace: true });
   const goDay = (d) => setParams({ ...(type !== 'all' ? { type } : {}), ...(d && d !== res.data?.today ? { date: d } : {}) }, { replace: true });
 
-  const open = ({ type: t, patient }) => navigate(billPath(t), { state: { patient } });
+  // A prescription saved by the doctor shows here without reloading: today's register is read again every
+  // REFRESH_SECONDS while the page is in view
+  const reload = res.reload;
+  useEffect(() => {
+    if (date) return undefined;
+    const timer = setInterval(() => document.visibilityState === 'visible' && reload(), REFRESH_SECONDS * 1000);
+    return () => clearInterval(timer);
+  }, [date, reload]);
+
+  // A waiting prescription opens the sale with her and that prescription's medicines already on the bill
+  const open = ({ type: t, patient, status, prescriptionVisitId }) => navigate(billPath(t), { state: { patient, ...(status === 'rx_waiting' && prescriptionVisitId ? { visitId: prescriptionVisitId } : {}) } });
   const openBill = (id) => navigate(`/pharmacy/invoices/${id}`);
   const term = text.trim().toLowerCase();
   const rows = (res.data?.rows ?? [])
@@ -161,7 +174,7 @@ export function DailyRegister({ glance = null, actions = null }) {
         ))}
         {isToday && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => open(r)}>
-            {r.type === 'ipd' ? 'Issue medicines' : r.bills.length ? 'Another bill' : 'Make bill'}
+            {r.type === 'ipd' ? 'Issue medicines' : r.bills.length ? 'Another bill' : r.status === 'rx_waiting' ? 'Bill the prescription' : 'Make bill'}
           </button>
         )}
       </span>
