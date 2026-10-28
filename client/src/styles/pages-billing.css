@@ -310,6 +310,21 @@
   .exp-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Refund of bill and Bill settlement (owner, 28 Oct 2026) */
+.rs-patient { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.rs-patient svg.lucide { width: 20px; height: 20px; color: var(--slate-600); }
+.rs-patient .btn-link { margin-left: auto; }
+.rs-bills .rs-chosen td { background: var(--mist-50); font-weight: 600; }
+.rs-form { display: flex; flex-direction: column; gap: var(--space-3); }
+.rs-form .btn { align-self: flex-start; }
+.rs-sums { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-2) var(--space-4); margin: 0; }
+.rs-sums dt { font-size: var(--fs-label); color: var(--slate-600); }
+.rs-sums dd { margin: 0; font-variant-numeric: tabular-nums; }
+.rs-services { display: flex; flex-direction: column; gap: var(--space-1); border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); margin: 0; }
+.rs-service { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); }
+.rs-service .num { font-variant-numeric: tabular-nums; }
+.rs-refund { margin: 0; }
+
 .dc-search { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-pill); background: var(--surface); }
 .dc-search svg.lucide { width: 16px; height: 16px; color: var(--slate-600); }
 .dc-search input { border: 0; background: none; min-width: 220px; padding: 6px 0; }
