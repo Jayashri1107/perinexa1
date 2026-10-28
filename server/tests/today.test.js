@@ -37,8 +37,23 @@ afterEach(() => {
 const as = async (who) => (sessions[who] ??= await loginAs(people[who], { app }));
 const today = async (who, query = '') => (await as(who)).get(`/api/today${query}`);
 
-async function register(name, { doctor = 'drA', scanEdd = '2027-03-01', careType = 'antenatal' } = {}) {
-  const res = await (await as(doctor)).post('/api/patients').send(
+// Registered the day before (a patient who is not new today): since 28 Oct 2026 everyone registered today is on
+// Today's patients, so the patients these tests expect elsewhere are registered earlier.
+// (Signed in again on each side: a day without activity ends a session, as it would for a person.)
+async function theDayBefore(fn) {
+  const now = Date.now();
+  vi.setSystemTime(now - 24 * 60 * 60 * 1000);
+  sessions = {};
+  try {
+    return await fn();
+  } finally {
+    vi.setSystemTime(now);
+    sessions = {};
+  }
+}
+
+async function register(name, { doctor = 'drA', scanEdd = '2027-03-01', careType = 'antenatal', today = false } = {}) {
+  const send = async () => (await as(doctor)).post('/api/patients').send(
     samplePatient({
       careType,
       fullName: name,
@@ -53,6 +68,7 @@ async function register(name, { doctor = 'drA', scanEdd = '2027-03-01', careType
         : {}),
     }),
   );
+  const res = today ? await send() : await theDayBefore(send);
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body.patient;
 }
@@ -114,6 +130,16 @@ describe('today', () => {
     expect(body.patients.every((r) => !('visitId' in r))).toBe(true); // reception never gets visit ids
     const dr = (await today('drA')).body;
     expect(dr.patients.find((r) => r.patient.id === booked.id).visitId).toBe(came.id);
+  });
+
+  it('lists everyone registered today, waiting since she was registered, and not on the call lists (28 Oct 2026)', async () => {
+    await register('Yesterday Mother'); // registered the day before, nothing today: not listed
+    vi.setSystemTime(new Date('2026-09-28T05:30:00Z'));
+    const fresh = await register('New Today', { careType: 'gynaecology', today: true });
+    vi.setSystemTime(NOW);
+    const body = (await today('reception')).body;
+    expect(body.patients.map((r) => [r.patient.fullName, r.queue, r.arrivedAt, r.arrivalMarked])).toEqual([['New Today', 'waiting', '2026-09-28T05:30:00.000Z', false]]);
+    expect([...body.dueNow, ...body.overdue].map((r) => r.patient.id)).not.toContain(fresh.id);
   });
 
   it("'My patients' are the doctor's own and unassigned ones", async () => {
