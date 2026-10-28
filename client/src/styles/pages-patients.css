@@ -376,6 +376,9 @@
 .hs-blank:focus { outline: none; border-bottom: 1.5px solid var(--indigo-700); background: var(--surface); }
 textarea.hs-blank { border: 1px dashed var(--slate-300); border-radius: var(--radius-sm); padding: var(--space-2); }
 .hs-wide { flex: 1 1 260px; }
+/* In a line of its own (Previous deliveries, Any other history) the box is two lines tall, not 260px: the column's
+   flex size would set its height */
+.hs-line-block .hs-wide { flex: none; }
 .hs-num { width: 4.5em; min-width: 0; text-align: center; }
 .hs-heard-mark, .hs-heard-mark .hs-choice { background: var(--status-due-bg); }
 .hs-choice { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
@@ -388,6 +391,7 @@ textarea.hs-blank { border: 1px dashed var(--slate-300); border-radius: var(--ra
 .hs-more-chevron { width: 18px; height: 18px; transition: transform 0.15s ease; }
 .hs-more.is-open .hs-more-chevron { transform: rotate(180deg); }
 .hs-more-body { padding-bottom: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.hs-more-body[hidden] { display: none; } /* closed until clicked (section 3): display: flex above would show it */
 .hs-existing { display: flex; flex-direction: column; gap: var(--space-3); }
 .hs-table { width: 100%; border-collapse: collapse; }
 .hs-table th, .hs-table td { padding: 4px; text-align: left; font-size: var(--fs-label); vertical-align: middle; }
