@@ -114,6 +114,8 @@
 .ph-facts dt { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
 .ph-facts dd { margin: 2px 0 0; color: var(--ink); overflow-wrap: anywhere; }
 .ph-elsewhere { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+/* New bill: the search first, then today's OPD patients under their own small heading */
+.ph-today-title { margin: var(--space-4) 0 var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--border); font-size: var(--fs-label); }
 .ph-elsewhere h3 { margin: 0 0 var(--space-1); }
 .ph-register { display: grid; gap: var(--space-4); }
 /* The purchase bill (GRN, owner 26 Oct 2026): the invoice beside its choices; the lines scroll sideways on a narrow

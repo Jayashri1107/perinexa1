@@ -25,6 +25,8 @@ function TodayOpdPicker({ onPick }) {
   const opd = (res.data?.rows ?? []).filter((r) => r.type === 'opd');
   return (
     <>
+      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? navigate('/pharmacy/issue', { state: { patient } }) : onPick(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} />
+      <h3 className="ph-today-title">Today's OPD patients</h3>
       {res.error && <Alert type="error">{res.error}</Alert>}
       {res.data && !opd.length && <p className="muted">No OPD patient on today's register yet.</p>}
       <ul className="appt-pick-list" aria-label="Today's OPD patients">
@@ -39,7 +41,6 @@ function TodayOpdPicker({ onPick }) {
           </li>
         ))}
       </ul>
-      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? navigate('/pharmacy/issue', { state: { patient } }) : onPick(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} />
     </>
   );
 }

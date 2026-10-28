@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, FileJson, Printer, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -11,7 +11,7 @@ import { Alert, Field, formatDateTime, useDebounced } from '../../components/ui.
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
 import { TallyMarks } from '../billing/TallyPage.jsx';
-import { MODE_LABELS, expiryLabel } from './pharmacyFormat.js';
+import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
 // Pharmacy → Invoices: a day's invoices (or a search), one invoice with its GST tax invoice to print, and returns of
@@ -30,9 +30,23 @@ export function InvoicesPage() {
   const res = useFetch('/pharmacy/invoices', search.length >= 2 ? { search } : { date });
   const day = date ?? res.data?.today;
   const go = (d) => setParams({ date: d }, { replace: true });
+  const { activeMembership } = useAuth();
+  const desk = activeMembership.roles.includes('pharmacist');
+  // Sold (developer's request, 28 Oct 2026): every bill of the day – or found by name, number or a medicine – with
+  // what was sold on it; New bill starts the next one
   return (
     <>
-      <PharmacyHeader title="Invoices" crumb="Invoices" />
+      <PharmacyHeader
+        title="Sold"
+        crumb="Sold"
+        actions={
+          desk && (
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/pharmacy')}>
+              <ReceiptText aria-hidden="true" /> New bill
+            </button>
+          )
+        }
+      />
       <div className="pf-content bill-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
         <DataTable
@@ -40,10 +54,10 @@ export function InvoicesPage() {
           rows={res.data?.invoices}
           loading={res.loading}
           onRowClick={(v) => navigate(`/pharmacy/invoices/${v.id}`)}
-          emptyText={search.length >= 2 ? 'No invoices match.' : 'No invoices on this day.'}
+          emptyText={search.length >= 2 ? 'No bills match.' : 'Nothing sold on this day.'}
           toolbar={
             <div className="bill-toolbar">
-              <input type="search" className="bill-search-plain" aria-label="Find an invoice" placeholder="Name, phone, patient or invoice number" value={text} onChange={(e) => setText(e.target.value)} />
+              <input type="search" className="bill-search-plain" aria-label="Find a bill" placeholder="Name, phone, patient or bill number, or a medicine" value={text} onChange={(e) => setText(e.target.value)} />
               {search.length < 2 && day && (
                 <div className="appt-daynav" role="group" aria-label="Day">
                   <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, -1))} aria-label="Previous day">
@@ -62,7 +76,7 @@ export function InvoicesPage() {
             { key: 'date', header: 'Time', render: (v) => formatDateTime(v.date) },
             { key: 'kind', header: 'Kind', render: (v) => (v.kind === 'issue' ? 'Inpatient issue' : 'Counter sale') },
             { key: 'who', header: 'Patient / customer', render: whoOf },
-            { key: 'items', header: 'Items', align: 'right', render: (v) => v.lines.length },
+            { key: 'items', header: 'Medicines sold', render: (v) => soldItems(v.lines) },
             { key: 'net', header: 'Amount', align: 'right', render: (v) => <span className="tabular">{money(v.netPaise)}</span> },
           ]}
         />

@@ -607,7 +607,7 @@ pharmacyRouter.get('/invoices', async (req, res) => {
   else if (q.search) {
     const rx = new RegExp(escapeRegex(q.search), 'i');
     const pids = (await Patient.find({ tenantId: req.tenantId, $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] }, { _id: 1 }).limit(200).lean()).map((p) => p._id);
-    filter.$or = [{ number: rx }, { 'customer.name': rx }, { 'buyer.name': rx }, { patientId: { $in: pids } }];
+    filter.$or = [{ number: rx }, { 'customer.name': rx }, { 'buyer.name': rx }, { patientId: { $in: pids } }, { 'lines.name': rx }, { 'lines.generic': rx }];
   } else {
     const day = q.date ?? today(req);
     filter['created.at'] = { $gte: hospitalDayStart(day), $lt: hospitalDayStart(addDays(day, 1)) };
