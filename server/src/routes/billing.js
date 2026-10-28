@@ -304,6 +304,105 @@ billingRouter.post('/bills/:id/payments', async (req, res) => {
   res.status(201).json({ bill: view, payment: view.payments.find((p) => p.receipt === receipt) });
 });
 
+// ---------- Refund of a bill and settling a credit bill (owner, 28 Oct 2026, like the hospital's old screens) ----------
+
+const REFUND_MODES = ['cash', 'upi', 'card'];
+
+// Refund of bill: the whole bill or chosen services are taken off with the remark, and what was paid for them is
+// given back – in one step, so the bill, the receipt and the daily summary agree. Everyone who bills may refund.
+const refundSchema = z
+  .object({
+    all: z.boolean().default(false),
+    lineIds: z.array(objectId).max(200).default([]),
+    mode: z.enum(REFUND_MODES, 'Choose how the money is given back'),
+    reference: z.string().trim().max(80).default(''),
+    reason: reason('Refund'),
+  })
+  .strict()
+  .refine((b) => b.all || b.lineIds.length > 0, { message: 'Choose the services to refund, or the whole bill.', path: ['lineIds'] });
+
+billingRouter.post('/bills/:id/refund', async (req, res) => {
+  const bill = await openBill(req);
+  const body = parse(refundSchema, req.body);
+  await refuseFetalSex(req, bill, { reason: body.reason, reference: body.reference });
+  const live = liveLines(bill);
+  const chosen = body.all ? live : live.filter((l) => body.lineIds.includes(String(l._id)));
+  if (!body.all && chosen.length !== new Set(body.lineIds).size) throw conflict('A chosen service is no longer on the bill. Open the bill again.', 'CHANGED');
+  if (!chosen.length) throw conflict('There are no services left on this bill.', 'EMPTY');
+  // The bill after the services are taken off: a percentage discount follows the new subtotal
+  const gone = new Set(chosen.map((l) => String(l._id)));
+  const after = { ...bill, lines: bill.lines.map((l) => (gone.has(String(l._id)) ? { ...l, removed: { reason: body.reason } } : l)) };
+  const subtotal = liveLines(after).reduce((s, l) => s + l.amountPaise, 0);
+  const discount = bill.discount?.paise ? { ...bill.discount, paise: Math.min(subtotal, bill.discount.mode === 'percent' ? discountPaise(bill.discount, subtotal) : bill.discount.paise) } : null;
+  const refundPaise = -totals({ ...after, discount }).balance;
+  if (refundPaise <= 0) throw conflict('Nothing was paid for these services, so there is nothing to give back. Take them off the bill instead.', 'NOTHING_PAID');
+  const receipt = padded('R', await nextNumber(req.tenantId, 'receipt'));
+  const stamp = stampOf(req);
+  const done = await Bill.findOneAndUpdate(
+    // (only the bill as it was read: a payment or change at the same moment would make the refund wrong)
+    { tenantId: req.tenantId, _id: bill._id, status: 'open', updatedAt: bill.updatedAt },
+    {
+      $set: { 'lines.$[l].removed': { ...stamp, reason: body.reason }, ...(discount ? { 'discount.paise': discount.paise } : {}) },
+      $push: { payments: { receipt, kind: 'refund', mode: body.mode, amountPaise: refundPaise, reference: body.reference, scheme: '', ...stamp } },
+    },
+    { arrayFilters: [{ 'l._id': { $in: chosen.map((l) => l._id) }, 'l.removed': null }], returnDocument: 'after' },
+  ).lean();
+  if (!done) throw conflict('The bill changed while refunding. Open it again and check the refund.', 'CHANGED');
+  for (const l of chosen) await audit(req, 'BILL_ITEM_REMOVED', { details: ids(bill, { amountPaise: l.amountPaise, reason: body.reason }) });
+  await audit(req, 'REFUND_GIVEN', { details: ids(bill, { receipt, kind: 'refund', mode: body.mode, amountPaise: refundPaise, services: chosen.length, whole: body.all }) });
+  const view = await viewOf(req, done);
+  res.status(201).json({ bill: view, payment: view.payments.find((p) => p.receipt === receipt) });
+});
+
+// Bill settlement: a credit bill (money still due) is settled – a concession with its reason, and the money received
+const settleSchema = z
+  .object({
+    concessionPaise: z.number().int().min(0).max(MAX_PAISE).default(0),
+    concessionReason: z.string().trim().max(200).default(''),
+    mode: z.enum(PAYMENT_MODES).optional(),
+    amountPaise: z.number().int().min(0).max(MAX_PAISE).default(0),
+    reference: z.string().trim().max(80).default(''),
+    scheme: z.string().trim().max(80).default(''),
+  })
+  .strict();
+
+billingRouter.post('/bills/:id/settle', async (req, res) => {
+  const bill = await freshBill(req, await openBill(req));
+  const body = parse(settleSchema, req.body);
+  const t = totals(bill);
+  if (t.balance <= 0) throw conflict('Nothing is due on this bill.', 'NOTHING_DUE');
+  const fields = {};
+  if (body.concessionPaise > t.balance) fields.concessionPaise = 'More than is due.';
+  if (body.concessionPaise > 0 && body.concessionReason.length < MIN_REASON) fields.concessionReason = 'Write why the concession is given.';
+  if (body.amountPaise > t.balance - body.concessionPaise) fields.amountPaise = `At most ${((t.balance - body.concessionPaise) / 100).toFixed(2)} is due after the concession.`;
+  if (body.amountPaise > 0 && !body.mode) fields.mode = 'Choose how it was paid.';
+  if (!body.amountPaise && !body.concessionPaise) fields.amountPaise = 'Enter the amount received or a concession.';
+  const scheme = body.mode === 'insurance' ? body.scheme || (bill.insurance?.insurer ?? '') : '';
+  if (body.amountPaise > 0 && body.mode === 'insurance' && scheme.length < 2) fields.scheme = 'Write the insurance company or scheme.';
+  if (Object.keys(fields).length) throw Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields });
+  await refuseFetalSex(req, bill, { reason: body.concessionReason, reference: body.reference, scheme });
+
+  const stamp = stampOf(req);
+  const update = {};
+  // The concession is added to the bill's discount, as an amount (the earlier reason is kept with the new one)
+  if (body.concessionPaise) {
+    const before = Math.min(bill.discount?.paise ?? 0, t.subtotal);
+    const why = [bill.discount?.paise ? bill.discount.reason : '', `Settlement: ${body.concessionReason}`].filter(Boolean).join('; ').slice(0, 200);
+    update.$set = { discount: { mode: 'amount', value: before + body.concessionPaise, paise: before + body.concessionPaise, reason: why, ...stamp } };
+  }
+  let receipt = null;
+  if (body.amountPaise) {
+    receipt = padded('R', await nextNumber(req.tenantId, 'receipt'));
+    update.$push = { payments: { receipt, kind: 'payment', mode: body.mode, amountPaise: body.amountPaise, reference: body.reference, scheme, ...stamp } };
+  }
+  const done = await Bill.findOneAndUpdate({ tenantId: req.tenantId, _id: bill._id, status: 'open' }, update, { returnDocument: 'after' }).lean();
+  if (!done) throw conflict('This bill was cancelled.', 'CANCELLED');
+  if (body.concessionPaise) await audit(req, 'DISCOUNT_GIVEN', { details: ids(bill, { mode: 'amount', value: body.concessionPaise, discountPaise: update.$set.discount.paise, reason: body.concessionReason, settlement: true }) });
+  if (receipt) await audit(req, 'PAYMENT_RECEIVED', { details: ids(bill, { receipt, kind: 'payment', mode: body.mode, amountPaise: body.amountPaise, settlement: true }) });
+  const view = await viewOf(req, done);
+  res.status(201).json({ bill: view, payment: receipt ? view.payments.find((p) => p.receipt === receipt) : null });
+});
+
 // ---------- Correcting a payment (owner, 19 Oct 2026 – docs/BILL_CORRECTIONS_PLAN.md) ----------
 // E.g. the UPI payment failed and she paid in cash: the mode, reference, amount or time is corrected, never deleted.
 // Reception and the billing department correct on the day of the payment, until that day's cash handover of the person

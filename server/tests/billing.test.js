@@ -565,3 +565,74 @@ describe('a consultation charged at the desk', () => {
     expect((await (await as('reception')).get(`/api/billing/bills/${c.id}`)).body.bill.lines.filter((l) => l.key?.startsWith('consult_'))).toHaveLength(1);
   });
 });
+
+// Refund of a bill and settling a credit bill (owner, 28 Oct 2026, like the hospital's old screens)
+describe('refund of a bill and bill settlement', () => {
+  async function paidBill(name, paidPaise) {
+    const list = await prices({ consult_new: 50000 });
+    const p = await register(name);
+    await startVisit(p);
+    const [b] = await billsOf(p);
+    const other = list.find((i) => i.name === 'Other charge');
+    expect((await (await as('reception')).post(`/api/billing/bills/${b.id}/lines`).send({ priceItemId: other.id, ratePaise: 10000, name: 'Certificate' })).status).toBe(201);
+    if (paidPaise) expect((await pay(b.id, { mode: 'cash', amountPaise: paidPaise })).status).toBe(201);
+    return bill(b.id);
+  }
+
+  it('takes the chosen services or the whole bill off and gives back what was paid for them, in one step', async () => {
+    const b = await paidBill('Refund Mother', 60000);
+    const desk = await as('reception');
+    const certificate = b.lines.find((l) => l.name === 'Certificate');
+    expect((await desk.post(`/api/billing/bills/${b.id}/refund`).send({ lineIds: [certificate.id], mode: 'cash', reason: '' })).status).toBe(400);
+    expect((await desk.post(`/api/billing/bills/${b.id}/refund`).send({ lineIds: [], mode: 'cash', reason: 'Not done' })).status).toBe(400);
+
+    const one = await desk.post(`/api/billing/bills/${b.id}/refund`).send({ lineIds: [certificate.id], mode: 'cash', reason: 'Certificate not needed' });
+    expect(one.status, JSON.stringify(one.body)).toBe(201);
+    expect(one.body.payment).toMatchObject({ kind: 'refund', mode: 'cash', amountPaise: 10000 });
+    expect(one.body.bill).toMatchObject({ subtotal: 50000, paid: 50000, balance: 0, refunded: 10000, status: 'paid' });
+    expect(one.body.bill.lines.find((l) => l.id === certificate.id).removed).toMatchObject({ reason: 'Certificate not needed' });
+    // The same service twice: it is no longer on the bill
+    expect((await desk.post(`/api/billing/bills/${b.id}/refund`).send({ lineIds: [certificate.id], mode: 'cash', reason: 'Again' })).status).toBe(409);
+
+    const whole = await desk.post(`/api/billing/bills/${b.id}/refund`).send({ all: true, mode: 'upi', reason: 'Doctor not available' });
+    expect(whole.status, JSON.stringify(whole.body)).toBe(201);
+    expect(whole.body.bill).toMatchObject({ subtotal: 0, paid: 0, balance: 0, refunded: 60000 });
+    expect(await AuditLog.countDocuments({ action: 'REFUND_GIVEN' })).toBe(2);
+
+    // The day's summary gives the money back by its mode
+    const daily = (await desk.get('/api/billing/reports/daily?date=2026-09-28')).body;
+    expect(daily.totals).toMatchObject({ in: 60000, out: 60000, net: 0 });
+    expect(daily.byMode.find((m) => m.mode === 'upi')).toMatchObject({ out: 50000 });
+  });
+
+  it('gives nothing back for services nobody paid for, and keeps a percentage discount right', async () => {
+    const unpaid = await paidBill('Unpaid Mother', 0);
+    expect((await (await as('reception')).post(`/api/billing/bills/${unpaid.id}/refund`).send({ all: true, mode: 'cash', reason: 'Not done' })).status).toBe(409);
+
+    const b = await paidBill('Discount Mother', 0);
+    const desk = await as('reception');
+    expect((await desk.post(`/api/billing/bills/${b.id}/discount`).send({ mode: 'percent', value: 10, reason: 'Staff family' })).status).toBe(200);
+    expect((await pay(b.id, { mode: 'cash', amountPaise: 54000 })).status).toBe(201); // 60000 less 10%
+    const certificate = b.lines.find((l) => l.name === 'Certificate');
+    const res = await desk.post(`/api/billing/bills/${b.id}/refund`).send({ lineIds: [certificate.id], mode: 'cash', reason: 'Certificate not needed' });
+    expect(res.body.payment.amountPaise).toBe(9000); // the certificate less its 10%
+    expect(res.body.bill).toMatchObject({ discount: 5000, total: 45000, balance: 0 });
+  });
+
+  it('settles a credit bill with a concession and its reason, and the money received', async () => {
+    const b = await paidBill('Credit Mother', 20000); // 60000 charged, 40000 due
+    const desk = await as('reception');
+    const settle = (body) => desk.post(`/api/billing/bills/${b.id}/settle`).send(body);
+    expect((await settle({ concessionPaise: 5000, mode: 'cash', amountPaise: 35000 })).body.error.fields).toHaveProperty('concessionReason');
+    expect((await settle({ mode: 'cash', amountPaise: 45000 })).body.error.fields).toHaveProperty('amountPaise');
+    expect((await settle({ amountPaise: 1000 })).body.error.fields).toHaveProperty('mode');
+
+    const done = await settle({ concessionPaise: 5000, concessionReason: 'Staff family', mode: 'cash', amountPaise: 35000 });
+    expect(done.status, JSON.stringify(done.body)).toBe(201);
+    expect(done.body.bill).toMatchObject({ discount: 5000, total: 55000, paid: 55000, balance: 0, status: 'paid' });
+    expect(done.body.bill.discountInfo.reason).toBe('Settlement: Staff family');
+    expect(done.body.payment).toMatchObject({ kind: 'payment', mode: 'cash', amountPaise: 35000 });
+    expect((await settle({ mode: 'cash', amountPaise: 100 })).status).toBe(409); // nothing due now
+    expect(await AuditLog.countDocuments({ action: 'DISCOUNT_GIVEN', 'details.settlement': true })).toBe(1);
+  });
+});

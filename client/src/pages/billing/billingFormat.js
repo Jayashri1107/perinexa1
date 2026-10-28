@@ -45,6 +45,9 @@ export const GROUP_LABELS = { consultation: 'Consultation', procedure: 'Procedur
 export const billingTabs = (roles = []) => [
   { label: 'Bills', to: '/billing', end: false, activeFor: '/billing/bills' },
   { label: 'Unpaid', to: '/billing/unpaid', end: true },
+  // Refund of a bill and settling a credit bill (owner, 28 Oct 2026)
+  { label: 'Refund', to: '/billing/refund', end: true },
+  { label: 'Settlement', to: '/billing/settlement', end: true },
   { label: 'Daily summary', to: '/billing/daily', end: true },
   // The hospital's OPD, IPD and collection MIS reports (owner, 27 Oct 2026)
   { label: 'Reports', to: '/billing/reports', end: true },

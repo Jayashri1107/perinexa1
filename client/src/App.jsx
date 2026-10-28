@@ -49,6 +49,7 @@ import { TallyBatchPage, TallyBatchesPage, TallyControlPage, TallyExceptionsPage
 import { MonthlyPage, PatientBillsTab, PriceListPage, UnpaidPage } from './pages/billing/BillingReports.jsx';
 import { DailySummaryPage } from './pages/billing/DailyCollectionPage.jsx';
 import { DailyExpensesPage } from './pages/billing/DailyExpensesPage.jsx';
+import { RefundPage, SettlementPage } from './pages/billing/RefundSettlementPages.jsx';
 import { PatientsPage } from './pages/patients/PatientsPage.jsx';
 import { OpdRegistrationPage } from './pages/patients/OpdRegistrationPage.jsx';
 import { VoiceWordsPage } from './pages/VoiceWordsPage.jsx';
@@ -353,6 +354,8 @@ export function App() {
                 <Route index element={<BillsPage />} />
                 <Route path="bills/:id" element={<BillPage />} />
                 <Route path="unpaid" element={<UnpaidPage />} />
+                <Route path="refund" element={<RefundPage />} />
+                <Route path="settlement" element={<SettlementPage />} />
                 <Route path="daily" element={<DailySummaryPage />} />
                 <Route path="reports" element={<MisReportsPage />} />
                 <Route path="prices" element={<PriceListPage />} />
