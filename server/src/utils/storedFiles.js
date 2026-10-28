@@ -30,7 +30,8 @@ const invalid = (message) => Object.assign(new HttpError(400, message, 'VALIDATI
 
 /**
  * Checks the upload and stores it. Returns the stored file (without reading its data back).
- * patientId: null only for a referral's files (a referral can arrive before she is registered – NO_PATIENT_KINDS).
+ * patientId: null only for a referral's files (a referral can arrive before she is registered) or an expense's bill
+ * (NO_PATIENT_KINDS).
  * types: the file types this place takes (a released note or discharge card: PDF only); any PDF or photo by default.
  */
 export async function storeFile(req, { patientId = null, kind, ownerId, body, types = FILE_TYPES }) {

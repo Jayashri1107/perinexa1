@@ -481,6 +481,66 @@ describe("the day's expenses", () => {
     expect(await AuditLog.countDocuments({ action: 'EXPENSE_CANCELLED' })).toBe(1);
     expect((await (await as('drA')).get('/api/billing/expenses')).status).toBe(403);
   });
+
+  // The Daily Expenses page (28 Oct 2026): the hospital's heads, the person paid, voucher, cheque details, the bill
+  it('takes a head from the hospital list, cheque details, and lists a period with its total', async () => {
+    const desk = await as('reception');
+    const admin = await as('admin');
+    const heads = (await desk.get('/api/billing/expense-heads')).body.heads;
+    expect(heads.map((h) => h.name)).toContain('Electricity bill');
+    const diesel = heads.find((h) => h.name === 'Diesel expenses');
+
+    // Only the admin changes the list; a name is never there twice; a switched-off head is not taken
+    expect((await desk.post('/api/billing/expense-heads').send({ name: 'Generator fuel' })).status).toBe(403);
+    const added = await admin.post('/api/billing/expense-heads').send({ name: 'Generator fuel' });
+    expect(added.status).toBe(201);
+    expect((await admin.post('/api/billing/expense-heads').send({ name: 'generator FUEL' })).status).toBe(400);
+    expect((await admin.patch(`/api/billing/expense-heads/${added.body.head.id}`).send({ active: false })).body.head.active).toBe(false);
+    expect((await desk.post('/api/billing/expenses').send({ headId: added.body.head.id, mode: 'cash', amountPaise: 1000 })).status).toBe(400);
+    expect(await AuditLog.countDocuments({ action: 'EXPENSE_HEADS_CHANGED' })).toBe(2);
+
+    const cash = await desk.post('/api/billing/expenses').send({ date: '2026-09-27', time: '09:23', headId: diesel.id, paidTo: 'Sample Driver', voucherNo: 'V-12', mode: 'cash', amountPaise: 150000, description: 'Generator diesel' });
+    expect(cash.status, JSON.stringify(cash.body)).toBe(201);
+    expect(cash.body.expense).toMatchObject({ head: 'Diesel expenses', paidTo: 'Sample Driver', voucherNo: 'V-12', time: '09:23', category: null });
+
+    // A cheque needs its number, bank and date; wallet and cheque details are kept only for their own mode
+    const noCheque = await desk.post('/api/billing/expenses').send({ headId: diesel.id, mode: 'cheque', amountPaise: 50000 });
+    expect(noCheque.status).toBe(400);
+    expect(Object.keys(noCheque.body.error.fields).sort()).toEqual(['bankName', 'chequeDate', 'chequeNo']);
+    const cheque = await desk.post('/api/billing/expenses').send({ headId: diesel.id, mode: 'cheque', chequeNo: '004512', bankName: 'Bank of Maharashtra', chequeDate: '2026-09-28', walletName: 'ignored', amountPaise: 50000 });
+    expect(cheque.status, JSON.stringify(cheque.body)).toBe(201);
+    expect(cheque.body.expense).toMatchObject({ mode: 'cheque', chequeNo: '004512', bankName: 'Bank of Maharashtra', chequeDate: '2026-09-28', walletName: '' });
+    const wallet = await desk.post('/api/billing/expenses').send({ headId: diesel.id, mode: 'upi', walletName: 'PhonePe', chequeNo: '1', amountPaise: 2000 });
+    expect(wallet.body.expense).toMatchObject({ walletName: 'PhonePe', chequeNo: '' });
+
+    // A period: both days, with the total of what was not cancelled; at most 92 days
+    const list = (await desk.get('/api/billing/expenses?from=2026-09-27&to=2026-09-28')).body;
+    expect(list.expenses.map((e) => e.date)).toEqual(['2026-09-27', '2026-09-28', '2026-09-28']);
+    expect(list.total).toBe(202000);
+    expect((await desk.get('/api/billing/expenses?from=2026-05-01&to=2026-09-28')).status).toBe(400);
+
+    // The daily summary takes them off: the cheque and the wallet off the balance, only cash off the drawer
+    const daily = (await desk.get('/api/billing/reports/daily?date=2026-09-28')).body;
+    expect(daily.totals).toMatchObject({ expenses: 52000, balance: -52000 });
+    expect(daily.cashInHand).toBe(0);
+  });
+
+  it("keeps the expense's bill as a file, one per expense, for those who may change it", async () => {
+    const desk = await as('reception');
+    const [head] = (await desk.get('/api/billing/expense-heads')).body.heads;
+    const e = (await desk.post('/api/billing/expenses').send({ headId: head.id, mode: 'cash', amountPaise: 3000 })).body.expense;
+    const pdf = { fileName: 'bill.pdf', mediaType: 'application/pdf', data: Buffer.from('%PDF-1.4 sample bill').toString('base64') };
+    expect((await desk.post(`/api/billing/expenses/${e.id}/file`).send({ ...pdf, mediaType: 'image/png' })).status).toBe(400);
+    const up = await desk.post(`/api/billing/expenses/${e.id}/file`).send(pdf);
+    expect(up.status, JSON.stringify(up.body)).toBe(201);
+    expect(up.body.expense.file).toMatchObject({ fileName: 'bill.pdf', mediaType: 'application/pdf' });
+    expect((await desk.post(`/api/billing/expenses/${e.id}/file`).send(pdf)).status).toBe(409);
+    const got = await desk.get(`/api/billing/expenses/${e.id}/file`);
+    expect(got.status).toBe(200);
+    expect(got.headers['content-type']).toMatch(/application\/pdf/);
+    expect(await AuditLog.countDocuments({ action: 'EXPENSE_BILL_ATTACHED' })).toBe(1);
+    expect((await (await as('drA')).get(`/api/billing/expenses/${e.id}/file`)).status).toBe(403);
+  });
 });
 
 // OPD registration → Registered (owner, 27 Oct 2026): the consultation charged at the desk is not charged again when

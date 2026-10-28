@@ -284,6 +284,32 @@
 .dc-expense-form { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); margin-bottom: var(--space-4); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); }
 .dc-expense-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .dc-expense-form .btn { align-self: flex-start; }
+.dc-expenses .exp-actions { white-space: nowrap; }
+
+/* Daily expenses (owner, 28 Oct 2026): the period's list on the left, a new expense on the right */
+.exp-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr); gap: var(--space-4); align-items: start; }
+.exp-layout > .card { min-width: 0; }
+.exp-list { overflow-x: auto; }
+.exp-range { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin-bottom: var(--space-3); }
+.exp-range .field { margin: 0; }
+.exp-total { text-align: right; }
+.exp-form { border: 0; padding: 0; background: none; }
+.exp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.exp-modes { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); border: 0; padding: 0; margin: 0; }
+.exp-modes legend { font-weight: 600; margin-bottom: var(--space-1); }
+.exp-mode { display: inline-flex; align-items: center; gap: var(--space-1); }
+.exp-file-chosen { display: flex; align-items: center; gap: var(--space-1); margin: 0; }
+.exp-file-chosen svg.lucide { width: 16px; height: 16px; }
+.exp-heads { list-style: none; padding: 0; margin: 0 0 var(--space-3); max-height: 50vh; overflow-y: auto; }
+.exp-heads li { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--card-border); }
+.exp-heads li > span, .exp-heads li > input { flex: 1; }
+@media (max-width: 1000px) {
+  .exp-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .exp-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .dc-search { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-pill); background: var(--surface); }
 .dc-search svg.lucide { width: 16px; height: 16px; color: var(--slate-600); }
 .dc-search input { border: 0; background: none; min-width: 220px; padding: 6px 0; }

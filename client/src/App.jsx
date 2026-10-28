@@ -48,6 +48,7 @@ import { BillingSettingsPage } from './pages/billing/BillingExtras.jsx';
 import { TallyBatchPage, TallyBatchesPage, TallyControlPage, TallyExceptionsPage, TallySettingsPage } from './pages/billing/TallyPage.jsx';
 import { MonthlyPage, PatientBillsTab, PriceListPage, UnpaidPage } from './pages/billing/BillingReports.jsx';
 import { DailySummaryPage } from './pages/billing/DailyCollectionPage.jsx';
+import { DailyExpensesPage } from './pages/billing/DailyExpensesPage.jsx';
 import { PatientsPage } from './pages/patients/PatientsPage.jsx';
 import { OpdRegistrationPage } from './pages/patients/OpdRegistrationPage.jsx';
 import { VoiceWordsPage } from './pages/VoiceWordsPage.jsx';
@@ -343,6 +344,10 @@ export function App() {
               {/* The daily cash handover: those who take payments hand over; a doctor or the admin confirms */}
               <Route path="cash-handover" element={<RequireTenantRole roles={[...BILLING_MODULE_ROLES, 'doctor', 'lab']} message="The cash handover is for reception, the billing department, the lab, doctors and the hospital admin." />}>
                 <Route index element={<CashHandoverPage />} />
+              </Route>
+              {/* Daily expenses (owner, 28 Oct 2026): money paid out from the counter, its own place in the menu */}
+              <Route path="expenses" element={<RequireTenantRole roles={BILLING_MODULE_ROLES} message="Daily expenses are for reception, the billing department and the hospital admin." />}>
+                <Route index element={<DailyExpensesPage />} />
               </Route>
               <Route path="billing" element={<RequireTenantRole roles={BILLING_MODULE_ROLES} message="Billing is for reception, the billing department and the hospital admin." />}>
                 <Route index element={<BillsPage />} />

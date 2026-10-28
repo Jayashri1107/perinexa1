@@ -56,6 +56,7 @@ import { LabPackage } from '../models/LabPackage.js';
 import { LabSetup } from '../models/LabSetup.js';
 import { CashHandover } from '../models/CashHandover.js';
 import { Expense } from '../models/Expense.js';
+import { ExpenseHead } from '../models/ExpenseHead.js';
 import { AdmissionRequest } from '../models/AdmissionRequest.js';
 import { Referrer } from '../models/Referrer.js';
 import { QcLot } from '../models/QcLot.js';
@@ -158,7 +159,8 @@ export const KINDS = [
   { file: 'lab-stock-moves.json', model: LabStockMove, what: 'Lab: every stock movement.' },
   { file: 'admission-requests.json', model: AdmissionRequest, what: "Inpatients: doctors' admission requests (open, admitted, cancelled)." },
   { file: 'cash-handovers.json', model: CashHandover, what: 'Billing: the daily cash handovers (amounts, who handed over and who confirmed).' },
-  { file: 'expenses.json', model: Expense, what: 'Billing: the expenses paid from the counter (what for, how paid, the amount, who entered or cancelled each).' },
+  { file: 'expenses.json', model: Expense, what: 'Billing: the expenses paid from the counter (head, person paid, voucher, how paid with cheque or wallet details, the amount, who entered or cancelled each; the attached bill is in the files).' },
+  { file: 'settings-expense-heads.json', model: ExpenseHead, what: "Settings: the hospital's list of expense heads." },
   { file: 'settings-prescription-sets.json', model: PrescriptionSet, what: 'Settings: the ready-made prescription sets.' },
   { file: 'settings-prescription-layout.json', model: PrescriptionDesign, what: 'Settings: how each doctor\'s prescriptions look when printed.' },
   { file: 'settings-price-list.json', model: PriceItem, what: 'Settings: the price list.' },

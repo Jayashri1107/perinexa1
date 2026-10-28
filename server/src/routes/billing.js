@@ -14,9 +14,11 @@ import { Patient } from '../models/Patient.js';
 import { PriceItem } from '../models/PriceItem.js';
 import { Tenant } from '../models/Tenant.js';
 import { EXPENSE_CATEGORIES, EXPENSE_MODES, Expense } from '../models/Expense.js';
+import { DEFAULT_EXPENSE_HEADS, ExpenseHead } from '../models/ExpenseHead.js';
 import { MIS_KEYS, MIS_REPORTS, misReport } from '../billing/misReports.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
+import { fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
@@ -625,63 +627,186 @@ billingRouter.get('/reports/daily', async (req, res) => {
 
 // ---------- The day's expenses (owner, 27 Oct 2026) ----------
 // Money paid out from the counter (tea, courier, stationery…), taken off the day's collection on the daily summary.
-// Never deleted: cancelled with a reason.
+// Never deleted: cancelled with a reason. The Daily Expenses page (28 Oct 2026) lists them for a period and adds the
+// head, the person paid, the voucher number, cheque or wallet details and the bill as a file.
+
+const EXPENSE_RANGE_DAYS = 92;
+const fieldError = (message, fields) => Object.assign(new HttpError(400, message, 'VALIDATION'), { fields });
 
 const expenseView = (e) => ({
   id: String(e._id),
   date: isoDay(e.day),
-  category: e.category,
+  time: e.time ?? '',
+  category: e.category ?? null,
+  headId: e.headId ? String(e.headId) : null,
+  head: e.head ?? '',
   description: e.description ?? '',
   paidTo: e.paidTo ?? '',
+  voucherNo: e.voucherNo ?? '',
   mode: e.mode,
+  chequeNo: e.chequeNo ?? '',
+  bankName: e.bankName ?? '',
+  chequeDate: e.chequeDate ? isoDay(e.chequeDate) : null,
+  walletName: e.walletName ?? '',
   amountPaise: e.amountPaise,
+  file: e.file?.fileId ? { fileName: e.file.fileName, mediaType: e.file.mediaType, size: e.file.size } : null,
   byName: e.added?.byName ?? '',
   at: e.added?.at ?? null,
   cancelled: e.cancelled ? { byName: e.cancelled.byName ?? '', at: e.cancelled.at ?? null, reason: e.cancelled.reason ?? '' } : null,
 });
 
+const shortText = (max) => z.string().trim().max(max, `Keep it to ${max} characters.`).default('');
 const expenseSchema = z
   .object({
     date: requiredDateOnly('Date').optional(),
-    category: z.enum(EXPENSE_CATEGORIES, 'Choose what it was for'),
-    description: z.string().trim().max(200, 'Keep it to 200 characters.').default(''),
-    paidTo: z.string().trim().max(100, 'Keep it to 100 characters.').default(''),
+    time: z.string().regex(/^(([01]\d|2[0-3]):[0-5]\d)?$/, 'Enter the time as HH:MM.').default(''),
+    headId: objectId.optional(),
+    category: z.enum(EXPENSE_CATEGORIES, 'Choose what it was for').optional(),
+    description: shortText(200),
+    paidTo: shortText(100),
+    voucherNo: shortText(30),
     mode: z.enum(EXPENSE_MODES, 'Choose how it was paid'),
+    chequeNo: shortText(20),
+    bankName: shortText(80),
+    chequeDate: requiredDateOnly('Cheque date').optional(),
+    walletName: shortText(40),
     amountPaise: z.number().int().min(100, 'Enter the amount, at least ₹1.').max(MAX_PAISE, 'The amount is too large.'),
   })
   .strict();
 
+// The hospital's heads; a hospital without any gets the default list first
+async function expenseHeads(tenantId) {
+  if (!(await ExpenseHead.exists({ tenantId }))) {
+    await ExpenseHead.insertMany(DEFAULT_EXPENSE_HEADS.map((name, order) => ({ tenantId, name, order })));
+  }
+  return ExpenseHead.find({ tenantId }).sort({ order: 1, _id: 1 }).lean();
+}
+const headView = (h) => ({ id: String(h._id), name: h.name, active: h.active !== false });
+
+billingRouter.get('/expense-heads', async (req, res) => {
+  res.json({ heads: (await expenseHeads(req.tenantId)).map(headView) });
+});
+
+const headNameSchema = z.string().trim().min(2, 'Write the name of the head.').max(60, 'Keep it to 60 characters.');
+async function refuseSameHeadName(req, name, exceptId = null) {
+  const same = await ExpenseHead.findOne({ tenantId: req.tenantId, name: { $regex: `^${escapeRegex(name)}$`, $options: 'i' }, ...(exceptId ? { _id: { $ne: exceptId } } : {}) }).lean();
+  if (same) throw fieldError('There is already a head with this name.', { name: 'There is already a head with this name.' });
+}
+
+billingRouter.post('/expense-heads', async (req, res) => {
+  assertRole(req, SETTINGS_ROLES, 'Only the hospital admin changes the list of expense heads.');
+  const { name } = parse(z.object({ name: headNameSchema }).strict(), req.body);
+  const heads = await expenseHeads(req.tenantId);
+  await refuseSameHeadName(req, name);
+  const h = await ExpenseHead.create({ tenantId: req.tenantId, name, order: heads.length });
+  await audit(req, 'EXPENSE_HEADS_CHANGED', { details: { headId: String(h._id), change: 'added' } });
+  res.status(201).json({ head: headView(h) });
+});
+
+billingRouter.patch('/expense-heads/:id', async (req, res) => {
+  assertRole(req, SETTINGS_ROLES, 'Only the hospital admin changes the list of expense heads.');
+  const { id } = parse(z.object({ id: objectId }), req.params);
+  const body = parse(z.object({ name: headNameSchema.optional(), active: z.boolean().optional() }).strict(), req.body);
+  const h = await ExpenseHead.findOne({ tenantId: req.tenantId, _id: id });
+  if (!h) throw new HttpError(404, 'Expense head not found.', 'NOT_FOUND');
+  if (body.name !== undefined) {
+    await refuseSameHeadName(req, body.name, h._id);
+    h.name = body.name;
+  }
+  if (body.active !== undefined) h.active = body.active;
+  await h.save();
+  const change = body.name !== undefined ? 'renamed' : body.active ? 'switched on' : 'switched off';
+  await audit(req, 'EXPENSE_HEADS_CHANGED', { details: { headId: String(h._id), change } });
+  res.json({ head: headView(h) });
+});
+
+// One day (?date=, the daily summary) or a period (?from=&to=, the Daily Expenses page, at most 92 days)
 billingRouter.get('/expenses', async (req, res) => {
-  const { date } = parse(z.object({ date: requiredDateOnly('Date').optional() }).strict(), req.query);
-  const day = date ?? hospitalToday(req.now);
-  const list = await Expense.find({ tenantId: req.tenantId, day }).sort({ createdAt: 1 }).lean();
-  res.json({ date: isoDay(day), expenses: list.map(expenseView) });
+  const q = parse(z.object({ date: requiredDateOnly('Date').optional(), from: requiredDateOnly('From').optional(), to: requiredDateOnly('To').optional() }).strict(), req.query);
+  const from = q.from ?? q.date ?? hospitalToday(req.now);
+  const to = q.to ?? q.date ?? from;
+  if (to < from || daysBetween(from, to) > EXPENSE_RANGE_DAYS) throw new HttpError(400, `Choose a period of at most ${EXPENSE_RANGE_DAYS} days, ending after it starts.`, 'VALIDATION');
+  const list = await Expense.find({ tenantId: req.tenantId, day: { $gte: from, $lte: to } }).sort({ day: 1, createdAt: 1 }).lean();
+  const expenses = list.map(expenseView);
+  const total = expenses.filter((e) => !e.cancelled).reduce((s, e) => s + e.amountPaise, 0);
+  res.json({ date: isoDay(from), from: isoDay(from), to: isoDay(to), expenses, total });
 });
 
 billingRouter.post('/expenses', async (req, res) => {
   const body = parse(expenseSchema, req.body);
   const today = hospitalToday(req.now);
   const day = body.date ?? today;
-  if (day > today) throw Object.assign(new HttpError(400, 'An expense cannot be for a day still to come.', 'VALIDATION'), { fields: { date: 'Choose today or an earlier day.' } });
-  if (daysBetween(day, today) > 31) throw Object.assign(new HttpError(400, 'Expenses are entered within a month of the day.', 'VALIDATION'), { fields: { date: 'Choose a day in the last month.' } });
-  const { date: _date, ...fields } = body;
-  const e = await Expense.create({ tenantId: req.tenantId, day, ...fields, added: { by: req.user._id, byName: req.user.name, at: req.now ?? new Date() } });
-  await audit(req, 'EXPENSE_RECORDED', { details: { expenseId: String(e._id), date: isoDay(day), category: e.category, mode: e.mode, amountPaise: e.amountPaise } });
+  if (day > today) throw fieldError('An expense cannot be for a day still to come.', { date: 'Choose today or an earlier day.' });
+  if (daysBetween(day, today) > 31) throw fieldError('Expenses are entered within a month of the day.', { date: 'Choose a day in the last month.' });
+  // What it was for: a head from the hospital's list (or, from older screens, a category)
+  let head = null;
+  if (body.headId) {
+    head = await ExpenseHead.findOne({ tenantId: req.tenantId, _id: body.headId, active: true }).lean();
+    if (!head) throw fieldError('Choose a head from the list.', { headId: 'Choose a head from the list.' });
+  } else if (!body.category) throw fieldError('Choose what it was for.', { headId: 'Choose a head from the list.' });
+  // How it was paid: a cheque needs its number, bank and date; the other details are kept only for their mode
+  const cheque = body.mode === 'cheque';
+  if (cheque) {
+    const missing = {};
+    if (!body.chequeNo) missing.chequeNo = 'Enter the cheque number.';
+    if (!body.bankName) missing.bankName = 'Choose the bank.';
+    if (!body.chequeDate) missing.chequeDate = 'Enter the cheque date.';
+    if (Object.keys(missing).length) throw fieldError('Enter the cheque details.', missing);
+  }
+  const { date: _date, headId: _headId, category, chequeNo, bankName, chequeDate, walletName, ...fields } = body;
+  const e = await Expense.create({
+    tenantId: req.tenantId,
+    day,
+    ...fields,
+    ...(head ? { headId: head._id, head: head.name } : { category }),
+    chequeNo: cheque ? chequeNo : '',
+    bankName: cheque || body.mode === 'bank' ? bankName : '',
+    chequeDate: cheque ? chequeDate : null,
+    walletName: body.mode === 'upi' ? walletName : '',
+    added: { by: req.user._id, byName: req.user.name, at: req.now ?? new Date() },
+  });
+  await audit(req, 'EXPENSE_RECORDED', { details: { expenseId: String(e._id), date: isoDay(day), category: e.category, head: e.head || undefined, mode: e.mode, amountPaise: e.amountPaise } });
   res.status(201).json({ expense: expenseView(e) });
 });
 
-billingRouter.post('/expenses/:id/cancel', async (req, res) => {
+// The person who entered it, or the hospital admin / billing department
+const mayChangeExpense = (req, e) => String(e.added.by) === String(req.user._id) || hasRole(req.membership, ...REPORT_ROLES);
+
+async function findExpense(req) {
   const { id } = parse(z.object({ id: objectId }), req.params);
-  const { reason } = parse(z.object({ reason: z.string().trim().min(MIN_REASON, 'Write why it is cancelled.').max(200) }).strict(), req.body);
   const e = await Expense.findOne({ tenantId: req.tenantId, _id: id });
   if (!e) throw new HttpError(404, 'Expense not found.', 'NOT_FOUND');
+  return e;
+}
+
+billingRouter.post('/expenses/:id/cancel', async (req, res) => {
+  const { reason } = parse(z.object({ reason: z.string().trim().min(MIN_REASON, 'Write why it is cancelled.').max(200) }).strict(), req.body);
+  const e = await findExpense(req);
   if (e.cancelled) throw conflict('This expense was already cancelled.', 'CANCELLED');
-  // The person who entered it, or the hospital admin / billing department
-  if (String(e.added.by) !== String(req.user._id) && !hasRole(req.membership, ...REPORT_ROLES)) throw forbidden('Only the person who entered it, the billing department or the hospital admin can cancel an expense.');
+  if (!mayChangeExpense(req, e)) throw forbidden('Only the person who entered it, the billing department or the hospital admin can cancel an expense.');
   e.cancelled = { by: req.user._id, byName: req.user.name, at: req.now ?? new Date(), reason };
   await e.save();
   await audit(req, 'EXPENSE_CANCELLED', { details: { expenseId: String(e._id), date: isoDay(e.day), amountPaise: e.amountPaise } });
   res.json({ expense: expenseView(e) });
+});
+
+// The bill or voucher, as a PDF or a photo: one per expense, never replaced or deleted (like every stored file)
+billingRouter.post('/expenses/:id/file', async (req, res) => {
+  const body = parse(fileUploadSchema, req.body);
+  const e = await findExpense(req);
+  if (!mayChangeExpense(req, e)) throw forbidden('Only the person who entered it, the billing department or the hospital admin can attach its bill.');
+  if (e.file?.fileId) throw conflict('A bill is already attached to this expense.', 'HAS_FILE');
+  const f = await storeFile(req, { kind: 'expense_bill', ownerId: e._id, body });
+  e.file = { fileId: f._id, fileName: f.fileName, mediaType: f.mediaType, size: f.size };
+  await e.save();
+  await audit(req, 'EXPENSE_BILL_ATTACHED', { details: { expenseId: String(e._id), date: isoDay(e.day), size: f.size } });
+  res.status(201).json({ expense: expenseView(e) });
+});
+
+billingRouter.get('/expenses/:id/file', async (req, res) => {
+  const e = await findExpense(req);
+  if (!e.file?.fileId) throw new HttpError(404, 'No bill is attached to this expense.', 'NOT_FOUND');
+  sendFile(res, await findFile(req, { kind: 'expense_bill', ownerId: e._id, fileId: e.file.fileId }));
 });
 
 // Billing → Reports (owner, 27 Oct 2026): the hospital's OPD, IPD and collection MIS reports, for a range of days

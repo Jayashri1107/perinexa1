@@ -143,6 +143,7 @@ export function createApp({
   // A referral's files: the referring doctor's note or reports, and the PDF of a consultant note or discharge card
   // released to the referral desk (at most 5 MB each, like the files above).
   app.use(/^\/api\/referrals\/[^/]+\/(attachments|releases)$/, express.json({ limit: '8mb' }));
+  app.use(/^\/api\/billing\/expenses\/[^/]+\/file$/, express.json({ limit: '8mb' })); // an expense's bill (Daily Expenses)
   // The medicine safety list is saved whole: 300 entries with their names, advice and sources do not fit in 100 kb.
   // (Each field has its own limit, so the list's "at most 300 entries" is reached before this one.)
   app.use('/api/medicine-safety', express.json({ limit: '2mb' }));
