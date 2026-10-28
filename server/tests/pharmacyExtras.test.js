@@ -799,6 +799,9 @@ describe('the e-invoice file of a sale to a business', () => {
     expect(inv).toMatchObject({ number: 'PH-000001', customer: { name: 'Sample Buyer' }, buyer: { ...BUYER, state: 'Maharashtra', stateCode: '27' }, netPaise: 118000 });
     expect(ok(await sale({ lines }), 201).invoice.buyer).toBeNull(); // an ordinary walk-in sale still has no buyer
     expect(ok(await ph('get', '/invoices?search=Sample%20Clinic')).invoices.map((v) => v.number)).toEqual(['PH-000001']);
+    // Sold: a medicine's brand or generic name finds every bill it was sold on, newest first
+    expect(ok(await ph('get', '/invoices?search=rate%20eigh')).invoices.map((v) => v.number)).toEqual(['PH-000002', 'PH-000001']);
+    expect(ok(await ph('get', '/invoices?search=Sampleol')).invoices.map((v) => v.number)).toEqual(['PH-000002', 'PH-000001']);
     expect((await audits('PHARMACY_SOLD'))[0]).toMatchObject({ walkIn: true, business: true });
     expect(JSON.stringify(await audits('PHARMACY_SOLD'))).not.toMatch(new RegExp(`Sample Clinic|${BUYER_GSTIN}`));
   });

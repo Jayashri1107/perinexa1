@@ -33,6 +33,9 @@ export const FREQUENCY_WORDS = { '1-0-0': 'morning', '0-1-0': 'afternoon', '0-0-
 export const scheduleLook = (schedule) =>
   CONTROLLED.includes(schedule) ? { tone: 'high', icon: ShieldAlert, label: SCHEDULE_LABELS[schedule] } : schedule ? { tone: 'watch', icon: TriangleAlert, label: SCHEDULE_LABELS[schedule] } : null;
 
+/** What was sold on a bill, for the Sold list: "Dolo 650 × 6, Folvite 5 × 10" (the medicines as on the bill). */
+export const soldItems = (lines = []) => lines.map((l) => `${l.name} × ${l.qty}`).join(', ');
+
 /** "Folvite 5 · Folic acid 5 mg" */
 export const medicineLabel = (m) => [m.name, [m.generic, m.strength].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
 
@@ -52,7 +55,7 @@ export const pharmacyTabs = (roles = []) => [
         { label: 'Issue to ward', to: '/pharmacy/issue', end: true },
       ]
     : []),
-  { label: 'Invoices', to: '/pharmacy/invoices', end: false },
+  { label: 'Sold', to: '/pharmacy/invoices', end: false },
   { label: 'Stock', to: '/pharmacy/stock', end: false },
   { label: 'Purchases', to: '/pharmacy/purchases', activeFor: BUYING_PATHS },
   { label: 'Medicines', to: '/pharmacy/medicines', end: true },
@@ -148,6 +151,24 @@ export function scannedForList(medicine, alreadyOnList) {
   if (!medicine.active) return { add: false, said: { error: `${medicine.name} is no longer in use (Medicines → Use again).` } };
   if (alreadyOnList) return { add: false, said: `${medicine.name} is already on the list: change its quantity there.` };
   return { add: true, said: `${medicineLabel(medicine)} added.` };
+}
+
+/**
+ * The bill's lines with a prescription's medicines on it (`rx` from /pharmacy/patients/:id/prescriptions): each
+ * prescribed medicine is matched to the stock list (one in stock first) with its suggested quantity and marked
+ * `prescribed` – it cannot be taken off the bill. The medicines of a prescription chosen before are replaced; those
+ * the pharmacist added stay (one already on the bill becomes prescribed). A medicine not on the stock list is left out.
+ */
+export function prescribedLines(lines, rx) {
+  const out = lines.filter((l) => !l.prescribed);
+  for (const it of rx.items) {
+    const best = it.matches.find((m) => m.inStock > 0) ?? it.matches[0];
+    if (!best) continue;
+    const i = out.findIndex((l) => l.medicine.id === best.id);
+    if (i >= 0) out[i] = { ...out[i], prescribed: true };
+    else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(it.suggestedQty ?? 1), batchId: null, prescribed: true });
+  }
+  return out;
 }
 /** The same for a new purchase, where a medicine may be on the list more than once (one line for each batch). */
 export function scannedForPurchase(medicine) {

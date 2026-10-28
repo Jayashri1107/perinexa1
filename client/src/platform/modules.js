@@ -269,7 +269,7 @@ const HOSPITAL_PHARMACY = {
 // IPD and External patients) is on Today. "New bill" keeps the key 'pharmacy' (Help's guide).
 const PHARMACIST_MENU = [
   { key: 'pharmacy', label: 'New bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: '/pharmacy/issue' },
-  { key: 'pharmacy-bills', label: 'Pharmacy bills', icon: FileText, to: '/pharmacy/invoices' },
+  { key: 'pharmacy-bills', label: 'Sold', icon: FileText, to: '/pharmacy/invoices' },
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },
   { key: 'pharmacy-purchases', label: 'Purchase bills', icon: PackagePlus, to: '/pharmacy/purchases', activeFor: ['/pharmacy/orders', '/pharmacy/supplier-returns'] },
   { key: 'pharmacy-stock', label: 'Stock', icon: Boxes, to: '/pharmacy/stock' },

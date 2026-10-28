@@ -13,6 +13,13 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **28 Oct 2026 – pharmacy: prescribed medicines stay on the bill; Sold list (developer's requests):** medicines put
+  on a bill from the doctor's prescription are marked Prescribed and cannot be taken off (only their quantity and batch
+  change; a prescribed medicine short of stock says so); medicines the pharmacist adds can be removed. Pharmacy bills is
+  now **Sold**: each bill shows the medicines sold on it, the search also finds a medicine's brand or generic name, and
+  New bill is at the top. On New bill, the search for someone from another day comes first, then today's OPD patients.
+  **How to test:** pharmacist → Today → Bill the prescription → no remove button on the prescribed lines; Sold → type a
+  medicine name.
 - **28 Oct 2026 – a doctor's saved prescription billed at the pharmacy in one step (developer's request):** on the
   pharmacist's Today register, a patient whose prescription was saved today shows Prescription waiting with **Bill the
   prescription**: it opens the sale with her and that prescription's medicines already on the bill (the pharmacist checks
