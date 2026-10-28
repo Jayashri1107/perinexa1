@@ -2,7 +2,7 @@ import { Router } from 'express';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { bookedAhead } from '../appointments/appointmentService.js';
-import { addDays, hospitalToday, isoDay } from '../careplans/dates.js';
+import { addDays, hospitalDayStart, hospitalToday, isoDay } from '../careplans/dates.js';
 import { babyVaccinations, overduePlanItems } from '../careplans/overdue.js';
 import { planStatuses } from '../careplans/planEngine.js';
 import { refreshStalePlans } from '../careplans/plansService.js';
@@ -27,7 +27,7 @@ import { parse } from '../utils/validate.js';
 // The Today page's lists (Feature 10, daily lists): GET /api/today?scope=mine|all. For the calendar roles (doctors,
 // RMOs, reception) – the same detail rules as the calendar (calendarAccess.js):
 //  - patients: everyone booked for today (the booking stays, with the time she arrived), everyone marked as arrived,
-//    and everyone whose visit was started today without a booking;
+//    everyone whose visit was started today without a booking, and everyone registered today (not for a stay);
 //  - reception only, the call lists: "due now" (a care-plan visit window is open) and "overdue" (a window has passed,
 //    or a booked day in the last 4 weeks passed with no visit). Someone with a visit today or a booking from today on
 //    is not listed: she is already coming. Reception sees the window's first day only, never its end or its name;
@@ -95,7 +95,13 @@ export async function todayFor(req, askedScope) {
   // Marked as arrived by reception (before any visit is started)
   const arrivals = new Map((await Arrival.find({ tenantId, on: today }, { patientId: 1, at: 1, byName: 1, emergency: 1, left: 1, purpose: 1 }).lean()).map((a) => [String(a.patientId), a]));
 
-  const ids = [...new Set([...bookings.keys(), ...firstVisit.keys(), ...arrivals.keys()])];
+  // Registered today (28 Oct 2026): she was at the desk, also when nobody marked her arrived – except a patient
+  // registered for a stay (in hospital now, or a baby whose mother is): the ward lists show her.
+  const newToday = await Patient.find({ tenantId, createdAt: { $gte: hospitalDayStart(today), $lt: hospitalDayStart(addDays(today, 1)) }, ...IN_USE }, { careType: 1, newborn: 1, createdAt: 1 }).lean();
+  const staying = await inHospitalNow(tenantId, newToday);
+  const registered = new Map(newToday.filter((p) => !staying.has(String(p._id))).map((p) => [String(p._id), p.createdAt]));
+
+  const ids = [...new Set([...bookings.keys(), ...firstVisit.keys(), ...arrivals.keys(), ...registered.keys()])];
   // (a record marked as a duplicate of another is not on today's lists: she is expected on her main record; nor is a
   // record closed after a death)
   const found = ids.length ? await Patient.find({ tenantId, _id: { $in: ids }, ...IN_USE }).select(`${PATIENT_FIELDS} ageYears ageRecordedOn createdAt`).lean() : [];
@@ -104,7 +110,7 @@ export async function todayFor(req, askedScope) {
   const followUps = await openFollowUpsOf(tenantId, shown.map(({ p }) => p._id));
 
   // The call lists (reception).
-  const seenToday = new Set([...firstVisit.keys(), ...arrivals.keys()]);
+  const seenToday = new Set([...firstVisit.keys(), ...arrivals.keys(), ...registered.keys()]);
   const calls = hasRole(req.membership, 'receptionist') ? await callLists(req, today, seenToday) : null;
   const babies = hasRole(req.membership, 'receptionist') ? await babiesDue(req, today, seenToday) : null;
   // Reception: patients registered with details still missing (recent ones, and anyone on today's list)
@@ -127,7 +133,8 @@ export async function todayFor(req, askedScope) {
       const id = String(p._id);
       const visit = firstVisit.get(id);
       const marked = arrivals.get(id);
-      const times = [marked?.at, visit?.createdAt].filter(Boolean);
+      // (registered today: she was at the desk then)
+      const times = [marked?.at, visit?.createdAt, registered.get(id)].filter(Boolean);
       const arrived = times.length > 0;
       return {
         patient: who(p, names),
