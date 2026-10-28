@@ -17,6 +17,8 @@ import {
   orderLook,
   pharmacyTabs,
   receiveLines,
+  prescribedLines,
+  soldItems,
   receivedFlash,
   returnBatchesShown,
   returnChosen,
@@ -253,7 +255,38 @@ describe('the pharmacy’s tabs', () => {
       ['Orders', '/pharmacy/orders'],
       ['Returns to supplier', '/pharmacy/supplier-returns'],
     ]);
-    expect(pharmacyTabs(['admin']).map((t) => t.label)).toEqual(['Invoices', 'Stock', 'Purchases', 'Medicines', 'Suppliers', 'Reports', 'Settings']);
+    expect(pharmacyTabs(['admin']).map((t) => t.label)).toEqual(['Sold', 'Stock', 'Purchases', 'Medicines', 'Suppliers', 'Reports', 'Settings']);
     expect(pharmacyTabs(['pharmacist']).map((t) => t.label).slice(0, 2)).toEqual(['Sell', 'Issue to ward']);
+  });
+});
+
+describe('the Sold list', () => {
+  it('names what was sold on each bill, with the quantities', () => {
+    expect(soldItems([{ name: 'Dolo 650', qty: 6 }, { name: 'Folvite 5', qty: 10 }])).toBe('Dolo 650 × 6, Folvite 5 × 10');
+    expect(soldItems([])).toBe('');
+  });
+});
+
+describe("a doctor's prescription on the bill", () => {
+  const med = (id, name, inStock) => ({ id, name, inStock });
+  const rx = (visitId, items) => ({ visitId, items });
+  const item = (matches, suggestedQty) => ({ matches, suggestedQty });
+  const own = { key: "own-1", medicine: med("m3", "Own Syrup", 9), qty: "1", batchId: null };
+  it("puts each prescribed medicine on with its quantity, one in stock first, marked prescribed", () => {
+    const out = prescribedLines([own], rx("v1", [item([med("m1", "Out Tab", 0), med("m2", "In Tab", 5)], 6), item([], 10)]));
+    expect(out.map((l) => [l.medicine.name, l.qty, Boolean(l.prescribed)])).toEqual([
+      ["Own Syrup", "1", false], // the pharmacist's own: stays, and can be taken off
+      ["In Tab", "6", true], // not on the stock list: left out
+    ]);
+  });
+  it("marks a medicine already on the bill as prescribed instead of adding it twice", () => {
+    const out = prescribedLines([own], rx("v1", [item([med("m3", "Own Syrup", 9)], 2)]));
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ key: "own-1", qty: "1", prescribed: true });
+  });
+  it("replaces the medicines of a prescription chosen before", () => {
+    const first = prescribedLines([own], rx("v1", [item([med("m1", "First Tab", 5)], 3)]));
+    const second = prescribedLines(first, rx("v2", [item([med("m2", "Second Tab", 5)], 4)]));
+    expect(second.map((l) => l.medicine.name)).toEqual(["Own Syrup", "Second Tab"]);
   });
 });
