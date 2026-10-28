@@ -63,8 +63,23 @@ const as = async (who) => (sessions[who] ??= await loginAs(people[who], { app })
 const brief = async (who, path, body = {}) => (await as(who)).post(`/api/ai/brief/${path}`).send(body);
 const sentText = (i = 0) => sent[i].body.messages.find((m) => m.role === 'user').content;
 
+// Registered the day before (a patient who is not new today): since 28 Oct 2026 everyone registered today is on
+// Today's patients, so the patients these tests expect elsewhere are registered earlier.
+// (Signed in again on each side: a day without activity ends a session, as it would for a person.)
+async function theDayBefore(fn) {
+  const now = Date.now();
+  vi.setSystemTime(now - 24 * 60 * 60 * 1000);
+  sessions = {};
+  try {
+    return await fn();
+  } finally {
+    vi.setSystemTime(now);
+    sessions = {};
+  }
+}
+
 async function register(fullName, { scanEdd = '2026-11-09', phone = '9876543210', medical = {}, doctor = 'drA' } = {}) {
-  const res = await (await as(doctor)).post('/api/patients').send(
+  const send = async () => (await as(doctor)).post('/api/patients').send(
     samplePatient({
       careType: 'antenatal',
       fullName,
@@ -77,6 +92,7 @@ async function register(fullName, { scanEdd = '2026-11-09', phone = '9876543210'
       medical: { allergies: 'None known', bloodGroup: 'O+', conditionsReviewed: true, ...medical },
     }),
   );
+  const res = await theDayBefore(send);
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body.patient;
 }
