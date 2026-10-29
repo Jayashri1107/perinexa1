@@ -17,6 +17,23 @@ machine:
 Nothing here is tested against a real machine yet: check each step below with the machine's service engineer, using
 a **dummy patient** only (never a real patient while setting up).
 
+## Try it without a machine (demo, sample data only)
+
+`demo.mjs` plays the machine and the bridge once: it sends a made-up study – repeated readings (BPD three times and the
+machine's mean, HC, AC and FL twice, heart rate, AFI, deepest pocket, one measurement Perinexa has no field for) and three
+generated pictures marked SAMPLE – for the first ultrasound order on today's worklist.
+
+1. In Perinexa as the hospital admin: Hospital admin → **Ultrasound machine** → **Make a key**, copy it.
+2. Copy `scan-bridge/.env.example` to `scan-bridge/.env`; set `PERINEXA_URL=http://localhost:4001` (the server of this
+   copy) and `BRIDGE_KEY=` the key. The Orthanc lines are not needed for the demo.
+3. As a doctor, order an ultrasound scan for a sample patient (her Lab tab → Order a scan, e.g. USG – growth).
+4. Run `node scan-bridge/demo.mjs` (or `node scan-bridge/demo.mjs P-000123` for a patient without an order).
+5. Sonography → open her scan → **From the machine**: the pictures and the average table. **Mark done**, tick pictures,
+   confirm, **Add to the report**; untick a reading or change a rule, **Fill the report with these values**; **Write the
+   report from the readings**, **Save**; as a doctor **Review the final report** → **Finalise – sign and print**.
+
+Never run the demo against a live hospital: it adds a made-up study to the patient's scan list.
+
 ## 1. Perinexa: make the key
 
 Hospital admin → **Ultrasound machine** → **Make a new key**. Copy it: it is shown once. Making a new key later

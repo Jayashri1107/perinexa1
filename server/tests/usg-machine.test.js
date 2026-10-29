@@ -10,6 +10,7 @@ import { fieldFor, inUnit, readingsFromSr, sameName, tableOf, usedValue } from '
 import { AuditLog } from '../src/models/AuditLog.js';
 import { MachineStudy } from '../src/models/MachineStudy.js';
 import { dicomMoment, settingsFrom, skipAfter, studyPayload, worklistTags } from '../../scan-bridge/bridge.mjs';
+import { runDemo, samplePng } from '../../scan-bridge/demo.mjs';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-10-29T05:00:00Z');
@@ -295,5 +296,29 @@ describe('the ultrasound machine through the scan bridge', () => {
     expect((await bridge(key).get('/worklist')).body.items).toHaveLength(1);
     expect((await bridge(key2).get('/worklist')).body.items).toEqual([]);
     expect((await bridge(key2).post('/studies', { studyUid: '1.2.3.4', patientId: p.mrn })).body.matched).toBe(false);
+  });
+  it('the demo (scan-bridge/demo.mjs) sends a made-up study for the first order on the worklist, or for a patient number', async () => {
+    const key = await makeKey();
+    const send = async (method, path, body) => {
+      const res = method === 'GET' ? await bridge(key).get(path) : await bridge(key).post(path, body);
+      return { status: res.status, body: res.body };
+    };
+    const log = () => {};
+    await expect(runDemo({ send, log })).rejects.toThrow(/No ultrasound scan is ordered/);
+    const p = await mother();
+    let s = await order(p);
+    const out = await runDemo({ send, log });
+    expect(out).toMatchObject({ matched: true, readings: 13 });
+    const [m] = (await (await as('drA')).get(`/api/imaging/${s.id}/machine`)).body.studies;
+    expect(m).toMatchObject({ machine: 'Demo Sample machine', matchedBy: 'worklist' });
+    expect(m.images).toHaveLength(3);
+    expect(m.fetuses[0].rows.map((r) => r.key)).toEqual(['bpd', 'hc', 'ac', 'fl', 'fhr', 'afi', 'dvp']);
+    const picture = await (await as('drA')).get(`/api/imaging/machine/${m.id}/images/${m.images[0].id}`);
+    expect(picture.headers['content-type']).toBe('image/png');
+    s = (await (await as('drA')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).body.study;
+    expect((await (await as('drA')).post(`/api/imaging/${s.id}/machine/${m.id}/pictures`).send({ rev: s.rev, imageIds: [m.images[1].id], noSexShown: true })).status).toBe(201);
+    // By her patient number, without an order on the worklist
+    expect((await runDemo({ send, log, patientNumber: p.mrn })).matched).toBe(true);
+    expect(samplePng(1).subarray(1, 4).toString('latin1')).toBe('PNG');
   });
 });
