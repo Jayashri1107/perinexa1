@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileText, ImagePlus, Printer, ScanLine, Siren } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
+import { usePagedRows } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
@@ -86,6 +87,7 @@ function ScanWorklist() {
   const [params, setParams] = useSearchParams();
   const list = LISTS.some(([k]) => k === params.get('list')) ? params.get('list') : 'ordered';
   const { data, error, loading } = useFetch('/imaging/worklist', { list });
+  const { shown, pager } = usePagedRows(data?.studies, { initial: 25, sizes: [25, 50, 100], label: 'scans', resetKey: list });
   return (
     <>
       <PageHeader title="Sonography" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
@@ -107,7 +109,7 @@ function ScanWorklist() {
             <p className="muted">Nothing here.</p>
           ) : (
             <ul className="wl-list">
-              {data.studies.map((s) => (
+              {(shown ?? []).map((s) => (
                 <li key={s.id}>
                   <div className="wl-row-head">
                     <span className="wl-who">
@@ -133,6 +135,7 @@ function ScanWorklist() {
               ))}
             </ul>
           )}
+          {pager}
         </section>
       </div>
     </>

@@ -201,3 +201,9 @@
 .os-note { display: flex; align-items: flex-start; gap: 4px; color: var(--slate-600); font-size: var(--fs-caption); }
 .os-note svg { flex-shrink: 0; width: 14px; height: 14px; margin-top: 2px; }
 .os-scroll { overflow-x: auto; }
+
+/* Long pharmacy lists a page at a time (Medicines, Suppliers, Purchase bills) */
+.ph-list-search { max-width: 420px; margin-bottom: var(--space-3); }
+.ph-pager { padding: 0; }
+.card > .dt-footer { padding: var(--space-4) 0 0; }
+.ph-pager .dt-footer { border-top: none; }

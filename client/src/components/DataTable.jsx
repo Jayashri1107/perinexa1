@@ -11,6 +11,9 @@ export const formatNumber = (n) => nf.format(n ?? 0);
  *
  * columns: [{ key, header, render?(row), sortKey?, sortFirst?: 'asc'|'desc', align?: 'right', width?, className? }]
  * sort / onSort: current sort ("name" or "-name") and a function to change it.
+ * A long list is shown a page at a time (pageSize rows, with the page bar under it) – unless the screen passes its own
+ * `footer` (a list the server pages, or one the screen pages itself), or pageSize is 0. pageLabel: what the rows are
+ * ("medicines"), for "Showing 1–25 of 980 medicines".
  */
 export function DataTable({
   columns,
@@ -25,7 +28,12 @@ export function DataTable({
   toolbar,
   footer,
   caption,
+  pageSize = 25,
+  pageLabel = 'rows',
 }) {
+  const auto = footer === undefined && pageSize > 0;
+  const paged = usePagedRows(auto ? rows : null, { initial: pageSize, sizes: [pageSize, pageSize * 2, pageSize * 4], label: pageLabel, resetKey: rows?.length });
+  const list = auto ? (paged.shown ?? rows) : rows;
   const nextSort = (col) => {
     if (sort === col.sortKey) return `-${col.sortKey}`;
     if (sort === `-${col.sortKey}`) return col.sortKey;
@@ -66,7 +74,7 @@ export function DataTable({
             </tr>
           </thead>
           <tbody>
-            {!rows &&
+            {!list &&
               loading &&
               Array.from({ length: 6 }, (_, i) => (
                 <tr key={`sk-${i}`} className="dt-skeleton">
@@ -77,7 +85,7 @@ export function DataTable({
                   ))}
                 </tr>
               ))}
-            {rows?.map((r) => (
+            {list?.map((r) => (
               <tr
                 key={r[rowKey]}
                 className={[onRowClick ? 'dt-clickable' : '', rowClassName?.(r) ?? ''].join(' ')}
@@ -100,7 +108,7 @@ export function DataTable({
           </tbody>
         </table>
       </div>
-      {footer}
+      {auto ? paged.pager : footer}
     </section>
   );
 }
@@ -109,9 +117,15 @@ export function DataTable({
  * A list already on the screen, shown a page at a time: { shown, pager } – shown: the rows of the page,
  * pager: the "Showing … · Rows per page · Page" bar (null when everything fits on one page).
  */
-export function usePagedRows(rows, { initial = 10, sizes = [10, 25, 50], label = 'items' } = {}) {
+export function usePagedRows(rows, { initial = 10, sizes = [10, 25, 50], label = 'items', resetKey } = {}) {
   const [limit, setLimit] = useState(initial);
   const [page, setPage] = useState(1);
+  // resetKey: back to the first page when it changes (another filter or search gave a different list)
+  const [seenKey, setSeenKey] = useState(resetKey);
+  if (resetKey !== seenKey) {
+    setSeenKey(resetKey);
+    setPage(1);
+  }
   const list = rows ?? [];
   const totalPages = Math.max(1, Math.ceil(list.length / limit));
   const current = Math.min(page, totalPages);
