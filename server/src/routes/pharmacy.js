@@ -162,7 +162,9 @@ pharmacyRouter.get('/medicines', async (req, res) => {
     filter.$or = [{ name: rx }, { generic: rx }];
   }
   if (q.active === '1') filter.active = true;
-  const meds = await Medicine.find(filter).sort({ name: 1 }).limit(500).lean();
+  // A search (the pickers) gives the first 500; the whole list (Pharmacy → Medicines, paged there) all of them – an
+  // imported opening stock can bring a thousand medicines.
+  const meds = await Medicine.find(filter).sort({ name: 1 }).limit(q.search ? 500 : 20000).lean();
   const stock = await stockOf(req.tenantId, meds.map((m) => m._id));
   res.json({ medicines: meds.map((m) => medicineView(m, stock.get(String(m._id)) ?? 0)) });
 });

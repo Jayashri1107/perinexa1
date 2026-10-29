@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ClipboardCheck, FileDown, FileUp, PackageX } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { DataTable } from '../../components/DataTable.jsx';
+import { DataTable, SearchInput, usePagedRows } from '../../components/DataTable.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -17,7 +17,11 @@ export function StockPage() {
   const res = useFetch('/pharmacy/stock');
   const [filter, setFilter] = useState('all');
   const [sheet, setSheet] = useState(false);
-  const rows = (res.data?.medicines ?? []).filter((m) => (filter === 'low' ? m.low : filter === 'expiring' ? m.expiringSoon || m.expiredQty > 0 : true));
+  const [search, setSearch] = useState('');
+  const q = search.toLowerCase();
+  const rows = (res.data?.medicines ?? [])
+    .filter((m) => (filter === 'low' ? m.low : filter === 'expiring' ? m.expiringSoon || m.expiredQty > 0 : true))
+    .filter((m) => !q || [m.name, m.generic].some((t) => t?.toLowerCase().includes(q)));
   return (
     <>
       <PharmacyHeader title="Stock" crumb="Stock" />
@@ -43,7 +47,8 @@ export function StockPage() {
           rows={res.data ? rows : null}
           loading={res.loading}
           onRowClick={(m) => navigate(`/pharmacy/stock/${m.id}`)}
-          emptyText="No medicines here."
+          emptyText={search ? 'No medicine matches this search.' : 'No medicines here.'}
+          pageLabel="medicines"
           toolbar={
             <div className="bill-toolbar ph-stock-toolbar">
               <div className="segmented" role="group" aria-label="Show">
@@ -57,6 +62,7 @@ export function StockPage() {
                   </button>
                 ))}
               </div>
+              <SearchInput value={search} onChange={setSearch} placeholder="Find a medicine" label="Find a medicine" />
               {/* A scanned pack opens that medicine's batches and stock moves */}
               <div className="ph-toolbar-scan">
                 <BarcodeBox
@@ -268,6 +274,8 @@ export function MedicineStockPage() {
   const [dialog, setDialog] = useState(null); // { kind, batch }
   const [flash, setFlash] = useState(null);
   const d = res.data;
+  const batchPage = usePagedRows(d?.batches, { initial: 10, sizes: [10, 25, 50], label: 'batches' });
+  const movePage = usePagedRows(d?.moves, { initial: 25, sizes: [25, 50, 100], label: 'stock moves' });
   const desk = activeMembership.roles.includes('pharmacist');
   const done = (message) => () => {
     setDialog(null);
@@ -300,7 +308,7 @@ export function MedicineStockPage() {
                 </tr>
               </thead>
               <tbody>
-                {d.batches.map((b) => (
+                {batchPage.shown.map((b) => (
                   <tr key={b.id}>
                     <td>{b.batch}</td>
                     <td>
@@ -325,6 +333,7 @@ export function MedicineStockPage() {
                 ))}
               </tbody>
             </table>
+            {batchPage.pager}
           </section>
         )}
         {d && (
@@ -342,7 +351,7 @@ export function MedicineStockPage() {
                 </tr>
               </thead>
               <tbody>
-                {d.moves.map((m, i) => (
+                {movePage.shown.map((m, i) => (
                   <tr key={i}>
                     <td>{formatDateTime(m.at)}</td>
                     <td>{MOVE_LABELS[m.kind]}</td>
@@ -354,6 +363,7 @@ export function MedicineStockPage() {
                 ))}
               </tbody>
             </table>
+            {movePage.pager}
           </section>
         )}
       </div>

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { CircleAlert, CircleCheck, CircleSlash, PackagePlus, Plus, Save, Trash2, X } from 'lucide-react';
 import { Link, NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { SearchInput, usePagedRows } from '../../components/DataTable.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
@@ -40,11 +41,12 @@ function CancelPurchase({ purchase, onClose, onDone }) {
 /** Supplier bills (purchases), each with its medicines; the pharmacist can cancel one. */
 function PurchaseCards({ res, desk, empty = 'No purchases yet.' }) {
   const [cancelling, setCancelling] = useState(null);
+  const { shown, pager } = usePagedRows(res.data?.purchases, { initial: 10, sizes: [10, 25, 50], label: 'bills' });
   return (
     <>
       {res.error && <Alert type="error">{res.error}</Alert>}
       {res.data && !res.data.purchases.length && <p className="muted">{empty}</p>}
-      {(res.data?.purchases ?? []).map((p) => (
+      {(shown ?? []).map((p) => (
           <section key={p.id} className={`card bill-section ${p.status === 'cancelled' ? 'bill-row-cancelled' : ''}`}>
             <div className="row-between">
               <h2>
@@ -140,6 +142,7 @@ function PurchaseCards({ res, desk, empty = 'No purchases yet.' }) {
             </p>
           </section>
         ))}
+      {pager && <div className="card ph-pager">{pager}</div>}
       {cancelling && (
         <CancelPurchase
           purchase={cancelling}
@@ -980,7 +983,14 @@ export function MedicinesPage() {
   const [editing, setEditing] = useState(null); // 'new' | medicine
   const [checkShown, setCheckShown] = useState(true);
   const canEdit = Boolean(settings.data?.canEdit);
+  const [search, setSearch] = useState('');
   const toCheck = medicinesToCheck(res.data?.medicines);
+  const found = useMemo(() => {
+    const all = res.data?.medicines;
+    const q = search.toLowerCase();
+    return all && q ? all.filter((m) => [m.name, m.generic, ...(m.barcodes ?? [])].some((t) => t?.toLowerCase().includes(q))) : all;
+  }, [res.data, search]);
+  const { shown, pager } = usePagedRows(found, { initial: 25, sizes: [25, 50, 100], label: 'medicines', resetKey: search });
   const done = () => {
     setEditing(null);
     res.reload();
@@ -1013,61 +1023,67 @@ export function MedicinesPage() {
           </Alert>
         )}
         <section className="card bill-section">
-          <table className="bill-prices">
-            <thead>
-              <tr>
-                <th scope="col">Medicine</th>
-                <th scope="col">Form · unit</th>
-                <th scope="col">HSN · GST</th>
-                <th scope="col">Schedule</th>
-                <th scope="col" className="num">In stock</th>
-                <th scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(res.data?.medicines ?? []).map((m) => (
-                <tr key={m.id} className={m.active ? '' : 'bill-row-cancelled'}>
-                  <td>
-                    {medicineLabel(m)}
-                    {m.barcodes?.length > 0 && (
-                      <span className="ph-line-note">
-                        {m.barcodes.length === 1 ? `Barcode ${m.barcodes[0]}` : `${m.barcodes.length} barcodes`}
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    {FORM_LABELS[m.form]} · {m.unit}
-                  </td>
-                  <td>
-                    {m.hsn || '–'} · {m.gstRate}%
-                  </td>
-                  <td>
-                    <ScheduleMark schedule={m.schedule} />
-                  </td>
-                  <td className="num">{m.inStock}</td>
-                  <td className="bill-price-actions">
-                    {canEdit && (
-                      <>
-                        <button type="button" className="btn btn-link btn-sm" onClick={() => setEditing(m)}>
-                          Change
-                        </button>
-                        <MedicineActive m={m} onDone={res.reload} />
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {res.data && !res.data.medicines.length && (
+          <div className="ph-list-search">
+            <SearchInput value={search} onChange={setSearch} placeholder="Find a medicine by name, generic name or barcode" label="Find a medicine" />
+          </div>
+          <div className="ph-grn-scroll">
+            <table className="bill-prices">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="muted">
-                    No medicines yet. Add them as they are first bought.
-                  </td>
+                  <th scope="col">Medicine</th>
+                  <th scope="col">Form · unit</th>
+                  <th scope="col">HSN · GST</th>
+                  <th scope="col">Schedule</th>
+                  <th scope="col" className="num">In stock</th>
+                  <th scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(shown ?? []).map((m) => (
+                  <tr key={m.id} className={m.active ? '' : 'bill-row-cancelled'}>
+                    <td>
+                      {medicineLabel(m)}
+                      {m.barcodes?.length > 0 && (
+                        <span className="ph-line-note">
+                          {m.barcodes.length === 1 ? `Barcode ${m.barcodes[0]}` : `${m.barcodes.length} barcodes`}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {FORM_LABELS[m.form]} · {m.unit}
+                    </td>
+                    <td>
+                      {m.hsn || '–'} · {m.gstRate}%
+                    </td>
+                    <td>
+                      <ScheduleMark schedule={m.schedule} />
+                    </td>
+                    <td className="num">{m.inStock}</td>
+                    <td className="bill-price-actions">
+                      {canEdit && (
+                        <>
+                          <button type="button" className="btn btn-link btn-sm" onClick={() => setEditing(m)}>
+                            Change
+                          </button>
+                          <MedicineActive m={m} onDone={res.reload} />
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {found && !found.length && (
+                  <tr>
+                    <td colSpan={6} className="muted">
+                      {search ? 'No medicine matches this search.' : 'No medicines yet. Add them as they are first bought.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {pager}
         </section>
       </div>
       {editing && <MedicineDialog medicine={editing === 'new' ? null : editing} lists={settings.data?.lists} onClose={() => setEditing(null)} onDone={done} />}
@@ -1130,6 +1146,7 @@ export function SuppliersPage() {
   const [editing, setEditing] = useState(null);
   const canEdit = Boolean(settings.data?.canEdit);
   const desk = activeMembership.roles.includes('pharmacist');
+  const { shown, pager } = usePagedRows(res.data?.suppliers, { initial: 25, sizes: [25, 50, 100], label: 'suppliers' });
   return (
     <>
       <PharmacyHeader
@@ -1146,55 +1163,58 @@ export function SuppliersPage() {
       <div className="pf-content bill-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
         <section className="card bill-section">
-          <table className="bill-prices">
-            <thead>
-              <tr>
-                <th scope="col">Supplier</th>
-                <th scope="col">GSTIN</th>
-                <th scope="col">Drug licence</th>
-                <th scope="col">Phone</th>
-                <th scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(res.data?.suppliers ?? []).map((x) => (
-                <tr key={x.id} className={x.active ? '' : 'bill-row-cancelled'}>
-                  <td>
-                    <Link to={`/pharmacy/suppliers/${x.id}`}>{x.name}</Link>
-                  </td>
-                  <td>{x.gstin}</td>
-                  <td>{x.drugLicence}</td>
-                  <td>{x.phone}</td>
-                  <td className="bill-price-actions">
-                    {desk && x.active && (
-                      <Link className="btn btn-secondary btn-sm" to={`/pharmacy/purchases/new?supplier=${x.id}`}>
-                        Add bill
-                      </Link>
-                    )}
-                    {desk && (
-                      <Link className="btn btn-link btn-sm" to={`/pharmacy/supplier-returns/new?supplier=${x.id}`}>
-                        Return stock
-                      </Link>
-                    )}
-                    {canEdit && (
-                      <button type="button" className="btn btn-link btn-sm" onClick={() => setEditing(x)}>
-                        Change
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {res.data && !res.data.suppliers.length && (
+          <div className="ph-grn-scroll">
+            <table className="bill-prices">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="muted">
-                    No suppliers yet.
-                  </td>
+                  <th scope="col">Supplier</th>
+                  <th scope="col">GSTIN</th>
+                  <th scope="col">Drug licence</th>
+                  <th scope="col">Phone</th>
+                  <th scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(shown ?? []).map((x) => (
+                  <tr key={x.id} className={x.active ? '' : 'bill-row-cancelled'}>
+                    <td>
+                      <Link to={`/pharmacy/suppliers/${x.id}`}>{x.name}</Link>
+                    </td>
+                    <td>{x.gstin}</td>
+                    <td>{x.drugLicence}</td>
+                    <td>{x.phone}</td>
+                    <td className="bill-price-actions">
+                      {desk && x.active && (
+                        <Link className="btn btn-secondary btn-sm" to={`/pharmacy/purchases/new?supplier=${x.id}`}>
+                          Add bill
+                        </Link>
+                      )}
+                      {desk && (
+                        <Link className="btn btn-link btn-sm" to={`/pharmacy/supplier-returns/new?supplier=${x.id}`}>
+                          Return stock
+                        </Link>
+                      )}
+                      {canEdit && (
+                        <button type="button" className="btn btn-link btn-sm" onClick={() => setEditing(x)}>
+                          Change
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {res.data && !res.data.suppliers.length && (
+                  <tr>
+                    <td colSpan={5} className="muted">
+                      No suppliers yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {pager}
         </section>
       </div>
       {editing && (
