@@ -5,6 +5,7 @@ import { MODALITIES, STUDIES, STUDY_KEYS, studyByKey } from '../imaging/template
 import { ImagingOrder } from '../models/ImagingOrder.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient, currentAge } from '../models/Patient.js';
+import { Tenant } from '../models/Tenant.js';
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
@@ -390,13 +391,15 @@ function machineStudyView(m, { template = null, patient = null, imagingId = null
   };
 }
 
-// The studies no one is matched to yet (for staff to link)
+// The studies no one is matched to yet (for staff to link), and whether the machine is connected: the bridge is set up
+// and when it was last heard from (never the key)
 imagingRouter.get('/machine/unmatched', async (req, res) => {
   const list = await MachineStudy.find({ tenantId: req.tenantId, patientId: null, receivedAt: { $gte: new Date(req.now - UNMATCHED_DAYS * DAY_MS) } })
     .sort({ receivedAt: -1 })
     .limit(100);
   await audit(req, 'MACHINE_UNMATCHED_VIEWED', { details: { count: list.length } });
-  res.json({ studies: list.map((m) => machineStudyView(m)) });
+  const b = (await Tenant.findById(req.tenantId).lean())?.scanBridge;
+  res.json({ studies: list.map((m) => machineStudyView(m)), bridge: { on: Boolean(b?.keyHash), lastContactAt: b?.lastContactAt ?? null } });
 });
 
 imagingRouter.post('/machine/:machineId/link', async (req, res) => {

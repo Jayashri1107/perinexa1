@@ -261,7 +261,9 @@ describe('the ultrasound machine through the scan bridge', () => {
     const study = { studyUid: '1.2.826.0.2', patientId: 'TYPO-1', patientName: 'SAMPLE^ASHA', srs: [{ sopUid: '1.2.826.0.2.9', content: SR }] };
     expect((await bridge(key).post('/studies', study)).body.matched).toBe(false);
     await bridge(key).post(`/studies/${study.studyUid}/images`, { sopUid: '1.2.826.0.2.20', mediaType: 'image/jpeg', data: jpeg(3) });
-    const list = (await (await as('rmo')).get('/api/imaging/machine/unmatched')).body.studies;
+    const unmatched = (await (await as('rmo')).get('/api/imaging/machine/unmatched')).body;
+    expect(unmatched.bridge).toEqual({ on: true, lastContactAt: expect.any(String) }); // never the key
+    const list = unmatched.studies;
     expect(list).toEqual([expect.objectContaining({ nameOnMachine: 'SAMPLE ASHA', numberOnMachine: 'TYPO-1' })]);
     expect((await (await as('reception')).get('/api/imaging/machine/unmatched')).status).toBe(403);
     expect((await (await as('rmo')).get(`/api/imaging/machine/${list[0].id}/images/${list[0].images[0].id}`)).status).toBe(200); // to see whose it is

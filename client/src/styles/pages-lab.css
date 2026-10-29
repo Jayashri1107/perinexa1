@@ -437,6 +437,7 @@
 .img-unlinked > :first-child { grid-row: span 2; }
 .img-unlinked img { display: block; width: 96px; aspect-ratio: 4 / 3; object-fit: contain; background: var(--ink); border-radius: var(--radius-md); }
 .img-unlinked .wl-who, .img-unlinked .field { grid-column: 2; margin: 0; }
+.img-unlinked-title { margin: var(--space-2) 0 0; font-size: var(--fs-h2); }
 .img-review { display: grid; gap: var(--space-3); }
 .img-review-sheet { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .img-review-sheet .pdoc-title { margin-top: 0; }

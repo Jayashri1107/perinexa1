@@ -146,14 +146,17 @@ function ScanWorklist() {
   );
 }
 
-// Studies from the ultrasound machine no one is matched to (docs/USG_MACHINE_PLAN.md): staff check the picture and the
-// name typed on the machine, and link each to her patient number. Shown only when there are some.
-function MachineUnmatched() {
+// The ultrasound machine on the Scans list (docs/USG_MACHINE_PLAN.md): whether it is connected (the scan bridge set up
+// by the hospital admin, and when it was last heard from), and the studies it sent that no one is matched to – staff
+// check the picture and the name typed on the machine, and link each to her patient number. Each scan's own page has
+// what the machine sent for her.
+export function MachineUnmatched() {
   const { data, reload } = useFetch('/imaging/machine/unmatched');
   const [numbers, setNumbers] = useState({});
   const [problems, setProblems] = useState({});
   const [notice, setNotice] = useState(null);
-  if (!data?.studies?.length) return notice ? <Alert type="success" onClose={() => setNotice(null)}>{notice}</Alert> : null;
+  if (!data) return null;
+  const studies = data.studies ?? [];
   const link = async (m) => {
     try {
       const res = await api(`/imaging/machine/${m.id}/link`, { method: 'POST', body: { mrn: numbers[m.id] ?? '' } });
@@ -166,15 +169,36 @@ function MachineUnmatched() {
   };
   return (
     <section className="card" aria-labelledby="img-unlinked-title">
-      <h2 id="img-unlinked-title">
-        <MonitorDown aria-hidden="true" /> From the machine – not linked
-      </h2>
-      <p className="hint">The machine sent these without a scan number or a patient number Perinexa knows. Check the picture and the name, then link each to her patient number.</p>
+      <div className="plan-card-head">
+        <h2 id="img-unlinked-title">
+          <MonitorDown aria-hidden="true" /> From the ultrasound machine
+        </h2>
+        {data.bridge?.on ? (
+          <StatusPill tone="stable" icon={CircleCheck}>
+            Connected
+          </StatusPill>
+        ) : (
+          <StatusPill tone="inactive" icon={CircleMinus}>
+            Not set up
+          </StatusPill>
+        )}
+      </div>
+      <p className="hint">
+        {data.bridge?.on
+          ? `${data.bridge.lastContactAt ? `Last heard from the scan bridge ${formatDateTime(data.bridge.lastContactAt)}.` : 'The scan bridge has not been heard from yet.'} Open a scan to choose its pictures and readings from the machine.`
+          : 'The machine is not connected yet. The hospital admin sets it up in Hospital admin → Ultrasound machine (scan-bridge/README.md).'}
+      </p>
       <Alert type="success" onClose={() => setNotice(null)}>
         {notice}
       </Alert>
+      {studies.length > 0 && (
+        <>
+          <h3 className="img-unlinked-title">Not linked to a patient ({studies.length})</h3>
+          <p className="hint">The machine sent these without a scan number or a patient number Perinexa knows. Check the picture and the name, then link each to her patient number.</p>
+        </>
+      )}
       <ul className="wl-list">
-        {data.studies.map((m) => (
+        {studies.map((m) => (
           <li key={m.id} className="img-unlinked">
             {m.images[0] && <ApiImage path={machineImageUrl(m.id, m.images[0].id)} alt="First picture of the study" link />}
             <span className="wl-who">
