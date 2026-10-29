@@ -124,3 +124,19 @@ every hint, example, risk warning and AI check hidden until Save. The agreed lay
 the owner's nine decisions are in `docs/HISTORY_SHEET_LAYOUT.md`; whether and when it is built is a separate decision.
 The printed page in template form (history, vitals, prescription) is drafted as board 3 of the mock-up and its five points are decided (Marathi under the medicines by default among them).
 
+
+## Opening stock import for the pharmacy (29 Oct 2026, not built)
+
+The owner wants the pharmacy's current stock (the "Current Stock" sheet of the old pharmacy software, 998 batches) in
+Perinexa with its prices, without entering it bill by bill through Purchases. Not built: new features wait for the
+health check. The plan when it is picked:
+
+- **Source: an Excel export from the old software, not the printed PDF.** The PDF reads back with amounts on the wrong
+  lines, and it holds only total values per batch.
+- **Each line needs:** medicine name, batch, expiry, quantity, MRP and purchase price per unit, GST rate, HSN, form and
+  unit, schedule (H, H1, X, narcotic – the drug registers depend on it) and, where known, the supplier. Missing values
+  are filled in before loading, not guessed.
+- **Loaded once, as opening stock**, through the same code as a purchase (stock moves and audit log), with a preview of
+  every line and the totals to check against the old software's sheet (Pharmacy → Stock → Stock sheet prints the same
+  layout).
+- **Real stock and prices only on the real server** after the go-live checklist, never on a developer's computer.
