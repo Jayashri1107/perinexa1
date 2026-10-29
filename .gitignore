@@ -12,3 +12,6 @@ docs/TEST_ACCOUNTS.md
 
 # Local settings of this computer – never commit
 config/
+
+# The scan bridge on a hospital PC: its last Orthanc change number – never commit
+scan-bridge/bridge-state.json

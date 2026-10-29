@@ -55,8 +55,9 @@ describe('My settings and Hospital admin', () => {
     expect(isPrescriber([{ roles: ['admin'] }])).toBe(false);
   });
   it('Hospital admin holds Staff, Audit log and Print letterhead', () => {
-    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'Beds', 'ABDM', 'Referrals']);
+    expect(moduleByKey('hospital-admin').tabs.map((t) => t.label)).toEqual(['Staff', 'Audit log', 'Print letterhead', 'Patient messages', 'OPD timings', 'Beds', 'ABDM', 'Referrals', 'Ultrasound machine']);
     expect(moduleByKey('hospital-admin').tabs.find((t) => t.label === 'Referrals').to).toBe('/admin/referrals'); // the settings only, never a referral
+    expect(moduleByKey('hospital-admin').tabs.find((t) => t.label === 'Ultrasound machine').to).toBe('/admin/ultrasound-machine'); // the bridge key only, never a patient
     expect(moduleByKey('appointments').tabs.map((t) => t.label)).toEqual(['Schedule', 'Month', 'Needs a time', 'OPD settings']);
     expect(moduleByKey('registers')).toBeUndefined(); // the registers were removed on 2 Oct 2026
     expect(moduleByKey('analytics').tabs.map((t) => t.label)).not.toContain('Monthly report'); // a doctors-only tab, added on the page itself

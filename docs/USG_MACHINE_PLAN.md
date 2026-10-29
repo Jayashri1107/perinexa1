@@ -1,9 +1,23 @@
-# Ultrasound machine on the LAN – plan (DRAFT, 29 Oct 2026; nothing built)
+# Ultrasound machine on the LAN – plan (DRAFT, 29 Oct 2026; built on branch `usg-machine`, not merged)
 
 Written at the developer's request on 29 Oct 2026. It turns ideas 19 and 20 in `docs/IDEAS_FOR_LATER.md` (scan
-images in the report; the machine sends its readings and images by itself) into a plan. **Nothing here is built.**
-Building it is new work under the feature freeze: it starts only with the owner's go-ahead recorded here and the
-developer's agreement to the new tool in step 1.
+images in the report; the machine sends its readings and images by itself) into a plan.
+
+**Built on 29 Oct 2026 at the developer's request, on branch `usg-machine` (not merged)** – an exception to the
+feature freeze: the owner's go-ahead is recorded here before merging. Not yet tried with a real machine or a real
+Orthanc: the tests use a made-up structured report. What was built, step by step:
+
+| Step | Where |
+| --- | --- |
+| 1. Scan bridge | `scan-bridge/` (bridge.mjs, README.md, orthanc.json, .env.example); the key: Hospital admin → Ultrasound machine (`server/src/routes/scanBridge.js`) |
+| 2. Pictures | Scans → a study → From the machine → tick pictures → confirm no fetal sex → Add to the report; Scans → From the machine – not linked (`server/src/routes/imaging.js`, `client/src/pages/imaging/MachinePanel.jsx`) |
+| 3. Readings and the average table | `server/src/imaging/machineReadings.js` (codes, units, rules – DRAFT); the table on the study; Fill the report with these values |
+| 4. Final report | Review the final report → Finalise – sign and print (the report shows the machine's readings, unticked ones struck through, values changed by hand marked) |
+| 5. Worklist | The bridge writes today's ultrasound orders for Orthanc's worklist plugin; each order gets a scan number (US00000001…) the machine sends back |
+
+What arrives is kept `SCAN_BRIDGE_KEEP_DAYS` (30) in Perinexa and `ORTHANC_KEEP_DAYS` (30) on the bridge PC, then
+deleted; what is used is copied into the scan. Questions 1, 3, 4, 6, 7 and 8 below are still open; the defaults used
+are the ones proposed (average of the ticked readings; 30 days).
 
 ## What is asked for
 

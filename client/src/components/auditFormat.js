@@ -254,6 +254,14 @@ export const AUDIT_LABELS = {
   IMAGING_IMAGE_VIEWED: 'Scan picture opened',
   IMAGING_IMAGE_CHANGED: 'Scan picture print choice changed',
   IMAGING_IMAGE_REMOVED: 'Scan picture taken off the report',
+  IMAGING_MACHINE_VIEWED: "Ultrasound machine's studies opened for a scan",
+  IMAGING_MACHINE_READINGS_USED: "Ultrasound machine's readings put in a scan report",
+  MACHINE_IMAGE_VIEWED: 'Picture from the ultrasound machine opened',
+  MACHINE_STUDY_LINKED: 'Study from the ultrasound machine linked to a patient',
+  MACHINE_UNMATCHED_VIEWED: 'Unlinked studies from the ultrasound machine listed',
+  SCAN_BRIDGE_STUDY_RECEIVED: 'Study received from the ultrasound machine',
+  SCAN_BRIDGE_KEY_MADE: 'New key made for the ultrasound machine',
+  SCAN_BRIDGE_SWITCHED_OFF: 'Ultrasound machine link switched off',
   PLATFORM_PATIENTS_LISTED: "Super admin listed this hospital's patients",
   LAB_REFERRER_CHANGED: 'Lab referrer added or changed',
   LAB_QC_LOT_CHANGED: 'QC lot added or changed',
@@ -518,6 +526,12 @@ export const AUDIT_TONES = {
   IMAGING_IMAGE_VIEWED: 'patient',
   IMAGING_IMAGE_CHANGED: 'patient',
   IMAGING_IMAGE_REMOVED: 'patient',
+  IMAGING_MACHINE_VIEWED: 'patient',
+  IMAGING_MACHINE_READINGS_USED: 'patient',
+  MACHINE_IMAGE_VIEWED: 'patient',
+  MACHINE_STUDY_LINKED: 'patient',
+  MACHINE_UNMATCHED_VIEWED: 'patient',
+  SCAN_BRIDGE_STUDY_RECEIVED: 'patient',
   PLATFORM_PATIENTS_LISTED: 'patient',
   LAB_QC_ACTION: 'info',
   ADMISSION_REQUESTED: 'patient',
@@ -1185,7 +1199,14 @@ export function describeAudit(entry) {
     case 'IMAGING_IMAGE_VIEWED':
     case 'IMAGING_IMAGE_CHANGED':
     case 'IMAGING_IMAGE_REMOVED':
+    case 'IMAGING_MACHINE_VIEWED':
+    case 'IMAGING_MACHINE_READINGS_USED':
+    case 'MACHINE_STUDY_LINKED':
       return record(d);
+    case 'MACHINE_UNMATCHED_VIEWED':
+      return d.count != null ? `${d.count} stud${d.count === 1 ? 'y' : 'ies'} listed` : '';
+    case 'SCAN_BRIDGE_STUDY_RECEIVED':
+      return `${d.patientId ? 'Matched to a patient' : 'Not matched yet'}${d.readings ? ` – ${d.readings} reading${d.readings === 1 ? '' : 's'}` : ''}`;
     case 'PLATFORM_PATIENTS_LISTED':
       return d.count != null ? `${d.count} patient${d.count === 1 ? '' : 's'} listed` : '';
     case 'LAB_HOME_COLLECTION':

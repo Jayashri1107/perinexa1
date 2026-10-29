@@ -421,6 +421,27 @@
 .img-report-form > .card { margin: 0; display: grid; gap: var(--space-3); }
 .img-report-form > .card > h2 { margin: 0; }
 .img-study-side .img-pictures { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+/* From the ultrasound machine (docs/USG_MACHINE_PLAN.md): its studies on the scan page, the average table, the review */
+.img-machine-study { display: grid; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.img-machine-study h3, .img-machine-study h4 { margin: 0; }
+.img-machine-pictures { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.img-machine-confirm { display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); }
+.img-avg-scroll { overflow-x: auto; }
+.img-avg td, .img-avg th { white-space: nowrap; }
+.img-avg select { min-width: 9rem; }
+.img-avg select + select { margin-left: var(--space-1); }
+.img-avg-reading { display: inline-flex; gap: var(--space-1); align-items: center; }
+.img-avg-value { font-weight: 600; }
+.img-unmatched summary { cursor: pointer; }
+.img-unlinked { display: grid; gap: var(--space-2); grid-template-columns: 96px minmax(0, 1fr); align-items: start; }
+.img-unlinked > :first-child { grid-row: span 2; }
+.img-unlinked img { display: block; width: 96px; aspect-ratio: 4 / 3; object-fit: contain; background: var(--ink); border-radius: var(--radius-md); }
+.img-unlinked .wl-who, .img-unlinked .field { grid-column: 2; margin: 0; }
+.img-review { display: grid; gap: var(--space-3); }
+.img-review-sheet { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.img-review-sheet .pdoc-title { margin-top: 0; }
+.api-image-loading { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius-md); background: var(--mist-100); }
+.sb-key { display: block; padding: var(--space-2); overflow-wrap: anywhere; user-select: all; background: var(--surface); border-radius: var(--radius-md); }
 .ai-brief-modal { max-width: 640px; }
 .ai-brief-modal h2 { display: flex; align-items: center; gap: var(--space-2); margin-top: 0; }
 .ai-brief-modal h2 svg.lucide { width: 22px; height: 22px; color: var(--indigo-700); }

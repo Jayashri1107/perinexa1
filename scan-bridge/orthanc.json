@@ -1,0 +1,32 @@
+{
+  "Name": "PERINEXA BRIDGE",
+  "StorageDirectory": "C:\\PerinexaBridge\\storage",
+  "IndexDirectory": "C:\\PerinexaBridge\\storage",
+
+  "DicomAet": "PERINEXA",
+  "DicomPort": 4242,
+  "DicomCheckCalledAet": true,
+  "DicomAlwaysAllowStore": false,
+  "DicomAlwaysAllowFind": false,
+  "DicomCheckModalityHost": true,
+  "DicomModalities": {
+    "usg1": { "AET": "CHANGE_ME_MACHINE_AET", "Host": "192.168.1.50", "Port": 104, "AllowStore": true, "AllowFind": true, "AllowEcho": true }
+  },
+
+  "HttpPort": 8042,
+  "RemoteAccessAllowed": false,
+  "AuthenticationEnabled": true,
+  "RegisteredUsers": { "bridge": "CHANGE_ME_LONG_PASSWORD" },
+
+  "StableAge": 60,
+  "MaximumStorageSize": 20000,
+  "MaximumPatientCount": 0,
+  "StorageCompression": false,
+
+  "Plugins": ["C:\\Program Files\\Orthanc Server\\Plugins"],
+  "Worklists": {
+    "Enable": true,
+    "Database": "C:\\PerinexaBridge\\worklists",
+    "FilterIssuerAet": false
+  }
+}

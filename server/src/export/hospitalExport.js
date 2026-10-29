@@ -187,6 +187,8 @@ export const LEFT_OUT = {
   Tenant: 'Written as hospital.json, field by field (never the waiting-room screen key).',
   StoredFile: 'Written as stored-files.json and the "files" folder.',
   LoginLock: 'Wrong sign-in tries by email (the 2-minute lock): not hospital data, deleted a day later.',
+  MachineStudy: 'What the ultrasound machine sent through the scan bridge, waiting to be used: kept SCAN_BRIDGE_KEEP_DAYS, then deleted; the readings and pictures used are in the scan orders (imaging).',
+  MachineImage: 'The pictures of those machine studies, deleted with them; the ones used are copied into the scan pictures (stored files).',
   SharedState: 'Short-lived working state shared by the server copies (request counts, ABDM steps and one-time keys, encrypted): not hospital data, removed when it ends.',
   Notification: "Staff's notifications (the bell): short-lived messages, deleted after 30 days; the work itself is exported.",
   PortalAccess: 'Patient portal codes (kept only as hashes) never leave Perinexa.',
@@ -201,7 +203,7 @@ export const LEFT_OUT = {
 };
 
 /** Field names that never leave, wherever they are (a second guard behind the choices above). */
-const NEVER_KEYS = new Set(['passwordHash', 'codeHash', 'tokenVersion', 'displayKey', 'signupKey']);
+const NEVER_KEYS = new Set(['passwordHash', 'codeHash', 'tokenVersion', 'displayKey', 'signupKey', 'keyHash']);
 const NEVER_KEYS_PATTERN = new RegExp(`"(${[...NEVER_KEYS].join('|')})"\\s*:`);
 
 /**

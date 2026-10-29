@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileText, ImagePlus, Printer, ScanLine, Siren } from 'lucide-react';
+import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileSearch, FileText, ImagePlus, MonitorDown, Printer, ScanLine, Siren } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { usePagedRows } from '../../components/DataTable.jsx';
@@ -14,6 +14,9 @@ import { ExportButton } from '../../components/ExportButton.jsx';
 import { fileBody, fileSize } from '../../components/fileUpload.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { SCAN_ROLES } from '../../platform/modules.js';
+import { ApiImage } from '../../components/ApiImage.jsx';
+import { MachinePanel, machineImageUrl } from './MachinePanel.jsx';
+import { USE_WORDS } from './machineTable.js';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): the worklist (to schedule, scheduled, to report,
 // signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
@@ -102,6 +105,7 @@ function ScanWorklist() {
           ))}
         </div>
         <Alert type="error">{error}</Alert>
+        <MachineUnmatched />
         <section className="card">
           {loading && !data ? (
             <p className="muted">Loading…</p>
@@ -139,6 +143,56 @@ function ScanWorklist() {
         </section>
       </div>
     </>
+  );
+}
+
+// Studies from the ultrasound machine no one is matched to (docs/USG_MACHINE_PLAN.md): staff check the picture and the
+// name typed on the machine, and link each to her patient number. Shown only when there are some.
+function MachineUnmatched() {
+  const { data, reload } = useFetch('/imaging/machine/unmatched');
+  const [numbers, setNumbers] = useState({});
+  const [problems, setProblems] = useState({});
+  const [notice, setNotice] = useState(null);
+  if (!data?.studies?.length) return notice ? <Alert type="success" onClose={() => setNotice(null)}>{notice}</Alert> : null;
+  const link = async (m) => {
+    try {
+      const res = await api(`/imaging/machine/${m.id}/link`, { method: 'POST', body: { mrn: numbers[m.id] ?? '' } });
+      setProblems({ ...problems, [m.id]: null });
+      setNotice(`Linked to ${res.patient.fullName} (${res.patient.mrn}). Open her scan to use it.`);
+      reload();
+    } catch (err) {
+      setProblems({ ...problems, [m.id]: err.fields?.mrn ?? err.message });
+    }
+  };
+  return (
+    <section className="card" aria-labelledby="img-unlinked-title">
+      <h2 id="img-unlinked-title">
+        <MonitorDown aria-hidden="true" /> From the machine – not linked
+      </h2>
+      <p className="hint">The machine sent these without a scan number or a patient number Perinexa knows. Check the picture and the name, then link each to her patient number.</p>
+      <Alert type="success" onClose={() => setNotice(null)}>
+        {notice}
+      </Alert>
+      <ul className="wl-list">
+        {data.studies.map((m) => (
+          <li key={m.id} className="img-unlinked">
+            {m.images[0] && <ApiImage path={machineImageUrl(m.id, m.images[0].id)} alt="First picture of the study" link />}
+            <span className="wl-who">
+              <span className="strong-name">{m.nameOnMachine || 'No name on the machine'}</span>
+              <span className="muted tabular">{[m.numberOnMachine, formatDateTime(m.studyAt ?? m.receivedAt), m.machine, `${m.images.length} picture${m.images.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span>
+            </span>
+            <Field label="Her patient number" id={`unl-${m.id}`} error={problems[m.id]}>
+              <span className="row">
+                <input id={`unl-${m.id}`} maxLength={40} placeholder="P-000123" value={numbers[m.id] ?? ''} onChange={(e) => setNumbers({ ...numbers, [m.id]: e.target.value })} />
+                <button type="button" className="btn btn-secondary btn-sm" disabled={!(numbers[m.id] ?? '').trim()} onClick={() => link(m)}>
+                  Link
+                </button>
+              </span>
+            </Field>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -249,7 +303,7 @@ function ReportForm({ s, template, onSaved, onError, onAsk = null }) {
   );
 }
 
-const imageUrl = (s, i) => `/api/imaging/${s.id}/images/${i.fileId}`;
+const imageUrl = (s, i) => `/imaging/${s.id}/images/${i.fileId}`;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -313,9 +367,7 @@ function ScanImages({ s, onSaved, onError }) {
         <ul className="img-pictures">
           {images.map((i) => (
             <li key={i.fileId}>
-              <a href={imageUrl(s, i)} target="_blank" rel="noopener noreferrer">
-                <img src={imageUrl(s, i)} alt={i.fileName} loading="lazy" />
-              </a>
+              <ApiImage path={imageUrl(s, i)} alt={i.fileName} link />
               <span className="hint">
                 {i.fileName} · {fileSize(i.size)} · {i.byName}
               </span>
@@ -350,6 +402,94 @@ function ScanImages({ s, onSaved, onError }) {
   );
 }
 
+// The readings from the machine behind the report's values: each reading (struck through when unticked), the rule
+// and the value used; a value changed by hand afterwards says so
+export function MachineReadingsTable({ machine, className = 'ptable pdoc-table' }) {
+  if (!machine?.rows?.length) return null;
+  return (
+    <>
+      <h2 className="pdoc-sig-title">Measurements from the ultrasound machine{machine.fetus && machine.fetus !== 'A' ? ` – fetus ${machine.fetus}` : ''}</h2>
+      <table className={className}>
+        <thead>
+          <tr>
+            <th scope="col">Measurement</th>
+            <th scope="col">Readings</th>
+            <th scope="col">Used</th>
+            <th scope="col">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {machine.rows.map((r) => (
+            <tr key={r.key}>
+              <th scope="row">
+                {r.name} ({r.unit})
+              </th>
+              <td className="tabular">
+                {r.readings.length
+                  ? r.readings.map((v, i) => (
+                      <span key={i}>
+                        {i > 0 && ', '}
+                        {r.ticked?.[i] === false ? <s title="Not used">{v}</s> : v}
+                      </span>
+                    ))
+                  : `Machine: ${r.machine}`}
+              </td>
+              <td>{r.use === 'reading' ? `Reading ${r.reading + 1}` : USE_WORDS[r.use]}</td>
+              <td className="tabular">
+                {r.value}
+                {r.edited ? ' (changed by hand)' : ''}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+/** What the report says: the patient, the values, the machine's readings, findings, impression, the chosen pictures. */
+function ReportBody({ s, template }) {
+  return (
+    <>
+      <h1 className="pdoc-title">{s.studyName}</h1>
+      <PrintFacts
+        items={[
+          ['Patient', s.patient.fullName],
+          ['Patient number', s.patient.mrn],
+          ['Age', s.patient.age != null ? `${s.patient.age} years` : ''],
+          ['Referred by', s.ordered.byName],
+          ['Done', s.done ? formatDateTime(s.done.at) : ''],
+          ['Indication', s.indication ?? '', true],
+        ]}
+      />
+      <PrintFacts items={(template?.fields ?? []).filter((f) => s.report?.values?.[f.key] != null && s.report.values[f.key] !== '').map((f) => [f.name, `${s.report.values[f.key]}${f.unit ? ` ${f.unit}` : ''}`])} />
+      <MachineReadingsTable machine={s.report?.machine} />
+      {s.report?.findings && (
+        <>
+          <h2 className="pdoc-sig-title">Findings</h2>
+          <p className="pre-line">{s.report.findings}</p>
+        </>
+      )}
+      {s.report?.impression && (
+        <>
+          <h2 className="pdoc-sig-title">Impression</h2>
+          <p className="pre-line">{s.report.impression}</p>
+        </>
+      )}
+      {s.images?.some((i) => i.inPrint) && (
+        <div className="img-print-pictures">
+          {s.images
+            .filter((i) => i.inPrint)
+            .map((i) => (
+              <ApiImage key={i.fileId} path={imageUrl(s, i)} alt={i.fileName} />
+            ))}
+        </div>
+      )}
+      <p className="pdoc-small">The sex of the fetus is not determined or disclosed (PCPNDT Act, 1994).</p>
+    </>
+  );
+}
+
 function ReportPrint({ s, template, onClose, autoPrint = false }) {
   const lh = useFetch('/tenant/settings/letterhead');
   const record = () => api(`/imaging/${s.id}/printed`, { method: 'POST' });
@@ -360,40 +500,7 @@ function ReportPrint({ s, template, onClose, autoPrint = false }) {
       ) : (
         <PrintDocument draft="DRAFT report template – not yet approved by the hospital's doctor.">
           {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
-          <h1 className="pdoc-title">{s.studyName}</h1>
-          <PrintFacts
-            items={[
-              ['Patient', s.patient.fullName],
-              ['Patient number', s.patient.mrn],
-              ['Age', s.patient.age != null ? `${s.patient.age} years` : ''],
-              ['Referred by', s.ordered.byName],
-              ['Done', s.done ? formatDateTime(s.done.at) : ''],
-              ['Indication', s.indication ?? '', true],
-            ]}
-          />
-          <PrintFacts items={(template?.fields ?? []).filter((f) => s.report?.values?.[f.key] != null && s.report.values[f.key] !== '').map((f) => [f.name, `${s.report.values[f.key]}${f.unit ? ` ${f.unit}` : ''}`])} />
-          {s.report?.findings && (
-            <>
-              <h2 className="pdoc-sig-title">Findings</h2>
-              <p className="pre-line">{s.report.findings}</p>
-            </>
-          )}
-          {s.report?.impression && (
-            <>
-              <h2 className="pdoc-sig-title">Impression</h2>
-              <p className="pre-line">{s.report.impression}</p>
-            </>
-          )}
-          {s.images?.some((i) => i.inPrint) && (
-            <div className="img-print-pictures">
-              {s.images
-                .filter((i) => i.inPrint)
-                .map((i) => (
-                  <img key={i.fileId} src={imageUrl(s, i)} alt={i.fileName} />
-                ))}
-            </div>
-          )}
-          <p className="pdoc-small">The sex of the fetus is not determined or disclosed (PCPNDT Act, 1994).</p>
+          <ReportBody s={s} template={template} />
           <div className="pdoc-sigs">
             <div className="pdoc-sig">
               <h2 className="pdoc-sig-title">Signed by</h2>
@@ -417,6 +524,7 @@ export function ImagingStudyPage() {
   const [when, setWhen] = useState(() => localInput(new Date()));
   const [printing, setPrinting] = useState(false); // false | 'preview' | 'auto' (completed: prints by itself)
   const [asking, setAsking] = useState(false); // the report saved: "Is the report complete?"
+  const [reviewing, setReviewing] = useState(false); // the final report as it will print, before finalising
   const s = current ?? data?.study;
   const saved = (next, msg) => {
     setCurrent(next);
@@ -441,6 +549,7 @@ export function ImagingStudyPage() {
     try {
       saved((await api(`/imaging/${s.id}/sign`, { method: 'POST', body: { rev: s.rev } })).study, 'Signed. The report is printing.');
       setAsking(false);
+      setReviewing(false);
       setPrinting('auto');
     } catch (err) {
       failed(err);
@@ -469,6 +578,7 @@ export function ImagingStudyPage() {
             {s.scheduledFor ? ` · for ${formatDateTime(s.scheduledFor)}` : ''}
             {s.done ? ` · done ${formatDateTime(s.done.at)}` : ''}
             {s.signed ? ` · signed by ${s.signed.byName}` : ''}
+            {s.accession ? ` · scan number on the machine ${s.accession}` : ''}
           </p>
           {s.indication && <p>Indication: {s.indication}</p>}
           <div className="row">
@@ -485,9 +595,9 @@ export function ImagingStudyPage() {
                 Mark done
               </button>
             )}
-            {a.canSign && (
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => act('sign', {}, 'Signed.')}>
-                <CircleCheck aria-hidden="true" /> Sign the report
+            {!reviewing && s.status === 'done' && s.report && (a.canSign || a.canReport) && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setReviewing(true)}>
+                <FileSearch aria-hidden="true" /> Review the final report
               </button>
             )}
             {a.canPrint && (
@@ -499,16 +609,39 @@ export function ImagingStudyPage() {
         </section>
         <div className="img-study">
         <div className="img-study-main">
-        {a.canReport && <ReportForm key={`${s.rev}`} s={s} template={data?.template} onSaved={saved} onError={failed} onAsk={() => setAsking(true)} />}
-        {asking && s.status === 'done' && (
+        {reviewing && s.status === 'done' && s.report && (
+          // The final report as it will print (docs/USG_MACHINE_PLAN.md step 4): finalising signs it and prints it
+          <section className="card img-review" aria-labelledby="img-review-title">
+            <h2 id="img-review-title">Review the final report</h2>
+            <p className="hint">This is the report as it will print. Finalising signs it; after that, a change needs a reason.</p>
+            <div className="img-review-sheet">
+              <ReportBody s={s} template={data?.template} />
+            </div>
+            <div className="row">
+              {a.canSign ? (
+                <button type="button" className="btn btn-primary" onClick={complete}>
+                  <CircleCheck aria-hidden="true" /> Finalise – sign and print
+                </button>
+              ) : (
+                <span className="hint">A doctor finalises and signs it.</span>
+              )}
+              <button type="button" className="btn btn-secondary" onClick={() => setReviewing(false)}>
+                Make changes
+              </button>
+            </div>
+          </section>
+        )}
+        {s.images && !reviewing && <MachinePanel s={s} onSaved={saved} onError={failed} />}
+        {a.canReport && !reviewing && <ReportForm key={`${s.rev}`} s={s} template={data?.template} onSaved={saved} onError={failed} onAsk={() => setAsking(true)} />}
+        {asking && !reviewing && s.status === 'done' && (
           // Asked once the report is saved (owner, 19 Oct 2026): complete – the doctor signs and it prints by itself
           <section className="card img-complete" aria-labelledby="img-complete-title">
             <h2 id="img-complete-title">Is the report complete?</h2>
-            <p>{a.canSign ? 'Complete signs the report and prints it. Add something keeps it open for more.' : 'A doctor signs it; until then it stays open for more.'}</p>
+            <p>{a.canSign ? 'Review the final report, then finalise: it is signed and prints. Add something keeps it open for more.' : 'A doctor signs it; until then it stays open for more.'}</p>
             <div className="row">
               {a.canSign && (
-                <button type="button" className="btn btn-primary" onClick={complete}>
-                  <CircleCheck aria-hidden="true" /> Complete – sign and print
+                <button type="button" className="btn btn-primary" onClick={() => setReviewing(true)}>
+                  <FileSearch aria-hidden="true" /> Review the final report
                 </button>
               )}
               <button type="button" className="btn btn-secondary" onClick={() => setAsking(false)}>

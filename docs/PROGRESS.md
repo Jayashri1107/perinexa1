@@ -13,10 +13,21 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
-- **29 Oct 2026 – plan only, nothing built: the ultrasound machine on the LAN (branch `usg-machine-plan`):**
-  `docs/USG_MACHINE_PLAN.md` – pictures and readings sent by the machine to a scan bridge in the hospital, chosen on
-  the study, an average table for repeated readings, then Review the final report and Finalise. Waits for the owner's
-  go-ahead (feature freeze), the developer's agreement to the bridge tool, and the machine's make and model.
+- **29 Oct 2026 – the ultrasound machine on the LAN (branch `usg-machine`, not merged – an exception to the feature
+  freeze at the developer's request; the owner's go-ahead to be recorded before merging):** `docs/USG_MACHINE_PLAN.md`.
+  (1) **Scan bridge** (`scan-bridge/`): a small program on a hospital PC next to Orthanc (the free DICOM receiver the
+  machine sends to); it sends each finished study – the machine's structured report and a JPEG of each still picture –
+  to Perinexa with the hospital's key, and writes today's ultrasound orders as the machine's worklist. (2) Hospital
+  admin → **Ultrasound machine**: make the key (shown once), make a new one, switch off. (3) On a scan, **From the
+  machine**: the patient's studies from the machine (matched by the scan number on the worklist, or her patient number
+  typed on the machine), its pictures to tick and add to the report (only after confirming they do not show the baby's
+  sex), and the **average table**: each measurement's readings with ticks, the machine's own value, the rule (average,
+  last, machine's own, one reading) and the value; **Fill the report with these values**. (4) **Review the final
+  report** → **Finalise – sign and print**; the printed report lists the machine's readings. (5) Scans → **From the
+  machine – not linked**: studies with an unknown number, linked by her patient number. DRAFT: the measurement codes,
+  units and the average rule (owner's approval); not tried with a real machine yet. **How to test (without a machine):**
+  `server/tests/usg-machine.test.js` sends a made-up study through the bridge's address; with a machine: follow
+  `scan-bridge/README.md` with a dummy patient only.
 - **28 Oct 2026 – pharmacy: prescribed medicines stay on the bill; Sold list (developer's requests):** medicines put
   on a bill from the doctor's prescription are marked Prescribed and cannot be taken off (only their quantity and batch
   change; a prescribed medicine short of stock says so); medicines the pharmacist adds can be removed. Pharmacy bills is

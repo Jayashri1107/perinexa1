@@ -122,6 +122,7 @@ import { AnalyticsSectionRoute } from './pages/analytics/AnalyticsSectionRoute.j
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
 import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 import { ReferralSettingsPage } from './pages/settings/ReferralSettingsPage.jsx';
+import { ScanBridgeSettingsPage } from './pages/settings/ScanBridgeSettingsPage.jsx';
 import { ReferralsDeskPage } from './pages/referrals/ReferralsDeskPage.jsx';
 import { NewReferralPage } from './pages/referrals/NewReferralPage.jsx';
 import { ReferralPage } from './pages/referrals/ReferralPage.jsx';
@@ -441,6 +442,8 @@ export function App() {
                 <Route path="abdm" element={<AbdmSettingsPage />} />
                 {/* The referral settings: centres, desk number, consultants' direct lines, working hours, holidays */}
                 <Route path="referrals" element={<ReferralSettingsPage />} />
+                {/* The ultrasound machine's scan bridge key (docs/USG_MACHINE_PLAN.md) */}
+                <Route path="ultrasound-machine" element={<ScanBridgeSettingsPage />} />
                 <Route path="audit-log" element={<HospitalAuditLogPage />} />
                 {['security', 'access', 'sessions', 'patients'].map((c) => (
                   <Route key={c} path={`audit-log/${c}`} element={<AuditCategoryRedirect to="/admin/audit-log" category={c} />} />

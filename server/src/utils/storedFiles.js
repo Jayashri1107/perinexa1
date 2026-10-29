@@ -25,6 +25,9 @@ const MAGIC = {
   'image/webp': (b) => b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP',
 };
 
+/** Is it really a file of this type (its first bytes)? */
+export const looksLike = (mediaType, data) => Boolean(MAGIC[mediaType]?.(data));
+
 export const cleanFileName = (name) => name.replace(/[^\w.\- ()]/g, '_').slice(0, 120) || 'file';
 const invalid = (message) => Object.assign(new HttpError(400, message, 'VALIDATION'), { fields: { file: message } });
 

@@ -8,7 +8,14 @@ const { ObjectId } = mongoose.Schema.Types;
 const byFields = { by: { type: ObjectId, ref: 'User' }, byName: String, at: Date };
 const stamp = () => ({ type: new mongoose.Schema(byFields, { _id: false }), default: null });
 const reportSchema = new mongoose.Schema(
-  { values: { type: mongoose.Schema.Types.Mixed, default: {} }, findings: { type: String, default: '' }, impression: { type: String, default: '' } },
+  {
+    values: { type: mongoose.Schema.Types.Mixed, default: {} },
+    findings: { type: String, default: '' },
+    impression: { type: String, default: '' },
+    // The readings from the ultrasound machine put in the values (docs/USG_MACHINE_PLAN.md): which machine study and
+    // fetus, and per field the readings, which were ticked, the rule used and the value it gave. null: typed by hand.
+    machine: { type: mongoose.Schema.Types.Mixed, default: null },
+  },
   { _id: false, minimize: false },
 );
 
@@ -47,6 +54,9 @@ const imagingSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    // The scan number on the ultrasound machine's worklist (DICOM accession number, at most 16 characters): given the
+    // first time the order goes to the machine (routes/scanBridge.js), e.g. US00000012. null: never sent.
+    accession: { type: String, default: null },
     rev: { type: Number, default: 0 },
     clientRequestId: { type: String, required: true, maxlength: 64 },
   },
@@ -56,5 +66,6 @@ imagingSchema.plugin(tenantScoped);
 imagingSchema.index({ tenantId: 1, patientId: 1, createdAt: -1 });
 imagingSchema.index({ tenantId: 1, status: 1, scheduledFor: 1 });
 imagingSchema.index({ tenantId: 1, clientRequestId: 1 }, { unique: true });
+imagingSchema.index({ tenantId: 1, accession: 1 }, { unique: true, partialFilterExpression: { accession: { $type: 'string' } } });
 
 export const ImagingOrder = mongoose.model('ImagingOrder', imagingSchema);

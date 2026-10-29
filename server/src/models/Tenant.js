@@ -83,6 +83,16 @@ const tenantSchema = new mongoose.Schema(
       // hospital's portal address (/portal/h/<code>), printed on a poster. Also opens sign-in with ABHA. null = off.
       signupKey: { type: String, default: null },
     },
+    // The ultrasound machine's scan bridge (docs/USG_MACHINE_PLAN.md): the program on a hospital PC that sends what the
+    // machine captured. It signs in with a key the hospital admin makes (Hospital admin → Ultrasound machine), shown
+    // once; only its SHA-256 is kept. A new key makes the old one stop working. keyHash null = switched off.
+    scanBridge: {
+      keyHash: { type: String, default: null },
+      keyHint: { type: String, default: '' }, // the key's last 4 characters, to tell which one is set up
+      madeAt: { type: Date, default: null },
+      madeByName: { type: String, default: '' },
+      lastContactAt: { type: Date, default: null },
+    },
     // Admission at the desk (owner, 17 Oct 2026 – docs/ADMISSION_DESK_PLAN.md): reception admits only after a doctor's
     // request (an emergency still can, marked so). Changed by the hospital admin (Hospital admin → Beds).
     desk: {
@@ -154,6 +164,7 @@ tenantSchema.index({ name: 1 });
 tenantSchema.index({ createdAt: -1 });
 tenantSchema.index({ 'messaging.displayKey': 1 }, { unique: true, partialFilterExpression: { 'messaging.displayKey': { $type: 'string' } } });
 tenantSchema.index({ 'messaging.signupKey': 1 }, { unique: true, partialFilterExpression: { 'messaging.signupKey': { $type: 'string' } } });
+tenantSchema.index({ 'scanBridge.keyHash': 1 }, { unique: true, partialFilterExpression: { 'scanBridge.keyHash': { $type: 'string' } } });
 
 tenantSchema.pre('validate', function () {
   if (this.name) this.nameKey = this.name.trim().toLowerCase();
