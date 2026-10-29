@@ -631,6 +631,8 @@ export function ImagingStudyPage() {
             )}
           </div>
         </section>
+        {/* Full width: the average table needs the room */}
+        {s.images && !reviewing && <MachinePanel s={s} onSaved={saved} onError={failed} />}
         <div className="img-study">
         <div className="img-study-main">
         {reviewing && s.status === 'done' && s.report && (
@@ -655,7 +657,6 @@ export function ImagingStudyPage() {
             </div>
           </section>
         )}
-        {s.images && !reviewing && <MachinePanel s={s} onSaved={saved} onError={failed} />}
         {a.canReport && !reviewing && <ReportForm key={`${s.rev}`} s={s} template={data?.template} onSaved={saved} onError={failed} onAsk={() => setAsking(true)} />}
         {asking && !reviewing && s.status === 'done' && (
           // Asked once the report is saved (owner, 19 Oct 2026): complete – the doctor signs and it prints by itself

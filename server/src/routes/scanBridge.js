@@ -123,8 +123,16 @@ scanBridgeRouter.post('/studies/:studyUid/images', async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
-// DICOM text: plain letters, digits and a few signs (the machine's character set may be basic)
-const dicomText = (s, max) => String(s ?? '').normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/[\\^]/g, ' ').trim().slice(0, max);
+// DICOM text: plain letters, digits and a few signs (the machine's character set may be basic); a dash stays a dash
+const dicomText = (s, max) =>
+  String(s ?? '')
+    .replace(/[‐-―]/g, '-')
+    .normalize('NFKD')
+    .replace(/[^\x20-\x7e]/g, '')
+    .replace(/[\\^]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
 
 // The machine's worklist: ultrasound orders booked for today, and those ordered in the last 3 days not yet booked.
 // Each gets its scan number (the accession number) the first time it is listed; the machine sends it back with the

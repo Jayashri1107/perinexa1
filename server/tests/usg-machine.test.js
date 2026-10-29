@@ -176,7 +176,7 @@ describe('the ultrasound machine through the scan bridge', () => {
     let s = await order(p);
     await order(p, 'xray'); // not an ultrasound: never on the machine's worklist
     const items = (await bridge(key).get('/worklist')).body.items;
-    expect(items).toEqual([expect.objectContaining({ accession: 'US00000001', patientId: p.mrn, patientName: 'Asha Sample', study: 'usg_growth' })]);
+    expect(items).toEqual([expect.objectContaining({ accession: 'US00000001', patientId: p.mrn, patientName: 'Asha Sample', study: 'usg_growth', studyName: 'USG - growth and well-being (third trimester)' })]);
     expect((await bridge(key).get('/worklist')).body.items[0].accession).toBe('US00000001'); // kept
     expect(JSON.stringify(items)).not.toMatch(/sex|indication/i);
     s = (await (await as('drA')).get(`/api/imaging/${s.id}`)).body.study;
