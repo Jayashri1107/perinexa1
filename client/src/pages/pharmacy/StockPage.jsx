@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ClipboardCheck, FileDown, PackageX } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { ClipboardCheck, FileDown, FileUp, PackageX } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
@@ -28,9 +28,14 @@ export function StockPage() {
             <p>
               Stock value: <strong>{money(res.data.totals.costValuePaise)}</strong> at purchase price · <strong>{money(res.data.totals.mrpValuePaise)}</strong> at MRP · {res.data.totals.low} below reorder level
             </p>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet(true)}>
-              <FileDown aria-hidden="true" /> Stock sheet
-            </button>
+            <div className="row">
+              <Link className="btn btn-secondary btn-sm" to="/pharmacy/stock/import">
+                <FileUp aria-hidden="true" /> Import opening stock
+              </Link>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet(true)}>
+                <FileDown aria-hidden="true" /> Stock sheet
+              </button>
+            </div>
           </div>
         )}
         <DataTable

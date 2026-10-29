@@ -107,6 +107,7 @@ export const AUDIT_LABELS = {
   PHARMACY_PURCHASE_CANCELLED: 'Purchase cancelled',
   PHARMACY_STOCK_WRITTEN_OFF: 'Stock written off',
   PHARMACY_STOCK_COUNTED: 'Stock count corrected',
+  PHARMACY_OPENING_STOCK_IMPORTED: 'Opening stock imported',
   PHARMACY_PRESCRIPTIONS_VIEWED: "Patient's prescriptions opened in the pharmacy",
   PHARMACY_SOLD: 'Medicines sold at the counter',
   PHARMACY_ISSUED: 'Medicines issued to an admitted patient',
@@ -1417,6 +1418,8 @@ export function describeAudit(entry) {
       return d.qty != null ? count(d.qty, 'unit') : '';
     case 'PHARMACY_STOCK_COUNTED':
       return joined(d.from != null && d.to != null ? `was ${count(d.from, 'unit')}, now ${formatNumber(d.to)}` : '', d.witness ? 'with a witness' : '');
+    case 'PHARMACY_OPENING_STOCK_IMPORTED':
+      return joined(d.batches != null ? count(d.batches, 'batch', 'batches') : '', d.medicinesAdded ? count(d.medicinesAdded, 'new medicine') : '', d.mrpValuePaise != null ? `${rupeesOf(d.mrpValuePaise)} at MRP` : '');
     case 'PHARMACY_PRESCRIPTIONS_VIEWED':
       return joined(opened(d), d.prescriptions != null ? count(d.prescriptions, 'prescription') : '');
     case 'PHARMACY_SOLD':

@@ -25,7 +25,7 @@ export const FORM_LABELS = {
   sachet: 'Sachet',
   other: 'Other',
 };
-export const MOVE_LABELS = { purchase: 'Received', purchase_cancelled: 'Purchase cancelled', sale: 'Sold', issue: 'Issued (inpatient)', return: 'Returned', writeoff: 'Written off', count: 'Stock count', supplier_return: 'Returned to supplier', supplier_return_cancelled: 'Return to supplier cancelled' };
+export const MOVE_LABELS = { opening: 'Opening stock', purchase: 'Received', purchase_cancelled: 'Purchase cancelled', sale: 'Sold', issue: 'Issued (inpatient)', return: 'Returned', writeoff: 'Written off', count: 'Stock count', supplier_return: 'Returned to supplier', supplier_return_cancelled: 'Return to supplier cancelled' };
 export const MODE_LABELS = { cash: 'Cash', upi: 'UPI', card: 'Card' };
 export const FREQUENCY_WORDS = { '1-0-0': 'morning', '0-1-0': 'afternoon', '0-0-1': 'night', '1-0-1': 'twice a day', '1-1-1': 'three times a day', '1-1-1-1': 'four times a day', sos: 'when needed', stat: 'once, now', weekly: 'weekly', alternate: 'alternate days', custom: '' };
 
