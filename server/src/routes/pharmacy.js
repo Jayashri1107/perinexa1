@@ -38,6 +38,7 @@ import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, in
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
+import { checkOpening, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
@@ -51,6 +52,8 @@ import { capitalizeName } from '../utils/personName.js';
 //  - /api/pharmacy/settings, /medicines, /suppliers        the pharmacy's details, the stock list, the suppliers
 //  - /api/pharmacy/purchases                                supplier invoices (stock in, batch by batch)
 //  - /api/pharmacy/stock, /batches/:id/writeoff|count       stock, write-offs, counts
+//  - /api/pharmacy/opening-stock/check, /opening-stock     the stock on the shelves at the start, from the old
+//                                                           software's Excel file (pharmacy/openingStock.js)
 //  - /api/pharmacy/patients/:id/prescriptions, /inpatients  what to sell or issue
 //  - /api/pharmacy/invoices                                 counter sales and issues to admitted patients (GST tax
 //                                                           invoices), returns (credit notes)
@@ -438,6 +441,22 @@ pharmacyRouter.get('/stock-sheet', async (req, res) => {
     lines,
     totals: { mrpValuePaise: lines.reduce((s, l) => s + l.mrpValuePaise, 0), costValuePaise: lines.reduce((s, l) => s + l.costValuePaise, 0) },
   });
+});
+
+// Opening stock from the old pharmacy software's file (pharmacist or hospital admin). Check reads only: every line
+// with what it becomes and its problems. Import saves it all, or nothing while any line has a problem.
+pharmacyRouter.post('/opening-stock/check', async (req, res) => {
+  editor(req);
+  const { lines } = parse(openingSchema, req.body);
+  res.json(await checkOpening(req, lines, today(req)));
+});
+
+pharmacyRouter.post('/opening-stock', async (req, res) => {
+  editor(req);
+  const { lines } = parse(openingSchema, req.body);
+  const done = await saveOpening(req, lines, today(req));
+  await audit(req, 'PHARMACY_OPENING_STOCK_IMPORTED', { details: { batches: done.batches, medicinesAdded: done.medicinesAdded, units: done.units, mrpValuePaise: done.mrpValuePaise, costValuePaise: done.costValuePaise } });
+  res.status(201).json({ imported: done });
 });
 
 // One medicine: its batches and its recent stock moves.

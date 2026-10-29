@@ -191,3 +191,13 @@
 .ph-sheet-lines .num { text-align: right; font-variant-numeric: tabular-nums; }
 .ph-sheet-lines .ph-sheet-total th, .ph-sheet-lines .ph-sheet-total td { border-top: 2px solid var(--print-ink); border-bottom: none; font-weight: 700; text-align: right; }
 .ph-sheet-expired { font-weight: 700; }
+
+/* Import opening stock (Pharmacy → Stock → Import opening stock) */
+.os-summary { margin: 0 0 var(--space-4); padding-left: var(--space-6); }
+.os-summary li { margin-bottom: var(--space-1); }
+.os-lines { width: 100%; margin-top: var(--space-4); }
+.os-lines td { vertical-align: top; }
+.os-lines .pill { margin: 0 var(--space-1) var(--space-1) 0; white-space: normal; }
+.os-note { display: flex; align-items: flex-start; gap: 4px; color: var(--slate-600); font-size: var(--fs-caption); }
+.os-note svg { flex-shrink: 0; width: 14px; height: 14px; margin-top: 2px; }
+.os-scroll { overflow-x: auto; }

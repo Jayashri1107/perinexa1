@@ -147,6 +147,8 @@ export function createApp({
   // The medicine safety list is saved whole: 300 entries with their names, advice and sources do not fit in 100 kb.
   // (Each field has its own limit, so the list's "at most 300 entries" is reached before this one.)
   app.use('/api/medicine-safety', express.json({ limit: '2mb' }));
+  // The pharmacy's opening stock: up to 5,000 lines read from the old software's file (pharmacy/openingStock.js).
+  app.use('/api/pharmacy/opening-stock', express.json({ limit: '4mb' }));
   app.use('/api/auth/me/photo', express.json({ limit: '200kb' })); // My profile: a small staff photo
   app.use(/^\/api\/lab-setup\/signatories(\/[^/]+)?$/, express.json({ limit: '300kb' })); // a signature picture (lab reports)
   // From ABDM and other hospitals (ABDM M2 and M3): a limit of their own, checked before any body is read – ABDM's

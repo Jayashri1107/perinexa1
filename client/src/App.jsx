@@ -41,6 +41,7 @@ import { PharmacySettingsPage, ReportsPage } from './pages/pharmacy/ReportsPage.
 import { RegisterRedirect } from './pages/pharmacy/RegisterPage.jsx';
 import { SellPage } from './pages/pharmacy/SellPage.jsx';
 import { MedicineStockPage, StockPage } from './pages/pharmacy/StockPage.jsx';
+import { OpeningStockPage } from './pages/pharmacy/OpeningStockPage.jsx';
 import { NewSupplierReturnPage, SupplierReturnPage, SupplierReturnsPage } from './pages/pharmacy/SupplierReturnsPage.jsx';
 import { BillsPage } from './pages/billing/BillsPage.jsx';
 import { MisReportsPage } from './pages/billing/MisReportsPage.jsx';
@@ -327,6 +328,7 @@ export function App() {
                 <Route path="invoices" element={<InvoicesPage />} />
                 <Route path="invoices/:id" element={<InvoicePage />} />
                 <Route path="stock" element={<StockPage />} />
+                <Route path="stock/import" element={<OpeningStockPage />} />
                 <Route path="stock/:id" element={<MedicineStockPage />} />
                 <Route path="purchases" element={<PurchasesPage />} />
                 {/* Purchase orders (the pharmacist or the hospital admin) and returns to a supplier */}
