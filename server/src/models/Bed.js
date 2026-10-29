@@ -8,6 +8,9 @@ import { tenantScoped } from '../utils/tenantScope.js';
 const bedSchema = new mongoose.Schema(
   {
     ward: { type: String, required: true, trim: true, maxlength: 60 },
+    // The floor it is on (29 Oct 2026), e.g. "1st floor"; '' = not said. The ward is the kind of room or ward (General
+    // ward, NICU, Deluxe AC …), which also names its bed charge on the price list.
+    floor: { type: String, trim: true, maxlength: 30, default: '' },
     name: { type: String, required: true, trim: true, maxlength: 30 },
     active: { type: Boolean, default: true },
   },

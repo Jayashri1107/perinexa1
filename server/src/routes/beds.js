@@ -7,7 +7,7 @@ import { hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 import { Admission } from '../models/Admission.js';
 import { ClinicalDocument } from '../models/ClinicalDocument.js';
 import { Bed } from '../models/Bed.js';
-import { hasRole } from '../models/Membership.js';
+import { DEPARTMENTS, Membership, departmentsOf, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { User } from '../models/User.js';
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
@@ -43,16 +43,26 @@ const assertRole = (req, roles, message) => {
   if (!hasRole(req.membership, ...roles)) throw forbidden(message);
 };
 
-const bedView = (b) => ({ id: String(b._id), ward: b.ward, name: b.name, active: b.active });
-/** Wards in the order they were first set up, beds in natural order (G2 before G10). */
+const bedView = (b) => ({ id: String(b._id), ward: b.ward, floor: b.floor ?? '', name: b.name, active: b.active });
+const natural = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+/** "1st floor · Deluxe AC · 204" (the floor only when set) */
+export const bedLabel = (floor, ward, name) => [floor, ward, name].filter(Boolean).join(' · ');
+/**
+ * Wards by floor (floors in natural order, beds without a floor last), each floor's wards in the order they were first
+ * set up, beds in natural order (G2 before G10).
+ */
 function byWard(beds) {
   const wards = new Map();
   for (const b of [...beds].sort((x, y) => x.createdAt - y.createdAt)) {
-    if (!wards.has(b.ward)) wards.set(b.ward, []);
-    wards.get(b.ward).push(b);
+    const key = `${b.floor ?? ''}\u0000${b.ward}`;
+    if (!wards.has(key)) wards.set(key, { ward: b.ward, floor: b.floor ?? '', beds: [] });
+    wards.get(key).beds.push(b);
   }
-  const natural = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
-  return [...wards].map(([ward, list]) => ({ ward, beds: list.sort((x, y) => natural.compare(x.name, y.name)) }));
+  const floorOrder = (f) => (f ? 0 : 1);
+  return [...wards.values()]
+    .map((w, i) => ({ ...w, i }))
+    .sort((x, y) => floorOrder(x.floor) - floorOrder(y.floor) || natural.compare(x.floor, y.floor) || x.i - y.i)
+    .map(({ ward, floor, beds: list }) => ({ ward, floor, beds: list.sort((x, y) => natural.compare(x.name, y.name)) }));
 }
 
 async function findBed(req, id) {
@@ -79,7 +89,7 @@ bedsRouter.get('/', async (req, res) => {
     const [beds, taken] = await Promise.all([Bed.find({ tenantId, active: true }).lean(), Admission.find({ tenantId, status: 'admitted', bedId: { $ne: null } }, { bedId: 1 }).lean()]);
     const occupied = new Set(taken.map((a) => String(a.bedId)));
     const free = byWard(beds.filter((b) => !occupied.has(String(b._id))));
-    return res.json({ beds: free.flatMap(({ ward, beds: list }) => list.map((b) => ({ id: String(b._id), ward, name: b.name, label: `${ward} · ${b.name}` }))) });
+    return res.json({ beds: free.flatMap(({ ward, floor, beds: list }) => list.map((b) => ({ id: String(b._id), ward, floor, name: b.name, label: bedLabel(floor, ward, b.name) }))) });
   }
   // ?summary=1: the counts only (reception's Today page) – no names, so not audited
   if (req.query.summary === '1') {
@@ -99,7 +109,8 @@ bedsRouter.get('/', async (req, res) => {
       id: String(s._id),
       admittedAt: s.admittedAt,
       reason: reasonFor(req, p, s),
-      patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn, assignedDoctorName: p.assignedDoctor ? (doctors.get(String(p.assignedDoctor)) ?? null) : null, ...(isClosed(p) ? { closed: true } : {}) },
+      // The doctor shown on the bed: the stay's doctor in charge (29 Oct 2026), else her assigned doctor
+      patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn, assignedDoctorName: s.doctorName || (p.assignedDoctor ? (doctors.get(String(p.assignedDoctor)) ?? null) : null), ...(isClosed(p) ? { closed: true } : {}) },
       canMove: mayMoveBed(req, p),
       // HIMS-style admission (docs/ADMISSION_DESK_PLAN.md): the IPD number, and an emergency's checklist still to fill in
       ipdNo: s.ipdNo ?? null,
@@ -108,8 +119,9 @@ bedsRouter.get('/', async (req, res) => {
     };
   };
   const inBed = new Map(stays.filter((s) => s.bedId).map((s) => [String(s.bedId), s]));
-  const wards = byWard(beds).map(({ ward, beds: list }) => ({
+  const wards = byWard(beds).map(({ ward, floor, beds: list }) => ({
     ward,
+    floor,
     beds: list
       .filter((b) => b.active || inBed.has(String(b._id)))
       .map((b) => ({ ...bedView(b), stay: inBed.has(String(b._id)) ? stayView(inBed.get(String(b._id))) : null })),
@@ -192,6 +204,14 @@ const admitSchema = z
     checklist: checklistSchema.optional(),
     mlcPolice: safeText('Police station', 120).default(''),
     requestId: objectId.optional(),
+    // The hospital's admission form (29 Oct 2026): department → its doctor in charge, the referring doctor, MLC papers
+    department: z.enum(['', ...DEPARTMENTS], 'Choose a department from the list').default(''),
+    doctorId: objectId.optional(),
+    refDoctorName: safeText('Referring doctor', 100).default(''),
+    mlcNo: safeText('MLC number', 40).default(''),
+    mlcAt: z.preprocess((v) => (v === '' ? undefined : v), z.iso.datetime('Enter the MLC date and time').optional()),
+    mlcConstable: safeText('Constable', 100).default(''),
+    mlcBuckleNo: safeText('Buckle number', 30).default(''),
   })
   .strict()
   .superRefine((b, ctx) => {
@@ -224,6 +244,15 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
     if (Object.keys(missing).length) throw invalid(missing, 'Complete the admission checklist (an emergency can be admitted first and completed later).');
   }
   if (body.mlc && body.mlcPolice.trim().length < 3) throw invalid({ mlcPolice: 'Write the police station informed (or "to inform").' });
+  // The doctor in charge: one of the hospital's doctors – of the department chosen – else her assigned doctor
+  const doctorUserId = body.doctorId ?? (patient.assignedDoctor ? String(patient.assignedDoctor) : null);
+  let doctor = null;
+  if (doctorUserId) {
+    const m = await Membership.findOne({ tenantId: req.tenantId, userId: doctorUserId, isActive: true, roles: 'doctor' }).lean();
+    if (!m && body.doctorId) throw invalid({ doctorId: 'Choose one of the hospital\'s doctors.' });
+    if (m && body.doctorId && body.department && !departmentsOf(m).includes(body.department)) throw invalid({ doctorId: `This doctor is not in ${body.department}.` });
+    if (m) doctor = await User.findOne({ _id: doctorUserId, isActive: true }, { name: 1 }).lean();
+  }
   // The doctor's request: the one she is admitted from, else her open one; required at the desk when the hospital says so
   const request = body.requestId
     ? await AdmissionRequest.findOne({ tenantId: req.tenantId, _id: body.requestId, patientId: patient._id, status: 'open' })
@@ -248,6 +277,14 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
       admissionType: body.admissionType,
       mlc: body.mlc,
       mlcPolice: body.mlc ? body.mlcPolice.trim() : '',
+      mlcNo: body.mlc ? body.mlcNo.trim() : '',
+      mlcAt: body.mlc && body.mlcAt ? new Date(body.mlcAt) : null,
+      mlcConstable: body.mlc ? body.mlcConstable.trim() : '',
+      mlcBuckleNo: body.mlc ? body.mlcBuckleNo.trim() : '',
+      department: body.department,
+      doctorId: doctor?._id ?? null,
+      doctorName: doctor?.name ?? '',
+      refDoctorName: body.refDoctorName.trim(),
       checklist,
       requestId: request?._id ?? null,
       withoutRequest: Boolean(rules.requireAdmissionRequest && fromDesk && !request),
@@ -264,7 +301,7 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
   await audit(req, 'ADMISSION_CREATED', { details: { patientId: String(patient._id), mrn: patient.mrn, admissionId: String(admission._id), bedId: String(bed._id), via: 'bed board' } });
   if (request) await AdmissionRequest.updateOne({ _id: request._id, tenantId: req.tenantId, status: 'open' }, { $set: { status: 'admitted', admissionId: admission._id } });
   await billAdmitted(req, admission); // billing: the stay's bill with the bed charge of this ward
-  res.status(201).json({ admission: { id: String(admission._id), ipdNo: admission.ipdNo, admittedAt: admission.admittedAt, ward: admission.ward, bed: admission.bed, checklistComplete: checklist.complete } });
+  res.status(201).json({ admission: { id: String(admission._id), ipdNo: admission.ipdNo, admittedAt: admission.admittedAt, ward: admission.ward, floor: bed.floor ?? '', bed: admission.bed, department: admission.department, doctorName: admission.doctorName, checklistComplete: checklist.complete } });
 });
 
 // ---------- Move to another bed ----------
@@ -300,13 +337,14 @@ bedsRouter.get('/setup', async (req, res) => {
   assertRole(req, SETUP_ROLES, 'Wards and beds are set up by the hospital admin.');
   const [beds, occupied] = await Promise.all([Bed.find({ tenantId: req.tenantId }).lean(), Admission.find({ tenantId: req.tenantId, status: 'admitted', bedId: { $ne: null } }, { bedId: 1 }).lean()]);
   const taken = new Set(occupied.map((a) => String(a.bedId)));
-  res.json({ wards: byWard(beds).map(({ ward, beds: list }) => ({ ward, beds: list.map((b) => ({ ...bedView(b), occupied: taken.has(String(b._id)) })) })) });
+  res.json({ wards: byWard(beds).map(({ ward, floor, beds: list }) => ({ ward, floor, beds: list.map((b) => ({ ...bedView(b), occupied: taken.has(String(b._id)) })) })) });
 });
 
 const bedName = safeText('Bed', 30).refine((t) => t.trim().length > 0, 'Write the bed name');
 const addSchema = z
   .object({
     ward: safeText('Ward', 60).refine((t) => t.trim().length > 0, 'Write the ward name'),
+    floor: safeText('Floor', 30).default(''),
     names: z.array(bedName, 'Add at least one bed').min(1, 'Add at least one bed').max(100, 'Add at most 100 beds at a time'),
   })
   .strict();
@@ -321,14 +359,14 @@ bedsRouter.post('/setup', async (req, res) => {
   const have = new Set(existing.map((b) => b.name.toLowerCase()));
   const repeated = names.filter((n) => have.has(n.toLowerCase()));
   if (repeated.length) throw invalid({ names: `Already in ${wardName}: ${repeated.join(', ')}` });
-  const created = await Bed.insertMany(names.map((name) => ({ tenantId: req.tenantId, ward: wardName, name })));
-  await audit(req, 'BEDS_ADDED', { details: { ward: wardName, count: created.length } });
+  const created = await Bed.insertMany(names.map((name) => ({ tenantId: req.tenantId, ward: wardName, floor: body.floor.trim(), name })));
+  await audit(req, 'BEDS_ADDED', { details: { ward: wardName, floor: body.floor.trim(), count: created.length } });
   res.status(201).json({ beds: created.map(bedView) });
 });
 
 bedsRouter.patch('/setup/:bedId', async (req, res) => {
   assertRole(req, SETUP_ROLES, 'Wards and beds are set up by the hospital admin.');
-  const body = parse(z.object({ active: z.boolean().optional(), name: bedName.optional() }).strict(), req.body);
+  const body = parse(z.object({ active: z.boolean().optional(), name: bedName.optional(), floor: safeText('Floor', 30).optional() }).strict(), req.body);
   const bed = await findBed(req, req.params.bedId);
   if (body.active === false && bed.active) {
     if (await Admission.findOne({ tenantId: req.tenantId, bedId: bed._id, status: 'admitted' }, { _id: 1 }).lean()) {
@@ -337,6 +375,7 @@ bedsRouter.patch('/setup/:bedId', async (req, res) => {
   }
   if (body.active !== undefined) bed.active = body.active;
   if (body.name !== undefined) bed.name = body.name.trim();
+  if (body.floor !== undefined) bed.floor = body.floor.trim();
   try {
     await bed.save();
   } catch (e) {

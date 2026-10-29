@@ -16,7 +16,7 @@ import { BillStatus } from './BillsPage.jsx';
 import { TallyMarks } from './TallyPage.jsx';
 import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
 import { Modal, useSend } from './billingUi.jsx';
-import { DEPARTMENTS } from '../../platform/departments.js';
+import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { amountInWords } from './amountWords.js';
 
 // One bill (billing): its items (added by the work done, or by reception from the price list), discount, payments,
@@ -41,10 +41,10 @@ function AddItemDialog({ bill, onClose, onDone }) {
   const all = (prices.data?.items ?? []).filter((i) => i.active);
   const allDoctors = doctors.data?.doctors ?? [];
   const ownDoctor = allDoctors.find((d) => d.name === bill.doctorName);
-  const departments = DEPARTMENTS.filter((d) => allDoctors.some((x) => x.department === d));
+  const departments = departmentsWithDoctors(allDoctors);
   const [department, setDepartment] = useState(null); // null: her doctor's department
   const dept = department ?? ownDoctor?.department ?? '';
-  const doctorList = allDoctors.filter((d) => !dept || d.department === dept);
+  const doctorList = allDoctors.filter((d) => inDepartment(d, dept));
   const chosenDoctor = doctorId ?? (doctorList.some((d) => d.id === ownDoctor?.id) ? ownDoctor.id : '');
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const found = all.filter((i) => words.every((w) => i.name.toLowerCase().includes(w)));

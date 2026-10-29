@@ -211,3 +211,9 @@
 .pdoc .bill-report-total td, .pdoc .bill-report-total th, .pdoc .mis-table tfoot td { border-top: 1.5px solid var(--print-ink); border-bottom: 1.5px solid var(--print-ink); font-weight: 700; }
 .pdoc .bill-report tr, .pdoc .mis-table tr { break-inside: avoid; }
 .pdoc .bill-sign { margin-top: var(--space-8); padding-top: var(--space-4); display: flex; justify-content: space-between; }
+
+/* The admission form's lines for the doctors to fill in by hand (29 Oct 2026) */
+.adm-handwritten { display: grid; gap: var(--space-2); margin: var(--space-3) 0; break-inside: avoid; }
+.adm-transfers td { height: 9mm; }
+.adm-transfers td, .adm-transfers th { border-bottom: 1px solid var(--print-rule); }
+.adm-surgery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }

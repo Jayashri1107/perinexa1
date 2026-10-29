@@ -17,6 +17,7 @@ const checklistSchema = new mongoose.Schema(
     attendantName: { type: String, trim: true, maxlength: 100, default: '' },
     attendantRelation: { type: String, trim: true, maxlength: 40, default: '' },
     attendantPhone: { type: String, trim: true, maxlength: 20, default: '' },
+    attendantAddress: { type: String, trim: true, maxlength: 300, default: '' }, // the relative's address (29 Oct 2026)
     payer: { type: String, enum: [...PAYER_TYPES, ''], default: '' },
     payerName: { type: String, trim: true, maxlength: 100, default: '' }, // the insurer or the scheme
     consentSigned: { type: Boolean, default: false }, // the general consent for admission, signed on paper
@@ -48,6 +49,18 @@ const admissionSchema = new mongoose.Schema(
     ipdNo: { type: String, default: null },
     checklist: { type: checklistSchema, default: null },
     mlcPolice: { type: String, trim: true, maxlength: 120, default: '' },
+    // The hospital's admission form (29 Oct 2026): the department and the doctor in charge of the stay (chosen from that
+    // department's doctors; her assigned doctor when none is chosen), the referring doctor, and a medico-legal case's
+    // papers – MLC number and date, the constable and his buckle number. The doctor in charge is printed on the form;
+    // who may open her record is unchanged (her assigned doctor, RMOs …). Not set on older stays.
+    department: { type: String, default: '' },
+    doctorId: { type: ObjectId, ref: 'User', default: null },
+    doctorName: { type: String, default: '' },
+    refDoctorName: { type: String, trim: true, maxlength: 100, default: '' },
+    mlcNo: { type: String, trim: true, maxlength: 40, default: '' },
+    mlcAt: { type: Date, default: null },
+    mlcConstable: { type: String, trim: true, maxlength: 100, default: '' },
+    mlcBuckleNo: { type: String, trim: true, maxlength: 30, default: '' },
     requestId: { type: ObjectId, ref: 'AdmissionRequest', default: null },
     withoutRequest: { type: Boolean, default: false }, // an emergency admitted at the desk while requests are required
     clearance: {
