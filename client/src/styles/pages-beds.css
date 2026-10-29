@@ -149,4 +149,26 @@
 .bb-admit { align-self: flex-start; margin-top: var(--space-2); }
 .bb-bed .bb-actions, .bb-bed .menu-button { align-self: flex-start; margin-top: var(--space-2); }
 @media (max-width: 640px) { .bb-ward-head { flex-wrap: wrap; } .bb-ward-counts { margin-left: 0; } .bb-grid { grid-template-columns: 1fr 1fr; } }
-.bb-grid { align-items: start; }
+
+/* Tidy board (29 Oct 2026): every card in a row is the same height, with its button on the bottom line; every card
+   has the same 4 px left edge in its state colour, so bed names and buttons line up across free and occupied beds */
+.bb-grid { align-items: stretch; padding-top: var(--space-1); }
+.bb-bed { gap: var(--space-1); border: 1px solid var(--card-border); border-left: 4px solid var(--card-border); }
+.bb-bed.is-free { border-style: solid; border-color: var(--card-border); border-left-color: var(--status-stable-fg); }
+.bb-bed.is-occupied { border-color: var(--card-border); border-left-color: var(--status-admitted-fg); }
+.bb-bed.is-off { border-left-color: var(--status-inactive-fg); }
+.bb-bed-top { min-height: 28px; }
+.bb-bed-top .pill { flex-shrink: 0; white-space: nowrap; }
+/* The button sits on the bottom line, at least a small gap below the text above it */
+.bb-bed > :nth-last-child(2) { margin-bottom: var(--space-2); }
+.bb-bed > .bb-admit, .bb-bed > .menu-button { margin-top: auto; }
+.bb-bed .bb-actions { margin-top: 0; }
+.bb-bed .bb-admit, .bb-bed .bb-actions { min-width: 104px; justify-content: center; }
+.bb-bed > .pill { align-self: flex-start; max-width: 100%; white-space: normal; }
+/* Phones: the ward's name and the fold arrow on the first line, its counts and bar on the second */
+@media (max-width: 640px) {
+  .bb-ward-head h2 { flex: 1 1 auto; min-width: 0; }
+  .bb-chevron { order: 1; }
+  .bb-ward-counts { order: 2; flex: 1 1 calc(100% - 90px - var(--space-3)); }
+  .bb-ward-head .bb-meter-sm { order: 3; }
+}
