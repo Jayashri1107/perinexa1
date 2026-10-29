@@ -289,18 +289,22 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
  * One printed document. The Draft band (when `draft` is set) and the footer line are repeated at the top and
  * bottom of every printed page (browsers repeat a table's header and footer rows), so a loose page still says
  * whose it is and that it is a draft. footer null: no footer (e.g. on a doctor's own pre-printed pad).
+ * head: more to repeat at the top of every page, under the Draft band (e.g. a long list's column headings).
  */
-export function PrintDocument({ draft, footer, className = '', style, children }) {
+export function PrintDocument({ draft, head, footer, className = '', style, children }) {
   return (
     <div className={`pdoc ${className}`.trim()} style={style}>
       <table className="ptable pframe">
-        {draft && (
+        {(draft || head) && (
           <thead>
             <tr>
               <td>
-                <p className="pdoc-draft">
-                  <TriangleAlert aria-hidden="true" /> {draft}
-                </p>
+                {draft && (
+                  <p className="pdoc-draft">
+                    <TriangleAlert aria-hidden="true" /> {draft}
+                  </p>
+                )}
+                {head}
               </td>
             </tr>
           </thead>

@@ -414,6 +414,32 @@ pharmacyRouter.get('/stock', async (req, res) => {
   });
 });
 
+// The stock sheet (Current Stock): one line per batch with stock, by medicine name then expiry, to print or save as a
+// PDF and count the shelves against (the Phy Qty column is left blank to write in). Expired batches still on the shelf
+// are listed too, marked. Values: quantity × MRP and quantity × purchase price (before GST).
+pharmacyRouter.get('/stock-sheet', async (req, res) => {
+  const t = today(req);
+  const meds = new Map((await Medicine.find({ tenantId: req.tenantId }, { name: 1 }).lean()).map((m) => [String(m._id), m]));
+  const batches = await StockBatch.find({ tenantId: req.tenantId, qtyLeft: { $gt: 0 } }).lean();
+  const lines = batches
+    .filter((b) => meds.has(String(b.medicineId)))
+    .map((b) => ({
+      name: meds.get(String(b.medicineId)).name,
+      batch: b.batch,
+      expiry: isoDay(b.expiry),
+      expired: isExpired(b, t),
+      qty: b.qtyLeft,
+      mrpValuePaise: b.qtyLeft * b.mrpPaise,
+      costValuePaise: b.qtyLeft * b.costPaise,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) || a.expiry.localeCompare(b.expiry) || a.batch.localeCompare(b.batch));
+  res.json({
+    settings: await settingsOf(req.tenantId),
+    lines,
+    totals: { mrpValuePaise: lines.reduce((s, l) => s + l.mrpValuePaise, 0), costValuePaise: lines.reduce((s, l) => s + l.costValuePaise, 0) },
+  });
+});
+
 // One medicine: its batches and its recent stock moves.
 pharmacyRouter.get('/stock/:id', async (req, res) => {
   const t = today(req);
