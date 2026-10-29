@@ -82,8 +82,16 @@
 .cal-grid-loading { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--border); }
 .cal-cell-skeleton { display: block; height: var(--row-height); background: var(--mist-50); animation: pulse 1.2s ease-in-out infinite; }
 
-.cal-panel { padding: var(--space-4) var(--space-6); }
+.cal-panel { padding: var(--space-4); }
 .cal-panel-title { margin: 0 0 var(--space-3); font-weight: 600; }
+
+/* Beside the grid (from 980 px): taller cells, so the month is the main thing on the page and not a strip at the top */
+@container cal (min-width: 980px) {
+  .cal-cell-btn { min-height: 92px; }
+  /* The side lists can run longer than the grid: the month stays in view while they scroll past */
+  .cal-month { position: sticky; top: var(--space-4); }
+  .cal-cell-skeleton { height: 92px; }
+}
 
 /* Phones: a cell shows its day number and the total, with a teal dot for a booked visit */
 @container cal (max-width: 559px) {
@@ -148,10 +156,21 @@
 .cal-page .wl-fold .cal-note { padding: var(--space-2) var(--space-6); margin: 0; }
 .cal-page .wl-fold .cal-subtitle { padding: var(--space-3) var(--space-6) 0; margin: 0; }
 .cal-page .wl-fold .cal-today-label { font-size: 0.8rem; }
-.cal-day-compact .wl-row-toggle, .cal-day-compact .wl-row-body { padding-left: var(--space-2); padding-right: var(--space-2); }
 .cal-show-label { align-self: center; font-weight: 600; color: var(--slate-600); margin-right: var(--space-1); }
 
 /* Beside the month: the chosen day, then what is coming up in the next 7 days */
 .cal-side { display: grid; gap: var(--space-4); align-content: start; min-width: 0; }
 .cal-upcoming-day + .cal-upcoming-day { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
-.cal-upcoming-day h4 { margin: 0 0 var(--space-2); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.cal-upcoming-day h4 { margin: 0 0 var(--space-1); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.cal-upcoming > .cal-note:last-child { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+
+/* Side panel rows: one line per patient – name at the left (wraps, never pushes the mark out), mark and chevron at
+   the right. The list reaches into the panel's padding so the names line up with the headings above them. */
+.cal-side .wl-list { margin: 0 calc(-1 * var(--space-2)); }
+.cal-side .wl-list > .wl-row { border-bottom-color: var(--border); }
+.cal-side .wl-row-toggle,
+.cal-day-compact .wl-row-toggle { min-height: var(--control-height); gap: var(--space-2); padding: var(--space-2); border-radius: var(--radius-md); }
+.cal-side .wl-row-body,
+.cal-day-compact .wl-row-body { padding: var(--space-1) var(--space-2) var(--space-3); }
+.cal-side .wl-row-name { min-width: 0; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; overflow-wrap: anywhere; }
+.cal-side .wl-row-toggle .pill { white-space: nowrap; }
