@@ -143,6 +143,31 @@ describe('purchases and batches', () => {
     stock = (await ph('get', '/stock')).body.medicines.find((x) => x.id === m.id);
     expect(stock.qty).toBe(109);
   });
+  it('the stock sheet: one line per batch with stock, by name then expiry, with values and totals; expired ones marked', async () => {
+    const sup = await supplier();
+    const zinc = await medicine({ name: 'zinc Syrup' });
+    const amox = await medicine({ name: 'Amox Cap' });
+    await purchase(sup, [
+      { medicineId: zinc.id, batch: 'Z1', expiry: '2027-01', qty: 4, ratePaise: 600, mrpPaise: 1000 },
+      { medicineId: amox.id, batch: 'A2', expiry: '2028-05', qty: 3, ratePaise: 200, mrpPaise: 500 },
+      { medicineId: amox.id, batch: 'A1', expiry: '2026-11', qty: 10, freeQty: 0, ratePaise: 300, mrpPaise: 450 },
+    ]);
+    const empty = await medicine({ name: 'Bare Tab' });
+    await purchase(sup, [{ medicineId: empty.id, batch: 'E1', expiry: '2027-02', qty: 1, ratePaise: 100, mrpPaise: 200 }]);
+    await sell({ customer: { name: 'Walk In' }, payment: { mode: 'cash' }, lines: [{ medicineId: empty.id, qty: 1 }] });
+    later('2026-12-02T06:00:00Z'); // batch A1 has expired, still on the shelf
+    const res = await ph('get', '/stock-sheet');
+    expect(res.status).toBe(200);
+    expect(res.body.lines).toEqual([
+      { name: 'Amox Cap', batch: 'A1', expiry: '2026-11-30', expired: true, qty: 10, mrpValuePaise: 4500, costValuePaise: 3000 },
+      { name: 'Amox Cap', batch: 'A2', expiry: '2028-05-31', expired: false, qty: 3, mrpValuePaise: 1500, costValuePaise: 600 },
+      { name: 'zinc Syrup', batch: 'Z1', expiry: '2027-01-31', expired: false, qty: 4, mrpValuePaise: 4000, costValuePaise: 2400 },
+    ]);
+    expect(res.body.totals).toEqual({ mrpValuePaise: 10000, costValuePaise: 6000 });
+    expect(res.body.settings.name).toBeTruthy();
+    for (const who of ['drA', 'nurse', 'reception']) expect((await ph('get', '/stock-sheet', undefined, who)).status).toBe(403);
+    expect((await ph('get', '/stock-sheet', undefined, 'admin')).status).toBe(200);
+  });
 });
 
 describe('selling at the counter', () => {

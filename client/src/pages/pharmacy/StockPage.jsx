@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ClipboardCheck, PackageX } from 'lucide-react';
+import { ClipboardCheck, FileDown, PackageX } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { DataTable } from '../../components/DataTable.jsx';
+import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { CONTROLLED, MOVE_LABELS, expiryLabel, medicineLabel } from './pharmacyFormat.js';
@@ -15,6 +16,7 @@ export function StockPage() {
   const navigate = useNavigate();
   const res = useFetch('/pharmacy/stock');
   const [filter, setFilter] = useState('all');
+  const [sheet, setSheet] = useState(false);
   const rows = (res.data?.medicines ?? []).filter((m) => (filter === 'low' ? m.low : filter === 'expiring' ? m.expiringSoon || m.expiredQty > 0 : true));
   return (
     <>
@@ -22,9 +24,14 @@ export function StockPage() {
       <div className="pf-content bill-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
         {res.data && (
-          <p>
-            Stock value: <strong>{money(res.data.totals.costValuePaise)}</strong> at purchase price · <strong>{money(res.data.totals.mrpValuePaise)}</strong> at MRP · {res.data.totals.low} below reorder level
-          </p>
+          <div className="row-between">
+            <p>
+              Stock value: <strong>{money(res.data.totals.costValuePaise)}</strong> at purchase price · <strong>{money(res.data.totals.mrpValuePaise)}</strong> at MRP · {res.data.totals.low} below reorder level
+            </p>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet(true)}>
+              <FileDown aria-hidden="true" /> Stock sheet
+            </button>
+          </div>
         )}
         <DataTable
           caption="Stock"
@@ -78,7 +85,109 @@ export function StockPage() {
           ]}
         />
       </div>
+      {sheet && <StockSheet onClose={() => setSheet(false)} />}
     </>
+  );
+}
+
+const two = (n) => String(n).padStart(2, '0');
+const sheetDate = (iso) => iso.split('-').reverse().join('/'); // 2029-06-30 → 30/06/2029
+const sheetTime = (d) => `${two(d.getDate())}/${two(d.getMonth() + 1)}/${d.getFullYear()} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+const amount = (paise) => (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Column widths, the same for the headings repeated on each page and for the lines under them.
+function SheetCols() {
+  return (
+    <colgroup>
+      {[6, 31, 14, 11, 8, 8, 11, 11].map((w, i) => (
+        <col key={i} style={{ width: `${w}%` }} />
+      ))}
+    </colgroup>
+  );
+}
+
+/**
+ * The stock sheet (Current Stock), laid out as the pharmacy's stock software printed it: one line per batch, a blank
+ * Phy Qty column to write the shelf count in, the values at MRP and at purchase price, and the totals at the end.
+ * The column headings and the print time are on every page; Download PDF numbers the pages.
+ */
+function StockSheet({ onClose }) {
+  const res = useFetch('/pharmacy/stock-sheet');
+  const [printedAt] = useState(() => new Date());
+  const d = res.data;
+  const s = d?.settings;
+  const fileName = `Stock sheet ${printedAt.getFullYear()}-${two(printedAt.getMonth() + 1)}-${two(printedAt.getDate())}`;
+  return (
+    <PrintPreview
+      title="Stock sheet – print preview"
+      hint="Print it on A4 paper to count the shelves, or save it as a PDF."
+      pdf={{ fileName: `${fileName}.pdf`, title: fileName, share: false, onSaved: async () => {} }}
+      docKey={d ? `stock-sheet-${d.lines.length}` : null}
+      pageNumbers
+      onClose={onClose}
+    >
+      {res.error && <Alert type="error">{res.error}</Alert>}
+      {d && (
+        <PrintDocument
+          className="bill-doc ph-sheet"
+          head={
+            <table className="ph-sheet-lines">
+              <SheetCols />
+              <thead>
+                <tr>
+                  <th scope="col">Sr. No</th>
+                  <th scope="col">Item name</th>
+                  <th scope="col">Batch no</th>
+                  <th scope="col">Exp. date</th>
+                  <th scope="col" className="num">Bal Qty</th>
+                  <th scope="col" className="num">Phy Qty</th>
+                  <th scope="col" className="num">Total Amt – MRP</th>
+                  <th scope="col" className="num">Total Amt – Purchase</th>
+                </tr>
+              </thead>
+            </table>
+          }
+          footer={<span>Print date and time {sheetTime(printedAt)}</span>}
+        >
+          <div className="ph-sheet-top">
+            <p className="ph-sheet-name">{s.name}</p>
+            {s.address && <p>{s.address}</p>}
+            {s.phone && <p>{s.phone}</p>}
+            <p className="ph-sheet-title">Current Stock</p>
+            <p>Store name: Pharmacy store</p>
+          </div>
+          {!d.lines.length && <p>No stock.</p>}
+          <table className="ph-sheet-lines">
+            <SheetCols />
+            <tbody>
+              {d.lines.map((l, i) => (
+                <tr key={i}>
+                  <td>{i + 1}</td>
+                  <td>{l.name}</td>
+                  <td>{l.batch}</td>
+                  <td>
+                    {sheetDate(l.expiry)}
+                    {l.expired && <span className="ph-sheet-expired"> expired</span>}
+                  </td>
+                  <td className="num">{l.qty.toFixed(2)}</td>
+                  <td className="num" />
+                  <td className="num">{amount(l.mrpValuePaise)}</td>
+                  <td className="num">{amount(l.costValuePaise)}</td>
+                </tr>
+              ))}
+              {/* In the body, not a table footer: a browser would repeat a footer on every printed page */}
+              <tr className="ph-sheet-total">
+                <th scope="row" colSpan={6}>
+                  Total amount
+                </th>
+                <td className="num">{amount(d.totals.mrpValuePaise)}</td>
+                <td className="num">{amount(d.totals.costValuePaise)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </PrintDocument>
+      )}
+    </PrintPreview>
   );
 }
 

@@ -178,3 +178,16 @@
 .ph-stat-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .ph-stat-text strong { font-size: var(--fs-h3); }
 .ph-stat-text span { font-size: var(--fs-caption); color: var(--slate-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The stock sheet (Pharmacy → Stock → Stock sheet): a long A4 list to count the shelves against */
+.ph-sheet-top { text-align: center; margin-bottom: 3mm; }
+.ph-sheet-top p { margin: 0; font-size: var(--fs-print-small); }
+.ph-sheet-top .ph-sheet-name { font-size: var(--fs-print-h2); font-weight: 700; text-transform: uppercase; }
+.ph-sheet-top .ph-sheet-title { margin: 2mm 0 1mm; font-size: var(--fs-print-body); font-weight: 700; }
+.ph-sheet-lines { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-print-small); }
+.ph-sheet-lines th, .ph-sheet-lines td { padding: 1mm 1.5mm; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.ph-sheet-lines thead th { border-top: 1px solid var(--print-ink); border-bottom: 1px solid var(--print-ink); font-weight: 700; }
+.ph-sheet-lines tbody td { border-bottom: 1px solid var(--print-rule); }
+.ph-sheet-lines .num { text-align: right; font-variant-numeric: tabular-nums; }
+.ph-sheet-lines .ph-sheet-total th, .ph-sheet-lines .ph-sheet-total td { border-top: 2px solid var(--print-ink); border-bottom: none; font-weight: 700; text-align: right; }
+.ph-sheet-expired { font-weight: 700; }
