@@ -224,7 +224,8 @@ export const StockBatch = mongoose.model('StockBatch', batchSchema);
 // ---------- Every change of stock (the registers are read from these) ----------
 // 'supplier_return': stock sent back to the supplier it was bought from (4 Oct 2026).
 // 'supplier_return_cancelled': such a return was entered by mistake and cancelled – the units are back (5 Oct 2026).
-export const MOVE_KINDS = ['purchase', 'purchase_cancelled', 'sale', 'issue', 'return', 'writeoff', 'count', 'supplier_return', 'supplier_return_cancelled'];
+// 'opening': stock already on the shelves when the pharmacy started with Perinexa, imported once (pharmacy/openingStock.js).
+export const MOVE_KINDS = ['opening', 'purchase', 'purchase_cancelled', 'sale', 'issue', 'return', 'writeoff', 'count', 'supplier_return', 'supplier_return_cancelled'];
 const moveSchema = new mongoose.Schema({
   medicineId: { type: ObjectId, ref: 'Medicine', required: true },
   batchId: { type: ObjectId, ref: 'StockBatch', required: true },

@@ -170,6 +170,87 @@ describe('purchases and batches', () => {
   });
 });
 
+describe('opening stock from the old software’s file', () => {
+  const line = (row, fields) => ({ row, name: 'SAMPLE TAB', batch: 'B1', expiry: '2027-06', qty: 10, mrpPaise: 1000, ratePaise: 600, ...fields });
+  it('Check lists every problem with its row and saves nothing; Import refuses while a line has one', async () => {
+    const lines = [
+      line(2, { name: '' }),
+      line(3, { batch: null }),
+      line(4, { expiry: 'soon' }),
+      line(5, { qty: 2.5 }),
+      line(6, { mrpPaise: null }),
+      line(7, { ratePaise: 2000 }),
+      line(8, { gstRate: 12 }),
+      line(9, { schedule: 'Q' }),
+      line(10, { hsn: '30' }),
+      line(11, { qty: 0, batch: null }), // no stock: left out, whatever it lacks
+    ];
+    const res = await ph('post', '/opening-stock/check', { lines });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const problems = Object.fromEntries(res.body.lines.map((l) => [l.row, l.problems.join(' ')]));
+    expect(problems[2]).toMatch(/name is missing/);
+    expect(problems[3]).toMatch(/batch number is missing/);
+    expect(problems[4]).toMatch(/expiry “soon” could not be read/);
+    expect(problems[5]).toMatch(/not a whole number/);
+    expect(problems[6]).toMatch(/MRP is missing/);
+    expect(problems[7]).toMatch(/above the MRP/);
+    expect(problems[8]).toMatch(/no longer used/);
+    expect(problems[9]).toMatch(/schedule “Q”/);
+    expect(problems[10]).toMatch(/HSN code/);
+    expect(problems[11]).toBe('');
+    expect(res.body.summary).toMatchObject({ lines: 10, problems: 9, skipped: 1, batches: 0 });
+    const refused = await ph('post', '/opening-stock', { lines });
+    expect(refused.status).toBe(400);
+    expect(refused.body.error.message).toMatch(/9 lines have problems.*Nothing was saved/);
+    expect(await Medicine.countDocuments({ tenantId: hospital._id })).toBe(0);
+  });
+
+  it('Import adds new medicines once, every batch as opening stock (not a purchase); the stock sheet and X register show it', async () => {
+    const known = await medicine({ name: 'Known Syrup', form: 'syrup', unit: 'bottle', gstRate: 5 });
+    const lines = [
+      line(2, { name: 'ZIFI 200 TAB', batch: 'Z1', expiry: '2028-02', qty: 30, mrpPaise: 832, ratePaise: 646, gstRate: 5, hsn: '3004', schedule: 'H' }),
+      line(3, { name: 'zifi 200 tab.', batch: 'Z2', expiry: '2027-08', qty: 5, mrpPaise: 832, ratePaise: 646 }), // the same medicine
+      line(4, { name: 'known syrup', batch: 'K1', expiry: '2027-01', qty: 4, mrpPaise: 9000, ratePaise: 7000, gstRate: 18 }), // its own GST stays
+      line(5, { name: 'SAMPLE CONTROLLED INJ', batch: 'N1', expiry: '2027-12', qty: 2, mrpPaise: 5000, ratePaise: 4000, schedule: 'NDPS' }),
+      line(6, { name: 'OLD STOCK CAP', batch: 'O1', expiry: '2026-08', qty: 3, mrpPaise: 100, ratePaise: 50 }), // already expired
+    ];
+    const check = (await ph('post', '/opening-stock/check', { lines })).body;
+    expect(check.summary).toMatchObject({ problems: 0, batches: 5, newMedicines: 3, units: 44, expired: 1, importedBefore: null });
+    expect(check.lines[0].medicine).toMatchObject({ isNew: true, form: 'tablet', unit: 'tablet', gstRate: 5, schedule: 'H', hsn: '3004' });
+    expect(check.lines[2].medicine).toMatchObject({ isNew: false, id: known.id, gstRate: 5 });
+    expect(check.lines[3].medicine).toMatchObject({ form: 'injection', unit: 'vial', schedule: 'narcotic' });
+    expect(check.lines[4].notes.join(' ')).toMatch(/GST not given.*Schedule not given.*Expired/);
+
+    const res = await ph('post', '/opening-stock', { lines });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.imported).toMatchObject({ batches: 5, medicinesAdded: 3, units: 44 });
+    expect(await Medicine.countDocuments({ tenantId: hospital._id, name: /zifi/i })).toBe(1);
+    const sheet = (await ph('get', '/stock-sheet')).body;
+    expect(sheet.lines.map((l) => [l.name, l.batch, l.qty])).toEqual([
+      ['Known Syrup', 'K1', 4],
+      ['OLD STOCK CAP', 'O1', 3],
+      ['SAMPLE CONTROLLED INJ', 'N1', 2],
+      ['ZIFI 200 TAB', 'Z2', 5],
+      ['ZIFI 200 TAB', 'Z1', 30],
+    ]);
+    expect(sheet.totals.mrpValuePaise).toBe(30 * 832 + 5 * 832 + 4 * 9000 + 2 * 5000 + 3 * 100);
+    // Not a purchase: nothing in the purchases (purchase GST, the accountant's export, Tally)
+    expect((await ph('get', '/purchases')).body.purchases).toEqual([]);
+    const reg = (await ph('get', '/reports/register?type=narcotic&from=2026-09-01&to=2026-09-30')).body;
+    expect(reg.pages[0].rows[0]).toMatchObject({ kind: 'opening', in: 2, balance: 2, reason: 'Opening stock' });
+    const logged = await AuditLog.findOne({ action: 'PHARMACY_OPENING_STOCK_IMPORTED' }).lean();
+    expect(logged.details).toMatchObject({ batches: 5, medicinesAdded: 3, units: 44 });
+    // Checking again warns that it was brought in already
+    expect((await ph('post', '/opening-stock/check', { lines })).body.summary.importedBefore).toBeTruthy();
+  });
+
+  it('is for the pharmacist and the hospital admin only', async () => {
+    const body = { lines: [line(2, {})] };
+    for (const who of ['drA', 'nurse', 'reception']) expect((await ph('post', '/opening-stock/check', body, who)).status).toBe(403);
+    expect((await ph('post', '/opening-stock', body, 'admin')).status).toBe(201);
+  });
+});
+
 describe('selling at the counter', () => {
   it('sells from her prescription: the doctor comes with it, first-to-expire batches, GST invoice, on her bill', async () => {
     const sup = await supplier();
