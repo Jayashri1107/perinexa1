@@ -6,7 +6,7 @@ import { useAuth } from '../../auth/AuthContext.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Avatar, Field, StatusPill, formatDate, hasRole } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { DEPARTMENTS } from '../../platform/departments.js';
+import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { canRegisterPatients, newPatientLinks } from '../../platform/modules.js';
 import { PURPOSE_LABELS, VISIT_PURPOSES } from '../appointments/appointmentFormat.js';
 import { ChargeLines, billCharges, billedText, chargesOk, chargesTotal, useChargeItems } from '../billing/ServiceChargeDialog.jsx';
@@ -80,11 +80,11 @@ function PatientCard({ p }) {
 function OpdVisit({ p, canCharge, canSend, onDone }) {
   const doctors = useFetch('/tenant/doctors');
   const all = doctors.data?.doctors ?? [];
-  const departments = DEPARTMENTS.filter((d) => all.some((x) => x.department === d));
+  const departments = departmentsWithDoctors(all);
   const own = all.find((d) => d.name === p.assignedDoctorName);
   const [department, setDepartment] = useState(null); // null: not chosen yet – her doctor's department
   const dept = department ?? own?.department ?? '';
-  const offered = all.filter((d) => !dept || d.department === dept);
+  const offered = all.filter((d) => inDepartment(d, dept));
   const [doctorId, setDoctorId] = useState(null);
   const chosen = doctorId ?? (offered.some((d) => d.id === own?.id) ? own.id : (offered[0]?.id ?? ''));
   const doctor = all.find((d) => d.id === chosen);

@@ -41,7 +41,7 @@ import { lookupPin } from './pinLookup.js';
 import { useUnsavedWarning } from '../../hooks/useUnsavedWarning.js';
 import { HistorySheet } from './HistorySheet.jsx';
 import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues, withHistorySheet } from './historyFormat.js';
-import { DEPARTMENTS } from '../../platform/departments.js';
+import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { FertilitySection } from './FertilitySection.jsx';
 import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
 
@@ -417,7 +417,7 @@ export function PatientForm({
   const doctors = useFetch(isEdit ? null : '/tenant/doctors');
   const allDoctors = doctors.data?.doctors ?? [];
   // Only the departments that have a doctor (all in the list's order)
-  const departments = DEPARTMENTS.filter((d) => allDoctors.some((x) => x.department === d));
+  const departments = departmentsWithDoctors(allDoctors);
 
   // Another page (or another type of care from the New patient menu): the recording stops, so the microphone
   // never stays on for a page that is no longer being filled in.
@@ -865,7 +865,7 @@ export function PatientForm({
                             setDepartment(next);
                             // a doctor of another department is no longer offered
                             const chosen = allDoctors.find((d) => d.id === v.assignedDoctor);
-                            if (next && chosen && chosen.department !== next) setV((cur) => ({ ...cur, assignedDoctor: '' }));
+                            if (next && chosen && !inDepartment(chosen, next)) setV((cur) => ({ ...cur, assignedDoctor: '' }));
                           }}
                         >
                           <option value="">All departments</option>
@@ -881,7 +881,7 @@ export function PatientForm({
                       <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={doctorHint}>
                         <select id="assignedDoctor" value={v.assignedDoctor} onChange={set('assignedDoctor')}>
                           <option value="">Not assigned yet</option>
-                          {allDoctors.filter((d) => !department || d.department === department).map((d) => (
+                          {allDoctors.filter((d) => inDepartment(d, department)).map((d) => (
                             <option key={d.id} value={d.id}>
                               {d.name}
                               {d.qualification ? ` (${d.qualification})` : ''}

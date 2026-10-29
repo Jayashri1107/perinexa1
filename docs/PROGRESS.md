@@ -13,6 +13,36 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **29 Oct 2026 – the hospital's admission form, departments and floors (branch `admission-form`, at the developer's
+  request from the hospital's paper forms – an exception to the feature freeze, the owner's go-ahead to be recorded):**
+  (1) **Departments:** "General" and "Genetic Counselling" added; a doctor may be in **more than one** department
+  (Hospital admin → Staff → the department list under a doctor's roles is a tick list). (2) **Admit a patient** (bed
+  board, her record): **Department → Doctor in charge** (only that department's doctors; her assigned doctor to start
+  with), **Referred by**, the attendant's **address**, and for a medico-legal case the **MLC number and date, the
+  constable and the buckle number** besides the police station. Who may open her record is unchanged. (3) The printed
+  **admission form** shows them, plus the paper form's lines for the doctors to **write by hand**: provisional and final
+  diagnosis, two transfers (bed, class, date, time, CMO), surgery date, surgeon, anaesthetist and surgery name –
+  reception never types medical details. The admission slip and the bed card show the doctor in charge. (4) **Beds by
+  floor:** Hospital admin → Beds → Add beds has a **Floor**; the bed board and the setup list each ward under its floor
+  ("2nd floor · Deluxe AC"); the same room type can be on two floors. Doctors are added by the hospital admin as staff
+  (Staff → Add), each with their departments; beds as Floor + Ward or room type + bed or room numbers. **How to test:**
+  Hospital admin → Beds → add "1st floor · General ward · G1-G10"; Staff → tick a doctor's departments; Beds → Admit →
+  choose a department and see only its doctors; print the admission form.
+- **29 Oct 2026 – the ultrasound machine on the LAN (branch `usg-machine`, not merged – an exception to the feature
+  freeze at the developer's request; the owner's go-ahead to be recorded before merging):** `docs/USG_MACHINE_PLAN.md`.
+  (1) **Scan bridge** (`scan-bridge/`): a small program on a hospital PC next to Orthanc (the free DICOM receiver the
+  machine sends to); it sends each finished study – the machine's structured report and a JPEG of each still picture –
+  to Perinexa with the hospital's key, and writes today's ultrasound orders as the machine's worklist. (2) Hospital
+  admin → **Ultrasound machine**: make the key (shown once), make a new one, switch off. (3) On a scan, **From the
+  machine**: the patient's studies from the machine (matched by the scan number on the worklist, or her patient number
+  typed on the machine), its pictures to tick and add to the report (only after confirming they do not show the baby's
+  sex), and the **average table**: each measurement's readings with ticks, the machine's own value, the rule (average,
+  last, machine's own, one reading) and the value; **Fill the report with these values**. (4) **Review the final
+  report** → **Finalise – sign and print**; the printed report lists the machine's readings. (5) Scans → **From the
+  machine – not linked**: studies with an unknown number, linked by her patient number. DRAFT: the measurement codes,
+  units and the average rule (owner's approval); not tried with a real machine yet. **How to test (without a machine):**
+  `server/tests/usg-machine.test.js` sends a made-up study through the bridge's address; with a machine: follow
+  `scan-bridge/README.md` with a dummy patient only.
 - **28 Oct 2026 – pharmacy: prescribed medicines stay on the bill; Sold list (developer's requests):** medicines put
   on a bill from the doctor's prescription are marked Prescribed and cannot be taken off (only their quantity and batch
   change; a prescribed medicine short of stock says so); medicines the pharmacist adds can be removed. Pharmacy bills is

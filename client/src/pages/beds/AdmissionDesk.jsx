@@ -18,7 +18,7 @@ const TYPE_WORDS = { planned: 'Planned', emergency: 'Emergency', day_care: 'Day 
 const idWords = (c) => (c?.idProof ? `${ID_PROOF_OPTIONS.find(([k]) => k === c.idProof)?.[1] ?? c.idProof}${c.idLast4 ? ` ending ${c.idLast4}` : ''}` : '');
 const payerWords = (c) => (c?.payer ? `${PAYER_OPTIONS.find(([k]) => k === c.payer)?.[1] ?? c.payer}${c.payerName ? ` – ${c.payerName}` : ''}` : '');
 
-export const EMPTY_CHECKLIST = { idProof: '', idLast4: '', attendantName: '', attendantRelation: '', attendantPhone: '', payer: '', payerName: '', consentSigned: false };
+export const EMPTY_CHECKLIST = { idProof: '', idLast4: '', attendantName: '', attendantRelation: '', attendantPhone: '', attendantAddress: '', payer: '', payerName: '', consentSigned: false };
 
 /** Her record's details as a first answer (ID proof, payer, emergency contact as the attendant). */
 export const checklistFromPatient = (p) => ({
@@ -70,6 +70,9 @@ export function ChecklistFields({ value, onChange, fields = {}, idPrefix = 'ck' 
         </Field>
         <Field label="Relation" id={`${idPrefix}-rel`} error={err('attendantRelation')}>
           <input id={`${idPrefix}-rel`} maxLength={40} value={value.attendantRelation} onChange={set('attendantRelation')} />
+        </Field>
+        <Field label="Attendant's address" id={`${idPrefix}-addr`} error={err('attendantAddress')}>
+          <input id={`${idPrefix}-addr`} maxLength={300} value={value.attendantAddress ?? ''} onChange={set('attendantAddress')} />
         </Field>
         <Field label="Attendant's phone" id={`${idPrefix}-ph`} error={err('attendantPhone')}>
           <input id={`${idPrefix}-ph`} inputMode="tel" maxLength={20} value={value.attendantPhone} onChange={set('attendantPhone')} />
@@ -393,15 +396,59 @@ export function AdmissionForm({ p, letterhead }) {
           ['Admitted', formatDateTime(p.admittedAt)],
           ['Admission type', TYPE_WORDS[p.admissionType] ?? ''],
           ['Ward and bed', [p.ward, p.bed].filter(Boolean).join(' · ')],
-          ['Doctor', p.patient.doctorName],
+          ['Department', p.department ?? ''],
+          ['Doctor in charge', p.patient.doctorName],
+          ['Referred by', p.refDoctorName ?? ''],
           ['Reason', p.reason ?? ''],
           ['Medico-legal case', p.mlc ? `Yes${p.mlcPolice ? ` – police: ${p.mlcPolice}` : ''}` : 'No'],
+          ...(p.mlc
+            ? [
+                ['MLC number and date', [p.mlcNo, p.mlcAt ? formatDateTime(p.mlcAt) : ''].filter(Boolean).join(' · ')],
+                ['Constable and buckle number', [p.mlcConstable, p.mlcBuckleNo].filter(Boolean).join(' · ')],
+              ]
+            : []),
           ['ID proof seen', idWords(c)],
           ['Who pays', payerWords(c)],
           ['Attendant', c?.attendantName ? [c.attendantName, c.attendantRelation, c.attendantPhone].filter(Boolean).join(' · ') : '', true],
+          ["Attendant's address", c?.attendantAddress ?? '', true],
           ['Admitted by', p.admittedByName],
         ]}
       />
+      {/* For the doctors to write by hand (the hospital's paper form, 29 Oct 2026): reception never types medical details */}
+      <div className="adm-handwritten">
+        <SignLine label="Provisional diagnosis" />
+        <SignLine label="Final diagnosis" />
+        <table className="ptable pdoc-table adm-transfers">
+          <thead>
+            <tr>
+              <th scope="col">Transfer</th>
+              <th scope="col">Bed</th>
+              <th scope="col">Class</th>
+              <th scope="col">Date</th>
+              <th scope="col">Time</th>
+              <th scope="col">CMO name and signature</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[1, 2].map((n) => (
+              <tr key={n}>
+                <th scope="row">Transfer {n}</th>
+                <td />
+                <td />
+                <td />
+                <td />
+                <td />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="adm-surgery">
+          <SignLine label="Surgery date" />
+          <SignLine label="Surgeon" />
+          <SignLine label="Anaesthetist" />
+        </div>
+        <SignLine label="Surgery name" />
+      </div>
       <h2 className="pdoc-sig-title">General consent for admission</h2>
       <p className="pdoc-small">
         I agree to be admitted to this hospital and to the routine care, nursing, tests and treatment that the doctors consider needed. Any operation, anaesthesia,

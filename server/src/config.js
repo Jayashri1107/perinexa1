@@ -53,6 +53,9 @@ const schema = z.object({
   API_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
   // A request slower than this (milliseconds) is written to the server's log; 0 = off.
   SLOW_REQUEST_MS: z.coerce.number().int().min(0).default(1500),
+  // Days what the ultrasound machine sent is kept for the sonologist to choose from (docs/USG_MACHINE_PLAN.md);
+  // what she used is copied into the scan's record and kept with it.
+  SCAN_BRIDGE_KEEP_DAYS: z.coerce.number().int().min(1).max(90).default(30),
   // The one-time code the sign-in page asks for when the first super admin is created. Required on the live server
   // (NODE_ENV=production), so nobody who finds the new address first can make themselves super admin.
   SETUP_CODE: z.string().trim().default(''),

@@ -14,12 +14,16 @@ export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 
 // addPeople (22 Oct 2026): add new staff to the hospital – never another admin (only the super admin makes admins).
 export const ADMIN_RIGHTS = ['addPeople', 'resetPassword', 'access', 'roles', 'details'];
 // A doctor's department in this hospital (owner, 27 Oct 2026): registration shows the department first, then its
-// doctors. Set by the hospital admin; the same list is in client/src/platform/departments.js.
+// doctors. Set by the hospital admin; the same list is in client/src/platform/departments.js. A doctor may work in more than
+// one department (29 Oct 2026, e.g. Medicine and Neonatology): departments; department is the first of them.
 export const DEPARTMENTS = [
-  'Obstetrics & Gynaecology', 'Paediatrics', 'Neonatology', 'General Medicine', 'General Surgery', 'Anaesthesia', 'Cardiology', 'Dietetics',
-  'Gastroenterology', 'Lactation', 'Neurology', 'Medical Oncology', 'Surgical Oncology', 'Orthopaedics', 'Pathology', 'Physiotherapy',
+  'Obstetrics & Gynaecology', 'Paediatrics', 'Neonatology', 'General', 'General Medicine', 'General Surgery', 'Anaesthesia', 'Cardiology', 'Dietetics',
+  'Gastroenterology', 'Genetic Counselling', 'Lactation', 'Neurology', 'Medical Oncology', 'Surgical Oncology', 'Orthopaedics', 'Pathology', 'Physiotherapy',
   'Plastic & Reconstructive Surgery', 'Radiology', 'Interventional Radiology', 'Urology', 'Yoga',
 ];
+
+/** A doctor's departments, also on memberships saved before a doctor could have more than one. */
+export const departmentsOf = (m) => (m?.departments?.length ? [...m.departments] : m?.department ? [m.department] : []);
 
 // Links a user to a hospital ("tagging"), with the roles they have there.
 // One user can have memberships in several hospitals, and one or more roles in each
@@ -35,8 +39,9 @@ const membershipSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     // A hospital admin's rights over the staff (ADMIN_RIGHTS), set by the super admin
     adminRights: { type: [{ type: String, enum: ADMIN_RIGHTS }], default: [] },
-    // A doctor's department here (DEPARTMENTS); '' = not set
+    // A doctor's departments here (DEPARTMENTS); department: the first of them ('' = not set)
     department: { type: String, enum: ['', ...DEPARTMENTS], default: '' },
+    departments: { type: [{ type: String, enum: DEPARTMENTS }], default: [] },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },

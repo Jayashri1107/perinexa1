@@ -44,7 +44,7 @@ function AdmissionRules() {
 
 export function BedSetupPage() {
   const setup = useFetch('/beds/setup');
-  const [form, setForm] = useState({ ward: '', names: '' });
+  const [form, setForm] = useState({ floor: '', ward: '', names: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
@@ -57,9 +57,9 @@ export function BedSetupPage() {
     setError(null);
     setFields({});
     try {
-      const { beds } = await api('/beds/setup', { method: 'POST', body: { ward: form.ward.trim(), names } });
-      setNotice(`${beds.length} bed${beds.length === 1 ? '' : 's'} added to ${beds[0]?.ward ?? form.ward}.`);
-      setForm({ ward: form.ward, names: '' });
+      const { beds } = await api('/beds/setup', { method: 'POST', body: { floor: form.floor.trim(), ward: form.ward.trim(), names } });
+      setNotice(`${beds.length} bed${beds.length === 1 ? '' : 's'} added to ${[form.floor.trim(), beds[0]?.ward ?? form.ward].filter(Boolean).join(' · ')}.`);
+      setForm({ floor: form.floor, ward: form.ward, names: '' });
       setup.reload();
     } catch (err) {
       setError(err.message);
@@ -90,11 +90,19 @@ export function BedSetupPage() {
         <form className="card beds-add" onSubmit={add} noValidate>
           <h2>Add beds</h2>
           <div className="form-grid">
-            <Field label="Ward" id="bed-ward" error={fields.ward} hint="e.g. General ward, Private, Labour ward">
+            <Field label="Floor (optional)" id="bed-floor" error={fields.floor} hint="e.g. 1st floor, 2nd floor">
+              <input id="bed-floor" value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} maxLength={30} list="bed-floors" />
+              <datalist id="bed-floors">
+                {[...new Set((setup.data?.wards ?? []).map((w) => w.floor).filter(Boolean))].map((f) => (
+                  <option key={f} value={f} />
+                ))}
+              </datalist>
+            </Field>
+            <Field label="Ward or room type" id="bed-ward" error={fields.ward} hint="e.g. General ward, NICU, Private AC, Deluxe AC, Suite AC">
               <input id="bed-ward" value={form.ward} onChange={(e) => setForm({ ...form, ward: e.target.value })} maxLength={60} list="bed-wards" />
               <datalist id="bed-wards">
-                {(setup.data?.wards ?? []).map((w) => (
-                  <option key={w.ward} value={w.ward} />
+                {[...new Set((setup.data?.wards ?? []).map((w) => w.ward))].map((w) => (
+                  <option key={w} value={w} />
                 ))}
               </datalist>
             </Field>
@@ -102,7 +110,7 @@ export function BedSetupPage() {
               <input id="bed-names" value={form.names} onChange={(e) => setForm({ ...form, names: e.target.value })} />
             </Field>
           </div>
-          <p className="hint">The bed charge is the bed price in Billing → Price list for a ward with the same name, or the general bed price.</p>
+          <p className="hint">Beds are a range like G1-G10, room numbers like 201, or names. The bed charge is the bed price in Billing → Price list for a ward or room type with the same name, or the general bed price.</p>
           <div className="acc-actions">
             <button type="submit" className="btn btn-primary" disabled={busy || !form.ward.trim() || names.length === 0}>
               <Plus aria-hidden="true" /> {busy ? 'Adding…' : 'Add beds'}
@@ -111,9 +119,9 @@ export function BedSetupPage() {
         </form>
 
         {setup.data?.wards.map((w) => (
-          <section key={w.ward} className="card beds-ward" aria-labelledby={`setup-${w.ward}`}>
+          <section key={`${w.floor}|${w.ward}`} className="card beds-ward" aria-labelledby={`setup-${`${w.floor}-${w.ward}`.replace(/\W+/g, '-')}`}>
             <header className="beds-ward-head">
-              <h2 id={`setup-${w.ward}`}>{w.ward}</h2>
+              <h2 id={`setup-${`${w.floor}-${w.ward}`.replace(/\W+/g, '-')}`}>{[w.floor, w.ward].filter(Boolean).join(' · ')}</h2>
               <span className="muted tabular">{w.beds.filter((b) => b.active).length} beds in use</span>
             </header>
             <ul className="beds-grid">

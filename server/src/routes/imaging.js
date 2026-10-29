@@ -5,6 +5,7 @@ import { MODALITIES, STUDIES, STUDY_KEYS, studyByKey } from '../imaging/template
 import { ImagingOrder } from '../models/ImagingOrder.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient, currentAge } from '../models/Patient.js';
+import { Tenant } from '../models/Tenant.js';
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
@@ -15,6 +16,8 @@ import { findPatient } from '../utils/patientLookup.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
 import { eddInUse } from '../patients/pregnancyFindings.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
+import { DEFAULT_USE, USE_RULES, fetusesOf, sameName, tableOf, usedValue } from '../imaging/machineReadings.js';
+import { MachineImage, MachineStudy } from '../models/MachineStudy.js';
 import { objectId, parse } from '../utils/validate.js';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md). Two routers:
@@ -41,7 +44,9 @@ const stampView = (s) => (s ? { byName: s.byName, at: s.at } : null);
 const ids = (o, patient, extra = {}) => ({ patientId: String(o.patientId), mrn: patient?.mrn, imagingId: String(o._id), ...extra });
 
 const clinicalOf = (req, patient) => patientAccess(req, patient).view.has('pregnancy') || (hasRole(req.membership, 'sonographer') && !patient.sensitive);
-const reportView = (r) => (r ? { values: r.values ?? {}, findings: r.findings ?? '', impression: r.impression ?? '' } : null);
+// The machine's readings used in the report: a value changed by hand afterwards is marked edited
+const machineUseView = (r) => (r.machine ? { ...r.machine, rows: (r.machine.rows ?? []).map((x) => ({ ...x, edited: Number(r.values?.[x.key]) !== x.value })) } : null);
+const reportView = (r) => (r ? { values: r.values ?? {}, findings: r.findings ?? '', impression: r.impression ?? '', machine: machineUseView(r) } : null);
 
 // The pictures still on the report (one taken off is kept in the record, not listed)
 const imagesView = (o) => (o.images ?? []).filter((i) => !i.removed).map((i) => ({ ...fileEntry({ _id: i.fileId, fileName: i.fileName, mediaType: i.mediaType, size: i.size }, stampView(i)), inPrint: i.inPrint !== false }));
@@ -59,6 +64,7 @@ function view(req, o, patient) {
     modality: study?.modality ?? 'other',
     urgent: Boolean(o.urgent),
     status: o.status,
+    accession: o.accession ?? null, // the scan number on the machine's worklist
     scheduledFor: o.scheduledFor ?? null,
     ordered: stampView(o.ordered),
     scheduled: stampView(o.scheduled),
@@ -249,7 +255,7 @@ imagingRouter.put('/:id/report', async (req, res) => {
   );
   if (!view(req, o, patient).access.canReport) throw forbidden('A doctor, RMO or sonography staff writes the report once the study is done.');
   checkRev(o, body.rev);
-  const report = checkedReport(o, body);
+  const report = { ...checkedReport(o, body), machine: o.report?.machine ?? null };
   if (o.status === 'signed') {
     if (body.reason.trim().length < 5) throw invalid({ reason: 'The report is signed: write why it is changed.' });
     o.amendments.push({ ...stampOf(req), reason: body.reason.trim(), report: o.report });
@@ -343,4 +349,190 @@ imagingRouter.post('/:id/printed', async (req, res) => {
   if (!view(req, o, patient).access.canPrint) throw forbidden('The report is printed once it is signed.');
   await audit(req, 'IMAGING_PRINTED', { details: ids(o, patient) });
   res.json({ ok: true });
+});
+
+// ---------- From the ultrasound machine (docs/USG_MACHINE_PLAN.md) ----------
+// What the machine sent through the scan bridge (routes/scanBridge.js): on a study, the machine studies of this patient
+// since the day before it was ordered; their pictures are chosen and added to the scan's pictures (copied, so they stay
+// after the machine study is deleted), and their readings fill the report through the average table. Studies the
+// bridge could not match wait on Scans → From the machine for staff to link by her patient number. PCPNDT: whoever adds
+// pictures confirms they do not show the baby's sex (recorded in the audit log); nothing about it is in the readings.
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const UNMATCHED_DAYS = 7;
+const machineName = (m) => [m.manufacturer, m.model].filter(Boolean).join(' ');
+
+async function loadMachineStudy(req, id) {
+  const m = await MachineStudy.findOne({ tenantId: req.tenantId, _id: parse(objectId, id) });
+  if (!m) throw new HttpError(404, 'This study from the machine was not found. It may have been deleted after its keep period.', 'NOT_FOUND');
+  return m;
+}
+
+function machineStudyView(m, { template = null, patient = null, imagingId = null } = {}) {
+  const fields = new Map((template?.fields ?? []).filter((f) => f.type === 'number').map((f) => [f.key, f.name]));
+  return {
+    id: String(m._id),
+    receivedAt: m.receivedAt,
+    studyAt: m.studyAt ?? null,
+    machine: machineName(m),
+    station: m.station,
+    nameOnMachine: m.patientName,
+    numberOnMachine: m.machinePatientId,
+    matchedBy: m.matchedBy,
+    linked: m.linked ? { byName: m.linked.byName, at: m.linked.at } : null,
+    ...(patient ? { nameDiffers: Boolean(m.patientName) && !sameName(m.patientName, patient.fullName) } : {}),
+    images: m.images.map((i) => ({ id: String(i.imageId), size: i.size, inThisStudy: Boolean(imagingId) && i.usedIn.some((x) => String(x) === String(imagingId)) })),
+    fetuses: fetusesOf(m.readings).map((fetus) => ({
+      fetus,
+      rows: tableOf(m.readings, fetus).map((r) => ({ ...r, ...(template ? { inTemplate: fields.has(r.key), name: fields.get(r.key) ?? r.name } : {}) })),
+    })),
+    unmatched: m.unmatched.map((u) => ({ meaning: u.meaning, value: u.value, unit: u.unit, fetus: u.fetus })),
+    droppedSex: m.droppedSex,
+  };
+}
+
+// The studies no one is matched to yet (for staff to link), and whether the machine is connected: the bridge is set up
+// and when it was last heard from (never the key)
+imagingRouter.get('/machine/unmatched', async (req, res) => {
+  const list = await MachineStudy.find({ tenantId: req.tenantId, patientId: null, receivedAt: { $gte: new Date(req.now - UNMATCHED_DAYS * DAY_MS) } })
+    .sort({ receivedAt: -1 })
+    .limit(100);
+  await audit(req, 'MACHINE_UNMATCHED_VIEWED', { details: { count: list.length } });
+  const b = (await Tenant.findById(req.tenantId).lean())?.scanBridge;
+  res.json({ studies: list.map((m) => machineStudyView(m)), bridge: { on: Boolean(b?.keyHash), lastContactAt: b?.lastContactAt ?? null } });
+});
+
+imagingRouter.post('/machine/:machineId/link', async (req, res) => {
+  const m = await loadMachineStudy(req, req.params.machineId);
+  const body = parse(z.object({ mrn: z.string().trim().min(1, 'Enter her patient number').max(40) }).strict(), req.body);
+  if (m.patientId) throw conflict('This study is already linked to a patient.');
+  const patient = await Patient.findOne({ tenantId: req.tenantId, mrn: { $in: [...new Set([body.mrn, body.mrn.toUpperCase()])] } });
+  if (!patient) throw invalid({ mrn: 'No patient has this number.' });
+  Object.assign(m, { patientId: patient._id, matchedBy: 'hand', linked: stampOf(req) });
+  await m.save();
+  await audit(req, 'MACHINE_STUDY_LINKED', { details: { machineStudyId: String(m._id), patientId: String(patient._id), mrn: patient.mrn } });
+  res.json({ study: machineStudyView(m, { patient }), patient: { id: String(patient._id), fullName: patient.fullName, mrn: patient.mrn } });
+});
+
+// A picture of a machine study: anyone in Scans for a study not yet linked (to see whose it is), otherwise those who
+// see her scans
+imagingRouter.get('/machine/:machineId/images/:imageId', async (req, res) => {
+  const m = await loadMachineStudy(req, req.params.machineId);
+  const imageId = parse(objectId, req.params.imageId);
+  if (!m.images.some((i) => String(i.imageId) === String(imageId))) throw new HttpError(404, 'This picture was not found.', 'NOT_FOUND');
+  if (m.patientId) {
+    const patient = await Patient.findOne({ tenantId: req.tenantId, _id: m.patientId });
+    if (!patient || !clinicalOf(req, patient)) throw forbidden("You can't see this patient's scans.");
+  }
+  const image = await MachineImage.findOne({ tenantId: req.tenantId, _id: imageId, machineStudyId: m._id });
+  if (!image) throw new HttpError(404, 'This picture was not found.', 'NOT_FOUND');
+  await audit(req, 'MACHINE_IMAGE_VIEWED', { details: { machineStudyId: String(m._id), imageId: String(imageId), ...(m.patientId ? { patientId: String(m.patientId) } : {}) } });
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Content-Type', image.mediaType);
+  res.send(image.data);
+});
+
+// This patient's machine studies, for one scan
+imagingRouter.get('/:id/machine', async (req, res) => {
+  const { o, patient } = await loadStudy(req);
+  if (!clinicalOf(req, patient)) throw forbidden("You can't see this patient's scans.");
+  const since = new Date(new Date(o.createdAt ?? req.now) - DAY_MS);
+  const list = await MachineStudy.find({ tenantId: req.tenantId, $or: [{ imagingId: o._id }, { patientId: o.patientId, receivedAt: { $gte: since } }] })
+    .sort({ receivedAt: -1 })
+    .limit(10);
+  await audit(req, 'IMAGING_MACHINE_VIEWED', { details: ids(o, patient, { count: list.length }) });
+  const template = studyByKey.get(o.study);
+  res.json({ studies: list.map((m) => machineStudyView(m, { template, patient, imagingId: o._id })), defaultUse: DEFAULT_USE });
+});
+
+async function machineStudyOf(req, o, machineId) {
+  const m = await loadMachineStudy(req, machineId);
+  if (String(m.patientId) !== String(o.patientId)) throw conflict('This study from the machine is not linked to this patient.');
+  return m;
+}
+
+// Chosen pictures added to the scan's pictures
+imagingRouter.post('/:id/machine/:machineId/pictures', async (req, res) => {
+  const { o, patient } = await loadStudy(req);
+  const body = parse(
+    z.object({ rev: z.number().int().min(0), imageIds: z.array(objectId).min(1, 'Choose the pictures').max(MAX_IMAGES), noSexShown: z.literal(true, "Confirm that the pictures do not show the baby's sex.") }).strict(),
+    req.body,
+  );
+  if (!view(req, o, patient).access.canImages) throw forbidden('Pictures are added by a doctor, RMO or sonography staff once the study is done, before it is signed.');
+  checkRev(o, body.rev);
+  const m = await machineStudyOf(req, o, req.params.machineId);
+  const wanted = [...new Set(body.imageIds)].map((id) => m.images.find((i) => String(i.imageId) === id));
+  if (wanted.some((i) => !i)) throw new HttpError(404, 'A picture was not found.', 'NOT_FOUND');
+  const fresh = wanted.filter((i) => !i.usedIn.some((x) => String(x) === String(o._id)));
+  if ((o.images ?? []).filter((i) => !i.removed).length + fresh.length > MAX_IMAGES) throw invalid({ file: `At most ${MAX_IMAGES} pictures per study.` });
+  const added = [];
+  for (const i of fresh) {
+    const image = await MachineImage.findOne({ tenantId: req.tenantId, _id: i.imageId, machineStudyId: m._id });
+    if (!image) throw new HttpError(404, 'A picture was not found.', 'NOT_FOUND');
+    const n = m.images.indexOf(i) + 1;
+    const stored = await storeFile(req, {
+      patientId: patient._id,
+      kind: 'scan_image',
+      ownerId: o._id,
+      body: { fileName: `machine-${n}.${image.mediaType === 'image/png' ? 'png' : 'jpg'}`, mediaType: image.mediaType, data: image.data.toString('base64') },
+      types: IMAGE_TYPES,
+    });
+    o.images.push({ fileId: stored._id, fileName: stored.fileName, mediaType: stored.mediaType, size: stored.size, ...stampOf(req), inPrint: true });
+    i.usedIn.push(o._id);
+    added.push(String(stored._id));
+  }
+  if (added.length) {
+    o.rev += 1;
+    await o.save();
+    m.markModified('images');
+    await m.save();
+    await audit(req, 'IMAGING_IMAGE_ADDED', { details: ids(o, patient, { machineStudyId: String(m._id), fileIds: added, fromMachine: true, noSexShownConfirmed: true }) });
+  }
+  res.status(201).json({ study: view(req, o, patient), added: added.length });
+});
+
+// The average table's choices put in the report: the server works the values out again from the readings it keeps
+imagingRouter.post('/:id/machine/:machineId/fill', async (req, res) => {
+  const { o, patient } = await loadStudy(req);
+  const body = parse(
+    z
+      .object({
+        rev: z.number().int().min(0),
+        fetus: z.string().trim().min(1).max(10),
+        rows: z
+          .array(z.object({ key: z.string().max(20), ticked: z.array(z.boolean()).max(30).default([]), use: z.enum(USE_RULES).default(DEFAULT_USE), reading: z.number().int().min(0).max(29).default(0) }).strict())
+          .min(1, 'Choose the readings to use')
+          .max(20),
+      })
+      .strict(),
+    req.body,
+  );
+  if (!view(req, o, patient).access.canReport || o.status !== 'done') throw forbidden('Readings are put in the report once the study is done, before it is signed.');
+  checkRev(o, body.rev);
+  const m = await machineStudyOf(req, o, req.params.machineId);
+  const numbers = new Set((studyByKey.get(o.study)?.fields ?? []).filter((f) => f.type === 'number').map((f) => f.key));
+  const table = new Map(tableOf(m.readings, body.fetus).map((r) => [r.key, r]));
+  const values = {};
+  const rows = [];
+  for (const choice of body.rows) {
+    const row = table.get(choice.key);
+    if (!row || !numbers.has(choice.key)) continue;
+    const value = usedValue(row, choice);
+    if (value == null) continue;
+    values[choice.key] = value;
+    rows.push({ key: row.key, name: row.name, unit: row.unit, readings: row.readings, ticked: row.readings.map((_, i) => choice.ticked[i] !== false), machine: row.machine?.value ?? null, use: choice.use, reading: choice.reading, value });
+  }
+  if (!rows.length) throw invalid({ rows: 'None of these readings belongs in this template.' });
+  o.report = {
+    values: { ...(o.report?.values ?? {}), ...values },
+    findings: o.report?.findings ?? '',
+    impression: o.report?.impression ?? '',
+    machine: { machineStudyId: String(m._id), studyUid: m.studyUid, machine: machineName(m), studyAt: m.studyAt ?? null, fetus: body.fetus, ...stampOf(req), rows },
+  };
+  o.saved = stampOf(req);
+  o.rev += 1;
+  o.markModified('report');
+  await o.save();
+  await audit(req, 'IMAGING_MACHINE_READINGS_USED', { details: ids(o, patient, { machineStudyId: String(m._id), fields: rows.map((r) => r.key) }) });
+  res.json({ study: view(req, o, patient) });
 });

@@ -89,6 +89,26 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
  * - allowAccountChanges: show "Reset password" (hospital admins; only for people who work nowhere else)
  * - linkToUser: super admins get a link to the person's full account page
  */
+/** A doctor's departments: a short summary that opens to a tick list of every department. */
+function DoctorDepartments({ m, busy, onChange }) {
+  const list = m.departments?.length ? m.departments : m.department ? [m.department] : [];
+  return (
+    <details className="member-departments">
+      <summary>
+        <span className="sr-only">Departments of {m.user.name}: </span>
+        {list.length ? list.join(', ') : 'No department'}
+      </summary>
+      <div className="member-department-list">
+        {DEPARTMENTS.map((d) => (
+          <label key={d} className="check">
+            <input type="checkbox" checked={list.includes(d)} disabled={busy} onChange={() => onChange(list.includes(d) ? list.filter((x) => x !== d) : DEPARTMENTS.filter((x) => x === d || list.includes(x)))} /> {d}
+          </label>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser = false, defaultRoles = ['doctor'], onChanged, title = 'Staff' }) {
   const { user: me, platform, activeMembership } = useAuth();
   // New people are added by the super admin, a platform admin given "User accounts" (owner, 12 Oct 2026), or – since
@@ -212,29 +232,12 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
           >
             Edit<span className="sr-only"> roles for {m.user.name}</span>
           </button>
-          {/* A doctor's department (owner, 27 Oct 2026): registration offers a department's doctors */}
-          {m.roles.includes('doctor') && (
-            <select
-              className="member-department"
-              aria-label={`Department of ${m.user.name}`}
-              value={m.department ?? ''}
-              disabled={busyId === m.id}
-              onChange={(e) => {
-                const department = e.target.value;
-                run(m, async () => {
-                  await api(`${basePath}/${m.id}/department`, { method: 'PATCH', body: { department } });
-                  setSuccess(department ? `${m.user.name} is now in ${department}.` : `${m.user.name}'s department is cleared.`);
-                });
-              }}
-            >
-              <option value="">No department</option>
-              {DEPARTMENTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          )}
+          {/* A doctor's departments (owner, 27 Oct 2026; more than one from 29 Oct 2026): registration and admission offer a
+              department's doctors */}
+          {m.roles.includes('doctor') && <DoctorDepartments m={m} busy={busyId === m.id} onChange={(next) => run(m, async () => {
+            await api(`${basePath}/${m.id}/department`, { method: 'PATCH', body: { departments: next } });
+            setSuccess(next.length ? `${m.user.name}: ${next.join(', ')}.` : `${m.user.name}'s departments are cleared.`);
+          })} />}
         </span>
       ),
     },

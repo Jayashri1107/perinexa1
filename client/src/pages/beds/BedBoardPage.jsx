@@ -11,6 +11,7 @@ import { Alert, Field, StatusPill, formatDateTime, hasRole, useDialogFocus } fro
 import { useFetch } from '../../hooks/useFetch.js';
 import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { canRegisterPatients } from '../../platform/modules.js';
+import { departmentsOfDoctor, departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { AdmitRegister } from './AdmitRegister.jsx';
 import { REASONS, freeBeds, nowLocal } from './bedFormat.js';
 import { ChecklistDialog, ChecklistFields, EMPTY_CHECKLIST, RequestsSection, StayPaper, ToClearSection, checklistFromPatient } from './AdmissionDesk.jsx';
@@ -94,7 +95,9 @@ export function BedBoardPage() {
   const shows = (b) =>
     (!statusFilter || bedState(b) === statusFilter) &&
     (!q || b.name.toLowerCase().includes(q) || b.stay?.patient.fullName.toLowerCase().includes(q) || b.stay?.patient.mrn.toLowerCase().includes(q));
-  const wards = (data?.wards ?? []).filter((w) => !wardFilter || w.ward === wardFilter).map((w) => ({ ...w, shown: w.beds.filter(shows) }));
+  // A ward is its floor and its name (29 Oct 2026: the same kind of room can be on two floors)
+  const wardKey = (w) => `${w.floor ?? ''}|${w.ward}`;
+  const wards = (data?.wards ?? []).filter((w) => !wardFilter || wardKey(w) === wardFilter).map((w) => ({ ...w, shown: w.beds.filter(shows) }));
   const filtering = Boolean(q || statusFilter || wardFilter);
 
   const occupiedN = data?.counts.occupied ?? 0;
@@ -171,8 +174,8 @@ export function BedBoardPage() {
                   <select value={wardFilter} onChange={(e) => setWardFilter(e.target.value)}>
                     <option value="">All wards</option>
                     {data.wards.map((w) => (
-                      <option key={w.ward} value={w.ward}>
-                        {w.ward}
+                      <option key={wardKey(w)} value={wardKey(w)}>
+                        {[w.floor, w.ward].filter(Boolean).join(' · ')}
                       </option>
                     ))}
                   </select>
@@ -204,14 +207,17 @@ export function BedBoardPage() {
               .map((w) => {
                 const inUse = w.beds.filter((b) => b.active);
                 const occupied = w.beds.filter((b) => b.stay).length;
-                const open = !folded.has(w.ward);
-                const id = `ward-${w.ward.replace(/\W+/g, '-')}`;
+                const open = !folded.has(wardKey(w));
+                const id = `ward-${wardKey(w).replace(/\W+/g, '-')}`;
                 const wardPct = inUse.length ? Math.round((occupied / inUse.length) * 100) : 0;
                 return (
-                  <section key={w.ward} className="card bb-ward" aria-labelledby={id}>
-                    <button type="button" className="bb-ward-head" aria-expanded={open} aria-controls={`${id}-beds`} onClick={() => toggle(w.ward)}>
+                  <section key={wardKey(w)} className="card bb-ward" aria-labelledby={id}>
+                    <button type="button" className="bb-ward-head" aria-expanded={open} aria-controls={`${id}-beds`} onClick={() => toggle(wardKey(w))}>
                       <Building2 className="bb-ward-icon" aria-hidden="true" />
-                      <h2 id={id}>{w.ward}</h2>
+                      <h2 id={id}>
+                        {w.floor && <span className="bb-ward-floor">{w.floor} · </span>}
+                        {w.ward}
+                      </h2>
                       <span className="bb-ward-counts tabular">
                         {occupied} of {inUse.length} occupied · {Math.max(0, inUse.length - occupied)} free
                       </span>
@@ -350,7 +356,18 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
   const freeList = useFetch(fixedBed ? null : '/beds', { free: '1' });
   const [bedId, setBedId] = useState('');
   const bed = fixedBed ?? freeList.data?.beds.find((b) => b.id === (bedId || freeList.data.beds[0]?.id)) ?? null;
-  const [form, setForm] = useState({ reasonCode: request?.reasonCode ?? 'labour', reasonNote: '', admittedAt: nowLocal(), admissionType: request?.admissionType ?? startType ?? 'planned', mlc: false, mlcPolice: '' });
+  const [form, setForm] = useState({ reasonCode: request?.reasonCode ?? 'labour', reasonNote: '', admittedAt: nowLocal(), admissionType: request?.admissionType ?? startType ?? 'planned', mlc: false, mlcPolice: '', mlcNo: '', mlcAt: '', mlcConstable: '', mlcBuckleNo: '', refDoctorName: '' });
+  // The department, then the doctor in charge from its doctors (29 Oct 2026, the hospital's admission form) – her
+  // assigned doctor and his department to start with
+  const doctors = useFetch('/tenant/doctors');
+  const allDoctors = doctors.data?.doctors ?? [];
+  const departments = departmentsWithDoctors(allDoctors);
+  const own = allDoctors.find((d) => d.name === patient?.assignedDoctorName) ?? null;
+  const [department, setDepartment] = useState(null); // null: her doctor's department
+  const dept = department ?? departmentsOfDoctor(own)[0] ?? '';
+  const offered = allDoctors.filter((d) => inDepartment(d, dept));
+  const [doctorId, setDoctorId] = useState(null); // null: her doctor, if in the department
+  const chosenDoctor = doctorId ?? (own && offered.some((d) => d.id === own.id) ? own.id : '');
   // The checklist, first filled from her record (ID proof, payer, emergency contact); her open request, if any
   const record = useFetch(patient ? `/patients/${patient.id}` : null);
   const [checklist, setChecklist] = useState(null);
@@ -377,12 +394,19 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
         admissionType: form.admissionType,
         mlc: form.mlc,
         mlcPolice: form.mlc ? form.mlcPolice.trim() : '',
+        mlcNo: form.mlc ? form.mlcNo.trim() : '',
+        mlcAt: form.mlc && form.mlcAt ? new Date(form.mlcAt).toISOString() : '',
+        mlcConstable: form.mlc ? form.mlcConstable.trim() : '',
+        mlcBuckleNo: form.mlc ? form.mlcBuckleNo.trim() : '',
+        department: dept,
+        ...(chosenDoctor ? { doctorId: chosenDoctor } : {}),
+        refDoctorName: form.refDoctorName.trim(),
         admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : '',
         checklist: shownChecklist,
         ...(req ? { requestId: req.id } : {}),
       };
       const { admission } = await api(`/beds/${bed.id}/admit`, { method: 'POST', body });
-      onAdmitted({ patient, ward: admission.ward, bed: admission.bed, admittedAt: admission.admittedAt, ipdNo: admission.ipdNo, checklistComplete: admission.checklistComplete, stayId: admission.id });
+      onAdmitted({ patient, ward: admission.ward, floor: admission.floor ?? '', bed: admission.bed, department: admission.department ?? '', doctorName: admission.doctorName ?? '', admittedAt: admission.admittedAt, ipdNo: admission.ipdNo, checklistComplete: admission.checklistComplete, stayId: admission.id });
     } catch (err) {
       setError(err.message);
       setFields(err.fields ?? {});
@@ -394,7 +418,7 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
   return (
     <Modal id="bed-admit" title="Admit a patient" onClose={onClose}>
       <p className="appt-when">
-        <BedDouble aria-hidden="true" /> {fixedBed ? `${fixedBed.ward} · ${fixedBed.name}` : 'Choose a free bed'}
+        <BedDouble aria-hidden="true" /> {fixedBed ? [fixedBed.floor, fixedBed.ward, fixedBed.name].filter(Boolean).join(' · ') : 'Choose a free bed'}
       </p>
       {!fixedBed && (
         <>
@@ -460,15 +484,62 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
                 <option value="day_care">Day care</option>
               </select>
             </Field>
+            {departments.length > 0 && (
+              <Field label="Department" id="bed-dept">
+                <select
+                  id="bed-dept"
+                  value={dept}
+                  onChange={(e) => {
+                    setDepartment(e.target.value);
+                    setDoctorId(null); // a doctor of another department is no longer offered
+                  }}
+                >
+                  <option value="">All departments</option>
+                  {departments.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            <Field label="Doctor in charge" id="bed-doctor" error={fields.doctorId}>
+              <select id="bed-doctor" value={chosenDoctor} onChange={(e) => setDoctorId(e.target.value)}>
+                <option value="">{offered.length ? 'Choose the doctor' : 'No doctor in this department'}</option>
+                {offered.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                    {d.qualification ? ` (${d.qualification})` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Referred by (optional)" id="bed-ref" error={fields.refDoctorName} hint="The referring doctor's name.">
+              <input id="bed-ref" maxLength={100} value={form.refDoctorName} onChange={set('refDoctorName')} />
+            </Field>
           </div>
           <label className="check">
             <input type="checkbox" checked={form.mlc} onChange={(e) => setForm({ ...form, mlc: e.target.checked })} /> Medico-legal case (MLC) – e.g. an
             accident, assault, burns or poisoning; the police are informed as the hospital's rules say
           </label>
           {form.mlc && (
-            <Field label="Police station informed" id="bed-police" error={fields.mlcPolice} hint='Or write "to inform".'>
-              <input id="bed-police" maxLength={120} value={form.mlcPolice} onChange={set('mlcPolice')} />
-            </Field>
+            <div className="form-grid">
+              <Field label="Police station informed" id="bed-police" error={fields.mlcPolice} hint='Or write "to inform".'>
+                <input id="bed-police" maxLength={120} value={form.mlcPolice} onChange={set('mlcPolice')} />
+              </Field>
+              <Field label="MLC number" id="bed-mlcno" error={fields.mlcNo}>
+                <input id="bed-mlcno" maxLength={40} value={form.mlcNo} onChange={set('mlcNo')} />
+              </Field>
+              <Field label="MLC date and time" id="bed-mlcat" error={fields.mlcAt}>
+                <input id="bed-mlcat" type="datetime-local" value={form.mlcAt} onChange={set('mlcAt')} max={nowLocal()} />
+              </Field>
+              <Field label="Constable's name" id="bed-constable" error={fields.mlcConstable}>
+                <input id="bed-constable" maxLength={100} value={form.mlcConstable} onChange={set('mlcConstable')} />
+              </Field>
+              <Field label="Buckle number" id="bed-buckle" error={fields.mlcBuckleNo}>
+                <input id="bed-buckle" maxLength={30} value={form.mlcBuckleNo} onChange={set('mlcBuckleNo')} />
+              </Field>
+            </div>
           )}
           <ChecklistFields value={shownChecklist} onChange={setChecklist} fields={fields} idPrefix="bed-ck" />
           {form.admissionType === 'emergency' && <p className="hint">An emergency is admitted at once: anything missing in the checklist can be completed later (Checklist on her bed).</p>}
@@ -544,8 +615,9 @@ export function AdmissionSlip({ info, onClose }) {
               ['Name', info.patient.fullName],
               ['Patient number', info.patient.mrn],
               ['IPD number', info.ipdNo ?? ''],
-              ['Doctor', info.patient.assignedDoctorName ?? ''],
-              ['Ward', info.ward],
+              ['Doctor', info.doctorName || (info.patient.assignedDoctorName ?? '')],
+              ...(info.department ? [['Department', info.department]] : []),
+              ['Ward', [info.floor, info.ward].filter(Boolean).join(' · ')],
               ['Bed', info.bed],
               ['Admitted', formatDateTime(info.admittedAt)],
             ]}

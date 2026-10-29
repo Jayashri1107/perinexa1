@@ -399,6 +399,8 @@ export const HOSPITAL_ADMIN = {
     { label: 'ABDM', to: '/admin/abdm', end: true },
     // Centres, the desk number, consultants' direct lines, working hours and holidays – never a referral
     { label: 'Referrals', to: '/admin/referrals', end: true },
+    // The scan bridge's key: the ultrasound machine's pictures and readings (docs/USG_MACHINE_PLAN.md)
+    { label: 'Ultrasound machine', to: '/admin/ultrasound-machine', end: true },
   ],
 };
 

@@ -733,3 +733,5 @@
 .sb-sub-items { padding-left: var(--space-2); margin-bottom: var(--space-1); }
 .sb-sub-link { padding: 6px var(--space-3); }
 .sb-sub-link.active { box-shadow: inset 3px 0 0 var(--surface); }
+/* The bed board: a ward's floor before its name (29 Oct 2026) */
+.bb-ward-floor { color: var(--slate-600); font-weight: 500; }

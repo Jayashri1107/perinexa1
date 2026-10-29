@@ -3,7 +3,7 @@ import { billRegistered } from '../billing/hooks.js';
 import { z } from 'zod';
 import { Appointment } from '../models/Appointment.js';
 import { nextNumber } from '../models/Counter.js';
-import { Membership, hasRole } from '../models/Membership.js';
+import { Membership, hasRole, departmentsOf } from '../models/Membership.js';
 import { PatientNote } from '../models/PatientNote.js';
 import { addDays, hospitalDayStart, hospitalToday, sameDay, toHospitalDate } from '../careplans/dates.js';
 import {
@@ -1447,13 +1447,16 @@ patientsRouter.post('/:id/emergency-notes', async (req, res) => {
 // Doctors in this hospital (for the "assigned doctor" dropdown). Any staff member may read it.
 export const doctorsRouter = Router();
 doctorsRouter.get('/', async (req, res) => {
-  const memberships = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'doctor' }, { userId: 1, department: 1 }).lean();
-  const departmentOf = new Map(memberships.map((m) => [String(m.userId), m.department ?? '']));
+  const memberships = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'doctor' }, { userId: 1, department: 1, departments: 1 }).lean();
+  const departmentsBy = new Map(memberships.map((m) => [String(m.userId), departmentsOf(m)]));
   const users = await User.find({ _id: { $in: memberships.map((m) => m.userId) }, isActive: true }, { name: 1, professional: 1 })
     .sort({ name: 1 })
     .lean();
   res.json({
-    doctors: users.map((u) => ({ id: u._id.toString(), name: u.name, qualification: u.professional?.qualification ?? '', department: departmentOf.get(String(u._id)) ?? '' })),
+    doctors: users.map((u) => {
+      const departments = departmentsBy.get(String(u._id)) ?? [];
+      return { id: u._id.toString(), name: u.name, qualification: u.professional?.qualification ?? '', department: departments[0] ?? '', departments };
+    }),
     me: hasRole(req.membership, 'doctor') ? req.user._id.toString() : null,
   });
 });

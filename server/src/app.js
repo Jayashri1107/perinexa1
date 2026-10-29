@@ -63,6 +63,7 @@ import { admissionDeskRouter } from './routes/admissionDesk.js';
 import { labQcRouter } from './routes/labQc.js';
 import { labStockRouter } from './routes/labStock.js';
 import { imagingRouter } from './routes/imaging.js';
+import { scanBridgeRouter, scanBridgeSetupRouter } from './routes/scanBridge.js';
 import { verifyRouter } from './routes/verify.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { analyticsRouter } from './routes/analytics.js';
@@ -138,6 +139,9 @@ export function createApp({
   // A lab report file (PDF or photo, at most 5 MB; base64 makes it about a third larger).
   app.use(/^\/api\/lab\/orders\/[^/]+\/files$/, express.json({ limit: '8mb' }));
   app.use(/^\/api\/imaging\/[^/]+\/images$/, express.json({ limit: '8mb' })); // a picture from the ultrasound machine
+  // The scan bridge (routes/scanBridge.js): a picture of a machine study, then a study with its structured reports
+  app.use(/^\/api\/scan-bridge\/studies\/[^/]+\/images$/, express.json({ limit: '8mb' }));
+  app.use('/api/scan-bridge/studies', express.json({ limit: '4mb' }));
   app.use(/^\/api\/patients\/[^/]+\/consents\/[^/]+\/scans$/, express.json({ limit: '8mb' }));
   app.use(/^\/api\/patients\/[^/]+\/visits\/[^/]+\/whatsapp$/, express.json({ limit: '8mb' })); // the PDF to send
   // A referral's files: the referring doctor's note or reports, and the PDF of a consultant note or discharge card
@@ -208,6 +212,8 @@ export function createApp({
   app.use('/api/portal/account', portalAccountRouter);
   app.use('/api/portal/records', portalRecordsRouter);
   app.use('/api/portal', portalRouter);
+  // The ultrasound machine's scan bridge: no staff login – the hospital's bridge key (routes/scanBridge.js)
+  app.use('/api/scan-bridge', scanBridgeRouter);
   // The waiting-room screen: no login, a secret in the address, tokens and times only (routes/display.js)
   app.use('/api/display', displayRouter);
 
@@ -236,6 +242,8 @@ export function createApp({
   const tenantAdmin = [...inTenant, requireTenantRole('admin')];
   app.use('/api/tenant/members', ...tenantAdmin, membersRouter({ resolveTenantId: (req) => req.tenantId, allowAccountChanges: true }));
   app.use('/api/tenant/audit-logs', ...tenantAdmin, auditLogsRouter({ scope: 'tenant' }));
+  // The ultrasound machine's bridge key (Hospital admin → Ultrasound machine)
+  app.use('/api/tenant/scan-bridge', ...tenantAdmin, scanBridgeSetupRouter);
   app.use('/api/tenant/settings', ...inTenant, tenantSettingsRouter);
   app.use('/api/tenant/doctors', ...inTenant, doctorsRouter);
   app.use('/api/care-plans/templates', ...inTenant, templatesRouter);
