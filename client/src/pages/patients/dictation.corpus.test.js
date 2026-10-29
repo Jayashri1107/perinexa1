@@ -342,7 +342,7 @@ describe('Undo on a correction never puts a different value in the form (plan 1.
     }
     expect(undone).toBeGreaterThan(50);
     expect(changed).toEqual([]);
-  });
+  }, 30_000); // every case re-run once per correction: over 5 s when the whole suite runs side by side
 });
 
 describe('saying the opposite never gives the same result (swap check)', () => {
