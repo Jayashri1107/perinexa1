@@ -13,6 +13,10 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **29 Oct 2026 – plan only, nothing built: the ultrasound machine on the LAN (branch `usg-machine-plan`):**
+  `docs/USG_MACHINE_PLAN.md` – pictures and readings sent by the machine to a scan bridge in the hospital, chosen on
+  the study, an average table for repeated readings, then Review the final report and Finalise. Waits for the owner's
+  go-ahead (feature freeze), the developer's agreement to the bridge tool, and the machine's make and model.
 - **28 Oct 2026 – pharmacy: prescribed medicines stay on the bill; Sold list (developer's requests):** medicines put
   on a bill from the doctor's prescription are marked Prescribed and cannot be taken off (only their quantity and batch
   change; a prescribed medicine short of stock says so); medicines the pharmacist adds can be removed. Pharmacy bills is
