@@ -408,7 +408,8 @@
 .img-tiles { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-3); margin: 0 0 var(--space-4); }
 .img-tiles .kpi { padding: var(--space-4); gap: var(--space-2); }
 .img-tiles .kpi .kpi-sub { margin-top: auto; }
-.img-lists { margin: 0 0 var(--space-4); flex-wrap: wrap; }
+.img-lists { margin: 0 0 var(--space-4); flex-wrap: nowrap; } /* scrolls sideways on a phone instead of wrapping inside the pill */
+@media (max-width: 600px) { .kpi-grid.img-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); } .img-tiles .kpi { padding: var(--space-3); } }
 .img-lists + .alert, .img-lists + section.card, .img-lists ~ section.card { margin-top: 0; }
 
 /* The scan page (owner, 24 Oct 2026): the study on top; the readings and the report as their own cards; the pictures
@@ -427,7 +428,9 @@
 .img-machine-pictures { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 .img-machine-confirm { display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); }
 .img-avg-scroll { overflow-x: auto; }
-.img-avg td, .img-avg th { white-space: nowrap; }
+.img-avg td, .img-avg th { white-space: nowrap; vertical-align: middle; }
+.img-avg .img-avg-name { font-weight: 500; text-align: left; }
+.img-avg .img-avg-other { color: var(--slate-600); }
 .img-avg select { min-width: 9rem; }
 .img-avg select + select { margin-left: var(--space-1); }
 .img-avg-reading { display: inline-flex; gap: var(--space-1); align-items: center; }
@@ -437,6 +440,27 @@
 .img-unlinked > :first-child { grid-row: span 2; }
 .img-unlinked img { display: block; width: 96px; aspect-ratio: 4 / 3; object-fit: contain; background: var(--ink); border-radius: var(--radius-md); }
 .img-unlinked .wl-who, .img-unlinked .field { grid-column: 2; margin: 0; }
+.img-unlinked-form { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.img-unlinked-form input { flex: 0 1 14rem; width: auto; min-width: 0; }
+.img-when { width: auto; flex: 0 1 16rem; min-width: 0; }
+/* A narrow screen: each measurement of the average table as a small card – name and use on top, then each reading, the
+   machine's value, the rule and the value, labelled; nothing hidden off the side */
+@media (max-width: 900px) {
+  .img-avg-scroll { overflow: visible; }
+  .dt.img-avg, .dt.img-avg tbody { display: block; width: 100%; }
+  .dt.img-avg thead { display: none; }
+  .dt.img-avg tr { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2) var(--space-4); width: 100%; padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+  .dt.img-avg tbody tr:last-child { border-bottom: none; }
+  .dt.img-avg td, .dt.img-avg th { display: block; width: auto; height: auto; padding: 0; border: none; text-align: left !important; white-space: normal; }
+  .dt.img-avg tbody tr:hover td { background: none; }
+  .dt.img-avg .img-avg-use { order: -2; }
+  .dt.img-avg .img-avg-name { order: -1; flex: 1 1 calc(100% - 2.5rem); align-self: center; }
+  .dt.img-avg .img-avg-use { align-self: center; }
+  .dt.img-avg td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+  .dt.img-avg .img-avg-empty { display: none; }
+  .dt.img-avg .img-avg-value { margin-left: auto; text-align: right !important; }
+  .dt.img-avg select { min-width: 8rem; }
+}
 .img-unlinked-title { margin: var(--space-2) 0 0; font-size: var(--fs-h2); }
 .img-review { display: grid; gap: var(--space-3); }
 .img-review-sheet { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }

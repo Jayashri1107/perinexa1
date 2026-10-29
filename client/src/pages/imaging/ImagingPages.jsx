@@ -96,6 +96,8 @@ function ScanWorklist() {
       <PageHeader title="Sonography" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
       <div className="pf-content">
         <ScanDashboard />
+        {/* The machine's status and its studies to link, above the lists the tabs switch between */}
+        <MachineUnmatched />
         <div className="segmented img-lists" aria-label="Scan lists">
           {LISTS.map(([k, w]) => (
             <button key={k} type="button" aria-pressed={k === list} onClick={() => setParams(k === 'ordered' ? {} : { list: k }, { replace: true })}>
@@ -105,7 +107,6 @@ function ScanWorklist() {
           ))}
         </div>
         <Alert type="error">{error}</Alert>
-        <MachineUnmatched />
         <section className="card">
           {loading && !data ? (
             <p className="muted">Loading…</p>
@@ -206,7 +207,7 @@ export function MachineUnmatched() {
               <span className="muted tabular">{[m.numberOnMachine, formatDateTime(m.studyAt ?? m.receivedAt), m.machine, `${m.images.length} picture${m.images.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span>
             </span>
             <Field label="Her patient number" id={`unl-${m.id}`} error={problems[m.id]}>
-              <span className="row">
+              <span className="row img-unlinked-form">
                 <input id={`unl-${m.id}`} maxLength={40} placeholder="P-000123" value={numbers[m.id] ?? ''} onChange={(e) => setNumbers({ ...numbers, [m.id]: e.target.value })} />
                 <button type="button" className="btn btn-secondary btn-sm" disabled={!(numbers[m.id] ?? '').trim()} onClick={() => link(m)}>
                   Link
@@ -608,7 +609,7 @@ export function ImagingStudyPage() {
           <div className="row">
             {a.canSchedule && (
               <>
-                <input type="datetime-local" aria-label="Day and time" value={when} onChange={(e) => setWhen(e.target.value)} />
+                <input type="datetime-local" className="img-when" aria-label="Day and time" value={when} onChange={(e) => setWhen(e.target.value)} />
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => act('schedule', { scheduledFor: new Date(when).toISOString() }, 'Scheduled.')}>
                   Schedule
                 </button>

@@ -136,19 +136,19 @@ export function AverageTable({ s, m, defaultUse, onSaved, onError }) {
                 const c = mine[r.key];
                 const value = usedValue(r, c);
                 return (
-                  <tr key={r.key} className={r.inTemplate ? undefined : 'muted'}>
-                    <td>
+                  <tr key={r.key} className={r.inTemplate ? undefined : 'img-avg-other'}>
+                    <td className="img-avg-use">
                       {r.inTemplate ? (
                         <input type="checkbox" aria-label={`Use ${r.name}`} checked={c.on} disabled={!canFill} onChange={(e) => set(r.key, { on: e.target.checked })} />
                       ) : (
                         <span className="hint">Not in this template</span>
                       )}
                     </td>
-                    <th scope="row">
+                    <th scope="row" className="img-avg-name">
                       {r.name} <span className="muted">({r.unit})</span>
                     </th>
                     {Array.from({ length: most }, (_, i) => (
-                      <td key={i} className="num tabular">
+                      <td key={i} className={`num tabular${r.readings[i] == null ? ' img-avg-empty' : ''}`} data-label={`Reading ${i + 1}`}>
                         {r.readings[i] != null && (
                           <label className="img-avg-reading">
                             <input
@@ -163,26 +163,36 @@ export function AverageTable({ s, m, defaultUse, onSaved, onError }) {
                         )}
                       </td>
                     ))}
-                    <td className="num tabular">{r.machine ? `${r.machine.value}${r.machine.derived && r.machine.derived !== 'mean' ? ` (${r.machine.derived})` : ''}` : '–'}</td>
-                    <td>
-                      <select aria-label={`Rule for ${r.name}`} value={c.use} disabled={!canFill} onChange={(e) => set(r.key, { use: e.target.value })}>
-                        {usesFor(r).map((u) => (
-                          <option key={u} value={u}>
-                            {USE_WORDS[u]}
-                          </option>
-                        ))}
-                      </select>
-                      {c.use === 'reading' && (
-                        <select aria-label={`Which reading of ${r.name}`} value={c.reading} disabled={!canFill} onChange={(e) => set(r.key, { reading: Number(e.target.value) })}>
-                          {r.readings.map((v, i) => (
-                            <option key={i} value={i}>
-                              Reading {i + 1}: {v}
-                            </option>
-                          ))}
-                        </select>
+                    <td className={`num tabular${r.machine ? '' : ' img-avg-empty'}`} data-label="Machine">
+                      {r.machine ? `${r.machine.value}${r.machine.derived && r.machine.derived !== 'mean' ? ` (${r.machine.derived})` : ''}` : '–'}
+                    </td>
+                    <td data-label="Rule" className={r.inTemplate ? undefined : 'img-avg-empty'}>
+                      {r.inTemplate ? (
+                        <>
+                          <select aria-label={`Rule for ${r.name}`} value={c.use} disabled={!canFill} onChange={(e) => set(r.key, { use: e.target.value })}>
+                            {usesFor(r).map((u) => (
+                              <option key={u} value={u}>
+                                {USE_WORDS[u]}
+                              </option>
+                            ))}
+                          </select>
+                          {c.use === 'reading' && (
+                            <select aria-label={`Which reading of ${r.name}`} value={c.reading} disabled={!canFill} onChange={(e) => set(r.key, { reading: Number(e.target.value) })}>
+                              {r.readings.map((v, i) => (
+                                <option key={i} value={i}>
+                                  Reading {i + 1}: {v}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </>
+                      ) : (
+                        '–'
                       )}
                     </td>
-                    <td className="num tabular img-avg-value">{value ?? '–'}</td>
+                    <td className="num tabular img-avg-value" data-label="Value">
+                      {value ?? '–'}
+                    </td>
                   </tr>
                 );
               })}
