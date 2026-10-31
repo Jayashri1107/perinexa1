@@ -8,6 +8,8 @@ import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { westgard } from '../src/lab/qc.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { Bill } from '../src/models/Bill.js';
+import { PriceItem } from '../src/models/PriceItem.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-10-17T05:00:00Z');
@@ -244,8 +246,64 @@ describe('USG and radiology', () => {
     expect((await (await as('drA')).post(`/api/imaging/${r.id}/sign`).send({ rev: r.rev })).status).toBe(200); // signed today
     const res = await (await as('rmo')).get('/api/imaging/dashboard');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ counts: { bookedToday: 1, toScan: 3, toReport: 1, toSign: 1, signedToday: 1 } });
+    expect(res.body).toEqual({ counts: { bookedToday: 1, toScan: 3, toReport: 1, toSign: 1, signedToday: 1, toConfirm: 0 } });
     expect((await (await as('reception')).get('/api/imaging/dashboard')).status).toBe(403);
+  });
+
+  it('reception books a scan a doctor asked for; it waits, unbilled and not on the machine list, until a doctor or RMO confirms or declines it', async () => {
+    await (await as('admin')).get('/api/billing/prices'); // the price list with the scan items
+    await PriceItem.updateOne({ tenantId: hospital._id, key: 'scan:usg_growth' }, { $set: { pricePaise: 120000 } });
+    const p = await antenatal();
+    const desk = await as('reception');
+    const opts = await desk.get(`/api/patients/${p.id}/imaging/booking`);
+    expect(opts.status).toBe(200);
+    expect(opts.body.doctors.map((d) => d.name)).toEqual(['Sample drA']);
+    expect(opts.body.doctorId).toBe(people.drA._id.toString());
+    expect((await (await as('nurse')).get(`/api/patients/${p.id}/imaging/booking`)).status).toBe(403);
+    const book = (body = {}, who = desk) => who.post(`/api/patients/${p.id}/imaging/booking`).send({ clientRequestId: randomUUID(), study: 'usg_growth', doctorId: people.drA._id.toString(), ...body });
+    expect((await book({}, await as('drA'))).status).toBe(403); // doctors order it themselves
+    expect((await book({ doctorId: people.nurse._id.toString() })).status).toBe(400); // a doctor of this hospital
+    expect((await book({ indication: 'Typed by reception' })).status).toBe(400); // reception types no clinical text
+    const made = await book({ scheduledFor: '2026-10-18T05:30:00.000Z' });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    let s = made.body.study;
+    expect(s).toMatchObject({ status: 'requested', requestedBy: { name: 'Sample drA' }, ordered: { byName: 'Sample reception' } });
+    expect(s.indication).toBeUndefined(); // reception does not see her clinical details
+    expect(await Bill.countDocuments({ tenantId: hospital._id, patientId: p.id, 'lines.ref.kind': 'scan' })).toBe(0); // not billed yet
+
+    // Waiting for a doctor: on the To confirm list and the dashboard, not to scan; no one schedules or does it
+    const rmo = await as('rmo');
+    expect((await rmo.get('/api/imaging/worklist?list=requested')).body.studies.map((x) => x.id)).toEqual([s.id]);
+    expect((await rmo.get('/api/imaging/worklist?list=ordered')).body.studies).toEqual([]);
+    expect((await rmo.get('/api/imaging/dashboard')).body.counts).toMatchObject({ toConfirm: 1, toScan: 0, bookedToday: 0 });
+    expect((await (await as('sono')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).status).toBe(403);
+    expect((await (await as('sono')).post(`/api/imaging/${s.id}/confirm`).send({ rev: s.rev })).status).toBe(403); // a doctor or RMO confirms
+    expect((await (await as('drA')).post(`/api/imaging/${s.id}/confirm`).send({ rev: s.rev, indication: 'It is a boy' })).status).toBe(400); // PCPNDT
+
+    // The doctor confirms with the indication: scheduled for the agreed time, and on her bill
+    const ok = await (await as('drA')).post(`/api/imaging/${s.id}/confirm`).send({ rev: s.rev, indication: 'Growth at 32 weeks' });
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    s = ok.body.study;
+    expect(s).toMatchObject({ status: 'scheduled', indication: 'Growth at 32 weeks', confirmed: { byName: 'Sample drA' } });
+    const bill = await Bill.findOne({ tenantId: hospital._id, patientId: p.id, 'lines.ref.kind': 'scan' }).lean();
+    expect(bill.lines.find((l) => l.ref?.kind === 'scan')).toMatchObject({ amountPaise: 120000 });
+    expect((await (await as('drA')).post(`/api/imaging/${s.id}/confirm`).send({ rev: s.rev })).status).toBe(403); // once
+
+    // Another booking declined with a reason: cancelled, never billed
+    let other = (await book()).body.study;
+    expect((await (await as('rmo')).post(`/api/imaging/${other.id}/cancel`).send({ rev: other.rev, reason: '' })).status).toBe(400);
+    other = (await (await as('rmo')).post(`/api/imaging/${other.id}/cancel`).send({ rev: other.rev, reason: 'Not needed now' })).body.study;
+    expect(other).toMatchObject({ status: 'cancelled', cancelled: { reason: 'Not needed now' } });
+    expect((await AuditLog.find({ action: { $in: ['IMAGING_REQUESTED', 'IMAGING_CONFIRMED'] } }).lean()).map((a) => a.action).sort()).toEqual(['IMAGING_CONFIRMED', 'IMAGING_REQUESTED', 'IMAGING_REQUESTED']);
+  });
+
+  it('a scan ordered from her care plan keeps the plan item it came from', async () => {
+    const p = await antenatal();
+    const planId = '6a0000000000000000000001';
+    const made = await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_anomaly', indication: 'Anomaly scan (level II / TIFFA)', planItem: { planId, key: 'scan_anomaly' } });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    expect(made.body.study.planItem).toEqual({ planId, key: 'scan_anomaly' });
+    expect((await (await as('drA')).get(`/api/patients/${p.id}/imaging`)).body.studies[0].planItem).toEqual({ planId, key: 'scan_anomaly' });
   });
 
   it('pictures from the machine: added once done, chosen for print, taken off with a reason (kept), closed once signed', async () => {

@@ -242,6 +242,8 @@ export const AUDIT_LABELS = {
   LAB_HOME_COLLECTION: 'Lab home collection updated',
   LAB_REPORT_VERIFIED: 'Lab report checked with its QR code',
   IMAGING_ORDERED: 'Scan ordered',
+  IMAGING_REQUESTED: 'Scan booked by reception',
+  IMAGING_CONFIRMED: 'Scan booking confirmed',
   IMAGING_VIEWED: 'Scan opened',
   IMAGING_SCHEDULED: 'Scan scheduled',
   IMAGING_DONE: 'Scan done',
@@ -514,6 +516,8 @@ export const AUDIT_TONES = {
   LAB_HOME_COLLECTION: 'patient',
   LAB_REPORT_VERIFIED: 'info',
   IMAGING_ORDERED: 'patient',
+  IMAGING_REQUESTED: 'patient',
+  IMAGING_CONFIRMED: 'patient',
   IMAGING_VIEWED: 'patient',
   IMAGING_SCHEDULED: 'patient',
   IMAGING_DONE: 'patient',
@@ -1187,6 +1191,8 @@ export function describeAudit(entry) {
     case 'ADMISSION_RULES_CHANGED':
       return `${d.requireAdmissionRequest ? "A doctor's request first" : 'No request needed'} · ${d.requireChecklist ? 'checklist required' : 'checklist not required'}`;
     case 'IMAGING_ORDERED':
+    case 'IMAGING_REQUESTED':
+    case 'IMAGING_CONFIRMED':
     case 'IMAGING_VIEWED':
     case 'IMAGING_SCHEDULED':
     case 'IMAGING_DONE':

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Tip } from '../../components/Tip.jsx';
 import { PregnancyTimeline } from './PregnancyTimeline.jsx';
 import { KeepsakeButton } from './KeepsakeCard.jsx';
-import { Archive, BadgeCheck, BedDouble, CalendarPlus, Copy, Eye, FileText, Files, IdCard, Lock, MessageCircle, MoreHorizontal, Pencil, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
+import { Archive, BadgeCheck, BedDouble, CalendarPlus, Copy, Eye, FileText, Files, IdCard, Lock, MessageCircle, MoreHorizontal, Pencil, ScanLine, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
+import { BookScanDialog } from '../imaging/ImagingPages.jsx';
 import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -192,6 +193,7 @@ export function PatientDetailPage() {
   const [messaging, setMessaging] = useState(false);
   const [printingCard, setPrintingCard] = useState(false); // the patient card (reception)
   const [admitting, setAdmitting] = useState(false); // admit to a free bed (reception, her doctor, RMOs)
+  const [bookingScan, setBookingScan] = useState(false); // reception books a scan a doctor asked for (31 Oct 2026)
   const [admissionSlip, setAdmissionSlip] = useState(null);
   const [markingDuplicate, setMarkingDuplicate] = useState(false); // "Mark as a duplicate" (her doctor or an RMO)
   const [undoingDuplicate, setUndoingDuplicate] = useState(false);
@@ -301,6 +303,8 @@ export function PatientDetailPage() {
   const more = [
     ...(!isReception && canBookHere ? [{ group: 'This record', label: 'Book an appointment', icon: CalendarPlus, onSelect: bookHere }] : []),
     ...(!isReception && canAdmitHere ? [{ group: 'This record', label: 'Admit to a bed', icon: BedDouble, onSelect: () => setAdmitting(true) }] : []),
+    // A scan a doctor asked for on paper: booked by reception, confirmed by a doctor or RMO before it is done
+    ...(isReception && open ? [{ group: 'This record', label: 'Book a scan', icon: ScanLine, onSelect: () => setBookingScan(true) }] : []),
     ...(editInMenu ? [{ group: 'This record', label: 'Edit details', icon: Pencil, onSelect: () => navigate(`${base}/edit`) }] : []),
     ...(a.canAssign ? [{ group: 'This record', label: 'Change doctor', icon: UserRound, onSelect: () => setChangingDoctor(true) }] : []),
     ...(a.canMarkSensitive ? [{ label: patient.sensitive ? 'Remove sensitive marking' : 'Mark sensitive', group: 'This record', icon: Lock, onSelect: () => setConfirmSensitive(true) }] : []),
@@ -548,6 +552,7 @@ export function PatientDetailPage() {
       )}
       {writingLetter && <LetterDialog patient={patient} onClose={() => setWritingLetter(false)} />}
       {printingCard && <PatientCard patient={patient} onClose={() => setPrintingCard(false)} />}
+      {bookingScan && <BookScanDialog patient={patient} onClose={() => setBookingScan(false)} />}
       {admitting && (
         <AdmitDialog
           patient={patient}

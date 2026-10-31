@@ -1,9 +1,10 @@
-# Ultrasound machine on the LAN – plan (DRAFT, 29 Oct 2026; built on branch `usg-machine`, not merged)
+# Ultrasound machine on the LAN – plan (DRAFT, 29 Oct 2026; built on branch `usg-machine`, merged into main 29 Oct 2026)
 
 Written at the developer's request on 29 Oct 2026. It turns ideas 19 and 20 in `docs/IDEAS_FOR_LATER.md` (scan
 images in the report; the machine sends its readings and images by itself) into a plan.
 
-**Built on 29 Oct 2026 at the developer's request, on branch `usg-machine` (not merged)** – an exception to the
+**Built on 29 Oct 2026 at the developer's request, on branch `usg-machine` (merged into main on 29 Oct 2026; trying it
+with the hospital's real machine is a separate, later part)** – an exception to the
 feature freeze: the owner's go-ahead is recorded here before merging. Not yet tried with a real machine or a real
 Orthanc: the tests use a made-up structured report. What was built, step by step:
 

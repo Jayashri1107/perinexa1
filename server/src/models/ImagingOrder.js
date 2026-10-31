@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { tenantScoped } from '../utils/tenantScope.js';
 
-// An imaging study (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): USG and radiology. A doctor or RMO orders it; it is
+// An imaging study (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): USG and radiology. A doctor or RMO orders it (or
+// reception books one a doctor asked for on paper, and a doctor or RMO confirms it – 31 Oct 2026); it is
 // scheduled and done; the report (a DRAFT template's fields, findings and impression) is signed by a doctor. A signed
 // report is changed only with a reason (the earlier one is kept). PCPNDT: no field holds the sex of a fetus.
 const { ObjectId } = mongoose.Schema.Types;
@@ -25,9 +26,15 @@ const imagingSchema = new mongoose.Schema(
     study: { type: String, required: true }, // imaging/templates.js STUDIES
     urgent: { type: Boolean, default: false },
     indication: { type: String, trim: true, maxlength: 300, default: '' }, // why it is asked for (clinical)
-    status: { type: String, enum: ['ordered', 'scheduled', 'done', 'signed', 'cancelled'], default: 'ordered' },
+    // requested: booked by reception, waiting for a doctor or RMO to confirm (not billed, not on the machine's worklist)
+    status: { type: String, enum: ['requested', 'ordered', 'scheduled', 'done', 'signed', 'cancelled'], default: 'ordered' },
     scheduledFor: { type: Date, default: null },
     ordered: { type: new mongoose.Schema(byFields, { _id: false }), required: true },
+    // Booked by reception: the doctor who asked for it (on paper), and who confirmed it
+    requestedBy: { type: new mongoose.Schema({ doctorId: { type: ObjectId, ref: 'User' }, name: String }, { _id: false }), default: null },
+    confirmed: stamp(),
+    // Ordered from a scan due in her care plan: that plan and item (the plan shows the order beside the item)
+    planItem: { type: new mongoose.Schema({ planId: { type: ObjectId, ref: 'CarePlan' }, key: { type: String, maxlength: 80 } }, { _id: false }), default: null },
     scheduled: stamp(),
     done: stamp(),
     report: { type: reportSchema, default: null },
