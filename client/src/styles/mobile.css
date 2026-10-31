@@ -453,3 +453,6 @@
   /* A tip about the keyboard (Ctrl+K) means nothing on a phone */
   .tip-keyboard { display: none; }
 }
+
+/* The registration sheet slides up (mobile.css .pf-sheet .pf-main) */
+@keyframes pf-sheet-up { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }

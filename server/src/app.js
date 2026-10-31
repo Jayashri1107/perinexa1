@@ -312,8 +312,12 @@ export function createApp({
   // In production the server also delivers the built website.
   const clientDist = fileURLToPath(new URL('../../client/dist', import.meta.url));
   if (config.isProduction && existsSync(clientDist)) {
-    app.use(express.static(clientDist));
-    app.get('/{*splat}', (_req, res) => res.sendFile('index.html', { root: clientDist }));
+    // The app's scripts and styles have their content in their names (a new deploy gives new names), so a browser or the
+    // phone app may keep them for a year without asking again – opening the app is quicker. The page itself (index.html),
+    // the service worker and the manifest are always checked, so a deploy reaches everyone at once. Never patient data.
+    app.use('/assets', express.static(fileURLToPath(new URL('../../client/dist/assets', import.meta.url)), { immutable: true, maxAge: '1y', fallthrough: false }));
+    app.use(express.static(clientDist, { setHeaders: (res) => res.set('Cache-Control', 'no-cache') }));
+    app.get('/{*splat}', (_req, res) => res.set('Cache-Control', 'no-cache').sendFile('index.html', { root: clientDist }));
   }
 
   app.use(errorHandler);
