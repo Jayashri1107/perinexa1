@@ -440,6 +440,36 @@
   .ph-stuck .ph-crumbs, .ph-stuck .ph-jump-btn, .ph-stuck .ph-tabs, .ph-stuck .ph-actions > :not(.btn-primary) { display: none; }
   .ph-stuck .ph-actions { margin-top: var(--space-1); }
 
+  /* ---------- A new patient's form in steps (FormSteps): one group at a time, the progress line on top, Back and
+     Next at the foot; the form's own Register bar on the last step ---------- */
+  [data-step-off] { display: none !important; }
+  .fs-progress { margin: 0 0 var(--space-3); }
+  .fs-count { margin: 0 0 var(--space-1); color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; }
+  .fs-progress ol { display: flex; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+  .fs-progress li { flex: 1 1 0; min-width: 0; }
+  .fs-progress button {
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: var(--space-1); width: 100%; min-height: 32px;
+    padding: var(--space-1) 0 0; border: 0; background: none; color: var(--slate-600); font: inherit; text-align: left; cursor: pointer;
+  }
+  .fs-dot { display: block; height: 5px; border-radius: var(--radius-pill); background: var(--border); }
+  .fs-progress .is-done .fs-dot { background: var(--teal-500); }
+  .fs-progress .is-current .fs-dot { background: var(--indigo-700); }
+  .fs-progress button:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+  /* only the current step's name shows; the others keep theirs for screen readers */
+  .fs-name { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; color: var(--indigo-700); white-space: nowrap; }
+  .fs-progress button:not(.is-current) .fs-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .fs-progress li:has(.is-current) { flex: 2 1 0; }
+  .fs-on:not(.fs-last) .sticky-actions { display: none; }
+  .fs-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; gap: var(--space-2);
+    padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--card-border); background: var(--surface); box-shadow: var(--shadow-pop);
+  }
+  .pf-has-tabbar .fs-nav { bottom: calc(68px + env(safe-area-inset-bottom)); padding-bottom: var(--space-2); }
+  .fs-nav .btn { min-height: 48px; }
+  .fs-nav .btn-primary { flex: 1 1 auto; min-width: 0; justify-content: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fs-on .form-section { margin-bottom: var(--space-3); }
+
   /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
   .pt-summary, .patient-form > .alert-patient-note { display: none; }
   .rd-updated { font-size: 0; }
