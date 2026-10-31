@@ -33,6 +33,15 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
 - **The ultrasound machine on the LAN is a separate, later part** (built and merged on 29 Oct 2026, `docs/USG_MACHINE_PLAN.md`):
   still to do with the hospital – the machine's make and model, Orthanc on the PC beside it, a test with a dummy
   patient, and the owner's approval of the DRAFT measurement matching and averaging rule.
+- **31 Oct 2026 – Perinexa as an installable app (PWA; branch `installable-app`, at the developer's request):** the live
+  site can be installed like an app on Android (Chrome → Install app), iPhone/iPad (Safari → Share → Add to Home Screen)
+  and Windows/Mac (Chrome or Edge → the install button in the address bar). It opens in its own window with the Perinexa
+  icon. `client/public/manifest.webmanifest` (name, colours, icons), `sw.js` (service worker), `offline.html` (shown
+  without internet), the icons, and the tags in `index.html`. **No patient data is kept on the device:** the service
+  worker never answers `/api` and never stores a page; sign-in, the 30-minute sign-out and every permission work as on
+  the website, and each deploy updates the app by itself. The icons are made from the 128-pixel logo: a 1024-pixel or
+  SVG logo from the designer would make them sharper. **How to test:** after the deploy, open app.perinexa.com in
+  Chrome on a phone → menu → Install app.
 - **29 Oct 2026 – the hospital's admission form, departments and floors (branch `admission-form`, at the developer's
   request from the hospital's paper forms – an exception to the feature freeze, the owner's go-ahead to be recorded):**
   (1) **Departments:** "General" and "Genetic Counselling" added; a doctor may be in **more than one** department
