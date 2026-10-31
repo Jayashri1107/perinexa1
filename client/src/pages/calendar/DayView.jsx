@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { ChevronDown, UserCheck, UserX } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { formatNumber } from '../../components/DataTable.jsx';
+import { formatNumber, LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 import { Avatar, StatusPill, formatTime } from '../../components/ui.jsx';
 import { EVENT_LOOK, EVENT_TYPES, dayCounts, dayRows, emptyDayText, eventLines, mergedPlanLine, planStatusLook, sectionTitle, withBookedText } from './calendarFormat.js';
 import { EventMark } from './EventMark.jsx';
@@ -162,11 +162,15 @@ export function CalendarRow({ events, patient, patientId, showDoctor = false }) 
 /** A list of entries, one row per patient. */
 function RowList({ rows, showDoctor }) {
   return (
-    <ul className="wl-list">
-      {rows.map((r) => (
-        <CalendarRow key={r.patientId} events={r.events} patient={r.patient} patientId={r.patientId} showDoctor={showDoctor} />
-      ))}
-    </ul>
+    <Paged rows={rows} label="entries" {...LIST_PAGES}>
+      {(page) => (
+        <ul className="wl-list">
+          {page.map((r) => (
+            <CalendarRow key={r.patientId} events={r.events} patient={r.patient} patientId={r.patientId} showDoctor={showDoctor} />
+          ))}
+        </ul>
+      )}
+    </Paged>
   );
 }
 

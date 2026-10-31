@@ -9,6 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
 import { ID_PROOF_OPTIONS, PAYER_NAME_LABELS, PAYER_OPTIONS } from '../patients/PatientForm.jsx';
 import { REASONS } from './bedFormat.js';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // Admission like a hospital system (owner, 17 Oct 2026 – docs/ADMISSION_DESK_PLAN.md): the admission checklist (ID proof
 // type and last 4 digits only, attendant, payer, consent), a doctor's admission request, clearance for leaving with the
@@ -227,29 +228,33 @@ export function RequestsSection({ data, onAdmit }) {
   return (
     <section className="card" aria-labelledby="adm-requests">
       <h2 id="adm-requests">Admission requests ({data.requests.length})</h2>
-      <ul className="wl-list">
-        {data.requests.map((r) => (
-          <li key={r.id}>
-            <div className="wl-row-head">
-              <span className="wl-who">
-                <strong>{r.patient.fullName}</strong>
-                <span className="muted tabular">
-                  {[r.patient.mrn, r.reason, TYPE_WORDS[r.admissionType], r.ward, r.expectedOn ? `expected ${formatDate(r.expectedOn)}` : 'today'].filter(Boolean).join(' · ')}
+      <Paged rows={data.requests} label="requests" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((r) => (
+              <li key={r.id}>
+                <div className="wl-row-head">
+                  <span className="wl-who">
+                    <strong>{r.patient.fullName}</strong>
+                    <span className="muted tabular">
+                      {[r.patient.mrn, r.reason, TYPE_WORDS[r.admissionType], r.ward, r.expectedOn ? `expected ${formatDate(r.expectedOn)}` : 'today'].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  {onAdmit && (
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => onAdmit(r)}>
+                      <LogIn aria-hidden="true" /> Admit
+                    </button>
+                  )}
+                </div>
+                <span className="hint">
+                  Requested by {r.requested.byName}, {formatDateTime(r.requested.at)}
+                  {r.note ? ` · ${r.note}` : ''}
                 </span>
-              </span>
-              {onAdmit && (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => onAdmit(r)}>
-                  <LogIn aria-hidden="true" /> Admit
-                </button>
-              )}
-            </div>
-            <span className="hint">
-              Requested by {r.requested.byName}, {formatDateTime(r.requested.at)}
-              {r.note ? ` · ${r.note}` : ''}
-            </span>
-          </li>
-        ))}
-      </ul>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Paged>
     </section>
   );
 }
@@ -299,34 +304,38 @@ export function ToClearSection({ onCleared }) {
   return (
     <section className="card" aria-labelledby="to-clear">
       <h2 id="to-clear">Discharged – to clear for leaving ({res.data.stays.length})</h2>
-      <ul className="wl-list">
-        {res.data.stays.map((s) => (
-          <li key={s.id}>
-            <div className="wl-row-head">
-              <span className="wl-who">
-                <strong>{s.patient.fullName}</strong>
-                <span className="muted tabular">{[s.patient.mrn, s.ipdNo, `${s.ward} · ${s.bed}`, `discharged ${formatDateTime(s.dischargedAt)}`].filter(Boolean).join(' · ')}</span>
-              </span>
-              <span className="wl-counts">
-                {s.balancePaise > 0 ? (
-                  <StatusPill tone="watch" icon={TriangleAlert}>
-                    {rupees(s.balancePaise)} due
-                  </StatusPill>
-                ) : (
-                  <StatusPill tone="stable" icon={ClipboardCheck}>
-                    Bill settled
-                  </StatusPill>
-                )}
-                {res.data.canClear && (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setClearing(s)}>
-                    <DoorOpen aria-hidden="true" /> Clear for leaving
-                  </button>
-                )}
-              </span>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <Paged rows={res.data.stays} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((s) => (
+              <li key={s.id}>
+                <div className="wl-row-head">
+                  <span className="wl-who">
+                    <strong>{s.patient.fullName}</strong>
+                    <span className="muted tabular">{[s.patient.mrn, s.ipdNo, `${s.ward} · ${s.bed}`, `discharged ${formatDateTime(s.dischargedAt)}`].filter(Boolean).join(' · ')}</span>
+                  </span>
+                  <span className="wl-counts">
+                    {s.balancePaise > 0 ? (
+                      <StatusPill tone="watch" icon={TriangleAlert}>
+                        {rupees(s.balancePaise)} due
+                      </StatusPill>
+                    ) : (
+                      <StatusPill tone="stable" icon={ClipboardCheck}>
+                        Bill settled
+                      </StatusPill>
+                    )}
+                    {res.data.canClear && (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setClearing(s)}>
+                        <DoorOpen aria-hidden="true" /> Clear for leaving
+                      </button>
+                    )}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Paged>
       {clearing && (
         <ClearDialog
           stay={clearing}

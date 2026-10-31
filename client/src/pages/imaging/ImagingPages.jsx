@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileSearch, FileText, Hourglass, ImagePlus, MonitorDown, Printer, ScanLine, Siren } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
-import { usePagedRows } from '../../components/DataTable.jsx';
+import { usePagedRows, LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
@@ -213,25 +213,29 @@ export function MachineUnmatched() {
           <p className="hint">The machine sent these without a scan number or a patient number Perinexa knows. Check the picture and the name, then link each to her patient number.</p>
         </>
       )}
-      <ul className="wl-list">
-        {studies.map((m) => (
-          <li key={m.id} className="img-unlinked">
-            {m.images[0] && <ApiImage path={machineImageUrl(m.id, m.images[0].id)} alt="First picture of the study" link />}
-            <span className="wl-who">
-              <span className="strong-name">{m.nameOnMachine || 'No name on the machine'}</span>
-              <span className="muted tabular">{[m.numberOnMachine, formatDateTime(m.studyAt ?? m.receivedAt), m.machine, `${m.images.length} picture${m.images.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span>
-            </span>
-            <Field label="Her patient number" id={`unl-${m.id}`} error={problems[m.id]}>
-              <span className="row img-unlinked-form">
-                <input id={`unl-${m.id}`} maxLength={40} placeholder="P-000123" value={numbers[m.id] ?? ''} onChange={(e) => setNumbers({ ...numbers, [m.id]: e.target.value })} />
-                <button type="button" className="btn btn-secondary btn-sm" disabled={!(numbers[m.id] ?? '').trim()} onClick={() => link(m)}>
-                  Link
-                </button>
-              </span>
-            </Field>
-          </li>
-        ))}
-      </ul>
+      <Paged rows={studies} label="scans" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((m) => (
+              <li key={m.id} className="img-unlinked">
+                {m.images[0] && <ApiImage path={machineImageUrl(m.id, m.images[0].id)} alt="First picture of the study" link />}
+                <span className="wl-who">
+                  <span className="strong-name">{m.nameOnMachine || 'No name on the machine'}</span>
+                  <span className="muted tabular">{[m.numberOnMachine, formatDateTime(m.studyAt ?? m.receivedAt), m.machine, `${m.images.length} picture${m.images.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span>
+                </span>
+                <Field label="Her patient number" id={`unl-${m.id}`} error={problems[m.id]}>
+                  <span className="row img-unlinked-form">
+                    <input id={`unl-${m.id}`} maxLength={40} placeholder="P-000123" value={numbers[m.id] ?? ''} onChange={(e) => setNumbers({ ...numbers, [m.id]: e.target.value })} />
+                    <button type="button" className="btn btn-secondary btn-sm" disabled={!(numbers[m.id] ?? '').trim()} onClick={() => link(m)}>
+                      Link
+                    </button>
+                  </span>
+                </Field>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Paged>
     </section>
   );
 }
@@ -928,24 +932,28 @@ export function PatientScans({ patient }) {
       {res.data.studies.length === 0 ? (
         <p className="muted">No scans ordered here yet.</p>
       ) : (
-        <ul className="wl-list">
-          {res.data.studies.map((s) => (
-            <li key={s.id}>
-              <div className="wl-row-head">
-                <span className="wl-who">
-                  <Link to={`/scans/${s.id}`} className="strong-name">
-                    {s.studyName}
-                  </Link>
-                  <span className="muted">
-                    {formatDateTime(s.ordered.at)} · {s.requestedBy ? `booked by ${s.ordered.byName} for ${s.requestedBy.name}` : s.ordered.byName}
-                    {s.report?.impression ? ` · ${s.report.impression}` : ''}
-                  </span>
-                </span>
-                <StudyStatus s={s} />
-              </div>
-            </li>
-          ))}
-        </ul>
+        <Paged rows={res.data.studies} label="scans" {...LIST_PAGES}>
+          {(page) => (
+            <ul className="wl-list">
+              {page.map((s) => (
+                <li key={s.id}>
+                  <div className="wl-row-head">
+                    <span className="wl-who">
+                      <Link to={`/scans/${s.id}`} className="strong-name">
+                        {s.studyName}
+                      </Link>
+                      <span className="muted">
+                        {formatDateTime(s.ordered.at)} · {s.requestedBy ? `booked by ${s.ordered.byName} for ${s.requestedBy.name}` : s.ordered.byName}
+                        {s.report?.impression ? ` · ${s.report.impression}` : ''}
+                      </span>
+                    </span>
+                    <StudyStatus s={s} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Paged>
       )}
       {ordering && (
         <OrderScanDialog

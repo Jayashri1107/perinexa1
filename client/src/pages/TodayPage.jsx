@@ -4,7 +4,7 @@ import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, ClockAler
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { formatNumber } from '../components/DataTable.jsx';
+import { formatNumber, LIST_PAGES, Paged } from '../components/DataTable.jsx';
 import { MenuButton } from '../components/MenuButton.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { Alert, KpiCard, StatusPill, formatDate, formatDateTime, formatTime } from '../components/ui.jsx';
@@ -71,56 +71,60 @@ const STAFF_ROLE_TILES = [
 function TodaysPatients({ rows, progress, showDoctor, canMark, onMark, onUndo, onSlip, busy }) {
   return (
     <Section id="td-patients" icon={Users} title="Today's patients" count={rows.length} empty="Nobody is booked for today, and no visit has been started yet.">
-      <ul className="wl-list">
-        {rows.map((r) => {
-          const visit = r.visitId ? progress.get(r.visitId) : null;
-          return (
-            <PatientRow
-              key={r.patient.id}
-              patient={{ ...r.patient, assignedDoctorName: showDoctor ? r.patient.doctorName : null }}
-              to={r.visitId ? `/patients/${r.patient.id}/visits/${r.visitId}` : undefined}
-              openLabel={r.visitId ? 'Open the visit' : 'Open the record'}
-              marker={<AppointmentChip appointment={r.appointment} />}
-            >
-              <div className="wl-row-head">
-                <span className="wl-counts">
-                  {/* The live queue: her state (and Emergency), the time she arrived */}
-                  {r.emergency && r.queue !== 'done' && (
-                    <StatusPill tone="high" icon={Siren}>
-                      Emergency
-                    </StatusPill>
-                  )}
-                  {(() => {
-                    const look = QUEUE_LOOK[r.queue] ?? (r.arrivedAt ? QUEUE_LOOK.waiting : QUEUE_LOOK.expected);
-                    return (
-                      <StatusPill tone={look.tone} icon={look.icon}>
-                        {look.label}
-                        {r.arrivedAt ? ` · arrived ${formatTime(r.arrivedAt)}` : ''}
-                      </StatusPill>
-                    );
-                  })()}
-                  {canMark && !r.arrivedAt && (
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMark(r.patient)} disabled={busy === r.patient.id}>
-                      <UserCheck aria-hidden="true" /> Mark arrived
-                    </button>
-                  )}
-                  {canMark && r.arrivalMarked && !r.visitStarted && (
-                    <button type="button" className="btn btn-link btn-sm" onClick={() => onUndo(r.patient)} disabled={busy === r.patient.id} aria-label={`Undo arrival of ${r.patient.fullName}`}>
-                      Undo
-                    </button>
-                  )}
-                  {r.appointment?.kind === 'token' && <TokenButton appointment={{ ...r.appointment, doctor: { name: r.appointment.doctorName } }} onPrint={onSlip} />}
-                  {visit && <VisitProgress visit={visit} />}
-                </span>
-              </div>
-              <p className="hint">
-                {r.appointment?.kind === 'token' ? `Walk-in, token ${r.appointment.token}` : r.booked || r.appointment ? 'Booked for today' : 'Came without a booking'}
-                {r.patient.phone ? ` · ${r.patient.phone}` : ''}
-              </p>
-            </PatientRow>
-          );
-        })}
-      </ul>
+      <Paged rows={rows} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((r) => {
+              const visit = r.visitId ? progress.get(r.visitId) : null;
+              return (
+                <PatientRow
+                  key={r.patient.id}
+                  patient={{ ...r.patient, assignedDoctorName: showDoctor ? r.patient.doctorName : null }}
+                  to={r.visitId ? `/patients/${r.patient.id}/visits/${r.visitId}` : undefined}
+                  openLabel={r.visitId ? 'Open the visit' : 'Open the record'}
+                  marker={<AppointmentChip appointment={r.appointment} />}
+                >
+                  <div className="wl-row-head">
+                    <span className="wl-counts">
+                      {/* The live queue: her state (and Emergency), the time she arrived */}
+                      {r.emergency && r.queue !== 'done' && (
+                        <StatusPill tone="high" icon={Siren}>
+                          Emergency
+                        </StatusPill>
+                      )}
+                      {(() => {
+                        const look = QUEUE_LOOK[r.queue] ?? (r.arrivedAt ? QUEUE_LOOK.waiting : QUEUE_LOOK.expected);
+                        return (
+                          <StatusPill tone={look.tone} icon={look.icon}>
+                            {look.label}
+                            {r.arrivedAt ? ` · arrived ${formatTime(r.arrivedAt)}` : ''}
+                          </StatusPill>
+                        );
+                      })()}
+                      {canMark && !r.arrivedAt && (
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMark(r.patient)} disabled={busy === r.patient.id}>
+                          <UserCheck aria-hidden="true" /> Mark arrived
+                        </button>
+                      )}
+                      {canMark && r.arrivalMarked && !r.visitStarted && (
+                        <button type="button" className="btn btn-link btn-sm" onClick={() => onUndo(r.patient)} disabled={busy === r.patient.id} aria-label={`Undo arrival of ${r.patient.fullName}`}>
+                          Undo
+                        </button>
+                      )}
+                      {r.appointment?.kind === 'token' && <TokenButton appointment={{ ...r.appointment, doctor: { name: r.appointment.doctorName } }} onPrint={onSlip} />}
+                      {visit && <VisitProgress visit={visit} />}
+                    </span>
+                  </div>
+                  <p className="hint">
+                    {r.appointment?.kind === 'token' ? `Walk-in, token ${r.appointment.token}` : r.booked || r.appointment ? 'Booked for today' : 'Came without a booking'}
+                    {r.patient.phone ? ` · ${r.patient.phone}` : ''}
+                  </p>
+                </PatientRow>
+              );
+            })}
+          </ul>
+        )}
+      </Paged>
     </Section>
   );
 }
@@ -149,13 +153,17 @@ export function CallRow({ row, line }) {
 function CallList({ id, icon, title, rows, empty, line, note = null }) {
   return (
     <Section id={id} icon={icon} title={title} count={rows.length} empty={empty}>
-      <ul className="wl-list">
-        {rows.map((r) => (
-          <PatientRow key={r.patient.id} patient={{ ...r.patient, assignedDoctorName: r.patient.doctorName }}>
-            <CallRow row={r} line={line} />
-          </PatientRow>
-        ))}
-      </ul>
+      <Paged rows={rows} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((r) => (
+              <PatientRow key={r.patient.id} patient={{ ...r.patient, assignedDoctorName: r.patient.doctorName }}>
+                <CallRow row={r} line={line} />
+              </PatientRow>
+            ))}
+          </ul>
+        )}
+      </Paged>
       {note && <p className="hint rf-note">{note}</p>}
     </Section>
   );
@@ -668,25 +676,29 @@ function RoleToday({ roles, lensBar = null }) {
     // Reception: bills to settle now – a patient here today, or a stay that has ended (owner, 13 Oct 2026)
     collect: isReception && unpaid.data && today.data && (
       <Section id="td-collect" icon={Wallet} title="Payments to collect" count={collect.length} empty="Nothing to collect now: nobody here today or discharged owes money.">
-        <ul className="wl-list">
-          {collect.map(({ bill, why }) => (
-            <PatientRow
-              key={bill.id}
-              patient={bill.patient}
-              to={`/billing/bills/${bill.id}`}
-              openLabel="Open the bill"
-              marker={
-                <StatusPill tone="watch" icon={Wallet}>
-                  {rupees(bill.balance)} to pay
-                </StatusPill>
-              }
-            >
-              <p className="hint">
-                Bill {bill.number} · {why === 'discharged' ? `Discharged${bill.stay?.dischargedAt ? ` ${formatDate(bill.stay.dischargedAt)}` : ''} – the bill is not settled` : 'Here today'}
-              </p>
-            </PatientRow>
-          ))}
-        </ul>
+        <Paged rows={collect} label="bills" {...LIST_PAGES}>
+          {(page) => (
+            <ul className="wl-list">
+              {page.map(({ bill, why }) => (
+                <PatientRow
+                  key={bill.id}
+                  patient={bill.patient}
+                  to={`/billing/bills/${bill.id}`}
+                  openLabel="Open the bill"
+                  marker={
+                    <StatusPill tone="watch" icon={Wallet}>
+                      {rupees(bill.balance)} to pay
+                    </StatusPill>
+                  }
+                >
+                  <p className="hint">
+                    Bill {bill.number} · {why === 'discharged' ? `Discharged${bill.stay?.dischargedAt ? ` ${formatDate(bill.stay.dischargedAt)}` : ''} – the bill is not settled` : 'Here today'}
+                  </p>
+                </PatientRow>
+              ))}
+            </ul>
+          )}
+        </Paged>
       </Section>
     ),
     discharges: isReception && stays.data && <DischargesSection desk={stays.data} bills={unpaid.data?.bills} />,
@@ -891,93 +903,105 @@ function RoleToday({ roles, lensBar = null }) {
         {/* Inpatients (Version 2): documents waiting for this doctor's confirmation, and who is in hospital */}
         {inpatients.data?.toConfirm && (
           <Section id="td-confirm" icon={BadgeCheck} title="Waiting for your confirmation" count={inpatients.data.toConfirm.length} empty="No delivery, operation or discharge notes are waiting for you.">
-            <ul className="wl-list">
-              {inpatients.data.toConfirm.map((d) => (
-                <PatientRow key={d.documentId} patient={d.patient} to={`/patients/${d.patient.id}/stays/${d.admissionId}/docs/${d.documentId}`} openLabel="Open the note">
-                  <StatusPill tone="watch" icon={UserCheck}>
-                    {KIND_LABELS[d.kind]}
-                  </StatusPill>
-                  <p className="hint">
-                    Written by {d.writtenBy} · {formatDateTime(d.at)}
-                  </p>
-                </PatientRow>
-              ))}
-            </ul>
+            <Paged rows={inpatients.data.toConfirm} label="notes" {...LIST_PAGES}>
+              {(page) => (
+                <ul className="wl-list">
+                  {page.map((d) => (
+                    <PatientRow key={d.documentId} patient={d.patient} to={`/patients/${d.patient.id}/stays/${d.admissionId}/docs/${d.documentId}`} openLabel="Open the note">
+                      <StatusPill tone="watch" icon={UserCheck}>
+                        {KIND_LABELS[d.kind]}
+                      </StatusPill>
+                      <p className="hint">
+                        Written by {d.writtenBy} · {formatDateTime(d.at)}
+                      </p>
+                    </PatientRow>
+                  ))}
+                </ul>
+              )}
+            </Paged>
           </Section>
         )}
         {labReview.data?.orders && (
           <Section id="td-lab-review" icon={FlaskConical} title="Lab results to review" count={labReview.data.orders.length} empty="No lab results are waiting for your review.">
-            <ul className="wl-list">
-              {labReview.data.orders.map((o) => (
-                <PatientRow
-                  key={o.id}
-                  patient={o.patient}
-                  to={`/patients/${o.patient.id}/lab/${o.id}`}
-                  openLabel="Open the results"
-                  marker={
-                    o.abnormal ? (
-                      <StatusPill tone="high" icon={FLAG_LOOK.abnormal.icon}>
-                        Outside range
-                      </StatusPill>
-                    ) : null
-                  }
-                >
-                  <p className="hint">
-                    {testNames(o)} · reported by {o.reported?.byName}, {formatDateTime(o.reported?.at)}
-                  </p>
-                </PatientRow>
-              ))}
-            </ul>
+            <Paged rows={labReview.data.orders} label="results" {...LIST_PAGES}>
+              {(page) => (
+                <ul className="wl-list">
+                  {page.map((o) => (
+                    <PatientRow
+                      key={o.id}
+                      patient={o.patient}
+                      to={`/patients/${o.patient.id}/lab/${o.id}`}
+                      openLabel="Open the results"
+                      marker={
+                        o.abnormal ? (
+                          <StatusPill tone="high" icon={FLAG_LOOK.abnormal.icon}>
+                            Outside range
+                          </StatusPill>
+                        ) : null
+                      }
+                    >
+                      <p className="hint">
+                        {testNames(o)} · reported by {o.reported?.byName}, {formatDateTime(o.reported?.at)}
+                      </p>
+                    </PatientRow>
+                  ))}
+                </ul>
+              )}
+            </Paged>
           </Section>
         )}
         {inpatients.data && inpatients.data.admitted.length > 0 && (
           <Section id="td-inpatients" icon={BedDouble} title="In hospital" count={inpatients.data.admitted.length} empty="">
-            <ul className="wl-list">
-              {inpatients.data.admitted.map((s) => (
-                <PatientRow
-                  key={s.admissionId}
-                  patient={s.patient}
-                  to={`/patients/${s.patient.id}/stays/${s.admissionId}`}
-                  openLabel="Open the stay"
-                  marker={
-                    <>
-                      <FlagCountPill flags={s.redFlags} />
-                      {/* Seen without opening the row (owner, 13 Oct 2026) */}
-                      {vitalsDue(s) && (
-                        <StatusPill tone="watch" icon={Clock} title={`No vitals recorded in the last ${VITALS_DUE_HOURS} hours`}>
-                          Vitals due
-                        </StatusPill>
-                      )}
-                    </>
-                  }
-                >
-                  <div className="wl-row-head">
-                    <span className="wl-counts">
-                      {(s.ward || s.bed) && <span className="muted">{[s.ward, s.bed && `Bed ${s.bed}`].filter(Boolean).join(' · ')}</span>}
-                      {s.drafts > 0 && (
-                        <StatusPill tone="watch" icon={PenLine}>
-                          {s.drafts} draft{s.drafts > 1 ? 's' : ''}
-                        </StatusPill>
-                      )}
-                      {/* Closed after a death: on the list until the discharge card ends the stay */}
-                      {s.patient.closed && (
-                        <StatusPill tone="inactive" icon={Archive}>
-                          Record closed
-                        </StatusPill>
-                      )}
-                    </span>
-                  </div>
-                  <p className="hint">
-                    Admitted {formatDateTime(s.admittedAt)} ·{' '}
-                    {s.lastVitalsAt ? `last vitals ${formatDateTime(s.lastVitalsAt)}` : 'no vitals recorded yet'}
-                    {s.lastMedicineAt ? ` · last medicine given ${formatDateTime(s.lastMedicineAt)}` : ''}
-                  </p>
-                  {s.redFlags?.length > 0 && <RedFlagItems flags={s.redFlags} brief patientId={s.patient.id} />}
-                  {/* No rule for her type of care: say that nothing was checked, never leave it looking like "no red flags" */}
-                  {s.redFlagsChecked === false && <p className="hint">{notCheckedCareText(s.redFlagsCareType ?? s.patient.careType, s.redFlagsWorkupOnly)}</p>}
-                </PatientRow>
-              ))}
-            </ul>
+            <Paged rows={inpatients.data.admitted} label="patients" {...LIST_PAGES}>
+              {(page) => (
+                <ul className="wl-list">
+                  {page.map((s) => (
+                    <PatientRow
+                      key={s.admissionId}
+                      patient={s.patient}
+                      to={`/patients/${s.patient.id}/stays/${s.admissionId}`}
+                      openLabel="Open the stay"
+                      marker={
+                        <>
+                          <FlagCountPill flags={s.redFlags} />
+                          {/* Seen without opening the row (owner, 13 Oct 2026) */}
+                          {vitalsDue(s) && (
+                            <StatusPill tone="watch" icon={Clock} title={`No vitals recorded in the last ${VITALS_DUE_HOURS} hours`}>
+                              Vitals due
+                            </StatusPill>
+                          )}
+                        </>
+                      }
+                    >
+                      <div className="wl-row-head">
+                        <span className="wl-counts">
+                          {(s.ward || s.bed) && <span className="muted">{[s.ward, s.bed && `Bed ${s.bed}`].filter(Boolean).join(' · ')}</span>}
+                          {s.drafts > 0 && (
+                            <StatusPill tone="watch" icon={PenLine}>
+                              {s.drafts} draft{s.drafts > 1 ? 's' : ''}
+                            </StatusPill>
+                          )}
+                          {/* Closed after a death: on the list until the discharge card ends the stay */}
+                          {s.patient.closed && (
+                            <StatusPill tone="inactive" icon={Archive}>
+                              Record closed
+                            </StatusPill>
+                          )}
+                        </span>
+                      </div>
+                      <p className="hint">
+                        Admitted {formatDateTime(s.admittedAt)} ·{' '}
+                        {s.lastVitalsAt ? `last vitals ${formatDateTime(s.lastVitalsAt)}` : 'no vitals recorded yet'}
+                        {s.lastMedicineAt ? ` · last medicine given ${formatDateTime(s.lastMedicineAt)}` : ''}
+                      </p>
+                      {s.redFlags?.length > 0 && <RedFlagItems flags={s.redFlags} brief patientId={s.patient.id} />}
+                      {/* No rule for her type of care: say that nothing was checked, never leave it looking like "no red flags" */}
+                      {s.redFlagsChecked === false && <p className="hint">{notCheckedCareText(s.redFlagsCareType ?? s.patient.careType, s.redFlagsWorkupOnly)}</p>}
+                    </PatientRow>
+                  ))}
+                </ul>
+              )}
+            </Paged>
             {inpatients.data.admitted.some((s) => s.redFlags?.length > 0) && <RedFlagRulesNote rules={inpatients.data.rules} />}
           </Section>
         )}
@@ -997,16 +1021,20 @@ function RoleToday({ roles, lensBar = null }) {
         {/* Nurses: who arrived and is waiting for her visit to be started, then the visits started today */}
         {!appointments && worklist.data?.waiting?.length > 0 && (
           <Section id="td-waiting" icon={UserCheck} title="Arrived – waiting" count={worklist.data.waiting.length} empty="">
-            <ul className="wl-list">
-              {worklist.data.waiting.map((w) => (
-                <PatientRow key={w.patient.id} patient={w.patient}>
-                  <StatusPill tone="stable" icon={UserCheck}>
-                    Arrived · {formatTime(w.arrivedAt)}
-                  </StatusPill>
-                  <p className="hint">Open her record and press Start today's visit.</p>
-                </PatientRow>
-              ))}
-            </ul>
+            <Paged rows={worklist.data.waiting} label="patients" {...LIST_PAGES}>
+              {(page) => (
+                <ul className="wl-list">
+                  {page.map((w) => (
+                    <PatientRow key={w.patient.id} patient={w.patient}>
+                      <StatusPill tone="stable" icon={UserCheck}>
+                        Arrived · {formatTime(w.arrivedAt)}
+                      </StatusPill>
+                      <p className="hint">Open her record and press Start today's visit.</p>
+                    </PatientRow>
+                  ))}
+                </ul>
+              )}
+            </Paged>
           </Section>
         )}
         {!appointments && worklist.data && <VisitsTodaySection data={worklist.data} />}

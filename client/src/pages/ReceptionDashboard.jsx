@@ -3,6 +3,7 @@ import { CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRup
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { MenuButton } from '../components/MenuButton.jsx';
+import { usePagedRows } from '../components/DataTable.jsx';
 import { Alert, StatusPill, formatTime } from '../components/ui.jsx';
 import { EditPatientDialog } from './appointments/RegisterAndBook.jsx';
 import { PURPOSE_LABELS, VISIT_TYPE_LABELS, timeLabel } from './appointments/appointmentFormat.js';
@@ -140,6 +141,8 @@ export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMa
   const doctors = useMemo(() => [...new Set(rows.map((r) => r.appointment?.doctorName ?? r.patient.doctorName).filter(Boolean))].sort(), [rows]);
   const shown = rows.filter((r) => (!tab || (r.queue ?? 'expected') === tab) && (!doctor || (r.appointment?.doctorName ?? r.patient.doctorName) === doctor) && rowMatches(r, text));
   const todayIds = new Set(rows.map((r) => r.patient.id));
+  // A busy OPD: 25 a page with the page bar under the table (31 Oct 2026); the 30-second refresh keeps the page
+  const paged = usePagedRows(shown, { initial: 25, sizes: [25, 50, 100], label: 'patients', resetKey: `${tab}|${doctor}|${text}` });
 
   return (
     <section className="card rd-patients" id="td-patients" aria-labelledby="rd-patients-title" tabIndex={-1}>
@@ -203,7 +206,7 @@ export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMa
             </tr>
           </thead>
           <tbody>
-            {shown.map((r, i) => {
+            {paged.shown.map((r) => {
               const state = r.queue ?? (r.arrivedAt ? 'waiting' : 'expected');
               const look = QUEUE_LOOK[state];
               const p = r.patient;
@@ -222,7 +225,7 @@ export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMa
               ].filter(Boolean);
               return (
                 <tr key={p.id} className={`rd-row is-${state}${urgent ? ' is-emergency' : ''}${r.guest ? ' is-guest' : ''}`}>
-                  <td className="tabular muted">{i + 1}</td>
+                  <td className="tabular muted">{shown.indexOf(r) + 1}</td>
                   <td>
                     <span className="rd-person">
                       <span className="rd-avatar" aria-hidden="true">
@@ -305,6 +308,7 @@ export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMa
           </tbody>
         </table>
       </div>
+      {paged.pager}
       {text.trim().length >= 2 && <OtherPatients term={text} skip={todayIds} onArrive={onMark} busy={busy} onSaved={onSaved} onEdit={setEditing} />}
       {editing && (
         <EditPatientDialog

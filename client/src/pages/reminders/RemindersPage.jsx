@@ -9,6 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { moduleByKey } from '../../platform/modules.js';
 import { showWhatsappNumber, whatsappLink } from '../visits/whatsapp.js';
 import { hasDraftWording, messageAbout, runNotice } from './outboxFormat.js';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // Calendar → Reminders (Version 2): the automatic appointment reminders – what goes out today (or on a chosen
 // day), and the messages waiting to be sent by hand (no message provider set up, or sending failed). Staff send
@@ -172,11 +173,15 @@ export function RemindersPage() {
                 <Send aria-hidden="true" /> To send by hand <span className="muted tabular">({open.data.messages.length})</span>
               </h2>
             </header>
-            <ul className="wl-list">
-              {open.data.messages.map((m) => (
-                <MessageRow key={m.id} m={m} onSent={markSent} />
-              ))}
-            </ul>
+            <Paged rows={open.data.messages} label="messages" {...LIST_PAGES}>
+              {(page) => (
+                <ul className="wl-list">
+                  {page.map((m) => (
+                    <MessageRow key={m.id} m={m} onSent={markSent} />
+                  ))}
+                </ul>
+              )}
+            </Paged>
           </section>
         )}
         <div className="row reg-toolbar">
@@ -196,11 +201,15 @@ export function RemindersPage() {
             </h2>
           </header>
           {list.data?.messages?.length ? (
-            <ul className="wl-list">
-              {list.data.messages.map((m) => (
-                <MessageRow key={m.id} m={m} onSent={markSent} />
-              ))}
-            </ul>
+            <Paged rows={list.data.messages} label="messages" {...LIST_PAGES}>
+              {(page) => (
+                <ul className="wl-list">
+                  {page.map((m) => (
+                    <MessageRow key={m.id} m={m} onSent={markSent} />
+                  ))}
+                </ul>
+              )}
+            </Paged>
           ) : (
             <p className="panel-empty">No reminders on this day.</p>
           )}
