@@ -92,6 +92,11 @@
   .ph-title { font-size: var(--fs-h2); line-height: var(--lh-h2); }
   .ph-subtitle { display: none; }
   .ph-actions { flex-wrap: wrap; }
+  .ph-main { gap: var(--space-2); }
+  .ph-main > .ph-actions { margin-top: 0; }
+  /* One page button (New registration ▾, Add follow-up): the full width */
+  .ph-actions > .menu-button:only-child { flex: 1 1 100%; display: flex; }
+  .ph-actions > .menu-button:only-child > .btn { width: 100%; justify-content: center; }
   /* Two or more page buttons: quick-action tiles side by side (icon over the word), like an app's shortcuts */
   .ph-actions:has(> :nth-child(2)) {
     display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); align-items: stretch;
@@ -124,13 +129,30 @@
   /* ---------- Lists: each row a compact item – its first line in bold, then "label  value" side by side ---------- */
   .dt tr, table:not(.dt, .ptable, .am-grid) tr { padding: var(--space-2) 0; }
   .dt td, table:not(.dt, .ptable, .am-grid) td { padding: 2px var(--space-3); }
+  /* The label in its own 88 px column; everything in the cell (however many parts) to its right */
   .dt td[data-label], table:not(.dt, .ptable, .am-grid) td[data-label] {
-    display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: var(--space-2); align-items: baseline;
+    position: relative; display: block; min-height: calc(var(--lh-body) + 4px); padding-left: calc(var(--space-3) + 88px + var(--space-2));
   }
-  .dt td[data-label]::before, table:not(.dt, .ptable, .am-grid) td[data-label]::before { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt td[data-label]::before, table:not(.dt, .ptable, .am-grid) td[data-label]::before {
+    position: absolute; left: var(--space-3); top: 4px; width: 88px; font-size: var(--fs-caption); line-height: var(--lh-caption);
+  }
+  .dt td.wrap-cell { min-width: 0; max-width: none; }
   .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { display: block; padding-bottom: var(--space-1); font-weight: 600; }
   .dt td[data-label]:first-child::before, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child::before { display: none; }
   table:not(.dt, .ptable, .am-grid) tr { margin-bottom: var(--space-2); }
+  .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { padding-left: var(--space-3); }
+  /* Above a list: the search and its filter button on one line */
+  .dt-toolbar { flex-wrap: nowrap; align-items: center; gap: var(--space-2); padding: var(--space-3); }
+  .dt-toolbar:has(> :nth-child(3)) { flex-wrap: wrap; }
+  .dt-search { flex: 1 1 auto; min-width: 0; max-width: none; }
+  .dt-toolbar > .btn { flex: 0 0 auto; }
+  /* Under a list: "1–25 of 80" and the arrows on one slim line (rows per page and first/last left to computers) */
+  .dt-footer { flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+  .dt-range { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt-size, .dt-pager-buttons > .icon-btn:first-child, .dt-pager-buttons > .icon-btn:last-child { display: none; }
+  .dt-pager-buttons .icon-btn { width: 40px; height: 40px; }
+  .dt-page-input input { width: 3em; min-height: 40px; padding: 0 var(--space-1); text-align: center; }
+  .dt-page-input label { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-caption); white-space: nowrap; }
 
   /* ---------- Cards: less padding, so more fits on a screen ---------- */
   .card, .panel, .dt-card { border-radius: var(--radius-md); }
@@ -204,7 +226,16 @@
   .rd-doctor-counts { gap: var(--space-4); font-size: var(--fs-caption); line-height: var(--lh-caption); }
 
   /* ---------- A form's Save bar: one slim row – the main button and the second one side by side, Cancel small ---------- */
-  .sticky-actions { gap: var(--space-2); padding: var(--space-2); border-radius: var(--radius-md); margin-top: var(--space-3); }
+  /* On a page (not in a dialog): an app's bottom bar – stuck to the bottom edge of the screen, the full width */
+  .pf-main .sticky-actions:not(.modal *) {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; flex-wrap: nowrap; gap: var(--space-2); margin: 0;
+    padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+    border-radius: 0; border-top: 1px solid var(--card-border); box-shadow: var(--shadow-pop);
+  }
+  .pf-main:has(.sticky-actions:not(.modal *)) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .pf-has-tabbar .pf-main:has(.sticky-actions:not(.modal *)) { padding-bottom: calc(68px + 76px + env(safe-area-inset-bottom)); }
+  .pf-main .sticky-actions:has(.voice-bar, .voice-save-wait) { flex-wrap: wrap; }
+  .sticky-actions > .btn:not(.btn-link) { min-height: 48px; }
   .sticky-actions > .btn:not(.btn-link) {
     flex: 1 1 0; min-width: 0; padding: 0 var(--space-2); white-space: normal; line-height: var(--lh-label); font-size: var(--fs-label);
   }
@@ -226,11 +257,17 @@
   .pf-sheet-grip { position: absolute; left: 50%; top: var(--space-2); width: 40px; height: 4px; margin-left: -20px; border-radius: var(--radius-pill); background: var(--slate-300); }
   .pf-sheet .ph { padding-top: 0; }
   .pf-sheet .ph-crumbs { display: none; }
-  .pf-sheet .sticky-actions { bottom: calc(var(--space-2) + env(safe-area-inset-bottom)); }
   @media (prefers-reduced-motion: reduce) { .pf-sheet .pf-main { animation: none; } }
 
   /* The form's boxes: less padding; "Choose a service" above its list */
-  .card.form-section { padding: var(--space-4) var(--space-3); }
+  .card.form-section, .patient-form fieldset.form-section { margin-bottom: var(--space-3); padding: var(--space-4) var(--space-3); }
+  .form-section h2 { margin-bottom: var(--space-3); }
+  /* Dictate: one full-width button above the form */
+  .voice-folded { margin-bottom: var(--space-3); }
+  .voice-folded > .btn { flex: 1 1 auto; justify-content: center; }
+  /* In the sheet, the X closes it: the section tabs (All patients · New patient · Online sign-ups) are left out */
+  .pf-sheet .ph-tabs { display: none; }
+  .pf-sheet .ph { padding-bottom: var(--space-2); }
   .fu-bb-add { flex-direction: column; align-items: stretch; }
   .fu-bb-add select { width: 100%; }
 
@@ -275,7 +312,7 @@
   .hint { font-size: var(--fs-caption); line-height: var(--lh-caption); }
 
   /* A long form's sticky Save bar: above the tab bar */
-  .pf-has-tabbar .sticky-actions { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .pf-has-tabbar .pf-main .sticky-actions:not(.modal *) { bottom: calc(68px + env(safe-area-inset-bottom)); padding-bottom: var(--space-2); }
   .pf-has-tabbar .fp-pick-bar { bottom: calc(68px + env(safe-area-inset-bottom)); }
 
   /* A tip about the keyboard (Ctrl+K) means nothing on a phone */
