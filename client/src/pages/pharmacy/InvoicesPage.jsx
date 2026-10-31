@@ -11,14 +11,17 @@ import { Alert, Field, formatDateTime, useDebounced } from '../../components/ui.
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
 import { TallyMarks } from '../billing/TallyPage.jsx';
+import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
-import { Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
 // Pharmacy → Invoices: a day's invoices (or a search), one invoice with its GST tax invoice to print, and returns of
 // unopened medicines before their expiry (each a credit note). A walk-in sale to a business with a GSTIN shows the
 // buyer, and the hospital admin can download its e-invoice file (to upload on the e-invoice portal by hand).
 
 const whoOf = (v) => (v.patient ? `${v.patient.fullName} (${v.patient.mrn})` : v.buyer ? `${v.buyer.name} (business)` : v.customer ? `${v.customer.name} (walk-in)` : '');
+// On the printed bill every amount has its paise, so the column lines up: ₹75.00, not ₹75
+const paper = (paise) => (paise % 100 ? money(paise) : `${money(paise)}.00`);
 const buyerAddress = (b) => [b.address, [b.place, b.pin].filter(Boolean).join(' '), b.state && `${b.state} (${b.stateCode})`].filter(Boolean).join(', ');
 
 export function InvoicesPage() {
@@ -85,67 +88,44 @@ export function InvoicesPage() {
   );
 }
 
-/** The printed GST tax invoice (or a credit note), A5. */
+/** The printed GST tax invoice (or a credit note), A5: the store's letterhead, the bill's details, the medicines, the sums. */
 function InvoicePrint({ invoice: v, settings, stay, creditNote = null, onClose }) {
   const ret = creditNote ? v.returns.find((r) => r.number === creditNote) : null;
   const lines = ret ? ret.lines.map((x) => ({ ...v.lines.find((l) => l.id === x.lineId), qty: x.qty, amountPaise: x.amountPaise })) : v.lines;
   const record = () => api(`/pharmacy/invoices/${v.id}/printed`, { method: 'POST', body: { what: creditNote ? 'credit_note' : 'invoice' } });
   const total = lines.reduce((s, l) => s + l.amountPaise, 0);
+  const atMrp = lines.reduce((s, l) => s + l.qty * l.mrpPaise, 0);
+  const due = creditNote ? total : v.netPaise;
+  const who = v.patient ? `${v.patient.fullName} (${v.patient.mrn})` : v.buyer ? v.buyer.name : v.customer?.name || 'Walk-in customer';
+  const facts = [
+    [creditNote ? 'Credit note no.' : 'Bill no.', creditNote ?? v.number],
+    ['Date', formatDateTime(ret ? ret.at : v.date)],
+    [v.patient ? 'Patient' : 'Customer', who],
+    ['Doctor', v.doctor ? `${v.doctor.name}${v.doctor.reg ? `, Reg. ${v.doctor.reg}` : ''}` : '–'],
+    ...(v.buyer ? [['GSTIN', v.buyer.gstin], ['Address', buyerAddress(v.buyer)]] : []),
+    ...(creditNote ? [['Against bill', v.number]] : stay ? [['Ward', `${stay.ward ?? ''}${stay.bed ? `, bed ${stay.bed}` : ''}`]] : []),
+  ];
   return (
     <PrintPreview title={creditNote ? 'Credit note – print preview' : 'Tax invoice – print preview'} hint="Check it, then print on A5 paper." page={{ size: 'A5', margin: '8mm' }} onPrint={record} onClose={onClose}>
-      <PrintDocument className="bill-doc ph-doc">
-        <header className="ph-doc-head">
-          <div className="lh-name">{settings.name}</div>
-          {settings.address && <div>{settings.address}</div>}
-          <div className="pdoc-small">
-            {[settings.phone && `Phone ${settings.phone}`, settings.gstin && `GSTIN ${settings.gstin}`, settings.licence20 && `DL 20: ${settings.licence20}`, settings.licence21 && `DL 21: ${settings.licence21}`].filter(Boolean).join(' · ')}
-          </div>
-        </header>
-        <h1 className="pdoc-title">{creditNote ? 'Credit note' : 'Tax invoice'}</h1>
-        <table className="bill-doc-head">
-          <tbody>
-            <tr>
-              <th scope="row">{creditNote ? 'Credit note' : 'Invoice no.'}</th>
-              <td>{creditNote ?? v.number}</td>
-              <th scope="row">Date</th>
-              <td>{formatDateTime(ret ? ret.at : v.date)}</td>
-            </tr>
-            <tr>
-              <th scope="row">{v.patient ? 'Patient' : 'Customer'}</th>
-              <td>{v.patient ? `${v.patient.fullName} (${v.patient.mrn})` : v.customer?.name}</td>
-              <th scope="row">Doctor</th>
-              <td>{v.doctor ? `${v.doctor.name}${v.doctor.reg ? `, Reg. ${v.doctor.reg}` : ''}` : '–'}</td>
-            </tr>
-            {v.buyer && (
-              <>
-                <tr>
-                  <th scope="row">Buyer</th>
-                  <td>{v.buyer.name}</td>
-                  <th scope="row">GSTIN</th>
-                  <td>{v.buyer.gstin}</td>
-                </tr>
-                <tr>
-                  <th scope="row">Address</th>
-                  <td colSpan={3}>{buyerAddress(v.buyer)}</td>
-                </tr>
-              </>
-            )}
-            {(creditNote || stay) && (
-              <tr>
-                <th scope="row">{creditNote ? 'Against invoice' : 'Ward'}</th>
-                <td>{creditNote ? v.number : `${stay?.ward ?? ''}${stay?.bed ? `, bed ${stay.bed}` : ''}`}</td>
-                <th scope="row" />
-                <td />
-              </tr>
-            )}
-          </tbody>
-        </table>
-        <table className="bill-doc-lines ph-doc-lines">
+      <PrintDocument className="bill-doc ph-doc ph-bill">
+        <PharmacyLetterhead settings={settings} />
+        <h1 className="pdoc-title ph-bill-title">{creditNote ? 'Credit note' : 'Tax invoice'}</h1>
+        <dl className="ph-bill-facts">
+          {facts.map(([k, val]) => (
+            <div key={k} className={k === 'Address' ? 'is-wide' : undefined}>
+              <dt>{k}</dt>
+              <dd>{val}</dd>
+            </div>
+          ))}
+        </dl>
+        <table className="ph-bill-lines">
           <thead>
             <tr>
+              <th scope="col" className="num">#</th>
               <th scope="col">Medicine</th>
               <th scope="col">HSN</th>
-              <th scope="col">Batch / exp</th>
+              <th scope="col">Batch</th>
+              <th scope="col">Exp.</th>
               <th scope="col" className="num">Qty</th>
               <th scope="col" className="num">MRP</th>
               <th scope="col" className="num">GST</th>
@@ -153,66 +133,87 @@ function InvoicePrint({ invoice: v, settings, stay, creditNote = null, onClose }
             </tr>
           </thead>
           <tbody>
-            {lines.map((l) => (
+            {lines.map((l, i) => (
               <tr key={l.id}>
+                <td className="num">{i + 1}</td>
                 <td>
                   {l.name}
                   {l.schedule ? ` (${l.schedule === 'narcotic' ? 'NDPS' : `Sch. ${l.schedule}`})` : ''}
                 </td>
                 <td>{l.hsn}</td>
-                <td>
-                  {l.batch} / {expiryLabel(l.expiry)}
-                </td>
+                <td>{l.batch}</td>
+                <td className="nowrap">{expiryLabel(l.expiry)}</td>
                 <td className="num">{l.qty}</td>
-                <td className="num">{money(l.mrpPaise)}</td>
+                <td className="num">{paper(l.mrpPaise)}</td>
                 <td className="num">{l.gstRate}%</td>
-                <td className="num">{money(l.amountPaise)}</td>
+                <td className="num">{paper(l.amountPaise)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!creditNote && (
-          <table className="bill-doc-sums">
+        <div className="ph-bill-foot">
+          <div className="ph-bill-words">
+            <div className="pdoc-small">
+              {lines.length} {lines.length === 1 ? 'item' : 'items'}, {lines.reduce((s, l) => s + l.qty, 0)} units
+            </div>
+            <div>
+              <span className="pdoc-small">Amount in words: </span>
+              <strong>{amountInWords(due)}</strong>
+            </div>
+            <div className="pdoc-small">
+              {creditNote ? 'Credited against the bill above.' : v.patient ? 'Payable at the billing desk with the hospital bill.' : v.payments.map((p) => `${p.kind === 'refund' ? 'Refunded' : 'Paid'} ${paper(p.amountPaise)} by ${MODE_LABELS[p.mode]}`).join('; ')}
+            </div>
+          </div>
+          <table className="ph-bill-sums">
             <tbody>
-              {v.discountPercent > 0 && (
-                <tr>
-                  <th scope="row">Discount</th>
-                  <td>{v.discountPercent}% (included above)</td>
-                </tr>
+              {!creditNote && v.discountPercent > 0 && (
+                <>
+                  <tr>
+                    <th scope="row">Total at MRP</th>
+                    <td>{paper(atMrp)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Discount {v.discountPercent}%</th>
+                    <td>−{paper(atMrp - total)}</td>
+                  </tr>
+                </>
               )}
-              <tr>
-                <th scope="row">Taxable value</th>
-                <td>{money(v.taxablePaise)}</td>
-              </tr>
-              <tr>
-                <th scope="row">CGST</th>
-                <td>{money(v.cgstPaise)}</td>
-              </tr>
-              <tr>
-                <th scope="row">SGST</th>
-                <td>{money(v.sgstPaise)}</td>
-              </tr>
-              <tr className="bill-doc-balance">
-                <th scope="row">Total{v.returnedPaise ? ' (after returns)' : ''}</th>
-                <td>{money(v.netPaise)}</td>
+              {!creditNote && (
+                <>
+                  <tr>
+                    <th scope="row">Taxable value</th>
+                    <td>{paper(v.taxablePaise)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">CGST</th>
+                    <td>{paper(v.cgstPaise)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">SGST</th>
+                    <td>{paper(v.sgstPaise)}</td>
+                  </tr>
+                  {v.returnedPaise > 0 && (
+                    <tr>
+                      <th scope="row">Returned</th>
+                      <td>−{paper(v.returnedPaise)}</td>
+                    </tr>
+                  )}
+                </>
+              )}
+              <tr className="ph-bill-net">
+                <th scope="row">{creditNote ? 'Credited' : 'Net amount'}</th>
+                <td>{paper(due)}</td>
               </tr>
             </tbody>
           </table>
-        )}
-        {creditNote && (
-          <table className="bill-doc-sums">
-            <tbody>
-              <tr className="bill-doc-balance">
-                <th scope="row">Credited</th>
-                <td>{money(total)}</td>
-              </tr>
-            </tbody>
-          </table>
-        )}
-        <p className="pdoc-small">
-          {v.patient ? 'Payable at the billing desk with the hospital bill.' : v.payments.map((p) => `${p.kind === 'refund' ? 'Refunded' : 'Paid'} ${money(p.amountPaise)} by ${MODE_LABELS[p.mode]}`).join('; ')}
-          {settings.pharmacistName ? ` · Pharmacist: ${settings.pharmacistName}` : ''}. Prices include GST. This is a computer-generated {creditNote ? 'credit note' : 'invoice'}.
-        </p>
+        </div>
+        <div className="ph-bill-sign">
+          <p className="pdoc-small">Prices include GST. This is a computer-generated {creditNote ? 'credit note' : 'invoice'}.</p>
+          <div>
+            <div>For {settings.name}</div>
+            <div className="ph-bill-sign-line">{settings.pharmacistName ? `Pharmacist: ${settings.pharmacistName}` : 'Pharmacist'}</div>
+          </div>
+        </div>
       </PrintDocument>
     </PrintPreview>
   );

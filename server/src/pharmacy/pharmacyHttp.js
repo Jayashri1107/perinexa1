@@ -33,7 +33,7 @@ export const reason = (label) => z.string().trim().min(MIN_REASON, `${label}: pl
 export const idParam = (req) => parse(z.object({ id: objectId }), req.params).id;
 export const today = (req) => hospitalToday(req.now);
 
-/** The pharmacy's details as printed on its papers (its own, with the hospital letterhead's address and phone). */
+/** The pharmacy's details as printed on its papers (its own address and phone, else the hospital letterhead's). */
 export async function settingsOf(tenantId) {
   const t = await Tenant.findById(tenantId, { name: 1, letterhead: 1, pharmacy: 1 }).lean();
   const p = t?.pharmacy ?? {};
@@ -47,8 +47,8 @@ export async function settingsOf(tenantId) {
     state: p.state ?? '',
     place: p.place ?? '',
     pin: p.pin ?? '',
-    address: t?.letterhead?.address ?? '',
-    phone: t?.letterhead?.phone ?? '',
+    address: p.address || t?.letterhead?.address || '',
+    phone: p.phone || t?.letterhead?.phone || '',
   };
 }
 

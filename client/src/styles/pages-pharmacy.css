@@ -25,8 +25,38 @@
 .ph-register { font-size: var(--fs-label); line-height: var(--lh-label); }
 
 /* The printed tax invoice and credit note (A5) */
-.ph-doc-head { text-align: center; border-bottom: 1px solid var(--print-ink); padding-bottom: 2mm; margin-bottom: 2mm; }
-.ph-doc-head .lh-name { font-weight: 600; font-size: var(--fs-print-h1); }
+/* The store's letterhead on every pharmacy paper: its name large, the address, phone and licences under it */
+.ph-doc-head { text-align: center; border-bottom: 2px solid var(--print-ink); padding-bottom: 2mm; margin-bottom: 2mm; font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.ph-doc-head .lh-name { font-weight: 700; font-size: var(--fs-print-h1); line-height: var(--lh-print-h1); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 1mm; }
+.ph-doc-address { max-width: 110mm; margin: 0 auto; }
+.ph-doc-ids { margin-top: 1mm; font-weight: 600; }
+/* The tax invoice: the details in two columns, a ruled medicine table, the sums boxed on the right */
+.ph-bill { font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.pdoc .ph-bill-title { text-align: center; font-size: var(--fs-print-h2); line-height: var(--lh-print-h2); margin: 0 0 2mm; }
+.ph-bill-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 4mm; margin: 0 0 2mm; padding: 1.5mm 2mm; border: 1px solid var(--print-ink); }
+.ph-bill-facts > div { display: flex; gap: 1.5mm; min-width: 0; }
+.ph-bill-facts > div.is-wide { grid-column: 1 / -1; }
+.ph-bill-facts dt { flex: none; }
+.ph-bill-facts dt::after { content: ':'; }
+.ph-bill-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.pdoc .ph-bill-lines { width: 100%; border-collapse: collapse; margin: 0 0 2mm; }
+.pdoc .ph-bill-lines th, .pdoc .ph-bill-lines td { padding: 1mm 1mm; border: 0; border-bottom: 1px solid var(--print-rule); font-size: var(--fs-print-small); line-height: var(--lh-print-small); color: var(--print-ink); text-align: left; vertical-align: top; }
+.pdoc .ph-bill-lines thead th { background: var(--mist-100); border-top: 1px solid var(--print-ink); border-bottom: 1px solid var(--print-ink); font-weight: 700; white-space: nowrap; }
+.pdoc .ph-bill-lines tbody tr:last-child td { border-bottom: 1px solid var(--print-ink); }
+.pdoc .ph-bill-lines tr { break-inside: avoid; }
+.pdoc .ph-bill-lines .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ph-bill-lines .nowrap { white-space: nowrap; }
+.ph-bill-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4mm; align-items: start; break-inside: avoid; }
+.ph-bill-words { display: grid; gap: 1.5mm; }
+.pdoc .ph-bill-sums { border-collapse: collapse; width: auto; min-width: 48mm; border: 1px solid var(--print-ink); }
+.pdoc .ph-bill-sums th, .pdoc .ph-bill-sums td { padding: 0.8mm 2mm; border: 0; background: none; font-size: var(--fs-print-small); line-height: var(--lh-print-small); color: var(--print-ink); }
+.pdoc .ph-bill-sums th { text-align: left; font-weight: 400; white-space: nowrap; }
+.pdoc .ph-bill-sums td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pdoc .ph-bill-sums .ph-bill-net th, .pdoc .ph-bill-sums .ph-bill-net td { border-top: 1px solid var(--print-ink); font-weight: 700; font-size: var(--fs-print-body); line-height: var(--lh-print-body); padding-top: 1.2mm; padding-bottom: 1.2mm; }
+.ph-bill-sign { display: flex; justify-content: space-between; align-items: flex-end; gap: 4mm; margin-top: 6mm; break-inside: avoid; }
+.ph-bill-sign p { margin: 0; }
+.ph-bill-sign > div { text-align: center; font-weight: 600; }
+.ph-bill-sign-line { margin-top: 9mm; padding-top: 1mm; border-top: 1px solid var(--print-ink); font-weight: 400; }
 .ph-doc-lines th, .ph-doc-lines td { font-size: var(--fs-print-small); padding: 1mm 1.5mm; }
 .pdoc .ph-register th, .pdoc .ph-register td { font-size: var(--fs-print-small); padding: 1mm 1.5mm; border-bottom: 1px solid var(--print-rule); }
 .ph-finder .bill-search { flex: none; }

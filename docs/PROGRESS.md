@@ -13,6 +13,26 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **31 Oct 2026 – scans booked by reception and ordered from the care plan; pharmacy papers (developer's requests –
+  exceptions to the feature freeze, the owner's go-ahead to be recorded):** (1) **Reception → a patient → More → Book a
+  scan:** the study, the doctor who asked for it (on paper), urgent, and a day and time if agreed. Reception types no
+  clinical text. The scan waits as **To confirm**: not billed, not on the machine's worklist, not scheduled or done.
+  (2) **Doctors and RMOs → Sonography → To confirm** (a tile on the dashboard too): open it, check the study, write the
+  indication, **Confirm the scan** – it is then ordered (or scheduled for the agreed time) and goes on her bill – or
+  **Decline** with a reason. (3) **Care plan:** a scan due in her plan has **Order the scan**; the order dialog comes
+  filled in (the study worked out from the item's name, the item's name as the reason – the doctor checks both), and the
+  row then shows "Scan ordered …: To schedule" with a link. The separate sonologist login and two-step approval (ideas
+  17 and 22) stay out (owner, 19 Oct 2026). (4) **Pharmacy → Settings:** the store's own **address and phone numbers**
+  (empty = the hospital letterhead's) on every pharmacy paper; the **tax invoice** redrawn as a pharmacy bill (store
+  letterhead, bill details, numbered medicines with HSN, batch, expiry, MRP, GST, the sums boxed, amount in words, "For
+  <store>" and the pharmacist's line); printed tables no longer turn into stacked boxes on A5 or A4 paper. **How to
+  test:** as reception, open a patient → More → Book a scan → choose the doctor → Book the scan; as that doctor,
+  Sonography → To confirm → open it → write the indication → Confirm the scan (her bill gets the scan). As a doctor, a
+  pregnant patient → Care plan → a scan "Due now" → Order the scan → Order the scan. Pharmacy → Settings → type the
+  store's address and phones → Save; Sold → a bill → Print → Tax invoice.
+- **The ultrasound machine on the LAN is a separate, later part** (built and merged on 29 Oct 2026, `docs/USG_MACHINE_PLAN.md`):
+  still to do with the hospital – the machine's make and model, Orthanc on the PC beside it, a test with a dummy
+  patient, and the owner's approval of the DRAFT measurement matching and averaging rule.
 - **29 Oct 2026 – the hospital's admission form, departments and floors (branch `admission-form`, at the developer's
   request from the hospital's paper forms – an exception to the feature freeze, the owner's go-ahead to be recorded):**
   (1) **Departments:** "General" and "Genetic Counselling" added; a doctor may be in **more than one** department
@@ -28,8 +48,8 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   (Staff → Add), each with their departments; beds as Floor + Ward or room type + bed or room numbers. **How to test:**
   Hospital admin → Beds → add "1st floor · General ward · G1-G10"; Staff → tick a doctor's departments; Beds → Admit →
   choose a department and see only its doctors; print the admission form.
-- **29 Oct 2026 – the ultrasound machine on the LAN (branch `usg-machine`, not merged – an exception to the feature
-  freeze at the developer's request; the owner's go-ahead to be recorded before merging):** `docs/USG_MACHINE_PLAN.md`.
+- **29 Oct 2026 – the ultrasound machine on the LAN (branch `usg-machine`, merged into main on 29 Oct 2026 – an
+  exception to the feature freeze at the developer's request; the owner's go-ahead to be recorded):** `docs/USG_MACHINE_PLAN.md`.
   (1) **Scan bridge** (`scan-bridge/`): a small program on a hospital PC next to Orthanc (the free DICOM receiver the
   machine sends to); it sends each finished study – the machine's structured report and a JPEG of each still picture –
   to Perinexa with the hospital's key, and writes today's ultrasound orders as the machine's worklist. (2) Hospital

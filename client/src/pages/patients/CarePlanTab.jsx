@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   Ban,
   CalendarClock,
@@ -15,6 +15,7 @@ import {
   Plus,
   Printer,
   RotateCcw,
+  ScanLine,
   StickyNote,
 } from 'lucide-react';
 import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
@@ -78,6 +79,7 @@ import {
 } from './carePlanFormat.js';
 import { canEditItem } from './customItemFormat.js';
 import { CARE_TYPE_SHORT } from './patientFormat.js';
+import { OrderScanDialog, STATUS as SCAN_STATUS, studyForPlanItem } from '../imaging/ImagingPages.jsx';
 
 // The Care plan tab on the patient record: the patient's antenatal care plan (GET /care-plan), or with
 // ?planId= one of her earlier plans (read-only). Outlet context from PatientDetailPage: patient, and
@@ -96,6 +98,10 @@ const count = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // ---------- The items table ----------
 
+// Her scans ordered from this plan (31 Oct 2026, docs/IDEAS_FOR_LATER.md 18): { canOrder, byKey: item key → the latest
+// scan not cancelled }, or null when this person does not see her scans
+const PlanScans = createContext(null);
+
 // The quick buttons on a row and its More menu. onAction(action, item, options) opens a dialog or makes the change.
 function RowActions({ item, plan, decision, onAction }) {
   const open = itemState(item) === 'open';
@@ -103,6 +109,10 @@ function RowActions({ item, plan, decision, onAction }) {
   // Answered on her record, not here (the anti-D of pregnancy-loss care): no "Mark done" – the server refuses it
   const canDone = !RECORDED_ON_RECORD[item.key];
   const quick = [];
+  // A scan due in the plan: ordered with one click (the order dialog comes filled in from the item)
+  const scans = useContext(PlanScans);
+  const canOrderScan = open && item.kind === 'scan' && scans?.canOrder && !scans.byKey.has(item.key) && item.status !== 'not_applicable';
+  if (canOrderScan && item.status === 'due') quick.push({ key: 'order-scan', label: 'Order the scan', aria: `Order ${name}`, icon: ScanLine, run: () => onAction('order_scan', item) });
   if (open && decision) {
     // Its time passed before booking: plan it from today, or record that it was done elsewhere. (Not for a
     // "Check needed" item still months away, such as a 34-week scan at 12 weeks.)
@@ -131,6 +141,7 @@ function RowActions({ item, plan, decision, onAction }) {
   // An item added for this patient can be corrected (name, wording, due window, note) instead of marked not needed and
   // added again – while it is open, on an active plan
   if (canEditItem(item, plan)) more.push({ label: 'Edit item', icon: Pencil, onSelect: () => onAction('edit', item) });
+  if (canOrderScan && !inQuick.has('order-scan')) more.push({ label: 'Order the scan', icon: ScanLine, onSelect: () => onAction('order_scan', item) });
   if (open) {
     if (!inQuick.has('done') && canDone) more.push({ label: 'Mark done', icon: Check, onSelect: () => onAction('done', item) });
     // "Plan now" (from today) for items whose own dates have passed or are not known yet.
@@ -183,6 +194,8 @@ function WhenCell({ item }) {
 
 function ItemCell({ item, plan, onOpen }) {
   const markers = itemMarkers(item, plan);
+  const scan = useContext(PlanScans)?.byKey.get(item.key);
+  const scanLook = scan && SCAN_STATUS[scan.status];
   const sub = [item.done?.result && `Result: ${item.done.result}`, item.done?.note && `Note: ${item.done.note}`, item.note?.text && `Note: ${item.note.text}`].filter(Boolean);
   return (
     <>
@@ -201,6 +214,13 @@ function ItemCell({ item, plan, onOpen }) {
               {m.label}
             </StatusPill>
           ))}
+        </span>
+      )}
+      {scanLook && (
+        <span className="cell-sub">
+          <Link to={`/scans/${scan.id}`}>
+            Scan ordered {formatDate(scan.ordered.at)}: {scanLook.word}
+          </Link>
         </span>
       )}
       {sub.length > 0 && (
@@ -644,6 +664,15 @@ export function PatientCarePlanTab() {
   const [printing, setPrinting] = useState(null); // { step: 'dialog' | 'preview', options } (Feature 9)
   const [confirm, confirmDialog] = useConfirm();
   const plan = changed ?? data?.plan ?? null;
+  // Her scans, for "Order the scan" on a scan due in the plan and the order beside it (those who see her scans)
+  const scanRes = useFetch(canView && hasRole(activeMembership, 'doctor', 'rmo', 'sonographer') ? `/patients/${patient.id}/imaging` : null);
+  const scans = useMemo(() => {
+    if (!scanRes.data || !plan) return null;
+    const byKey = new Map();
+    // newest first: the first one kept per item is the latest
+    for (const s of scanRes.data.studies) if (s.planItem?.planId === plan.id && s.status !== 'cancelled' && !byKey.has(s.planItem.key)) byKey.set(s.planItem.key, s);
+    return { canOrder: scanRes.data.canOrder && Boolean(plan.canEdit), byKey };
+  }, [scanRes.data, plan]);
   // useFetch keeps the last answer while a new one loads or if it fails. When ?planId= changed, that answer is
   // for another plan (or the "no current plan" screen): show the loading or error state instead.
   const otherPlan = answerIsForOtherPlan(data, plan, planId);
@@ -892,6 +921,7 @@ export function PatientCarePlanTab() {
             : 'No items.';
 
   return (
+    <PlanScans.Provider value={scans}>
     <div className="plan-tab">
       {notice && (
         <Alert type={notice.type} onClose={() => setNotice(null)}>
@@ -1009,6 +1039,19 @@ export function PatientCarePlanTab() {
       {dialog?.type === 'edd' && <EddDecisionDialog {...dialogProps} decision={dialog.options.decision} />}
       {dialog?.type === 'close' && <ClosePlanDialog {...dialogProps} />}
       {dialog?.type === 'reopen' && <ReopenPlanDialog {...dialogProps} />}
+      {dialog?.type === 'order_scan' && (
+        <OrderScanDialog
+          patient={patient}
+          initial={{ study: studyForPlanItem(dialog.item), indication: dialog.item.name.slice(0, 300) }}
+          planItem={{ planId: plan.id, key: dialog.item.key }}
+          onClose={() => setDialog(null)}
+          onDone={() => {
+            setDialog(null);
+            setNotice({ type: 'success', text: `${dialog.item.name}: scan ordered. It is on the Scans list and on her bill.` });
+            scanRes.reload();
+          }}
+        />
+      )}
       {printing?.step === 'dialog' && (
         <PrintPlanDialog plan={plan} initial={printing.options} onPreview={(options) => setPrinting({ step: 'preview', options })} onCancel={() => setPrinting(null)} />
       )}
@@ -1023,5 +1066,6 @@ export function PatientCarePlanTab() {
       )}
       {confirmDialog}
     </div>
+    </PlanScans.Provider>
   );
 }

@@ -44,7 +44,7 @@ const CARE_TYPE_WORDS = { antenatal: 'Antenatal', postnatal: 'Postnatal', infert
 const VISIT_WORDS = { new: 'New', follow_up: 'Follow-up', scan: 'Scan', other: 'Other' };
 const SOURCE_WORDS = { booked: 'Booked', next_visit: 'Next visit', walk_in: 'Walk-in', portal: 'Patient portal' };
 const LAB_STATUS_WORDS = { ordered: 'Ordered', collected: 'Sample collected', entered: 'Results entered', reported: 'Reported', reviewed: 'Reviewed by doctor', cancelled: 'Cancelled' };
-const SCAN_STATUS_WORDS = { ordered: 'Ordered', scheduled: 'Scheduled', done: 'Done', signed: 'Report signed', cancelled: 'Cancelled' };
+const SCAN_STATUS_WORDS = { requested: 'Booked by reception – to confirm', ordered: 'Ordered', scheduled: 'Scheduled', done: 'Done', signed: 'Report signed', cancelled: 'Cancelled' };
 const word = (v) => (v ? `${v[0].toUpperCase()}${v.slice(1)}` : '');
 const day = (d) => isoDay(d) ?? '';
 const hospitalDay = (instant) => (instant ? isoDay(toHospitalDate(instant)) : '');

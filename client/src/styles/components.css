@@ -410,7 +410,8 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- Small screens: long tables become stacked cards ---------- */
-@media (max-width: 720px) {
+/* screen only: an A5 or A4 sheet is narrower than 720px too, and its tables must stay tables on paper */
+@media screen and (max-width: 720px) {
   .dt-wrap { max-height: none; padding: 0; }
   .dt thead { display: none; }
   .dt, .dt tbody, .dt tr, .dt td { display: block; width: 100%; }

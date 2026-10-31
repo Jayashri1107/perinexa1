@@ -242,6 +242,8 @@ export const AUDIT_LABELS = {
   LAB_HOME_COLLECTION: 'Lab home collection updated',
   LAB_REPORT_VERIFIED: 'Lab report checked with its QR code',
   IMAGING_ORDERED: 'Scan ordered',
+  IMAGING_REQUESTED: 'Scan booked by reception',
+  IMAGING_CONFIRMED: 'Scan booking confirmed',
   IMAGING_VIEWED: 'Scan opened',
   IMAGING_SCHEDULED: 'Scan scheduled',
   IMAGING_DONE: 'Scan done',
@@ -514,6 +516,8 @@ export const AUDIT_TONES = {
   LAB_HOME_COLLECTION: 'patient',
   LAB_REPORT_VERIFIED: 'info',
   IMAGING_ORDERED: 'patient',
+  IMAGING_REQUESTED: 'patient',
+  IMAGING_CONFIRMED: 'patient',
   IMAGING_VIEWED: 'patient',
   IMAGING_SCHEDULED: 'patient',
   IMAGING_DONE: 'patient',
@@ -749,7 +753,7 @@ const paidOf = (d) => [d.receipt ? `receipt ${d.receipt}` : '', d.amountPaise !=
 // Pharmacy: numbers, counts and amounts – never a medicine's, a supplier's or a customer's name, a batch number, a
 // reason that was typed or a witness's name. A sale keeps its patient as an id only. The settings, medicine and
 // supplier screens send every field when saving, so the names there are what was saved, not what changed.
-const PHARMACY_SETTING_WORDS = { name: 'pharmacy name', gstin: 'GSTIN', licence20: 'drug licence (Form 20)', licence21: 'drug licence (Form 21)', rmi: 'NDPS recognition (RMI) number', pharmacistName: 'registered pharmacist', state: 'state', place: 'city or town', pin: 'PIN code' };
+const PHARMACY_SETTING_WORDS = { name: 'pharmacy name', gstin: 'GSTIN', licence20: 'drug licence (Form 20)', licence21: 'drug licence (Form 21)', rmi: 'NDPS recognition (RMI) number', pharmacistName: 'registered pharmacist', address: 'store address', phone: 'store phone', state: 'state', place: 'city or town', pin: 'PIN code' };
 const SCHEDULE_WORDS = { G: 'Schedule G', H: 'Schedule H', H1: 'Schedule H1', X: 'Schedule X', narcotic: 'Narcotic (NDPS)' };
 const PHARMACY_EXPORT_WORDS = { sales: 'Sales with GST', purchases: 'Purchases', supplier_returns: 'Returns to suppliers' };
 const invoiceOf = (d) => (d.number ? `Invoice ${d.number}` : 'An invoice');
@@ -1187,6 +1191,8 @@ export function describeAudit(entry) {
     case 'ADMISSION_RULES_CHANGED':
       return `${d.requireAdmissionRequest ? "A doctor's request first" : 'No request needed'} · ${d.requireChecklist ? 'checklist required' : 'checklist not required'}`;
     case 'IMAGING_ORDERED':
+    case 'IMAGING_REQUESTED':
+    case 'IMAGING_CONFIRMED':
     case 'IMAGING_VIEWED':
     case 'IMAGING_SCHEDULED':
     case 'IMAGING_DONE':

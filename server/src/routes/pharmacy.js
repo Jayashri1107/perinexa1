@@ -87,6 +87,8 @@ const settingsSchema = z
     licence21: z.string().trim().max(80),
     rmi: z.string().trim().max(80),
     pharmacistName: z.string().trim().max(150).transform(capitalizeName),
+    address: z.string().trim().max(300),
+    phone: z.string().trim().max(80),
     state: z.string().trim().max(60),
     // City or town and PIN code: only the e-invoice file needs them
     place: z.string().trim().max(50),
@@ -95,8 +97,14 @@ const settingsSchema = z
   .partial()
   .strict();
 
+// The store's own address and phone as typed (the printed ones fall back to the hospital letterhead's)
+const ownContact = async (tenantId) => {
+  const t = await Tenant.findById(tenantId, { 'pharmacy.address': 1, 'pharmacy.phone': 1 }).lean();
+  return { address: t?.pharmacy?.address ?? '', phone: t?.pharmacy?.phone ?? '' };
+};
+
 pharmacyRouter.get('/settings', async (req, res) => {
-  res.json({ settings: await settingsOf(req.tenantId), canEdit: hasRole(req.membership, 'pharmacist', 'admin'), lists: { forms: FORMS, gstRates: GST_RATES, schedules: SCHEDULES.map((s) => ({ key: s, label: SCHEDULE_LABELS[s] })), modes: COUNTER_MODES } });
+  res.json({ settings: await settingsOf(req.tenantId), own: await ownContact(req.tenantId), canEdit: hasRole(req.membership, 'pharmacist', 'admin'), lists: { forms: FORMS, gstRates: GST_RATES, schedules: SCHEDULES.map((s) => ({ key: s, label: SCHEDULE_LABELS[s] })), modes: COUNTER_MODES } });
 });
 
 pharmacyRouter.put('/settings', async (req, res) => {
@@ -104,7 +112,7 @@ pharmacyRouter.put('/settings', async (req, res) => {
   const body = parse(settingsSchema, req.body);
   await Tenant.updateOne({ _id: req.tenantId }, { $set: Object.fromEntries(Object.entries(body).map(([k, v]) => [`pharmacy.${k}`, v])) });
   await audit(req, 'PHARMACY_SETTINGS_CHANGED', { details: { fields: Object.keys(body) } });
-  res.json({ settings: await settingsOf(req.tenantId) });
+  res.json({ settings: await settingsOf(req.tenantId), own: await ownContact(req.tenantId) });
 });
 
 // ---------- Medicines ----------

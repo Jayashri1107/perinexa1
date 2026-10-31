@@ -443,6 +443,11 @@
 .img-unlinked-form { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .img-unlinked-form input { flex: 0 1 14rem; width: auto; min-width: 0; }
 .img-when { width: auto; flex: 0 1 16rem; min-width: 0; }
+/* A scan booked by reception, to confirm or decline (31 Oct 2026) */
+.img-confirm { margin-top: var(--space-3); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--status-due-bg); }
+.img-confirm h3 { margin: 0 0 var(--space-1); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.img-confirm .form-grid { margin: var(--space-3) 0; }
+.img-book-hint { margin-bottom: var(--space-3); }
 /* A narrow screen: each measurement of the average table as a small card – name and use on top, then each reading, the
    machine's value, the rule and the value, labelled; nothing hidden off the side */
 @media (max-width: 900px) {

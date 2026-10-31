@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { hospitalDoctor, hospitalDoctors } from '../appointments/appointmentService.js';
 import { hospitalDayStart, hospitalToday, addDays } from '../careplans/dates.js';
 import { MODALITIES, STUDIES, STUDY_KEYS, studyByKey } from '../imaging/templates.js';
 import { ImagingOrder } from '../models/ImagingOrder.js';
@@ -30,12 +31,16 @@ import { objectId, parse } from '../utils/validate.js';
 // 19 Oct 2026): sonography staff schedule, do the scan, add pictures and write the report; a doctor signs. They see
 // what a scan needs (indication, EDD by dates, report) for a record that is not sensitive – never the rest of her
 // record. The hospital admin sees the dashboard counts only. Reception and nurses do not open Scans. A pregnancy scan's page has her EDD (by her dates) for the weight centile – for those who see her details.
+// Reception books a scan a doctor asked for on paper (31 Oct 2026, docs/IDEAS_FOR_LATER.md 18): it waits as
+// "requested" – not billed, not on the machine's worklist, not scheduled or done – until a doctor or RMO who sees her
+// details confirms it (with the indication) or declines it with a reason. Reception types no clinical text.
 // PCPNDT: no field holds a fetus's sex; any text about it is refused. The audit log gets ids only.
 
 export const imagingRouter = Router();
 export const patientImagingRouter = Router({ mergeParams: true });
 const WORK_ROLES = ['doctor', 'rmo', 'sonographer'];
 const REPORT_ROLES = ['doctor', 'rmo', 'sonographer'];
+const CONFIRM_ROLES = ['doctor', 'rmo'];
 const forbidden = (m) => new HttpError(403, m, 'FORBIDDEN');
 const conflict = (m) => new HttpError(409, m, 'CONFLICT');
 const invalid = (fields, message = 'Please check the highlighted fields.') => Object.assign(new HttpError(400, message, 'VALIDATION'), { fields });
@@ -67,6 +72,9 @@ function view(req, o, patient) {
     accession: o.accession ?? null, // the scan number on the machine's worklist
     scheduledFor: o.scheduledFor ?? null,
     ordered: stampView(o.ordered),
+    requestedBy: o.requestedBy ? { id: String(o.requestedBy.doctorId), name: o.requestedBy.name } : null,
+    confirmed: stampView(o.confirmed),
+    planItem: o.planItem ? { planId: String(o.planItem.planId), key: o.planItem.key } : null,
     scheduled: stampView(o.scheduled),
     done: stampView(o.done),
     saved: stampView(o.saved),
@@ -89,7 +97,8 @@ function view(req, o, patient) {
       canDone: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
       canReport: clinical && hasRole(req.membership, ...REPORT_ROLES) && ['done', 'signed'].includes(o.status),
       canSign: clinical && hasRole(req.membership, 'doctor') && o.status === 'done' && Boolean(o.report),
-      canCancel: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
+      canConfirm: clinical && hasRole(req.membership, ...CONFIRM_ROLES) && o.status === 'requested',
+      canCancel: o.status === 'requested' ? clinical && hasRole(req.membership, ...CONFIRM_ROLES) : hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
       canPrint: clinical && o.status === 'signed',
       canImages: clinical && hasRole(req.membership, ...REPORT_ROLES) && o.status === 'done',
     },
@@ -122,7 +131,16 @@ patientImagingRouter.post('/', async (req, res) => {
   const patient = await findPatient(req);
   if (!(patientAccess(req, patient).editClinical && hasRole(req.membership, 'doctor', 'rmo'))) throw forbidden("Only the patient's doctor or an RMO orders a scan.");
   const body = parse(
-    z.object({ clientRequestId: z.string().min(8).max(64), study: z.enum(STUDY_KEYS, 'Choose the study'), urgent: z.boolean().default(false), indication: safeText('Indication', 300).default(''), scheduledFor: z.iso.datetime().nullable().default(null) }).strict(),
+    z
+      .object({
+        clientRequestId: z.string().min(8).max(64),
+        study: z.enum(STUDY_KEYS, 'Choose the study'),
+        urgent: z.boolean().default(false),
+        indication: safeText('Indication', 300).default(''),
+        scheduledFor: z.iso.datetime().nullable().default(null),
+        planItem: z.object({ planId: objectId, key: z.string().min(1).max(80) }).strict().nullable().default(null),
+      })
+      .strict(),
     req.body,
   );
   const repeat = await ImagingOrder.findOne({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
@@ -139,10 +157,51 @@ patientImagingRouter.post('/', async (req, res) => {
     scheduledFor: body.scheduledFor ? new Date(body.scheduledFor) : null,
     ordered: stampOf(req),
     scheduled: body.scheduledFor ? stampOf(req) : null,
+    planItem: body.planItem,
     clientRequestId: body.clientRequestId,
   });
-  await audit(req, 'IMAGING_ORDERED', { details: ids(o, patient) });
+  await audit(req, 'IMAGING_ORDERED', { details: ids(o, patient, body.planItem ? { planItem: body.planItem.key } : {}) });
   await billScan(req, patient, o); // the scan on her bill (its price-list item)
+  res.status(201).json({ study: view(req, o, patient) });
+});
+
+// ---------- Reception books a scan a doctor asked for (31 Oct 2026) ----------
+
+const BOOK_ROLES = ['receptionist'];
+const canBookScan = (req, patient) => hasRole(req.membership, ...BOOK_ROLES) && patientAccess(req, patient).editIdentity && !isClosed(patient) && !patient.duplicateOf;
+
+// What the booking form offers: the studies (names only) and the hospital's doctors, her own doctor first
+patientImagingRouter.get('/booking', async (req, res) => {
+  const patient = await findPatient(req);
+  if (!canBookScan(req, patient)) throw forbidden('Reception books a scan a doctor asked for.');
+  const doctors = await hospitalDoctors(req.tenantId);
+  res.json({ studies: STUDIES.map((s) => ({ key: s.key, name: s.name })), doctors, doctorId: patient.assignedDoctor ? String(patient.assignedDoctor) : null });
+});
+
+patientImagingRouter.post('/booking', async (req, res) => {
+  const patient = await findPatient(req);
+  if (!canBookScan(req, patient)) throw forbidden('Reception books a scan a doctor asked for.');
+  const body = parse(
+    z.object({ clientRequestId: z.string().min(8).max(64), study: z.enum(STUDY_KEYS, 'Choose the study'), doctorId: objectId, urgent: z.boolean().default(false), scheduledFor: z.iso.datetime().nullable().default(null) }).strict(),
+    req.body,
+  );
+  const repeat = await ImagingOrder.findOne({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
+  if (repeat) return res.status(201).json({ study: view(req, repeat, patient) });
+  refuseNewOnDuplicate(patient, 'lab');
+  refuseNewOnClosed(patient, 'lab');
+  const doctor = await hospitalDoctor(req.tenantId, body.doctorId);
+  const o = await ImagingOrder.create({
+    tenantId: req.tenantId,
+    patientId: patient._id,
+    study: body.study,
+    urgent: body.urgent,
+    status: 'requested',
+    scheduledFor: body.scheduledFor ? new Date(body.scheduledFor) : null,
+    ordered: stampOf(req),
+    requestedBy: { doctorId: doctor.id, name: doctor.name },
+    clientRequestId: body.clientRequestId,
+  });
+  await audit(req, 'IMAGING_REQUESTED', { details: ids(o, patient, { doctorId: doctor.id }) });
   res.status(201).json({ study: view(req, o, patient) });
 });
 
@@ -160,6 +219,7 @@ imagingRouter.get('/studies', (_req, res) => {
 });
 
 const LISTS = {
+  requested: { status: 'requested', sort: { urgent: -1, createdAt: 1 } },
   ordered: { status: 'ordered', sort: { urgent: -1, createdAt: 1 } },
   scheduled: { status: 'scheduled', sort: { scheduledFor: 1 } },
   report: { status: 'done', sort: { urgent: -1, 'done.at': 1 } },
@@ -178,20 +238,21 @@ imagingRouter.get('/worklist', async (req, res) => {
 
 // The sonography dashboard (24 Oct 2026, docs/IDEAS_FOR_LATER.md 21): counts only, no patient. Today: studies booked
 // for today (not cancelled); to scan: ordered or scheduled; to report: done, no report yet; to sign: done with a report;
-// signed today.
+// signed today; to confirm: booked by reception, waiting for a doctor (31 Oct 2026).
 imagingRouter.get('/dashboard', async (req, res) => {
   const today = hospitalToday(req.now);
   const from = hospitalDayStart(today);
   const to = hospitalDayStart(addDays(today, 1));
   const count = (where) => ImagingOrder.countDocuments({ tenantId: req.tenantId, ...where });
-  const [bookedToday, toScan, toReport, toSign, signedToday] = await Promise.all([
-    count({ status: { $ne: 'cancelled' }, scheduledFor: { $gte: from, $lt: to } }),
+  const [bookedToday, toScan, toReport, toSign, signedToday, toConfirm] = await Promise.all([
+    count({ status: { $nin: ['cancelled', 'requested'] }, scheduledFor: { $gte: from, $lt: to } }),
     count({ status: { $in: ['ordered', 'scheduled'] } }),
     count({ status: 'done', report: null }),
     count({ status: 'done', report: { $ne: null } }),
     count({ status: 'signed', 'signed.at': { $gte: from, $lt: to } }),
+    count({ status: 'requested' }),
   ]);
-  res.json({ counts: { bookedToday, toScan, toReport, toSign, signedToday } });
+  res.json({ counts: { bookedToday, toScan, toReport, toSign, signedToday, toConfirm } });
 });
 
 imagingRouter.get('/:id', async (req, res) => {
@@ -281,6 +342,22 @@ imagingRouter.post('/:id/sign', async (req, res) => {
   res.json({ study: view(req, o, patient) });
 });
 
+// A scan booked by reception: a doctor or RMO who sees her details confirms it, with the indication – it is then
+// ordered (or scheduled, when reception gave a time) and goes on her bill. Declining is cancelling with a reason.
+imagingRouter.post('/:id/confirm', async (req, res) => {
+  const { o, patient } = await loadStudy(req);
+  const body = parse(z.object({ rev: z.number().int().min(0), indication: safeText('Indication', 300).default(''), study: z.enum(STUDY_KEYS, 'Choose the study').optional() }).strict(), req.body);
+  if (!view(req, o, patient).access.canConfirm) throw forbidden('A doctor or RMO who sees her details confirms a scan booked by reception.');
+  checkRev(o, body.rev);
+  refuseNewOnClosed(patient, 'lab');
+  const now = stampOf(req);
+  Object.assign(o, { status: o.scheduledFor ? 'scheduled' : 'ordered', study: body.study ?? o.study, indication: body.indication.trim(), confirmed: now, scheduled: o.scheduledFor ? now : null, rev: o.rev + 1 });
+  await o.save();
+  await audit(req, 'IMAGING_CONFIRMED', { details: ids(o, patient) });
+  await billScan(req, patient, o);
+  res.json({ study: view(req, o, patient) });
+});
+
 imagingRouter.post('/:id/cancel', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   const body = parse(z.object({ rev: z.number().int().min(0), reason: safeText('Reason', 300) }).strict(), req.body);
@@ -290,7 +367,7 @@ imagingRouter.post('/:id/cancel', async (req, res) => {
   Object.assign(o, { status: 'cancelled', cancelled: { ...stampOf(req), reason: body.reason.trim() }, rev: o.rev + 1 });
   await o.save();
   await audit(req, 'IMAGING_CANCELLED', { details: ids(o, patient) });
-  await billScanCancelled(req, o);
+  if (o.confirmed || !o.requestedBy) await billScanCancelled(req, o); // a booking declined before confirming was never billed
   res.json({ study: view(req, o, patient) });
 });
 

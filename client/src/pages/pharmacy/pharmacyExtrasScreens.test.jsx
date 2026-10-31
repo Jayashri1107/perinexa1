@@ -182,7 +182,7 @@ describe('purchase orders', () => {
 
   it('the printout carries the pharmacy’s details, the supplier and each medicine with its quantity', () => {
     const shown = text(words(renderToStaticMarkup(<OrderDocument order={order()} settings={SETTINGS} />)));
-    expect(shown).toContain('Sample Pharmacy 1 Sample Road Phone 020 1111 1111 · GSTIN 27AAPFU0939F1ZV · DL 20: MH-20-1 · DL 21: MH-21-1');
+    expect(shown).toContain('Sample Pharmacy 1 Sample Road Phone: 020 1111 1111 GSTIN: 27AAPFU0939F1ZV · DL 20: MH-20-1 · DL 21: MH-21-1');
     expect(shown).toContain('Purchase order Order no. PO-000001 Date 4 Oct 2026');
     expect(shown).toContain('To Sample Distributors GSTIN 27AAPFU0939F1ZV Address 9 Sample Market Drug licence DL-1');
     expect(shown).toContain('1 Order Tab A · Sampleol 10 mg Tablet 100 tablets');

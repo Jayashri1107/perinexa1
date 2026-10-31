@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileSearch, FileText, ImagePlus, MonitorDown, Printer, ScanLine, Siren } from 'lucide-react';
+import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileSearch, FileText, Hourglass, ImagePlus, MonitorDown, Printer, ScanLine, Siren } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { usePagedRows } from '../../components/DataTable.jsx';
@@ -22,9 +22,11 @@ import { USE_WORDS } from './machineTable.js';
 // signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
 // order dialog. Doctors and RMOs only (owner, 19 Oct 2026). Pregnancy scans work out the weeks, EDD, weight and
 // centile from the readings and write a draft report (usgCalc.js, DRAFT); "Complete" signs and prints. PCPNDT: no
-// field holds a fetus's sex; any text about it is refused here and on the server.
+// field holds a fetus's sex; any text about it is refused here and on the server. Reception books a scan a doctor asked
+// for on paper; it waits under To confirm until a doctor or RMO confirms or declines it (31 Oct 2026).
 
 export const STATUS = {
+  requested: { tone: 'due', icon: Hourglass, word: 'To confirm' },
   ordered: { tone: 'due', icon: Clock, word: 'To schedule' },
   scheduled: { tone: 'due', icon: CalendarClock, word: 'Scheduled' },
   done: { tone: 'watch', icon: FilePen, word: 'Done – to report' },
@@ -39,7 +41,19 @@ export function StudyStatus({ s }) {
     </StatusPill>
   );
 }
+// The study a scan due in her care plan is ordered as – the doctor checks it in the order dialog
+const PLAN_SCAN_STUDIES = [
+  [/dating|viability|early/i, 'usg_early'],
+  [/\bNT\b|nuchal|first.trimester/i, 'usg_nt'],
+  [/anomaly|TIFFA|level II/i, 'usg_anomaly'],
+  [/growth|doppler|placenta|amniotic/i, 'usg_growth'],
+  [/transvaginal|pelvi|antral/i, 'usg_pelvis'], // before follicular: a baseline TVS counts antral follicles
+  [/follic/i, 'usg_follicular'],
+];
+export const studyForPlanItem = (item) => PLAN_SCAN_STUDIES.find(([re]) => re.test(item.name))?.[1] ?? 'usg_early';
+
 const LISTS = [
+  ['requested', 'To confirm'],
   ['ordered', 'To schedule'],
   ['scheduled', 'Scheduled'],
   ['report', 'To report'],
@@ -59,6 +73,7 @@ function ScanDashboard({ links = true }) {
   const to = (path) => (links ? path : undefined);
   return (
     <div className="kpi-grid img-tiles" aria-label="Scans today">
+      {c.toConfirm > 0 && <KpiCard to={to('/scans?list=requested')} tone="due" icon={Hourglass} label="To confirm" value={c.toConfirm} sub="Booked by reception" />}
       <KpiCard to={to('/scans?list=scheduled')} tone="due" icon={CalendarClock} label="Booked today" value={c.bookedToday} />
       <KpiCard to={to('/scans')} tone="due" icon={Clock} label="To scan" value={c.toScan} sub="Ordered or scheduled" />
       <KpiCard to={to('/scans?list=report')} tone="watch" icon={FilePen} label="To report" value={c.toReport} />
@@ -133,7 +148,7 @@ function ScanWorklist() {
                     </span>
                   </div>
                   <span className="hint">
-                    Ordered by {s.ordered.byName}, {formatDateTime(s.ordered.at)}
+                    {s.requestedBy ? `Booked by ${s.ordered.byName} for ${s.requestedBy.name}` : `Ordered by ${s.ordered.byName}`}, {formatDateTime(s.ordered.at)}
                     {s.scheduledFor ? ` · for ${formatDateTime(s.scheduledFor)}` : ''}
                   </span>
                 </li>
@@ -540,6 +555,70 @@ function ReportPrint({ s, template, onClose, autoPrint = false }) {
   );
 }
 
+/** A scan booked by reception: the doctor or RMO checks the study, writes the indication and confirms – or declines. */
+function ConfirmBooking({ s, act }) {
+  const studies = useFetch('/imaging/studies');
+  const [study, setStudy] = useState(s.study);
+  const [indication, setIndication] = useState('');
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState(null);
+  const confirm = () => {
+    if (mentionsFetalSex(indication)) return setError(PCPNDT_MESSAGE);
+    setError(null);
+    return act('confirm', { study, indication }, 'Confirmed. The scan is on her bill and on the list to scan.');
+  };
+  return (
+    <div className="img-confirm" role="group" aria-labelledby="img-confirm-title">
+      <h3 id="img-confirm-title">Booked by reception – confirm this scan</h3>
+      <p className="hint">
+        {s.requestedBy ? `${s.requestedBy.name} asked for it` : 'A doctor asked for it'}. Nothing is billed and it is not scheduled until it is confirmed.
+      </p>
+      <Alert type="error">{error}</Alert>
+      {declining ? (
+        <>
+          <Field label="Why it is not needed" id="img-decline">
+            <input id="img-decline" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
+          </Field>
+          <div className="row">
+            <button type="button" className="btn btn-danger btn-sm" disabled={reason.trim().length < 3} onClick={() => act('cancel', { reason }, 'Declined. The booking is cancelled.')}>
+              Decline the booking
+            </button>
+            <button type="button" className="btn btn-link btn-sm" onClick={() => setDeclining(false)}>
+              Back
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="form-grid">
+            <Field label="Study" id="img-confirm-study">
+              <select id="img-confirm-study" value={study} onChange={(e) => setStudy(e.target.value)}>
+                {(studies.data?.studies ?? [{ key: s.study, name: s.studyName }]).map((x) => (
+                  <option key={x.key} value={x.key}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Indication (why)" id="img-confirm-ind">
+              <input id="img-confirm-ind" maxLength={300} value={indication} onChange={(e) => setIndication(e.target.value)} />
+            </Field>
+          </div>
+          <div className="row">
+            <button type="button" className="btn btn-primary btn-sm" onClick={confirm}>
+              <CircleCheck aria-hidden="true" /> Confirm the scan
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDeclining(true)}>
+              Decline
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ImagingStudyPage() {
   const { id } = useParams();
   const { data, error, reload } = useFetch(`/imaging/${id}`);
@@ -599,13 +678,15 @@ export function ImagingStudyPage() {
             <StudyStatus s={s} />
           </div>
           <p className="muted">
-            Ordered by {s.ordered.byName}, {formatDateTime(s.ordered.at)}
+            {s.requestedBy ? `Booked by ${s.ordered.byName} for ${s.requestedBy.name}` : `Ordered by ${s.ordered.byName}`}, {formatDateTime(s.ordered.at)}
+            {s.confirmed ? ` · confirmed by ${s.confirmed.byName}` : ''}
             {s.scheduledFor ? ` · for ${formatDateTime(s.scheduledFor)}` : ''}
             {s.done ? ` · done ${formatDateTime(s.done.at)}` : ''}
             {s.signed ? ` · signed by ${s.signed.byName}` : ''}
             {s.accession ? ` · scan number on the machine ${s.accession}` : ''}
           </p>
           {s.indication && <p>Indication: {s.indication}</p>}
+          {s.status === 'requested' && (a.canConfirm ? <ConfirmBooking s={s} act={act} /> : <p className="hint">Booked by reception. A doctor or RMO who sees her details confirms it before it is scheduled or done.</p>)}
           <div className="row">
             {a.canSchedule && (
               <>
@@ -633,7 +714,7 @@ export function ImagingStudyPage() {
           </div>
         </section>
         {/* Full width: the average table needs the room */}
-        {s.images && !reviewing && <MachinePanel s={s} onSaved={saved} onError={failed} />}
+        {s.images && !reviewing && s.status !== 'requested' && <MachinePanel s={s} onSaved={saved} onError={failed} />}
         <div className="img-study">
         <div className="img-study-main">
         {reviewing && s.status === 'done' && s.report && (
@@ -694,17 +775,18 @@ export function ImagingStudyPage() {
   );
 }
 
-function OrderScanDialog({ patient, onDone, onClose }) {
+/** Order a scan; from a care-plan item (planItem) the study and the reason come filled in, to check. */
+export function OrderScanDialog({ patient, initial = null, planItem = null, onDone, onClose }) {
   const studies = useFetch('/imaging/studies');
   const ref = useDialogFocus(onClose);
-  const [form, setForm] = useState({ study: 'usg_early', urgent: false, indication: '' });
+  const [form, setForm] = useState({ study: 'usg_early', urgent: false, indication: '', ...initial });
   const [error, setError] = useState(null);
   const [requestId] = useState(() => crypto.randomUUID());
   const send = async (e) => {
     e.preventDefault();
     if (mentionsFetalSex(form.indication)) return setError(PCPNDT_MESSAGE);
     try {
-      await api(`/patients/${patient.id}/imaging`, { method: 'POST', body: { clientRequestId: requestId, ...form } });
+      await api(`/patients/${patient.id}/imaging`, { method: 'POST', body: { clientRequestId: requestId, ...form, planItem } });
       onDone();
     } catch (err) {
       setError(err.message);
@@ -715,6 +797,7 @@ function OrderScanDialog({ patient, onDone, onClose }) {
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="scan-order-title" onSubmit={send} noValidate>
         <h2 id="scan-order-title">Order a scan</h2>
+        {planItem && <p className="hint">From her care plan. Check the study before ordering.</p>}
         <Alert type="error">{error}</Alert>
         <Field label="Study" id="so-study">
           <select id="so-study" value={form.study} onChange={(e) => setForm({ ...form, study: e.target.value })}>
@@ -739,6 +822,87 @@ function OrderScanDialog({ patient, onDone, onClose }) {
             Cancel
           </button>
         </div>
+      </form>
+    </div>
+  );
+}
+
+/** Reception: book a scan a doctor asked for (on paper). It waits for a doctor or RMO to confirm it. */
+export function BookScanDialog({ patient, onClose }) {
+  const opts = useFetch(`/patients/${patient.id}/imaging/booking`);
+  const ref = useDialogFocus(onClose);
+  const [form, setForm] = useState({ study: '', doctorId: '', urgent: false, when: '' });
+  const [error, setError] = useState(null);
+  const [booked, setBooked] = useState(null);
+  const [requestId] = useState(() => crypto.randomUUID());
+  const o = opts.data;
+  const v = { ...form, study: form.study || o?.studies[0]?.key || '', doctorId: form.doctorId || o?.doctorId || '' };
+  const send = async (e) => {
+    e.preventDefault();
+    if (!v.doctorId) return setError('Choose the doctor who asked for the scan.');
+    setError(null);
+    try {
+      const out = await api(`/patients/${patient.id}/imaging/booking`, { method: 'POST', body: { clientRequestId: requestId, study: v.study, doctorId: v.doctorId, urgent: v.urgent, scheduledFor: v.when ? new Date(v.when).toISOString() : null } });
+      setBooked(out.study);
+    } catch (err) {
+      setError(err.message);
+    }
+    return undefined;
+  };
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="scan-book-title" onSubmit={send} noValidate>
+        <h2 id="scan-book-title">Book a scan</h2>
+        {booked ? (
+          <>
+            <Alert type="success">
+              {booked.studyName} booked for {patient.fullName}. {booked.requestedBy?.name ?? 'The doctor'} or an RMO confirms it before it is scanned; it goes on her bill then.
+            </Alert>
+            <div className="row">
+              <button type="button" className="btn btn-primary" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="hint img-book-hint">For a scan a doctor asked for, for example on the prescription. A doctor or RMO confirms it before it is done.</p>
+            <Alert type="error">{error ?? opts.error}</Alert>
+            <Field label="Study" id="sb-study">
+              <select id="sb-study" value={v.study} onChange={(e) => setForm({ ...form, study: e.target.value })}>
+                {(o?.studies ?? []).map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Doctor who asked for it" id="sb-doctor">
+              <select id="sb-doctor" value={v.doctorId} onChange={(e) => setForm({ ...form, doctorId: e.target.value })}>
+                <option value="">Choose…</option>
+                {(o?.doctors ?? []).map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Day and time (if agreed)" id="sb-when">
+              <input id="sb-when" type="datetime-local" value={v.when} onChange={(e) => setForm({ ...form, when: e.target.value })} />
+            </Field>
+            <label className="check">
+              <input type="checkbox" checked={v.urgent} onChange={(e) => setForm({ ...form, urgent: e.target.checked })} /> Urgent
+            </label>
+            <div className="row">
+              <button type="submit" className="btn btn-primary" disabled={!o}>
+                Book the scan
+              </button>
+              <button type="button" className="btn btn-link" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
       </form>
     </div>
   );
@@ -773,7 +937,7 @@ export function PatientScans({ patient }) {
                     {s.studyName}
                   </Link>
                   <span className="muted">
-                    {formatDateTime(s.ordered.at)} · {s.ordered.byName}
+                    {formatDateTime(s.ordered.at)} · {s.requestedBy ? `booked by ${s.ordered.byName} for ${s.requestedBy.name}` : s.ordered.byName}
                     {s.report?.impression ? ` · ${s.report.impression}` : ''}
                   </span>
                 </span>

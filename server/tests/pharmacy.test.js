@@ -102,6 +102,20 @@ describe('the pharmacist and who may do what', () => {
   });
 });
 
+describe('The store’s own address and phone (31 Oct 2026)', () => {
+  it('prints them on its papers; left empty, the hospital letterhead’s are printed', async () => {
+    const before = (await ph('get', '/settings')).body;
+    expect(before.own).toEqual({ address: '', phone: '' });
+    const saved = await ph('put', '/settings', { address: '4 Sample Road, Sample Town', phone: '99999 00000' });
+    expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+    expect(saved.body.settings).toMatchObject({ address: '4 Sample Road, Sample Town', phone: '99999 00000' });
+    expect(saved.body.own).toEqual({ address: '4 Sample Road, Sample Town', phone: '99999 00000' });
+    const cleared = await ph('put', '/settings', { address: '', phone: '' });
+    expect(cleared.body.settings).toMatchObject({ address: before.settings.address, phone: before.settings.phone });
+    expect((await ph('put', '/settings', { address: 'x'.repeat(301) })).status).toBe(400);
+  });
+});
+
 describe('GST rates since 22 September 2025', () => {
   it('offers 0, 5 and 18 %; a new medicine starts at 5 %; 12 % is refused', async () => {
     expect((await ph('get', '/settings')).body.lists.gstRates).toEqual([0, 5, 18]);
