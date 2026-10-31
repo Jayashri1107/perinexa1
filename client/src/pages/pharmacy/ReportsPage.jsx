@@ -10,7 +10,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { gstinProblem } from './gstin.js';
 import { MOVE_LABELS, expiryLabel } from './pharmacyFormat.js';
-import { PharmacyHeader, money, useSend } from './pharmacyUi.jsx';
+import { PharmacyHeader, PharmacyLetterhead, money, useSend } from './pharmacyUi.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
 // as cards, then one report at a time – stock alerts (low stock, expiring and expired batches), sales and GST by rate,
@@ -487,10 +487,9 @@ export function ReportsPage() {
       </div>
       {printing && reg.data && (
         <PrintPreview title={`${reg.data.label} register – print preview`} hint="Print on A4 paper; keep it with the pharmacy records." onClose={() => setPrinting(false)}>
-          <PrintDocument className="bill-doc">
-            <h1 className="pdoc-title">
-              {reg.data.label} register – {reg.data.settings.name}
-            </h1>
+          <PrintDocument className="bill-doc ph-doc">
+            <PharmacyLetterhead settings={reg.data.settings} rmi={type === 'narcotic'} />
+            <h1 className="pdoc-title">{reg.data.label} register</h1>
             <p className="pdoc-small">
               {dayLabel(reg.data.from)} to {dayLabel(reg.data.to)}
               {reg.data.settings.licence20 ? ` · DL ${reg.data.settings.licence20}` : ''}
@@ -510,7 +509,7 @@ export function PharmacySettingsPage() {
   const [form, setForm] = useState(null);
   const [saved, setSaved] = useState(false);
   const s = useSend(() => setSaved(true));
-  const v = form ?? res.data?.settings;
+  const v = form ?? (res.data && { ...res.data.settings, ...res.data.own });
   const canEdit = Boolean(res.data?.canEdit);
   const f = (k) => (e) => {
     setSaved(false);
@@ -523,6 +522,8 @@ export function PharmacySettingsPage() {
     ['licence21', 'Drug licence – Form 21', 80],
     ['rmi', 'NDPS recognition (RMI) number', 80],
     ['pharmacistName', 'Registered pharmacist', 150],
+    ['address', 'Store address (on its papers)', 300],
+    ['phone', 'Store phone numbers', 80],
     ['state', 'State (for GST)', 60],
     ['place', 'City or town', 50],
     ['pin', 'PIN code', 6],
@@ -539,7 +540,7 @@ export function PharmacySettingsPage() {
         {v && (
           <section className="card bill-section narrow">
             <p className="hint">
-              Printed on every tax invoice, credit note, purchase order and debit note. The address and phone come from the hospital letterhead. The city and PIN code are needed only for the e-invoice file of a sale to a business.
+              Printed on every tax invoice, credit note, purchase order and debit note. Leave the store address or phone empty to print the hospital letterhead’s. The city and PIN code are needed only for the e-invoice file of a sale to a business.
             </p>
             <div className="form-grid">
               {fields.map(([k, label, max]) => (
@@ -551,7 +552,11 @@ export function PharmacySettingsPage() {
                   keepHint={k === 'gstin'}
                   hint={k === 'gstin' && gstinNote ? `Please check: ${gstinNote}` : undefined}
                 >
-                  <input id={`phs-${k}`} value={v[k] ?? ''} maxLength={max} onChange={f(k)} disabled={!canEdit} />
+                  {k === 'address' ? (
+                    <textarea id={`phs-${k}`} rows={3} value={v[k] ?? ''} maxLength={max} onChange={f(k)} disabled={!canEdit} />
+                  ) : (
+                    <input id={`phs-${k}`} value={v[k] ?? ''} maxLength={max} onChange={f(k)} disabled={!canEdit} />
+                  )}
                 </Field>
               ))}
             </div>

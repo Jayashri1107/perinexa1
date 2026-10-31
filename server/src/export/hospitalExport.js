@@ -293,7 +293,7 @@ function hospitalRecord(t) {
     createdAt: t.createdAt ?? null,
     // (never the PC-PNDT number removed on 2 Oct 2026, still stored in older hospitals)
     letterhead: pick(t.letterhead, ['name', 'tagline', 'address', 'phone', 'email', 'registrationNumber', 'footer', 'consentLanguage']),
-    pharmacy: pick(t.pharmacy, ['name', 'gstin', 'licence20', 'licence21', 'rmi', 'pharmacistName', 'state', 'place', 'pin']),
+    pharmacy: pick(t.pharmacy, ['name', 'gstin', 'licence20', 'licence21', 'rmi', 'pharmacistName', 'address', 'phone', 'state', 'place', 'pin']),
     billing: { ...pick(t.billing, ['upiId', 'payeeName', 'updatedByName', 'updatedAt']), history: (t.billing?.history ?? []).map((h) => pick(h, ['upiId', 'payeeName', 'byName', 'at'])) },
     abdm: pick(t.abdm, ['hfrId', 'hipId', 'counterCode']),
     // The waiting-room screen: only whether it is on – its key (a secret in its web address) never leaves

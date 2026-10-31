@@ -9,7 +9,7 @@ import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../comp
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { SUPPLIER_RETURN_REASONS, debitSums, expiryLabel, medicineLabel, momentDay, returnBatchesShown, returnChosen, unitsLabel } from './pharmacyFormat.js';
-import { Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
 // Pharmacy → Purchases → Returns to supplier: stock sent back to the supplier it was bought from (SR-000001 …) –
 // expired, damaged, recalled, excess or the wrong item – each with a printable debit note. The stock leaves with its
@@ -319,13 +319,7 @@ export function DebitNoteDocument({ ret: r, settings }) {
   const t = r.totals;
   return (
     <PrintDocument className="bill-doc ph-doc">
-      <header className="ph-doc-head">
-        <div className="lh-name">{settings.name}</div>
-        {settings.address && <div>{settings.address}</div>}
-        <div className="pdoc-small">
-          {[settings.phone && `Phone ${settings.phone}`, settings.gstin && `GSTIN ${settings.gstin}`, settings.licence20 && `DL 20: ${settings.licence20}`, settings.licence21 && `DL 21: ${settings.licence21}`].filter(Boolean).join(' · ')}
-        </div>
-      </header>
+      <PharmacyLetterhead settings={settings} />
       <h1 className="pdoc-title">{r.status === 'cancelled' ? 'Debit note – cancelled' : 'Debit note – goods returned'}</h1>
       {r.status === 'cancelled' && <p className="pdoc-note">This debit note was cancelled{r.cancelled?.at ? ` on ${momentDay(r.cancelled.at)}` : ''}: the goods below did not go back to the supplier.</p>}
       <table className="bill-doc-head">

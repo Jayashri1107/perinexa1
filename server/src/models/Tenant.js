@@ -32,6 +32,9 @@ const tenantSchema = new mongoose.Schema(
       licence21: { type: String, trim: true, maxlength: 80, default: '' },
       rmi: { type: String, trim: true, maxlength: 80, default: '' },
       pharmacistName: { type: String, trim: true, maxlength: 150, default: '' },
+      // The store's own address and phone on its papers (31 Oct 2026); empty = the hospital letterhead's
+      address: { type: String, trim: true, maxlength: 300, default: '' },
+      phone: { type: String, trim: true, maxlength: 80, default: '' },
       state: { type: String, trim: true, maxlength: 60, default: '' },
       // The pharmacy's city or town and PIN code: needed in the e-invoice file of a sale to a business (4 Oct 2026).
       place: { type: String, trim: true, maxlength: 50, default: '' },

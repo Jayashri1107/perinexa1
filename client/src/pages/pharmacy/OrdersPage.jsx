@@ -8,7 +8,7 @@ import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.js
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { FORM_LABELS, linesFromSuggestions, medicineLabel, momentDay, orderLook, suggestionSummary, unitsLabel } from './pharmacyFormat.js';
-import { MedicineFinder, Modal, PharmacyHeader, ScheduleMark, useSend } from './pharmacyUi.jsx';
+import { MedicineFinder, Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, useSend } from './pharmacyUi.jsx';
 
 // Pharmacy → Purchases → Orders: purchase orders to suppliers (PO-000001 …). An order is what the pharmacy asks a
 // supplier for: draft → sent → part received / received, or cancelled. It moves no stock – "Receive" opens the
@@ -291,13 +291,7 @@ export function OrderDocument({ order: o, settings }) {
   const mark = o.status === 'draft' ? ' – draft, not sent' : o.status === 'cancelled' ? ' – cancelled' : '';
   return (
     <PrintDocument className="bill-doc ph-doc">
-      <header className="ph-doc-head">
-        <div className="lh-name">{settings.name}</div>
-        {settings.address && <div>{settings.address}</div>}
-        <div className="pdoc-small">
-          {[settings.phone && `Phone ${settings.phone}`, settings.gstin && `GSTIN ${settings.gstin}`, settings.licence20 && `DL 20: ${settings.licence20}`, settings.licence21 && `DL 21: ${settings.licence21}`].filter(Boolean).join(' · ')}
-        </div>
-      </header>
+      <PharmacyLetterhead settings={settings} />
       <h1 className="pdoc-title">Purchase order{mark}</h1>
       <table className="bill-doc-head">
         <tbody>
