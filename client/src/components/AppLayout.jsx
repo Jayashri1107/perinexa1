@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowLeftRight, Building2, ChevronDown, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, Search, ShieldCheck, Stethoscope, UserCog, X } from 'lucide-react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -15,6 +15,7 @@ import { IdleWarning } from './Layout.jsx';
 import { NotificationBell } from './NotificationBell.jsx';
 import { PasswordInput } from './PasswordInput.jsx';
 import { Alert, Avatar, Field, rolesLabel, useDialogFocus } from './ui.jsx';
+import { LoadingOutlet } from './PageLoading.jsx';
 
 // The new-patient form (before anything is saved): /patients/new or /patients/new/<type of care>
 const REGISTERING = new RegExp(`^/patients/new(?:/(?:${CARE_TYPES.join('|')}))?/?$`);
@@ -566,7 +567,7 @@ export function AppLayout() {
             </div>
           )}
           {/* Re-create the page when the hospital changes, so no data from the previous hospital stays on screen. */}
-          <Outlet key={activeTenantId ?? 'platform'} />
+          <LoadingOutlet key={activeTenantId ?? 'platform'} />
         </main>
       </div>
       {phone && !locked && !sheet && <TabBar modules={modules} roles={activeMembership?.roles ?? []} menuOpen={mobileOpen} onMenu={() => setMobileOpen(true)} />}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, Building2, CalendarDays, ChartColumn, FlaskConical, Headset, HeartPulse, History, Lock, Pill, Receipt, ShieldCheck, Stethoscope, UserCog, Users } from 'lucide-react';
-import { Link, Navigate, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { canEditArea } from '../../platform/modules.js';
@@ -12,6 +12,7 @@ import { Alert, Field, StatusPill, formatDate, formatDateTime, useConfirm } from
 import { STAFF_ROLE_PAGES } from '../../platform/modules.js';
 import { FullPageSpinner } from '../../auth/guards.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
+import { LoadingOutlet } from '../../components/PageLoading.jsx';
 
 // A hospital's status: colour + icon + word.
 const TenantStatus = ({ active }) =>
@@ -124,7 +125,7 @@ export function HospitalWorkspace() {
             <strong>This hospital has no admin yet.</strong> In the staff list below, choose "Add person" and tick the role "Hospital admin".
           </Alert>
         )}
-        <Outlet context={{ tenant, reload }} />
+        <LoadingOutlet context={{ tenant, reload }} />
       </div>
     </>
   );

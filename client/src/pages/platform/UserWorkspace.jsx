@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, Info } from 'lucide-react';
-import { Link, Outlet, useOutletContext, useParams } from 'react-router-dom';
+import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { FullPageSpinner } from '../../auth/guards.jsx';
@@ -12,6 +12,7 @@ import { Alert, Avatar, Field, RoleBadges, RolePicker, StatusPill, TemporaryPass
 import { useFetch } from '../../hooks/useFetch.js';
 import { PLATFORM_AREA_LABELS, canEditArea } from '../../platform/modules.js';
 import { asName } from '../../personName.js';
+import { LoadingOutlet } from '../../components/PageLoading.jsx';
 
 // An account's status: colour + icon + word.
 const AccountStatus = ({ active }) =>
@@ -154,7 +155,7 @@ export function UserWorkspace() {
           {actionError}
         </Alert>
         {tempPassword && <TemporaryPassword {...tempPassword} onClose={() => setTempPassword(null)} />}
-        <Outlet context={{ user, reload, canManage, viewerIsSuper, isSelf }} />
+        <LoadingOutlet context={{ user, reload, canManage, viewerIsSuper, isSelf }} />
       </div>
     </>
   );

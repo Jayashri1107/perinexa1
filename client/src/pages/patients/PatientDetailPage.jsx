@@ -5,7 +5,7 @@ import { PregnancyTimeline } from './PregnancyTimeline.jsx';
 import { KeepsakeButton } from './KeepsakeCard.jsx';
 import { Archive, BadgeCheck, BedDouble, CalendarPlus, Copy, Eye, FileText, Files, IdCard, Lock, MessageCircle, MoreHorizontal, Pencil, ScanLine, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
 import { BookScanDialog } from '../imaging/ImagingPages.jsx';
-import { Link, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PatientCard } from '../appointments/PatientCard.jsx';
@@ -52,6 +52,7 @@ import {
   pastFindings,
   readingRows,
 } from './patientFormat.js';
+import { LoadingOutlet } from '../../components/PageLoading.jsx';
 
 function Details({ rows }) {
   return (
@@ -482,7 +483,7 @@ export function PatientDetailPage() {
               : 'Medical details are not shown for your role.'}
           </Alert>
         )}
-        <Outlet context={{ patient, reload, setFlash, notesVersion, carePlanSummary, onPlanChanged }} />
+        <LoadingOutlet context={{ patient, reload, setFlash, notesVersion, carePlanSummary, onPlanChanged }} />
       </div>
       {confirmSensitive && (
         <ConfirmDialog
