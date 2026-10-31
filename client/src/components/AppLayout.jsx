@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftRight, Building2, ChevronDown, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, ShieldCheck, Stethoscope, UserCog } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Building2, ChevronDown, CircleAlert, CircleHelp, Eye, KeyRound, LogOut, Mail, Menu, Search, ShieldCheck, Stethoscope, UserCog, X } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useFetch } from '../hooks/useFetch.js';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
-import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, hospitalModules, platformModules, seesPatientList } from '../platform/modules.js';
+import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, hospitalModules, platformModules, seesPatientList, tabBarModules } from '../platform/modules.js';
 import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
 import { useTextShortcuts } from '../shortcuts/useTextShortcuts.js';
 import { CommandBox } from './CommandBox.jsx';
@@ -30,6 +30,8 @@ const readCollapsed = () => {
 
 // Under 1024 px the sidebar is always the 88 px icon rail (brand guide page 7).
 const RAIL_QUERY = '(max-width: 1023px)';
+// Phones and the Android / iPhone apps (31 Oct 2026): a slim header, search behind its button, a tab bar at the bottom
+const PHONE_QUERY = '(max-width: 719px)';
 function useMediaQuery(query) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
   useEffect(() => {
@@ -137,6 +139,33 @@ function SideGroup({ module, rail, onNavigate }) {
         </ul>
       )}
     </>
+  );
+}
+
+// Phones (31 Oct 2026, the Android and iPhone apps): the first four places of this person's menu as a tab bar at the
+// bottom, and Menu for everything else – as phone apps do. The places are the same as the side menu's, for each role.
+// Short names for the tab bar, where five tabs share a phone's width
+const TAB_NAMES = { Appointments: 'Bookings', Sonography: 'Scans', 'Clinic library': 'Library', 'Hospital admin': 'Admin', 'Daily expenses': 'Expenses', 'Follow-ups': 'Follow-ups' };
+function TabBar({ modules, roles, menuOpen, onMenu }) {
+  const { pathname } = useLocation();
+  const tabs = tabBarModules(modules, roles);
+  return (
+    <nav className="pf-tabbar" aria-label="Main places">
+      {tabs.map((m) => {
+        const Icon = m.icon;
+        const inSection = [m.activeFor ?? []].flat().some((prefix) => pathname.startsWith(prefix));
+        return (
+          <NavLink key={m.key} to={m.to} end={m.end} className={({ isActive }) => `pf-tab ${isActive || inSection ? 'active' : ''}`}>
+            <Icon aria-hidden="true" />
+            <span>{TAB_NAMES[m.label] ?? m.label}</span>
+          </NavLink>
+        );
+      })}
+      <button type="button" className={`pf-tab ${menuOpen ? 'active' : ''}`} onClick={onMenu} aria-controls="main-menu" aria-expanded={menuOpen}>
+        <Menu aria-hidden="true" />
+        <span>Menu</span>
+      </button>
+    </nav>
   );
 }
 
@@ -361,6 +390,8 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const railForced = useMediaQuery(RAIL_QUERY);
+  const phone = useMediaQuery(PHONE_QUERY);
+  const [searchOpen, setSearchOpen] = useState(false); // phones: "Find a patient" opens under the header
   const toggleRef = useRef(null);
   const openedFrom = useRef(null);
 
@@ -374,6 +405,11 @@ export function AppLayout() {
 
   // Close the menu that opens over the page after navigating, or when the screen becomes wide again.
   useEffect(() => setMobileOpen(false), [location.pathname, railForced]);
+  useEffect(() => setSearchOpen(false), [location.pathname, phone]);
+  // Opening the search on a phone puts the cursor in it
+  useEffect(() => {
+    if (searchOpen) document.querySelector('.pf-topbar .ps-input')?.focus();
+  }, [searchOpen]);
 
   // Keyboard: when the menu opens over the page, focus moves into it and Escape closes it; when it closes,
   // focus goes back to the button that opened it.
@@ -412,13 +448,16 @@ export function AppLayout() {
     await openHospital(null);
     navigate('/platform/hospitals');
   };
+  // Phones: registering a new patient opens as a sheet over the app (mobile.css), with its own Close – back where they came from
+  const sheet = phone && !locked && REGISTERING.test(location.pathname);
+  const closeSheet = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/patients'));
 
   return (
-    <div className={`pf ${collapsed ? 'pf-collapsed' : ''} ${mobileOpen ? 'pf-mobile-open' : ''}`}>
+    <div className={`pf ${collapsed ? 'pf-collapsed' : ''} ${mobileOpen ? 'pf-mobile-open' : ''} ${searchOpen ? 'pf-search-open' : ''} ${phone && !locked && !sheet ? 'pf-has-tabbar' : ''} ${sheet ? 'pf-sheet' : ''}`}>
       <aside className="sb" id="main-menu" aria-label="Main navigation">
         <div className="sb-brand">
           <button type="button" className="sb-toggle" onClick={toggleMenu} aria-label={menuLabel} title={menuLabel} aria-expanded={!rail} aria-controls="main-menu" ref={toggleRef}>
-            <Menu aria-hidden="true" />
+            {phone && mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
           <Link to="/" onClick={closeMobile} aria-label="Perinexa – start page">
             <img className="sb-logo" src={logoReversed} alt="Perinexa by Docvritta" width="150" height="37" />
@@ -444,6 +483,10 @@ export function AppLayout() {
             </span>
           </div>
         )}
+        {/* Phones: Log out at the foot of the menu (the header has no room for it) */}
+        <button type="button" className="sb-logout" onClick={() => logout('manual')}>
+          <LogOut aria-hidden="true" /> Log out
+        </button>
       </aside>
       <div className="sb-overlay" onClick={closeMobile} aria-hidden="true" />
 
@@ -474,6 +517,11 @@ export function AppLayout() {
                 <Eye aria-hidden="true" /> View only{allowed ? ' (mostly)' : ''}
               </span>
             )}
+            {searchable && (
+              <button type="button" className="icon-btn pf-icon-btn pf-search-btn" onClick={() => setSearchOpen((o) => !o)} aria-label={searchOpen ? 'Close the search' : 'Find a patient'} aria-expanded={searchOpen}>
+                {searchOpen ? <X aria-hidden="true" /> : <Search aria-hidden="true" />}
+              </button>
+            )}
             {!isPlatform && !locked && activeMembership && <NotificationBell key={`bell-${activeTenantId}`} />}
             {!locked && <HelpLink />}
             <ProfileMenu locked={locked} onSwitch={startSwitch} onDoctorSetup={() => setSwitching('setup')} onRoleSwitch={startRoleSwitch} />
@@ -483,6 +531,14 @@ export function AppLayout() {
           </div>
         </header>
         <main className="pf-main" id="main">
+          {sheet && (
+            <div className="pf-sheet-bar">
+              <span className="pf-sheet-grip" aria-hidden="true" />
+              <button type="button" className="icon-btn" onClick={closeSheet} aria-label="Close">
+                <X aria-hidden="true" />
+              </button>
+            </div>
+          )}
           {inSetup && (
             <div className="pf-notice">
               <Alert type="info" icon={Building2}>
@@ -513,6 +569,9 @@ export function AppLayout() {
           <Outlet key={activeTenantId ?? 'platform'} />
         </main>
       </div>
+      {phone && !locked && !sheet && <TabBar modules={modules} roles={activeMembership?.roles ?? []} menuOpen={mobileOpen} onMenu={() => setMobileOpen(true)} />}
+      {/* Phones: the menu is a sheet over the page; a tap beside it closes it (Escape and its own button do too) */}
+      {phone && mobileOpen && <button type="button" className="pf-menu-backdrop" aria-label="Close menu" tabIndex={-1} onClick={closeMobile} />}
       <IdleWarning />
       {switching === 'down' && canSwitch(user, platform) && <SwitchAccountDialog email={platform?.linkedAccount?.email ?? null} onClose={() => setSwitching(null)} />}
       {switching === 'up' && switchBack && <SwitchBackDialog onClose={() => setSwitching(null)} />}

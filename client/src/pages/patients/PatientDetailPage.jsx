@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Tip } from '../../components/Tip.jsx';
+import { FoldCards } from '../../components/FoldCards.jsx';
 import { PregnancyTimeline } from './PregnancyTimeline.jsx';
 import { KeepsakeButton } from './KeepsakeCard.jsx';
 import { Archive, BadgeCheck, BedDouble, CalendarPlus, Copy, Eye, FileText, Files, IdCard, Lock, MessageCircle, MoreHorizontal, Pencil, ScanLine, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
@@ -369,6 +370,8 @@ export function PatientDetailPage() {
         breadcrumbs={[{ label: 'Patients', to: '/patients' }, { label: patient.mrn }]}
         title={patient.fullName}
         documentTitle="Patient record" /* never the patient's name: tab titles stay in browser history */
+        pinned
+        className="ph-patient"
         badges={
           <>
             <StatusPill tone="neutral">{CARE_TYPE_SHORT[patient.careType]}</StatusPill>
@@ -850,7 +853,7 @@ export function PatientOverviewTab() {
   // Everything on one screen: care plan and risk side by side, then the clinical facts in a row. Name, patient no.,
   // age, weeks and doctor are in the page header, so contact details (phone, address) are only on Edit details.
   return (
-    <div className="patient-overview">
+    <FoldCards className="patient-overview">
       {canBrief && (
         <AiBriefCard
           endpoint={`/ai/brief/patient/${p.id}`}
@@ -1039,7 +1042,7 @@ export function PatientOverviewTab() {
       )}
       {wasDuplicate && <DuplicateHistory patient={p} />}
       <DeathHistory patient={p} />
-    </div>
+    </FoldCards>
   );
 }
 

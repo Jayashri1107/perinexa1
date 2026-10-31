@@ -9,6 +9,7 @@ import { RiskBadge } from '../patients/RiskCard.jsx';
 import { RedFlagItems, RedFlagRulesNote } from '../redflags/RedFlagList.jsx';
 import { LISTED_TEXT, checkedCareText, flagCountText } from '../redflags/redFlagFormat.js';
 import { flagRowTarget } from '../redflags/redFlagSources.js';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // The worklist's sections (Smart features, step 1), shown on the Today page: red flags (from the latest visit, the
 // lab results and, for a patient in hospital, the nursing chart), care-plan items overdue or due and missed visits,
@@ -156,29 +157,33 @@ export function RedFlagsScopeNote({ rules }) {
 export function RedFlagsSection({ data }) {
   return (
     <Section id="wl-flags" icon={Siren} title="Red flags" count={data.redFlags.length} empty={redFlagsEmptyText(data.rules)}>
-      <ul className="wl-list">
-        {data.redFlags.map((r) => {
-          const target = flagRowTarget(r.patient.id, r.flags);
-          return (
-            <PatientRow
-              key={r.patient.id}
-              patient={r.patient}
-              to={target.to}
-              openLabel={target.label}
-              marker={
-                r.flags.some((f) => f.level === 'urgent') ? (
-                  <StatusPill tone="high" icon={Siren}>
-                    Urgent
-                  </StatusPill>
-                ) : null
-              }
-            >
-              <p className="muted tabular wl-when">{[careShort(r.patient), flagCountText(r.flags)].filter(Boolean).join(' · ')}</p>
-              <RedFlagItems flags={r.flags} brief patientId={r.patient.id} />
-            </PatientRow>
-          );
-        })}
-      </ul>
+      <Paged rows={data.redFlags} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((r) => {
+              const target = flagRowTarget(r.patient.id, r.flags);
+              return (
+                <PatientRow
+                  key={r.patient.id}
+                  patient={r.patient}
+                  to={target.to}
+                  openLabel={target.label}
+                  marker={
+                    r.flags.some((f) => f.level === 'urgent') ? (
+                      <StatusPill tone="high" icon={Siren}>
+                        Urgent
+                      </StatusPill>
+                    ) : null
+                  }
+                >
+                  <p className="muted tabular wl-when">{[careShort(r.patient), flagCountText(r.flags)].filter(Boolean).join(' · ')}</p>
+                  <RedFlagItems flags={r.flags} brief patientId={r.patient.id} />
+                </PatientRow>
+              );
+            })}
+          </ul>
+        )}
+      </Paged>
       <RedFlagRulesNote rules={data.rules} />
       <RedFlagsScopeNote rules={data.rules} />
     </Section>
@@ -188,40 +193,44 @@ export function RedFlagsSection({ data }) {
 export function CarePlanSection({ data, onRemind }) {
   return (
     <Section id="wl-plan" icon={CalendarX2} title="Care plan to act on" count={data.carePlan.length} empty="Nothing overdue, due now or waiting for a decision.">
-      <ul className="wl-list">
-        {data.carePlan.map((r) => (
-          <PatientRow key={r.patient.id} patient={r.patient} to={`/patients/${r.patient.id}/care-plan`} openLabel="Open the care plan">
-            {/* Pregnancy care, or another type of care with its own plan (pregnancy loss) – said when it is not pregnancy care */}
-            {careShort(r.patient) && <p className="muted wl-when">{careShort(r.patient)}</p>}
-            <div className="wl-row-head">
-              <span className="wl-counts">
-                {SUMMARY_COUNTS.filter((c) => r.counts[c.key] > 0).map((c) => (
-                  <StatusPill key={c.key} tone={c.tone} icon={c.icon}>
-                    {c.word} <span className="tabular">{r.counts[c.key]}</span>
-                  </StatusPill>
-                ))}
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRemind(r.patient.id)} aria-label={`Prepare a reminder for ${r.patient.fullName}`}>
-                  <MessageCircle aria-hidden="true" /> Reminder
-                </button>
-              </span>
-            </div>
-            {r.top.length > 0 && (
-              <ul className="wl-items">
-                {r.top.map((it) => {
-                  const look = statusLook(it);
-                  return (
-                    <li key={it.itemId}>
-                      <span className="sr-only">{look.word}: </span>
-                      {it.name} <span className="muted tabular">by {formatDate(it.dueBy)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <NextVisitLine next={r.next} />
-          </PatientRow>
-        ))}
-      </ul>
+      <Paged rows={data.carePlan} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((r) => (
+              <PatientRow key={r.patient.id} patient={r.patient} to={`/patients/${r.patient.id}/care-plan`} openLabel="Open the care plan">
+                {/* Pregnancy care, or another type of care with its own plan (pregnancy loss) – said when it is not pregnancy care */}
+                {careShort(r.patient) && <p className="muted wl-when">{careShort(r.patient)}</p>}
+                <div className="wl-row-head">
+                  <span className="wl-counts">
+                    {SUMMARY_COUNTS.filter((c) => r.counts[c.key] > 0).map((c) => (
+                      <StatusPill key={c.key} tone={c.tone} icon={c.icon}>
+                        {c.word} <span className="tabular">{r.counts[c.key]}</span>
+                      </StatusPill>
+                    ))}
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRemind(r.patient.id)} aria-label={`Prepare a reminder for ${r.patient.fullName}`}>
+                      <MessageCircle aria-hidden="true" /> Reminder
+                    </button>
+                  </span>
+                </div>
+                {r.top.length > 0 && (
+                  <ul className="wl-items">
+                    {r.top.map((it) => {
+                      const look = statusLook(it);
+                      return (
+                        <li key={it.itemId}>
+                          <span className="sr-only">{look.word}: </span>
+                          {it.name} <span className="muted tabular">by {formatDate(it.dueBy)}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <NextVisitLine next={r.next} />
+              </PatientRow>
+            ))}
+          </ul>
+        )}
+      </Paged>
     </Section>
   );
 }
@@ -273,13 +282,17 @@ export function VaccinationsOverdueSection({ data }) {
   const rows = data.vaccinationsOverdue ?? [];
   return (
     <Section id="wl-vaccines" icon={Syringe} title="Vaccinations overdue" count={rows.length} empty="No baby has an overdue vaccination.">
-      <ul className="wl-list">
-        {rows.map((r) => (
-          <PatientRow key={r.patient.id} patient={r.patient} to={`/patients/${r.patient.id}/care-plan`} openLabel="Open the care plan">
-            <VaccinationDetails row={r} />
-          </PatientRow>
-        ))}
-      </ul>
+      <Paged rows={rows} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((r) => (
+              <PatientRow key={r.patient.id} patient={r.patient} to={`/patients/${r.patient.id}/care-plan`} openLabel="Open the care plan">
+                <VaccinationDetails row={r} />
+              </PatientRow>
+            ))}
+          </ul>
+        )}
+      </Paged>
       <p className="hint rf-note">
         Babies with a vaccination that became overdue in the last 6 weeks; older ones stay on the baby's care plan. A vaccine given elsewhere stays here until a doctor or RMO marks it in the
         care plan.
@@ -313,17 +326,21 @@ export function VisitProgress({ visit }) {
 export function VisitsTodaySection({ data }) {
   return (
     <Section id="wl-today" icon={Stethoscope} title="Today's patients" count={data.seenToday.length} empty="No visits started today yet.">
-      <ul className="wl-list">
-        {data.seenToday.map((v) => (
-          <PatientRow key={v.visitId} patient={v.patient} to={`/patients/${v.patient.id}/visits/${v.visitId}`} openLabel="Open the visit">
-            <VisitProgress visit={v} />
-            <p className="hint">
-              Started {formatDateTime(v.startedAt)} by {v.startedByName}
-              {v.medicines ? ` · ${v.medicines} medicine${v.medicines > 1 ? 's' : ''}` : ''}
-            </p>
-          </PatientRow>
-        ))}
-      </ul>
+      <Paged rows={data.seenToday} label="visits" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((v) => (
+              <PatientRow key={v.visitId} patient={v.patient} to={`/patients/${v.patient.id}/visits/${v.visitId}`} openLabel="Open the visit">
+                <VisitProgress visit={v} />
+                <p className="hint">
+                  Started {formatDateTime(v.startedAt)} by {v.startedByName}
+                  {v.medicines ? ` · ${v.medicines} medicine${v.medicines > 1 ? 's' : ''}` : ''}
+                </p>
+              </PatientRow>
+            ))}
+          </ul>
+        )}
+      </Paged>
     </Section>
   );
 }

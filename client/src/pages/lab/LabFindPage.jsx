@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field } from '../../components/ui.jsx';
 import { LabRow, DepartmentSelect } from './LabWorklistPage.jsx';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // Lab → Find (docs/LAB_LIMS_PLAN.md feature 6): a sample number (or a label's barcode scanned into the box – the
 // scanner types it and presses Enter, and the order opens), a patient number or name, between two dates, in one
@@ -92,11 +93,15 @@ export function LabFindPage() {
             <h2 id="lab-find-results">
               {result.orders.length === 0 ? 'No orders found' : `${result.orders.length} ${result.orders.length === 1 ? 'order' : 'orders'}${result.more ? ' (the newest 200 – narrow the search)' : ''}`}
             </h2>
-            <ul className="wl-list">
-              {result.orders.map((o) => (
-                <LabRow key={o.id} o={o} list="find" />
-              ))}
-            </ul>
+            <Paged rows={result.orders} label="orders" {...LIST_PAGES}>
+              {(page) => (
+                <ul className="wl-list">
+                  {page.map((o) => (
+                    <LabRow key={o.id} o={o} list="find" />
+                  ))}
+                </ul>
+              )}
+            </Paged>
           </section>
         )}
       </div>

@@ -57,6 +57,7 @@ import {
   whoFacts,
   whoName,
 } from './referralFormat.js';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // One referral from another doctor (docs/REFERRALS_PLAN.md), worked through the guide's promises in order:
 // - the patient: found among the registered patients, or registered here (name, age, phone, type of care, doctor),
@@ -1192,63 +1193,67 @@ function PdfsCard({ r, onDone, primary, busy, setBusy }) {
       <Alert type="success" onClose={() => setNotice(null)}>
         {notice}
       </Alert>
-      <ul className="wl-list">
-        {releases.map((x) => {
-          const sent = sentFor(x.id);
-          return (
-            <li key={x.id}>
-              <div className="wl-row-head">
-                <span className="wl-who">
-                  <strong>{RELEASE_LABELS[x.kind]}</strong>
-                  <span className="muted tabular">
-                    {x.fileName} · {fileSize(x.size)} · released by {x.byName}, {formatDateTime(x.at)}
-                  </span>
-                </span>
-                <span className="wl-counts">
-                  {x.superseded ? (
-                    <StatusPill tone="inactive">Replaced by a newer PDF</StatusPill>
-                  ) : sent.length ? (
-                    <StatusPill tone="stable" icon={Check}>
-                      Sent
-                    </StatusPill>
-                  ) : answer === 'no' ? (
-                    <StatusPill tone="inactive">Not sent – she did not agree</StatusPill>
-                  ) : !answer ? (
-                    <StatusPill tone="watch" icon={Hourglass}>
-                      Waiting for her Yes
-                    </StatusPill>
-                  ) : (
-                    <StatusPill tone="due" icon={Send}>
-                      To send
-                    </StatusPill>
-                  )}
-                </span>
-              </div>
-              {sent.map((m) => (
-                <p key={m.at} className="hint">
-                  Sent by {m.byName}, {formatDateTime(m.at)}
-                </p>
-              ))}
-              {!x.superseded && answer !== 'no' && !maySave && <p className="hint">Ask her first: the PDF is saved only after her Yes.</p>}
-              {!x.superseded && maySave && (
-                <div className="row">
-                  <button type="button" className={btn(primary && x.id === firstUnsent)} onClick={() => save(x)} disabled={busy === `save-${x.id}`}>
-                    <FileDown aria-hidden="true" /> {busy === `save-${x.id}` ? 'Saving…' : 'Save the PDF'}
-                  </button>
-                  {answer === 'yes' && a.canMarkSent && (
-                    <>
-                      <ChatLink doctor={r.referringDoctor} />
-                      <button type="button" className="btn btn-secondary" onClick={() => markSent(x)} disabled={busy === `sent-${x.id}`}>
-                        <Send aria-hidden="true" /> {busy === `sent-${x.id}` ? 'Saving…' : sent.length ? 'Mark as sent again' : 'Mark as sent'}
+      <Paged rows={releases} label="referrals" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((x) => {
+              const sent = sentFor(x.id);
+              return (
+                <li key={x.id}>
+                  <div className="wl-row-head">
+                    <span className="wl-who">
+                      <strong>{RELEASE_LABELS[x.kind]}</strong>
+                      <span className="muted tabular">
+                        {x.fileName} · {fileSize(x.size)} · released by {x.byName}, {formatDateTime(x.at)}
+                      </span>
+                    </span>
+                    <span className="wl-counts">
+                      {x.superseded ? (
+                        <StatusPill tone="inactive">Replaced by a newer PDF</StatusPill>
+                      ) : sent.length ? (
+                        <StatusPill tone="stable" icon={Check}>
+                          Sent
+                        </StatusPill>
+                      ) : answer === 'no' ? (
+                        <StatusPill tone="inactive">Not sent – she did not agree</StatusPill>
+                      ) : !answer ? (
+                        <StatusPill tone="watch" icon={Hourglass}>
+                          Waiting for her Yes
+                        </StatusPill>
+                      ) : (
+                        <StatusPill tone="due" icon={Send}>
+                          To send
+                        </StatusPill>
+                      )}
+                    </span>
+                  </div>
+                  {sent.map((m) => (
+                    <p key={m.at} className="hint">
+                      Sent by {m.byName}, {formatDateTime(m.at)}
+                    </p>
+                  ))}
+                  {!x.superseded && answer !== 'no' && !maySave && <p className="hint">Ask her first: the PDF is saved only after her Yes.</p>}
+                  {!x.superseded && maySave && (
+                    <div className="row">
+                      <button type="button" className={btn(primary && x.id === firstUnsent)} onClick={() => save(x)} disabled={busy === `save-${x.id}`}>
+                        <FileDown aria-hidden="true" /> {busy === `save-${x.id}` ? 'Saving…' : 'Save the PDF'}
                       </button>
-                    </>
+                      {answer === 'yes' && a.canMarkSent && (
+                        <>
+                          <ChatLink doctor={r.referringDoctor} />
+                          <button type="button" className="btn btn-secondary" onClick={() => markSent(x)} disabled={busy === `sent-${x.id}`}>
+                            <Send aria-hidden="true" /> {busy === `sent-${x.id}` ? 'Saving…' : sent.length ? 'Mark as sent again' : 'Mark as sent'}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Paged>
       {answer === 'yes' && <NoNumber doctor={r.referringDoctor} />}
     </section>
   );
@@ -1300,21 +1305,25 @@ function AttachmentsCard({ r, onDone, busy, setBusy }) {
       {sent.length ? <Facts compact rows={sent} /> : <p className="muted">No dates, BP, Hb, sugar, medicines or scans written down.</p>}
       <Alert type="error">{error}</Alert>
       {list.length ? (
-        <ul className="wl-list">
-          {list.map((x) => (
-            <li key={x.id} className="wl-row-head">
-              <span className="wl-who">
-                <strong>{x.fileName}</strong>
-                <span className="muted tabular">
-                  {fileSize(x.size)} · added by {x.byName}, {formatDateTime(x.at)}
-                </span>
-              </span>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => save(x)} disabled={busy === `file-${x.id}`}>
-                <FileDown aria-hidden="true" /> {busy === `file-${x.id}` ? 'Saving…' : 'Save a copy'}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <Paged rows={list} label="referrals" {...LIST_PAGES}>
+          {(page) => (
+            <ul className="wl-list">
+              {page.map((x) => (
+                <li key={x.id} className="wl-row-head">
+                  <span className="wl-who">
+                    <strong>{x.fileName}</strong>
+                    <span className="muted tabular">
+                      {fileSize(x.size)} · added by {x.byName}, {formatDateTime(x.at)}
+                    </span>
+                  </span>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => save(x)} disabled={busy === `file-${x.id}`}>
+                    <FileDown aria-hidden="true" /> {busy === `file-${x.id}` ? 'Saving…' : 'Save a copy'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Paged>
       ) : (
         <p className="muted">No file attached.</p>
       )}
@@ -1381,17 +1390,21 @@ function PromisesCard({ r, now }) {
       {r.status === 'cancelled' ? (
         <p className="muted">A cancelled referral has no clocks.</p>
       ) : promises.length ? (
-        <ul className="wl-list">
-          {promises.map((p) => (
-            <li key={p.key} className="wl-row-head">
-              <span className="wl-who">
-                <strong>{promiseLabel(p)}</strong>
-                <span className="muted tabular">{promiseWhen(p, now)}</span>
-              </span>
-              <PromisePill promise={p} />
-            </li>
-          ))}
-        </ul>
+        <Paged rows={promises} label="referrals" {...LIST_PAGES}>
+          {(page) => (
+            <ul className="wl-list">
+              {page.map((p) => (
+                <li key={p.key} className="wl-row-head">
+                  <span className="wl-who">
+                    <strong>{promiseLabel(p)}</strong>
+                    <span className="muted tabular">{promiseWhen(p, now)}</span>
+                  </span>
+                  <PromisePill promise={p} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Paged>
       ) : (
         <p className="muted">No clocks yet.</p>
       )}
@@ -1409,19 +1422,23 @@ function ReviewsCard({ r, onDone }) {
     <section className="card" aria-labelledby="ref-reviews-title">
       <h2 id="ref-reviews-title">Weekly review</h2>
       {reviews.length ? (
-        <ul className="wl-list">
-          {reviews.map((v) => (
-            <li key={v.at}>
-              <strong>{promiseLabel({ key: v.promise })}</strong> <span className="muted">– {v.byName}, {formatDateTime(v.at)}</span>
-              <Facts
-                rows={[
-                  ['What went wrong', v.wentWrong],
-                  ['What changed', v.changed],
-                ]}
-              />
-            </li>
-          ))}
-        </ul>
+        <Paged rows={reviews} label="reviews" {...LIST_PAGES}>
+          {(page) => (
+            <ul className="wl-list">
+              {page.map((v) => (
+                <li key={v.at}>
+                  <strong>{promiseLabel({ key: v.promise })}</strong> <span className="muted">– {v.byName}, {formatDateTime(v.at)}</span>
+                  <Facts
+                    rows={[
+                      ['What went wrong', v.wentWrong],
+                      ['What changed', v.changed],
+                    ]}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Paged>
       ) : (
         <p className="muted">A promise was missed: the guide asks for a review within the week.</p>
       )}

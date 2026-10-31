@@ -122,3 +122,20 @@
 .rd-coming-list li:first-child { border-top: 0; }
 .rd-coming-time { font-weight: 600; font-size: var(--fs-label); }
 @media (max-width: 600px) { .rd-coming-list li { grid-template-columns: 1fr; } }
+
+/* Today's patients on a laptop (31 Oct 2026, the user's screenshot: the table was squeezed beside the side cards and
+   scrolled sideways): View and Fill info as icon buttons (their words for screen readers and on hover), names and
+   short columns on one line; below 1680 px the table takes the full width and the side cards sit under it, side by side */
+.rd-actions > .rd-icon-act { width: 36px; min-width: 36px; padding: 0; justify-content: center; font-size: 0; }
+.rd-actions > .btn-link.rd-icon-act { border: 1px solid var(--card-border); border-radius: var(--radius-md); }
+.rd-actions > .rd-icon-act svg.lucide { width: 18px; height: 18px; margin: 0; }
+.rd-more .menu-chevron { display: none; }
+.rd-table th:first-child, .rd-table td:first-child { width: 1%; padding-right: 0; color: var(--slate-600); }
+.rd-table td { padding: var(--space-2) var(--space-3); }
+.rd-table td:nth-child(3), .rd-table td:nth-child(4) { white-space: nowrap; }
+.rd-person { min-width: 220px; }
+.rd-row:hover td { background: var(--mist-50); }
+@media (min-width: 720px) and (max-width: 1679px) {
+  .rd-layout { grid-template-columns: minmax(0, 1fr); }
+  .rd-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+}

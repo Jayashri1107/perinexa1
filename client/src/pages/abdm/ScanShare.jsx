@@ -9,6 +9,7 @@ import { PatientFinder } from '../appointments/AppointmentDialogs.jsx';
 import { Modal } from '../pharmacy/pharmacyUi.jsx';
 import { Section } from '../worklist/WorklistSections.jsx';
 import { ModeBanner } from './PatientAbhaTab.jsx';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // Scan & Share on the Today page (ABDM linking, M1): patients who scanned the hospital's QR code in their ABHA app,
 // each with a token number. Reception links each to her record (found, or registered with the details filled in), or
@@ -86,58 +87,62 @@ export function ScanShareSection() {
       <Alert type="error" onClose={() => setError(null)}>
         {error}
       </Alert>
-      <ul className="wl-list">
-        {waiting.map((s) => (
-          <li key={s.id} className="wl-row appt-guest-row">
-            <div>
-              <strong>
-                Token {s.token} · {s.profile.name}
-              </strong>
-              <p className="hint">
-                {s.profile.yearOfBirth ? `born ${s.profile.yearOfBirth} · ` : ''}
-                {s.profile.abhaAddress || s.profile.abhaNumber} · arrived {formatTime(s.receivedAt)}
-                {s.knownPatient && !s.knownPatient.abhaOn ? ` · already linked to ${s.knownPatient.fullName} (${s.knownPatient.mrn})` : ''}
-                {/* Her ABHA is on a record marked as a duplicate: the desk is pointed to her main record */}
-                {s.knownPatient?.abhaOn
-                  ? ` · she is ${s.knownPatient.fullName} (${s.knownPatient.mrn}); her ABHA is still linked on her earlier record ${s.knownPatient.abhaOn.mrn} – unlink it there (ABHA tab), then find her record here`
-                  : ''}
-              </p>
-            </div>
-            <span className="row">
-              {s.knownPatient?.abhaOn ? (
-                <>
-                  <Link className="btn btn-secondary btn-sm" to={`/patients/${s.knownPatient.abhaOn.id}/abha`}>
-                    Open {s.knownPatient.abhaOn.mrn}
-                  </Link>
-                  <Link className="btn btn-link btn-sm" to={`/patients/${s.knownPatient.id}`}>
-                    Open {s.knownPatient.mrn}
-                  </Link>
-                </>
-              ) : s.knownPatient ? (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => act(() => api(`/abdm/scan-share/${s.id}/link`, { method: 'POST', body: { patientId: s.knownPatient.id } }), `Token ${s.token}: ${s.knownPatient.fullName} – done.`)}>
-                  <BadgeCheck aria-hidden="true" /> Confirm {s.knownPatient.fullName}
-                </button>
-              ) : (
-                <>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFinding(s)}>
-                    Find her record
+      <Paged rows={waiting} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((s) => (
+              <li key={s.id} className="wl-row appt-guest-row">
+                <div>
+                  <strong>
+                    Token {s.token} · {s.profile.name}
+                  </strong>
+                  <p className="hint">
+                    {s.profile.yearOfBirth ? `born ${s.profile.yearOfBirth} · ` : ''}
+                    {s.profile.abhaAddress || s.profile.abhaNumber} · arrived {formatTime(s.receivedAt)}
+                    {s.knownPatient && !s.knownPatient.abhaOn ? ` · already linked to ${s.knownPatient.fullName} (${s.knownPatient.mrn})` : ''}
+                    {/* Her ABHA is on a record marked as a duplicate: the desk is pointed to her main record */}
+                    {s.knownPatient?.abhaOn
+                      ? ` · she is ${s.knownPatient.fullName} (${s.knownPatient.mrn}); her ABHA is still linked on her earlier record ${s.knownPatient.abhaOn.mrn} – unlink it there (ABHA tab), then find her record here`
+                      : ''}
+                  </p>
+                </div>
+                <span className="row">
+                  {s.knownPatient?.abhaOn ? (
+                    <>
+                      <Link className="btn btn-secondary btn-sm" to={`/patients/${s.knownPatient.abhaOn.id}/abha`}>
+                        Open {s.knownPatient.abhaOn.mrn}
+                      </Link>
+                      <Link className="btn btn-link btn-sm" to={`/patients/${s.knownPatient.id}`}>
+                        Open {s.knownPatient.mrn}
+                      </Link>
+                    </>
+                  ) : s.knownPatient ? (
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => act(() => api(`/abdm/scan-share/${s.id}/link`, { method: 'POST', body: { patientId: s.knownPatient.id } }), `Token ${s.token}: ${s.knownPatient.fullName} – done.`)}>
+                      <BadgeCheck aria-hidden="true" /> Confirm {s.knownPatient.fullName}
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFinding(s)}>
+                        Find her record
+                      </button>
+                      <Link
+                        className="btn btn-link btn-sm"
+                        to="/patients/new"
+                        state={{ fromScanShare: { id: s.id, name: s.profile.name, phone: s.profile.phone, age: s.profile.yearOfBirth ? new Date().getFullYear() - s.profile.yearOfBirth : null } }}
+                      >
+                        <UserPlus aria-hidden="true" /> Register
+                      </Link>
+                    </>
+                  )}
+                  <button type="button" className="btn btn-link btn-sm" onClick={() => act(() => api(`/abdm/scan-share/${s.id}/dismiss`, { method: 'POST' }), `Token ${s.token} put aside.`)}>
+                    Put aside
                   </button>
-                  <Link
-                    className="btn btn-link btn-sm"
-                    to="/patients/new"
-                    state={{ fromScanShare: { id: s.id, name: s.profile.name, phone: s.profile.phone, age: s.profile.yearOfBirth ? new Date().getFullYear() - s.profile.yearOfBirth : null } }}
-                  >
-                    <UserPlus aria-hidden="true" /> Register
-                  </Link>
-                </>
-              )}
-              <button type="button" className="btn btn-link btn-sm" onClick={() => act(() => api(`/abdm/scan-share/${s.id}/dismiss`, { method: 'POST' }), `Token ${s.token} put aside.`)}>
-                Put aside
-              </button>
-            </span>
-          </li>
-        ))}
-      </ul>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Paged>
       {shares.length > waiting.length && (
         <p className="hint">
           Done today:{' '}

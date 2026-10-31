@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { MenuButton } from './MenuButton.jsx';
@@ -17,10 +17,26 @@ export const TitleSlotContext = createContext(null);
  *   links; one with `activeFor` (a path or paths) is the current tab on every page under them (e.g. Care plans on
  *   its red-flag rules too)
  * subtabs: a second, smaller row of tabs for the sections of the current tab ([{ label, to, end? }])
+ * pinned: phones – the header stays at the top while the page scrolls, slimmer once the page has moved under it (a patient's record)
+ * className: added to the header (styling one kind of page)
  */
-export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, actions, tabs, subtabs, documentTitle }) {
+export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, actions, tabs, subtabs, documentTitle, pinned = false, className = '' }) {
   const slot = useContext(TitleSlotContext);
   const { pathname } = useLocation();
+  // Phones: the subtitle waits behind an ⓘ beside the title (mobile.css), shown when it is tapped
+  const [infoOpen, setInfoOpen] = useState(false);
+  // Phones, more than three sections: one "jump to" button with the current section's name, opening the list of all
+  const [jumpOpen, setJumpOpen] = useState(false);
+  useEffect(() => setJumpOpen(false), [pathname]);
+  // pinned: slimmer ("stuck") once the page has been scrolled
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    if (!pinned) return undefined;
+    const check = () => setStuck(window.scrollY > 8);
+    check();
+    window.addEventListener('scroll', check, { passive: true });
+    return () => window.removeEventListener('scroll', check);
+  }, [pinned]);
 
   // The browser tab shows the screen and the hospital, e.g. "Patients · Sunrise General Hospital" ("Perinexa" before a
   // hospital is chosen), so a computer shared by two hospitals shows which one is open. PRIVACY: the tab title is kept in the
@@ -56,6 +72,11 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
         {/* Long names (e.g. a template's full name) use the smaller card-title size so they don't fill the screen */}
         <h1 className={`ph-title ${typeof title === 'string' && title.length > 36 ? 'ph-title-long' : ''}`}>{title}</h1>
         {badges && <span className="ph-badges">{badges}</span>}
+        {subtitle && (
+          <button type="button" className="icon-btn ph-info-btn" aria-label="About this page" aria-expanded={infoOpen} onClick={() => setInfoOpen(!infoOpen)}>
+            <Info aria-hidden="true" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -64,11 +85,15 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
   const showTabs = tabs?.length > 1;
   const showSubtabs = subtabs?.length > 1;
   const inSection = (t) => [t.activeFor ?? []].flat().some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const jump = showTabs && tabs.length > 3;
+  const isCurrent = (t) => (t.end ? pathname === t.to : pathname === t.to || pathname.startsWith(`${t.to}/`)) || inSection(t);
+  const current = jump ? (tabs.filter(isCurrent).sort((a, b) => b.to.length - a.to.length)[0] ?? tabs[0]) : null;
   return (
     <>
       {slot && createPortal(heading, slot)}
       {(!slot || subtitle || help || actions || showTabs || showSubtabs) && (
-        <header className="ph">
+        <>
+        <header className={['ph', className, infoOpen && 'ph-info-open', pinned && 'ph-pinned', stuck && 'ph-stuck', jump && 'ph-has-jump', jumpOpen && 'ph-jump-open'].filter(Boolean).join(' ')}>
           {/* One row (owner, 13 Oct 2026): the title with its subtitle on the left, the buttons on the right */}
           {(!slot || subtitle || help || actions) && (
             <div className={slot ? 'ph-main' : 'ph-main ph-top'}>
@@ -82,8 +107,15 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
               {actions && <div className="ph-actions">{actions}</div>}
             </div>
           )}
+          {jump && (
+            <button type="button" className="ph-jump-btn" aria-expanded={jumpOpen} aria-controls="ph-sections" onClick={() => setJumpOpen(!jumpOpen)}>
+              <span className="ph-jump-label">{current.label}</span>
+              <span className="ph-jump-more">{tabs.length} sections</span>
+              <ChevronDown aria-hidden="true" />
+            </button>
+          )}
           {showTabs && (
-            <nav className="ph-tabs segmented" aria-label="Sections">
+            <nav className="ph-tabs segmented" id="ph-sections" aria-label="Sections">
               {tabs.map((t) =>
                 t.menu ? (
                   <MenuButton key={t.to} label={t.label} icon={t.icon} items={t.menu} active={pathname === t.to || pathname.startsWith(`${t.to}/`)} />
@@ -111,6 +143,7 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
             </nav>
           )}
         </header>
+        </>
       )}
     </>
   );

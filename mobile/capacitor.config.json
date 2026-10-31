@@ -1,0 +1,19 @@
+{
+  "appId": "com.perinexa.app",
+  "appName": "Perinexa",
+  "webDir": "www",
+  "server": {
+    "url": "https://app.perinexa.com",
+    "cleartext": false,
+    "allowNavigation": ["app.perinexa.com"],
+    "errorPath": "index.html"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

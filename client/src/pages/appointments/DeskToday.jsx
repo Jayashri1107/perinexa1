@@ -4,6 +4,7 @@ import { StatusPill, formatTime } from '../../components/ui.jsx';
 import { rupees } from '../billing/billingFormat.js';
 import { Section } from '../worklist/WorklistSections.jsx';
 import { dayLabel, timeLabel, whoLabel } from './appointmentFormat.js';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // The front desk's day (owner, 14 Oct 2026), from GET /appointments/desk: which doctors are in today, and tomorrow's
 // bookings to call and confirm.
@@ -70,35 +71,39 @@ export function DoctorsToday({ doctors, linkNames = true }) {
 export function TomorrowCalls({ list, tomorrow }) {
   return (
     <Section id="td-tomorrow" icon={PhoneCall} title={`Tomorrow – call to confirm${tomorrow ? ` (${dayLabel(tomorrow)})` : ''}`} count={list.length} empty="Nobody is booked for tomorrow yet.">
-      <ul className="wl-list desk-calls">
-        {list.map((a) => {
-          const phone = a.patient?.phone || a.guest?.phone || '';
-          return (
-            <li key={a.id} className="desk-call">
-              <span className="appt-slot-time">{a.start ? timeLabel(a.start) : 'No time yet'}</span>
-              <div className="desk-call-who">
-                {a.patient ? (
-                  <Link to={`/patients/${a.patient.id}`}>
-                    <strong>{a.patient.fullName}</strong>
-                  </Link>
-                ) : (
-                  <strong>{whoLabel(a)}</strong>
-                )}
-                <span className="muted">
-                  {[a.patient ? a.patient.mrn : 'Not registered yet', a.doctor.name].join(' · ')}
-                </span>
-              </div>
-              {phone ? (
-                <a className="btn btn-secondary btn-sm" href={`tel:${phone.replace(/[^\d+]/g, '')}`}>
-                  <Phone aria-hidden="true" /> {phone}
-                </a>
-              ) : (
-                <span className="muted">No phone</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <Paged rows={list} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list desk-calls">
+            {page.map((a) => {
+              const phone = a.patient?.phone || a.guest?.phone || '';
+              return (
+                <li key={a.id} className="desk-call">
+                  <span className="appt-slot-time">{a.start ? timeLabel(a.start) : 'No time yet'}</span>
+                  <div className="desk-call-who">
+                    {a.patient ? (
+                      <Link to={`/patients/${a.patient.id}`}>
+                        <strong>{a.patient.fullName}</strong>
+                      </Link>
+                    ) : (
+                      <strong>{whoLabel(a)}</strong>
+                    )}
+                    <span className="muted">
+                      {[a.patient ? a.patient.mrn : 'Not registered yet', a.doctor.name].join(' · ')}
+                    </span>
+                  </div>
+                  {phone ? (
+                    <a className="btn btn-secondary btn-sm" href={`tel:${phone.replace(/[^\d+]/g, '')}`}>
+                      <Phone aria-hidden="true" /> {phone}
+                    </a>
+                  ) : (
+                    <span className="muted">No phone</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Paged>
     </Section>
   );
 }
@@ -153,40 +158,48 @@ export function DischargesSection({ desk, bills }) {
       {desk.goingHome.length > 0 && (
         <>
           <h3 className="desk-subtitle">Going home – the doctor is writing the discharge card</h3>
-          <ul className="wl-list desk-calls">
-            {desk.goingHome.map((x) => (
-              <StayRow
-                key={x.stayId}
-                x={x}
-                bill={billOf(bills, x.patient.id)}
-                pill={
-                  <StatusPill tone="due" icon={LogOut}>
-                    Being discharged
-                  </StatusPill>
-                }
-              />
-            ))}
-          </ul>
+          <Paged rows={desk.goingHome} label="patients" {...LIST_PAGES}>
+            {(page) => (
+              <ul className="wl-list desk-calls">
+                {page.map((x) => (
+                  <StayRow
+                    key={x.stayId}
+                    x={x}
+                    bill={billOf(bills, x.patient.id)}
+                    pill={
+                      <StatusPill tone="due" icon={LogOut}>
+                        Being discharged
+                      </StatusPill>
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+          </Paged>
         </>
       )}
       {desk.dischargedToday.length > 0 && (
         <>
           <h3 className="desk-subtitle">Discharged today</h3>
-          <ul className="wl-list desk-calls">
-            {desk.dischargedToday.map((x) => (
-              <StayRow
-                key={x.stayId}
-                x={x}
-                bill={billOf(bills, x.patient.id)}
-                settledWord="Nothing to pay"
-                pill={
-                  <StatusPill tone="inactive" icon={DoorOpen}>
-                    Went home {formatTime(x.dischargedAt)}
-                  </StatusPill>
-                }
-              />
-            ))}
-          </ul>
+          <Paged rows={desk.dischargedToday} label="patients" {...LIST_PAGES}>
+            {(page) => (
+              <ul className="wl-list desk-calls">
+                {page.map((x) => (
+                  <StayRow
+                    key={x.stayId}
+                    x={x}
+                    bill={billOf(bills, x.patient.id)}
+                    settledWord="Nothing to pay"
+                    pill={
+                      <StatusPill tone="inactive" icon={DoorOpen}>
+                        Went home {formatTime(x.dischargedAt)}
+                      </StatusPill>
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+          </Paged>
         </>
       )}
       <p className="hint desk-note">The doctor confirms the discharge card; that ends the stay and frees the bed. Reception settles the bill.</p>

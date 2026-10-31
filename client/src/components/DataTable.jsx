@@ -149,6 +149,9 @@ export function usePagedRows(rows, { initial = 10, sizes = [10, 25, 50], label =
   return { shown, pager };
 }
 
+/** The page sizes of the app's longer lists (worklists, Today's patients): 25 a page, or 50 or 100 (31 Oct 2026). */
+export const LIST_PAGES = { initial: 25, sizes: [25, 50, 100] };
+
 /** usePagedRows for a list drawn inside a loop: children(shown) draws the page, the page bar follows it. */
 export function Paged({ rows, label, initial, sizes, children }) {
   const { shown, pager } = usePagedRows(rows, { label, ...(initial ? { initial } : {}), ...(sizes ? { sizes } : {}) });

@@ -11,6 +11,7 @@ import { PatientFinder } from './AppointmentDialogs.jsx';
 import { PatientRow, Section } from '../worklist/WorklistSections.jsx';
 import { NEEDS_TIME_LOOK, TOKEN_LOOK, VISIT_TYPE_LABELS, PURPOSE_LABELS, dayLabel, purposeText, timeLabel, whenLabel } from './appointmentFormat.js';
 import { PurposeChoice } from '../followups/FollowUpDialogs.jsx';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // Appointment booking on the Today page: marking a walk-in arrived gives her a token for the doctor she will see,
 // with a slip to print; each doctor's waiting list in the order to call; quick bookings of the day (new patients
@@ -247,11 +248,15 @@ export function WaitingLists({ refreshKey = 0 }) {
             </span>
           </h3>
           {q.waiting.length > 0 && (
-            <ul className="wl-list">
-              {q.waiting.map((w, i) => (
-                <WaitingLine key={w.id} w={w} next={i === 0} canMarkDone={isDoctor} onDone={queue.reload} />
-              ))}
-            </ul>
+            <Paged rows={q.waiting} label="patients" {...LIST_PAGES}>
+              {(page) => (
+                <ul className="wl-list">
+                  {page.map((w) => (
+                    <WaitingLine key={w.id} w={w} next={w === q.waiting[0]} canMarkDone={isDoctor} onDone={queue.reload} />
+                  ))}
+                </ul>
+              )}
+            </Paged>
           )}
           {q.expected.length > 0 && (
             <p className="hint">
@@ -269,23 +274,27 @@ export function QuickBookingsSection({ guests, canRegister }) {
   if (!guests?.length) return null;
   return (
     <Section id="td-guests" icon={UserPlus} title="New patients booked today" count={guests.length} empty="">
-      <ul className="wl-list">
-        {guests.map((g) => (
-          <li key={g.id} className="wl-row appt-guest-row">
-            <div>
-              <strong>{g.guest.name}</strong>
-              <p className="hint">
-                {whenLabel(g)} · {g.doctorName} · {g.guest.phone} · not registered yet
-              </p>
-            </div>
-            {canRegister && (
-              <Link className="btn btn-secondary btn-sm" to={`/patients/new?appointment=${g.id}`} state={{ fromBooking: { id: g.id, name: g.guest.name, phone: g.guest.phone, doctorId: g.doctorId } }}>
-                <UserPlus aria-hidden="true" /> Register
-              </Link>
-            )}
-          </li>
-        ))}
-      </ul>
+      <Paged rows={guests} label="patients" {...LIST_PAGES}>
+        {(page) => (
+          <ul className="wl-list">
+            {page.map((g) => (
+              <li key={g.id} className="wl-row appt-guest-row">
+                <div>
+                  <strong>{g.guest.name}</strong>
+                  <p className="hint">
+                    {whenLabel(g)} · {g.doctorName} · {g.guest.phone} · not registered yet
+                  </p>
+                </div>
+                {canRegister && (
+                  <Link className="btn btn-secondary btn-sm" to={`/patients/new?appointment=${g.id}`} state={{ fromBooking: { id: g.id, name: g.guest.name, phone: g.guest.phone, doctorId: g.doctorId } }}>
+                    <UserPlus aria-hidden="true" /> Register
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Paged>
     </Section>
   );
 }

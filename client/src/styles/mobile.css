@@ -1,0 +1,455 @@
+/*
+ * Phones and the Android / iPhone apps (31 Oct 2026, mobile/README.md). Below 720 px Perinexa looks and works like a
+ * phone app: one slim header row (menu, hospital, search, notifications, profile), "Find a patient" behind its button,
+ * a tab bar at the bottom with the first four places of the person's menu and Menu, the side menu sliding in with Log
+ * out at its foot, one-column forms with large touch targets, and dialogs as sheets from the bottom. Tablets and
+ * computers are unchanged. The safe-area insets keep it clear of a phone's notch and home bar.
+ */
+
+/* Only on phones (shown below) */
+.pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn, .ph-jump-btn { display: none; }
+
+@media (max-width: 719px) {
+  /* ---------- The header: one row, stuck to the top ---------- */
+  .pf-topbar {
+    position: sticky; top: 0; z-index: 30; flex-wrap: nowrap; gap: var(--space-2);
+    margin: 0; padding: calc(env(safe-area-inset-top) + var(--space-2)) var(--space-3) var(--space-2);
+    border: 0; border-bottom: 1px solid var(--card-border); border-radius: 0; box-shadow: none;
+  }
+  .pf-topbar-start { flex: 1 1 auto; min-width: 0; gap: var(--space-2); }
+  .pf-topbar-actions { flex: 0 0 auto; flex-wrap: nowrap; gap: var(--space-1); margin-left: 0; }
+  /* The hospital's name only: the date, the switch and the buttons are in the menu and the profile card */
+  .pf-topbar .ws { flex-wrap: nowrap; }
+  .pf-topbar .ws-icon, .pf-topbar .ws-who, .pf-topbar .ws-switch { display: none; }
+  .pf-topbar .ws-text { max-width: none; }
+  .pf-topbar .ws-name { font-size: var(--fs-body); line-height: var(--lh-body); }
+  .pf-topbar-actions > .btn, .pf-topbar-actions > .pill, .pf-topbar .pf-help, .pf-topbar .pf-logout { display: none; }
+  .pf-search-btn { display: inline-grid; }
+  /* Find a patient: under the header, when its button is pressed */
+  .pf-topbar > .ps { display: none; }
+  .pf-search-open .pf-topbar { flex-wrap: wrap; }
+  .pf-search-open .pf-topbar > .ps { display: block; order: 3; flex: 1 1 100%; max-width: none; margin: 0; }
+  .pf-topbar .ps-pop { position: fixed; left: var(--space-2); right: var(--space-2); top: auto; max-height: 60vh; }
+
+  /* ---------- The tab bar at the bottom ---------- */
+  .pf-has-tabbar .pf-main { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .pf-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px;
+    padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));
+    background: var(--surface); border-top: 1px solid var(--card-border); box-shadow: var(--shadow-card);
+  }
+  .pf-tab {
+    display: grid; justify-items: center; align-content: center; gap: 2px; min-width: 0; min-height: 56px; padding: var(--space-1) 2px;
+    border: 0; border-radius: var(--radius-md); background: none; color: var(--slate-600);
+    font: inherit; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; text-decoration: none; cursor: pointer;
+  }
+  .pf-tab svg.lucide { width: 22px; height: 22px; }
+  .pf-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-tab.active { color: var(--indigo-700); background: var(--mist-100); font-weight: 600; }
+  .pf-tab:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+
+  /* ---------- The menu: a sheet from the bottom with every place as an icon tile, three a row (like a phone's home
+     screen); the person and Log out at its foot ---------- */
+  .pf .sb {
+    top: auto; bottom: 0; left: 0; right: 0; z-index: 60; width: auto; height: auto; max-height: 88dvh; overflow-y: auto;
+    transform: translateY(100%); padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-4));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--surface); color: var(--ink);
+  }
+  .pf-mobile-open .sb { transform: none; }
+  .pf-menu-backdrop { position: fixed; inset: 0; z-index: 55; border: 0; padding: 0; background: var(--overlay); }
+  .pf .sb-brand { justify-content: center; position: relative; min-height: 32px; padding: 0; border: 0; }
+  .pf .sb-brand::before { content: ''; width: 40px; height: 4px; margin-top: var(--space-1); border-radius: var(--radius-pill); background: var(--slate-300); }
+  .pf .sb-brand > a { display: none; }
+  .pf .sb-toggle { position: absolute; right: 0; top: 0; display: inline-grid; border-color: var(--card-border); color: var(--ink); }
+  .pf .sb-subtitle { margin: 0 0 var(--space-3); padding: 0; color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; }
+  .pf .sb-subtitle svg.lucide { display: none; }
+  .pf .sb-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); padding: 0; overflow: visible; }
+  .pf .sb-section { grid-column: 1 / -1; margin: var(--space-2) 0 0; color: var(--slate-600); }
+  .pf-mobile-open .sb-link, .pf .sb-link {
+    flex-direction: column; justify-content: center; align-items: center; gap: var(--space-1); min-height: 92px; padding: var(--space-3) var(--space-1);
+    border-radius: var(--radius-lg); background: var(--mist-50); color: var(--ink); text-align: center; white-space: normal;
+    font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600;
+  }
+  .pf .sb-link:hover { background: var(--mist-100); color: var(--ink); }
+  .pf .sb-link.active { background: var(--selected-bg); color: var(--indigo-700); box-shadow: inset 0 0 0 2px var(--indigo-700); }
+  .pf .sb-tile, .pf .sb-link.active .sb-tile { width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
+  .pf .sb-link .sb-chevron { display: none; }
+  .pf .sb-link:focus-visible { box-shadow: var(--focus-ring); }
+  /* Patients' own list (OPD registration, OPD patients, Admitted patients): a row of its own under the tiles */
+  .pf .sb-sub { grid-column: 1 / -1; margin: 0; padding: var(--space-2); border: 0; border-radius: var(--radius-lg); background: var(--mist-50); }
+  .pf .sb-sub-head { color: var(--slate-600); }
+  .pf .sb-sub-link { padding: var(--space-3); color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); }
+  .pf .sb-sub-link:hover { background: var(--mist-100); color: var(--ink); }
+  .pf .sb-sub-link.active { background: var(--selected-bg); color: var(--indigo-700); box-shadow: inset 3px 0 0 var(--indigo-700); }
+  .pf .sb-sub-head:focus-visible, .pf .sb-sub-link:focus-visible { box-shadow: var(--focus-ring); }
+  .pf .sb-foot { display: flex; margin: var(--space-4) 0 0; padding: var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--mist-50); color: var(--ink); }
+  .pf .sb-foot-text strong { color: var(--ink); }
+  .pf .sb-foot-text span { color: var(--slate-600); }
+  .pf .sb-link::before, .pf .sb-link::after { display: none; }
+  .pf-mobile-open .sb-logout {
+    display: flex; align-items: center; justify-content: center; gap: var(--space-2); flex-shrink: 0; width: 100%; margin: var(--space-3) 0 0; padding: var(--space-3);
+    border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .sb-logout svg.lucide { width: 18px; height: 18px; }
+  .sb-logout:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+
+  /* ---------- Forms: one column, large touch targets; 16 px text so a phone doesn't zoom in ---------- */
+  input, select, textarea { font-size: 16px; }
+  input:not([type='checkbox']):not([type='radio']):not([type='range']), select { min-height: max(var(--control-height), 44px); }
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .btn { min-height: max(var(--control-height), 44px); }
+  .row { flex-wrap: wrap; }
+  .check { min-height: max(var(--control-height), 44px); }
+
+  /* ---------- Dialogs: a sheet from the bottom ---------- */
+  .modal-backdrop { align-items: end; padding: 0; }
+  .modal {
+    max-width: none; max-height: calc(100dvh - var(--space-8) - env(safe-area-inset-top));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- Count cards: one row that swipes sideways, the next card peeking in ---------- */
+  .kpi-grid, .rd-numbers {
+    display: flex; gap: var(--space-2); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+    scrollbar-width: none; margin-bottom: var(--space-3); padding: 2px 2px var(--space-2);
+  }
+  .kpi-grid::-webkit-scrollbar, .rd-numbers::-webkit-scrollbar { display: none; }
+  .kpi-grid > .kpi { flex: 0 0 44%; scroll-snap-align: start; gap: var(--space-2); padding: var(--space-3); }
+  .kpi > .pill { gap: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .kpi > .pill svg.lucide { width: 36px; height: 36px; padding: 8px; }
+  .kpi-value { font-size: var(--fs-h1); line-height: var(--lh-h1); }
+  .rd-numbers > .rd-number { flex: 0 0 74%; scroll-snap-align: start; padding: var(--space-3); gap: var(--space-3); }
+  .rd-number .rd-icon { width: 40px; height: 40px; }
+  .rd-number-value { font-size: var(--fs-h1); line-height: var(--lh-h1); }
+
+  /* ---------- Page titles: compact; the help line under the title is left out ---------- */
+  .ph { padding-top: var(--space-3); }
+  .ph-title { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .ph-subtitle { display: none; }
+  /* …shown with the ⓘ beside the title (PageHeader) */
+  .ph-info-btn { display: inline-grid; width: 36px; height: 36px; min-height: 0; border: 0; background: none; color: var(--slate-600); }
+  .ph-info-btn svg.lucide { width: 18px; height: 18px; }
+  .ph-info-btn[aria-expanded='true'] { color: var(--indigo-700); background: var(--mist-100); }
+  .ph-info-open .ph-subtitle { display: block; margin-top: var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .ph-actions { flex-wrap: wrap; }
+  .ph-main { gap: var(--space-2); }
+  .ph-main > .ph-actions { margin-top: 0; }
+  /* One page button (New registration ▾, Add follow-up): the full width */
+  .ph-actions > .menu-button:only-child { flex: 1 1 100%; display: flex; }
+  .ph-actions > .menu-button:only-child > .btn { width: 100%; justify-content: center; }
+  /* Two or more page buttons: quick-action tiles side by side (icon over the word), like an app's shortcuts */
+  .ph-actions:has(> :nth-child(2)) {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); align-items: stretch;
+  }
+  .ph-actions:has(> :nth-child(2)) > .btn,
+  .ph-actions:has(> :nth-child(2)) > .menu-button > .btn {
+    flex-direction: column; justify-content: center; gap: var(--space-1); width: 100%; height: 100%; min-height: 64px;
+    padding: var(--space-2) var(--space-1); white-space: normal; text-align: center;
+    font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600;
+  }
+  .ph-actions:has(> :nth-child(2)) > .menu-button { display: flex; min-width: 0; }
+  /* A switch among the buttons (a doctor's My patients · All patients): its own full row above the tiles */
+  .ph-actions:has(> .segmented) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-actions > .segmented { grid-column: 1 / -1; order: -1; }
+  .ph-actions:has(> :nth-child(2)) .btn svg.lucide { width: 20px; height: 20px; }
+
+  /* ---------- Tabs and filters: one line that scrolls sideways, never two lines ---------- */
+  .ph-tabs.segmented:not(:has(.menu-button)), .ph-subtabs, .rd-tabs {
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; white-space: nowrap;
+  }
+  .ph-tabs.segmented::-webkit-scrollbar, .ph-subtabs::-webkit-scrollbar, .rd-tabs::-webkit-scrollbar { display: none; }
+  .ph-tabs.segmented > *, .ph-subtabs > *, .rd-tabs > * { flex: 0 0 auto; }
+  /* Tabs with a drop-down (Patients: All patients · New patient ▾ · Online sign-ups): narrower, so they fit one line
+     (no sideways scrolling here – it would cut off the drop-down) */
+  .ph-tabs.segmented:has(.menu-button) { flex-wrap: nowrap; gap: 0; }
+  .ph-tabs.segmented:has(.menu-button) > a, .ph-tabs.segmented:has(.menu-button) > .menu-button > button {
+    padding: 0 var(--space-2); font-size: var(--fs-label); white-space: nowrap;
+  }
+  /* A filter switch (All beds · Available · Occupied, Day · Week · Month): the full width, equal parts */
+  .segmented:not(.ph-tabs) { display: flex; width: 100%; }
+  .segmented > * { flex: 1 0 auto; justify-content: center; white-space: nowrap; }
+
+  /* ---------- Lists: each row a compact item – its first line in bold, then "label  value" side by side ---------- */
+  .dt tr, table:not(.dt, .ptable, .am-grid) tr { padding: var(--space-2) 0; }
+  .dt td, table:not(.dt, .ptable, .am-grid) td { padding: 2px var(--space-3); }
+  /* The label in its own 88 px column; everything in the cell (however many parts) to its right */
+  .dt td[data-label], table:not(.dt, .ptable, .am-grid) td[data-label] {
+    position: relative; display: block; min-height: calc(var(--lh-body) + 4px); padding-left: calc(var(--space-3) + 100px + var(--space-2));
+  }
+  .dt td[data-label]::before, table:not(.dt, .ptable, .am-grid) td[data-label]::before {
+    position: absolute; left: var(--space-3); top: 4px; width: 100px; font-size: var(--fs-caption); line-height: var(--lh-caption);
+  }
+  .dt td.wrap-cell { min-width: 0; max-width: none; }
+  .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { display: block; padding-bottom: var(--space-1); font-weight: 600; }
+  .dt td[data-label]:first-child::before, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child::before { display: none; }
+  table:not(.dt, .ptable, .am-grid) tr { margin-bottom: var(--space-2); }
+  /* One look for every list: the name in bold ink (not an underlined link) and a › on the right of a row that opens
+     when tapped (DataTable's dt-clickable rows, or a row whose first cell links to it) */
+  .dt tbody tr:is(.dt-clickable, :has(> td:first-child a[href])) { position: relative; padding-right: var(--space-8); }
+  .dt tbody tr:is(.dt-clickable, :has(> td:first-child a[href]))::after {
+    content: ''; position: absolute; right: var(--space-3); top: 50%; width: 9px; height: 9px; margin-top: -5px;
+    border-top: 2px solid var(--slate-300); border-right: 2px solid var(--slate-300); transform: rotate(45deg); pointer-events: none;
+  }
+  .dt tbody td:first-child a[href]:first-of-type { color: var(--ink); font-weight: 600; text-decoration: none; }
+  .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { padding-left: var(--space-3); }
+  /* Above a list: the search and its filter button on one line */
+  .dt-toolbar { flex-wrap: nowrap; align-items: center; gap: var(--space-2); padding: var(--space-3); }
+  .dt-toolbar:has(> :nth-child(3)) { flex-wrap: wrap; }
+  .dt-search { flex: 1 1 auto; min-width: 0; max-width: none; }
+  .dt-toolbar > .btn { flex: 0 0 auto; }
+  /* Under a list: "1–25 of 80" and the arrows on one slim line (rows per page and first/last left to computers) */
+  .dt-footer { flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+  .dt-range { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt-size, .dt-pager-buttons > .icon-btn:first-child, .dt-pager-buttons > .icon-btn:last-child { display: none; }
+  .dt-pager-buttons .icon-btn { width: 40px; height: 40px; }
+  .dt-page-input input { width: 3em; min-height: 40px; padding: 0 var(--space-1); text-align: center; }
+  .dt-page-input label { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-caption); white-space: nowrap; }
+
+  /* ---------- Cards: less padding, so more fits on a screen ---------- */
+  .card, .panel, .dt-card { border-radius: var(--radius-md); }
+  .rd-patients, .rd-side-card, .rd-side > .rc-todo, .appt-toolbar, .am-side-card { padding: var(--space-3); }
+  .rd-greeting h2 { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .rd-doctor-counts { gap: var(--space-6); }
+  .rd-doctor-counts strong { display: inline; margin-right: var(--space-1); font-size: var(--fs-body); line-height: var(--lh-body); }
+
+  /* ---------- Appointments: the arrows, the date and Today on one line ---------- */
+  .appt-toolbar { gap: var(--space-2); }
+  .appt-toolbar-field { flex: 1 1 100%; min-width: 0; }
+  .appt-daynav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; width: 100%; }
+  .appt-daynav input[type='date'] { width: 100%; }
+  .appt-daynav .am-month { min-width: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+  .am-legend { width: 100%; margin: 0; }
+  /* The month: a real 7-day grid that fits the screen. A day shows its number, a short coloured bar per session and
+     the plane for leave; the times and words are on the legend above and in the chosen day's card. */
+  .am-calendar { padding: var(--space-2); overflow: visible; }
+  /* (doubled class: stronger than the "tables become stacked cards" rule in components.css) */
+  table.am-grid.am-grid { display: table; width: 100%; min-width: 0; border-spacing: 2px; }
+  table.am-grid.am-grid thead { display: table-header-group; }
+  table.am-grid.am-grid tbody { display: table-row-group; }
+  table.am-grid.am-grid tr { display: table-row; margin: 0; padding: 0; border: 0; border-radius: 0; }
+  table.am-grid.am-grid th, table.am-grid.am-grid td { display: table-cell; width: auto; }
+  table.am-grid.am-grid th { padding: 2px 0; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  table.am-grid.am-grid td { padding: 0; }
+  table.am-grid.am-grid td.am-day { border: 1px solid var(--border); }
+  table.am-grid.am-grid td.am-day.is-outside { border-color: transparent; }
+  table.am-grid.am-grid td.am-day.is-today { border-color: var(--teal-700); }
+  table.am-grid.am-grid td.am-day.is-chosen { border-color: var(--indigo-700); }
+  .am-day { height: 52px; border-radius: var(--radius-sm); }
+  .am-day-btn { min-height: 52px; align-items: center; gap: 3px; padding: var(--space-1) 2px; }
+  .am-day .am-chip { width: 70%; height: 4px; padding: 0; border-radius: var(--radius-pill); font-size: 0; }
+  .am-day .am-chip.is-free { background: var(--status-stable-fg); }
+  .am-day .am-chip.is-full { background: var(--slate-300); }
+  .am-day .am-chip.is-leave { width: auto; height: auto; background: none; color: var(--status-watch-fg); }
+  .am-day-counts { display: none; }
+  /* The chosen day's card comes after the month */
+  .am-side { order: 2; }
+
+  /* ---------- Today's patients: one compact item a person – name on top, then age, visit and status, then the buttons ---------- */
+  .rd-table-wrap { border: 0; border-radius: 0; }
+  table.rd-table.rd-table tr.rd-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3);
+    margin: 0; padding: var(--space-3) 0; border: 0; border-top: 1px solid var(--border); border-radius: 0;
+  }
+  table.rd-table.rd-table tr.rd-row:first-child { border-top: 0; }
+  table.rd-table.rd-table tr.rd-row > td { display: block; width: auto; flex: 0 1 auto; padding: 0; border: 0; background: none; }
+  table.rd-table.rd-table tr.rd-row > td:first-child { display: none; }
+  table.rd-table.rd-table tr.rd-row > td:has(.rd-person), table.rd-table.rd-table tr.rd-row > td:has(.rd-actions) { flex: 1 1 100%; }
+  .rd-row .rd-person { min-width: 0; }
+  .rd-row .rd-sub { display: inline; margin-left: var(--space-1); }
+  .rd-status { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+  /* The buttons as icons (each keeps its word for screen readers), the ⋮ menu in the item's top corner */
+  table.rd-table.rd-table tr.rd-row { position: relative; padding-right: 44px; }
+  .rd-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-2); }
+  .rd-actions > .rd-icon-act { width: 44px; min-width: 44px; }
+  .rd-actions > .menu-button { position: absolute; top: var(--space-2); right: 0; }
+  .rd-more .menu-chevron { display: none; }
+  .rd-row.is-emergency { padding-left: var(--space-2); box-shadow: inset 4px 0 0 var(--status-high-solid); background: var(--status-high-bg); }
+
+  /* ---------- Doctors today: name and state on one line, the three counts small under it ---------- */
+  .rd-doctors li { grid-template-columns: 32px minmax(0, 1fr); gap: 2px var(--space-3); padding: var(--space-2) 0; }
+  .rd-doctors .rd-avatar { width: 32px; height: 32px; font-size: var(--fs-caption); }
+  .rd-doctors .rd-person-text { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+  .rd-doctors .rd-person-text .pill { font-size: var(--fs-caption); line-height: var(--lh-caption); padding: 0 var(--space-2); }
+  .rd-doctors .rd-person-text .pill svg.lucide { width: 12px; height: 12px; }
+  .rd-doctor-counts { gap: var(--space-4); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+  /* ---------- A form's Save bar: one slim row – the main button and the second one side by side, Cancel small ---------- */
+  /* On a page (not in a dialog): an app's bottom bar – stuck to the bottom edge of the screen, the full width */
+  .pf-main .sticky-actions:not(.modal *) {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; flex-wrap: nowrap; gap: var(--space-2); margin: 0;
+    padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+    border-radius: 0; border-top: 1px solid var(--card-border); box-shadow: var(--shadow-pop);
+  }
+  .pf-main:has(.sticky-actions:not(.modal *)) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .pf-has-tabbar .pf-main:has(.sticky-actions:not(.modal *)) { padding-bottom: calc(68px + 76px + env(safe-area-inset-bottom)); }
+  .pf-main .sticky-actions:has(.voice-bar, .voice-save-wait) { flex-wrap: wrap; }
+  .sticky-actions > .btn:not(.btn-link) { min-height: 48px; }
+  .sticky-actions > .btn:not(.btn-link) {
+    flex: 1 1 0; min-width: 0; padding: 0 var(--space-2); white-space: normal; line-height: var(--lh-label); font-size: var(--fs-label);
+  }
+  .sticky-actions > .btn-link { flex: 0 0 auto; padding: 0 var(--space-1); font-size: var(--fs-label); }
+  .sticky-actions > .voice-bar, .sticky-actions > .voice-save-wait { flex: 1 1 100%; }
+
+  /* ---------- Registering a new patient: a sheet over the app, with a grip and Close (AppLayout: pf-sheet) ---------- */
+  .pf-sheet { background: var(--overlay); }
+  .pf-sheet .pf-topbar { display: none; }
+  .pf-sheet .pf-main {
+    margin-top: calc(env(safe-area-inset-top) + var(--space-4)); min-height: calc(100dvh - var(--space-4));
+    padding-bottom: env(safe-area-inset-bottom); border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--mist-100);
+    animation: pf-sheet-up 0.22s ease-out;
+  }
+  .pf-sheet-bar {
+    position: sticky; top: 0; z-index: 6; display: flex; justify-content: flex-end; align-items: center; height: 48px; padding: 0 var(--space-2);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--mist-100);
+  }
+  .pf-sheet-grip { position: absolute; left: 50%; top: var(--space-2); width: 40px; height: 4px; margin-left: -20px; border-radius: var(--radius-pill); background: var(--slate-300); }
+  .pf-sheet .ph { padding-top: 0; }
+  .pf-sheet .ph-crumbs { display: none; }
+  @media (prefers-reduced-motion: reduce) { .pf-sheet .pf-main { animation: none; } }
+
+  /* The form's boxes: less padding; "Choose a service" above its list */
+  .card.form-section, .patient-form fieldset.form-section { margin-bottom: var(--space-3); padding: var(--space-4) var(--space-3); }
+  .form-section h2 { margin-bottom: var(--space-3); }
+  /* Dictate: one full-width button above the form */
+  .voice-folded { margin-bottom: var(--space-3); }
+  .voice-folded > .btn { flex: 1 1 auto; justify-content: center; }
+  /* In the sheet, the X closes it: the section tabs (All patients · New patient · Online sign-ups) are left out */
+  .pf-sheet .ph-tabs { display: none; }
+  .pf-sheet .ph { padding-bottom: var(--space-2); }
+  .fu-bb-add { flex-direction: column; align-items: stretch; }
+  .fu-bb-add select { width: 100%; }
+
+  /* ---------- Calendar: date and arrows on one line, Day · Week · Month across, the "Show" choices in one row ---------- */
+  .cal-toolbar { gap: var(--space-2); padding: var(--space-3); }
+  .cal-toolbar-row { flex-wrap: nowrap; gap: var(--space-2); }
+  .cal-toolbar-row:has(.cal-views) { flex-wrap: wrap; }
+  .cal-title { flex: 1 1 0; min-width: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+  .cal-nav { margin-left: auto; }
+  .cal-nav .btn { min-height: 40px; }
+  .cal-views { flex: 1 1 100%; }
+  .cal-types { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .cal-types::-webkit-scrollbar { display: none; }
+  .cal-types > * { flex: 0 0 auto; }
+  .cal-chip { min-height: 40px; }
+
+  /* ---------- Beds: three beds a row as small tiles ---------- */
+  .bb-summary { padding: var(--space-3); }
+  .bb-toolbar { gap: var(--space-2); }
+  .bb-ward-pick, .bb-ward-pick select { width: 100%; }
+  .bb-ward-head { padding: var(--space-3); }
+  .bb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); padding: 0 var(--space-3) var(--space-3); }
+  .bb-bed { padding: var(--space-2); gap: var(--space-2); }
+  .bb-bed-top { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .bb-bed .pill { font-size: var(--fs-caption); line-height: var(--lh-caption); padding: 0 var(--space-1); }
+  .bb-bed > .btn, .bb-bed .bb-admit, .bb-bed .bb-actions { width: 100%; min-width: 0; min-height: 36px; padding: 0 var(--space-1); font-size: var(--fs-label); }
+
+  /* ---------- Billing: the date line fits, Type and Status side by side with their word above ---------- */
+  .bill-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .bill-toolbar > :not(.bill-filter) { grid-column: 1 / -1; }
+  .bill-filter { display: flex; flex-direction: column; align-items: stretch; gap: 2px; min-width: 0; }
+  .bill-filter > span { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .bill-filter select { width: 100%; min-width: 0; }
+  .appt-daynav { gap: var(--space-1); }
+  .appt-daynav input[type='date'] { padding: 0 var(--space-2); }
+  .dt-empty { padding: var(--space-4) var(--space-3); }
+
+  /* ---------- Today's lists: the ones with someone in them first, full width; the empty ones as small chips after them
+     ("Red flags 0"), still there to tap ---------- */
+  /* The top of a doctor's Today: the two counts side by side, the AI brief one slim row, the handover how-to left out */
+  .td-top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-top > :not(.kpi) { grid-column: 1 / -1; }
+  .td-top > .kpi { gap: var(--space-1); padding: var(--space-3); }
+  .td-top > .kpi .kpi-value { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .td-top > .kpi .kpi-sub { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .ai-brief-idle .ai-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px var(--space-2); }
+  .ai-brief-idle .ai-card-head > h2 { margin: 0; }
+  .ai-brief-idle .ai-card-head > .row { grid-column: 2; grid-row: 1; margin: 0; }
+  .ai-brief-idle .ai-brief-intro { grid-column: 1 / -1; margin: 0; }
+  .ai-brief, .myday, .ward-handover { padding: var(--space-3); }
+  .ward-handover-head > .muted { display: none; }
+  .ward-handover h2, .myday h2 { font-size: var(--fs-body); line-height: var(--lh-body); }
+  .td-sections { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .td-sections > .wl-fold { flex: 1 1 100%; min-width: 0; }
+  .td-sections > .wl-fold:not(.has-items) { order: 1; flex: 0 1 auto; border-radius: var(--radius-pill); box-shadow: none; }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-title button { gap: var(--space-1); min-height: 40px; padding: 0 var(--space-3); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-icon { width: 16px; height: 16px; color: var(--slate-600); }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-chevron { display: none; }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-count { min-width: 0; padding: 0 var(--space-1); background: none; }
+  .td-sections > .wl-fold:not(.has-items).is-open { flex-basis: 100%; border-radius: var(--radius-md); }
+
+  /* ---------- A patient's Overview: each card its title line (FoldCards), tap to open; the care plan keeps its counts and
+     the risk card its level under the title ---------- */
+  .card[data-fold] { padding: var(--space-3) var(--space-4); margin-bottom: 0; }
+  .patient-overview { display: flex; flex-direction: column; gap: var(--space-2); }
+  .patient-overview .ov-row { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+  .card[data-fold] h2[role='button'] { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; margin: 0; cursor: pointer; font-size: var(--fs-body); line-height: var(--lh-body); }
+  .card[data-fold] h2[role='button']::after {
+    content: ''; flex: none; width: 8px; height: 8px; margin: 0 var(--space-1) 4px auto;
+    border-right: 2px solid var(--slate-600); border-bottom: 2px solid var(--slate-600); transform: rotate(45deg); transition: transform 0.15s;
+  }
+  .card[data-fold][data-open] h2[role='button']::after { transform: rotate(-135deg); margin-bottom: -4px; }
+  .card[data-fold] h2[role='button']:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+  .card[data-fold]:not([data-open]) > :not(h2):not(:has(h2)):not(.plan-counts):not(.risk-level-row) { display: none; }
+  .card[data-fold]:not([data-open]) > :has(h2) { margin-bottom: 0; }
+  .card[data-fold] > :has(h2) > h2[role='button'] { flex: 1 1 auto; }
+
+  /* ---------- More than three sections: one "jump to" button with the current one's name; the list opens under it ---------- */
+  .ph-jump-btn {
+    display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 44px; margin-top: var(--space-2); padding: 0 var(--space-3);
+    border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer;
+  }
+  .ph-jump-label { font-weight: 600; }
+  .ph-jump-more { margin-left: auto; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .ph-jump-btn svg.lucide { width: 18px; height: 18px; color: var(--slate-600); transition: transform 0.15s; }
+  .ph-jump-btn[aria-expanded='true'] svg.lucide { transform: rotate(180deg); }
+  .ph-jump-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .ph-has-jump .ph-tabs.segmented { display: none; }
+  .ph-has-jump.ph-jump-open .ph-tabs.segmented {
+    display: flex; flex-direction: column; flex-wrap: nowrap; gap: 0; overflow: visible; margin-top: var(--space-1); padding: var(--space-1);
+    border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-pop); white-space: normal;
+  }
+  .ph-has-jump.ph-jump-open .ph-tabs.segmented > a, .ph-has-jump.ph-jump-open .ph-tabs.segmented > .menu-button > button {
+    display: flex; align-items: center; justify-content: flex-start; width: 100%; min-height: 44px; padding: 0 var(--space-3);
+    border: 0; border-radius: var(--radius-sm); box-shadow: none; font-size: var(--fs-body);
+  }
+  .ph-has-jump.ph-jump-open .ph-tabs.segmented > a.active { background: var(--selected-bg); color: var(--indigo-700); font-weight: 600; box-shadow: inset 3px 0 0 var(--indigo-700); }
+
+  /* ---------- A patient's record: her name bar stays at the top while scrolling (PageHeader pinned) – name, then age ·
+     weeks · doctor, then her tags in one line, then the buttons; once the page moves under it, only the name, the
+     line under it, the tags and the main button ---------- */
+  .ph-pinned { position: sticky; top: calc(env(safe-area-inset-top) + 61px); z-index: 20; background: var(--mist-100); padding-bottom: var(--space-2); }
+  .ph-pinned.ph-stuck { box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.25); border-bottom: 1px solid var(--card-border); }
+  .ph-patient .ph-title { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+  .ph-patient .ph-title-row { flex-wrap: wrap; gap: 2px var(--space-2); min-width: 0; }
+  .ph-patient .ph-title-row .ph-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .ph-patient .ph-badges { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+  .ph-patient .ph-badges * { flex-wrap: nowrap; }
+  .ph-patient .ph-badges::-webkit-scrollbar { display: none; }
+  .ph-patient .ph-badges .pill { flex: none; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .ph-patient .ph-info-btn { display: none; }
+  .ph-patient .ph-subtitle { display: block; margin: 2px 0 0; font-size: var(--fs-label); line-height: var(--lh-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* her buttons: one slim row (the main one first), not big tiles */
+  .ph-patient .ph-actions, .ph-patient .ph-actions:has(> :nth-child(2)) { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+  .ph-patient .ph-actions > .btn, .ph-patient .ph-actions > .menu-button > .btn,
+  .ph-patient .ph-actions:has(> :nth-child(2)) > .btn, .ph-patient .ph-actions:has(> :nth-child(2)) > .menu-button > .btn {
+    flex-direction: row; min-height: 40px; height: auto; padding: 0 var(--space-3); font-size: var(--fs-label); white-space: nowrap; width: auto;
+  }
+  .ph-patient .ph-actions > .btn-primary { order: -1; flex: 1 1 auto; }
+  .ph-patient .ph-actions > .menu-button { flex: 0 0 auto; }
+  .ph-stuck .ph-crumbs, .ph-stuck .ph-jump-btn, .ph-stuck .ph-tabs, .ph-stuck .ph-actions > :not(.btn-primary) { display: none; }
+  .ph-stuck .ph-actions { margin-top: var(--space-1); }
+
+  /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
+  .pt-summary, .patient-form > .alert-patient-note { display: none; }
+  .rd-updated { font-size: 0; }
+  .rd-updated .btn { font-size: var(--fs-label); }
+  .hint { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+  /* A long form's sticky Save bar: above the tab bar */
+  .pf-has-tabbar .pf-main .sticky-actions:not(.modal *) { bottom: calc(68px + env(safe-area-inset-bottom)); padding-bottom: var(--space-2); }
+  .pf-has-tabbar .fp-pick-bar { bottom: calc(68px + env(safe-area-inset-bottom)); }
+
+  /* A tip about the keyboard (Ctrl+K) means nothing on a phone */
+  .tip-keyboard { display: none; }
+}

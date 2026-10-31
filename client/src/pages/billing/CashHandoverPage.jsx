@@ -8,6 +8,7 @@ import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.js
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { MODE_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
+import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // The daily cash handover (owner, 17 Oct 2026 – docs/WHATSAPP_DESK_PLAN.md; like Docterz's "Hisaab Kitaab"): whoever
 // took payments sees what Perinexa counted from their own payments and hands over the cash; a doctor or the hospital
@@ -235,11 +236,15 @@ export function CashHandoverPage() {
             {data.handovers.length === 0 ? (
               <p className="muted">Nothing handed over yet.</p>
             ) : (
-              <ul className="wl-list">
-                {data.handovers.map((h) => (
-                  <ConfirmRow key={h.id} h={h} me={user?.id} onSaved={saved} />
-                ))}
-              </ul>
+              <Paged rows={data.handovers} label="handovers" {...LIST_PAGES}>
+                {(page) => (
+                  <ul className="wl-list">
+                    {page.map((h) => (
+                      <ConfirmRow key={h.id} h={h} me={user?.id} onSaved={saved} />
+                    ))}
+                  </ul>
+                )}
+              </Paged>
             )}
           </section>
         )}
