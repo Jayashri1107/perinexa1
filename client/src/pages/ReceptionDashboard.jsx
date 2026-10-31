@@ -279,12 +279,13 @@ export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMa
                           <UserCheck aria-hidden="true" /> Check in
                         </button>
                       ) : (
-                        <Link to={r.visitId ? `/patients/${p.id}/visits/${r.visitId}` : `/patients/${p.id}`} className="btn btn-secondary btn-sm">
+                        // View and Fill info are icon buttons (their words for screen readers and on hover) so the row stays narrow
+                        <Link to={r.visitId ? `/patients/${p.id}/visits/${r.visitId}` : `/patients/${p.id}`} className="btn btn-secondary btn-sm rd-icon-act" title="View">
                           <Eye aria-hidden="true" /> View
                         </Link>
                       )}
                       {!r.guest && missingOf.has(p.id) && (
-                        <button type="button" className="btn btn-link btn-sm" onClick={() => setFilling({ patient: p, missing: missingOf.get(p.id) })}>
+                        <button type="button" className="btn btn-link btn-sm rd-icon-act" title="Fill info" onClick={() => setFilling({ patient: p, missing: missingOf.get(p.id) })}>
                           <PenLine aria-hidden="true" /> Fill info
                         </button>
                       )}
