@@ -1,6 +1,6 @@
 // The left menu and the Clinic library's tabs, by role (no browser needed).
 import { describe, expect, it } from 'vitest';
-import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, newPatientLinks, patientMenu, patientTabs, platformModules } from './modules.js';
+import { PLATFORM_MODULES, hospitalModules, knowledgeSections, knowledgeTabs, moduleByKey, newPatientLinks, patientMenu, patientTabs, platformModules, tabBarModules } from './modules.js';
 
 const menu = (roles) => hospitalModules(roles).map((m) => m.label);
 
@@ -136,5 +136,22 @@ describe('the Patients menu', () => {
     expect(current('/patients', '?dept=ipd')).toEqual(['Admitted patients']);
     expect(current('/patients/opd', '?as=registered')).toEqual(['OPD registration']);
     expect(current('/patients/new/antenatal', '')).toEqual(['OPD registration']);
+  });
+});
+
+describe('the phone bottom bar (tabBarModules)', () => {
+  const keys = (roles) => tabBarModules(hospitalModules(roles), roles).map((m) => m.key);
+  it('picks the four places each role needs most', () => {
+    expect(keys(['receptionist'])).toEqual(['today', 'patients', 'appointments', 'billing']);
+    expect(keys(['doctor'])).toEqual(['today', 'patients', 'calendar', 'lab']);
+  });
+  it('skips places the menu does not have and fills from the menu order', () => {
+    const roles = ['pharmacist'];
+    const linked = hospitalModules(roles).filter((m) => m.to).slice(0, 4).map((m) => m.key);
+    expect(keys(roles)).toEqual(linked);
+  });
+  it('never shows more than four, and nothing without a menu', () => {
+    expect(keys(['doctor', 'admin', 'receptionist'])).toHaveLength(4);
+    expect(tabBarModules([], [])).toEqual([]);
   });
 });

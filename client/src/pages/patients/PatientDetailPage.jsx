@@ -370,6 +370,8 @@ export function PatientDetailPage() {
         breadcrumbs={[{ label: 'Patients', to: '/patients' }, { label: patient.mrn }]}
         title={patient.fullName}
         documentTitle="Patient record" /* never the patient's name: tab titles stay in browser history */
+        pinned
+        className="ph-patient"
         badges={
           <>
             <StatusPill tone="neutral">{CARE_TYPE_SHORT[patient.careType]}</StatusPill>

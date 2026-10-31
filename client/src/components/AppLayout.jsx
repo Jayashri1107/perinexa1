@@ -6,7 +6,7 @@ import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useFetch } from '../hooks/useFetch.js';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
-import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, hospitalModules, platformModules, seesPatientList } from '../platform/modules.js';
+import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, hospitalModules, platformModules, seesPatientList, tabBarModules } from '../platform/modules.js';
 import { ChangePasswordDialog } from './ChangePasswordDialog.jsx';
 import { useTextShortcuts } from '../shortcuts/useTextShortcuts.js';
 import { CommandBox } from './CommandBox.jsx';
@@ -146,9 +146,9 @@ function SideGroup({ module, rail, onNavigate }) {
 // bottom, and Menu for everything else – as phone apps do. The places are the same as the side menu's, for each role.
 // Short names for the tab bar, where five tabs share a phone's width
 const TAB_NAMES = { Appointments: 'Bookings', Sonography: 'Scans', 'Clinic library': 'Library', 'Hospital admin': 'Admin', 'Daily expenses': 'Expenses', 'Follow-ups': 'Follow-ups' };
-function TabBar({ modules, menuOpen, onMenu }) {
+function TabBar({ modules, roles, menuOpen, onMenu }) {
   const { pathname } = useLocation();
-  const tabs = modules.filter((m) => m.to).slice(0, 4);
+  const tabs = tabBarModules(modules, roles);
   return (
     <nav className="pf-tabbar" aria-label="Main places">
       {tabs.map((m) => {
@@ -569,7 +569,7 @@ export function AppLayout() {
           <Outlet key={activeTenantId ?? 'platform'} />
         </main>
       </div>
-      {phone && !locked && !sheet && <TabBar modules={modules} menuOpen={mobileOpen} onMenu={() => setMobileOpen(true)} />}
+      {phone && !locked && !sheet && <TabBar modules={modules} roles={activeMembership?.roles ?? []} menuOpen={mobileOpen} onMenu={() => setMobileOpen(true)} />}
       {/* Phones: the menu is a sheet over the page; a tap beside it closes it (Escape and its own button do too) */}
       {phone && mobileOpen && <button type="button" className="pf-menu-backdrop" aria-label="Close menu" tabIndex={-1} onClick={closeMobile} />}
       <IdleWarning />

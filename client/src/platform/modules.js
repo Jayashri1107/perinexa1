@@ -495,6 +495,30 @@ export function hospitalModules(roles = []) {
   return modules;
 }
 
+// Phones: the four places in the bottom bar, by what each role's work needs most (31 Oct 2026); everything else is
+// under Menu. A place the person's menu does not have is skipped, and the menu's own order fills any gap.
+const TAB_BAR_ORDER = {
+  doctor: ['today', 'patients', 'calendar', 'lab'],
+  rmo: ['today', 'patients', 'beds', 'lab'],
+  nurse: ['today', 'patients', 'beds', 'follow-ups'],
+  receptionist: ['today', 'patients', 'appointments', 'billing'],
+  referral_desk: ['today', 'referrals', 'patients', 'appointments'],
+  sonographer: ['today', 'scans', 'patients', 'appointments'],
+  lab: ['lab', 'patients', 'today', 'billing'],
+  billing: ['today', 'billing', 'patients', 'expenses'],
+  admin: ['today', 'patients', 'billing', 'hospital-admin'],
+};
+export function tabBarModules(modules = [], roles = []) {
+  const linked = modules.filter((m) => m.to);
+  const picked = [];
+  for (const key of [...roles.flatMap((r) => TAB_BAR_ORDER[r] ?? []), ...linked.map((m) => m.key)]) {
+    const m = linked.find((x) => x.key === key);
+    if (m && !picked.includes(m)) picked.push(m);
+    if (picked.length === 4) break;
+  }
+  return picked;
+}
+
 // Everyone.
 export const ACCOUNT_MODULE = {
   key: 'account',

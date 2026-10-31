@@ -7,7 +7,7 @@
  */
 
 /* Only on phones (shown below) */
-.pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn { display: none; }
+.pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn, .ph-jump-btn { display: none; }
 
 @media (max-width: 719px) {
   /* ---------- The header: one row, stuck to the top ---------- */
@@ -396,6 +396,52 @@
   .card[data-fold]:not([data-open]) > :not(h2):not(:has(h2)):not(.plan-counts):not(.risk-level-row) { display: none; }
   .card[data-fold]:not([data-open]) > :has(h2) { margin-bottom: 0; }
   .card[data-fold] > :has(h2) > h2[role='button'] { flex: 1 1 auto; }
+
+  /* ---------- More than three sections: one "jump to" button with the current one's name; the list opens under it ---------- */
+  .ph-jump-btn {
+    display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 44px; margin-top: var(--space-2); padding: 0 var(--space-3);
+    border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer;
+  }
+  .ph-jump-label { font-weight: 600; }
+  .ph-jump-more { margin-left: auto; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .ph-jump-btn svg.lucide { width: 18px; height: 18px; color: var(--slate-600); transition: transform 0.15s; }
+  .ph-jump-btn[aria-expanded='true'] svg.lucide { transform: rotate(180deg); }
+  .ph-jump-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .ph-has-jump .ph-tabs.segmented { display: none; }
+  .ph-has-jump.ph-jump-open .ph-tabs.segmented {
+    display: flex; flex-direction: column; flex-wrap: nowrap; gap: 0; overflow: visible; margin-top: var(--space-1); padding: var(--space-1);
+    border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-pop); white-space: normal;
+  }
+  .ph-has-jump.ph-jump-open .ph-tabs.segmented > a, .ph-has-jump.ph-jump-open .ph-tabs.segmented > .menu-button > button {
+    display: flex; align-items: center; justify-content: flex-start; width: 100%; min-height: 44px; padding: 0 var(--space-3);
+    border: 0; border-radius: var(--radius-sm); box-shadow: none; font-size: var(--fs-body);
+  }
+  .ph-has-jump.ph-jump-open .ph-tabs.segmented > a.active { background: var(--selected-bg); color: var(--indigo-700); font-weight: 600; box-shadow: inset 3px 0 0 var(--indigo-700); }
+
+  /* ---------- A patient's record: her name bar stays at the top while scrolling (PageHeader pinned) – name, then age ·
+     weeks · doctor, then her tags in one line, then the buttons; once the page moves under it, only the name, the
+     line under it, the tags and the main button ---------- */
+  .ph-pinned { position: sticky; top: calc(env(safe-area-inset-top) + 61px); z-index: 20; background: var(--mist-100); padding-bottom: var(--space-2); }
+  .ph-pinned.ph-stuck { box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.25); border-bottom: 1px solid var(--card-border); }
+  .ph-patient .ph-title { font-size: var(--fs-h3); line-height: var(--lh-h3); }
+  .ph-patient .ph-title-row { flex-wrap: wrap; gap: 2px var(--space-2); min-width: 0; }
+  .ph-patient .ph-title-row .ph-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .ph-patient .ph-badges { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+  .ph-patient .ph-badges * { flex-wrap: nowrap; }
+  .ph-patient .ph-badges::-webkit-scrollbar { display: none; }
+  .ph-patient .ph-badges .pill { flex: none; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .ph-patient .ph-info-btn { display: none; }
+  .ph-patient .ph-subtitle { display: block; margin: 2px 0 0; font-size: var(--fs-label); line-height: var(--lh-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* her buttons: one slim row (the main one first), not big tiles */
+  .ph-patient .ph-actions, .ph-patient .ph-actions:has(> :nth-child(2)) { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+  .ph-patient .ph-actions > .btn, .ph-patient .ph-actions > .menu-button > .btn,
+  .ph-patient .ph-actions:has(> :nth-child(2)) > .btn, .ph-patient .ph-actions:has(> :nth-child(2)) > .menu-button > .btn {
+    flex-direction: row; min-height: 40px; height: auto; padding: 0 var(--space-3); font-size: var(--fs-label); white-space: nowrap; width: auto;
+  }
+  .ph-patient .ph-actions > .btn-primary { order: -1; flex: 1 1 auto; }
+  .ph-patient .ph-actions > .menu-button { flex: 0 0 auto; }
+  .ph-stuck .ph-crumbs, .ph-stuck .ph-jump-btn, .ph-stuck .ph-tabs, .ph-stuck .ph-actions > :not(.btn-primary) { display: none; }
+  .ph-stuck .ph-actions { margin-top: var(--space-1); }
 
   /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
   .pt-summary, .patient-form > .alert-patient-note { display: none; }
