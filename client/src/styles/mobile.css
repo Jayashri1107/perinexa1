@@ -1,0 +1,89 @@
+/*
+ * Phones and the Android / iPhone apps (31 Oct 2026, mobile/README.md). Below 720 px Perinexa looks and works like a
+ * phone app: one slim header row (menu, hospital, search, notifications, profile), "Find a patient" behind its button,
+ * a tab bar at the bottom with the first four places of the person's menu and Menu, the side menu sliding in with Log
+ * out at its foot, one-column forms with large touch targets, and dialogs as sheets from the bottom. Tablets and
+ * computers are unchanged. The safe-area insets keep it clear of a phone's notch and home bar.
+ */
+
+/* Only on phones (shown below) */
+.pf-search-btn, .pf-tabbar, .sb-logout { display: none; }
+
+@media (max-width: 719px) {
+  /* ---------- The header: one row, stuck to the top ---------- */
+  .pf-topbar {
+    position: sticky; top: 0; z-index: 30; flex-wrap: nowrap; gap: var(--space-2);
+    margin: 0; padding: calc(env(safe-area-inset-top) + var(--space-2)) var(--space-3) var(--space-2);
+    border: 0; border-bottom: 1px solid var(--card-border); border-radius: 0; box-shadow: none;
+  }
+  .pf-topbar-start { flex: 1 1 auto; min-width: 0; gap: var(--space-2); }
+  .pf-topbar-actions { flex: 0 0 auto; flex-wrap: nowrap; gap: var(--space-1); margin-left: 0; }
+  /* The hospital's name only: the date, the switch and the buttons are in the menu and the profile card */
+  .pf-topbar .ws { flex-wrap: nowrap; }
+  .pf-topbar .ws-icon, .pf-topbar .ws-who, .pf-topbar .ws-switch { display: none; }
+  .pf-topbar .ws-text { max-width: none; }
+  .pf-topbar .ws-name { font-size: var(--fs-body); line-height: var(--lh-body); }
+  .pf-topbar-actions > .btn, .pf-topbar-actions > .pill, .pf-topbar .pf-help, .pf-topbar .pf-logout { display: none; }
+  .pf-search-btn { display: inline-grid; }
+  /* Find a patient: under the header, when its button is pressed */
+  .pf-topbar > .ps { display: none; }
+  .pf-search-open .pf-topbar { flex-wrap: wrap; }
+  .pf-search-open .pf-topbar > .ps { display: block; order: 3; flex: 1 1 100%; max-width: none; margin: 0; }
+  .pf-topbar .ps-pop { position: fixed; left: var(--space-2); right: var(--space-2); top: auto; max-height: 60vh; }
+
+  /* ---------- The tab bar at the bottom ---------- */
+  .pf-has-tabbar .pf-main { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .pf-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px;
+    padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));
+    background: var(--surface); border-top: 1px solid var(--card-border); box-shadow: var(--shadow-card);
+  }
+  .pf-tab {
+    display: grid; justify-items: center; align-content: center; gap: 2px; min-width: 0; min-height: 56px; padding: var(--space-1) 2px;
+    border: 0; border-radius: var(--radius-md); background: none; color: var(--slate-600);
+    font: inherit; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; text-decoration: none; cursor: pointer;
+  }
+  .pf-tab svg.lucide { width: 22px; height: 22px; }
+  .pf-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-tab.active { color: var(--indigo-700); background: var(--mist-100); font-weight: 600; }
+  .pf-tab:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+
+  /* ---------- The side menu: slides in, clear of the notch, Log out at its foot ---------- */
+  .pf .sb { width: min(86vw, var(--sidebar-width)); padding-top: calc(env(safe-area-inset-top) + var(--space-4)); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); }
+  .pf-mobile-open .sb-logout {
+    display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; margin: var(--space-3) var(--space-2) 0; padding: var(--space-3);
+    border: 0; border-radius: var(--radius-md); background: var(--nav-tile); color: var(--on-dark); font: inherit; font-weight: 500; cursor: pointer;
+  }
+  .sb-logout svg.lucide { width: 18px; height: 18px; }
+  .sb-logout:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+
+  /* ---------- Forms: one column, large touch targets; 16 px text so a phone doesn't zoom in ---------- */
+  input, select, textarea { font-size: 16px; }
+  input:not([type='checkbox']):not([type='radio']):not([type='range']), select { min-height: max(var(--control-height), 44px); }
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .btn { min-height: max(var(--control-height), 44px); }
+  .row { flex-wrap: wrap; }
+  .check { min-height: max(var(--control-height), 44px); }
+
+  /* ---------- Dialogs: a sheet from the bottom ---------- */
+  .modal-backdrop { align-items: end; padding: 0; }
+  .modal {
+    max-width: none; max-height: calc(100dvh - var(--space-8) - env(safe-area-inset-top));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- Count tiles: two a row ---------- */
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .kpi-grid > .kpi { padding: var(--space-3); }
+
+  /* ---------- Page titles: compact; the page's buttons wrap under the title ---------- */
+  .ph { padding-top: var(--space-3); }
+  .ph-actions { flex-wrap: wrap; }
+  /* A long form's sticky Save bar: above the tab bar */
+  .pf-has-tabbar .sticky-actions { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .pf-has-tabbar .fp-pick-bar { bottom: calc(68px + env(safe-area-inset-bottom)); }
+
+  /* A tip about the keyboard (Ctrl+K) means nothing on a phone */
+  .tip-keyboard { display: none; }
+}

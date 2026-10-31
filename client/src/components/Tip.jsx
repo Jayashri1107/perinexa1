@@ -8,7 +8,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 // browser; nothing about a patient). Help → What's new lists them all.
 
 export const WHATS_NEW = [
-  { id: 'cmdk-2026-10', where: 'Every screen', text: 'Press Ctrl+K to go anywhere: a page, a patient (name, phone or number), or "book Friday".' },
+  { id: 'cmdk-2026-10', where: 'Every screen', text: 'Press Ctrl+K to go anywhere: a page, a patient (name, phone or number), or "book Friday".', keyboard: true },
   { id: 'visit-2026-10', where: 'A visit', text: '“Same as last visit” copies the medicines and advice. Enter moves to the next box, Ctrl+Enter saves. Unsaved typing is kept for you if you are called away.' },
   { id: 'shortcuts-2026-10', where: 'Any text box', text: 'Typing shortcuts: make your own in My settings → Typing shortcuts, then type .fu2 and a space.' },
   { id: 'timeline-2026-10', where: 'A pregnant patient', text: 'The pregnancy timeline on her Overview shows visits and scans – done, due or missed – from the LMP to the EDD.' },
@@ -48,7 +48,7 @@ export function Tip({ id, ids = [id] }) {
     }
   };
   return (
-    <div className="tip" role="note">
+    <div className={`tip ${tip.keyboard ? 'tip-keyboard' : ''}`} role="note">
       <Lightbulb aria-hidden="true" />
       <p>
         <strong>New:</strong> {tip.text} <Link to="/help#whats-new">What's new</Link>
