@@ -457,7 +457,7 @@ export function AppLayout() {
       <aside className="sb" id="main-menu" aria-label="Main navigation">
         <div className="sb-brand">
           <button type="button" className="sb-toggle" onClick={toggleMenu} aria-label={menuLabel} title={menuLabel} aria-expanded={!rail} aria-controls="main-menu" ref={toggleRef}>
-            <Menu aria-hidden="true" />
+            {phone && mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
           <Link to="/" onClick={closeMobile} aria-label="Perinexa – start page">
             <img className="sb-logo" src={logoReversed} alt="Perinexa by Docvritta" width="150" height="37" />
@@ -570,6 +570,8 @@ export function AppLayout() {
         </main>
       </div>
       {phone && !locked && !sheet && <TabBar modules={modules} menuOpen={mobileOpen} onMenu={() => setMobileOpen(true)} />}
+      {/* Phones: the menu is a sheet over the page; a tap beside it closes it (Escape and its own button do too) */}
+      {phone && mobileOpen && <button type="button" className="pf-menu-backdrop" aria-label="Close menu" tabIndex={-1} onClick={closeMobile} />}
       <IdleWarning />
       {switching === 'down' && canSwitch(user, platform) && <SwitchAccountDialog email={platform?.linkedAccount?.email ?? null} onClose={() => setSwitching(null)} />}
       {switching === 'up' && switchBack && <SwitchBackDialog onClose={() => setSwitching(null)} />}

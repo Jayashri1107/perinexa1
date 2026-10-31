@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Info } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { MenuButton } from './MenuButton.jsx';
@@ -21,6 +21,8 @@ export const TitleSlotContext = createContext(null);
 export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, actions, tabs, subtabs, documentTitle }) {
   const slot = useContext(TitleSlotContext);
   const { pathname } = useLocation();
+  // Phones: the subtitle waits behind an ⓘ beside the title (mobile.css), shown when it is tapped
+  const [infoOpen, setInfoOpen] = useState(false);
 
   // The browser tab shows the screen and the hospital, e.g. "Patients · Sunrise General Hospital" ("Perinexa" before a
   // hospital is chosen), so a computer shared by two hospitals shows which one is open. PRIVACY: the tab title is kept in the
@@ -56,6 +58,11 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
         {/* Long names (e.g. a template's full name) use the smaller card-title size so they don't fill the screen */}
         <h1 className={`ph-title ${typeof title === 'string' && title.length > 36 ? 'ph-title-long' : ''}`}>{title}</h1>
         {badges && <span className="ph-badges">{badges}</span>}
+        {subtitle && (
+          <button type="button" className="icon-btn ph-info-btn" aria-label="About this page" aria-expanded={infoOpen} onClick={() => setInfoOpen(!infoOpen)}>
+            <Info aria-hidden="true" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -68,7 +75,7 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
     <>
       {slot && createPortal(heading, slot)}
       {(!slot || subtitle || help || actions || showTabs || showSubtabs) && (
-        <header className="ph">
+        <header className={`ph${infoOpen ? ' ph-info-open' : ''}`}>
           {/* One row (owner, 13 Oct 2026): the title with its subtitle on the left, the buttons on the right */}
           {(!slot || subtitle || help || actions) && (
             <div className={slot ? 'ph-main' : 'ph-main ph-top'}>

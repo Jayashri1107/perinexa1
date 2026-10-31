@@ -7,7 +7,7 @@
  */
 
 /* Only on phones (shown below) */
-.pf-search-btn, .pf-tabbar, .sb-logout { display: none; }
+.pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn { display: none; }
 
 @media (max-width: 719px) {
   /* ---------- The header: one row, stuck to the top ---------- */
@@ -49,11 +49,47 @@
   .pf-tab.active { color: var(--indigo-700); background: var(--mist-100); font-weight: 600; }
   .pf-tab:focus-visible { box-shadow: var(--focus-ring); outline: none; }
 
-  /* ---------- The side menu: slides in, clear of the notch, Log out at its foot ---------- */
-  .pf .sb { width: min(86vw, var(--sidebar-width)); padding-top: calc(env(safe-area-inset-top) + var(--space-4)); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); }
+  /* ---------- The menu: a sheet from the bottom with every place as an icon tile, three a row (like a phone's home
+     screen); the person and Log out at its foot ---------- */
+  .pf .sb {
+    top: auto; bottom: 0; left: 0; right: 0; z-index: 60; width: auto; height: auto; max-height: 88dvh; overflow-y: auto;
+    transform: translateY(100%); padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-4));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--surface); color: var(--ink);
+  }
+  .pf-mobile-open .sb { transform: none; }
+  .pf-menu-backdrop { position: fixed; inset: 0; z-index: 55; border: 0; padding: 0; background: var(--overlay); }
+  .pf .sb-brand { justify-content: center; position: relative; min-height: 32px; padding: 0; border: 0; }
+  .pf .sb-brand::before { content: ''; width: 40px; height: 4px; margin-top: var(--space-1); border-radius: var(--radius-pill); background: var(--slate-300); }
+  .pf .sb-brand > a { display: none; }
+  .pf .sb-toggle { position: absolute; right: 0; top: 0; display: inline-grid; border-color: var(--card-border); color: var(--ink); }
+  .pf .sb-subtitle { margin: 0 0 var(--space-3); padding: 0; color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; }
+  .pf .sb-subtitle svg.lucide { display: none; }
+  .pf .sb-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); padding: 0; overflow: visible; }
+  .pf .sb-section { grid-column: 1 / -1; margin: var(--space-2) 0 0; color: var(--slate-600); }
+  .pf-mobile-open .sb-link, .pf .sb-link {
+    flex-direction: column; justify-content: center; align-items: center; gap: var(--space-1); min-height: 92px; padding: var(--space-3) var(--space-1);
+    border-radius: var(--radius-lg); background: var(--mist-50); color: var(--ink); text-align: center; white-space: normal;
+    font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600;
+  }
+  .pf .sb-link:hover { background: var(--mist-100); color: var(--ink); }
+  .pf .sb-link.active { background: var(--selected-bg); color: var(--indigo-700); box-shadow: inset 0 0 0 2px var(--indigo-700); }
+  .pf .sb-tile, .pf .sb-link.active .sb-tile { width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
+  .pf .sb-link .sb-chevron { display: none; }
+  .pf .sb-link:focus-visible { box-shadow: var(--focus-ring); }
+  /* Patients' own list (OPD registration, OPD patients, Admitted patients): a row of its own under the tiles */
+  .pf .sb-sub { grid-column: 1 / -1; margin: 0; padding: var(--space-2); border: 0; border-radius: var(--radius-lg); background: var(--mist-50); }
+  .pf .sb-sub-head { color: var(--slate-600); }
+  .pf .sb-sub-link { padding: var(--space-3); color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); }
+  .pf .sb-sub-link:hover { background: var(--mist-100); color: var(--ink); }
+  .pf .sb-sub-link.active { background: var(--selected-bg); color: var(--indigo-700); box-shadow: inset 3px 0 0 var(--indigo-700); }
+  .pf .sb-sub-head:focus-visible, .pf .sb-sub-link:focus-visible { box-shadow: var(--focus-ring); }
+  .pf .sb-foot { display: flex; margin: var(--space-4) 0 0; padding: var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--mist-50); color: var(--ink); }
+  .pf .sb-foot-text strong { color: var(--ink); }
+  .pf .sb-foot-text span { color: var(--slate-600); }
+  .pf .sb-link::before, .pf .sb-link::after { display: none; }
   .pf-mobile-open .sb-logout {
-    display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; margin: var(--space-3) var(--space-2) 0; padding: var(--space-3);
-    border: 0; border-radius: var(--radius-md); background: var(--nav-tile); color: var(--on-dark); font: inherit; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: var(--space-2); flex-shrink: 0; width: 100%; margin: var(--space-3) 0 0; padding: var(--space-3);
+    border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer;
   }
   .sb-logout svg.lucide { width: 18px; height: 18px; }
   .sb-logout:focus-visible { box-shadow: var(--focus-ring); outline: none; }
@@ -91,6 +127,11 @@
   .ph { padding-top: var(--space-3); }
   .ph-title { font-size: var(--fs-h2); line-height: var(--lh-h2); }
   .ph-subtitle { display: none; }
+  /* …shown with the ⓘ beside the title (PageHeader) */
+  .ph-info-btn { display: inline-grid; width: 36px; height: 36px; min-height: 0; border: 0; background: none; color: var(--slate-600); }
+  .ph-info-btn svg.lucide { width: 18px; height: 18px; }
+  .ph-info-btn[aria-expanded='true'] { color: var(--indigo-700); background: var(--mist-100); }
+  .ph-info-open .ph-subtitle { display: block; margin-top: var(--space-1); font-size: var(--fs-label); line-height: var(--lh-label); }
   .ph-actions { flex-wrap: wrap; }
   .ph-main { gap: var(--space-2); }
   .ph-main > .ph-actions { margin-top: 0; }
@@ -108,6 +149,9 @@
     font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600;
   }
   .ph-actions:has(> :nth-child(2)) > .menu-button { display: flex; min-width: 0; }
+  /* A switch among the buttons (a doctor's My patients · All patients): its own full row above the tiles */
+  .ph-actions:has(> .segmented) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-actions > .segmented { grid-column: 1 / -1; order: -1; }
   .ph-actions:has(> :nth-child(2)) .btn svg.lucide { width: 20px; height: 20px; }
 
   /* ---------- Tabs and filters: one line that scrolls sideways, never two lines ---------- */
@@ -131,15 +175,23 @@
   .dt td, table:not(.dt, .ptable, .am-grid) td { padding: 2px var(--space-3); }
   /* The label in its own 88 px column; everything in the cell (however many parts) to its right */
   .dt td[data-label], table:not(.dt, .ptable, .am-grid) td[data-label] {
-    position: relative; display: block; min-height: calc(var(--lh-body) + 4px); padding-left: calc(var(--space-3) + 88px + var(--space-2));
+    position: relative; display: block; min-height: calc(var(--lh-body) + 4px); padding-left: calc(var(--space-3) + 100px + var(--space-2));
   }
   .dt td[data-label]::before, table:not(.dt, .ptable, .am-grid) td[data-label]::before {
-    position: absolute; left: var(--space-3); top: 4px; width: 88px; font-size: var(--fs-caption); line-height: var(--lh-caption);
+    position: absolute; left: var(--space-3); top: 4px; width: 100px; font-size: var(--fs-caption); line-height: var(--lh-caption);
   }
   .dt td.wrap-cell { min-width: 0; max-width: none; }
   .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { display: block; padding-bottom: var(--space-1); font-weight: 600; }
   .dt td[data-label]:first-child::before, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child::before { display: none; }
   table:not(.dt, .ptable, .am-grid) tr { margin-bottom: var(--space-2); }
+  /* One look for every list: the name in bold ink (not an underlined link) and a › on the right of a row that opens
+     when tapped (DataTable's dt-clickable rows, or a row whose first cell links to it) */
+  .dt tbody tr:is(.dt-clickable, :has(> td:first-child a[href])) { position: relative; padding-right: var(--space-8); }
+  .dt tbody tr:is(.dt-clickable, :has(> td:first-child a[href]))::after {
+    content: ''; position: absolute; right: var(--space-3); top: 50%; width: 9px; height: 9px; margin-top: -5px;
+    border-top: 2px solid var(--slate-300); border-right: 2px solid var(--slate-300); transform: rotate(45deg); pointer-events: none;
+  }
+  .dt tbody td:first-child a[href]:first-of-type { color: var(--ink); font-weight: 600; text-decoration: none; }
   .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { padding-left: var(--space-3); }
   /* Above a list: the search and its filter button on one line */
   .dt-toolbar { flex-wrap: nowrap; align-items: center; gap: var(--space-2); padding: var(--space-3); }
@@ -304,6 +356,46 @@
   .appt-daynav { gap: var(--space-1); }
   .appt-daynav input[type='date'] { padding: 0 var(--space-2); }
   .dt-empty { padding: var(--space-4) var(--space-3); }
+
+  /* ---------- Today's lists: the ones with someone in them first, full width; the empty ones as small chips after them
+     ("Red flags 0"), still there to tap ---------- */
+  /* The top of a doctor's Today: the two counts side by side, the AI brief one slim row, the handover how-to left out */
+  .td-top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-top > :not(.kpi) { grid-column: 1 / -1; }
+  .td-top > .kpi { gap: var(--space-1); padding: var(--space-3); }
+  .td-top > .kpi .kpi-value { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .td-top > .kpi .kpi-sub { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .ai-brief-idle .ai-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px var(--space-2); }
+  .ai-brief-idle .ai-card-head > h2 { margin: 0; }
+  .ai-brief-idle .ai-card-head > .row { grid-column: 2; grid-row: 1; margin: 0; }
+  .ai-brief-idle .ai-brief-intro { grid-column: 1 / -1; margin: 0; }
+  .ai-brief, .myday, .ward-handover { padding: var(--space-3); }
+  .ward-handover-head > .muted { display: none; }
+  .ward-handover h2, .myday h2 { font-size: var(--fs-body); line-height: var(--lh-body); }
+  .td-sections { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .td-sections > .wl-fold { flex: 1 1 100%; min-width: 0; }
+  .td-sections > .wl-fold:not(.has-items) { order: 1; flex: 0 1 auto; border-radius: var(--radius-pill); box-shadow: none; }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-title button { gap: var(--space-1); min-height: 40px; padding: 0 var(--space-3); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-icon { width: 16px; height: 16px; color: var(--slate-600); }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-chevron { display: none; }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-count { min-width: 0; padding: 0 var(--space-1); background: none; }
+  .td-sections > .wl-fold:not(.has-items).is-open { flex-basis: 100%; border-radius: var(--radius-md); }
+
+  /* ---------- A patient's Overview: each card its title line (FoldCards), tap to open; the care plan keeps its counts and
+     the risk card its level under the title ---------- */
+  .card[data-fold] { padding: var(--space-3) var(--space-4); margin-bottom: 0; }
+  .patient-overview { display: flex; flex-direction: column; gap: var(--space-2); }
+  .patient-overview .ov-row { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+  .card[data-fold] h2[role='button'] { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; margin: 0; cursor: pointer; font-size: var(--fs-body); line-height: var(--lh-body); }
+  .card[data-fold] h2[role='button']::after {
+    content: ''; flex: none; width: 8px; height: 8px; margin: 0 var(--space-1) 4px auto;
+    border-right: 2px solid var(--slate-600); border-bottom: 2px solid var(--slate-600); transform: rotate(45deg); transition: transform 0.15s;
+  }
+  .card[data-fold][data-open] h2[role='button']::after { transform: rotate(-135deg); margin-bottom: -4px; }
+  .card[data-fold] h2[role='button']:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+  .card[data-fold]:not([data-open]) > :not(h2):not(:has(h2)):not(.plan-counts):not(.risk-level-row) { display: none; }
+  .card[data-fold]:not([data-open]) > :has(h2) { margin-bottom: 0; }
+  .card[data-fold] > :has(h2) > h2[role='button'] { flex: 1 1 auto; }
 
   /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
   .pt-summary, .patient-form > .alert-patient-note { display: none; }
