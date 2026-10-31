@@ -141,12 +141,18 @@
   /* The month: a real 7-day grid that fits the screen. A day shows its number, a short coloured bar per session and
      the plane for leave; the times and words are on the legend above and in the chosen day's card. */
   .am-calendar { padding: var(--space-2); overflow: visible; }
-  .am-grid, table.am-grid { display: table; width: 100%; min-width: 0; border-spacing: 2px; }
-  .am-grid thead { display: table-header-group; }
-  .am-grid tbody { display: table-row-group; }
-  .am-grid tr { display: table-row; }
-  .am-grid th, .am-grid td { display: table-cell; width: auto; }
-  .am-grid th { padding: 2px 0; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  /* (doubled class: stronger than the "tables become stacked cards" rule in components.css) */
+  table.am-grid.am-grid { display: table; width: 100%; min-width: 0; border-spacing: 2px; }
+  table.am-grid.am-grid thead { display: table-header-group; }
+  table.am-grid.am-grid tbody { display: table-row-group; }
+  table.am-grid.am-grid tr { display: table-row; margin: 0; padding: 0; border: 0; border-radius: 0; }
+  table.am-grid.am-grid th, table.am-grid.am-grid td { display: table-cell; width: auto; }
+  table.am-grid.am-grid th { padding: 2px 0; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  table.am-grid.am-grid td { padding: 0; }
+  table.am-grid.am-grid td.am-day { border: 1px solid var(--border); }
+  table.am-grid.am-grid td.am-day.is-outside { border-color: transparent; }
+  table.am-grid.am-grid td.am-day.is-today { border-color: var(--teal-700); }
+  table.am-grid.am-grid td.am-day.is-chosen { border-color: var(--indigo-700); }
   .am-day { height: 52px; border-radius: var(--radius-sm); }
   .am-day-btn { min-height: 52px; align-items: center; gap: 3px; padding: var(--space-1) 2px; }
   .am-day .am-chip { width: 70%; height: 4px; padding: 0; border-radius: var(--radius-pill); font-size: 0; }
@@ -156,6 +162,46 @@
   .am-day-counts { display: none; }
   /* The chosen day's card comes after the month */
   .am-side { order: 2; }
+
+  /* ---------- Today's patients: one compact item a person – name on top, then age, visit and status, then the buttons ---------- */
+  .rd-table-wrap { border: 0; border-radius: 0; }
+  table.rd-table.rd-table tr.rd-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3);
+    margin: 0; padding: var(--space-3) 0; border: 0; border-top: 1px solid var(--border); border-radius: 0;
+  }
+  table.rd-table.rd-table tr.rd-row:first-child { border-top: 0; }
+  table.rd-table.rd-table tr.rd-row > td { display: block; width: auto; flex: 0 1 auto; padding: 0; border: 0; background: none; }
+  table.rd-table.rd-table tr.rd-row > td:first-child { display: none; }
+  table.rd-table.rd-table tr.rd-row > td:has(.rd-person), table.rd-table.rd-table tr.rd-row > td:has(.rd-actions) { flex: 1 1 100%; }
+  .rd-row .rd-person { min-width: 0; }
+  .rd-row .rd-sub { display: inline; margin-left: var(--space-1); }
+  .rd-status { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+  .rd-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-2); }
+  .rd-actions > .btn-secondary { flex: 1 1 0; }
+  .rd-row.is-emergency { padding-left: var(--space-2); box-shadow: inset 4px 0 0 var(--status-high-solid); background: var(--status-high-bg); }
+
+  /* ---------- Doctors today: name and state on one line, the three counts small under it ---------- */
+  .rd-doctors li { grid-template-columns: 32px minmax(0, 1fr); gap: 2px var(--space-3); padding: var(--space-2) 0; }
+  .rd-doctors .rd-avatar { width: 32px; height: 32px; font-size: var(--fs-caption); }
+  .rd-doctors .rd-person-text { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+  .rd-doctors .rd-person-text .pill { font-size: var(--fs-caption); line-height: var(--lh-caption); padding: 0 var(--space-2); }
+  .rd-doctors .rd-person-text .pill svg.lucide { width: 12px; height: 12px; }
+  .rd-doctor-counts { gap: var(--space-4); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+  /* ---------- A form's Save bar: one slim row – the main button and the second one side by side, Cancel small ---------- */
+  .sticky-actions { gap: var(--space-2); padding: var(--space-2); border-radius: var(--radius-md); margin-top: var(--space-3); }
+  .sticky-actions > .btn:not(.btn-link) {
+    flex: 1 1 0; min-width: 0; padding: 0 var(--space-2); white-space: normal; line-height: var(--lh-label); font-size: var(--fs-label);
+  }
+  .sticky-actions > .btn-link { flex: 0 0 auto; padding: 0 var(--space-1); font-size: var(--fs-label); }
+  .sticky-actions > .voice-bar, .sticky-actions > .voice-save-wait { flex: 1 1 100%; }
+
+  /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
+  .pt-summary, .patient-form > .alert-patient-note { display: none; }
+  .rd-updated { font-size: 0; }
+  .rd-updated .btn { font-size: var(--fs-label); }
+  .hint { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
   /* A long form's sticky Save bar: above the tab bar */
   .pf-has-tabbar .sticky-actions { bottom: calc(76px + env(safe-area-inset-bottom)); }
   .pf-has-tabbar .fp-pick-bar { bottom: calc(68px + env(safe-area-inset-bottom)); }
