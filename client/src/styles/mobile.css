@@ -73,13 +73,89 @@
     border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
   }
 
-  /* ---------- Count tiles: two a row ---------- */
-  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
-  .kpi-grid > .kpi { padding: var(--space-3); }
+  /* ---------- Count cards: one row that swipes sideways, the next card peeking in ---------- */
+  .kpi-grid, .rd-numbers {
+    display: flex; gap: var(--space-2); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+    scrollbar-width: none; margin-bottom: var(--space-3); padding: 2px 2px var(--space-2);
+  }
+  .kpi-grid::-webkit-scrollbar, .rd-numbers::-webkit-scrollbar { display: none; }
+  .kpi-grid > .kpi { flex: 0 0 44%; scroll-snap-align: start; gap: var(--space-2); padding: var(--space-3); }
+  .kpi > .pill { gap: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .kpi > .pill svg.lucide { width: 36px; height: 36px; padding: 8px; }
+  .kpi-value { font-size: var(--fs-h1); line-height: var(--lh-h1); }
+  .rd-numbers > .rd-number { flex: 0 0 74%; scroll-snap-align: start; padding: var(--space-3); gap: var(--space-3); }
+  .rd-number .rd-icon { width: 40px; height: 40px; }
+  .rd-number-value { font-size: var(--fs-h1); line-height: var(--lh-h1); }
 
-  /* ---------- Page titles: compact; the page's buttons wrap under the title ---------- */
+  /* ---------- Page titles: compact; the help line under the title is left out ---------- */
   .ph { padding-top: var(--space-3); }
+  .ph-title { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .ph-subtitle { display: none; }
   .ph-actions { flex-wrap: wrap; }
+  /* Two or more page buttons: quick-action tiles side by side (icon over the word), like an app's shortcuts */
+  .ph-actions:has(> :nth-child(2)) {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); align-items: stretch;
+  }
+  .ph-actions:has(> :nth-child(2)) > .btn,
+  .ph-actions:has(> :nth-child(2)) > .menu-button > .btn {
+    flex-direction: column; justify-content: center; gap: var(--space-1); width: 100%; height: 100%; min-height: 64px;
+    padding: var(--space-2) var(--space-1); white-space: normal; text-align: center;
+    font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600;
+  }
+  .ph-actions:has(> :nth-child(2)) > .menu-button { display: flex; min-width: 0; }
+  .ph-actions:has(> :nth-child(2)) .btn svg.lucide { width: 20px; height: 20px; }
+
+  /* ---------- Tabs and filters: one line that scrolls sideways, never two lines ---------- */
+  .ph-tabs.segmented:not(:has(.menu-button)), .ph-subtabs, .rd-tabs {
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; white-space: nowrap;
+  }
+  .ph-tabs.segmented::-webkit-scrollbar, .ph-subtabs::-webkit-scrollbar, .rd-tabs::-webkit-scrollbar { display: none; }
+  .ph-tabs.segmented > *, .ph-subtabs > *, .rd-tabs > * { flex: 0 0 auto; }
+  .segmented > * { flex: 0 0 auto; white-space: nowrap; }
+
+  /* ---------- Lists: each row a compact item – its first line in bold, then "label  value" side by side ---------- */
+  .dt tr, table:not(.dt, .ptable, .am-grid) tr { padding: var(--space-2) 0; }
+  .dt td, table:not(.dt, .ptable, .am-grid) td { padding: 2px var(--space-3); }
+  .dt td[data-label], table:not(.dt, .ptable, .am-grid) td[data-label] {
+    display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: var(--space-2); align-items: baseline;
+  }
+  .dt td[data-label]::before, table:not(.dt, .ptable, .am-grid) td[data-label]::before { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { display: block; padding-bottom: var(--space-1); font-weight: 600; }
+  .dt td[data-label]:first-child::before, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child::before { display: none; }
+  table:not(.dt, .ptable, .am-grid) tr { margin-bottom: var(--space-2); }
+
+  /* ---------- Cards: less padding, so more fits on a screen ---------- */
+  .card, .panel, .dt-card { border-radius: var(--radius-md); }
+  .rd-patients, .rd-side-card, .rd-side > .rc-todo, .appt-toolbar, .am-side-card { padding: var(--space-3); }
+  .rd-greeting h2 { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .rd-doctor-counts { gap: var(--space-6); }
+  .rd-doctor-counts strong { display: inline; margin-right: var(--space-1); font-size: var(--fs-body); line-height: var(--lh-body); }
+
+  /* ---------- Appointments: the arrows, the date and Today on one line ---------- */
+  .appt-toolbar { gap: var(--space-2); }
+  .appt-toolbar-field { flex: 1 1 100%; min-width: 0; }
+  .appt-daynav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; width: 100%; }
+  .appt-daynav input[type='date'] { width: 100%; }
+  .appt-daynav .am-month { min-width: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+  .am-legend { width: 100%; margin: 0; }
+  /* The month: a real 7-day grid that fits the screen. A day shows its number, a short coloured bar per session and
+     the plane for leave; the times and words are on the legend above and in the chosen day's card. */
+  .am-calendar { padding: var(--space-2); overflow: visible; }
+  .am-grid, table.am-grid { display: table; width: 100%; min-width: 0; border-spacing: 2px; }
+  .am-grid thead { display: table-header-group; }
+  .am-grid tbody { display: table-row-group; }
+  .am-grid tr { display: table-row; }
+  .am-grid th, .am-grid td { display: table-cell; width: auto; }
+  .am-grid th { padding: 2px 0; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .am-day { height: 52px; border-radius: var(--radius-sm); }
+  .am-day-btn { min-height: 52px; align-items: center; gap: 3px; padding: var(--space-1) 2px; }
+  .am-day .am-chip { width: 70%; height: 4px; padding: 0; border-radius: var(--radius-pill); font-size: 0; }
+  .am-day .am-chip.is-free { background: var(--status-stable-fg); }
+  .am-day .am-chip.is-full { background: var(--slate-300); }
+  .am-day .am-chip.is-leave { width: auto; height: auto; background: none; color: var(--status-watch-fg); }
+  .am-day-counts { display: none; }
+  /* The chosen day's card comes after the month */
+  .am-side { order: 2; }
   /* A long form's sticky Save bar: above the tab bar */
   .pf-has-tabbar .sticky-actions { bottom: calc(76px + env(safe-area-inset-bottom)); }
   .pf-has-tabbar .fp-pick-bar { bottom: calc(68px + env(safe-area-inset-bottom)); }
