@@ -111,7 +111,15 @@
   }
   .ph-tabs.segmented::-webkit-scrollbar, .ph-subtabs::-webkit-scrollbar, .rd-tabs::-webkit-scrollbar { display: none; }
   .ph-tabs.segmented > *, .ph-subtabs > *, .rd-tabs > * { flex: 0 0 auto; }
-  .segmented > * { flex: 0 0 auto; white-space: nowrap; }
+  /* Tabs with a drop-down (Patients: All patients · New patient ▾ · Online sign-ups): narrower, so they fit one line
+     (no sideways scrolling here – it would cut off the drop-down) */
+  .ph-tabs.segmented:has(.menu-button) { flex-wrap: nowrap; gap: 0; }
+  .ph-tabs.segmented:has(.menu-button) > a, .ph-tabs.segmented:has(.menu-button) > .menu-button > button {
+    padding: 0 var(--space-2); font-size: var(--fs-label); white-space: nowrap;
+  }
+  /* A filter switch (All beds · Available · Occupied, Day · Week · Month): the full width, equal parts */
+  .segmented:not(.ph-tabs) { display: flex; width: 100%; }
+  .segmented > * { flex: 1 0 auto; justify-content: center; white-space: nowrap; }
 
   /* ---------- Lists: each row a compact item – its first line in bold, then "label  value" side by side ---------- */
   .dt tr, table:not(.dt, .ptable, .am-grid) tr { padding: var(--space-2) 0; }
@@ -176,8 +184,15 @@
   .rd-row .rd-person { min-width: 0; }
   .rd-row .rd-sub { display: inline; margin-left: var(--space-1); }
   .rd-status { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+  /* The buttons as icons (each keeps its word for screen readers), the ⋮ menu in the item's top corner */
+  table.rd-table.rd-table tr.rd-row { position: relative; padding-right: 44px; }
   .rd-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-2); }
-  .rd-actions > .btn-secondary { flex: 1 1 0; }
+  .rd-actions > .btn:has(svg.lucide) { width: 44px; min-width: 44px; padding: 0; justify-content: center; font-size: 0; }
+  .rd-actions > .btn-link:has(svg.lucide) { border: 1px solid var(--card-border); border-radius: var(--radius-md); }
+  .rd-actions > .btn:has(svg.lucide) svg.lucide { width: 20px; height: 20px; margin: 0; }
+  .rd-actions > .btn:not(:has(svg.lucide)) { flex: 0 1 auto; }
+  .rd-actions > .menu-button { position: absolute; top: var(--space-2); right: 0; }
+  .rd-more .menu-chevron { display: none; }
   .rd-row.is-emergency { padding-left: var(--space-2); box-shadow: inset 4px 0 0 var(--status-high-solid); background: var(--status-high-bg); }
 
   /* ---------- Doctors today: name and state on one line, the three counts small under it ---------- */
@@ -195,6 +210,63 @@
   }
   .sticky-actions > .btn-link { flex: 0 0 auto; padding: 0 var(--space-1); font-size: var(--fs-label); }
   .sticky-actions > .voice-bar, .sticky-actions > .voice-save-wait { flex: 1 1 100%; }
+
+  /* ---------- Registering a new patient: a sheet over the app, with a grip and Close (AppLayout: pf-sheet) ---------- */
+  .pf-sheet { background: var(--overlay); }
+  .pf-sheet .pf-topbar { display: none; }
+  .pf-sheet .pf-main {
+    margin-top: calc(env(safe-area-inset-top) + var(--space-4)); min-height: calc(100dvh - var(--space-4));
+    padding-bottom: env(safe-area-inset-bottom); border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--mist-100);
+    animation: pf-sheet-up 0.22s ease-out;
+  }
+  .pf-sheet-bar {
+    position: sticky; top: 0; z-index: 6; display: flex; justify-content: flex-end; align-items: center; height: 48px; padding: 0 var(--space-2);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--mist-100);
+  }
+  .pf-sheet-grip { position: absolute; left: 50%; top: var(--space-2); width: 40px; height: 4px; margin-left: -20px; border-radius: var(--radius-pill); background: var(--slate-300); }
+  .pf-sheet .ph { padding-top: 0; }
+  .pf-sheet .ph-crumbs { display: none; }
+  .pf-sheet .sticky-actions { bottom: calc(var(--space-2) + env(safe-area-inset-bottom)); }
+  @media (prefers-reduced-motion: reduce) { .pf-sheet .pf-main { animation: none; } }
+
+  /* The form's boxes: less padding; "Choose a service" above its list */
+  .card.form-section { padding: var(--space-4) var(--space-3); }
+  .fu-bb-add { flex-direction: column; align-items: stretch; }
+  .fu-bb-add select { width: 100%; }
+
+  /* ---------- Calendar: date and arrows on one line, Day · Week · Month across, the "Show" choices in one row ---------- */
+  .cal-toolbar { gap: var(--space-2); padding: var(--space-3); }
+  .cal-toolbar-row { flex-wrap: nowrap; gap: var(--space-2); }
+  .cal-toolbar-row:has(.cal-views) { flex-wrap: wrap; }
+  .cal-title { flex: 1 1 0; min-width: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+  .cal-nav { margin-left: auto; }
+  .cal-nav .btn { min-height: 40px; }
+  .cal-views { flex: 1 1 100%; }
+  .cal-types { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .cal-types::-webkit-scrollbar { display: none; }
+  .cal-types > * { flex: 0 0 auto; }
+  .cal-chip { min-height: 40px; }
+
+  /* ---------- Beds: three beds a row as small tiles ---------- */
+  .bb-summary { padding: var(--space-3); }
+  .bb-toolbar { gap: var(--space-2); }
+  .bb-ward-pick, .bb-ward-pick select { width: 100%; }
+  .bb-ward-head { padding: var(--space-3); }
+  .bb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); padding: 0 var(--space-3) var(--space-3); }
+  .bb-bed { padding: var(--space-2); gap: var(--space-2); }
+  .bb-bed-top { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .bb-bed .pill { font-size: var(--fs-caption); line-height: var(--lh-caption); padding: 0 var(--space-1); }
+  .bb-bed > .btn, .bb-bed .bb-admit, .bb-bed .bb-actions { width: 100%; min-width: 0; min-height: 36px; padding: 0 var(--space-1); font-size: var(--fs-label); }
+
+  /* ---------- Billing: the date line fits, Type and Status side by side with their word above ---------- */
+  .bill-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .bill-toolbar > :not(.bill-filter) { grid-column: 1 / -1; }
+  .bill-filter { display: flex; flex-direction: column; align-items: stretch; gap: 2px; min-width: 0; }
+  .bill-filter > span { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .bill-filter select { width: 100%; min-width: 0; }
+  .appt-daynav { gap: var(--space-1); }
+  .appt-daynav input[type='date'] { padding: 0 var(--space-2); }
+  .dt-empty { padding: var(--space-4) var(--space-3); }
 
   /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
   .pt-summary, .patient-form > .alert-patient-note { display: none; }

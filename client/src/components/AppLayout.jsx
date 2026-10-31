@@ -448,9 +448,12 @@ export function AppLayout() {
     await openHospital(null);
     navigate('/platform/hospitals');
   };
+  // Phones: registering a new patient opens as a sheet over the app (mobile.css), with its own Close – back where they came from
+  const sheet = phone && !locked && REGISTERING.test(location.pathname);
+  const closeSheet = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/patients'));
 
   return (
-    <div className={`pf ${collapsed ? 'pf-collapsed' : ''} ${mobileOpen ? 'pf-mobile-open' : ''} ${searchOpen ? 'pf-search-open' : ''} ${phone && !locked ? 'pf-has-tabbar' : ''}`}>
+    <div className={`pf ${collapsed ? 'pf-collapsed' : ''} ${mobileOpen ? 'pf-mobile-open' : ''} ${searchOpen ? 'pf-search-open' : ''} ${phone && !locked && !sheet ? 'pf-has-tabbar' : ''} ${sheet ? 'pf-sheet' : ''}`}>
       <aside className="sb" id="main-menu" aria-label="Main navigation">
         <div className="sb-brand">
           <button type="button" className="sb-toggle" onClick={toggleMenu} aria-label={menuLabel} title={menuLabel} aria-expanded={!rail} aria-controls="main-menu" ref={toggleRef}>
@@ -528,6 +531,14 @@ export function AppLayout() {
           </div>
         </header>
         <main className="pf-main" id="main">
+          {sheet && (
+            <div className="pf-sheet-bar">
+              <span className="pf-sheet-grip" aria-hidden="true" />
+              <button type="button" className="icon-btn" onClick={closeSheet} aria-label="Close">
+                <X aria-hidden="true" />
+              </button>
+            </div>
+          )}
           {inSetup && (
             <div className="pf-notice">
               <Alert type="info" icon={Building2}>
@@ -558,7 +569,7 @@ export function AppLayout() {
           <Outlet key={activeTenantId ?? 'platform'} />
         </main>
       </div>
-      {phone && !locked && <TabBar modules={modules} menuOpen={mobileOpen} onMenu={() => setMobileOpen(true)} />}
+      {phone && !locked && !sheet && <TabBar modules={modules} menuOpen={mobileOpen} onMenu={() => setMobileOpen(true)} />}
       <IdleWarning />
       {switching === 'down' && canSwitch(user, platform) && <SwitchAccountDialog email={platform?.linkedAccount?.email ?? null} onClose={() => setSwitching(null)} />}
       {switching === 'up' && switchBack && <SwitchBackDialog onClose={() => setSwitching(null)} />}
