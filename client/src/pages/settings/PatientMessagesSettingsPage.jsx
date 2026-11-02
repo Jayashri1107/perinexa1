@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Printer } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { FoldCards } from '../../components/FoldCards.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, formatDate } from '../../components/ui.jsx';
@@ -88,7 +89,7 @@ export function PatientMessagesSettingsPage() {
   return (
     <>
       <PageHeader title="Patient messages" help="Automatic reminders and the patient portal. Both are off until you switch them on." tabs={moduleByKey('hospital-admin').tabs} />
-      <div className="pf-content">
+      <FoldCards className="pf-content">
         <Alert type="error">{error ?? saveError}</Alert>
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}
@@ -223,7 +224,7 @@ export function PatientMessagesSettingsPage() {
           </form>
         )}
         {poster && signupUrl && <SignupPoster url={signupUrl} hospital={activeMembership?.tenantName ?? 'The hospital'} onClose={() => setPoster(false)} />}
-      </div>
+      </FoldCards>
     </>
   );
 }
