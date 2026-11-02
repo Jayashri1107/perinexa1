@@ -558,6 +558,21 @@
   /* A patient's header: the first tag lines up with the name */
   .ph-patient .ph-badges > .pill-neutral:first-child { padding-left: 0; }
 
+  /* ---------- A patient in the Patients list: the name, then two details a line with their word above, then her buttons ---------- */
+  .dt tbody tr:has(> td.pt-actions-cell) { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-1); padding-right: var(--space-6); }
+  .dt tbody tr:has(> td.pt-actions-cell) > td { box-sizing: border-box; flex: 1 1 45%; width: auto; min-width: 0; }
+  .dt tbody tr:has(> td.pt-actions-cell) > td:first-child, .dt tbody tr:has(> td.pt-actions-cell) > td.pt-actions-cell { flex: 1 1 100%; }
+  .dt tbody tr:has(> td.pt-actions-cell) > td[data-label]:not(:first-child) { padding-left: var(--space-3); }
+  .dt tbody tr:has(> td.pt-actions-cell) > td[data-label]:not(:first-child)::before { position: static; display: block; width: auto; }
+  .dt tbody tr:has(> td.pt-actions-cell)::after { top: 24px; }
+  .pt-actions-cell .pt-actions { display: flex; gap: var(--space-2); }
+  /* The box under the filters: only the small More filters button, on the right */
+  .dt-toolbar:has(> .pt-filters-btn:only-child) { justify-content: flex-end; padding: var(--space-2) var(--space-3); }
+  .dt-toolbar > .pt-filters-btn { min-height: 36px; font-size: var(--fs-label); }
+  /* The search box and the switches under it: even spaces */
+  .pt-find { margin-bottom: var(--space-2); }
+  .pt-quick { gap: var(--space-2); margin-bottom: var(--space-2); }
+
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
   [data-short]:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
