@@ -1142,7 +1142,8 @@
   .ph-topbar > .ph-actions > .btn:last-child { grid-column: 1 / -1; }
   .ph-register > .ph-stats { order: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-2); overflow: visible; margin: 0; }
   .ph-rx-waiting { order: 3; }
-  .ph-topbar > .ph-find-slim { order: 4; }
+  .ph-topbar > .ph-find-slim { order: 4; flex: none; }
+  .ph-topbar > .ph-actions { flex: none; }
   .ph-register > :not(.ph-topbar, .ph-stats, .ph-rx-waiting) { order: 5; }
   /* Sold and Issued: two tiles */
   .ph-stats > .ph-stat:nth-child(-n+2) { flex-direction: column; align-items: flex-start; min-width: 0; padding: var(--space-3); border: 0; border-radius: var(--radius-lg); background: var(--surface); box-shadow: none; }
@@ -1200,6 +1201,7 @@
   .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Patient / customer'] { order: 1; flex: 1 1 calc(100% - 96px); min-width: 0; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
   .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Amount'] { order: 2; flex: none; margin-left: auto; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 700; text-align: right; }
   .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Medicines sold']) > td:is(:first-child, [data-label='Time'], [data-label='Kind']) { flex: 0 0 auto; width: auto; max-width: 100%; margin: 0; padding: 0; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Medicines sold']) > td { margin: 0; padding: 0; }
   .dt tbody tr:has(> td[data-label='Medicines sold']) > td:first-child { order: 3; }
   .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Time'] { order: 4; }
   .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Kind'] { order: 5; }

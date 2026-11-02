@@ -35,11 +35,15 @@ export function InvoicesPage() {
   const go = (d) => setParams({ date: d }, { replace: true });
   const { activeMembership } = useAuth();
   const desk = activeMembership.roles.includes('pharmacist');
+  // Phones, as in the app design (2 Nov 2026): how many bills and their total above the list
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const bills = res.data?.invoices;
   // Sold (developer's request, 28 Oct 2026): every bill of the day – or found by name, number or a medicine – with
   // what was sold on it; New bill starts the next one
   return (
     <>
       <PharmacyHeader
+        className="ph-fab"
         title="Sold"
         crumb="Sold"
         actions={
@@ -52,6 +56,14 @@ export function InvoicesPage() {
       />
       <div className="pf-content bill-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
+        {onPhone && bills?.length > 0 && (
+          <p className="ph-sold-sum">
+            <span>
+              {bills.length} bill{bills.length === 1 ? '' : 's'}
+            </span>
+            <span className="tabular">{money(bills.reduce((n, v) => n + (v.netPaise ?? 0), 0))}</span>
+          </p>
+        )}
         <DataTable
           caption="Pharmacy invoices"
           rows={res.data?.invoices}
