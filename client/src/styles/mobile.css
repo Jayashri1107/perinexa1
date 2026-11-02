@@ -964,6 +964,8 @@
   .ph-fab .ph-actions > .menu-button:has(> .btn-primary), .ph-fab .ph-actions > .btn-primary { position: fixed; right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 84px); z-index: 25; display: flex; width: auto; }
   .ph-fab .ph-actions > .menu-button > .btn-primary, .ph-fab .ph-actions > .btn-primary { width: auto; height: auto; min-height: 52px; padding: 0 var(--space-6); border-radius: 16px; box-shadow: var(--shadow-pop); font-size: var(--fs-body); }
   .pf-main:has(.ph-fab) .pf-content { padding-bottom: 84px; }
+  /* Its menu opens over the bottom bar, not behind it */
+  .ph-fab .ph-actions > .menu-button:has(> .btn-primary):has(> .menu-list) { z-index: 70; }
   .ph-fab .ph-actions > .btn-primary:only-child, .ph-fab .ph-actions:has(> :nth-child(2)) > .btn-primary { left: auto; flex: none; width: auto; }
   .ph-fab .ph-actions:has(> .btn-primary:only-child) { margin: 0; }
   .ph-fab .ph-actions > .export-btn, .ph-fab .ph-actions:has(> :nth-child(2)) > .export-btn { position: fixed; top: auto; right: auto; left: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 88px); z-index: 25; width: 44px; height: 44px; min-height: 44px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-card); }
@@ -994,6 +996,7 @@
   /* Her main button at the foot, in place of the bottom bar – not while a form's Save bar is there */
   .pf-has-tabbar:has(.ph-patient .ph-actions > .btn-primary):not(:has(.sticky-actions:not(.modal *))) .pf-tabbar { display: none; }
   .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary) { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: nowrap; width: auto; margin: 0; padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-3)); border-top: 1px solid var(--border); background: var(--surface); }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(.menu-list) { z-index: 70; }
   .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary) > .btn-primary { flex: 1 1 auto; min-height: 52px; font-size: var(--fs-body); }
   .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary) > .menu-button > .btn { min-height: 52px; }
   .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient.ph-stuck .ph-actions > :not(.btn-primary) { display: flex; }
@@ -1052,9 +1055,10 @@
   .dt tbody tr:has(> td[data-label='Balance']) > td { padding: 0; min-height: 0; }
   .dt tbody tr:has(> td[data-label='Balance']) > td[data-label]:not(:first-child)::before { display: none; }
   .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Patient'] { grid-column: 1; grid-row: 1; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Patient'] .muted { display: block; font-weight: 400; font-size: var(--fs-label); line-height: var(--lh-label); }
   .dt tbody tr:has(> td[data-label='Balance']) > td:first-child { grid-column: 1; grid-row: 2; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 400; }
   .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Type'] { grid-column: 1; grid-row: 3; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
-  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Total'] { grid-column: 2; grid-row: 1; text-align: right; font-weight: 700; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Total'] { grid-column: 2; grid-row: 1; justify-self: end; text-align: right; font-weight: 700; }
   .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Status'] { grid-column: 2; grid-row: 2 / span 2; justify-self: end; align-self: start; }
   .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Date'], [data-label='Paid'], [data-label='Balance'], [data-label='Last payment']) { display: none; }
   .dt tbody tr:has(> td[data-label='Balance'])::after { display: none; }
@@ -1127,6 +1131,121 @@
   .ip-chart-list::before { content: 'Recorded'; display: block; padding-bottom: var(--space-1); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
   .ip-chart-list li { gap: 0 var(--space-2); padding: var(--space-2) 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
   .ip-chart-list li > strong { order: -1; flex: 1 1 100%; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+
+  /* ---------- App design: the pharmacist's Today ---------- */
+  /* The buttons first, then the numbers, then who is waiting; finding someone from another day above the register */
+  .ph-register { display: flex; flex-direction: column; gap: var(--space-4); }
+  .ph-topbar { display: contents; }
+  .ph-topbar > .ph-actions { order: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); width: auto; margin: 0; }
+  .ph-topbar > .ph-actions > .btn { width: 100%; min-height: 44px; padding: 0 var(--space-1); }
+  .ph-topbar > .ph-actions > .btn:first-child { grid-column: 1 / -1; min-height: 52px; border-color: var(--indigo-700); background: var(--indigo-700); color: var(--on-solid); font-size: var(--fs-body); }
+  .ph-topbar > .ph-actions > .btn:last-child { grid-column: 1 / -1; }
+  .ph-register > .ph-stats { order: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-2); overflow: visible; margin: 0; }
+  .ph-rx-waiting { order: 3; }
+  .ph-topbar > .ph-find-slim { order: 4; }
+  .ph-register > :not(.ph-topbar, .ph-stats, .ph-rx-waiting) { order: 5; }
+  /* Sold and Issued: two tiles */
+  .ph-stats > .ph-stat:nth-child(-n+2) { flex-direction: column; align-items: flex-start; min-width: 0; padding: var(--space-3); border: 0; border-radius: var(--radius-lg); background: var(--surface); box-shadow: none; }
+  .ph-stats > .ph-stat:nth-child(-n+2) .ph-stat-icon { display: none; }
+  .ph-stats > .ph-stat:nth-child(-n+2) strong { font-size: calc(24px * var(--text-scale)); line-height: calc(30px * var(--text-scale)); font-weight: 700; }
+  .ph-stats > .ph-stat:nth-child(-n+2) .ph-stat-text > span { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+  /* The rest: one list – the word, the number, an arrow */
+  .ph-stats::before { content: 'Stock to look at'; order: 2; grid-column: 1 / -1; padding: var(--space-4) var(--space-1) var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  .ph-stats > .ph-stat:nth-child(n+3) { grid-column: 1 / -1; display: flex; flex-direction: row; align-items: center; gap: var(--space-3); min-width: 0; min-height: 52px; padding: var(--space-1) var(--space-3); border: 0; border-top: 1px solid var(--border); border-radius: 0; background: var(--surface); box-shadow: none; color: inherit; }
+  .ph-stats > .ph-stat:nth-child(n+3) .ph-stat-icon { flex: none; width: auto; height: auto; padding: 0; background: none; color: var(--slate-600); }
+  .ph-stats > .ph-stat:nth-child(n+3) .ph-stat-text { display: flex; flex: 1 1 auto; flex-direction: row-reverse; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+  .ph-stats > .ph-stat:nth-child(n+3) .ph-stat-text > span { color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 500; }
+  .ph-stats > .ph-stat:nth-child(n+3) strong { font-size: var(--fs-body); font-weight: 700; }
+  .ph-stats > .ph-stat:nth-child(n+3)::after { content: ''; flex: none; width: 8px; height: 8px; margin-right: 2px; border-top: 2px solid var(--slate-600); border-right: 2px solid var(--slate-600); transform: rotate(45deg); }
+  .ph-stats > .ph-stat.is-high:nth-child(n+3) .ph-stat-icon, .ph-stats > .ph-stat.is-high:nth-child(n+3) strong { color: var(--status-high-fg); }
+  .ph-stats > .ph-stat.is-watch:nth-child(n+3) .ph-stat-icon, .ph-stats > .ph-stat.is-watch:nth-child(n+3) strong { color: var(--status-watch-fg); }
+  .ph-stats > .ph-stat:nth-child(6) { order: 3; border-top: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .ph-stats > .ph-stat:nth-child(5) { order: 4; }
+  .ph-stats > .ph-stat:nth-child(4) { order: 5; }
+  .ph-stats > .ph-stat:nth-child(7) { order: 6; }
+  .ph-stats > .ph-stat:nth-child(3) { order: 7; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  /* Prescriptions waiting */
+  .ph-rx-waiting h2 { margin: 0; padding: 0 var(--space-1) var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  .ph-rx-waiting ul { display: flex; flex-direction: column; margin: 0; padding: 0; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface); list-style: none; }
+  .ph-rx-waiting li + li { border-top: 1px solid var(--border); }
+  .ph-rx-waiting button { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 64px; padding: var(--space-2) var(--space-3); border: 0; background: none; color: inherit; text-align: left; }
+  .ph-rx-waiting button > span { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .ph-rx-waiting strong { color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .ph-rx-waiting svg { flex: none; color: var(--slate-600); }
+  /* The register: her name and type, what she came for, then the button */
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Pharmacy']) > td[data-label]:not(:first-child)::before { display: none; }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); padding: var(--space-3); }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td { display: block; width: auto; min-height: 0; padding: 0; }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:first-child { flex: 1 1 100%; font-size: var(--fs-body); }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td[data-label='Details'] { flex: 1 1 100%; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:last-child { flex: 1 1 100%; }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:last-child .btn-secondary { width: 100%; min-height: 44px; }
+
+  /* ---------- App design: Sold and the other lists of a day ---------- */
+  /* The day first, whole width, then the search */
+  .bill-toolbar:has(> .appt-daynav) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); width: 100%; }
+  .bill-toolbar:has(> .appt-daynav) > * { min-width: 0; width: auto; max-width: none; margin: 0; }
+  .bill-toolbar:has(> .appt-daynav) > :not(.bill-filter) { grid-column: 1 / -1; }
+  /* Two filters side by side, not one under the other */
+  .bill-toolbar:has(> .appt-daynav) > .bill-filter select { width: 100%; min-width: 0; }
+  .bill-toolbar > .appt-daynav > .btn { flex: none; min-height: 40px; padding: 0 var(--space-2); border: 0; background: none; box-shadow: none; }
+  .bill-toolbar > .appt-daynav { order: -1; display: flex; align-items: center; gap: var(--space-1); width: 100%; padding: 2px; border-radius: var(--radius-pill); background: var(--mist-100); }
+  .bill-toolbar > .appt-daynav .icon-btn { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; }
+  .bill-toolbar > .appt-daynav input[type='date'] { flex: 1 1 0; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-weight: 600; }
+  .bill-toolbar > .bill-search-plain { width: 100%; height: 48px; padding: 0 var(--space-4); border-radius: var(--radius-pill); }
+  /* A bill: who and how much, then its number, time and kind, and what was sold */
+  .dt tbody tr:has(> td[data-label='Medicines sold']) { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-1); padding: var(--space-2) var(--space-3); }
+  .dt tbody tr:has(> td[data-label='Medicines sold']) > td { display: block; width: auto; min-height: 0; padding: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 400; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Medicines sold']) > td[data-label]:not(:first-child)::before, .dt tbody tr:has(> td[data-label='Medicines sold'])::after { display: none; }
+  .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Patient / customer'] { order: 1; flex: 1 1 calc(100% - 96px); min-width: 0; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Amount'] { order: 2; flex: none; margin-left: auto; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 700; text-align: right; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Medicines sold']) > td:is(:first-child, [data-label='Time'], [data-label='Kind']) { flex: 0 0 auto; width: auto; max-width: 100%; margin: 0; padding: 0; }
+  .dt tbody tr:has(> td[data-label='Medicines sold']) > td:first-child { order: 3; }
+  .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Time'] { order: 4; }
+  .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Kind'] { order: 5; }
+  .dt tbody tr:has(> td[data-label='Medicines sold']) > td:first-child::after, .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Time']::after { content: ' ·'; }
+  .dt tbody tr:has(> td[data-label='Medicines sold']) > td[data-label='Medicines sold'] { order: 6; flex: 1 1 100%; }
+  .pf-content .ph-sold-sum { display: flex; align-items: center; justify-content: space-between; margin: 0; padding: 0 var(--space-1); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+
+  /* ---------- App design: Stock ---------- */
+  .ph-stock-toolbar { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); }
+  .ph-stock-toolbar > * { flex: none; }
+  .ph-stock-toolbar > .search-input, .ph-stock-toolbar > :has(input[type='search']) { order: -1; }
+  .ph-stock-toolbar > .segmented { display: flex; gap: var(--space-2); overflow-x: auto; margin: 0 calc(var(--space-4) * -1); padding: 0 var(--space-4); border: 0; border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
+  .ph-stock-toolbar > .segmented::-webkit-scrollbar { display: none; }
+  .ph-stock-toolbar > .segmented > button { flex: none; min-height: 40px; padding: 0 var(--space-4); border-radius: var(--radius-pill); background: var(--mist-100); color: var(--slate-600); white-space: nowrap; }
+  .ph-stock-toolbar > .segmented > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
+  /* Her hint is for a scanner on a desk */
+  .ph-toolbar-scan .hint { display: none; }
+  /* A medicine: its name and any warning, how many at the right */
+  .dt tbody tr:has(> td[data-label='Value (MRP)']) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--space-3); align-items: center; min-height: 68px; padding: var(--space-2) var(--space-3); }
+  .dt tbody tr:has(> td[data-label='Value (MRP)']) > td { display: block; width: auto; min-height: 0; padding: 0; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Value (MRP)']) > td[data-label]:not(:first-child)::before, .dt tbody tr:has(> td[data-label='Value (MRP)'])::after { display: none; }
+  .dt tbody tr:has(> td[data-label='Value (MRP)']) > td:first-child { grid-column: 1; grid-row: 1; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .dt tbody tr:has(> td[data-label='Value (MRP)']) > td[data-label='Status'] { grid-column: 1; grid-row: 2; }
+  .dt tbody tr:has(> td[data-label='Value (MRP)']) > td[data-label='Status']:not(:has(.pill)) { display: none; }
+  .dt tbody tr:has(> td[data-label='Value (MRP)']) > td[data-label='In stock'] { grid-column: 2; grid-row: 1 / span 2; text-align: right; font-weight: 700; }
+  .dt tbody tr:has(> td[data-label='Value (MRP)']) > td[data-label='Value (MRP)'] { display: none; }
+
+  /* ---------- App design: New bill ---------- */
+  .bill-section > .segmented[aria-label='Type of patient'] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: var(--space-1); overflow: visible; }
+  .bill-section > .segmented[aria-label='Type of patient'] > button { min-width: 0; min-height: 44px; padding: 2px var(--space-1); white-space: normal; line-height: 16px; }
+  .bill-section > .segmented[aria-label='Type of patient'] > button > svg { display: none; }
+  /* A medicine on the bill: its name, its batch, how many */
+  .bill-page .ph-lines tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; padding: var(--space-3) 0; }
+  .bill-page .ph-lines tbody td { display: block; width: auto; min-width: 0; padding: 0; border: 0; text-align: left; }
+  .bill-page .ph-lines td[data-label='Medicine'] { grid-column: 1 / -1; font-weight: 600; }
+  .bill-page .ph-lines td[data-label='Medicine'] .muted { font-weight: 400; }
+  .bill-page .ph-lines td[data-label='Batch'] { grid-column: 1 / -1; }
+  .bill-page .ph-lines td[data-label='Batch'] select { width: 100%; max-width: none; }
+  .bill-page .ph-lines td[data-label='Quantity'] { display: flex; align-items: center; gap: var(--space-1); }
+  .bill-page .ph-lines .bill-price-input { width: 64px; text-align: center; font-weight: 700; }
+  .ph-qty-step { display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--indigo-700); }
+  /* Make the invoice at the foot */
+  .pf-has-tabbar:has(section[aria-labelledby='ph-pay']) .pf-tabbar { display: none; }
+  .pf-main:has(section[aria-labelledby='ph-pay']) .pf-content { padding-bottom: 92px; }
+  section[aria-labelledby='ph-pay']::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 29; height: calc(env(safe-area-inset-bottom) + 76px); border-top: 1px solid var(--border); background: var(--surface); }
+  section[aria-labelledby='ph-pay'] > .btn-primary { position: fixed; left: var(--space-4); right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); z-index: 30; width: auto; max-width: calc(100% - var(--space-4) * 2); min-height: 52px; font-size: var(--fs-body); }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
