@@ -7,7 +7,7 @@
  */
 
 /* Only on phones (shown below) */
-.pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn, .ph-jump-btn { display: none; }
+.pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn, .ph-jump-btn, .ph-caption { display: none; }
 
 @media (max-width: 719px) {
   /* ---------- The header: one row, stuck to the top ---------- */
@@ -890,15 +890,15 @@
   .ch-day input { flex: 1 1 auto; min-width: 0; }
   /* A table with rows and columns that mean something together (Monthly income): a real table that swipes, the first
      column staying in view – not one long stack */
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) { display: block; overflow-x: auto; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) thead { display: table-header-group; }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tbody { display: table-row-group; width: auto; }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tfoot { display: table-footer-group; }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tr { display: table-row; width: auto; margin: 0; padding: 0; border: 0; border-radius: 0; }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) :is(td, th) { display: table-cell; width: auto; min-width: 64px; padding: var(--space-2); border-bottom: 1px solid var(--border); font-size: var(--fs-label); line-height: var(--lh-label); }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) :is(td, th):first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+  .pf-main table.bill-report:not(:has(td[data-label])) { display: block; overflow-x: auto; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .pf-main table.bill-report:not(:has(td[data-label])) thead { display: table-header-group; }
+  .pf-main table.bill-report:not(:has(td[data-label])) tbody { display: table-row-group; width: auto; }
+  .pf-main table.bill-report:not(:has(td[data-label])) tfoot { display: table-footer-group; }
+  .pf-main table.bill-report:not(:has(td[data-label])) tr { display: table-row; width: auto; margin: 0; padding: 0; border: 0; border-radius: 0; }
+  .pf-main table.bill-report:not(:has(td[data-label])) :is(td, th) { display: table-cell; width: auto; min-width: 64px; padding: var(--space-2); border-bottom: 1px solid var(--border); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .pf-main table.bill-report:not(:has(td[data-label])) :is(td, th):first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
   /* …with nothing in it yet: only its message */
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):has(tbody > tr:only-child > td[colspan]) thead { display: none; }
+  .pf-main table.bill-report:has(tbody > tr:only-child > td[colspan]) thead { display: none; }
   /* The audit log: who and what on lines of their own; its dates side by side */
   .dt tbody tr:has(> td[data-label='Done by']) > td:is([data-label='Done by'], [data-label='Details'], [data-label='Event']):not(:first-child) { flex: 1 1 100%; }
   .dt-toolbar:has(input[type='date']) > .dt-filter:has(select):nth-last-child(3) { flex: 1 1 100%; }
@@ -915,6 +915,146 @@
   .hint[data-short] { margin-bottom: var(--space-2); }
   .pf-main input[type='file'] { font-size: var(--fs-label); }
   .pf-main input[type='file']::file-selector-button { margin-right: var(--space-2); padding: var(--space-1) var(--space-3); border: 1px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--surface); color: var(--indigo-700); font: inherit; }
+
+  /* ---------- The app design (2 Nov 2026): the shared top, for every role ---------- */
+  /* One row on the canvas: the page's title on the left, round buttons on the right. The menu is in the bottom bar */
+  .pf-topbar { align-items: center; padding-top: calc(env(safe-area-inset-top) + var(--space-3)); border-bottom: 0; background: var(--mist-100); }
+  .pf-topbar .ws, .pf-top-title { display: none; }
+  .pf-has-tabbar:not(:has(.pf-main .sticky-actions:not(.modal *), .pf-main .fs-nav)) .pf-menu-btn { display: none; }
+  .pf-title-slot { flex: 1 1 auto; min-width: 0; }
+  .pf-title-slot .ph-title-row { flex-wrap: nowrap; gap: var(--space-1); }
+  .pf-title-slot .ph-title { overflow: hidden; font-size: calc(26px * var(--text-scale)); line-height: calc(32px * var(--text-scale)); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-title-slot .ph-title.ph-title-long { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  /* A title with a status beside it: the status under the title, nothing cut off */
+  .pf-title-slot .ph-title-row:has(.ph-badges) { flex-wrap: wrap; row-gap: 2px; }
+  .pf-title-slot .ph-title-row:has(.ph-badges) .ph-title { flex: 1 1 100%; font-size: var(--fs-h1); line-height: var(--lh-h1); }
+  .pf-title-slot .ph-crumbs ol { margin-bottom: 0; }
+  .ph-caption { display: block; margin: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .pf-topbar-actions .icon-btn { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--surface); }
+  .pf-topbar-actions .pm-btn .avatar { width: 44px; height: 44px; }
+  /* The band under the title only when there is something in it */
+  .ph:not(.ph-info-open):not(:has(.ph-actions, .ph-tabs, .ph-subtabs, .ph-jump-btn)) { display: none; }
+  .pf-main > .ph { padding-top: 0; }
+  /* The side menu: who is signed in at its top */
+  .pf-mobile-open .sb > * { order: 2; }
+  .pf-mobile-open .sb > .sb-brand { order: 0; }
+  .pf-mobile-open .sb > .sb-foot { order: 1; margin-top: 0; }
+  .pf-mobile-open .sb > .sb-logout { order: 3; }
+
+  /* ---------- A doctor's Today, as in the app design ---------- */
+  .td-home { display: flex; flex-direction: column; gap: var(--space-3); order: -1; }
+  .td-next { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: var(--space-4); }
+  .td-next-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .td-next-head h2 { margin: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+  .td-next-who { display: flex; align-items: center; gap: var(--space-3); color: inherit; text-decoration: none; }
+  .td-next-who .avatar { flex: none; width: 52px; height: 52px; }
+  .td-next-who > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+  .td-next-who strong { font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 700; }
+  .td-next-who .muted { font-size: var(--fs-label); line-height: var(--lh-label); }
+  .td-next > .btn-primary { min-height: 48px; justify-content: center; }
+  .td-home-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-home-count { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; min-height: 100px; padding: var(--space-3); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); color: var(--ink); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; text-decoration: none; }
+  .td-home-count strong { font-size: calc(24px * var(--text-scale)); line-height: calc(30px * var(--text-scale)); font-weight: 700; color: var(--indigo-700); }
+  .td-home-count.is-high strong { color: var(--status-high-fg); }
+  .td-home-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-home-actions > .btn, .td-home-actions > .menu-button > .btn { width: 100%; min-height: 44px; justify-content: center; padding: 0 var(--space-2); white-space: nowrap; font-size: var(--fs-label); }
+  .td-home-actions > .menu-button { display: flex; min-width: 0; }
+
+  /* ---------- App design: a list page's main button floats over the list, above the bottom bar ---------- */
+  .ph-fab .ph-actions > .menu-button:has(> .btn-primary), .ph-fab .ph-actions > .btn-primary { position: fixed; right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 84px); z-index: 25; display: flex; width: auto; }
+  .ph-fab .ph-actions > .menu-button > .btn-primary, .ph-fab .ph-actions > .btn-primary { width: auto; height: auto; min-height: 52px; padding: 0 var(--space-6); border-radius: 16px; box-shadow: var(--shadow-pop); font-size: var(--fs-body); }
+  .pf-main:has(.ph-fab) .pf-content { padding-bottom: 84px; }
+  .ph-fab .ph-actions > .btn-primary:only-child, .ph-fab .ph-actions:has(> :nth-child(2)) > .btn-primary { left: auto; flex: none; width: auto; }
+  .ph-fab .ph-actions:has(> .btn-primary:only-child) { margin: 0; }
+  .ph-fab .ph-actions > .export-btn, .ph-fab .ph-actions:has(> :nth-child(2)) > .export-btn { position: fixed; top: auto; right: auto; left: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 88px); z-index: 25; width: 44px; height: 44px; min-height: 44px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-card); }
+  .ph-fab .ph-actions:has(> .export-btn) { margin: 0; }
+
+  /* ---------- App design: the doctor's Patients ---------- */
+  .pt-quick { gap: var(--space-2); }
+  .pt-quick > .segmented:not(.ph-tabs) { display: flex; gap: var(--space-2); padding: 0; border: 0; background: none; box-shadow: none; }
+  .pt-quick > .segmented > button { min-height: 40px; border-radius: var(--radius-pill); background: var(--surface); }
+  .pt-quick > .segmented > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
+  /* A row: her avatar and name, the care under them, the last visit last; a warning at the right; nothing when there is none */
+  .dt tbody tr:has(> td[data-label='Care now']) { position: relative; row-gap: 0; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label]:not(:first-child) { padding: 0 var(--space-3) 0 68px; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Care now']) > td[data-label]:not(:first-child)::before { display: none; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label='Last seen'] { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label='Last seen'] > .cell-sub { display: inline; color: inherit; font-size: inherit; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td.risk-cell:not(:has(.pill)) { display: none; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td.risk-cell { padding-top: 2px; padding-bottom: 2px; }
+
+  /* ---------- App design: a patient's record ---------- */
+  /* Her sections in one swiping row with a line under the chosen one, not a list to open */
+  .ph-patient .ph-jump-btn { display: none; }
+  .ph-pinned { top: calc(env(safe-area-inset-top) + 67px); }
+  .ph-patient .ph-tabs.segmented, .ph-patient.ph-has-jump .ph-tabs.segmented { display: flex; flex-wrap: nowrap; gap: var(--space-6); overflow-x: auto; margin: var(--space-2) calc(var(--space-3) * -1) 0; padding: 0 var(--space-3); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
+  .ph-patient .ph-tabs.segmented::-webkit-scrollbar { display: none; }
+  .ph-patient .ph-tabs.segmented > a, .ph-patient .ph-tabs.segmented > .menu-button > button { flex: none; min-height: 44px; padding: 0 2px; border-radius: 0; background: none; box-shadow: none; color: var(--slate-600); font-weight: 600; white-space: nowrap; }
+  .ph-patient .ph-tabs.segmented > a.active, .ph-patient .ph-tabs.segmented > a[aria-current='page'] { background: none; color: var(--indigo-700); box-shadow: inset 0 -3px 0 var(--indigo-700); }
+  /* Her main button at the foot, in place of the bottom bar – not while a form's Save bar is there */
+  .pf-has-tabbar:has(.ph-patient .ph-actions > .btn-primary):not(:has(.sticky-actions:not(.modal *))) .pf-tabbar { display: none; }
+  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: nowrap; width: auto; margin: 0; padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-3)); border-top: 1px solid var(--border); background: var(--surface); }
+  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) > .btn-primary { flex: 1 1 auto; min-height: 52px; font-size: var(--fs-body); }
+  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) > .menu-button > .btn { min-height: 52px; }
+  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient.ph-stuck .ph-actions > :not(.btn-primary) { display: flex; }
+
+  /* A patient's row: everything starts on one line under her name */
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label]:not(:first-child) > :first-child { margin-left: 0; }
+
+  /* ---------- App design: a visit – room for the work ---------- */
+  /* Her name and warnings stay; her record's sections and buttons wait until the visit is left */
+  .pf:has(.vs-visit-head) .pf-menu-btn { display: none; }
+  .pf:has(.vs-visit-head) .ph-patient .ph-tabs, .pf:has(.vs-visit-head) .ph-patient .ph-actions { display: none; }
+  /* Sign and finish at the foot, beside Save */
+  .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) { padding-right: calc(60% + var(--space-6)); }
+  .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) > .grow.hint { display: none; }
+  .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) > .btn:not(.btn-link) { flex: 1 1 100%; padding: 0 var(--space-1); }
+  .vs-visit-top .row > .btn-positive { position: fixed; right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-2)); z-index: 45; width: 60%; min-height: 48px; }
+  /* Print, AI tools and More: one slim row */
+  .vs-visit-top .row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vs-visit-top .row > .btn, .vs-visit-top .row > .menu-button > .btn { min-height: 40px; padding: 0 var(--space-1); font-size: var(--fs-label); }
+  /* Visit details and Prescription: a line under the chosen one */
+  .vs-tabs.segmented { padding: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
+  .vs-tabs.segmented > button { min-height: 44px; border-radius: 0; background: none; box-shadow: none; color: var(--slate-600); font-weight: 600; }
+  .vs-tabs.segmented > button[aria-pressed='true'] { background: none; color: var(--indigo-700); box-shadow: inset 0 -3px 0 var(--indigo-700); }
+
+  /* ---------- App design: New patient – straight to the step ---------- */
+  .reg-steps { display: none; }
+  .pf-sheet .pn-setting { margin-bottom: var(--space-2); }
+
+  /* ---------- App design: Calendar – a clean month without lines ---------- */
+  .cal-grid { gap: 2px; border: 0; background: none; }
+  .cal-grid-row { gap: 2px; }
+  .cal-cell:not(.cal-cell-chosen), .cal-cell-out:not(.cal-cell-chosen) { background: none; }
+  .cal-cell-btn { border-radius: var(--radius-md); }
+  .cal-cell-chosen { border-radius: var(--radius-md); }
+
+  /* A visit: the short readings three a row */
+  .vs-vitals, .vs-section .form-grid:has(input[inputmode='decimal']) { column-gap: var(--space-2); }
+
+  /* ---------- App design: reception's Today ---------- */
+  /* Three small numbers across, not a row to swipe */
+  .rd-numbers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); overflow: visible; }
+  .rd-numbers > .rd-number { flex: none; min-width: 0; align-items: flex-start; padding: var(--space-3); }
+  .rd-number .rd-icon { display: none; }
+  .rd-number-text { display: flex; flex-direction: column-reverse; min-width: 0; }
+  .rd-number-value { font-size: calc(22px * var(--text-scale)); line-height: calc(28px * var(--text-scale)); font-weight: 700; }
+  .rd-number-label { font-size: var(--fs-label); line-height: var(--lh-label); }
+  .rd-number-text > .muted { display: none; }
+  /* Today's patients before the jobs */
+  .rd-side > .rc-todo { order: 2; }
+
+  /* ---------- App design: a list of bills – who, the bill, how much, paid or not ---------- */
+  .dt tbody tr:has(> td[data-label='Balance']) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+  .dt tbody tr:has(> td[data-label='Balance']) > td { padding: 0; min-height: 0; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label]:not(:first-child)::before { display: none; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Patient'] { grid-column: 1; grid-row: 1; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:first-child { grid-column: 1; grid-row: 2; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 400; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Type'] { grid-column: 1; grid-row: 3; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Total'] { grid-column: 2; grid-row: 1; text-align: right; font-weight: 700; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Status'] { grid-column: 2; grid-row: 2 / span 2; justify-self: end; align-self: start; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Date'], [data-label='Paid'], [data-label='Balance'], [data-label='Last payment']) { display: none; }
+  .dt tbody tr:has(> td[data-label='Balance'])::after { display: none; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

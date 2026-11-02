@@ -22,7 +22,7 @@ import { DoctorFollowUps } from './followups/DoctorFollowUps.jsx';
 import { HandoverList, VITALS_DUE_HOURS, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
 import { timeLabel } from './appointments/appointmentFormat.js';
 import { OpdCasePaper } from './beds/AdmissionDesk.jsx';
-import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
+import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, NextPatientCard, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
 import { AiBriefCard } from './ai/AiBriefCard.jsx';
 import { useLibraryDrafts } from './library/ApprovalsPage.jsx';
 import { KIND_LABELS } from './inpatient/inpatientFormat.js';
@@ -442,6 +442,14 @@ function RoleToday({ roles, lensBar = null }) {
 
   const scope = today.data?.scope ?? worklist.data?.scope ?? asked;
   const canChooseScope = Boolean(today.data?.canChooseScope ?? worklist.data?.canChooseScope);
+  // Phones, a doctor: the top of Today as in the app design (2 Nov 2026) – the next patient, three counts, then the buttons
+  const doctorHome = isDoctor && typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const walkInButton = today.data?.canMarkArrived && canSeeAppointments(roles) && !rmoOnly && (
+    <button type="button" className="btn btn-secondary" onClick={() => setArriving({ patient: null })}>
+      <Hash aria-hidden="true" /> Walk-in token
+    </button>
+  );
+  const newPatientButton = canRegisterPatients(roles) && <MenuButton className={doctorHome ? 'btn btn-secondary' : 'btn btn-primary'} icon={UserPlus} label="New patient" items={newPatientLinks(roles)} align="end" />;
   // (the view chosen above stays)
   const setScope = (s) => {
     const view = params.get('view');
@@ -718,6 +726,7 @@ function RoleToday({ roles, lensBar = null }) {
         breadcrumbs={[{ label: 'Today' }]}
         title="Today"
         subtitle={canChooseScope ? (scope === 'mine' ? 'Your patients and unassigned patients' : 'All patients') : undefined}
+        caption={new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
         actions={
           <>
             {canChooseScope && (
@@ -730,22 +739,40 @@ function RoleToday({ roles, lensBar = null }) {
                 </button>
               </div>
             )}
-            {today.data?.canMarkArrived && canSeeAppointments(roles) && !rmoOnly && (
-              <button type="button" className="btn btn-secondary" onClick={() => setArriving({ patient: null })}>
-                <Hash aria-hidden="true" /> Walk-in token
-              </button>
-            )}
+            {!doctorHome && walkInButton}
             {/* Reception's dashboard: booking is one click away (the quick tiles are gone – the sidebar has the rest) */}
             {simple && (
               <Link to="/appointments" className="btn btn-secondary">
                 <CalendarPlus aria-hidden="true" /> Book appointment
               </Link>
             )}
-            {canRegisterPatients(roles) && <MenuButton className="btn btn-primary" icon={UserPlus} label="New patient" items={newPatientLinks(roles)} align="end" />}
+            {!doctorHome && newPatientButton}
           </>
         }
       />
       <div className="pf-content wl-page td-page">
+        {doctorHome && (
+          <div className="td-home">
+            <NextPatientCard refreshKey={queueKey} />
+            <nav className="td-home-counts" aria-label="Needs your attention">
+              <Link to="/#wl-flags" className="td-home-count is-high">
+                <strong className="tabular">{worklist.data?.redFlags?.length ?? '–'}</strong> Red flags
+              </Link>
+              <Link to="/#td-lab-review" className="td-home-count">
+                <strong className="tabular">{labReview.data?.orders?.length ?? '–'}</strong> Lab results to review
+              </Link>
+              <Link to="/#td-confirm" className="td-home-count">
+                <strong className="tabular">{inpatients.data?.toConfirm?.length ?? '–'}</strong> To confirm
+              </Link>
+            </nav>
+            {(walkInButton || newPatientButton) && (
+              <div className="td-home-actions">
+                {walkInButton}
+                {newPatientButton}
+              </div>
+            )}
+          </div>
+        )}
         {lensBar}
         <SignupsNotice roles={roles} />
         <ContinueVisits enabled={has(roles, ['doctor', 'rmo', 'nurse'])} />

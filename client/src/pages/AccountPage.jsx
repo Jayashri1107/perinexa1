@@ -92,7 +92,7 @@ export function AccountPage() {
           <button type="button" className="icon-btn set-back" onClick={() => setTab(null)} aria-label="Back to My settings" title="Back to My settings">
             <ArrowLeft aria-hidden="true" />
           </button>
-          <PageHeader breadcrumbs={[{ label: 'My settings' }]} title={phoneTabs.find((t) => t.key === tab).label} />
+          <PageHeader breadcrumbs={[{ label: 'My settings' }]} title={phoneTabs.find((t) => t.key === tab).label} inline />
         </div>
       ) : (
         <PageHeader breadcrumbs={[{ label: 'My settings' }]} title="My profile" subtitle="Manage your account, security and application preferences." />
