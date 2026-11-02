@@ -72,6 +72,9 @@
   .check { min-height: max(var(--control-height), 44px); }
 
   /* ---------- Dialogs: a sheet from the bottom ---------- */
+  /* A long link or button in a dialog wraps (one ran off the side of Admit a patient) */
+  .modal .btn { white-space: normal; height: auto; }
+  .modal .btn-link { text-align: left; }
   .modal-backdrop { align-items: end; padding: 0; }
   .modal {
     max-width: none; max-height: calc(100dvh - var(--space-8) - env(safe-area-inset-top));
@@ -483,6 +486,12 @@
   .prof-tabs:not(:has(.menu-button)) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
   .prof-tabs::-webkit-scrollbar { display: none; }
   .prof-tabs > * { flex: 0 0 auto; }
+
+  /* ---------- Details (a patient's history and background): label and value side by side, a thin line between rows ---------- */
+  .details > div { grid-template-columns: minmax(96px, 38%) minmax(0, 1fr); gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+  .details > div:last-child { border-bottom: 0; }
+  .details dt { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-body); font-weight: 500; }
+  .details dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

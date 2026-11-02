@@ -32,7 +32,13 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
   const [stuck, setStuck] = useState(false);
   useEffect(() => {
     if (!pinned) return undefined;
-    const check = () => setStuck(window.scrollY > 8);
+    // Two limits and only on a page with room to spare: the header shrinking must not move the page back and forth, or
+    // the buttons jump away from under a finger
+    const check = () => setStuck((was) => {
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      if (was) return window.scrollY > 8;
+      return window.scrollY > 80 && room > 300;
+    });
     check();
     window.addEventListener('scroll', check, { passive: true });
     return () => window.removeEventListener('scroll', check);

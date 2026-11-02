@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Calculator, CalendarClock, CircleCheck, CircleMinus, Clock, FilePen, FileSearch, FileText, Hourglass, ImagePlus, MonitorDown, Printer, ScanLine, Siren } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { api } from '../../api.js';
+import { api, newRequestId } from '../../api.js';
 import { usePagedRows, LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
@@ -785,7 +785,7 @@ export function OrderScanDialog({ patient, initial = null, planItem = null, onDo
   const ref = useDialogFocus(onClose);
   const [form, setForm] = useState({ study: 'usg_early', urgent: false, indication: '', ...initial });
   const [error, setError] = useState(null);
-  const [requestId] = useState(() => crypto.randomUUID());
+  const [requestId] = useState(newRequestId);
   const send = async (e) => {
     e.preventDefault();
     if (mentionsFetalSex(form.indication)) return setError(PCPNDT_MESSAGE);
@@ -838,7 +838,7 @@ export function BookScanDialog({ patient, onClose }) {
   const [form, setForm] = useState({ study: '', doctorId: '', urgent: false, when: '' });
   const [error, setError] = useState(null);
   const [booked, setBooked] = useState(null);
-  const [requestId] = useState(() => crypto.randomUUID());
+  const [requestId] = useState(newRequestId);
   const o = opts.data;
   const v = { ...form, study: form.study || o?.studies[0]?.key || '', doctorId: form.doctorId || o?.doctorId || '' };
   const send = async (e) => {
