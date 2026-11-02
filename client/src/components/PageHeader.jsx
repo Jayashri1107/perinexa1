@@ -115,7 +115,7 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
           )}
           {jump && (
             <button type="button" className="ph-jump-btn" aria-expanded={jumpOpen} aria-controls="ph-sections" onClick={() => setJumpOpen(!jumpOpen)}>
-              <span className="ph-jump-label">{current.label}</span>
+              <span className="ph-jump-label">{current.label === title ? 'Other pages' : current.label}</span>
               <span className="ph-jump-more">{tabs.length} sections</span>
               <ChevronDown aria-hidden="true" />
             </button>

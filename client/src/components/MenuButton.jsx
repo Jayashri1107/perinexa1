@@ -27,7 +27,7 @@ export function MenuButton({ label, icon: Icon, items, className = '', active = 
   useEffect(() => {
     if (!open) return undefined;
     const onPointer = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+      if (e.target === wrapRef.current || !wrapRef.current?.contains(e.target)) setOpen(false);
     };
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -83,7 +83,7 @@ export function MenuButton({ label, icon: Icon, items, className = '', active = 
       {open && (
         // A mouse press keeps focus where it is: Safari does not focus buttons or links on click, and the blur
         // would close the list before the click.
-        <ul id={listId} className={`menu-list${wide ? ' menu-list-wide' : ''}`} onKeyDown={onListKey} onMouseDown={(e) => e.preventDefault()}>
+        <ul id={listId} className={`menu-list${wide ? ' menu-list-wide' : ''}`} data-title={typeof label === 'string' ? label : undefined} onKeyDown={onListKey} onMouseDown={(e) => e.preventDefault()}>
           {items.flatMap((item, i) => [
             ...(item.group && item.group !== items[i - 1]?.group
               ? [

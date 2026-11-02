@@ -32,7 +32,7 @@ export function ExportButton({ what }) {
   if (!canExport(activeMembership) || !EXPORT_LISTS[what]) return null;
   return (
     <>
-      <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)} title={`Save your ${EXPORT_LISTS[what].label} as a file for Excel`}>
+      <button type="button" className="btn btn-secondary export-btn" onClick={() => setOpen(true)} title={`Save your ${EXPORT_LISTS[what].label} as a file for Excel`}>
         <Download aria-hidden="true" /> Export
       </button>
       {open && <ExportDialog what={what} onClose={() => setOpen(false)} />}
