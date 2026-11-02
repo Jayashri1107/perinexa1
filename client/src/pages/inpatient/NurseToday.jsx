@@ -1,7 +1,9 @@
-import { Activity, ArrowRightLeft, BedDouble, ClipboardPen, LogIn, LogOut, Megaphone, NotebookPen, PenLine, Siren } from 'lucide-react';
+import { Activity, Archive, ArrowRightLeft, BedDouble, Check, ChevronRight, ClipboardPen, Clock, LogIn, LogOut, Megaphone, NotebookPen, PenLine, Siren, TriangleAlert } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { formatNumber } from '../../components/DataTable.jsx';
+import { formatNumber, LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 import { KpiCard, StatusPill, formatDateTime } from '../../components/ui.jsx';
+import { FlagCountPill } from '../worklist/WorklistSections.jsx';
 
 // Vitals count as due when none were recorded in the last 8 hours – one nursing shift (owner, 13 Oct 2026). A
 // reminder from what is on the nursing chart, not a clinical rule: the doctor's orders say how often to check.
@@ -58,6 +60,145 @@ export function WardToday({ inpatients, rmo = false }) {
         </Link>
       </nav>
     </>
+  );
+}
+
+const stayLength = (admittedAt, now = Date.now()) => {
+  const days = Math.floor((now - new Date(admittedAt).getTime()) / 86_400_000);
+  return days < 1 ? 'Less than a day' : `${days} day${days > 1 ? 's' : ''}`;
+};
+
+const ROUND_CHIPS = [
+  { key: 'all', label: 'In hospital', test: () => true },
+  { key: 'flags', label: 'Red flags', test: (s) => s.redFlags?.length > 0 },
+  { key: 'admission', label: 'Admission notes', test: (s) => !s.hasAdmissionNote },
+  { key: 'round', label: 'Round notes due', test: (s) => !s.roundNoteToday },
+  { key: 'vitals', label: 'Vitals due', test: (s) => vitalsDue(s) },
+];
+
+/**
+ * Phones, a nurse or an RMO: the top of Today as in the app design (2 Nov 2026), from the same list as the cards above.
+ * Nurse: a red flag first, three numbers, In hospital, the handover. RMO: the ward round's chips and In hospital.
+ * `details` is what the In hospital list says under a patient (her red flags, or that nothing was checked).
+ */
+export function WardHome({ inpatients, rmo = false, details, after }) {
+  const [chip, setChip] = useState('all');
+  const admitted = inpatients?.admitted ?? null;
+  const count = (test) => (admitted ? admitted.filter(test).length : 0);
+  const flagged = count((s) => s.redFlags?.length > 0);
+  const due = count((s) => vitalsDue(s));
+  const drafts = admitted ? admitted.reduce((n, s) => n + (s.drafts ?? 0), 0) : 0;
+  const shown = admitted ? admitted.filter(ROUND_CHIPS.find((c) => c.key === chip).test) : [];
+  return (
+    <div className={rmo ? 'wd-home wd-rmo' : 'wd-home'}>
+      {!rmo && flagged > 0 && (
+        <a className="wd-alert" href="#td-inpatients">
+          <TriangleAlert aria-hidden="true" />
+          <span>
+            <strong>
+              {formatNumber(flagged)} red flag{flagged > 1 ? 's' : ''} in the ward
+            </strong>
+            Tell the doctor on duty
+          </span>
+          <ChevronRight aria-hidden="true" />
+        </a>
+      )}
+      {rmo ? (
+        <>
+          <div className="wd-chips" role="group" aria-label="Show">
+            {ROUND_CHIPS.map((c) => (
+              <button key={c.key} type="button" aria-pressed={chip === c.key} onClick={() => setChip(c.key)}>
+                {c.label} ({admitted ? formatNumber(count(c.test)) : '–'})
+              </button>
+            ))}
+          </div>
+          {admitted && (
+            <p className="wd-line">
+              {formatNumber(count((s) => s.admittedToday))} admitted today · {formatNumber(inpatients.dischargedToday ?? 0)} discharged today
+            </p>
+          )}
+        </>
+      ) : (
+        <section aria-labelledby="ward-glance">
+          <h2 id="ward-glance">The ward at a glance</h2>
+          <div className="wd-counts">
+            <div>
+              <strong className="tabular">{admitted ? formatNumber(admitted.length) : '–'}</strong>
+              <span>In hospital</span>
+            </div>
+            <div className={due ? 'is-due' : undefined}>
+              <strong className="tabular">{admitted ? formatNumber(due) : '–'}</strong>
+              <span>Vitals due</span>
+            </div>
+            <div className={drafts ? 'is-due' : undefined}>
+              <strong className="tabular">{admitted ? formatNumber(drafts) : '–'}</strong>
+              <span>Notes to finish</span>
+            </div>
+          </div>
+        </section>
+      )}
+      <section id="td-inpatients" aria-label="In hospital" aria-labelledby={rmo ? undefined : 'wd-in-title'}>
+        {!rmo && <h2 id="wd-in-title">In hospital</h2>}
+        {admitted && shown.length === 0 ? (
+          <p className="wd-none">Nothing waiting here.</p>
+        ) : (
+          <Paged rows={shown} label="patients" {...LIST_PAGES}>
+            {(page) => (
+              <ul className="wd-list">
+                {page.map((s) => (
+                  <li key={s.admissionId}>
+                    <Link className="wd-row" to={`/patients/${s.patient.id}/stays/${s.admissionId}`}>
+                      <span className="wd-bed">{s.bed || <BedDouble aria-hidden="true" />}</span>
+                      <span className="wd-who">
+                        <strong>{s.patient.fullName}</strong>
+                        {[s.ward, stayLength(s.admittedAt)].filter(Boolean).join(' · ')}
+                      </span>
+                      <ChevronRight className="wd-go" aria-hidden="true" />
+                      <span className="wd-tags">
+                        <FlagCountPill flags={s.redFlags} />
+                        {rmo && !s.hasAdmissionNote && (
+                          <StatusPill tone="watch" icon={ClipboardPen}>
+                            Admission note to write
+                          </StatusPill>
+                        )}
+                        {rmo && !s.roundNoteToday && (
+                          <StatusPill tone="watch" icon={NotebookPen}>
+                            Round note due
+                          </StatusPill>
+                        )}
+                        {vitalsDue(s) && (
+                          <StatusPill tone="watch" icon={Clock} title={`No vitals recorded in the last ${VITALS_DUE_HOURS} hours`}>
+                            Vitals due
+                          </StatusPill>
+                        )}
+                        {rmo && s.roundNoteToday && (
+                          <StatusPill tone="stable" icon={Check}>
+                            Round note written
+                          </StatusPill>
+                        )}
+                        {s.drafts > 0 && (
+                          <StatusPill tone="watch" icon={PenLine}>
+                            {s.drafts} draft{s.drafts > 1 ? 's' : ''}
+                          </StatusPill>
+                        )}
+                        {s.patient.closed && (
+                          <StatusPill tone="inactive" icon={Archive}>
+                            Record closed
+                          </StatusPill>
+                        )}
+                      </span>
+                    </Link>
+                    {details?.(s)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Paged>
+        )}
+      </section>
+      {after}
+      {!rmo && <HandoverList inpatients={inpatients} />}
+    </div>
   );
 }
 
