@@ -247,6 +247,7 @@ export function AppointmentsPage() {
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Appointments' }]}
+        className="ph-fab"
         title="Appointments"
         tabs={appointmentTabs(info?.canBook)}
         actions={

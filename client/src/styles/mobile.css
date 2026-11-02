@@ -890,15 +890,15 @@
   .ch-day input { flex: 1 1 auto; min-width: 0; }
   /* A table with rows and columns that mean something together (Monthly income): a real table that swipes, the first
      column staying in view – not one long stack */
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) { display: block; overflow-x: auto; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) thead { display: table-header-group; }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tbody { display: table-row-group; width: auto; }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tfoot { display: table-footer-group; }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tr { display: table-row; width: auto; margin: 0; padding: 0; border: 0; border-radius: 0; }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) :is(td, th) { display: table-cell; width: auto; min-width: 64px; padding: var(--space-2); border-bottom: 1px solid var(--border); font-size: var(--fs-label); line-height: var(--lh-label); }
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) :is(td, th):first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+  .pf-main table.bill-report:not(:has(td[data-label])) { display: block; overflow-x: auto; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .pf-main table.bill-report:not(:has(td[data-label])) thead { display: table-header-group; }
+  .pf-main table.bill-report:not(:has(td[data-label])) tbody { display: table-row-group; width: auto; }
+  .pf-main table.bill-report:not(:has(td[data-label])) tfoot { display: table-footer-group; }
+  .pf-main table.bill-report:not(:has(td[data-label])) tr { display: table-row; width: auto; margin: 0; padding: 0; border: 0; border-radius: 0; }
+  .pf-main table.bill-report:not(:has(td[data-label])) :is(td, th) { display: table-cell; width: auto; min-width: 64px; padding: var(--space-2); border-bottom: 1px solid var(--border); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .pf-main table.bill-report:not(:has(td[data-label])) :is(td, th):first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
   /* …with nothing in it yet: only its message */
-  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):has(tbody > tr:only-child > td[colspan]) thead { display: none; }
+  .pf-main table.bill-report:has(tbody > tr:only-child > td[colspan]) thead { display: none; }
   /* The audit log: who and what on lines of their own; its dates side by side */
   .dt tbody tr:has(> td[data-label='Done by']) > td:is([data-label='Done by'], [data-label='Details'], [data-label='Event']):not(:first-child) { flex: 1 1 100%; }
   .dt-toolbar:has(input[type='date']) > .dt-filter:has(select):nth-last-child(3) { flex: 1 1 100%; }
@@ -925,6 +925,9 @@
   .pf-title-slot .ph-title-row { flex-wrap: nowrap; gap: var(--space-1); }
   .pf-title-slot .ph-title { overflow: hidden; font-size: calc(26px * var(--text-scale)); line-height: calc(32px * var(--text-scale)); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
   .pf-title-slot .ph-title.ph-title-long { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  /* A title with a status beside it: the status under the title, nothing cut off */
+  .pf-title-slot .ph-title-row:has(.ph-badges) { flex-wrap: wrap; row-gap: 2px; }
+  .pf-title-slot .ph-title-row:has(.ph-badges) .ph-title { flex: 1 1 100%; font-size: var(--fs-h1); line-height: var(--lh-h1); }
   .pf-title-slot .ph-crumbs ol { margin-bottom: 0; }
   .ph-caption { display: block; margin: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
   .pf-topbar-actions .icon-btn { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--surface); }
@@ -961,6 +964,8 @@
   .ph-fab .ph-actions > .menu-button:has(> .btn-primary), .ph-fab .ph-actions > .btn-primary { position: fixed; right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 84px); z-index: 25; display: flex; width: auto; }
   .ph-fab .ph-actions > .menu-button > .btn-primary, .ph-fab .ph-actions > .btn-primary { width: auto; height: auto; min-height: 52px; padding: 0 var(--space-6); border-radius: 16px; box-shadow: var(--shadow-pop); font-size: var(--fs-body); }
   .pf-main:has(.ph-fab) .pf-content { padding-bottom: 84px; }
+  .ph-fab .ph-actions > .btn-primary:only-child, .ph-fab .ph-actions:has(> :nth-child(2)) > .btn-primary { left: auto; flex: none; width: auto; }
+  .ph-fab .ph-actions:has(> .btn-primary:only-child) { margin: 0; }
   .ph-fab .ph-actions > .export-btn, .ph-fab .ph-actions:has(> :nth-child(2)) > .export-btn { position: fixed; top: auto; right: auto; left: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 88px); z-index: 25; width: 44px; height: 44px; min-height: 44px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-card); }
   .ph-fab .ph-actions:has(> .export-btn) { margin: 0; }
 
@@ -1001,7 +1006,7 @@
   .pf:has(.vs-visit-head) .pf-menu-btn { display: none; }
   .pf:has(.vs-visit-head) .ph-patient .ph-tabs, .pf:has(.vs-visit-head) .ph-patient .ph-actions { display: none; }
   /* Sign and finish at the foot, beside Save */
-  .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) { padding-right: calc(60% + var(--space-4)); }
+  .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) { padding-right: calc(60% + var(--space-6)); }
   .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) > .grow.hint { display: none; }
   .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) > .btn:not(.btn-link) { flex: 1 1 100%; padding: 0 var(--space-1); }
   .vs-visit-top .row > .btn-positive { position: fixed; right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-2)); z-index: 45; width: 60%; min-height: 48px; }
@@ -1023,6 +1028,33 @@
   .cal-cell:not(.cal-cell-chosen), .cal-cell-out:not(.cal-cell-chosen) { background: none; }
   .cal-cell-btn { border-radius: var(--radius-md); }
   .cal-cell-chosen { border-radius: var(--radius-md); }
+
+  /* A visit: the short readings three a row */
+  .vs-vitals, .vs-section .form-grid:has(input[inputmode='decimal']) { column-gap: var(--space-2); }
+
+  /* ---------- App design: reception's Today ---------- */
+  /* Three small numbers across, not a row to swipe */
+  .rd-numbers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); overflow: visible; }
+  .rd-numbers > .rd-number { flex: none; min-width: 0; align-items: flex-start; padding: var(--space-3); }
+  .rd-number .rd-icon { display: none; }
+  .rd-number-text { display: flex; flex-direction: column-reverse; min-width: 0; }
+  .rd-number-value { font-size: calc(22px * var(--text-scale)); line-height: calc(28px * var(--text-scale)); font-weight: 700; }
+  .rd-number-label { font-size: var(--fs-label); line-height: var(--lh-label); }
+  .rd-number-text > .muted { display: none; }
+  /* Today's patients before the jobs */
+  .rd-side > .rc-todo { order: 2; }
+
+  /* ---------- App design: a list of bills – who, the bill, how much, paid or not ---------- */
+  .dt tbody tr:has(> td[data-label='Balance']) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+  .dt tbody tr:has(> td[data-label='Balance']) > td { padding: 0; min-height: 0; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label]:not(:first-child)::before { display: none; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Patient'] { grid-column: 1; grid-row: 1; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:first-child { grid-column: 1; grid-row: 2; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 400; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Type'] { grid-column: 1; grid-row: 3; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Total'] { grid-column: 2; grid-row: 1; text-align: right; font-weight: 700; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Status'] { grid-column: 2; grid-row: 2 / span 2; justify-self: end; align-self: start; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Date'], [data-label='Paid'], [data-label='Balance'], [data-label='Last payment']) { display: none; }
+  .dt tbody tr:has(> td[data-label='Balance'])::after { display: none; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

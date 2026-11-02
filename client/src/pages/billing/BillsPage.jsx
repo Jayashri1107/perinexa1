@@ -142,6 +142,7 @@ export function BillsPage() {
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Billing' }]}
+        className="ph-fab"
         title="Billing"
         subtitle={search.length >= 2 ? `Bills matching "${search}"` : day ? dayLabel(day) : undefined}
         tabs={billingTabs(activeMembership.roles)}
