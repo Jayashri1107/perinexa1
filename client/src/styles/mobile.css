@@ -143,19 +143,18 @@
   .segmented > * { flex: 1 0 auto; justify-content: center; white-space: nowrap; }
 
   /* ---------- Lists: each row a compact item – its first line in bold, then "label  value" side by side ---------- */
-  .dt tr, table:not(.dt, .ptable, .am-grid) tr { padding: var(--space-2) 0; }
-  .dt td, table:not(.dt, .ptable, .am-grid) td { padding: 2px var(--space-3); }
+  .dt tr { padding: var(--space-2) 0; }
+  .dt td { padding: 2px var(--space-3); }
   /* The label in its own 88 px column; everything in the cell (however many parts) to its right */
-  .dt td[data-label], table:not(.dt, .ptable, .am-grid) td[data-label] {
+  .dt td[data-label] {
     position: relative; display: block; min-height: calc(var(--lh-body) + 4px); padding-left: calc(var(--space-3) + 100px + var(--space-2));
   }
-  .dt td[data-label]::before, table:not(.dt, .ptable, .am-grid) td[data-label]::before {
+  .dt td[data-label]::before {
     position: absolute; left: var(--space-3); top: 4px; width: 100px; font-size: var(--fs-caption); line-height: var(--lh-caption);
   }
   .dt td.wrap-cell { min-width: 0; max-width: none; }
-  .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { display: block; padding-bottom: var(--space-1); font-weight: 600; }
-  .dt td[data-label]:first-child::before, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child::before { display: none; }
-  table:not(.dt, .ptable, .am-grid) tr { margin-bottom: var(--space-2); }
+  .dt td[data-label]:first-child { display: block; padding-bottom: var(--space-1); font-weight: 600; }
+  .dt td[data-label]:first-child::before { display: none; }
   /* One look for every list: the name in bold ink (not an underlined link) and a › on the right of a row that opens
      when tapped (DataTable's dt-clickable rows, or a row whose first cell links to it) */
   .dt tbody tr:is(.dt-clickable, :has(> td:first-child a[href])) { position: relative; padding-right: var(--space-8); }
@@ -164,7 +163,7 @@
     border-top: 2px solid var(--slate-300); border-right: 2px solid var(--slate-300); transform: rotate(45deg); pointer-events: none;
   }
   .dt tbody td:first-child a[href]:first-of-type { color: var(--ink); font-weight: 600; text-decoration: none; }
-  .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { padding-left: var(--space-3); }
+  .dt td[data-label]:first-child { padding-left: var(--space-3); }
   /* Above a list: the search and its filter button on one line */
   .dt-toolbar { flex-wrap: nowrap; align-items: center; gap: var(--space-2); padding: var(--space-3); }
   .dt-toolbar:has(> :nth-child(3)) { flex-wrap: wrap; }
@@ -474,7 +473,7 @@
   .appt-daynav input[type='date'] { padding: 0 var(--space-1); font-size: 15px; }
   .appt-daynav > .btn { padding: 0 var(--space-2); font-size: var(--fs-label); }
   /* A stacked table's caption across the full width (it was squeezed) */
-  table:not(.dt, .ptable, .am-grid) caption { display: block; width: 100%; text-align: left; }
+  table:not(.dt, .ptable, .am-grid) caption:not(.sr-only) { display: block; width: 100%; text-align: left; }
   .wl-footnote { flex-wrap: wrap; }
   .wl-footnote .btn { flex: none; }
   /* OPD timings not set: the title and what to do; the explanation is left out */
@@ -541,6 +540,27 @@
   .rd-table-wrap { min-height: 0; }
   .rd-numbers { margin-bottom: var(--space-2); padding-bottom: 0; }
 
+  /* ---------- Every shared list: a compact card – the first cell on top, then two details a line with their word above,
+     then the row's buttons; a › at the top right ---------- */
+  .dt tbody tr:has(> td[data-label]) { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-1); padding: var(--space-2) var(--space-6) var(--space-2) 0; }
+  .dt tbody tr:has(> td[data-label]) > * { box-sizing: border-box; flex: 1 1 45%; width: auto; min-width: 0; overflow-wrap: anywhere; }
+  .dt tbody tr:has(> td[data-label]) > :first-child, .dt tbody tr:has(> td[data-label]) > td:not([data-label]), .dt tbody tr:has(> td[data-label]) > td:is([data-label='Email'], [data-label='Access']) { flex: 1 1 100%; }
+  .dt tbody tr:has(> td[data-label]) > td[data-label]:not(:first-child) { padding-left: var(--space-3); }
+  .dt tbody tr:has(> td[data-label]) > td[data-label]:not(:first-child)::before { position: static; display: block; width: auto; }
+  .dt tbody tr:has(> td[data-label]) > td:empty { display: none; }
+  .dt tbody tr:is(.dt-clickable, :has(> td:first-child a[href]))::after { top: 24px; }
+  .dt tbody tr > th[scope='row'] { display: block; padding: 2px var(--space-3); border: 0; background: none; color: var(--ink); font-weight: 600; text-align: left; }
+  /* Numbers by type (Analytics): three short figures a line */
+  .an-table tbody tr:has(> td[data-label]) > td[data-label]:not(:first-child) { flex: 1 1 30%; }
+  /* Above a list: the search on its own line when filters sit beside it */
+  .dt-toolbar:has(> .dt-filter) { flex-wrap: wrap; align-items: flex-end; }
+  .dt-toolbar:has(> .dt-filter) > .dt-search { flex: 1 1 100%; }
+  .dt-toolbar > .dt-filter { flex: 1 1 40%; min-width: 0; }
+  /* A short list: no spare height under it; nothing under it when it all fits on one page */
+  .dt-wrap { min-height: 0; }
+  .dt tbody tr:last-child { border-bottom: 0; }
+  .dt-footer:not(:has(.dt-pager-buttons .icon-btn:not(:disabled))) { display: none; }
+
   /* ---------- A bill in a list: short – the number, the patient, then the amounts side by side with their word above ---------- */
   .dt tbody tr:has(> td[data-label='Balance']) { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-1); }
   .dt tbody tr:has(> td[data-label='Balance']) > td { flex: 1 1 100%; width: auto; }
@@ -557,6 +577,88 @@
 
   /* A patient's header: the first tag lines up with the name */
   .ph-patient .ph-badges > .pill-neutral:first-child { padding-left: 0; }
+
+  /* ---------- A patient in the Patients list: the name, then two details a line with their word above, then her buttons ---------- */
+  .dt tbody tr:has(> td.pt-actions-cell) { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-1); padding-right: var(--space-6); }
+  .dt tbody tr:has(> td.pt-actions-cell) > td { box-sizing: border-box; flex: 1 1 45%; width: auto; min-width: 0; }
+  .dt tbody tr:has(> td.pt-actions-cell) > td:first-child, .dt tbody tr:has(> td.pt-actions-cell) > td.pt-actions-cell { flex: 1 1 100%; }
+  .dt tbody tr:has(> td.pt-actions-cell) > td[data-label]:not(:first-child) { padding-left: var(--space-3); }
+  .dt tbody tr:has(> td.pt-actions-cell) > td[data-label]:not(:first-child)::before { position: static; display: block; width: auto; }
+  .dt tbody tr:has(> td.pt-actions-cell)::after { top: 24px; }
+  .pt-actions-cell .pt-actions { display: flex; gap: var(--space-2); }
+  /* The box under the filters: only the small More filters button, on the right */
+  .dt-toolbar:has(> .pt-filters-btn:only-child) { justify-content: flex-end; padding: var(--space-2) var(--space-3); }
+  .dt-toolbar > .pt-filters-btn { min-height: 36px; font-size: var(--fs-label); }
+  /* The search box and the switches under it: even spaces */
+  .pt-find { margin-bottom: var(--space-2); }
+  .pt-quick { gap: var(--space-2); margin-bottom: var(--space-2); }
+
+  /* ---------- A bill: short rows, nothing wider than the screen ---------- */
+  .bill-page, .bill-body, .bill-section, .bill-table-wrap { min-width: 0; max-width: 100%; }
+  .bill-body { display: block; }
+  .bill-head, .bill-section { margin-bottom: var(--space-2); padding: var(--space-3); }
+  .bill-head-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
+  .bill-head-grid dt { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .bill-head-grid dd { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .bill-head-grid dd a { color: var(--ink); text-decoration: none; }
+  /* Items and payments: rows with a thin line between them, not a box in a box */
+  .bill-page .bill-lines tr { margin: 0; border-width: 0 0 1px; border-radius: 0; }
+  .bill-page .bill-lines tbody tr:last-child { border-bottom: 0; }
+  .bill-page .bill-lines .bill-col-item { font-size: var(--fs-label); line-height: var(--lh-label); }
+  .bill-page .bill-item-name { display: block; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .bill-page .bill-item-cat, .bill-page .bill-item-qty, .bill-page .bill-line-from { display: block; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .bill-page .bill-lines:not(.bill-pay-table) td::before { display: none; }
+  .bill-page .bill-pay-table tr { gap: var(--space-2) var(--space-3); }
+  .bill-page .bill-pay-table td { min-width: 0; overflow-wrap: anywhere; text-align: left; white-space: normal; }
+  .bill-page .bill-pay-table td[data-label]::before { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .bill-page .bill-pay-table td[data-label='Receipt'] { font-weight: 600; }
+  .bill-page .bill-pay-table .bill-col-actions { grid-column: 1 / -1; }
+  /* Amount: the word on the left, the figure on the right */
+  table.bill-sums.bill-sums, table.bill-sums.bill-sums tbody { display: block; max-width: none; margin: 0; }
+  table.bill-sums.bill-sums tr { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); margin: 0; padding: var(--space-1) 0; border: 0; border-radius: 0; }
+  table.bill-sums.bill-sums th, table.bill-sums.bill-sums td { display: block; width: auto; padding: 0; border: 0; }
+  table.bill-sums.bill-sums .bill-balance { margin-top: var(--space-1); padding-top: var(--space-2); border-top: 2px solid var(--ink); }
+  table.bill-sums.bill-sums .bill-balance th, table.bill-sums.bill-sums .bill-balance td { border: 0; padding: 0; }
+  .bill-page .bill-lines .bill-col-actions .btn { padding-left: 0; min-height: 36px; }
+  /* Price list: the name on the left, the price on the right */
+  table.bill-prices.bill-prices tr { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); margin: 0; padding: var(--space-2) 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+  table.bill-prices.bill-prices tr:last-child { border-bottom: 0; }
+  table.bill-prices.bill-prices td { display: block; width: auto; min-width: 0; padding: 0; border: 0; }
+  table.bill-prices.bill-prices td:first-child { flex: 1 1 55%; }
+  table.bill-prices.bill-prices td:empty { display: none; }
+  /* Add items: one column, inside the screen */
+  .modal, .modal * { box-sizing: border-box; }
+  .bill-add-pickrow { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  .bill-add-chip { max-width: 100%; white-space: normal; text-align: left; }
+  .bill-add-row { flex-wrap: wrap; }
+  /* A drop-down menu: as wide as its words need, inside the screen */
+  .menu-button .menu-list { width: max-content; min-width: 200px; max-width: calc(100vw - 24px); }
+  .menu-button .menu-list.menu-list-wide { grid-template-columns: minmax(0, 1fr); }
+
+  /* ---------- The platform (super admin) ---------- */
+  .pf-top-title { font-weight: 600; }
+  /* Analytics: only the Period list on a phone (the full-width switch rule had brought the wide buttons back too) */
+  .an-page .segmented.an-period-wide { display: none; }
+  .an-filters { gap: var(--space-2); padding: var(--space-3); }
+  .an-filters .an-filter { gap: 2px; }
+  .an-filters .dt-filter { flex: 0 0 auto; }
+  /* Overview, Recent activity: what happened, then who, then when – each on its own line */
+  .activity-list li { flex-wrap: wrap; gap: 2px var(--space-2); padding: var(--space-2) var(--space-3); }
+  .activity-list .pill { max-width: 100%; white-space: normal; }
+  .activity-list .activity-text { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; white-space: normal; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .activity-list time { flex: 1 1 100%; text-align: left; }
+  /* Hospitals: New hospital once – the button; no tab for the same thing */
+  .ph-tabs.segmented:has(a[href='/platform/hospitals/new']) { display: none; }
+  /* My settings' sections: the way back on the left, a smaller photo, the save button after the boxes it saves */
+  .set-back { align-self: flex-start; min-height: 36px; margin: 0; }
+  .prof-page { gap: var(--space-2); }
+  .prof-photo, .prof-photo .avatar { width: 80px; height: 80px; }
+  .prof-account { gap: var(--space-3); padding: var(--space-3); }
+  .prof-card { padding: var(--space-3); }
+  form.prof-card > .prof-card-head { display: contents; }
+  form.prof-card > .prof-card-head > .prof-card-icon { display: none; }
+  form.prof-card > .prof-card-head > .prof-card-action { order: 10; width: 100%; }
+  form.prof-card > .prof-card-head > .prof-card-action .btn { width: 100%; justify-content: center; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
