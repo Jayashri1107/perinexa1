@@ -273,6 +273,7 @@ export function PatientsPage() {
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Patients' }]}
+        className="ph-fab"
         title={ipd ? 'Admitted patients (IPD)' : 'OPD patients'}
         help={`Click a patient to open her record. Use the choices above the list to show only some patients.${seesDuplicates ? ' Records marked as a duplicate of another are hidden: More filters shows them.' : ''}`}
         actions={

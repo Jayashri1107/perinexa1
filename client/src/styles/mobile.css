@@ -957,6 +957,73 @@
   .td-home-actions > .btn, .td-home-actions > .menu-button > .btn { width: 100%; min-height: 44px; justify-content: center; padding: 0 var(--space-2); white-space: nowrap; font-size: var(--fs-label); }
   .td-home-actions > .menu-button { display: flex; min-width: 0; }
 
+  /* ---------- App design: a list page's main button floats over the list, above the bottom bar ---------- */
+  .ph-fab .ph-actions > .menu-button:has(> .btn-primary), .ph-fab .ph-actions > .btn-primary { position: fixed; right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 84px); z-index: 25; display: flex; width: auto; }
+  .ph-fab .ph-actions > .menu-button > .btn-primary, .ph-fab .ph-actions > .btn-primary { width: auto; height: auto; min-height: 52px; padding: 0 var(--space-6); border-radius: 16px; box-shadow: var(--shadow-pop); font-size: var(--fs-body); }
+  .pf-main:has(.ph-fab) .pf-content { padding-bottom: 84px; }
+  .ph-fab .ph-actions > .export-btn, .ph-fab .ph-actions:has(> :nth-child(2)) > .export-btn { position: fixed; top: auto; right: auto; left: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 88px); z-index: 25; width: 44px; height: 44px; min-height: 44px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-card); }
+  .ph-fab .ph-actions:has(> .export-btn) { margin: 0; }
+
+  /* ---------- App design: the doctor's Patients ---------- */
+  .pt-quick { gap: var(--space-2); }
+  .pt-quick > .segmented:not(.ph-tabs) { display: flex; gap: var(--space-2); padding: 0; border: 0; background: none; box-shadow: none; }
+  .pt-quick > .segmented > button { min-height: 40px; border-radius: var(--radius-pill); background: var(--surface); }
+  .pt-quick > .segmented > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
+  /* A row: her avatar and name, the care under them, the last visit last; a warning at the right; nothing when there is none */
+  .dt tbody tr:has(> td[data-label='Care now']) { position: relative; row-gap: 0; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label]:not(:first-child) { padding: 0 var(--space-3) 0 68px; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Care now']) > td[data-label]:not(:first-child)::before { display: none; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label='Last seen'] { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label='Last seen'] > .cell-sub { display: inline; color: inherit; font-size: inherit; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td.risk-cell:not(:has(.pill)) { display: none; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td.risk-cell { padding-top: 2px; padding-bottom: 2px; }
+
+  /* ---------- App design: a patient's record ---------- */
+  /* Her sections in one swiping row with a line under the chosen one, not a list to open */
+  .ph-patient .ph-jump-btn { display: none; }
+  .ph-pinned { top: calc(env(safe-area-inset-top) + 67px); }
+  .ph-patient .ph-tabs.segmented, .ph-patient.ph-has-jump .ph-tabs.segmented { display: flex; flex-wrap: nowrap; gap: var(--space-6); overflow-x: auto; margin: var(--space-2) calc(var(--space-3) * -1) 0; padding: 0 var(--space-3); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
+  .ph-patient .ph-tabs.segmented::-webkit-scrollbar { display: none; }
+  .ph-patient .ph-tabs.segmented > a, .ph-patient .ph-tabs.segmented > .menu-button > button { flex: none; min-height: 44px; padding: 0 2px; border-radius: 0; background: none; box-shadow: none; color: var(--slate-600); font-weight: 600; white-space: nowrap; }
+  .ph-patient .ph-tabs.segmented > a.active, .ph-patient .ph-tabs.segmented > a[aria-current='page'] { background: none; color: var(--indigo-700); box-shadow: inset 0 -3px 0 var(--indigo-700); }
+  /* Her main button at the foot, in place of the bottom bar – not while a form's Save bar is there */
+  .pf-has-tabbar:has(.ph-patient .ph-actions > .btn-primary):not(:has(.sticky-actions:not(.modal *))) .pf-tabbar { display: none; }
+  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: nowrap; width: auto; margin: 0; padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-3)); border-top: 1px solid var(--border); background: var(--surface); }
+  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) > .btn-primary { flex: 1 1 auto; min-height: 52px; font-size: var(--fs-body); }
+  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) > .menu-button > .btn { min-height: 52px; }
+  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient.ph-stuck .ph-actions > :not(.btn-primary) { display: flex; }
+
+  /* A patient's row: everything starts on one line under her name */
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label]:not(:first-child) > :first-child { margin-left: 0; }
+
+  /* ---------- App design: a visit – room for the work ---------- */
+  /* Her name and warnings stay; her record's sections and buttons wait until the visit is left */
+  .pf:has(.vs-visit-head) .pf-menu-btn { display: none; }
+  .pf:has(.vs-visit-head) .ph-patient .ph-tabs, .pf:has(.vs-visit-head) .ph-patient .ph-actions { display: none; }
+  /* Sign and finish at the foot, beside Save */
+  .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) { padding-right: calc(60% + var(--space-4)); }
+  .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) > .grow.hint { display: none; }
+  .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *) > .btn:not(.btn-link) { flex: 1 1 100%; padding: 0 var(--space-1); }
+  .vs-visit-top .row > .btn-positive { position: fixed; right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-2)); z-index: 45; width: 60%; min-height: 48px; }
+  /* Print, AI tools and More: one slim row */
+  .vs-visit-top .row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vs-visit-top .row > .btn, .vs-visit-top .row > .menu-button > .btn { min-height: 40px; padding: 0 var(--space-1); font-size: var(--fs-label); }
+  /* Visit details and Prescription: a line under the chosen one */
+  .vs-tabs.segmented { padding: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
+  .vs-tabs.segmented > button { min-height: 44px; border-radius: 0; background: none; box-shadow: none; color: var(--slate-600); font-weight: 600; }
+  .vs-tabs.segmented > button[aria-pressed='true'] { background: none; color: var(--indigo-700); box-shadow: inset 0 -3px 0 var(--indigo-700); }
+
+  /* ---------- App design: New patient – straight to the step ---------- */
+  .reg-steps { display: none; }
+  .pf-sheet .pn-setting { margin-bottom: var(--space-2); }
+
+  /* ---------- App design: Calendar – a clean month without lines ---------- */
+  .cal-grid { gap: 2px; border: 0; background: none; }
+  .cal-grid-row { gap: 2px; }
+  .cal-cell:not(.cal-cell-chosen), .cal-cell-out:not(.cal-cell-chosen) { background: none; }
+  .cal-cell-btn { border-radius: var(--radius-md); }
+  .cal-cell-chosen { border-radius: var(--radius-md); }
+
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
   [data-short]:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
