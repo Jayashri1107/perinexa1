@@ -321,7 +321,7 @@
   .bill-filter select { width: 100%; min-width: 0; }
   .appt-daynav { gap: var(--space-1); }
   .appt-daynav input[type='date'] { padding: 0 var(--space-2); }
-  .dt-empty { padding: var(--space-4) var(--space-3); }
+  .dt-empty { padding: var(--space-6) var(--space-3) !important; }
 
   /* ---------- Today's lists: the ones with someone in them first, full width; the empty ones as small chips after them
      ("Red flags 0"), still there to tap ---------- */
@@ -349,9 +349,8 @@
 
   /* ---------- A patient's Overview: each card its title line (FoldCards), tap to open; the care plan keeps its counts and
      the risk card its level under the title ---------- */
-  .card[data-fold] { padding: var(--space-3) var(--space-4); margin-bottom: 0; }
-  .patient-overview { display: flex; flex-direction: column; gap: var(--space-2); }
-  .patient-overview .ov-row { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+  .card[data-fold] { margin: 0 0 var(--space-2); padding: var(--space-3) var(--space-4); }
+  .patient-overview, .patient-overview .ov-row { display: block; margin: 0; }
   .card[data-fold] h2[role='button'] { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; margin: 0; cursor: pointer; font-size: var(--fs-body); line-height: var(--lh-body); }
   .card[data-fold] h2[role='button']::after {
     content: ''; flex: none; width: 8px; height: 8px; margin: 0 var(--space-1) 4px auto;
@@ -453,6 +452,47 @@
   .auth2-form .auth-remember { min-height: 36px; }
   .auth2-form .auth1-submit { margin-top: clamp(4px, 1vh, 12px); min-height: 48px; }
   .auth2-form .auth1-foot { margin-top: clamp(6px, 1.2vh, 12px); padding-top: clamp(6px, 1.2vh, 12px); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+  /* ---------- Notifications: as wide as the screen, under the header (the panel ran off the left edge) ---------- */
+  .nb-card {
+    position: fixed; left: var(--space-2); right: var(--space-2); top: calc(env(safe-area-inset-top) + 66px); width: auto; max-width: none;
+    max-height: calc(100dvh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  .nb-item { min-height: 44px; }
+
+  /* ---------- Small tidying from the check of every page ---------- */
+  /* Names read as names: bold ink, not underlined green */
+  .rd-doctors .rd-person-text a, .rd-row .rd-person-text a, .fu-patient a { color: var(--ink); font-weight: 600; text-decoration: none; }
+  /* A swiping row of count cards: no shadow, which the row would cut into a grey band */
+  .kpi-grid > .kpi, .rd-numbers > .rd-number { box-shadow: none; }
+  /* The arrows, date and Today always fit, the date in full */
+  .appt-daynav { grid-template-columns: 36px minmax(0, 1fr) 36px auto; }
+  .appt-daynav .icon-btn { width: 36px; min-width: 36px; }
+  .appt-daynav input[type='date'] { padding: 0 var(--space-1); font-size: 15px; }
+  .appt-daynav > .btn { padding: 0 var(--space-2); font-size: var(--fs-label); }
+  /* A stacked table's caption across the full width (it was squeezed) */
+  table:not(.dt, .ptable, .am-grid) caption { display: block; width: 100%; text-align: left; }
+  .wl-footnote { flex-wrap: wrap; }
+  .wl-footnote .btn { flex: none; }
+  /* OPD timings not set: the title and what to do; the explanation is left out */
+  .appt-setup { gap: var(--space-3); padding: var(--space-3); }
+  .appt-setup-icon { width: 36px; height: 36px; }
+  .appt-setup h2 { font-size: var(--fs-body); line-height: var(--lh-body); }
+  .appt-setup p.muted { display: none; }
+  /* My settings: its tabs in one line that scrolls */
+  .prof-tabs:not(:has(.menu-button)) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+  .prof-tabs::-webkit-scrollbar { display: none; }
+  .prof-tabs > * { flex: 0 0 auto; }
+
+  /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
+  [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
+  [data-short]:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
+  [data-short]::after {
+    content: ''; position: absolute; right: var(--space-1); top: 3px; width: 7px; height: 7px;
+    border-right: 2px solid var(--slate-600); border-bottom: 2px solid var(--slate-600); transform: rotate(45deg);
+  }
+  [data-short][data-open]::after { top: 7px; transform: rotate(-135deg); }
+  [data-short]:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
 
   /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
   .pt-summary, .patient-form > .alert-patient-note { display: none; }

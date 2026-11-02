@@ -10,6 +10,7 @@ import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { billColumns } from './BillsPage.jsx';
 import { GROUP_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
+import { FoldCards } from '../../components/FoldCards.jsx';
 
 // Billing reports (docs/BILLING_PLAN.md): unpaid bills (the daily collection is DailyCollectionPage.jsx),
 // monthly income with the export for the accountant (hospital admin), and the price list.
@@ -326,7 +327,7 @@ export function PriceListPage() {
   return (
     <>
       <Header title="Price list" />
-      <div className="pf-content bill-page">
+      <FoldCards className="pf-content bill-page" openFirst>
         {res.error && <Alert type="error">{res.error}</Alert>}
         {!canEdit && res.data && <Alert type="info">Only the hospital admin can change the prices.</Alert>}
         {canEdit && unset > 0 && (
@@ -363,7 +364,7 @@ export function PriceListPage() {
           );
         })}
         {canEdit && res.data && <NewPriceForm groups={res.data.groups} onAdded={(item) => setItems([...list, item])} />}
-      </div>
+      </FoldCards>
     </>
   );
 }

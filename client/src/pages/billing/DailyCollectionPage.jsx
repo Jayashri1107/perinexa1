@@ -14,6 +14,7 @@ import { amountInWords } from './amountWords.js';
 import { MODE_LABELS, PAYMENT_KIND_LABELS, REPORT_ROLES, billingTabs, rupees } from './billingFormat.js';
 import { CancelExpenseDialog, ExpenseEntryForm, ExpensesList } from './ExpenseEntry.jsx';
 import { EXPENSE_MODE_LABELS } from './expenseFormat.js';
+import { FoldCards } from '../../components/FoldCards.jsx';
 
 // Billing → Daily summary, redesigned (owner, 27 Oct 2026): the day at a glance – collected, given back, the day's
 // expenses and what is left – then the money by mode, OPD and IPD, the expenses paid from the counter (entered here
@@ -299,7 +300,7 @@ export function DailySummaryPage() {
           )
         }
       />
-      <div className="pf-content dc-page">
+      <FoldCards className="pf-content dc-page" openFirst>
         {res.error && <Alert type="error">{res.error}</Alert>}
         {excel.error && <Alert type="error">{excel.error}</Alert>}
         {day && (
@@ -371,7 +372,7 @@ export function DailySummaryPage() {
             </section>
           </>
         )}
-      </div>
+      </FoldCards>
 
       {cancelling && (
         <CancelExpenseDialog
