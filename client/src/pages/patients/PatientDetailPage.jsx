@@ -802,7 +802,7 @@ function PregnancyLossCard({ patient: p }) {
 function HistoryCard({ patient: p }) {
   const lines = historyLines(p.history);
   return (
-    <section className="card" aria-labelledby="history-card-title">
+    <section className="card fold-open" aria-labelledby="history-card-title">
       <h2 id="history-card-title">History</h2>
       {lines.length ? <Details rows={lines} /> : <p className="muted">Not written yet.{p.access.canEditClinical ? <> Write it in <Link to={`/patients/${p.id}/edit`}>Edit details</Link>.</> : null}</p>}
     </section>
@@ -969,7 +969,7 @@ export function PatientOverviewTab() {
         )}
 
         {!isNewborn && has('obstetric') && (
-          <section className="card">
+          <section className="card fold-open">
             <h2>Obstetric history</h2>
             <Details
               rows={[
@@ -991,7 +991,7 @@ export function PatientOverviewTab() {
         )}
 
         {!isNewborn && has('medical') && (
-          <section className="card">
+          <section className="card fold-open">
             <h2>Medical background</h2>
             <Details
               rows={[

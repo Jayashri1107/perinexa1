@@ -288,6 +288,10 @@ export function PatientsPage() {
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}
         </Alert>
+        {/* Finding someone comes first (2 Nov 2026) */}
+        <div className="pt-find">
+          <SearchInput value={search} onChange={setSearch} placeholder="Name, phone or patient no.…" label="Search patients" />
+        </div>
         <div className="pt-quick">
           {!ipd && (
           <div className="segmented" role="group" aria-label="Which day">
@@ -357,7 +361,6 @@ export function PatientsPage() {
           }
           toolbar={
             <>
-              <SearchInput value={search} onChange={setSearch} placeholder="Name, phone or patient no.…" label="Search patients" />
               {/* The filters are folded behind one button (always open while any is in use) */}
               <button type="button" className="btn btn-secondary btn-sm pt-filters-btn" aria-expanded={showFilters || moreFilters > 0} onClick={() => setShowFilters((x) => !x)}>
                 <SlidersHorizontal aria-hidden="true" /> More filters{moreFilters ? ` (${moreFilters})` : ''}

@@ -72,6 +72,9 @@
   .check { min-height: max(var(--control-height), 44px); }
 
   /* ---------- Dialogs: a sheet from the bottom ---------- */
+  /* A long link or button in a dialog wraps (one ran off the side of Admit a patient) */
+  .modal .btn { white-space: normal; height: auto; }
+  .modal .btn-link { text-align: left; }
   .modal-backdrop { align-items: end; padding: 0; }
   .modal {
     max-width: none; max-height: calc(100dvh - var(--space-8) - env(safe-area-inset-top));
@@ -483,6 +486,77 @@
   .prof-tabs:not(:has(.menu-button)) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
   .prof-tabs::-webkit-scrollbar { display: none; }
   .prof-tabs > * { flex: 0 0 auto; }
+
+  /* ---------- Details (a patient's history and background): label and value side by side, a thin line between rows ---------- */
+  .details > div { grid-template-columns: minmax(96px, 38%) minmax(0, 1fr); gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+  .details > div:last-child { border-bottom: 0; }
+  .details dt { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-body); font-weight: 500; }
+  .details dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+
+  /* ---------- Today, what needs doing first ---------- */
+  /* Reception: To do above the list of patients, Doctors today after it */
+  .rd-layout { display: flex; flex-direction: column; align-items: stretch; }
+  .rd-side { display: contents; }
+  .rd-side > .rc-todo { order: -1; }
+  .rd-main { order: 0; min-width: 0; }
+  .rd-side > .rd-side-card { order: 1; }
+  /* A doctor: the lists with patients above the brief, the day's numbers and the handover */
+  .pf-content:has(> .td-sections) { display: flex; flex-direction: column; }
+  .pf-content > .td-group { order: 2; }
+  .pf-content:has(> .td-sections) > .wl-footnote { order: 3; }
+  /* The row's next step takes the free width */
+  .rd-actions > .rd-next { flex: 1 1 auto; justify-content: center; }
+  /* Search first: the toolbar under it keeps More filters */
+  .pt-find > * { max-width: none; }
+
+  /* ---------- My settings: a plain list, like a phone's own settings (AccountPage) ---------- */
+  .set-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; overflow: hidden; border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); }
+  .set-list li + li { border-top: 1px solid var(--border); }
+  .set-row { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 64px; padding: var(--space-2) var(--space-3); border: 0; background: none; color: var(--ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+  .set-row:active { background: var(--mist-100); }
+  .set-row:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
+  .set-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
+  .set-icon svg.lucide { width: 20px; height: 20px; }
+  .set-text { display: grid; flex: 1 1 auto; gap: 2px; min-width: 0; }
+  .set-text strong { font-weight: 600; }
+  .set-text span { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .set-more { flex: none; width: 18px; height: 18px; color: var(--slate-600); }
+  .set-back { margin: 0 0 var(--space-2); padding-left: 0; }
+
+  /* ---------- Form steps: the step's name once, above the bars; only what belongs to this step ---------- */
+  .fs-count { margin-bottom: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .fs-count strong { color: var(--indigo-700); font-weight: 600; }
+  .fs-progress li:has(.is-current) { flex: 1 1 0; }
+  .fs-progress button .fs-name, .fs-progress button:not(.is-current) .fs-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .fs-on:not(.fs-first) .voice-folded, .pf-content:has(.fs-on:not(.fs-first)) > .pn-setting { display: none; }
+  .fs-on .form-section:has(.pf-group):not(:has(.pf-group:not([data-step-off]))) { display: none; }
+  .fs-on fieldset.form-section > h2, .fs-on .pf-group-title { display: none; }
+
+  /* ---------- Today's patients: everything lines up under the name; tags one size; no double wording or spare space ---------- */
+  table.rd-table.rd-table tr.rd-row { padding-left: 48px; }
+  table.rd-table.rd-table tr.rd-row > td:has(.rd-person) { flex: 1 1 calc(100% + 48px); margin-left: -48px; }
+  .rd-same { display: none; }
+  .rd-status .pill, .rd-row .rd-visit { padding: 2px var(--space-2); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .rd-row .rd-status svg.lucide { width: 14px; height: 14px; }
+  .rd-table-wrap { min-height: 0; }
+  .rd-numbers { margin-bottom: var(--space-2); padding-bottom: 0; }
+
+  /* ---------- A bill in a list: short – the number, the patient, then the amounts side by side with their word above ---------- */
+  .dt tbody tr:has(> td[data-label='Balance']) { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-1); }
+  .dt tbody tr:has(> td[data-label='Balance']) > td { flex: 1 1 100%; width: auto; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Total'], [data-label='Paid'], [data-label='Balance']) { flex: 1 1 30%; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Date'], [data-label='Type'], [data-label='Status'], [data-label='Last payment']) { flex: 1 1 45%; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label]:not(:first-child) { padding-left: var(--space-3); }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label]:not(:first-child)::before { position: static; display: block; width: auto; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td { box-sizing: border-box; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Patient'] { order: 1; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Date'], [data-label='Type']) { order: 2; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Total'], [data-label='Paid'], [data-label='Balance']) { order: 3; flex: 1 1 28%; }
+  .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Status'], [data-label='Last payment']) { order: 4; }
+  .dt tbody tr:has(> td[data-label='Balance'])::after { top: 22px; }
+
+  /* A patient's header: the first tag lines up with the name */
+  .ph-patient .ph-badges > .pill-neutral:first-child { padding-left: 0; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

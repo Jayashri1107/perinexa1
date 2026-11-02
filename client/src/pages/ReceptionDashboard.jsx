@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRupee, MoreVertical, PenLine, RefreshCw, Search, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
+import { CalendarCheck, CalendarDays, CalendarPlus, ChevronRight, Eye, IndianRupee, MoreVertical, ReceiptText, PenLine, RefreshCw, Search, Siren, UserCheck, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { BILLING_MODULE_ROLES } from '../platform/modules.js';
 import { MenuButton } from '../components/MenuButton.jsx';
 import { usePagedRows } from '../components/DataTable.jsx';
 import { Alert, StatusPill, formatTime } from '../components/ui.jsx';
@@ -132,6 +134,7 @@ export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMa
   const [text, setText] = useState('');
   const [doctor, setDoctor] = useState('');
   const [editing, setEditing] = useState(null);
+  const canBill = (useAuth()?.activeMembership?.roles ?? []).some((r) => BILLING_MODULE_ROLES.includes(r));
   const [addingFor, setAddingFor] = useState(null); // Add follow-up
   const [registering, setRegistering] = useState(null); // a booking made by name and phone
   // Registered patients whose details are not all filled in (GET /api/today: incomplete): Fill info, until they are
@@ -248,7 +251,7 @@ export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMa
                     {r.arrivedAt && <span className="muted rd-sub">arrived {formatTime(r.arrivedAt)}</span>}
                   </td>
                   <td>
-                    <span className="rd-visit">{visitText(r)}</span>
+                    <span className={`rd-visit${visitText(r) === queueWhen(r) ? ' rd-same' : ''}`}>{visitText(r)}</span>
                     {/* Her open follow-up (added by hand): with which doctor and what for */}
                     {r.followUp && !r.purpose && (
                       <span className="rd-sub rd-followup" title={r.followUp.note || undefined}>
@@ -282,10 +285,18 @@ export function PatientsTable({ rows = [], incomplete = [], canMark = true, onMa
                           <UserCheck aria-hidden="true" /> Check in
                         </button>
                       ) : (
-                        // View and Fill info are icon buttons (their words for screen readers and on hover) so the row stays narrow
+                        <>
+                        {/* Once she has arrived, the desk's next step has its word on the row (2 Nov 2026) */}
+                        {canBill && (
+                          <Link to={`/patients/${p.id}/bills`} className="btn btn-secondary btn-sm rd-next">
+                            <ReceiptText aria-hidden="true" /> Bill
+                          </Link>
+                        )}
+                        {/* View and Fill info are icon buttons (their words for screen readers and on hover) so the row stays narrow */}
                         <Link to={r.visitId ? `/patients/${p.id}/visits/${r.visitId}` : `/patients/${p.id}`} className="btn btn-secondary btn-sm rd-icon-act" title="View">
                           <Eye aria-hidden="true" /> View
                         </Link>
+                        </>
                       )}
                       {!r.guest && missingOf.has(p.id) && (
                         <button type="button" className="btn btn-link btn-sm rd-icon-act" title="Fill info" onClick={() => setFilling({ patient: p, missing: missingOf.get(p.id) })}>

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { Accessibility, Camera, Eye, EyeOff, Info, KeyRound, LockKeyhole, LogOut, Palette, Pencil, Trash2, User } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { Accessibility, ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Info, Keyboard, KeyRound, LockKeyhole, LogOut, Mic, Palette, Pencil, Trash2, User } from 'lucide-react';
+import { Link, NavLink } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
@@ -13,11 +13,18 @@ import { asName } from '../personName.js';
 
 const PLATFORM_ROLE = { superadmin: 'Super admin', platformadmin: 'Platform admin' };
 const TABS = [
-  { key: 'account', label: 'Account', icon: User },
-  { key: 'security', label: 'Security', icon: LockKeyhole },
-  { key: 'appearance', label: 'Appearance', icon: Palette },
-  { key: 'accessibility', label: 'Accessibility', icon: Accessibility },
+  { key: 'account', label: 'Account', icon: User, about: 'Your photo, name and contact details' },
+  { key: 'security', label: 'Security', icon: LockKeyhole, about: 'Your password and where you are signed in' },
+  { key: 'appearance', label: 'Appearance', icon: Palette, about: 'Colours and font' },
+  { key: 'accessibility', label: 'Accessibility', icon: Accessibility, about: 'Text size, spacing and animation' },
 ];
+// My settings' own pages, in the list on a phone
+const PAGE_LOOK = {
+  '/account/prescription-design': { icon: FileText, about: 'How your prescriptions look when printed' },
+  '/account/voice-words': { icon: Mic, about: 'Words for dictation' },
+  '/account/shortcuts': { icon: Keyboard, about: 'Short codes that fill in text as you type' },
+};
+const onPhone = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
 const MAX_PHOTO_BYTES = 800 * 1024;
 
 // My profile (owner, 13 Oct 2026), laid out like the Materio account settings: tabs as an underline – Account (photo
@@ -26,13 +33,65 @@ const MAX_PHOTO_BYTES = 800 * 1024;
 // pages of their own (links after the tabs). The photo is only ever shown to the person themself.
 export function AccountPage() {
   const { memberships } = useAuth();
-  const [tab, setTab] = useState('account');
+  // On a phone (2 Nov 2026: easy to handle): a plain list of what can be set; tapping a row opens it, with a way back
+  const [phone] = useState(onPhone);
+  const [tab, setTab] = useState(phone ? null : 'account');
   const extraTabs = accountTabs(memberships).filter((t) => t.to !== '/account');
+
+  if (phone && !tab) {
+    return (
+      <>
+        <PageHeader breadcrumbs={[{ label: 'My settings' }]} title="My settings" />
+        <div className="pf-content prof-page">
+          <ul className="set-list">
+            {TABS.map(({ key, label, icon: Icon, about }) => (
+              <li key={key}>
+                <button type="button" className="set-row" onClick={() => setTab(key)}>
+                  <span className="set-icon" aria-hidden="true">
+                    <Icon />
+                  </span>
+                  <span className="set-text">
+                    <strong>{label}</strong>
+                    <span>{about}</span>
+                  </span>
+                  <ChevronRight aria-hidden="true" className="set-more" />
+                </button>
+              </li>
+            ))}
+            {extraTabs.map((t) => {
+              const look = PAGE_LOOK[t.to];
+              const Icon = look?.icon ?? User;
+              return (
+                <li key={t.to}>
+                  <Link to={t.to} className="set-row">
+                    <span className="set-icon" aria-hidden="true">
+                      <Icon />
+                    </span>
+                    <span className="set-text">
+                      <strong>{t.label}</strong>
+                      {look && <span>{look.about}</span>}
+                    </span>
+                    <ChevronRight aria-hidden="true" className="set-more" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: 'My settings' }]} title="My profile" subtitle="Manage your account, security and application preferences." />
+      <PageHeader breadcrumbs={[{ label: 'My settings' }]} title={phone ? TABS.find((t) => t.key === tab).label : 'My profile'} subtitle={phone ? undefined : 'Manage your account, security and application preferences.'} />
       <div className="pf-content prof-page">
+        {phone && (
+          <button type="button" className="btn btn-link btn-sm set-back" onClick={() => setTab(null)}>
+            <ArrowLeft aria-hidden="true" /> My settings
+          </button>
+        )}
+        {!phone && (
         <nav className="prof-tabs" aria-label="Profile sections">
           {TABS.map(({ key, label, icon: Icon }) => (
             <button key={key} type="button" className={tab === key ? 'active' : ''} aria-pressed={tab === key} onClick={() => setTab(key)}>
@@ -45,6 +104,7 @@ export function AccountPage() {
             </NavLink>
           ))}
         </nav>
+        )}
 
         {tab === 'account' && (
           <>

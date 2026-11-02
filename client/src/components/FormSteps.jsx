@@ -68,11 +68,11 @@ export function FormSteps({ enabled = true, children }) {
   };
 
   return (
-    <div ref={box} className={on ? `fs-on${at === last ? ' fs-last' : ''}` : undefined}>
+    <div ref={box} className={on ? `fs-on${at === 0 ? ' fs-first' : ''}${at === last ? ' fs-last' : ''}` : undefined}>
       {on && (
         <nav className="fs-progress" aria-label="Steps of the form">
           <p className="fs-count">
-            Step {at + 1} of {names.length}
+            Step {at + 1} of {names.length}: <strong>{names[at]}</strong>
           </p>
           <ol>
             {names.map((n, i) => (

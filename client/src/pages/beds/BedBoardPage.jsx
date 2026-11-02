@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowRightLeft, BedDouble, BedSingle, Building2, Check, ChevronDown, ChevronUp, CircleSlash, ClipboardList, Eye, FileText, LogIn, Plus, Receipt, Search, Tag, User, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api } from '../../api.js';
+import { api, newRequestId } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { MenuButton } from '../../components/MenuButton.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -374,7 +374,7 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
   const shownChecklist = checklist ?? (record.data?.patient ? checklistFromPatient(record.data.patient) : EMPTY_CHECKLIST);
   const open = useFetch(patient && !request ? '/admission-desk/requests' : null, patient && !request ? { patientId: patient.id } : undefined);
   const req = request ?? open.data?.requests?.[0] ?? null;
-  const [clientRequestId] = useState(() => crypto.randomUUID());
+  const [clientRequestId] = useState(newRequestId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});

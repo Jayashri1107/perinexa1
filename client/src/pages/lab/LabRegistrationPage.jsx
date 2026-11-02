@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Plus, Search, TestTube, UserPlus, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../../api.js';
+import { api, newRequestId } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -44,7 +44,7 @@ export function LabRegistrationPage() {
   const [fields, setFields] = useState({});
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
-  const [requestId] = useState(() => crypto.randomUUID());
+  const [requestId] = useState(newRequestId);
 
   const who = patient?.careType === 'newborn' ? 'newborn' : 'adult';
   const all = useMemo(() => (catalogue.data?.tests ?? []).filter((t) => t.active !== false && t.who === who), [catalogue.data, who]);

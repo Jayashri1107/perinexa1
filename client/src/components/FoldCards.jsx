@@ -19,6 +19,8 @@ export function FoldCards({ className, openFirst = false, children }) {
         const title = titleOf(card);
         if (!title || card.classList.contains('ai-card')) continue;
         if (phone.matches) {
+          // .fold-open: a card that starts open (a patient's history is what people come to read)
+          if (!card.hasAttribute('data-fold') && card.classList.contains('fold-open')) card.setAttribute('data-open', '');
           card.setAttribute('data-fold', '');
           // openFirst: the first card starts open, so the page opens on something to read
           if (openFirst && !firstDone.current) {
