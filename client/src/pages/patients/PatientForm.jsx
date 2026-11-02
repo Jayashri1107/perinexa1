@@ -44,6 +44,7 @@ import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues, withHis
 import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { FertilitySection } from './FertilitySection.jsx';
 import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
+import { FormSteps } from '../../components/FormSteps.jsx';
 
 const str = (v) => (v == null ? '' : String(v));
 
@@ -693,652 +694,655 @@ export function PatientForm({
         </Alert>
       )}
 
-      <div className={sideBySide ? 'pf-voice-layout' : undefined}>
-        {sideBySide && (
-          <div className="pf-voice-side">
-            <VoiceEntry
-              onHide={() => setVoiceOpen(false)}
-              careType={type}
-              onDetails={applyDictation}
-              onAnswer={applyAnswer}
-              onBusy={setRecording}
-              onStatus={setVoiceStatus}
-              control={voiceControl}
-              canNote={clinical}
-              example={sheetShown ? (SHEET_EXAMPLE[type] ?? SHEET_EXAMPLE.other) : voiceExample(part, type, clinical)}
-              read={sheetShown ? readWithSheet : undefined}
-              initial={dictated ? { here: dictated.found, later: [], notes: [], carried: true } : null}
-              initialText={spoken}
-            />
-          </div>
-        )}
-        <div className={sideBySide ? 'pf-voice-main' : undefined}>
-          {voice && type && !voiceOpen && <DictateButton onOpen={() => setVoiceOpen(true)} />}
-
-          {showInfo && type && (
-            <fieldset className="card form-section fieldset-plain" disabled={!access.canEditIdentity}>
-              <h2>{isNewborn ? 'Baby' : 'Patient'}</h2>
-              {/* Abortion care: a threatened miscarriage belongs under antenatal care (the pregnancy-loss section says it too) */}
-              {type === 'abortion' && !showLoss && <p className="hint">{THREATENED_HINT}</p>}
-              {/* In small groups (owner, 13 Oct 2026): who she is, how to reach her, someone to call, the ID seen, her doctor */}
-              <div className="pf-group">
-                <h3 className="pf-group-title">Basic details</h3>
-                {!isNewborn && access.canEditIdentity && <AadhaarQrFill onFill={fillFromAadhaar} />}
-                <div className={isEdit ? 'form-grid form-grid-fill' : 'form-grid'}>
-                  {/* Editing a record: the type of care can be changed here. Registering: chosen from the New patient menu, and
-                      changed here if the menu choice was wrong. */}
-                  {!isEdit && onCareTypeChange && (
-                    <Field label="Type of care" id="careType" hint={CARE_TYPE_HINTS[type]}>
-                      <select id="careType" value={type} onChange={(e) => onCareTypeChange(e.target.value)}>
-                        {CARE_TYPES.map((t) => (
-                          <option key={t} value={t}>
-                            {CARE_TYPE_LABELS[t]}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  )}
-                  {isEdit && (
-                    <Field label="Type of care" id="careType" error={fe('careType')} hint={CARE_TYPE_HINTS[type]}>
-                      <select id="careType" value={type} onChange={setCareType}>
-                        {CARE_TYPES.map((t) => (
-                          <option key={t} value={t} disabled={(t === 'newborn') !== (patient.careType === 'newborn')}>
-                            {CARE_TYPE_LABELS[t]}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  )}
-                  <Field label="Full name" id="fullName" error={fe('fullName')} hint={isNewborn ? 'e.g. "B/o Asha Sample" (baby of)' : undefined}>
-                    <input id="fullName" className={vc('fullName')} value={v.fullName} onChange={asName(set('fullName'))} maxLength={150} placeholder={isNewborn ? undefined : 'First and last name'} />
-                    {vm('fullName')}
-                  </Field>
-                  {!isNewborn && (
-                    <Field label="Age (years)" id="ageYears" error={fe('ageYears')}>
-                      <input id="ageYears" className={vc('ageYears')} inputMode="numeric" value={v.ageYears} onChange={set('ageYears')} maxLength={3} placeholder="e.g. 28" />
-                      {vm('ageYears')}
-                    </Field>
-                  )}
-                </div>
-              </div>
-              <div className="pf-group">
-                <h3 className="pf-group-title">Contact</h3>
-                <div className="form-grid pf-contact-grid">
-                  <Field label={isNewborn ? "Parent's phone" : 'Phone'} id="phone" error={fe('phone')}>
-                    <input id="phone" className={vc('phone')} type="tel" value={v.phone} onChange={set('phone')} maxLength={30} placeholder="10-digit mobile number" />
-                    {vm('phone')}
-                  </Field>
-                  <Field label="Address" id="address" error={fe('address')}>
-                    <textarea id="address" className={vc('address')} rows={2} value={v.address} onChange={set('address')} maxLength={300} placeholder="House, street, village or town" />
-                    {vm('address')}
-                  </Field>
-                </div>
-                <div className="form-grid pf-place-grid">
-                  <Field label="PIN code" id="pinCode" error={fe('pinCode')} hint="Fills the city and state">
-                    <input id="pinCode" inputMode="numeric" value={v.pinCode} onChange={setPinCode} maxLength={6} placeholder="6 digits" />
-                  </Field>
-                  <Field label="City, town or village" id="city" error={fe('city')}>
-                    <input id="city" value={v.city} onChange={set('city')} maxLength={60} />
-                  </Field>
-                  <Field label="State" id="state" error={fe('state')}>
-                    <input id="state" value={v.state} onChange={set('state')} maxLength={60} list="pf-states" />
-                    <datalist id="pf-states">
-                      {INDIAN_STATES.map((st) => (
-                        <option key={st} value={st} />
-                      ))}
-                    </datalist>
-                  </Field>
-                </div>
-              </div>
-              <div className="pf-group">
-                <h3 className="pf-group-title">Referral and payment</h3>
-                <div className="form-grid">
-                  <Field label="Referred by (optional)" id="referredBy" error={fe('referredBy')} hint="A doctor, clinic, ASHA worker or another hospital">
-                    <input id="referredBy" value={v.referredBy} onChange={set('referredBy')} maxLength={100} />
-                  </Field>
-                  <Field label="Who pays" id="payerType" error={fe('payer.type')}>
-                    <select id="payerType" value={v.payer.type} onChange={setIn('payer', 'type')}>
-                      <option value="">Not noted</option>
-                      {PAYER_OPTIONS.map(([k, label]) => (
-                        <option key={k} value={k}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  {v.payer.type && v.payer.type !== 'self' && (
-                    <>
-                      <Field label={PAYER_NAME_LABELS[v.payer.type]} id="payerName" error={fe('payer.name')}>
-                        <input id="payerName" value={v.payer.name} onChange={setIn('payer', 'name')} maxLength={100} />
-                      </Field>
-                      <Field label="Card or policy number" id="payerNumber" error={fe('payer.number')} hint="For the bill and the claim">
-                        <input id="payerNumber" value={v.payer.number} onChange={setIn('payer', 'number')} maxLength={40} autoComplete="off" />
-                      </Field>
-                    </>
-                  )}
-                </div>
-              </div>
-              {!isNewborn && (
-                <div className="pf-group">
-                  <h3 className="pf-group-title">Emergency contact</h3>
-                  <div className="form-grid">
-                    <Field label="Contact name" id="ecName" error={fe('emergencyContact.name')} hint="A relative or attendant to call">
-                      <input id="ecName" value={v.emergencyContact.name} onChange={asName(setIn('emergencyContact', 'name'))} maxLength={100} />
-                    </Field>
-                    <Field label="Relation" id="ecRelation" error={fe('emergencyContact.relation')} hint="For example husband, mother">
-                      <input id="ecRelation" value={v.emergencyContact.relation} onChange={setIn('emergencyContact', 'relation')} maxLength={50} />
-                    </Field>
-                    <Field label="Contact phone" id="ecPhone" error={fe('emergencyContact.phone')}>
-                      <input id="ecPhone" type="tel" value={v.emergencyContact.phone} onChange={setIn('emergencyContact', 'phone')} maxLength={30} />
-                    </Field>
-                  </div>
-                </div>
-              )}
-              {(!isNewborn || !isEdit) && (
-                <div className="pf-group">
-                  <h3 className="pf-group-title">{isNewborn ? 'Doctor' : isEdit ? 'ID proof' : 'ID proof and doctor'}</h3>
-                  <div className="form-grid">
-                    {!isNewborn && (
-                      <>
-                        <Field label="ID proof seen" id="idKind" error={fe('idProof.kind')}>
-                          <select id="idKind" value={v.idProof.kind} onChange={setIn('idProof', 'kind')}>
-                            <option value="">None noted</option>
-                            {ID_PROOF_OPTIONS.map(([k, label]) => (
-                              <option key={k} value={k}>
-                                {label}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="Last 4 of the ID number" id="idLast4" error={fe('idProof.last4')} hint="Only the last 4 – never the whole number">
-                          <input id="idLast4" value={v.idProof.last4} onChange={setIn('idProof', 'last4')} maxLength={4} autoComplete="off" />
-                        </Field>
-                      </>
-                    )}
-                    {!isEdit && departments.length > 0 && (
-                      <Field label="Department" id="department">
-                        <select
-                          id="department"
-                          value={department}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            setDepartment(next);
-                            // a doctor of another department is no longer offered
-                            const chosen = allDoctors.find((d) => d.id === v.assignedDoctor);
-                            if (next && chosen && !inDepartment(chosen, next)) setV((cur) => ({ ...cur, assignedDoctor: '' }));
-                          }}
-                        >
-                          <option value="">All departments</option>
-                          {departments.map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    )}
-                    {!isEdit && (
-                      <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={doctorHint}>
-                        <select id="assignedDoctor" value={v.assignedDoctor} onChange={set('assignedDoctor')}>
-                          <option value="">Not assigned yet</option>
-                          {allDoctors.filter((d) => inDepartment(d, department)).map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.name}
-                              {d.qualification ? ` (${d.qualification})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    )}
-                  </div>
-                </div>
-              )}
-            </fieldset>
+      {/* Phones: a new patient's form in short steps (FormSteps); editing keeps the whole form */}
+      <FormSteps enabled={!isEdit}>
+        <div className={sideBySide ? 'pf-voice-layout' : undefined}>
+          {sideBySide && (
+            <div className="pf-voice-side">
+              <VoiceEntry
+                onHide={() => setVoiceOpen(false)}
+                careType={type}
+                onDetails={applyDictation}
+                onAnswer={applyAnswer}
+                onBusy={setRecording}
+                onStatus={setVoiceStatus}
+                control={voiceControl}
+                canNote={clinical}
+                example={sheetShown ? (SHEET_EXAMPLE[type] ?? SHEET_EXAMPLE.other) : voiceExample(part, type, clinical)}
+                read={sheetShown ? readWithSheet : undefined}
+                initial={dictated ? { here: dictated.found, later: [], notes: [], carried: true } : null}
+                initialText={spoken}
+              />
+            </div>
           )}
+          <div className={sideBySide ? 'pf-voice-main' : undefined}>
+            {voice && type && !voiceOpen && <DictateButton onOpen={() => setVoiceOpen(true)} />}
 
-          {type && (
-            <>
-              {showInfo && isNewborn && (
-                <section className="card form-section">
-                  <h2>Birth details</h2>
+            {showInfo && type && (
+              <fieldset className="card form-section fieldset-plain" disabled={!access.canEditIdentity}>
+                <h2>{isNewborn ? 'Baby' : 'Patient'}</h2>
+                {/* Abortion care: a threatened miscarriage belongs under antenatal care (the pregnancy-loss section says it too) */}
+                {type === 'abortion' && !showLoss && <p className="hint">{THREATENED_HINT}</p>}
+                {/* In small groups (owner, 13 Oct 2026): who she is, how to reach her, someone to call, the ID seen, her doctor */}
+                <div className="pf-group">
+                  <h3 className="pf-group-title">Basic details</h3>
+                  {!isNewborn && access.canEditIdentity && <AadhaarQrFill onFill={fillFromAadhaar} />}
+                  <div className={isEdit ? 'form-grid form-grid-fill' : 'form-grid'}>
+                    {/* Editing a record: the type of care can be changed here. Registering: chosen from the New patient menu, and
+                        changed here if the menu choice was wrong. */}
+                    {!isEdit && onCareTypeChange && (
+                      <Field label="Type of care" id="careType" hint={CARE_TYPE_HINTS[type]}>
+                        <select id="careType" value={type} onChange={(e) => onCareTypeChange(e.target.value)}>
+                          {CARE_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {CARE_TYPE_LABELS[t]}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
+                    {isEdit && (
+                      <Field label="Type of care" id="careType" error={fe('careType')} hint={CARE_TYPE_HINTS[type]}>
+                        <select id="careType" value={type} onChange={setCareType}>
+                          {CARE_TYPES.map((t) => (
+                            <option key={t} value={t} disabled={(t === 'newborn') !== (patient.careType === 'newborn')}>
+                              {CARE_TYPE_LABELS[t]}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
+                    <Field label="Full name" id="fullName" error={fe('fullName')} hint={isNewborn ? 'e.g. "B/o Asha Sample" (baby of)' : undefined}>
+                      <input id="fullName" className={vc('fullName')} value={v.fullName} onChange={asName(set('fullName'))} maxLength={150} placeholder={isNewborn ? undefined : 'First and last name'} />
+                      {vm('fullName')}
+                    </Field>
+                    {!isNewborn && (
+                      <Field label="Age (years)" id="ageYears" error={fe('ageYears')}>
+                        <input id="ageYears" className={vc('ageYears')} inputMode="numeric" value={v.ageYears} onChange={set('ageYears')} maxLength={3} placeholder="e.g. 28" />
+                        {vm('ageYears')}
+                      </Field>
+                    )}
+                  </div>
+                </div>
+                <div className="pf-group">
+                  <h3 className="pf-group-title">Contact</h3>
+                  <div className="form-grid pf-contact-grid">
+                    <Field label={isNewborn ? "Parent's phone" : 'Phone'} id="phone" error={fe('phone')}>
+                      <input id="phone" className={vc('phone')} type="tel" value={v.phone} onChange={set('phone')} maxLength={30} placeholder="10-digit mobile number" />
+                      {vm('phone')}
+                    </Field>
+                    <Field label="Address" id="address" error={fe('address')}>
+                      <textarea id="address" className={vc('address')} rows={2} value={v.address} onChange={set('address')} maxLength={300} placeholder="House, street, village or town" />
+                      {vm('address')}
+                    </Field>
+                  </div>
+                  <div className="form-grid pf-place-grid">
+                    <Field label="PIN code" id="pinCode" error={fe('pinCode')} hint="Fills the city and state">
+                      <input id="pinCode" inputMode="numeric" value={v.pinCode} onChange={setPinCode} maxLength={6} placeholder="6 digits" />
+                    </Field>
+                    <Field label="City, town or village" id="city" error={fe('city')}>
+                      <input id="city" value={v.city} onChange={set('city')} maxLength={60} />
+                    </Field>
+                    <Field label="State" id="state" error={fe('state')}>
+                      <input id="state" value={v.state} onChange={set('state')} maxLength={60} list="pf-states" />
+                      <datalist id="pf-states">
+                        {INDIAN_STATES.map((st) => (
+                          <option key={st} value={st} />
+                        ))}
+                      </datalist>
+                    </Field>
+                  </div>
+                </div>
+                <div className="pf-group">
+                  <h3 className="pf-group-title">Referral and payment</h3>
                   <div className="form-grid">
-                    <Field label="Date and time of birth" id="birthAt" error={fe('newborn.birthAt')} hint={v.newborn.birthAt ? formatDateTime(v.newborn.birthAt) : undefined} keepHint>
-                      <input
-                        id="birthAt"
-                        className={vc('newborn.birthAt')}
-                        type="datetime-local"
-                        value={v.newborn.birthAt}
-                        onChange={setIn('newborn', 'birthAt')}
-                        max={toDateTimeInput(new Date())}
-                      />
-                      {vm('newborn.birthAt')}
+                    <Field label="Referred by (optional)" id="referredBy" error={fe('referredBy')} hint="A doctor, clinic, ASHA worker or another hospital">
+                      <input id="referredBy" value={v.referredBy} onChange={set('referredBy')} maxLength={100} />
                     </Field>
-                    <Field label="Birth weight (grams)" id="birthWeight" error={fe('newborn.birthWeightGrams')}>
-                      <input
-                        id="birthWeight"
-                        className={vc('newborn.birthWeightGrams')}
-                        inputMode="numeric"
-                        value={v.newborn.birthWeightGrams}
-                        onChange={setIn('newborn', 'birthWeightGrams')}
-                        maxLength={4}
-                      />
-                      {vm('newborn.birthWeightGrams')}
-                    </Field>
-                    <Field label="Sex" id="newbornSex" error={fe('newborn.sex')}>
-                      <select id="newbornSex" className={vc('newborn.sex')} value={v.newborn.sex} onChange={setIn('newborn', 'sex')}>
-                        <option value="">Choose…</option>
-                        {Object.entries(NEWBORN_SEX_LABELS).map(([k, label]) => (
+                    <Field label="Who pays" id="payerType" error={fe('payer.type')}>
+                      <select id="payerType" value={v.payer.type} onChange={setIn('payer', 'type')}>
+                        <option value="">Not noted</option>
+                        {PAYER_OPTIONS.map(([k, label]) => (
                           <option key={k} value={k}>
                             {label}
                           </option>
                         ))}
                       </select>
-                      {vm('newborn.sex')}
                     </Field>
-                    {showClinical && bloodGroupField}
+                    {v.payer.type && v.payer.type !== 'self' && (
+                      <>
+                        <Field label={PAYER_NAME_LABELS[v.payer.type]} id="payerName" error={fe('payer.name')}>
+                          <input id="payerName" value={v.payer.name} onChange={setIn('payer', 'name')} maxLength={100} />
+                        </Field>
+                        <Field label="Card or policy number" id="payerNumber" error={fe('payer.number')} hint="For the bill and the claim">
+                          <input id="payerNumber" value={v.payer.number} onChange={setIn('payer', 'number')} maxLength={40} autoComplete="off" />
+                        </Field>
+                      </>
+                    )}
                   </div>
-                  <MotherPicker
-                    value={v.newborn.mother}
-                    initial={patient?.motherInfo ? { fullName: patient.motherInfo.fullName, mrn: patient.motherInfo.mrn } : null}
-                    onChange={(id, _label, motherName) =>
-                      // Her name fills the baby's as "B/o …" – baby of, the short form hospitals use (owner, 24 Oct 2026) –
-                      // never over a name typed by hand
-                      setV({ ...v, newborn: { ...v.newborn, mother: id }, ...(motherName && (!v.fullName.trim() || /^(?:baby of|b\/o)\s/i.test(v.fullName.trim())) ? { fullName: `B/o ${motherName}` } : {}) })
-                    }
-                    error={fe('newborn.mother')}
-                    suggest={motherSuggestion}
-                  />
-                  {/* The baby's parents (owner, 24 Oct 2026): the mother above, the father's name here */}
-                  <Field label="Father's name (optional)" id="nb-father" error={fe('newborn.fatherName')}>
-                    <input
-                      id="nb-father"
-                      maxLength={150}
-                      value={v.newborn.fatherName}
-                      onChange={asName((e) => setV({ ...v, newborn: { ...v.newborn, fatherName: e.target.value } }))}
-                    />
-                  </Field>
-                </section>
-              )}
+                </div>
+                {!isNewborn && (
+                  <div className="pf-group">
+                    <h3 className="pf-group-title">Emergency contact</h3>
+                    <div className="form-grid">
+                      <Field label="Contact name" id="ecName" error={fe('emergencyContact.name')} hint="A relative or attendant to call">
+                        <input id="ecName" value={v.emergencyContact.name} onChange={asName(setIn('emergencyContact', 'name'))} maxLength={100} />
+                      </Field>
+                      <Field label="Relation" id="ecRelation" error={fe('emergencyContact.relation')} hint="For example husband, mother">
+                        <input id="ecRelation" value={v.emergencyContact.relation} onChange={setIn('emergencyContact', 'relation')} maxLength={50} />
+                      </Field>
+                      <Field label="Contact phone" id="ecPhone" error={fe('emergencyContact.phone')}>
+                        <input id="ecPhone" type="tel" value={v.emergencyContact.phone} onChange={setIn('emergencyContact', 'phone')} maxLength={30} />
+                      </Field>
+                    </div>
+                  </div>
+                )}
+                {(!isNewborn || !isEdit) && (
+                  <div className="pf-group">
+                    <h3 className="pf-group-title">{isNewborn ? 'Doctor' : isEdit ? 'ID proof' : 'ID proof and doctor'}</h3>
+                    <div className="form-grid">
+                      {!isNewborn && (
+                        <>
+                          <Field label="ID proof seen" id="idKind" error={fe('idProof.kind')}>
+                            <select id="idKind" value={v.idProof.kind} onChange={setIn('idProof', 'kind')}>
+                              <option value="">None noted</option>
+                              {ID_PROOF_OPTIONS.map(([k, label]) => (
+                                <option key={k} value={k}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="Last 4 of the ID number" id="idLast4" error={fe('idProof.last4')} hint="Only the last 4 – never the whole number">
+                            <input id="idLast4" value={v.idProof.last4} onChange={setIn('idProof', 'last4')} maxLength={4} autoComplete="off" />
+                          </Field>
+                        </>
+                      )}
+                      {!isEdit && departments.length > 0 && (
+                        <Field label="Department" id="department">
+                          <select
+                            id="department"
+                            value={department}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setDepartment(next);
+                              // a doctor of another department is no longer offered
+                              const chosen = allDoctors.find((d) => d.id === v.assignedDoctor);
+                              if (next && chosen && !inDepartment(chosen, next)) setV((cur) => ({ ...cur, assignedDoctor: '' }));
+                            }}
+                          >
+                            <option value="">All departments</option>
+                            {departments.map((d) => (
+                              <option key={d} value={d}>
+                                {d}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      )}
+                      {!isEdit && (
+                        <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={doctorHint}>
+                          <select id="assignedDoctor" value={v.assignedDoctor} onChange={set('assignedDoctor')}>
+                            <option value="">Not assigned yet</option>
+                            {allDoctors.filter((d) => inDepartment(d, department)).map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name}
+                                {d.qualification ? ` (${d.qualification})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </fieldset>
+            )}
 
-              {!showInfo && isNewborn && clinical && (
-                <section className="card form-section">
-                  <h2>Medical background</h2>
-                  <div className="form-grid form-grid-fill">{bloodGroupField}</div>
-                </section>
-              )}
-
-              {showClinical && !isNewborn && clinical && (
-                <HistorySheet
-                  values={v.history}
-                  set={setHistory}
-                  setPregnancies={(rows) => setHistory('pregnancies', rows)}
-                  fe={fe}
-                  age={v.ageYears}
-                  lmp={type === 'antenatal' ? v.pregnancy.lmp : type === 'abortion' ? v.abortion.lmp : ''}
-                  onLmp={type === 'antenatal' ? (x) => setV((cur) => ({ ...cur, pregnancy: { ...cur.pregnancy, lmp: x } })) : type === 'abortion' ? (x) => setAbortion('lmp', x) : null}
-                  medicalOpen={Boolean(fe('medical.allergies'))}
-                  heard={heard}
-                  voiced={(k) => voiced(`history.${k}`)}
-                  extraLine={
-                    type === 'infertility' ? (
-                      <p className="hs-line">
-                        <span className="hs-words">Trying to conceive since</span>
-                        <input aria-label="Trying to conceive since (months)" inputMode="numeric" className={`hs-blank hs-num${voiced('fertility.durationMonths') ? ' hs-heard-mark' : ''}`} value={v.fertility.durationMonths} onChange={(e) => setFertility('durationMonths', e.target.value.replace(/\D/g, '').slice(0, 3))} />
-                        <span className="hs-words">months</span>
-                      </p>
-                    ) : type === 'postnatal' && isEdit && !v.delivery.locked ? (
-                      <p className="hs-line">
-                        <span className="hs-words">Delivered on</span>
-                        <input type="date" aria-label="Delivered on" className={`hs-blank${voiced('delivery.on') ? ' hs-heard-mark' : ''}`} value={v.delivery.on} onChange={(e) => setDelivery('on', e.target.value)} />
-                        <span className="hs-words">by</span>
-                        <select aria-label="Mode of delivery" className={`hs-blank${voiced('delivery.mode') ? ' hs-heard-mark' : ''}`} value={v.delivery.mode} onChange={(e) => setDelivery('mode', e.target.value)}>
-                          <option value="">–</option>
-                          {Object.entries(DELIVERY_MODE_LABELS).map(([k, label]) => (
+            {type && (
+              <>
+                {showInfo && isNewborn && (
+                  <section className="card form-section">
+                    <h2>Birth details</h2>
+                    <div className="form-grid">
+                      <Field label="Date and time of birth" id="birthAt" error={fe('newborn.birthAt')} hint={v.newborn.birthAt ? formatDateTime(v.newborn.birthAt) : undefined} keepHint>
+                        <input
+                          id="birthAt"
+                          className={vc('newborn.birthAt')}
+                          type="datetime-local"
+                          value={v.newborn.birthAt}
+                          onChange={setIn('newborn', 'birthAt')}
+                          max={toDateTimeInput(new Date())}
+                        />
+                        {vm('newborn.birthAt')}
+                      </Field>
+                      <Field label="Birth weight (grams)" id="birthWeight" error={fe('newborn.birthWeightGrams')}>
+                        <input
+                          id="birthWeight"
+                          className={vc('newborn.birthWeightGrams')}
+                          inputMode="numeric"
+                          value={v.newborn.birthWeightGrams}
+                          onChange={setIn('newborn', 'birthWeightGrams')}
+                          maxLength={4}
+                        />
+                        {vm('newborn.birthWeightGrams')}
+                      </Field>
+                      <Field label="Sex" id="newbornSex" error={fe('newborn.sex')}>
+                        <select id="newbornSex" className={vc('newborn.sex')} value={v.newborn.sex} onChange={setIn('newborn', 'sex')}>
+                          <option value="">Choose…</option>
+                          {Object.entries(NEWBORN_SEX_LABELS).map(([k, label]) => (
                             <option key={k} value={k}>
                               {label}
                             </option>
                           ))}
                         </select>
-                      </p>
-                    ) : null
-                  }
-                  obstetric={
-                    <div className="hs-existing">
-                  <div className="form-grid form-grid-5">
-                    {[
-                      ['gravida', 'Gravida (G)'],
-                      ['para', 'Para (P)'],
-                      ['living', 'Living children (L)'],
-                      ['abortions', 'Abortions (A)'],
-                      ['previousCaesareans', 'Previous caesareans'],
-                    ].map(([key, label]) => (
-                      <Field key={key} label={label} id={`ob-${key}`} error={fe(`obstetric.${key}`)}>
-                        <input id={`ob-${key}`} className={vc(`obstetric.${key}`)} inputMode="numeric" value={v.obstetric[key]} onChange={setIn('obstetric', key)} maxLength={2} />
-                        {vm(`obstetric.${key}`)}
+                        {vm('newborn.sex')}
                       </Field>
-                    ))}
-                  </div>
-                  {type === 'abortion' && (
-                    <p className="hint">
-                      {obstetricHint(v.abortion.lossType, presentationWeeks(v.abortion, v.abortion.presentedOn || toDateInput(patient?.abortion?.presentedOn) || localToday()))}
-                    </p>
-                  )}
-                  <fieldset className="fieldset">
-                    <legend>Problems in previous pregnancies</legend>
-                    {firstPregnancy ? (
-                      <p className="hint">Not needed – this is the first pregnancy (Gravida 1, no earlier deliveries or abortions).</p>
-                    ) : (
-                      <>
-                        <div className="check-grid">
-                          {Object.entries(PAST_COMPLICATION_LABELS).map(([k, label]) => (
-                            <label key={k} className={checkClass(`obstetric.pastComplications.${k}`)}>
-                              <input type="checkbox" checked={v.obstetric.pastComplications.includes(k)} onChange={() => toggleComplication(k)} /> {label}
-                              {voiceTag(`obstetric.pastComplications.${k}`)}
-                            </label>
-                          ))}
-                        </div>
-                        <label className={`check-none ${checkClass('obstetric.complicationsReviewed')}`}>
-                          <input
-                            type="checkbox"
-                            checked={v.obstetric.complicationsReviewed}
-                            disabled={v.obstetric.pastComplications.length > 0}
-                            onChange={(e) => {
-                              unmark('obstetric.complicationsReviewed');
-                              setV({ ...v, obstetric: { ...v.obstetric, complicationsReviewed: e.target.checked } });
-                            }}
-                          />{' '}
-                          <strong>None of these</strong> – asked, and there were no problems in previous pregnancies
-                          {voiceTag('obstetric.complicationsReviewed')}
-                        </label>
-                      </>
-                    )}
-                  </fieldset>
+                      {showClinical && bloodGroupField}
                     </div>
-                  }
-                  medical={
-                    <div className="hs-existing">
-                  <div className="allergy-field">
-                    <Field label="Allergies (required)" id="allergies" error={fe('medical.allergies')}>
+                    <MotherPicker
+                      value={v.newborn.mother}
+                      initial={patient?.motherInfo ? { fullName: patient.motherInfo.fullName, mrn: patient.motherInfo.mrn } : null}
+                      onChange={(id, _label, motherName) =>
+                        // Her name fills the baby's as "B/o …" – baby of, the short form hospitals use (owner, 24 Oct 2026) –
+                        // never over a name typed by hand
+                        setV({ ...v, newborn: { ...v.newborn, mother: id }, ...(motherName && (!v.fullName.trim() || /^(?:baby of|b\/o)\s/i.test(v.fullName.trim())) ? { fullName: `B/o ${motherName}` } : {}) })
+                      }
+                      error={fe('newborn.mother')}
+                      suggest={motherSuggestion}
+                    />
+                    {/* The baby's parents (owner, 24 Oct 2026): the mother above, the father's name here */}
+                    <Field label="Father's name (optional)" id="nb-father" error={fe('newborn.fatherName')}>
                       <input
-                        id="allergies"
-                        className={vc('medical.allergies')}
-                        value={v.medical.allergies}
-                        onChange={setIn('medical', 'allergies')}
-                        maxLength={500}
+                        id="nb-father"
+                        maxLength={150}
+                        value={v.newborn.fatherName}
+                        onChange={asName((e) => setV({ ...v, newborn: { ...v.newborn, fatherName: e.target.value } }))}
                       />
-                      {vm('medical.allergies')}
                     </Field>
-                    <label className="check check-none">
-                      <input type="checkbox" checked={noAllergies} disabled={allergyStatus(v.medical.allergies) === 'recorded'} onChange={setNoAllergies} />{' '}
-                      <strong>None known</strong> – asked, and she has no allergies
-                    </label>
-                  </div>
-                  <div className="form-grid">
-                    <Field label="Blood group and Rh" id="bloodGroup" error={fe('medical.bloodGroup')} hint={type === 'abortion' ? 'Rh negative: anti-D may be needed' : undefined} keepHint>
-                      <select id="bloodGroup" className={vc('medical.bloodGroup')} value={v.medical.bloodGroup} onChange={setIn('medical', 'bloodGroup')}>
-                        <option value="">Not known yet</option>
-                        {BLOOD_GROUPS.map((b) => (
-                          <option key={b} value={b}>
-                            {b}
-                          </option>
-                        ))}
-                      </select>
-                      {vm('medical.bloodGroup')}
-                    </Field>
-                    <Field label="Height (cm)" id="heightCm" error={fe('medical.heightCm')}>
-                      <input id="heightCm" className={vc('medical.heightCm')} inputMode="decimal" value={v.medical.heightCm} onChange={setIn('medical', 'heightCm')} maxLength={5} />
-                      {vm('medical.heightCm')}
-                    </Field>
-                    <Field label="Weight (kg)" id="weightKg" error={fe('medical.weightKg')}>
-                      <input id="weightKg" className={vc('medical.weightKg')} inputMode="decimal" value={v.medical.weightKg} onChange={setIn('medical', 'weightKg')} maxLength={5} />
-                      {vm('medical.weightKg')}
-                    </Field>
-                  </div>
-                  <fieldset className="fieldset">
-                    <legend>Existing conditions</legend>
-                    <div className="check-grid">
-                      {Object.entries(CONDITION_LABELS).map(([k, label]) => (
-                        <label key={k} className={checkClass(`medical.conditions.${k}`)}>
-                          <input type="checkbox" checked={v.medical.conditions.includes(k)} onChange={() => toggleCondition(k)} /> {label}
-                          {voiceTag(`medical.conditions.${k}`)}
-                        </label>
-                      ))}
-                    </div>
-                    <label className={`check-none ${checkClass('medical.conditionsReviewed')}`}>
-                      <input
-                        type="checkbox"
-                        checked={v.medical.conditionsReviewed}
-                        disabled={v.medical.conditions.length > 0}
-                        onChange={(e) => {
-                          unmark('medical.conditionsReviewed');
-                          setV({ ...v, medical: { ...v.medical, conditionsReviewed: e.target.checked } });
-                        }}
-                      />{' '}
-                      <strong>No known conditions</strong> – asked, and none of these apply
-                      {voiceTag('medical.conditionsReviewed')}
-                    </label>
-                  </fieldset>
-                  <div className="form-grid">
-                    <Field label="Other conditions" id="otherConditions" error={fe('medical.otherConditions')}>
-                      <input id="otherConditions" className={vc('medical.otherConditions')} value={v.medical.otherConditions} onChange={setIn('medical', 'otherConditions')} maxLength={500} />
-                      {vm('medical.otherConditions')}
-                    </Field>
-                  </div>
-                    </div>
-                  }
-                />
-              )}
+                  </section>
+                )}
 
-              {showPregnancy && (
-                <section className="card form-section">
-                  <h2>Pregnancy</h2>
-                  <div className="form-grid">
-                    <Field
-                      label="LMP (last menstrual period)"
-                      id="lmp"
-                      error={fe('pregnancy.lmp')}
-                      hint={v.pregnancy.lmp ? (lmpCopied && lmpCopied === v.pregnancy.lmp ? `${formatDate(v.pregnancy.lmp)} · copied from the pregnancy loss – check it` : formatDate(v.pregnancy.lmp)) : undefined}
-                      keepHint
-                    >
-                      <input
-                        id="lmp"
-                        className={vc('pregnancy.lmp')}
-                        type="date"
-                        value={v.pregnancy.lmp}
-                        onChange={(e) => {
-                          setLmpCopied('');
-                          setIn('pregnancy', 'lmp')(e);
-                        }}
-                        max={toDateInput(new Date())}
-                      />
-                      {vm('pregnancy.lmp')}
-                    </Field>
-                    <Field label="EDD from dating scan (optional)" id="scanEdd" error={fe('pregnancy.scanEdd')} hint="If given, this is used instead of the LMP date.">
-                      <input id="scanEdd" className={vc('pregnancy.scanEdd')} type="date" value={v.pregnancy.scanEdd} onChange={setIn('pregnancy', 'scanEdd')} />
-                      {vm('pregnancy.scanEdd')}
-                    </Field>
-                  </div>
-                  <div className="calc-row" aria-live="polite">
-                    <span>
-                      EDD from LMP: <strong>{lmpEdd ? formatDate(lmpEdd) : '—'}</strong>
-                    </span>
-                    <span>
-                      EDD used: <strong>{effectiveEdd ? formatDate(effectiveEdd) : '—'}</strong>
-                      {v.pregnancy.scanEdd && <span className="muted"> (scan)</span>}
-                    </span>
-                    <span>
-                      Today: <strong>{formatGestation(ga)}</strong>
-                    </span>
-                  </div>
-                  {datesWarning(v.pregnancy) && (
-                    <Alert type="warning">
-                      {datesWarning(v.pregnancy)}
-                    </Alert>
-                  )}
-                  <fieldset className="fieldset">
-                    <legend>Findings in this pregnancy</legend>
-                    <div className="check-grid pf-finding-grid">
-                      {Object.entries(PREGNANCY_FINDING_LABELS).map(([k, label]) => {
-                        const stored = currentFindings(patient).find((f) => f.key === k);
-                        const ticked = v.pregnancy.findings.includes(k);
-                        return (
-                          <label key={k} className="check pf-finding-check">
-                            <input type="checkbox" checked={ticked} onChange={() => toggleFinding(k)} />
-                            <span>
-                              {label}
-                              {vm(`pregnancy.findings.${k}`)}
-                              {PREGNANCY_FINDING_HINTS[k] && <span className="pf-finding-by">{PREGNANCY_FINDING_HINTS[k]}</span>}
-                              {stored && ticked && (
-                                <span className="pf-finding-by">
-                                  Recorded by {stored.byName}, {formatDate(stored.at)}
-                                </span>
-                              )}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    <p className="hint">
-                      Tick what has been found in this pregnancy, and untick it if it turns out not to be so. Each tick is saved with your name and the date; a tick from voice entry is marked and is saved only when you save. It counts
-                      for the risk level (the Risk card shows the reason) and switches on the items her care plan has for it, as the hospital's risk rules and care-plan
-                      template say.
-                    </p>
-                    <FieldError>{fe('pregnancy.findings')}</FieldError>
-                  </fieldset>
-                </section>
-              )}
+                {!showInfo && isNewborn && clinical && (
+                  <section className="card form-section">
+                    <h2>Medical background</h2>
+                    <div className="form-grid form-grid-fill">{bloodGroupField}</div>
+                  </section>
+                )}
 
-              {showLoss && (
-                <AbortionSection
-                  values={v.abortion}
-                  set={setAbortion}
-                  bloodGroup={v.medical.bloodGroup}
-                  fe={fe}
-                  vc={vc}
-                  vm={vm}
-                  fromAntenatal={isEdit && patient.careType === 'antenatal'}
-                  storedSeen={toDateInput(patient?.abortion?.presentedOn)}
-                  storedFindings={currentLossFindings(patient?.abortion)}
-                  rulesOn={lossRulesOn(patient?.redFlags?.rules)}
-                />
-              )}
-
-              {isEdit && showClinical && type === 'postnatal' && clinical && (
-                <section className="card form-section">
-                  <h2>Delivery and breastfeeding</h2>
-                  {v.delivery.locked ? (
-                    <p>
-                      {formatDate(v.delivery.on)} – {DELIVERY_MODE_LABELS[v.delivery.mode] ?? v.delivery.mode}. From the delivery note confirmed in this hospital; any
-                      change is made there with an addition.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="hint">For a delivery at another hospital. The postnatal care plan is counted from this date.</p>
-                      <div className="form-grid">
-                        <Field label="Date of delivery" id="delivery-on" error={fe('delivery.on')}>
-                          <input id="delivery-on" type="date" value={v.delivery.on} onChange={setIn('delivery', 'on')} max={toDateInput(new Date())} />
-                        </Field>
-                        <Field label="Mode of delivery" id="delivery-mode" error={fe('delivery.mode')}>
-                          <select id="delivery-mode" value={v.delivery.mode} onChange={setIn('delivery', 'mode')}>
-                            <option value="">Choose…</option>
+                {showClinical && !isNewborn && clinical && (
+                  <HistorySheet
+                    values={v.history}
+                    set={setHistory}
+                    setPregnancies={(rows) => setHistory('pregnancies', rows)}
+                    fe={fe}
+                    age={v.ageYears}
+                    lmp={type === 'antenatal' ? v.pregnancy.lmp : type === 'abortion' ? v.abortion.lmp : ''}
+                    onLmp={type === 'antenatal' ? (x) => setV((cur) => ({ ...cur, pregnancy: { ...cur.pregnancy, lmp: x } })) : type === 'abortion' ? (x) => setAbortion('lmp', x) : null}
+                    medicalOpen={Boolean(fe('medical.allergies'))}
+                    heard={heard}
+                    voiced={(k) => voiced(`history.${k}`)}
+                    extraLine={
+                      type === 'infertility' ? (
+                        <p className="hs-line">
+                          <span className="hs-words">Trying to conceive since</span>
+                          <input aria-label="Trying to conceive since (months)" inputMode="numeric" className={`hs-blank hs-num${voiced('fertility.durationMonths') ? ' hs-heard-mark' : ''}`} value={v.fertility.durationMonths} onChange={(e) => setFertility('durationMonths', e.target.value.replace(/\D/g, '').slice(0, 3))} />
+                          <span className="hs-words">months</span>
+                        </p>
+                      ) : type === 'postnatal' && isEdit && !v.delivery.locked ? (
+                        <p className="hs-line">
+                          <span className="hs-words">Delivered on</span>
+                          <input type="date" aria-label="Delivered on" className={`hs-blank${voiced('delivery.on') ? ' hs-heard-mark' : ''}`} value={v.delivery.on} onChange={(e) => setDelivery('on', e.target.value)} />
+                          <span className="hs-words">by</span>
+                          <select aria-label="Mode of delivery" className={`hs-blank${voiced('delivery.mode') ? ' hs-heard-mark' : ''}`} value={v.delivery.mode} onChange={(e) => setDelivery('mode', e.target.value)}>
+                            <option value="">–</option>
                             {Object.entries(DELIVERY_MODE_LABELS).map(([k, label]) => (
                               <option key={k} value={k}>
                                 {label}
                               </option>
                             ))}
                           </select>
+                        </p>
+                      ) : null
+                    }
+                    obstetric={
+                      <div className="hs-existing">
+                    <div className="form-grid form-grid-5">
+                      {[
+                        ['gravida', 'Gravida (G)'],
+                        ['para', 'Para (P)'],
+                        ['living', 'Living children (L)'],
+                        ['abortions', 'Abortions (A)'],
+                        ['previousCaesareans', 'Previous caesareans'],
+                      ].map(([key, label]) => (
+                        <Field key={key} label={label} id={`ob-${key}`} error={fe(`obstetric.${key}`)}>
+                          <input id={`ob-${key}`} className={vc(`obstetric.${key}`)} inputMode="numeric" value={v.obstetric[key]} onChange={setIn('obstetric', key)} maxLength={2} />
+                          {vm(`obstetric.${key}`)}
                         </Field>
+                      ))}
+                    </div>
+                    {type === 'abortion' && (
+                      <p className="hint">
+                        {obstetricHint(v.abortion.lossType, presentationWeeks(v.abortion, v.abortion.presentedOn || toDateInput(patient?.abortion?.presentedOn) || localToday()))}
+                      </p>
+                    )}
+                    <fieldset className="fieldset">
+                      <legend>Problems in previous pregnancies</legend>
+                      {firstPregnancy ? (
+                        <p className="hint">Not needed – this is the first pregnancy (Gravida 1, no earlier deliveries or abortions).</p>
+                      ) : (
+                        <>
+                          <div className="check-grid">
+                            {Object.entries(PAST_COMPLICATION_LABELS).map(([k, label]) => (
+                              <label key={k} className={checkClass(`obstetric.pastComplications.${k}`)}>
+                                <input type="checkbox" checked={v.obstetric.pastComplications.includes(k)} onChange={() => toggleComplication(k)} /> {label}
+                                {voiceTag(`obstetric.pastComplications.${k}`)}
+                              </label>
+                            ))}
+                          </div>
+                          <label className={`check-none ${checkClass('obstetric.complicationsReviewed')}`}>
+                            <input
+                              type="checkbox"
+                              checked={v.obstetric.complicationsReviewed}
+                              disabled={v.obstetric.pastComplications.length > 0}
+                              onChange={(e) => {
+                                unmark('obstetric.complicationsReviewed');
+                                setV({ ...v, obstetric: { ...v.obstetric, complicationsReviewed: e.target.checked } });
+                              }}
+                            />{' '}
+                            <strong>None of these</strong> – asked, and there were no problems in previous pregnancies
+                            {voiceTag('obstetric.complicationsReviewed')}
+                          </label>
+                        </>
+                      )}
+                    </fieldset>
                       </div>
-                    </>
-                  )}
-                  <div className="form-grid form-grid-fill">
-                    <Field label="Breastfeeding" id="breastfeeding" error={fe('postnatal.breastfeeding')} hint="For the medicine safety check on her prescriptions.">
-                      <select id="breastfeeding" value={v.postnatal.breastfeeding} onChange={setIn('postnatal', 'breastfeeding')}>
-                        {Object.entries(BREASTFEEDING_LABELS).map(([k, label]) => (
-                          <option key={k || 'none'} value={k}>
-                            {label}
-                          </option>
+                    }
+                    medical={
+                      <div className="hs-existing">
+                    <div className="allergy-field">
+                      <Field label="Allergies (required)" id="allergies" error={fe('medical.allergies')}>
+                        <input
+                          id="allergies"
+                          className={vc('medical.allergies')}
+                          value={v.medical.allergies}
+                          onChange={setIn('medical', 'allergies')}
+                          maxLength={500}
+                        />
+                        {vm('medical.allergies')}
+                      </Field>
+                      <label className="check check-none">
+                        <input type="checkbox" checked={noAllergies} disabled={allergyStatus(v.medical.allergies) === 'recorded'} onChange={setNoAllergies} />{' '}
+                        <strong>None known</strong> – asked, and she has no allergies
+                      </label>
+                    </div>
+                    <div className="form-grid">
+                      <Field label="Blood group and Rh" id="bloodGroup" error={fe('medical.bloodGroup')} hint={type === 'abortion' ? 'Rh negative: anti-D may be needed' : undefined} keepHint>
+                        <select id="bloodGroup" className={vc('medical.bloodGroup')} value={v.medical.bloodGroup} onChange={setIn('medical', 'bloodGroup')}>
+                          <option value="">Not known yet</option>
+                          {BLOOD_GROUPS.map((b) => (
+                            <option key={b} value={b}>
+                              {b}
+                            </option>
+                          ))}
+                        </select>
+                        {vm('medical.bloodGroup')}
+                      </Field>
+                      <Field label="Height (cm)" id="heightCm" error={fe('medical.heightCm')}>
+                        <input id="heightCm" className={vc('medical.heightCm')} inputMode="decimal" value={v.medical.heightCm} onChange={setIn('medical', 'heightCm')} maxLength={5} />
+                        {vm('medical.heightCm')}
+                      </Field>
+                      <Field label="Weight (kg)" id="weightKg" error={fe('medical.weightKg')}>
+                        <input id="weightKg" className={vc('medical.weightKg')} inputMode="decimal" value={v.medical.weightKg} onChange={setIn('medical', 'weightKg')} maxLength={5} />
+                        {vm('medical.weightKg')}
+                      </Field>
+                    </div>
+                    <fieldset className="fieldset">
+                      <legend>Existing conditions</legend>
+                      <div className="check-grid">
+                        {Object.entries(CONDITION_LABELS).map(([k, label]) => (
+                          <label key={k} className={checkClass(`medical.conditions.${k}`)}>
+                            <input type="checkbox" checked={v.medical.conditions.includes(k)} onChange={() => toggleCondition(k)} /> {label}
+                            {voiceTag(`medical.conditions.${k}`)}
+                          </label>
                         ))}
-                      </select>
-                    </Field>
-                  </div>
-                </section>
-              )}
+                      </div>
+                      <label className={`check-none ${checkClass('medical.conditionsReviewed')}`}>
+                        <input
+                          type="checkbox"
+                          checked={v.medical.conditionsReviewed}
+                          disabled={v.medical.conditions.length > 0}
+                          onChange={(e) => {
+                            unmark('medical.conditionsReviewed');
+                            setV({ ...v, medical: { ...v.medical, conditionsReviewed: e.target.checked } });
+                          }}
+                        />{' '}
+                        <strong>No known conditions</strong> – asked, and none of these apply
+                        {voiceTag('medical.conditionsReviewed')}
+                      </label>
+                    </fieldset>
+                    <div className="form-grid">
+                      <Field label="Other conditions" id="otherConditions" error={fe('medical.otherConditions')}>
+                        <input id="otherConditions" className={vc('medical.otherConditions')} value={v.medical.otherConditions} onChange={setIn('medical', 'otherConditions')} maxLength={500} />
+                        {vm('medical.otherConditions')}
+                      </Field>
+                    </div>
+                      </div>
+                    }
+                  />
+                )}
 
-              {isEdit && showClinical && isNewborn && clinical && (
-                <section className="card form-section" aria-labelledby="pf-after-birth">
-                  <h2 id="pf-after-birth">Care after birth</h2>
-                  <p className="hint">Optional. Leave “Not recorded” when it is not known. Counted in Analytics only from the delivery note.</p>
-                  <div className="form-grid pf-after-birth-grid">
-                    <Field label="Admitted to the NICU or SNCU" id="nicu-admitted" error={fe('newbornCare.nicu.admitted')}>
-                      <select id="nicu-admitted" value={v.newbornCare.admitted} onChange={setIn('newbornCare', 'admitted')}>
-                        {Object.entries(NICU_ADMITTED_LABELS).map(([k, label]) => (
-                          <option key={k || 'none'} value={k}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    {v.newbornCare.admitted === 'yes' && (
+                {showPregnancy && (
+                  <section className="card form-section">
+                    <h2>Pregnancy</h2>
+                    <div className="form-grid">
+                      <Field
+                        label="LMP (last menstrual period)"
+                        id="lmp"
+                        error={fe('pregnancy.lmp')}
+                        hint={v.pregnancy.lmp ? (lmpCopied && lmpCopied === v.pregnancy.lmp ? `${formatDate(v.pregnancy.lmp)} · copied from the pregnancy loss – check it` : formatDate(v.pregnancy.lmp)) : undefined}
+                        keepHint
+                      >
+                        <input
+                          id="lmp"
+                          className={vc('pregnancy.lmp')}
+                          type="date"
+                          value={v.pregnancy.lmp}
+                          onChange={(e) => {
+                            setLmpCopied('');
+                            setIn('pregnancy', 'lmp')(e);
+                          }}
+                          max={toDateInput(new Date())}
+                        />
+                        {vm('pregnancy.lmp')}
+                      </Field>
+                      <Field label="EDD from dating scan (optional)" id="scanEdd" error={fe('pregnancy.scanEdd')} hint="If given, this is used instead of the LMP date.">
+                        <input id="scanEdd" className={vc('pregnancy.scanEdd')} type="date" value={v.pregnancy.scanEdd} onChange={setIn('pregnancy', 'scanEdd')} />
+                        {vm('pregnancy.scanEdd')}
+                      </Field>
+                    </div>
+                    <div className="calc-row" aria-live="polite">
+                      <span>
+                        EDD from LMP: <strong>{lmpEdd ? formatDate(lmpEdd) : '—'}</strong>
+                      </span>
+                      <span>
+                        EDD used: <strong>{effectiveEdd ? formatDate(effectiveEdd) : '—'}</strong>
+                        {v.pregnancy.scanEdd && <span className="muted"> (scan)</span>}
+                      </span>
+                      <span>
+                        Today: <strong>{formatGestation(ga)}</strong>
+                      </span>
+                    </div>
+                    {datesWarning(v.pregnancy) && (
+                      <Alert type="warning">
+                        {datesWarning(v.pregnancy)}
+                      </Alert>
+                    )}
+                    <fieldset className="fieldset">
+                      <legend>Findings in this pregnancy</legend>
+                      <div className="check-grid pf-finding-grid">
+                        {Object.entries(PREGNANCY_FINDING_LABELS).map(([k, label]) => {
+                          const stored = currentFindings(patient).find((f) => f.key === k);
+                          const ticked = v.pregnancy.findings.includes(k);
+                          return (
+                            <label key={k} className="check pf-finding-check">
+                              <input type="checkbox" checked={ticked} onChange={() => toggleFinding(k)} />
+                              <span>
+                                {label}
+                                {vm(`pregnancy.findings.${k}`)}
+                                {PREGNANCY_FINDING_HINTS[k] && <span className="pf-finding-by">{PREGNANCY_FINDING_HINTS[k]}</span>}
+                                {stored && ticked && (
+                                  <span className="pf-finding-by">
+                                    Recorded by {stored.byName}, {formatDate(stored.at)}
+                                  </span>
+                                )}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p className="hint">
+                        Tick what has been found in this pregnancy, and untick it if it turns out not to be so. Each tick is saved with your name and the date; a tick from voice entry is marked and is saved only when you save. It counts
+                        for the risk level (the Risk card shows the reason) and switches on the items her care plan has for it, as the hospital's risk rules and care-plan
+                        template say.
+                      </p>
+                      <FieldError>{fe('pregnancy.findings')}</FieldError>
+                    </fieldset>
+                  </section>
+                )}
+
+                {showLoss && (
+                  <AbortionSection
+                    values={v.abortion}
+                    set={setAbortion}
+                    bloodGroup={v.medical.bloodGroup}
+                    fe={fe}
+                    vc={vc}
+                    vm={vm}
+                    fromAntenatal={isEdit && patient.careType === 'antenatal'}
+                    storedSeen={toDateInput(patient?.abortion?.presentedOn)}
+                    storedFindings={currentLossFindings(patient?.abortion)}
+                    rulesOn={lossRulesOn(patient?.redFlags?.rules)}
+                  />
+                )}
+
+                {isEdit && showClinical && type === 'postnatal' && clinical && (
+                  <section className="card form-section">
+                    <h2>Delivery and breastfeeding</h2>
+                    {v.delivery.locked ? (
+                      <p>
+                        {formatDate(v.delivery.on)} – {DELIVERY_MODE_LABELS[v.delivery.mode] ?? v.delivery.mode}. From the delivery note confirmed in this hospital; any
+                        change is made there with an addition.
+                      </p>
+                    ) : (
                       <>
-                        <Field label="Admitted to the unit on" id="nicu-from" error={fe('newbornCare.nicu.from')}>
-                          <input id="nicu-from" type="date" value={v.newbornCare.from} onChange={setIn('newbornCare', 'from')} max={toDateInput(new Date())} />
-                        </Field>
-                        <Field label="Discharged from the unit on (optional)" id="nicu-to" error={fe('newbornCare.nicu.to')} hint="Leave empty while the baby is still there." keepHint>
-                          <input id="nicu-to" type="date" value={v.newbornCare.to} onChange={setIn('newbornCare', 'to')} max={toDateInput(new Date())} />
-                        </Field>
+                        <p className="hint">For a delivery at another hospital. The postnatal care plan is counted from this date.</p>
+                        <div className="form-grid">
+                          <Field label="Date of delivery" id="delivery-on" error={fe('delivery.on')}>
+                            <input id="delivery-on" type="date" value={v.delivery.on} onChange={setIn('delivery', 'on')} max={toDateInput(new Date())} />
+                          </Field>
+                          <Field label="Mode of delivery" id="delivery-mode" error={fe('delivery.mode')}>
+                            <select id="delivery-mode" value={v.delivery.mode} onChange={setIn('delivery', 'mode')}>
+                              <option value="">Choose…</option>
+                              {Object.entries(DELIVERY_MODE_LABELS).map(([k, label]) => (
+                                <option key={k} value={k}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                        </div>
                       </>
                     )}
-                    <Field label="Feeding at discharge" id="feeding-discharge" error={fe('newbornCare.feedingAtDischarge')}>
-                      <select id="feeding-discharge" value={v.newbornCare.feedingAtDischarge} onChange={setIn('newbornCare', 'feedingAtDischarge')}>
-                        {/* ('' is "Not recorded": its key is not 'none', which is "No breast milk") */}
-                        {Object.entries(FEEDING_AT_DISCHARGE_LABELS).map(([k, label]) => (
-                          <option key={k || 'not-recorded'} value={k}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="form-grid form-grid-fill">
+                      <Field label="Breastfeeding" id="breastfeeding" error={fe('postnatal.breastfeeding')} hint="For the medicine safety check on her prescriptions.">
+                        <select id="breastfeeding" value={v.postnatal.breastfeeding} onChange={setIn('postnatal', 'breastfeeding')}>
+                          {Object.entries(BREASTFEEDING_LABELS).map(([k, label]) => (
+                            <option key={k || 'none'} value={k}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                  </section>
+                )}
+
+                {isEdit && showClinical && isNewborn && clinical && (
+                  <section className="card form-section" aria-labelledby="pf-after-birth">
+                    <h2 id="pf-after-birth">Care after birth</h2>
+                    <p className="hint">Optional. Leave “Not recorded” when it is not known. Counted in Analytics only from the delivery note.</p>
+                    <div className="form-grid pf-after-birth-grid">
+                      <Field label="Admitted to the NICU or SNCU" id="nicu-admitted" error={fe('newbornCare.nicu.admitted')}>
+                        <select id="nicu-admitted" value={v.newbornCare.admitted} onChange={setIn('newbornCare', 'admitted')}>
+                          {Object.entries(NICU_ADMITTED_LABELS).map(([k, label]) => (
+                            <option key={k || 'none'} value={k}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      {v.newbornCare.admitted === 'yes' && (
+                        <>
+                          <Field label="Admitted to the unit on" id="nicu-from" error={fe('newbornCare.nicu.from')}>
+                            <input id="nicu-from" type="date" value={v.newbornCare.from} onChange={setIn('newbornCare', 'from')} max={toDateInput(new Date())} />
+                          </Field>
+                          <Field label="Discharged from the unit on (optional)" id="nicu-to" error={fe('newbornCare.nicu.to')} hint="Leave empty while the baby is still there." keepHint>
+                            <input id="nicu-to" type="date" value={v.newbornCare.to} onChange={setIn('newbornCare', 'to')} max={toDateInput(new Date())} />
+                          </Field>
+                        </>
+                      )}
+                      <Field label="Feeding at discharge" id="feeding-discharge" error={fe('newbornCare.feedingAtDischarge')}>
+                        <select id="feeding-discharge" value={v.newbornCare.feedingAtDischarge} onChange={setIn('newbornCare', 'feedingAtDischarge')}>
+                          {/* ('' is "Not recorded": its key is not 'none', which is "No breast milk") */}
+                          {Object.entries(FEEDING_AT_DISCHARGE_LABELS).map(([k, label]) => (
+                            <option key={k || 'not-recorded'} value={k}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                  </section>
+                )}
+
+                {showClinical && clinical && type === 'infertility' && <FertilitySection values={v.fertility} set={setFertility} fe={fe} />}
+
+                {showClinical && clinical && (
+                  <section className="card form-section">
+                    <Field label="Notes (optional)" id="notes" error={fe('notes')}>
+                      <textarea id="notes" className={vc('notes')} rows={3} value={v.notes} onChange={set('notes')} maxLength={2000} />
+                      {vm('notes')}
                     </Field>
-                  </div>
-                </section>
-              )}
-
-              {showClinical && clinical && type === 'infertility' && <FertilitySection values={v.fertility} set={setFertility} fe={fe} />}
-
-              {showClinical && clinical && (
-                <section className="card form-section">
-                  <Field label="Notes (optional)" id="notes" error={fe('notes')}>
-                    <textarea id="notes" className={vc('notes')} rows={3} value={v.notes} onChange={set('notes')} maxLength={2000} />
-                    {vm('notes')}
-                  </Field>
-                </section>
-              )}
-              {beforeActions}
-              <div className="sticky-actions">
-                {recording && <VoiceBar status={voiceStatus} onStop={() => voiceControl.current?.stop()} />}
-                <button type="submit" className="btn btn-primary" disabled={submitting || recording} aria-describedby={recording ? 'save-wait' : undefined} onClick={() => (another.current = false)}>
-                  {submitting ? 'Saving…' : continues ? 'Save and continue' : submitLabel}
-                </button>
-                {anotherLabel && !continues && (
-                  <button type="submit" className="btn btn-secondary" disabled={submitting || recording} onClick={() => (another.current = true)}>
-                    {anotherLabel}
+                  </section>
+                )}
+                {beforeActions}
+                <div className="sticky-actions">
+                  {recording && <VoiceBar status={voiceStatus} onStop={() => voiceControl.current?.stop()} />}
+                  <button type="submit" className="btn btn-primary" disabled={submitting || recording} aria-describedby={recording ? 'save-wait' : undefined} onClick={() => (another.current = false)}>
+                    {submitting ? 'Saving…' : continues ? 'Save and continue' : submitLabel}
                   </button>
-                )}
-                {recording && (
-                  <span id="save-wait" className="hint voice-save-wait">
-                    Stop recording before saving.
-                  </span>
-                )}
-                {cancelTo && (
-                  <Link to={cancelTo} className="btn btn-link">
-                    {cancelLabel}
-                  </Link>
-                )}
-              </div>
-            </>
-          )}
+                  {anotherLabel && !continues && (
+                    <button type="submit" className="btn btn-secondary" disabled={submitting || recording} onClick={() => (another.current = true)}>
+                      {anotherLabel}
+                    </button>
+                  )}
+                  {recording && (
+                    <span id="save-wait" className="hint voice-save-wait">
+                      Stop recording before saving.
+                    </span>
+                  )}
+                  {cancelTo && (
+                    <Link to={cancelTo} className="btn btn-link">
+                      {cancelLabel}
+                    </Link>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      </FormSteps>
     </form>
   );
 }
