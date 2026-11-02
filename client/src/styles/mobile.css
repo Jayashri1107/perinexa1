@@ -473,7 +473,7 @@
   .appt-daynav input[type='date'] { padding: 0 var(--space-1); font-size: 15px; }
   .appt-daynav > .btn { padding: 0 var(--space-2); font-size: var(--fs-label); }
   /* A stacked table's caption across the full width (it was squeezed) */
-  table:not(.dt, .ptable, .am-grid) caption { display: block; width: 100%; text-align: left; }
+  table:not(.dt, .ptable, .am-grid) caption:not(.sr-only) { display: block; width: 100%; text-align: left; }
   .wl-footnote { flex-wrap: wrap; }
   .wl-footnote .btn { flex: none; }
   /* OPD timings not set: the title and what to do; the explanation is left out */
