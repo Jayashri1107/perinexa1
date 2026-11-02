@@ -484,6 +484,16 @@
   .prof-tabs::-webkit-scrollbar { display: none; }
   .prof-tabs > * { flex: 0 0 auto; }
 
+  /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
+  [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
+  [data-short]:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
+  [data-short]::after {
+    content: ''; position: absolute; right: var(--space-1); top: 3px; width: 7px; height: 7px;
+    border-right: 2px solid var(--slate-600); border-bottom: 2px solid var(--slate-600); transform: rotate(45deg);
+  }
+  [data-short][data-open]::after { top: 7px; transform: rotate(-135deg); }
+  [data-short]:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+
   /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
   .pt-summary, .patient-form > .alert-patient-note { display: none; }
   .rd-updated { font-size: 0; }

@@ -16,6 +16,7 @@ import { NotificationBell } from './NotificationBell.jsx';
 import { PasswordInput } from './PasswordInput.jsx';
 import { Alert, Avatar, Field, rolesLabel, useDialogFocus } from './ui.jsx';
 import { LoadingOutlet } from './PageLoading.jsx';
+import { useShortHints } from './shortHints.js';
 
 // The new-patient form (before anything is saved): /patients/new or /patients/new/<type of care>
 const REGISTERING = new RegExp(`^/patients/new(?:/(?:${CARE_TYPES.join('|')}))?/?$`);
@@ -393,6 +394,7 @@ export function AppLayout() {
   const railForced = useMediaQuery(RAIL_QUERY);
   const phone = useMediaQuery(PHONE_QUERY);
   const [searchOpen, setSearchOpen] = useState(false); // phones: "Find a patient" opens under the header
+  useShortHints(phone);
   const toggleRef = useRef(null);
   const openedFrom = useRef(null);
 
