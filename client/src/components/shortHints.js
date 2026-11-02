@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 // all. Safety stays in full view: text about warnings, consent, drafts, allergies and the like, every clinical page,
 // messages the page announces (role), and lines with a link or a control in them.
 const MIN_LENGTH = 60;
-const KEEP_WORDS = /draft|allerg|consent|agreement|pcpndt|sex|red.?flag|risk|warning|caution|danger|emergency|urgent|must|never|not approved|do not|don['’]t|before calling|doctor approv|medicine|dose|pregnan|delet|cannot be undone|legal/i;
+const KEEP_WORDS = /draft|allerg|consent|agreement|pcpndt|sex|red.?flag|risk|warning|caution|danger|emergency|urgent|must|never|not approved|do not|don['’]t|before calling|doctor approv|medicine|dose|pregnan|delet|cannot be undone|legal|password|at least/i;
 const KEEP_PAGES = /^\/(care-plans|medicine-safety|clinical-rules|consent-forms|information-forms|library|test-packages|prescription-sets)(\/|$)|^\/patients\/[^/]+\/(visits|care-plan|fertility-plan|consents|information|stays|lab|referrals)(\/|$)|^\/patients\/new\/[^/]+\/clinical/;
 
 /** May this instruction line be shortened? (the text and the page's address) */

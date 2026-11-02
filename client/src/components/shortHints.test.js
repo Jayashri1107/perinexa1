@@ -14,6 +14,7 @@ describe('long instruction lines on a phone (canShorten)', () => {
       'With the patient’s agreement. The QR code on her card is read on this computer – nothing is saved or sent.',
       'Write the allergies here, or tick the box that says none are known for this person.',
       'The baby’s sex must never be written anywhere in this record, under the law in India.',
+      'At least 8 characters, with at least one letter and one number in the new password.',
     ]) expect(canShorten(text, '/patients/new/gynaecology')).toBe(false);
   });
   it('keeps every clinical page in full view', () => {

@@ -500,6 +500,7 @@ export function AppLayout() {
               <Menu size={24} />
             </button>
             {(!isPlatform || inSetup) && !locked && <Workspace />}
+            {phone && isPlatform && !inSetup && <span className="pf-top-title">Perinexa</span>}
           </div>
           {searchable && <PatientSearch key={activeTenantId} />}
           <div className="pf-topbar-actions">

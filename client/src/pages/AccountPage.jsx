@@ -317,8 +317,8 @@ function PasswordCard() {
       </Alert>
       <Alert type="error">{error}</Alert>
       <div className="prof-grid">
-        {box('currentPassword', 'Current password', 'current-password', 'At least 8 characters, with at least one letter and one number.')}
-        {box('newPassword', 'New password', 'new-password')}
+        {box('currentPassword', 'Current password', 'current-password')}
+        {box('newPassword', 'New password', 'new-password', 'At least 8 characters, with at least one letter and one number.')}
         {box('confirmPassword', 'Confirm new password', 'new-password')}
       </div>
     </form>
