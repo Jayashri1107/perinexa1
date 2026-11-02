@@ -17,6 +17,7 @@ import { PasswordInput } from './PasswordInput.jsx';
 import { Alert, Avatar, Field, rolesLabel, useDialogFocus } from './ui.jsx';
 import { LoadingOutlet } from './PageLoading.jsx';
 import { useShortHints } from './shortHints.js';
+import { TitleSlotContext } from './PageHeader.jsx';
 
 // The new-patient form (before anything is saved): /patients/new or /patients/new/<type of care>
 const REGISTERING = new RegExp(`^/patients/new(?:/(?:${CARE_TYPES.join('|')}))?/?$`);
@@ -395,6 +396,7 @@ export function AppLayout() {
   const phone = useMediaQuery(PHONE_QUERY);
   const [searchOpen, setSearchOpen] = useState(false); // phones: "Find a patient" opens under the header
   useShortHints(phone);
+  const [titleSlot, setTitleSlot] = useState(null);
   const toggleRef = useRef(null);
   const openedFrom = useRef(null);
 
@@ -501,6 +503,8 @@ export function AppLayout() {
             </button>
             {(!isPlatform || inSetup) && !locked && <Workspace />}
             {phone && isPlatform && !inSetup && <span className="pf-top-title">Perinexa</span>}
+            {/* Phones: the page's title, as apps have it (PageHeader) */}
+            {phone && !sheet && <div className="pf-title-slot" ref={setTitleSlot} />}
           </div>
           {searchable && <PatientSearch key={activeTenantId} />}
           <div className="pf-topbar-actions">
@@ -570,7 +574,9 @@ export function AppLayout() {
             </div>
           )}
           {/* Re-create the page when the hospital changes, so no data from the previous hospital stays on screen. */}
-          <LoadingOutlet key={activeTenantId ?? 'platform'} />
+          <TitleSlotContext.Provider value={phone && !sheet ? titleSlot : null}>
+            <LoadingOutlet key={activeTenantId ?? 'platform'} />
+          </TitleSlotContext.Provider>
         </main>
       </div>
       {phone && !locked && !sheet && <TabBar modules={modules} roles={activeMembership?.roles ?? []} menuOpen={mobileOpen} onMenu={() => setMobileOpen(true)} />}

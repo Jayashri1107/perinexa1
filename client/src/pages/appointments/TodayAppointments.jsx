@@ -5,7 +5,7 @@ import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, StatusPill, formatTime, useDialogFocus } from '../../components/ui.jsx';
+import { Alert, Avatar, Field, StatusPill, formatTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PatientFinder } from './AppointmentDialogs.jsx';
 import { PatientRow, Section } from '../worklist/WorklistSections.jsx';
@@ -213,6 +213,49 @@ function WaitingLine({ w, next, canMarkDone, onDone }) {
       )}
       {error && <Alert type="error">{error}</Alert>}
     </PatientRow>
+  );
+}
+
+/**
+ * Phones, a doctor's Today: the next patient on the doctor's own waiting list, with the way to her record. The record has
+ * the button for her visit; nothing else changes here.
+ */
+export function NextPatientCard({ refreshKey = 0 }) {
+  const queue = useFetch('/appointments/queue');
+  const { reload } = queue;
+  useEffect(() => {
+    if (refreshKey) reload();
+  }, [refreshKey, reload]);
+  const mine = queue.data?.queues?.find((q) => q.doctor.id === queue.data.me);
+  const w = mine?.waiting?.[0];
+  if (!w) return null;
+  return (
+    <section className="card td-next" aria-labelledby="td-next-title">
+      <div className="td-next-head">
+        <h2 id="td-next-title">Next patient</h2>
+        {w.emergency ? (
+          <StatusPill tone="high" icon={Siren}>
+            Emergency
+          </StatusPill>
+        ) : (
+          <StatusPill tone="due" icon={Clock}>
+            Waiting
+          </StatusPill>
+        )}
+      </div>
+      <Link to={`/patients/${w.patient.id}`} className="td-next-who">
+        <Avatar name={w.patient.fullName} seed={w.patient.id} />
+        <span>
+          <strong>{w.patient.fullName}</strong>
+          <span className="muted">
+            {whenLabel(w)} · {w.patient.mrn}
+          </span>
+        </span>
+      </Link>
+      <Link to={`/patients/${w.patient.id}`} className="btn btn-primary">
+        See this patient
+      </Link>
+    </section>
   );
 }
 

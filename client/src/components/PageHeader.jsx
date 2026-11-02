@@ -19,9 +19,13 @@ export const TitleSlotContext = createContext(null);
  * subtabs: a second, smaller row of tabs for the sections of the current tab ([{ label, to, end? }])
  * pinned: phones – the header stays at the top while the page scrolls, slimmer once the page has moved under it (a patient's record)
  * className: added to the header (styling one kind of page)
+ * caption: phones – a short line under the title (Today's date)
+ * inline: keep the title in the page, not in the phone's top row (a page with its own back button beside it)
  */
-export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, actions, tabs, subtabs, documentTitle, pinned = false, className = '' }) {
-  const slot = useContext(TitleSlotContext);
+export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, actions, tabs, subtabs, documentTitle, pinned = false, className = '', caption, inline = false }) {
+  const topRow = useContext(TitleSlotContext);
+  // A patient's pinned header keeps its own title: it stays in view with her name and main button
+  const slot = pinned || inline ? null : topRow;
   const { pathname } = useLocation();
   // Phones: the subtitle waits behind an ⓘ beside the title (mobile.css), shown when it is tapped
   const [infoOpen, setInfoOpen] = useState(false);
@@ -84,6 +88,7 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
           </button>
         )}
       </div>
+      {caption && <p className="ph-caption">{caption}</p>}
     </div>
   );
 

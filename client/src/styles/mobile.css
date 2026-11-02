@@ -7,7 +7,7 @@
  */
 
 /* Only on phones (shown below) */
-.pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn, .ph-jump-btn { display: none; }
+.pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn, .ph-jump-btn, .ph-caption { display: none; }
 
 @media (max-width: 719px) {
   /* ---------- The header: one row, stuck to the top ---------- */
@@ -915,6 +915,47 @@
   .hint[data-short] { margin-bottom: var(--space-2); }
   .pf-main input[type='file'] { font-size: var(--fs-label); }
   .pf-main input[type='file']::file-selector-button { margin-right: var(--space-2); padding: var(--space-1) var(--space-3); border: 1px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--surface); color: var(--indigo-700); font: inherit; }
+
+  /* ---------- The app design (2 Nov 2026): the shared top, for every role ---------- */
+  /* One row on the canvas: the page's title on the left, round buttons on the right. The menu is in the bottom bar */
+  .pf-topbar { align-items: center; padding-top: calc(env(safe-area-inset-top) + var(--space-3)); border-bottom: 0; background: var(--mist-100); }
+  .pf-topbar .ws, .pf-top-title { display: none; }
+  .pf-has-tabbar:not(:has(.pf-main .sticky-actions:not(.modal *), .pf-main .fs-nav)) .pf-menu-btn { display: none; }
+  .pf-title-slot { flex: 1 1 auto; min-width: 0; }
+  .pf-title-slot .ph-title-row { flex-wrap: nowrap; gap: var(--space-1); }
+  .pf-title-slot .ph-title { overflow: hidden; font-size: calc(26px * var(--text-scale)); line-height: calc(32px * var(--text-scale)); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-title-slot .ph-title.ph-title-long { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .pf-title-slot .ph-crumbs ol { margin-bottom: 0; }
+  .ph-caption { display: block; margin: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .pf-topbar-actions .icon-btn { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--surface); }
+  .pf-topbar-actions .pm-btn .avatar { width: 44px; height: 44px; }
+  /* The band under the title only when there is something in it */
+  .ph:not(.ph-info-open):not(:has(.ph-actions, .ph-tabs, .ph-subtabs, .ph-jump-btn)) { display: none; }
+  .pf-main > .ph { padding-top: 0; }
+  /* The side menu: who is signed in at its top */
+  .pf-mobile-open .sb > * { order: 2; }
+  .pf-mobile-open .sb > .sb-brand { order: 0; }
+  .pf-mobile-open .sb > .sb-foot { order: 1; margin-top: 0; }
+  .pf-mobile-open .sb > .sb-logout { order: 3; }
+
+  /* ---------- A doctor's Today, as in the app design ---------- */
+  .td-home { display: flex; flex-direction: column; gap: var(--space-3); order: -1; }
+  .td-next { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: var(--space-4); }
+  .td-next-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .td-next-head h2 { margin: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+  .td-next-who { display: flex; align-items: center; gap: var(--space-3); color: inherit; text-decoration: none; }
+  .td-next-who .avatar { flex: none; width: 52px; height: 52px; }
+  .td-next-who > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+  .td-next-who strong { font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 700; }
+  .td-next-who .muted { font-size: var(--fs-label); line-height: var(--lh-label); }
+  .td-next > .btn-primary { min-height: 48px; justify-content: center; }
+  .td-home-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-home-count { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; min-height: 100px; padding: var(--space-3); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); color: var(--ink); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; text-decoration: none; }
+  .td-home-count strong { font-size: calc(24px * var(--text-scale)); line-height: calc(30px * var(--text-scale)); font-weight: 700; color: var(--indigo-700); }
+  .td-home-count.is-high strong { color: var(--status-high-fg); }
+  .td-home-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-home-actions > .btn, .td-home-actions > .menu-button > .btn { width: 100%; min-height: 44px; justify-content: center; padding: 0 var(--space-2); white-space: nowrap; font-size: var(--fs-label); }
+  .td-home-actions > .menu-button { display: flex; min-width: 0; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
