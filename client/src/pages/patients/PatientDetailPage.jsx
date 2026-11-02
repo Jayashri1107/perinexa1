@@ -420,7 +420,7 @@ export function PatientDetailPage() {
                 <CalendarPlus aria-hidden="true" /> Book appointment
               </button>
             )}
-            {visitButton?.kind === 'open' && (
+            {visitButton?.kind === 'open' && !location.pathname.startsWith(visitButton.to) && (
               <Link to={visitButton.to} className={`btn ${onEditTab ? 'btn-secondary' : 'btn-primary'}`}>
                 <Stethoscope aria-hidden="true" /> Open today's visit
               </Link>
