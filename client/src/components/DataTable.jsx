@@ -167,7 +167,9 @@ export function Paged({ rows, label, initial, sizes, children }) {
 export function TablePagination({ page, totalPages, total, limit, onPage, onLimit, label = 'items', sizes = [10, 25, 50, 100] }) {
   const [pageInput, setPageInput] = useState(String(page));
   useEffect(() => setPageInput(String(page)), [page]);
-  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  // Nothing in the list: no "Showing 0–0 of 0" – the list's own message says it
+  if (total === 0) return null;
+  const from = (page - 1) * limit + 1;
   const to = Math.min(total, page * limit);
 
   const goTo = (p) => {

@@ -5,6 +5,7 @@ import { normalizeAppearance } from '../appearance.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { ACCOUNT_MODULE, hospitalModules, platformModules } from '../platform/modules.js';
+import { FoldCards } from '../components/FoldCards.jsx';
 
 // "Help" in the top bar (owner, 14 Oct 2026): how to use Perinexa, in one page. Each person sees the guide for the
 // menu items they have; the explanations on every screen are switched on or off here.
@@ -76,7 +77,7 @@ export function HelpPage() {
   return (
     <>
       <PageHeader breadcrumbs={[{ label: 'Help' }]} title="Help" subtitle="How to use Perinexa" documentTitle="Help" />
-      <div className="pf-content help-page">
+      <FoldCards className="pf-content help-page" openFirst>
         <section className="card help-card help-wide" id="whats-new" aria-labelledby="help-new">
           <h2 id="help-new">What's new</h2>
           <ul className="plain-list help-new">
@@ -156,7 +157,7 @@ export function HelpPage() {
             explanations on the screens
           </label>
         </section>
-      </div>
+      </FoldCards>
     </>
   );
 }

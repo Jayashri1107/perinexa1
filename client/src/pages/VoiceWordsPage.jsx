@@ -6,6 +6,7 @@ import { Alert, Field, formatDate } from '../components/ui.jsx';
 import { useFetch } from '../hooks/useFetch.js';
 import { accountTabs } from '../platform/modules.js';
 import { builtInWords, meaningLabel } from './patients/dictation.js';
+import { FoldCards } from '../components/FoldCards.jsx';
 
 // Voice entry remembers a few habits under these keys rather than a word
 const HABITS = {
@@ -59,7 +60,7 @@ export function VoiceWordsPage() {
         subtitle={`${user.name} · ${user.email}`}
         tabs={accountTabs(memberships)}
       />
-      <div className="pf-content voice-words">
+      <FoldCards className="pf-content voice-words" openFirst>
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
@@ -117,7 +118,7 @@ export function VoiceWordsPage() {
             ))}
           </ul>
         </section>
-      </div>
+      </FoldCards>
     </>
   );
 }

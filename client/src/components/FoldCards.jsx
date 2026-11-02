@@ -7,8 +7,9 @@ const PHONE_QUERY = '(max-width: 719px)';
 const titleOf = (card) => card.querySelector(':scope > h2, :scope > :first-child h2');
 
 /** A box of cards that fold on a phone; mobile.css hides what is under a folded card's title (keeping its short summary). */
-export function FoldCards({ className, children }) {
+export function FoldCards({ className, openFirst = false, children }) {
   const box = useRef(null);
+  const firstDone = useRef(false);
   useEffect(() => {
     const el = box.current;
     if (!el || !window.matchMedia) return undefined;
@@ -19,6 +20,11 @@ export function FoldCards({ className, children }) {
         if (!title || card.classList.contains('ai-card')) continue;
         if (phone.matches) {
           card.setAttribute('data-fold', '');
+          // openFirst: the first card starts open, so the page opens on something to read
+          if (openFirst && !firstDone.current) {
+            firstDone.current = true;
+            card.setAttribute('data-open', '');
+          }
           title.setAttribute('role', 'button');
           title.tabIndex = 0;
           title.setAttribute('aria-expanded', String(card.hasAttribute('data-open')));
@@ -39,7 +45,7 @@ export function FoldCards({ className, children }) {
       watch.disconnect();
       phone.removeEventListener('change', mark);
     };
-  }, []);
+  }, [openFirst]);
 
   const toggle = (e) => {
     if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;

@@ -130,7 +130,7 @@
 .rd-actions > .btn-link.rd-icon-act { border: 1px solid var(--card-border); border-radius: var(--radius-md); }
 .rd-actions > .rd-icon-act svg.lucide { width: 18px; height: 18px; margin: 0; }
 .rd-more .menu-chevron { display: none; }
-.rd-table th:first-child, .rd-table td:first-child { width: 1%; padding-right: 0; color: var(--slate-600); }
+.rd-table th:first-child, .rd-table td:first-child:not(.dt-empty) { width: 1%; padding-right: 0; color: var(--slate-600); }
 .rd-table td { padding: var(--space-2) var(--space-3); }
 .rd-table td:nth-child(3), .rd-table td:nth-child(4) { white-space: nowrap; }
 .rd-person { min-width: 220px; }
