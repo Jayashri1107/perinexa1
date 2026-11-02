@@ -842,13 +842,79 @@
   .td-top > .kpi .kpi-value { margin-left: 0; }
   .wl-footnote svg.lucide { display: none; }
   /* A list's filters across the card */
-  .dt-toolbar > .lab-filter { flex: 1 1 100%; }
-  .dt-toolbar > .lab-filter :is(select, input) { width: 100%; }
+  .lab-filter { flex: 1 1 100%; width: 100%; }
+  .lab-filter :is(select, input) { width: 100%; }
   /* A long warning: its words all there, in smaller type */
   .pf-main .alert-warning { padding: var(--space-2) var(--space-3); gap: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); }
   .pf-main .alert-warning .alert-icon svg.lucide { width: 18px; height: 18px; }
   /* A long choice in a box ends in … instead of being cut */
   .pf-main select { text-overflow: ellipsis; }
+
+  /* ---------- Every role: buttons that fit, boxes the full width, Save across ---------- */
+  /* Three or more page buttons: two a row, long words wrap, nothing overlaps */
+  .ph-actions:has(> :nth-child(3)) { display: grid; grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); width: 100%; }
+  .ph-actions:has(> :nth-child(3)):not(:has(> .segmented, > .export-btn)) > :nth-child(odd):last-child { grid-column: 1 / -1; }
+  .ph-actions:has(> :nth-child(2)) > .btn, .ph-actions:has(> :nth-child(2)) > .menu-button > .btn { min-width: 0; white-space: normal; text-align: left; }
+  .ph-actions > .btn-sm { min-height: 44px; padding: var(--space-1) var(--space-2); }
+  /* Filters and search boxes: across the card */
+  .dt-toolbar > .dt-filter :is(select, input) { width: 100%; min-width: 0; }
+  .dt-search { width: 100%; max-width: none; }
+  .bill-toolbar > .appt-daynav { width: 100%; }
+  .appt-daynav:not(:has(> .btn)) { grid-template-columns: 36px minmax(0, 1fr) 36px; }
+  .dc-search { flex: 1 1 100%; width: 100%; max-width: none; }
+  .dc-search input { width: 100%; }
+  .ch-day { flex: 1 1 100%; width: 100%; }
+  .ch-day input { width: 100%; }
+  /* From and To side by side */
+  .exp-range, .mis-range, .ph-rep-period { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: var(--space-2); width: 100%; }
+  :is(.exp-range, .mis-range, .ph-rep-period) > :not(.field, label, .ph-rep-date) { grid-column: 1 / -1; }
+  :is(.exp-range, .mis-range, .ph-rep-period) > :is(.field, label, .ph-rep-date) { min-width: 0; margin: 0; }
+  :is(.exp-range, .mis-range, .ph-rep-period) input[type='date'] { width: 100%; min-width: 0; padding-left: var(--space-2); padding-right: var(--space-1); font-size: 15px; }
+  /* OPD and referral settings: short choices two a row */
+  .opd-lengths, .opd-walkin { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .opd-walkin > .opd-walkin-rule { grid-column: 1 / -1; }
+  .opd-length { min-width: 0; }
+  .opd-length :is(select, input) { width: 100%; min-width: 0; }
+  .opd-leave > label { flex: 1 1 40%; min-width: 0; }
+  .opd-leave > label input { width: 100%; min-width: 0; }
+  .opd-leave > .opd-leave-note { flex: 1 1 100%; }
+  /* A form's main button: across the card */
+  .pf-content :is(.card, .bill-section, form) > .btn-primary, .pf-content .acc-actions .btn-primary, .pf-content .exp-form > button[type='submit'], .pf-content .exp-range > .btn { width: 100%; justify-content: center; }
+  .pf-content :is(.card, .bill-section, form) > .row > .btn-primary { flex: 1 1 auto; justify-content: center; }
+
+  /* A page without the usual frame: the same side margins as the others */
+  .exp-layout { margin-top: var(--space-2); padding: 0 var(--space-3) var(--space-3); gap: var(--space-2); }
+  /* Cash handover: the day and Back side by side, nothing under anything */
+  .ph-actions:has(> .ch-day) { display: grid; grid-auto-flow: row; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .ch-day { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+  .ch-day input { flex: 1 1 auto; min-width: 0; }
+  /* A table with rows and columns that mean something together (Monthly income): a real table that swipes, the first
+     column staying in view – not one long stack */
+  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) { display: block; overflow-x: auto; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) thead { display: table-header-group; }
+  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tbody { display: table-row-group; width: auto; }
+  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tfoot { display: table-footer-group; }
+  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) tr { display: table-row; width: auto; margin: 0; padding: 0; border: 0; border-radius: 0; }
+  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) :is(td, th) { display: table-cell; width: auto; min-width: 64px; padding: var(--space-2); border-bottom: 1px solid var(--border); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):not(:has(td[data-label])) :is(td, th):first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+  /* …with nothing in it yet: only its message */
+  .pf-main table:not(.dt, .ptable, .am-grid, .barlist):has(tbody > tr:only-child > td[colspan]) thead { display: none; }
+  /* The audit log: who and what on lines of their own; its dates side by side */
+  .dt tbody tr:has(> td[data-label='Done by']) > td:is([data-label='Done by'], [data-label='Details'], [data-label='Event']):not(:first-child) { flex: 1 1 100%; }
+  .dt-toolbar:has(input[type='date']) > .dt-filter:has(select):nth-last-child(3) { flex: 1 1 100%; }
+  /* Two dates in a row in a form (Ordered from, Ordered to): side by side */
+  .form-grid:has(> .field input[type='date'] ) { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-2); }
+  .form-grid:has(> .field input[type='date'] ) > * { grid-column: 1 / -1; min-width: 0; }
+  .form-grid > .field:has(input[type='date']):has(+ .field input[type='date']), .form-grid > .field:has(input[type='date']) + .field:has(input[type='date']) { grid-column: auto; }
+  .form-grid > .field input[type='date'] { width: 100%; min-width: 0; padding-left: var(--space-2); padding-right: var(--space-1); }
+  /* One button alone on a page's top: across, like the others */
+  .ph-actions > .btn:only-child:not(.export-btn) { flex: 1 1 100%; width: 100%; justify-content: center; }
+  /* Today of the lab, the pharmacy and the like: no empty band under the title */
+  .td-page { padding-top: var(--space-2); }
+  /* Small things */
+  .hint[data-short] { margin-bottom: var(--space-2); }
+  .pf-main input[type='file'] { font-size: var(--fs-label); }
+  .pf-main input[type='file']::file-selector-button { margin-right: var(--space-2); padding: var(--space-1) var(--space-3); border: 1px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--surface); color: var(--indigo-700); font: inherit; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

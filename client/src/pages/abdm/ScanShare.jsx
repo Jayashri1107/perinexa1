@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BadgeCheck, PencilLine, QrCode, Save, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
+import { FoldCards } from '../../components/FoldCards.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, formatTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -218,7 +219,7 @@ export function AbdmSettingsPage() {
   return (
     <>
       <PageHeader breadcrumbs={[{ label: 'Hospital admin', to: '/admin/staff' }, { label: 'ABDM' }]} title="ABDM (ABHA)" />
-      <div className="pf-content bill-page">
+      <FoldCards className="pf-content bill-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
         <Alert type="error">{error}</Alert>
         {saved && <Alert type="success">Saved.</Alert>}
@@ -351,7 +352,7 @@ export function AbdmSettingsPage() {
             )}
           </section>
         )}
-      </div>
+      </FoldCards>
     </>
   );
 }
