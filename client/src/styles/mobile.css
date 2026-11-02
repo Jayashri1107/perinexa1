@@ -143,19 +143,18 @@
   .segmented > * { flex: 1 0 auto; justify-content: center; white-space: nowrap; }
 
   /* ---------- Lists: each row a compact item – its first line in bold, then "label  value" side by side ---------- */
-  .dt tr, table:not(.dt, .ptable, .am-grid) tr { padding: var(--space-2) 0; }
-  .dt td, table:not(.dt, .ptable, .am-grid) td { padding: 2px var(--space-3); }
+  .dt tr { padding: var(--space-2) 0; }
+  .dt td { padding: 2px var(--space-3); }
   /* The label in its own 88 px column; everything in the cell (however many parts) to its right */
-  .dt td[data-label], table:not(.dt, .ptable, .am-grid) td[data-label] {
+  .dt td[data-label] {
     position: relative; display: block; min-height: calc(var(--lh-body) + 4px); padding-left: calc(var(--space-3) + 100px + var(--space-2));
   }
-  .dt td[data-label]::before, table:not(.dt, .ptable, .am-grid) td[data-label]::before {
+  .dt td[data-label]::before {
     position: absolute; left: var(--space-3); top: 4px; width: 100px; font-size: var(--fs-caption); line-height: var(--lh-caption);
   }
   .dt td.wrap-cell { min-width: 0; max-width: none; }
-  .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { display: block; padding-bottom: var(--space-1); font-weight: 600; }
-  .dt td[data-label]:first-child::before, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child::before { display: none; }
-  table:not(.dt, .ptable, .am-grid) tr { margin-bottom: var(--space-2); }
+  .dt td[data-label]:first-child { display: block; padding-bottom: var(--space-1); font-weight: 600; }
+  .dt td[data-label]:first-child::before { display: none; }
   /* One look for every list: the name in bold ink (not an underlined link) and a › on the right of a row that opens
      when tapped (DataTable's dt-clickable rows, or a row whose first cell links to it) */
   .dt tbody tr:is(.dt-clickable, :has(> td:first-child a[href])) { position: relative; padding-right: var(--space-8); }
@@ -164,7 +163,7 @@
     border-top: 2px solid var(--slate-300); border-right: 2px solid var(--slate-300); transform: rotate(45deg); pointer-events: none;
   }
   .dt tbody td:first-child a[href]:first-of-type { color: var(--ink); font-weight: 600; text-decoration: none; }
-  .dt td[data-label]:first-child, table:not(.dt, .ptable, .am-grid) td[data-label]:first-child { padding-left: var(--space-3); }
+  .dt td[data-label]:first-child { padding-left: var(--space-3); }
   /* Above a list: the search and its filter button on one line */
   .dt-toolbar { flex-wrap: nowrap; align-items: center; gap: var(--space-2); padding: var(--space-3); }
   .dt-toolbar:has(> :nth-child(3)) { flex-wrap: wrap; }
@@ -572,6 +571,48 @@
   /* The search box and the switches under it: even spaces */
   .pt-find { margin-bottom: var(--space-2); }
   .pt-quick { gap: var(--space-2); margin-bottom: var(--space-2); }
+
+  /* ---------- A bill: short rows, nothing wider than the screen ---------- */
+  .bill-page, .bill-body, .bill-section, .bill-table-wrap { min-width: 0; max-width: 100%; }
+  .bill-body { display: block; }
+  .bill-head, .bill-section { margin-bottom: var(--space-2); padding: var(--space-3); }
+  .bill-head-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
+  .bill-head-grid dt { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .bill-head-grid dd { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .bill-head-grid dd a { color: var(--ink); text-decoration: none; }
+  /* Items and payments: rows with a thin line between them, not a box in a box */
+  .bill-page .bill-lines tr { margin: 0; border-width: 0 0 1px; border-radius: 0; }
+  .bill-page .bill-lines tbody tr:last-child { border-bottom: 0; }
+  .bill-page .bill-lines .bill-col-item { font-size: var(--fs-label); line-height: var(--lh-label); }
+  .bill-page .bill-item-name { display: block; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .bill-page .bill-item-cat, .bill-page .bill-item-qty, .bill-page .bill-line-from { display: block; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .bill-page .bill-lines:not(.bill-pay-table) td::before { display: none; }
+  .bill-page .bill-pay-table tr { gap: var(--space-2) var(--space-3); }
+  .bill-page .bill-pay-table td { min-width: 0; overflow-wrap: anywhere; text-align: left; white-space: normal; }
+  .bill-page .bill-pay-table td[data-label]::before { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .bill-page .bill-pay-table td[data-label='Receipt'] { font-weight: 600; }
+  .bill-page .bill-pay-table .bill-col-actions { grid-column: 1 / -1; }
+  /* Amount: the word on the left, the figure on the right */
+  table.bill-sums.bill-sums, table.bill-sums.bill-sums tbody { display: block; max-width: none; margin: 0; }
+  table.bill-sums.bill-sums tr { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); margin: 0; padding: var(--space-1) 0; border: 0; border-radius: 0; }
+  table.bill-sums.bill-sums th, table.bill-sums.bill-sums td { display: block; width: auto; padding: 0; border: 0; }
+  table.bill-sums.bill-sums .bill-balance { margin-top: var(--space-1); padding-top: var(--space-2); border-top: 2px solid var(--ink); }
+  table.bill-sums.bill-sums .bill-balance th, table.bill-sums.bill-sums .bill-balance td { border: 0; padding: 0; }
+  .bill-page .bill-lines .bill-col-actions .btn { padding-left: 0; min-height: 36px; }
+  /* Price list: the name on the left, the price on the right */
+  table.bill-prices.bill-prices tr { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); margin: 0; padding: var(--space-2) 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+  table.bill-prices.bill-prices tr:last-child { border-bottom: 0; }
+  table.bill-prices.bill-prices td { display: block; width: auto; min-width: 0; padding: 0; border: 0; }
+  table.bill-prices.bill-prices td:first-child { flex: 1 1 55%; }
+  table.bill-prices.bill-prices td:empty { display: none; }
+  /* Add items: one column, inside the screen */
+  .modal, .modal * { box-sizing: border-box; }
+  .bill-add-pickrow { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  .bill-add-chip { max-width: 100%; white-space: normal; text-align: left; }
+  .bill-add-row { flex-wrap: wrap; }
+  /* A drop-down menu: as wide as its words need, inside the screen */
+  .menu-button .menu-list { width: max-content; min-width: 200px; max-width: calc(100vw - 24px); }
+  .menu-button .menu-list.menu-list-wide { grid-template-columns: minmax(0, 1fr); }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
