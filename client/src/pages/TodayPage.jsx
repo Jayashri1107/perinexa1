@@ -19,7 +19,7 @@ import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyActions, PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { DailyRegister } from './pharmacy/RegisterPage.jsx';
 import { DoctorFollowUps } from './followups/DoctorFollowUps.jsx';
-import { HandoverList, VITALS_DUE_HOURS, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
+import { HandoverList, VITALS_DUE_HOURS, WardHome, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
 import { timeLabel } from './appointments/appointmentFormat.js';
 import { OpdCasePaper } from './beds/AdmissionDesk.jsx';
 import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, NextPatientCard, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
@@ -443,7 +443,10 @@ function RoleToday({ roles, lensBar = null }) {
   const scope = today.data?.scope ?? worklist.data?.scope ?? asked;
   const canChooseScope = Boolean(today.data?.canChooseScope ?? worklist.data?.canChooseScope);
   // Phones, a doctor: the top of Today as in the app design (2 Nov 2026) – the next patient, three counts, then the buttons
-  const doctorHome = isDoctor && typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const doctorHome = isDoctor && onPhone;
+  // Phones, a nurse or an RMO: the ward as in the app design (2 Nov 2026)
+  const wardHome = onPhone && !isDoctor && (roles.includes('nurse') || roles.includes('rmo'));
   const walkInButton = today.data?.canMarkArrived && canSeeAppointments(roles) && !rmoOnly && (
     <button type="button" className="btn btn-secondary" onClick={() => setArriving({ patient: null })}>
       <Hash aria-hidden="true" /> Walk-in token
@@ -724,7 +727,8 @@ function RoleToday({ roles, lensBar = null }) {
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Today' }]}
-        title="Today"
+        className={wardHome ? 'ph-fab' : undefined}
+        title={wardHome && roles.includes('rmo') ? 'Ward round' : 'Today'}
         subtitle={canChooseScope ? (scope === 'mine' ? 'Your patients and unassigned patients' : 'All patients') : undefined}
         caption={new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
         actions={
@@ -823,11 +827,26 @@ function RoleToday({ roles, lensBar = null }) {
               )}
               <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
               {[...tiles].sort((x, y) => (x.key === 'approve') - (y.key === 'approve'))}
-              {clinicalWork && inpatients.data && <HandoverList inpatients={inpatients.data} />}
+              {clinicalWork && inpatients.data && !(wardHome && !roles.includes('rmo')) && <HandoverList inpatients={inpatients.data} />}
             </div>
           </section>
         )}
-        {(roles.includes('nurse') || roles.includes('rmo')) && <WardToday inpatients={inpatients.data} rmo={roles.includes('rmo')} />}
+        {wardHome && (
+          <WardHome
+            inpatients={inpatients.data}
+            rmo={roles.includes('rmo')}
+            details={(s) =>
+              (s.redFlags?.length > 0 || s.redFlagsChecked === false) && (
+                <div className="wd-more">
+                  {s.redFlags?.length > 0 && <RedFlagItems flags={s.redFlags} brief patientId={s.patient.id} />}
+                  {s.redFlagsChecked === false && <p className="hint">{notCheckedCareText(s.redFlagsCareType ?? s.patient.careType, s.redFlagsWorkupOnly)}</p>}
+                </div>
+              )
+            }
+            after={inpatients.data?.admitted.some((s) => s.redFlags?.length > 0) && <RedFlagRulesNote rules={inpatients.data.rules} />}
+          />
+        )}
+        {!wardHome && (roles.includes('nurse') || roles.includes('rmo')) && <WardToday inpatients={inpatients.data} rmo={roles.includes('rmo')} />}
         {/* The pharmacist: the day's OPD, IPD and External patients first, then the pharmacy's numbers (owner, 26 Oct 2026) */}
         {roles.includes('pharmacist') && <DailyRegister glance={<PharmacyToday />} actions={<PharmacyActions />} />}
         {/* The doctor's follow-ups, booked by day and time (owner, 26 Oct 2026) */}
@@ -977,7 +996,7 @@ function RoleToday({ roles, lensBar = null }) {
             </Paged>
           </Section>
         )}
-        {inpatients.data && inpatients.data.admitted.length > 0 && (
+        {!wardHome && inpatients.data && inpatients.data.admitted.length > 0 && (
           <Section id="td-inpatients" icon={BedDouble} title="In hospital" count={inpatients.data.admitted.length} empty="">
             <Paged rows={inpatients.data.admitted} label="patients" {...LIST_PAGES}>
               {(page) => (

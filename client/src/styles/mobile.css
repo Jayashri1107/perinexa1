@@ -993,10 +993,10 @@
   .ph-patient .ph-tabs.segmented > a.active, .ph-patient .ph-tabs.segmented > a[aria-current='page'] { background: none; color: var(--indigo-700); box-shadow: inset 0 -3px 0 var(--indigo-700); }
   /* Her main button at the foot, in place of the bottom bar – not while a form's Save bar is there */
   .pf-has-tabbar:has(.ph-patient .ph-actions > .btn-primary):not(:has(.sticky-actions:not(.modal *))) .pf-tabbar { display: none; }
-  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: nowrap; width: auto; margin: 0; padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-3)); border-top: 1px solid var(--border); background: var(--surface); }
-  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) > .btn-primary { flex: 1 1 auto; min-height: 52px; font-size: var(--fs-body); }
-  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient .ph-actions:has(> .btn-primary) > .menu-button > .btn { min-height: 52px; }
-  .pf:not(:has(.sticky-actions:not(.modal *))) .ph-patient.ph-stuck .ph-actions > :not(.btn-primary) { display: flex; }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary) { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: nowrap; width: auto; margin: 0; padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-3)); border-top: 1px solid var(--border); background: var(--surface); }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary) > .btn-primary { flex: 1 1 auto; min-height: 52px; font-size: var(--fs-body); }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary) > .menu-button > .btn { min-height: 52px; }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient.ph-stuck .ph-actions > :not(.btn-primary) { display: flex; }
 
   /* A patient's row: everything starts on one line under her name */
   .dt tbody tr:has(> td[data-label='Care now']) > td[data-label]:not(:first-child) > :first-child { margin-left: 0; }
@@ -1030,7 +1030,10 @@
   .cal-cell-chosen { border-radius: var(--radius-md); }
 
   /* A visit: the short readings three a row */
-  .vs-vitals, .vs-section .form-grid:has(input[inputmode='decimal']) { column-gap: var(--space-2); }
+  .vs-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .vs-grid > .field { min-width: 0; margin: 0; }
+  .vs-grid > .vs-bp { grid-column: span 2; }
+  .vs-grid input { width: 100%; min-width: 0; padding-left: var(--space-2); padding-right: var(--space-1); }
 
   /* ---------- App design: reception's Today ---------- */
   /* Three small numbers across, not a row to swipe */
@@ -1055,6 +1058,75 @@
   .dt tbody tr:has(> td[data-label='Balance']) > td[data-label='Status'] { grid-column: 2; grid-row: 2 / span 2; justify-self: end; align-self: start; }
   .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Date'], [data-label='Paid'], [data-label='Balance'], [data-label='Last payment']) { display: none; }
   .dt tbody tr:has(> td[data-label='Balance'])::after { display: none; }
+
+  /* ---------- App design: the ward, for nurses and RMOs ---------- */
+  /* The ward first, then the lists; two small tiles a row; a red flag across the top */
+  .wd-home { display: flex; flex-direction: column; gap: var(--space-4); order: -1; }
+  .wd-home h2 { margin: 0 0 var(--space-2); padding: 0 var(--space-1); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  /* A red flag first, whole width, the colour and the words */
+  .wd-alert { display: flex; align-items: center; gap: var(--space-3); min-height: 60px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-lg); background: var(--status-high-bg); color: var(--status-high-fg); text-decoration: none; }
+  .wd-alert > svg { flex: none; }
+  .wd-alert > span { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .wd-alert strong { font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 700; }
+  /* Three numbers */
+  .wd-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .wd-counts > div { min-width: 0; padding: var(--space-3); border-radius: var(--radius-lg); background: var(--surface); }
+  .wd-counts strong { display: block; font-size: calc(24px * var(--text-scale)); line-height: calc(30px * var(--text-scale)); font-weight: 700; }
+  .wd-counts .is-due strong { color: var(--status-watch-fg); }
+  .wd-counts span { display: block; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+  /* The ward round's chips */
+  .wd-chips { display: flex; gap: var(--space-2); overflow-x: auto; margin: 0 calc(var(--space-3) * -1); padding: 0 var(--space-3); scrollbar-width: none; }
+  .wd-chips::-webkit-scrollbar { display: none; }
+  .wd-chips > button { flex: none; min-height: 40px; padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: var(--surface); color: var(--slate-600); font-size: var(--fs-label); font-weight: 600; white-space: nowrap; }
+  .wd-chips > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
+  .wd-line { margin: calc(var(--space-2) * -1) 0 0; padding: 0 var(--space-1); color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  /* Her row: the bed, her name, how long, what is due */
+  .wd-list { display: flex; flex-direction: column; margin: 0; padding: 0; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface); list-style: none; }
+  .wd-list > li + li { border-top: 1px solid var(--border); }
+  .wd-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); min-height: 72px; padding: var(--space-2) var(--space-3); color: inherit; text-decoration: none; }
+  .wd-bed { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); font-size: var(--fs-label); font-weight: 700; }
+  .wd-who { display: flex; flex: 1 1 0; flex-direction: column; min-width: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .wd-who strong { color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; overflow-wrap: anywhere; }
+  .wd-tags { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); flex: none; max-width: 50%; }
+  .wd-go { flex: none; display: none; color: var(--slate-600); }
+  .wd-rmo .wd-go { display: block; }
+  .wd-rmo .wd-tags { flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; align-items: center; max-width: none; }
+  .wd-more { padding: 0 var(--space-3) var(--space-2); }
+  .wd-more > :last-child { margin-bottom: 0; }
+  .wd-none { margin: 0; padding: var(--space-8) var(--space-6); border-radius: var(--radius-lg); background: var(--surface); color: var(--slate-600); text-align: center; }
+  #td-inpatients { scroll-margin-top: 72px; }
+  .wd-home > .ward-handover { margin: 0; }
+  .wd-home .ward-handover-head > .muted { display: none; }
+
+  /* A round note and the other stay documents: the readings three a row */
+  .ip-vitals.form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3) var(--space-2); }
+  .ip-vitals > .field { min-width: 0; margin: 0; }
+  .ip-vitals input { width: 100%; min-width: 0; padding-left: var(--space-2); padding-right: var(--space-1); }
+
+  /* ---------- App design: the nursing chart ---------- */
+  /* What she came to do first: the chart, then the documents */
+  .ip-page:has(.ip-chart-form) > .card:not(.vs-visit-head, .ip-chart) { order: 1; }
+  .ip-chart h2 > svg { display: none; }
+  .ip-chart-form { gap: var(--space-3); }
+  .ip-chart-form > .segmented { display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow-x: auto; margin: 0 calc(var(--space-4) * -1); padding: 0 var(--space-4); border: 0; border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
+  .ip-chart-form > .segmented::-webkit-scrollbar { display: none; }
+  .ip-chart-form > .segmented > button { flex: none; min-height: 40px; padding: 0 14px; border-radius: var(--radius-pill); background: var(--mist-100); color: var(--slate-600); box-shadow: none; white-space: nowrap; }
+  .ip-chart-form > .segmented > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
+  .ip-chart-grid.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3) var(--space-2); }
+  .ip-chart-grid > .field { min-width: 0; margin: 0; }
+  .ip-chart-grid > .field:has(#nc-note, #nc-at, #nc-drug, #nc-to) { grid-column: 1 / -1; }
+  .ip-chart-grid input { width: 100%; min-width: 0; }
+  /* Save at the foot, in place of the bottom bar */
+  .pf-has-tabbar:has(.ip-chart-form) .pf-tabbar { display: none; }
+  .pf-main:has(.ip-chart-form) .pf-content { padding-bottom: 92px; }
+  .ip-chart-form::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 29; height: calc(env(safe-area-inset-bottom) + 76px); border-top: 1px solid var(--border); background: var(--surface); }
+  .ip-chart-form > button[type='submit'] { position: fixed; left: var(--space-4); right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); z-index: 30; width: auto; max-width: calc(100% - var(--space-4) * 2); min-height: 52px; font-size: var(--fs-body); }
+  /* One main button a screen: Save; a new document is the plain one */
+  .ip-page:has(.ip-chart-form) .vs-visit-head .menu-button > .btn-primary { border: 1px solid var(--indigo-700); background: var(--surface); color: var(--indigo-700); }
+  /* Recorded: what, then when and by whom */
+  .ip-chart-list::before { content: 'Recorded'; display: block; padding-bottom: var(--space-1); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  .ip-chart-list li { gap: 0 var(--space-2); padding: var(--space-2) 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .ip-chart-list li > strong { order: -1; flex: 1 1 100%; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
