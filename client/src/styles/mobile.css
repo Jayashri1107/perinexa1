@@ -49,47 +49,16 @@
   .pf-tab.active { color: var(--indigo-700); background: var(--mist-100); font-weight: 600; }
   .pf-tab:focus-visible { box-shadow: var(--focus-ring); outline: none; }
 
-  /* ---------- The menu: a sheet from the bottom with every place as an icon tile, three a row (like a phone's home
-     screen); the person and Log out at its foot ---------- */
+  /* ---------- The menu: the sidebar slides in from the left (the user's choice, 2 Nov 2026), clear of the notch, as tall as
+     the screen (its list scrolls on a short one), Log out at its foot; a tap beside it closes it ---------- */
   .pf .sb {
-    top: auto; bottom: 0; left: 0; right: 0; z-index: 60; width: auto; height: auto; max-height: 88dvh; overflow-y: auto;
-    transform: translateY(100%); padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-4));
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--surface); color: var(--ink);
+    z-index: 60; width: min(84vw, var(--sidebar-width)); height: 100vh; height: 100dvh;
+    padding-top: calc(env(safe-area-inset-top) + var(--space-3)); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
   }
-  .pf-mobile-open .sb { transform: none; }
   .pf-menu-backdrop { position: fixed; inset: 0; z-index: 55; border: 0; padding: 0; background: var(--overlay); }
-  .pf .sb-brand { justify-content: center; position: relative; min-height: 32px; padding: 0; border: 0; }
-  .pf .sb-brand::before { content: ''; width: 40px; height: 4px; margin-top: var(--space-1); border-radius: var(--radius-pill); background: var(--slate-300); }
-  .pf .sb-brand > a { display: none; }
-  .pf .sb-toggle { position: absolute; right: 0; top: 0; display: inline-grid; border-color: var(--card-border); color: var(--ink); }
-  .pf .sb-subtitle { margin: 0 0 var(--space-3); padding: 0; color: var(--ink); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 600; }
-  .pf .sb-subtitle svg.lucide { display: none; }
-  .pf .sb-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); padding: 0; overflow: visible; }
-  .pf .sb-section { grid-column: 1 / -1; margin: var(--space-2) 0 0; color: var(--slate-600); }
-  .pf-mobile-open .sb-link, .pf .sb-link {
-    flex-direction: column; justify-content: center; align-items: center; gap: var(--space-1); min-height: 92px; padding: var(--space-3) var(--space-1);
-    border-radius: var(--radius-lg); background: var(--mist-50); color: var(--ink); text-align: center; white-space: normal;
-    font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600;
-  }
-  .pf .sb-link:hover { background: var(--mist-100); color: var(--ink); }
-  .pf .sb-link.active { background: var(--selected-bg); color: var(--indigo-700); box-shadow: inset 0 0 0 2px var(--indigo-700); }
-  .pf .sb-tile, .pf .sb-link.active .sb-tile { width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
-  .pf .sb-link .sb-chevron { display: none; }
-  .pf .sb-link:focus-visible { box-shadow: var(--focus-ring); }
-  /* Patients' own list (OPD registration, OPD patients, Admitted patients): a row of its own under the tiles */
-  .pf .sb-sub { grid-column: 1 / -1; margin: 0; padding: var(--space-2); border: 0; border-radius: var(--radius-lg); background: var(--mist-50); }
-  .pf .sb-sub-head { color: var(--slate-600); }
-  .pf .sb-sub-link { padding: var(--space-3); color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); }
-  .pf .sb-sub-link:hover { background: var(--mist-100); color: var(--ink); }
-  .pf .sb-sub-link.active { background: var(--selected-bg); color: var(--indigo-700); box-shadow: inset 3px 0 0 var(--indigo-700); }
-  .pf .sb-sub-head:focus-visible, .pf .sb-sub-link:focus-visible { box-shadow: var(--focus-ring); }
-  .pf .sb-foot { display: flex; margin: var(--space-4) 0 0; padding: var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--mist-50); color: var(--ink); }
-  .pf .sb-foot-text strong { color: var(--ink); }
-  .pf .sb-foot-text span { color: var(--slate-600); }
-  .pf .sb-link::before, .pf .sb-link::after { display: none; }
   .pf-mobile-open .sb-logout {
-    display: flex; align-items: center; justify-content: center; gap: var(--space-2); flex-shrink: 0; width: 100%; margin: var(--space-3) 0 0; padding: var(--space-3);
-    border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; margin: var(--space-3) var(--space-2) 0; padding: var(--space-3);
+    border: 0; border-radius: var(--radius-md); background: var(--nav-tile); color: var(--on-dark); font: inherit; font-weight: 500; cursor: pointer;
   }
   .sb-logout svg.lucide { width: 18px; height: 18px; }
   .sb-logout:focus-visible { box-shadow: var(--focus-ring); outline: none; }
@@ -469,6 +438,21 @@
   .fs-nav .btn { min-height: 48px; }
   .fs-nav .btn-primary { flex: 1 1 auto; min-width: 0; justify-content: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .fs-on .form-section { margin-bottom: var(--space-3); }
+
+  /* ---------- Sign-in: fits one screen. The spaces and the logo follow the screen's height and width (clamp), so a small
+     phone, a large one and a tablet all look right; the boxes keep their touch size ---------- */
+  .auth2 { padding: clamp(8px, 2vh, 24px) clamp(8px, 3vw, 24px); }
+  .auth2-card { max-width: 420px; border-radius: var(--radius-lg); }
+  .auth2-form { padding: clamp(12px, 2.5vh, 24px) clamp(14px, 4.5vw, 24px); }
+  .auth2-logo { height: clamp(26px, 4.5vh, 34px); margin-bottom: clamp(6px, 1.5vh, 12px); }
+  .auth2-form .auth-who { margin-bottom: clamp(8px, 1.5vh, 14px); }
+  .auth2-form .auth1-head { margin-bottom: clamp(6px, 1.2vh, 12px); }
+  .auth2-form .auth1-head h1, .auth2-form .auth1-head h2 { font-size: var(--fs-h1); line-height: var(--lh-h1); }
+  .auth2-form form:has(.auth-remember) .auth1-head .muted { display: none; }
+  .auth2-form .field { margin-bottom: clamp(6px, 1.2vh, 12px); }
+  .auth2-form .auth-remember { min-height: 36px; }
+  .auth2-form .auth1-submit { margin-top: clamp(4px, 1vh, 12px); min-height: 48px; }
+  .auth2-form .auth1-foot { margin-top: clamp(6px, 1.2vh, 12px); padding-top: clamp(6px, 1.2vh, 12px); font-size: var(--fs-caption); line-height: var(--lh-caption); }
 
   /* ---------- Less text: lines that explain the screen, not needed on a phone ---------- */
   .pt-summary, .patient-form > .alert-patient-note { display: none; }

@@ -12,7 +12,8 @@ const nameOf = (el) => el.querySelector(':scope > .pf-group-title, :scope > h2, 
 
 export function FormSteps({ enabled = true, children }) {
   const box = useRef(null);
-  const [phone, setPhone] = useState(() => Boolean(window.matchMedia?.(PHONE_QUERY).matches));
+  // (no window when a page is drawn outside a browser, e.g. in a test: then not a phone)
+  const [phone, setPhone] = useState(() => typeof window !== 'undefined' && Boolean(window.matchMedia?.(PHONE_QUERY).matches));
   const [names, setNames] = useState([]);
   const [at, setAt] = useState(0);
   const on = enabled && phone && names.length > 1;
