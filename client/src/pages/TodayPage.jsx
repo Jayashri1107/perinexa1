@@ -897,7 +897,7 @@ function RoleToday({ roles, lensBar = null }) {
         {/* The lists: boxes with a heading and a count, opened with a click */}
         {!simple && (worklist.data || today.data || inpatients.data || labReview.data) && <h2 className="td-group-title">Today&apos;s lists</h2>}
         {/* Reception (not also clinical staff): only the lists with someone in them, open, one under the other */}
-        <SectionOpenDefault.Provider value={simple}>
+        <SectionOpenDefault.Provider value={simple || (typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches))}>
         <div className={`td-sections${simple ? ' td-simple' : ''}`}>
         {worklist.data && <RedFlagsSection data={worklist.data} />}
         {/* Inpatients (Version 2): documents waiting for this doctor's confirmation, and who is in hospital */}

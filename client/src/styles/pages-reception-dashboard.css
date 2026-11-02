@@ -133,7 +133,7 @@
 .rd-table th:first-child, .rd-table td:first-child:not(.dt-empty) { width: 1%; padding-right: 0; color: var(--slate-600); }
 .rd-table td { padding: var(--space-2) var(--space-3); }
 .rd-table td:nth-child(3), .rd-table td:nth-child(4) { white-space: nowrap; }
-.rd-person { min-width: 220px; }
+.rd-person { min-width: 170px; }
 .rd-row:hover td { background: var(--mist-50); }
 @media (min-width: 720px) and (max-width: 1679px) {
   .rd-layout { grid-template-columns: minmax(0, 1fr); }

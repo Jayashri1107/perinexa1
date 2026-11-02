@@ -462,3 +462,7 @@ textarea.hs-blank { min-height: 0; height: 4.2em; }
 /* The cycle sheet: the next scan booked by cycle day (fertility idea F7) */
 .fc-next-scan { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin-top: var(--space-4); }
 .fc-next-scan .field { margin: 0; }
+
+/* Finding someone comes first: the search above the filters (2 Nov 2026) */
+.pt-find { display: flex; margin-bottom: var(--space-3); }
+.pt-find > * { flex: 1 1 auto; max-width: 560px; }
