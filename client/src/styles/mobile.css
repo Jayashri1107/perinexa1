@@ -543,7 +543,7 @@
      then the row's buttons; a › at the top right ---------- */
   .dt tbody tr:has(> td[data-label]) { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-1); padding: var(--space-2) var(--space-6) var(--space-2) 0; }
   .dt tbody tr:has(> td[data-label]) > * { box-sizing: border-box; flex: 1 1 45%; width: auto; min-width: 0; overflow-wrap: anywhere; }
-  .dt tbody tr:has(> td[data-label]) > :first-child, .dt tbody tr:has(> td[data-label]) > td:not([data-label]), .dt tbody tr:has(> td[data-label]) > td:is([data-label='Email'], [data-label='Access']) { flex: 1 1 100%; }
+  .dt tbody tr:has(> td[data-label]) > :first-child, .dt tbody tr:has(> td[data-label]) > td:not([data-label]), .dt tbody tr:has(> td[data-label]) > td:is([data-label='Email'], [data-label='Roles here'], [data-label='Access']:not(:has(> .pill-stable, > .pill-inactive))) { flex: 1 1 100%; }
   .dt tbody tr:has(> td[data-label]) > td[data-label]:not(:first-child) { padding-left: var(--space-3); }
   .dt tbody tr:has(> td[data-label]) > td[data-label]:not(:first-child)::before { position: static; display: block; width: auto; }
   .dt tbody tr:has(> td[data-label]) > td:empty { display: none; }
@@ -711,6 +711,144 @@
   .pf-notice { padding: var(--space-2) var(--space-3) 0; }
   .pf-notice .alert { padding: var(--space-2) var(--space-3); font-size: var(--fs-label); line-height: var(--lh-label); }
   .pf-notice .alert .btn-link { min-height: 32px; padding-left: 0; }
+
+  /* ---------- Hospital admin and Today's overview ---------- */
+  /* A path with no link in it only repeats the title */
+  .ph-crumbs:not(:has(a)) { display: none; }
+  /* A row's buttons share the width */
+  .dt td.actions .row-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: var(--space-2); }
+  .dt td.actions .row-actions > .btn { flex: 1 1 0; min-width: 0; min-height: 40px; padding: 0 var(--space-2); font-size: var(--fs-label); }
+  /* A switch among a list's filters: its own line */
+  .dt-toolbar > .dt-filter:has(.segmented) { flex: 1 1 100%; }
+  /* Choosing roles: slim choices */
+  .role-option { padding: var(--space-2) var(--space-3); }
+  .role-option .muted, .role-option small { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  /* Today's overview: staff counts as small tiles, the places as a grid of shortcuts */
+  .td-staff { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-staff > li { min-width: 0; }
+  .td-staff > li > * { padding: var(--space-2); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .td-staff strong { font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .td-areas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-areas > li { min-width: 0; }
+  .td-areas > li > a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); height: 100%; min-height: 84px; padding: var(--space-2) var(--space-1); text-align: center; font-size: var(--fs-label); line-height: var(--lh-label); }
+  /* Patients: every switch in one line that swipes, so the list starts near the top */
+  .pt-quick { flex-wrap: nowrap; align-items: center; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+  .pt-quick::-webkit-scrollbar { display: none; }
+  .pt-quick > * { flex: 0 0 auto; }
+  .pt-quick > .segmented:not(.ph-tabs) { width: auto; overflow: visible; }
+  .pt-quick > .segmented > * { flex: 0 0 auto; padding: 0 var(--space-3); }
+
+  /* ---------- Lab dashboard: the modules two a row, inside the screen ---------- */
+  .lab-dash { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .lab-modules { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .lab-module { flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; padding: var(--space-3); }
+  .lab-module-icon { width: 36px; height: 36px; }
+  .lab-module-icon svg { width: 18px; height: 18px; }
+  .lab-module-text { padding-right: 0; overflow-wrap: anywhere; font-size: var(--fs-label); line-height: var(--lh-label); }
+  /* A long link wraps instead of pushing the page wider */
+  .btn-link { max-width: 100%; height: auto; white-space: normal; text-align: left; }
+
+  /* ---------- A doctor's screens: Today, Calendar, My settings ---------- */
+  /* Page titles start on the same line as the cards under them */
+  .ph { padding-left: var(--space-3); padding-right: var(--space-3); }
+  /* A page's buttons: slim, the icon beside the word */
+  .ph-actions:has(> :nth-child(2)) > .btn, .ph-actions:has(> :nth-child(2)) > .menu-button > .btn {
+    flex-direction: row; gap: var(--space-1); min-height: 44px; padding: 0 var(--space-2); white-space: nowrap; font-size: var(--fs-label); line-height: var(--lh-label);
+  }
+  .ph-actions:has(> .segmented) > :last-child:nth-child(2) { grid-column: 1 / -1; }
+  /* A menu's sheet: its title on top, the page dimmed behind it */
+  .menu-button:has(> .menu-list)::before { content: ''; position: fixed; inset: 0; z-index: 69; background: var(--overlay); }
+  .menu-button .menu-list[data-title]::before {
+    content: attr(data-title); display: block; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border);
+    color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600;
+  }
+  /* Today's lists: the empty ones as even tiles, two a row – the count top right, the name under the icon */
+  .td-page .td-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .td-sections > .wl-fold.has-items, .td-sections > .wl-fold.is-open { grid-column: 1 / -1; }
+  .td-sections > .wl-fold:not(.has-items) { border-left: 1px solid var(--card-border); border-radius: var(--radius-md); }
+  .td-sections > .wl-fold:not(.has-items):not(.is-open) .wl-fold-title { height: 100%; }
+  .td-sections > .wl-fold:not(.has-items):not(.is-open) .wl-fold-title button {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'icon count' 'text text'; align-items: center; justify-items: start;
+    gap: var(--space-1) var(--space-2); height: 100%; min-height: 72px; padding: var(--space-2) var(--space-3); text-align: left;
+  }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-icon { grid-area: icon; width: 20px; height: 20px; padding: 0; border-radius: 0; background: none; }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-text { grid-area: text; }
+  .td-sections > .wl-fold:not(.has-items) .wl-fold-count { grid-area: count; padding: 0; color: var(--slate-600); }
+  /* Calendar: nothing cut off – the two switches across, the choices in one swiping row without a second frame; the
+     calendar straight after them, the AI brief under it */
+  .cal-toolbar-row:has(.cal-scope) { flex-wrap: wrap; }
+  .cal-scope { flex: 1 1 100%; }
+  .cal-scope > button { flex: 1 1 0; }
+  .cal-types { flex: 1 1 100%; min-width: 0; gap: var(--space-2); }
+  .cal-show-label { display: none; }
+  .cal-chip { min-height: 36px; padding: 0; border: 0; background: none; }
+  .cal-page { display: flex; flex-direction: column; }
+  .cal-page > .ai-brief { order: 5; }
+  /* My settings: slimmer rows; a section's way back beside its title */
+  .set-row { min-height: 56px; }
+  .set-icon { width: 36px; height: 36px; }
+  .set-icon svg.lucide { width: 18px; height: 18px; }
+  .set-head { display: flex; align-items: center; gap: var(--space-1); padding-left: var(--space-2); }
+  .set-head > .ph { flex: 1 1 auto; min-width: 0; padding: 0; margin: 0; }
+  .set-head > .set-back { flex: none; width: 40px; height: 40px; min-height: 40px; border: 0; background: none; color: var(--ink); }
+  /* Account: the photo beside the name; boxes two a row; what cannot be changed reads as plain text; Save across */
+  .prof-hero { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: start; column-gap: var(--space-3); padding-bottom: var(--space-3); text-align: left; }
+  .prof-hero-photo { grid-row: 1 / span 2; margin: 0; }
+  .prof-hero-photo .avatar { width: 64px; height: 64px; font-size: var(--fs-h2); }
+  .prof-camera { right: -4px; bottom: -4px; width: 32px; height: 32px; border-width: 2px; }
+  .prof-camera svg.lucide { width: 14px; height: 14px; }
+  .prof-hero-name { align-self: end; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+  .prof-hero-role { align-self: start; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .prof-hero .hint { grid-column: 1 / -1; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .prof-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .prof-form-grid .field { min-width: 0; margin: 0; }
+  .prof-form-grid .field:has(#prof-name, #prof-email, #prof-hospital, #prof-joined) { grid-column: 1 / -1; }
+  .prof-form-grid .field:has(#prof-hospital, #prof-joined) { order: 1; }
+  .prof-form-grid input[readonly] { padding-left: 0; padding-right: 0; border-color: transparent; background: none; box-shadow: none; text-overflow: ellipsis; }
+  .prof-form-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
+  .prof-form-actions .btn { justify-content: center; }
+  /* Professional details: the title is already at the top; Save across */
+  .acc-with-rail { gap: var(--space-2); }
+  .acc-with-rail > .card { margin: 0; padding: var(--space-3); }
+  .acc-with-rail > form > h2 { display: none; }
+  .acc-with-rail .acc-actions { margin-top: var(--space-3); }
+  .acc-with-rail .acc-actions .btn { width: 100%; justify-content: center; }
+
+  /* ---------- Every module: the same top, shorter rows ---------- */
+  /* Export: a small icon on the title's line, not a big button beside the page's main one */
+  .ph-main { position: relative; }
+  .ph-actions > .export-btn, .ph-actions:has(> :nth-child(2)) > .export-btn {
+    position: absolute; top: 0; right: 0; width: 40px; height: 40px; min-height: 40px; padding: 0; gap: 0; overflow: hidden; border: 0; background: none; color: var(--indigo-700); font-size: 0;
+  }
+  .ph-actions:has(> :nth-child(2)) > .export-btn svg.lucide { width: 20px; height: 20px; }
+  .ph-actions:has(> .export-btn:only-child) { margin: 0; }
+  /* The path above a title: only the way back – the title already says where you are */
+  .ph-crumbs ol { margin-bottom: var(--space-1); flex-wrap: nowrap; }
+  .ph-crumbs li:not(:nth-last-child(2)) { display: none; }
+  .ph-crumbs li svg.lucide { order: -1; transform: rotate(180deg); color: var(--slate-600); }
+  .ph-crumbs a { color: var(--slate-600); text-decoration: none; }
+  /* A list's row: "label value" on one line, two a row, so more rows fit (billing and analytics keep their number columns) */
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])) > td[data-label]:not(:first-child)::before {
+    position: static; display: inline-block; width: auto; margin-right: var(--space-1); color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); white-space: nowrap;
+  }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])) > td[data-label]:not(:first-child) { min-height: 0; overflow-wrap: break-word; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])) > td[data-label]:not(:first-child) > * { display: inline; margin-left: var(--space-1); }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])) > td[data-label]:not(:first-child) > :is(.pill, .btn, .row, .menu-button, .segmented) { display: inline-flex; }
+  /* A patient's row: one fact a line, nothing split in two */
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label]:not(:first-child) { flex: 1 1 100%; }
+  /* Today's counts: the name, then the number under it, then what it counts */
+  .td-top > .kpi { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; justify-content: flex-start; }
+  .td-top > .kpi > .pill { gap: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .td-top > .kpi .kpi-value { margin-left: 0; }
+  .wl-footnote svg.lucide { display: none; }
+  /* A list's filters across the card */
+  .dt-toolbar > .lab-filter { flex: 1 1 100%; }
+  .dt-toolbar > .lab-filter :is(select, input) { width: 100%; }
+  /* A long warning: its words all there, in smaller type */
+  .pf-main .alert-warning { padding: var(--space-2) var(--space-3); gap: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .pf-main .alert-warning .alert-icon svg.lucide { width: 18px; height: 18px; }
+  /* A long choice in a box ends in … instead of being cut */
+  .pf-main select { text-overflow: ellipsis; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

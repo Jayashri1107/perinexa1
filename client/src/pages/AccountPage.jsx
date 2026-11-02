@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Accessibility, ArrowLeft, Camera, ChevronRight, Eye, EyeOff, FileText, Info, Keyboard, KeyRound, LockKeyhole, LogOut, Mic, Palette, Pencil, Trash2, User } from 'lucide-react';
+import { Accessibility, ArrowLeft, BadgeCheck, Camera, ChevronRight, Eye, EyeOff, FileText, Info, Keyboard, KeyRound, LockKeyhole, LogOut, Mic, Palette, Pencil, Trash2, User } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -13,16 +13,18 @@ import { asName } from '../personName.js';
 
 const PLATFORM_ROLE = { superadmin: 'Super admin', platformadmin: 'Platform admin' };
 const TABS = [
-  { key: 'account', label: 'Account', icon: User, about: 'Your photo, name and contact details' },
-  { key: 'security', label: 'Security', icon: LockKeyhole, about: 'Your password and where you are signed in' },
+  { key: 'account', label: 'Account', icon: User, about: 'Photo, name and contact' },
+  { key: 'security', label: 'Security', icon: LockKeyhole, about: 'Password and signed-in devices' },
   { key: 'appearance', label: 'Appearance', icon: Palette, about: 'Colours and font' },
   { key: 'accessibility', label: 'Accessibility', icon: Accessibility, about: 'Text size, spacing and animation' },
 ];
+// On a phone the details printed on prescriptions are a row of their own, with their own Save
+const PROFESSIONAL_TAB = { key: 'professional', label: 'Professional details', icon: BadgeCheck, about: 'Printed on your prescriptions' };
 // My settings' own pages, in the list on a phone
 const PAGE_LOOK = {
-  '/account/prescription-design': { icon: FileText, about: 'How your prescriptions look when printed' },
+  '/account/prescription-design': { icon: FileText, about: 'How your prescriptions print' },
   '/account/voice-words': { icon: Mic, about: 'Words for dictation' },
-  '/account/shortcuts': { icon: Keyboard, about: 'Short codes that fill in text as you type' },
+  '/account/shortcuts': { icon: Keyboard, about: 'Codes that fill in text' },
 };
 const onPhone = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
 const MAX_PHOTO_BYTES = 800 * 1024;
@@ -37,6 +39,7 @@ export function AccountPage() {
   const [phone] = useState(onPhone);
   const [tab, setTab] = useState(phone ? null : 'account');
   const extraTabs = accountTabs(memberships).filter((t) => t.to !== '/account');
+  const phoneTabs = isPrescriber(memberships) ? [TABS[0], PROFESSIONAL_TAB, ...TABS.slice(1)] : TABS;
 
   if (phone && !tab) {
     return (
@@ -44,7 +47,7 @@ export function AccountPage() {
         <PageHeader breadcrumbs={[{ label: 'My settings' }]} title="My settings" />
         <div className="pf-content prof-page">
           <ul className="set-list">
-            {TABS.map(({ key, label, icon: Icon, about }) => (
+            {phoneTabs.map(({ key, label, icon: Icon, about }) => (
               <li key={key}>
                 <button type="button" className="set-row" onClick={() => setTab(key)}>
                   <span className="set-icon" aria-hidden="true">
@@ -84,13 +87,17 @@ export function AccountPage() {
 
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: 'My settings' }]} title={phone ? TABS.find((t) => t.key === tab).label : 'My profile'} subtitle={phone ? undefined : 'Manage your account, security and application preferences.'} />
-      <div className="pf-content prof-page">
-        {phone && (
-          <button type="button" className="btn btn-link btn-sm set-back" onClick={() => setTab(null)}>
-            <ArrowLeft aria-hidden="true" /> My settings
+      {phone ? (
+        <div className="set-head">
+          <button type="button" className="icon-btn set-back" onClick={() => setTab(null)} aria-label="Back to My settings" title="Back to My settings">
+            <ArrowLeft aria-hidden="true" />
           </button>
-        )}
+          <PageHeader breadcrumbs={[{ label: 'My settings' }]} title={phoneTabs.find((t) => t.key === tab).label} />
+        </div>
+      ) : (
+        <PageHeader breadcrumbs={[{ label: 'My settings' }]} title="My profile" subtitle="Manage your account, security and application preferences." />
+      )}
+      <div className="pf-content prof-page">
         {!phone && (
         <nav className="prof-tabs" aria-label="Profile sections">
           {TABS.map(({ key, label, icon: Icon }) => (
@@ -109,9 +116,10 @@ export function AccountPage() {
         {tab === 'account' && (
           <>
             <AccountCard />
-            {isPrescriber(memberships) && <ProfessionalDetailsSection />}
+            {!phone && isPrescriber(memberships) && <ProfessionalDetailsSection />}
           </>
         )}
+        {tab === 'professional' && <ProfessionalDetailsSection />}
         {tab === 'security' && (
           <>
             <PasswordCard />
