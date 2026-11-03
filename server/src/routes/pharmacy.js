@@ -672,19 +672,26 @@ pharmacyRouter.get('/invoices', async (req, res) => {
   res.json({ today: isoDay(today(req)), invoices: await invoiceViews(req, list) });
 });
 
-// The side list on Sold (developer's request, 3 Nov 2026): the people the pharmacy has billed, newest bill first, found
-// by name, number or phone, each with their bills. Only people with a pharmacy bill – never the whole patient list
-// (owner, 26 Oct 2026), and no patient without a bill can be found here. The pharmacist only; audited.
+// Finding people on Sold (developer's request, 3 Nov 2026): the people the pharmacy has billed, newest bill first, by
+// name or phone and patient number, narrowed by type, doctor and day, each with their bills. Only people with a pharmacy
+// bill – never the whole patient list (owner, 26 Oct 2026), and no patient without a bill can be found here. The
+// pharmacist only; audited.
 const PEOPLE_LIMIT = 200;
 const PERSON_BILLS = 50;
+const BILL_TYPES = { opd: { kind: 'sale', patientId: { $ne: null } }, ipd: { kind: 'issue' }, external: { patientId: null } };
 pharmacyRouter.get('/invoices/people', async (req, res) => {
   desk(req);
-  const { search } = parse(z.object({ search: z.string().trim().min(2).max(100).optional() }).strict(), req.query);
-  const match = { tenantId: new mongoose.Types.ObjectId(String(req.tenantId)) };
-  if (search) {
-    const rx = new RegExp(escapeRegex(search), 'i');
-    const pids = (await Patient.find({ tenantId: req.tenantId, $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] }, { _id: 1 }).limit(PEOPLE_LIMIT).lean()).map((p) => p._id);
-    match.$or = [{ patientId: { $in: pids } }, { patientId: null, 'customer.name': rx }, { patientId: null, 'customer.phone': rx }, { patientId: null, 'buyer.name': rx }];
+  const { search, mrn, type, doctor, date } = parse(
+    z.object({ search: z.string().trim().min(2).max(100).optional(), mrn: z.string().trim().min(2).max(40).optional(), type: z.enum(Object.keys(BILL_TYPES)).optional(), doctor: z.string().trim().max(150).optional(), date: requiredDateOnly('Date').optional() }).strict(),
+    req.query,
+  );
+  const match = { tenantId: new mongoose.Types.ObjectId(String(req.tenantId)), ...(type ? BILL_TYPES[type] : {}), ...(doctor ? { 'doctor.name': doctor } : {}), ...(date ? { 'created.at': { $gte: hospitalDayStart(date), $lt: hospitalDayStart(addDays(date, 1)) } } : {}) };
+  if (search || mrn) {
+    const rx = search ? new RegExp(escapeRegex(search), 'i') : null;
+    const patientFilter = { tenantId: req.tenantId, ...(rx ? { $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] } : {}), ...(mrn ? { mrn: new RegExp(escapeRegex(mrn), 'i') } : {}) };
+    const pids = (await Patient.find(patientFilter, { _id: 1 }).limit(PEOPLE_LIMIT).lean()).map((p) => p._id);
+    // A walk-in has no patient number: a number finds only patients
+    match.$or = [{ patientId: { $in: pids } }, ...(rx && !mrn ? [{ patientId: null, 'customer.name': rx }, { patientId: null, 'customer.phone': rx }, { patientId: null, 'buyer.name': rx }] : [])];
   }
   const groups = await PharmacyInvoice.aggregate([
     { $match: match },
@@ -720,8 +727,15 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
         bills: g.bills.map((b) => ({ id: String(b.id), number: b.number, at: b.at })),
       };
     });
-  await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: search ? { by: 'name', patientIds: people.filter((x) => x.mrn).map((x) => x.key), walkInBills: people.filter((x) => !x.mrn).length } : { by: 'list', people: people.length } });
+  await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: search || mrn ? { by: search ? 'name' : 'number', patientIds: people.filter((x) => x.mrn).map((x) => x.key), walkInBills: people.filter((x) => !x.mrn).length } : { by: 'list', people: people.length } });
   res.json({ people, more: groups.length > PEOPLE_LIMIT });
+});
+
+// The doctors named on the pharmacy's bills, for the filter on Sold.
+pharmacyRouter.get('/invoices/doctors', async (req, res) => {
+  desk(req);
+  const names = await PharmacyInvoice.distinct('doctor.name', { tenantId: req.tenantId });
+  res.json({ doctors: names.filter(Boolean).sort((x, y) => x.localeCompare(y)) });
 });
 
 pharmacyRouter.get('/invoices/:id', async (req, res) => {

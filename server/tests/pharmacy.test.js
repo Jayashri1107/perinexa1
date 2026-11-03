@@ -413,6 +413,28 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect(JSON.stringify(log.details)).not.toMatch(/asha/i);
   });
 
+  it('narrows by patient number, type, doctor and day, and lists the doctors on bills', async () => {
+    const med = await stocked();
+    const asha = await register('Sample Asha Kale');
+    const line = [{ medicineId: med.id, qty: 1 }];
+    await sell({ patientId: asha.id, doctor: { name: 'Dr Sample Rao', reg: '' }, lines: line });
+    await sell({ customer: { name: 'Sample Asha Walkin', phone: '' }, lines: line, payment: { mode: 'cash' } });
+    const find = async (query) => (await (await as('pharm')).get('/api/pharmacy/invoices/people').query(query)).body.people.map((x) => x.name);
+
+    expect(await find({ search: 'asha' })).toHaveLength(2);
+    expect(await find({ mrn: asha.mrn.slice(-4) })).toEqual(['Sample Asha Kale']);
+    expect(await find({ search: 'asha', mrn: asha.mrn })).toEqual(['Sample Asha Kale']);
+    expect(await find({ search: 'asha', type: 'external' })).toEqual(['Sample Asha Walkin']);
+    expect(await find({ search: 'asha', type: 'opd' })).toEqual(['Sample Asha Kale']);
+    expect(await find({ search: 'asha', type: 'ipd' })).toEqual([]);
+    expect(await find({ search: 'asha', doctor: 'Dr Sample Rao' })).toEqual(['Sample Asha Kale']);
+    expect(await find({ search: 'asha', date: '2026-09-28' })).toHaveLength(2);
+    expect(await find({ search: 'asha', date: '2026-09-27' })).toEqual([]);
+
+    expect((await ph('get', '/invoices/doctors')).body.doctors).toEqual(['Dr Sample Rao']);
+    expect((await ph('get', '/invoices/doctors', undefined, 'admin')).status).toBe(403);
+  });
+
   it('keeps hospitals apart and is for the pharmacist only', async () => {
     const med = await stocked();
     await sell({ customer: { name: 'Sample Walkin', phone: '' }, lines: [{ medicineId: med.id, qty: 1 }], payment: { mode: 'cash' } });

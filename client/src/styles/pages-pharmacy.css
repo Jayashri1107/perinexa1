@@ -82,27 +82,39 @@
 .ph-slip-sign { flex: none; min-width: 38mm; text-align: center; }
 .ph-slip-sign-line { margin-top: 10mm; padding-top: 1mm; border-top: 1px solid var(--print-ink); }
 
-/* Sold: the fixed list of people billed beside the day's bills, or beside one person's bill */
-.ph-sold-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
-.ph-sold-main { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
-.ph-people { position: sticky; top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); max-height: calc(100vh - 2 * var(--space-4)); padding: var(--space-3); }
-.ph-people h2 { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
-.ph-people .bill-search-plain { flex: none; width: 100%; max-width: none; }
-.ph-people-list { flex: 1 1 auto; min-height: 0; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
-.ph-people-list button { display: grid; gap: 2px; width: 100%; padding: var(--space-2); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; }
-.ph-people-list button:hover { background: var(--mist-50); }
-.ph-people-list button[aria-current='true'] { background: var(--mist-100); }
-.ph-people-list strong { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1); overflow-wrap: anywhere; }
+/* Sold: one row of filters; the people found appear only after a search */
+.ph-sold { display: flex; flex-direction: column; gap: var(--space-4); }
+.ph-filters { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
+.ph-filter-row { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(4, minmax(140px, 1fr)); gap: var(--space-3); width: 100%; align-items: end; }
+.ph-filter { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
+.ph-filter > span { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-filter input, .ph-filter select { flex: none; width: 100%; max-width: none; min-width: 0; margin: 0; }
+.ph-filter .appt-daynav { width: 100%; }
+.ph-filter .appt-daynav input { flex: 1 1 auto; width: auto; }
+.ph-found { padding: var(--space-2) var(--space-4); }
+.ph-found > p { margin: var(--space-3) 0; }
+.ph-found ul { max-height: 420px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.ph-found li + li { border-top: 1px solid var(--border); }
+.ph-found button { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 110px 70px 90px; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-2); border: 0; border-radius: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; }
+.ph-found button:hover { background: var(--mist-50); }
+.ph-inv-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
+.ph-inv-facts dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-inv-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 .ph-person-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .ph-person-head h2 { margin: 0; }
 .ph-person-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .segmented.ph-person-bills { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; border-radius: var(--radius-md); }
 .segmented.ph-person-bills button { border-radius: var(--radius-sm); }
-.ph-slip-sheet { width: 100%; max-width: 148mm; padding: 8mm; background: var(--surface); border: 1px solid var(--border); overflow-x: auto; container-type: inline-size; }
+.ph-slip-sheet { width: 100%; padding: var(--space-6); background: var(--surface); border: 1px solid var(--border); overflow-x: auto; container-type: inline-size; }
+/* On screen the bill fills the page, in the page's own size of letters; on paper it stays A5 */
+.ph-slip-sheet .ph-slip { font-size: var(--fs-body); line-height: var(--lh-body); }
+.ph-slip-sheet .ph-slip-head .lh-name { font-size: var(--fs-h2); }
+.ph-slip-sheet .ph-slip-facts { row-gap: var(--space-2); margin-bottom: var(--space-3); }
+.ph-slip-sheet .ph-slip .ph-slip-lines th, .ph-slip-sheet .ph-slip .ph-slip-lines td { padding: var(--space-2); }
 @media (max-width: 1023px) {
-  .ph-sold-layout { grid-template-columns: minmax(0, 1fr); }
-  .ph-people { position: static; max-height: none; }
-  .ph-people-list { max-height: 240px; }
+  .ph-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-filter-row > .ph-filter:first-child { grid-column: 1 / -1; }
+  .ph-found button { grid-template-columns: minmax(0, 1fr) auto; }
 }
 /* A narrow sheet on screen (beside the side list, or on a phone): the details two a row, so nothing breaks mid-number */
 @container (max-width: 480px) {
@@ -110,6 +122,8 @@
   .ph-slip-facts > div.is-long { grid-column: 1 / -1; }
 }
 @media screen and (max-width: 719px) {
+  .ph-filter-row { grid-template-columns: minmax(0, 1fr); }
+  .ph-inv-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ph-slip-sheet { padding: var(--space-3); }
   .ph-slip .ph-slip-lines th, .ph-slip .ph-slip-lines td { padding: 1mm 0.5mm; }
 }

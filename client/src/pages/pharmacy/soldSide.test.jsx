@@ -49,25 +49,26 @@ describe('the pharmacy bill', () => {
   });
 });
 
-describe('Sold’s side list', () => {
+describe('Sold’s filters', () => {
   const page = () => renderToStaticMarkup(<MemoryRouter initialEntries={['/pharmacy/invoices']}><InvoicesPage /></MemoryRouter>);
 
   beforeEach(() => {
     roles = ['pharmacist'];
     answers['/pharmacy/invoices/people'] = { people: [{ key: 'p1', type: 'opd', name: 'Sample Asha Kale', mrn: 'SH-0042', phone: '', lastAt: '2026-10-17T06:00:00Z', billCount: 2, bills: [] }], more: false };
+    answers['/pharmacy/invoices/doctors'] = { doctors: ['Dr Sample Rao'] };
     answers['/pharmacy/invoices'] = { today: '2026-10-17', invoices: [] };
   });
 
-  it('lists the people billed beside the day’s bills for the pharmacist', () => {
+  it('shows one row of filters and the day’s bills, and no patient until a search', () => {
     const html = page();
-    expect(html).toContain('Find by patient name');
-    expect(html).toContain('Sample Asha Kale');
-    expect(html).toContain('2 bills');
-    expect(html).toContain('Pharmacy invoices');
+    for (const part of ['Patient number', 'Patient name', 'Doctor name', 'Dr Sample Rao', 'External', 'Pharmacy invoices']) expect(html).toContain(part);
+    expect(html).not.toContain('Sample Asha Kale');
   });
 
   it('is not shown to the hospital admin', () => {
     roles = ['admin'];
-    expect(page()).not.toContain('Find by patient name');
+    const html = page();
+    expect(html).not.toContain('Doctor name');
+    expect(html).toContain('Pharmacy invoices');
   });
 });

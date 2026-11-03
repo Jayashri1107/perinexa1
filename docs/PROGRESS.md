@@ -13,6 +13,11 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **3 Nov 2026 – Sold's filters (branch `pharmacy-sold-filters`, developer's request):** the side list on Sold is
+  replaced by one row of filters like the store's earlier software: type (All, OPD, IPD, External), date, patient number,
+  patient name, doctor, bill or medicine. No patient is listed until a name or number is typed. Choosing someone shows
+  their bill across the page; printing stays A5. One bill's page now sets out its details first, then the medicines
+  with Sr. and Expiry columns, then the sums. **How to test:** as the pharmacist, Sold → type a name → click the person.
 - **3 Nov 2026 – pharmacy search as you type (branch `pharmacy-live-find`, developer's request):** on Today and New bill
   the box has no Find button: it searches as you type, by part of a name, number or phone among people the pharmacy has
   billed (anyone else still by their exact number or phone, so the owner's rule of 26 Oct 2026 stands), and filters the
