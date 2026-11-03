@@ -1251,6 +1251,7 @@
 
   /* ---------- A title too long for the top row at the full size ---------- */
   .pf-title-slot .ph-title.ph-title-mid { font-size: calc(20px * var(--text-scale)); line-height: calc(24px * var(--text-scale)); white-space: normal; overflow-wrap: anywhere; }
+  .pf-title-slot .ph-title.ph-title-mid.ph-title-long { font-size: calc(16px * var(--text-scale)); line-height: calc(20px * var(--text-scale)); }
 
   /* ---------- App design: lab staff's Today ---------- */
   .lb-home { display: flex; flex-direction: column; gap: var(--space-4); order: -1; }
@@ -1322,6 +1323,38 @@
   .lab-reg-chosen tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-2); align-items: center; padding: var(--space-2) 0; }
   .lab-reg-chosen tbody td { display: block; width: auto; min-width: 0; padding: 0; border: 0; }
   .lab-reg-chosen tbody td:nth-child(1), .lab-reg-chosen tbody td:nth-child(3) { display: none; }
+
+  /* ---------- App design: Sonography's Scans ---------- */
+  /* The lists first (their counts say it all), then the scans, the machine last */
+  .pf-content:has(> .img-lists) { display: flex; flex-direction: column; gap: var(--space-3); }
+  .pf-content:has(> .img-lists) > .img-tiles { display: none; }
+  .pf-content:has(> .img-lists) > .img-lists { order: -2; display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow-x: auto; margin: 0 calc(var(--space-3) * -1); padding: 0 var(--space-3); border: 0; border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
+  .img-lists::-webkit-scrollbar { display: none; }
+  .img-lists > button { flex: none; min-height: 40px; padding: 0 var(--space-4); border-radius: var(--radius-pill); background: var(--surface); color: var(--slate-600); box-shadow: none; white-space: nowrap; }
+  .img-lists > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
+  .pf-content:has(> .img-lists) > .card:not([aria-labelledby]) { order: -1; padding: 0; overflow: hidden; }
+  .pf-content:has(> .img-lists) > .card:not([aria-labelledby]) > .muted { margin: 0; padding: var(--space-8) var(--space-6); text-align: center; }
+  /* A scan: whole row opens it */
+  .wl-list > li:has(> .wl-row-head .strong-name[href^='/scans/']) { position: relative; padding: var(--space-3); }
+  .wl-list > li > .wl-row-head .strong-name[href^='/scans/'] { color: var(--ink); font-size: var(--fs-body); font-weight: 700; text-decoration: none; }
+  .wl-list > li > .wl-row-head .strong-name[href^='/scans/']::after { content: ''; position: absolute; inset: 0; }
+  .wl-list > li:has(> .wl-row-head .strong-name[href^='/scans/']) .wl-who > .muted { display: block; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .wl-list > li:has(> .wl-row-head .strong-name[href^='/scans/']) > .hint { position: relative; z-index: 1; }
+
+  /* ---------- App design: a scan ---------- */
+  .card > .row:has(> .img-when) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
+  .img-when { width: 100%; min-width: 0; }
+  /* Its next step at the foot, in place of the bottom bar */
+  .pf-has-tabbar:has(.img-done, .img-report-form) .pf-tabbar { display: none; }
+  .pf-main:has(.img-done, .img-report-form) .pf-content { padding-bottom: 92px; }
+  .pf-main:has(.img-done, .img-report-form) .pf-content::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 29; height: calc(env(safe-area-inset-bottom) + 76px); border-top: 1px solid var(--border); background: var(--surface); }
+  .card > .row > .btn.img-done, .img-report-form .btn[type='submit'] { position: fixed; left: var(--space-4); right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); z-index: 30; width: auto; max-width: calc(100% - var(--space-4) * 2); min-height: 52px; border-color: var(--indigo-700); background: var(--indigo-700); color: var(--on-solid); font-size: var(--fs-body); }
+  /* Readings two a row */
+  .img-report-form .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3) var(--space-2); align-items: end; }
+  .img-report-form .form-grid > .field { min-width: 0; margin: 0; }
+  .img-report-form .form-grid :is(input, select) { width: 100%; min-width: 0; }
+  .img-report-form .row:has(> .btn[type='button']) { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); }
+  .img-report-form .row > .btn[type='button'] { width: 100%; min-height: 44px; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

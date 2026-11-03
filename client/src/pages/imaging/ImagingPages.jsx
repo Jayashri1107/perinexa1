@@ -701,7 +701,7 @@ export function ImagingStudyPage() {
               </>
             )}
             {a.canDone && (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => act('done', {}, 'Marked done. A doctor writes the report.')}>
+              <button type="button" className="btn btn-secondary btn-sm img-done" onClick={() => act('done', {}, 'Marked done. A doctor writes the report.')}>
                 Mark done
               </button>
             )}
