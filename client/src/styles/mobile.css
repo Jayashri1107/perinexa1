@@ -1356,6 +1356,41 @@
   .img-report-form .row:has(> .btn[type='button']) { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); }
   .img-report-form .row > .btn[type='button'] { width: 100%; min-height: 44px; }
 
+  /* ---------- A form with its Save bar: no side menu button beside the title ---------- */
+  .pf-has-tabbar:has(.pf-main .sticky-actions:not(.modal *)) .pf-menu-btn { display: none; }
+
+  /* ---------- App design: the referral desk ---------- */
+  /* A referral: who and how urgent, the number and the doctor, what is due; the consultant is on the referral itself */
+  .dt tbody tr:has(> td[data-label='Next promise']) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--space-2); align-items: start; padding: var(--space-3); text-align: left; }
+  .dt tbody tr:has(> td[data-label='Next promise'])::after { display: none; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Next promise']) > td[data-label]:not(:first-child)::before { display: none; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Next promise']) > td { width: auto; min-height: 0; margin: 0; padding: 0; text-align: left; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Patient'] { display: block; grid-column: 1; grid-row: 1; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Patient'] strong { display: block; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 700; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Patient'] .muted { display: block; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Next promise']) > td:first-child, .dt tbody tr:has(> td[data-label='Next promise']) > td:first-child > .name-cell-text { display: contents; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td:first-child > .name-cell-text > :last-child { grid-column: 2; grid-row: 1; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td:first-child .strong-name { grid-column: 1 / -1; grid-row: 2; justify-self: start; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td:first-child .muted { display: block; grid-column: 1 / -1; grid-row: 3; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 400; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Referred by'] { display: block; grid-column: 1 / -1; grid-row: 4; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Next promise']) > td[data-label='Referred by'] > .name-cell-text:first-child { display: block; margin: 0; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Referred by'] .name-cell-text > * { display: inline; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Referred by'] .muted::before { content: ' · '; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Next promise'] { display: block; grid-column: 1 / -1; grid-row: 5; margin-top: var(--space-1); }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Next promise']) > td[data-label='Next promise'] > .name-cell-text:first-child { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin: 0; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Next promise']) > td[data-label='Patient'] > .name-cell-text:first-child { display: block; margin: 0; }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Next promise'] .muted { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt tbody tr:has(> td[data-label='Next promise']) > td[data-label='Consultant'] { display: none; }
+
+  /* ---------- App design: New referral, three steps ---------- */
+  .form-page[data-step='1'] > section:nth-of-type(n+3), .form-page[data-step='2'] > section:not(:nth-of-type(3)), .form-page[data-step='3'] > section:nth-of-type(-n+3) { display: none; }
+  .ref-steps { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-2); margin: 0; padding: 0 var(--space-1); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+  .ref-steps-bars { display: grid; flex: 1 1 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1); }
+  .ref-steps-bars > span { height: 4px; border-radius: var(--radius-pill); background: var(--border); }
+  .ref-steps-bars > span.is-on { background: var(--indigo-700); }
+  .form-page[data-step] > .sticky-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .form-page[data-step] > .sticky-actions > .btn { width: 100%; min-height: 52px; padding: 0 var(--space-2); }
+
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
   [data-short]:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }

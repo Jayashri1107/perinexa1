@@ -176,6 +176,7 @@ export function ReferralsDeskPage() {
   return (
     <>
       <PageHeader
+        className="ph-fab"
         title="Referrals"
         help="Referrals from other doctors and the hospital’s promises to them: a reply within 2 working hours, urgent patients seen the same day and routine ones within 48 hours, the consultant note within 24 hours of her first visit and the discharge summary within 24 hours of discharge."
         tabs={moduleByKey('referrals')?.tabs}
