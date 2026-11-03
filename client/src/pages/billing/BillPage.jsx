@@ -779,6 +779,7 @@ export function BillPage() {
   return (
     <>
       <PageHeader
+        className="ph-bill-foot"
         breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: b.number }]}
         title={`Bill ${b.number}`}
         documentTitle="Bill"

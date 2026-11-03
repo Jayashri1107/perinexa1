@@ -518,6 +518,12 @@ export function tabBarModules(modules = [], roles = []) {
   const linked = modules.filter((m) => m.to);
   const today = linked.find((m) => m.key === 'today');
   if (roles.length === 1 && roles[0] === 'lab' && today) return [today, ...LAB_TAB_PLACES];
+  // The accounts, as in the app design (2 Nov 2026): Daily collection beside the bills; Daily expenses is under Menu
+  const bills = linked.find((m) => m.key === 'billing');
+  const patients = linked.find((m) => m.key === 'patients');
+  if (roles.length === 1 && roles[0] === 'billing' && today && bills && patients) {
+    return [today, { ...bills, label: 'Bills', end: true, activeFor: '/billing/bills' }, { key: 'billing-daily', label: 'Daily', icon: ChartColumn, to: '/billing/daily', end: true }, patients];
+  }
   const picked = [];
   for (const key of [...roles.flatMap((r) => TAB_BAR_ORDER[r] ?? []), ...linked.map((m) => m.key)]) {
     const m = linked.find((x) => x.key === key);

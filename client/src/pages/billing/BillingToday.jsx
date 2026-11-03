@@ -26,10 +26,64 @@ export function BillingToday() {
   const modes = (daily.data?.byMode ?? []).filter((m) => m.net !== 0).map((m) => `${m.label} ${rupees(m.net)}`);
   const recent = todays.slice(0, 8);
   const error = daily.error || unpaid.error || bills.error;
+  // Phones, as in the app design (2 Nov 2026): the day's money first, then what to look at, from the same numbers
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const d = daily.data;
+  const owed = owing.filter((b) => b.balance > 0);
+  const howMany = (n, one) => `${formatNumber(n)} ${one}${n === 1 ? '' : 's'}`;
+  const looks = [
+    { label: 'Unpaid bills', sub: unpaid.data ? howMany(owed.length, 'bill') : '', value: unpaid.data ? rupees(unpaid.data.owed ?? 0) : '—', to: '/billing/unpaid', tone: owed.length ? 'is-watch' : '' },
+    { label: 'Cash in the drawer', sub: 'Cash only, after expenses', value: d ? rupees(d.cashInHand ?? 0) : '—', to: '/billing/daily' },
+    { label: 'Expenses today', sub: d ? howMany((d.expenses ?? []).length, 'entry').replace('entrys', 'entries') : '', value: d ? rupees(d.totals.expenses ?? 0) : '—', to: '/expenses' },
+    { label: 'Cash handover', sub: 'Day-end handover', value: '', to: '/cash-handover' },
+    { label: 'Bills made today', sub: bills.data ? `${rupees(sum(made, (b) => b.total))} charged` : '', value: bills.data ? formatNumber(made.length) : '—', to: '/billing' },
+    { label: 'Advances held', sub: bills.data ? `Paid by ${howMany(staying.length, 'patient')} still in hospital` : '', value: bills.data ? rupees(sum(staying, (b) => b.paid)) : '—', to: '/billing' },
+    { label: 'Discharged, not settled', sub: unpaid.data ? (toSettle.length ? `${rupees(sum(toSettle, (b) => b.balance))} still to pay` : 'Every discharged stay is settled') : '', value: unpaid.data ? formatNumber(toSettle.length) : '—', to: '/billing/unpaid', tone: toSettle.length ? 'is-watch' : '' },
+    { label: 'Money to give back', sub: unpaid.data ? (unpaid.data.dueBack ? `${rupees(unpaid.data.dueBack)} to refund` : 'No refunds due') : '', value: unpaid.data ? formatNumber(giveBack.length) : '—', to: '/billing/unpaid', tone: giveBack.length ? 'is-high' : '' },
+  ];
 
   return (
     <>
       {error && <Alert type="error">{error}</Alert>}
+      {onPhone && (
+        <div className="bh-home">
+          <Link to="/billing/daily" className="bh-hero" aria-label="Open the daily collection">
+            <span>Collected today</span>
+            <strong className="tabular">{d ? rupees(d.totals.net) : '—'}</strong>
+            <span className="bh-modes">
+              {(d?.byMode ?? [])
+                .filter((m) => m.net !== 0 || ['cash', 'upi', 'card'].includes(m.mode))
+                .map((m) => (
+                  <span key={m.mode}>
+                    <strong className="tabular">{rupees(m.net)}</strong>
+                    {m.label}
+                  </span>
+                ))}
+            </span>
+          </Link>
+          <Link to="/billing" className="btn btn-primary">
+            Open bills
+          </Link>
+          <section aria-labelledby="bh-look">
+            <h2 id="bh-look">To look at</h2>
+            <ul className="bh-list">
+              {looks.map((l) => (
+                <li key={l.label}>
+                  <Link to={l.to} className={l.tone || undefined}>
+                    <span>
+                      <strong>{l.label}</strong>
+                      {l.sub}
+                    </span>
+                    {l.value && <strong className="tabular">{l.value}</strong>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      )}
+      {!onPhone && (
+      <>
       <section className="td-group" aria-labelledby="bt-glance">
         <h2 className="td-group-title" id="bt-glance">
           Billing at a glance
@@ -97,6 +151,8 @@ export function BillingToday() {
           <ReceiptText aria-hidden="true" /> Close the day (daily summary)
         </Link>
       </nav>
+      </>
+      )}
 
       <section className="card bt-recent" aria-labelledby="bt-recent-title">
         <div className="bt-recent-head">
