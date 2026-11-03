@@ -97,7 +97,9 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
     setError(null);
     try {
       await onPrint?.();
-      window.print();
+      // The Android app has no window.print(): its own print screen (mobile/android MainActivity)
+      if (window.PerinexaApp?.print) window.PerinexaApp.print(document.title);
+      else window.print();
     } catch (err) {
       setError(`Nothing was printed. ${err.message}`);
     } finally {

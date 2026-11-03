@@ -115,6 +115,7 @@ export function UsersListPage({ variant = 'all', role = null }) {
   return (
     <>
       <PageHeader
+        className="ph-fab"
         breadcrumbs={rolePage ? [{ label: 'Staff', to: '/platform/staff' }, { label: v.title }] : [...crumbs, { label: v.title }]}
         title={v.title}
         subtitle={v.note ?? 'Every account on the platform. One account can work at several hospitals.'}

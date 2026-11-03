@@ -1461,6 +1461,7 @@ html.in-app { --safe-top: 0px; }
   .pf-main:has(.ph-bill-foot) .pf-content { padding-bottom: 92px; }
   .ph-bill-foot .ph-actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: nowrap; gap: var(--space-2); width: auto; margin: 0; padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-3)); border-top: 1px solid var(--border); background: var(--surface); }
   .ph-bill-foot .ph-actions:has(.menu-list) { z-index: 70; }
+  .ph-bill-foot .ph-tabs { flex: 1 1 100%; width: 100%; }
   .ph-bill-foot .ph-actions > .btn-primary { flex: 1 1 auto; width: auto; min-height: 52px; font-size: var(--fs-body); }
   .ph-bill-foot .ph-actions > .menu-button { flex: 1 1 auto; display: flex; }
   .ph-bill-foot .ph-actions > .menu-button > .btn { width: 100%; min-height: 52px; }
@@ -1614,6 +1615,36 @@ html.in-app { --safe-top: 0px; }
   .bill-pick-sheet h4 { margin: var(--space-3) 0 var(--space-1); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
   .bill-pick-sheet button { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); width: 100%; min-height: 48px; padding: var(--space-2) 0; border: 0; border-top: 1px solid var(--border); background: none; color: var(--ink); text-align: left; }
   .bill-pick-sheet button > span:last-child { flex: none; font-size: var(--fs-label); }
+
+  /* ---------- App design: the super admin's Overview ---------- */
+  .plat-kpis.kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); overflow: visible; margin: 0; }
+  .plat-kpis > .kpi { flex: none; min-width: 0; padding: var(--space-3); gap: 2px; }
+  .plat-kpis .kpi-value { font-size: calc(24px * var(--text-scale)); line-height: calc(30px * var(--text-scale)); font-weight: 700; }
+  .plat-kpis > .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  /* ---------- App design: a hospital in the list: its name and state, when added, its people ---------- */
+  .dt tbody tr:has(> td[data-label='Active staff']) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--space-3); align-items: center; padding: var(--space-3); }
+  .dt tbody tr:has(> td[data-label='Active staff'])::after { display: none; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Active staff']) > td { display: block; width: auto; min-height: 0; margin: 0; padding: 0; text-align: left; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 400; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Active staff']) > td[data-label]:not(:first-child)::before { content: attr(data-label) ': '; display: inline; position: static; width: auto; font-size: inherit; color: inherit; font-weight: 400; }
+  .dt tbody tr:has(> td[data-label='Active staff']) > td:first-child { grid-column: 1; grid-row: 1; color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Active staff']) > td[data-label='Status'] { grid-column: 2; grid-row: 1; justify-self: end; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Active staff']) > td[data-label='Status']::before { display: none !important; }
+  .dt tbody tr:has(> td[data-label='Active staff']) > td[data-label='Created'] { grid-column: 1 / -1; grid-row: 2; }
+  .dt tbody tr:has(> td[data-label='Active staff']) > td[data-label='Active staff'] { grid-column: 1; grid-row: 3; }
+  .dt tbody tr:has(> td[data-label='Active staff']) > td[data-label='Admins'] { grid-column: 2; grid-row: 3; justify-self: end; }
+
+  /* ---------- App design: a user in the list: who and their state, the email, where they work ---------- */
+  .dt tbody tr:has(> td.plat-access-cell) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--space-3); align-items: center; padding: var(--space-3); }
+  .dt tbody tr:has(> td.plat-access-cell)::after { display: none; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.plat-access-cell) > td { display: block; width: auto; min-height: 0; margin: 0; padding: 0; text-align: left; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 400; overflow-wrap: anywhere; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.plat-access-cell) > td[data-label]:not(:first-child)::before { display: none; }
+  .dt tbody tr:has(> td.plat-access-cell) > td:first-child { grid-column: 1; grid-row: 1; color: var(--ink); font-size: var(--fs-body); font-weight: 600; }
+  .dt tbody tr:has(> td.plat-access-cell) > td[data-label='Status'] { grid-column: 2; grid-row: 1; justify-self: end; }
+  .dt tbody tr:has(> td.plat-access-cell) > td[data-label='Email'], .dt tbody tr:has(> td.plat-access-cell) > td.plat-access-cell { grid-column: 1 / -1; }
+  .dt tbody tr:has(> td.plat-access-cell) > td[data-label='Last login'] { grid-column: 1 / -1; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.plat-access-cell) > td[data-label='Last login']:not(:first-child)::before { content: 'Last login: '; display: inline; position: static; width: auto; font-size: inherit; color: inherit; font-weight: 400; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.plat-access-cell) > td[data-label='Created'] { display: none; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
