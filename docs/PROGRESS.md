@@ -13,6 +13,10 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **3 Nov 2026 – Daily expenses: the form filters the list (branch `expense-form-filter`, developer's request):** what is
+  typed or chosen in New expense (person, head, voucher, amount, paid by and its details, reason, date) narrows Expenses
+  entered as you go, with how many are shown and Clear the form; the time and the attached file do not filter. From and
+  To apply at once, with no Show button. **How to test:** Daily expenses → type a name or an amount in New expense.
 - **3 Nov 2026 – Sold's filters (branch `pharmacy-sold-filters`, developer's request):** the side list on Sold is
   replaced by one row of filters like the store's earlier software: type (All, OPD, IPD, External), date, patient number,
   patient name, doctor, bill or medicine. No patient is listed until a name or number is typed. Choosing someone shows

@@ -1,9 +1,39 @@
 // Daily expenses: the form's checks and what is sent (fake sample data).
 import { describe, expect, it } from 'vitest';
-import { BANKS, OTHER_BANK, blankExpense, expenseFor, expensePayload, expenseProblems, expensesTotal, hospitalNow, paidHow } from './expenseFormat.js';
+import { BANKS, OTHER_BANK, blankExpense, expenseFor, expensePayload, expenseProblems, expensesTotal, hospitalNow, paidHow, expenseFilter, filterExpenses, isFiltering } from './expenseFormat.js';
 
 const NOW = new Date('2026-10-28T03:53:00Z'); // 09:23 in the hospital
 const filled = (more = {}) => ({ ...blankExpense(NOW), headId: 'h1', paidTo: 'Sample Driver', amount: '1,500', ...more });
+
+describe('filtering the list from the new-expense form', () => {
+  const list = [
+    { id: '1', date: '2026-11-03', paidTo: 'Sample Ravi', headId: 'h1', voucherNo: 'V-10', mode: 'cash', amountPaise: 120000, description: 'Tea for staff', chequeNo: '', bankName: '', walletName: '' },
+    { id: '2', date: '2026-11-03', paidTo: 'Sample Meera', headId: 'h2', voucherNo: '', mode: 'upi', amountPaise: 12050, description: '', chequeNo: '', bankName: '', walletName: 'PhonePe' },
+    { id: '3', date: '2026-11-02', paidTo: 'Sample Ravi', headId: 'h2', voucherNo: '', mode: 'cheque', amountPaise: 50000, description: '', chequeNo: '12345', bankName: 'Axis Bank', walletName: '' },
+  ];
+  const ids = (v, touched) => filterExpenses(list, expenseFilter({ ...blankExpense(), ...v }, touched)).map((e) => e.id);
+
+  it('an empty form filters nothing: the date and "paid by" start filled in', () => {
+    expect(ids({})).toEqual(['1', '2', '3']);
+    expect(isFiltering(expenseFilter(blankExpense()))).toBe(false);
+  });
+  it('narrows by each thing typed or chosen, and by all of them together', () => {
+    expect(ids({ paidTo: 'ravi' })).toEqual(['1', '3']);
+    expect(ids({ headId: 'h2' })).toEqual(['2', '3']);
+    expect(ids({ voucherNo: 'v-1' })).toEqual(['1']);
+    expect(ids({ description: 'tea' })).toEqual(['1']);
+    expect(ids({ paidTo: 'ravi', headId: 'h2' })).toEqual(['3']);
+    expect(ids({ mode: 'upi', walletName: 'phone' }, { mode: true })).toEqual(['2']);
+    expect(ids({ mode: 'cheque', chequeNo: '123', bank: 'Axis Bank' }, { mode: true })).toEqual(['3']);
+    expect(ids({ date: '2026-11-02' }, { date: true })).toEqual(['3']);
+  });
+  it('finds an amount by its first digits, with or without commas', () => {
+    expect(ids({ amount: '12' })).toEqual(['1', '2']);
+    expect(ids({ amount: '1,200' })).toEqual(['1']);
+    expect(ids({ amount: '120.5' })).toEqual(['2']);
+    expect(ids({ amount: '9' })).toEqual([]);
+  });
+});
 
 describe('a new expense', () => {
   it("starts on the hospital's date and time, paid in cash", () => {
