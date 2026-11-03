@@ -431,6 +431,12 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect(await find({ search: 'asha', date: '2026-09-28' })).toHaveLength(2);
     expect(await find({ search: 'asha', date: '2026-09-27' })).toEqual([]);
 
+    expect(await find({ search: 'asha', paidBy: 'cash' })).toEqual(['Sample Asha Walkin']);
+    expect(await find({ search: 'asha', paidBy: 'hospital' })).toEqual(['Sample Asha Kale']);
+    expect(await find({ search: 'asha', paidBy: 'upi' })).toEqual([]);
+    expect(await find({ search: 'asha', amount: '2' })).toHaveLength(2);
+    expect(await find({ search: 'asha', amount: '9' })).toEqual([]);
+
     expect((await ph('get', '/invoices/doctors')).body.doctors).toEqual(['Dr Sample Rao']);
     expect((await ph('get', '/invoices/doctors', undefined, 'admin')).status).toBe(403);
   });

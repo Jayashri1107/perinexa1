@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw, Stethoscope, UserPlus, Users } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw, Stethoscope, UserPlus, Users, X } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -36,6 +36,12 @@ const buyerAddress = (b) => [b.address, [b.place, b.pin].filter(Boolean).join(' 
 
 const TYPE_CHOICES = [['all', 'All', Users], ['opd', 'OPD', Stethoscope], ['ipd', 'IPD', BedDouble], ['external', 'External', UserPlus]];
 const typeOf = (v) => (v.kind === 'issue' ? 'ipd' : v.patient ? 'opd' : 'external');
+/** A bill fits an amount by its first digits (12 finds 12, 120 and 1,200), and "hospital" means a patient's bill. */
+export const billFits = (v, { type = 'all', doctor = '', amount = '', paidBy = '' }) =>
+  (type === 'all' || typeOf(v) === type) &&
+  (!doctor || v.doctor?.name === doctor) &&
+  (!amount || String(v.netPaise / 100).startsWith(amount)) &&
+  (!paidBy || (paidBy === 'hospital' ? Boolean(v.patient) : (v.payments ?? []).some((p) => p.mode === paidBy)));
 
 export function InvoicesPage() {
   const navigate = useNavigate();
@@ -56,14 +62,17 @@ export function InvoicesPage() {
   const [doctor, setDoctor] = useState('');
   const [nameText, setNameText] = useState('');
   const [mrnText, setMrnText] = useState(start ?? '');
+  const [amountText, setAmountText] = useState('');
+  const [paidBy, setPaidBy] = useState('');
   const [person, setPerson] = useState(null);
   const name = useDebounced(nameText.trim(), 300);
   const mrn = useDebounced(mrnText.trim(), 300);
+  const amount = useDebounced(amountText.replace(/[^\d.]/g, ''), 300).replace(/^\./, '');
   const looking = desk && (name.length >= 2 || mrn.length >= 2);
   const doctors = useFetch(desk ? '/pharmacy/invoices/doctors' : null);
   const found = useFetch(
     looking ? '/pharmacy/invoices/people' : null,
-    looking ? { ...(name.length >= 2 ? { search: name } : {}), ...(mrn.length >= 2 ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(date ? { date } : {}) } : undefined,
+    looking ? { ...(name.length >= 2 ? { search: name } : {}), ...(mrn.length >= 2 ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(date ? { date } : {}), ...(amount ? { amount } : {}), ...(paidBy ? { paidBy } : {}) } : undefined,
   );
   const people = looking ? (found.data?.people ?? []) : [];
   // Came with a patient's number: open their bills as soon as they are found
@@ -84,10 +93,19 @@ export function InvoicesPage() {
     setNameText('');
     setMrnText('');
   };
+  const clearFilters = () => {
+    closePerson();
+    setType('all');
+    setDoctor('');
+    setAmountText('');
+    setPaidBy('');
+    setText('');
+  };
 
   // Phones, as in the app design (2 Nov 2026): how many bills and their total above the list
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
-  const bills = res.data?.invoices?.filter((v) => !desk || ((type === 'all' || typeOf(v) === type) && (!doctor || v.doctor?.name === doctor)));
+  const bills = res.data?.invoices?.filter((v) => !desk || billFits(v, { type, doctor, amount, paidBy }));
+  const filtering = desk && (type !== 'all' || doctor || amountText || paidBy || nameText || mrnText || text);
   const billSearch = <input type="search" className="bill-search-plain" aria-label="Find a bill" placeholder="Bill number or a medicine" value={text} onChange={(e) => setText(e.target.value)} />;
   const dayNav = day && (
     <div className="appt-daynav" role="group" aria-label="Day">
@@ -103,6 +121,11 @@ export function InvoicesPage() {
   const dayList = (
     <>
       {res.error && <Alert type="error">{res.error}</Alert>}
+      {desk && filtering && res.data && (
+        <p className="ph-sold-count">
+          Showing {bills.length} of {res.data.invoices.length} bills · {money(bills.reduce((n, v) => n + (v.netPaise ?? 0), 0))}
+        </p>
+      )}
       {onPhone && bills?.length > 0 && (
         <p className="ph-sold-sum">
           <span>
@@ -116,7 +139,7 @@ export function InvoicesPage() {
         rows={bills}
         loading={res.loading}
         onRowClick={(v) => navigate(`/pharmacy/invoices/${v.id}`)}
-        emptyText={search.length >= 2 ? 'No bills match.' : desk && (type !== 'all' || doctor) ? 'No bills of this kind on this day.' : 'Nothing sold on this day.'}
+        emptyText={search.length >= 2 || filtering ? 'No bills match.' : 'Nothing sold on this day.'}
         toolbar={
           desk ? undefined : (
             <div className="bill-toolbar">
@@ -186,9 +209,30 @@ export function InvoicesPage() {
                   </select>
                 </label>
                 <label className="ph-filter">
+                  <span>Amount ₹</span>
+                  <input inputMode="decimal" value={amountText} maxLength={12} placeholder="e.g. 1200" onChange={typed(setAmountText)} />
+                </label>
+                <label className="ph-filter">
+                  <span>Paid by</span>
+                  <select value={paidBy} onChange={typed(setPaidBy)}>
+                    <option value="">All</option>
+                    <option value="hospital">On the hospital bill</option>
+                    {Object.entries(MODE_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="ph-filter">
                   <span>Bill or medicine</span>
                   {billSearch}
                 </label>
+                <div className="ph-filter ph-filter-clear">
+                  <button type="button" className="btn btn-link" disabled={!filtering} onClick={clearFilters}>
+                    <X aria-hidden="true" /> Clear the filters
+                  </button>
+                </div>
               </div>
             </section>
             {person ? (
