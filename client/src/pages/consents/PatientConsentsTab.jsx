@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Eye, FileCheck, FileClock, FileSignature, Info, Lightbulb, Paperclip, Printer, TriangleAlert } from 'lucide-react';
 import { Link, useOutletContext } from 'react-router-dom';
+import { Paged } from '../../components/DataTable.jsx';
 import { api, newRequestId } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PrintPreview } from '../../components/print/PrintPreview.jsx';
@@ -71,11 +72,24 @@ function FormSection({ title, hint, forms, ...rowProps }) {
     <section className="card cf-section" aria-label={title}>
       <h2>{title}</h2>
       {hint && <p className="hint cf-section-hint">{hint}</p>}
-      <ul className="plain-list cf-list">
-        {forms.map((f) => (
-          <FormRow key={f.id} form={f} {...rowProps} />
-        ))}
-      </ul>
+      {/* Phones: long lists a few at a time */}
+      {typeof window !== 'undefined' && window.matchMedia?.('(max-width: 719px)').matches ? (
+        <Paged rows={forms} label="forms" initial={5} sizes={[5, 10, 25]}>
+          {(page) => (
+            <ul className="plain-list cf-list">
+              {page.map((f) => (
+                <FormRow key={f.id} form={f} {...rowProps} />
+              ))}
+            </ul>
+          )}
+        </Paged>
+      ) : (
+        <ul className="plain-list cf-list">
+          {forms.map((f) => (
+            <FormRow key={f.id} form={f} {...rowProps} />
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
