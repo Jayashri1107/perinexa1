@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { addDays, daysBetween, hospitalDayStart, isoDay, timeIn, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { Admission } from '../models/Admission.js';
@@ -90,7 +91,7 @@ const settingsSchema = z
     address: z.string().trim().max(300),
     phone: z.string().trim().max(80),
     state: z.string().trim().max(60),
-    // City or town and PIN code: only the e-invoice file needs them
+    // City or town (the bill's jurisdiction line, the e-invoice file) and PIN code (the e-invoice file)
     place: z.string().trim().max(50),
     pin: z.string().trim().regex(/^([1-9]\d{5})?$/, 'A PIN code has 6 digits.'),
   })
@@ -669,6 +670,58 @@ pharmacyRouter.get('/invoices', async (req, res) => {
   }
   const list = await PharmacyInvoice.find(filter).sort({ 'created.at': -1, _id: -1 }).limit(200).lean();
   res.json({ today: isoDay(today(req)), invoices: await invoiceViews(req, list) });
+});
+
+// The side list on Sold (developer's request, 3 Nov 2026): the people the pharmacy has billed, newest bill first, found
+// by name, number or phone, each with their bills. Only people with a pharmacy bill – never the whole patient list
+// (owner, 26 Oct 2026), and no patient without a bill can be found here. The pharmacist only; audited.
+const PEOPLE_LIMIT = 200;
+const PERSON_BILLS = 50;
+pharmacyRouter.get('/invoices/people', async (req, res) => {
+  desk(req);
+  const { search } = parse(z.object({ search: z.string().trim().min(2).max(100).optional() }).strict(), req.query);
+  const match = { tenantId: new mongoose.Types.ObjectId(String(req.tenantId)) };
+  if (search) {
+    const rx = new RegExp(escapeRegex(search), 'i');
+    const pids = (await Patient.find({ tenantId: req.tenantId, $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] }, { _id: 1 }).limit(PEOPLE_LIMIT).lean()).map((p) => p._id);
+    match.$or = [{ patientId: { $in: pids } }, { patientId: null, 'customer.name': rx }, { patientId: null, 'customer.phone': rx }, { patientId: null, 'buyer.name': rx }];
+  }
+  const groups = await PharmacyInvoice.aggregate([
+    { $match: match },
+    { $sort: { 'created.at': -1, _id: -1 } },
+    {
+      $group: {
+        // A walk-in has no record: the same name and phone count as one person
+        _id: { patientId: '$patientId', name: { $cond: ['$patientId', null, { $toLower: { $ifNull: ['$customer.name', ''] } }] }, phone: { $cond: ['$patientId', null, '$customer.phone'] } },
+        customer: { $first: '$customer' },
+        lastAt: { $first: '$created.at' },
+        bills: { $push: { id: '$_id', number: '$number', kind: '$kind', at: '$created.at' } },
+      },
+    },
+    { $sort: { lastAt: -1, '_id.name': 1 } },
+    { $limit: PEOPLE_LIMIT + 1 },
+    { $project: { customer: 1, lastAt: 1, billCount: { $size: '$bills' }, bills: { $slice: ['$bills', PERSON_BILLS] } } },
+  ]);
+  const shown = groups.slice(0, PEOPLE_LIMIT);
+  const ids = shown.map((g) => g._id.patientId).filter(Boolean);
+  const patients = new Map((ids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1, phone: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const people = shown
+    .filter((g) => !g._id.patientId || patients.has(String(g._id.patientId)))
+    .map((g) => {
+      const p = g._id.patientId ? patients.get(String(g._id.patientId)) : null;
+      return {
+        key: p ? String(p._id) : `walkin-${g.bills[0].id}`,
+        type: !p ? 'external' : g.bills[0].kind === 'issue' ? 'ipd' : 'opd',
+        name: p ? p.fullName : (g.customer?.name ?? ''),
+        mrn: p?.mrn ?? '',
+        phone: p ? (p.phone ?? '') : (g.customer?.phone ?? ''),
+        lastAt: g.lastAt,
+        billCount: g.billCount,
+        bills: g.bills.map((b) => ({ id: String(b.id), number: b.number, at: b.at })),
+      };
+    });
+  await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: search ? { by: 'name', patientIds: people.filter((x) => x.mrn).map((x) => x.key), walkInBills: people.filter((x) => !x.mrn).length } : { by: 'list', people: people.length } });
+  res.json({ people, more: groups.length > PEOPLE_LIMIT });
 });
 
 pharmacyRouter.get('/invoices/:id', async (req, res) => {

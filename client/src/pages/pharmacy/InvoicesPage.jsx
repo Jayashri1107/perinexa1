@@ -14,14 +14,24 @@ import { TallyMarks } from '../billing/TallyPage.jsx';
 import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { TypePill } from './RegisterPage.jsx';
 
 // Pharmacy → Invoices: a day's invoices (or a search), one invoice with its GST tax invoice to print, and returns of
 // unopened medicines before their expiry (each a credit note). A walk-in sale to a business with a GSTIN shows the
 // buyer, and the hospital admin can download its e-invoice file (to upload on the e-invoice portal by hand).
+// The pharmacist has a fixed side list of the people billed, found by name, with each person's bills (3 Nov 2026).
 
 const whoOf = (v) => (v.patient ? `${v.patient.fullName} (${v.patient.mrn})` : v.buyer ? `${v.buyer.name} (business)` : v.customer ? `${v.customer.name} (walk-in)` : '');
 // On the printed bill every amount has its paise, so the column lines up: ₹75.00, not ₹75
 const paper = (paise) => (paise % 100 ? money(paise) : `${money(paise)}.00`);
+// The bill's columns: 1,308.61, without the rupee sign, as on the store's earlier bill
+const plain = (paise) => (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pad2 = (n) => String(n).padStart(2, '0');
+const slipDate = (value) => {
+  const d = new Date(value);
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+};
+const lineName = (l) => `${l.name}${l.schedule ? ` (${l.schedule === 'narcotic' ? 'NDPS' : `Sch. ${l.schedule}`})` : ''}`;
 const buyerAddress = (b) => [b.address, [b.place, b.pin].filter(Boolean).join(' '), b.state && `${b.state} (${b.stateCode})`].filter(Boolean).join(', ');
 
 export function InvoicesPage() {
@@ -35,9 +45,54 @@ export function InvoicesPage() {
   const go = (d) => setParams({ date: d }, { replace: true });
   const { activeMembership } = useAuth();
   const desk = activeMembership.roles.includes('pharmacist');
+  const [person, setPerson] = useState(null);
   // Phones, as in the app design (2 Nov 2026): how many bills and their total above the list
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
   const bills = res.data?.invoices;
+  const dayList = (
+    <>
+      {res.error && <Alert type="error">{res.error}</Alert>}
+      {onPhone && bills?.length > 0 && (
+        <p className="ph-sold-sum">
+          <span>
+            {bills.length} bill{bills.length === 1 ? '' : 's'}
+          </span>
+          <span className="tabular">{money(bills.reduce((n, v) => n + (v.netPaise ?? 0), 0))}</span>
+        </p>
+      )}
+      <DataTable
+        caption="Pharmacy invoices"
+        rows={res.data?.invoices}
+        loading={res.loading}
+        onRowClick={(v) => navigate(`/pharmacy/invoices/${v.id}`)}
+        emptyText={search.length >= 2 ? 'No bills match.' : 'Nothing sold on this day.'}
+        toolbar={
+          <div className="bill-toolbar">
+            <input type="search" className="bill-search-plain" aria-label="Find a bill" placeholder="Name, phone, patient or bill number, or a medicine" value={text} onChange={(e) => setText(e.target.value)} />
+            {search.length < 2 && day && (
+              <div className="appt-daynav" role="group" aria-label="Day">
+                <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, -1))} aria-label="Previous day">
+                  <ChevronLeft aria-hidden="true" />
+                </button>
+                <input type="date" aria-label="Day" value={day} onChange={(e) => e.target.value && go(e.target.value)} />
+                <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, 1))} aria-label="Next day">
+                  <ChevronRight aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </div>
+        }
+        columns={[
+          { key: 'number', header: 'Invoice', render: (v) => <span className="tabular">{v.number}</span> },
+          { key: 'date', header: 'Time', render: (v) => formatDateTime(v.date) },
+          { key: 'kind', header: 'Kind', render: (v) => (v.kind === 'issue' ? 'Inpatient issue' : 'Counter sale') },
+          { key: 'who', header: 'Patient / customer', render: whoOf },
+          { key: 'items', header: 'Medicines sold', render: (v) => soldItems(v.lines) },
+          { key: 'net', header: 'Amount', align: 'right', render: (v) => <span className="tabular">{money(v.netPaise)}</span> },
+        ]}
+      />
+    </>
+  );
   // Sold (developer's request, 28 Oct 2026): every bill of the day – or found by name, number or a medicine – with
   // what was sold on it; New bill starts the next one
   return (
@@ -55,48 +110,215 @@ export function InvoicesPage() {
         }
       />
       <div className="pf-content bill-page">
-        {res.error && <Alert type="error">{res.error}</Alert>}
-        {onPhone && bills?.length > 0 && (
-          <p className="ph-sold-sum">
-            <span>
-              {bills.length} bill{bills.length === 1 ? '' : 's'}
-            </span>
-            <span className="tabular">{money(bills.reduce((n, v) => n + (v.netPaise ?? 0), 0))}</span>
-          </p>
+        {desk ? (
+          <div className="ph-sold-layout">
+            <PeopleBilled picked={person} onPick={setPerson} />
+            <div className="ph-sold-main">{person ? <PersonBills key={person.key} person={person} onClose={() => setPerson(null)} /> : dayList}</div>
+          </div>
+        ) : (
+          dayList
         )}
-        <DataTable
-          caption="Pharmacy invoices"
-          rows={res.data?.invoices}
-          loading={res.loading}
-          onRowClick={(v) => navigate(`/pharmacy/invoices/${v.id}`)}
-          emptyText={search.length >= 2 ? 'No bills match.' : 'Nothing sold on this day.'}
-          toolbar={
-            <div className="bill-toolbar">
-              <input type="search" className="bill-search-plain" aria-label="Find a bill" placeholder="Name, phone, patient or bill number, or a medicine" value={text} onChange={(e) => setText(e.target.value)} />
-              {search.length < 2 && day && (
-                <div className="appt-daynav" role="group" aria-label="Day">
-                  <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, -1))} aria-label="Previous day">
-                    <ChevronLeft aria-hidden="true" />
-                  </button>
-                  <input type="date" aria-label="Day" value={day} onChange={(e) => e.target.value && go(e.target.value)} />
-                  <button type="button" className="icon-btn" onClick={() => go(addDaysIso(day, 1))} aria-label="Next day">
-                    <ChevronRight aria-hidden="true" />
-                  </button>
-                </div>
-              )}
-            </div>
-          }
-          columns={[
-            { key: 'number', header: 'Invoice', render: (v) => <span className="tabular">{v.number}</span> },
-            { key: 'date', header: 'Time', render: (v) => formatDateTime(v.date) },
-            { key: 'kind', header: 'Kind', render: (v) => (v.kind === 'issue' ? 'Inpatient issue' : 'Counter sale') },
-            { key: 'who', header: 'Patient / customer', render: whoOf },
-            { key: 'items', header: 'Medicines sold', render: (v) => soldItems(v.lines) },
-            { key: 'net', header: 'Amount', align: 'right', render: (v) => <span className="tabular">{money(v.netPaise)}</span> },
-          ]}
-        />
       </div>
     </>
+  );
+}
+
+/** The fixed side list on Sold: everyone the pharmacy has billed, or those whose name, number or phone matches. */
+function PeopleBilled({ picked, onPick }) {
+  const [text, setText] = useState('');
+  const search = useDebounced(text.trim(), 300);
+  const res = useFetch('/pharmacy/invoices/people', search.length >= 2 ? { search } : undefined);
+  const people = res.data?.people ?? [];
+  return (
+    <aside className="card ph-people" aria-labelledby="ph-people-title">
+      <h2 id="ph-people-title">Find by patient name</h2>
+      <input type="search" className="bill-search-plain" aria-label="Patient or customer name, number or phone" placeholder="Patient name, number or phone" value={text} maxLength={100} onChange={(e) => setText(e.target.value)} />
+      {res.error && <Alert type="error">{res.error}</Alert>}
+      {res.data && !people.length && <p className="muted">{search.length >= 2 ? 'Nobody with a pharmacy bill matches.' : 'No bills yet.'}</p>}
+      <ul className="ph-people-list" aria-label="People billed">
+        {people.map((x) => (
+          <li key={x.key}>
+            <button type="button" aria-current={picked?.key === x.key ? 'true' : undefined} onClick={() => onPick(x)}>
+              <strong>
+                {x.name} <TypePill type={x.type} />
+              </strong>
+              <span className="muted">{[x.mrn, `${x.billCount} bill${x.billCount === 1 ? '' : 's'}`, slipDate(x.lastAt)].filter(Boolean).join(' · ')}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {res.data?.more && <p className="hint">The latest {people.length} are listed. Type a name to find anyone else.</p>}
+    </aside>
+  );
+}
+
+/** One person's bills: the newest shown as it prints, the others a click away. */
+function PersonBills({ person, onClose }) {
+  const [billId, setBillId] = useState(person.bills[0].id);
+  const [printing, setPrinting] = useState(false);
+  const res = useFetch(`/pharmacy/invoices/${billId}`);
+  const v = res.data?.invoice;
+  return (
+    <>
+      <div className="ph-person-head">
+        <h2>
+          {person.name} {person.mrn && <span className="muted tabular">· {person.mrn}</span>}
+        </h2>
+        <div className="ph-person-actions">
+          <button type="button" className="btn btn-secondary" disabled={!v} onClick={() => setPrinting(true)}>
+            <Printer aria-hidden="true" /> Print
+          </button>
+          <Link className="btn btn-secondary" to={`/pharmacy/invoices/${billId}`}>
+            Open the bill
+          </Link>
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            Back to the day’s bills
+          </button>
+        </div>
+      </div>
+      {person.bills.length > 1 && (
+        <div className="segmented ph-person-bills" role="group" aria-label={`Bills of ${person.name}`}>
+          {person.bills.map((b) => (
+            <button key={b.id} type="button" aria-pressed={b.id === billId} onClick={() => setBillId(b.id)}>
+              {b.number} · {slipDate(b.at)}
+            </button>
+          ))}
+        </div>
+      )}
+      {person.billCount > person.bills.length && (
+        <p className="hint">
+          The latest {person.bills.length} of {person.billCount} bills are listed.
+        </p>
+      )}
+      {res.error && <Alert type="error">{res.error}</Alert>}
+      {v && (
+        <div className="ph-slip-sheet">
+          <BillPaper invoice={v} settings={res.data.settings} />
+        </div>
+      )}
+      {printing && v && <BillPrint invoice={v} settings={res.data.settings} onClose={() => setPrinting(false)} />}
+    </>
+  );
+}
+
+/** The pharmacy bill, in the layout of the store's earlier bill. The tax invoice (GST and HSN set out) stays on the Print menu. */
+export function BillPaper({ invoice: v, settings }) {
+  const type = v.kind === 'issue' ? 'IPD Patient' : v.patient ? 'OPD Patient' : 'External';
+  const name = v.patient ? v.patient.fullName : v.buyer ? v.buyer.name : v.customer?.name || 'Walk-in customer';
+  const licences = [settings.licence20, settings.licence21].filter(Boolean).join(' ');
+  const signed = settings.pharmacistName || v.byName;
+  return (
+    <div className="ph-slip">
+      <header className="ph-slip-head">
+        <div className="lh-name">{settings.name}</div>
+        {settings.address && <div>{settings.address}</div>}
+        {(licences || settings.gstin) && (
+          <div className="ph-slip-ids">
+            {licences && <span>D.L. No. {licences}</span>}
+            {settings.gstin && <span>GSTN No. {settings.gstin}</span>}
+          </div>
+        )}
+        {settings.phone && <div className="ph-slip-mobile">Mobile No. {settings.phone}</div>}
+      </header>
+      <dl className="ph-slip-facts">
+        <div>
+          <dt>Bill No</dt>
+          <dd>{v.number}</dd>
+        </div>
+        <div>
+          <dt>Reg No</dt>
+          <dd>{v.patient?.mrn ?? ''}</dd>
+        </div>
+        <div>
+          <dt>Date</dt>
+          <dd>{slipDate(v.date)}</dd>
+        </div>
+        <div className="is-long">
+          <dt>Patient Name</dt>
+          <dd>{name}</dd>
+        </div>
+        <div>
+          <dt>Type</dt>
+          <dd>{type}</dd>
+        </div>
+        <div className="is-long">
+          <dt>Address</dt>
+          <dd>{v.buyer ? buyerAddress(v.buyer) : ''}</dd>
+        </div>
+        <div>
+          <dt>Doctor Name</dt>
+          <dd>{v.doctor?.name ?? ''}</dd>
+        </div>
+      </dl>
+      <table className="ptable ph-slip-lines">
+        <thead>
+          <tr>
+            <th scope="col">Sr.</th>
+            <th scope="col">Item Name</th>
+            <th scope="col">Batch No</th>
+            <th scope="col">Expiry</th>
+            <th scope="col" className="num">Disc Amt</th>
+            <th scope="col" className="num">Qty</th>
+            <th scope="col" className="num">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {v.lines.map((l, i) => (
+            <tr key={l.id}>
+              <td>{i + 1}</td>
+              <td>{lineName(l)}</td>
+              <td>{l.batch}</td>
+              <td className="nowrap">{expiryLabel(l.expiry).replace(' ', '-')}</td>
+              <td className="num">{plain(Math.max(0, l.qty * l.mrpPaise - l.amountPaise))}</td>
+              <td className="num">{l.qty.toFixed(2)}</td>
+              <td className="num">{plain(l.amountPaise)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="ph-slip-sums">
+        <div>
+          <span>Gross</span>
+          <span>{plain(v.totalPaise)}</span>
+        </div>
+        {v.returnedPaise > 0 && (
+          <div>
+            <span>Returned</span>
+            <span>−{plain(v.returnedPaise)}</span>
+          </div>
+        )}
+        {v.patient ? (
+          <div>Payable at the billing desk with the hospital bill</div>
+        ) : (
+          <div>
+            <span>Paid Amount</span>
+            <span>{plain(v.paidPaise ?? 0)}</span>
+          </div>
+        )}
+      </div>
+      <div className="ph-slip-foot">
+        <div>
+          <p>OVERCHARGE IF ANY IS REFUNDABLE, E.&amp;O.E</p>
+          <p>* * * GET WELL SOON * * *</p>
+          {settings.place && <p>Subject to {settings.place} Jurisdiction</p>}
+        </div>
+        <div className="ph-slip-sign">
+          <div className="ph-slip-sign-line">Pharmacist</div>
+          {signed && <div>{signed}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BillPrint({ invoice: v, settings, onClose }) {
+  const record = () => api(`/pharmacy/invoices/${v.id}/printed`, { method: 'POST', body: { what: 'invoice' } });
+  return (
+    <PrintPreview title="Bill – print preview" hint="Check it, then print on A5 paper." page={{ size: 'A5', margin: '8mm' }} onPrint={record} onClose={onClose}>
+      <PrintDocument className="bill-doc ph-doc">
+        <BillPaper invoice={v} settings={settings} />
+      </PrintDocument>
+    </PrintPreview>
   );
 }
 
@@ -148,10 +370,7 @@ function InvoicePrint({ invoice: v, settings, stay, creditNote = null, onClose }
             {lines.map((l, i) => (
               <tr key={l.id}>
                 <td className="num">{i + 1}</td>
-                <td>
-                  {l.name}
-                  {l.schedule ? ` (${l.schedule === 'narcotic' ? 'NDPS' : `Sch. ${l.schedule}`})` : ''}
-                </td>
+                <td>{lineName(l)}</td>
                 <td>{l.hsn}</td>
                 <td>{l.batch}</td>
                 <td className="nowrap">{expiryLabel(l.expiry)}</td>
@@ -380,7 +599,7 @@ export function InvoicePage() {
   if (res.error && !v) return <div className="pf-content"><Alert type="error">{res.error}</Alert></div>;
   if (!v) return <div className="pf-content"><p className="muted" aria-busy="true">Loading the invoice…</p></div>;
   const desk = activeMembership.roles.includes('pharmacist');
-  const printItems = [{ label: 'Tax invoice', icon: Printer, onSelect: () => setPrinting({}) }, ...v.returns.map((r) => ({ label: `Credit note ${r.number}`, icon: Printer, onSelect: () => setPrinting({ creditNote: r.number }) }))];
+  const printItems = [{ label: 'Bill', icon: Printer, onSelect: () => setPrinting({ bill: true }) }, { label: 'Tax invoice', icon: Printer, onSelect: () => setPrinting({}) }, ...v.returns.map((r) => ({ label: `Credit note ${r.number}`, icon: Printer, onSelect: () => setPrinting({ creditNote: r.number }) }))];
   return (
     <>
       <PharmacyHeader
@@ -509,7 +728,8 @@ export function InvoicePage() {
           }}
         />
       )}
-      {printing && res.data && <InvoicePrint invoice={v} settings={res.data.settings} stay={res.data.stay} creditNote={printing.creditNote ?? null} onClose={() => setPrinting(null)} />}
+      {printing?.bill && res.data && <BillPrint invoice={v} settings={res.data.settings} onClose={() => setPrinting(null)} />}
+      {printing && !printing.bill && res.data && <InvoicePrint invoice={v} settings={res.data.settings} stay={res.data.stay} creditNote={printing.creditNote ?? null} onClose={() => setPrinting(null)} />}
     </>
   );
 }

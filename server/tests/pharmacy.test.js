@@ -378,6 +378,55 @@ describe('issuing to admitted patients', () => {
   });
 });
 
+describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
+  async function stocked() {
+    const med = await medicine({ name: 'Folvite 5', hsn: '3004' });
+    await purchase(await supplier(), [{ medicineId: med.id, batch: 'B1', expiry: '2028-01', qty: 50, ratePaise: 100, mrpPaise: 210 }]);
+    return med;
+  }
+
+  it('lists only people with a pharmacy bill, each with their bills, and finds them by name', async () => {
+    const med = await stocked();
+    const billed = await register('Sample Asha Kale');
+    await register('Sample Never Billed');
+    const line = [{ medicineId: med.id, qty: 1 }];
+    const first = (await sell({ patientId: billed.id, lines: line })).body.invoice;
+    later('2026-09-28T07:00:00Z');
+    const second = (await sell({ patientId: billed.id, lines: line })).body.invoice;
+    later('2026-09-28T08:00:00Z');
+    const walkIn = (await sell({ customer: { name: 'Sample Walkin', phone: '99999 00001' }, lines: line, payment: { mode: 'cash' } })).body.invoice;
+
+    const all = await ph('get', '/invoices/people');
+    expect(all.status).toBe(200);
+    expect(all.body.people.map((x) => x.name)).toEqual(['Sample Walkin', 'Sample Asha Kale']);
+    expect(all.body.people[0]).toMatchObject({ type: 'external', billCount: 1, bills: [{ id: walkIn.id, number: walkIn.number }] });
+    expect(all.body.people[1]).toMatchObject({ key: billed.id, type: 'opd', mrn: billed.mrn, billCount: 2 });
+    expect(all.body.people[1].bills.map((b) => b.id)).toEqual([second.id, first.id]);
+
+    const found = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ search: 'asha' });
+    expect(found.body.people.map((x) => x.name)).toEqual(['Sample Asha Kale']);
+    const nobody = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ search: 'Never Billed' });
+    expect(nobody.body.people).toEqual([]);
+
+    const log = await AuditLog.findOne({ action: 'PHARMACY_PATIENT_LOOKED_UP', 'details.by': 'name', 'details.patientIds': billed.id }).lean();
+    expect(log.details.patientIds).toEqual([billed.id]);
+    expect(JSON.stringify(log.details)).not.toMatch(/asha/i);
+  });
+
+  it('keeps hospitals apart and is for the pharmacist only', async () => {
+    const med = await stocked();
+    await sell({ customer: { name: 'Sample Walkin', phone: '' }, lines: [{ medicineId: med.id, qty: 1 }], payment: { mode: 'cash' } });
+    const other = await createTenant('Other Hospital');
+    const otherPharm = await createUser({ name: 'Sample Other Pharmacist' });
+    await addMember(otherPharm, other, 'pharmacist');
+    const res = await (await loginAs(otherPharm, { app })).get('/api/pharmacy/invoices/people');
+    expect(res.status).toBe(200);
+    expect(res.body.people).toEqual([]);
+    expect((await ph('get', '/invoices/people', undefined, 'admin')).status).toBe(403);
+    expect((await ph('get', '/invoices/people', undefined, 'nurse')).status).toBe(403);
+  });
+});
+
 describe('reports and the export', () => {
   it('sales and GST by rate after returns, purchases by supplier, the H1 register, the export (admin only)', async () => {
     const sup = await supplier();
