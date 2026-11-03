@@ -341,6 +341,8 @@ describe('the pharmacy in the audit log (5 Oct 2026)', () => {
     expect(describeAudit({ action: 'PHARMACY_REGISTER_VIEWED', details: { type: 'narcotic', from: '2026-09-01', to: '2026-09-30' } })).toBe('Narcotic (NDPS) register · 1 Sep 2026 to 30 Sep 2026');
     expect(describeAudit({ action: 'PHARMACY_REGISTER_VIEWED', details: { type: 'H1', from: '2026-10-01', to: '2026-10-05' } })).toBe('Schedule H1 register · 1 Oct 2026 to 5 Oct 2026');
     expect(describeAudit({ action: 'PHARMACY_PATIENT_LOOKED_UP', details: { by: 'phone', patientIds: ['p1'], walkInBills: 2 } })).toBe('By phone number · 1 record · 2 walk-in bills');
+    expect(describeAudit({ action: 'PHARMACY_PATIENT_LOOKED_UP', details: { by: 'name', patientIds: ['p1'], walkInBills: 1 } })).toBe('By name, among people billed · 1 record · 1 walk-in customer');
+    expect(describeAudit({ action: 'PHARMACY_PATIENT_LOOKED_UP', details: { by: 'list', people: 12 } })).toBe('List of people billed · 12 people');
     expect(describeAudit({ action: 'PHARMACY_EXPORTED', details: { what: 'supplier_returns', from: '2026-09-01', to: '2026-09-30', rows: 0 } })).toBe('Returns to suppliers · 1 Sep 2026 to 30 Sep 2026 · 0 rows');
     expect(describeAudit({ action: 'PHARMACY_EXPORTED', details: { what: 'sales', from: '2026-09-01', to: '2026-09-30', rows: 120 } })).toBe('Sales with GST · 1 Sep 2026 to 30 Sep 2026 · 120 rows');
   });

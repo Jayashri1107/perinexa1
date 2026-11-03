@@ -13,6 +13,28 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **3 Nov 2026 – Sold's filters (branch `pharmacy-sold-filters`, developer's request):** the side list on Sold is
+  replaced by one row of filters like the store's earlier software: type (All, OPD, IPD, External), date, patient number,
+  patient name, doctor, bill or medicine. No patient is listed until a name or number is typed. Choosing someone shows
+  their bill across the page; printing stays A5. One bill's page now sets out its details first, then the medicines
+  with Sr. and Expiry columns, then the sums. **How to test:** as the pharmacist, Sold → type a name → click the person.
+- **3 Nov 2026 – pharmacy search as you type (branch `pharmacy-live-find`, developer's request):** on Today and New bill
+  the box has no Find button: it searches as you type, by part of a name, number or phone among people the pharmacy has
+  billed (anyone else still by their exact number or phone, so the owner's rule of 26 Oct 2026 stands), and filters the
+  day's list on the page too. Double-clicking a patient opens their bills on Sold; on Sold's list it opens the full bill.
+  **How to test:** as the pharmacist, Today → type part of a billed patient's name → double-click them.
+- **3 Nov 2026 – pharmacy: find a bill by the patient's name, and the bill in the store's earlier layout (branch
+  `pharmacy-sold-side`, developer's request – an exception to the feature freeze, the owner's go-ahead to be recorded):**
+  (1) **Sold** has a fixed side list for the pharmacist: everyone the pharmacy has billed, newest first, found by name,
+  number or phone; choosing someone shows their bill as it prints, with their other bills a click away. It lists only
+  people with a pharmacy bill, so the owner's rule of 26 Oct 2026 (the pharmacist never sees the whole patient list)
+  stands; each search is in the audit log. (2) **Print → Bill:** the layout of the store's earlier software (bill no, reg
+  no, date, patient, type, doctor; Sr., item, batch, expiry, disc amt, qty, amount; gross and paid amount; overcharge
+  line, jurisdiction from Pharmacy settings' city, pharmacist). A patient's bill says it is payable at the billing desk
+  rather than showing a paid amount. **Print → Tax invoice** stays, with HSN, GST and the amount in words. The Address
+  line is empty for a patient (the pharmacist sees no patient addresses). **Still to check:** the accountant on whether
+  the Bill alone is enough for GST, as it does not set out HSN or tax. **How to test:** as the pharmacist, Sold → type a
+  name in Find by patient name → choose the person → Print.
 - **31 Oct 2026 – scans booked by reception and ordered from the care plan; pharmacy papers (developer's requests –
   exceptions to the feature freeze, the owner's go-ahead to be recorded):** (1) **Reception → a patient → More → Book a
   scan:** the study, the doctor who asked for it (on paper), urgent, and a day and time if agreed. Reception types no

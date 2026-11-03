@@ -24,6 +24,7 @@ export function DataTable({
   sort,
   onSort,
   onRowClick,
+  onRowDoubleClick,
   rowClassName,
   toolbar,
   footer,
@@ -90,6 +91,7 @@ export function DataTable({
                 key={r[rowKey]}
                 className={[onRowClick ? 'dt-clickable' : '', rowClassName?.(r) ?? ''].join(' ')}
                 onClick={onRowClick ? (e) => !e.target.closest('a,button,select,input,label') && onRowClick(r) : undefined}
+                onDoubleClick={onRowDoubleClick ? (e) => !e.target.closest('a,button,select,input,label') && onRowDoubleClick(r) : undefined}
               >
                 {columns.map((c) => (
                   <td key={c.key} data-label={typeof c.header === 'string' ? c.header : undefined} className={[c.align === 'right' ? 'num' : '', c.className ?? ''].join(' ')}>

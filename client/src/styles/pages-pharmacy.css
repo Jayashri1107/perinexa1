@@ -57,6 +57,76 @@
 .ph-bill-sign p { margin: 0; }
 .ph-bill-sign > div { text-align: center; font-weight: 600; }
 .ph-bill-sign-line { margin-top: 9mm; padding-top: 1mm; border-top: 1px solid var(--print-ink); font-weight: 400; }
+
+/* The pharmacy bill, in the layout of the store's earlier bill (developer's request, 3 Nov 2026) */
+.ph-slip { color: var(--print-ink); font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.ph-slip-head { text-align: center; margin-bottom: 3mm; }
+.ph-slip-head .lh-name { font-weight: 700; font-size: var(--fs-print-h1); line-height: 1.2; }
+.ph-slip-ids { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 6mm; }
+.ph-slip-mobile { margin-top: 1.5mm; font-weight: 700; }
+.ph-slip-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5mm 3mm; margin: 0 0 2mm; }
+.ph-slip-facts > div { display: flex; gap: 1.5mm; min-width: 0; }
+.ph-slip-facts > div.is-long { grid-column: span 2; }
+.ph-slip-facts dt { flex: none; }
+.ph-slip-facts dt::after { content: ' :'; }
+.ph-slip-facts dd { margin: 0; overflow-wrap: anywhere; }
+.ph-slip .ph-slip-lines { width: 100%; border-collapse: collapse; border-top: 1px dashed var(--print-ink); border-bottom: 1px dashed var(--print-ink); margin: 0 0 2mm; }
+.ph-slip .ph-slip-lines th, .ph-slip .ph-slip-lines td { padding: 1mm; border: 0; background: none; text-align: left; font-size: inherit; font-weight: 400; vertical-align: top; }
+.ph-slip .ph-slip-lines .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ph-slip .ph-slip-lines .nowrap { white-space: nowrap; }
+.ph-slip .ph-slip-lines tr { break-inside: avoid; }
+.ph-slip-sums { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1mm 6mm; margin-bottom: 3mm; font-variant-numeric: tabular-nums; }
+.ph-slip-sums span + span { margin-left: 3mm; }
+.ph-slip-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 4mm; break-inside: avoid; }
+.ph-slip-foot p { margin: 0; }
+.ph-slip-sign { flex: none; min-width: 38mm; text-align: center; }
+.ph-slip-sign-line { margin-top: 10mm; padding-top: 1mm; border-top: 1px solid var(--print-ink); }
+
+/* Sold: one row of filters; the people found appear only after a search */
+.ph-sold { display: flex; flex-direction: column; gap: var(--space-4); }
+.ph-filters { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
+.ph-filter-row { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(4, minmax(140px, 1fr)); gap: var(--space-3); width: 100%; align-items: end; }
+.ph-filter { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
+.ph-filter > span { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-filter input, .ph-filter select { flex: none; width: 100%; max-width: none; min-width: 0; margin: 0; }
+.ph-filter .appt-daynav { width: 100%; }
+.ph-filter .appt-daynav input { flex: 1 1 auto; width: auto; }
+.ph-found { padding: var(--space-2) var(--space-4); }
+.ph-found > p { margin: var(--space-3) 0; }
+.ph-found ul { max-height: 420px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.ph-found li + li { border-top: 1px solid var(--border); }
+.ph-found button { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 110px 70px 90px; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-2); border: 0; border-radius: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; }
+.ph-found button:hover { background: var(--mist-50); }
+.ph-inv-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
+.ph-inv-facts dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.ph-inv-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.ph-person-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.ph-person-head h2 { margin: 0; }
+.ph-person-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.segmented.ph-person-bills { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; border-radius: var(--radius-md); }
+.segmented.ph-person-bills button { border-radius: var(--radius-sm); }
+.ph-slip-sheet { width: 100%; padding: var(--space-6); background: var(--surface); border: 1px solid var(--border); overflow-x: auto; container-type: inline-size; }
+/* On screen the bill fills the page, in the page's own size of letters; on paper it stays A5 */
+.ph-slip-sheet .ph-slip { font-size: var(--fs-body); line-height: var(--lh-body); }
+.ph-slip-sheet .ph-slip-head .lh-name { font-size: var(--fs-h2); }
+.ph-slip-sheet .ph-slip-facts { row-gap: var(--space-2); margin-bottom: var(--space-3); }
+.ph-slip-sheet .ph-slip .ph-slip-lines th, .ph-slip-sheet .ph-slip .ph-slip-lines td { padding: var(--space-2); }
+@media (max-width: 1023px) {
+  .ph-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-filter-row > .ph-filter:first-child { grid-column: 1 / -1; }
+  .ph-found button { grid-template-columns: minmax(0, 1fr) auto; }
+}
+/* A narrow sheet on screen (beside the side list, or on a phone): the details two a row, so nothing breaks mid-number */
+@container (max-width: 480px) {
+  .ph-slip-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-slip-facts > div.is-long { grid-column: 1 / -1; }
+}
+@media screen and (max-width: 719px) {
+  .ph-filter-row { grid-template-columns: minmax(0, 1fr); }
+  .ph-inv-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-slip-sheet { padding: var(--space-3); }
+  .ph-slip .ph-slip-lines th, .ph-slip .ph-slip-lines td { padding: 1mm 0.5mm; }
+}
 .ph-doc-lines th, .ph-doc-lines td { font-size: var(--fs-print-small); padding: 1mm 1.5mm; }
 .pdoc .ph-register th, .pdoc .ph-register td { font-size: var(--fs-print-small); padding: 1mm 1.5mm; border-bottom: 1px solid var(--print-rule); }
 .ph-finder .bill-search { flex: none; }
