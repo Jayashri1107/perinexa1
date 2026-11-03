@@ -136,7 +136,8 @@ export function LabWorklistPage() {
 
   return (
     <>
-      <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab" actions={<ExportButton what="lab" />} help="Samples to take, results to enter and check, tests at outside labs and recent reports. Open an order to print its labels, enter its results or print the report." />
+      {/* Phones, lab staff: the bottom bar calls this page Samples (app design, 2 Nov 2026) */}
+      <PageHeader tabs={HOSPITAL_LAB.tabs} title={data?.isLab && typeof window !== 'undefined' && window.matchMedia?.('(max-width: 719px)').matches ? 'Samples' : 'Lab'} documentTitle="Lab" actions={<ExportButton what="lab" />} help="Samples to take, results to enter and check, tests at outside labs and recent reports. Open an order to print its labels, enter its results or print the report." />
       <div className="pf-content">
         <div className="lab-toolbar">
           <div className="segmented lab-lists" aria-label="Lab lists">

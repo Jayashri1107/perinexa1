@@ -144,6 +144,7 @@ describe('the phone bottom bar (tabBarModules)', () => {
   it('picks the four places each role needs most', () => {
     expect(keys(['receptionist'])).toEqual(['today', 'patients', 'appointments', 'billing']);
     expect(keys(['doctor'])).toEqual(['today', 'patients', 'calendar', 'lab']);
+    expect(keys(['lab'])).toEqual(['today', 'lab-samples', 'lab-results', 'lab-new']);
   });
   it('skips places the menu does not have and fills from the menu order', () => {
     const roles = ['pharmacist'];

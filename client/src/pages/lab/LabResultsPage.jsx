@@ -214,7 +214,7 @@ export function LabResultsPage() {
     <>
       <PageHeader
         tabs={HOSPITAL_LAB.tabs}
-        title="Result entry by department"
+        title={typeof window !== 'undefined' && window.matchMedia?.('(max-width: 719px)').matches ? 'Results' : 'Result entry by department'}
         documentTitle="Lab result entry"
         help="The samples received in one department. Type the values row by row, save each sample, and report it once all its tests have results."
       />
