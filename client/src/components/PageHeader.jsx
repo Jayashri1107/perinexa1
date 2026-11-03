@@ -80,7 +80,7 @@ export function PageHeader({ breadcrumbs = [], title, subtitle, help, badges, ac
       )}
       <div className="ph-title-row">
         {/* Long names (e.g. a template's full name) use the smaller card-title size so they don't fill the screen */}
-        <h1 className={`ph-title ${typeof title === 'string' && title.length > 36 ? 'ph-title-long' : ''}`}>{title}</h1>
+        <h1 className={`ph-title ${typeof title === 'string' && title.length > 36 ? 'ph-title-long' : ''} ${typeof title === 'string' && title.length > 13 ? 'ph-title-mid' : ''}`}>{title}</h1>
         {badges && <span className="ph-badges">{badges}</span>}
         {subtitle && (
           <button type="button" className="icon-btn ph-info-btn" aria-label="About this page" aria-expanded={infoOpen} onClick={() => setInfoOpen(!infoOpen)}>

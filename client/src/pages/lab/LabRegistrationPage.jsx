@@ -99,6 +99,8 @@ export function LabRegistrationPage() {
 
   if (done) return <PaidReceipt done={done} onOpen={() => navigate(`/lab/orders/${done.order.id}`)} />;
   const ready = patient && chosen.length > 0 && (discount === 0 || disc.reason.trim().length >= 3);
+  // Phones, as in the app design (2 Nov 2026): the total beside the button at the foot
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
 
   return (
     <>
@@ -359,6 +361,12 @@ export function LabRegistrationPage() {
                 </tr>
               </tbody>
             </table>
+            {onPhone && (
+              <p className="lab-reg-total">
+                <span>To pay</span>
+                <strong className="tabular">{rupees(net)}</strong>
+              </p>
+            )}
             <button type="button" className="btn btn-primary lab-reg-save" disabled={!ready || busy} onClick={save}>
               {pay.take && amount > 0 ? <TestTube aria-hidden="true" /> : <UserPlus aria-hidden="true" />} {busy ? 'Saving…' : pay.take && amount > 0 ? 'Save and print receipt' : 'Save registration'}
             </button>

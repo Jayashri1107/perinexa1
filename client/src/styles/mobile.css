@@ -1249,6 +1249,80 @@
   section[aria-labelledby='ph-pay']::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 29; height: calc(env(safe-area-inset-bottom) + 76px); border-top: 1px solid var(--border); background: var(--surface); }
   section[aria-labelledby='ph-pay'] > .btn-primary { position: fixed; left: var(--space-4); right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); z-index: 30; width: auto; max-width: calc(100% - var(--space-4) * 2); min-height: 52px; font-size: var(--fs-body); }
 
+  /* ---------- A title too long for the top row at the full size ---------- */
+  .pf-title-slot .ph-title.ph-title-mid { font-size: calc(20px * var(--text-scale)); line-height: calc(24px * var(--text-scale)); white-space: normal; overflow-wrap: anywhere; }
+
+  /* ---------- App design: lab staff's Today ---------- */
+  .lb-home { display: flex; flex-direction: column; gap: var(--space-4); order: -1; }
+  .lb-home > .btn-primary { width: 100%; min-height: 52px; font-size: var(--fs-body); }
+  .lb-home h2 { margin: 0; padding: 0 var(--space-1) var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  .lb-steps { display: flex; flex-direction: column; margin: 0; padding: 0; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface); list-style: none; }
+  .lb-steps li + li { border-top: 1px solid var(--border); }
+  .lb-steps a { display: flex; align-items: center; gap: var(--space-3); min-height: 64px; padding: var(--space-2) var(--space-3); color: inherit; text-decoration: none; }
+  .lb-step-no { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--indigo-100); color: var(--indigo-700); font-size: var(--fs-label); font-weight: 700; }
+  .lb-step-word { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); font-weight: 600; }
+  .lb-steps strong { flex: none; font-size: calc(20px * var(--text-scale)); line-height: calc(26px * var(--text-scale)); font-weight: 700; }
+  .lb-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .lb-tiles a { display: block; min-width: 0; padding: var(--space-3); border-radius: var(--radius-lg); background: var(--surface); color: inherit; text-decoration: none; }
+  .lb-tiles strong { display: block; font-size: calc(24px * var(--text-scale)); line-height: calc(30px * var(--text-scale)); font-weight: 700; }
+  .lb-tiles span { display: block; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+
+  /* ---------- App design: Samples ---------- */
+  /* The lists in one swiping row; the New tab is at the foot */
+  .lab-toolbar { gap: var(--space-2); }
+  .lab-lists.segmented { display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow-x: auto; margin: 0 calc(var(--space-3) * -1); padding: 0 var(--space-3); border: 0; border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
+  .lab-lists.segmented::-webkit-scrollbar { display: none; }
+  .lab-lists.segmented > button { flex: none; min-height: 40px; padding: 0 var(--space-4); border-radius: var(--radius-pill); background: var(--surface); color: var(--slate-600); box-shadow: none; white-space: nowrap; }
+  .lab-lists.segmented > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
+  .lab-toolbar > .btn-primary[href='/lab/new'] { display: none; }
+  /* The chosen list already says its name */
+  .wl-section:has(#lab-list) > .panel-header { display: none; }
+  /* A sample: whole row opens the order; her name, the number, what is wanted */
+  .wl-list > li:has(> .wl-row-head .strong-name[href^='/lab/orders/']) { position: relative; padding: var(--space-3); }
+  .wl-list > li > .wl-row-head .strong-name[href^='/lab/orders/'] { color: var(--ink); font-size: var(--fs-body); font-weight: 700; text-decoration: none; }
+  .wl-list > li > .wl-row-head .strong-name[href^='/lab/orders/']::after { content: ''; position: absolute; inset: 0; }
+  .wl-list > li:has(> .wl-row-head .strong-name[href^='/lab/orders/']) .wl-who > .muted { display: block; font-size: var(--fs-label); line-height: var(--lh-label); }
+  .wl-list > li:has(> .wl-row-head .strong-name[href^='/lab/orders/']) > .hint { position: relative; z-index: 1; }
+
+  /* ---------- App design: Results ---------- */
+  /* One reading: the name and usual range at the left; the value and flag at the right */
+  .lab-res-card { padding: var(--space-3); }
+  .lab-res-table.bill-lines tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) 124px; gap: 2px var(--space-2); align-items: start; padding: var(--space-2) 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
+  .lab-res-table.bill-lines tbody td { display: block; width: auto; min-width: 0; padding: 0; border: 0; text-align: left; }
+  .lab-res-card .lab-res-table.bill-lines td[data-label]:not([data-label='Test']):not([data-label='Value'])::before, .lab-res-card .lab-res-table.bill-lines td[data-label]::before { display: none; }
+  .lab-res-card .lab-res-table.bill-lines td[data-label='Usual range']:not([data-label='Test']):not([data-label='Value']):not(:empty)::before { content: 'Usual range: '; display: inline; font-size: inherit; color: inherit; }
+  .lab-res-table.bill-lines tr.lab-res-section td { grid-column: 1 / -1; }
+  .lab-res-table.bill-lines td[data-label='Test'] { grid-column: 1 / -1; }
+  .lab-res-table.bill-lines td[data-label='Test']:empty, .lab-res-table.bill-lines td:empty { display: none; }
+  .lab-res-table.bill-lines td[data-label='Value'] { grid-column: 1; grid-row: 2; font-weight: 600; }
+  .lab-res-table.bill-lines td[data-label='Value'] label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+  .lab-res-table.bill-lines td[data-label='Result'] { grid-column: 2; grid-row: 2 / span 2; }
+  .lab-res-table.bill-lines td[data-label='Result'] :is(input, select, textarea) { width: 100%; min-width: 0; min-height: 44px; }
+  .lab-res-table.bill-lines td[data-label='Unit'] { grid-column: 1; grid-row: 3; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .lab-res-table.bill-lines td[data-label='Usual range'] { grid-column: 1; grid-row: 4; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .lab-res-table.bill-lines td[data-label='Flag'] { grid-column: 2; grid-row: 4; }
+  .lab-res-table.bill-lines td[data-label='Flag'] select { width: 100%; min-width: 0; min-height: 36px; padding: 0 var(--space-1); font-size: var(--fs-caption); }
+  .lab-res-table.bill-lines tr.lab-res-section { padding-bottom: 0; border-top: 0; color: var(--slate-600); font-weight: 600; }
+  .lab-res-card > .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin-top: var(--space-2); }
+  .lab-res-card > .row > .btn { width: 100%; min-height: 44px; }
+  .lab-res-card > .row > .hint { grid-column: 1 / -1; }
+
+  /* ---------- App design: New registration ---------- */
+  .pf-has-tabbar:has(.lab-reg) .pf-tabbar { display: none; }
+  .lab-reg-card > .segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: var(--space-1); overflow: visible; }
+  .lab-reg-card > .segmented > button { min-width: 0; min-height: 44px; padding: 2px var(--space-1); white-space: normal; line-height: 16px; }
+  .pf-main:has(.lab-reg) .pf-content { padding-bottom: 92px; }
+  .lab-reg-bill::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 29; height: calc(env(safe-area-inset-bottom) + 76px); border-top: 1px solid var(--border); background: var(--surface); }
+  .lab-reg-total { position: fixed; left: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); z-index: 30; display: flex; flex-direction: column; width: 96px; min-height: 52px; margin: 0; justify-content: center; }
+  .lab-reg-total span { color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; }
+  .lab-reg-total strong { font-size: calc(20px * var(--text-scale)); line-height: calc(26px * var(--text-scale)); font-weight: 700; }
+  .lab-reg-bill > .lab-reg-save { position: fixed; left: calc(var(--space-4) + 104px); right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); z-index: 30; width: auto; max-width: calc(100% - var(--space-4) * 2 - 104px); min-height: 52px; font-size: var(--fs-body); }
+  .lab-reg-pick { grid-template-columns: minmax(0, 1fr) auto auto; min-height: 44px; }
+  .lab-reg-pick > .muted { display: none; }
+  .lab-reg-chosen tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-2); align-items: center; padding: var(--space-2) 0; }
+  .lab-reg-chosen tbody td { display: block; width: auto; min-width: 0; padding: 0; border: 0; }
+  .lab-reg-chosen tbody td:nth-child(1), .lab-reg-chosen tbody td:nth-child(3) { display: none; }
+
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
   [data-short]:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }

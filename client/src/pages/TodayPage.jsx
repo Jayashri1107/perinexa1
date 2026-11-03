@@ -20,6 +20,7 @@ import { PharmacyActions, PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { DailyRegister } from './pharmacy/RegisterPage.jsx';
 import { DoctorFollowUps } from './followups/DoctorFollowUps.jsx';
 import { HandoverList, VITALS_DUE_HOURS, WardHome, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
+import { LabHome } from './lab/LabHome.jsx';
 import { timeLabel } from './appointments/appointmentFormat.js';
 import { OpdCasePaper } from './beds/AdmissionDesk.jsx';
 import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, NextPatientCard, QuickBookingsSection, TokenButton, TokenSlip, WaitingLists } from './appointments/TodayAppointments.jsx';
@@ -447,6 +448,8 @@ function RoleToday({ roles, lensBar = null }) {
   const doctorHome = isDoctor && onPhone;
   // Phones, a nurse or an RMO: the ward as in the app design (2 Nov 2026)
   const wardHome = onPhone && !isDoctor && (roles.includes('nurse') || roles.includes('rmo'));
+  // Phones, lab staff: the steps of the work as in the app design (2 Nov 2026), in place of the lab's cards
+  const labHome = onPhone && roles.includes('lab');
   const walkInButton = today.data?.canMarkArrived && canSeeAppointments(roles) && !rmoOnly && (
     <button type="button" className="btn btn-secondary" onClick={() => setArriving({ patient: null })}>
       <Hash aria-hidden="true" /> Walk-in token
@@ -647,6 +650,7 @@ function RoleToday({ roles, lensBar = null }) {
         ))
       : []),
   ].filter(Boolean);
+  const shownTiles = labHome ? tiles.filter((t) => !String(t.key).startsWith('lab-')) : tiles;
 
   // Today's patients, each doctor's waiting list and the bookings to register: in the lists below, or for reception
   // the main column of the desk (ReceptionDesk.jsx)
@@ -812,7 +816,7 @@ function RoleToday({ roles, lensBar = null }) {
         {/* Reception's dashboard: three numbers, then the patients beside To do (26 Oct 2026: "more simple") – no
             greeting, no quick tiles (the sidebar has them) and no second row of list cards (To do opens the lists) */}
         {simple && <DeskNumbers rows={deskRows} collected={collected.data} />}
-        {!simple && (tiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
+        {!simple && (shownTiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
           // One line of small cards (owner, 24 Oct 2026): the AI brief, Your day so far, the numbers (To approve after
           // them), then the handover last
           <section className="td-group" aria-label="At a glance">
@@ -826,11 +830,12 @@ function RoleToday({ roles, lensBar = null }) {
                 />
               )}
               <MyDayCard enabled={has(roles, ['doctor', 'rmo'])} />
-              {[...tiles].sort((x, y) => (x.key === 'approve') - (y.key === 'approve'))}
+              {[...shownTiles].sort((x, y) => (x.key === 'approve') - (y.key === 'approve'))}
               {clinicalWork && inpatients.data && !(wardHome && !roles.includes('rmo')) && <HandoverList inpatients={inpatients.data} />}
             </div>
           </section>
         )}
+        {labHome && <LabHome counts={labWork.data?.counts} />}
         {wardHome && (
           <WardHome
             inpatients={inpatients.data}

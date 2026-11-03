@@ -1,4 +1,4 @@
-import { BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, Truck, UserCog, Users, Wallet } from 'lucide-react';
+import { BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 
@@ -508,8 +508,16 @@ const TAB_BAR_ORDER = {
   billing: ['today', 'billing', 'patients', 'expenses'],
   admin: ['today', 'patients', 'billing', 'hospital-admin'],
 };
+// Lab staff, as in the app design (2 Nov 2026): the steps of the work; the Lab dashboard and Patients are under Menu
+const LAB_TAB_PLACES = [
+  { key: 'lab-samples', label: 'Samples', icon: TestTube, to: '/lab', end: true, activeFor: '/lab/orders' },
+  { key: 'lab-results', label: 'Results', icon: ClipboardPen, to: '/lab/results', end: true },
+  { key: 'lab-new', label: 'New', icon: CirclePlus, to: '/lab/new', end: true },
+];
 export function tabBarModules(modules = [], roles = []) {
   const linked = modules.filter((m) => m.to);
+  const today = linked.find((m) => m.key === 'today');
+  if (roles.length === 1 && roles[0] === 'lab' && today) return [today, ...LAB_TAB_PLACES];
   const picked = [];
   for (const key of [...roles.flatMap((r) => TAB_BAR_ORDER[r] ?? []), ...linked.map((m) => m.key)]) {
     const m = linked.find((x) => x.key === key);
