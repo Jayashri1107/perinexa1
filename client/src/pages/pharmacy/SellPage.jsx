@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, ClipboardList, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
+import { BedDouble, ClipboardList, Minus, Plus, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -245,6 +245,11 @@ export function SellPage({ kind = 'sale' }) {
     s.send('/pharmacy/invoices', body);
   };
 
+  // Phones, as in the app design (2 Nov 2026): one less, one more beside the quantity
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const setQty = (key, qty) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty } : x)));
+  const stepQty = (l, by) => setQty(l.key, String(Math.max(1, (Number(l.qty) || 0) + by)));
+
   return (
     <>
       <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'New bill'} crumb={issue ? 'Issue to ward' : 'New bill'} />
@@ -363,7 +368,17 @@ export function SellPage({ kind = 'sale' }) {
                         <BatchPicker line={l} onChange={(batchId) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, batchId } : x)))} />
                       </td>
                       <td data-label="Quantity" className="num">
-                        <input className="bill-price-input" inputMode="numeric" aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, qty: e.target.value } : x)))} />
+                        {onPhone && (
+                          <button type="button" className="ph-qty-step" aria-label={`One less ${l.medicine.name}`} onClick={() => stepQty(l, -1)}>
+                            <Minus aria-hidden="true" />
+                          </button>
+                        )}
+                        <input className="bill-price-input" inputMode="numeric" aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setQty(l.key, e.target.value)} />
+                        {onPhone && (
+                          <button type="button" className="ph-qty-step" aria-label={`One more ${l.medicine.name}`} onClick={() => stepQty(l, 1)}>
+                            <Plus aria-hidden="true" />
+                          </button>
+                        )}
                       </td>
                       <td>
                         {l.prescribed ? (

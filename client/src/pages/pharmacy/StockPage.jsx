@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardCheck, FileDown, FileUp, PackageX } from 'lucide-react';
+import { ClipboardCheck, FileDown, FileUp, PackagePlus, PackageX } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { DataTable, SearchInput, usePagedRows } from '../../components/DataTable.jsx';
@@ -14,6 +14,10 @@ import { BarcodeBox, Modal, PharmacyHeader, ScheduleMark, money, useSend } from 
 
 export function StockPage() {
   const navigate = useNavigate();
+  const { activeMembership } = useAuth();
+  const desk = activeMembership.roles.includes('pharmacist');
+  // Phones, as in the app design (2 Nov 2026): the delivery button floats over the list
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
   const res = useFetch('/pharmacy/stock');
   const [filter, setFilter] = useState('all');
   const [sheet, setSheet] = useState(false);
@@ -24,7 +28,18 @@ export function StockPage() {
     .filter((m) => !q || [m.name, m.generic].some((t) => t?.toLowerCase().includes(q)));
   return (
     <>
-      <PharmacyHeader title="Stock" crumb="Stock" />
+      <PharmacyHeader
+        title="Stock"
+        crumb="Stock"
+        className="ph-fab"
+        actions={
+          onPhone && desk && (
+            <Link className="btn btn-primary" to="/pharmacy/purchases/new">
+              <PackagePlus aria-hidden="true" /> Receive a delivery
+            </Link>
+          )
+        }
+      />
       <div className="pf-content bill-page">
         {res.error && <Alert type="error">{res.error}</Alert>}
         {res.data && (

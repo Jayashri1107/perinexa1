@@ -16,11 +16,12 @@ import { buyingSections, cleanBarcode, isBarcode, medicineLabel, pharmacyTabs, s
  * buying: the page belongs to the Purchases tab (purchases, orders, returns to a supplier) and shows its sections.
  * A pharmacist has the pharmacy's sections in the sidebar (owner, 26 Oct 2026), so no tabs; the admin keeps them.
  */
-export function PharmacyHeader({ title, crumb, actions, subtitle, badges, buying = false }) {
+export function PharmacyHeader({ title, crumb, actions, subtitle, badges, buying = false, className }) {
   const { activeMembership } = useAuth();
   const pharmacist = activeMembership.roles.includes('pharmacist');
   return (
     <PageHeader
+      className={className}
       breadcrumbs={[{ label: 'Pharmacy', to: pharmacist ? '/' : '/pharmacy/stock' }, ...(crumb ? [{ label: crumb }] : [])]}
       title={title}
       subtitle={subtitle}

@@ -156,6 +156,9 @@ export function DailyRegister({ glance = null, actions = null }) {
     .filter((r) => !term || [nameOf(r), r.patient?.mrn, r.patient?.phone, r.customer?.phone, r.opdNo].some((v) => v && String(v).toLowerCase().includes(term)))
     .map((r) => ({ ...r, key: `${r.type}-${r.patient?.id ?? r.bills[0]?.id}` }));
   const counts = res.data?.counts;
+  // Phones, as in the app design (2 Nov 2026): who is waiting with a prescription, above the register
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const waiting = onPhone && isToday ? (res.data?.rows ?? []).filter((r) => r.status === 'rx_waiting') : [];
 
   const action = (r) => {
     if (r.type === 'external') {
@@ -190,6 +193,24 @@ export function DailyRegister({ glance = null, actions = null }) {
           {actions}
         </div>
         {glance}
+        {waiting.length > 0 && (
+          <section className="ph-rx-waiting" aria-labelledby="ph-rx-waiting">
+            <h2 id="ph-rx-waiting">Prescriptions waiting</h2>
+            <ul>
+              {waiting.map((r) => (
+                <li key={r.patient.id}>
+                  <button type="button" onClick={() => open(r)}>
+                    <span>
+                      <strong>{nameOf(r)}</strong>
+                      {[r.patient.mrn, r.doctor].filter(Boolean).join(' · ')}
+                    </span>
+                    <ChevronRight aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {res.error && <Alert type="error">{res.error}</Alert>}
         <DataTable
           caption="Daily patient register"
