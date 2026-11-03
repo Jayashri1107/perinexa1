@@ -217,6 +217,19 @@ export function NewReferralPage() {
   const [saving, setSaving] = useState(false);
   const [addingDoctor, setAddingDoctor] = useState(false);
   const requestId = useRef(newRequestId());
+  // Phones, as in the app design (2 Nov 2026): the same form in three steps. A problem opens the step it is on.
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const [step, setStep] = useState(1);
+  const goStep = (n) => {
+    setStep(n);
+    document.querySelector('.form-page')?.scrollIntoView?.();
+  };
+  const stepOf = (problems) => {
+    const keys = Object.keys(problems).filter((k) => problems[k]);
+    if (keys.some((k) => /^(patient|guest|referringDoctorId|receivedAt|via)/.test(k))) return 1;
+    if (keys.some((k) => /^(urgency|centre|consultantId)/.test(k))) return 2;
+    return 3;
+  };
 
   // The form starts once the hospital's centres are known (the first active centre is chosen)
   useEffect(() => {
@@ -234,6 +247,7 @@ export function NewReferralPage() {
     if (Object.keys(problems).length) {
       setFields(problems);
       setError('Some details are missing – see the fields marked below.');
+      setStep(stepOf(problems));
       return;
     }
     if (intakeHasFetalSex(form, mode === 'guest' ? guest : null)) {
@@ -250,6 +264,7 @@ export function NewReferralPage() {
     } catch (err) {
       setError(err.message);
       setFields(err.fields ?? {});
+      setStep(stepOf(err.fields ?? {}));
       setSaving(false);
     }
   };
@@ -278,7 +293,17 @@ export function NewReferralPage() {
   return (
     <>
       {header}
-      <form className="pf-content form-page" onSubmit={save} noValidate>
+      <form className="pf-content form-page" data-step={onPhone ? step : undefined} onSubmit={save} noValidate>
+        {onPhone && (
+          <p className="ref-steps">
+            <span>Step {step} of 3</span>
+            <span className="ref-steps-bars" aria-hidden="true">
+              {[1, 2, 3].map((n) => (
+                <span key={n} className={n <= step ? 'is-on' : undefined} />
+              ))}
+            </span>
+          </p>
+        )}
         <Alert type="error">{error}</Alert>
         <section className="card form-section" aria-labelledby="ref-patient-title">
           <h2 id="ref-patient-title">The patient</h2>
@@ -324,14 +349,37 @@ export function NewReferralPage() {
           )}
         </section>
         <IntakeFields form={form} setForm={setForm} view={view.data} doctors={doctors} fields={fields} onAddDoctor={() => setAddingDoctor(true)} />
-        <div className="sticky-actions">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            <FilePlus2 aria-hidden="true" /> {saving ? 'Saving…' : 'Save the referral'}
-          </button>
-          <Link to="/referrals" className="btn btn-link">
-            Cancel
-          </Link>
-        </div>
+        {onPhone ? (
+          <div className="sticky-actions">
+            {step === 1 ? (
+              <Link to="/referrals" className="btn btn-secondary">
+                Cancel
+              </Link>
+            ) : (
+              <button type="button" className="btn btn-secondary" onClick={() => goStep(step - 1)}>
+                Back
+              </button>
+            )}
+            {step < 3 ? (
+              <button type="button" className="btn btn-primary" onClick={() => goStep(step + 1)}>
+                Next
+              </button>
+            ) : (
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : 'Save the referral'}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="sticky-actions">
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              <FilePlus2 aria-hidden="true" /> {saving ? 'Saving…' : 'Save the referral'}
+            </button>
+            <Link to="/referrals" className="btn btn-link">
+              Cancel
+            </Link>
+          </div>
+        )}
       </form>
       {addingDoctor && (
         <ReferringDoctorDialog
