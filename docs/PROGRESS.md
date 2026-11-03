@@ -13,6 +13,11 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   with the developer" in `CLAUDE.md`.
 - **Next for the owner:** contract with the developer (A3), service accounts in the company's name (A4), the kick-off
   meeting (A8).
+- **3 Nov 2026 – pharmacy search as you type (branch `pharmacy-live-find`, developer's request):** on Today and New bill
+  the box has no Find button: it searches as you type, by part of a name, number or phone among people the pharmacy has
+  billed (anyone else still by their exact number or phone, so the owner's rule of 26 Oct 2026 stands), and filters the
+  day's list on the page too. Double-clicking a patient opens their bills on Sold; on Sold's list it opens the full bill.
+  **How to test:** as the pharmacist, Today → type part of a billed patient's name → double-click them.
 - **3 Nov 2026 – pharmacy: find a bill by the patient's name, and the bill in the store's earlier layout (branch
   `pharmacy-sold-side`, developer's request – an exception to the feature freeze, the owner's go-ahead to be recorded):**
   (1) **Sold** has a fixed side list for the pharmacist: everyone the pharmacy has billed, newest first, found by name,

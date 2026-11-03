@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
@@ -46,6 +46,7 @@ export function InvoicesPage() {
   const { activeMembership } = useAuth();
   const desk = activeMembership.roles.includes('pharmacist');
   const [person, setPerson] = useState(null);
+  const start = useLocation().state?.find; // a double click on a patient elsewhere: their patient number
   // Phones, as in the app design (2 Nov 2026): how many bills and their total above the list
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
   const bills = res.data?.invoices;
@@ -112,7 +113,7 @@ export function InvoicesPage() {
       <div className="pf-content bill-page">
         {desk ? (
           <div className="ph-sold-layout">
-            <PeopleBilled picked={person} onPick={setPerson} />
+            <PeopleBilled picked={person} onPick={setPerson} start={start} />
             <div className="ph-sold-main">{person ? <PersonBills key={person.key} person={person} onClose={() => setPerson(null)} /> : dayList}</div>
           </div>
         ) : (
@@ -124,11 +125,21 @@ export function InvoicesPage() {
 }
 
 /** The fixed side list on Sold: everyone the pharmacy has billed, or those whose name, number or phone matches. */
-function PeopleBilled({ picked, onPick }) {
-  const [text, setText] = useState('');
+function PeopleBilled({ picked, onPick, start }) {
+  const navigate = useNavigate();
+  const [text, setText] = useState(start ?? '');
   const search = useDebounced(text.trim(), 300);
   const res = useFetch('/pharmacy/invoices/people', search.length >= 2 ? { search } : undefined);
   const people = res.data?.people ?? [];
+  // Came with a patient's number: open their bills as soon as they are found
+  const opened = useRef(false);
+  useEffect(() => {
+    const hit = start && !opened.current && people.find((x) => x.mrn === start);
+    if (hit) {
+      opened.current = true;
+      onPick(hit);
+    }
+  }, [start, people, onPick]);
   return (
     <aside className="card ph-people" aria-labelledby="ph-people-title">
       <h2 id="ph-people-title">Find by patient name</h2>
@@ -138,7 +149,7 @@ function PeopleBilled({ picked, onPick }) {
       <ul className="ph-people-list" aria-label="People billed">
         {people.map((x) => (
           <li key={x.key}>
-            <button type="button" aria-current={picked?.key === x.key ? 'true' : undefined} onClick={() => onPick(x)}>
+            <button type="button" title="Double-click to open the full bill" aria-current={picked?.key === x.key ? 'true' : undefined} onClick={() => onPick(x)} onDoubleClick={() => navigate(`/pharmacy/invoices/${x.bills[0].id}`)}>
               <strong>
                 {x.name} <TypePill type={x.type} />
               </strong>

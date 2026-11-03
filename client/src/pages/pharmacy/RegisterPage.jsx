@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BedDouble, ChevronLeft, ChevronRight, CircleCheck, CircleDashed, Clock, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { DataTable, formatNumber } from '../../components/DataTable.jsx';
-import { Alert, StatusPill, formatDateTime } from '../../components/ui.jsx';
+import { Alert, StatusPill, formatDateTime, useDebounced } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
 import { money } from './pharmacyUi.jsx';
@@ -11,7 +11,8 @@ import { money } from './pharmacyUi.jsx';
 // The pharmacy's daily register, on the pharmacist's Today page (owner, 26 Oct 2026): the day's patients who need the
 // pharmacy, never the whole patient list – OPD (arrived that day or prescribed that day), IPD (in hospital) and External (walk-in customers billed that
 // day), each with what the pharmacy has done and the next step: make her bill, issue her medicines, or open the bill.
-// Someone from another day is found by her exact patient number or phone number (in the audit log).
+// Someone from another day is found by her exact patient number or phone number, or by name among people the pharmacy
+// has billed, as you type (in the audit log). A double click on a patient opens their bills.
 
 export const PATIENT_TYPES = { opd: 'OPD', ipd: 'IPD', external: 'External' };
 const TYPE_LOOK = { opd: { tone: 'due', icon: Stethoscope }, ipd: { tone: 'admitted', icon: BedDouble }, external: { tone: 'neutral', icon: UserPlus } };
@@ -45,49 +46,81 @@ const detailsOf = (r) => {
   return [r.customer.phone, formatDateTime(r.at)].filter(Boolean).join(' · ');
 };
 
+/** Where a double click on a patient goes: Sold, with that patient's bills open (the number stays out of the address). */
+export const billsPlace = (patient) => ['/pharmacy/invoices', { state: { find: patient.mrn } }];
+
 /**
- * Find someone who is not on the day's register: her exact patient number, or her phone number. bare: inside another
- * card; slim: one line, no heading (the pharmacist's Today toolbar, 26 Oct 2026).
+ * A row where one click and a double click do different things: the click waits a moment, and a double click cancels
+ * it. Call it for each row: {...clicks(single, double)}.
  */
-export function FindElsewhere({ onPick, onOpenBill, bare = false, slim = false }) {
+export function useClickOrDouble() {
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return (single, double) => ({
+    onClick: () => {
+      clearTimeout(timer.current);
+      timer.current = setTimeout(single, 250);
+    },
+    onDoubleClick: () => {
+      clearTimeout(timer.current);
+      double();
+    },
+  });
+}
+
+/**
+ * Find someone who is not on the day's register, as you type: part of a name, number or phone among people the pharmacy
+ * has billed, or anyone's exact patient number or phone number. onText: the words typed, for the page to filter its own
+ * list too. bare: inside another card; slim: one line, no heading (the pharmacist's Today toolbar, 26 Oct 2026).
+ */
+export function FindElsewhere({ onPick, onOpenBills, onOpenBill, onText, bare = false, slim = false }) {
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const find = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      setResult(await api('/pharmacy/register/find', { query: { q: text.trim() } }));
-    } catch (err) {
-      setResult({ error: err.message });
-    } finally {
-      setBusy(false);
+  const clicks = useClickOrDouble();
+  const term = useDebounced(text.trim(), 300);
+  useEffect(() => {
+    if (term.length < 3) {
+      setResult(null);
+      return undefined;
     }
-  };
+    let current = true;
+    api('/pharmacy/register/find', { query: { q: term } })
+      .then((res) => current && setResult(res))
+      .catch((err) => current && setResult({ error: err.message }));
+    return () => {
+      current = false;
+    };
+  }, [term]);
   const nothing = result && !result.error && !result.patients.length && !result.external.length;
   const Box = bare || slim ? 'div' : 'section';
   const Heading = bare ? 'h3' : 'h2';
   return (
     <Box className={slim ? 'ph-find-slim' : bare ? 'ph-elsewhere' : 'card bill-section'} aria-labelledby={slim ? undefined : 'ph-find'} aria-label={slim ? 'Someone from another day' : undefined}>
       {!slim && <Heading id="ph-find">Someone from another day</Heading>}
-      {!slim && <p className="hint">Type her full patient number (as on her card) or her phone number. Each search is kept in the audit log.</p>}
-      <form className="bill-toolbar" onSubmit={find}>
-        <label className="bill-search" title="Her full patient number (as on her card) or her phone number. Each search is kept in the audit log.">
+      {!slim && <p className="hint">Type a name, number or phone. Double-click a patient to open their bills. Each search is kept in the audit log.</p>}
+      <div className="bill-toolbar">
+        <label className="bill-search" title="A name finds people the pharmacy has billed. Anyone else: their full patient number or phone number. Each search is kept in the audit log.">
           <Search aria-hidden="true" />
-          <span className="sr-only">Someone from another day: patient number or phone number (each search is kept in the audit log)</span>
-          <input type="search" placeholder={slim ? 'Someone from another day: patient number or phone' : 'Patient number or phone number'} value={text} maxLength={40} onChange={(e) => setText(e.target.value)} />
+          <span className="sr-only">Find a patient: name, number or phone (each search is kept in the audit log)</span>
+          <input
+            type="search"
+            placeholder="Patient name, number or phone"
+            value={text}
+            maxLength={40}
+            onChange={(e) => {
+              setText(e.target.value);
+              onText?.(e.target.value);
+            }}
+          />
         </label>
-        <button type="submit" className="btn btn-secondary" disabled={busy || text.trim().length < 3}>
-          <Search aria-hidden="true" /> Find
-        </button>
-      </form>
+      </div>
       {result?.error && <Alert type="error">{result.error}</Alert>}
-      {nothing && <p className="muted">Nobody found. Check the number, or ask reception to check her in.</p>}
+      {nothing && <p className="muted">Nobody else found. A name finds only people the pharmacy has billed: for anyone else, type their full patient number or phone, or ask reception to check them in.</p>}
       {(result?.patients?.length > 0 || result?.external?.length > 0) && (
         <ul className="appt-pick-list" aria-label="Found">
           {result.patients.map((p) => (
             <li key={p.id}>
-              <button type="button" className="appt-pick" onClick={() => onPick({ type: p.admitted ? 'ipd' : 'opd', patient: p })}>
+              <button type="button" className="appt-pick" title="Double-click to open their bills" {...clicks(() => onPick({ type: p.admitted ? 'ipd' : 'opd', patient: p }), () => onOpenBills(p))}>
                 <strong>
                   {p.fullName} <TypePill type={p.admitted ? 'ipd' : 'opd'} />
                 </strong>
@@ -130,6 +163,7 @@ export function DailyRegister({ glance = null, actions = null }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [text, setText] = useState('');
+  const [topText, setTopText] = useState('');
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date') : undefined;
   const type = PATIENT_TYPES[params.get('type')] ? params.get('type') : 'all';
   const res = useFetch('/pharmacy/register', date ? { date } : undefined);
@@ -150,7 +184,9 @@ export function DailyRegister({ glance = null, actions = null }) {
   // A waiting prescription opens the sale with her and that prescription's medicines already on the bill
   const open = ({ type: t, patient, status, prescriptionVisitId }) => navigate(billPath(t), { state: { patient, ...(status === 'rx_waiting' && prescriptionVisitId ? { visitId: prescriptionVisitId } : {}) } });
   const openBill = (id) => navigate(`/pharmacy/invoices/${id}`);
-  const term = text.trim().toLowerCase();
+  const openBills = (patient) => navigate(...billsPlace(patient));
+  // The box at the top filters the day's list too
+  const term = (text.trim() || topText.trim()).toLowerCase();
   const rows = (res.data?.rows ?? [])
     .filter((r) => type === 'all' || r.type === type)
     .filter((r) => !term || [nameOf(r), r.patient?.mrn, r.patient?.phone, r.customer?.phone, r.opdNo].some((v) => v && String(v).toLowerCase().includes(term)))
@@ -189,7 +225,7 @@ export function DailyRegister({ glance = null, actions = null }) {
       <div className="ph-register">
         {/* One slim line: someone from another day, and the day's quick actions (26 Oct 2026: less space) */}
         <div className="ph-topbar">
-          <FindElsewhere slim onPick={open} onOpenBill={openBill} />
+          <FindElsewhere slim onPick={open} onOpenBills={openBills} onOpenBill={openBill} onText={setTopText} />
           {actions}
         </div>
         {glance}
@@ -217,6 +253,7 @@ export function DailyRegister({ glance = null, actions = null }) {
           rows={res.data ? rows : undefined}
           rowKey="key"
           loading={res.loading}
+          onRowDoubleClick={(r) => (r.patient ? openBills(r.patient) : openBill(r.bills[0].id))}
           emptyText={term ? 'Nobody on this register matches.' : type === 'all' ? 'Nobody on the register yet.' : `No ${PATIENT_TYPES[type]} patients on this register.`}
           toolbar={
             <div className="bill-toolbar">
