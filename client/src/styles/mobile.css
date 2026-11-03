@@ -9,11 +9,15 @@
 /* Only on phones (shown below) */
 .pf-search-btn, .pf-tabbar, .sb-logout, .ph-info-btn, .ph-jump-btn, .ph-caption { display: none; }
 
+:root { --safe-top: env(safe-area-inset-top); }
+/* The apps already sit below the phone's status bar: the top inset would count twice */
+html.in-app { --safe-top: 0px; }
+
 @media (max-width: 719px) {
   /* ---------- The header: one row, stuck to the top ---------- */
   .pf-topbar {
     position: sticky; top: 0; z-index: 30; flex-wrap: nowrap; gap: var(--space-2);
-    margin: 0; padding: calc(env(safe-area-inset-top) + var(--space-2)) var(--space-3) var(--space-2);
+    margin: 0; padding: calc(var(--safe-top) + var(--space-2)) var(--space-3) var(--space-2);
     border: 0; border-bottom: 1px solid var(--card-border); border-radius: 0; box-shadow: none;
   }
   .pf-topbar-start { flex: 1 1 auto; min-width: 0; gap: var(--space-2); }
@@ -53,7 +57,7 @@
      the screen (its list scrolls on a short one), Log out at its foot; a tap beside it closes it ---------- */
   .pf .sb {
     z-index: 60; width: min(84vw, var(--sidebar-width)); height: 100vh; height: 100dvh;
-    padding-top: calc(env(safe-area-inset-top) + var(--space-3)); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
+    padding-top: calc(var(--safe-top) + var(--space-3)); padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3));
   }
   .pf-menu-backdrop { position: fixed; inset: 0; z-index: 55; border: 0; padding: 0; background: var(--overlay); }
   .pf-mobile-open .sb-logout {
@@ -77,7 +81,7 @@
   .modal .btn-link { text-align: left; }
   .modal-backdrop { align-items: end; padding: 0; }
   .modal {
-    max-width: none; max-height: calc(100dvh - var(--space-8) - env(safe-area-inset-top));
+    max-width: none; max-height: calc(100dvh - var(--space-8) - var(--safe-top));
     border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
   }
 
@@ -266,7 +270,7 @@
   .pf-sheet { background: var(--overlay); }
   .pf-sheet .pf-topbar { display: none; }
   .pf-sheet .pf-main {
-    margin-top: calc(env(safe-area-inset-top) + var(--space-4)); min-height: calc(100dvh - var(--space-4));
+    margin-top: calc(var(--safe-top) + var(--space-4)); min-height: calc(100dvh - var(--space-4));
     padding-bottom: env(safe-area-inset-bottom); border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--mist-100);
     animation: pf-sheet-up 0.22s ease-out;
   }
@@ -388,7 +392,7 @@
   /* ---------- A patient's record: her name bar stays at the top while scrolling (PageHeader pinned) – name, then age ·
      weeks · doctor, then her tags in one line, then the buttons; once the page moves under it, only the name, the
      line under it, the tags and the main button ---------- */
-  .ph-pinned { position: sticky; top: calc(env(safe-area-inset-top) + 61px); z-index: 20; background: var(--mist-100); padding-bottom: var(--space-2); }
+  .ph-pinned { position: sticky; top: calc(var(--safe-top) + 61px); z-index: 20; background: var(--mist-100); padding-bottom: var(--space-2); }
   .ph-pinned.ph-stuck { box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.25); border-bottom: 1px solid var(--card-border); }
   .ph-patient .ph-title { font-size: var(--fs-h3); line-height: var(--lh-h3); }
   .ph-patient .ph-title-row { flex-wrap: wrap; gap: 2px var(--space-2); min-width: 0; }
@@ -456,8 +460,8 @@
 
   /* ---------- Notifications: as wide as the screen, under the header (the panel ran off the left edge) ---------- */
   .nb-card {
-    position: fixed; left: var(--space-2); right: var(--space-2); top: calc(env(safe-area-inset-top) + 66px); width: auto; max-width: none;
-    max-height: calc(100dvh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    position: fixed; left: var(--space-2); right: var(--space-2); top: calc(var(--safe-top) + 66px); width: auto; max-width: none;
+    max-height: calc(100dvh - 160px - var(--safe-top) - env(safe-area-inset-bottom));
   }
   .nb-item { min-height: 44px; }
 
@@ -901,7 +905,7 @@
   .pf-main table.bill-report:has(tbody > tr:only-child > td[colspan]) thead { display: none; }
   /* The audit log: who and what on lines of their own; its dates side by side */
   .dt tbody tr:has(> td[data-label='Done by']) > td:is([data-label='Done by'], [data-label='Details'], [data-label='Event']):not(:first-child) { flex: 1 1 100%; }
-  .dt-toolbar:has(input[type='date']) > .dt-filter:has(select):nth-last-child(3) { flex: 1 1 100%; }
+  .dt-toolbar:has(> .dt-filter input[type='date'], > label input[type='date']):not(:has(> .bill-toolbar)) > .dt-filter:has(select):nth-last-child(3) { flex: 1 1 100%; }
   /* Two dates in a row in a form (Ordered from, Ordered to): side by side */
   .form-grid:has(> .field input[type='date'] ) { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-2); }
   .form-grid:has(> .field input[type='date'] ) > * { grid-column: 1 / -1; min-width: 0; }
@@ -918,7 +922,7 @@
 
   /* ---------- The app design (2 Nov 2026): the shared top, for every role ---------- */
   /* One row on the canvas: the page's title on the left, round buttons on the right. The menu is in the bottom bar */
-  .pf-topbar { align-items: center; padding-top: calc(env(safe-area-inset-top) + var(--space-3)); border-bottom: 0; background: var(--mist-100); }
+  .pf-topbar { align-items: center; padding-top: calc(var(--safe-top) + var(--space-3)); border-bottom: 0; background: var(--mist-100); }
   .pf-topbar .ws, .pf-top-title { display: none; }
   .pf-has-tabbar:not(:has(.pf-main .sticky-actions:not(.modal *), .pf-main .fs-nav)) .pf-menu-btn { display: none; }
   .pf-title-slot { flex: 1 1 auto; min-width: 0; }
@@ -988,7 +992,7 @@
   /* ---------- App design: a patient's record ---------- */
   /* Her sections in one swiping row with a line under the chosen one, not a list to open */
   .ph-patient .ph-jump-btn { display: none; }
-  .ph-pinned { top: calc(env(safe-area-inset-top) + 67px); }
+  .ph-pinned { top: calc(var(--safe-top) + 67px); }
   .ph-patient .ph-tabs.segmented, .ph-patient.ph-has-jump .ph-tabs.segmented { display: flex; flex-wrap: nowrap; gap: var(--space-6); overflow-x: auto; margin: var(--space-2) calc(var(--space-3) * -1) 0; padding: 0 var(--space-3); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
   .ph-patient .ph-tabs.segmented::-webkit-scrollbar { display: none; }
   .ph-patient .ph-tabs.segmented > a, .ph-patient .ph-tabs.segmented > .menu-button > button { flex: none; min-height: 44px; padding: 0 2px; border-radius: 0; background: none; box-shadow: none; color: var(--slate-600); font-weight: 600; white-space: nowrap; }
@@ -1173,18 +1177,30 @@
   .ph-rx-waiting button > span { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
   .ph-rx-waiting strong { color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
   .ph-rx-waiting svg { flex: none; color: var(--slate-600); }
-  /* The register: her name and type, what she came for, then the button */
+  /* The register: her name and type, what she came for, how it stands, then the button */
+  .dt tbody tr:has(> td[data-label='Pharmacy']) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-3); text-align: left; }
+  .dt tbody tr:has(> td[data-label='Pharmacy'])::after { display: none; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Pharmacy']) > td { display: block; width: auto; min-height: 0; margin: 0; padding: 0; background: none; text-align: left; }
   .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Pharmacy']) > td[data-label]:not(:first-child)::before { display: none; }
-  .dt tbody tr:has(> td[data-label='Pharmacy']) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); padding: var(--space-3); }
-  .dt tbody tr:has(> td[data-label='Pharmacy']) > td { display: block; width: auto; min-height: 0; padding: 0; }
-  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:first-child { flex: 1 1 100%; font-size: var(--fs-body); }
-  .dt tbody tr:has(> td[data-label='Pharmacy']) > td[data-label='Details'] { flex: 1 1 100%; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
-  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:last-child { flex: 1 1 100%; }
-  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:last-child .btn-secondary { width: 100%; min-height: 44px; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Pharmacy']) > td[data-label] > :first-child { margin-left: 0; }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:first-child { grid-column: 1; grid-row: 1; font-size: var(--fs-body); line-height: var(--lh-body); }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td[data-label='Type'] { grid-column: 2; grid-row: 1; justify-self: end; }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td[data-label='Details'] { grid-column: 1 / -1; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td[data-label='Pharmacy'] { grid-column: 1 / -1; }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:last-child { grid-column: 1 / -1; margin-top: var(--space-1); }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:last-child .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .dt tbody tr:has(> td[data-label='Pharmacy']) > td:last-child .btn-secondary { flex: 1 1 100%; width: 100%; min-height: 44px; }
+  /* A tapped row keeps its plain background */
+  .dt tbody tr:hover > td { background: none; }
+  /* Who: OPD, IPD, External – buttons to swipe */
+  .bill-toolbar > .segmented { display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow-x: auto; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
+  .bill-toolbar > .segmented::-webkit-scrollbar { display: none; }
+  .bill-toolbar > .segmented > button { flex: none; min-height: 40px; padding: 0 var(--space-3); border-radius: var(--radius-pill); background: var(--mist-100); color: var(--slate-600); box-shadow: none; white-space: nowrap; }
+  .bill-toolbar > .segmented > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
 
   /* ---------- App design: Sold and the other lists of a day ---------- */
   /* The day first, whole width, then the search */
-  .bill-toolbar:has(> .appt-daynav) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); width: 100%; }
+  .bill-toolbar:has(> .appt-daynav) { display: grid; flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); width: 100%; min-width: 0; }
   .bill-toolbar:has(> .appt-daynav) > * { min-width: 0; width: auto; max-width: none; margin: 0; }
   .bill-toolbar:has(> .appt-daynav) > :not(.bill-filter) { grid-column: 1 / -1; }
   /* Two filters side by side, not one under the other */
@@ -1481,6 +1497,123 @@
   .plan-item-row .plan-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
   .plan-item-row .plan-actions > .btn { flex: 1 1 0; min-height: 44px; }
   .plan-item-row .plan-actions > .menu-button { flex: none; }
+
+  /* ---------- App design: the hospital admin's Today ---------- */
+  /* The numbers first, then who works here, then the doctors; the places are in the bottom bar and Menu */
+  .pf-content:has(> .desk-doctors) > .td-group:first-child { order: -3; }
+  .pf-content:has(> .desk-doctors) > .td-group:has(.td-staff-tile) { order: -2; }
+  .pf-content:has(> .desk-doctors) > .desk-doctors { order: -1; }
+  .pf-content:has(> .desk-doctors) > .td-group:has(.td-areas) { display: none; }
+  .pf-content:has(> .desk-doctors) > .wl-footnote { order: 3; }
+  .pf-content:has(> .desk-doctors) > .td-group:first-child .kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); overflow: visible; margin: 0; }
+  .pf-content:has(> .desk-doctors) > .td-group:first-child .kpi { flex: none; min-width: 0; padding: var(--space-3); gap: 2px; }
+  .pf-content:has(> .desk-doctors) > .td-group:first-child .kpi-value { font-size: calc(22px * var(--text-scale)); line-height: calc(28px * var(--text-scale)); font-weight: 700; }
+  .pf-content:has(> .desk-doctors) > .td-group:first-child .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .pf-content:has(> .desk-doctors) .td-group:has(.td-staff-tile) ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); overflow: visible; margin: 0; padding: 0; list-style: none; }
+  .pf-content:has(> .desk-doctors) .td-staff-tile { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: var(--space-2); box-shadow: none; }
+  .pf-content:has(> .desk-doctors) .td-staff-tile strong { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  .pf-content:has(> .desk-doctors) .td-staff-tile span { width: 100%; overflow: hidden; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- App design: Admin, one list of its pages ---------- */
+  .adm-hub { display: flex; flex-direction: column; gap: var(--space-4); }
+  .adm-hub h2 { margin: 0; padding: 0 var(--space-1) var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  .adm-hub ul { display: flex; flex-direction: column; margin: 0; padding: 0; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface); list-style: none; }
+  .adm-hub li + li { border-top: 1px solid var(--border); }
+  .adm-hub a { display: flex; align-items: center; gap: var(--space-3); min-height: 64px; padding: var(--space-2) var(--space-3); color: inherit; text-decoration: none; }
+  .adm-hub-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--indigo-100); color: var(--indigo-700); }
+  .adm-hub-text { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+  .adm-hub-text strong { color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+  .adm-hub a > svg:last-child { flex: none; color: var(--slate-600); }
+
+  /* ---------- App design: Staff ---------- */
+  /* A person: who and whether they can sign in, the roles, the last sign-in, the buttons */
+  .dt tbody tr:has(> td[data-label='Roles here']) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-2); align-items: start; padding: var(--space-3); }
+  .dt tbody tr:has(> td[data-label='Roles here'])::after { display: none; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Roles here']) > td { width: auto; min-height: 0; margin: 0; padding: 0; text-align: left; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Roles here']) > td[data-label]:not(:first-child)::before { display: none; }
+  .dt tbody tr:has(> td[data-label='Roles here']) > td { display: block; min-width: 0; }
+  .dt tbody tr:has(> td[data-label='Roles here']) > td:first-child { grid-column: 1; grid-row: 1; }
+  .dt tbody tr:has(> td[data-label='Roles here']) > td[data-label='Access'] { grid-column: 2; grid-row: 1; justify-self: end; }
+  .dt tbody tr:has(> td[data-label='Roles here']) > td[data-label='Roles here'] { grid-column: 1 / -1; grid-row: 2; }
+  .dt tbody tr:has(> td[data-label='Roles here']) > td[data-label='Last login'] { grid-column: 1 / -1; grid-row: 3; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Roles here']) > td[data-label='Last login']::before { content: 'Last login: '; display: inline; position: static; width: auto; font-size: inherit; color: inherit; font-weight: inherit; }
+  .dt tbody tr:has(> td[data-label='Roles here']) > td:last-child:not([data-label]) { grid-column: 1 / -1; grid-row: 4; margin-top: var(--space-1); }
+  .dt tbody tr:has(> td[data-label='Roles here']) > td:last-child:not([data-label]) .btn { min-height: 40px; }
+
+  /* ---------- App design: Audit log ---------- */
+  /* An entry: what and when, who, the rest small; entries stay as they were recorded */
+  .dt tbody tr:has(> td[data-label='IP address']) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); }
+  .dt tbody tr:has(> td[data-label='IP address'])::after { display: none; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='IP address']) > td { display: block; width: auto; min-width: 0; min-height: 0; margin: 0; padding: 0; text-align: left; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 400; overflow-wrap: anywhere; }
+  .dt tbody tr:has(> td[data-label='IP address']) > td[data-label='Event'] { grid-column: 1; grid-row: 1; }
+  .dt tbody tr:has(> td[data-label='IP address']) > td:first-child { grid-column: 2; grid-row: 1; font-size: var(--fs-caption); line-height: var(--lh-caption); white-space: nowrap; }
+  .dt tbody tr:has(> td[data-label='IP address']) > td[data-label='Done by'], .dt tbody tr:has(> td[data-label='IP address']) > td[data-label='Affected user'], .dt tbody tr:has(> td[data-label='IP address']) > td[data-label='Details'], .dt tbody tr:has(> td[data-label='IP address']) > td[data-label='IP address'] { grid-column: 1 / -1; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='IP address']) > td[data-label]:not(:first-child)::before { content: attr(data-label) ': '; display: inline; position: static; width: auto; font-size: inherit; color: inherit; font-weight: 500; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='IP address']) > td[data-label='Event']:not(:first-child)::before { display: none; }
+  /* Its filters: two a row */
+  .dt-toolbar:has(> .dt-filter input[type='date'], > label input[type='date']):not(:has(> .bill-toolbar)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .dt-toolbar:has(> .dt-filter input[type='date'], > label input[type='date']):not(:has(> .bill-toolbar)) > * { min-width: 0; width: auto; max-width: none; margin: 0; }
+  .dt-toolbar:has(> .dt-filter input[type='date'], > label input[type='date']):not(:has(> .bill-toolbar)) > .dt-search { grid-column: 1 / -1; }
+  .dt-toolbar:has(> .dt-filter input[type='date'], > label input[type='date']):not(:has(> .bill-toolbar)) :is(select, input[type='date']) { width: 100%; min-width: 0; }
+
+  /* ---------- The fixed top of every page: white, one height, the title at the left, round buttons at the right ---------- */
+  .pf-topbar { position: sticky; top: 0; z-index: 30; min-height: calc(var(--safe-top) + 60px); padding: calc(var(--safe-top) + var(--space-2)) var(--space-3) var(--space-2); border-bottom: 1px solid var(--border); background: var(--surface); box-shadow: 0 1px 3px rgba(29, 33, 80, 0.06); }
+  .pf-topbar-actions .icon-btn { width: 40px; height: 40px; background: var(--mist-100); }
+  .pf-topbar-actions .pm-btn .avatar { width: 40px; height: 40px; }
+  .pf-title-slot .ph-title { font-size: calc(22px * var(--text-scale)); line-height: calc(28px * var(--text-scale)); }
+  .pf-title-slot .ph-title.ph-title-mid { font-size: calc(18px * var(--text-scale)); line-height: calc(22px * var(--text-scale)); }
+  .pf-title-slot .ph-crumbs ol { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .pf-title-slot .ph-caption { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .pf-main > .ph, .pf-main > .pf-notice { margin-top: var(--space-2); }
+  /* Text in buttons, boxes and the initials: the app's own font, not the phone's */
+  button, input, select, textarea, .avatar { font-family: var(--font-sans); }
+  input[type='date'], input[type='datetime-local'] { font-family: var(--font-sans); }
+  /* A patient's page: her name in the same fixed top, the buttons beside it, her sections under it */
+  .pf:has(.ph-patient) .pf-topbar { position: fixed; left: auto; right: 0; min-height: 0; padding: calc(var(--safe-top) + var(--space-2)) var(--space-3) 0; border: 0; background: none; box-shadow: none; pointer-events: none; }
+  .pf:has(.ph-patient) .pf-topbar-start { display: none; }
+  .pf:has(.ph-patient) .pf-topbar-actions { pointer-events: auto; }
+  .pf-search-open:has(.ph-patient) .pf-topbar { left: 0; padding-bottom: var(--space-2); background: var(--surface); pointer-events: auto; }
+  .pf-search-open:has(.ph-patient) .pf-topbar-start { display: flex; }
+  .ph-patient.ph-pinned { top: 0; margin-top: 0; padding-top: calc(var(--safe-top) + var(--space-2)); background: var(--surface); box-shadow: 0 1px 3px rgba(29, 33, 80, 0.06); }
+  .ph-patient .ph-heading { min-height: 44px; padding-right: 136px; }
+  .pf-main:has(.ph-patient) > .pf-notice { padding-top: calc(var(--safe-top) + 60px); }
+
+  /* ---------- A list on a page: a day's lists and the lab order's buttons ---------- */
+  .lab-order-actions > .btn, .card > .row > .btn-primary:only-of-type { min-height: 48px; }
+
+  /* ---------- The profile: a sheet from the foot, the page dimmed behind it ---------- */
+  .pf:has(.pm-btn[aria-expanded='true']) .pf-topbar { z-index: 85; }
+  .pf-topbar .pm-card { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 85; width: auto; max-width: none; max-height: 85dvh; overflow-y: auto; padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-3)); border: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); box-shadow: 0 0 0 100vmax var(--overlay); }
+  .pf-topbar .pm-card::before { content: ''; display: block; width: 40px; height: 4px; margin: var(--space-2) auto 0; border-radius: var(--radius-pill); background: var(--border); }
+  .pm-head { align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: none; }
+  .pm-head .avatar { width: 56px; height: 56px; font-size: calc(18px * var(--text-scale)); font-weight: 600; box-shadow: none; }
+  .pm-name { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  .pm-who .pm-role { padding: 2px var(--space-2); background: var(--indigo-100); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; }
+  /* Who: two plain rows in a soft box */
+  .pm-details { gap: 0; margin: 0 var(--space-4) var(--space-2); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: var(--mist-50); }
+  .pm-details div { grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-2); align-items: center; min-height: 44px; padding: var(--space-1) 0; }
+  .pm-details div + div { border-top: 1px solid var(--border); }
+  .pm-details dt { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+  .pm-details dd { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; text-align: right; }
+  /* What to do: full rows with an arrow */
+  .pm-links { display: flex; flex-direction: column; padding: 0 var(--space-4); }
+  .pm-link { min-height: 52px; gap: var(--space-3); padding: var(--space-1) 0; border-radius: 0; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 500; }
+  .pm-link + .pm-link { border-top: 1px solid var(--border); }
+  .pm-link svg.lucide { flex: none; width: 20px; height: 20px; color: var(--indigo-700); }
+  .pm-link::after { content: ''; flex: none; width: 8px; height: 8px; margin-left: auto; margin-right: 2px; border-top: 2px solid var(--slate-600); border-right: 2px solid var(--slate-600); transform: rotate(45deg); }
+  .pm-link:hover { background: none; }
+  .pm-logout { color: var(--status-high-fg); }
+  .pm-logout svg.lucide { color: var(--status-high-fg); }
+  .pm-logout::after { display: none; }
+
+  /* ---------- Choosing a service: a list from the foot that closes on a tap beside it ---------- */
+  .bill-pick-btn { display: block; width: 100%; min-height: 44px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); text-align: left; }
+  .bill-pick { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; background: var(--overlay); }
+  .bill-pick-sheet { width: 100%; max-height: 75dvh; overflow-y: auto; padding: var(--space-3) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-4)); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); }
+  .bill-pick-sheet h3 { margin: 0 0 var(--space-2); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
+  .bill-pick-sheet h4 { margin: var(--space-3) 0 var(--space-1); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+  .bill-pick-sheet button { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); width: 100%; min-height: 48px; padding: var(--space-2) 0; border: 0; border-top: 1px solid var(--border); background: none; color: var(--ink); text-align: left; }
+  .bill-pick-sheet button > span:last-child { flex: none; font-size: var(--fs-label); }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

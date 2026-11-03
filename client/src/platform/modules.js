@@ -530,7 +530,8 @@ export function tabBarModules(modules = [], roles = []) {
     if (m && !picked.includes(m)) picked.push(m);
     if (picked.length === 4) break;
   }
-  return picked;
+  // The Admin tab opens the list of the admin's pages (app design, 2 Nov 2026), under the short name
+  return picked.map((m) => (m.key === 'hospital-admin' ? { ...m, to: '/admin' } : m));
 }
 
 // Everyone.
