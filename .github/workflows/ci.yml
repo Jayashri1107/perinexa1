@@ -23,12 +23,16 @@ jobs:
     steps:
       # As scripts/db.mjs starts it on a computer: 64 index builds at once, or a fresh test database's indexes take
       # longer than the tests' setup limit. (A "services:" container cannot be given this setting.)
-      # A fixed version: the check stopped starting MongoDB soon after mongo:8.0 moved to 8.0.34 on 27 Oct 2026.
+      # On failure the reason is also written as annotations, which can be read without signing in to GitHub.
       - name: Start MongoDB
         run: |
           docker run -d --name mongo -p 127.0.0.1:27017:27017 mongo:8.0.32 --setParameter maxNumActiveUserIndexBuilds=64
           for i in $(seq 1 30); do docker exec mongo mongosh --quiet --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1 && exit 0; sleep 2; done
-          docker logs mongo; exit 1
+          docker logs mongo
+          echo "::error::container state: $(docker inspect -f '{{.State.Status}} exit={{.State.ExitCode}}' mongo)"
+          echo "::error::ping says: $(docker exec mongo mongosh --quiet --eval 'db.runCommand({ ping: 1 })' 2>&1 | tail -3 | tr '\n' ' ' | cut -c1-400)"
+          docker logs mongo 2>&1 | tail -6 | cut -c1-400 | while IFS= read -r line; do echo "::error::$line"; done
+          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:

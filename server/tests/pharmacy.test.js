@@ -3,6 +3,7 @@
 // admitted patients, Schedule H/H1/X and narcotic rules and registers, returns with credit notes, write-offs, counts,
 // alerts, reports and the export.
 import { randomUUID } from 'node:crypto';
+import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { lineMoney, suggestedQty } from '../src/pharmacy/gst.js';
 import { fixOldGstRates } from '../src/pharmacy/gstRateFix.js';
@@ -406,12 +407,37 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
 
     const found = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ search: 'asha' });
     expect(found.body.people.map((x) => x.name)).toEqual(['Sample Asha Kale']);
-    const nobody = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ search: 'Never Billed' });
+    const nobody = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ search: 'Nobody Like This' });
     expect(nobody.body.people).toEqual([]);
 
     const log = await AuditLog.findOne({ action: 'PHARMACY_PATIENT_LOOKED_UP', 'details.by': 'name', 'details.patientIds': billed.id }).lean();
     expect(log.details.patientIds).toEqual([billed.id]);
     expect(JSON.stringify(log.details)).not.toMatch(/asha/i);
+  });
+
+  it('a search also finds patients without a bill: name and number only, never a sensitive record, a duplicate or the whole list', async () => {
+    const med = await stocked();
+    const billed = await register('Sample Mira Billed');
+    const plain = await register('Sample Mira Unbilled');
+    const sensitive = await register('Sample Mira Sensitive');
+    const duplicate = await register('Sample Mira Duplicate');
+    await Patient.updateOne({ tenantId: hospital._id, _id: sensitive.id }, { $set: { sensitive: true } });
+    await Patient.collection.updateOne({ _id: new mongoose.Types.ObjectId(duplicate.id) }, { $set: { duplicateOf: { patient: new mongoose.Types.ObjectId(billed.id), mrn: billed.mrn } } });
+    await sell({ patientId: billed.id, lines: [{ medicineId: med.id, qty: 1 }] });
+    const q = async (query) => (await (await as('pharm')).get('/api/pharmacy/invoices/people').query(query)).body;
+
+    const found = await q({ search: 'mira' });
+    expect(found.people.map((x) => x.name)).toEqual(['Sample Mira Billed', 'Sample Mira Unbilled']);
+    expect(found.people[1]).toEqual({ key: plain.id, type: '', name: 'Sample Mira Unbilled', mrn: plain.mrn, phone: '', lastAt: null, billCount: 0, bills: [] });
+    expect((await q({ mrn: plain.mrn })).people.map((x) => x.name)).toEqual(['Sample Mira Unbilled']);
+    // Nothing without a search or with one letter; a bill's filter asks about bills
+    expect((await q({})).people.map((x) => x.name)).toEqual(['Sample Mira Billed']);
+    expect((await q({ search: 'm' })).people.map((x) => x.name)).toEqual(['Sample Mira Billed']);
+    expect((await q({ search: 'mira', type: 'opd' })).people.map((x) => x.name)).toEqual(['Sample Mira Billed']);
+    // In the audit log, by record and never by what was typed
+    const log = await AuditLog.findOne({ action: 'PHARMACY_PATIENT_LOOKED_UP', 'details.patientIds': plain.id }).lean();
+    expect(log.details).toMatchObject({ by: 'name', withoutBill: 1 });
+    expect(JSON.stringify(log.details)).not.toMatch(/mira/i);
   });
 
   it('finds a billed patient however many others match without a bill, with old and new bills', async () => {
@@ -424,8 +450,9 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     later('2026-09-28T08:00:00Z');
     await sell({ patientId: asha.id, lines: line });
     const found = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ search: 'asha' });
-    expect(found.body.people.map((x) => x.name)).toEqual(['Sample Asha Billed']);
-    expect(found.body.people[0].billCount).toBe(2);
+    expect(found.body.people[0]).toMatchObject({ name: 'Sample Asha Billed', billCount: 2 });
+    expect(found.body.people).toHaveLength(200);
+    expect(found.body.more).toBe(true);
     const byNumber = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ mrn: asha.mrn });
     expect(byNumber.body.people.map((x) => x.name)).toEqual(['Sample Asha Billed']);
   });

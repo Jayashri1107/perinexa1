@@ -11,7 +11,7 @@ vi.mock('../../hooks/useFetch.js', () => ({
 }));
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles }, user: { name: 'Sample Pharmacist' } }) }));
 
-const { BillPaper, InvoicesPage, billFits } = await import('./InvoicesPage.jsx');
+const { BillPaper, InvoicesPage, PeopleFound, billFits } = await import('./InvoicesPage.jsx');
 
 const settings = { name: 'Sample Medical Stores', address: '4 Sample Road, Sample Town', phone: '99999 00000', gstin: '27ABCDE1234F1Z5', licence20: 'S-20-1', licence21: 'S-21-1', pharmacistName: 'Sample Pharmacist', place: 'Sample Town' };
 const line = { id: 'l1', name: 'Sampleol 650', schedule: '', batch: 'B100', expiry: '2029-08-01', qty: 2, mrpPaise: 35000, amountPaise: 66500 };
@@ -88,6 +88,13 @@ describe('Sold’s filters', () => {
     expect(html).not.toContain('Clear the filters');
     for (const part of ['Patient number', 'Patient name', 'Doctor name', 'Dr Sample Rao', 'External', 'Amount ₹', 'Paid by', 'On the hospital bill', 'Pharmacy invoices']) expect(html).toContain(part);
     expect(html).not.toContain('Sample Asha Kale');
+  });
+
+  it('lists someone without a bill by name and number, with nothing to open', () => {
+    const people = [{ key: 'p2', type: '', name: 'Sample Mira Unbilled', mrn: 'SH-0043', phone: '', lastAt: null, billCount: 0, bills: [] }];
+    const html = renderToStaticMarkup(<MemoryRouter><PeopleFound found={{ data: { people } }} people={people} onPick={() => {}} /></MemoryRouter>);
+    for (const part of ['Sample Mira Unbilled', 'SH-0043', 'No pharmacy bill yet']) expect(html).toContain(part);
+    expect(html).not.toContain('<button');
   });
 
   it('is not shown to the hospital admin', () => {
