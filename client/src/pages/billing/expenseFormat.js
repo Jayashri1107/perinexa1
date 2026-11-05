@@ -120,5 +120,46 @@ export function expensePayload(v) {
   return body;
 }
 
+/**
+ * What the new-expense form filters the list by: what is typed or chosen. touched: the date and "paid by" start filled
+ * in, so they count only once someone has changed them. The time does not filter: it starts at this minute and would
+ * hide nearly everything.
+ */
+export const expenseFilter = (v, touched = {}) => ({
+  paidTo: v.paidTo.trim(),
+  headId: v.headId,
+  voucherNo: v.voucherNo.trim(),
+  amount: v.amount.replace(/[,\s]/g, ''),
+  description: v.description.trim(),
+  mode: touched.mode ? v.mode : '',
+  date: touched.date ? v.date : '',
+  chequeNo: v.mode === 'cheque' ? v.chequeNo.trim() : '',
+  bankName: v.mode === 'cheque' || v.mode === 'bank' ? bankOf(v).trim() : '',
+  walletName: v.mode === 'upi' ? v.walletName.trim() : '',
+});
+
+/** Is anything being filtered by? */
+export const isFiltering = (f) => Boolean(f) && Object.values(f).some(Boolean);
+
+const has = (text, part) => !part || String(text ?? '').toLowerCase().includes(part.toLowerCase());
+
+/** The expenses that fit: words anywhere in their field, an amount by its first digits (12 finds 12, 120 and 1,200). */
+export const filterExpenses = (list = [], f = null) =>
+  !f
+    ? list
+    : list.filter(
+        (e) =>
+          has(e.paidTo, f.paidTo) &&
+          has(e.voucherNo, f.voucherNo) &&
+          has(e.description, f.description) &&
+          has(e.chequeNo, f.chequeNo) &&
+          has(e.bankName, f.bankName) &&
+          has(e.walletName, f.walletName) &&
+          (!f.headId || e.headId === f.headId) &&
+          (!f.mode || e.mode === f.mode) &&
+          (!f.date || e.date === f.date) &&
+          (!f.amount || String(e.amountPaise / 100).startsWith(f.amount)),
+      );
+
 /** The total of the expenses not cancelled. */
 export const expensesTotal = (list = []) => list.filter((e) => !e.cancelled).reduce((s, e) => s + e.amountPaise, 0);

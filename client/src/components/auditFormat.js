@@ -1468,7 +1468,8 @@ export function describeAudit(entry) {
     case 'PHARMACY_REGISTER_VIEWED':
       return joined(`${SCHEDULE_WORDS[d.type] ?? 'Drug'} register`, periodOf(d));
     case 'PHARMACY_PATIENT_LOOKED_UP':
-      return joined(d.by === 'phone' ? 'By phone number' : 'By patient number', count(d.patientIds?.length ?? 0, 'record'), d.walkInBills ? count(d.walkInBills, 'walk-in bill') : '');
+      if (d.by === 'list') return joined('List of people billed', count(d.people ?? 0, 'person', 'people'));
+      return joined(d.by === 'phone' ? 'By phone number' : d.by === 'name' ? 'By name, among people billed' : 'By patient number', count(d.patientIds?.length ?? 0, 'record'), d.walkInBills ? count(d.walkInBills, d.by === 'name' ? 'walk-in customer' : 'walk-in bill') : '');
     case 'PHARMACY_EXPORTED':
       return joined(PHARMACY_EXPORT_WORDS[d.what] ?? 'export', periodOf(d), d.rows != null ? count(d.rows, 'row') : '');
     default:

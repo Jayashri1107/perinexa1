@@ -540,7 +540,7 @@ export function PharmacySettingsPage() {
         {v && (
           <section className="card bill-section narrow">
             <p className="hint">
-              Printed on every tax invoice, credit note, purchase order and debit note. Leave the store address or phone empty to print the hospital letterhead’s. The city and PIN code are needed only for the e-invoice file of a sale to a business.
+              Printed on every bill, tax invoice, credit note, purchase order and debit note. Leave the store address or phone empty to print the hospital letterhead’s. The city is printed on the bill’s jurisdiction line; the PIN code is needed only for the e-invoice file of a sale to a business.
             </p>
             <div className="form-grid">
               {fields.map(([k, label, max]) => (

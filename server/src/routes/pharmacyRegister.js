@@ -19,7 +19,8 @@ import { escapeRegex, parse, requiredDateOnly } from '../utils/validate.js';
 //                                       that day) and External (walk-in customers billed that day), with what the
 //                                       pharmacy has done for each
 //  - GET /api/pharmacy/register/find?q= someone from another day: by her exact patient number or her phone number
-//                                       (and earlier walk-in bills by phone) – audited
+//                                       (and earlier walk-in bills by phone), or by part of a name, number or phone
+//                                       among people the pharmacy has billed (3 Nov 2026) – audited
 // Names, numbers, phones, ward and bed only; nothing medical. The pharmacist only (the admin sees no patient data).
 
 export const pharmacyRegisterRouter = Router();
@@ -108,21 +109,30 @@ pharmacyRegisterRouter.get('/', async (req, res) => {
   });
 });
 
-// Someone who is not on today's register: her exact patient number, or her phone number (the last 10 digits).
+// Someone who is not on today's register: her exact patient number, or her phone number (the last 10 digits). Part of a
+// name, number or phone finds only people with a pharmacy bill: nobody else's name can be searched from the pharmacy.
 pharmacyRegisterRouter.get('/find', async (req, res) => {
-  const { q } = parse(z.object({ q: z.string().trim().min(3, 'Type her patient number or phone number.').max(40) }).strict(), req.query);
+  const { q } = parse(z.object({ q: z.string().trim().min(3, 'Type at least 3 letters or digits.').max(40) }).strict(), req.query);
   const digits = q.replace(/\D/g, '');
   const byPhone = digits.length >= 10 && !/[a-z]/i.test(q);
   // the last 10 digits, however the number was written (+91, spaces, dashes)
   const phoneRx = byPhone ? new RegExp(`${digits.slice(-10).split('').join('\\D*')}\\D*$`) : null;
-  const found = await Patient.find({ tenantId: req.tenantId, ...(byPhone ? { phone: phoneRx } : { mrn: new RegExp(`^${escapeRegex(q)}$`, 'i') }) }, { fullName: 1, mrn: 1, phone: 1 })
+  const exact = await Patient.find({ tenantId: req.tenantId, ...(byPhone ? { phone: phoneRx } : { mrn: new RegExp(`^${escapeRegex(q)}$`, 'i') }) }, { fullName: 1, mrn: 1, phone: 1 })
     .sort({ fullName: 1 })
     .limit(10)
     .lean();
+  const partRx = new RegExp(escapeRegex(q), 'i');
+  const billedIds = await PharmacyInvoice.distinct('patientId', { tenantId: req.tenantId, patientId: { $ne: null } });
+  const billed = await Patient.find({ tenantId: req.tenantId, _id: { $in: billedIds }, $or: [{ fullName: partRx }, { mrn: partRx }, { phone: partRx }] }, { fullName: 1, mrn: 1, phone: 1 })
+    .sort({ fullName: 1 })
+    .limit(20)
+    .lean();
+  const exactIds = new Set(exact.map((p) => String(p._id)));
+  const found = [...exact, ...billed.filter((p) => !exactIds.has(String(p._id)))].slice(0, 20);
   const admitted = new Set((await Admission.find({ tenantId: req.tenantId, status: 'admitted', patientId: { $in: found.map((p) => p._id) } }, { patientId: 1 }).lean()).map((s) => String(s.patientId)));
   // Earlier walk-in bills to that phone number
-  const walkIns = byPhone ? await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: null, 'customer.phone': phoneRx }).sort({ 'created.at': -1 }).limit(10).lean() : [];
-  await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: byPhone ? 'phone' : 'number', patientIds: found.map((p) => String(p._id)), walkInBills: walkIns.length } });
+  const walkIns = await PharmacyInvoice.find({ tenantId: req.tenantId, patientId: null, ...(byPhone ? { 'customer.phone': phoneRx } : { 'customer.name': partRx }) }).sort({ 'created.at': -1 }).limit(10).lean();
+  await audit(req, 'PHARMACY_PATIENT_LOOKED_UP', { details: { by: byPhone ? 'phone' : found.length > exact.length || walkIns.length ? 'name' : 'number', patientIds: found.map((p) => String(p._id)), walkInBills: walkIns.length } });
   res.json({
     patients: found.map((p) => ({ ...identity(p), admitted: admitted.has(String(p._id)) })),
     external: walkIns.map((i) => ({ customer: { name: i.customer?.name ?? '', phone: i.customer?.phone ?? '' }, at: i.created.at, date: isoDay(toHospitalDate(i.created.at)), bills: [billOf(i)] })),

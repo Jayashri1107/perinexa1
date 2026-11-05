@@ -7,7 +7,7 @@ import { dayLabel } from '../appointments/appointmentFormat.js';
 import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
 import { CONTROLLED, FREQUENCY_WORDS, MODE_LABELS, einvoiceHsnOk, expiryLabel, medicineLabel, prescribedLines, scannedForList } from './pharmacyFormat.js';
 import { FindMedicine, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
-import { FindElsewhere, TypePill } from './RegisterPage.jsx';
+import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
 
 // Pharmacy → New bill (counter) and → Issue to ward (kind 'issue', admitted patients only): choose OPD, IPD or External
 // (owner, 26 Oct 2026) – an OPD patient from today's register (or found by her number or phone), an admitted patient,
@@ -22,17 +22,20 @@ const NEEDS_RX = ['H', 'H1', 'X', 'narcotic'];
 function TodayOpdPicker({ onPick }) {
   const navigate = useNavigate();
   const res = useFetch('/pharmacy/register');
-  const opd = (res.data?.rows ?? []).filter((r) => r.type === 'opd');
+  const [text, setText] = useState('');
+  const clicks = useClickOrDouble();
+  const term = text.trim().toLowerCase();
+  const opd = (res.data?.rows ?? []).filter((r) => r.type === 'opd').filter((r) => !term || [r.patient.fullName, r.patient.mrn, r.patient.phone, r.opdNo].some((v) => v && String(v).toLowerCase().includes(term)));
   return (
     <>
-      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? navigate('/pharmacy/issue', { state: { patient } }) : onPick(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} />
+      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? navigate('/pharmacy/issue', { state: { patient } }) : onPick(patient))} onOpenBills={(patient) => navigate(...billsPlace(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} onText={setText} />
       <h3 className="ph-today-title">Today's OPD patients</h3>
       {res.error && <Alert type="error">{res.error}</Alert>}
-      {res.data && !opd.length && <p className="muted">No OPD patient on today's register yet.</p>}
+      {res.data && !opd.length && <p className="muted">{term ? "Nobody on today's list matches." : "No OPD patient on today's register yet."}</p>}
       <ul className="appt-pick-list" aria-label="Today's OPD patients">
         {opd.map((r) => (
           <li key={r.patient.id}>
-            <button type="button" className="appt-pick" onClick={() => onPick(r.patient)}>
+            <button type="button" className="appt-pick" title="Double-click to open their bills" {...clicks(() => onPick(r.patient), () => navigate(...billsPlace(r.patient)))}>
               <strong>{r.patient.fullName}</strong>
               <span className="muted">
                 {[r.patient.mrn, r.doctor, r.prescription ? 'prescription written today' : 'no prescription yet', r.bills.length ? `billed ${r.bills.map((b) => b.number).join(', ')}` : ''].filter(Boolean).join(' · ')}

@@ -124,6 +124,15 @@ describe('finding someone from another day', () => {
 
     const logged = await AuditLog.find({ action: 'PHARMACY_PATIENT_LOOKED_UP' }).sort({ _id: 1 }).lean();
     expect(logged.map((l) => l.details.by)).toEqual(['number', 'phone', 'number']);
+
+    // Part of a name finds someone the pharmacy has billed, and a walk-in by name; never anyone without a bill
+    await ph('post', '/invoices', { kind: 'sale', patientId: p.id, lines: [{ medicineId: m.id, qty: 1 }] });
+    await register('Never Billed Mother', '9822012399');
+    const byName = (await ph('get', '/register/find?q=card')).body;
+    expect(byName.patients.map((x) => x.id)).toEqual([p.id]);
+    expect((await ph('get', '/register/find?q=walk')).body.external).toMatchObject([{ customer: { name: 'Earlier Walk In' } }]);
+    expect((await ph('get', '/register/find?q=Never')).body.patients).toEqual([]);
+    expect((await ph('get', '/register/find?q=mother')).body.patients.map((x) => x.id)).toEqual([p.id]);
     expect(logged[1].details).toMatchObject({ patientIds: [p.id], walkInBills: 1 });
     expect(JSON.stringify(logged)).not.toMatch(/98220/);
   });
