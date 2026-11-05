@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Ban, Paperclip, Plus } from 'lucide-react';
 import { api, apiFile } from '../../api.js';
 import { Alert, Field, formatDate } from '../../components/ui.jsx';
@@ -6,7 +6,7 @@ import { fileBody, fileProblem, fileSize } from '../../components/fileUpload.js'
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { rupees } from './billingFormat.js';
 import { Modal } from './billingUi.jsx';
-import { BANKS, EXPENSE_MODE_LABELS, OTHER_BANK, WALLETS, blankExpense, expenseFor, expensePayload, expenseProblems, expensesTotal, paidHow } from './expenseFormat.js';
+import { BANKS, EXPENSE_MODE_LABELS, OTHER_BANK, WALLETS, blankExpense, expenseFilter, expenseFor, expensePayload, expenseProblems, expensesTotal, paidHow } from './expenseFormat.js';
 
 // Entering and listing the expenses paid from the counter: the Daily Expenses page and Billing → Daily summary share
 // these (owner, 28 Oct 2026). The form follows the hospital's old "Daily Expenses" screen: date and time, the person
@@ -15,9 +15,10 @@ import { BANKS, EXPENSE_MODE_LABELS, OTHER_BANK, WALLETS, blankExpense, expenseF
 
 /**
  * Enter one expense. heads: the hospital's list ({ id, name, active }); date: a fixed day (the daily summary) or
- * undefined to let the date be chosen (the Daily Expenses page). primary: the screen's main button.
+ * undefined to let the date be chosen (the Daily Expenses page). primary: the screen's main button. onFilter: told what
+ * is typed or chosen, as you go, so the page can filter its list (3 Nov 2026).
  */
-export function ExpenseEntryForm({ heads = [], date, onAdded, idPrefix = 'exp', primary = false }) {
+export function ExpenseEntryForm({ heads = [], date, onAdded, onFilter, idPrefix = 'exp', primary = false }) {
   const [v, setV] = useState(() => ({ ...blankExpense(), ...(date ? { date } : {}) }));
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -26,7 +27,14 @@ export function ExpenseEntryForm({ heads = [], date, onAdded, idPrefix = 'exp', 
   const [fields, setFields] = useState({});
   const fileInput = useRef(null);
   const id = (k) => `${idPrefix}-${k}`;
-  const set = (k) => (e) => setV({ ...v, [k]: e.target.value });
+  const [touched, setTouched] = useState({});
+  const set = (k) => (e) => {
+    setV({ ...v, [k]: e.target.value });
+    if (k === 'mode' || k === 'date') setTouched({ ...touched, [k]: true });
+  };
+  useEffect(() => {
+    onFilter?.(expenseFilter(v, touched));
+  }, [v, touched, onFilter]);
   const active = heads.filter((h) => h.active);
 
   const chooseFile = (e) => {
@@ -61,6 +69,7 @@ export function ExpenseEntryForm({ heads = [], date, onAdded, idPrefix = 'exp', 
         }
       }
       setV({ ...blankExpense(), ...(date ? { date } : {}), headId: v.headId });
+      setTouched({});
       setFile(null);
       if (fileInput.current) fileInput.current.value = '';
       setSaved(`Saved: ${rupees(expense.amountPaise)} to ${expense.paidTo} for ${expense.head}.`);

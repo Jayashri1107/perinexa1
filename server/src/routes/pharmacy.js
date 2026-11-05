@@ -673,7 +673,7 @@ pharmacyRouter.get('/invoices', async (req, res) => {
 });
 
 // Finding people on Sold (developer's request, 3 Nov 2026): the people the pharmacy has billed, newest bill first, by
-// name or phone and patient number, narrowed by type, doctor and day, each with their bills. Only people with a pharmacy
+// name or phone and patient number, narrowed by type, doctor, day, amount and how it was paid, each with their bills. Only people with a pharmacy
 // bill – never the whole patient list (owner, 26 Oct 2026), and no patient without a bill can be found here. The
 // pharmacist only; audited.
 const PEOPLE_LIMIT = 200;
@@ -681,11 +681,17 @@ const PERSON_BILLS = 50;
 const BILL_TYPES = { opd: { kind: 'sale', patientId: { $ne: null } }, ipd: { kind: 'issue' }, external: { patientId: null } };
 pharmacyRouter.get('/invoices/people', async (req, res) => {
   desk(req);
-  const { search, mrn, type, doctor, date } = parse(
-    z.object({ search: z.string().trim().min(2).max(100).optional(), mrn: z.string().trim().min(2).max(40).optional(), type: z.enum(Object.keys(BILL_TYPES)).optional(), doctor: z.string().trim().max(150).optional(), date: requiredDateOnly('Date').optional() }).strict(),
+  const { search, mrn, type, doctor, date, amount, paidBy } = parse(
+    z.object({ search: z.string().trim().min(2).max(100).optional(), mrn: z.string().trim().min(2).max(40).optional(), type: z.enum(Object.keys(BILL_TYPES)).optional(), doctor: z.string().trim().max(150).optional(), date: requiredDateOnly('Date').optional(), amount: z.string().trim().regex(/^\d+(\.\d*)?$/).optional(), paidBy: z.enum([...COUNTER_MODES, 'hospital']).optional() }).strict(),
     req.query,
   );
   const match = { tenantId: new mongoose.Types.ObjectId(String(req.tenantId)), ...(type ? BILL_TYPES[type] : {}), ...(doctor ? { 'doctor.name': doctor } : {}), ...(date ? { 'created.at': { $gte: hospitalDayStart(date), $lt: hospitalDayStart(addDays(date, 1)) } } : {}) };
+  // An amount by its first digits (12 finds 12, 120 and 1,200); "hospital": a patient's bill, paid at the billing desk
+  const also = [
+    ...(amount ? [{ $expr: { $regexMatch: { input: { $toString: { $divide: [{ $sum: '$lines.amountPaise' }, 100] } }, regex: `^${escapeRegex(amount)}` } } }] : []),
+    ...(paidBy === 'hospital' ? [{ patientId: { $ne: null } }] : paidBy ? [{ 'payments.mode': paidBy }] : []),
+  ];
+  if (also.length) match.$and = also;
   if (search || mrn) {
     const rx = search ? new RegExp(escapeRegex(search), 'i') : null;
     const patientFilter = { tenantId: req.tenantId, ...(rx ? { $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] } : {}), ...(mrn ? { mrn: new RegExp(escapeRegex(mrn), 'i') } : {}) };

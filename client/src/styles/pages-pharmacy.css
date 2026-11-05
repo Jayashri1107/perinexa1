@@ -85,12 +85,14 @@
 /* Sold: one row of filters; the people found appear only after a search */
 .ph-sold { display: flex; flex-direction: column; gap: var(--space-4); }
 .ph-filters { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
-.ph-filter-row { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(4, minmax(140px, 1fr)); gap: var(--space-3); width: 100%; align-items: end; }
+.ph-filter-row { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(3, minmax(140px, 1fr)); gap: var(--space-3); width: 100%; align-items: end; }
 .ph-filter { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
 .ph-filter > span { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
 .ph-filter input, .ph-filter select { flex: none; width: 100%; max-width: none; min-width: 0; margin: 0; }
 .ph-filter .appt-daynav { width: 100%; }
 .ph-filter .appt-daynav input { flex: 1 1 auto; width: auto; }
+.ph-filter-clear { justify-content: flex-end; align-items: flex-start; }
+.ph-sold-count { margin: 0; color: var(--slate-600); font-variant-numeric: tabular-nums; }
 .ph-found { padding: var(--space-2) var(--space-4); }
 .ph-found > p { margin: var(--space-3) 0; }
 .ph-found ul { max-height: 420px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }

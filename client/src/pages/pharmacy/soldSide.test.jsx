@@ -11,7 +11,7 @@ vi.mock('../../hooks/useFetch.js', () => ({
 }));
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles }, user: { name: 'Sample Pharmacist' } }) }));
 
-const { BillPaper, InvoicesPage } = await import('./InvoicesPage.jsx');
+const { BillPaper, InvoicesPage, billFits } = await import('./InvoicesPage.jsx');
 
 const settings = { name: 'Sample Medical Stores', address: '4 Sample Road, Sample Town', phone: '99999 00000', gstin: '27ABCDE1234F1Z5', licence20: 'S-20-1', licence21: 'S-21-1', pharmacistName: 'Sample Pharmacist', place: 'Sample Town' };
 const line = { id: 'l1', name: 'Sampleol 650', schedule: '', batch: 'B100', expiry: '2029-08-01', qty: 2, mrpPaise: 35000, amountPaise: 66500 };
@@ -49,6 +49,27 @@ describe('the pharmacy bill', () => {
   });
 });
 
+describe('which bills fit Sold’s filters', () => {
+  const patientBill = { kind: 'sale', patient: { fullName: 'Sample Asha Kale' }, doctor: { name: 'Dr Sample Rao' }, netPaise: 120000, payments: [] };
+  const issue = { kind: 'issue', patient: { fullName: 'Sample Rani More' }, netPaise: 12050, payments: [] };
+  const walkIn = { kind: 'sale', patient: null, customer: { name: 'Sample Walkin' }, netPaise: 50000, payments: [{ mode: 'upi' }] };
+  const fits = (f) => [patientBill, issue, walkIn].filter((v) => billFits(v, f));
+
+  it('fits by type, doctor, amount and how it was paid, and all of them together', () => {
+    expect(fits({})).toHaveLength(3);
+    expect(fits({ type: 'opd' })).toEqual([patientBill]);
+    expect(fits({ type: 'ipd' })).toEqual([issue]);
+    expect(fits({ type: 'external' })).toEqual([walkIn]);
+    expect(fits({ doctor: 'Dr Sample Rao' })).toEqual([patientBill]);
+    expect(fits({ amount: '12' })).toEqual([patientBill, issue]);
+    expect(fits({ amount: '120.5' })).toEqual([issue]);
+    expect(fits({ paidBy: 'upi' })).toEqual([walkIn]);
+    expect(fits({ paidBy: 'hospital' })).toEqual([patientBill, issue]);
+    expect(fits({ paidBy: 'hospital', amount: '12', type: 'ipd' })).toEqual([issue]);
+    expect(fits({ paidBy: 'cash' })).toEqual([]);
+  });
+});
+
 describe('Sold’s filters', () => {
   const page = () => renderToStaticMarkup(<MemoryRouter initialEntries={['/pharmacy/invoices']}><InvoicesPage /></MemoryRouter>);
 
@@ -61,7 +82,7 @@ describe('Sold’s filters', () => {
 
   it('shows one row of filters and the day’s bills, and no patient until a search', () => {
     const html = page();
-    for (const part of ['Patient number', 'Patient name', 'Doctor name', 'Dr Sample Rao', 'External', 'Pharmacy invoices']) expect(html).toContain(part);
+    for (const part of ['Patient number', 'Patient name', 'Doctor name', 'Dr Sample Rao', 'External', 'Amount ₹', 'Paid by', 'On the hospital bill', 'Pharmacy invoices']) expect(html).toContain(part);
     expect(html).not.toContain('Sample Asha Kale');
   });
 
