@@ -243,13 +243,6 @@ export function canSharePdf() {
 
 /** Saves the file to the computer's Downloads folder (the browser's own download). */
 export function downloadFile(blob, fileName) {
-  // The Android app does not download by itself: the file goes to the phone's share screen (MainActivity)
-  if (window.PerinexaApp?.shareFile) {
-    const reader = new FileReader();
-    reader.onload = () => window.PerinexaApp.shareFile(fileName, blob.type || 'application/octet-stream', String(reader.result).split(',')[1]);
-    reader.readAsDataURL(blob);
-    return;
-  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
