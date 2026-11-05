@@ -6,6 +6,9 @@ import { App } from './App.jsx';
 import { applyAppearance, rememberedAppearance } from './appearance.js';
 import './styles.css';
 
+// The Android and iPhone apps: already below the phone's status bar (mobile.css does not add its height again)
+if (window.Capacitor) document.documentElement.classList.add('in-app');
+
 // The installable app (31 Oct 2026): public/sw.js, on the live site only (not while developing). It keeps no patient data.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));

@@ -43,6 +43,7 @@ export function HospitalsListPage() {
   return (
     <>
       <PageHeader
+        className="ph-fab"
         breadcrumbs={crumbs}
         title="Hospitals"
         help="Each hospital's data is kept completely separate from the others."

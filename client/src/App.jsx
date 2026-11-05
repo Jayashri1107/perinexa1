@@ -145,6 +145,7 @@ const load49 = () => import('./pages/admin/StaffPage.jsx');
 const AuditCategoryRedirect = screen(load49, 'AuditCategoryRedirect');
 const HospitalAuditLogPage = screen(load49, 'HospitalAuditLogPage');
 const StaffPage = screen(load49, 'StaffPage');
+const AdminHomePage = screen(load49, 'AdminHomePage');
 const load50 = () => import('./pages/platform/OverviewPage.jsx');
 const OverviewPage = screen(load50, 'OverviewPage');
 const load51 = () => import('./pages/platform/HospitalsListPage.jsx');
@@ -592,7 +593,7 @@ export function App() {
                 <Route path="prescription-sets/:id" element={<PrescriptionSetPage />} />
                 <Route path="prescription-sets/:id/edit" element={<PrescriptionSetEditPage key="edit" />} />
                 <Route path="admin" element={<RequireTenantAdmin />}>
-                  <Route index element={<Navigate to="staff" replace />} />
+                  <Route index element={<AdminHomePage />} />
                   <Route path="staff" element={<StaffPage />} />
                   <Route path="settings" element={<LetterheadSettingsPage />} />
                   <Route path="messages" element={<PatientMessagesSettingsPage />} />

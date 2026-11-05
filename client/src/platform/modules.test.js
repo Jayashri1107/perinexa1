@@ -152,6 +152,9 @@ describe('the phone bottom bar (tabBarModules)', () => {
     const linked = hospitalModules(roles).filter((m) => m.to).slice(0, 4).map((m) => m.key);
     expect(keys(roles)).toEqual(linked);
   });
+  it('gives the platform its four places, with Patients under Menu', () => {
+    expect(tabBarModules(PLATFORM_MODULES, []).map((m) => m.key)).toEqual(['overview', 'hospitals', 'users', 'audit']);
+  });
   it('never shows more than four, and nothing without a menu', () => {
     expect(keys(['doctor', 'admin', 'receptionist'])).toHaveLength(4);
     expect(tabBarModules([], [])).toEqual([]);

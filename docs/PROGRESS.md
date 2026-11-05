@@ -1,5 +1,15 @@
 # Progress
 
+## The phone app design and the Android app (2–3 Nov 2026)
+- **Done, phones only:** every role's main screens rebuilt from the "Perinexa app design" artifact (doctor, reception,
+  nurse, RMO, pharmacy, lab, sonography, referral desk, billing, hospital admin, super admin); one fixed header; the profile
+  as a sheet. No new function, no new package; computers keep their layout.
+- **Android app (`mobile/`):** Back, Print, files, camera and microphone are on branch `android-app-fixes`, separately.
+- **Before the app can be published – for the developer and the owner, not in the code:** the signing key; the Google Play
+  account and its forms (privacy policy, data safety, health apps declaration, a sample login for reviewers); the owner's
+  answer on whether a super admin may open patient records (it conflicts with "the super admin never sees patient data");
+  the health check and the first version's contents; the go-live checklist. **Fake data only until that checklist is done.**
+
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.

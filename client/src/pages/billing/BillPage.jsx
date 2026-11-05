@@ -35,6 +35,8 @@ function AddItemDialog({ bill, onClose, onDone }) {
   const doctors = useFetch('/tenant/doctors'); // with each doctor's department (Admin → Users)
   const [query, setQuery] = useState('');
   const [basket, setBasket] = useState([]); // { item, qty, amount, name }
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const [picking, setPicking] = useState(false);
   const [doctorId, setDoctorId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -110,6 +112,41 @@ function AddItemDialog({ bill, onClose, onDone }) {
           <label htmlFor="bill-add-service" className="sr-only">
             Choose a service
           </label>
+          {onPhone && (
+            <button type="button" id="bill-add-service" className="bill-add-select bill-pick-btn" onClick={() => setPicking(true)}>
+              {prices.data ? `Choose a service${words.length ? ` (${found.length} found)` : ''}…` : 'Loading the price list…'}
+            </button>
+          )}
+          {onPhone && picking && (
+            <div className="bill-pick" onClick={(e) => e.target === e.currentTarget && setPicking(false)}>
+              <div className="bill-pick-sheet" role="dialog" aria-label="Choose a service">
+                <h3>Choose a service</h3>
+                {(prices.data?.groups ?? [])
+                  .filter((g) => found.some((i) => i.group === g.key))
+                  .map((g) => (
+                    <section key={g.key} aria-label={g.label}>
+                      <h4>{g.label}</h4>
+                      {found
+                        .filter((i) => i.group === g.key)
+                        .map((i) => (
+                          <button
+                            key={i.id}
+                            type="button"
+                            onClick={() => {
+                              add(i);
+                              setPicking(false);
+                            }}
+                          >
+                            <span>{i.name}</span>
+                            <span className="muted tabular">{i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}</span>
+                          </button>
+                        ))}
+                    </section>
+                  ))}
+              </div>
+            </div>
+          )}
+          {!onPhone && (
           <select
             id="bill-add-service"
             className="bill-add-select"
@@ -135,6 +172,7 @@ function AddItemDialog({ bill, onClose, onDone }) {
                 </optgroup>
               ))}
           </select>
+          )}
         </div>
         {quick.length > 0 && !words.length && (
           <div className="bill-add-groups" role="group" aria-label="Common services">
