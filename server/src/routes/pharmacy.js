@@ -682,7 +682,7 @@ const BILL_TYPES = { opd: { kind: 'sale', patientId: { $ne: null } }, ipd: { kin
 pharmacyRouter.get('/invoices/people', async (req, res) => {
   desk(req);
   const { search, mrn, type, doctor, date, amount, paidBy } = parse(
-    z.object({ search: z.string().trim().min(2).max(100).optional(), mrn: z.string().trim().min(2).max(40).optional(), type: z.enum(Object.keys(BILL_TYPES)).optional(), doctor: z.string().trim().max(150).optional(), date: requiredDateOnly('Date').optional(), amount: z.string().trim().regex(/^\d+(\.\d*)?$/).optional(), paidBy: z.enum([...COUNTER_MODES, 'hospital']).optional() }).strict(),
+    z.object({ search: z.string().trim().min(1).max(100).optional(), mrn: z.string().trim().min(1).max(40).optional(), type: z.enum(Object.keys(BILL_TYPES)).optional(), doctor: z.string().trim().max(150).optional(), date: requiredDateOnly('Date').optional(), amount: z.string().trim().regex(/^\d+(\.\d*)?$/).optional(), paidBy: z.enum([...COUNTER_MODES, 'hospital']).optional() }).strict(),
     req.query,
   );
   const match = { tenantId: new mongoose.Types.ObjectId(String(req.tenantId)), ...(type ? BILL_TYPES[type] : {}), ...(doctor ? { 'doctor.name': doctor } : {}), ...(date ? { 'created.at': { $gte: hospitalDayStart(date), $lt: hospitalDayStart(addDays(date, 1)) } } : {}) };

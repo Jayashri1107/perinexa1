@@ -422,6 +422,7 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     const find = async (query) => (await (await as('pharm')).get('/api/pharmacy/invoices/people').query(query)).body.people.map((x) => x.name);
 
     expect(await find({ search: 'asha' })).toHaveLength(2);
+    expect(await find({ search: 'k' })).toEqual(['Sample Asha Kale', 'Sample Asha Walkin'].filter((n) => /k/i.test(n))); // from the first letter
     expect(await find({ mrn: asha.mrn.slice(-4) })).toEqual(['Sample Asha Kale']);
     expect(await find({ search: 'asha', mrn: asha.mrn })).toEqual(['Sample Asha Kale']);
     expect(await find({ search: 'asha', type: 'external' })).toEqual(['Sample Asha Walkin']);

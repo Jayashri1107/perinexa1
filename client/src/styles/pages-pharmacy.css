@@ -82,8 +82,10 @@
 .ph-slip-sign { flex: none; min-width: 38mm; text-align: center; }
 .ph-slip-sign-line { margin-top: 10mm; padding-top: 1mm; border-top: 1px solid var(--print-ink); }
 
-/* Sold: one row of filters; the people found appear only after a search */
+/* Sold: the filters in a panel at the side, the list beside them narrowing as they change (above each other when narrow) */
 .ph-sold { display: flex; flex-direction: column; gap: var(--space-4); }
+.ph-sold-split { display: flex; flex-direction: column; gap: var(--space-4); }
+.ph-sold-results { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
 .ph-filters { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
 .ph-filter-row { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(3, minmax(140px, 1fr)); gap: var(--space-3); width: 100%; align-items: end; }
 .ph-filter { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
@@ -113,6 +115,15 @@
 .ph-slip-sheet .ph-slip-head .lh-name { font-size: var(--fs-h2); }
 .ph-slip-sheet .ph-slip-facts { row-gap: var(--space-2); margin-bottom: var(--space-3); }
 .ph-slip-sheet .ph-slip .ph-slip-lines th, .ph-slip-sheet .ph-slip .ph-slip-lines td { padding: var(--space-2); }
+@media (min-width: 1024px) {
+  .ph-sold-split { display: grid; grid-template-columns: 300px minmax(0, 1fr); align-items: start; }
+  .ph-filter-row { grid-template-columns: minmax(0, 1fr); }
+  .ph-filters > .segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; border-radius: var(--radius-md); }
+  .ph-filters > .segmented > button { border-radius: var(--radius-sm); }
+  .ph-filter-clear { align-items: stretch; }
+  /* Beside the panel the bills' words wrap, so the amount stays in view */
+  .ph-sold-results .dt :is(th, td) { white-space: normal; overflow-wrap: break-word; }
+}
 @media (max-width: 1023px) {
   .ph-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ph-filter-row > .ph-filter:first-child { grid-column: 1 / -1; }

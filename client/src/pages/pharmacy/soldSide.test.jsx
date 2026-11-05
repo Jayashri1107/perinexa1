@@ -80,8 +80,11 @@ describe('Sold’s filters', () => {
     answers['/pharmacy/invoices'] = { today: '2026-10-17', invoices: [] };
   });
 
-  it('shows one row of filters and the day’s bills, and no patient until a search', () => {
+  it('shows the filters at the side with the day’s bills beside them, no filter button, and no patient until a search', () => {
     const html = page();
+    expect(html).toContain('ph-sold-split');
+    expect(html.indexOf('Find bills')).toBeLessThan(html.indexOf('ph-sold-results'));
+    expect(html).not.toMatch(/>\s*(Filter|Apply|Search)\s*</);
     for (const part of ['Patient number', 'Patient name', 'Doctor name', 'Dr Sample Rao', 'External', 'Amount ₹', 'Paid by', 'On the hospital bill', 'Pharmacy invoices']) expect(html).toContain(part);
     expect(html).not.toContain('Sample Asha Kale');
   });
