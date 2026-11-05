@@ -18,7 +18,8 @@ concurrency:
 
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    # Not newer for now: MongoDB 8 stops itself on Linux kernels 6.19 to 7.0.13 (SERVER-121912, SERVER-125742).
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
       # As scripts/db.mjs starts it on a computer: 64 index builds at once, or a fresh test database's indexes take
@@ -26,7 +27,8 @@ jobs:
       # On failure the reason is also written as annotations, which can be read without signing in to GitHub.
       - name: Start MongoDB
         run: |
-          docker run -d --name mongo -p 127.0.0.1:27017:27017 mongo:8.0.32 --setParameter maxNumActiveUserIndexBuilds=64
+          echo "::notice::Linux kernel on this machine: $(uname -r)"
+          docker run -d --name mongo -p 127.0.0.1:27017:27017 mongo:8.0 --setParameter maxNumActiveUserIndexBuilds=64
           for i in $(seq 1 30); do docker exec mongo mongosh --quiet --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1 && exit 0; sleep 2; done
           docker logs mongo
           echo "::error::container state: $(docker inspect -f '{{.State.Status}} exit={{.State.ExitCode}}' mongo)"
