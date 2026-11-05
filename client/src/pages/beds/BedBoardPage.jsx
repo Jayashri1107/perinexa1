@@ -317,7 +317,7 @@ function Occupant({ bedName, stay, canBill, onMove, onPaper, onChecklist, moveLa
     { label: 'Open her record', icon: Eye, to: `/patients/${p.id}` },
     ...(canBill ? [{ label: 'Bill', icon: Receipt, to: `/patients/${p.id}/bills` }] : []),
     ...(onPaper ? [{ label: 'Admission form', icon: FileText, onSelect: () => onPaper('form') }, { label: 'Wristband', icon: Tag, onSelect: () => onPaper('wristband') }] : []),
-    ...(onPaper && stay.checklistIncomplete && stay.canMove ? [{ label: 'Complete the checklist', icon: ClipboardList, onSelect: onChecklist }] : []),
+    ...(onPaper && !stay.checklistComplete && stay.canMove ? [{ label: stay.checklistIncomplete ? 'Complete the checklist' : 'Fill in the checklist', icon: ClipboardList, onSelect: onChecklist }] : []),
     ...(stay.canMove && onMove ? [{ label: moveLabel, icon: ArrowRightLeft, onSelect: onMove }] : []),
   ];
   return (
@@ -372,6 +372,11 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
   const record = useFetch(patient ? `/patients/${patient.id}` : null);
   const [checklist, setChecklist] = useState(null);
   const shownChecklist = checklist ?? (record.data?.patient ? checklistFromPatient(record.data.patient) : EMPTY_CHECKLIST);
+  // Optional (5 Nov 2026): filled in only for the patient who needs it, unless the hospital's rule requires it
+  const rules = useFetch('/admission-desk/rules');
+  const [wantChecklist, setWantChecklist] = useState(false);
+  const checklistRequired = Boolean(rules.data?.requireChecklist) && form.admissionType !== 'emergency';
+  const showChecklist = checklistRequired || wantChecklist;
   const open = useFetch(patient && !request ? '/admission-desk/requests' : null, patient && !request ? { patientId: patient.id } : undefined);
   const req = request ?? open.data?.requests?.[0] ?? null;
   const [clientRequestId] = useState(newRequestId);
@@ -402,7 +407,7 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
         ...(chosenDoctor ? { doctorId: chosenDoctor } : {}),
         refDoctorName: form.refDoctorName.trim(),
         admittedAt: form.admittedAt ? new Date(form.admittedAt).toISOString() : '',
-        checklist: shownChecklist,
+        ...(showChecklist || rules.data?.requireChecklist ? { checklist: shownChecklist } : {}),
         ...(req ? { requestId: req.id } : {}),
       };
       const { admission } = await api(`/beds/${bed.id}/admit`, { method: 'POST', body });
@@ -410,6 +415,7 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
     } catch (err) {
       setError(err.message);
       setFields(err.fields ?? {});
+      if (Object.keys(err.fields ?? {}).some((k) => k.startsWith('checklist.'))) setWantChecklist(true); // show what it refers to
     } finally {
       setBusy(false);
     }
@@ -541,8 +547,14 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
               </Field>
             </div>
           )}
-          <ChecklistFields value={shownChecklist} onChange={setChecklist} fields={fields} idPrefix="bed-ck" />
-          {form.admissionType === 'emergency' && <p className="hint">An emergency is admitted at once: anything missing in the checklist can be completed later (Checklist on her bed).</p>}
+          {!checklistRequired && (
+            <label className="check">
+              <input type="checkbox" checked={wantChecklist} onChange={(e) => setWantChecklist(e.target.checked)} /> Fill in the admission checklist for this patient (ID proof, attendant, who
+              pays, consent) – optional, and it can be done later from her bed
+            </label>
+          )}
+          {showChecklist && <ChecklistFields value={shownChecklist} onChange={setChecklist} fields={fields} idPrefix="bed-ck" />}
+          {form.admissionType === 'emergency' && showChecklist && <p className="hint">An emergency is admitted at once: anything missing in the checklist can be completed later (Checklist on her bed).</p>}
           <p className="hint">Her bill for the stay opens with this ward's bed charge. The RMO writes the admission notes.</p>
         </>
       )}

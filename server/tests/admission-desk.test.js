@@ -53,15 +53,20 @@ const admit = async (who, bed, p, body = {}) => (await as(who)).post(`/api/beds/
 const rules = async (body) => (await as('admin')).put('/api/admission-desk/rules').send(body);
 
 describe('IPD numbers and the checklist', () => {
-  it('every stay gets an IPD number; an incomplete checklist is flagged, and refused once the hospital requires it', async () => {
+  it('every stay gets an IPD number; the checklist is optional, one started is flagged, and refused once the hospital requires it', async () => {
     const b = await beds();
     const p1 = await register('First Mother');
     const p2 = await register('Second Mother');
     const one = await admit('reception', b.G1, p1);
     expect(one.status, JSON.stringify(one.body)).toBe(201);
-    expect(one.body.admission).toMatchObject({ ipdNo: 'IP-2026-000001', checklistComplete: false });
-    const board = (await (await as('reception')).get('/api/beds')).body;
-    expect(board.wards[0].beds[0].stay).toMatchObject({ ipdNo: 'IP-2026-000001', checklistIncomplete: true });
+    expect(one.body.admission).toMatchObject({ ipdNo: 'IP-2026-000001', checklistComplete: null });
+    let board = (await (await as('reception')).get('/api/beds')).body;
+    expect(board.wards[0].beds[0].stay).toMatchObject({ ipdNo: 'IP-2026-000001', checklistIncomplete: false, checklistComplete: false });
+    // It can still be filled in later, and one left half-filled is flagged until it is finished
+    const half = await (await as('reception')).put(`/api/admission-desk/stays/${one.body.admission.id}/checklist`).send({ checklist: { attendantName: 'Sample Husband' } });
+    expect(half.body.missing).toHaveProperty(['checklist.idProof']);
+    board = (await (await as('reception')).get('/api/beds')).body;
+    expect(board.wards[0].beds[0].stay).toMatchObject({ checklistIncomplete: true, checklistComplete: false });
 
     expect((await rules({ requireAdmissionRequest: false, requireChecklist: true })).body).toMatchObject({ requireChecklist: true });
     const refused = await admit('reception', b.G2, p2);
@@ -76,6 +81,7 @@ describe('IPD numbers and the checklist', () => {
     const p3 = await register('Third Mother');
     const em = await admit('reception', b.G3, p3, { admissionType: 'emergency' });
     expect(em.status).toBe(201);
+    expect(em.body.admission.checklistComplete).toBe(false); // the hospital requires it: flagged until completed
     const fill = await (await as('reception')).put(`/api/admission-desk/stays/${em.body.admission.id}/checklist`).send({ checklist: CHECKLIST });
     expect(fill.body).toMatchObject({ checklist: { complete: true, idLast4: '1234' }, missing: {} });
     const entry = await AuditLog.findOne({ action: 'ADMISSION_CHECKLIST_UPDATED' }).lean();
