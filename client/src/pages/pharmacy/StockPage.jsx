@@ -66,7 +66,7 @@ export function StockPage() {
           pageLabel="medicines"
           toolbar={
             <div className="bill-toolbar ph-stock-toolbar">
-              <div className="segmented" role="group" aria-label="Show">
+              <div className="segmented ph-stock-show" role="group" aria-label="Show">
                 {[
                   ['all', 'All'],
                   ['low', 'Low stock'],

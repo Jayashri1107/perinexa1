@@ -13,6 +13,18 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **5 Nov 2026 – Android app (branch `android-app-fixes`, developer's request):** the app asks for the camera and
+  microphone when first used; nothing of it goes to phone backups or transfers; Back goes to the previous screen; Print
+  uses Android's print screen; a PDF or other file asks where to save it (`mobile/.../MainActivity.java`,
+  `client/src/platform/androidApp.js`). Key files are kept out of git. Debug and release builds pass. **Not yet tried on
+  a phone:** camera and microphone in use, Print and saving, which need this website version deployed. **Still to do
+  before the Play Store:** the signing key, the 1024-pixel logo, the privacy policy, patients deleting their own account.
+- **5 Nov 2026 – phone screens corrected from the developer's screenshots (branch `phone-ui-fixes`):** Patients' chips no
+  longer overlap, and a row's date reads "2 days ago · 3 Nov"; Calendar names keep whole words; a scan's date and
+  Schedule have a line each; a purchase bill's totals fill the box; Medicines says HSN, GST and In stock; Stock's three
+  choices fit; a report's heading has one colour; a chart's last label stays inside; Care plans' labels sit over their
+  values; a visit no longer runs wider than the phone; a prescription has one Add medicine, in the foot. **How to test:**
+  after the deploy, close the app, open it and go through those screens.
 - **Online copy (step A2, done 5 Oct 2026):** the private GitHub repository `girishsolanke/perinexa` (git remote
   `origin`, branch `main`). Secret files (`server/.env`, `docs/TEST_ACCOUNTS.md`, `.mongo-data`) were never in git.
 - **One main version (step A1, done 5 Oct 2026):** the work lanes (lane-a, lane-b, lane-c, threatened-antenatal) and

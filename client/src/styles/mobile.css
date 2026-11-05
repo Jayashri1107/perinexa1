@@ -1358,7 +1358,7 @@ html.in-app { --safe-top: 0px; }
   .wl-list > li:has(> .wl-row-head .strong-name[href^='/scans/']) > .hint { position: relative; z-index: 1; }
 
   /* ---------- App design: a scan ---------- */
-  .card > .row:has(> .img-when) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
+  .card > .row:has(> .img-when) { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
   .img-when { width: 100%; min-width: 0; }
   /* Its next step at the foot, in place of the bottom bar */
   .pf-has-tabbar:has(.img-done, .img-report-form) .pf-tabbar { display: none; }
@@ -1667,6 +1667,47 @@ html.in-app { --safe-top: 0px; }
 
   /* A tip about the keyboard (Ctrl+K) means nothing on a phone */
   .tip-keyboard { display: none; }
+
+  /* ---------- A long hint inside a box ends in dots, not cut through a letter ---------- */
+  input:placeholder-shown { text-overflow: ellipsis; }
+
+  /* ---------- Patients: every chip in its own place; the row's lines start from one edge ---------- */
+  .pt-quick > .segmented:not(.ph-tabs) { flex: 0 0 max-content; width: max-content; max-width: none; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td[data-label='Care now']) > td[data-label]:not(:first-child) > :first-child { margin-left: 0; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label='Last seen'] > .cell-sub::before { content: ' · '; }
+  .dt tbody tr:has(> td[data-label='Care now']) > td[data-label]:not(:first-child) { padding-left: 65px; }
+
+  /* ---------- Calendar: the name on its own line, whole words, the marks under it; every legend chip in view ---------- */
+  .cal-page .wl-row-toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto; justify-items: start; row-gap: var(--space-1); }
+  .cal-page .wl-row-name { grid-column: 1; overflow-wrap: normal; word-break: normal; }
+  .cal-page .wl-row-toggle > :not(.wl-row-name, .wl-row-chevron) { grid-column: 1; }
+  .cal-page .wl-row-chevron { grid-column: 2; grid-row: 1; }
+  .cal-types { flex-wrap: wrap; overflow-x: visible; }
+
+  /* ---------- Stock: the three choices fit on one row instead of being cut ---------- */
+  .segmented.ph-stock-show:not(.ph-tabs) { overflow: visible; }
+  .segmented.ph-stock-show > * { flex: 0 1 auto; padding: 0 var(--space-3); font-size: var(--fs-caption); }
+
+  /* ---------- Medicines: the numbers say what they are ---------- */
+  .ph-med-tax::before, .ph-med-stock::before { margin-right: var(--space-1); color: var(--slate-600); font-size: var(--fs-caption); }
+  .ph-med-tax::before { content: 'HSN · GST'; }
+  .ph-med-stock::before { content: 'In stock'; }
+
+  /* ---------- A purchase bill: the totals across the whole box ---------- */
+  .pf-main table.bill-report.ph-grn-sums:not(:has(td[data-label])) { display: table; }
+
+  /* ---------- A visit: a long quick-entry button wraps, so it cannot make the whole page wider than the phone ---------- */
+  .vs-quick .btn { height: auto; white-space: normal; text-align: left; }
+
+  /* ---------- A prescription: Add medicine stays in the foot, so not a second one at the top ---------- */
+  .vs-rx-actions > .vs-rx-add-top { display: none; }
+
+  /* ---------- A report table: the frozen first heading keeps the heading's colour ---------- */
+  .pf-main table.bill-report:not(:has(td[data-label])) thead th:first-child { background: var(--mist-50); }
+
+  /* ---------- Care plans: each label over its value, so neither wraps beside the other ---------- */
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.cp-col-name) > td[data-label]:not(:first-child)::before { display: block; margin: 0 0 2px; }
+  .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.cp-col-name) > td[data-label]:not(:first-child) > * { margin-left: 0; }
 }
 
 /* The registration sheet slides up (mobile.css .pf-sheet .pf-main) */

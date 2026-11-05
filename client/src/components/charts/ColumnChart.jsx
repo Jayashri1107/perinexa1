@@ -139,7 +139,8 @@ export function ColumnChart({ columns, color = 'bar', summary, caption, labelHea
                     </text>
                   )}
                   {(i % labelEvery === 0 || i === n - 1) && (i === n - 1 || n - 1 - i >= labelEvery) && (
-                    <text className="colchart-xlabel" x={cx} y={HEIGHT - PAD.bottom + 18} textAnchor="middle">
+                    // A last label too long to centre under its column ends at the chart's edge, not beyond it
+                    <text className="colchart-xlabel" {...(i === n - 1 && cx + c.label.length * 4 > width ? { x: width, textAnchor: 'end' } : { x: cx, textAnchor: 'middle' })} y={HEIGHT - PAD.bottom + 18}>
                       {c.label}
                     </text>
                   )}

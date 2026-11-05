@@ -379,7 +379,7 @@ export function PrescriptionForm({
               <button type="button" className="btn btn-secondary" onClick={() => setPicking(true)} disabled={rows.length >= 40}>
                 <ListPlus aria-hidden="true" /> Add a ready-made set
               </button>
-              <button type="button" className="btn btn-secondary" onClick={add} disabled={rows.length >= 40}>
+              <button type="button" className="btn btn-secondary vs-rx-add-top" onClick={add} disabled={rows.length >= 40}>
                 <Plus aria-hidden="true" /> Add medicine
               </button>
             </div>
