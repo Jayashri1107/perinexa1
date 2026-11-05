@@ -18,7 +18,8 @@ concurrency:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # A fixed version: "ubuntu-latest" moves to Ubuntu 26 from 19 Oct 2026, and MongoDB stopped starting here from 29 Oct 2026
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       # As scripts/db.mjs starts it on a computer: 64 index builds at once, or a fresh test database's indexes take
