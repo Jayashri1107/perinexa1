@@ -516,6 +516,11 @@ const LAB_TAB_PLACES = [
 ];
 export function tabBarModules(modules = [], roles = []) {
   const linked = modules.filter((m) => m.to);
+  // The platform, as in the app design (2 Nov 2026): Analytics and Patients are under Menu
+  const platformPlace = (key) => linked.find((m) => m.key === key);
+  if (['overview', 'hospitals', 'users', 'audit'].every(platformPlace)) {
+    return [platformPlace('overview'), platformPlace('hospitals'), { ...platformPlace('users'), label: 'Users' }, { ...platformPlace('audit'), label: 'Audit' }];
+  }
   const today = linked.find((m) => m.key === 'today');
   if (roles.length === 1 && roles[0] === 'lab' && today) return [today, ...LAB_TAB_PLACES];
   // The accounts, as in the app design (2 Nov 2026): Daily collection beside the bills; Daily expenses is under Menu
@@ -530,7 +535,8 @@ export function tabBarModules(modules = [], roles = []) {
     if (m && !picked.includes(m)) picked.push(m);
     if (picked.length === 4) break;
   }
-  return picked;
+  // The Admin tab opens the list of the admin's pages (app design, 2 Nov 2026), under the short name
+  return picked.map((m) => (m.key === 'hospital-admin' ? { ...m, to: '/admin' } : m));
 }
 
 // Everyone.

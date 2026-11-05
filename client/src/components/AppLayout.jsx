@@ -244,9 +244,11 @@ function HelpLink() {
 
 // The profile circle beside "Log out": click it for the name, email and role, Change password and My settings.
 function ProfileMenu({ locked, onSwitch, onDoctorSetup, onRoleSwitch }) {
-  const { user, activeMembership, platform, switchBack, roleMode } = useAuth();
+  const { user, logout, activeMembership, platform, switchBack, roleMode } = useAuth();
   const [open, setOpen] = useState(false);
   const [changing, setChanging] = useState(false); // Change password, in a pop-up
+  // Phones: the top bar has no Log out button, so the profile sheet has it
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
   const box = useRef(null);
   useDismiss(open, setOpen, box);
   const role = platformRoleLabel(platform) ?? (activeMembership ? rolesLabel(activeMembership.roles) : null);
@@ -337,6 +339,11 @@ function ProfileMenu({ locked, onSwitch, onDoctorSetup, onRoleSwitch }) {
                 }}
               >
                 <Stethoscope aria-hidden="true" /> Work as a doctor…
+              </button>
+            )}
+            {onPhone && (
+              <button type="button" className="pm-link pm-logout" onClick={() => logout('manual')}>
+                <LogOut aria-hidden="true" /> Log out
               </button>
             )}
           </div>
@@ -530,7 +537,7 @@ export function AppLayout() {
                 {searchOpen ? <X aria-hidden="true" /> : <Search aria-hidden="true" />}
               </button>
             )}
-            {!isPlatform && !locked && activeMembership && <NotificationBell key={`bell-${activeTenantId}`} />}
+            {(!isPlatform || inSetup) && !locked && activeMembership && <NotificationBell key={`bell-${activeTenantId}`} />}
             {!locked && <HelpLink />}
             <ProfileMenu locked={locked} onSwitch={startSwitch} onDoctorSetup={() => setSwitching('setup')} onRoleSwitch={startRoleSwitch} />
             <button type="button" className="icon-btn pf-icon-btn pf-logout" onClick={() => logout('manual')} title="Log out" aria-label="Log out">

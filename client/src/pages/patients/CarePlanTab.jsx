@@ -29,6 +29,7 @@ import { ITEM_KIND_ICONS, ITEM_KIND_LABELS, ITEM_KINDS } from '../careplans/temp
 import { NextVisitLine, PlanApproval } from './CarePlanCard.jsx';
 import { CarePlanPrintPreview, PrintPlanDialog } from './CarePlanPrint.jsx';
 import { hasContent, patientCopy } from './carePlanPrintFormat.js';
+import { usePagedRows } from '../../components/DataTable.jsx';
 import {
   AddItemDialog,
   BookingDateDialog,
@@ -254,11 +255,18 @@ function StatusCell({ item, plan, patient }) {
  * The items table (also used inside the folded sections). rows: from planRows(). Editors get the Actions
  * column; for everyone else a click on a row opens the item's details.
  */
-function ItemsTable({ plan, patient, rows, caption, emptyText, onAction }) {
+function ItemsTable({ plan, patient, rows: allRows, caption, emptyText, onAction }) {
   const editable = plan.canEdit;
+  // Phones: a few items at a time; a heading stays with the first item under it
+  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
+  const items = allRows.filter((r) => r.item);
+  const { shown, pager } = usePagedRows(items, { initial: 8, sizes: [8, 16, 32], label: 'items', resetKey: caption });
+  const onPage = new Set(shown ?? items);
+  const rows = onPhone ? allRows.filter((r, i) => (r.item ? onPage.has(r) : onPage.has(allRows.slice(i + 1).find((x) => x.item)))) : allRows;
   const cols = editable ? 4 : 3;
   const openDetails = (item) => onAction('details', item);
   return (
+    <>
     <table className="dt plan-table">
       <caption className="sr-only">{caption}</caption>
       <thead>
@@ -330,6 +338,8 @@ function ItemsTable({ plan, patient, rows, caption, emptyText, onAction }) {
         )}
       </tbody>
     </table>
+    {onPhone && pager}
+    </>
   );
 }
 
