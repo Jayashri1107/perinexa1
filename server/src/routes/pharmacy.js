@@ -677,7 +677,7 @@ pharmacyRouter.get('/invoices', async (req, res) => {
 // bill – never the whole patient list (owner, 26 Oct 2026), and no patient without a bill can be found here. The
 // pharmacist only; audited.
 const PEOPLE_LIMIT = 200;
-const PERSON_BILLS = 50;
+const PERSON_BILLS = 200;
 const BILL_TYPES = { opd: { kind: 'sale', patientId: { $ne: null } }, ipd: { kind: 'issue' }, external: { patientId: null } };
 pharmacyRouter.get('/invoices/people', async (req, res) => {
   desk(req);
@@ -694,8 +694,10 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
   if (also.length) match.$and = also;
   if (search || mrn) {
     const rx = search ? new RegExp(escapeRegex(search), 'i') : null;
-    const patientFilter = { tenantId: req.tenantId, ...(rx ? { $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] } : {}), ...(mrn ? { mrn: new RegExp(escapeRegex(mrn), 'i') } : {}) };
-    const pids = (await Patient.find(patientFilter, { _id: 1 }).limit(PEOPLE_LIMIT).lean()).map((p) => p._id);
+    // Among the patients with a bill, so that many who match without one never push out those who have one
+    const billed = await PharmacyInvoice.distinct('patientId', { tenantId: req.tenantId, patientId: { $ne: null } });
+    const patientFilter = { tenantId: req.tenantId, _id: { $in: billed }, ...(rx ? { $or: [{ fullName: rx }, { mrn: rx }, { phone: rx }] } : {}), ...(mrn ? { mrn: new RegExp(escapeRegex(mrn), 'i') } : {}) };
+    const pids = (await Patient.find(patientFilter, { _id: 1 }).lean()).map((p) => p._id);
     // A walk-in has no patient number: a number finds only patients
     match.$or = [{ patientId: { $in: pids } }, ...(rx && !mrn ? [{ patientId: null, 'customer.name': rx }, { patientId: null, 'customer.phone': rx }, { patientId: null, 'buyer.name': rx }] : [])];
   }

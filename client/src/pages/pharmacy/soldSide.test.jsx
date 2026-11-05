@@ -85,6 +85,7 @@ describe('Sold’s filters', () => {
     expect(html).toContain('ph-sold-split');
     expect(html.indexOf('Find bills')).toBeLessThan(html.indexOf('ph-sold-results'));
     expect(html).not.toMatch(/>\s*(Filter|Apply|Search)\s*</);
+    expect(html).not.toContain('Clear the filters');
     for (const part of ['Patient number', 'Patient name', 'Doctor name', 'Dr Sample Rao', 'External', 'Amount ₹', 'Paid by', 'On the hospital bill', 'Pharmacy invoices']) expect(html).toContain(part);
     expect(html).not.toContain('Sample Asha Kale');
   });

@@ -13,6 +13,11 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **5 Nov 2026 – Pharmacy Sold, filters at the side (branch `pharmacy-sold-side-filters`):** from the store's earlier
+  software, on a computer the filters are a panel on the left and the list narrows beside them, with no button. A patient's
+  name, phone or number lists everyone billed who matches, from the first letter, with bills of every date (the Date filter
+  applies to the day's bills only). Still never patients without a pharmacy bill (owner, 26 Oct 2026). Phones keep the
+  filters above the list. **How to test:** Pharmacy → Sold, type a letter in Patient name, choose a type or doctor.
 - **5 Nov 2026 – the hospital's bed list and an optional admission checklist (branch `bed-list-optional-checklist`):**
   the handwritten list is in `server/scripts/hospital-beds.js` (`npm run beds:hospital -w server -- "<hospital name>"`:
   adds only what is missing, safe to run again). Hospital admin → Beds no longer refuses a whole list because some beds

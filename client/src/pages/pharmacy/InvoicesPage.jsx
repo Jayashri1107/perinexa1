@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw, Stethoscope, UserPlus, Users, X } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -58,7 +58,7 @@ export function InvoicesPage() {
 
   // The pharmacist's filters, in a panel at the side like the store's earlier software (5 Nov 2026), with no button to
   // press: every change narrows the list beside them at once. Type, doctor and day narrow the bills; typing a patient's
-  // name or number lists the people found, from the first letter.
+  // name or number lists the people found from the first letter, with their bills of every date, old and new.
   const [type, setType] = useState('all');
   const [doctor, setDoctor] = useState('');
   const [nameText, setNameText] = useState('');
@@ -77,7 +77,7 @@ export function InvoicesPage() {
   const doctors = useFetch(desk ? '/pharmacy/invoices/doctors' : null);
   const found = useFetch(
     looking ? '/pharmacy/invoices/people' : null,
-    looking ? { ...(name ? { search: name } : {}), ...(mrn ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(date ? { date } : {}), ...(amount ? { amount } : {}), ...(paidBy ? { paidBy } : {}) } : undefined,
+    looking ? { ...(name ? { search: name } : {}), ...(mrn ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(amount ? { amount } : {}), ...(paidBy ? { paidBy } : {}) } : undefined,
   );
   const people = looking ? (found.data?.people ?? []) : [];
   // Came with a patient's number: open their bills as soon as they are found
@@ -97,14 +97,6 @@ export function InvoicesPage() {
     setPerson(null);
     setNameText('');
     setMrnText('');
-  };
-  const clearFilters = () => {
-    closePerson();
-    setType('all');
-    setDoctor('');
-    setAmountText('');
-    setPaidBy('');
-    setText('');
   };
 
   // Phones, as in the app design (2 Nov 2026): how many bills and their total above the list
@@ -241,11 +233,6 @@ export function InvoicesPage() {
                   <span>Bill or medicine</span>
                   {billSearch}
                 </label>
-                <div className="ph-filter ph-filter-clear">
-                  <button type="button" className="btn btn-link" disabled={!filtering} onClick={clearFilters}>
-                    <X aria-hidden="true" /> Clear the filters
-                  </button>
-                </div>
               </div>
             </section>
             <div className="ph-sold-results">
@@ -273,6 +260,7 @@ function PeopleFound({ found, people, onPick }) {
     <section className="card ph-found" aria-label="People found">
       {found.error && <Alert type="error">{found.error}</Alert>}
       {found.data && !people.length && <p className="muted">Nobody with a pharmacy bill matches.</p>}
+      {people.length > 0 && <p className="hint">Everyone with a pharmacy bill who matches, old and new. Click a name to see their bills.</p>}
       <ul>
         {people.map((x) => (
           <li key={x.key}>
