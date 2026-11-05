@@ -225,8 +225,8 @@ function CameraScan({ words, onText, onBlocked, deviceId = '', facing = 'environ
         <video ref={video} muted playsInline aria-label={words.camera} className={mirror ? 'is-mirrored' : undefined} />
         <span className="aadhaar-camera-box" aria-hidden="true" />
       </div>
-      <div className="row">
-        <button type="button" className="btn btn-secondary btn-sm" onClick={capture} disabled={capturing || !size}>
+      <div className="row aadhaar-camera-actions">
+        <button type="button" className="btn btn-secondary btn-sm aadhaar-capture" onClick={capture} disabled={capturing || !size}>
           <Aperture aria-hidden="true" /> {capturing ? words.reading : words.capture}
         </button>
         {onSwitch && (
@@ -234,10 +234,10 @@ function CameraScan({ words, onText, onBlocked, deviceId = '', facing = 'environ
             <SwitchCamera aria-hidden="true" /> {words.switchCamera}
           </button>
         )}
-        <button type="button" className="btn btn-link btn-sm" aria-pressed={mirror} onClick={onMirror}>
+        <button type="button" className="btn btn-link btn-sm aadhaar-mirror" aria-pressed={mirror} onClick={onMirror}>
           <FlipHorizontal2 aria-hidden="true" /> {words.mirror}
         </button>
-        {size && <span className="hint tabular">{words.cameraSize(size)}</span>}
+        {size && <span className="hint tabular aadhaar-camera-size">{words.cameraSize(size)}</span>}
       </div>
       <p className="hint" role="status">
         <Camera aria-hidden="true" /> {words.looking} {words.cameraHint}
@@ -426,7 +426,7 @@ export function AadhaarQrFill({ onFill, disabled = false, words = AADHAAR_WORDS,
       {result?.ok && signature && result.signature === 'none' && <Alert type="info">{t.signedNone}</Alert>}
       {result?.problem && <Alert type="warning">{result.problem}</Alert>}
       {busy && <p className="hint" role="status">{t.reading}</p>}
-      <div className="row">
+      <div className="row aadhaar-fill-actions">
         {!camera && (
           <button type="button" className="btn btn-secondary btn-sm" disabled={!can} onClick={scan}>
             <Camera aria-hidden="true" /> {t.scanAgain}
