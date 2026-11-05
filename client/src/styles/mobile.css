@@ -1646,6 +1646,16 @@ html.in-app { --safe-top: 0px; }
   .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.plat-access-cell) > td[data-label='Last login']:not(:first-child)::before { content: 'Last login: '; display: inline; position: static; width: auto; font-size: inherit; color: inherit; font-weight: 400; }
   .dt:not(.an-table) tbody tr:not(:has(> td[data-label='Balance'])):has(> td.plat-access-cell) > td[data-label='Created'] { display: none; }
 
+  /* ---------- Sold's filters: two a row, the date whole width, the bills soon under them ---------- */
+  .ph-filters > .segmented { display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow-x: auto; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; scrollbar-width: none; }
+  .ph-filters > .segmented::-webkit-scrollbar { display: none; }
+  .ph-filters > .segmented > button { flex: none; min-height: 40px; padding: 0 var(--space-3); border-radius: var(--radius-pill); background: var(--mist-100); color: var(--slate-600); box-shadow: none; white-space: nowrap; }
+  .ph-filters > .segmented > button[aria-pressed='true'] { background: var(--indigo-700); color: var(--on-solid); }
+  .ph-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .ph-filter-row > .ph-filter { min-width: 0; }
+  .ph-filter-row > .ph-filter :is(input, select) { width: 100%; min-width: 0; }
+  .ph-filter-row > .ph-filter:first-child, .ph-filter-row > .ph-filter-clear { grid-column: 1 / -1; }
+
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }
   [data-short]:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
