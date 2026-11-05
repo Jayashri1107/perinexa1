@@ -3,6 +3,7 @@
 // out), its pages end between lines (paperLayout.js), and each page is drawn as a picture – so Marathi and Hindi
 // look exactly as the browser writes them – into a PDF (imagePdf.js). The same layout counts the pages to print.
 
+import { saveInAndroidApp } from '../../platform/androidApp.js';
 import { jpegPdf } from './imagePdf.js';
 import { PT_PER_MM, PX_PER_MM, pageBreaks, paperOf } from './paperLayout.js';
 
@@ -243,6 +244,7 @@ export function canSharePdf() {
 
 /** Saves the file to the computer's Downloads folder (the browser's own download). */
 export function downloadFile(blob, fileName) {
+  if (saveInAndroidApp(blob, fileName)) return;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

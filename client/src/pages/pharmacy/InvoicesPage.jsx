@@ -9,6 +9,7 @@ import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, Field, formatDateTime, useDebounced } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
+import { savedNote } from '../../platform/androidApp.js';
 import { addDaysIso } from '../appointments/appointmentFormat.js';
 import { TallyMarks } from '../billing/TallyPage.jsx';
 import { amountInWords } from '../billing/amountWords.js';
@@ -656,7 +657,7 @@ function BusinessBuyer({ invoice: v, einvoice }) {
     try {
       const { blob, name } = await apiFile(`/pharmacy/invoices/${v.id}/einvoice`, { query: { creditNote } });
       downloadFile(blob, name);
-      setSaved(`Saved as “${name}” in your Downloads folder. Give it to your accountant to check before it is uploaded.`);
+      setSaved(`${savedNote(name)} Give it to your accountant to check before it is uploaded.`);
     } catch (err) {
       setError(err.message);
     } finally {

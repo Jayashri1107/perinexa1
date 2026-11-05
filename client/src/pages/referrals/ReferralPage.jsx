@@ -29,6 +29,7 @@ import { downloadFile, makePdf } from '../../components/print/pdfExport.js';
 import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
+import { savedNote } from '../../platform/androidApp.js';
 import { PatientFinder, SlotChooser } from '../appointments/AppointmentDialogs.jsx';
 import { STATUS_LOOK as APPOINTMENT_LOOK, VISIT_TYPES, VISIT_TYPE_LABELS, dayLabel, timeLabel } from '../appointments/appointmentFormat.js';
 import { DocPrintDocument } from '../inpatient/DocumentPage.jsx';
@@ -1166,7 +1167,7 @@ function PdfsCard({ r, onDone, primary, busy, setBusy }) {
     try {
       const { blob } = await apiFile(`/referrals/${r.id}/releases/${x.id}`);
       downloadFile(blob, x.fileName);
-      setNotice(`Saved “${x.fileName}” in the Downloads folder. In the chat with ${r.referringDoctor?.name}, attach it (the paperclip, then Document), check it is the right patient and press Send. ${PDF_CARE}`);
+      setNotice(`${savedNote(x.fileName)} In the chat with ${r.referringDoctor?.name}, attach it (the paperclip, then Document), check it is the right patient and press Send. ${PDF_CARE}`);
     } catch (err) {
       setError(err.message);
     } finally {

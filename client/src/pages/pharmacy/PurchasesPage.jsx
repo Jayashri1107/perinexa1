@@ -1054,13 +1054,13 @@ export function MedicinesPage() {
                     <td>
                       {FORM_LABELS[m.form]} · {m.unit}
                     </td>
-                    <td>
+                    <td className="ph-med-tax">
                       {m.hsn || '–'} · {m.gstRate}%
                     </td>
                     <td>
                       <ScheduleMark schedule={m.schedule} />
                     </td>
-                    <td className="num">{m.inStock}</td>
+                    <td className="num ph-med-stock">{m.inStock}</td>
                     <td className="bill-price-actions">
                       {canEdit && (
                         <>
