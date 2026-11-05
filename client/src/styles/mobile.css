@@ -1654,7 +1654,7 @@ html.in-app { --safe-top: 0px; }
   .ph-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
   .ph-filter-row > .ph-filter { min-width: 0; }
   .ph-filter-row > .ph-filter :is(input, select) { width: 100%; min-width: 0; }
-  .ph-filter-row > .ph-filter:first-child, .ph-filter-row > .ph-filter-clear { grid-column: 1 / -1; }
+  .ph-filter-row > .ph-filter:first-child { grid-column: 1 / -1; }
 
   /* ---------- A long instruction line: one line and an arrow, a tap shows the rest (shortHints.js) ---------- */
   [data-short] { position: relative; padding-right: var(--space-6); cursor: pointer; }

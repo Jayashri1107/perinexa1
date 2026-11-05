@@ -9,6 +9,7 @@ import { fixOldGstRates } from '../src/pharmacy/gstRateFix.js';
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { Patient } from '../src/models/Patient.js';
 import { Medicine } from '../src/models/Pharmacy.js';
 import { User } from '../src/models/User.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
@@ -413,6 +414,22 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect(JSON.stringify(log.details)).not.toMatch(/asha/i);
   });
 
+  it('finds a billed patient however many others match without a bill, with old and new bills', async () => {
+    const med = await stocked();
+    await Patient.collection.insertMany(Array.from({ length: 205 }, (_, i) => ({ tenantId: hospital._id, fullName: `Sample Asha Unbilled ${i}`, mrn: `UB-${i}`, careType: 'antenatal' })));
+    const asha = await register('Sample Asha Billed');
+    const line = [{ medicineId: med.id, qty: 1 }];
+    later('2026-01-10T08:00:00Z');
+    await sell({ patientId: asha.id, lines: line });
+    later('2026-09-28T08:00:00Z');
+    await sell({ patientId: asha.id, lines: line });
+    const found = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ search: 'asha' });
+    expect(found.body.people.map((x) => x.name)).toEqual(['Sample Asha Billed']);
+    expect(found.body.people[0].billCount).toBe(2);
+    const byNumber = await (await as('pharm')).get('/api/pharmacy/invoices/people').query({ mrn: asha.mrn });
+    expect(byNumber.body.people.map((x) => x.name)).toEqual(['Sample Asha Billed']);
+  });
+
   it('narrows by patient number, type, doctor and day, and lists the doctors on bills', async () => {
     const med = await stocked();
     const asha = await register('Sample Asha Kale');
@@ -422,6 +439,7 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     const find = async (query) => (await (await as('pharm')).get('/api/pharmacy/invoices/people').query(query)).body.people.map((x) => x.name);
 
     expect(await find({ search: 'asha' })).toHaveLength(2);
+    expect(await find({ search: 'k' })).toEqual(['Sample Asha Kale', 'Sample Asha Walkin'].filter((n) => /k/i.test(n))); // from the first letter
     expect(await find({ mrn: asha.mrn.slice(-4) })).toEqual(['Sample Asha Kale']);
     expect(await find({ search: 'asha', mrn: asha.mrn })).toEqual(['Sample Asha Kale']);
     expect(await find({ search: 'asha', type: 'external' })).toEqual(['Sample Asha Walkin']);

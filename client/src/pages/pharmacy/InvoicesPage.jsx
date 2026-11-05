@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw, Stethoscope, UserPlus, Users, X } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -55,10 +55,10 @@ export function InvoicesPage() {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date') : undefined;
   const res = useFetch('/pharmacy/invoices', search.length >= 2 ? { search } : { date });
   const day = date ?? res.data?.today;
-  const go = (d) => setParams({ date: d }, { replace: true });
 
-  // The pharmacist's filters, in one row like the store's earlier software (3 Nov 2026). Type, doctor and day narrow the
-  // bills below; typing a patient's name or number opens the list of people found, and only then.
+  // The pharmacist's filters, in a panel at the side like the store's earlier software (5 Nov 2026), with no button to
+  // press: every change narrows the list beside them at once. Type, doctor and day narrow the bills; typing a patient's
+  // name or number lists the people found from the first letter, with their bills of every date, old and new.
   const [type, setType] = useState('all');
   const [doctor, setDoctor] = useState('');
   const [nameText, setNameText] = useState('');
@@ -66,14 +66,18 @@ export function InvoicesPage() {
   const [amountText, setAmountText] = useState('');
   const [paidBy, setPaidBy] = useState('');
   const [person, setPerson] = useState(null);
+  const go = (d) => {
+    setParams({ date: d }, { replace: true });
+    setPerson(null);
+  };
   const name = useDebounced(nameText.trim(), 300);
   const mrn = useDebounced(mrnText.trim(), 300);
   const amount = useDebounced(amountText.replace(/[^\d.]/g, ''), 300).replace(/^\./, '');
-  const looking = desk && (name.length >= 2 || mrn.length >= 2);
+  const looking = desk && Boolean(name || mrn);
   const doctors = useFetch(desk ? '/pharmacy/invoices/doctors' : null);
   const found = useFetch(
     looking ? '/pharmacy/invoices/people' : null,
-    looking ? { ...(name.length >= 2 ? { search: name } : {}), ...(mrn.length >= 2 ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(date ? { date } : {}), ...(amount ? { amount } : {}), ...(paidBy ? { paidBy } : {}) } : undefined,
+    looking ? { ...(name ? { search: name } : {}), ...(mrn ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(amount ? { amount } : {}), ...(paidBy ? { paidBy } : {}) } : undefined,
   );
   const people = looking ? (found.data?.people ?? []) : [];
   // Came with a patient's number: open their bills as soon as they are found
@@ -93,14 +97,6 @@ export function InvoicesPage() {
     setPerson(null);
     setNameText('');
     setMrnText('');
-  };
-  const clearFilters = () => {
-    closePerson();
-    setType('all');
-    setDoctor('');
-    setAmountText('');
-    setPaidBy('');
-    setText('');
   };
 
   // Phones, as in the app design (2 Nov 2026): how many bills and their total above the list
@@ -176,11 +172,19 @@ export function InvoicesPage() {
       />
       <div className="pf-content bill-page ph-sold">
         {desk ? (
-          <>
+          <div className="ph-sold-split">
             <section className="card ph-filters" aria-label="Find bills">
               <div className="segmented" role="group" aria-label="Type of patient">
                 {TYPE_CHOICES.map(([k, label, Icon]) => (
-                  <button key={k} type="button" aria-pressed={type === k} onClick={() => setType(k)}>
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={type === k}
+                    onClick={() => {
+                      setType(k);
+                      setPerson(null);
+                    }}
+                  >
                     <Icon aria-hidden="true" /> {label}
                   </button>
                 ))}
@@ -200,7 +204,7 @@ export function InvoicesPage() {
                 </label>
                 <label className="ph-filter">
                   <span>Doctor name</span>
-                  <select value={doctor} onChange={(e) => setDoctor(e.target.value)}>
+                  <select value={doctor} onChange={typed(setDoctor)}>
                     <option value="">All doctors</option>
                     {(doctors.data?.doctors ?? []).map((d) => (
                       <option key={d} value={d}>
@@ -229,21 +233,18 @@ export function InvoicesPage() {
                   <span>Bill or medicine</span>
                   {billSearch}
                 </label>
-                <div className="ph-filter ph-filter-clear">
-                  <button type="button" className="btn btn-link" disabled={!filtering} onClick={clearFilters}>
-                    <X aria-hidden="true" /> Clear the filters
-                  </button>
-                </div>
               </div>
             </section>
-            {person ? (
-              <PersonBills key={person.key} person={person} onClose={closePerson} />
-            ) : looking ? (
-              <PeopleFound found={found} people={people} onPick={setPerson} />
-            ) : (
-              dayList
-            )}
-          </>
+            <div className="ph-sold-results">
+              {person ? (
+                <PersonBills key={person.key} person={person} onClose={closePerson} />
+              ) : looking ? (
+                <PeopleFound found={found} people={people} onPick={setPerson} />
+              ) : (
+                dayList
+              )}
+            </div>
+          </div>
         ) : (
           dayList
         )}
@@ -259,6 +260,7 @@ function PeopleFound({ found, people, onPick }) {
     <section className="card ph-found" aria-label="People found">
       {found.error && <Alert type="error">{found.error}</Alert>}
       {found.data && !people.length && <p className="muted">Nobody with a pharmacy bill matches.</p>}
+      {people.length > 0 && <p className="hint">Everyone with a pharmacy bill who matches, old and new. Click a name to see their bills.</p>}
       <ul>
         {people.map((x) => (
           <li key={x.key}>
