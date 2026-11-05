@@ -253,26 +253,34 @@ export function InvoicesPage() {
   );
 }
 
-/** The people a search found: nothing is listed until something is typed. */
-function PeopleFound({ found, people, onPick }) {
+/** The people a search found: nothing is listed until something is typed. Someone without a bill has nothing to open. */
+export function PeopleFound({ found, people, onPick }) {
   const navigate = useNavigate();
   return (
     <section className="card ph-found" aria-label="People found">
       {found.error && <Alert type="error">{found.error}</Alert>}
-      {found.data && !people.length && <p className="muted">Nobody with a pharmacy bill matches.</p>}
-      {people.length > 0 && <p className="hint">Everyone with a pharmacy bill who matches, old and new. Click a name to see their bills.</p>}
+      {found.data && !people.length && <p className="muted">Nobody matches.</p>}
+      {people.length > 0 && <p className="hint">Everyone who matches, old and new, those with bills first. Click a name to see their bills.</p>}
       <ul>
         {people.map((x) => (
           <li key={x.key}>
-            <button type="button" title="Double-click to open the full bill" onClick={() => onPick(x)} onDoubleClick={() => navigate(`/pharmacy/invoices/${x.bills[0].id}`)}>
-              <strong>{x.name}</strong>
-              <span className="tabular">{x.mrn}</span>
-              <TypePill type={x.type} />
-              <span>
-                {x.billCount} bill{x.billCount === 1 ? '' : 's'}
-              </span>
-              <span className="tabular">{slipDate(x.lastAt)}</span>
-            </button>
+            {x.billCount > 0 ? (
+              <button type="button" title="Double-click to open the full bill" onClick={() => onPick(x)} onDoubleClick={() => navigate(`/pharmacy/invoices/${x.bills[0].id}`)}>
+                <strong>{x.name}</strong>
+                <span className="tabular">{x.mrn}</span>
+                <TypePill type={x.type} />
+                <span>
+                  {x.billCount} bill{x.billCount === 1 ? '' : 's'}
+                </span>
+                <span className="tabular">{slipDate(x.lastAt)}</span>
+              </button>
+            ) : (
+              <div className="ph-found-row">
+                <strong>{x.name}</strong>
+                <span className="tabular">{x.mrn}</span>
+                <span className="muted">No pharmacy bill yet</span>
+              </div>
+            )}
           </li>
         ))}
       </ul>
