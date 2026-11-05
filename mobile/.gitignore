@@ -1,2 +1,6 @@
 node_modules/
 android-build.log
+# The key that signs the store app, and its passwords, never go in git (README: Build for the Play Store)
+*.jks
+*.keystore
+keystore.properties

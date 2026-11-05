@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileDown, FileText, MessageCircle, Printer, Send, Share2, TriangleAlert } from 'lucide-react';
+import { printPage, savedNote, savedPlace } from '../../platform/androidApp.js';
 import { MenuButton } from '../MenuButton.jsx';
 import { Alert, useDialogFocus } from '../ui.jsx';
 import { FITS, canSharePdf, downloadFile, makePdf, paperPages } from './pdfExport.js';
@@ -97,7 +98,7 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
     setError(null);
     try {
       await onPrint?.();
-      window.print();
+      printPage();
     } catch (err) {
       setError(`Nothing was printed. ${err.message}`);
     } finally {
@@ -124,7 +125,7 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
       const blob = ready ?? (await makePdf(sheet.current.querySelector('.pdoc'), page, { fit: fitted, title: pdf.title, pageNumbers }));
       await pdf.onSaved('download');
       downloadFile(blob, pdf.fileName);
-      setNotice(`Saved as “${pdf.fileName}” in your Downloads folder. ${PDF_CARE}`);
+      setNotice(`${savedNote(pdf.fileName)} ${PDF_CARE}`);
     } catch (err) {
       setError(`No PDF was saved. ${err.message}`);
     } finally {
@@ -154,8 +155,8 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
     }
     downloadFile(blob, pdf.fileName);
     setNotice(
-      `WhatsApp opens a chat with ${pdf.whatsapp.label}, the number on the patient’s record. Attach “${pdf.fileName}” from your Downloads ` +
-        `folder (the paperclip, then Document), check that it is the right patient, and press Send. ${PDF_CARE}`,
+      `WhatsApp opens a chat with ${pdf.whatsapp.label}, the number on the patient’s record. Attach “${pdf.fileName}” from ${savedPlace()} ` +
+        `(the paperclip, then Document), check that it is the right patient, and press Send. ${PDF_CARE}`,
     );
     try {
       await pdf.onSaved('whatsapp');
