@@ -37,7 +37,7 @@ function AdmissionRules() {
         <input type="checkbox" checked={rules.requireChecklist} disabled={!rules.canChange} onChange={(e) => change('requireChecklist', e.target.checked)} /> A planned or day-care
         admission needs the admission checklist complete (ID proof seen, attendant, who pays, consent signed)
       </label>
-      <p className="hint">Without these rules the bed board still shows "Checklist incomplete" until the desk completes it.</p>
+      <p className="hint">Without the checklist rule it is optional: the desk fills it in only for the patient who needs it. One started but not finished shows "Checklist incomplete" on the bed board.</p>
     </section>
   );
 }
@@ -57,8 +57,16 @@ export function BedSetupPage() {
     setError(null);
     setFields({});
     try {
-      const { beds } = await api('/beds/setup', { method: 'POST', body: { floor: form.floor.trim(), ward: form.ward.trim(), names } });
-      setNotice(`${beds.length} bed${beds.length === 1 ? '' : 's'} added to ${[form.floor.trim(), beds[0]?.ward ?? form.ward].filter(Boolean).join(' · ')}.`);
+      const { beds, ward, already = [], floorSet = 0 } = await api('/beds/setup', { method: 'POST', body: { floor: form.floor.trim(), ward: form.ward.trim(), names } });
+      const where = [form.floor.trim(), ward ?? form.ward.trim()].filter(Boolean).join(' · ');
+      setNotice(
+        [
+          `${beds.length} bed${beds.length === 1 ? '' : 's'} added to ${where}.`,
+          already.length ? `Already there: ${already.join(', ')}${floorSet ? ` (${floorSet} now on ${form.floor.trim()})` : ''}.` : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
+      );
       setForm({ floor: form.floor, ward: form.ward, names: '' });
       setup.reload();
     } catch (err) {

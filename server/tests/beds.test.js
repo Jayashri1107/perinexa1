@@ -54,13 +54,29 @@ describe('wards and beds', () => {
   it('only the hospital admin sets them up; a bed name is not repeated in a ward; beds sort naturally', async () => {
     expect((await (await as('reception')).post('/api/beds/setup').send({ ward: 'X', names: ['1'] })).status).toBe(403);
     await setUpBeds();
+    const onlyRepeats = await (await as('admin')).post('/api/beds/setup').send({ ward: 'general WARD', names: ['g2', 'G10'] });
+    expect(onlyRepeats.status).toBe(400);
+    expect(onlyRepeats.body.error.fields.names).toContain('g2');
+    // A list overlapping the beds already there adds the rest and says which were there
     const again = await (await as('admin')).post('/api/beds/setup').send({ ward: 'general WARD', names: ['g2', 'G3'] });
-    expect(again.status).toBe(400);
-    expect(again.body.error.fields.names).toContain('g2');
+    expect(again.status, JSON.stringify(again.body)).toBe(201);
+    expect(again.body.beds.map((b) => b.name)).toEqual(['G3']);
+    expect(again.body).toMatchObject({ ward: 'General ward', already: ['g2'], floorSet: 0 });
     const setup = (await (await as('admin')).get('/api/beds/setup')).body;
     expect(setup.wards).toHaveLength(1);
-    expect(setup.wards[0].beds.map((b) => b.name)).toEqual(['G1', 'G2', 'G10']);
+    expect(setup.wards[0].beds.map((b) => b.name)).toEqual(['G1', 'G2', 'G3', 'G10']);
     expect((await (await as('nurse')).get('/api/beds/setup')).status).toBe(403);
+  });
+
+  it('beds without a floor take the floor of a list that repeats them; a bed on a floor keeps it', async () => {
+    await setUpBeds();
+    const list = await (await as('admin')).post('/api/beds/setup').send({ floor: '1st floor', ward: 'General ward', names: ['G1', 'G2', 'G3'] });
+    expect(list.status, JSON.stringify(list.body)).toBe(201);
+    expect(list.body).toMatchObject({ already: ['G1', 'G2'], floorSet: 2 });
+    const wards = (await (await as('admin')).get('/api/beds/setup')).body.wards;
+    expect(wards.map((w) => [w.floor, w.ward, w.beds.map((b) => b.name)])).toEqual([['1st floor', 'General ward', ['G1', 'G2', 'G3']], ['', 'General ward', ['G10']]]);
+    // Nothing new and no floor to set: refused
+    expect((await (await as('admin')).post('/api/beds/setup').send({ floor: '2nd floor', ward: 'General ward', names: ['G1'] })).status).toBe(400);
   });
 
   it('the admin sees free or occupied, never a name; a bed in use cannot be taken out of use', async () => {

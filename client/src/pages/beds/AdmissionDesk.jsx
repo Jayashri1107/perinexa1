@@ -388,7 +388,7 @@ function SignLine({ label }) {
 }
 
 export function AdmissionForm({ p, letterhead }) {
-  const c = p.checklist;
+  const c = p.checklist ?? p.checklistDraft; // no checklist filled in: what her record says
   return (
     <PrintDocument className="adm-form">
       {letterhead && <Letterhead letterhead={letterhead} />}

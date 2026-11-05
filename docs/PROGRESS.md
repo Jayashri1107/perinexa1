@@ -13,6 +13,12 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **5 Nov 2026 – the hospital's bed list and an optional admission checklist (branch `bed-list-optional-checklist`):**
+  the handwritten list is in `server/scripts/hospital-beds.js` (`npm run beds:hospital -w server -- "<hospital name>"`:
+  adds only what is missing, safe to run again). Hospital admin → Beds no longer refuses a whole list because some beds
+  exist: it adds the rest, and beds without a floor take the floor given. In the Admit popup the checklist opens only
+  with a tick, unless the hospital's rule requires it; a stay without one is not flagged, and "Fill in the checklist" on
+  her bed does it later. **Still to do:** run the command on the live server; room prices in Billing → Price list.
 - **5 Nov 2026 – Android app (branch `android-app-fixes`, developer's request):** the app asks for the camera and
   microphone when first used; nothing of it goes to phone backups or transfers; Back goes to the previous screen; Print
   uses Android's print screen; a PDF or other file asks where to save it (`mobile/.../MainActivity.java`,

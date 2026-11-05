@@ -112,9 +112,10 @@ bedsRouter.get('/', async (req, res) => {
       // The doctor shown on the bed: the stay's doctor in charge (29 Oct 2026), else her assigned doctor
       patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn, assignedDoctorName: s.doctorName || (p.assignedDoctor ? (doctors.get(String(p.assignedDoctor)) ?? null) : null), ...(isClosed(p) ? { closed: true } : {}) },
       canMove: mayMoveBed(req, p),
-      // HIMS-style admission (docs/ADMISSION_DESK_PLAN.md): the IPD number, and an emergency's checklist still to fill in
+      // HIMS-style admission (docs/ADMISSION_DESK_PLAN.md): the IPD number, and a checklist started but still to finish
       ipdNo: s.ipdNo ?? null,
       checklistIncomplete: Boolean(s.checklist) && !s.checklist.complete,
+      checklistComplete: Boolean(s.checklist?.complete),
       mlc: Boolean(s.mlc),
     };
   };
@@ -236,9 +237,10 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
   const admittedAt = body.admittedAt ? new Date(body.admittedAt) : now;
   if (admittedAt.getTime() > now.getTime() + 5 * 60 * 1000) throw invalid({ admittedAt: "The admission can't be in the future." });
   // The checklist: when the hospital requires it, complete for a planned or day-care admission (an emergency goes in at
-  // once and is completed later); otherwise an incomplete one is flagged on the bed board until it is completed
+  // once and is completed later). Otherwise it is optional: left out, the stay has none and nothing is flagged; one
+  // started but not finished is flagged on the bed board until it is completed.
   const rules = await deskRules(req.tenantId);
-  const checklist = checklistDoc(req, checklistSchema.parse(body.checklist ?? {}));
+  const checklist = body.checklist || rules.requireChecklist ? checklistDoc(req, checklistSchema.parse(body.checklist ?? {})) : null;
   if (rules.requireChecklist && body.admissionType !== 'emergency') {
     const missing = checklistMissing(checklist);
     if (Object.keys(missing).length) throw invalid(missing, 'Complete the admission checklist (an emergency can be admitted first and completed later).');
@@ -301,7 +303,7 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
   await audit(req, 'ADMISSION_CREATED', { details: { patientId: String(patient._id), mrn: patient.mrn, admissionId: String(admission._id), bedId: String(bed._id), via: 'bed board' } });
   if (request) await AdmissionRequest.updateOne({ _id: request._id, tenantId: req.tenantId, status: 'open' }, { $set: { status: 'admitted', admissionId: admission._id } });
   await billAdmitted(req, admission); // billing: the stay's bill with the bed charge of this ward
-  res.status(201).json({ admission: { id: String(admission._id), ipdNo: admission.ipdNo, admittedAt: admission.admittedAt, ward: admission.ward, floor: bed.floor ?? '', bed: admission.bed, department: admission.department, doctorName: admission.doctorName, checklistComplete: checklist.complete } });
+  res.status(201).json({ admission: { id: String(admission._id), ipdNo: admission.ipdNo, admittedAt: admission.admittedAt, ward: admission.ward, floor: bed.floor ?? '', bed: admission.bed, department: admission.department, doctorName: admission.doctorName, checklistComplete: checklist ? checklist.complete : null } });
 });
 
 // ---------- Move to another bed ----------
@@ -354,14 +356,20 @@ bedsRouter.post('/setup', async (req, res) => {
   const body = parse(addSchema, req.body);
   const ward = body.ward.trim();
   const names = [...new Set(body.names.map((n) => n.trim()))];
-  const existing = await Bed.find({ tenantId: req.tenantId, ward: new RegExp(`^${ward.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, { name: 1, ward: 1 }).lean();
+  const floor = body.floor.trim();
+  const existing = await Bed.find({ tenantId: req.tenantId, ward: new RegExp(`^${ward.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, { name: 1, ward: 1, floor: 1 }).lean();
   const wardName = existing[0]?.ward ?? ward; // keep the ward's first spelling
-  const have = new Set(existing.map((b) => b.name.toLowerCase()));
+  const have = new Map(existing.map((b) => [b.name.toLowerCase(), b]));
   const repeated = names.filter((n) => have.has(n.toLowerCase()));
-  if (repeated.length) throw invalid({ names: `Already in ${wardName}: ${repeated.join(', ')}` });
-  const created = await Bed.insertMany(names.map((name) => ({ tenantId: req.tenantId, ward: wardName, floor: body.floor.trim(), name })));
-  await audit(req, 'BEDS_ADDED', { details: { ward: wardName, floor: body.floor.trim(), count: created.length } });
-  res.status(201).json({ beds: created.map(bedView) });
+  const fresh = names.filter((n) => !have.has(n.toLowerCase()));
+  // A list that overlaps the beds already there (G1-G10 when G1-G6 exist) adds the rest. Those without a floor yet take
+  // the floor given, so the list can be put in order; a bed already on a floor keeps it (changed one by one, PATCH below).
+  const floorless = floor ? repeated.map((n) => have.get(n.toLowerCase())).filter((b) => !b.floor) : [];
+  if (!fresh.length && !floorless.length) throw invalid({ names: `Already in ${wardName}: ${repeated.join(', ')}` });
+  const created = fresh.length ? await Bed.insertMany(fresh.map((name) => ({ tenantId: req.tenantId, ward: wardName, floor, name }))) : [];
+  if (floorless.length) await Bed.updateMany({ tenantId: req.tenantId, _id: { $in: floorless.map((b) => b._id) } }, { $set: { floor } });
+  await audit(req, 'BEDS_ADDED', { details: { ward: wardName, floor, count: created.length, floorSet: floorless.length } });
+  res.status(201).json({ beds: created.map(bedView), ward: wardName, already: repeated, floorSet: floorless.length });
 });
 
 bedsRouter.patch('/setup/:bedId', async (req, res) => {
