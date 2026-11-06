@@ -35,6 +35,10 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         WebView web = getBridge().getWebView();
 
+        // The screens as designed, whatever the phone's own font size: larger text is chosen in Perinexa itself
+        // (My settings → Appearance → Text size), which grows the whole layout together instead of squeezing it
+        web.getSettings().setTextZoom(100);
+
         // The website calls these where a browser would print or download (client/src/platform/androidApp.js)
         web.addJavascriptInterface(new WebsiteCalls(), "PerinexaApp");
 
