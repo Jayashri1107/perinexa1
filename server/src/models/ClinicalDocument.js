@@ -37,6 +37,10 @@ const documentSchema = new mongoose.Schema(
       type: [new mongoose.Schema({ text: { type: String, required: true, maxlength: 2000 }, by: ObjectId, byName: String, at: Date })],
       default: [],
     },
+    // PX-X-04 (Clinical Requirements, 5 Nov 2026): when each time in the content was typed – { deliveredAt: Date, … }.
+    // The time of the event is what the person typed; this is the server's clock when they saved it. No "late entry"
+    // badge (owner); the audited intervals are worked out from the stored times.
+    timesEnteredAt: { type: mongoose.Schema.Types.Mixed, default: {} },
     clientRequestId: { type: String, required: true, maxlength: 64 },
   },
   { timestamps: true, minimize: false },

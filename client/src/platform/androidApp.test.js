@@ -90,4 +90,9 @@ describe('the shell', () => {
     expect(rules).toContain('<device-transfer>');
     expect(rules).not.toContain('<include');
   });
+
+  it("keeps the screens' own text size whatever the phone's font size", () => {
+    const activity = readFileSync(new URL('../../../mobile/android/app/src/main/java/com/perinexa/app/MainActivity.java', import.meta.url), 'utf8');
+    expect(activity).toContain('setTextZoom(100)');
+  });
 });

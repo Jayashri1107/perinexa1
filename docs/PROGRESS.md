@@ -1,5 +1,14 @@
 # Progress
 
+## Clinical Requirements, Group A (6 Nov 2026)
+- **Built, on branch `crs-group-a` only (not in `master`):** the seven Group A items of PX-REQ-00 – Robson group and
+  table, caesarean times, specimens, newborn screening and follow-up, EPDS and VTE score, incidents, the formulary.
+  One commit per item. Two new logins: **Newborn follow-up coordinator** and **Quality lead** – neither opens a
+  medical record. Every rule is DRAFT with its source. What each does and leaves out: `docs/CLINICAL_REQUIREMENTS.md`.
+  How to test: "How to test Clinical Requirements Group A" below.
+- **Next:** the developer reads the branch; the leads confirm the DRAFT rules; Groups B and C wait (manual pages; base
+  rules).
+
 ## The phone app design and the Android app (2–3 Nov 2026)
 - **Done, phones only:** every role's main screens rebuilt from the "Perinexa app design" artifact (doctor, reception,
   nurse, RMO, pharmacy, lab, sonography, referral desk, billing, hospital admin, super admin); one fixed header; the profile
@@ -2942,6 +2951,49 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 - Owner/administrator: to try the AI features, create an OpenAI API key (platform.openai.com → API keys, with a
   small credit limit) and paste it after `OPENAI_API_KEY=` in `server/.env` yourself – never in chat – then
   restart Perinexa. Fake data only.
+
+## How to test the MEOWS chart – Group B item 8, DRAFT (fake data only)
+1. As a **nurse** (or her doctor or an RMO): a made-up mother who is admitted → her **IPD** → **Current stay**. The
+   **MEOWS chart** is above the nursing chart.
+2. Time with AM/PM; Respiratory rate **22**, Heart rate **108**, the rest normal (SpO2 98, temperature 36.8 °C, BP
+   118/76, AVPU Alert). The box shows **Trigger – tell the doctor now · 0 red, 2 yellow** and asks **Whom you told**.
+3. **Save the observations** with that empty: refused. Write a doctor's name and save: the table shows 22 and 108 as
+   **Yellow** pills and the result **Trigger**, with whom you told. The header shows the latest result.
+4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
+   greyed. Reception and the hospital admin have no MEOWS chart.
+
+## How to test Clinical Requirements Group A (fake data only)
+Automatic tests: `npm test` from the project root (server files `crs-*.test.js`; website tests next to each page).
+In the browser, use made-up patients only. Restart Perinexa first (the server changed). Add two new staff as the
+hospital admin: one **Newborn follow-up coordinator**, one **Quality lead**.
+1. **Delivery note (items 1–2).** A made-up antenatal patient → admit → **New document** → **Delivery note**. Choose
+   Caesarean: **Category of the caesarean**, **Time of the decision to deliver** and **Time of the skin incision**
+   appear. Fill parity, presentation, weeks, onset of labour and a baby: the box under the form shows **Robson group
+   1 – …**. Category 1 with the decision 40 minutes before the delivery: a red **Over 30 minutes** pill with the words;
+   25 minutes: **Within target**. Leave the measured blood loss empty and confirm as her doctor: refused with
+   **Enter the measured blood loss**. Fill it and confirm.
+2. **Clinical audit.** As the doctor → **Clinical audit**: the month's Robson table (group 1 has the note) and the
+   caesarean, red, with a link to the note. As the hospital admin or the quality lead: the same table and the counts
+   per category – no names.
+3. **Automatic incident (item 6).** As the quality lead → **Incidents**: incident 1, "Category 1 caesarean over 30
+   minutes", reported by Perinexa, with the patient number. Her record shows nothing of it.
+4. **Specimens (item 3).** Her record → **Specimens** → log one sent 25 days ago. **Specimens → Overdue** lists it in
+   red. **Enter report** with a small PDF, then as her doctor **Review** and tick "She has been told". **Open report
+   file** opens the PDF. As reception there is no Specimens.
+5. **Newborn follow-up (item 4).** A made-up baby born 5 days ago → **Screening**: pulse oximetry and the metabolic
+   screen are **Overdue**, hearing **Due now**. Set 30 weeks + 0 days and **High-risk** (Born preterm): ROP and the
+   clinic visits at corrected age appear. Record the pulse oximetry (Pass). Log in as the coordinator: Today opens
+   **Newborn follow-up**; the baby is there with her phone and dates, never the result; **Record** works only on a
+   clinic visit; Patients is not in the menu.
+6. **Scores (item 5).** A made-up postnatal patient → **Scores** → EPDS: ten answers (no question text), score 13 or
+   more shows **Likely depression**; a score on answer 10 shows **Question 10 scored**. VTE risk: after delivery tick
+   "Caesarean section in labour": **Intermediate risk**, 10 days – and no dose.
+7. **Incidents (item 6).** As a nurse → **Incidents** → **Report an incident**. She sees only her own. As the quality
+   lead: review it, add an action, try to close (refused until the action is done), mark it done, close.
+8. **Formulary (item 7).** As the doctor → **Formulary**: empty. **Add a row** with fake numbers: **Not verified**, no
+   **Work out a dose**. Confirm as the doctor (**Needs the pharmacist**), then as the pharmacist: **Verified**, and a
+   nurse can **Work out a dose** from a weight. Change the row: it is **Not verified** again.
+9. **Audit log.** As the hospital admin → Audit log: the new events read in words, with ids only.
 
 ## How to test the doctor ideas (fake data only)
 1. **Ctrl+K** anywhere (or the "Ctrl K" button in the title bar): type "unpaid", "new patient", "book Friday", or a

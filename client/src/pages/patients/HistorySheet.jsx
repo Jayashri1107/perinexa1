@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { WeightInput } from '../../components/WeightInput.jsx';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { Field } from '../../components/ui.jsx';
 import { EMPTY_PREGNANCY, HISTORY_LABELS } from './historyFormat.js';
@@ -186,7 +187,7 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, age, lmp, onL
                         <input aria-label={`Place of pregnancy ${i + 1}`} value={r.place} onChange={row(i, 'place')} maxLength={80} />
                       </td>
                       <td>
-                        <input aria-label={`Baby's weight, pregnancy ${i + 1}`} inputMode="numeric" className="hs-num" value={r.weightGrams} onChange={row(i, 'weightGrams')} maxLength={4} />
+                        <WeightInput ariaLabel={`Baby's weight, pregnancy ${i + 1}`} className="hs-num" value={r.weightGrams} onChange={row(i, 'weightGrams')} />
                       </td>
                       <td>
                         <Select id={`hs-p${i}-alive`} value={r.aliveNow} options={L.YES_NO} onChange={(x) => setPregnancies(h.pregnancies.map((y, j) => (j === i ? { ...y, aliveNow: x } : y)))} empty="–" />

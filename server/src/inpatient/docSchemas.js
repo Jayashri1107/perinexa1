@@ -12,6 +12,8 @@
 import { z } from 'zod';
 import { safeText } from '../utils/pcpndt.js';
 import { visitSchemas } from '../visits/visitSchemas.js';
+import { CS_CATEGORIES } from '../clinical/caesarean.js';
+import { PARITY, PRESENTATIONS, robsonMissing } from '../clinical/robson.js';
 
 /** The kinds, in the order of a stay. */
 export const DOC_KINDS = ['admission', 'round', 'delivery', 'operation', 'discharge'];
@@ -62,6 +64,23 @@ function tidyBaby(b) {
   if (out.outcome === 'stillbirth') Object.assign(out, { breastfedWithinHour: '', nicu: '' });
   return out;
 }
+// Clinical Requirements, Group A (PX-REQ-00, 5 Nov 2026): the Robson group and the caesarean's category and times.
+// A delivery note STARTED on or after this day must have them, and the measured blood loss, before a doctor confirms
+// it; a draft started earlier keeps the rules it was started under (a confirmed note is never changed).
+export const GROUP_A_REQUIRED_FROM = new Date('2026-11-06T00:00:00+05:30');
+/** Does this delivery note follow the Group A rules? (by when the draft was started) */
+export const groupARules = (doc) => !doc?.createdAt || new Date(doc.createdAt) >= GROUP_A_REQUIRED_FROM;
+/** The time fields whose typing time is stored next to them (PX-X-04: the time of the event and when it was typed). */
+export const TIME_FIELDS = { admission: [], round: ['at'], delivery: ['deliveredAt', 'decisionAt', 'incisionAt'], operation: ['performedAt'], discharge: ['dischargedAt'] };
+
+// The caesarean's category and times only for a caesarean; a previous caesarean only for a multiparous woman.
+function tidyDelivery(c) {
+  const out = { ...c };
+  if (out.mode !== 'lscs') Object.assign(out, { csCategory: '', decisionAt: null, incisionAt: null });
+  if (out.parity !== 'multipara') out.previousCaesarean = '';
+  return out;
+}
+
 export const ANAESTHESIA = ['spinal', 'epidural', 'general', 'local', 'other'];
 // handover: a note for the next shift; escalation: the consultant (or the doctor on call) was told – whom, and why
 // (owner, 13 Oct 2026). Both stay on the stay's chart with who and when, like every entry.
@@ -121,6 +140,14 @@ export function contentSchema(kind, { pcpndt = true } = {}) {
           indication: t('Indication', 500),
           gestationWeeks: num('Weeks of pregnancy', 20, 45),
           labourOnset: pick(LABOUR_ONSETS),
+          // Robson group (worked out, never typed – clinical/robson.js)
+          parity: pick(PARITY),
+          previousCaesarean: pick(YES_NO),
+          presentation: pick(PRESENTATIONS),
+          // A caesarean: its category and the decision and incision times (clinical/caesarean.js)
+          csCategory: pick(CS_CATEGORIES),
+          decisionAt: when('Time of the decision to deliver'),
+          incisionAt: when('Time of the skin incision'),
           perineum: pick(PERINEUM),
           placenta: t('Placenta', 500),
           bloodLossMl: num('Blood loss', 0, 10000),
@@ -149,7 +176,8 @@ export function contentSchema(kind, { pcpndt = true } = {}) {
           conductedBy: t('Conducted by', 200),
           notes: t('Notes', 2000),
         })
-        .strict();
+        .strict()
+        .transform(tidyDelivery);
     case 'operation':
       return z
         .object({
@@ -187,8 +215,21 @@ export function contentSchema(kind, { pcpndt = true } = {}) {
   }
 }
 
-/** What must be filled in before signing: { 'content.<field>': message } (empty when it can be signed). */
-export function missingToSign(kind, c = {}) {
+const ROBSON_WORDS = {
+  babies: 'Add the baby (or babies)',
+  parity: 'Choose nulliparous or multiparous (for the Robson group)',
+  previousCaesarean: 'Has she had a caesarean before? (for the Robson group)',
+  presentation: 'Choose the presentation (for the Robson group)',
+  gestationWeeks: 'Enter the weeks of pregnancy (for the Robson group)',
+  labourOnset: 'Choose the onset of labour (for the Robson group)',
+};
+
+/**
+ * What must be filled in before signing: { 'content.<field>': message } (empty when it can be signed).
+ * groupA: the delivery note follows the Group A rules (groupARules) – Robson details, measured blood loss, and a
+ * caesarean's category and decision time.
+ */
+export function missingToSign(kind, c = {}, { groupA = false } = {}) {
   const out = {};
   const need = (field, message) => {
     const v = c[field];
@@ -207,6 +248,16 @@ export function missingToSign(kind, c = {}) {
       if (!b.outcome) out[`content.babies.${i}.outcome`] = 'Choose live birth or stillbirth';
     });
     if (['lscs', 'vacuum', 'forceps'].includes(c.mode)) need('indication', 'Write the indication');
+    if (groupA) {
+      if (c.bloodLossMl == null) out['content.bloodLossMl'] = 'Enter the measured blood loss';
+      for (const f of robsonMissing(c)) if (!out[`content.${f}`]) out[`content.${f}`] = ROBSON_WORDS[f];
+      if (c.mode === 'lscs') {
+        need('csCategory', 'Choose the category of the caesarean');
+        need('decisionAt', 'Enter the time of the decision to deliver');
+        if (c.decisionAt && c.deliveredAt && new Date(c.decisionAt) > new Date(c.deliveredAt)) out['content.decisionAt'] = 'The decision must be before the delivery – please check the times.';
+        if (c.incisionAt && c.deliveredAt && new Date(c.incisionAt) > new Date(c.deliveredAt)) out['content.incisionAt'] = 'The incision must be before the delivery – please check the times.';
+      }
+    }
   }
   if (kind === 'operation') {
     need('performedAt', 'Enter the date and time of the operation');

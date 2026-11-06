@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { DateTimeInput } from '../../components/DateTimeInput.jsx';
+import { WeightInput } from '../../components/WeightInput.jsx';
 import { Info, Mic } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -912,25 +914,11 @@ export function PatientForm({
                     <h2>Birth details</h2>
                     <div className="form-grid">
                       <Field label="Date and time of birth" id="birthAt" error={fe('newborn.birthAt')} hint={v.newborn.birthAt ? formatDateTime(v.newborn.birthAt) : undefined} keepHint>
-                        <input
-                          id="birthAt"
-                          className={vc('newborn.birthAt')}
-                          type="datetime-local"
-                          value={v.newborn.birthAt}
-                          onChange={setIn('newborn', 'birthAt')}
-                          max={toDateTimeInput(new Date())}
-                        />
+                        <DateTimeInput id="birthAt" className={vc('newborn.birthAt')} value={v.newborn.birthAt} onChange={setIn('newborn', 'birthAt')} max={toDateTimeInput(new Date())} />
                         {vm('newborn.birthAt')}
                       </Field>
-                      <Field label="Birth weight (grams)" id="birthWeight" error={fe('newborn.birthWeightGrams')}>
-                        <input
-                          id="birthWeight"
-                          className={vc('newborn.birthWeightGrams')}
-                          inputMode="numeric"
-                          value={v.newborn.birthWeightGrams}
-                          onChange={setIn('newborn', 'birthWeightGrams')}
-                          maxLength={4}
-                        />
+                      <Field label="Birth weight" id="birthWeight" error={fe('newborn.birthWeightGrams')}>
+                        <WeightInput id="birthWeight" className={vc('newborn.birthWeightGrams')} value={v.newborn.birthWeightGrams} onChange={setIn('newborn', 'birthWeightGrams')} />
                         {vm('newborn.birthWeightGrams')}
                       </Field>
                       <Field label="Sex" id="newbornSex" error={fe('newborn.sex')}>

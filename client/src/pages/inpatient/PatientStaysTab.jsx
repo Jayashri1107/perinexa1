@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { BedDouble, CircleCheck, LogIn } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -55,7 +56,7 @@ function AdmitDialog({ patient, onDone, onCancel }) {
             <input id="admit-bed" value={form.bed} maxLength={30} onChange={set('bed')} />
           </Field>
           <Field label="Admitted at" id="admit-at" error={fields.admittedAt}>
-            <input id="admit-at" type="datetime-local" value={form.admittedAt} onChange={set('admittedAt')} />
+            <DateTimeInput id="admit-at" value={form.admittedAt} onChange={set('admittedAt')} />
           </Field>
         </div>
         <div className="row">
