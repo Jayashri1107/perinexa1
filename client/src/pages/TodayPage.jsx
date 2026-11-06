@@ -237,6 +237,7 @@ export function TodayPage() {
  * For a hospital admin (no patient data) every number comes without a name (the server sends counts only).
  */
 function OverviewToday({ roles, lensBar = null }) {
+  const { user } = useAuth();
   const front = canSeeCalendar(roles); // doctors, RMOs, reception: today's list itself
   const isAdmin = roles.includes('admin');
   const today = useFetch(front ? '/today' : null);
@@ -264,6 +265,9 @@ function OverviewToday({ roles, lensBar = null }) {
     <>
       <PageHeader breadcrumbs={[{ label: 'Today' }]} title="Today" />
       <div className="pf-content wl-page td-page">
+        <div className="td-hero">
+          <p className="td-hero-hello">Welcome, {user?.name}</p>
+        </div>
         {lensBar}
         <section className="td-group" aria-labelledby="td-glance">
           <h2 className="td-group-title" id="td-glance">

@@ -1,4 +1,5 @@
 import { CalendarOff, Check, DoorOpen, LogOut, Phone, PhoneCall, Plane, Stethoscope, Wallet } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { StatusPill, formatTime } from '../../components/ui.jsx';
 import { rupees } from '../billing/billingFormat.js';
@@ -17,16 +18,42 @@ export function doctorToday(d) {
   return { tone: 'stable', icon: Stethoscope, word: 'In OPD', line: d.sessions.map((s) => `${timeLabel(s.from)}–${timeLabel(s.to)}`).join(', ') };
 }
 
+/**
+ * Doctors today, short (6 Nov 2026 – a hospital of 24 doctors): those with patients today first, then those in OPD now,
+ * then the rest, by name; the first `DOCTORS_SHOWN` (or all with patients, if more) are shown, the others behind
+ * "Show all". Returns { shown, hidden }.
+ */
+export const DOCTORS_SHOWN = 5;
+const busyCount = (d) => (d.expected ?? 0) + (d.waiting ?? 0) + (d.seen ?? 0);
+export function doctorsForToday(doctors = [], showAll = false) {
+  const rank = (d) => (busyCount(d) > 0 ? 0 : doctorToday(d).word === 'In OPD' ? 1 : 2);
+  const sorted = [...doctors].sort((a, b) => rank(a) - rank(b) || busyCount(b) - busyCount(a) || a.name.localeCompare(b.name));
+  const limit = showAll ? sorted.length : Math.max(DOCTORS_SHOWN, sorted.filter((d) => busyCount(d) > 0).length);
+  return { shown: sorted.slice(0, limit), hidden: sorted.length - Math.min(limit, sorted.length) };
+}
+
+/** "Show all 24 doctors" / "Show fewer" under a short Doctors today. */
+export function MoreDoctors({ hidden, total, showAll, onToggle }) {
+  if (!hidden && !showAll) return null;
+  return (
+    <button type="button" className="btn btn-link btn-sm desk-doctors-more" aria-expanded={showAll} onClick={onToggle}>
+      {showAll ? 'Show fewer' : `Show all ${total} doctors`}
+    </button>
+  );
+}
+
 /** "Doctors today": one row per doctor – state, hours, and how many are expected, waiting and seen. */
 export function DoctorsToday({ doctors, linkNames = true }) {
+  const [showAll, setShowAll] = useState(false);
   if (!doctors?.length) return null;
+  const { shown, hidden } = doctorsForToday(doctors, showAll);
   return (
     <section className="card desk-doctors" aria-labelledby="desk-doctors-title">
       <h2 id="desk-doctors-title">
         <Stethoscope aria-hidden="true" /> Doctors today
       </h2>
       <ul>
-        {doctors.map((d) => {
+        {shown.map((d) => {
           const s = doctorToday(d);
           return (
             <li key={d.id}>
@@ -63,6 +90,7 @@ export function DoctorsToday({ doctors, linkNames = true }) {
           );
         })}
       </ul>
+      <MoreDoctors hidden={hidden} total={doctors.length} showAll={showAll} onToggle={() => setShowAll(!showAll)} />
     </section>
   );
 }

@@ -313,7 +313,7 @@ html.in-app { --safe-top: 0px; }
   .bb-toolbar { gap: var(--space-2); }
   .bb-ward-pick, .bb-ward-pick select { width: 100%; }
   .bb-ward-head { padding: var(--space-3); }
-  .bb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); padding: 0 var(--space-3) var(--space-3); }
+  .bb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); padding: 0 var(--space-3) var(--space-3); }
   .bb-bed { padding: var(--space-2); gap: var(--space-2); }
   .bb-bed-top { flex-direction: column; align-items: flex-start; gap: 2px; }
   .bb-bed .pill { font-size: var(--fs-caption); line-height: var(--lh-caption); padding: 0 var(--space-1); }
@@ -885,6 +885,8 @@ html.in-app { --safe-top: 0px; }
   /* A form's main button: across the card */
   .pf-content :is(.card, .bill-section, form) > .btn-primary, .pf-content .acc-actions .btn-primary, .pf-content .exp-form > button[type='submit'], .pf-content .exp-range > .btn { width: 100%; justify-content: center; }
   .pf-content :is(.card, .bill-section, form) > .row > .btn-primary { flex: 1 1 auto; justify-content: center; }
+  /* …and the ones in a row of their own: Ask, Add (user permissions), Save (daily expenses) */
+  .pf-content .ask-row > button[type='submit'], .pf-content .ap-add-row > .btn, .pf-content .dc-expense-form .btn-primary { flex: 1 1 100%; align-self: stretch; width: 100%; min-height: 48px; justify-content: center; }
 
   /* A page without the usual frame: the same side margins as the others */
   .exp-layout { margin-top: var(--space-2); padding: 0 var(--space-3) var(--space-3); gap: var(--space-2); }
@@ -975,8 +977,11 @@ html.in-app { --safe-top: 0px; }
   .pf:has(.td-hero) .pf-main > .ph .segmented { border-color: transparent; background: var(--nav-tile); }
   .pf:has(.td-hero) .pf-main > .ph .segmented > button:not([aria-pressed='true']) { color: var(--on-dark); }
   .pf:has(.td-hero) .pf-main > .ph .segmented > button[aria-pressed='true'] { background: var(--surface); color: var(--indigo-700); }
-  .td-hero { order: -2; margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0; padding: var(--space-1) var(--space-4) var(--space-6); background: var(--indigo-800); color: var(--on-dark); }
+  .td-hero { display: block; order: -2; margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0; padding: var(--space-1) var(--space-4) var(--space-6); background: var(--indigo-800); color: var(--on-dark); }
   .td-hero-hello { margin: 0; font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 600; }
+  .pf-content:has(> .td-hero) { padding-top: var(--space-2); }
+  /* A bed's reason for admission: two lines at most on the bed board */
+  .bb-bed .bb-reason { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
   /* The first cards over the band's edge: a doctor's counts, reception's numbers */
   .td-page:has(> .td-home, > .rd-numbers, > .wd-home) > .td-hero { padding-bottom: 72px; }
   .td-page > .td-hero ~ .td-home, .td-page > .td-hero ~ .rd-numbers, .td-page > .td-hero ~ .wd-home { order: -1; margin-top: -72px; }
@@ -1579,8 +1584,9 @@ html.in-app { --safe-top: 0px; }
   .pf-content:has(> .desk-doctors) > .td-group:first-child .kpi { flex: none; min-width: 0; padding: var(--space-3); gap: 2px; }
   .pf-content:has(> .desk-doctors) > .td-group:first-child .kpi-value { font-size: calc(22px * var(--text-scale)); line-height: calc(28px * var(--text-scale)); font-weight: 700; }
   .pf-content:has(> .desk-doctors) > .td-group:first-child .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  .pf-content:has(> .desk-doctors) .td-group:has(.td-staff-tile) ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); overflow: visible; margin: 0; padding: 0; list-style: none; }
-  .pf-content:has(> .desk-doctors) .td-staff-tile { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: var(--space-2); box-shadow: none; }
+  /* Two a row, the number beside the role, so every role's name fits (6 Nov 2026) */
+  .pf-content:has(> .desk-doctors) .td-group:has(.td-staff-tile) ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); overflow: visible; margin: 0; padding: 0; list-style: none; }
+  .pf-content:has(> .desk-doctors) .td-staff-tile { display: flex; flex-direction: row; align-items: baseline; gap: var(--space-2); min-width: 0; min-height: 44px; padding: var(--space-2) var(--space-3); box-shadow: none; }
   .pf-content:has(> .desk-doctors) .td-staff-tile strong { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 700; }
   .pf-content:has(> .desk-doctors) .td-staff-tile span { width: 100%; overflow: hidden; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); text-overflow: ellipsis; white-space: nowrap; }
 

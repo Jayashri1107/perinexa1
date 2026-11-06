@@ -32,7 +32,7 @@ export function BookAndBillDialog({ who, today, onClose, onDone }) {
   const list = doctors.data?.doctors ?? [];
   const own = list.find((d) => d.id === who.doctorId) ?? list.find((d) => d.name === p.doctorName);
   const [doctorId, setDoctorId] = useState('');
-  const chosenDoctor = doctorId || own?.id || list[0]?.id || '';
+  const chosenDoctor = doctorId || own?.id || ''; // her doctor, else chosen here – never the first on the list
   const doctor = list.find((d) => d.id === chosenDoctor);
   const [date, setDate] = useState(who.from && who.from > today ? who.from : today);
   const [start, setStart] = useState(null);
@@ -155,6 +155,7 @@ export function BookAndBillDialog({ who, today, onClose, onDone }) {
                           setStart(null);
                         }}
                       >
+                        <option value="">Choose the doctor</option>
                         {list.map((d) => (
                           <option key={d.id} value={d.id}>
                             {d.name}
