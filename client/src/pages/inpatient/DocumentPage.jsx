@@ -3,7 +3,9 @@ import { ArrowLeft, BadgeCheck, CircleMinus, MoreHorizontal, Plus, Printer, Tras
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { MenuButton } from '../../components/MenuButton.jsx';
+import { WeightInput } from '../../components/WeightInput.jsx';
 import { BiLabel, PrintLanguageChoice, Translation } from '../../components/print/Bilingual.jsx';
 import { DoctorSignature, Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
@@ -249,7 +251,7 @@ export function DocForm({ kind, form, setForm, fields, groupA = false }) {
           case 'datetime':
             return (
               <Field key={f.key} label={label} id={id} error={fe(f.key)}>
-                <input id={id} type="datetime-local" value={form[f.key]} onChange={set(f.key)} />
+                <DateTimeInput id={id} value={form[f.key]} onChange={set(f.key)} />
               </Field>
             );
           case 'date':
@@ -353,8 +355,8 @@ export function DocForm({ kind, form, setForm, fields, groupA = false }) {
                             ))}
                           </select>
                         </Field>
-                        <Field label="Birth weight (g)" id={`b-wt-${i}`} error={fe(`babies.${i}.weightGrams`)}>
-                          <input id={`b-wt-${i}`} inputMode="numeric" value={b.weightGrams} onChange={setB('weightGrams')} />
+                        <Field label="Birth weight" id={`b-wt-${i}`} error={fe(`babies.${i}.weightGrams`)}>
+                          <WeightInput id={`b-wt-${i}`} value={b.weightGrams} onChange={setB('weightGrams')} />
                         </Field>
                         <Field label="Apgar 1 min" id={`b-a1-${i}`} error={fe(`babies.${i}.apgar1`)}>
                           <input id={`b-a1-${i}`} inputMode="numeric" value={b.apgar1} onChange={setB('apgar1')} />
