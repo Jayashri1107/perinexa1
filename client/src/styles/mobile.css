@@ -964,6 +964,55 @@ html.in-app { --safe-top: 0px; }
   .td-home-actions > .btn, .td-home-actions > .menu-button > .btn { width: 100%; min-height: 44px; justify-content: center; padding: 0 var(--space-2); white-space: nowrap; font-size: var(--fs-label); }
   .td-home-actions > .menu-button { display: flex; min-width: 0; }
 
+  /* ---------- The app's look (6 Nov 2026): a doctor's Today – an indigo band from the top, the counts over its
+     edge, then only what has someone in it; the AI brief and the other cards at the end ---------- */
+  .pf:has(.td-hero) .pf-topbar, .pf:has(.td-hero) .pf-main > .ph { background: var(--indigo-800); }
+  .pf:has(.td-hero) .pf-topbar { border-bottom: 0; box-shadow: none; }
+  .pf:has(.td-hero) .pf-main > .ph { margin-top: 0; padding-top: var(--space-2); border: 0; box-shadow: none; }
+  .pf:has(.td-hero) .pf-title-slot .ph-title, .pf:has(.td-hero) .pf-title-slot .ph-info-btn { color: var(--on-dark); }
+  .pf:has(.td-hero) .pf-title-slot .ph-caption { color: var(--indigo-200); }
+  .pf:has(.td-hero) .pf-topbar-actions .icon-btn { background: var(--nav-tile); color: var(--on-dark); }
+  .pf:has(.td-hero) .pf-main > .ph .segmented { border-color: transparent; background: var(--nav-tile); }
+  .pf:has(.td-hero) .pf-main > .ph .segmented > button:not([aria-pressed='true']) { color: var(--on-dark); }
+  .pf:has(.td-hero) .pf-main > .ph .segmented > button[aria-pressed='true'] { background: var(--surface); color: var(--indigo-700); }
+  .td-hero { order: -2; margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0; padding: var(--space-1) var(--space-4) var(--space-6); background: var(--indigo-800); color: var(--on-dark); }
+  .td-hero-hello { margin: 0; font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 600; }
+  /* The first cards over the band's edge: a doctor's counts, reception's numbers */
+  .td-page:has(> .td-home, > .rd-numbers, > .wd-home) > .td-hero { padding-bottom: 72px; }
+  .td-page > .td-hero ~ .td-home, .td-page > .td-hero ~ .rd-numbers, .td-page > .td-hero ~ .wd-home { order: -1; margin-top: -72px; }
+  /* Nurses and RMOs: the ward's three counts over the band's edge (their heading kept for screen readers) */
+  .td-page > .td-hero ~ .wd-home #ward-glance { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .td-page > .td-hero ~ .wd-home .wd-counts > div { border: 1px solid var(--card-border); box-shadow: var(--shadow-card); }
+  .td-page > .td-hero ~ .rd-start { order: -1; }
+  /* Reception: its numbers as three tiles with their icons; the start buttons two a row; the band's buttons are in them */
+  .td-page > .td-hero ~ .rd-numbers > .rd-number { flex-direction: column; gap: 6px; border: 1px solid var(--card-border); box-shadow: var(--shadow-card); }
+  .td-page > .td-hero ~ .rd-numbers .rd-icon { display: grid; width: 32px; height: 32px; }
+  .td-page > .td-hero ~ .rd-numbers .rd-number-text > .muted { display: none; }
+  .pf:has(.rd-start) .pf-main > .ph { display: none; }
+  .rd-start { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .rd-start > .menu-button { display: flex; min-width: 0; }
+  .rd-start > .btn, .rd-start > .menu-button > .btn, .rd-start-tile {
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: var(--space-3); width: 100%; min-height: 104px; height: auto;
+    padding: var(--space-4); border: 1px solid var(--card-border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: none;
+    color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; text-align: left; text-decoration: none; white-space: normal;
+  }
+  .rd-start > .btn-primary, .rd-start > .menu-button > .btn-primary { border-color: var(--indigo-700); background: var(--indigo-700); color: var(--on-solid); }
+  .rd-start svg.lucide { width: 28px; height: 28px; }
+  .rd-start-tile svg.lucide { color: var(--indigo-700); }
+  .td-home-count { gap: 6px; min-height: 0; border: 1px solid var(--card-border); }
+  .td-home-count-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--indigo-100); color: var(--indigo-700); }
+  .td-home-count-icon svg.lucide { width: 18px; height: 18px; }
+  .td-home-count.is-high .td-home-count-icon { background: var(--status-high-bg); color: var(--status-high-fg); }
+  .td-home-count.is-due .td-home-count-icon { background: var(--status-due-bg); color: var(--status-due-fg); }
+  .td-next { gap: var(--space-4); padding: var(--space-6); }
+  .td-next-head h2 { color: var(--ink); font-size: var(--fs-h2); line-height: var(--lh-h2); }
+  .td-next-who .avatar { width: 56px; height: 56px; }
+  .td-next > .btn-primary { min-height: 52px; font-size: var(--fs-body); }
+  /* Only the lists with someone in them; the cards that are not about a patient today at the end */
+  .td-page:has(.td-hero) .td-sections > .wl-fold:not(.has-items):not(.is-open) { display: none; }
+  .td-page:has(.td-hero) > .td-group { order: 3; }
+  .td-page:has(.td-hero) > .wl-footnote { display: none; }
+
   /* ---------- App design: a list page's main button floats over the list, above the bottom bar ---------- */
   .ph-fab .ph-actions > .menu-button:has(> .btn-primary), .ph-fab .ph-actions > .btn-primary { position: fixed; right: var(--space-4); bottom: calc(env(safe-area-inset-bottom) + 84px); z-index: 25; display: flex; width: auto; }
   .ph-fab .ph-actions > .menu-button > .btn-primary, .ph-fab .ph-actions > .btn-primary { width: auto; height: auto; min-height: 52px; padding: 0 var(--space-6); border-radius: 16px; box-shadow: var(--shadow-pop); font-size: var(--fs-body); }
@@ -988,6 +1037,26 @@ html.in-app { --safe-top: 0px; }
   .dt tbody tr:has(> td[data-label='Care now']) > td[data-label='Last seen'] > .cell-sub { display: inline; color: inherit; font-size: inherit; }
   .dt tbody tr:has(> td[data-label='Care now']) > td.risk-cell:not(:has(.pill)) { display: none; }
   .dt tbody tr:has(> td[data-label='Care now']) > td.risk-cell { padding-top: 2px; padding-bottom: 2px; }
+
+  /* ---------- The app's look (6 Nov 2026): a patient's record – her name on the indigo band; on her overview the rest
+     of the record as large buttons, three a row, in place of the row of tabs ---------- */
+  .pf .pf-main > .ph-patient, .pf .pf-main > .ph-patient.ph-pinned { background: var(--indigo-800); border-bottom: 0; }
+  .pf:has(.ph-patient):not(.pf-search-open) .pf-topbar-actions .icon-btn { background: var(--nav-tile); color: var(--on-dark); }
+  .ph-patient :is(.ph-title, .ph-crumbs a, .ph-crumbs li, .ph-crumbs svg.lucide) { color: var(--on-dark); }
+  .ph-patient .ph-subtitle { color: var(--indigo-200); }
+  .pf .ph-patient .ph-tabs.segmented > a, .pf .ph-patient .ph-tabs.segmented > .menu-button > button { color: var(--indigo-200); }
+  .pf .ph-patient .ph-tabs.segmented > a.active, .pf .ph-patient .ph-tabs.segmented > a[aria-current='page'] { color: var(--on-dark); box-shadow: inset 0 -3px 0 var(--teal-500); }
+  .pf:has(.pt-places) .ph-patient .ph-tabs.segmented { display: none; }
+  .pt-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .pt-place {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); min-height: 92px; padding: var(--space-3) var(--space-1);
+    border: 1px solid var(--card-border); border-radius: 20px; background: var(--surface); color: var(--ink); text-align: center; text-decoration: none;
+    font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500;
+  }
+  .pt-place-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--indigo-100); color: var(--indigo-700); }
+  .pt-place:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  /* "New: …" tips speak of keyboards and screens a phone does not have */
+  .pf-main .tip { display: none; }
 
   /* ---------- App design: a patient's record ---------- */
   /* Her sections in one swiping row with a line under the chosen one, not a list to open */

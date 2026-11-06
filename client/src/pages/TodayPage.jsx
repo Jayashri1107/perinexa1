@@ -366,6 +366,7 @@ function OverviewToday({ roles, lensBar = null }) {
 /** Today for the given roles (all of the person's roles, or the one view chosen above). */
 function RoleToday({ roles, lensBar = null }) {
   const location = useLocation();
+  const { user } = useAuth();
   // A number card opens its list further down the page (e.g. "/#td-overdue"): open the box and bring it into view.
   useEffect(() => {
     const id = location.hash.slice(1);
@@ -759,20 +760,35 @@ function RoleToday({ roles, lensBar = null }) {
         }
       />
       <div className="pf-content wl-page td-page">
+        {/* Phones, every role (the app's look, 6 Nov 2026): the greeting on an indigo band, the first cards over its edge */}
+        {onPhone && (
+          <div className="td-hero">
+            <p className="td-hero-hello">Welcome, {user?.name}</p>
+          </div>
+        )}
         {doctorHome && (
           <div className="td-home">
-            <NextPatientCard refreshKey={queueKey} />
             <nav className="td-home-counts" aria-label="Needs your attention">
               <Link to="/#wl-flags" className="td-home-count is-high">
+                <span className="td-home-count-icon" aria-hidden="true">
+                  <TriangleAlert />
+                </span>
                 <strong className="tabular">{worklist.data?.redFlags?.length ?? '–'}</strong> Red flags
               </Link>
-              <Link to="/#td-lab-review" className="td-home-count">
+              <Link to="/#td-lab-review" className="td-home-count is-due">
+                <span className="td-home-count-icon" aria-hidden="true">
+                  <FlaskConical />
+                </span>
                 <strong className="tabular">{labReview.data?.orders?.length ?? '–'}</strong> Lab results to review
               </Link>
               <Link to="/#td-confirm" className="td-home-count">
+                <span className="td-home-count-icon" aria-hidden="true">
+                  <BadgeCheck />
+                </span>
                 <strong className="tabular">{inpatients.data?.toConfirm?.length ?? '–'}</strong> To confirm
               </Link>
             </nav>
+            <NextPatientCard refreshKey={queueKey} />
             {(walkInButton || newPatientButton) && (
               <div className="td-home-actions">
                 {walkInButton}
@@ -816,6 +832,19 @@ function RoleToday({ roles, lensBar = null }) {
         {/* Reception's dashboard: three numbers, then the patients beside To do (26 Oct 2026: "more simple") – no
             greeting, no quick tiles (the sidebar has them) and no second row of list cards (To do opens the lists) */}
         {simple && <DeskNumbers rows={deskRows} collected={collected.data} />}
+        {/* Phones, reception (the app's look): what the desk starts most, as four large buttons */}
+        {simple && onPhone && (
+          <nav className="rd-start" aria-label="Start">
+            {newPatientButton}
+            {walkInButton}
+            <Link to="/appointments" className="rd-start-tile">
+              <CalendarPlus aria-hidden="true" /> Book a visit
+            </Link>
+            <Link to="/billing" className="rd-start-tile">
+              <Banknote aria-hidden="true" /> Take payment
+            </Link>
+          </nav>
+        )}
         {!simple && (shownTiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
           // One line of small cards (owner, 24 Oct 2026): the AI brief, Your day so far, the numbers (To approve after
           // them), then the handover last

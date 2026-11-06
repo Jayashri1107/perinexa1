@@ -466,3 +466,6 @@ textarea.hs-blank { min-height: 0; height: 4.2em; }
 /* Finding someone comes first: the search above the filters (2 Nov 2026) */
 .pt-find { display: flex; margin-bottom: var(--space-3); }
 .pt-find > * { flex: 1 1 auto; max-width: 560px; }
+
+/* Her record's large buttons: phones only (mobile.css) */
+.pt-places { display: none; }
