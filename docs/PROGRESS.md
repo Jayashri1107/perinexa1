@@ -25,6 +25,9 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   **IPD on Patients (same day):** like OPD – **New registration** registers her as IPD and opens the Admit popup;
   **Admit a registered patient** finds her there. **How to test:** Patients → IPD → Admit a registered patient → the
   form opens → Print.
+  **The doctor (same day):** Edit details shows the department and assigned doctor for those who may change the
+  doctor (the record's Change doctor rule), saved through that same check and audit entry; Change doctor has the
+  department first too. Doctors appear under a department only once Hospital admin → Staff gives them one.
 - **6 Nov 2026 – billing on Sold like the store's earlier software (Clinovations) (branch `pharmacy-sold-billing`,
   developer's request):** choose All, OPD, IPD or External and press **Search**: that type's people are listed (with
   nothing typed: those admitted and those who arrived today first, then everyone billed; a name or number narrows it).

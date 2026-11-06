@@ -7,6 +7,7 @@ import { Archive, BadgeCheck, BedDouble, CalendarPlus, Copy, Eye, FileText, File
 import { BookScanDialog } from '../imaging/ImagingPages.jsx';
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
+import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PatientCard } from '../appointments/PatientCard.jsx';
 import { AdmissionSlip, AdmitDialog } from '../beds/BedBoardPage.jsx';
@@ -71,6 +72,8 @@ function Details({ rows }) {
 // Pop-up to change the assigned doctor (header: More → Change doctor).
 function DoctorDialog({ patient, onChanged, onCancel }) {
   const doctors = useFetch('/tenant/doctors');
+  const all = doctors.data?.doctors ?? [];
+  const [department, setDepartment] = useState('');
   const [doctorId, setDoctorId] = useState(patient.assignedDoctor ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -91,10 +94,22 @@ function DoctorDialog({ patient, onChanged, onCancel }) {
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <form ref={ref} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="doctor-title" onSubmit={save} noValidate>
         <h2 id="doctor-title">Assigned doctor</h2>
+        {departmentsWithDoctors(all).length > 0 && (
+          <Field label="Department" id="doctor-dept">
+            <select id="doctor-dept" value={department} onChange={(e) => setDepartment(e.target.value)} disabled={busy}>
+              <option value="">All departments</option>
+              {departmentsWithDoctors(all).map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Doctor responsible for this patient" id="doctor-pick" error={error}>
           <select id="doctor-pick" value={doctorId} onChange={(e) => setDoctorId(e.target.value)} disabled={busy}>
             <option value="">Not assigned</option>
-            {(doctors.data?.doctors ?? []).map((d) => (
+            {all.filter((d) => inDepartment(d, department) || d.id === doctorId).map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
               </option>

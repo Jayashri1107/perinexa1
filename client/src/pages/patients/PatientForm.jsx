@@ -415,7 +415,9 @@ export function PatientForm({
   // hand, ticks taken off, notes already added, answers (see newFillMemory in dictation.js)
   const memory = useRef(null);
   if (!memory.current) memory.current = newFillMemory(dictated);
-  const doctors = useFetch(isEdit ? null : '/tenant/doctors');
+  // The doctor on Edit details too (6 Nov 2026) – only for those who may change it (the record's Change doctor rule)
+  const canChangeDoctor = !isEdit || Boolean(access?.canAssign);
+  const doctors = useFetch(canChangeDoctor ? '/tenant/doctors' : null);
   const allDoctors = doctors.data?.doctors ?? [];
   // Only the departments that have a doctor (all in the list's order)
   const departments = departmentsWithDoctors(allDoctors);
@@ -633,6 +635,10 @@ export function PatientForm({
     }
     setSubmitting(true);
     try {
+      // Edit details: a new doctor is saved as the record's Change doctor does (its own check, and the audit log)
+      if (isEdit && canChangeDoctor && (v.assignedDoctor || '') !== (patient?.assignedDoctor ?? '')) {
+        await api(`/patients/${patient.id}/doctor`, { method: 'PATCH', body: { doctorId: v.assignedDoctor || null } });
+      }
       await onSubmit(toPayload({ ...v, careType: type }, isEdit, access, part, loaded), { another: another.current });
     } catch (err) {
       setError(err.message);
@@ -839,7 +845,7 @@ export function PatientForm({
                 )}
                 {(!isNewborn || !isEdit) && (
                   <div className="pf-group">
-                    <h3 className="pf-group-title">{isNewborn ? 'Doctor' : isEdit ? 'ID proof' : 'ID proof and doctor'}</h3>
+                    <h3 className="pf-group-title">{isNewborn ? 'Doctor' : isEdit && !canChangeDoctor ? 'ID proof' : 'ID proof and doctor'}</h3>
                     <div className="form-grid">
                       {!isNewborn && (
                         <>
@@ -858,7 +864,7 @@ export function PatientForm({
                           </Field>
                         </>
                       )}
-                      {!isEdit && departments.length > 0 && (
+                      {canChangeDoctor && departments.length > 0 && (
                         <Field label="Department" id="department">
                           <select
                             id="department"
@@ -880,8 +886,8 @@ export function PatientForm({
                           </select>
                         </Field>
                       )}
-                      {!isEdit && (
-                        <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={doctorHint}>
+                      {canChangeDoctor && (
+                        <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={isEdit ? 'The doctor responsible for this patient. A change is saved with the other changes and recorded.' : doctorHint}>
                           <select id="assignedDoctor" value={v.assignedDoctor} onChange={set('assignedDoctor')}>
                             <option value="">Not assigned yet</option>
                             {allDoctors.filter((d) => inDepartment(d, department)).map((d) => (
