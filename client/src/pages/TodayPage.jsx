@@ -213,6 +213,9 @@ export function TodayPage() {
   if (!lenses.length && all.includes('sonographer') && !all.some((r) => ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'pharmacist', 'billing', 'referral_desk'].includes(r))) {
     return <Navigate to="/scans" replace />;
   }
+  // Clinical Requirements Group A: the newborn follow-up coordinator and the quality lead start on their own lists
+  const HOME = { followup_coordinator: '/newborn-follow-up', quality: '/incidents' };
+  if (!lenses.length && all.length && all.every((r) => HOME[r])) return <Navigate to={HOME[all[0]]} replace />;
   if (!lenses.length) return <RoleToday roles={all} />;
   const lens = lenses.find((l) => l.key === params.get('view')) ?? lenses[0];
   const choose = (key) => setParams(key === 'overview' ? {} : { view: key }, { replace: true });

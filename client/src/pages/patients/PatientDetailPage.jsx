@@ -408,6 +408,8 @@ export function PatientDetailPage() {
     ...(referralsTab ? [{ label: 'Referrals', to: `${base}/referrals`, end: true }] : []),
     // Clinical Requirements Group A: her specimens sent for histopathology (doctors, RMOs and nurses)
     ...(a.canViewVisits && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Specimens', to: `${base}/specimens`, end: true }] : []),
+    // A baby's screening log and follow-up clinic (Group A item 4)
+    ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Screening', to: `${base}/screening`, end: true }] : []),
   ];
   const ipdSections = a.canViewVisits
     ? [

@@ -16,7 +16,7 @@ import { AppLayout } from './components/AppLayout.jsx';
 import { PageHeader } from './components/PageHeader.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 
 // Each screen is loaded the first time it is opened, not all at once when the app starts (31 Oct 2026: the one file
 // with all 106 screens was 2.9 MB, slow to start on a phone). Screens of one file share one download.
@@ -271,6 +271,10 @@ const loadCrs3 = () => import('./pages/specimens/SpecimensPage.jsx');
 const SpecimensPage = screen(loadCrs3, 'SpecimensPage');
 const loadCrs3b = () => import('./pages/specimens/PatientSpecimensTab.jsx');
 const PatientSpecimensTab = screen(loadCrs3b, 'PatientSpecimensTab');
+const loadCrs4 = () => import('./pages/newborn/NewbornFollowUpPage.jsx');
+const NewbornFollowUpPage = screen(loadCrs4, 'NewbornFollowUpPage');
+const NewbornLogPage = screen(loadCrs4, 'NewbornLogPage');
+const PatientScreeningTab = screen(loadCrs4, 'PatientScreeningTab');
 const load104 = () => import('./pages/analytics/ByDoctorPage.jsx');
 const ByDoctorPage = screen(load104, 'ByDoctorPage');
 const load105 = () => import('./pages/analytics/AnalyticsPage.jsx');
@@ -433,6 +437,7 @@ export function App() {
                   {/* Her referrals from other doctors (doctors and RMOs; the server lists only those this person may open) */}
                   <Route path="referrals" element={<PatientReferralsTab />} />
                   <Route path="specimens" element={<PatientSpecimensTab />} />
+                  <Route path="screening" element={<PatientScreeningTab />} />
                   <Route path="lab/:orderId" element={<LabOrderPage />} />
                   <Route path="edit" element={<PatientEditTab />} />
                 </Route>
@@ -460,6 +465,10 @@ export function App() {
                 <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="Sonography is for doctors, RMOs and sonography staff." />}>
                   <Route index element={<ImagingWorklistPage />} />
                   <Route path=":id" element={<ImagingStudyPage />} />
+                </Route>
+                <Route path="newborn-follow-up" element={<RequireTenantRole roles={NEWBORN_FOLLOW_UP_ROLES} message="Newborn follow-up is for doctors, RMOs, nurses and the follow-up coordinator." />}>
+                  <Route index element={<NewbornFollowUpPage />} />
+                  <Route path=":patientId" element={<NewbornLogPage />} />
                 </Route>
                 <Route path="specimens" element={<RequireTenantRole roles={SPECIMEN_ROLES} message="Specimens are for doctors, RMOs and nurses." />}>
                   <Route index element={<SpecimensPage />} />

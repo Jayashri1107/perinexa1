@@ -32,6 +32,10 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  NEWBORN_FOLLOW_UP_LISTED: 'Newborn follow-up list opened',
+  NEWBORN_FOLLOW_UP_VIEWED: "Baby's screening log opened",
+  NEWBORN_FOLLOW_UP_UPDATED: "Baby's gestation or high-risk reasons changed",
+  NEWBORN_SCREEN_RECORDED: 'Newborn screen or follow-up visit recorded',
   SPECIMENS_VIEWED: 'Specimen list opened',
   SPECIMEN_LOGGED: 'Specimen sent for histopathology logged',
   SPECIMEN_VIEWED: 'Specimen opened',
@@ -399,6 +403,10 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  NEWBORN_FOLLOW_UP_LISTED: 'patient',
+  NEWBORN_FOLLOW_UP_VIEWED: 'patient',
+  NEWBORN_FOLLOW_UP_UPDATED: 'patient',
+  NEWBORN_SCREEN_RECORDED: 'patient',
   SPECIMENS_VIEWED: 'patient',
   SPECIMEN_LOGGED: 'patient',
   SPECIMEN_VIEWED: 'patient',

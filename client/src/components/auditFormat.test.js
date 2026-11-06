@@ -413,6 +413,10 @@ const FILTER_ACTIONS = [
   'SPECIMEN_REPORT_OPENED',
   'SPECIMEN_REVIEWED',
   'SPECIMEN_CANCELLED',
+  'NEWBORN_FOLLOW_UP_LISTED',
+  'NEWBORN_FOLLOW_UP_VIEWED',
+  'NEWBORN_FOLLOW_UP_UPDATED',
+  'NEWBORN_SCREEN_RECORDED',
 ];
 
 describe('every event in the audit log has a plain name', () => {
