@@ -87,11 +87,21 @@
 .ph-sold-split { display: flex; flex-direction: column; gap: var(--space-4); }
 .ph-sold-results { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
 /* A new bill made on Sold: the type's list, then New bill's own screen beside the filters */
-.ph-newbill { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
-.ph-newbill h2 { margin: 0; }
-.ph-newbill .bill-search-plain { flex: none; width: 100%; }
 .ph-sold-billing { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .ph-sold-bill { display: flex; flex-direction: column; gap: var(--space-4); }
+.ph-search-btn { width: 100%; justify-content: center; }
+.ph-found-item { display: flex; align-items: center; gap: var(--space-2); }
+.ph-found-item > .ph-found-row { flex: 1 1 auto; min-width: 0; cursor: pointer; }
+.ph-found-item > .ph-found-row:hover { background: var(--mist-50); }
+.ph-found-bills { flex: 0 0 80px; display: flex; justify-content: flex-end; }
+.ph-entry { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-entry-name { flex: 1 1 100%; }
+.ph-entry-field { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; }
+.ph-entry-field > span { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-entry-field input { width: 90px; }
+.ph-entry-dose input { width: 200px; }
+.ph-dose-input { width: 120px; }
+.ph-lines-total th { text-align: right; font-weight: 600; }
 .ph-filters { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
 .ph-filter-row { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(3, minmax(140px, 1fr)); gap: var(--space-3); width: 100%; align-items: end; }
 .ph-filter { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
@@ -104,10 +114,7 @@
 .ph-found > p { margin: var(--space-3) 0; }
 .ph-found ul { max-height: 420px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .ph-found li + li { border-top: 1px solid var(--border); }
-.ph-found button, .ph-found-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 110px 70px 90px; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-2); border: 0; border-radius: 0; background: none; color: var(--ink); text-align: left; }
-.ph-found button { cursor: pointer; }
-.ph-found-row > span:last-child { grid-column: 3 / -1; }
-.ph-found button:hover { background: var(--mist-50); }
+.ph-found-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 90px 140px 90px; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-2); border: 0; border-radius: 0; background: none; color: var(--ink); text-align: left; }
 .ph-inv-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
 .ph-inv-facts dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
 .ph-inv-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
@@ -133,8 +140,7 @@
 @media (max-width: 1023px) {
   .ph-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ph-filter-row > .ph-filter:first-child { grid-column: 1 / -1; }
-  .ph-found button, .ph-found-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .ph-found-row > span:last-child { grid-column: 1 / -1; }
+  .ph-found-row { grid-template-columns: minmax(0, 1fr) auto; }
 }
 /* A narrow sheet on screen (beside the side list, or on a phone): the details two a row, so nothing breaks mid-number */
 @container (max-width: 480px) {

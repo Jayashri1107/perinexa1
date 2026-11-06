@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 import { addDays, daysBetween, hospitalDayStart, isoDay, timeIn, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { Admission } from '../models/Admission.js';
+import { Arrival } from '../models/Arrival.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { Medicine, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierReturn } from '../models/Pharmacy.js';
@@ -607,7 +608,7 @@ const invoiceSchema = z
     doctor: z.object({ name: z.string().trim().max(150).transform(capitalizeName).default(''), reg: z.string().trim().max(60).default('') }).strict().optional(),
     visitId: objectId.optional(),
     rxSeen: z.boolean().default(false),
-    lines: z.array(z.object({ medicineId: objectId, qty, batchId: objectId.optional() }).strict()).min(1, 'Add at least one medicine.').max(60),
+    lines: z.array(z.object({ medicineId: objectId, qty, batchId: objectId.optional(), dose: z.string().trim().max(60, 'Write the dose in at most 60 letters').default('') }).strict()).min(1, 'Add at least one medicine.').max(60),
     discountPercent: z.number().min(0).max(100).default(0),
     discountReason: z.string().trim().max(200).default(''),
     payment: z.object({ mode: z.enum(COUNTER_MODES), reference: z.string().trim().max(80).default('') }).strict().optional(),
@@ -739,6 +740,20 @@ pharmacyRouter.get('/invoices/people', async (req, res) => {
         bills: g.bills.map((b) => ({ id: String(b.id), number: b.number, at: b.at })),
       };
     });
+  // Search with nothing typed (6 Nov 2026): first the people to bill now, as the pharmacist's register lists them –
+  // those admitted (IPD) and those who arrived today (OPD) – then everyone billed, newest first. Never other records.
+  if (!search && !mrn && !doctor && !date && !amount && !paidBy && type !== 'external') {
+    const listed = new Set(people.map((x) => x.key));
+    const [stays, arrivals] = await Promise.all([
+      type === 'opd' ? [] : Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1 }).sort({ admittedAt: -1 }).limit(PEOPLE_LIMIT).lean(),
+      type === 'ipd' ? [] : Arrival.find({ tenantId: req.tenantId, on: utcDay(today(req)) }, { patientId: 1 }).sort({ at: -1 }).limit(PEOPLE_LIMIT).lean(),
+    ]);
+    const now = [...stays.map((x) => [String(x.patientId), 'ipd']), ...arrivals.map((x) => [String(x.patientId), 'opd'])].filter(([id], i, all) => !listed.has(id) && all.findIndex(([other]) => other === id) === i);
+    const found = new Map((now.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: now.map(([id]) => id) } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+    const first = now.filter(([id]) => found.has(id)).map(([id, kind]) => ({ key: id, type: kind, name: found.get(id).fullName, mrn: found.get(id).mrn, phone: '', lastAt: null, billCount: 0, bills: [] }));
+    people.unshift(...first);
+    people.splice(PEOPLE_LIMIT);
+  }
   // After those with bills: registered patients without one, as far as the list has room
   const room = PEOPLE_LIMIT - people.length;
   const unbilled = unbilledFilter && room > 0 ? await Patient.find(unbilledFilter, { fullName: 1, mrn: 1 }).sort({ fullName: 1 }).limit(room + 1).lean() : [];

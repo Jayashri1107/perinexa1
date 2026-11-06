@@ -246,6 +246,7 @@ export async function createInvoice(req, body) {
           expiry: part.batch.expiry,
           qty: part.qty,
           mrpPaise: part.batch.mrpPaise,
+          dose: l.dose ?? '',
           ...lineMoney({ qty: part.qty, mrpPaise: part.batch.mrpPaise, gstRate: m.gstRate, discountPercent: pct }),
         });
       }
@@ -387,6 +388,7 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
       returnedQty: l.returnedQty ?? 0,
       canReturn: (l.returnedQty ?? 0) < l.qty && !isExpired(l, today),
       mrpPaise: l.mrpPaise,
+      dose: l.dose ?? '',
       amountPaise: l.amountPaise,
       taxablePaise: l.taxablePaise,
       cgstPaise: l.cgstPaise,

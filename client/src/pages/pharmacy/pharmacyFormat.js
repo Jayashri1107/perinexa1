@@ -166,7 +166,7 @@ export function prescribedLines(lines, rx) {
     if (!best) continue;
     const i = out.findIndex((l) => l.medicine.id === best.id);
     if (i >= 0) out[i] = { ...out[i], prescribed: true };
-    else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(it.suggestedQty ?? 1), batchId: null, prescribed: true });
+    else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(it.suggestedQty ?? 1), batchId: null, prescribed: true, ...(it.dose ? { dose: it.dose } : {}) });
   }
   return out;
 }

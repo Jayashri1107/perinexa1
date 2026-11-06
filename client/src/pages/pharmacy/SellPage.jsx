@@ -82,9 +82,14 @@ export function InpatientPicker({ onPick }) {
   );
 }
 
-function BatchPicker({ line, onChange }) {
+function BatchPicker({ line, onChange, onPrice = null }) {
   const res = useFetch(`/pharmacy/medicines/${line.medicine.id}/batches`);
   const batches = res.data?.batches ?? [];
+  // The MRP of the batch chosen, else of the one sold first (earliest expiry), for the row's amount
+  const mrp = (batches.find((b) => b.id === line.batchId) ?? batches[0])?.mrpPaise ?? null;
+  useEffect(() => {
+    if (onPrice && mrp !== (line.mrpPaise ?? null)) onPrice(mrp);
+  }, [mrp, line.mrpPaise, onPrice]);
   return (
     <select aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
       <option value="">Earliest expiry first</option>
@@ -225,7 +230,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const issue = kind === 'issue';
   const [who, setWho] = useState(issue ? 'inpatient' : start.type === 'external' ? 'walkin' : 'patient'); // patient (OPD) | walkin (External) | inpatient (IPD)
   const [patient, setPatient] = useState(start.patient ?? null);
-  const [customer, setCustomer] = useState({ name: '', phone: '' });
+  const [customer, setCustomer] = useState({ name: start.customer?.name ?? '', phone: start.customer?.phone ?? '' });
   const [visitId, setVisitId] = useState(null);
   const [doctor, setDoctor] = useState({ name: '', reg: '' });
   const [rxSeen, setRxSeen] = useState(false);
@@ -238,7 +243,15 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [buyer, setBuyer] = useState({ name: '', gstin: '', address: '', place: '', pin: '' });
   const s = useSend((res) => (onMade ? onMade(res.invoice) : navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } })));
 
-  const addMedicine = (m, qty = 1) => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null }]));
+  const addMedicine = (m, qty = 1, dose = '') => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null, dose }]));
+  // On Sold, as in the store's earlier software (6 Nov 2026): choose the medicine, write its quantity and dose, then Add
+  const [entry, setEntry] = useState(null); // { medicine, qty, dose }
+  const entryOk = Boolean(entry) && /^\d+$/.test(entry.qty) && Number(entry.qty) >= 1;
+  const addEntry = () => {
+    if (!entryOk) return;
+    addMedicine(entry.medicine, Number(entry.qty), entry.dose.trim());
+    setEntry(null);
+  };
   // The doctor's prescription on the bill (owner's developer, 28 Oct 2026): its medicines are marked `prescribed` and
   // cannot be taken off – only their quantity and batch change; medicines the pharmacist adds can be. Another
   // prescription chosen replaces the last one's medicines.
@@ -279,7 +292,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
       ...(visitId ? { visitId } : {}),
       ...(!visitId && (doctor.name.trim() || doctor.reg.trim()) ? { doctor: { name: doctor.name.trim(), reg: doctor.reg.trim() } } : {}),
       rxSeen: !visitId && rxSeen,
-      lines: lines.map((l) => ({ medicineId: l.medicine.id, qty: Number(l.qty), ...(l.batchId ? { batchId: l.batchId } : {}) })),
+      lines: lines.map((l) => ({ medicineId: l.medicine.id, qty: Number(l.qty), ...(l.batchId ? { batchId: l.batchId } : {}), ...(l.dose?.trim() ? { dose: l.dose.trim() } : {}) })),
       discountPercent: pct,
       discountReason: discountReason.trim(),
     };
@@ -289,6 +302,11 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   // Phones, as in the app design (2 Nov 2026): one less, one more beside the quantity
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
   const setQty = (key, qty) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty } : x)));
+  const setLine = (key, change) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, ...change } : x)));
+  // Each row's amount at its batch MRP, and the total after the discount (the invoice has the exact figures)
+  const rowPaise = (l) => (l.mrpPaise && /^\d+$/.test(l.qty) ? l.mrpPaise * Number(l.qty) : null);
+  const grossPaise = lines.reduce((n, l) => n + (rowPaise(l) ?? 0), 0);
+  const totalPaise = Math.round(grossPaise * (1 - (Number.isFinite(pct) ? pct : 0) / 100));
   const stepQty = (l, by) => setQty(l.key, String(Math.max(1, (Number(l.qty) || 0) + by)));
 
   return (
@@ -362,7 +380,29 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
         {(patient || who === 'walkin') && (
           <section className="card bill-section" aria-labelledby="ph-lines">
             <h2 id="ph-lines">Medicines</h2>
-            <FindMedicine onPick={(m) => addMedicine(m)} onScan={scan} />
+            <FindMedicine onPick={(m) => (embedded ? setEntry({ medicine: m, qty: '1', dose: '' }) : addMedicine(m))} onScan={scan} />
+            {embedded && entry && (
+              <div className="ph-entry" role="group" aria-label="Medicine to add">
+                <strong className="ph-entry-name">
+                  {medicineLabel(entry.medicine)} <ScheduleMark schedule={entry.medicine.schedule} />
+                  <span className="muted"> · {entry.medicine.inStock} in stock</span>
+                </strong>
+                <label className="ph-entry-field">
+                  <span>Quantity</span>
+                  <input inputMode="numeric" value={entry.qty} onChange={(e) => setEntry({ ...entry, qty: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addEntry()} autoFocus />
+                </label>
+                <label className="ph-entry-field ph-entry-dose">
+                  <span>Dose (optional)</span>
+                  <input value={entry.dose} maxLength={60} placeholder="e.g. 1-0-1 after food" onChange={(e) => setEntry({ ...entry, dose: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addEntry()} />
+                </label>
+                <button type="button" className="btn btn-secondary" disabled={!entryOk} onClick={addEntry}>
+                  <Plus aria-hidden="true" /> Add
+                </button>
+                <button type="button" className="btn btn-link" onClick={() => setEntry(null)}>
+                  Cancel
+                </button>
+              </div>
+            )}
             {lines.length > 0 && (
               <table className="bill-lines ph-lines">
                 <thead>
@@ -371,6 +411,13 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     <th scope="col">Batch</th>
                     <th scope="col" className="num">
                       Quantity
+                    </th>
+                    <th scope="col">Dose</th>
+                    <th scope="col" className="num">
+                      MRP
+                    </th>
+                    <th scope="col" className="num">
+                      Amount
                     </th>
                     <th scope="col">
                       <span className="sr-only">Remove</span>
@@ -386,7 +433,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                         {l.prescribed && l.medicine.inStock < Number(l.qty) && <span className="field-error ph-prescribed-short">Not enough in stock: it stays on the bill, so the invoice can be made once it is received.</span>}
                       </td>
                       <td data-label="Batch">
-                        <BatchPicker line={l} onChange={(batchId) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, batchId } : x)))} />
+                        <BatchPicker line={l} onChange={(batchId) => setLine(l.key, { batchId })} onPrice={(mrpPaise) => setLine(l.key, { mrpPaise })} />
                       </td>
                       <td data-label="Quantity" className="num">
                         {onPhone && (
@@ -400,6 +447,15 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                             <Plus aria-hidden="true" />
                           </button>
                         )}
+                      </td>
+                      <td data-label="Dose">
+                        <input className="ph-dose-input" aria-label={`Dose of ${l.medicine.name}`} value={l.dose ?? ''} maxLength={60} placeholder="e.g. 1-0-1" onChange={(e) => setLine(l.key, { dose: e.target.value })} />
+                      </td>
+                      <td data-label="MRP" className="num tabular">
+                        {l.mrpPaise ? money(l.mrpPaise) : '–'}
+                      </td>
+                      <td data-label="Amount" className="num tabular">
+                        {rowPaise(l) != null ? money(rowPaise(l)) : '–'}
                       </td>
                       <td>
                         {l.prescribed ? (
@@ -415,6 +471,17 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="ph-lines-total">
+                    <th scope="row" colSpan={5}>
+                      {pct > 0 ? `Total after ${pct}% discount` : 'Total'}
+                    </th>
+                    <td className="num tabular">
+                      <strong>{money(totalPaise)}</strong>
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             )}
             {isBusiness && <ShortHsnWarning medicines={lines.map((l) => l.medicine)} />}

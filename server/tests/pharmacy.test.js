@@ -378,6 +378,23 @@ describe('issuing to admitted patients', () => {
     const bill = (await (await as('reception')).get(`/api/billing/bills/${stayBill.id}`)).body.bill;
     expect(bill.lines.find((l) => l.group === 'medicine')).toMatchObject({ amountPaise: 6300 });
   });
+
+  it('keeps the dose written on a line, and Search with nothing typed lists who is admitted now', async () => {
+    const sup = await supplier();
+    const m = await medicine({ name: 'Iron Sample 100', hsn: '3004' });
+    await purchase(sup, [{ medicineId: m.id, batch: 'IR1', expiry: '2028-06', qty: 20, ratePaise: 100, mrpPaise: 300 }]);
+    const p = await register('Admitted Mother');
+    await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour room', reason: 'In labour' });
+    const people = async (query) => (await (await as('pharm')).get('/api/pharmacy/invoices/people').query(query)).body.people;
+    expect(await people({ type: 'ipd' })).toEqual([expect.objectContaining({ key: p.id, type: 'ipd', name: 'Admitted Mother', billCount: 0 })]);
+    expect(await people({ type: 'external' })).toEqual([]);
+    const res = await ph('post', '/invoices', { kind: 'issue', patientId: p.id, lines: [{ medicineId: m.id, qty: 2, dose: '1-0-1 after food' }] });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.invoice.lines[0]).toMatchObject({ qty: 2, mrpPaise: 300, dose: '1-0-1 after food' });
+    // Billed now: listed once, with the bill
+    expect(await people({ type: 'ipd' })).toEqual([expect.objectContaining({ key: p.id, billCount: 1 })]);
+    expect((await ph('post', '/invoices', { kind: 'issue', patientId: p.id, lines: [{ medicineId: m.id, qty: 1, dose: 'x'.repeat(61) }] })).status).toBe(400);
+  });
 });
 
 describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
