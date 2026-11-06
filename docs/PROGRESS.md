@@ -13,6 +13,24 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **6 Nov 2026 – the admission form in the hospital's own layout, opening after every admission (branch
+  `admission-form-print`, developer's request):** a grey ADMISSION FORM bar; UHID, name, age/gender, marital status (to
+  write), address, mobile, doctor, referring doctor beside IP no, bed and room, date/time, Aadhaar (last 4 only:
+  XXXX XXXX 1234; another ID by name), department, admission type, who pays and the IPD barcode; a Relatives box; an
+  MLC box; the doctors' hand-written lines; then the consent on its own page with the patient's and relative's signature
+  lines. After admitting (Beds, her record, Patients, a new IPD patient) the form opens to print. **Consent:** the
+  hospital's own English wording from its paper form (`client/src/pages/beds/admissionConsent.js`, the owner's approval
+  passed on by the developer, 6 Nov 2026), the hospital's name from its letterhead. **Still to do:** the Marathi
+  paragraph (the PDF's Marathi cannot be read back – it needs typing); marital status is not kept on the record yet.
+  **IPD on Patients (same day):** like OPD – **New registration** registers her as IPD and opens the Admit popup;
+  **Admit a registered patient** finds her there. **How to test:** Patients → IPD → Admit a registered patient → the
+  form opens → Print.
+  **The doctor (same day):** Edit details shows the department and assigned doctor for those who may change the
+  doctor (the record's Change doctor rule), saved through that same check and audit entry; Change doctor has the
+  department first too. Doctors appear under a department only once Hospital admin → Staff gives them one.
+  **Service charges in the register popup (same day):** registering from Today's search or from Appointments → New
+  patient now has the same Service charges (Choose a service) as Patients → New patient, billed once she is registered
+  (reception, billing, hospital admin).
 - **6 Nov 2026 – billing on Sold like the store's earlier software (Clinovations) (branch `pharmacy-sold-billing`,
   developer's request):** choose All, OPD, IPD or External and press **Search**: that type's people are listed (with
   nothing typed: those admitted and those who arrived today first, then everyone billed; a name or number narrows it).

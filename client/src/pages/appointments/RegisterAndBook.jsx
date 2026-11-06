@@ -8,6 +8,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { newPatientLinks } from '../../platform/modules.js';
 import { PatientForm } from '../patients/PatientForm.jsx';
 import { PossibleMatchesDialog } from '../patients/PossibleMatchesDialog.jsx';
+import { CHARGE_ROLES, NO_CHARGES, RegistrationCharges, billCharges, billedText, chargesOk } from '../billing/ServiceChargeDialog.jsx';
 import { VISIT_TYPES, VISIT_TYPE_LABELS } from './appointmentFormat.js';
 
 // "New patient" in the Book dialog (26 Oct 2026, as Docterz's reception: the first visit is one form): her full
@@ -37,6 +38,25 @@ export function RegisterAndBook({ doctor = null, date, start, lengths = null, ap
   const [warning, setWarning] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Service charges, as on Patients → New patient (6 Nov 2026): billed as soon as she is registered
+  const canCharge = CHARGE_ROLES.some((r) => roles.includes(r));
+  const [charges, setCharges] = useState(NO_CHARGES);
+  const [billed, setBilled] = useState(null);
+  // Registered: her services billed first; if that fails she stays registered and the popup says so (booking waits)
+  const registeredNow = async (patient) => {
+    if (charges.lines.length) {
+      try {
+        setBilled(billedText(await billCharges(patient.id, charges.lines, charges.pay)));
+      } catch (err) {
+        setCharges(NO_CHARGES);
+        setRegistered(patient);
+        setError(err.bill ? `The service charges are on bill ${err.bill.number}, but the payment was not saved (${err.message}) – take it under Billing.` : `The service charges could not be billed (${err.message}) – add them from Patients → Add service charge.`);
+        return;
+      }
+      setCharges(NO_CHARGES);
+    }
+    await book(patient);
+  };
 
   // The time, for this patient record; a confirmable warning waits for "Book anyway".
   const book = async (patient, confirm = false) => {
@@ -63,6 +83,7 @@ export function RegisterAndBook({ doctor = null, date, start, lengths = null, ap
 
   // The form's Save: register (records with the same phone or name open "She may already be registered"), then book.
   const save = async (payload) => {
+    if (!chargesOk(charges.lines)) throw new Error('Enter the amount for each service charge, or remove it.');
     let patient;
     try {
       ({ patient } = await api('/patients', { method: 'POST', body: payload }));
@@ -72,7 +93,7 @@ export function RegisterAndBook({ doctor = null, date, start, lengths = null, ap
       setMatches({ list: err.matches ?? [], total: err.total ?? 0, payload });
       return;
     }
-    await book(patient);
+    await registeredNow(patient);
   };
 
   const registerAnyway = async () => {
@@ -81,7 +102,7 @@ export function RegisterAndBook({ doctor = null, date, start, lengths = null, ap
     try {
       const { patient } = await api('/patients', { method: 'POST', body: { ...matches.payload, registerAnyway: true } });
       setMatches(null);
-      await book(patient);
+      await registeredNow(patient);
     } catch (err) {
       setMatchError(err.fields && Object.keys(err.fields).length ? `${err.message} Go back to the form to correct them.` : err.message);
     } finally {
@@ -104,6 +125,7 @@ export function RegisterAndBook({ doctor = null, date, start, lengths = null, ap
         <p>
           <strong>{registered.fullName}</strong> <span className="muted">{registered.mrn}</span>
         </p>
+        {billed && <p className="hint">{billed}</p>}
         {warning && (
           <div className="appt-warning" role="alert">
             <p>
@@ -161,6 +183,7 @@ export function RegisterAndBook({ doctor = null, date, start, lengths = null, ap
           part="info"
           prefill={{ ...(doctor ? { assignedDoctor: doctor.id } : {}), ...(appointment?.guest ? { fullName: appointment.guest.name, phone: appointment.guest.phone } : {}), ...(prefill ?? {}) }}
           onSubmit={save}
+          beforeActions={canCharge ? <RegistrationCharges charges={charges} onCharges={setCharges} /> : null}
           submitLabel={appointment || registerOnly ? 'Register' : 'Register and book'}
           access={{ canEditIdentity: true, canEditNewborn: true, canEditClinical: clinical }}
           clinicalStep={() => false}
