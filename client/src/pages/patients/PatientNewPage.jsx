@@ -9,7 +9,7 @@ import { Alert, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { canRegisterPatients, patientTabs } from '../../platform/modules.js';
 import { AdmitDialog } from '../beds/BedBoardPage.jsx';
-import { ChargeLines, billCharges, billedText, chargesOk, useChargeItems } from '../billing/ServiceChargeDialog.jsx';
+import { NO_CHARGES, RegistrationCharges, billCharges, billedText, chargesOk } from '../billing/ServiceChargeDialog.jsx';
 import { PatientForm } from './PatientForm.jsx';
 import { VoiceEntry } from './VoiceEntry.jsx';
 import { careTypeFromSpeech, withoutCareTypeWords } from './careTypeSpeech.js';
@@ -150,20 +150,6 @@ const SETTINGS = [
   ['day_care', 'Day care', Sun],
 ];
 
-// Service charges on the registration form (owner, 27 Oct 2026): billed as soon as she is saved – no trip to Billing.
-// The registration fee itself is added by the app.
-function RegistrationCharges({ charges, onCharges }) {
-  const { items, error } = useChargeItems();
-  return (
-    <section className="card form-section" aria-labelledby="reg-charges">
-      <h2 id="reg-charges">Service charges (optional)</h2>
-      <p className="hint">Consultation, procedures or other services to bill today. The registration fee is added by itself.</p>
-      <Alert type="error">{error}</Alert>
-      <ChargeLines idPrefix="reg-charge" items={items} lines={charges.lines} onLines={(lines) => onCharges({ ...charges, lines })} pay={charges.pay} onPay={(pay) => onCharges({ ...charges, pay })} />
-    </section>
-  );
-}
-const NO_CHARGES = { lines: [], pay: 'cash' };
 
 export function PatientNewPage() {
   const { careType: chosen } = useParams();
