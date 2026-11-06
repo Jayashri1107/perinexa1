@@ -266,6 +266,8 @@ const invoiceLineSchema = new mongoose.Schema({
   cgstPaise: { type: Number, required: true },
   sgstPaise: { type: Number, required: true },
   returnedQty: { type: Number, default: 0 },
+  // How to take it, as the pharmacist writes it on the bill (6 Nov 2026), e.g. 1-0-1 after food; '' = not written
+  dose: { type: String, default: '', maxlength: 60 },
 });
 const returnLineSchema = new mongoose.Schema(
   { lineId: ObjectId, qty: Number, amountPaise: Number, taxablePaise: Number, gstPaise: Number, cgstPaise: Number, sgstPaise: Number },

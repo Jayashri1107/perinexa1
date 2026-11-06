@@ -86,6 +86,44 @@
 .ph-sold { display: flex; flex-direction: column; gap: var(--space-4); }
 .ph-sold-split { display: flex; flex-direction: column; gap: var(--space-4); }
 .ph-sold-results { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+/* A new bill made on Sold: the type's list, then New bill's own screen beside the filters */
+.ph-sold-billing { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ph-sold-bill { display: flex; flex-direction: column; gap: var(--space-4); }
+/* The medicine about to be added (Sold): its name, then quantity, dose and Add on one line */
+.ph-entry { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin-top: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--indigo-200, var(--border)); border-left: 4px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-entry-name { flex: 1 1 100%; font-size: var(--fs-body); }
+.ph-entry-field { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; }
+.ph-entry-field > span { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-entry-qty .ph-choice { width: 140px; }
+.ph-entry-dose .ph-choice { width: 240px; }
+/* A drop-down with "Type another…": the box and its List link side by side */
+.ph-choice-own { display: inline-flex; align-items: center; gap: var(--space-1); }
+.ph-choice-own input { flex: 1 1 auto; min-width: 0; }
+.ph-entry-qty .ph-choice-own, .ph-entry-dose .ph-choice-own { width: auto; }
+.ph-entry-qty .ph-choice-own input { width: 90px; }
+.ph-entry-dose .ph-choice-own input { width: 190px; }
+/* The bill's medicines: the batch under the name, then quantity, dose, MRP and amount in fixed columns */
+.bill-lines.ph-lines { width: 100%; max-width: none; table-layout: fixed; margin-top: var(--space-3); }
+.ph-lines th:nth-child(2) { width: 76px; }
+.ph-lines th:nth-child(3) { width: 168px; }
+.ph-lines th:nth-child(4) { width: 60px; }
+.ph-lines th:nth-child(5) { width: 76px; }
+.ph-lines th:nth-child(6) { width: 44px; }
+.ph-lines td { vertical-align: middle; }
+.ph-line-med { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.ph-line-name strong { font-weight: 600; }
+.ph-line-meta { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); overflow-wrap: anywhere; }
+.ph-batch { margin-top: var(--space-1); width: 100%; max-width: 300px; font-size: var(--fs-label); }
+.ph-lines .bill-price-input { width: 56px; text-align: center; }
+.ph-dose-input, .ph-lines .ph-choice { width: 100%; }
+.ph-lines-total th { text-align: right; font-weight: 600; }
+.ph-lines-total th, .ph-lines-total td { padding-top: var(--space-3); padding-bottom: var(--space-3); background: var(--mist-50); border-top: 2px solid var(--border); }
+.ph-lines-total strong { font-size: var(--fs-h3); }
+.ph-search-btn { width: 100%; justify-content: center; }
+.ph-found-item { display: flex; align-items: center; gap: var(--space-2); }
+.ph-found-item > .ph-found-row { flex: 1 1 auto; min-width: 0; cursor: pointer; }
+.ph-found-item > .ph-found-row:hover { background: var(--mist-50); }
+.ph-found-bills { flex: 0 0 80px; display: flex; justify-content: flex-end; }
 .ph-filters { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
 .ph-filter-row { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(3, minmax(140px, 1fr)); gap: var(--space-3); width: 100%; align-items: end; }
 .ph-filter { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
@@ -98,10 +136,7 @@
 .ph-found > p { margin: var(--space-3) 0; }
 .ph-found ul { max-height: 420px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .ph-found li + li { border-top: 1px solid var(--border); }
-.ph-found button, .ph-found-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 110px 70px 90px; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-2); border: 0; border-radius: 0; background: none; color: var(--ink); text-align: left; }
-.ph-found button { cursor: pointer; }
-.ph-found-row > span:last-child { grid-column: 3 / -1; }
-.ph-found button:hover { background: var(--mist-50); }
+.ph-found-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 90px 140px 90px; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-2); border: 0; border-radius: 0; background: none; color: var(--ink); text-align: left; }
 .ph-inv-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
 .ph-inv-facts dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
 .ph-inv-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
@@ -127,8 +162,7 @@
 @media (max-width: 1023px) {
   .ph-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ph-filter-row > .ph-filter:first-child { grid-column: 1 / -1; }
-  .ph-found button, .ph-found-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .ph-found-row > span:last-child { grid-column: 1 / -1; }
+  .ph-found-row { grid-template-columns: minmax(0, 1fr) auto; }
 }
 /* A narrow sheet on screen (beside the side list, or on a phone): the details two a row, so nothing breaks mid-number */
 @container (max-width: 480px) {

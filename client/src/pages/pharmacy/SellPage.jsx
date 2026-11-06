@@ -18,8 +18,74 @@ import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './Registe
 
 const NEEDS_RX = ['H', 'H1', 'X', 'narcotic'];
 
-/** Today's OPD patients from the daily register (never the whole patient list), and finding someone from another day. */
-function TodayOpdPicker({ onPick }) {
+// The dose and quantity boxes offer a list to choose from (6 Nov 2026) and still take anything typed. The doses are the
+// prescription's own frequencies (pharmacyFormat.js FREQUENCY_WORDS): "1-0-1 (twice a day)", "SOS (when needed)" …
+export const DOSE_CHOICES = Object.entries(FREQUENCY_WORDS)
+  .filter(([k]) => k !== 'custom')
+  .map(([k, words]) => {
+    if (/^[\d-]+$/.test(k)) return `${k} (${words})`;
+    if (words.toLowerCase().startsWith(k)) return words[0].toUpperCase() + words.slice(1); // weekly, alternate days
+    return `${k.toUpperCase()} (${words})`; // SOS, STAT
+  });
+const QTY_CHOICES = [1, 2, 3, 4, 5, 6, 10, 15, 20, 30];
+
+const OWN = '__own';
+/**
+ * A drop-down that opens on a click, with "Type another…" for anything not on the list (then a box, and "List" to go
+ * back). value/onChange: the text; choices: the list; placeholder: the first, empty choice.
+ */
+export function ChoiceBox({ value, onChange, choices, placeholder, label, ownLabel = 'Type another…', inputMode, maxLength = 60, onEnter, autoFocus = false, className = '' }) {
+  const listed = value === '' || choices.map(String).includes(String(value));
+  const [typing, setTyping] = useState(!listed);
+  const [switched, setSwitched] = useState(false); // chosen "Type another…" just now: the box takes the cursor
+  if (typing || !listed) {
+    return (
+      <span className={`ph-choice ph-choice-own ${className}`}>
+        <input aria-label={label} inputMode={inputMode} value={value} maxLength={maxLength} autoFocus={switched} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onEnter?.()} />
+        <button
+          type="button"
+          className="btn btn-link btn-sm"
+          onClick={() => {
+            setTyping(false);
+            onChange('');
+          }}
+        >
+          List
+        </button>
+      </span>
+    );
+  }
+  return (
+    <select
+      className={`ph-choice ${className}`}
+      aria-label={label}
+      value={String(value)}
+      autoFocus={autoFocus}
+      onChange={(e) => {
+        if (e.target.value === OWN) {
+          setTyping(true);
+          setSwitched(true);
+          onChange('');
+        } else onChange(e.target.value);
+      }}
+      onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
+    >
+      <option value="">{placeholder}</option>
+      {choices.map((c) => (
+        <option key={c} value={String(c)}>
+          {c}
+        </option>
+      ))}
+      <option value={OWN}>{ownLabel}</option>
+    </select>
+  );
+}
+
+/**
+ * Today's OPD patients from the daily register (never the whole patient list), and finding someone from another day.
+ * onPickIpd: someone found who is admitted (else the Issue to ward page opens with her).
+ */
+export function TodayOpdPicker({ onPick, onPickIpd = null }) {
   const navigate = useNavigate();
   const res = useFetch('/pharmacy/register');
   const [text, setText] = useState('');
@@ -28,7 +94,7 @@ function TodayOpdPicker({ onPick }) {
   const opd = (res.data?.rows ?? []).filter((r) => r.type === 'opd').filter((r) => !term || [r.patient.fullName, r.patient.mrn, r.patient.phone, r.opdNo].some((v) => v && String(v).toLowerCase().includes(term)));
   return (
     <>
-      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? navigate('/pharmacy/issue', { state: { patient } }) : onPick(patient))} onOpenBills={(patient) => navigate(...billsPlace(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} onText={setText} />
+      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? (onPickIpd ? onPickIpd(patient) : navigate('/pharmacy/issue', { state: { patient } })) : onPick(patient))} onOpenBills={(patient) => navigate(...billsPlace(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} onText={setText} />
       <h3 className="ph-today-title">Today's OPD patients</h3>
       {res.error && <Alert type="error">{res.error}</Alert>}
       {res.data && !opd.length && <p className="muted">{term ? "Nobody on today's list matches." : "No OPD patient on today's register yet."}</p>}
@@ -48,11 +114,47 @@ function TodayOpdPicker({ onPick }) {
   );
 }
 
-function BatchPicker({ line, onChange }) {
+/** The admitted patients, with a search by name, number, ward or bed (an issue to the ward is for them only). */
+export function InpatientPicker({ onPick }) {
+  const inpatients = useFetch('/pharmacy/inpatients');
+  const [text, setText] = useState('');
+  const term = text.trim().toLowerCase();
+  const all = inpatients.data?.inpatients ?? [];
+  const shown = all.filter((x) => !term || [x.patient.fullName, x.patient.mrn, x.patient.phone, x.ward, x.bed].some((v) => v && String(v).toLowerCase().includes(term)));
+  return (
+    <>
+      <input type="search" className="bill-search-plain" aria-label="Find an admitted patient" placeholder="Name, number, ward or bed" value={text} onChange={(e) => setText(e.target.value)} />
+      {inpatients.error && <Alert type="error">{inpatients.error}</Alert>}
+      {inpatients.data && !shown.length && <p className="muted">{term && all.length ? 'Nobody admitted matches.' : 'Nobody is admitted.'}</p>}
+      <ul className="appt-pick-list" aria-label="Admitted patients">
+        {shown.map((x) => (
+          <li key={x.patient.id}>
+            <button type="button" className="appt-pick" onClick={() => onPick(x.patient)}>
+              <strong>
+                <BedDouble aria-hidden="true" /> {x.patient.fullName}
+              </strong>
+              <span className="muted">
+                {x.patient.mrn} · {x.ward || 'Ward not given'}
+                {x.bed ? `, bed ${x.bed}` : ''}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function BatchPicker({ line, onChange, onPrice = null }) {
   const res = useFetch(`/pharmacy/medicines/${line.medicine.id}/batches`);
   const batches = res.data?.batches ?? [];
+  // The MRP of the batch chosen, else of the one sold first (earliest expiry), for the row's amount
+  const mrp = (batches.find((b) => b.id === line.batchId) ?? batches[0])?.mrpPaise ?? null;
+  useEffect(() => {
+    if (onPrice && mrp !== (line.mrpPaise ?? null)) onPrice(mrp);
+  }, [mrp, line.mrpPaise, onPrice]);
   return (
-    <select aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
+    <select className="ph-batch" aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
       <option value="">Earliest expiry first</option>
       {batches.map((b) => (
         <option key={b.id} value={b.id}>
@@ -179,15 +281,19 @@ export function ShortHsnWarning({ medicines }) {
 /** Is everything needed about the business buyer filled in (the server checks again)? */
 export const buyerComplete = (buyer) => buyer.name.trim().length >= 3 && Boolean(gstinState(buyer.gstin)) && buyer.address.trim().length >= 3 && buyer.place.trim().length >= 3 && /^[1-9]\d{5}$/.test(buyer.pin.trim());
 
-export function SellPage({ kind = 'sale' }) {
+/**
+ * embedded (Sold, 6 Nov 2026): the same bill inside another page – start gives the patient or { type: 'external' },
+ * onMade(invoice) gets the new invoice instead of opening it, onCancel goes back to choosing someone.
+ */
+export function SellPage({ kind = 'sale', start: given = null, embedded = false, onMade = null, onCancel = null }) {
   const navigate = useNavigate();
   // From the Daily register: { patient } already chosen, or { type: 'external' }
-  const start = useLocation().state ?? {};
+  const routed = useLocation().state;
+  const start = given ?? routed ?? {};
   const issue = kind === 'issue';
-  const inpatients = useFetch(issue ? '/pharmacy/inpatients' : null);
   const [who, setWho] = useState(issue ? 'inpatient' : start.type === 'external' ? 'walkin' : 'patient'); // patient (OPD) | walkin (External) | inpatient (IPD)
   const [patient, setPatient] = useState(start.patient ?? null);
-  const [customer, setCustomer] = useState({ name: '', phone: '' });
+  const [customer, setCustomer] = useState({ name: start.customer?.name ?? '', phone: start.customer?.phone ?? '' });
   const [visitId, setVisitId] = useState(null);
   const [doctor, setDoctor] = useState({ name: '', reg: '' });
   const [rxSeen, setRxSeen] = useState(false);
@@ -198,9 +304,17 @@ export function SellPage({ kind = 'sale' }) {
   const [reference, setReference] = useState('');
   const [business, setBusiness] = useState(false);
   const [buyer, setBuyer] = useState({ name: '', gstin: '', address: '', place: '', pin: '' });
-  const s = useSend((res) => navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } }));
+  const s = useSend((res) => (onMade ? onMade(res.invoice) : navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } })));
 
-  const addMedicine = (m, qty = 1) => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null }]));
+  const addMedicine = (m, qty = 1, dose = '') => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null, dose }]));
+  // On Sold, as in the store's earlier software (6 Nov 2026): choose the medicine, write its quantity and dose, then Add
+  const [entry, setEntry] = useState(null); // { medicine, qty, dose }
+  const entryOk = Boolean(entry) && /^\d+$/.test(entry.qty) && Number(entry.qty) >= 1;
+  const addEntry = () => {
+    if (!entryOk) return;
+    addMedicine(entry.medicine, Number(entry.qty), entry.dose.trim());
+    setEntry(null);
+  };
   // The doctor's prescription on the bill (owner's developer, 28 Oct 2026): its medicines are marked `prescribed` and
   // cannot be taken off – only their quantity and batch change; medicines the pharmacist adds can be. Another
   // prescription chosen replaces the last one's medicines.
@@ -241,7 +355,7 @@ export function SellPage({ kind = 'sale' }) {
       ...(visitId ? { visitId } : {}),
       ...(!visitId && (doctor.name.trim() || doctor.reg.trim()) ? { doctor: { name: doctor.name.trim(), reg: doctor.reg.trim() } } : {}),
       rxSeen: !visitId && rxSeen,
-      lines: lines.map((l) => ({ medicineId: l.medicine.id, qty: Number(l.qty), ...(l.batchId ? { batchId: l.batchId } : {}) })),
+      lines: lines.map((l) => ({ medicineId: l.medicine.id, qty: Number(l.qty), ...(l.batchId ? { batchId: l.batchId } : {}), ...(l.dose?.trim() ? { dose: l.dose.trim() } : {}) })),
       discountPercent: pct,
       discountReason: discountReason.trim(),
     };
@@ -251,19 +365,24 @@ export function SellPage({ kind = 'sale' }) {
   // Phones, as in the app design (2 Nov 2026): one less, one more beside the quantity
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
   const setQty = (key, qty) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty } : x)));
+  const setLine = (key, change) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, ...change } : x)));
+  // Each row's amount at its batch MRP, and the total after the discount (the invoice has the exact figures)
+  const rowPaise = (l) => (l.mrpPaise && /^\d+$/.test(l.qty) ? l.mrpPaise * Number(l.qty) : null);
+  const grossPaise = lines.reduce((n, l) => n + (rowPaise(l) ?? 0), 0);
+  const totalPaise = Math.round(grossPaise * (1 - (Number.isFinite(pct) ? pct : 0) / 100));
   const stepQty = (l, by) => setQty(l.key, String(Math.max(1, (Number(l.qty) || 0) + by)));
 
   return (
     <>
-      <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'New bill'} crumb={issue ? 'Issue to ward' : 'New bill'} />
-      <div className="pf-content bill-page">
+      {!embedded && <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'New bill'} crumb={issue ? 'Issue to ward' : 'New bill'} />}
+      <div className={embedded ? 'bill-page ph-sold-bill' : 'pf-content bill-page'}>
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
         </Alert>
 
         <section className="card bill-section" aria-labelledby="ph-who">
           <h2 id="ph-who">Who is it for</h2>
-          {!patient && (
+          {!patient && !embedded && (
             <div className="segmented" role="group" aria-label="Type of patient">
               <button type="button" aria-pressed={who === 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
                 <Stethoscope aria-hidden="true" /> OPD patient
@@ -285,27 +404,7 @@ export function SellPage({ kind = 'sale' }) {
             </div>
           )}
           {who === 'patient' && !patient && <TodayOpdPicker onPick={setPatient} />}
-          {who === 'inpatient' && !patient && (
-            <>
-              {inpatients.error && <Alert type="error">{inpatients.error}</Alert>}
-              {inpatients.data && !inpatients.data.inpatients.length && <p className="muted">Nobody is admitted.</p>}
-              <ul className="appt-pick-list">
-                {(inpatients.data?.inpatients ?? []).map((x) => (
-                  <li key={x.patient.id}>
-                    <button type="button" className="appt-pick" onClick={() => setPatient(x.patient)}>
-                      <strong>
-                        <BedDouble aria-hidden="true" /> {x.patient.fullName}
-                      </strong>
-                      <span className="muted">
-                        {x.patient.mrn} · {x.ward || 'Ward not given'}
-                        {x.bed ? `, bed ${x.bed}` : ''}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          {who === 'inpatient' && !patient && <InpatientPicker onPick={setPatient} />}
           {patient && (
             <div className="appt-chosen">
               <TypePill type={issue ? 'ipd' : 'opd'} />
@@ -314,7 +413,7 @@ export function SellPage({ kind = 'sale' }) {
                 {patient.mrn}
                 {patient.phone ? ` · ${patient.phone}` : ''}
               </span>
-              <button type="button" className="btn btn-link btn-sm" onClick={reset}>
+              <button type="button" className="btn btn-link btn-sm" onClick={embedded && onCancel ? onCancel : reset}>
                 Choose someone else
               </button>
             </div>
@@ -344,15 +443,43 @@ export function SellPage({ kind = 'sale' }) {
         {(patient || who === 'walkin') && (
           <section className="card bill-section" aria-labelledby="ph-lines">
             <h2 id="ph-lines">Medicines</h2>
-            <FindMedicine onPick={(m) => addMedicine(m)} onScan={scan} />
+            <FindMedicine onPick={(m) => (embedded ? setEntry({ medicine: m, qty: '1', dose: '' }) : addMedicine(m))} onScan={scan} />
+            {embedded && entry && (
+              <div className="ph-entry" role="group" aria-label="Medicine to add">
+                <strong className="ph-entry-name">
+                  {medicineLabel(entry.medicine)} <ScheduleMark schedule={entry.medicine.schedule} />
+                  <span className="muted"> · {entry.medicine.inStock} in stock</span>
+                </strong>
+                <div className="ph-entry-field ph-entry-qty">
+                  <span>Quantity</span>
+                  <ChoiceBox label="Quantity" value={entry.qty} choices={QTY_CHOICES} placeholder="Choose" ownLabel="Another number…" inputMode="numeric" maxLength={5} onChange={(qty) => setEntry({ ...entry, qty })} onEnter={addEntry} autoFocus />
+                </div>
+                <div className="ph-entry-field ph-entry-dose">
+                  <span>Dose (optional)</span>
+                  <ChoiceBox label="Dose" value={entry.dose} choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={(dose) => setEntry({ ...entry, dose })} onEnter={addEntry} />
+                </div>
+                <button type="button" className="btn btn-secondary" disabled={!entryOk} onClick={addEntry}>
+                  <Plus aria-hidden="true" /> Add
+                </button>
+                <button type="button" className="btn btn-link" onClick={() => setEntry(null)}>
+                  Cancel
+                </button>
+              </div>
+            )}
             {lines.length > 0 && (
               <table className="bill-lines ph-lines">
                 <thead>
                   <tr>
-                    <th scope="col">Medicine</th>
-                    <th scope="col">Batch</th>
+                    <th scope="col">Medicine and batch</th>
                     <th scope="col" className="num">
                       Quantity
+                    </th>
+                    <th scope="col">Dose</th>
+                    <th scope="col" className="num">
+                      MRP
+                    </th>
+                    <th scope="col" className="num">
+                      Amount
                     </th>
                     <th scope="col">
                       <span className="sr-only">Remove</span>
@@ -362,13 +489,13 @@ export function SellPage({ kind = 'sale' }) {
                 <tbody>
                   {lines.map((l) => (
                     <tr key={l.key}>
-                      <td data-label="Medicine">
-                        {medicineLabel(l.medicine)} <ScheduleMark schedule={l.medicine.schedule} />
-                        <span className="muted"> · {l.medicine.inStock} in stock</span>
+                      <td data-label="Medicine" className="ph-line-med">
+                        <span className="ph-line-name">
+                          <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} />
+                        </span>
+                        <span className="ph-line-meta">{[[l.medicine.generic, l.medicine.strength].filter(Boolean).join(' '), `${l.medicine.inStock} in stock`].filter(Boolean).join(' · ')}</span>
+                        <BatchPicker line={l} onChange={(batchId) => setLine(l.key, { batchId })} onPrice={(mrpPaise) => setLine(l.key, { mrpPaise })} />
                         {l.prescribed && l.medicine.inStock < Number(l.qty) && <span className="field-error ph-prescribed-short">Not enough in stock: it stays on the bill, so the invoice can be made once it is received.</span>}
-                      </td>
-                      <td data-label="Batch">
-                        <BatchPicker line={l} onChange={(batchId) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, batchId } : x)))} />
                       </td>
                       <td data-label="Quantity" className="num">
                         {onPhone && (
@@ -382,6 +509,15 @@ export function SellPage({ kind = 'sale' }) {
                             <Plus aria-hidden="true" />
                           </button>
                         )}
+                      </td>
+                      <td data-label="Dose">
+                        <ChoiceBox className="ph-dose-input" label={`Dose of ${l.medicine.name}`} value={l.dose ?? ''} choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={(dose) => setLine(l.key, { dose })} />
+                      </td>
+                      <td data-label="MRP" className="num tabular">
+                        {l.mrpPaise ? money(l.mrpPaise) : '–'}
+                      </td>
+                      <td data-label="Amount" className="num tabular">
+                        {rowPaise(l) != null ? money(rowPaise(l)) : '–'}
                       </td>
                       <td>
                         {l.prescribed ? (
@@ -397,6 +533,17 @@ export function SellPage({ kind = 'sale' }) {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="ph-lines-total">
+                    <th scope="row" colSpan={4}>
+                      {pct > 0 ? `Total after ${pct}% discount` : 'Total'}
+                    </th>
+                    <td className="num tabular">
+                      <strong>{money(totalPaise)}</strong>
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             )}
             {isBusiness && <ShortHsnWarning medicines={lines.map((l) => l.medicine)} />}

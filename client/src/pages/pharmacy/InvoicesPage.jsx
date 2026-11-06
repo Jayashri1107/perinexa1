@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, ChevronLeft, ChevronRight, FileJson, Printer, ReceiptText, RotateCcw, Stethoscope, UserPlus, Users } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight, FileJson, History, Printer, ReceiptText, RotateCcw, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -16,6 +16,7 @@ import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { TypePill } from './RegisterPage.jsx';
+import { SellPage } from './SellPage.jsx';
 
 // Pharmacy → Invoices: a day's invoices (or a search), one invoice with its GST tax invoice to print, and returns of
 // unopened medicines before their expiry (each a credit note). A walk-in sale to a business with a GSTIN shows the
@@ -73,7 +74,9 @@ export function InvoicesPage() {
   const name = useDebounced(nameText.trim(), 300);
   const mrn = useDebounced(mrnText.trim(), 300);
   const amount = useDebounced(amountText.replace(/[^\d.]/g, ''), 300).replace(/^\./, '');
-  const looking = desk && Boolean(name || mrn);
+  // Search (6 Nov 2026, as the store's earlier software): with a type chosen, that type's people – nothing typed needed
+  const [searched, setSearched] = useState(false);
+  const looking = desk && Boolean(name || mrn || searched);
   const doctors = useFetch(desk ? '/pharmacy/invoices/doctors' : null);
   const found = useFetch(
     looking ? '/pharmacy/invoices/people' : null,
@@ -89,14 +92,26 @@ export function InvoicesPage() {
       setPerson(hit);
     }
   }, [start, people]);
+  // A new bill made here (6 Nov 2026): choose OPD, IPD or External, pick the patient from that list, then the same bill
+  // as New bill, made and printed without leaving Sold. { type: 'opd' | 'ipd' | 'external', patient? }
+  const [billing, setBilling] = useState(null);
+  const [made, setMade] = useState(null); // "Invoice … made."
   const typed = (set) => (e) => {
     set(e.target.value);
     setPerson(null);
+    setBilling(null);
+  };
+  const billMade = (invoice, who) => {
+    setBilling(null);
+    setMade(`Invoice ${invoice.number} made.`);
+    setPerson({ key: invoice.id, name: who.name, mrn: who.mrn ?? '', type: who.type, billCount: 1, bills: [{ id: invoice.id, number: invoice.number, at: new Date().toISOString() }], printNow: true });
+    res.reload();
   };
   const closePerson = () => {
     setPerson(null);
     setNameText('');
     setMrnText('');
+    setSearched(false);
   };
 
   // Phones, as in the app design (2 Nov 2026): how many bills and their total above the list
@@ -183,12 +198,26 @@ export function InvoicesPage() {
                     onClick={() => {
                       setType(k);
                       setPerson(null);
+                      setBilling(null);
+                      setMade(null);
                     }}
                   >
                     <Icon aria-hidden="true" /> {label}
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                className="btn btn-secondary ph-search-btn"
+                onClick={() => {
+                  setSearched(true);
+                  setPerson(null);
+                  setBilling(null);
+                  setMade(null);
+                }}
+              >
+                <Search aria-hidden="true" /> Search {type === 'all' ? 'all' : TYPE_CHOICES.find(([k]) => k === type)?.[1]} patients
+              </button>
               <div className="ph-filter-row">
                 <div className="ph-filter">
                   <span>Date</span>
@@ -236,10 +265,17 @@ export function InvoicesPage() {
               </div>
             </section>
             <div className="ph-sold-results">
+              {made && (
+                <Alert type="success" onClose={() => setMade(null)}>
+                  {made}
+                </Alert>
+              )}
               {person ? (
                 <PersonBills key={person.key} person={person} onClose={closePerson} />
+              ) : billing ? (
+                <SoldBill billing={billing} onCancel={() => setBilling(null)} onMade={billMade} onBills={(x) => { setBilling(null); setPerson(x); }} />
               ) : looking ? (
-                <PeopleFound found={found} people={people} onPick={setPerson} />
+                <PeopleFound found={found} people={people} onPick={(x) => setBilling({ person: x })} onBills={setPerson} />
               ) : (
                 dayList
               )}
@@ -253,38 +289,77 @@ export function InvoicesPage() {
   );
 }
 
-/** The people a search found: nothing is listed until something is typed. Someone without a bill has nothing to open. */
-export function PeopleFound({ found, people, onPick }) {
-  const navigate = useNavigate();
+/** The people a search found: nothing is listed until a search. Clicking someone opens a new bill for them. */
+export function PeopleFound({ found, people, onPick, onBills = null }) {
   return (
     <section className="card ph-found" aria-label="People found">
       {found.error && <Alert type="error">{found.error}</Alert>}
       {found.data && !people.length && <p className="muted">Nobody matches.</p>}
-      {people.length > 0 && <p className="hint">Everyone who matches, old and new, those with bills first. Click a name to see their bills.</p>}
+      {people.length > 0 && <p className="hint">Click a name to make a new bill. Those to bill today and those with bills come first.</p>}
       <ul>
         {people.map((x) => (
-          <li key={x.key}>
-            {x.billCount > 0 ? (
-              <button type="button" title="Double-click to open the full bill" onClick={() => onPick(x)} onDoubleClick={() => navigate(`/pharmacy/invoices/${x.bills[0].id}`)}>
-                <strong>{x.name}</strong>
-                <span className="tabular">{x.mrn}</span>
-                <TypePill type={x.type} />
-                <span>
-                  {x.billCount} bill{x.billCount === 1 ? '' : 's'}
-                </span>
-                <span className="tabular">{slipDate(x.lastAt)}</span>
-              </button>
-            ) : (
-              <div className="ph-found-row">
-                <strong>{x.name}</strong>
-                <span className="tabular">{x.mrn}</span>
-                <span className="muted">No pharmacy bill yet</span>
-              </div>
-            )}
+          <li key={x.key} className="ph-found-item">
+            <button type="button" className="ph-found-row" onClick={() => onPick(x)}>
+              <strong>{x.name}</strong>
+              <span className="tabular">{x.mrn}</span>
+              {x.type ? <TypePill type={x.type} /> : <span />}
+              <span>{x.billCount > 0 ? `${x.billCount} bill${x.billCount === 1 ? '' : 's'}` : 'No pharmacy bill yet'}</span>
+              <span className="tabular">{x.lastAt ? slipDate(x.lastAt) : ''}</span>
+            </button>
+            <span className="ph-found-bills">
+              {x.billCount > 0 && onBills && (
+                <button type="button" className="btn btn-link btn-sm" aria-label={`Bills of ${x.name}`} onClick={() => onBills(x)}>
+                  <History aria-hidden="true" /> Bills
+                </button>
+              )}
+            </span>
           </li>
         ))}
       </ul>
-      {found.data?.more && <p className="hint">The latest {people.length} are listed. Type more of the name to find anyone else.</p>}
+      {found.data?.more && <p className="hint">The first {people.length} are listed. Type part of the name or number to find anyone else.</p>}
+    </section>
+  );
+}
+
+const BILL_FOR = { opd: 'OPD patient', ipd: 'IPD patient', external: 'External (walk-in)' };
+
+/**
+ * The new bill on Sold: New bill's own screen (medicines, quantities, doses, batches, prescription rules, prices from
+ * stock). A person who is admitted now gets an issue to the ward; a walk-in found by name, a walk-in bill with the name.
+ */
+function SoldBill({ billing, onCancel, onMade, onBills }) {
+  const { person } = billing;
+  const walkIn = !person.mrn;
+  const inpatients = useFetch(walkIn ? null : '/pharmacy/inpatients');
+  if (!walkIn && !inpatients.data && !inpatients.error) return <p className="muted">Opening the bill…</p>;
+  const admitted = !walkIn && (inpatients.data?.inpatients ?? []).some((x) => x.patient.id === person.key);
+  const type = walkIn ? 'external' : admitted ? 'ipd' : 'opd';
+  const patient = walkIn ? null : { id: person.key, fullName: person.name, mrn: person.mrn };
+  return (
+    <section className="ph-sold-billing" aria-label="New bill">
+      <div className="ph-person-head">
+        <h2>
+          New bill · {person.name || 'Walk-in customer'} <span className="muted">· {BILL_FOR[type]}</span>
+        </h2>
+        <div className="ph-person-actions">
+          {person.billCount > 0 && (
+            <button type="button" className="btn btn-secondary" onClick={() => onBills(person)}>
+              <History aria-hidden="true" /> Past bills ({person.billCount})
+            </button>
+          )}
+          <button type="button" className="btn btn-link" onClick={onCancel}>
+            Back to the list
+          </button>
+        </div>
+      </div>
+      <SellPage
+        key={`${type}-${person.key}`}
+        kind={admitted ? 'issue' : 'sale'}
+        start={walkIn ? { type: 'external', customer: { name: person.name, phone: person.phone ?? '' } } : { patient }}
+        embedded
+        onCancel={onCancel}
+        onMade={(invoice) => onMade(invoice, walkIn ? { name: invoice.customer?.name ?? person.name, type } : { name: person.name, mrn: person.mrn, type })}
+      />
     </section>
   );
 }
@@ -295,6 +370,14 @@ function PersonBills({ person, onClose }) {
   const [printing, setPrinting] = useState(false);
   const res = useFetch(`/pharmacy/invoices/${billId}`);
   const v = res.data?.invoice;
+  // A bill just made on Sold: its print preview opens by itself, once
+  const printedNow = useRef(false);
+  useEffect(() => {
+    if (person.printNow && v && !printedNow.current) {
+      printedNow.current = true;
+      setPrinting(true);
+    }
+  }, [person.printNow, v]);
   return (
     <>
       <div className="ph-person-head">
@@ -344,6 +427,7 @@ export function BillPaper({ invoice: v, settings }) {
   const name = v.patient ? v.patient.fullName : v.buyer ? v.buyer.name : v.customer?.name || 'Walk-in customer';
   const licences = [settings.licence20, settings.licence21].filter(Boolean).join(' ');
   const signed = settings.pharmacistName || v.byName;
+  const doses = v.lines.some((l) => l.dose);
   return (
     <div className="ph-slip">
       <header className="ph-slip-head">
@@ -392,8 +476,10 @@ export function BillPaper({ invoice: v, settings }) {
           <tr>
             <th scope="col">Sr.</th>
             <th scope="col">Item Name</th>
+            {doses && <th scope="col">Dose</th>}
             <th scope="col">Batch No</th>
             <th scope="col">Expiry</th>
+            <th scope="col" className="num">MRP</th>
             <th scope="col" className="num">Disc Amt</th>
             <th scope="col" className="num">Qty</th>
             <th scope="col" className="num">Amount</th>
@@ -404,8 +490,10 @@ export function BillPaper({ invoice: v, settings }) {
             <tr key={l.id}>
               <td>{i + 1}</td>
               <td>{lineName(l)}</td>
+              {doses && <td>{l.dose ?? ''}</td>}
               <td>{l.batch}</td>
               <td className="nowrap">{expiryLabel(l.expiry).replace(' ', '-')}</td>
+              <td className="num">{plain(l.mrpPaise)}</td>
               <td className="num">{plain(Math.max(0, l.qty * l.mrpPaise - l.amountPaise))}</td>
               <td className="num">{l.qty.toFixed(2)}</td>
               <td className="num">{plain(l.amountPaise)}</td>

@@ -13,6 +13,15 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **6 Nov 2026 – billing on Sold like the store's earlier software (Clinovations) (branch `pharmacy-sold-billing`,
+  developer's request):** choose All, OPD, IPD or External and press **Search**: that type's people are listed (with
+  nothing typed: those admitted and those who arrived today first, then everyone billed; a name or number narrows it).
+  Clicking someone opens a new bill for them there (an admitted patient gets an issue to the ward); their earlier bills are
+  under **Bills** / **Past bills**. On the bill: choose a medicine, write its quantity and **dose**, press **Add**; each
+  row shows the MRP and amount, with the total under the rows; the invoice opens its print preview. Bill lines keep a
+  dose (`dose` on the invoice line), printed in a Dose column; the printed bill also has an MRP column. **How to test:**
+  Pharmacy → Sold → IPD → Search IPD patients → click a patient → add a medicine with a dose → Add → Issue and make the
+  invoice → Print.
 - **5 Nov 2026 – Pharmacy Sold, filters at the side (branch `pharmacy-sold-side-filters`):** from the store's earlier
   software, on a computer the filters are a panel on the left and the list narrows beside them, with no button. A patient's
   name, phone or number lists everyone billed who matches, from the first letter, with bills of every date (the Date filter
