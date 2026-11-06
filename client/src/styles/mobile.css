@@ -397,8 +397,8 @@ html.in-app { --safe-top: 0px; }
   .ph-patient .ph-title { font-size: var(--fs-h3); line-height: var(--lh-h3); }
   .ph-patient .ph-title-row { flex-wrap: wrap; gap: 2px var(--space-2); min-width: 0; }
   .ph-patient .ph-title-row .ph-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-  .ph-patient .ph-badges { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; min-width: 0; }
-  .ph-patient .ph-badges * { flex-wrap: nowrap; }
+  /* Her labels wrap onto a second line rather than run under the edge (6 Nov 2026) */
+  .ph-patient .ph-badges { flex: 1 1 100%; flex-wrap: wrap; row-gap: var(--space-1); overflow: visible; min-width: 0; }
   .ph-patient .ph-badges::-webkit-scrollbar { display: none; }
   .ph-patient .ph-badges .pill { flex: none; font-size: var(--fs-caption); line-height: var(--lh-caption); }
   .ph-patient .ph-info-btn { display: none; }
@@ -578,8 +578,8 @@ html.in-app { --safe-top: 0px; }
   .dt tbody tr:has(> td[data-label='Balance']) > td:is([data-label='Status'], [data-label='Last payment']) { order: 4; }
   .dt tbody tr:has(> td[data-label='Balance'])::after { top: 22px; }
 
-  /* A patient's header: the first tag lines up with the name */
-  .ph-patient .ph-badges > .pill-neutral:first-child { padding-left: 0; }
+  /* A patient's header: the first tag a whole pill on the indigo band (6 Nov 2026: its edge was cut off) */
+  .ph-patient .ph-badges > .pill-neutral:first-child { padding-left: 10px; }
 
   /* ---------- A patient in the Patients list: the name, then two details a line with their word above, then her buttons ---------- */
   .dt tbody tr:has(> td.pt-actions-cell) { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-1); padding-right: var(--space-6); }
@@ -1003,6 +1003,12 @@ html.in-app { --safe-top: 0px; }
   }
   .rd-start > .btn-primary, .rd-start > .menu-button > .btn-primary { border-color: var(--indigo-700); background: var(--indigo-700); color: var(--on-solid); }
   .rd-start svg.lucide { width: 28px; height: 28px; }
+  /* New patient's arrow (it opens a list) in the tile's top right corner, not under its name */
+  .rd-start > .menu-button > .btn { position: relative; }
+  .rd-start > .menu-button > .btn > svg.lucide:last-child { position: absolute; top: var(--space-4); right: var(--space-4); width: 20px; height: 20px; }
+  /* A list of bills: Take payment / Take a deposit last, across the card, not before the bill's number */
+  .dt tbody tr > td:has(> .bill-pay) { order: 99; flex: 1 1 100%; grid-column: 1 / -1; }
+  .dt tbody tr > td > .bill-pay { width: 100%; min-height: 44px; justify-content: center; }
   .rd-start-tile svg.lucide { color: var(--indigo-700); }
   .td-home-count { gap: 6px; min-height: 0; border: 1px solid var(--card-border); }
   .td-home-count-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--indigo-100); color: var(--indigo-700); }
@@ -1543,12 +1549,17 @@ html.in-app { --safe-top: 0px; }
   .ph-bill-foot .ph-actions > .btn-secondary { flex: none; width: 52px; min-height: 52px; padding: 0; font-size: 0; }
   .ph-bill-foot .ph-actions > .btn-secondary svg.lucide { width: 20px; height: 20px; }
 
-  /* ---------- A patient's foot bar with more than one extra button: two rows, nothing cut off ---------- */
-  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) { flex-wrap: wrap; gap: var(--space-2); }
-  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) > .btn-secondary { order: 1; flex: 1 1 calc(50% - var(--space-2)); width: auto; min-width: 0; min-height: 40px; padding: 0 var(--space-1); font-size: var(--fs-label); white-space: nowrap; }
-  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) > .btn-primary { order: 2; flex: 1 1 0; min-width: 0; padding: 0 var(--space-2); }
-  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) > .menu-button { order: 3; flex: none; }
-  .pf-main:has(.pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary)) .pf-content { padding-bottom: 140px; }
+  /* ---------- A patient's foot bar with extra buttons: they share the top row (one alone takes it all); the main
+     button and More the bottom row – never squeezed into one row (6 Nov 2026) ---------- */
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--space-2);
+  }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) > .btn-secondary { grid-row: 1; grid-column: 1; width: auto; min-width: 0; min-height: 44px; padding: 0 var(--space-1); font-size: var(--fs-label); white-space: nowrap; }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) > .btn-secondary ~ .btn-secondary { grid-column: 2 / -1; }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):not(:has(> .btn-secondary ~ .btn-secondary)) > .btn-secondary { grid-column: 1 / -1; }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) > .btn-primary { grid-row: 2; grid-column: 1 / 3; min-width: 0; padding: 0 var(--space-2); }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)) .ph-patient .ph-actions:has(> .btn-primary):has(> .btn-secondary) > .menu-button { grid-row: 2; grid-column: 3; }
+  .pf:not(:has(.sticky-actions:not(.modal *), .ip-chart-form)):has(.ph-patient .ph-actions > .btn-primary):has(.ph-patient .ph-actions > .btn-secondary) .pf-content { padding-bottom: 150px; }
 
   /* ---------- A visit's prescription: its own links above, Save beside Sign and finish ---------- */
   .pf:has(.vs-visit-top .btn-positive) .pf-main .sticky-actions:not(.modal *):has(> .btn-link) { flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); padding-right: var(--space-4); overflow: visible; }
