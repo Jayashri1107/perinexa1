@@ -32,6 +32,10 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  FORMULARY_ROW_ADDED: 'Formulary row added',
+  FORMULARY_ROW_CHANGED: 'Formulary row changed (unverified until confirmed again)',
+  FORMULARY_ROW_CONFIRMED: 'Formulary row confirmed',
+  FORMULARY_DOSE_WORKED_OUT: 'Dose worked out from the formulary',
   INCIDENTS_VIEWED: 'Incident list opened',
   INCIDENT_REPORTED: 'Incident reported',
   INCIDENT_VIEWED: 'Incident opened',
@@ -413,6 +417,10 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  FORMULARY_ROW_ADDED: 'info',
+  FORMULARY_ROW_CHANGED: 'warn',
+  FORMULARY_ROW_CONFIRMED: 'info',
+  FORMULARY_DOSE_WORKED_OUT: 'info',
   INCIDENTS_VIEWED: 'info',
   INCIDENT_REPORTED: 'warn',
   INCIDENT_VIEWED: 'info',

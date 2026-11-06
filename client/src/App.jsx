@@ -16,7 +16,7 @@ import { AppLayout } from './components/AppLayout.jsx';
 import { PageHeader } from './components/PageHeader.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, FORMULARY_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 
 // Each screen is loaded the first time it is opened, not all at once when the app starts (31 Oct 2026: the one file
 // with all 106 screens was 2.9 MB, slow to start on a phone). Screens of one file share one download.
@@ -280,6 +280,8 @@ const PatientScoresTab = screen(loadCrs5, 'PatientScoresTab');
 const loadCrs6 = () => import('./pages/incidents/IncidentsPage.jsx');
 const IncidentsPage = screen(loadCrs6, 'IncidentsPage');
 const IncidentPage = screen(loadCrs6, 'IncidentPage');
+const loadCrs7 = () => import('./pages/formulary/FormularyPage.jsx');
+const FormularyPage = screen(loadCrs7, 'FormularyPage');
 const load104 = () => import('./pages/analytics/ByDoctorPage.jsx');
 const ByDoctorPage = screen(load104, 'ByDoctorPage');
 const load105 = () => import('./pages/analytics/AnalyticsPage.jsx');
@@ -471,6 +473,9 @@ export function App() {
                 <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="Sonography is for doctors, RMOs and sonography staff." />}>
                   <Route index element={<ImagingWorklistPage />} />
                   <Route path=":id" element={<ImagingStudyPage />} />
+                </Route>
+                <Route path="formulary" element={<RequireTenantRole roles={FORMULARY_ROLES} message="The formulary is for doctors, RMOs, nurses and the pharmacist." />}>
+                  <Route index element={<FormularyPage />} />
                 </Route>
                 <Route path="incidents">
                   <Route index element={<IncidentsPage />} />

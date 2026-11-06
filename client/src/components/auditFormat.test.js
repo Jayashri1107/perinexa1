@@ -427,6 +427,10 @@ const FILTER_ACTIONS = [
   'INCIDENT_ACTION_ADDED',
   'INCIDENT_ACTION_DONE',
   'INCIDENT_CLOSED',
+  'FORMULARY_ROW_ADDED',
+  'FORMULARY_ROW_CHANGED',
+  'FORMULARY_ROW_CONFIRMED',
+  'FORMULARY_DOSE_WORKED_OUT',
 ];
 
 describe('every event in the audit log has a plain name', () => {
