@@ -49,4 +49,14 @@ with its source, marked DRAFT on screen, and is replaced by OBG-F-05 when the Le
 - Where: a mother's stay page, above the nursing chart (`client/src/pages/inpatient/MeowsChart.jsx`; API `/api/meows`).
 - One red or two yellow readings = trigger: saving asks whom you told. One yellow = watch.
 - Temperature in °C or °F (stored °C). Entries are never changed: "entered in error" with a reason.
-- Remaining Group B items (9–17) wait for their manual pages.
+
+## Group B, item 15 – PPH chart (DRAFT, 6 Nov 2026)
+Built before OBG-F-07 was given, at the developer's request, from RCOG Green-top 52 (2016), WHO PPH recommendations
+(2012, tranexamic acid 2017) and the shock index of Nathan et al. (BJOG 2015). Constants in `server/src/clinical/pph.js`,
+marked DRAFT on screen. **Needs the owner's approval as clinical content before it goes to `main`.** Branch `crs-15-pph`.
+- Where: a mother's stay page, under the MEOWS chart (`client/src/pages/inpatient/PphChart.jsx`; API `/api/pph`).
+- Start when bleeding is recognised (or to type in the paper chart afterwards); add blood loss, steps and observations
+  with their times; blood loss added up and banded (minor 500–1000 mL, major over 1000); shock index worked out
+  (0.9 watch, 1.4 urgent); the four Ts; closed by her doctor or an RMO with how it ended.
+- Perinexa gives no dose: a medicine step needs the dose typed by whoever gave it. Lines are never changed.
+- Remaining Group B items (9–14, 16, 17) wait for their manual pages.

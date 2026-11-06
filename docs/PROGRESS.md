@@ -2962,6 +2962,17 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
    greyed. Reception and the hospital admin have no MEOWS chart.
 
+## How to test the PPH chart – Group B item 15, DRAFT (fake data only)
+1. As a **nurse**, her doctor or an RMO: a made-up admitted mother → **IPD** → **Current stay** → **PPH chart** (under
+   the MEOWS chart) → **Start a PPH chart**: when recognised (AM/PM), tick **Tone** → **Start the chart**.
+2. **Blood loss** 700 mL measured → **Add to the chart**; again 450 mL estimated: "Blood loss so far 1150 mL – Major
+   PPH – moderate".
+3. **Step taken** → Oxytocin → **Add to the chart** without a dose: refused ("Write the dose given"). Type a dose → added.
+4. **Observations** pulse 124, BP 92/58, SpO2 96: "Shock index 1.35 · Yellow – watch closely".
+5. **Entered in error** on a line (with a reason): it is struck through and the total drops.
+6. As her doctor or an RMO: **Close the chart** → Bleeding controlled. The chart shows "Closed" and how it ended; a new
+   chart can be started.
+
 ## How to test Clinical Requirements Group A (fake data only)
 Automatic tests: `npm test` from the project root (server files `crs-*.test.js`; website tests next to each page).
 In the browser, use made-up patients only. Restart Perinexa first (the server changed). Add two new staff as the

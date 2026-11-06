@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { MeowsChart } from './MeowsChart.jsx';
+import { PphChartSection } from './PphChart.jsx';
 import { ArrowLeft, BedDouble, CircleCheck, CircleMinus, FilePlus2, HeartPulse, Scale, Siren } from 'lucide-react';
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -333,6 +334,8 @@ export function AdmissionPage() {
       </section>
 
       <MeowsChart patient={patient} admissionId={a.id} />
+
+      <PphChartSection patient={patient} admissionId={a.id} />
 
       <NursingChart
         patient={patient}
