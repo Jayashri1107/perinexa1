@@ -99,7 +99,9 @@ describe('the PPH chart of a stay', () => {
 
     const audited = await AuditLog.find({ tenantId: hospital._id, action: /^PPH_CHART/ }).lean();
     expect(audited.map((x) => x.action)).toEqual(expect.arrayContaining(['PPH_CHART_STARTED', 'PPH_CHART_LINE_ADDED', 'PPH_CHART_LINE_CANCELLED', 'PPH_CHART_CLOSED']));
-    expect(JSON.stringify(audited)).not.toMatch(/700|protocol|124/);
+    // ids only: no amount, dose or reading among the details (record ids are random, so no number is looked for in them)
+    for (const x of audited) expect(Object.keys(x.details).filter((k) => ['ml', 'dose', 'route', 'hr', 'sbp', 'dbp', 'spo2', 'note'].includes(k))).toEqual([]);
+    expect(JSON.stringify(audited)).not.toMatch(/protocol/);
   });
 
   it('checks the times and the readings', async () => {

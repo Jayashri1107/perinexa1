@@ -2962,6 +2962,14 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
    greyed. Reception and the hospital admin have no MEOWS chart.
 
+## How to test the monthly dashboards – Group B item 17, DRAFT (fake data only)
+1. As a doctor (or the quality lead) → **Clinical audit** → **Monthly dashboards**. Choose the month and **Obstetrics**,
+   **Newborn**, **Theatre and anaesthesia** or **Safety**. Each row says what it counts and shows "x of y".
+2. Next to **Caesarean rate** → **Set** → 30 → **Save the target**: "Target met" or "Target missed (at most 30%)".
+3. Choose last month (it is over) → **Sign off** with a comment: "Signed off by …". Add a delivery note dated last
+   month afterwards: **Live numbers now** changes, **As signed off** does not.
+4. As the hospital admin: the dashboards open without the stillbirth and EPDS-positive rows; no Set or Sign off.
+
 ## How to test the theatre list and WHO checklist – Group B item 16 (fake data only)
 1. As a doctor, RMO or nurse → **Theatre** in the menu → **Add an operation**: a made-up patient's number, the
    operation, surgeon, anaesthetist → **Add to the list**. It shows **Planned** with Sign in · Time out · Sign out.

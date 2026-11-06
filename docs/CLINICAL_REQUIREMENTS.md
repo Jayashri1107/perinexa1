@@ -82,4 +82,19 @@ Branch `crs-16-theatre`.
   done. A check must be done (or not applicable where allowed); a yes to a question needs its note; wrong counts need
   a note. Taken off the list with a reason, never deleted.
 - The second person checking the counts comes with the base rules (PX-X-06, Group C).
-- Remaining Group B items (9–13, 17) wait for their manual pages.
+
+## Group B, item 17 – monthly dashboards with targets and sign-off (DRAFT, 6 Nov 2026)
+Each row only from fields Perinexa already records (the specification's rule), worked out for the month, never typed:
+obstetrics (12 rows), newborn (7), theatre and anaesthesia (6), safety (4). Definitions in
+`server/src/clinical/dashboards.js` (rows) and `dashboardData.js` (how each is worked out), DRAFT from WHO Robson 2017,
+NICE NG192, WHO/UNICEF Every Newborn, MoHFW LaQshya and the WHO checklist until OBG-A-05, NEO-A-05 and ANA-A-06 are
+given. **Needs the owner's approval before `main`.** Branch `crs-17-dashboards`.
+- Where: **Clinical audit → Monthly dashboards** (doctors, RMOs, the quality lead, the hospital admin – the admin without
+  the stillbirth and EPDS-positive rows). API `/api/dashboards`.
+- Targets: the hospital's own, set by a doctor or the quality lead; rows that are only counted have none. Each judged
+  row shows target met or missed (colour, icon, word).
+- Sign-off: a doctor signs off a finished month with a comment; the numbers are kept as they were (later records change
+  the live numbers only). Department-lead privileges come with the base rules (Group C).
+- Not yet: drill-down from a number to its records (PX-X-09) – the Deliveries tab and the Specimens, Incidents and
+  Theatre lists are the way in for now.
+- Remaining Group B items (9–13) wait for their manual pages.

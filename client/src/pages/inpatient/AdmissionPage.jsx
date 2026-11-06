@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { MeowsChart } from './MeowsChart.jsx';
+import { PainChartSection } from '../anaesthesia/PainChart.jsx';
 import { PphChartSection } from './PphChart.jsx';
 import { DischargeChecklistSection } from './DischargeChecklist.jsx';
 import { ArrowLeft, BedDouble, CircleCheck, CircleMinus, FilePlus2, HeartPulse, Scale, Siren } from 'lucide-react';
@@ -335,6 +336,8 @@ export function AdmissionPage() {
       </section>
 
       <MeowsChart patient={patient} admissionId={a.id} />
+
+      <PainChartSection patient={patient} admissionId={a.id} />
 
       <PphChartSection patient={patient} admissionId={a.id} />
 

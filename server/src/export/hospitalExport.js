@@ -54,6 +54,8 @@ import { MeowsEntry } from '../models/MeowsEntry.js';
 import { PphChart } from '../models/PphChart.js';
 import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { TheatreCase } from '../models/TheatreCase.js';
+import { DashboardSignoff, DashboardTarget } from '../models/DashboardSignoff.js';
+import { PacAssessment, PainEntry } from '../models/AnaesthesiaRecords.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { Specimen } from '../models/Specimen.js';
 import { ConsentForm } from '../models/ConsentForm.js';
@@ -186,6 +188,10 @@ export const KINDS = [
   { file: 'pph-charts.json', model: PphChart, what: 'PPH charts of each stay: when the bleeding was recognised, the cause, each amount of blood lost, each step with its time (medicines with the dose and route typed), observations, how it ended, and lines marked entered in error (DRAFT chart).' },
   { file: 'postnatal-discharge-checklists.json', model: DischargeChecklist, what: 'Postnatal discharge checklists of each stay: the checks answered, the danger signs explained, the teach-back, the next visit, who completed it, and ones marked entered in error (DRAFT checklist).' },
   { file: 'theatre-list.json', model: TheatreCase, what: 'The theatre list: each operation with its day, theatre, order, team and status, and its WHO Surgical Safety Checklist (sign in, time out, sign out – the answers, notes and who confirmed each), and operations taken off the list with the reason.' },
+  { file: 'dashboard-signoffs.json', model: DashboardSignoff, what: 'Monthly dashboards signed off by a department lead: the department, the month, the numbers as they were then (no patient), and the comment.' },
+  { file: 'settings-dashboard-targets.json', model: DashboardTarget, what: "Settings: the hospital's own targets for the dashboard rows, and who set each." },
+  { file: 'pre-anaesthesia-checkups.json', model: PacAssessment, what: 'Pre-anaesthesia check-ups: ASA grade, airway, conditions, medicines, allergies, fasting, plan, fitness, who signed, and ones marked entered in error (DRAFT form).' },
+  { file: 'pain-charts.json', model: PainEntry, what: 'Pain charts of each stay: pain score, sedation score, nausea, what was done, whom a high sedation score was told to (DRAFT chart).' },
   { file: 'settings-formulary.json', model: FormularyItem, what: 'Settings: the formulary rows, their versions, and who confirmed each version.' },
 ];
 
