@@ -71,4 +71,15 @@ and Hindi wait for approved translations. Branch `crs-14-postnatal`.
   danger signs in the mother and 8 in the baby, each ticked when explained; teach-back (who said them back, language).
 - Saved as a draft; marked complete only when nothing is missing – then locked. One per stay; entered in error with a
   reason, then a new one can be started.
-- Remaining Group B items (9–13, 16, 17) wait for their manual pages.
+
+## Group B, item 16 – theatre list and WHO Surgical Safety Checklist (6 Nov 2026)
+The WHO Surgical Safety Checklist (2009) as published – sign in (7 items), time out (7), sign out (5) – in
+`server/src/clinical/whoChecklist.js`; DRAFT until compared with OBG-F-16. **Needs the owner's approval before `main`.**
+Branch `crs-16-theatre`.
+- Where: the **Theatre** menu (doctors, RMOs, nurses): the day's list by theatre and order; each operation's page has
+  the three steps (`client/src/pages/theatre/`; API `/api/theatre`).
+- Steps are confirmed in order, once, then locked (who, role, when); sign in puts the case in theatre, sign out makes it
+  done. A check must be done (or not applicable where allowed); a yes to a question needs its note; wrong counts need
+  a note. Taken off the list with a reason, never deleted.
+- The second person checking the counts comes with the base rules (PX-X-06, Group C).
+- Remaining Group B items (9–13, 17) wait for their manual pages.

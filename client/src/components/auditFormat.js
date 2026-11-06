@@ -32,6 +32,12 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  THEATRE_LIST_VIEWED: 'Theatre list opened',
+  THEATRE_CASE_ADDED: 'Operation put on the theatre list',
+  THEATRE_CASE_VIEWED: 'Theatre case opened',
+  THEATRE_CHECKLIST_SAVED: 'WHO checklist saved',
+  THEATRE_CHECKLIST_CONFIRMED: 'WHO checklist step confirmed',
+  THEATRE_CASE_CANCELLED: 'Operation taken off the theatre list',
   DISCHARGE_CHECKLIST_VIEWED: 'Postnatal discharge checklist opened',
   DISCHARGE_CHECKLIST_SAVED: 'Postnatal discharge checklist saved',
   DISCHARGE_CHECKLIST_COMPLETED: 'Postnatal discharge checklist completed',
@@ -430,6 +436,12 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  THEATRE_LIST_VIEWED: 'patient',
+  THEATRE_CASE_ADDED: 'patient',
+  THEATRE_CASE_VIEWED: 'patient',
+  THEATRE_CHECKLIST_SAVED: 'patient',
+  THEATRE_CHECKLIST_CONFIRMED: 'patient',
+  THEATRE_CASE_CANCELLED: 'info',
   DISCHARGE_CHECKLIST_VIEWED: 'patient',
   DISCHARGE_CHECKLIST_SAVED: 'patient',
   DISCHARGE_CHECKLIST_COMPLETED: 'patient',

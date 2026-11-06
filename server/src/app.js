@@ -76,6 +76,7 @@ import { formularyRouter } from './routes/formulary.js';
 import { meowsRouter } from './routes/meows.js';
 import { pphRouter } from './routes/pph.js';
 import { dischargeChecklistRouter } from './routes/dischargeChecklist.js';
+import { theatreRouter } from './routes/theatre.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -329,6 +330,8 @@ export function createApp({
   app.use('/api/pph', ...inTenant, pphRouter);
   // Clinical Requirements Group B, item 14: the postnatal discharge checklist and danger-sign teaching (DRAFT)
   app.use('/api/discharge-checklist', ...inTenant, dischargeChecklistRouter);
+  // Clinical Requirements Group B, item 16: the theatre list and the WHO Surgical Safety Checklist
+  app.use('/api/theatre', ...inTenant, theatreRouter);
 
   app.use('/api', notFound);
 
