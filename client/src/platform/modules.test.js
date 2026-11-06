@@ -67,14 +67,14 @@ describe('My settings and Hospital admin', () => {
 
 describe('the left menu by role', () => {
   it('Analytics for doctors and hospital admins only; Appointments for reception, doctors, RMOs and nurses; Calendar for doctors, RMOs and reception; Billing for reception and admins; Pharmacy for pharmacists and admins (exact lists pin the order too)', () => {
-    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Clinical audit', 'Analytics', 'Clinic library']);
+    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Specimens', 'Clinical audit', 'Analytics', 'Clinic library']);
     expect(menu(['admin'])).toEqual(['Today', 'Sonography', 'Billing', 'Daily expenses', 'Pharmacy', 'Clinical audit', 'Analytics', 'Hospital admin']); // Sonography: the counts only (owner, 24 Oct 2026)
-    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Billing', 'Daily expenses', 'Pharmacy', 'Clinical audit', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
-    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Sonography', 'Referrals', 'Clinical audit', 'Analytics', 'Clinic library']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
+    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Billing', 'Daily expenses', 'Pharmacy', 'Specimens', 'Clinical audit', 'Analytics', 'Clinic library', 'Hospital admin']); // once, not twice
+    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Sonography', 'Referrals', 'Specimens', 'Clinical audit', 'Analytics', 'Clinic library']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
     expect(menu(['rmo', 'doctor'])).toContain('Calendar');
     // Sonography for doctors, RMOs and sonography staff; their own area for sonography staff (owner, 24 Oct 2026)
     expect(menu(['sonographer'])).toEqual(['Today', 'Patients', 'Sonography']);
-    expect(menu(['nurse'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Analytics', 'Clinic library']);
+    expect(menu(['nurse'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Specimens', 'Analytics', 'Clinic library']);
     expect(menu(['receptionist'])).toEqual(['Today', 'Follow-ups', 'Patients', 'Appointments', 'Calendar', 'Beds', 'Billing', 'Daily expenses']);
     expect(moduleByKey('expenses').to).toBe('/expenses'); // Daily expenses (owner, 28 Oct 2026)
     expect(menu(['lab'])).toEqual(['Today', 'Patients', 'Lab']);
