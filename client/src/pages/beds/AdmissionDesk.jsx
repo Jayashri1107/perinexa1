@@ -9,6 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
 import { ID_PROOF_OPTIONS, PAYER_NAME_LABELS, PAYER_OPTIONS } from '../patients/PatientForm.jsx';
 import { REASONS } from './bedFormat.js';
+import { CONSENT_POINTS, INSURANCE_TEXT, UNDERSTAND_POINTS, acceptText } from './admissionConsent.js';
 import { LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 
 // Admission like a hospital system (owner, 17 Oct 2026 – docs/ADMISSION_DESK_PLAN.md): the admission checklist (ID proof
@@ -504,7 +505,7 @@ export function AdmissionForm({ p, letterhead }) {
         <SignLine label="Surgery name" />
       </div>
 
-      {/* Page 2: the consent, as on the hospital's form – its own wording waits for the owner (DRAFT until then) */}
+      {/* Page 2: the consent in the hospital's own words (admissionConsent.js – the owner's approval, 6 Nov 2026) */}
       <section className="adm-consent" aria-label="Consent for hospital">
         <h2 className="adm-consent-title">Consent for hospital</h2>
         <div className="adm-consent-facts">
@@ -524,11 +525,20 @@ export function AdmissionForm({ p, letterhead }) {
             Date of admission: <strong>{formatDate(p.admittedAt)}</strong>
           </span>
         </div>
-        <p className="pdoc-small">
-          I agree to be admitted to this hospital and to the routine care, nursing, tests and treatment that the doctors consider needed. Any operation, anaesthesia,
-          blood transfusion or special procedure will be explained to me and needs my separate written consent. I have been told about the hospital's rules, charges
-          and visiting hours, and that I may ask questions at any time. (DRAFT wording – for the hospital to check.)
-        </p>
+        <ol className="adm-consent-list pdoc-small">
+          {CONSENT_POINTS.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ol>
+        <h3 className="adm-consent-sub">I understand that:</h3>
+        <ol className="adm-consent-list pdoc-small">
+          {UNDERSTAND_POINTS.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ol>
+        <h3 className="adm-consent-sub">For patients with medical insurance:</h3>
+        <p className="pdoc-small">{INSURANCE_TEXT}</p>
+        <p className="pdoc-small adm-consent-accept">{acceptText(letterhead?.name)}</p>
         <div className="adm-consent-sigs">
           <SignLine label="Patient's signature" />
           <SignLine label="Patient's relative's signature" />

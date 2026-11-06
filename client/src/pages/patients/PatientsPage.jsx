@@ -14,6 +14,11 @@ import { RiskBadge } from './RiskCard.jsx';
 import { RISK_SHORT } from './riskFormat.js';
 import { SignupsNotice } from './SignupsPage.jsx';
 import { AdmissionSlip, AdmitDialog } from '../beds/BedBoardPage.jsx';
+
+// "Admit a registered patient" on IPD: the Admit popup opens with a search for her (and registering her there)
+const ANY_PATIENT = 'any';
+/** The registration links, opening as IPD: after registering, the Admit popup opens with IPD chosen. */
+export const ipdRegisterLinks = (roles) => newPatientLinks(roles).map((l) => ({ ...l, to: `${l.to}${l.to.includes('?') ? '&' : '?'}as=ipd` }));
 import { StayPaper } from '../beds/AdmissionDesk.jsx';
 import { ExportButton } from '../../components/ExportButton.jsx';
 import { ServiceChargeDialog } from '../billing/ServiceChargeDialog.jsx';
@@ -62,6 +67,8 @@ export function PatientsPage() {
   }, [addressParams, setAddressParams]);
   const seesRisk = hasRole(activeMembership, 'doctor', 'rmo', 'nurse');
   const isReception = hasRole(activeMembership, 'receptionist');
+  // Who admits (the server checks it too): reception, doctors and RMOs
+  const canAdmit = hasRole(activeMembership, 'receptionist', 'doctor', 'rmo');
   const [admitting, setAdmitting] = useState(null); // the patient being admitted from her row
   const [admittedSlip, setAdmittedSlip] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -281,6 +288,13 @@ export function PatientsPage() {
           <>
             <ExportButton what="patients" />
             {canRegister && !ipd && <MenuButton className="btn btn-primary" icon={UserPlus} label="New registration" items={newPatientLinks(roles)} align="end" />}
+            {/* IPD as OPD (6 Nov 2026): a new patient is registered as IPD and admitted; a registered one is found and admitted */}
+            {ipd && canAdmit && (
+              <button type="button" className="btn btn-secondary" onClick={() => setAdmitting(ANY_PATIENT)}>
+                <BedDouble aria-hidden="true" /> Admit a registered patient
+              </button>
+            )}
+            {ipd && canRegister && <MenuButton className="btn btn-primary" icon={UserPlus} label="New registration" items={ipdRegisterLinks(roles)} align="end" />}
           </>
         }
       />
@@ -426,7 +440,7 @@ export function PatientsPage() {
       </div>
       {admitting && (
         <AdmitDialog
-          patient={admitting}
+          patient={admitting === ANY_PATIENT ? null : admitting}
           onClose={() => setAdmitting(null)}
           onAdmitted={(info) => {
             setAdmitting(null);
