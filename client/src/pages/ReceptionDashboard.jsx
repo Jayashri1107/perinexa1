@@ -11,7 +11,7 @@ import { EditPatientDialog } from './appointments/RegisterAndBook.jsx';
 import { PURPOSE_LABELS, VISIT_TYPE_LABELS, timeLabel } from './appointments/appointmentFormat.js';
 import { AddFollowUpDialog } from './followups/FollowUpDialogs.jsx';
 import { missingText } from './DetailsMissing.jsx';
-import { doctorToday } from './appointments/DeskToday.jsx';
+import { MoreDoctors, doctorToday, doctorsForToday } from './appointments/DeskToday.jsx';
 import { rupees } from './billing/billingFormat.js';
 import { useFetch } from '../hooks/useFetch.js';
 import { bookingTime, comingUpGroups, visitTypeLabel } from './followups/followUpsFormat.js';
@@ -443,7 +443,9 @@ function OtherPatients({ term, skip, onArrive, busy, onSaved, onEdit }) {
 
 /** Doctors today: initials, name, state and hours, and how many are expected, waiting and seen. */
 export function DoctorsPanel({ doctors = [] }) {
+  const [showAll, setShowAll] = useState(false);
   if (!doctors.length) return null;
+  const { shown, hidden } = doctorsForToday(doctors, showAll); // short: those with patients first (6 Nov 2026)
   return (
     <section className="card rd-side-card" aria-labelledby="rd-doctors-title">
       <div className="rd-card-head">
@@ -453,7 +455,7 @@ export function DoctorsPanel({ doctors = [] }) {
         </Link>
       </div>
       <ul className="rd-doctors">
-        {doctors.map((d) => {
+        {shown.map((d) => {
           const s = doctorToday(d);
           return (
             <li key={d.id}>
@@ -482,6 +484,7 @@ export function DoctorsPanel({ doctors = [] }) {
           );
         })}
       </ul>
+      <MoreDoctors hidden={hidden} total={doctors.length} showAll={showAll} onToggle={() => setShowAll(!showAll)} />
     </section>
   );
 }

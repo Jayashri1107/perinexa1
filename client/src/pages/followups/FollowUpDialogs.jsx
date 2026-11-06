@@ -43,7 +43,7 @@ export function AddFollowUpDialog({ patient: given = null, today = '', onClose, 
   const [from, setFrom] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const chosenDoctor = doctorId || own?.id || list[0]?.id || '';
+  const chosenDoctor = doctorId || own?.id || ''; // her doctor, else chosen here – never the first on the list
   // The day is required (owner, 26 Oct 2026): today unless another is chosen
   const day = from || today;
   const save = async () => {
@@ -69,6 +69,7 @@ export function AddFollowUpDialog({ patient: given = null, today = '', onClose, 
             <div className="form-grid">
               <Field label="Doctor" id="fu-add-doctor">
                 <select id="fu-add-doctor" value={chosenDoctor} onChange={(e) => setDoctorId(e.target.value)} disabled={!list.length}>
+                  <option value="">Choose the doctor</option>
                   {list.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}

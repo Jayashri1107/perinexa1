@@ -47,6 +47,11 @@ import { Bill } from '../models/Bill.js';
 import { CarePlan } from '../models/CarePlan.js';
 import { CarePlanTemplate } from '../models/CarePlanTemplate.js';
 import { ClinicalDocument } from '../models/ClinicalDocument.js';
+import { ClinicalScore } from '../models/ClinicalScore.js';
+import { FormularyItem } from '../models/FormularyItem.js';
+import { Incident } from '../models/Incident.js';
+import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
+import { Specimen } from '../models/Specimen.js';
 import { ConsentForm } from '../models/ConsentForm.js';
 import { Counter } from '../models/Counter.js';
 import { LabOrder } from '../models/LabOrder.js';
@@ -168,6 +173,12 @@ export const KINDS = [
   { file: 'settings-medicine-safety.json', model: MedicineSafetyList, what: 'Settings: the medicine safety list (pregnancy and breastfeeding warnings).' },
   { file: 'settings-opd-timings.json', model: OpdSchedule, what: 'Settings: each doctor\'s OPD timings and days on leave.' },
   { file: 'settings-beds.json', model: Bed, what: 'Settings: the wards and their beds (in use or not).' },
+  // Clinical Requirements Group A (6 Nov 2026)
+  { file: 'specimens.json', model: Specimen, what: 'Specimens sent for histopathology or cytology (the register): when sent, the report and who reviewed it, and cancelled ones with the reason. Report files are in the "files" folder.' },
+  { file: 'newborn-follow-up.json', model: NewbornFollowUp, what: "Babies' screening logs and high-risk follow-up: gestation at birth, high-risk reasons, and each screen or clinic visit recorded (result, who, when)." },
+  { file: 'clinical-scores.json', model: ClinicalScore, what: 'EPDS scores (the ten answers\' scores, never the questions) and VTE risk scores, with the band and advice of the day, and those marked entered in error.' },
+  { file: 'incidents.json', model: Incident, what: 'Incident reports, kept apart from the patients\' records: what happened, the quality lead\'s review, actions and closure.' },
+  { file: 'settings-formulary.json', model: FormularyItem, what: 'Settings: the formulary rows, their versions, and who confirmed each version.' },
 ];
 
 /** Written field by field (not from KINDS): the hospital itself, its staff and the list of stored files. */

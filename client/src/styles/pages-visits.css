@@ -216,6 +216,8 @@
 .ip-cancel { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .ip-place { align-items: flex-end; }
 .ip-form { display: flex; flex-direction: column; gap: var(--space-2); }
+.ip-derived { margin-top: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-2); }
+.ip-derived p { margin: 0; }
 .ip-baby { padding: var(--space-3); margin-bottom: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .pill-link { text-decoration: none; }
 .pdoc-details > div { display: grid; grid-template-columns: 42mm minmax(0, 1fr); gap: var(--space-3); padding: var(--space-1) 0; border-bottom: 1px solid var(--print-rule); break-inside: avoid; }

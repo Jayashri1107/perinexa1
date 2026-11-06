@@ -3,6 +3,7 @@
 // medicines. pph: the doctor's postpartum haemorrhage answer, with what the blood loss suggests (deliveryOutcomes.js).
 import { PPH_LABELS } from './deliveryOutcomes.js';
 import { ANAESTHESIA_LABELS, DELIVERY_MODE_LABELS, LABOUR_ONSET_LABELS, PERINEUM_LABELS } from './inpatientFormat.js';
+import { CS_CATEGORY_LABELS, PARITY_LABELS, PRESENTATION_LABELS, YES_NO_LABELS } from './robson.js';
 
 export const DOC_FIELDS = {
   admission: [
@@ -25,11 +26,19 @@ export const DOC_FIELDS = {
     { key: 'deliveredAt', label: 'Date and time of delivery', type: 'datetime', required: true },
     { key: 'mode', label: 'Mode of delivery', type: 'select', options: DELIVERY_MODE_LABELS, required: true },
     { key: 'indication', label: 'Indication (assisted or caesarean)', type: 'text', max: 500 },
-    { key: 'gestationWeeks', label: 'Weeks of pregnancy', type: 'number', unit: 'weeks' },
-    { key: 'labourOnset', label: 'Onset of labour', type: 'select', options: LABOUR_ONSET_LABELS },
+    // A caesarean: its category and times (Clinical Requirements, item 2); shown only for a caesarean
+    { key: 'csCategory', label: 'Category of the caesarean', type: 'select', options: CS_CATEGORY_LABELS, groupA: true, showIf: (f) => f.mode === 'lscs' },
+    { key: 'decisionAt', label: 'Time of the decision to deliver', type: 'datetime', groupA: true, showIf: (f) => f.mode === 'lscs' },
+    { key: 'incisionAt', label: 'Time of the skin incision', type: 'datetime', showIf: (f) => f.mode === 'lscs' },
+    { key: 'gestationWeeks', label: 'Weeks of pregnancy', type: 'number', unit: 'weeks', groupA: true },
+    { key: 'labourOnset', label: 'Onset of labour', type: 'select', options: LABOUR_ONSET_LABELS, groupA: true },
+    // The Robson group is worked out from these and the babies (Clinical Requirements, item 1)
+    { key: 'parity', label: 'Parity', type: 'select', options: PARITY_LABELS, groupA: true },
+    { key: 'previousCaesarean', label: 'Previous caesarean', type: 'select', options: YES_NO_LABELS, groupA: true, showIf: (f) => f.parity === 'multipara' },
+    { key: 'presentation', label: 'Presentation', type: 'select', options: PRESENTATION_LABELS, groupA: true },
     { key: 'perineum', label: 'Perineum', type: 'select', options: PERINEUM_LABELS },
     { key: 'placenta', label: 'Placenta', type: 'text', max: 500 },
-    { key: 'bloodLossMl', label: 'Blood loss', type: 'number', unit: 'ml' },
+    { key: 'bloodLossMl', label: 'Measured blood loss', type: 'number', unit: 'ml', groupA: true },
     { key: 'pph', label: 'Heavy bleeding after delivery (postpartum haemorrhage)', type: 'pph', options: PPH_LABELS },
     { key: 'babies', label: 'Baby', type: 'babies', required: true },
     { key: 'motherCondition', label: "Mother's condition", type: 'area', max: 1000 },

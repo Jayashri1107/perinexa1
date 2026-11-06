@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { ArrowRightLeft, BedDouble, BedSingle, Building2, Check, ChevronDown, ChevronUp, CircleSlash, ClipboardList, Eye, FileText, LogIn, Plus, Receipt, Search, Tag, User, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -483,7 +484,7 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
               <input id="bed-note" value={form.reasonNote} onChange={set('reasonNote')} maxLength={120} />
             </Field>
             <Field label="Admitted at" id="bed-at" error={fields.admittedAt}>
-              <input id="bed-at" type="datetime-local" value={form.admittedAt} onChange={set('admittedAt')} max={nowLocal()} />
+              <DateTimeInput id="bed-at" value={form.admittedAt} onChange={set('admittedAt')} max={nowLocal()} />
             </Field>
             <Field label="Admission type" id="bed-type" error={fields.admissionType}>
               <select id="bed-type" value={form.admissionType} onChange={set('admissionType')}>
@@ -539,7 +540,7 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
                 <input id="bed-mlcno" maxLength={40} value={form.mlcNo} onChange={set('mlcNo')} />
               </Field>
               <Field label="MLC date and time" id="bed-mlcat" error={fields.mlcAt}>
-                <input id="bed-mlcat" type="datetime-local" value={form.mlcAt} onChange={set('mlcAt')} max={nowLocal()} />
+                <DateTimeInput id="bed-mlcat" value={form.mlcAt} onChange={set('mlcAt')} max={nowLocal()} />
               </Field>
               <Field label="Constable's name" id="bed-constable" error={fields.mlcConstable}>
                 <input id="bed-constable" maxLength={100} value={form.mlcConstable} onChange={set('mlcConstable')} />

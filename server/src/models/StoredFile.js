@@ -10,7 +10,7 @@ import { tenantScoped } from '../utils/tenantScope.js';
 
 // scan_image (24 Oct 2026): a picture from the ultrasound machine attached to a scan (routes/imaging.js)
 // expense_bill (28 Oct 2026): the bill or voucher of an expense paid from the counter (routes/billing.js) – no patient
-export const FILE_KINDS = ['lab_report', 'signed_consent', 'referral_attachment', 'referral_release', 'scan_image', 'expense_bill'];
+export const FILE_KINDS = ['lab_report', 'signed_consent', 'referral_attachment', 'referral_release', 'scan_image', 'expense_bill', 'specimen_report'];
 // A referral can arrive before she is registered: its files may have no patient (the referral says whose they are
 // once it is linked to her record). An expense's bill never has one. Every other file belongs to a patient from the start.
 export const NO_PATIENT_KINDS = ['referral_attachment', 'referral_release', 'expense_bill'];
