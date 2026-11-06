@@ -227,11 +227,14 @@
 .pdoc h2.adm-box-title { margin: 0 0 2mm; font-size: var(--fs-print-small); font-weight: 700; }
 .adm-mlc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 6mm; margin: 0; }
 .adm-mlc .adm-row { grid-template-columns: auto minmax(0, 1fr); }
-.adm-consent { break-before: page; }
+.adm-consent { break-before: page; break-inside: avoid; }
+/* The consent fits on page 2 (6 Nov 2026): its long text a little smaller and closer, as on the hospital's paper form */
+.adm-consent .pdoc-small, .adm-consent .adm-consent-list { font-size: 8pt; line-height: 1.32; }
+.adm-consent .pdoc-sig-line { margin-top: var(--space-3); }
 .pdoc h2.adm-consent-title { margin: 0 0 2mm; font-size: var(--fs-print-h2); text-transform: uppercase; }
 .adm-consent-facts { display: flex; flex-wrap: wrap; gap: 1mm 6mm; margin: 0 0 var(--space-3); }
 .adm-consent-list { margin: 0 0 var(--space-2); padding-left: 6mm; }
-.adm-consent-list li { margin: 0 0 1mm; }
+.adm-consent-list li { margin: 0 0 0.6mm; }
 .pdoc h3.adm-consent-sub { margin: var(--space-2) 0 1mm; font-size: var(--fs-print-small); font-weight: 700; }
 .adm-consent-accept { font-weight: 600; }
 .adm-consent-sigs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 8mm; margin: var(--space-4) 0; }
