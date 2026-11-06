@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
+import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { nowLocal, toIso } from '../quality/FormDialog.jsx';
@@ -57,10 +58,10 @@ export function PatientSpecimensTab() {
             <input id="ps-procedure" maxLength={300} value={form.procedure} onChange={set('procedure')} />
           </Field>
           <Field label="Collected" id="ps-collected" error={fe('collectedAt')}>
-            <input id="ps-collected" type="datetime-local" value={form.collectedAt} onChange={set('collectedAt')} />
+            <DateTimeInput id="ps-collected" value={form.collectedAt} onChange={set('collectedAt')} />
           </Field>
           <Field label="Sent" id="ps-sent" error={fe('sentAt')}>
-            <input id="ps-sent" type="datetime-local" value={form.sentAt} onChange={set('sentAt')} />
+            <DateTimeInput id="ps-sent" value={form.sentAt} onChange={set('sentAt')} />
           </Field>
           <Field label="Laboratory (optional)" id="ps-lab" error={fe('lab')}>
             <input id="ps-lab" maxLength={200} value={form.lab} onChange={set('lab')} />

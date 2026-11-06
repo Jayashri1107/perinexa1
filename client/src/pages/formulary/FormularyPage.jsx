@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BadgeCheck, CircleAlert } from 'lucide-react';
 import { api } from '../../api.js';
-import { DataTable } from '../../components/DataTable.jsx';
+import { SimpleTable } from '../quality/SimpleTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -154,7 +154,7 @@ export function FormularyPage() {
           </Alert>
         )}
         <section className="card">
-          <DataTable
+          <SimpleTable
             loading={loading && !data}
             rows={data?.items ?? []}
             emptyText="No rows yet. The department leads and the pharmacist fill in the formulary; until a row is verified, no dose is worked out from it."
@@ -184,7 +184,7 @@ export function FormularyPage() {
                         Work out a dose
                       </button>
                     )}
-                    {data.editor && !i.verified && (
+                    {data.editor && !i.verified && !i.confirmations.some((c) => c.mine) && (
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => confirm(i)}>
                         Confirm
                       </button>

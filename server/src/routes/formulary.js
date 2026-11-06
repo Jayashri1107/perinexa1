@@ -28,7 +28,7 @@ const editor = (req) => {
   if (!hasRole(req.membership, ...EDITORS)) throw forbidden('Formulary rows are written and confirmed by doctors and the pharmacist.');
 };
 
-const view = (i) => ({
+const view = (i, req) => ({
   id: String(i._id),
   name: i.name,
   form: i.form,
@@ -47,7 +47,7 @@ const view = (i) => ({
   version: i.version,
   isActive: i.isActive,
   verified: isVerified(i),
-  confirmations: i.confirmations.filter((c) => c.version === i.version).map((c) => ({ role: c.role, byName: c.byName, at: c.at })),
+  confirmations: i.confirmations.filter((c) => c.version === i.version).map((c) => ({ role: c.role, byName: c.byName, at: c.at, mine: Boolean(req && String(c.by) === String(req.user._id)) })),
   updatedByName: i.updatedByName,
   updatedAt: i.updatedAt,
 });
@@ -62,7 +62,7 @@ export function doseFor(item, weightKg) {
 
 formularyRouter.get('/', async (req, res) => {
   const items = await FormularyItem.find({ tenantId: req.tenantId }).sort({ isActive: -1, name: 1, population: 1 }).lean();
-  res.json({ items: items.map(view), editor: hasRole(req.membership, ...EDITORS) });
+  res.json({ items: items.map((i) => view(i, req)), editor: hasRole(req.membership, ...EDITORS) });
 });
 
 const num = (label) => z.union([z.null(), z.number(`${label} must be a number`).min(0, `${label} can't be below 0`).max(100000, `${label} is too high`)]);
@@ -90,7 +90,7 @@ formularyRouter.post('/', async (req, res) => {
   const b = parse(rowBody, req.body);
   const i = await FormularyItem.create({ ...b, tenantId: req.tenantId, updatedByName: req.user.name });
   await audit(req, 'FORMULARY_ROW_ADDED', { details: { itemId: String(i._id), name: i.name } });
-  res.status(201).json({ item: view(i) });
+  res.status(201).json({ item: view(i, req) });
 });
 
 async function loadOne(req) {
@@ -109,7 +109,7 @@ formularyRouter.put('/:id', async (req, res) => {
   Object.assign(i, b, { version: i.version + 1, updatedByName: req.user.name });
   await i.save();
   await audit(req, 'FORMULARY_ROW_CHANGED', { details: { itemId: String(i._id), name: i.name, version: i.version } });
-  res.json({ item: view(i) });
+  res.json({ item: view(i, req) });
 });
 
 // A doctor's or the pharmacist's confirmation of the version they saw
@@ -127,7 +127,7 @@ formularyRouter.post('/:id/confirm', async (req, res) => {
   i.confirmations.push({ by: req.user._id, byName: req.user.name, role: roles[0], at: req.now ?? new Date(), version: i.version });
   await i.save();
   await audit(req, 'FORMULARY_ROW_CONFIRMED', { details: { itemId: String(i._id), name: i.name, version: i.version, role: roles[0], verified: isVerified(i) } });
-  res.json({ item: view(i) });
+  res.json({ item: view(i, req) });
 });
 
 // A dose from the weight – only from a verified row
@@ -136,5 +136,5 @@ formularyRouter.post('/:id/dose', async (req, res) => {
   const { weightKg } = parse(z.object({ weightKg: z.number('Enter the weight').positive('The weight must be above 0').max(250, 'The weight looks too high') }).strict(), req.body);
   if (!i.isActive || !isVerified(i)) throw conflict('This row is not verified by a doctor and the pharmacist, so no dose is worked out from it.', 'NOT_VERIFIED');
   await audit(req, 'FORMULARY_DOSE_WORKED_OUT', { details: { itemId: String(i._id), name: i.name, version: i.version } });
-  res.json({ dose: doseFor(i, weightKg), item: view(i) });
+  res.json({ dose: doseFor(i, weightKg), item: view(i, req) });
 });

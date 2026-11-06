@@ -503,3 +503,4 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
   .ca-table td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--slate-600); font-weight: 500; }
   .ca-table tfoot > tr { border-top: 2px solid var(--border); }
 }
+.epds-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }

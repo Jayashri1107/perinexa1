@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { DataTable } from '../../components/DataTable.jsx';
+import { ShowChoice, SimpleTable } from '../quality/SimpleTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -26,15 +26,9 @@ export function NewbornFollowUpPage() {
       <PageHeader title="Newborn follow-up" documentTitle="Newborn follow-up" help="Screening and the high-risk follow-up clinic: what is due now, the defaulters to call, and every baby. DRAFT schedule (NNF / RBSK) until the Lead Neonatologist confirms it." />
       <div className="pf-content">
         <Alert type="error">{error}</Alert>
-        <div className="row" role="group" aria-label="Show">
-          {SHOW.map(([k, label]) => (
-            <button key={k} type="button" className="btn btn-secondary btn-sm" aria-pressed={show === k} onClick={() => setParams({ show: k }, { replace: true })}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <ShowChoice options={SHOW} value={show} onChange={(k) => setParams({ show: k }, { replace: true })} />
         <section className="card">
-          <DataTable
+          <SimpleTable
             loading={loading && !data}
             rows={(data?.babies ?? []).map((b) => ({ ...b, id: b.patientId }))}
             emptyText="No babies here."

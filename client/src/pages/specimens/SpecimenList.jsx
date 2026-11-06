@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
-import { DataTable } from '../../components/DataTable.jsx';
+import { SimpleTable } from '../quality/SimpleTable.jsx';
 import { fileBody, fileProblem } from '../../components/fileUpload.js';
+import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { Alert, Field, StatusPill, formatDateTime, hasRole } from '../../components/ui.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { FormDialog, nowLocal, toIso } from '../quality/FormDialog.jsx';
@@ -32,7 +33,7 @@ function ReportDialog({ s, onDone, onCancel }) {
     <FormDialog id="sp-report" title={`Report for specimen ${s.serial}`} submitLabel="Save the report" busy={busy} onSubmit={submit} onCancel={onCancel}>
       <Alert type="error">{error?.message}</Alert>
       <Field label="Report received" id="sp-received" error={error?.fields?.receivedAt}>
-        <input id="sp-received" type="datetime-local" value={receivedAt} onChange={(e) => setReceivedAt(e.target.value)} />
+        <DateTimeInput id="sp-received" value={receivedAt} onChange={(e) => setReceivedAt(e.target.value)} />
       </Field>
       <Field label="What the report says" id="sp-summary" error={error?.fields?.summary}>
         <textarea id="sp-summary" rows={4} maxLength={4000} value={summary} onChange={(e) => setSummary(e.target.value)} />
@@ -71,7 +72,7 @@ function ReviewDialog({ s, onDone, onCancel }) {
       </label>
       {told && (
         <Field label="Told her on" id="sp-told" error={error?.fields?.informedAt}>
-          <input id="sp-told" type="datetime-local" value={informedAt} onChange={(e) => setInformedAt(e.target.value)} />
+          <DateTimeInput id="sp-told" value={informedAt} onChange={(e) => setInformedAt(e.target.value)} />
         </Field>
       )}
     </FormDialog>
@@ -124,7 +125,7 @@ export function SpecimenList({ specimens, loading, showPatient = true, onChanged
           {notice.text}
         </Alert>
       )}
-      <DataTable
+      <SimpleTable
         loading={loading}
         rows={specimens}
         emptyText="No specimens here."
