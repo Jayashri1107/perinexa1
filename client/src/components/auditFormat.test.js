@@ -450,6 +450,9 @@ const FILTER_ACTIONS = [
   'THEATRE_CHECKLIST_SAVED',
   'THEATRE_CHECKLIST_CONFIRMED',
   'THEATRE_CASE_CANCELLED',
+  'DASHBOARD_VIEWED',
+  'DASHBOARD_TARGET_SET',
+  'DASHBOARD_SIGNED_OFF',
 ];
 
 describe('every event in the audit log has a plain name', () => {

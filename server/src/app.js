@@ -77,6 +77,7 @@ import { meowsRouter } from './routes/meows.js';
 import { pphRouter } from './routes/pph.js';
 import { dischargeChecklistRouter } from './routes/dischargeChecklist.js';
 import { theatreRouter } from './routes/theatre.js';
+import { dashboardsRouter } from './routes/dashboards.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -332,6 +333,8 @@ export function createApp({
   app.use('/api/discharge-checklist', ...inTenant, dischargeChecklistRouter);
   // Clinical Requirements Group B, item 16: the theatre list and the WHO Surgical Safety Checklist
   app.use('/api/theatre', ...inTenant, theatreRouter);
+  // Clinical Requirements Group B, item 17: monthly dashboards with targets and the lead's sign-off (DRAFT rows)
+  app.use('/api/dashboards', ...inTenant, dashboardsRouter);
 
   app.use('/api', notFound);
 

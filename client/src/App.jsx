@@ -267,6 +267,8 @@ const MonthlyReportPage = screen(load103, 'MonthlyReportPage');
 // Clinical Requirements Group A (PX-REQ-00)
 const loadCrs1 = () => import('./pages/quality/ClinicalAuditPage.jsx');
 const ClinicalAuditPage = screen(loadCrs1, 'ClinicalAuditPage');
+const loadCrs17 = () => import('./pages/quality/DashboardsPage.jsx');
+const DashboardsPage = screen(loadCrs17, 'DashboardsPage');
 const loadCrs3 = () => import('./pages/specimens/SpecimensPage.jsx');
 const SpecimensPage = screen(loadCrs3, 'SpecimensPage');
 const loadCrs3b = () => import('./pages/specimens/PatientSpecimensTab.jsx');
@@ -498,6 +500,7 @@ export function App() {
                 </Route>
                 <Route path="clinical-audit" element={<RequireTenantRole roles={CLINICAL_AUDIT_ROLES} message="The clinical audit is for doctors, RMOs, the quality lead and the hospital admin." />}>
                   <Route index element={<ClinicalAuditPage />} />
+                  <Route path="dashboards" element={<DashboardsPage />} />
                 </Route>
                 <Route path="beds" element={<RequireTenantRole roles={BED_ROLES} message="The bed board is for reception, doctors, RMOs and nurses." />}>
                   <Route index element={<BedBoardPage />} />

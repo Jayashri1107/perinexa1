@@ -32,6 +32,9 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  DASHBOARD_VIEWED: 'Monthly dashboard opened',
+  DASHBOARD_TARGET_SET: 'Dashboard target set',
+  DASHBOARD_SIGNED_OFF: 'Monthly dashboard signed off',
   THEATRE_LIST_VIEWED: 'Theatre list opened',
   THEATRE_CASE_ADDED: 'Operation put on the theatre list',
   THEATRE_CASE_VIEWED: 'Theatre case opened',
@@ -436,6 +439,9 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  DASHBOARD_VIEWED: 'info',
+  DASHBOARD_TARGET_SET: 'info',
+  DASHBOARD_SIGNED_OFF: 'info',
   THEATRE_LIST_VIEWED: 'patient',
   THEATRE_CASE_ADDED: 'patient',
   THEATRE_CASE_VIEWED: 'patient',
