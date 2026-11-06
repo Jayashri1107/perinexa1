@@ -25,11 +25,16 @@ const papers = (extra = {}) => ({
 });
 
 describe('the admission papers', () => {
-  it('the form: IPD number with a barcode, ID proof by its last 4 only, payer, attendant, MLC, consent lines', () => {
-    const html = renderToStaticMarkup(<AdmissionForm p={papers()} letterhead={{ name: 'Sample Maternity Home' }} />);
+  it("the form in the hospital's layout: details on rules, Aadhaar by its last 4 only, relatives, MLC, then the consent page", () => {
+    const html = renderToStaticMarkup(<AdmissionForm p={papers({ patient: { ...papers().patient, sex: 'female' } })} letterhead={{ name: 'Sample Maternity Home' }} />);
     const t = text(html);
     expect(html).toContain('aria-label="Barcode IP-2026-000007"');
-    for (const w of ['Admission form', 'IP-2026-000007', 'Aadhaar ending 1234', 'Insurance or TPA – Sample Insurance', 'Sample Husband · Husband · 98765 11111', 'Yes – police: Sample Nagar police station', 'General consent for admission']) expect(t).toContain(w);
+    for (const w of ['Admission form', 'UHID', 'P-000099', 'Patient name', 'Age / Gender', '27 Y / Female', 'Marital status', 'IP no', 'IP-2026-000007', 'Bed no & room', 'General ward · G1', 'Aadhaar no', 'XXXX XXXX 1234', 'Insurance or TPA – Sample Insurance', 'Relatives information', 'Relative name', 'Sample Husband', 'Relationship', 'Relative phone no', '98765 11111', 'Is MLC', 'Yes', 'Police station', 'Sample Nagar police station', 'Provisional diagnosis', 'Transfer 1', 'Surgery name', 'Consent for hospital', "Patient's relative's signature"]) expect(t).toContain(w);
+    expect(t).not.toMatch(/\d{4}\s?\d{4}\s?1234/); // never more than the last 4 digits
+    // Another ID proof is named, with its last 4 only
+    const pan = text(renderToStaticMarkup(<AdmissionForm p={papers({ checklist: { ...papers().checklist, idProof: 'pan', idLast4: '9F2K' } })} letterhead={null} />));
+    expect(pan).toContain('ID proof');
+    expect(pan).toContain('9F2K');
   });
 
   it('the wristband: blood group and allergies only for those who may see them', () => {

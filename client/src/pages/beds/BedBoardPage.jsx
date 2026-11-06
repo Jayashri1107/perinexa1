@@ -74,7 +74,9 @@ export function BedBoardPage() {
     setAdmitTo(null);
     setFromRequest(null);
     setNotice(`${info.patient.fullName} is admitted to ${info.ward} · ${info.bed}${info.ipdNo ? ` – IPD number ${info.ipdNo}` : ''}.${info.checklistComplete === false ? ' Complete her admission checklist (Checklist on her bed).' : ''}`);
-    setSlip(info);
+    // The admission form opens to print straight away (6 Nov 2026), in the hospital's layout
+    if (info.stayId) setPaper({ stay: { id: info.stayId, patient: info.patient }, what: 'form' });
+    else setSlip(info);
     board.reload();
     requests.reload();
   };

@@ -114,6 +114,7 @@ export function papersFor(req, patient, stay, doctorName) {
       fullName: patient.fullName,
       mrn: patient.mrn,
       age: patient.careType === 'newborn' ? null : currentAge(patient),
+      sex: patient.sex ?? '',
       careType: patient.careType,
       phone: a.view.has('phone') ? (patient.phone ?? '') : '',
       address: a.view.has('address') ? [patient.address, patient.city, patient.state, patient.pinCode].filter(Boolean).join(', ') : '',

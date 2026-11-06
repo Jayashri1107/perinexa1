@@ -14,6 +14,7 @@ import { RiskBadge } from './RiskCard.jsx';
 import { RISK_SHORT } from './riskFormat.js';
 import { SignupsNotice } from './SignupsPage.jsx';
 import { AdmissionSlip, AdmitDialog } from '../beds/BedBoardPage.jsx';
+import { StayPaper } from '../beds/AdmissionDesk.jsx';
 import { ExportButton } from '../../components/ExportButton.jsx';
 import { ServiceChargeDialog } from '../billing/ServiceChargeDialog.jsx';
 
@@ -435,7 +436,8 @@ export function PatientsPage() {
         />
       )}
       {charging && <ServiceChargeDialog patient={charging} onClose={() => setCharging(null)} />}
-      {admittedSlip && <AdmissionSlip info={admittedSlip} onClose={() => setAdmittedSlip(null)} />}
+      {/* After admitting: the admission form opens to print (6 Nov 2026) */}
+      {admittedSlip && (admittedSlip.stayId ? <StayPaper stay={{ id: admittedSlip.stayId }} what="form" onClose={() => setAdmittedSlip(null)} /> : <AdmissionSlip info={admittedSlip} onClose={() => setAdmittedSlip(null)} />)}
     </>
   );
 }

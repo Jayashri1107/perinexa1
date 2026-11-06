@@ -10,6 +10,7 @@ import { api, newRequestId } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PatientCard } from '../appointments/PatientCard.jsx';
 import { AdmissionSlip, AdmitDialog } from '../beds/BedBoardPage.jsx';
+import { StayPaper } from '../beds/AdmissionDesk.jsx';
 import { FullPageSpinner } from '../../auth/guards.jsx';
 import { MenuButton } from '../../components/MenuButton.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -196,7 +197,7 @@ export function PatientDetailPage() {
   const [printingCard, setPrintingCard] = useState(false); // the patient card (reception)
   const [admitting, setAdmitting] = useState(false); // admit to a free bed (reception, her doctor, RMOs)
   const [bookingScan, setBookingScan] = useState(false); // reception books a scan a doctor asked for (31 Oct 2026)
-  const [admissionSlip, setAdmissionSlip] = useState(null);
+  const [admissionSlip, setAdmissionSlip] = useState(() => (location.state?.printAdmission ? { stayId: location.state.printAdmission } : null));
   const [markingDuplicate, setMarkingDuplicate] = useState(false); // "Mark as a duplicate" (her doctor or an RMO)
   const [undoingDuplicate, setUndoingDuplicate] = useState(false);
   const [copyingRecord, setCopyingRecord] = useState(false); // "Copy of the whole record" (her doctor or an RMO)
@@ -569,7 +570,8 @@ export function PatientDetailPage() {
           }}
         />
       )}
-      {admissionSlip && <AdmissionSlip info={admissionSlip} onClose={() => setAdmissionSlip(null)} />}
+      {/* After admitting: the admission form opens to print (6 Nov 2026) */}
+      {admissionSlip && (admissionSlip.stayId ? <StayPaper stay={{ id: admissionSlip.stayId }} what="form" onClose={() => setAdmissionSlip(null)} /> : <AdmissionSlip info={admissionSlip} onClose={() => setAdmissionSlip(null)} />)}
       {copyingRecord && <RecordCopy patient={patient} onClose={() => setCopyingRecord(false)} />}
       {messaging && (
         <PatientMessagesDialog

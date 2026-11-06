@@ -387,51 +387,96 @@ function SignLine({ label }) {
   );
 }
 
+/** One "Label : value" line of the admission form, the value on a rule (blank for writing by hand). */
+function FormRow({ label, value }) {
+  return (
+    <div className="adm-row">
+      <dt>{label}</dt>
+      <dd>{value || ' '}</dd>
+    </div>
+  );
+}
+
+const SEX_WORDS = { female: 'Female', male: 'Male' };
+/** "XXXX XXXX 1234": only the last 4 digits are ever kept (the admission checklist). */
+const aadhaarWords = (c) => (c?.idProof === 'aadhaar' && c.idLast4 ? `XXXX XXXX ${c.idLast4}` : '');
+
+/**
+ * The admission form in the layout of the hospital's own paper IPD admission form (developer's request, 6 Nov 2026):
+ * the details in two columns on rules, the relative's and the medico-legal boxes, the lines the doctors fill in by hand,
+ * then the consent on its own page. Reception never types medical details.
+ */
 export function AdmissionForm({ p, letterhead }) {
   const c = p.checklist ?? p.checklistDraft; // no checklist filled in: what her record says
+  const ageSex = [p.patient.age != null ? `${p.patient.age} Y` : '', SEX_WORDS[p.patient.sex] ?? ''].filter(Boolean).join(' / ');
+  const admitted = formatDateTime(p.admittedAt);
   return (
     <PrintDocument className="adm-form">
       {letterhead && <Letterhead letterhead={letterhead} />}
-      <h1 className="pdoc-title">Admission form</h1>
-      {p.ipdNo && <Barcode value={p.ipdNo} height={8} className="adm-barcode" />}
-      <PrintFacts
-        items={[
-          ['IPD number', p.ipdNo ?? ''],
-          ['Patient', p.patient.fullName],
-          ['Patient number', p.patient.mrn],
-          ['Age', p.patient.age != null ? `${p.patient.age} years` : ''],
-          ['Phone', p.patient.phone],
-          ['Address', p.patient.address, true],
-          ['Admitted', formatDateTime(p.admittedAt)],
-          ['Admission type', TYPE_WORDS[p.admissionType] ?? ''],
-          ['Ward and bed', [p.ward, p.bed].filter(Boolean).join(' · ')],
-          ['Department', p.department ?? ''],
-          ['Doctor in charge', p.patient.doctorName],
-          ['Referred by', p.refDoctorName ?? ''],
-          ['Reason', p.reason ?? ''],
-          ['Medico-legal case', p.mlc ? `Yes${p.mlcPolice ? ` – police: ${p.mlcPolice}` : ''}` : 'No'],
-          ...(p.mlc
-            ? [
-                ['MLC number and date', [p.mlcNo, p.mlcAt ? formatDateTime(p.mlcAt) : ''].filter(Boolean).join(' · ')],
-                ['Constable and buckle number', [p.mlcConstable, p.mlcBuckleNo].filter(Boolean).join(' · ')],
-              ]
-            : []),
-          ['ID proof seen', idWords(c)],
-          ['Who pays', payerWords(c)],
-          ['Attendant', c?.attendantName ? [c.attendantName, c.attendantRelation, c.attendantPhone].filter(Boolean).join(' · ') : '', true],
-          ["Attendant's address", c?.attendantAddress ?? '', true],
-          ['Admitted by', p.admittedByName],
-        ]}
-      />
-      {/* For the doctors to write by hand (the hospital's paper form, 29 Oct 2026): reception never types medical details */}
+      <h1 className="adm-bar">Admission form</h1>
+      <div className="adm-cols">
+        <dl className="adm-col">
+          <FormRow label="UHID" value={p.patient.mrn} />
+          <FormRow label="Patient name" value={p.patient.fullName} />
+          <FormRow label="Age / Gender" value={ageSex} />
+          <FormRow label="Marital status" value="" />
+          <FormRow label="Address" value={p.patient.address} />
+          <FormRow label="Mobile no" value={p.patient.phone} />
+          <FormRow label="Doctor name" value={p.patient.doctorName} />
+          <FormRow label="Ref. doctor name" value={p.refDoctorName} />
+        </dl>
+        <dl className="adm-col">
+          <FormRow label="IP no" value={p.ipdNo} />
+          <FormRow label="Bed no & room" value={[p.ward, p.bed].filter(Boolean).join(' · ')} />
+          <FormRow label="Admission date/time" value={admitted} />
+          {c?.idProof && c.idProof !== 'aadhaar' ? <FormRow label="ID proof" value={idWords(c)} /> : <FormRow label="Aadhaar no" value={aadhaarWords(c)} />}
+          <FormRow label="Department" value={p.department} />
+          <FormRow label="Admission type" value={TYPE_WORDS[p.admissionType] ?? ''} />
+          <FormRow label="Who pays" value={payerWords(c)} />
+          {p.ipdNo && (
+            <div className="adm-row adm-row-code">
+              <Barcode value={p.ipdNo} height={8} className="adm-barcode" />
+            </div>
+          )}
+        </dl>
+      </div>
+
+      <section className="adm-box" aria-label="Relatives information">
+        <h2 className="adm-box-title">Relatives information</h2>
+        <div className="adm-cols">
+          <dl className="adm-col">
+            <FormRow label="Relative name" value={c?.attendantName} />
+            <FormRow label="Relative address" value={c?.attendantAddress} />
+          </dl>
+          <dl className="adm-col">
+            <FormRow label="Relationship" value={c?.attendantRelation} />
+            <FormRow label="Relative phone no" value={c?.attendantPhone} />
+          </dl>
+        </div>
+      </section>
+
+      <section className="adm-box" aria-label="Medico-legal case">
+        <dl className="adm-mlc">
+          <FormRow label="Is MLC" value={p.mlc ? 'Yes' : 'No'} />
+          <FormRow label="MLC no" value={p.mlc ? p.mlcNo : ''} />
+          <FormRow label="MLC date" value={p.mlc && p.mlcAt ? formatDateTime(p.mlcAt) : ''} />
+          <FormRow label="Police station" value={p.mlc ? p.mlcPolice : ''} />
+          <FormRow label="Constable name" value={p.mlc ? p.mlcConstable : ''} />
+          <FormRow label="Buckle no" value={p.mlc ? p.mlcBuckleNo : ''} />
+        </dl>
+      </section>
+
+      {/* For the doctors to write by hand (the hospital's paper form, 29 Oct 2026) */}
       <div className="adm-handwritten">
         <SignLine label="Provisional diagnosis" />
         <SignLine label="Final diagnosis" />
         <table className="ptable pdoc-table adm-transfers">
           <thead>
             <tr>
-              <th scope="col">Transfer</th>
-              <th scope="col">Bed</th>
+              <th scope="col">
+                <span className="sr-only">Transfer</span>
+              </th>
+              <th scope="col">Bed no</th>
               <th scope="col">Class</th>
               <th scope="col">Date</th>
               <th scope="col">Time</th>
@@ -458,24 +503,44 @@ export function AdmissionForm({ p, letterhead }) {
         </div>
         <SignLine label="Surgery name" />
       </div>
-      <h2 className="pdoc-sig-title">General consent for admission</h2>
-      <p className="pdoc-small">
-        I agree to be admitted to this hospital and to the routine care, nursing, tests and treatment that the doctors consider needed. Any operation, anaesthesia,
-        blood transfusion or special procedure will be explained to me and needs my separate written consent. I have been told about the hospital's rules, charges
-        and visiting hours, and that I may ask questions at any time. (DRAFT wording – for the hospital to check.)
-      </p>
-      <div className="pdoc-sigs">
-        <div className="pdoc-sig">
-          <h2 className="pdoc-sig-title">Patient (or attendant for her)</h2>
-          <SignLine label="Signature or thumb impression" />
-          <SignLine label="Name, relation and date" />
+
+      {/* Page 2: the consent, as on the hospital's form – its own wording waits for the owner (DRAFT until then) */}
+      <section className="adm-consent" aria-label="Consent for hospital">
+        <h2 className="adm-consent-title">Consent for hospital</h2>
+        <div className="adm-consent-facts">
+          <span>
+            Patient's name: <strong>{p.patient.fullName}</strong>
+          </span>
+          <span>
+            IPD no: <strong>{p.ipdNo ?? ''}</strong>
+          </span>
+          <span>
+            Doctor name: <strong>{p.patient.doctorName}</strong>
+          </span>
+          <span>
+            Age: <strong>{p.patient.age ?? ''}</strong>
+          </span>
+          <span>
+            Date of admission: <strong>{formatDate(p.admittedAt)}</strong>
+          </span>
+        </div>
+        <p className="pdoc-small">
+          I agree to be admitted to this hospital and to the routine care, nursing, tests and treatment that the doctors consider needed. Any operation, anaesthesia,
+          blood transfusion or special procedure will be explained to me and needs my separate written consent. I have been told about the hospital's rules, charges
+          and visiting hours, and that I may ask questions at any time. (DRAFT wording – for the hospital to check.)
+        </p>
+        <div className="adm-consent-sigs">
+          <SignLine label="Patient's signature" />
+          <SignLine label="Patient's relative's signature" />
+          <SignLine label="Relative name" />
+          <SignLine label="Date and time" />
         </div>
         <div className="pdoc-sig">
           <h2 className="pdoc-sig-title">For the hospital</h2>
           <SignLine label="Signature" />
           <SignLine label="Name and date" />
         </div>
-      </div>
+      </section>
     </PrintDocument>
   );
 }

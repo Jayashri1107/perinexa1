@@ -315,9 +315,10 @@ export function PatientNewPage() {
       }
     }
     if (setting !== 'opd') {
-      const go = (note) => {
+      const go = (note, stayId = null) => {
         setAdmitting(null);
-        navigate(`/patients/${patient.id}`, { replace: true, state: { flash: `${registered}${note}` } });
+        // Admitted: her record opens with the admission form to print (6 Nov 2026)
+        navigate(`/patients/${patient.id}`, { replace: true, state: { flash: `${registered}${note}`, ...(stayId ? { printAdmission: stayId } : {}) } });
       };
       setAdmitting({ patient, go });
       return;
@@ -454,7 +455,7 @@ export function PatientNewPage() {
           patient={admitting.patient}
           admissionType={setting === 'day_care' ? 'day_care' : 'planned'}
           onClose={() => admitting.go(' She is not admitted yet: admit her from Beds when her bed is ready.')}
-          onAdmitted={(a) => admitting.go(` Admitted${setting === 'day_care' ? ' for day care' : ''}: ${a.ward}, bed ${a.bed}${a.ipdNo ? ` (${a.ipdNo})` : ''}.`)}
+          onAdmitted={(a) => admitting.go(` Admitted${setting === 'day_care' ? ' for day care' : ''}: ${a.ward}, bed ${a.bed}${a.ipdNo ? ` (${a.ipdNo})` : ''}.`, a.stayId)}
         />
       )}
     </>

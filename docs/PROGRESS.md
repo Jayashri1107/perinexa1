@@ -13,6 +13,14 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **6 Nov 2026 – the admission form in the hospital's own layout, opening after every admission (branch
+  `admission-form-print`, developer's request):** a grey ADMISSION FORM bar; UHID, name, age/gender, marital status (to
+  write), address, mobile, doctor, referring doctor beside IP no, bed and room, date/time, Aadhaar (last 4 only:
+  XXXX XXXX 1234; another ID by name), department, admission type, who pays and the IPD barcode; a Relatives box; an
+  MLC box; the doctors' hand-written lines; then the consent on its own page with the patient's and relative's signature
+  lines. After admitting (Beds, her record, Patients, a new IPD patient) the form opens to print. **Still to do:** the
+  consent wording stays the DRAFT text until the owner approves the hospital's own (English and Marathi); marital status
+  is not kept on the record yet. **How to test:** Beds → Admit a sample patient → the form opens → Print.
 - **6 Nov 2026 – billing on Sold like the store's earlier software (Clinovations) (branch `pharmacy-sold-billing`,
   developer's request):** choose All, OPD, IPD or External and press **Search**: that type's people are listed (with
   nothing typed: those admitted and those who arrived today first, then everyone billed; a name or number narrows it).

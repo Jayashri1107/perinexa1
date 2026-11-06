@@ -212,6 +212,26 @@
 .pdoc .bill-report tr, .pdoc .mis-table tr { break-inside: avoid; }
 .pdoc .bill-sign { margin-top: var(--space-8); padding-top: var(--space-4); display: flex; justify-content: space-between; }
 
+/* The admission form in the hospital's own layout (6 Nov 2026): a grey title bar, label : value on rules in two columns,
+   the relative's and the medico-legal boxes, then the consent on its own page */
+.pdoc h1.adm-bar { margin: var(--space-2) 0 var(--space-3); padding: 1.2mm 0; background: var(--mist-100); text-align: center; font-size: var(--fs-print-body, 11pt); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.adm-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 8mm; }
+.adm-col { margin: 0; }
+.adm-row { display: grid; grid-template-columns: 42mm minmax(0, 1fr); align-items: end; gap: 0 2mm; margin: 0 0 2.4mm; }
+.adm-row dt { font-weight: 600; }
+.adm-row dt::after { content: ' :'; }
+.adm-row dd { margin: 0; min-height: 5mm; padding-bottom: 0.5mm; border-bottom: 1px solid var(--print-rule); overflow-wrap: anywhere; }
+.adm-row-code { display: block; margin-top: 3mm; }
+.adm-form .adm-barcode { width: 50mm; margin: 0; }
+.adm-box { margin: var(--space-3) 0; padding: 2mm 4mm 0; border: 1px solid var(--print-ink); break-inside: avoid; }
+.pdoc h2.adm-box-title { margin: 0 0 2mm; font-size: var(--fs-print-small); font-weight: 700; }
+.adm-mlc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 6mm; margin: 0; }
+.adm-mlc .adm-row { grid-template-columns: auto minmax(0, 1fr); }
+.adm-consent { break-before: page; }
+.pdoc h2.adm-consent-title { margin: 0 0 2mm; font-size: var(--fs-print-h2); text-transform: uppercase; }
+.adm-consent-facts { display: flex; flex-wrap: wrap; gap: 1mm 6mm; margin: 0 0 var(--space-3); }
+.adm-consent-sigs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 8mm; margin: var(--space-4) 0; }
+
 /* The admission form's lines for the doctors to fill in by hand (29 Oct 2026) */
 .adm-handwritten { display: grid; gap: var(--space-2); margin: var(--space-3) 0; break-inside: avoid; }
 .adm-transfers td { height: 9mm; }
