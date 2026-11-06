@@ -3,7 +3,7 @@ import { Tip } from '../../components/Tip.jsx';
 import { FoldCards } from '../../components/FoldCards.jsx';
 import { PregnancyTimeline } from './PregnancyTimeline.jsx';
 import { KeepsakeButton } from './KeepsakeCard.jsx';
-import { Archive, BadgeCheck, BedDouble, CalendarPlus, Copy, Eye, FileText, Files, IdCard, Lock, MessageCircle, MoreHorizontal, Pencil, ScanLine, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
+import { Archive, BadgeCheck, BedDouble, CalendarDays, CalendarPlus, Copy, Eye, FileSignature, FileText, Files, FlaskConical, HeartPulse, IdCard, Info, ListChecks, Lock, MessageCircle, MoreHorizontal, Pencil, ReceiptText, ScanLine, Send, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
 import { BookScanDialog } from '../imaging/ImagingPages.jsx';
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -162,6 +162,41 @@ function EmergencyNoteDialog({ patient, onSaved, onCancel }) {
         </div>
       </form>
     </div>
+  );
+}
+
+const PLACE_ICONS = {
+  Visits: Stethoscope,
+  'Care plan': ListChecks,
+  'Treatment plan': HeartPulse,
+  Appointments: CalendarDays,
+  'Lab and scans': FlaskConical,
+  Referrals: Send,
+  Admissions: BedDouble,
+  'Current stay': BedDouble,
+  Bills: ReceiptText,
+  ABHA: IdCard,
+  'Consent forms': FileSignature,
+  'Information given': Info,
+};
+
+/** Phones: the rest of her record as large buttons on her overview (mobile.css; hidden on larger screens). */
+function PatientPlaces({ places }) {
+  if (!places.length) return null;
+  return (
+    <nav className="pt-places" aria-label="Her record">
+      {places.map((p) => {
+        const Icon = PLACE_ICONS[p.label] ?? FileText;
+        return (
+          <Link key={p.to} to={p.to} className="pt-place">
+            <span className="pt-place-icon" aria-hidden="true">
+              <Icon />
+            </span>
+            {p.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -365,6 +400,28 @@ export function PatientDetailPage() {
   const inSections = (list) => list.some((t) => location.pathname === t.to || location.pathname.startsWith(`${t.to}/`));
   // In hospital now or before (or a stay page open): then OPD and IPD are shown apart
   const grouped = ipdSections.length > 0 && (patient.hadStay || Boolean(patient.currentAdmission) || inSections(ipdSections));
+  const tabs = [
+    { label: 'Overview', to: base, end: true },
+    // OPD and IPD apart (owner, 27 Oct 2026) – only for a patient who has been in hospital: each a tab, its
+    // sections in the row under it. Everyone else sees her OPD sections as plain tabs.
+    ...(grouped
+      ? [
+          ...(opdSections.length ? [{ label: 'OPD', to: opdSections[0].to, activeFor: opdSections.map((t) => t.to) }] : []),
+          { label: 'IPD', to: ipdSections[0].to, activeFor: [`${base}/stays`] },
+        ]
+      : opdSections),
+    // Billing: reception and the billing department (the hospital admin opens bills from Billing)
+    ...(hasRole(activeMembership, 'receptionist', 'billing') ? [{ label: 'Bills', to: `${base}/bills`, end: true }] : []),
+    // ABDM linking (M1): her ABHA – reception, doctors and RMOs
+    ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'doctor', 'rmo') ? [{ label: 'ABHA', to: `${base}/abha`, end: true }] : []),
+    ...(a.canViewConsents ? [{ label: 'Consent forms', to: `${base}/consents`, end: true }] : []),
+    ...(a.canViewConsents ? [{ label: 'Information given', to: `${base}/information`, end: true }] : []),
+    // Edit details: in the header (More, or the main button) – no tab of its own, except while it is open
+    ...(onEditTab ? [{ label: 'Edit details', to: `${base}/edit`, end: true }] : []),
+  ];
+  // Phones (the app's look, 6 Nov 2026): her overview opens on large buttons to the rest of the record, in place of
+  // the row of tabs; OPD and IPD stand for their sections
+  const places = (grouped ? [...opdSections, ...ipdSections] : tabs).filter((t) => t.to !== base && t.to !== `${base}/edit`);
   return (
     <>
       <PageHeader
@@ -437,25 +494,7 @@ export function PatientDetailPage() {
             )}
           </>
         }
-        tabs={[
-          { label: 'Overview', to: base, end: true },
-          // OPD and IPD apart (owner, 27 Oct 2026) – only for a patient who has been in hospital: each a tab, its
-          // sections in the row under it. Everyone else sees her OPD sections as plain tabs.
-          ...(grouped
-            ? [
-                ...(opdSections.length ? [{ label: 'OPD', to: opdSections[0].to, activeFor: opdSections.map((t) => t.to) }] : []),
-                { label: 'IPD', to: ipdSections[0].to, activeFor: [`${base}/stays`] },
-              ]
-            : opdSections),
-          // Billing: reception and the billing department (the hospital admin opens bills from Billing)
-          ...(hasRole(activeMembership, 'receptionist', 'billing') ? [{ label: 'Bills', to: `${base}/bills`, end: true }] : []),
-          // ABDM linking (M1): her ABHA – reception, doctors and RMOs
-          ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'doctor', 'rmo') ? [{ label: 'ABHA', to: `${base}/abha`, end: true }] : []),
-          ...(a.canViewConsents ? [{ label: 'Consent forms', to: `${base}/consents`, end: true }] : []),
-          ...(a.canViewConsents ? [{ label: 'Information given', to: `${base}/information`, end: true }] : []),
-          // Edit details: in the header (More, or the main button) – no tab of its own, except while it is open
-          ...(onEditTab ? [{ label: 'Edit details', to: `${base}/edit`, end: true }] : []),
-        ]}
+        tabs={tabs}
         subtabs={!grouped ? undefined : inSections(opdSections) ? opdSections : inSections(ipdSections) ? ipdSections : undefined}
       />
       <div className="pf-content">
@@ -464,6 +503,7 @@ export function PatientDetailPage() {
         <EarlierRecordsNote patient={patient} />
         <SafetyStrip patient={patient} />
         <InformationDue patient={patient} />
+        {location.pathname === base && <PatientPlaces places={places} />}
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>

@@ -366,6 +366,7 @@ function OverviewToday({ roles, lensBar = null }) {
 /** Today for the given roles (all of the person's roles, or the one view chosen above). */
 function RoleToday({ roles, lensBar = null }) {
   const location = useLocation();
+  const { user } = useAuth();
   // A number card opens its list further down the page (e.g. "/#td-overdue"): open the box and bring it into view.
   useEffect(() => {
     const id = location.hash.slice(1);
@@ -761,18 +762,31 @@ function RoleToday({ roles, lensBar = null }) {
       <div className="pf-content wl-page td-page">
         {doctorHome && (
           <div className="td-home">
-            <NextPatientCard refreshKey={queueKey} />
+            {/* The app's home (6 Nov 2026): the greeting on the indigo band, the three counts over its edge */}
+            <div className="td-hero">
+              <p className="td-hero-hello">Welcome, {user?.name}</p>
+            </div>
             <nav className="td-home-counts" aria-label="Needs your attention">
               <Link to="/#wl-flags" className="td-home-count is-high">
+                <span className="td-home-count-icon" aria-hidden="true">
+                  <TriangleAlert />
+                </span>
                 <strong className="tabular">{worklist.data?.redFlags?.length ?? '–'}</strong> Red flags
               </Link>
-              <Link to="/#td-lab-review" className="td-home-count">
+              <Link to="/#td-lab-review" className="td-home-count is-due">
+                <span className="td-home-count-icon" aria-hidden="true">
+                  <FlaskConical />
+                </span>
                 <strong className="tabular">{labReview.data?.orders?.length ?? '–'}</strong> Lab results to review
               </Link>
               <Link to="/#td-confirm" className="td-home-count">
+                <span className="td-home-count-icon" aria-hidden="true">
+                  <BadgeCheck />
+                </span>
                 <strong className="tabular">{inpatients.data?.toConfirm?.length ?? '–'}</strong> To confirm
               </Link>
             </nav>
+            <NextPatientCard refreshKey={queueKey} />
             {(walkInButton || newPatientButton) && (
               <div className="td-home-actions">
                 {walkInButton}
