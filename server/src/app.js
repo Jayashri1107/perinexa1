@@ -78,6 +78,7 @@ import { pphRouter } from './routes/pph.js';
 import { dischargeChecklistRouter } from './routes/dischargeChecklist.js';
 import { theatreRouter } from './routes/theatre.js';
 import { dashboardsRouter } from './routes/dashboards.js';
+import { anaesthesiaRouter } from './routes/anaesthesia.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -335,6 +336,8 @@ export function createApp({
   app.use('/api/theatre', ...inTenant, theatreRouter);
   // Clinical Requirements Group B, item 17: monthly dashboards with targets and the lead's sign-off (DRAFT rows)
   app.use('/api/dashboards', ...inTenant, dashboardsRouter);
+  // Clinical Requirements Group B, items 9 and 10: pre-anaesthesia check-up and pain chart (DRAFT)
+  app.use('/api/anaesthesia', ...inTenant, anaesthesiaRouter);
 
   app.use('/api', notFound);
 

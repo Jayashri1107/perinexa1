@@ -453,6 +453,12 @@ const FILTER_ACTIONS = [
   'DASHBOARD_VIEWED',
   'DASHBOARD_TARGET_SET',
   'DASHBOARD_SIGNED_OFF',
+  'PAC_VIEWED',
+  'PAC_RECORDED',
+  'PAC_CANCELLED',
+  'PAIN_CHART_VIEWED',
+  'PAIN_RECORDED',
+  'PAIN_CANCELLED',
 ];
 
 describe('every event in the audit log has a plain name', () => {

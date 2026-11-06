@@ -8,6 +8,8 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
 import { ShowChoice } from '../quality/SimpleTable.jsx';
 import { ChecklistProgress, STATUS_LOOK } from './TheatreListPage.jsx';
+import { FITNESS_LOOK } from '../anaesthesia/PacTab.jsx';
+import { FITNESS } from '../anaesthesia/anaesthesiaRules.js';
 import { ANAESTHESIA, PHASES, PHASE_ORDER, URGENCY, WHO_SOURCE, missingInPhase } from './whoRules.js';
 
 // One operation and its WHO Surgical Safety Checklist (Clinical Requirements Group B, item 16 – PX-OT-02): sign in,
@@ -148,6 +150,13 @@ export function TheatreCasePage() {
               <dd>{[c.surgeon && `Surgeon ${c.surgeon}`, c.assistant && `assistant ${c.assistant}`, c.anaesthetist && `anaesthetist ${c.anaesthetist}`, c.anaesthesia && ANAESTHESIA[c.anaesthesia]].filter(Boolean).join(' · ') || '–'}</dd>
             </div>
           </dl>
+          <p>
+            {data.pac ? (
+              <StatusPill tone={FITNESS_LOOK[data.pac.fitness].tone} icon={FITNESS_LOOK[data.pac.fitness].icon}>{`Pre-anaesthesia check-up ${formatDate(data.pac.assessedAt)}: ${FITNESS[data.pac.fitness]} · ASA ${data.pac.asa}${data.pac.emergency ? 'E' : ''} (${data.pac.byName})`}</StatusPill>
+            ) : (
+              <StatusPill tone="watch">No pre-anaesthesia check-up on her record</StatusPill>
+            )}
+          </p>
           {c.status !== 'cancelled' && <ChecklistProgress progress={c.progress} />}
           {c.cancelled && <p>{`Taken off the list by ${c.cancelled.byName}: ${c.cancelled.reason}`}</p>}
           {data.access.write && c.status !== 'done' && !c.cancelled && (

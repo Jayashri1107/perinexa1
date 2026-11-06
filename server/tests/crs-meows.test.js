@@ -99,7 +99,7 @@ describe('the MEOWS chart of a stay', () => {
     expect(ok.body.entry).toMatchObject({ level: 'trigger', escalatedTo: 'Dr Sample (on call)', bands: { sbp: 'red', dbp: 'red' } });
     const entry = await AuditLog.findOne({ tenantId: hospital._id, action: 'MEOWS_RECORDED' }).lean();
     expect(entry.details).toMatchObject({ patientId: p.id, level: 'trigger' });
-    expect(JSON.stringify(entry.details)).not.toMatch(/165|105/);
+    expect(Object.keys(entry.details).sort()).toEqual(['admissionId', 'entryId', 'level', 'mrn', 'patientId']); // never the readings
   });
 
   it('checks the readings and the time; a mistake is marked entered in error, never deleted', async () => {

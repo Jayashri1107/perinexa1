@@ -32,6 +32,12 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  PAC_VIEWED: 'Pre-anaesthesia check-ups opened',
+  PAC_RECORDED: 'Pre-anaesthesia check-up signed',
+  PAC_CANCELLED: 'Pre-anaesthesia check-up marked entered in error',
+  PAIN_CHART_VIEWED: 'Pain chart opened',
+  PAIN_RECORDED: 'Pain score recorded',
+  PAIN_CANCELLED: 'Pain score marked entered in error',
   DASHBOARD_VIEWED: 'Monthly dashboard opened',
   DASHBOARD_TARGET_SET: 'Dashboard target set',
   DASHBOARD_SIGNED_OFF: 'Monthly dashboard signed off',
@@ -439,6 +445,12 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  PAC_VIEWED: 'patient',
+  PAC_RECORDED: 'patient',
+  PAC_CANCELLED: 'info',
+  PAIN_CHART_VIEWED: 'patient',
+  PAIN_RECORDED: 'patient',
+  PAIN_CANCELLED: 'info',
   DASHBOARD_VIEWED: 'info',
   DASHBOARD_TARGET_SET: 'info',
   DASHBOARD_SIGNED_OFF: 'info',

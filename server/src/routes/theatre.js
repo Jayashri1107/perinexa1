@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ANAESTHESIA, CASE_STATUS, PHASES, PHASE_ORDER, URGENCY, WHO_SOURCE, missingInPhase } from '../clinical/whoChecklist.js';
 import { Admission } from '../models/Admission.js';
+import { latestPac } from './anaesthesia.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { TheatreCase } from '../models/TheatreCase.js';
@@ -123,7 +124,7 @@ async function loadOne(req) {
 theatreRouter.get('/:id', async (req, res) => {
   const { c, patient } = await loadOne(req);
   await audit(req, 'THEATRE_CASE_VIEWED', { details: ids(c, patient) });
-  res.json({ case: view(c, patient, true), access: { write: mayWrite(req, patient) && !c.cancelled }, rules: { phases: PHASES, order: PHASE_ORDER, source: WHO_SOURCE, urgency: URGENCY, anaesthesia: ANAESTHESIA, status: CASE_STATUS } });
+  res.json({ case: view(c, patient, true), pac: await latestPac(req.tenantId, patient._id), access: { write: mayWrite(req, patient) && !c.cancelled }, rules: { phases: PHASES, order: PHASE_ORDER, source: WHO_SOURCE, urgency: URGENCY, anaesthesia: ANAESTHESIA, status: CASE_STATUS } });
 });
 
 const answersFor = (phase) =>
