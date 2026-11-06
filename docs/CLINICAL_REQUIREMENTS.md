@@ -59,4 +59,16 @@ marked DRAFT on screen. **Needs the owner's approval as clinical content before 
   with their times; blood loss added up and banded (minor 500–1000 mL, major over 1000); shock index worked out
   (0.9 watch, 1.4 urgent); the four Ts; closed by her doctor or an RMO with how it ended.
 - Perinexa gives no dose: a medicine step needs the dose typed by whoever gave it. Lines are never changed.
-- Remaining Group B items (9–14, 16, 17) wait for their manual pages.
+
+## Group B, item 14 – postnatal discharge checklist and danger-sign teaching (DRAFT, 6 Nov 2026)
+Built before OBG-F-11 and OBG-P-03 were given, at the developer's request, from WHO's postnatal recommendations (2022)
+and MoHFW India (HBNC 2014, MCP card). Constants in `server/src/clinical/postnatalDischarge.js`, marked DRAFT on screen.
+**Needs the owner's approval as clinical content and patient wording before it goes to `main`.** English only: Marathi
+and Hindi wait for approved translations. Branch `crs-14-postnatal`.
+- Where: a mother's stay page, under the PPH chart (`client/src/pages/inpatient/DischargeChecklist.jsx`; API
+  `/api/discharge-checklist`). For antenatal, postnatal and pregnancy-loss records.
+- 14 checks (mother, baby, going home) – Yes / No, Not applicable only for anti-D and the baby's birth vaccines; 10
+  danger signs in the mother and 8 in the baby, each ticked when explained; teach-back (who said them back, language).
+- Saved as a draft; marked complete only when nothing is missing – then locked. One per stay; entered in error with a
+  reason, then a new one can be started.
+- Remaining Group B items (9–13, 16, 17) wait for their manual pages.

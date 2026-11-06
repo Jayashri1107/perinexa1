@@ -32,6 +32,10 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  DISCHARGE_CHECKLIST_VIEWED: 'Postnatal discharge checklist opened',
+  DISCHARGE_CHECKLIST_SAVED: 'Postnatal discharge checklist saved',
+  DISCHARGE_CHECKLIST_COMPLETED: 'Postnatal discharge checklist completed',
+  DISCHARGE_CHECKLIST_CANCELLED: 'Postnatal discharge checklist marked entered in error',
   PPH_CHART_VIEWED: 'PPH chart opened',
   PPH_CHART_STARTED: 'PPH chart started',
   PPH_CHART_LINE_ADDED: 'PPH chart line added',
@@ -426,6 +430,10 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  DISCHARGE_CHECKLIST_VIEWED: 'patient',
+  DISCHARGE_CHECKLIST_SAVED: 'patient',
+  DISCHARGE_CHECKLIST_COMPLETED: 'patient',
+  DISCHARGE_CHECKLIST_CANCELLED: 'info',
   PPH_CHART_VIEWED: 'patient',
   PPH_CHART_STARTED: 'patient',
   PPH_CHART_LINE_ADDED: 'patient',
