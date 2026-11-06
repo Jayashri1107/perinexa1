@@ -29,21 +29,55 @@ export const DOSE_CHOICES = Object.entries(FREQUENCY_WORDS)
   });
 const QTY_CHOICES = [1, 2, 3, 4, 5, 6, 10, 15, 20, 30];
 
-/** The lists behind the dose and quantity boxes (input list="…"), once on the page. */
-function ChoiceLists() {
+const OWN = '__own';
+/**
+ * A drop-down that opens on a click, with "Type another…" for anything not on the list (then a box, and "List" to go
+ * back). value/onChange: the text; choices: the list; placeholder: the first, empty choice.
+ */
+export function ChoiceBox({ value, onChange, choices, placeholder, label, ownLabel = 'Type another…', inputMode, maxLength = 60, onEnter, autoFocus = false, className = '' }) {
+  const listed = value === '' || choices.map(String).includes(String(value));
+  const [typing, setTyping] = useState(!listed);
+  const [switched, setSwitched] = useState(false); // chosen "Type another…" just now: the box takes the cursor
+  if (typing || !listed) {
+    return (
+      <span className={`ph-choice ph-choice-own ${className}`}>
+        <input aria-label={label} inputMode={inputMode} value={value} maxLength={maxLength} autoFocus={switched} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onEnter?.()} />
+        <button
+          type="button"
+          className="btn btn-link btn-sm"
+          onClick={() => {
+            setTyping(false);
+            onChange('');
+          }}
+        >
+          List
+        </button>
+      </span>
+    );
+  }
   return (
-    <>
-      <datalist id="ph-dose-choices">
-        {DOSE_CHOICES.map((d) => (
-          <option key={d} value={d} />
-        ))}
-      </datalist>
-      <datalist id="ph-qty-choices">
-        {QTY_CHOICES.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-    </>
+    <select
+      className={`ph-choice ${className}`}
+      aria-label={label}
+      value={String(value)}
+      autoFocus={autoFocus}
+      onChange={(e) => {
+        if (e.target.value === OWN) {
+          setTyping(true);
+          setSwitched(true);
+          onChange('');
+        } else onChange(e.target.value);
+      }}
+      onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
+    >
+      <option value="">{placeholder}</option>
+      {choices.map((c) => (
+        <option key={c} value={String(c)}>
+          {c}
+        </option>
+      ))}
+      <option value={OWN}>{ownLabel}</option>
+    </select>
   );
 }
 
@@ -120,7 +154,7 @@ function BatchPicker({ line, onChange, onPrice = null }) {
     if (onPrice && mrp !== (line.mrpPaise ?? null)) onPrice(mrp);
   }, [mrp, line.mrpPaise, onPrice]);
   return (
-    <select aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
+    <select className="ph-batch" aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
       <option value="">Earliest expiry first</option>
       {batches.map((b) => (
         <option key={b.id} value={b.id}>
@@ -409,7 +443,6 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
         {(patient || who === 'walkin') && (
           <section className="card bill-section" aria-labelledby="ph-lines">
             <h2 id="ph-lines">Medicines</h2>
-            <ChoiceLists />
             <FindMedicine onPick={(m) => (embedded ? setEntry({ medicine: m, qty: '1', dose: '' }) : addMedicine(m))} onScan={scan} />
             {embedded && entry && (
               <div className="ph-entry" role="group" aria-label="Medicine to add">
@@ -417,14 +450,14 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   {medicineLabel(entry.medicine)} <ScheduleMark schedule={entry.medicine.schedule} />
                   <span className="muted"> · {entry.medicine.inStock} in stock</span>
                 </strong>
-                <label className="ph-entry-field">
+                <div className="ph-entry-field ph-entry-qty">
                   <span>Quantity</span>
-                  <input inputMode="numeric" list="ph-qty-choices" value={entry.qty} onChange={(e) => setEntry({ ...entry, qty: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addEntry()} autoFocus />
-                </label>
-                <label className="ph-entry-field ph-entry-dose">
+                  <ChoiceBox label="Quantity" value={entry.qty} choices={QTY_CHOICES} placeholder="Choose" ownLabel="Another number…" inputMode="numeric" maxLength={5} onChange={(qty) => setEntry({ ...entry, qty })} onEnter={addEntry} autoFocus />
+                </div>
+                <div className="ph-entry-field ph-entry-dose">
                   <span>Dose (optional)</span>
-                  <input list="ph-dose-choices" value={entry.dose} maxLength={60} placeholder="Choose or type, e.g. 1-0-1" onChange={(e) => setEntry({ ...entry, dose: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addEntry()} />
-                </label>
+                  <ChoiceBox label="Dose" value={entry.dose} choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={(dose) => setEntry({ ...entry, dose })} onEnter={addEntry} />
+                </div>
                 <button type="button" className="btn btn-secondary" disabled={!entryOk} onClick={addEntry}>
                   <Plus aria-hidden="true" /> Add
                 </button>
@@ -437,8 +470,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
               <table className="bill-lines ph-lines">
                 <thead>
                   <tr>
-                    <th scope="col">Medicine</th>
-                    <th scope="col">Batch</th>
+                    <th scope="col">Medicine and batch</th>
                     <th scope="col" className="num">
                       Quantity
                     </th>
@@ -457,13 +489,13 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 <tbody>
                   {lines.map((l) => (
                     <tr key={l.key}>
-                      <td data-label="Medicine">
-                        {medicineLabel(l.medicine)} <ScheduleMark schedule={l.medicine.schedule} />
-                        <span className="muted"> · {l.medicine.inStock} in stock</span>
-                        {l.prescribed && l.medicine.inStock < Number(l.qty) && <span className="field-error ph-prescribed-short">Not enough in stock: it stays on the bill, so the invoice can be made once it is received.</span>}
-                      </td>
-                      <td data-label="Batch">
+                      <td data-label="Medicine" className="ph-line-med">
+                        <span className="ph-line-name">
+                          <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} />
+                        </span>
+                        <span className="ph-line-meta">{[[l.medicine.generic, l.medicine.strength].filter(Boolean).join(' '), `${l.medicine.inStock} in stock`].filter(Boolean).join(' · ')}</span>
                         <BatchPicker line={l} onChange={(batchId) => setLine(l.key, { batchId })} onPrice={(mrpPaise) => setLine(l.key, { mrpPaise })} />
+                        {l.prescribed && l.medicine.inStock < Number(l.qty) && <span className="field-error ph-prescribed-short">Not enough in stock: it stays on the bill, so the invoice can be made once it is received.</span>}
                       </td>
                       <td data-label="Quantity" className="num">
                         {onPhone && (
@@ -479,7 +511,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                         )}
                       </td>
                       <td data-label="Dose">
-                        <input className="ph-dose-input" list="ph-dose-choices" aria-label={`Dose of ${l.medicine.name}`} value={l.dose ?? ''} maxLength={60} placeholder="Choose or type" onChange={(e) => setLine(l.key, { dose: e.target.value })} />
+                        <ChoiceBox className="ph-dose-input" label={`Dose of ${l.medicine.name}`} value={l.dose ?? ''} choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={(dose) => setLine(l.key, { dose })} />
                       </td>
                       <td data-label="MRP" className="num tabular">
                         {l.mrpPaise ? money(l.mrpPaise) : '–'}
@@ -503,7 +535,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 </tbody>
                 <tfoot>
                   <tr className="ph-lines-total">
-                    <th scope="row" colSpan={5}>
+                    <th scope="row" colSpan={4}>
                       {pct > 0 ? `Total after ${pct}% discount` : 'Total'}
                     </th>
                     <td className="num tabular">
