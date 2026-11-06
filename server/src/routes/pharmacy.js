@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { pharmacyWitnessField, pharmacyWitnessName } from '../auth/witness.js';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { addDays, daysBetween, hospitalDayStart, isoDay, timeIn, toHospitalDate, utcDay } from '../careplans/dates.js';
@@ -504,7 +505,9 @@ pharmacyRouter.post('/batches/:id/writeoff', async (req, res) => {
 
 pharmacyRouter.post('/batches/:id/count', async (req, res) => {
   desk(req);
-  const body = parse(z.object({ counted: z.number().int().min(0).max(MAX_QTY), reason: reason('Correcting the stock'), witness: z.string().trim().max(150).transform(capitalizeName).default('') }).strict(), req.body);
+  // A controlled medicine's count: the second person signs in (Group C, PX-X-06) – never a typed name
+  const body = parse(z.object({ counted: z.number().int().min(0).max(MAX_QTY), reason: reason('Correcting the stock'), witness: pharmacyWitnessField }).strict(), req.body);
+  body.witness = await pharmacyWitnessName(req, body.witness || null, 'pharmacy_count');
   const { b, m } = await loadBatch(req);
   const after = await countStock(req, b, body.counted, body.reason, body.witness, m);
   await audit(req, 'PHARMACY_STOCK_COUNTED', { details: { medicineId: String(m._id), batchId: String(b._id), from: b.qtyLeft, to: body.counted, reason: body.reason, ...(body.witness ? { witness: body.witness } : {}) } });

@@ -133,6 +133,6 @@ Audit: WITNESS_CONFIRMED (purpose), WITNESS_FAILED (a security event). Branch `c
 - Newborn at birth: the identity band (PX-NEO-17, part).
 - Nursing chart: a medicine ticked high-alert or controlled, or listed high-alert in the formulary, and any amount
   discarded – narcotic wastage in the labour room and on the ward (PX-OT-07, part).
-- Not changed: the pharmacy's stock counts and supplier returns still take a typed witness name (existing behaviour);
-  moving them to this check is a later step. Remaining Group C: corrections and sealing, privileges, form versions,
-  print as the manual's page, the alerts band, the pregnancy episode and the tier engine.
+- Pharmacy (Schedule X and narcotic medicines): a stock count, a supplier return and cancelling a return – the second
+  person (pharmacist, doctor, RMO or nurse) signs in; the register shows "Name (Role)". Older rows keep the typed name.
+  Test: Pharmacy → Stock → a narcotic batch → Count; Pharmacy → Supplier returns with a narcotic batch.

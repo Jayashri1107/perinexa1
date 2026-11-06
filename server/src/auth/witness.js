@@ -52,5 +52,15 @@ export async function verifyWitness(req, witness, { roles = ['doctor', 'rmo', 'n
   return { by: user._id, byName: user.name, role: ROLE_WORDS[role] ?? role, at: now };
 }
 
+// The pharmacy (Schedule X and narcotic medicines): the second person may also be another pharmacist.
+export const PHARMACY_WITNESS_ROLES = ['pharmacist', 'doctor', 'rmo', 'nurse'];
+/** The pharmacy's witness field: '' (none given) or the second person's sign-in → "Name (Role)" for the registers. */
+export const pharmacyWitnessField = z.union([z.literal(''), witnessSchema]).default('');
+export async function pharmacyWitnessName(req, witness, purpose) {
+  if (!witness) return '';
+  const w = await verifyWitness(req, witness, { roles: PHARMACY_WITNESS_ROLES, purpose });
+  return `${w.byName} (${w.role})`;
+}
+
 /** How a witness stamp is shown (never the user id). */
 export const witnessView = (w) => (w ? { byName: w.byName, role: w.role, at: w.at } : null);
