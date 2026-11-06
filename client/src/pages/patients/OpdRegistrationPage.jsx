@@ -86,7 +86,8 @@ function OpdVisit({ p, canCharge, canSend, onDone }) {
   const dept = department ?? own?.department ?? '';
   const offered = all.filter((d) => inDepartment(d, dept));
   const [doctorId, setDoctorId] = useState(null);
-  const chosen = doctorId ?? (offered.some((d) => d.id === own?.id) ? own.id : (offered[0]?.id ?? ''));
+  // Her own doctor when in the department, else not assigned until one is chosen (never the first on the list)
+  const chosen = doctorId ?? (offered.some((d) => d.id === own?.id) ? own.id : '');
   const doctor = all.find((d) => d.id === chosen);
   const [purpose, setPurpose] = useState('consultation');
   const { items, error: pricesError } = useChargeItems(canCharge);
@@ -151,7 +152,7 @@ function OpdVisit({ p, canCharge, canSend, onDone }) {
         )}
         <Field label="Doctor" id="opd-doctor" hint={dept ? `Doctors of ${dept}` : undefined}>
           <select id="opd-doctor" value={chosen} onChange={(e) => setDoctorId(e.target.value)}>
-            {!offered.length && <option value="">No doctor in this department</option>}
+            <option value="">{offered.length ? 'Not assigned' : 'No doctor in this department'}</option>
             {offered.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}

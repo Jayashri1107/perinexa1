@@ -467,7 +467,7 @@ export function CancelDialog({ appointment: a, onClose, onCancelled }) {
  * times; the booking itself (patient, visit type) is the Book dialog. Doctors without OPD timings are named as such.
  */
 export function NewAppointmentDialog({ doctors, today, doctorId: firstDoctor, date: firstDate, onClose, onChosen }) {
-  const [doctorId, setDoctorId] = useState(firstDoctor ?? doctors[0]?.id ?? '');
+  const [doctorId, setDoctorId] = useState(firstDoctor ?? ''); // the doctor open on the page, else chosen here
   const [date, setDate] = useState(firstDate && firstDate >= today ? firstDate : today);
   const day = useFetch(doctorId && date ? '/appointments/day' : null, { doctorId, date });
   const d = day.data?.doctor?.id === doctorId && day.data?.date === date ? day.data : null;
@@ -478,6 +478,7 @@ export function NewAppointmentDialog({ doctors, today, doctorId: firstDoctor, da
       <div className="form-grid">
         <Field label="Doctor" id="appt-new-doctor">
           <select id="appt-new-doctor" value={doctorId} onChange={(e) => setDoctorId(e.target.value)} autoFocus>
+            <option value="">Choose the doctor</option>
             {doctors.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name}

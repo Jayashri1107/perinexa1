@@ -448,7 +448,7 @@ function PatientCard({ r, doctors, onDone, primary }) {
 // ---------- Her appointment ----------
 
 function BookForm({ r, doctors, onDone, onRefused, primary }) {
-  const [doctorId, setDoctorId] = useState(r.consultant?.id ?? doctors[0]?.id ?? '');
+  const [doctorId, setDoctorId] = useState(r.consultant?.id ?? ''); // the consultant asked for, else chosen here
   const today = localIso();
   const [date, setDate] = useState(today);
   const [start, setStart] = useState(null);
@@ -488,6 +488,7 @@ function BookForm({ r, doctors, onDone, onRefused, primary }) {
               setWarning(null);
             }}
           >
+            <option value="">Choose the doctor</option>
             {doctors.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
