@@ -2962,6 +2962,15 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
    greyed. Reception and the hospital admin have no MEOWS chart.
 
+## How to test the postnatal discharge checklist – Group B item 14, DRAFT (fake data only)
+1. As a **nurse**, her doctor or an RMO: a made-up admitted mother → **IPD** → **Current stay** → **Postnatal discharge
+   checklist** (under the PPH chart).
+2. **Mark complete** straight away: refused, with every part still to do highlighted.
+3. Answer each check **Yes** (anti-D: **Not applicable**), give the next visit's date → **Save draft**: "Draft – saved
+   by …" and "Still to do: 2 parts".
+4. Tick every danger sign (mother and baby) and **She (or her family) said the danger signs back**, choose who →
+   "Everything is filled in" → **Mark complete**: "Complete – name, time"; the answers are locked.
+
 ## How to test the PPH chart – Group B item 15, DRAFT (fake data only)
 1. As a **nurse**, her doctor or an RMO: a made-up admitted mother → **IPD** → **Current stay** → **PPH chart** (under
    the MEOWS chart) → **Start a PPH chart**: when recognised (AM/PM), tick **Tone** → **Start the chart**.
