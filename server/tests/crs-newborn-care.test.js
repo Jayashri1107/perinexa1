@@ -7,7 +7,7 @@ import * as website from '../../client/src/pages/newborn/newbornCareRules.js';
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { BIRTH_CHECKS, EXAM_ITEMS, cchdResult, coldAtAdmission } from '../src/clinical/newbornCare.js';
-import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
+import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-11-10T06:00:00Z');
 const ROLES = { drA: 'doctor', nurse: 'nurse', reception: 'receptionist', admin: 'admin' };
@@ -57,7 +57,8 @@ describe("a baby's care", () => {
     const nurse = await as('nurse');
     expect((await nurse.post('/api/newborn-care/birth').send({ patientId: b.id, criedAtBirth: 'yes', resuscitation: 'none', cordClamping: 'delayed', checks: { ...allYes(), vitaminK: 'na' } })).body.error.fields['checks.vitaminK']).toBe('Answer yes or no');
     expect((await nurse.post('/api/newborn-care/birth').send({ patientId: b.id, criedAtBirth: 'yes', resuscitation: 'none', cordClamping: 'delayed', checks: { ...allYes(), eyeCare: 'no' } })).body.error.fields.note).toMatch(/why a step/);
-    expect((await nurse.post('/api/newborn-care/birth').send({ patientId: b.id, criedAtBirth: 'yes', resuscitation: 'stimulation', cordClamping: 'delayed', checks: allYes(), temperatureC: 36.8 })).status).toBe(201);
+    expect((await nurse.post('/api/newborn-care/birth').send({ patientId: b.id, criedAtBirth: 'yes', resuscitation: 'stimulation', cordClamping: 'delayed', checks: allYes(), temperatureC: 36.8 })).body.error.fields['witness.email']).toMatch(/second person/);
+    expect((await nurse.post('/api/newborn-care/birth').send({ patientId: b.id, criedAtBirth: 'yes', resuscitation: 'stimulation', cordClamping: 'delayed', checks: allYes(), temperatureC: 36.8, witness: { email: people.drA.email, password: PASSWORD } })).status).toBe(201);
     expect((await nurse.post('/api/newborn-care/birth').send({ patientId: b.id, criedAtBirth: 'yes', resuscitation: 'none', cordClamping: 'delayed', checks: allYes() })).status).toBe(409);
 
     const ex = await (await as('drA')).post('/api/newborn-care/exam').send({ patientId: b.id, examinedAt: '2026-11-10T04:00:00.000Z', weightGrams: 2050, findings: { ...allNormal(), hips: 'abnormal' } });
@@ -68,7 +69,7 @@ describe("a baby's care", () => {
     await nurse.post('/api/newborn-care/bilirubin').send({ patientId: b.id, at: '2026-11-10T00:00:00.000Z', mgdl: 8.5, method: 'skin' });
     expect((await nurse.post('/api/newborn-care/bilirubin').send({ patientId: b.id, at: '2026-11-09T05:00:00.000Z', mgdl: 4, method: 'serum' })).body.error.fields.at).toMatch(/before the baby was born/);
     const all = await (await as('drA')).get(`/api/newborn-care?patientId=${b.id}`);
-    expect(all.body.birth[0]).toMatchObject({ resuscitation: 'stimulation', temperatureC: 36.8, byName: 'Sample nurse' });
+    expect(all.body.birth[0]).toMatchObject({ resuscitation: 'stimulation', temperatureC: 36.8, byName: 'Sample nurse', idBandWitness: { byName: 'Sample drA', role: 'Doctor' } });
     expect(all.body.exams[0]).toMatchObject({ weightGrams: 2050, findings: { hips: 'abnormal' } });
     expect(all.body.bilirubin).toEqual([expect.objectContaining({ hours: 18, mgdl: 8.5, method: 'skin' })]);
   });

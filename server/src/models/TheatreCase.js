@@ -13,6 +13,8 @@ const phaseSchema = new mongoose.Schema(
     answers: { type: mongoose.Schema.Types.Mixed, default: {} }, // { itemKey: 'yes' | 'no' | 'na' }
     notes: { type: mongoose.Schema.Types.Mixed, default: {} },
     confirmed: { type: new mongoose.Schema({ by: ObjectId, byName: String, role: String, at: Date }, { _id: false }), default: null },
+    // Sign out: the second person who checked the counts (Group C, PX-X-06)
+    witness: { type: new mongoose.Schema({ by: ObjectId, byName: String, role: String, at: Date }, { _id: false }), default: null },
   },
   { _id: false, minimize: false },
 );

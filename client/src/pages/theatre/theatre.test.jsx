@@ -45,7 +45,8 @@ describe('the theatre list and the WHO checklist', () => {
     expect(out).toContain('Confirmed – Sample nurse (Nurse)');
     expect(out).toContain('Confirm time out');
     expect(out).toContain('Confirm time out first.');
-    expect(out).toContain('second person checking them comes with the base rules');
+    expect(out).toContain('The instrument, swab and needle count is checked by two people');
+    expect(out).toContain('Their password');
     expect(out).not.toMatch(/!/);
   });
 });
