@@ -2962,6 +2962,17 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
    greyed. Reception and the hospital admin have no MEOWS chart.
 
+## How to test the theatre list and WHO checklist – Group B item 16 (fake data only)
+1. As a doctor, RMO or nurse → **Theatre** in the menu → **Add an operation**: a made-up patient's number, the
+   operation, surgeon, anaesthetist → **Add to the list**. It shows **Planned** with Sign in · Time out · Sign out.
+2. Open it. **Confirm time out** is not possible yet ("Confirm sign in first").
+3. Sign in: answer each item (questions No); answer **Does she have a known allergy?** Yes → **Confirm sign in**:
+   refused until **Which allergy** is written. Then it shows "Confirmed – name (role), time" and the case is **In
+   theatre**; its answers are locked.
+4. Time out, then sign out (counts **Yes**; specimen **Not applicable**) → the case is **Done**. Counts **No** needs a
+   note of what was done.
+5. **Take off the list** (before it is done) asks for a reason.
+
 ## How to test the postnatal discharge checklist – Group B item 14, DRAFT (fake data only)
 1. As a **nurse**, her doctor or an RMO: a made-up admitted mother → **IPD** → **Current stay** → **Postnatal discharge
    checklist** (under the PPH chart).
