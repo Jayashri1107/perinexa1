@@ -18,8 +18,11 @@ import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './Registe
 
 const NEEDS_RX = ['H', 'H1', 'X', 'narcotic'];
 
-/** Today's OPD patients from the daily register (never the whole patient list), and finding someone from another day. */
-function TodayOpdPicker({ onPick }) {
+/**
+ * Today's OPD patients from the daily register (never the whole patient list), and finding someone from another day.
+ * onPickIpd: someone found who is admitted (else the Issue to ward page opens with her).
+ */
+export function TodayOpdPicker({ onPick, onPickIpd = null }) {
   const navigate = useNavigate();
   const res = useFetch('/pharmacy/register');
   const [text, setText] = useState('');
@@ -28,7 +31,7 @@ function TodayOpdPicker({ onPick }) {
   const opd = (res.data?.rows ?? []).filter((r) => r.type === 'opd').filter((r) => !term || [r.patient.fullName, r.patient.mrn, r.patient.phone, r.opdNo].some((v) => v && String(v).toLowerCase().includes(term)));
   return (
     <>
-      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? navigate('/pharmacy/issue', { state: { patient } }) : onPick(patient))} onOpenBills={(patient) => navigate(...billsPlace(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} onText={setText} />
+      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? (onPickIpd ? onPickIpd(patient) : navigate('/pharmacy/issue', { state: { patient } })) : onPick(patient))} onOpenBills={(patient) => navigate(...billsPlace(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} onText={setText} />
       <h3 className="ph-today-title">Today's OPD patients</h3>
       {res.error && <Alert type="error">{res.error}</Alert>}
       {res.data && !opd.length && <p className="muted">{term ? "Nobody on today's list matches." : "No OPD patient on today's register yet."}</p>}
@@ -39,6 +42,37 @@ function TodayOpdPicker({ onPick }) {
               <strong>{r.patient.fullName}</strong>
               <span className="muted">
                 {[r.patient.mrn, r.doctor, r.prescription ? 'prescription written today' : 'no prescription yet', r.bills.length ? `billed ${r.bills.map((b) => b.number).join(', ')}` : ''].filter(Boolean).join(' · ')}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/** The admitted patients, with a search by name, number, ward or bed (an issue to the ward is for them only). */
+export function InpatientPicker({ onPick }) {
+  const inpatients = useFetch('/pharmacy/inpatients');
+  const [text, setText] = useState('');
+  const term = text.trim().toLowerCase();
+  const all = inpatients.data?.inpatients ?? [];
+  const shown = all.filter((x) => !term || [x.patient.fullName, x.patient.mrn, x.patient.phone, x.ward, x.bed].some((v) => v && String(v).toLowerCase().includes(term)));
+  return (
+    <>
+      <input type="search" className="bill-search-plain" aria-label="Find an admitted patient" placeholder="Name, number, ward or bed" value={text} onChange={(e) => setText(e.target.value)} />
+      {inpatients.error && <Alert type="error">{inpatients.error}</Alert>}
+      {inpatients.data && !shown.length && <p className="muted">{term && all.length ? 'Nobody admitted matches.' : 'Nobody is admitted.'}</p>}
+      <ul className="appt-pick-list" aria-label="Admitted patients">
+        {shown.map((x) => (
+          <li key={x.patient.id}>
+            <button type="button" className="appt-pick" onClick={() => onPick(x.patient)}>
+              <strong>
+                <BedDouble aria-hidden="true" /> {x.patient.fullName}
+              </strong>
+              <span className="muted">
+                {x.patient.mrn} · {x.ward || 'Ward not given'}
+                {x.bed ? `, bed ${x.bed}` : ''}
               </span>
             </button>
           </li>
@@ -179,12 +213,16 @@ export function ShortHsnWarning({ medicines }) {
 /** Is everything needed about the business buyer filled in (the server checks again)? */
 export const buyerComplete = (buyer) => buyer.name.trim().length >= 3 && Boolean(gstinState(buyer.gstin)) && buyer.address.trim().length >= 3 && buyer.place.trim().length >= 3 && /^[1-9]\d{5}$/.test(buyer.pin.trim());
 
-export function SellPage({ kind = 'sale' }) {
+/**
+ * embedded (Sold, 6 Nov 2026): the same bill inside another page – start gives the patient or { type: 'external' },
+ * onMade(invoice) gets the new invoice instead of opening it, onCancel goes back to choosing someone.
+ */
+export function SellPage({ kind = 'sale', start: given = null, embedded = false, onMade = null, onCancel = null }) {
   const navigate = useNavigate();
   // From the Daily register: { patient } already chosen, or { type: 'external' }
-  const start = useLocation().state ?? {};
+  const routed = useLocation().state;
+  const start = given ?? routed ?? {};
   const issue = kind === 'issue';
-  const inpatients = useFetch(issue ? '/pharmacy/inpatients' : null);
   const [who, setWho] = useState(issue ? 'inpatient' : start.type === 'external' ? 'walkin' : 'patient'); // patient (OPD) | walkin (External) | inpatient (IPD)
   const [patient, setPatient] = useState(start.patient ?? null);
   const [customer, setCustomer] = useState({ name: '', phone: '' });
@@ -198,7 +236,7 @@ export function SellPage({ kind = 'sale' }) {
   const [reference, setReference] = useState('');
   const [business, setBusiness] = useState(false);
   const [buyer, setBuyer] = useState({ name: '', gstin: '', address: '', place: '', pin: '' });
-  const s = useSend((res) => navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } }));
+  const s = useSend((res) => (onMade ? onMade(res.invoice) : navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } })));
 
   const addMedicine = (m, qty = 1) => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null }]));
   // The doctor's prescription on the bill (owner's developer, 28 Oct 2026): its medicines are marked `prescribed` and
@@ -255,15 +293,15 @@ export function SellPage({ kind = 'sale' }) {
 
   return (
     <>
-      <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'New bill'} crumb={issue ? 'Issue to ward' : 'New bill'} />
-      <div className="pf-content bill-page">
+      {!embedded && <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'New bill'} crumb={issue ? 'Issue to ward' : 'New bill'} />}
+      <div className={embedded ? 'bill-page ph-sold-bill' : 'pf-content bill-page'}>
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
         </Alert>
 
         <section className="card bill-section" aria-labelledby="ph-who">
           <h2 id="ph-who">Who is it for</h2>
-          {!patient && (
+          {!patient && !embedded && (
             <div className="segmented" role="group" aria-label="Type of patient">
               <button type="button" aria-pressed={who === 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
                 <Stethoscope aria-hidden="true" /> OPD patient
@@ -285,27 +323,7 @@ export function SellPage({ kind = 'sale' }) {
             </div>
           )}
           {who === 'patient' && !patient && <TodayOpdPicker onPick={setPatient} />}
-          {who === 'inpatient' && !patient && (
-            <>
-              {inpatients.error && <Alert type="error">{inpatients.error}</Alert>}
-              {inpatients.data && !inpatients.data.inpatients.length && <p className="muted">Nobody is admitted.</p>}
-              <ul className="appt-pick-list">
-                {(inpatients.data?.inpatients ?? []).map((x) => (
-                  <li key={x.patient.id}>
-                    <button type="button" className="appt-pick" onClick={() => setPatient(x.patient)}>
-                      <strong>
-                        <BedDouble aria-hidden="true" /> {x.patient.fullName}
-                      </strong>
-                      <span className="muted">
-                        {x.patient.mrn} · {x.ward || 'Ward not given'}
-                        {x.bed ? `, bed ${x.bed}` : ''}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          {who === 'inpatient' && !patient && <InpatientPicker onPick={setPatient} />}
           {patient && (
             <div className="appt-chosen">
               <TypePill type={issue ? 'ipd' : 'opd'} />
@@ -314,7 +332,7 @@ export function SellPage({ kind = 'sale' }) {
                 {patient.mrn}
                 {patient.phone ? ` · ${patient.phone}` : ''}
               </span>
-              <button type="button" className="btn btn-link btn-sm" onClick={reset}>
+              <button type="button" className="btn btn-link btn-sm" onClick={embedded && onCancel ? onCancel : reset}>
                 Choose someone else
               </button>
             </div>

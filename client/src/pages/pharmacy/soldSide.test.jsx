@@ -11,7 +11,8 @@ vi.mock('../../hooks/useFetch.js', () => ({
 }));
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles }, user: { name: 'Sample Pharmacist' } }) }));
 
-const { BillPaper, InvoicesPage, PeopleFound, billFits } = await import('./InvoicesPage.jsx');
+const { BillPaper, InvoicesPage, NewBillChooser, PeopleFound, billFits } = await import('./InvoicesPage.jsx');
+const { SellPage } = await import('./SellPage.jsx');
 
 const settings = { name: 'Sample Medical Stores', address: '4 Sample Road, Sample Town', phone: '99999 00000', gstin: '27ABCDE1234F1Z5', licence20: 'S-20-1', licence21: 'S-21-1', pharmacistName: 'Sample Pharmacist', place: 'Sample Town' };
 const line = { id: 'l1', name: 'Sampleol 650', schedule: '', batch: 'B100', expiry: '2029-08-01', qty: 2, mrpPaise: 35000, amountPaise: 66500 };
@@ -22,8 +23,8 @@ describe('the pharmacy bill', () => {
   it('has the earlier bill’s details and columns', () => {
     const text = paper(invoice);
     for (const part of ['Sample Medical Stores', 'D.L. No. S-20-1 S-21-1', 'GSTN No. 27ABCDE1234F1Z5', 'Mobile No. 99999 00000', 'Bill No PH-000007', 'Reg No SH-0042', 'Patient Name Sample Asha Kale', 'Type OPD Patient', 'Doctor Name Dr Sample Rao']) expect(text).toContain(part);
-    expect(text).toMatch(/Sr\. Item Name Batch No Expiry Disc Amt Qty Amount/);
-    expect(text).toContain('1 Sampleol 650 B100 Aug-2029 35.00 2.00 665.00');
+    expect(text).toMatch(/Sr\. Item Name Batch No Expiry MRP Disc Amt Qty Amount/);
+    expect(text).toContain('1 Sampleol 650 B100 Aug-2029 350.00 35.00 2.00 665.00');
     expect(text).toContain('Gross 665.00');
     expect(text).toContain('GET WELL SOON');
     expect(text).toContain('Subject to Sample Town Jurisdiction');
@@ -95,6 +96,17 @@ describe('Sold’s filters', () => {
     const html = renderToStaticMarkup(<MemoryRouter><PeopleFound found={{ data: { people } }} people={people} onPick={() => {}} /></MemoryRouter>);
     for (const part of ['Sample Mira Unbilled', 'SH-0043', 'No pharmacy bill yet']) expect(html).toContain(part);
     expect(html).not.toContain('<button');
+  });
+
+  it('a new bill from Sold: the admitted patients with a search, a walk-in button, and the bill itself inside the page', () => {
+    answers['/pharmacy/inpatients'] = { inpatients: [{ patient: { id: 'p9', fullName: 'Sample Rekha Shinde', mrn: 'SH-0050' }, ward: 'Private AC', bed: '201' }] };
+    const ipd = renderToStaticMarkup(<MemoryRouter><NewBillChooser type="ipd" onPick={() => {}} /></MemoryRouter>);
+    for (const part of ['New bill · Admitted (IPD) patients', 'Find an admitted patient', 'Sample Rekha Shinde', 'Private AC, bed 201']) expect(ipd).toContain(part);
+    expect(renderToStaticMarkup(<MemoryRouter><NewBillChooser type="external" onPick={() => {}} /></MemoryRouter>)).toContain('New bill for a walk-in customer');
+    const bill = renderToStaticMarkup(<MemoryRouter><SellPage kind="issue" start={{ patient: { id: 'p9', fullName: 'Sample Rekha Shinde', mrn: 'SH-0050' } }} embedded onMade={() => {}} onCancel={() => {}} /></MemoryRouter>);
+    expect(bill).toContain('Sample Rekha Shinde');
+    expect(bill).not.toContain('Issue to an admitted patient'); // no page header inside Sold
+    expect(bill).not.toContain('aria-label="Type of patient"');
   });
 
   it('is not shown to the hospital admin', () => {

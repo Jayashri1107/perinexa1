@@ -16,6 +16,7 @@ import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { TypePill } from './RegisterPage.jsx';
+import { InpatientPicker, SellPage, TodayOpdPicker } from './SellPage.jsx';
 
 // Pharmacy → Invoices: a day's invoices (or a search), one invoice with its GST tax invoice to print, and returns of
 // unopened medicines before their expiry (each a credit note). A walk-in sale to a business with a GSTIN shows the
@@ -89,9 +90,20 @@ export function InvoicesPage() {
       setPerson(hit);
     }
   }, [start, people]);
+  // A new bill made here (6 Nov 2026): choose OPD, IPD or External, pick the patient from that list, then the same bill
+  // as New bill, made and printed without leaving Sold. { type: 'opd' | 'ipd' | 'external', patient? }
+  const [billing, setBilling] = useState(null);
+  const [made, setMade] = useState(null); // "Invoice … made."
   const typed = (set) => (e) => {
     set(e.target.value);
     setPerson(null);
+    setBilling(null);
+  };
+  const billMade = (invoice, who) => {
+    setBilling(null);
+    setMade(`Invoice ${invoice.number} made.`);
+    setPerson({ key: invoice.id, name: who.name, mrn: who.mrn ?? '', type: who.type, billCount: 1, bills: [{ id: invoice.id, number: invoice.number, at: new Date().toISOString() }], printNow: true });
+    res.reload();
   };
   const closePerson = () => {
     setPerson(null);
@@ -183,6 +195,8 @@ export function InvoicesPage() {
                     onClick={() => {
                       setType(k);
                       setPerson(null);
+                      setBilling(null);
+                      setMade(null);
                     }}
                   >
                     <Icon aria-hidden="true" /> {label}
@@ -236,12 +250,22 @@ export function InvoicesPage() {
               </div>
             </section>
             <div className="ph-sold-results">
+              {made && (
+                <Alert type="success" onClose={() => setMade(null)}>
+                  {made}
+                </Alert>
+              )}
               {person ? (
                 <PersonBills key={person.key} person={person} onClose={closePerson} />
+              ) : billing ? (
+                <SoldBill billing={billing} onCancel={() => setBilling(null)} onMade={billMade} />
               ) : looking ? (
                 <PeopleFound found={found} people={people} onPick={setPerson} />
               ) : (
-                dayList
+                <>
+                  {type !== 'all' && <NewBillChooser type={type} onPick={setBilling} />}
+                  {dayList}
+                </>
               )}
             </div>
           </div>
@@ -289,12 +313,61 @@ export function PeopleFound({ found, people, onPick }) {
   );
 }
 
+const BILL_FOR = { opd: 'OPD patients', ipd: 'Admitted (IPD) patients', external: 'External (walk-in)' };
+
+/** With OPD, IPD or External chosen: that list, to start a new bill for someone on it. */
+export function NewBillChooser({ type, onPick }) {
+  return (
+    <section className="card ph-newbill" aria-labelledby="ph-newbill-title">
+      <h2 id="ph-newbill-title">New bill · {BILL_FOR[type]}</h2>
+      {type === 'opd' && <TodayOpdPicker onPick={(patient) => onPick({ type: 'opd', patient })} onPickIpd={(patient) => onPick({ type: 'ipd', patient })} />}
+      {type === 'ipd' && <InpatientPicker onPick={(patient) => onPick({ type: 'ipd', patient })} />}
+      {type === 'external' && (
+        <button type="button" className="btn btn-secondary" onClick={() => onPick({ type: 'external' })}>
+          <UserPlus aria-hidden="true" /> New bill for a walk-in customer
+        </button>
+      )}
+    </section>
+  );
+}
+
+/** The new bill on Sold: New bill's own screen (medicines, quantities, batches, prescription rules, prices from stock). */
+function SoldBill({ billing, onCancel, onMade }) {
+  const { type, patient } = billing;
+  return (
+    <section className="ph-sold-billing" aria-label="New bill">
+      <div className="ph-person-head">
+        <h2>New bill · {BILL_FOR[type]}</h2>
+        <button type="button" className="btn btn-link" onClick={onCancel}>
+          Back to the list
+        </button>
+      </div>
+      <SellPage
+        key={`${type}-${patient?.id ?? 'walkin'}`}
+        kind={type === 'ipd' ? 'issue' : 'sale'}
+        start={type === 'external' ? { type: 'external' } : { patient }}
+        embedded
+        onCancel={onCancel}
+        onMade={(invoice) => onMade(invoice, type === 'external' ? { name: invoice.customer?.name ?? 'Walk-in customer', type } : { name: patient.fullName, mrn: patient.mrn, type })}
+      />
+    </section>
+  );
+}
+
 /** One person's bills: the newest shown as it prints, across the page, the others a click away. */
 function PersonBills({ person, onClose }) {
   const [billId, setBillId] = useState(person.bills[0].id);
   const [printing, setPrinting] = useState(false);
   const res = useFetch(`/pharmacy/invoices/${billId}`);
   const v = res.data?.invoice;
+  // A bill just made on Sold: its print preview opens by itself, once
+  const printedNow = useRef(false);
+  useEffect(() => {
+    if (person.printNow && v && !printedNow.current) {
+      printedNow.current = true;
+      setPrinting(true);
+    }
+  }, [person.printNow, v]);
   return (
     <>
       <div className="ph-person-head">
@@ -394,6 +467,7 @@ export function BillPaper({ invoice: v, settings }) {
             <th scope="col">Item Name</th>
             <th scope="col">Batch No</th>
             <th scope="col">Expiry</th>
+            <th scope="col" className="num">MRP</th>
             <th scope="col" className="num">Disc Amt</th>
             <th scope="col" className="num">Qty</th>
             <th scope="col" className="num">Amount</th>
@@ -406,6 +480,7 @@ export function BillPaper({ invoice: v, settings }) {
               <td>{lineName(l)}</td>
               <td>{l.batch}</td>
               <td className="nowrap">{expiryLabel(l.expiry).replace(' ', '-')}</td>
+              <td className="num">{plain(l.mrpPaise)}</td>
               <td className="num">{plain(Math.max(0, l.qty * l.mrpPaise - l.amountPaise))}</td>
               <td className="num">{l.qty.toFixed(2)}</td>
               <td className="num">{plain(l.amountPaise)}</td>
