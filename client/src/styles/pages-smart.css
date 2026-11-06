@@ -276,6 +276,7 @@
   .desk-call { grid-template-columns: 64px minmax(0, 1fr); }
   .desk-call > .btn, .desk-call > .muted:last-child { grid-column: 2; justify-self: start; }
 }
+.desk-doctors-more { margin-top: var(--space-2); padding-left: 0; }
 .desk-setup-link { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; color: var(--indigo-700); }
 .desk-subtitle { margin: var(--space-3) var(--space-4) 0; color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
 .desk-stay-pills { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-1); }

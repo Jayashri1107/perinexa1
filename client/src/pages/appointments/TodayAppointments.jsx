@@ -31,7 +31,7 @@ export function ArrivalDialog({ patient: given = null, doctorName: givenDoctor =
   const list = doctors.data?.doctors ?? [];
   const own = list.find((d) => d.name === doctorName);
   const [chosen, setChosen] = useState(null);
-  const doctorId = chosen ?? own?.id ?? list[0]?.id ?? '';
+  const doctorId = chosen ?? own?.id ?? ''; // her doctor, else chosen here – never the first on the list
   // Why she came (26 Oct 2026): her open follow-up fills it in (reception, doctors, RMOs see follow-ups; others choose)
   const followUps = useFetch(patient ? '/added-follow-ups' : null, patient ? { patientId: patient.id } : undefined);
   const followUp = followUps.data?.followUps?.[0] ?? null;
@@ -106,6 +106,7 @@ export function ArrivalDialog({ patient: given = null, doctorName: givenDoctor =
             {why}
             <Field label="Doctor" id="arr-doctor">
               <select id="arr-doctor" value={doctorId} onChange={(e) => setChosen(e.target.value)} disabled={!list.length}>
+                <option value="">Choose the doctor</option>
                 {list.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
