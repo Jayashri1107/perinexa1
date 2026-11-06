@@ -1,5 +1,6 @@
 import { ArrowRight, Building2, KeyRound, Plus, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import { AUDIT_LABELS, auditPill, describeAudit, doneBy } from '../../components/auditFormat.js';
 import { formatNumber } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -11,6 +12,7 @@ import { moduleByKey } from '../../platform/modules.js';
 const count = (n, one, many) => `${formatNumber(n)} ${n === 1 ? one : many}`;
 
 export function OverviewPage() {
+  const { user } = useAuth();
   const { data, error, loading } = useFetch('/platform/stats');
   const s = data;
 
@@ -33,6 +35,10 @@ export function OverviewPage() {
         }
       />
       <div className="pf-content">
+        {/* Phones: the welcome on the indigo band, as on every Today (mobile.css .td-hero) */}
+        <div className="td-hero">
+          <p className="td-hero-hello">Welcome, {user?.name}</p>
+        </div>
         <Alert type="error">{error && <>Couldn't load the platform numbers. {error}</>}</Alert>
 
         <div className="kpi-grid plat-kpis" aria-busy={loading}>
