@@ -10,7 +10,8 @@ import { NursingEntry } from '../models/NursingEntry.js';
 import { Patient } from '../models/Patient.js';
 import { User } from '../models/User.js';
 import { planCtx } from '../careplans/plansService.js';
-import { DOC_KINDS, ONE_PER_ADMISSION, SIGNED_BY, contentSchema, missingToSign, nursingSchema } from '../inpatient/docSchemas.js';
+import { DOC_KINDS, ONE_PER_ADMISSION, SIGNED_BY, TIME_FIELDS, contentSchema, groupARules, missingToSign, nursingSchema } from '../inpatient/docSchemas.js';
+import { reportLateCategory1 } from '../incidents/autoIncidents.js';
 import { admissionView, documentView, entryView } from '../inpatient/inpatientView.js';
 import { redFlagsForPatient } from '../redflags/redFlagService.js';
 import { audit } from '../utils/audit.js';
@@ -278,9 +279,18 @@ admissionsRouter.put('/:admissionId/documents/:docId', async (req, res) => {
   const body = parse(z.object({ rev, content: contentSchema(doc.kind, { pcpndt: pcpndtFor(patient) }) }).strict(), req.body);
   if (doc.status === 'signed') throw conflict(`This ${KIND_WORDS[doc.kind]} was signed by ${doc.signed.byName}, so it can no longer be changed. Add a correction below it instead.`, 'DOCUMENT_SIGNED');
   if (doc.status === 'cancelled') throw conflict('This document was marked as entered in error, so it can no longer be changed.');
+  // When each time was typed: set when a time is first entered or changed (PX-X-04)
+  const savedAt = req.now ?? new Date();
+  const timesEnteredAt = { ...(doc.timesEnteredAt ?? {}) };
+  for (const f of TIME_FIELDS[doc.kind] ?? []) {
+    const before = doc.content?.[f] ?? null;
+    const after = body.content[f] ?? null;
+    if (!after) delete timesEnteredAt[f];
+    else if (!before || new Date(before).getTime() !== new Date(after).getTime() || !timesEnteredAt[f]) timesEnteredAt[f] = savedAt;
+  }
   const r = await ClinicalDocument.updateOne(
     { _id: doc._id, tenantId: req.tenantId, status: 'draft', rev: body.rev },
-    { $set: { content: body.content, savedBy: req.user._id, savedByName: req.user.name, savedAt: req.now ?? new Date() }, $inc: { rev: 1 } },
+    { $set: { content: body.content, timesEnteredAt, savedBy: req.user._id, savedByName: req.user.name, savedAt }, $inc: { rev: 1 } },
   );
   if (r.matchedCount === 0) {
     const latest = await findDocument(req, patient, admission, req.params.docId);
@@ -314,7 +324,7 @@ admissionsRouter.post('/:admissionId/documents/:docId/sign', async (req, res) =>
   if (!role) throw forbidden(`A ${KIND_WORDS[doc.kind]} is confirmed by a doctor.`);
   if (doc.status !== 'draft') throw conflict(doc.status === 'signed' ? `Already signed by ${doc.signed.byName}.` : 'This document was marked as entered in error.');
   if (doc.rev !== seen) throw conflict(`${doc.savedByName ?? 'Someone'} saved this document after you opened it. Reload, check it, then sign again.`);
-  const missing = missingToSign(doc.kind, doc.content);
+  const missing = missingToSign(doc.kind, doc.content, { groupA: doc.kind === 'delivery' && groupARules(doc) });
   const timeOf = { delivery: 'deliveredAt', operation: 'performedAt', discharge: 'dischargedAt', round: 'at' }[doc.kind];
   const t = timeOf && doc.content?.[timeOf] ? new Date(doc.content[timeOf]) : null;
   if (t && t < admission.admittedAt) missing[`content.${timeOf}`] = 'This is before she was admitted – please check the date and time.';
@@ -342,6 +352,8 @@ admissionsRouter.post('/:admissionId/documents/:docId/sign', async (req, res) =>
     const deliveredAt = new Date(doc.content.deliveredAt);
     const later = patient.lastDelivery?.at && patient.lastDelivery.at > deliveredAt;
     if (!later) await Patient.updateOne({ _id: patient._id, tenantId: req.tenantId }, { $set: { lastDelivery: { at: deliveredAt, mode: doc.content.mode, documentId: doc._id } } });
+    // A category 1 caesarean delivered more than 30 minutes after the decision: an incident for the quality lead
+    await reportLateCategory1(req, doc);
   }
   const latest = await findAdmission(req, patient, req.params.admissionId);
   res.json({ document: documentView(await findDocument(req, patient, latest, req.params.docId)), admission: admissionView(latest), access: pageAccess(req, a, latest) });

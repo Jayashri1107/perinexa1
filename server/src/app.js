@@ -67,6 +67,12 @@ import { scanBridgeRouter, scanBridgeSetupRouter } from './routes/scanBridge.js'
 import { verifyRouter } from './routes/verify.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { analyticsRouter } from './routes/analytics.js';
+import { clinicalAuditRouter } from './routes/clinicalAudit.js';
+import { specimensRouter } from './routes/specimens.js';
+import { newbornFollowUpRouter } from './routes/newbornFollowUp.js';
+import { clinicalScoresRouter } from './routes/clinicalScores.js';
+import { incidentsRouter } from './routes/incidents.js';
+import { formularyRouter } from './routes/formulary.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -151,6 +157,7 @@ export function createApp({
   // The medicine safety list is saved whole: 300 entries with their names, advice and sources do not fit in 100 kb.
   // (Each field has its own limit, so the list's "at most 300 entries" is reached before this one.)
   app.use('/api/medicine-safety', express.json({ limit: '2mb' }));
+  app.use(/^\/api\/specimens\/[^/]+\/report$/, express.json({ limit: '8mb' })); // a histopathology report's file
   // The pharmacy's opening stock: up to 5,000 lines read from the old software's file (pharmacy/openingStock.js).
   app.use('/api/pharmacy/opening-stock', express.json({ limit: '4mb' }));
   app.use('/api/auth/me/photo', express.json({ limit: '200kb' })); // My profile: a small staff photo
@@ -306,6 +313,13 @@ export function createApp({
   app.use('/api/calendar', ...inTenant, calendarRouter);
   // Analytics: numbers for doctors and hospital admins only (analytics/roles.js).
   app.use('/api/analytics', ...inTenant, requireAnalyticsAudience, analyticsRouter);
+  // Clinical Requirements Group A (PX-REQ-00): the Robson table and the caesarean audit
+  app.use('/api/clinical-audit', ...inTenant, clinicalAuditRouter);
+  app.use('/api/specimens', ...inTenant, specimensRouter);
+  app.use('/api/newborn-follow-up', ...inTenant, newbornFollowUpRouter);
+  app.use('/api/clinical-scores', ...inTenant, clinicalScoresRouter);
+  app.use('/api/incidents', ...inTenant, incidentsRouter);
+  app.use('/api/formulary', ...inTenant, formularyRouter);
 
   app.use('/api', notFound);
 

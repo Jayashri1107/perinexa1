@@ -16,7 +16,7 @@ import { AppLayout } from './components/AppLayout.jsx';
 import { PageHeader } from './components/PageHeader.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, FORMULARY_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 
 // Each screen is loaded the first time it is opened, not all at once when the app starts (31 Oct 2026: the one file
 // with all 106 screens was 2.9 MB, slow to start on a phone). Screens of one file share one download.
@@ -264,6 +264,24 @@ const load102 = () => import('./pages/analytics/AnalyticsListPage.jsx');
 const AnalyticsListPage = screen(load102, 'AnalyticsListPage');
 const load103 = () => import('./pages/analytics/MonthlyReportPage.jsx');
 const MonthlyReportPage = screen(load103, 'MonthlyReportPage');
+// Clinical Requirements Group A (PX-REQ-00)
+const loadCrs1 = () => import('./pages/quality/ClinicalAuditPage.jsx');
+const ClinicalAuditPage = screen(loadCrs1, 'ClinicalAuditPage');
+const loadCrs3 = () => import('./pages/specimens/SpecimensPage.jsx');
+const SpecimensPage = screen(loadCrs3, 'SpecimensPage');
+const loadCrs3b = () => import('./pages/specimens/PatientSpecimensTab.jsx');
+const PatientSpecimensTab = screen(loadCrs3b, 'PatientSpecimensTab');
+const loadCrs4 = () => import('./pages/newborn/NewbornFollowUpPage.jsx');
+const NewbornFollowUpPage = screen(loadCrs4, 'NewbornFollowUpPage');
+const NewbornLogPage = screen(loadCrs4, 'NewbornLogPage');
+const PatientScreeningTab = screen(loadCrs4, 'PatientScreeningTab');
+const loadCrs5 = () => import('./pages/scores/PatientScoresTab.jsx');
+const PatientScoresTab = screen(loadCrs5, 'PatientScoresTab');
+const loadCrs6 = () => import('./pages/incidents/IncidentsPage.jsx');
+const IncidentsPage = screen(loadCrs6, 'IncidentsPage');
+const IncidentPage = screen(loadCrs6, 'IncidentPage');
+const loadCrs7 = () => import('./pages/formulary/FormularyPage.jsx');
+const FormularyPage = screen(loadCrs7, 'FormularyPage');
 const load104 = () => import('./pages/analytics/ByDoctorPage.jsx');
 const ByDoctorPage = screen(load104, 'ByDoctorPage');
 const load105 = () => import('./pages/analytics/AnalyticsPage.jsx');
@@ -425,6 +443,9 @@ export function App() {
                   <Route path="lab" element={<PatientLabTab />} />
                   {/* Her referrals from other doctors (doctors and RMOs; the server lists only those this person may open) */}
                   <Route path="referrals" element={<PatientReferralsTab />} />
+                  <Route path="specimens" element={<PatientSpecimensTab />} />
+                  <Route path="screening" element={<PatientScreeningTab />} />
+                  <Route path="scores" element={<PatientScoresTab />} />
                   <Route path="lab/:orderId" element={<LabOrderPage />} />
                   <Route path="edit" element={<PatientEditTab />} />
                 </Route>
@@ -452,6 +473,23 @@ export function App() {
                 <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="Sonography is for doctors, RMOs and sonography staff." />}>
                   <Route index element={<ImagingWorklistPage />} />
                   <Route path=":id" element={<ImagingStudyPage />} />
+                </Route>
+                <Route path="formulary" element={<RequireTenantRole roles={FORMULARY_ROLES} message="The formulary is for doctors, RMOs, nurses and the pharmacist." />}>
+                  <Route index element={<FormularyPage />} />
+                </Route>
+                <Route path="incidents">
+                  <Route index element={<IncidentsPage />} />
+                  <Route path=":id" element={<IncidentPage />} />
+                </Route>
+                <Route path="newborn-follow-up" element={<RequireTenantRole roles={NEWBORN_FOLLOW_UP_ROLES} message="Newborn follow-up is for doctors, RMOs, nurses and the follow-up coordinator." />}>
+                  <Route index element={<NewbornFollowUpPage />} />
+                  <Route path=":patientId" element={<NewbornLogPage />} />
+                </Route>
+                <Route path="specimens" element={<RequireTenantRole roles={SPECIMEN_ROLES} message="Specimens are for doctors, RMOs and nurses." />}>
+                  <Route index element={<SpecimensPage />} />
+                </Route>
+                <Route path="clinical-audit" element={<RequireTenantRole roles={CLINICAL_AUDIT_ROLES} message="The clinical audit is for doctors, RMOs, the quality lead and the hospital admin." />}>
+                  <Route index element={<ClinicalAuditPage />} />
                 </Route>
                 <Route path="beds" element={<RequireTenantRole roles={BED_ROLES} message="The bed board is for reception, doctors, RMOs and nurses." />}>
                   <Route index element={<BedBoardPage />} />
