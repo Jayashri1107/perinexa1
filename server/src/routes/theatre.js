@@ -6,6 +6,7 @@ import { latestPac } from './anaesthesia.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { TheatreCase } from '../models/TheatreCase.js';
+import { verifyWitness, witnessSchema, witnessView } from '../auth/witness.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
@@ -63,7 +64,7 @@ function view(c, patient, full = false) {
     anaesthesia: c.anaesthesia,
     status: c.status,
     progress: progress(c),
-    ...(full ? { checklist: Object.fromEntries(PHASE_ORDER.map((p) => [p, { answers: c.checklist?.[p]?.answers ?? {}, notes: c.checklist?.[p]?.notes ?? {} }])) } : {}),
+    ...(full ? { checklist: Object.fromEntries(PHASE_ORDER.map((p) => [p, { answers: c.checklist?.[p]?.answers ?? {}, notes: c.checklist?.[p]?.notes ?? {}, witness: witnessView(c.checklist?.[p]?.witness) }])) } : {}),
     createdByName: c.createdByName,
     cancelled: c.cancelled ? { reason: c.cancelled.reason, byName: c.cancelled.byName, at: c.cancelled.at } : null,
   };
@@ -132,6 +133,8 @@ const answersFor = (phase) =>
     .object({
       answers: z.object(Object.fromEntries(PHASES[phase].items.map((i) => [i.key, z.enum(['', 'yes', 'no', 'na']).default('')]))).strict().default({}),
       notes: z.object(Object.fromEntries(PHASES[phase].items.map((i) => [i.key, safeText('Note', 300).default('')]))).strict().default({}),
+      // Sign out: the second person who checked the counts types their own email and password (never stored)
+      ...(phase === 'signOut' ? { witness: witnessSchema.optional() } : {}),
     })
     .strict();
 const phaseParam = (req) => {
@@ -164,7 +167,9 @@ theatreRouter.post('/:id/checklist/:phase/confirm', async (req, res) => {
   if (before) throw conflict(`Confirm ${PHASES[before].label.split(' – ')[0].toLowerCase()} first.`);
   const missing = missingInPhase(phase, body.answers, body.notes);
   if (Object.keys(missing).length) throw invalid(missing, 'Answer the highlighted items before confirming.');
-  c.checklist[phase] = { answers: body.answers, notes: body.notes, confirmed: { by: req.user._id, byName: req.user.name, role: roleWord(req), at: req.now ?? new Date() } };
+  // The counts are checked by two people: the one confirming and a second who signs in for it (PX-X-06)
+  const witness = phase === 'signOut' ? await verifyWitness(req, body.witness, { purpose: 'theatre_counts' }) : null;
+  c.checklist[phase] = { answers: body.answers, notes: body.notes, confirmed: { by: req.user._id, byName: req.user.name, role: roleWord(req), at: req.now ?? new Date() }, witness };
   c.markModified(`checklist.${phase}`);
   if (phase === 'signIn') c.status = 'in_theatre';
   if (phase === 'signOut') c.status = 'done';

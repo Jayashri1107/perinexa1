@@ -6,6 +6,7 @@ import { DataTable, SearchInput, usePagedRows } from '../../components/DataTable
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
+import { WitnessFields, emptyWitness } from '../../components/WitnessFields.jsx';
 import { CONTROLLED, MOVE_LABELS, expiryLabel, medicineLabel } from './pharmacyFormat.js';
 import { BarcodeBox, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
@@ -249,10 +250,10 @@ function WriteOffDialog({ batch, onClose, onDone }) {
 function CountDialog({ batch, controlled, onClose, onDone }) {
   const [counted, setCounted] = useState('');
   const [reason, setReason] = useState('');
-  const [witness, setWitness] = useState('');
+  const [witness, setWitness] = useState(emptyWitness);
   const s = useSend(onDone);
   const n = Number(counted);
-  const ok = counted !== '' && Number.isInteger(n) && n >= 0 && n !== batch.qtyLeft && reason.trim().length >= 3 && (!controlled || witness.trim().length >= 2);
+  const ok = counted !== '' && Number.isInteger(n) && n >= 0 && n !== batch.qtyLeft && reason.trim().length >= 3 && (!controlled || (witness.email.trim().length >= 3 && witness.password.length >= 1));
   return (
     <Modal id="ph-count" title={`Stock count – batch ${batch.batch}`} onClose={onClose}>
       <p>Perinexa shows {batch.qtyLeft}. Enter what was counted on the shelf.</p>
@@ -264,14 +265,10 @@ function CountDialog({ batch, controlled, onClose, onDone }) {
         <Field label="Reason for the difference" id="ph-count-reason">
           <input id="ph-count-reason" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
         </Field>
-        {controlled && (
-          <Field label="Witness (staff who checked)" id="ph-count-witness" error={s.fields.witness}>
-            <input id="ph-count-witness" value={witness} maxLength={150} onChange={(e) => setWitness(e.target.value)} />
-          </Field>
-        )}
       </div>
+      {controlled && <WitnessFields id="ph-count-wit" value={witness} onChange={setWitness} errors={s.fields} what="The count of a narcotic or Schedule X medicine" />}
       <div className="row">
-        <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => s.send(`/pharmacy/batches/${batch.id}/count`, { counted: n, reason: reason.trim(), witness: witness.trim() })}>
+        <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => s.send(`/pharmacy/batches/${batch.id}/count`, { counted: n, reason: reason.trim(), witness: controlled ? witness : '' })}>
           <ClipboardCheck aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save the count'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>

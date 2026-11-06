@@ -5,6 +5,7 @@ import { nextNumber } from '../models/Counter.js';
 import { hasRole } from '../models/Membership.js';
 import { BilirubinReading, NewbornBirthCare, NewbornExam, NicuAdmission } from '../models/NewbornCare.js';
 import { Patient } from '../models/Patient.js';
+import { verifyWitness, witnessSchema, witnessView } from '../auth/witness.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
@@ -82,7 +83,7 @@ newbornCareRouter.get('/', async (req, res) => {
   await audit(req, 'NEWBORN_CARE_VIEWED', { details: ids(baby) });
   res.json({
     birthAt: baby.newborn?.birthAt ?? null,
-    birth: births.map((b) => ({ id: String(b._id), criedAtBirth: b.criedAtBirth, resuscitation: b.resuscitation, cordClamping: b.cordClamping, checks: b.checks, temperatureC: b.temperatureC, note: b.note, byName: b.byName, at: b.createdAt, cancelled: cancelView(b.cancelled) })),
+    birth: births.map((b) => ({ id: String(b._id), criedAtBirth: b.criedAtBirth, resuscitation: b.resuscitation, cordClamping: b.cordClamping, checks: b.checks, temperatureC: b.temperatureC, note: b.note, idBandWitness: witnessView(b.idBandWitness), byName: b.byName, at: b.createdAt, cancelled: cancelView(b.cancelled) })),
     exams: exams.map((e) => ({ id: String(e._id), examinedAt: e.examinedAt, weightGrams: e.weightGrams, findings: e.findings, notes: e.notes, ready: e.ready, summary: e.summary, byName: e.byName, cancelled: cancelView(e.cancelled) })),
     bilirubin: bili.map((r) => ({ id: String(r._id), at: r.at, hours: hoursOfAge(baby, r.at), mgdl: r.mgdl, method: r.method, note: r.note, byName: r.byName, cancelled: cancelView(r.cancelled) })),
     nicu: nicu.map((n) => nicuView(n, baby)),
@@ -94,14 +95,18 @@ newbornCareRouter.get('/', async (req, res) => {
 const answers = (items, allowed) => z.object(Object.fromEntries(items.map((i) => [i.key, z.enum(['', ...allowed]).default('')]))).strict().default({});
 newbornCareRouter.post('/birth', async (req, res) => {
   const b = parse(
-    z.object({ patientId: objectId, criedAtBirth: z.enum(['yes', 'no'], 'Did the baby cry at birth?'), resuscitation: z.enum(Object.keys(RESUSCITATION), 'Choose the resuscitation'), cordClamping: z.enum(Object.keys(CORD_CLAMPING), 'Choose the cord clamping'), checks: answers(BIRTH_CHECKS, ['yes', 'no', 'na']), temperatureC: num('Temperature', 30, 42), note: text('Note', 1000) }).strict(),
+    z.object({ patientId: objectId, criedAtBirth: z.enum(['yes', 'no'], 'Did the baby cry at birth?'), resuscitation: z.enum(Object.keys(RESUSCITATION), 'Choose the resuscitation'), cordClamping: z.enum(Object.keys(CORD_CLAMPING), 'Choose the cord clamping'), checks: answers(BIRTH_CHECKS, ['yes', 'no', 'na']), temperatureC: num('Temperature', 30, 42), note: text('Note', 1000), witness: witnessSchema.optional() }).strict(),
     req.body,
   );
   const baby = await babyFor(req, b.patientId, true);
   const bad = BIRTH_CHECKS.find((c) => !b.checks[c.key] || (b.checks[c.key] === 'na' && !c.na));
   if (bad) throw invalid({ [`checks.${bad.key}`]: b.checks[bad.key] ? 'Answer yes or no' : 'Answer this' });
   if (Object.values(b.checks).includes('no') && !b.note) throw invalid({ note: 'Write why a step was not done' });
-  const doc = await NewbornBirthCare.create({ ...b, tenantId: req.tenantId, patientId: baby._id, by: req.user._id, byName: req.user.name }).catch((e) => {
+  if (await NewbornBirthCare.findOne({ tenantId: req.tenantId, patientId: baby._id, live: true }, { _id: 1 }).lean()) throw conflict('The record at birth is already written. Mark it entered in error to write it again.');
+  // The identity band is checked by two people (PX-X-06): a second person signs in for it
+  const idBandWitness = b.checks.idBand === 'yes' ? await verifyWitness(req, b.witness, { purpose: 'identity_band' }) : null;
+  const { witness: _w, ...fields } = b;
+  const doc = await NewbornBirthCare.create({ ...fields, idBandWitness, tenantId: req.tenantId, patientId: baby._id, by: req.user._id, byName: req.user.name }).catch((e) => {
     if (e?.code === 11000) throw conflict('The record at birth is already written. Mark it entered in error to write it again.');
     throw e;
   });

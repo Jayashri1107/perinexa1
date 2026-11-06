@@ -123,3 +123,16 @@ and NEO-L-05. **Owner's approval before `main`.**
 - CCHD helper in the screening log: right-hand and foot SpO2 → pass, repeat or refer.
 - Two newborn dashboard rows added now that their fields exist: NICU / SNCU admissions; deaths in the unit (hidden
   from the hospital admin). Identity bands checked by two people wait for the base rules (Group C).
+
+## Group C – the second-person check (PX-X-06, 6 Nov 2026)
+`server/src/auth/witness.js`. A step that needs two people is confirmed by a SECOND member of staff who types their own
+email and password on the same screen: someone else, active, a member of this hospital as a doctor, RMO or nurse; the
+same 3-tries / 2-minute lock as sign-in on their email; the password is never stored or audited – only who, role, when.
+Audit: WITNESS_CONFIRMED (purpose), WITNESS_FAILED (a security event). Branch `crs-c-witness`.
+- Theatre sign out: the instrument, swab and needle counts (PX-OT-02).
+- Newborn at birth: the identity band (PX-NEO-17, part).
+- Nursing chart: a medicine ticked high-alert or controlled, or listed high-alert in the formulary, and any amount
+  discarded – narcotic wastage in the labour room and on the ward (PX-OT-07, part).
+- Pharmacy (Schedule X and narcotic medicines): a stock count, a supplier return and cancelling a return – the second
+  person (pharmacist, doctor, RMO or nurse) signs in; the register shows "Name (Role)". Older rows keep the typed name.
+  Test: Pharmacy → Stock → a narcotic batch → Count; Pharmacy → Supplier returns with a narcotic batch.

@@ -2962,6 +2962,18 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
    greyed. Reception and the hospital admin have no MEOWS chart.
 
+## How to test the second-person check – Group C (fake data only)
+You need two fake staff logins (for example a nurse and a doctor).
+1. As the nurse: an admitted mother's stay → **Nursing chart** → **Medicine given** → tick **High-alert or controlled
+   medicine** (or fill **Amount discarded**): a **Second person** box appears. Save with your own email there: refused
+   ("must be someone else"). The doctor types their email and password → saved; the entry says "Checked by … (Doctor)".
+2. **Theatre** → a case → sign in, time out → **Sign out**: refused without the second person; with the doctor's
+   sign-in it is confirmed and shows "Counts checked by …".
+3. A baby's **Newborn care** → **At birth** with **Identity band = Yes**: the Second person box; the record shows who
+   checked the band.
+4. Three wrong passwords for the second person lock that email for 2 minutes, as at sign-in. The audit log shows
+   "Second person confirmed a check" and "Second-person check failed" – never a password.
+
 ## How to test Group B items 9, 10, 12 and 13 – DRAFT (fake data only)
 1. **Pre-anaesthesia check-up:** a made-up patient → **Anaesthesia** tab (as a doctor or RMO) → ASA, Mallampati, plan,
    fitness **Fit, with conditions** → **Sign the check-up**: refused until the conditions and "risks explained" are

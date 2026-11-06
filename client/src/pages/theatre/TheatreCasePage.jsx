@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
+import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { ShowChoice } from '../quality/SimpleTable.jsx';
 import { ChecklistProgress, STATUS_LOOK } from './TheatreListPage.jsx';
 import { FITNESS_LOOK } from '../anaesthesia/PacTab.jsx';
@@ -28,6 +29,7 @@ function Phase({ c, phase, canWrite, onSaved }) {
   const [fields, setFields] = useState({});
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [witness, setWitness] = useState(emptyWitness);
   useEffect(() => {
     setAnswers(c.checklist[phase].answers);
     setNotes(c.checklist[phase].notes);
@@ -37,7 +39,8 @@ function Phase({ c, phase, canWrite, onSaved }) {
   const call = async (path, method, okText) => {
     setBusy(true);
     try {
-      await api(path, { method, body: body() });
+      await api(path, { method, body: { ...body(), ...(phase === 'signOut' && method === 'POST' ? { witness } : {}) } });
+      setWitness(emptyWitness());
       setFields({});
       setMessage({ type: 'success', text: okText });
       onSaved();
@@ -82,7 +85,9 @@ function Phase({ c, phase, canWrite, onSaved }) {
           );
         })}
       </div>
-      {phase === 'signOut' && <p className="hint">The counts are recorded by one person for now; a second person checking them comes with the base rules. Wrong counts: also report an incident.</p>}
+      {phase === 'signOut' && editable && <WitnessFields id="th-wit" value={witness} onChange={setWitness} errors={fields} what="The instrument, swab and needle count" />}
+      {phase === 'signOut' && c.checklist.signOut.witness && <p>{`Counts ${witnessWords(c.checklist.signOut.witness, formatDateTime).replace(/^Checked/, 'checked')}`}</p>}
+      {phase === 'signOut' && <p className="hint">Wrong counts: also report an incident.</p>}
       {editable && (
         <div className="row">
           <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => call(`/theatre/${c.id}/checklist/${phase}`, 'PUT', 'Saved.')}>

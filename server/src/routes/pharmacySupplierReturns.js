@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { pharmacyWitnessField, pharmacyWitnessName } from '../auth/witness.js';
 import { z } from 'zod';
 import { SupplierReturn } from '../models/Pharmacy.js';
 import { desk, idParam, notFound, qty, reason, settingsOf } from '../pharmacy/pharmacyHttp.js';
@@ -21,7 +22,7 @@ const returnSchema = z
     supplierId: objectId,
     reason: z.enum(SUPPLIER_RETURN_REASONS, 'Choose the reason.'),
     note: z.string().trim().max(200).default(''),
-    witness: z.string().trim().max(150).transform(capitalizeName).default(''),
+    witness: pharmacyWitnessField, // a controlled medicine: the second person signs in (PX-X-06)
     lines: z.array(z.object({ batchId: objectId, qty }).strict()).min(1, 'Choose at least one batch.').max(100),
   })
   .strict();
@@ -43,6 +44,7 @@ pharmacySupplierReturnsRouter.get('/batches', async (req, res) => {
 pharmacySupplierReturnsRouter.post('/', async (req, res) => {
   desk(req);
   const body = parse(returnSchema, req.body);
+  body.witness = await pharmacyWitnessName(req, body.witness || null, 'pharmacy_return');
   const ret = await createSupplierReturn(req, body);
   const t = returnTotals(ret);
   await audit(req, 'PHARMACY_SUPPLIER_RETURNED', {
@@ -66,7 +68,8 @@ pharmacySupplierReturnsRouter.get('/:id', async (req, res) => {
 // A return entered by mistake: kept, marked cancelled, and its stock put back on its batches (the pharmacist).
 pharmacySupplierReturnsRouter.post('/:id/cancel', async (req, res) => {
   desk(req);
-  const body = parse(z.object({ reason: reason('Cancelling a return'), witness: z.string().trim().max(150).transform(capitalizeName).default('') }).strict(), req.body);
+  const body = parse(z.object({ reason: reason('Cancelling a return'), witness: pharmacyWitnessField }).strict(), req.body);
+  body.witness = await pharmacyWitnessName(req, body.witness || null, 'pharmacy_return_cancelled');
   const ret = await cancelSupplierReturn(req, await loadReturn(req), body);
   const t = returnTotals(ret);
   await audit(req, 'PHARMACY_SUPPLIER_RETURN_CANCELLED', { details: { returnId: String(ret._id), number: ret.number, supplierId: String(ret.supplierId), lines: ret.lines.length, qty: t.qty, amountPaise: t.amountPaise, controlled: ret.lines.some((l) => CONTROLLED.includes(l.schedule)) } });

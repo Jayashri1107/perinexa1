@@ -16,7 +16,7 @@ import { gstinCheckChar, gstinProblem, gstinState, isGstin } from '../src/pharma
 import { applyPurchase, countPurchaseOnOrder, statusFromLines, suggestedOrderQty, updateOrder } from '../src/pharmacy/ordersService.js';
 import { cleanBarcode } from '../src/pharmacy/pharmacyRules.js';
 import { isInterState } from '../src/pharmacy/supplierReturnsService.js';
-import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
+import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-09-28T06:00:00Z'); // Monday 28 Sep 2026, 11:30 in the hospital
 const ROLES = { drA: 'doctor', nurse: 'nurse', reception: 'receptionist', pharm: 'pharmacist', admin: 'admin' };
@@ -513,10 +513,10 @@ describe('returns to a supplier', () => {
 
     const noWitness = await ph('post', '/supplier-returns', { supplierId: sup.id, reason: 'recalled', lines: [{ batchId: narcotic.id, qty: 4 }] });
     expect(noWitness.status).toBe(400);
-    expect(noWitness.body.error).toMatchObject({ message: expect.stringMatching(/controlled medicine/), fields: { witness: expect.any(String) } });
+    expect(noWitness.body.error).toMatchObject({ message: expect.stringMatching(/controlled medicine/), fields: { 'witness.email': expect.any(String) } });
     expect(await StockMove.countDocuments({ tenantId: hospital._id, kind: 'supplier_return' })).toBe(0); // nothing left the stock
-    const ret = ok(await ph('post', '/supplier-returns', { supplierId: sup.id, reason: 'recalled', witness: 'Sister Sample', lines: [{ batchId: narcotic.id, qty: 4 }, { batchId: offer.find((x) => x.name === 'H1 Return Tab').id, qty: 5 }] }), 201).return;
-    expect(ret).toMatchObject({ controlled: true, witness: 'Sister Sample' });
+    const ret = ok(await ph('post', '/supplier-returns', { supplierId: sup.id, reason: 'recalled', witness: { email: people.nurse.email, password: PASSWORD }, lines: [{ batchId: narcotic.id, qty: 4 }, { batchId: offer.find((x) => x.name === 'H1 Return Tab').id, qty: 5 }] }), 201).return;
+    expect(ret).toMatchObject({ controlled: true, witness: 'Sample nurse (Nurse)' });
 
     const reg = ok(await ph('get', '/reports/register?type=narcotic&from=2026-09-01&to=2026-09-30'));
     expect(reg.pages[0]).toMatchObject({ opening: 0, closing: 6 });
@@ -524,14 +524,14 @@ describe('returns to a supplier', () => {
       ['purchase', 10, 0, 10],
       ['supplier_return', 0, 4, 6],
     ]);
-    expect(reg.pages[0].rows[1]).toMatchObject({ ref: 'SR-000001', supplier: 'Sample Distributors', reason: 'Recalled', witness: 'Sister Sample', patient: '' });
+    expect(reg.pages[0].rows[1]).toMatchObject({ ref: 'SR-000001', supplier: 'Sample Distributors', reason: 'Recalled', witness: 'Sample nurse (Nurse)', patient: '' });
     const h1reg = ok(await ph('get', '/reports/register?type=H1&from=2026-09-01&to=2026-09-30'));
     expect(h1reg.pages[0].rows.map((r) => [r.kind, r.out, r.balance])).toEqual([
       ['sale', 10, 20],
       ['supplier_return', 5, 15],
     ]);
     expect((await audits('PHARMACY_SUPPLIER_RETURNED'))[0]).toMatchObject({ controlled: true, qty: 9 });
-    expect(JSON.stringify(await audits('PHARMACY_SUPPLIER_RETURNED'))).not.toMatch(/Sister Sample/);
+    expect(JSON.stringify(await audits('PHARMACY_SUPPLIER_RETURNED'))).not.toMatch(/Sample nurse/);
   });
 
   it('a return entered by mistake is cancelled: the stock goes back, the registers show it, the reports leave it out', async () => {
@@ -580,18 +580,18 @@ describe('returns to a supplier', () => {
     expect(rows[1]).toMatch(/SR-000001,.*,472\.50,Cancelled$/);
 
     // A narcotic that comes back into stock needs a witness, as the return did; both are in its register with the balance
-    const back = ok(await ph('post', '/supplier-returns', { supplierId: sup.id, reason: 'recalled', witness: 'Sister Sample', lines: [{ batchId: batch('Morphine 10 mg/ml').id, qty: 4 }] }), 201).return;
+    const back = ok(await ph('post', '/supplier-returns', { supplierId: sup.id, reason: 'recalled', witness: { email: people.nurse.email, password: PASSWORD }, lines: [{ batchId: batch('Morphine 10 mg/ml').id, qty: 4 }] }), 201).return;
     const noWitness = await cancel(back.id, { reason: 'Wrong batch chosen' });
     expect(noWitness.status).toBe(400);
-    expect(noWitness.body.error).toMatchObject({ message: expect.stringMatching(/controlled medicine/), fields: { witness: expect.any(String) } });
+    expect(noWitness.body.error).toMatchObject({ message: expect.stringMatching(/controlled medicine/), fields: { 'witness.email': expect.any(String) } });
     expect(await stockOf(n)).toBe(6);
-    expect(ok(await cancel(back.id, { reason: 'Wrong batch chosen', witness: 'Sister Second' })).return.cancelled).toMatchObject({ witness: 'Sister Second' });
+    expect(ok(await cancel(back.id, { reason: 'Wrong batch chosen', witness: { email: people.drA.email, password: PASSWORD } })).return.cancelled).toMatchObject({ witness: 'Sample drA (Doctor)' });
     const reg = ok(await ph('get', '/reports/register?type=narcotic&from=2026-09-01&to=2026-09-30'));
     expect(reg.pages[0]).toMatchObject({ opening: 0, closing: 10 });
     expect(reg.pages[0].rows.map((r) => [r.kind, r.in, r.out, r.balance, r.witness])).toEqual([
       ['purchase', 10, 0, 10, ''],
-      ['supplier_return', 0, 4, 6, 'Sister Sample'],
-      ['supplier_return_cancelled', 4, 0, 10, 'Sister Second'],
+      ['supplier_return', 0, 4, 6, 'Sample nurse (Nurse)'],
+      ['supplier_return_cancelled', 4, 0, 10, 'Sample drA (Doctor)'],
     ]);
     expect(reg.pages[0].rows[2]).toMatchObject({ ref: 'SR-000002', supplier: 'Sample Distributors', reason: 'Return cancelled – Wrong batch chosen' });
 
@@ -603,7 +603,7 @@ describe('returns to a supplier', () => {
       { returnId: ret.id, number: 'SR-000001', supplierId: sup.id, lines: 1, qty: 90, amountPaise: 47250, controlled: false },
       { returnId: back.id, number: 'SR-000002', supplierId: sup.id, lines: 1, qty: 4, amountPaise: expect.any(Number), controlled: true },
     ]);
-    expect(JSON.stringify(await AuditLog.find({ action: 'PHARMACY_SUPPLIER_RETURN_CANCELLED' }).lean())).not.toMatch(/Typed 90|Wrong batch|Sister/);
+    expect(JSON.stringify(await AuditLog.find({ action: 'PHARMACY_SUPPLIER_RETURN_CANCELLED' }).lean())).not.toMatch(/Typed 90|Wrong batch|Sample drA/);
   });
 
   it('a return is all or nothing: when a batch runs out between the check and the move, what was taken goes back', async () => {

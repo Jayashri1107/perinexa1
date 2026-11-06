@@ -7,6 +7,7 @@ import { WeightInput } from '../../components/WeightInput.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
+import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { ShowChoice } from '../quality/SimpleTable.jsx';
 import { BILI_METHODS, BIRTH_CHECKS, CORD_CLAMPING, DISCHARGE_READY, EXAM_ITEMS, NEWBORN_CARE_SOURCE, NICU_OUTCOMES, NICU_REASONS, NICU_SOURCES, NICU_UNITS, RESUSCITATION } from './newbornCareRules.js';
 
@@ -68,6 +69,7 @@ function Notice({ result, setResult }) {
 function BirthSection({ patientId, data, reload }) {
   const live = data.birth.find((b) => !b.cancelled);
   const [f, setF] = useState({ criedAtBirth: '', resuscitation: '', cordClamping: '', checks: {}, temperatureC: '', note: '' });
+  const [witness, setWitness] = useState(emptyWitness);
   const { result, setResult, save } = useSaver(reload);
   const fe = (k) => result?.error?.fields?.[k];
   return (
@@ -104,6 +106,12 @@ function BirthSection({ patientId, data, reload }) {
               <dd>{live.note}</dd>
             </div>
           )}
+          {live.idBandWitness && (
+            <div>
+              <dt>Identity band</dt>
+              <dd>{witnessWords(live.idBandWitness, formatDateTime)}</dd>
+            </div>
+          )}
           <div>
             <dt>Written by</dt>
             <dd>{`${live.byName}, ${formatDateTime(live.at)}`}</dd>
@@ -114,7 +122,7 @@ function BirthSection({ patientId, data, reload }) {
           className="stack"
           onSubmit={(e) => {
             e.preventDefault();
-            save('/newborn-care/birth', { ...f, patientId }, 'Record at birth saved.');
+            save('/newborn-care/birth', { ...f, patientId, ...(f.checks.idBand === 'yes' ? { witness } : {}) }, 'Record at birth saved.');
           }}
         >
           <div className="form-grid">
@@ -137,7 +145,7 @@ function BirthSection({ patientId, data, reload }) {
           <Field label="Note (optional; needed if a step was not done)" id="nc-note" error={fe('note')}>
             <input id="nc-note" maxLength={1000} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
           </Field>
-          <p className="hint">The identity band is checked by two people once the base rules come; for now one person records it.</p>
+          {f.checks.idBand === 'yes' && <WitnessFields id="nc-wit" value={witness} onChange={setWitness} errors={result?.error?.fields ?? {}} what="The identity band" />}
           <div className="row">
             <button type="submit" className="btn btn-secondary">
               Save the record at birth

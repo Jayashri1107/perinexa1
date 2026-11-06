@@ -10,6 +10,7 @@
 // never changed.
 
 import { z } from 'zod';
+import { witnessSchema } from '../auth/witness.js';
 import { safeText } from '../utils/pcpndt.js';
 import { visitSchemas } from '../visits/visitSchemas.js';
 import { CS_CATEGORIES } from '../clinical/caesarean.js';
@@ -285,6 +286,10 @@ export function nursingSchema({ pcpndt = true } = {}) {
         .default({}),
       note: t('Note', 1000),
       escalatedTo: t('Told whom', 100),
+      // A high-alert or controlled medicine, or an amount discarded (narcotic wastage): a second person checks it (PX-X-06)
+      highAlert: z.boolean().default(false),
+      discarded: t('Amount discarded', 60),
+      witness: witnessSchema.optional(),
     })
     .strict()
     .superRefine((e, ctx) => {

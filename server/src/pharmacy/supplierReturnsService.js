@@ -139,7 +139,7 @@ export async function createSupplierReturn(req, body) {
   const controlled = body.lines.map((l) => meds.get(String(batches.get(String(l.batchId)).medicineId))).filter((m) => CONTROLLED.includes(m.schedule));
   const witness = (body.witness ?? '').trim();
   if (controlled.length && witness.length < 2) {
-    throw bad(`${controlled[0].name} is a controlled medicine: write the name of the staff member who saw it handed back.`, { witness: 'Write the witness’s name.' });
+    throw bad(`${controlled[0].name} is a controlled medicine: a second person who saw it handed back signs in for it.`, { 'witness.email': 'A second person (pharmacist, doctor, RMO or nurse) types their email and password.' });
   }
 
   const facts = await purchaseFacts(tenantId, [...batches.values()]);
@@ -181,7 +181,7 @@ export async function cancelSupplierReturn(req, ret, { reason, witness = '' }) {
   const controlled = ret.lines.find((l) => CONTROLLED.includes(l.schedule));
   const seenBy = String(witness ?? '').trim();
   if (controlled && seenBy.length < 2) {
-    throw bad(`${controlled.name} is a controlled medicine: write the name of the staff member who saw it put back in stock.`, { witness: 'Write the witness’s name.' });
+    throw bad(`${controlled.name} is a controlled medicine: a second person who saw it put back in stock signs in for it.`, { 'witness.email': 'A second person (pharmacist, doctor, RMO or nurse) types their email and password.' });
   }
   const batches = new Map((await StockBatch.find({ tenantId, _id: { $in: ret.lines.map((l) => l.batchId) } }).lean()).map((b) => [String(b._id), b]));
   const lost = ret.lines.find((l) => !batches.has(String(l.batchId)));
