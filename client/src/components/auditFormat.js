@@ -32,6 +32,9 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  CLINICAL_SCORES_VIEWED: 'EPDS and VTE scores opened',
+  CLINICAL_SCORE_ADDED: 'EPDS or VTE score added',
+  CLINICAL_SCORE_CANCELLED: 'EPDS or VTE score marked entered in error',
   NEWBORN_FOLLOW_UP_LISTED: 'Newborn follow-up list opened',
   NEWBORN_FOLLOW_UP_VIEWED: "Baby's screening log opened",
   NEWBORN_FOLLOW_UP_UPDATED: "Baby's gestation or high-risk reasons changed",
@@ -403,6 +406,9 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  CLINICAL_SCORES_VIEWED: 'patient',
+  CLINICAL_SCORE_ADDED: 'patient',
+  CLINICAL_SCORE_CANCELLED: 'info',
   NEWBORN_FOLLOW_UP_LISTED: 'patient',
   NEWBORN_FOLLOW_UP_VIEWED: 'patient',
   NEWBORN_FOLLOW_UP_UPDATED: 'patient',

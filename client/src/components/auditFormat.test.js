@@ -417,6 +417,9 @@ const FILTER_ACTIONS = [
   'NEWBORN_FOLLOW_UP_VIEWED',
   'NEWBORN_FOLLOW_UP_UPDATED',
   'NEWBORN_SCREEN_RECORDED',
+  'CLINICAL_SCORES_VIEWED',
+  'CLINICAL_SCORE_ADDED',
+  'CLINICAL_SCORE_CANCELLED',
 ];
 
 describe('every event in the audit log has a plain name', () => {

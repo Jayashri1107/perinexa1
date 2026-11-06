@@ -70,6 +70,7 @@ import { analyticsRouter } from './routes/analytics.js';
 import { clinicalAuditRouter } from './routes/clinicalAudit.js';
 import { specimensRouter } from './routes/specimens.js';
 import { newbornFollowUpRouter } from './routes/newbornFollowUp.js';
+import { clinicalScoresRouter } from './routes/clinicalScores.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -314,6 +315,7 @@ export function createApp({
   app.use('/api/clinical-audit', ...inTenant, clinicalAuditRouter);
   app.use('/api/specimens', ...inTenant, specimensRouter);
   app.use('/api/newborn-follow-up', ...inTenant, newbornFollowUpRouter);
+  app.use('/api/clinical-scores', ...inTenant, clinicalScoresRouter);
 
   app.use('/api', notFound);
 

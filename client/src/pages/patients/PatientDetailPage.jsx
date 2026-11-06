@@ -408,6 +408,8 @@ export function PatientDetailPage() {
     ...(referralsTab ? [{ label: 'Referrals', to: `${base}/referrals`, end: true }] : []),
     // Clinical Requirements Group A: her specimens sent for histopathology (doctors, RMOs and nurses)
     ...(a.canViewVisits && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Specimens', to: `${base}/specimens`, end: true }] : []),
+    // EPDS and VTE risk scores in pregnancy and after delivery (Group A item 5)
+    ...(a.canViewVisits && ['antenatal', 'postnatal', 'abortion'].includes(patient.careType) && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Scores', to: `${base}/scores`, end: true }] : []),
     // A baby's screening log and follow-up clinic (Group A item 4)
     ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Screening', to: `${base}/screening`, end: true }] : []),
   ];
