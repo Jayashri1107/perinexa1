@@ -412,6 +412,8 @@ export function PatientDetailPage() {
     ...(a.canViewVisits && patient.careType !== 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Anaesthesia', to: `${base}/anaesthesia`, end: true }] : []),
     // EPDS and VTE risk scores in pregnancy and after delivery (Group A item 5)
     ...(a.canViewVisits && ['antenatal', 'postnatal', 'abortion'].includes(patient.careType) && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Scores', to: `${base}/scores`, end: true }] : []),
+    // A baby's care at birth and on the ward, bilirubin and NICU / SNCU admissions (Group B items 12 and 13)
+    ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Newborn care', to: `${base}/newborn-care`, end: true }] : []),
     // A baby's screening log and follow-up clinic (Group A item 4)
     ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Screening', to: `${base}/screening`, end: true }] : []),
   ];

@@ -281,6 +281,10 @@ const loadCrs5 = () => import('./pages/scores/PatientScoresTab.jsx');
 const PatientScoresTab = screen(loadCrs5, 'PatientScoresTab');
 const loadCrs9 = () => import('./pages/anaesthesia/PacTab.jsx');
 const PacTab = screen(loadCrs9, 'PacTab');
+const loadCrs12 = () => import('./pages/newborn/NewbornCareTab.jsx');
+const NewbornCareTab = screen(loadCrs12, 'NewbornCareTab');
+const loadCrs13 = () => import('./pages/newborn/NicuRegisterPage.jsx');
+const NicuRegisterPage = screen(loadCrs13, 'NicuRegisterPage');
 const loadCrs6 = () => import('./pages/incidents/IncidentsPage.jsx');
 const IncidentsPage = screen(loadCrs6, 'IncidentsPage');
 const IncidentPage = screen(loadCrs6, 'IncidentPage');
@@ -455,6 +459,7 @@ export function App() {
                   <Route path="screening" element={<PatientScreeningTab />} />
                   <Route path="scores" element={<PatientScoresTab />} />
                   <Route path="anaesthesia" element={<PacTab />} />
+                  <Route path="newborn-care" element={<NewbornCareTab />} />
                   <Route path="lab/:orderId" element={<LabOrderPage />} />
                   <Route path="edit" element={<PatientEditTab />} />
                 </Route>
@@ -482,6 +487,9 @@ export function App() {
                 <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="Sonography is for doctors, RMOs and sonography staff." />}>
                   <Route index element={<ImagingWorklistPage />} />
                   <Route path=":id" element={<ImagingStudyPage />} />
+                </Route>
+                <Route path="nicu-register" element={<RequireTenantRole roles={THEATRE_ROLES} message="The NICU register is for doctors, RMOs and nurses." />}>
+                  <Route index element={<NicuRegisterPage />} />
                 </Route>
                 <Route path="theatre" element={<RequireTenantRole roles={THEATRE_ROLES} message="The theatre list is for doctors, RMOs and nurses." />}>
                   <Route index element={<TheatreListPage />} />

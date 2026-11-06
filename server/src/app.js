@@ -79,6 +79,7 @@ import { dischargeChecklistRouter } from './routes/dischargeChecklist.js';
 import { theatreRouter } from './routes/theatre.js';
 import { dashboardsRouter } from './routes/dashboards.js';
 import { anaesthesiaRouter } from './routes/anaesthesia.js';
+import { newbornCareRouter } from './routes/newbornCare.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -338,6 +339,8 @@ export function createApp({
   app.use('/api/dashboards', ...inTenant, dashboardsRouter);
   // Clinical Requirements Group B, items 9 and 10: pre-anaesthesia check-up and pain chart (DRAFT)
   app.use('/api/anaesthesia', ...inTenant, anaesthesiaRouter);
+  // Clinical Requirements Group B, items 12 and 13: newborn at birth and on the ward, bilirubin, NICU admission and register (DRAFT)
+  app.use('/api/newborn-care', ...inTenant, newbornCareRouter);
 
   app.use('/api', notFound);
 

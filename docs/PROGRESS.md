@@ -2962,6 +2962,19 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
    greyed. Reception and the hospital admin have no MEOWS chart.
 
+## How to test Group B items 9, 10, 12 and 13 – DRAFT (fake data only)
+1. **Pre-anaesthesia check-up:** a made-up patient → **Anaesthesia** tab (as a doctor or RMO) → ASA, Mallampati, plan,
+   fitness **Fit, with conditions** → **Sign the check-up**: refused until the conditions and "risks explained" are
+   filled. Put her on the **Theatre** list: the case shows "Pre-anaesthesia check-up …: Fit, with conditions · ASA …".
+2. **Pain chart:** her stay page → **Pain chart** → score 8 without "What was done": refused; POSS 3 asks "Whom you
+   told". Saved scores show "8 · Severe pain".
+3. **Newborn care:** a made-up baby → **Newborn care** tab → **At birth** (every step Yes/No) → **New examination**
+   (a part "Not normal" needs what was found) → **Bilirubin** two readings: the chart shows them by hours of age.
+4. **NICU:** same tab → **Admit to the NICU or SNCU** (temperature 35.9: "Cold at admission") → as a doctor **Record how
+   it ended**. **Newborn follow-up → NICU register** lists it with the month's totals.
+5. **CCHD helper:** the baby's **Screening** tab → Record pulse oximetry → right hand 97, foot 96 → "Pass" → **Use this
+   result**.
+
 ## How to test the monthly dashboards – Group B item 17, DRAFT (fake data only)
 1. As a doctor (or the quality lead) → **Clinical audit** → **Monthly dashboards**. Choose the month and **Obstetrics**,
    **Newborn**, **Theatre and anaesthesia** or **Safety**. Each row says what it counts and shows "x of y".
