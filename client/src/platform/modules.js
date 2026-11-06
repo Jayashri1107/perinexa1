@@ -4,6 +4,7 @@ import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 import { CLINICAL_AUDIT_ROLES, QUALITY_TABS } from '../pages/quality/qualityFormat.js';
 import { SPECIMEN_ROLES } from '../pages/specimens/specimenFormat.js';
 import { NEWBORN_FOLLOW_UP_ROLES } from '../pages/newborn/newbornFormat.js';
+import { INCIDENT_ROLES } from '../pages/incidents/incidentFormat.js';
 
 // Who gets Analytics, and who may open patient lists from it (one copy, checked against the server's).
 export { ANALYTICS_ROLES, DRILLDOWN_ROLES, EXACT_ROLES } from '../pages/analytics/analyticsRoles.js';
@@ -481,6 +482,8 @@ export const HOSPITAL_SPECIMENS = { key: 'specimens', label: 'Specimens', icon: 
 // Newborn screening and the high-risk follow-up clinic (Group A item 4): doctors, RMOs, nurses and the coordinator
 export { NEWBORN_FOLLOW_UP_ROLES } from '../pages/newborn/newbornFormat.js';
 export const HOSPITAL_NEWBORN_FOLLOW_UP = { key: 'newborn-follow-up', label: 'Newborn follow-up', icon: CalendarClock, to: '/newborn-follow-up', tabs: [{ label: 'Newborn follow-up', to: '/newborn-follow-up', end: false }] };
+// Incident reporting (Group A item 6): everyone reports; the quality lead reviews and closes
+export const HOSPITAL_INCIDENTS = { key: 'incidents', label: 'Incidents', icon: Siren, to: '/incidents', tabs: [{ label: 'Incidents', to: '/incidents', end: false }] };
 export const HOSPITAL_CLINICAL_AUDIT = { key: 'clinical-audit', label: 'Clinical audit', icon: ListChecks, to: '/clinical-audit', tabs: QUALITY_TABS };
 
 // Menu for someone working in a hospital, based on ALL their roles there.
@@ -507,6 +510,7 @@ export function hospitalModules(roles = []) {
   if (any(roles, ANALYTICS_ROLES)) modules.push(HOSPITAL_ANALYTICS); // after Patients and Calendar, or after Today for an admin
   else if (any(roles, CARE_PLAN_ROLES)) modules.push(HOSPITAL_ASK_ONLY);
   if (any(roles, CARE_PLAN_ROLES)) modules.push(HOSPITAL_KNOWLEDGE);
+  if (any(roles, INCIDENT_ROLES)) modules.push(HOSPITAL_INCIDENTS);
   if (roles.includes('admin')) modules.push(HOSPITAL_ADMIN);
   return modules;
 }
@@ -520,6 +524,7 @@ const TAB_BAR_ORDER = {
   receptionist: ['today', 'patients', 'appointments', 'billing'],
   referral_desk: ['today', 'referrals', 'patients', 'appointments'],
   followup_coordinator: ['newborn-follow-up', 'today'],
+  quality: ['incidents', 'clinical-audit', 'today'],
   sonographer: ['today', 'scans', 'patients', 'appointments'],
   lab: ['lab', 'patients', 'today', 'billing'],
   billing: ['today', 'billing', 'patients', 'expenses'],
@@ -581,7 +586,7 @@ export const accountTabs = (memberships = []) => {
 /** Doctors and RMOs (anywhere): their professional details print on prescriptions. */
 export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRESCRIBER_ROLES);
 
-const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_EXPENSES, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_SPECIMENS, HOSPITAL_NEWBORN_FOLLOW_UP, HOSPITAL_CLINICAL_AUDIT, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
+const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_EXPENSES, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_SPECIMENS, HOSPITAL_NEWBORN_FOLLOW_UP, HOSPITAL_CLINICAL_AUDIT, HOSPITAL_INCIDENTS, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.

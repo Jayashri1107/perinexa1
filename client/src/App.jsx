@@ -277,6 +277,9 @@ const NewbornLogPage = screen(loadCrs4, 'NewbornLogPage');
 const PatientScreeningTab = screen(loadCrs4, 'PatientScreeningTab');
 const loadCrs5 = () => import('./pages/scores/PatientScoresTab.jsx');
 const PatientScoresTab = screen(loadCrs5, 'PatientScoresTab');
+const loadCrs6 = () => import('./pages/incidents/IncidentsPage.jsx');
+const IncidentsPage = screen(loadCrs6, 'IncidentsPage');
+const IncidentPage = screen(loadCrs6, 'IncidentPage');
 const load104 = () => import('./pages/analytics/ByDoctorPage.jsx');
 const ByDoctorPage = screen(load104, 'ByDoctorPage');
 const load105 = () => import('./pages/analytics/AnalyticsPage.jsx');
@@ -468,6 +471,10 @@ export function App() {
                 <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="Sonography is for doctors, RMOs and sonography staff." />}>
                   <Route index element={<ImagingWorklistPage />} />
                   <Route path=":id" element={<ImagingStudyPage />} />
+                </Route>
+                <Route path="incidents">
+                  <Route index element={<IncidentsPage />} />
+                  <Route path=":id" element={<IncidentPage />} />
                 </Route>
                 <Route path="newborn-follow-up" element={<RequireTenantRole roles={NEWBORN_FOLLOW_UP_ROLES} message="Newborn follow-up is for doctors, RMOs, nurses and the follow-up coordinator." />}>
                   <Route index element={<NewbornFollowUpPage />} />

@@ -208,7 +208,7 @@ const ADMIN_RIGHT_HELP = {
   details: 'Correct a name or an email',
 };
 const ADMIN_RIGHTS = Object.keys(ADMIN_RIGHT_LABELS);
-const ROLE_WORDS = { doctor: 'Doctor', rmo: 'RMO', nurse: 'Nurse', receptionist: 'Reception', lab: 'Lab', sonographer: 'Sonography', pharmacist: 'Pharmacist', billing: 'Billing', referral_desk: 'Referral desk', followup_coordinator: 'Newborn follow-up' };
+const ROLE_WORDS = { doctor: 'Doctor', rmo: 'RMO', nurse: 'Nurse', receptionist: 'Reception', lab: 'Lab', sonographer: 'Sonography', pharmacist: 'Pharmacist', billing: 'Billing', referral_desk: 'Referral desk', followup_coordinator: 'Newborn follow-up', quality: 'Quality lead' };
 
 /**
  * Admin permissions (22 Oct 2026): what each hospital's admin may do to its staff. One card per hospital, its admins

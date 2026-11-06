@@ -11,6 +11,7 @@ import { Patient } from '../models/Patient.js';
 import { User } from '../models/User.js';
 import { planCtx } from '../careplans/plansService.js';
 import { DOC_KINDS, ONE_PER_ADMISSION, SIGNED_BY, TIME_FIELDS, contentSchema, groupARules, missingToSign, nursingSchema } from '../inpatient/docSchemas.js';
+import { reportLateCategory1 } from '../incidents/autoIncidents.js';
 import { admissionView, documentView, entryView } from '../inpatient/inpatientView.js';
 import { redFlagsForPatient } from '../redflags/redFlagService.js';
 import { audit } from '../utils/audit.js';
@@ -351,6 +352,8 @@ admissionsRouter.post('/:admissionId/documents/:docId/sign', async (req, res) =>
     const deliveredAt = new Date(doc.content.deliveredAt);
     const later = patient.lastDelivery?.at && patient.lastDelivery.at > deliveredAt;
     if (!later) await Patient.updateOne({ _id: patient._id, tenantId: req.tenantId }, { $set: { lastDelivery: { at: deliveredAt, mode: doc.content.mode, documentId: doc._id } } });
+    // A category 1 caesarean delivered more than 30 minutes after the decision: an incident for the quality lead
+    await reportLateCategory1(req, doc);
   }
   const latest = await findAdmission(req, patient, req.params.admissionId);
   res.json({ document: documentView(await findDocument(req, patient, latest, req.params.docId)), admission: admissionView(latest), access: pageAccess(req, a, latest) });

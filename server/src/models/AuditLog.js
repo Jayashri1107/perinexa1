@@ -386,6 +386,13 @@ export const AUDIT_ACTIONS = [
   // never a web page; src/export/hospitalExport.js). No actor (not done by a signed-in person); counts only.
   'HOSPITAL_DATA_EXPORTED',
   // Clinical Requirements Group A (PX-REQ-00)
+  'INCIDENTS_VIEWED',
+  'INCIDENT_REPORTED',
+  'INCIDENT_VIEWED',
+  'INCIDENT_REVIEWED',
+  'INCIDENT_ACTION_ADDED',
+  'INCIDENT_ACTION_DONE',
+  'INCIDENT_CLOSED',
   'CLINICAL_SCORES_VIEWED',
   'CLINICAL_SCORE_ADDED',
   'CLINICAL_SCORE_CANCELLED',

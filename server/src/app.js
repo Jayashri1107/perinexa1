@@ -71,6 +71,7 @@ import { clinicalAuditRouter } from './routes/clinicalAudit.js';
 import { specimensRouter } from './routes/specimens.js';
 import { newbornFollowUpRouter } from './routes/newbornFollowUp.js';
 import { clinicalScoresRouter } from './routes/clinicalScores.js';
+import { incidentsRouter } from './routes/incidents.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -316,6 +317,7 @@ export function createApp({
   app.use('/api/specimens', ...inTenant, specimensRouter);
   app.use('/api/newborn-follow-up', ...inTenant, newbornFollowUpRouter);
   app.use('/api/clinical-scores', ...inTenant, clinicalScoresRouter);
+  app.use('/api/incidents', ...inTenant, incidentsRouter);
 
   app.use('/api', notFound);
 

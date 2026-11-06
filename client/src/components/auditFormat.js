@@ -32,6 +32,13 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  INCIDENTS_VIEWED: 'Incident list opened',
+  INCIDENT_REPORTED: 'Incident reported',
+  INCIDENT_VIEWED: 'Incident opened',
+  INCIDENT_REVIEWED: 'Incident reviewed by the quality lead',
+  INCIDENT_ACTION_ADDED: 'Incident action added',
+  INCIDENT_ACTION_DONE: 'Incident action done',
+  INCIDENT_CLOSED: 'Incident closed',
   CLINICAL_SCORES_VIEWED: 'EPDS and VTE scores opened',
   CLINICAL_SCORE_ADDED: 'EPDS or VTE score added',
   CLINICAL_SCORE_CANCELLED: 'EPDS or VTE score marked entered in error',
@@ -406,6 +413,13 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  INCIDENTS_VIEWED: 'info',
+  INCIDENT_REPORTED: 'warn',
+  INCIDENT_VIEWED: 'info',
+  INCIDENT_REVIEWED: 'info',
+  INCIDENT_ACTION_ADDED: 'info',
+  INCIDENT_ACTION_DONE: 'info',
+  INCIDENT_CLOSED: 'info',
   CLINICAL_SCORES_VIEWED: 'patient',
   CLINICAL_SCORE_ADDED: 'patient',
   CLINICAL_SCORE_CANCELLED: 'info',
