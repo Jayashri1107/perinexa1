@@ -13,6 +13,13 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **6 Nov 2026 – the hospital's doctors by department (branch `doctors-list`, developer's request):** the handwritten
+  lists are in `server/scripts/hospital-doctors.js` (`npm run doctors:hospital -w server -- "<hospital name>"`): 22
+  doctors with their departments and OPD timings (Mon–Sat 10–5, Sun 11–4); safe to run again. The real emails are not
+  known yet, so each account has a made-up address that receives nothing (`…@doctors.<hospital>.invalid`) and a random
+  password nobody knows – no one can sign in with it until the hospital admin enters the real email in Hospital admin →
+  Staff and resets the password. A.S. (General) is left out until the full name is known. **On the live server:**
+  `sudo -u perinexa -H bash -c 'cd /opt/perinexa/app && npm run doctors:hospital -w server -- "Hospital name"'`.
 - **6 Nov 2026 – the admission form in the hospital's own layout, opening after every admission (branch
   `admission-form-print`, developer's request):** a grey ADMISSION FORM bar; UHID, name, age/gender, marital status (to
   write), address, mobile, doctor, referring doctor beside IP no, bed and room, date/time, Aadhaar (last 4 only:

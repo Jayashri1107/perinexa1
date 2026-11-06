@@ -9,6 +9,7 @@
     "sample:pharmacy": "node scripts/sample-pharmacy.js",
     "sample:beds": "node scripts/sample-beds.js",
     "beds:hospital": "node scripts/hospital-beds.js",
+    "doctors:hospital": "node scripts/hospital-doctors.js",
     "sample:lab": "node scripts/sample-lab.js",
     "test": "vitest run"
   },
