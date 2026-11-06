@@ -12,7 +12,7 @@ vi.mock('../../hooks/useFetch.js', () => ({
 vi.mock('../../auth/AuthContext.jsx', () => ({ useAuth: () => ({ activeMembership: { roles }, user: { name: 'Sample Pharmacist' } }) }));
 
 const { BillPaper, InvoicesPage, PeopleFound, billFits } = await import('./InvoicesPage.jsx');
-const { SellPage } = await import('./SellPage.jsx');
+const { ChoiceBox, DOSE_CHOICES, SellPage } = await import('./SellPage.jsx');
 
 const settings = { name: 'Sample Medical Stores', address: '4 Sample Road, Sample Town', phone: '99999 00000', gstin: '27ABCDE1234F1Z5', licence20: 'S-20-1', licence21: 'S-21-1', pharmacistName: 'Sample Pharmacist', place: 'Sample Town' };
 const line = { id: 'l1', name: 'Sampleol 650', schedule: '', batch: 'B100', expiry: '2029-08-01', qty: 2, mrpPaise: 35000, amountPaise: 66500 };
@@ -108,6 +108,17 @@ describe('Sold’s filters', () => {
     expect(bill).not.toContain('aria-label="Type of patient"');
     const walkIn = renderToStaticMarkup(<MemoryRouter><SellPage start={{ type: 'external', customer: { name: 'Sample Walk Customer', phone: '' } }} embedded onMade={() => {}} /></MemoryRouter>);
     expect(walkIn).toContain('value="Sample Walk Customer"');
+  });
+
+  it('the dose box offers the prescription frequencies to choose from', () => {
+    expect(DOSE_CHOICES).toEqual(expect.arrayContaining(['1-0-1 (twice a day)', '1-0-0 (morning)', '0-0-1 (night)', 'SOS (when needed)', 'STAT (once, now)', 'Weekly', 'Alternate days']));
+    expect(DOSE_CHOICES.some((d) => /custom/i.test(d))).toBe(false);
+    // A real drop-down: the choices, and a way to type another; a dose not on the list shows as typed
+    const box = renderToStaticMarkup(<ChoiceBox label="Dose" value="" choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={() => {}} />);
+    for (const part of ['<select', 'No dose', '1-0-1 (twice a day)', 'Type another dose…']) expect(box).toContain(part);
+    const own = renderToStaticMarkup(<ChoiceBox label="Dose" value="1 tablet at bedtime" choices={DOSE_CHOICES} placeholder="No dose" onChange={() => {}} />);
+    expect(own).toContain('value="1 tablet at bedtime"');
+    expect(own).not.toContain('<select');
   });
 
   it('the printed bill shows a Dose column when a medicine has one', () => {

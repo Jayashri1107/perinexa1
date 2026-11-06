@@ -197,3 +197,20 @@ export function ServiceChargeDialog({ patient, onClose }) {
     </div>
   );
 }
+
+// Service charges on the registration form (owner, 27 Oct 2026): billed as soon as she is saved – no trip to Billing.
+// The registration fee itself is added by the app. Also in the register popup on Today and Appointments (6 Nov 2026).
+/** The roles that bill services at registration. */
+export const CHARGE_ROLES = ['receptionist', 'billing', 'admin'];
+export function RegistrationCharges({ charges, onCharges }) {
+  const { items, error } = useChargeItems();
+  return (
+    <section className="card form-section" aria-labelledby="reg-charges">
+      <h2 id="reg-charges">Service charges (optional)</h2>
+      <p className="hint">Consultation, procedures or other services to bill today. The registration fee is added by itself.</p>
+      <Alert type="error">{error}</Alert>
+      <ChargeLines idPrefix="reg-charge" items={items} lines={charges.lines} onLines={(lines) => onCharges({ ...charges, lines })} pay={charges.pay} onPay={(pay) => onCharges({ ...charges, pay })} />
+    </section>
+  );
+}
+export const NO_CHARGES = { lines: [], pay: 'cash' };

@@ -89,19 +89,41 @@
 /* A new bill made on Sold: the type's list, then New bill's own screen beside the filters */
 .ph-sold-billing { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .ph-sold-bill { display: flex; flex-direction: column; gap: var(--space-4); }
+/* The medicine about to be added (Sold): its name, then quantity, dose and Add on one line */
+.ph-entry { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin-top: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--indigo-200, var(--border)); border-left: 4px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-entry-name { flex: 1 1 100%; font-size: var(--fs-body); }
+.ph-entry-field { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; }
+.ph-entry-field > span { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-entry-qty .ph-choice { width: 140px; }
+.ph-entry-dose .ph-choice { width: 240px; }
+/* A drop-down with "Type another…": the box and its List link side by side */
+.ph-choice-own { display: inline-flex; align-items: center; gap: var(--space-1); }
+.ph-choice-own input { flex: 1 1 auto; min-width: 0; }
+.ph-entry-qty .ph-choice-own, .ph-entry-dose .ph-choice-own { width: auto; }
+.ph-entry-qty .ph-choice-own input { width: 90px; }
+.ph-entry-dose .ph-choice-own input { width: 190px; }
+/* The bill's medicines: the batch under the name, then quantity, dose, MRP and amount in fixed columns */
+.bill-lines.ph-lines { width: 100%; max-width: none; table-layout: fixed; margin-top: var(--space-3); }
+.ph-lines th:nth-child(2) { width: 76px; }
+.ph-lines th:nth-child(3) { width: 168px; }
+.ph-lines th:nth-child(4) { width: 60px; }
+.ph-lines th:nth-child(5) { width: 76px; }
+.ph-lines th:nth-child(6) { width: 44px; }
+.ph-lines td { vertical-align: middle; }
+.ph-line-med { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.ph-line-name strong { font-weight: 600; }
+.ph-line-meta { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); overflow-wrap: anywhere; }
+.ph-batch { margin-top: var(--space-1); width: 100%; max-width: 300px; font-size: var(--fs-label); }
+.ph-lines .bill-price-input { width: 56px; text-align: center; }
+.ph-dose-input, .ph-lines .ph-choice { width: 100%; }
+.ph-lines-total th { text-align: right; font-weight: 600; }
+.ph-lines-total th, .ph-lines-total td { padding-top: var(--space-3); padding-bottom: var(--space-3); background: var(--mist-50); border-top: 2px solid var(--border); }
+.ph-lines-total strong { font-size: var(--fs-h3); }
 .ph-search-btn { width: 100%; justify-content: center; }
 .ph-found-item { display: flex; align-items: center; gap: var(--space-2); }
 .ph-found-item > .ph-found-row { flex: 1 1 auto; min-width: 0; cursor: pointer; }
 .ph-found-item > .ph-found-row:hover { background: var(--mist-50); }
 .ph-found-bills { flex: 0 0 80px; display: flex; justify-content: flex-end; }
-.ph-entry { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
-.ph-entry-name { flex: 1 1 100%; }
-.ph-entry-field { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; }
-.ph-entry-field > span { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
-.ph-entry-field input { width: 90px; }
-.ph-entry-dose input { width: 200px; }
-.ph-dose-input { width: 120px; }
-.ph-lines-total th { text-align: right; font-weight: 600; }
 .ph-filters { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
 .ph-filter-row { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(3, minmax(140px, 1fr)); gap: var(--space-3); width: 100%; align-items: end; }
 .ph-filter { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
