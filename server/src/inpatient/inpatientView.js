@@ -1,3 +1,6 @@
+import { caesareanTimes } from '../clinical/caesarean.js';
+import { robsonGroup, robsonMissing } from '../clinical/robson.js';
+import { groupARules } from './docSchemas.js';
 // What the website receives about stays, documents and the nursing chart (pure). Never staff ids.
 
 export const admissionView = (a) => ({
@@ -33,7 +36,16 @@ export const documentView = (d) => ({
   signed: d.signed ? { byName: d.signed.byName, role: d.signed.role, at: d.signed.at } : null,
   cancelled: d.cancelled ? { reason: d.cancelled.reason, byName: d.cancelled.byName, at: d.cancelled.at } : null,
   additions: (d.additions ?? []).map((x) => ({ id: String(x._id), text: x.text, byName: x.byName, at: x.at })),
+  // When each time was typed (PX-X-04), and – on a delivery note – what is worked out from the stored times
+  timesEnteredAt: d.timesEnteredAt ?? {},
+  ...(d.kind === 'delivery' ? { derived: deliveryDerived(d.content ?? {}) } : {}),
+  groupARules: d.kind === 'delivery' ? groupARules(d) : false,
 });
+
+/** The Robson group and the caesarean's interval, worked out from the note (never typed). */
+export function deliveryDerived(c) {
+  return { robsonGroup: robsonGroup(c), robsonMissing: robsonMissing(c), caesarean: c.mode === 'lscs' ? caesareanTimes(c) : null };
+}
 
 export const entryView = (e) => ({
   id: String(e._id),

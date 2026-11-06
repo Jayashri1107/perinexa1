@@ -18,6 +18,7 @@ import { instructionLine, medicineName } from '../visits/rxFormat.js';
 import { isBlankRow, toItem, toRow } from '../visits/rxRows.js';
 import { DISCHARGE_FIELD_WORDS, DISCHARGE_WORDS } from './dischargeWords.js';
 import { DOC_FIELDS, VITAL_FIELDS, emptyBaby } from './docFields.js';
+import { CS_SOURCE, ROBSON_SOURCE, intervalWords, robsonWords } from './robson.js';
 import { BREASTFED_LABELS, NICU_LABELS, STILLBIRTH_TYPE_LABELS, babyOutcomeWords, pphHint, tidyBaby } from './deliveryOutcomes.js';
 import { BABY_SEX_LABELS, DOCTOR_CONFIRMS, KIND_LABELS, OUTCOME_LABELS, docStatusLook, fromLocalInput, toLocalInput, vitalsLine } from './inpatientFormat.js';
 
@@ -207,15 +208,37 @@ export function DocPrintDocument({ patient, page, letterhead, printedAt, printed
   );
 }
 
-export function DocForm({ kind, form, setForm, fields }) {
+/**
+ * What the delivery note works out while it is written (never typed): the Robson group, and for a caesarean the
+ * decision-to-delivery interval – category 1 over 30 minutes in red (Clinical Requirements, items 1 and 2; DRAFT).
+ */
+export function DeliveryAudit({ form }) {
+  const c = { ...form, deliveredAt: fromLocalInput(form.deliveredAt), decisionAt: fromLocalInput(form.decisionAt) };
+  const interval = form.mode === 'lscs' ? intervalWords(c) : null;
+  return (
+    <div className="ip-derived" aria-live="polite">
+      <p>
+        <StatusPill tone="neutral">Worked out</StatusPill> {robsonWords(c)}
+      </p>
+      {interval && (
+        <p>
+          <StatusPill tone={interval.red ? 'high' : interval.over ? 'watch' : 'stable'}>{interval.red ? 'Over 30 minutes' : interval.over ? 'Over target' : 'Within target'}</StatusPill> {interval.text}
+        </p>
+      )}
+      <p className="muted small">DRAFT rules until the Lead Obstetrician confirms them. Sources: {ROBSON_SOURCE}; {CS_SOURCE}.</p>
+    </div>
+  );
+}
+
+export function DocForm({ kind, form, setForm, fields, groupA = false }) {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const names = useMemo(() => MEDICINES.map((m) => m.name), []);
   const fe = (k) => fields[`content.${k}`];
   return (
     <div className="ip-form">
-      {DOC_FIELDS[kind].map((f) => {
+      {DOC_FIELDS[kind].filter((f) => !f.showIf || f.showIf(form)).map((f) => {
         const id = `doc-${f.key}`;
-        const label = `${f.label}${f.required ? '' : ' (optional)'}`;
+        const label = `${f.label}${f.required || (groupA && f.groupA) ? '' : ' (optional)'}`;
         switch (f.type) {
           case 'area':
             return (
@@ -601,7 +624,8 @@ export function DocumentPage() {
 
       {editable ? (
         <section className="card">
-          <DocForm kind={kind} form={form} setForm={setForm} fields={fields} />
+          <DocForm kind={kind} form={form} setForm={setForm} fields={fields} groupA={Boolean(d.groupARules)} />
+          {kind === 'delivery' && <DeliveryAudit form={form} />}
           <div className="sticky-actions">
             <span className="grow hint">{dirty ? 'Unsaved changes.' : 'All changes saved.'}</span>
             <button type="button" className="btn btn-primary" onClick={saveDraft} disabled={busy || !dirty}>
@@ -612,6 +636,7 @@ export function DocumentPage() {
       ) : (
         <section className="card">
           <DocContent kind={kind} content={d.content} />
+          {kind === 'delivery' && <DeliveryAudit form={toForm('delivery', d.content)} />}
         </section>
       )}
 

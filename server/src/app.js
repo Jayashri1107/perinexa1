@@ -67,6 +67,7 @@ import { scanBridgeRouter, scanBridgeSetupRouter } from './routes/scanBridge.js'
 import { verifyRouter } from './routes/verify.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { analyticsRouter } from './routes/analytics.js';
+import { clinicalAuditRouter } from './routes/clinicalAudit.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -306,6 +307,8 @@ export function createApp({
   app.use('/api/calendar', ...inTenant, calendarRouter);
   // Analytics: numbers for doctors and hospital admins only (analytics/roles.js).
   app.use('/api/analytics', ...inTenant, requireAnalyticsAudience, analyticsRouter);
+  // Clinical Requirements Group A (PX-REQ-00): the Robson table and the caesarean audit
+  app.use('/api/clinical-audit', ...inTenant, clinicalAuditRouter);
 
   app.use('/api', notFound);
 

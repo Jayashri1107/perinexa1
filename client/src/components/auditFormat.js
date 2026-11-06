@@ -383,6 +383,8 @@ export const AUDIT_LABELS = {
   ABDM_RECORDS_FETCHED: 'Records received from another hospital',
   ABDM_FETCHED_VIEWED: 'Records from other hospitals opened',
   ABDM_FETCHED_DELETED: 'Records from other hospitals deleted',
+  ROBSON_TABLE_VIEWED: 'Robson table opened',
+  CAESAREAN_AUDIT_VIEWED: 'Caesarean audit opened',
 };
 
 // How much attention an event needs (older grouping, still used by some screens).
@@ -390,6 +392,8 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  ROBSON_TABLE_VIEWED: 'info',
+  CAESAREAN_AUDIT_VIEWED: 'patient',
   LOGIN_FAILED: 'warn',
   LOGIN_LOCKED: 'danger',
   LOGIN_RATE_LIMITED: 'danger',
