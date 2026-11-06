@@ -32,6 +32,9 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  MEOWS_VIEWED: 'MEOWS chart opened',
+  MEOWS_RECORDED: 'MEOWS observations recorded',
+  MEOWS_CANCELLED: 'MEOWS entry marked entered in error',
   FORMULARY_ROW_ADDED: 'Formulary row added',
   FORMULARY_ROW_CHANGED: 'Formulary row changed (unverified until confirmed again)',
   FORMULARY_ROW_CONFIRMED: 'Formulary row confirmed',
@@ -417,6 +420,9 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  MEOWS_VIEWED: 'patient',
+  MEOWS_RECORDED: 'patient',
+  MEOWS_CANCELLED: 'info',
   FORMULARY_ROW_ADDED: 'info',
   FORMULARY_ROW_CHANGED: 'warn',
   FORMULARY_ROW_CONFIRMED: 'info',

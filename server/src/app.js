@@ -73,6 +73,7 @@ import { newbornFollowUpRouter } from './routes/newbornFollowUp.js';
 import { clinicalScoresRouter } from './routes/clinicalScores.js';
 import { incidentsRouter } from './routes/incidents.js';
 import { formularyRouter } from './routes/formulary.js';
+import { meowsRouter } from './routes/meows.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -320,6 +321,8 @@ export function createApp({
   app.use('/api/clinical-scores', ...inTenant, clinicalScoresRouter);
   app.use('/api/incidents', ...inTenant, incidentsRouter);
   app.use('/api/formulary', ...inTenant, formularyRouter);
+  // Clinical Requirements Group B, item 8: the MEOWS chart (DRAFT)
+  app.use('/api/meows', ...inTenant, meowsRouter);
 
   app.use('/api', notFound);
 

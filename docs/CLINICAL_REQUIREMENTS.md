@@ -40,3 +40,13 @@ branch is local: it is not pushed and not merged into `master` – the developer
 - The VTE score's dose and the spinal timing check: with a verified formulary row and the anaesthesia record (later).
 - Not in perinexa1's delivery note before: gestation at birth on a baby's record – it is typed in her screening log.
 - Not built (owner): PC-PNDT, MTP, sterilisation register and consent, the "late entry" badge, PX-X-01.
+
+## Group B, item 8 – MEOWS chart (DRAFT, 6 Nov 2026)
+Built before the manual page was given, at the developer's request: the published CEMACH MEOWS chart (Saving Mothers'
+Lives 2003–2005, 2007; Singh et al., Anaesthesia 2012). Every trigger is a constant in `server/src/clinical/meows.js`
+with its source, marked DRAFT on screen, and is replaced by OBG-F-05 when the Lead Obstetrician gives it.
+**Needs the owner's approval as clinical content before it goes to `main`.** Branch `crs-8-meows`.
+- Where: a mother's stay page, above the nursing chart (`client/src/pages/inpatient/MeowsChart.jsx`; API `/api/meows`).
+- One red or two yellow readings = trigger: saving asks whom you told. One yellow = watch.
+- Temperature in °C or °F (stored °C). Entries are never changed: "entered in error" with a reason.
+- Remaining Group B items (9–17) wait for their manual pages.

@@ -431,6 +431,9 @@ const FILTER_ACTIONS = [
   'FORMULARY_ROW_CHANGED',
   'FORMULARY_ROW_CONFIRMED',
   'FORMULARY_DOSE_WORKED_OUT',
+  'MEOWS_VIEWED',
+  'MEOWS_RECORDED',
+  'MEOWS_CANCELLED',
 ];
 
 describe('every event in the audit log has a plain name', () => {

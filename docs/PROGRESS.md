@@ -2952,6 +2952,16 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
   small credit limit) and paste it after `OPENAI_API_KEY=` in `server/.env` yourself – never in chat – then
   restart Perinexa. Fake data only.
 
+## How to test the MEOWS chart – Group B item 8, DRAFT (fake data only)
+1. As a **nurse** (or her doctor or an RMO): a made-up mother who is admitted → her **IPD** → **Current stay**. The
+   **MEOWS chart** is above the nursing chart.
+2. Time with AM/PM; Respiratory rate **22**, Heart rate **108**, the rest normal (SpO2 98, temperature 36.8 °C, BP
+   118/76, AVPU Alert). The box shows **Trigger – tell the doctor now · 0 red, 2 yellow** and asks **Whom you told**.
+3. **Save the observations** with that empty: refused. Write a doctor's name and save: the table shows 22 and 108 as
+   **Yellow** pills and the result **Trigger**, with whom you told. The header shows the latest result.
+4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
+   greyed. Reception and the hospital admin have no MEOWS chart.
+
 ## How to test Clinical Requirements Group A (fake data only)
 Automatic tests: `npm test` from the project root (server files `crs-*.test.js`; website tests next to each page).
 In the browser, use made-up patients only. Restart Perinexa first (the server changed). Add two new staff as the

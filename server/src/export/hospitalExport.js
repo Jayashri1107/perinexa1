@@ -50,6 +50,7 @@ import { ClinicalDocument } from '../models/ClinicalDocument.js';
 import { ClinicalScore } from '../models/ClinicalScore.js';
 import { FormularyItem } from '../models/FormularyItem.js';
 import { Incident } from '../models/Incident.js';
+import { MeowsEntry } from '../models/MeowsEntry.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { Specimen } from '../models/Specimen.js';
 import { ConsentForm } from '../models/ConsentForm.js';
@@ -178,6 +179,7 @@ export const KINDS = [
   { file: 'newborn-follow-up.json', model: NewbornFollowUp, what: "Babies' screening logs and high-risk follow-up: gestation at birth, high-risk reasons, and each screen or clinic visit recorded (result, who, when)." },
   { file: 'clinical-scores.json', model: ClinicalScore, what: 'EPDS scores (the ten answers\' scores, never the questions) and VTE risk scores, with the band and advice of the day, and those marked entered in error.' },
   { file: 'incidents.json', model: Incident, what: 'Incident reports, kept apart from the patients\' records: what happened, the quality lead\'s review, actions and closure.' },
+  { file: 'meows-charts.json', model: MeowsEntry, what: 'MEOWS observations of each stay: the readings, their bands and level as worked out on the day (DRAFT rules), whom a trigger was told to, and entries marked entered in error.' },
   { file: 'settings-formulary.json', model: FormularyItem, what: 'Settings: the formulary rows, their versions, and who confirmed each version.' },
 ];
 
