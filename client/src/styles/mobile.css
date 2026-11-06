@@ -968,16 +968,37 @@ html.in-app { --safe-top: 0px; }
      edge, then only what has someone in it; the AI brief and the other cards at the end ---------- */
   .pf:has(.td-hero) .pf-topbar, .pf:has(.td-hero) .pf-main > .ph { background: var(--indigo-800); }
   .pf:has(.td-hero) .pf-topbar { border-bottom: 0; box-shadow: none; }
-  .pf:has(.td-hero) .pf-main > .ph { margin-top: 0; padding-top: var(--space-2); }
+  .pf:has(.td-hero) .pf-main > .ph { margin-top: 0; padding-top: var(--space-2); border: 0; box-shadow: none; }
   .pf:has(.td-hero) .pf-title-slot .ph-title, .pf:has(.td-hero) .pf-title-slot .ph-info-btn { color: var(--on-dark); }
   .pf:has(.td-hero) .pf-title-slot .ph-caption { color: var(--indigo-200); }
   .pf:has(.td-hero) .pf-topbar-actions .icon-btn { background: var(--nav-tile); color: var(--on-dark); }
   .pf:has(.td-hero) .pf-main > .ph .segmented { border-color: transparent; background: var(--nav-tile); }
   .pf:has(.td-hero) .pf-main > .ph .segmented > button:not([aria-pressed='true']) { color: var(--on-dark); }
   .pf:has(.td-hero) .pf-main > .ph .segmented > button[aria-pressed='true'] { background: var(--surface); color: var(--indigo-700); }
-  .td-hero { margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0; padding: var(--space-1) var(--space-4) 56px; background: var(--indigo-800); color: var(--on-dark); }
+  .td-hero { order: -2; margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0; padding: var(--space-1) var(--space-4) var(--space-6); background: var(--indigo-800); color: var(--on-dark); }
   .td-hero-hello { margin: 0; font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 600; }
-  .td-hero + .td-home-counts { margin-top: -56px; }
+  /* The first cards over the band's edge: a doctor's counts, reception's numbers */
+  .td-page:has(> .td-home, > .rd-numbers, > .wd-home) > .td-hero { padding-bottom: 72px; }
+  .td-page > .td-hero ~ .td-home, .td-page > .td-hero ~ .rd-numbers, .td-page > .td-hero ~ .wd-home { order: -1; margin-top: -72px; }
+  /* Nurses and RMOs: the ward's three counts over the band's edge (their heading kept for screen readers) */
+  .td-page > .td-hero ~ .wd-home #ward-glance { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .td-page > .td-hero ~ .wd-home .wd-counts > div { border: 1px solid var(--card-border); box-shadow: var(--shadow-card); }
+  .td-page > .td-hero ~ .rd-start { order: -1; }
+  /* Reception: its numbers as three tiles with their icons; the start buttons two a row; the band's buttons are in them */
+  .td-page > .td-hero ~ .rd-numbers > .rd-number { flex-direction: column; gap: 6px; border: 1px solid var(--card-border); box-shadow: var(--shadow-card); }
+  .td-page > .td-hero ~ .rd-numbers .rd-icon { display: grid; width: 32px; height: 32px; }
+  .td-page > .td-hero ~ .rd-numbers .rd-number-text > .muted { display: none; }
+  .pf:has(.rd-start) .pf-main > .ph { display: none; }
+  .rd-start { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .rd-start > .menu-button { display: flex; min-width: 0; }
+  .rd-start > .btn, .rd-start > .menu-button > .btn, .rd-start-tile {
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: var(--space-3); width: 100%; min-height: 104px; height: auto;
+    padding: var(--space-4); border: 1px solid var(--card-border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: none;
+    color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; text-align: left; text-decoration: none; white-space: normal;
+  }
+  .rd-start > .btn-primary, .rd-start > .menu-button > .btn-primary { border-color: var(--indigo-700); background: var(--indigo-700); color: var(--on-solid); }
+  .rd-start svg.lucide { width: 28px; height: 28px; }
+  .rd-start-tile svg.lucide { color: var(--indigo-700); }
   .td-home-count { gap: 6px; min-height: 0; border: 1px solid var(--card-border); }
   .td-home-count-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--indigo-100); color: var(--indigo-700); }
   .td-home-count-icon svg.lucide { width: 18px; height: 18px; }

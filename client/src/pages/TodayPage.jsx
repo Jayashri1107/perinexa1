@@ -760,12 +760,14 @@ function RoleToday({ roles, lensBar = null }) {
         }
       />
       <div className="pf-content wl-page td-page">
+        {/* Phones, every role (the app's look, 6 Nov 2026): the greeting on an indigo band, the first cards over its edge */}
+        {onPhone && (
+          <div className="td-hero">
+            <p className="td-hero-hello">Welcome, {user?.name}</p>
+          </div>
+        )}
         {doctorHome && (
           <div className="td-home">
-            {/* The app's home (6 Nov 2026): the greeting on the indigo band, the three counts over its edge */}
-            <div className="td-hero">
-              <p className="td-hero-hello">Welcome, {user?.name}</p>
-            </div>
             <nav className="td-home-counts" aria-label="Needs your attention">
               <Link to="/#wl-flags" className="td-home-count is-high">
                 <span className="td-home-count-icon" aria-hidden="true">
@@ -830,6 +832,19 @@ function RoleToday({ roles, lensBar = null }) {
         {/* Reception's dashboard: three numbers, then the patients beside To do (26 Oct 2026: "more simple") – no
             greeting, no quick tiles (the sidebar has them) and no second row of list cards (To do opens the lists) */}
         {simple && <DeskNumbers rows={deskRows} collected={collected.data} />}
+        {/* Phones, reception (the app's look): what the desk starts most, as four large buttons */}
+        {simple && onPhone && (
+          <nav className="rd-start" aria-label="Start">
+            {newPatientButton}
+            {walkInButton}
+            <Link to="/appointments" className="rd-start-tile">
+              <CalendarPlus aria-hidden="true" /> Book a visit
+            </Link>
+            <Link to="/billing" className="rd-start-tile">
+              <Banknote aria-hidden="true" /> Take payment
+            </Link>
+          </nav>
+        )}
         {!simple && (shownTiles.length > 0 || canBrief || (clinicalWork && inpatients.data)) && (
           // One line of small cards (owner, 24 Oct 2026): the AI brief, Your day so far, the numbers (To approve after
           // them), then the handover last
