@@ -434,6 +434,12 @@ const FILTER_ACTIONS = [
   'MEOWS_VIEWED',
   'MEOWS_RECORDED',
   'MEOWS_CANCELLED',
+  'PPH_CHART_VIEWED',
+  'PPH_CHART_STARTED',
+  'PPH_CHART_LINE_ADDED',
+  'PPH_CHART_LINE_CANCELLED',
+  'PPH_CHART_CLOSED',
+  'PPH_CHART_CANCELLED',
 ];
 
 describe('every event in the audit log has a plain name', () => {

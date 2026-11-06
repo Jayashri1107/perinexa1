@@ -507,3 +507,7 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 /* The AM / PM date-and-time picker needs room for its four parts: two columns of a form grid */
 .form-grid > .field:has(> .datetime-input) { grid-column: span 2; }
 @media screen and (max-width: 720px) { .form-grid > .field:has(> .datetime-input) { grid-column: auto; } }
+/* PPH chart (Group B item 15): each chart of a stay set apart */
+.pph-chart { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.pph-sum { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.pph-sum .pill { align-self: flex-start; white-space: normal; }

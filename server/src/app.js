@@ -74,6 +74,7 @@ import { clinicalScoresRouter } from './routes/clinicalScores.js';
 import { incidentsRouter } from './routes/incidents.js';
 import { formularyRouter } from './routes/formulary.js';
 import { meowsRouter } from './routes/meows.js';
+import { pphRouter } from './routes/pph.js';
 import { platformAnalyticsRouter } from './routes/platformAnalytics.js';
 import { requireAnalyticsAudience } from './analytics/roles.js';
 import {
@@ -323,6 +324,8 @@ export function createApp({
   app.use('/api/formulary', ...inTenant, formularyRouter);
   // Clinical Requirements Group B, item 8: the MEOWS chart (DRAFT)
   app.use('/api/meows', ...inTenant, meowsRouter);
+  // Clinical Requirements Group B, item 15: the PPH chart (DRAFT)
+  app.use('/api/pph', ...inTenant, pphRouter);
 
   app.use('/api', notFound);
 
