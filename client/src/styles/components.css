@@ -519,3 +519,11 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .dc-item .field-error { flex-basis: 100%; }
 .dc-signs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-4); }
 .inline-icon { width: 1em; height: 1em; vertical-align: -0.15em; }
+
+/* Bilirubin chart (Group B item 12) */
+.bili-chart { width: 100%; max-width: 560px; height: auto; }
+.bili-axis { stroke: var(--border); stroke-width: 1; }
+.bili-label { font-size: 11px; fill: var(--slate-600); }
+.bili-line { fill: none; stroke: var(--indigo-700); stroke-width: 2; }
+.bili-dot { fill: var(--indigo-700); }
+.bili-dot-skin { fill: var(--surface); stroke: var(--indigo-700); stroke-width: 2; }

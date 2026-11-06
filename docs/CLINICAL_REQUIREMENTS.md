@@ -97,4 +97,29 @@ given. **Needs the owner's approval before `main`.** Branch `crs-17-dashboards`.
   the live numbers only). Department-lead privileges come with the base rules (Group C).
 - Not yet: drill-down from a number to its records (PX-X-09) – the Deliveries tab and the Specimens, Incidents and
   Theatre lists are the way in for now.
-- Remaining Group B items (9–13) wait for their manual pages.
+
+## Group B, items 9 and 10 – pre-anaesthesia check-up and pain chart (DRAFT, 6 Nov 2026)
+From the ASA classification (2020), modified Mallampati, ASA fasting guidelines (2017), pain bands and POSS (2009), in
+`server/src/clinical/anaesthesia.js`, until ANA-F-01, F-02, F-11 and F-03. **Owner's approval before `main`.**
+- Check-up: a patient's **Anaesthesia** tab; signed in one go by a doctor or RMO (ASA, Mallampati, conditions, fasting
+  hours against the guideline, plan, fitness, risks explained). Her latest shows on the theatre case.
+- Pain chart: the stay page, under MEOWS; a POSS of 3–4 needs whom you told, severe pain needs what was done.
+- Order sets A–D (PX-ANA-04) are not built: they wait for verified formulary rows (owner's decision 9).
+
+## Group B, item 11 – consent forms (checked, 6 Nov 2026)
+Covered by the existing consent module (DRAFT built-in forms in English, Marathi and Hindi: labour and delivery,
+induction, VBAC, caesarean, anaesthesia, blood transfusion, procedure, refusal / LAMA, admission, HIV test, high-risk
+pregnancy, newborn care). **Not built:** a separate labour-epidural (labour analgesia) consent, ANA-F-05 – its legal
+wording and translations need the manual's text and the owner's approval. **For the owner:** the built-in tubal ligation
+consent predates decision 10 (sterilisation consent stays on paper) – the owner decides whether it stays offered.
+
+## Group B, items 12 and 13 – newborn at birth and on the ward, bilirubin, CCHD, NICU register (DRAFT, 6 Nov 2026)
+From WHO Essential Newborn Care (2014), IAP–NNF NSSK / NRP (2021), the AAP CCHD algorithm (2020), the NNF newborn
+examination guideline and the MoHFW SNCU register, in `server/src/clinical/newbornCare.js`, until NEO-F-01, F-02, F-03
+and NEO-L-05. **Owner's approval before `main`.**
+- A baby's **Newborn care** tab: at birth (once), examinations (each part normal or not), bilirubin readings with hours
+  of age on a chart – no treatment lines (they come from the manual) – and NICU / SNCU admissions with outcome (doctor
+  or RMO). The **NICU register** (Newborn follow-up → NICU register): the month in register order, with totals.
+- CCHD helper in the screening log: right-hand and foot SpO2 → pass, repeat or refer.
+- Two newborn dashboard rows added now that their fields exist: NICU / SNCU admissions; deaths in the unit (hidden
+  from the hospital admin). Identity bands checked by two people wait for the base rules (Group C).

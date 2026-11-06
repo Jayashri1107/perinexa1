@@ -8,6 +8,7 @@ import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { Incident } from '../models/Incident.js';
 import { MeowsEntry } from '../models/MeowsEntry.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
+import { NicuAdmission } from '../models/NewbornCare.js';
 import { Patient } from '../models/Patient.js';
 import { Specimen } from '../models/Specimen.js';
 import { TheatreCase } from '../models/TheatreCase.js';
@@ -63,6 +64,9 @@ export async function departmentRows(tenantId, department, { start, end }, now =
       const logs = await NewbornFollowUp.find({ tenantId, patientId: { $in: born.map((b) => b._id) } }, { records: 1 }).lean();
       const doneScreen = (key) => logs.filter((l) => l.records?.some((r) => r.kind === 'screen' && r.key === key && r.status === 'done')).length;
       v.cchdDone = rate(doneScreen('cchd'), born.length);
+      const nicuList = await NicuAdmission.find({ tenantId, admittedAt: { $gte: start, $lt: end }, cancelled: null }, { outcome: 1 }).lean();
+      v.nicuAdmissions = count(nicuList.length);
+      v.nicuDeaths = count(nicuList.filter((n) => n.outcome?.result === 'died').length);
       v.hearingDone = rate(doneScreen('hearing'), born.length);
     }
   }

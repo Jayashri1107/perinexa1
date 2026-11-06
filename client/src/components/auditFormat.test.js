@@ -459,6 +459,12 @@ const FILTER_ACTIONS = [
   'PAIN_CHART_VIEWED',
   'PAIN_RECORDED',
   'PAIN_CANCELLED',
+  'NEWBORN_CARE_VIEWED',
+  'NEWBORN_CARE_ADDED',
+  'NEWBORN_CARE_CANCELLED',
+  'NICU_ADMITTED',
+  'NICU_OUTCOME_RECORDED',
+  'NICU_REGISTER_VIEWED',
 ];
 
 describe('every event in the audit log has a plain name', () => {

@@ -32,6 +32,12 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  NEWBORN_CARE_VIEWED: "Baby's care at birth opened",
+  NEWBORN_CARE_ADDED: "Baby's care at birth, examination or bilirubin recorded",
+  NEWBORN_CARE_CANCELLED: 'Newborn record marked entered in error',
+  NICU_ADMITTED: 'Baby admitted to the NICU or SNCU',
+  NICU_OUTCOME_RECORDED: 'NICU or SNCU outcome recorded',
+  NICU_REGISTER_VIEWED: 'NICU / SNCU register opened',
   PAC_VIEWED: 'Pre-anaesthesia check-ups opened',
   PAC_RECORDED: 'Pre-anaesthesia check-up signed',
   PAC_CANCELLED: 'Pre-anaesthesia check-up marked entered in error',
@@ -445,6 +451,12 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  NEWBORN_CARE_VIEWED: 'patient',
+  NEWBORN_CARE_ADDED: 'patient',
+  NEWBORN_CARE_CANCELLED: 'info',
+  NICU_ADMITTED: 'patient',
+  NICU_OUTCOME_RECORDED: 'patient',
+  NICU_REGISTER_VIEWED: 'patient',
   PAC_VIEWED: 'patient',
   PAC_RECORDED: 'patient',
   PAC_CANCELLED: 'info',

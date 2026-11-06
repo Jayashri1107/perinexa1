@@ -30,6 +30,8 @@ export const INDICATORS = [
   { key: 'bf1h', department: 'newborn', unit: 'percent', better: 'higher', label: 'Breastfed within one hour', definition: 'Live births breastfed within the hour ÷ live births where it was recorded (not "not applicable").' },
   { key: 'apgarLow', department: 'newborn', unit: 'percent', better: 'lower', label: 'Apgar under 7 at 5 minutes', definition: 'Live births with Apgar under 7 at 5 minutes ÷ live births with a 5-minute Apgar.' },
   { key: 'nicu', department: 'newborn', unit: 'percent', label: 'Admitted to NICU or SNCU', definition: 'Live births admitted to the NICU or SNCU ÷ live births where it was recorded.' },
+  { key: 'nicuAdmissions', department: 'newborn', unit: 'count', label: 'NICU or SNCU admissions (register)', definition: 'Admissions in the NICU / SNCU register this month (not entered in error).' },
+  { key: 'nicuDeaths', department: 'newborn', unit: 'count', better: 'lower', label: 'Deaths in the NICU or SNCU', definition: 'Admissions of this month whose outcome is death.', adminHidden: true },
   { key: 'cchdDone', department: 'newborn', unit: 'percent', better: 'higher', label: 'Pulse oximetry (CCHD) screen done', definition: "Babies registered as born this month whose pulse oximetry is recorded done ÷ those babies." },
   { key: 'hearingDone', department: 'newborn', unit: 'percent', better: 'higher', label: 'Hearing screen done', definition: 'Babies registered as born this month whose hearing screen is recorded done ÷ those babies.' },
   { key: 'operations', department: 'theatre', unit: 'count', label: 'Operations done', definition: 'Operations on the theatre list this month that were done.' },

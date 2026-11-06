@@ -56,6 +56,7 @@ import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { TheatreCase } from '../models/TheatreCase.js';
 import { DashboardSignoff, DashboardTarget } from '../models/DashboardSignoff.js';
 import { PacAssessment, PainEntry } from '../models/AnaesthesiaRecords.js';
+import { BilirubinReading, NewbornBirthCare, NewbornExam, NicuAdmission } from '../models/NewbornCare.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { Specimen } from '../models/Specimen.js';
 import { ConsentForm } from '../models/ConsentForm.js';
@@ -192,6 +193,10 @@ export const KINDS = [
   { file: 'settings-dashboard-targets.json', model: DashboardTarget, what: "Settings: the hospital's own targets for the dashboard rows, and who set each." },
   { file: 'pre-anaesthesia-checkups.json', model: PacAssessment, what: 'Pre-anaesthesia check-ups: ASA grade, airway, conditions, medicines, allergies, fasting, plan, fitness, who signed, and ones marked entered in error (DRAFT form).' },
   { file: 'pain-charts.json', model: PainEntry, what: 'Pain charts of each stay: pain score, sedation score, nausea, what was done, whom a high sedation score was told to (DRAFT chart).' },
+  { file: 'newborn-at-birth.json', model: NewbornBirthCare, what: "Each baby's record at birth: cried, resuscitation, cord clamping, the first steps (drying, skin-to-skin, vitamin K, eye care, identity band, breastfeeding) and temperature (DRAFT form)." },
+  { file: 'newborn-examinations.json', model: NewbornExam, what: 'Newborn examinations on the ward: each part normal or not with notes, weight, readiness for discharge (DRAFT form).' },
+  { file: 'newborn-bilirubin.json', model: BilirubinReading, what: 'Bilirubin readings of each baby (serum or skin meter, mg/dL) with their time.' },
+  { file: 'nicu-register.json', model: NicuAdmission, what: 'The NICU / SNCU admission and outcome register: number, unit, inborn or outborn, reasons, weight and temperature at admission, and how each admission ended.' },
   { file: 'settings-formulary.json', model: FormularyItem, what: 'Settings: the formulary rows, their versions, and who confirmed each version.' },
 ];
 

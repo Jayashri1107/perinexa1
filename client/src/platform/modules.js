@@ -513,7 +513,11 @@ export function hospitalModules(roles = []) {
   else if (any(roles, PHARMACY_MODULE_ROLES)) modules.push({ ...HOSPITAL_PHARMACY, to: '/pharmacy/stock' });
   if (any(roles, THEATRE_ROLES)) modules.push(HOSPITAL_THEATRE);
   if (any(roles, SPECIMEN_ROLES)) modules.push(HOSPITAL_SPECIMENS);
-  if (any(roles, NEWBORN_FOLLOW_UP_ROLES)) modules.push(HOSPITAL_NEWBORN_FOLLOW_UP);
+  if (any(roles, NEWBORN_FOLLOW_UP_ROLES)) {
+    // The NICU / SNCU register (Group B item 13): for doctors, RMOs and nurses only – never the coordinator
+    const tabs = any(roles, THEATRE_ROLES) ? [...HOSPITAL_NEWBORN_FOLLOW_UP.tabs, { label: 'NICU register', to: '/nicu-register', end: true }] : HOSPITAL_NEWBORN_FOLLOW_UP.tabs;
+    modules.push({ ...HOSPITAL_NEWBORN_FOLLOW_UP, tabs });
+  }
   if (any(roles, CLINICAL_AUDIT_ROLES)) modules.push(HOSPITAL_CLINICAL_AUDIT);
   if (any(roles, ANALYTICS_ROLES)) modules.push(HOSPITAL_ANALYTICS); // after Patients and Calendar, or after Today for an admin
   else if (any(roles, CARE_PLAN_ROLES)) modules.push(HOSPITAL_ASK_ONLY);
