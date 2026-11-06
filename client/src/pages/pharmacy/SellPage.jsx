@@ -18,6 +18,35 @@ import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './Registe
 
 const NEEDS_RX = ['H', 'H1', 'X', 'narcotic'];
 
+// The dose and quantity boxes offer a list to choose from (6 Nov 2026) and still take anything typed. The doses are the
+// prescription's own frequencies (pharmacyFormat.js FREQUENCY_WORDS): "1-0-1 (twice a day)", "SOS (when needed)" …
+export const DOSE_CHOICES = Object.entries(FREQUENCY_WORDS)
+  .filter(([k]) => k !== 'custom')
+  .map(([k, words]) => {
+    if (/^[\d-]+$/.test(k)) return `${k} (${words})`;
+    if (words.toLowerCase().startsWith(k)) return words[0].toUpperCase() + words.slice(1); // weekly, alternate days
+    return `${k.toUpperCase()} (${words})`; // SOS, STAT
+  });
+const QTY_CHOICES = [1, 2, 3, 4, 5, 6, 10, 15, 20, 30];
+
+/** The lists behind the dose and quantity boxes (input list="…"), once on the page. */
+function ChoiceLists() {
+  return (
+    <>
+      <datalist id="ph-dose-choices">
+        {DOSE_CHOICES.map((d) => (
+          <option key={d} value={d} />
+        ))}
+      </datalist>
+      <datalist id="ph-qty-choices">
+        {QTY_CHOICES.map((n) => (
+          <option key={n} value={n} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
 /**
  * Today's OPD patients from the daily register (never the whole patient list), and finding someone from another day.
  * onPickIpd: someone found who is admitted (else the Issue to ward page opens with her).
@@ -380,6 +409,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
         {(patient || who === 'walkin') && (
           <section className="card bill-section" aria-labelledby="ph-lines">
             <h2 id="ph-lines">Medicines</h2>
+            <ChoiceLists />
             <FindMedicine onPick={(m) => (embedded ? setEntry({ medicine: m, qty: '1', dose: '' }) : addMedicine(m))} onScan={scan} />
             {embedded && entry && (
               <div className="ph-entry" role="group" aria-label="Medicine to add">
@@ -389,11 +419,11 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 </strong>
                 <label className="ph-entry-field">
                   <span>Quantity</span>
-                  <input inputMode="numeric" value={entry.qty} onChange={(e) => setEntry({ ...entry, qty: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addEntry()} autoFocus />
+                  <input inputMode="numeric" list="ph-qty-choices" value={entry.qty} onChange={(e) => setEntry({ ...entry, qty: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addEntry()} autoFocus />
                 </label>
                 <label className="ph-entry-field ph-entry-dose">
                   <span>Dose (optional)</span>
-                  <input value={entry.dose} maxLength={60} placeholder="e.g. 1-0-1 after food" onChange={(e) => setEntry({ ...entry, dose: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addEntry()} />
+                  <input list="ph-dose-choices" value={entry.dose} maxLength={60} placeholder="Choose or type, e.g. 1-0-1" onChange={(e) => setEntry({ ...entry, dose: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && addEntry()} />
                 </label>
                 <button type="button" className="btn btn-secondary" disabled={!entryOk} onClick={addEntry}>
                   <Plus aria-hidden="true" /> Add
@@ -449,7 +479,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                         )}
                       </td>
                       <td data-label="Dose">
-                        <input className="ph-dose-input" aria-label={`Dose of ${l.medicine.name}`} value={l.dose ?? ''} maxLength={60} placeholder="e.g. 1-0-1" onChange={(e) => setLine(l.key, { dose: e.target.value })} />
+                        <input className="ph-dose-input" list="ph-dose-choices" aria-label={`Dose of ${l.medicine.name}`} value={l.dose ?? ''} maxLength={60} placeholder="Choose or type" onChange={(e) => setLine(l.key, { dose: e.target.value })} />
                       </td>
                       <td data-label="MRP" className="num tabular">
                         {l.mrpPaise ? money(l.mrpPaise) : '–'}
