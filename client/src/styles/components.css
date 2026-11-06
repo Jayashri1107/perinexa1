@@ -476,3 +476,31 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .weight-input input { flex: 1 1 6em; min-width: 5em; }
 .weight-input select, .datetime-input select { width: auto; }
 .datetime-input input[type='date'] { flex: 1 1 10em; }
+
+/* Clinical audit (Group A): the Robson table and the caesarean list */
+.ca-table { width: 100%; border-collapse: collapse; font-size: var(--fs-label); line-height: var(--lh-label); }
+.ca-table th, .ca-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.ca-table thead th { font-size: var(--fs-caption); font-weight: 600; color: var(--slate-600); vertical-align: bottom; }
+.ca-table tbody th { font-weight: 500; color: var(--ink); min-width: 16em; }
+.ca-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ca-table thead th.num { white-space: normal; min-width: 6em; max-width: 12em; }
+.ca-table tbody tr:nth-child(even) > * { background: var(--mist-50); }
+.ca-table tr.ca-empty > * { color: var(--slate-600); }
+.ca-table tfoot > tr > * { font-weight: 600; border-bottom: 0; border-top: 2px solid var(--border); }
+.ca-group { display: inline-block; min-width: 1.6em; font-weight: 600; }
+.ca-group-words { display: block; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--slate-600); font-weight: 400; }
+.ca-cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.ca-cat { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.ca-cat-label { font-size: var(--fs-caption); color: var(--slate-600); font-weight: 600; }
+.ca-cat-value { font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 500; font-variant-numeric: tabular-nums; }
+@media screen and (max-width: 720px) {
+  .ca-table thead { display: none; }
+  .ca-table, .ca-table tbody, .ca-table tfoot { display: block; }
+  table.ca-table.ca-table tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-1) var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
+  table.ca-table.ca-table tr > * { display: block; width: auto; min-width: 0; overflow-wrap: anywhere; white-space: normal; border: 0; padding: 0; background: none !important; text-align: left !important; }
+  table.ca-table.ca-table tr > th { grid-column: 1 / -1; }
+  table.ca-table.ca-table tr.ca-empty { display: none; }
+  .ca-table td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--slate-600); font-weight: 500; }
+  .ca-table tfoot > tr { border-top: 2px solid var(--border); }
+}
+.epds-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
-import { DataTable } from '../../components/DataTable.jsx';
+import { ShowChoice, SimpleTable } from '../quality/SimpleTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime, hasRole } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog, nowLocal, toIso } from '../quality/FormDialog.jsx';
@@ -50,7 +51,7 @@ function ReportDialog({ onDone, onCancel }) {
       <p className="hint">Write what happened, not who is to blame. An incident is never shown on the patient&apos;s record.</p>
       <Alert type="error">{error?.message}</Alert>
       <Field label="When it happened" id="inc-at" error={fe('occurredAt')}>
-        <input id="inc-at" type="datetime-local" value={f.occurredAt} onChange={set('occurredAt')} />
+        <DateTimeInput id="inc-at" value={f.occurredAt} onChange={set('occurredAt')} />
       </Field>
       <Field label="Where (optional)" id="inc-place" error={fe('place')}>
         <input id="inc-place" maxLength={150} value={f.place} onChange={set('place')} />
@@ -98,20 +99,10 @@ export function IncidentsPage() {
           </Alert>
         )}
         {seesAll && (
-          <div className="row" role="group" aria-label="Show">
-            {[
-              ['open', 'Open'],
-              ['closed', 'Closed'],
-              ['all', 'All'],
-            ].map(([k, label]) => (
-              <button key={k} type="button" className="btn btn-secondary btn-sm" aria-pressed={show === k} onClick={() => setParams({ show: k }, { replace: true })}>
-                {label}
-              </button>
-            ))}
-          </div>
+          <ShowChoice options={[['open', 'Open'], ['closed', 'Closed'], ['all', 'All']]} value={show} onChange={(k) => setParams({ show: k }, { replace: true })} />
         )}
         <section className="card">
-          <DataTable
+          <SimpleTable
             loading={loading && !data}
             rows={data?.incidents ?? []}
             emptyText="No incidents here."

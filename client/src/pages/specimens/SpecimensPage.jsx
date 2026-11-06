@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
+import { ShowChoice } from '../quality/SimpleTable.jsx';
 import { SpecimenList } from './SpecimenList.jsx';
 
 // Specimens (Clinical Requirements Group A, item 3 – PX-OT-04, register OBG-L-05): the specimens waiting for their
@@ -24,13 +25,8 @@ export function SpecimensPage() {
       <PageHeader title="Specimens" documentTitle="Specimens" help="Specimens sent for histopathology or cytology: waiting for the report, overdue after 21 days, reports to review, and the register. Log a new specimen from her record (Specimens tab)." />
       <div className="pf-content">
         <Alert type="error">{error}</Alert>
-        <div className="row" role="group" aria-label="Show">
-          {SHOW.map(([k, label]) => (
-            <button key={k} type="button" className="btn btn-secondary btn-sm" aria-pressed={show === k} onClick={() => setParams({ show: k }, { replace: true })}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <ShowChoice options={SHOW} value={show} onChange={(k) => setParams({ show: k }, { replace: true })} />
+        <p className="hint">To log a new specimen, open her record and choose the Specimens tab.</p>
         <section className="card">
           <SpecimenList specimens={data?.specimens ?? []} loading={loading && !data} onChanged={reload} />
         </section>

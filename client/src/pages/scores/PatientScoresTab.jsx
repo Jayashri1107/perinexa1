@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { Alert, Field, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
+import { ShowChoice } from '../quality/SimpleTable.jsx';
 import { EPDS_ITEMS, epdsResult, vteConflict, vteFactorsFor, vteResult } from './scoreRules.js';
 
 // Her EPDS and VTE risk scores (Clinical Requirements Group A, item 5). The EPDS is filled in on the hospital's paper
@@ -73,6 +74,10 @@ function EpdsForm({ patient, onSaved }) {
             <option value="postnatal">After delivery</option>
           </select>
         </Field>
+      </div>
+      <fieldset className="fieldset">
+        <legend>Scores from her paper EPDS form (0 to 3 each)</legend>
+        <div className="form-grid epds-grid">
         {scores.map((v, i) => (
           // The answers have no ids: their place on the form is their key
           // eslint-disable-next-line react/no-array-index-key
@@ -87,7 +92,8 @@ function EpdsForm({ patient, onSaved }) {
             </select>
           </Field>
         ))}
-      </div>
+        </div>
+      </fieldset>
       {complete && <Result kind="epds" r={epdsResult(scores.map(Number))} />}
       <div className="row">
         <button type="submit" className="btn btn-primary" disabled={!complete}>
@@ -180,14 +186,7 @@ export function PatientScoresTab() {
       {data?.access.write && (
         <section className="card" aria-labelledby="sc-new">
           <h2 id="sc-new">Add a score</h2>
-          <div className="row" role="group" aria-label="Which score">
-            <button type="button" className="btn btn-secondary btn-sm" aria-pressed={which === 'epds'} onClick={() => setWhich('epds')}>
-              EPDS
-            </button>
-            <button type="button" className="btn btn-secondary btn-sm" aria-pressed={which === 'vte'} onClick={() => setWhich('vte')}>
-              VTE risk
-            </button>
-          </div>
+          <ShowChoice label="Which score" options={[['epds', 'EPDS'], ['vte', 'VTE risk']]} value={which} onChange={setWhich} />
           {which === 'epds' ? <EpdsForm patient={patient} onSaved={saved} /> : <VteForm patient={patient} onSaved={saved} />}
           <p className="muted small">DRAFT rules until the Lead Obstetrician checks them. Sources: {data.rules.epdsSource}; {data.rules.vteSource}.</p>
         </section>

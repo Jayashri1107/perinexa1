@@ -79,14 +79,16 @@ function DetailsForm({ baby, reasons, onSaved }) {
     }
   };
   return (
-    <form className="form-grid" onSubmit={save}>
+    <form className="stack" onSubmit={save}>
       <Alert type="error">{error?.message}</Alert>
+      <div className="form-grid">
       <Field label="Weeks of pregnancy at birth" id="nb-weeks" error={error?.fields?.gestationWeeks}>
         <input id="nb-weeks" inputMode="numeric" value={weeks} onChange={(e) => setWeeks(e.target.value)} />
       </Field>
       <Field label="and days (0–6)" id="nb-days" error={error?.fields?.gestationDays}>
         <input id="nb-days" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />
       </Field>
+      </div>
       <label className="check">
         <input type="checkbox" checked={highRisk} onChange={(e) => setHighRisk(e.target.checked)} /> High-risk baby: follow-up clinic at corrected age
       </label>
@@ -163,7 +165,7 @@ export function NewbornLog({ patientId }) {
       )}
       <section className="card">
         <h2>{`${baby.fullName} · ${baby.mrn}`}</h2>
-        <p className="hint">{`Born ${formatDate(baby.birthAt)}${baby.phone ? ` · ${baby.phone}` : ''}${baby.highRisk ? ' · high-risk follow-up' : ''}`}</p>
+        <p className="hint">{`Born ${formatDate(baby.birthAt)}${baby.birthWeightGrams ? ` · ${baby.birthWeightGrams / 1000} kg (${baby.birthWeightGrams} g)` : ''}${baby.gestationWeeks != null ? ` · ${baby.gestationWeeks} weeks ${baby.gestationDays ?? 0} days` : ''}${baby.phone ? ` · ${baby.phone}` : ''}${baby.highRisk ? ' · high-risk follow-up' : ''}`}</p>
         {access.write && <DetailsForm baby={baby} reasons={data.highRiskReasons ?? []} onSaved={() => reload()} />}
         <p className="muted small">DRAFT schedule until the Lead Neonatologist confirms it. Source: {data.source}.</p>
       </section>
