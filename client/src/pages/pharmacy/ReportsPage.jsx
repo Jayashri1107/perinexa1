@@ -127,7 +127,7 @@ function StockAlerts({ a }) {
   // Expired first (take them off the shelf), then the soonest to expire
   const batches = [...a.expiring].sort((x, y) => (x.expired === y.expired ? x.daysLeft - y.daysLeft : x.expired ? -1 : 1));
   return (
-    <div className="ph-rep-two">
+    <div className="ph-rep-two ph-rep-alerts">
       <section className="card bill-section" aria-labelledby="rep-low">
         <div className="row-between">
           <h2 id="rep-low">Low stock</h2>
@@ -405,25 +405,30 @@ export function ReportsPage() {
     <>
       <PharmacyHeader title="Pharmacy reports" crumb="Reports" subtitle="Choose the period, then the report you need." />
       <div className="pf-content bill-page">
-        <section className="card bill-section ph-rep-top" aria-label="Period">
-          <Period from={from} to={to} setFrom={setFrom} setTo={setTo} />
-        </section>
+        {/* The period, with the stock as it is now beside it; then the period's money in one even row (7 Nov 2026) */}
+        <div className="ph-rep-head">
+          <section className="card bill-section ph-rep-top" aria-label="Period">
+            <Period from={from} to={to} setFrom={setFrom} setTo={setTo} />
+          </section>
+          <div className="kpi-grid ph-rep-stock" aria-label="Stock now">
+            <KpiCard to={card('alerts')} tone={a?.low.length ? 'watch' : 'neutral'} icon={PackageSearch} label="Low stock" value={a ? String(a.low.length) : '—'} sub={a ? (a.low.length ? 'Medicines to order' : 'Nothing to order') : undefined} />
+            <KpiCard
+              to={card('alerts')}
+              tone={expired ? 'high' : soon ? 'watch' : 'neutral'}
+              icon={CalendarClock}
+              label="Expiring or expired"
+              value={a ? String(a.expiring.length) : '—'}
+              sub={a ? (expired ? `${expired} expired – take off the shelf` : soon ? `Within ${a.days} days` : 'Nothing expiring') : undefined}
+            />
+          </div>
+        </div>
 
-        <div className="kpi-grid" aria-label="This period at a glance">
+        <div className="kpi-grid ph-rep-money" aria-label="This period at a glance">
           <KpiCard to={card('sales')} icon={ShoppingCart} label="Sold at the counter" value={s ? money(sum('salePaise')) : '—'} textValue sub={s ? `${sum('invoices')} bills in this period` : undefined} />
           <KpiCard to={card('sales')} icon={BedDouble} label="Issued to wards" value={s ? money(sum('issuePaise')) : '—'} textValue sub="On the patients' hospital bills" />
           <KpiCard to={card('sales')} icon={RotateCcw} label="Returned by patients" value={s ? money(sum('returnedPaise')) : '—'} textValue sub="Credit notes" />
           <KpiCard to={card('sales')} icon={Receipt} label="GST on sales" value={s ? money(s.totals.cgstPaise + s.totals.sgstPaise) : '—'} textValue sub="CGST + SGST" />
           <KpiCard to={card('purchases')} icon={Truck} label="Bought from suppliers" value={p ? money(p.netPaise) : '—'} textValue sub="After returns, before GST" />
-          <KpiCard to={card('alerts')} tone={a?.low.length ? 'watch' : 'neutral'} icon={PackageSearch} label="Low stock" value={a ? String(a.low.length) : '—'} sub={a ? (a.low.length ? 'Medicines to order' : 'Nothing to order') : undefined} />
-          <KpiCard
-            to={card('alerts')}
-            tone={expired ? 'high' : soon ? 'watch' : 'neutral'}
-            icon={CalendarClock}
-            label="Expiring or expired"
-            value={a ? String(a.expiring.length) : '—'}
-            sub={a ? (expired ? `${expired} expired – take off the shelf` : soon ? `Within ${a.days} days` : 'Nothing expiring') : undefined}
-          />
         </div>
 
         <div className="segmented ph-rep-tabs" role="group" aria-label="Report">

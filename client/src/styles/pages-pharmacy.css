@@ -512,3 +512,18 @@
 }
 /* Sold: a bill number, time and amount never break over two lines */
 .ph-sold-results .dt td:nth-child(1), .ph-sold-results .dt td:nth-child(2), .ph-sold-results .dt td:last-child { white-space: nowrap; }
+/* Reports (7 Nov 2026): the period with the stock now beside it, the period's money in one even row, and the
+   expiring batches given the wider column */
+.ph-rep-head { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: var(--space-3); align-items: stretch; margin-bottom: var(--space-3); }
+.ph-rep-head > .ph-rep-top { display: flex; align-items: center; margin: 0; }
+.ph-rep-head .ph-rep-period { flex-wrap: nowrap; gap: var(--space-3); }
+.ph-rep-head .ph-rep-date input { width: 150px; }
+.ph-rep-head > .ph-rep-stock { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+.kpi-grid.ph-rep-money { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ph-rep-alerts { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+.ph-rep-alerts .bill-report td:nth-child(4), .ph-rep-alerts .bill-report td:nth-child(5) { white-space: nowrap; }
+@media (max-width: 1250px) {
+  .ph-rep-head { grid-template-columns: minmax(0, 1fr); }
+  .kpi-grid.ph-rep-money { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+}
+@media (max-width: 1000px) { .ph-rep-alerts { grid-template-columns: minmax(0, 1fr); } }
