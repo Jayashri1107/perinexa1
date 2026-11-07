@@ -13,6 +13,7 @@ import { ReminderMessage } from './models/ReminderMessage.js';
 import { Tenant } from './models/Tenant.js';
 import { runReminders } from './reminders/reminderService.js';
 import { takeTurn } from './utils/sharedState.js';
+import { runNicuAutomationsAll } from './clinical/nicuData.js';
 
 // A hosted database with its own CA certificate (docs/DEPLOY.md): the certificate is written to a private temporary
 // file, which the database driver reads.
@@ -100,3 +101,12 @@ const abdmExpiryRound = () =>
     .catch((err) => console.error('ABDM: deleting ended records failed:', err?.message ?? err));
 abdmExpiryRound();
 setInterval(abdmExpiryRound, ABDM_EXPIRY_ROUND_MS).unref();
+
+// NICU (Build 13, N1): every 5 minutes, the admitting doctor is told when a baby's parents are not counselled an hour
+// after admission (the notification bell; each admission once). Also run when the unit board or a baby's page opens.
+const NICU_ROUND_MS = 5 * 60 * 1000;
+const nicuRound = () =>
+  takeTurn('nicu-automations', NICU_ROUND_MS)
+    .then((mine) => mine && runNicuAutomationsAll(new Date()))
+    .catch((err) => console.error('NICU round failed:', err?.message ?? err));
+setInterval(nicuRound, NICU_ROUND_MS).unref();

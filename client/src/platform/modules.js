@@ -406,6 +406,8 @@ export const HOSPITAL_ADMIN = {
     { label: 'ABDM', to: '/admin/abdm', end: true },
     // Centres, the desk number, consultants' direct lines, working hours and holidays – never a referral
     { label: 'Referrals', to: '/admin/referrals', end: true },
+    // Build 13 – NICU units, their level of care and beds (no patient)
+    { label: 'NICU units', to: '/admin/nicu-units', end: true },
     // The scan bridge's key: the ultrasound machine's pictures and readings (docs/USG_MACHINE_PLAN.md)
     { label: 'Ultrasound machine', to: '/admin/ultrasound-machine', end: true },
   ],
@@ -519,7 +521,7 @@ export function hospitalModules(roles = []) {
   if (any(roles, SPECIMEN_ROLES)) modules.push(HOSPITAL_SPECIMENS);
   if (any(roles, NEWBORN_FOLLOW_UP_ROLES)) {
     // The NICU / SNCU register (Group B item 13): for doctors, RMOs and nurses only – never the coordinator
-    const tabs = any(roles, THEATRE_ROLES) ? [...HOSPITAL_NEWBORN_FOLLOW_UP.tabs, { label: 'NICU register', to: '/nicu-register', end: true }] : HOSPITAL_NEWBORN_FOLLOW_UP.tabs;
+    const tabs = any(roles, THEATRE_ROLES) ? [...HOSPITAL_NEWBORN_FOLLOW_UP.tabs, { label: 'NICU register', to: '/nicu-register', end: true }, { label: 'NICU board', to: '/nicu-board', end: true }] : HOSPITAL_NEWBORN_FOLLOW_UP.tabs;
     modules.push({ ...HOSPITAL_NEWBORN_FOLLOW_UP, tabs });
   }
   if (any(roles, CLINICAL_AUDIT_ROLES)) {

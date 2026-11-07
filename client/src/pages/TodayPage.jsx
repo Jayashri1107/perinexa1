@@ -15,6 +15,7 @@ import { ScanShareSection } from './abdm/ScanShare.jsx';
 import { SignupsNotice, SignupsSection } from './patients/SignupsPage.jsx';
 import { ContinueVisits } from './visits/ContinueVisits.jsx';
 import { MyDayCard } from './MyDayCard.jsx';
+import { MeowsWardPills } from './inpatient/MeowsWardPills.jsx';
 import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyActions, PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { DailyRegister } from './pharmacy/RegisterPage.jsx';
@@ -1068,6 +1069,7 @@ function RoleToday({ roles, lensBar = null }) {
                               {s.drafts} draft{s.drafts > 1 ? 's' : ''}
                             </StatusPill>
                           )}
+                          <MeowsWardPills meows={s.meows} />
                           {/* Closed after a death: on the list until the discharge card ends the stay */}
                           {s.patient.closed && (
                             <StatusPill tone="inactive" icon={Archive}>

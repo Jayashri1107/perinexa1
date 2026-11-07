@@ -41,24 +41,144 @@ branch is local: it is not pushed and not merged into `master` – the developer
 - Not in perinexa1's delivery note before: gestation at birth on a baby's record – it is typed in her screening log.
 - Not built (owner): PC-PNDT, MTP, sterilisation register and consent, the "late entry" badge, PX-X-01.
 
-## Group B, item 8 – MEOWS chart (DRAFT, 6 Nov 2026)
-Built before the manual page was given, at the developer's request: the published CEMACH MEOWS chart (Saving Mothers'
-Lives 2003–2005, 2007; Singh et al., Anaesthesia 2012). Every trigger is a constant in `server/src/clinical/meows.js`
-with its source, marked DRAFT on screen, and is replaced by OBG-F-05 when the Lead Obstetrician gives it.
-**Needs the owner's approval as clinical content before it goes to `main`.** Branch `crs-8-meows`.
-- Where: a mother's stay page, above the nursing chart (`client/src/pages/inpatient/MeowsChart.jsx`; API `/api/meows`).
-- One red or two yellow readings = trigger: saving asks whom you told. One yellow = watch.
-- Temperature in °C or °F (stored °C). Entries are never changed: "entered in error" with a reason.
+## Group B, item 8 – MEOWS chart (OBG-F-05 v1.0, 7 Nov 2026; first DRAFT 6 Nov 2026)
+Built on 6 Nov 2026 as a DRAFT from the published CEMACH chart; **upgraded on 7 Nov 2026 to the manual page** as the
+field schema `docs/field_schemas/build8_meows.json` gives it (OBG-F-05 v1.0, OBG-SOP-11 §1–2, OBG-SOP-12 §2, PX-OBG-11,
+PX-X-04, PX-X-09). Branch `claude/build8-meows-f05-694f40` (Build 8), from `master` at `76e29b84`; not merged, not pushed.
 
-## Group B, item 15 – PPH chart (DRAFT, 6 Nov 2026)
-Built before OBG-F-07 was given, at the developer's request, from RCOG Green-top 52 (2016), WHO PPH recommendations
-(2012, tranexamic acid 2017) and the shock index of Nathan et al. (BJOG 2015). Constants in `server/src/clinical/pph.js`,
-marked DRAFT on screen. **Needs the owner's approval as clinical content before it goes to `main`.** Branch `crs-15-pph`.
-- Where: a mother's stay page, under the MEOWS chart (`client/src/pages/inpatient/PphChart.jsx`; API `/api/pph`).
-- Start when bleeding is recognised (or to type in the paper chart afterwards); add blood loss, steps and observations
-  with their times; blood loss added up and banded (minor 500–1000 mL, major over 1000); shock index worked out
-  (0.9 watch, 1.4 urgent); the four Ts; closed by her doctor or an RMO with how it ended.
-- Perinexa gives no dose: a medicine step needs the dose typed by whoever gave it. Lines are never changed.
+**Owner's approvals, recorded here (7 Nov 2026, given through the developer):**
+- The three field schemas (Build 8 MEOWS, Build 15 PPH, Build 13 NICU admission) are **approved as clinical content**.
+  The MEOWS rules are therefore no longer marked DRAFT on screen; the manual masters are v1.0 and the department lead's
+  sign-off on fake data (the schema's acceptance tests) is still to come.
+- **Reversed** – the earlier "not built" decisions: the **late-entry badge (PX-X-04)** is built (here, as a helper any
+  chart can use); the **level-of-care gates (PX-X-01)**, **printed fixed doses** and **Director alerts** may be built –
+  Director alerts go through the in-app notification bell, never a new SMS or outside service. Of these, only the
+  late-entry badge applies to the MEOWS chart; this build adds no level-of-care gate, dose or Director alert.
+
+What the chart does now:
+- **Bands (RED / AMBER)** from the page, in `server/src/clinical/meows.js` (the website's copy
+  `client/src/pages/inpatient/meowsRules.js` is checked by a test): RR red <10 or >30, amber 21–30; SpO2 red <92, amber
+  92–94; temperature red <35 or ≥38, amber 35–36 or 37.5–37.9; pulse red <40 or >120, amber 40–50 or 100–120; systolic
+  red <90 or ≥160, amber 90–100 or 150–159; diastolic red ≥110, amber 90–109; urine/4 h red <100, amber 100–120; AVPU
+  red P or U, amber V or new confusion; pain amber ≥7; lochia red heavy or offensive; fundus red soft or rising; nurse
+  concern red (counts as one red). "Yellow" is now "Amber"; sets saved before keep their CEMACH bands and source, shown
+  as amber.
+- **Chart header** (doctors and RMOs – the frequency is a doctor's order): context (antenatal, postnatal,
+  post-operative, HDU), detail, diagnosis or procedure, frequency (15, 30, 60, 240, 480 min; 5 is accepted by the API
+  for the PPH chart later), blood loss at delivery (offered from the stay's signed delivery note, marked "delivery note"
+  or "typed"), LMWH prescribed (offered from the latest VTE score: LMWH before birth or high risk).
+- **Observation fields:** clinical time (kept apart from the time typed), the vitals, urine in 4 h, new confusion,
+  pain 0–10, lochia, fundus, wound / perineum, nurse concern, action taken, doctor informed at, recorded by (the login).
+- **Worked out:** shock index (pulse ÷ systolic, two decimals, red at 0.9 or more – not added to the red count, as in
+  acceptance test 1), red and amber counts, hypertensive emergency (systolic ≥160 or diastolic ≥110: its own red
+  banner, "treat within 30 minutes").
+- **Late entry (PX-X-04):** `server/src/utils/lateEntry.js` (`isLateEntry`, `entryDelayMinutes`) – typed more than 60
+  minutes after the clinical time shows "Late entry" on screen and on the printout.
+- **Escalation** (stored on the set that raised it): **E1** (one red or two amber) – a task "resident at the bedside"
+  due in 30 min, the next set due in 30 min, the RMOs and her consultant told through the **notification bell** (kind
+  `meows`; the text has her name, ward and bed and the rule, never the readings); a trigger needs the action taken.
+  **E2** (two red, or E1 still met 60 min after it began) – tasks "consultant at the bedside" and "anaesthetist
+  informed", the bell again; the chart shows pathway buttons – Sepsis six (OBG-ALG-07), PPH (OBG-ALG-01, opens the
+  existing PPH chart on the stay page), Severe hypertension (OBG-ALG-02) – and "offer HDU transfer" as a suggestion.
+  An E1 left 60 minutes with no newer set shows "escalate to E2" on the chart. **E3** (shock index ≥0.9) – red banner;
+  the PPH chart is suggested for a postnatal mother (within 24 h of birth when the delivery note gives it). **E4** –
+  overdue at the ordered frequency + 15 min: on the chart, and on the ward list of Today (a pill per stay and a "MEOWS
+  overdue" card for nurses and RMOs). One task of each kind is open at a time on a stay; a task is marked done with its
+  time and who.
+- **Dashboard (OBG-A-05)** – three rows on the obstetrics dashboard (`server/src/clinical/meowsKpi.js`): MEOWS completed
+  4-hourly in the first 24 h postnatal (target 95%), suspected sepsis – antibiotics within 1 h of the trigger (90%),
+  severe hypertension treated within 30 min (95%). The times come from the chart: the pathway chosen, the first
+  antibiotic's time and the antihypertensive's time, each recorded once on the set, by whom and when.
+- **Print (PX-X-03):** A4 landscape, 12 sets per sheet, rows = the page's parameters with their RED and AMBER limits,
+  then totals, action and signature rows; footer "OBG-F-05 · v1.0 · effective <date>" from the document register.
+- Where: a mother's stay page, above the nursing chart; API `/api/meows` (GET, PUT `/chart`, POST, POST `/:id/tasks/:key`,
+  POST `/:id/follow-up`, POST `/:id/cancel`). Every action is audited with ids, the level and rule ids only.
+
+Readings of the schema to confirm with the Lead Obstetrician (the page wins if it differs):
+- "35–36 °C" amber is read as 35.0 to 36.0 inclusive; "37.5–37.9" as 37.5 up to (not including) 38.
+- New confusion and AVPU are one row (one amber at most between them).
+- "E1 open 60 min without improvement" = every set since the first trigger of the run is still a trigger.
+- The 4-hourly indicator counts from the time of birth on the signed delivery note (else admission), allows the ordered
+  frequency (at most 4 h) + 15 min between sets, and counts stays whose chart context is postnatal.
+- Severe hypertension counts each run of flagged sets once (treated if an antihypertensive is recorded within 30 min of
+  its first flag).
+
+Left out (later, or another build):
+- The pain score is not copied into the pain chart (ANA-F-03) yet – it stays on the MEOWS chart.
+- The PPH chart setting the MEOWS frequency to 5 min (Build 15 adds that hook; the frequency 5 is accepted).
+- Antibiotic and antihypertensive times are typed on the MEOWS set, not taken from the nursing chart's medicines.
+- An HDU transfer is suggested, not recorded; anaesthetists have no login role, so their task is marked by the nurse or
+  doctor who told them.
+
+## Group B, item 15 – PPH management and blood-loss chart (Build 15, OBG-F-07 v1.0, 7 Nov 2026)
+Replaces the DRAFT chart of 6 Nov 2026 (RCOG 52 / WHO / Nathan bands). Built exactly from the manual's field schema
+`docs/field_schemas/build15_pph.json` (OBG-F-07 v1.0, OBG-SOP-09 §3–5, OBG-ALG-01; issued 6 Nov 2026). Branch
+`claude/build15-pph-f07-efe494`. The existing chart was upgraded – same model (`PphChart`), route (`/api/pph`) and
+screen – not a second system.
+
+**Owner's approvals (recorded 7 Nov 2026, given through the developer):**
+- The schema's fields, bands, rules and wording are **approved as clinical content** – the chart is no longer DRAFT.
+- **Late-entry badge (PX-X-04): built** – reverses "not built (owner)" in Group A's list above, for this chart.
+- **Level-of-care gates (PX-X-01): approved** – reverses "not built (owner)". The PPH schema names no gate of its own,
+  so none was added here beyond the consultant-only sign-off; the approval is recorded for the builds that need one.
+- **Fixed doses printed:** "Perinexa gives no dose" no longer applies to the schema's doses – oxytocin 10 IU IM,
+  infusion 20–40 IU in 500 ml at 125–250 ml/h, misoprostol 800 micrograms, tranexamic acid 1 g. No other dose is shown
+  (carboprost and ergometrine have none in the schema).
+- **Director alerts** go through the in-app notification bell – no SMS or push service was added.
+
+**What it does** (rules in `server/src/clinical/pph.js`; the website's copy `client/src/pages/inpatient/pphRules.js`
+is checked word for word by a server test):
+- **Paper first.** "Declare PPH" in one tap – on the patient banner (safety strip) or the stay page – stamps
+  `declared_at` and `declared_by` and starts the banner clock (minutes since declaration) with the read-only ALG-01
+  card (A2). "Type in a paper chart" starts one with the paper's declaration time. `declared_at` is editable with a
+  reason (kept).
+- **Transcription screen laid out like OBG-F-07:** header (delivery mode and time copied from the delivery note, loss
+  at declaration and method, pulse and systolic → shock index at declaration, help/consultant/anaesthetist/blood bank
+  times, 4 Ts, risk factors, recorder); the E-MOTIVE bundle, each item with its time and "within 15 min of declared_at";
+  escalation; observation rows; Hb series and labs; outcome with debrief.
+- **Observation rows:** cumulative loss never goes down (and not below the loss at declaration); the outcome's total
+  can't be less than the last row. Blood products with their unit numbers need the second person's check
+  (`auth/witness.js`, PX-X-06).
+- **Bands:** loss 500–999 / 1000–1499 / 1500 or more (severe) – 500–999 amber, 1000 and more red (the schema gives no
+  colours; chosen to match the rest of the app). Shock index 0.9 or more red.
+- **A3:** a carboprost dose less than 15 minutes from another, or a 9th dose, is refused (and audited). Tranexamic
+  acid more than 3 hours after birth: a warning; the repeat before the first + 30 minutes: refused.
+- **Warnings, never blocks:** asthma on her record → carboprost; hypertension (her record or this pregnancy),
+  pre-eclampsia (risk factor ticked) or heart disease → ergometrine. Each warning shown is kept on the episode.
+- **Labs:** fibrinogen under 2 g/L → "cryoprecipitate 2 pools".
+- **A1** (total ≥1500 ml, or ≥4 units, or hysterectomy, or ICU / transferred / death): a near-miss review (the
+  existing `CaseReview`, kind near miss – the OBG-F-19 record; `server/src/incidents/` holds incident reports, not
+  near misses) is started pre-filled with the criteria; the Lead Obstetrician is told by the bell; the episode goes on
+  the **PPH M&M list** (Clinical audit → PPH M&M list) with "review by" 7 days.
+- **A4** (massive haemorrhage declared): the Director is told by the bell, and the blood bank's massive-transfusion
+  pack request is recorded with its time (ANA-ALG-06 named). There is no blood bank module yet: the request is a
+  record on the episode, shown on screen and on the printout.
+- **Who is told:** the hospital admin names the Lead Obstetrician(s) and Director(s) on the PPH M&M page; until
+  named, A1 goes to the quality lead and A4 to the hospital admin. The bell's text has the ward and bed only.
+- **Late entry (PX-X-04):** any timed field, row, dose or product typed more than 60 minutes after its clinical time
+  (declaration fields: after `declared_at`) shows "Late entry"; the consultant can sign off only once the scan of the
+  paper OBG-F-07 is attached (stored files, kind `pph_paper_scan`). A small local helper in the PPH module – to be
+  unified with Build 8's shared helper in `server/src/utils/` after both are merged.
+- **A5:** the consultant (a doctor who may edit her record) signs off: the KPI fields are worked out and kept, and the
+  episode is locked.
+- **KPI feeds (OBG-A-05)** in the monthly dashboards (`server/src/clinical/pphKpi.js`, five rows in `dashboards.js`):
+  births with measured blood loss recorded; PPH ≥500 ml after a vaginal birth and ≥1000 ml after a caesarean (two
+  rows); PPH with TXA and a second uterotonic within 15 min; severe PPH / ≥4 units / hysterectomy per 1000.
+- **Print:** "Print OBG-F-07" – A4 portrait, header, the E-MOTIVE three-column tick-with-time block, observations,
+  labs and outcome; footer "OBG-F-07 · v1.0" on every page. The document register's code for the PPH chart is now
+  OBG-F-07.
+- **Tests:** the schema's six acceptance tests are automated – 1–5 in `server/tests/crs-pph.test.js`, 6 (the print)
+  in `client/src/pages/inpatient/pph.test.jsx`.
+
+**Not done / for later:**
+- **TODO – A2 "MEOWS frequency set to 5 min"**: not wired (the MEOWS chart is Build 8's). To be added after both
+  builds are merged; a TODO marks the place in `routes/pph.js`, `clinical/pph.js` and `PphBanner.jsx`.
+- `shock_index_at_declaration` comes from the pulse and systolic typed on the PPH screen; reading the latest MEOWS set
+  was left out (it would touch Build 8's files).
+- The ALG-01 card shows the bundle, doses and rules from the schema; the OBG-ALG-01 page itself was not given.
+- Blood products are typed by hand until the blood bank's issue records exist (Build 16+/PX-OBG-16).
+- PPH charts started on the DRAFT chart (6 Nov 2026, fake data only) are kept as they were and shown as "earlier
+  DRAFT chart"; they cannot be signed off.
 
 ## Group B, item 14 – postnatal discharge checklist and danger-sign teaching (DRAFT, 6 Nov 2026)
 Built before OBG-F-11 and OBG-P-03 were given, at the developer's request, from WHO's postnatal recommendations (2022)
@@ -123,6 +243,68 @@ and NEO-L-05. **Owner's approval before `main`.**
 - CCHD helper in the screening log: right-hand and foot SpO2 → pass, repeat or refer.
 - Two newborn dashboard rows added now that their fields exist: NICU / SNCU admissions; deaths in the unit (hidden
   from the hospital admin). Identity bands checked by two people wait for the base rules (Group C).
+
+### Build 13 – the NICU admission as NEO-F-03, its register NEO-L-05 and unit board NEO-A-01 (7 Nov 2026)
+From the field schema `docs/field_schemas/build13_nicu_admission.json` (NEO-F-03 v1.0, NEO-SOP-03, NEO-A-01, NEO-L-05,
+NEO-A-05, PX-NEO-04, PX-X-01, PX-X-14). Branch `claude/build13-nicu-f03-85abb9`, not merged, not pushed.
+**Owner's approvals (recorded by the developer, 7 Nov 2026):** the owner approved the three field schemas as clinical
+content – for this build the NEO-F-03 fields, the computed rules (maturity, ROP, cranial ultrasound, hearing), the
+thresholds (temperature 36.5–37.5 °C and under 36.0 °C, glucose under 45 mg/dL, the 28 weeks / 1000 g floor, nurse:baby
+1:2, counselling and completion within 60 minutes) and the NEO-A-05 targets. The owner also reversed four earlier "not
+built" decisions: the **late-entry badge (PX-X-04)** – built here for the admission time and the counselling time;
+**level-of-care gates (PX-X-01)** – built here; **printed fixed doses** and **Director alerts** (the in-app notification
+bell, no SMS service) – not part of NEO-F-03 (no dose and no Director alert on this form), so nothing in this build.
+- **Code:** rules `server/src/clinical/nicuAdmission.js` (pure), form checks `clinical/nicuForm.js`, database work
+  `clinical/nicuData.js` (pre-fill, ROP screen, N1, board, NEO-A-05 numbers); routes `routes/newbornCare.js`; models
+  `NicuAdmission` (format `f03`) and `NicuRoster` in `models/NewbornCare.js`, `Bed.nicu`, `Tenant.nicu`,
+  `NewbornFollowUp.events`. Website `client/src/pages/newborn/` (NicuAdmissionSection, nicuFields, NicuF03Print,
+  NicuRegisterPage, NicuBoardPage, NicuSettingsPage).
+- **Units are settings, not code** (Hospital admin → NICU units): the schema's Garkheda (level IIIA, 6 beds), Adalat
+  Road and Waluj (level II) are typed by the admin; the sources `transfer_<unit key>` follow the units. A hospital that
+  never set them has NICU and SNCU at level II (the DRAFT's units), so the level IIIA screens stay hidden until set.
+- **Old records:** DRAFT admissions (6 Nov) keep their fields, outcome words and hospital-wide number ("No. 4"); they are
+  read-only. New outcomes use NEO-L-05's list (discharged home, transferred, died, LAMA).
+- **Register number:** per unit per year (UNIT-YEAR-0001), given when the admission is saved (the next number after the
+  unit's last of the year, retried on a clash – a failed save uses no number), never changed (the model refuses), kept
+  when entered in error; the register checks and shows that no number is missing. The year is the admission day's.
+- **Owner confirmed all the Build 13 changes as built (developer, 7 Nov 2026)**, including the five decisions below.
+- **Decisions made here (confirmed by the owner, 7 Nov 2026):**
+  1. *Admin override of a full unit (N4).* A hospital admin works in admin mode with no patient records, so the admin
+     cannot admit. Built as "one more admission" allowed by the admin on NICU units (with a reason, used once within 2
+     hours); the admission shows who allowed it and why.
+  2. *ROP rule (Confirm 4).* NICU babies use NEO-F-03's rule (under 34 weeks, under 2000 g, or under 37 weeks with an
+     unstable course; first examination at the later of 30 days and 31 weeks' PMA) and the date is put in the baby's
+     screening log. Other babies keep the screening log's NNF / RBSK schedule (owner's decision of 5 Nov: under 34 weeks
+     or 1750 g; by day 30, or day 21 under 28 weeks / 1200 g). The owner decides whether NEO-F-03's rule replaces it.
+  3. *Late entry (PX-X-04):* "typed more than 60 minutes after the time it records" – the schema gives no threshold.
+  4. *KPI denominators:* temperature in range counts every admission (a missing temperature is "not in range");
+     counselling and completion within 1 hour count NEO-F-03 admissions only (the DRAFT had no such fields); survival
+     counts admissions that ended in the month; ROP on time counts eligible babies whose first exam fell due in the month.
+  5. *Serology pre-fill:* only a positive from the mother's recorded conditions (syphilis → VDRL, hepatitis B → HBsAg,
+     HIV); the absence of a condition is not a negative test, so those start empty. HIV is shown and printed under the
+     neutral name "Lab test (confidential)".
+- **Gaps – stored as fields or flags, not built:**
+  - No weight-centile tables (Fenton, INTERGROWTH-21st, WHO) in Perinexa: the chart is chosen (Fenton under 37 weeks,
+    WHO from 37 by default) and the centile typed; SGA / AGA / LGA come from the typed centile. Not invented.
+  - EOS calculator (Build 12, NEO-SOP-06): sepsis risk and pathway are typed; "culture before antibiotics" (needs order
+    times) is not worked out.
+  - Transfer form NEO-F-18: transfers suggested (floor, capability, full unit) but no form; decision and departure times
+    are typed on the outcome for the 2-hour KPI; the HIE "departed by 3 hours of life" KPI is not worked out.
+  - Fluids NEO-F-05, parent counselling NEO-F-19, ventilator chart NEO-F-10, consent NEO-F-14 (a yes / no and a typed
+    reference, not linked to Consent forms), M&M review NEO-A-06 (a typed reference).
+  - SOP-04 hypothermia and SOP-08 hypoglycaemia pathways: the banners prompt them; the steps and the glucose-check
+    schedule (the schema gives no intervals) are not built. The TSB due time is stored, not reminded.
+  - Not recorded at birth in Perinexa, so typed on NEO-F-03: cord pH, base excess, clamping seconds (the record at birth
+    gives delayed / early), vitamin K time, first feed time, delivery-room glucose; GBS and rubella.
+  - No staff roster: the nurses on duty are typed on the unit board (the latest entry counts).
+  - The hospital's bed board (Beds) does not show a NICU bed as taken by a NICU admission – only by a stay; the NICU board
+    shows both. A baby's **Edit details → Care after birth** (NICU dates) is not filled from the admission.
+  - Hearing (AABR) and cranial ultrasound: shown as due on the admission; no screening entry or task is made (the log
+    already has the hearing screen). Exchange transfusion and TPN order screens do not exist in Perinexa; the gate covers
+    the form's ventilator and central-line choices.
+  - The NEO-L-05 register is exported as CSV; it has no printed page.
+- **Test:** `docs/PROGRESS.md` → "How to test Build 13 – the NICU admission". Automated: `server/tests/build13-nicu-admission.test.js`
+  (AT1–AT7 of the schema) and `client/src/pages/newborn/newbornCare.test.jsx`.
 
 ## Group C – the second-person check (PX-X-06, 6 Nov 2026)
 `server/src/auth/witness.js`. A step that needs two people is confirmed by a SECOND member of staff who types their own

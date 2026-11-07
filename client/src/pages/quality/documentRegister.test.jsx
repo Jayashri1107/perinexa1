@@ -28,6 +28,7 @@ describe('the document register', () => {
     expect(out).toContain('Approve');
     expect(out).not.toContain('Record a form version');
     expect(out).toContain('MEOWS chart Not in the register yet (manual code OBG-F-05)');
+    expect(out).toContain('1 Forms in force 1 Drafts to approve 1 Not in the register 1 Reviews overdue'); // the totals strip
     expect(out).not.toMatch(/!/);
   });
 

@@ -119,6 +119,7 @@
   --fs-print-large: 12.5pt;   /* prescriptions printed in "Large" text */
   --fs-print-compact: 9.5pt;  /* half-page (A5) prescriptions */
   --print-sheet-width-a5: 148mm;
+  --print-sheet-width-landscape: 297mm; /* A4 landscape */
   --print-rule: var(--slate-300);  /* lines between rows on paper */
 
   /* ---- Prescription accent colours: each doctor picks one for their printed prescriptions. Used only for

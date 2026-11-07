@@ -67,7 +67,7 @@ describe('the monthly dashboards', () => {
   it('obstetrics and newborn rows from the month’s confirmed delivery notes, MEOWS and scores', async () => {
     const { p, a } = await delivered({ ...BASE, deliveredAt: '2026-11-18T05:00:00.000Z', mode: 'normal', babies: [live({ weightGrams: 2300, apgar5: 6 })] });
     await delivered({ ...BASE, deliveredAt: '2026-11-18T06:00:00.000Z', mode: 'lscs', indication: 'Fetal distress', csCategory: '1', decisionAt: '2026-11-18T05:20:00.000Z', bloodLossMl: 1200, pph: 'yes', babies: [live({ breastfedWithinHour: 'not_applicable', nicu: 'yes' })] });
-    await (await as('nurse')).post('/api/meows').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, at: '2026-11-18T07:00:00.000Z', spo2: 92, escalatedTo: 'Dr Sample' });
+    await (await as('nurse')).post('/api/meows').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, at: '2026-11-18T07:00:00.000Z', spo2: 91, escalatedTo: 'Dr Sample' });
     const pn = (await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'postnatal', fullName: 'Dash Postnatal', assignedDoctor: people.drA._id.toString() }))).body.patient;
     await (await as('nurse')).post('/api/clinical-scores').send({ clientRequestId: randomUUID(), patientId: pn.id, kind: 'epds', on: '2026-11-19', phase: 'postnatal', epdsScores: [2, 2, 2, 2, 2, 1, 1, 1, 0, 0] });
 

@@ -80,7 +80,7 @@ import { privilegesRouter } from './routes/privileges.js';
 import { formRegisterRouter } from './routes/formRegister.js';
 import { pregnancyEpisodesRouter } from './routes/pregnancyEpisodes.js';
 import { deliveryBabiesRouter } from './routes/deliveryBabies.js';
-import { pphRouter } from './routes/pph.js';
+import { pphReviewsRouter, pphRouter } from './routes/pph.js';
 import { dischargeChecklistRouter } from './routes/dischargeChecklist.js';
 import { theatreRouter } from './routes/theatre.js';
 import { dashboardsRouter } from './routes/dashboards.js';
@@ -163,6 +163,7 @@ export function createApp({
   app.use(/^\/api\/scan-bridge\/studies\/[^/]+\/images$/, express.json({ limit: '8mb' }));
   app.use('/api/scan-bridge/studies', express.json({ limit: '4mb' }));
   app.use(/^\/api\/patients\/[^/]+\/consents\/[^/]+\/scans$/, express.json({ limit: '8mb' }));
+  app.use(/^\/api\/pph\/[^/]+\/scans$/, express.json({ limit: '8mb' })); // the scan of the paper PPH chart (OBG-F-07)
   app.use(/^\/api\/patients\/[^/]+\/visits\/[^/]+\/whatsapp$/, express.json({ limit: '8mb' })); // the PDF to send
   // A referral's files: the referring doctor's note or reports, and the PDF of a consultant note or discharge card
   // released to the referral desk (at most 5 MB each, like the files above).
@@ -342,8 +343,9 @@ export function createApp({
   app.use('/api/forms', ...inTenant, formRegisterRouter);
   app.use('/api/pregnancy-episodes', ...inTenant, pregnancyEpisodesRouter);
   app.use('/api/delivery-babies', ...inTenant, deliveryBabiesRouter);
-  // Clinical Requirements Group B, item 15: the PPH chart (DRAFT)
+  // Clinical Requirements Group B, item 15: the PPH chart (Build 15, OBG-F-07) and its M&M list
   app.use('/api/pph', ...inTenant, pphRouter);
+  app.use('/api/pph-reviews', ...inTenant, pphReviewsRouter);
   // Clinical Requirements Group B, item 14: the postnatal discharge checklist and danger-sign teaching (DRAFT)
   app.use('/api/discharge-checklist', ...inTenant, dischargeChecklistRouter);
   // Clinical Requirements Group B, item 16: the theatre list and the WHO Surgical Safety Checklist

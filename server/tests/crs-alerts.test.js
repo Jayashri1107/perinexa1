@@ -120,7 +120,7 @@ describe('alerts that follow the patient (DRAFT)', () => {
     expect(await band()).toEqual([]);
     const m = await (await as('nurse')).post('/api/meows').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, at: '2026-11-10T05:30:00.000Z', rr: 32, spo2: 98, temp: 36.8, sbp: 118, dbp: 76, hr: 84, avpu: 'A', escalatedTo: 'Dr Sample' });
     expect(m.body.entry.level).toBe('trigger');
-    await (await as('nurse')).post('/api/pph').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, recognisedAt: '2026-11-10T04:00:00.000Z', causes: ['tone'] });
+    await (await as('nurse')).post('/api/pph').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, declared_at: '2026-11-10T04:00:00.000Z' });
     expect((await band()).map((x) => [x.label, x.auto])).toEqual([['MEOWS trigger', true], ['PPH chart open', true]]);
     expect((await (await as('drA')).get(`/api/patients/${p.id}`)).body.patient.alerts.map((x) => x.kind)).toEqual(['meows_trigger', 'pph_open']);
     // a normal set afterwards: the trigger goes

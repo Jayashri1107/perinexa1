@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { BED_KINDS, BED_LEVELS } from '../clinical/nicuAdmission.js';
 import { tenantScoped } from '../utils/tenantScope.js';
 
 // A bed in one of the hospital's wards (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): the hospital admin
@@ -13,6 +14,20 @@ const bedSchema = new mongoose.Schema(
     floor: { type: String, trim: true, maxlength: 30, default: '' },
     name: { type: String, required: true, trim: true, maxlength: 30 },
     active: { type: Boolean, default: true },
+    // A NICU bed (Build 13, NEO-A-01 – set by the hospital admin on NICU units): which unit it belongs to, intensive or
+    // step-down (the nurse:baby rule counts intensive beds) and the kind of bed. null = not a NICU bed. A baby in it is
+    // an open NICU admission (models/NewbornCare.js, bedId) or a stay.
+    nicu: {
+      type: new mongoose.Schema(
+        {
+          unit: { type: String, required: true, maxlength: 30 },
+          level: { type: String, enum: Object.keys(BED_LEVELS), required: true },
+          kind: { type: String, enum: Object.keys(BED_KINDS), required: true },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
   },
   { timestamps: true },
 );

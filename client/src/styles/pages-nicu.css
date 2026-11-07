@@ -1,0 +1,63 @@
+/* Build 13 – the NICU admission (NEO-F-03), its unit board and register. Colours from tokens.css only. */
+
+/* The admission's banners: colour + icon + word (BRAND.md) */
+.nicu-banners { display: grid; gap: var(--space-2); }
+.nicu-banner { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border: 1px solid transparent; }
+.nicu-banner svg.lucide { flex: none; margin-top: 2px; }
+.nicu-banner-high { background: var(--status-high-bg); color: var(--status-high-fg); border-color: var(--status-high-fg); font-weight: 600; }
+.nicu-banner-watch { background: var(--status-watch-bg); color: var(--status-watch-fg); }
+.nicu-banner-due { background: var(--status-due-bg); color: var(--status-due-fg); }
+.nicu-banner-neutral { background: var(--status-inactive-bg); color: var(--status-inactive-fg); }
+.nicu-allergy { padding: var(--space-1) var(--space-3); border: 2px solid var(--status-high-fg); color: var(--status-high-fg); border-radius: var(--radius-sm); font-weight: 600; }
+.nicu-from { font-size: 0.8em; color: var(--status-due-fg); }
+
+/* The form's parts */
+.nicu-part > summary { cursor: pointer; font-weight: 600; padding: var(--space-2) 0; }
+.nicu-exam { display: grid; grid-template-columns: minmax(10rem, 1.2fr) auto minmax(8rem, 2fr); gap: var(--space-1) var(--space-3); align-items: center; }
+
+/* The unit board */
+.nicu-board-units { display: grid; gap: var(--space-4); }
+.nicu-beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--space-2); }
+.nicu-bed { border: 1px solid var(--border, var(--slate-300)); border-radius: var(--radius-sm); padding: var(--space-2); display: grid; gap: var(--space-1); min-width: 0; align-content: start; }
+.nicu-flags { display: flex; flex-wrap: wrap; gap: var(--space-1); min-width: 0; }
+.nicu-flags .pill { white-space: normal; max-width: 100%; height: auto; text-align: left; }
+.nicu-bed-free { border-style: dashed; }
+
+/* Printed as NEO-F-03: A4 portrait – header, allergy band, §1 in two columns, §2 in three, §3 in two, sign-offs */
+.nicu-print h2 { font-size: 1.05em; margin: var(--space-3) 0 var(--space-1); border-bottom: 1.5px solid var(--print-ink); }
+.nicu-print .nicu-cols-2, .nicu-print .nicu-cols-3 { display: grid; gap: 0 var(--space-4); font-size: 0.85em; }
+.nicu-print .nicu-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nicu-print .nicu-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.nicu-print dl { margin: 0; }
+.nicu-print .nicu-pf { display: flex; gap: var(--space-2); justify-content: space-between; border-bottom: 1px solid var(--print-rule); padding: 1px 0; break-inside: avoid; }
+.nicu-print .nicu-pf dt { color: var(--slate-600); }
+.nicu-print .nicu-pf dd { margin: 0; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+.nicu-print .nicu-allergy { margin: var(--space-2) 0; color: var(--print-ink); border-color: var(--print-ink); }
+.nicu-print .nicu-signs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-6); font-size: 0.85em; break-inside: avoid; }
+.nicu-print .nicu-signs > div { border-top: 1px solid var(--print-ink); padding-top: var(--space-1); }
+@media screen and (max-width: 640px) {
+  .nicu-exam { grid-template-columns: 1fr; }
+}
+
+/* Hospital admin → NICU units */
+.nicu-settings .ca-table th, .nicu-settings .ca-table td { vertical-align: middle; }
+.nicu-settings .ca-table tbody th { min-width: 0; }
+.nicu-settings .ca-table select { width: 100%; min-width: 9.5rem; }
+.nicu-units-table input:not([type='checkbox']) { width: 100%; min-width: 8rem; }
+.nicu-units-table input.nicu-num { width: 4.5rem; min-width: 0; text-align: right; }
+.nicu-units-table select { min-width: 7.5rem; }
+.nicu-units-table td:last-child { white-space: nowrap; }
+.nicu-beds-table { table-layout: fixed; }
+.nicu-beds-table th:first-child { width: 22%; }
+.nicu-ward { display: grid; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.nicu-ward:first-of-type { border-top: 0; padding-top: 0; }
+.nicu-ward-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.nicu-ward-head h3 { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.nicu-ward-all { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; white-space: nowrap; }
+.nicu-ward-all select { min-width: 10rem; }
+@media screen and (max-width: 720px) {
+  .nicu-ward-all { margin-left: 0; width: 100%; }
+  .nicu-ward-all select { flex: 1; }
+  .nicu-beds-table { table-layout: auto; }
+  .nicu-units-table input.nicu-num { width: 100%; text-align: left; }
+}

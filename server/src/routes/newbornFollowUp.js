@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { DEFAULTER_GRACE_DAYS, HIGH_RISK_REASONS, SCHEDULE_SOURCE, schedule } from '../clinical/newbornSchedule.js';
+import { DEFAULTER_GRACE_DAYS, HIGH_RISK_REASONS, SCHEDULE_SOURCE, SCREENS, schedule } from '../clinical/newbornSchedule.js';
 import { hasRole } from '../models/Membership.js';
 import { NewbornFollowUp, SCREEN_RESULTS } from '../models/NewbornFollowUp.js';
 import { Patient } from '../models/Patient.js';
@@ -48,6 +48,16 @@ const endOfDay = (d) => new Date(d.getTime() + DAY - 1 - 330 * 60 * 1000); // th
 export function itemsFor(baby, doc, now) {
   const s = schedule({ birthAt: baby.newborn?.birthAt, gestationWeeks: doc?.gestationWeeks ?? null, gestationDays: doc?.gestationDays ?? 0, birthWeightGrams: baby.newborn?.birthWeightGrams ?? null, highRisk: Boolean(doc?.highRisk) });
   const rec = (kind, key) => doc?.records?.find((r) => r.kind === kind && r.key === key) ?? null;
+  // A ROP screen added by a NICU admission (Build 13, N3) gives the first-exam date, and the screen even when the
+  // schedule alone would not ask for it
+  const ropEvent = (doc?.events ?? []).filter((e) => e.key === 'rop').sort((a, b) => new Date(a.dueBy) - new Date(b.dueBy))[0];
+  if (ropEvent) {
+    const by = new Date(ropEvent.dueBy);
+    const at = s.screens.findIndex((x) => x.key === 'rop');
+    const screen = { key: 'rop', label: SCREENS.rop.label, dueFrom: new Date(Math.min(by.getTime(), at >= 0 ? s.screens[at].dueFrom.getTime() : by.getTime() - 7 * DAY)), dueBy: by, fromNicu: true };
+    if (at >= 0) s.screens[at] = screen;
+    else s.screens.push(screen);
+  }
   const screens = s.screens.map((x) => {
     const r = rec('screen', x.key);
     const state = r ? r.status : now > endOfDay(x.dueBy) ? 'overdue' : now >= x.dueFrom ? 'due' : 'upcoming';
@@ -58,7 +68,7 @@ export function itemsFor(baby, doc, now) {
     const state = r ? 'attended' : now > endOfDay(new Date(x.dueOn.getTime() + DEFAULTER_GRACE_DAYS * DAY)) ? 'defaulter' : now >= new Date(x.dueOn.getTime() - 7 * DAY) ? 'due' : 'upcoming';
     return { ...x, state, record: r };
   });
-  return { screens, visits, rop: s.rop };
+  return { screens, visits, rop: ropEvent ? true : s.rop };
 }
 
 const recordView = (r, full) => (r ? { status: r.status, on: r.on, byName: r.byName, at: r.at, ...(full ? { result: r.result, note: r.note } : {}) } : null);

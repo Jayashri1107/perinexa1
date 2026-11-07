@@ -19,7 +19,7 @@ const FITTED = ['', 'the parts are spaced a little closer', 'the text is a littl
  *   its message is shown and nothing is printed.
  * - hint: a line under the title (defaults to the A4 reminder); controls: choices shown under it.
  * - autoPrint: open the browser's print window by itself once the preview is shown (a scan report completed).
- * - page: the paper, when it isn't A4 with 12 mm margins: { size: 'A4' | 'A5', margin: '12mm' | '45mm 12mm 20mm' }
+ * - page: the paper, when it isn't A4 with 12 mm margins: { size: 'A4' | 'A5' | 'A4 landscape', margin: '12mm' | '45mm 12mm 20mm' }
  *   (used for printing and for the sheet on screen).
  * Optional (prescriptions):
  * - pdf: { fileName, title, onSaved(way), whatsapp? } – Download PDF, and Share PDF where the browser can hand a file
@@ -276,7 +276,7 @@ export function PrintPreview({ title, hint, controls, onPrint, onClose, page, pd
       {pageNumbers && <style>{'@media print { @page { @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt sans-serif; color: #000; } } }'}</style>}
       <div
         ref={sheet}
-        className={['pv-sheet', page?.size === 'A5' ? 'pv-sheet-a5' : '', FITS[fitted]].filter(Boolean).join(' ')}
+        className={['pv-sheet', page?.size === 'A5' ? 'pv-sheet-a5' : '', page?.size === 'A4 landscape' ? 'pv-sheet-landscape' : '', FITS[fitted]].filter(Boolean).join(' ')}
         style={page?.margin ? { padding: page.margin } : undefined}
       >
         {children}
