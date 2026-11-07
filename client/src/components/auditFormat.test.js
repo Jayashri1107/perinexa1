@@ -481,6 +481,8 @@ const FILTER_ACTIONS = [
   'FORM_VERSION_RECORDED',
   'FORM_VERSION_APPROVED',
   'FORM_VERSION_WITHDRAWN',
+  'PREGNANCY_EPISODES_VIEWED',
+  'BABY_RECORD_FROM_DELIVERY',
 ];
 
 describe('every event in the audit log has a plain name', () => {

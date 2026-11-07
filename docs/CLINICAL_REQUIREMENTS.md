@@ -205,3 +205,33 @@ known so far: OBG-F-16 WHO checklist, OBG-F-05 MEOWS). Model `FormVersion`, rout
 - Test: as the quality lead → Clinical audit → Document register → **Record a form version** (WHO Surgical Safety
   Checklist, OBG-F-16, 1.0, in force from a past day) → as a doctor → **Approve** → "In force" → open an operation on the
   Theatre list → **Print as the manual's page**: the box shows OBG-F-16, version 1.0.
+
+## Group C – pregnancy episode (PX-X-15) and GREEN / AMBER / RED tiers (DRAFT, not in use), 7 Nov 2026
+Route `/api/pregnancy-episodes`, patient tab **Pregnancies** (antenatal, postnatal and abortion records; those who may
+see the visits).
+- One entry per pregnancy: each antenatal care plan is one pregnancy (closed as delivered, pregnancy ended, new
+  pregnancy …); a pregnancy without a plan yet is the current one. Each shows its EDD, from–to, and what belongs to it
+  between two weeks before the LMP and its end: visits, stays (linked), signed delivery notes, operations, lab orders and
+  babies linked to her. Nothing is moved or copied – read from the records as they are. Audit: PREGNANCY_EPISODES_VIEWED.
+- **Tiers** (`server/src/clinical/riskTiers.js`, DRAFT from India's PMSMA high-risk list and NICE NG201): RED (high
+  risk), AMBER (additional care), GREEN (routine), or "Not enough recorded". Worked out from the same facts as today's
+  risk rules and shown on the Pregnancies tab **beside today's risk level only – not used anywhere**. Replacing today's
+  risk rules with the tiers (the manual's own criteria) is the owner's decision. Labels never name a confidential test.
+- Not built (need the manual's content and the owner): the antenatal record laid out as OBG-F-01, standing
+  prescriptions, the labour admission form (PX-OBG-01, 02, 03, 07).
+- Test: open a pregnant patient → OPD → **Pregnancies**: the tier card (DRAFT) with today's risk level, then
+  "Pregnancy 1 – current" with her stays and operations; fill in her conditions, G P A and blood group → the tier
+  changes from "Not enough recorded".
+
+## Group C – the baby's record made from the delivery (PX-X-14), 7 Nov 2026
+Route `/api/delivery-babies`; on a signed delivery note, the card **The babies' records** (was: "register by hand").
+- For each live-born baby on the note a doctor or RMO presses **Make the baby's record**: the baby is registered as by
+  hand (patient number, checks, registration fee, audit) – "Baby of <mother>" or "First / Second Baby of <mother>" for
+  more than one – linked to the mother, with the time of birth, weight and sex from the note (written after the birth).
+  The record remembers the note and the baby (`newborn.fromDelivery`, unique), so it is made once.
+- Records that may already be this baby are shown first, as on New patient; **Make the record anyway** after checking.
+  A twin made from the same note is not a match for the other twin. Babies already linked to the mother by hand are
+  listed under the card. No record for a stillbirth. Audit: BABY_RECORD_FROM_DELIVERY (plus PATIENT_CREATED).
+- The identity band checked by two people at birth is already in place (second-person check).
+- Test: open a mother's stay → a signed delivery note with a live baby → **Make the baby's record** → "Record made:
+  Baby of … · P-…" with a link; the baby's record shows the mother, time of birth, weight and sex.

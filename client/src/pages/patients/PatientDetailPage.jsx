@@ -410,6 +410,8 @@ export function PatientDetailPage() {
     ...(a.canViewVisits && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Specimens', to: `${base}/specimens`, end: true }] : []),
     // Pre-anaesthesia check-ups (Group B item 9): doctors, RMOs and nurses; not on a baby's record
     ...(a.canViewVisits && patient.careType !== 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Anaesthesia', to: `${base}/anaesthesia`, end: true }] : []),
+    // Her pregnancies, each with its visits, stays and delivery, and the DRAFT tier (Group C, PX-X-15)
+    ...(a.canViewVisits && ['antenatal', 'postnatal', 'abortion'].includes(patient.careType) ? [{ label: 'Pregnancies', to: `${base}/pregnancies`, end: true }] : []),
     // EPDS and VTE risk scores in pregnancy and after delivery (Group A item 5)
     ...(a.canViewVisits && ['antenatal', 'postnatal', 'abortion'].includes(patient.careType) && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Scores', to: `${base}/scores`, end: true }] : []),
     // A baby's care at birth and on the ward, bilirubin and NICU / SNCU admissions (Group B items 12 and 13)

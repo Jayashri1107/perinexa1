@@ -473,6 +473,74 @@ function ReasonDialog({ title, text, label, confirmLabel, onConfirm, onCancel })
   );
 }
 
+// The babies' records from a signed delivery note (Clinical Requirements Group C – PX-X-14): each live baby gets its own
+// record, linked to the mother, with the time of birth, weight and sex from the note – once. Doctors and RMOs make them.
+export function BabyRecords({ documentId, motherName, onMade }) {
+  const { data, error, reload } = useFetch('/delivery-babies', { documentId });
+  const [busy, setBusy] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [matches, setMatches] = useState(null); // { index, list }: records that may be this baby, shown before making one
+  const make = async (index, registerAnyway = false) => {
+    setBusy(index);
+    setMessage(null);
+    setMatches(null);
+    try {
+      const res = await api('/delivery-babies', { method: 'POST', body: { documentId, index, registerAnyway } });
+      setMessage({ type: 'success', text: `Record made: ${res.baby.fullName} · ${res.baby.mrn}.` });
+      reload();
+      onMade?.();
+    } catch (err) {
+      if (err.code === 'POSSIBLE_MATCHES') setMatches({ index, message: err.message, list: err.matches ?? [] });
+      else setMessage({ type: 'error', text: err.message });
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (!data) return error ? <Alert type="error">{error}</Alert> : null;
+  return (
+    <section className="card" aria-labelledby="baby-rec-title">
+      <h2 id="baby-rec-title">The babies' records</h2>
+      {message && <Alert type={message.type}>{message.text}</Alert>}
+      {matches && (
+        <Alert type="warning">
+          <p>{matches.message}</p>
+          <ul>
+            {matches.list.map((m) => (
+              <li key={m.id}>
+                <Link to={`/patients/${m.id}`}>{[m.fullName, m.mrn].filter(Boolean).join(' · ')}</Link>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="btn btn-link" onClick={() => make(matches.index, true)}>
+            Make the record anyway
+          </button>
+        </Alert>
+      )}
+      <ul className="pa-list">
+        {data.babies.map((b) => (
+          <li key={b.index}>
+            <strong>{`Baby ${b.index + 1}`}</strong>
+            <span>{[OUTCOME_LABELS[b.outcome] ?? b.outcome, BABY_SEX_LABELS[b.sex], b.weightGrams && `${b.weightGrams} g`].filter(Boolean).join(' · ')}</span>
+            {b.record ? (
+              <Link to={`/patients/${b.record.id}`}>{`${b.record.fullName} · ${b.record.mrn}`}</Link>
+            ) : b.outcome === 'live' && data.access.create ? (
+              <button type="button" className="btn btn-secondary" disabled={busy !== null} onClick={() => make(b.index)}>
+                {busy === b.index ? 'Making…' : "Make the baby's record"}
+              </button>
+            ) : b.outcome === 'live' ? (
+              <span className="muted">No record yet – a doctor or RMO makes it here.</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {data.linkedByHand.length > 0 && (
+        <p className="hint">{`Already linked to ${motherName} by hand: ${data.linkedByHand.map((x) => `${x.fullName} · ${x.mrn}`).join('; ')}. Check before making another record.`}</p>
+      )}
+      <p className="hint">The record is linked to her, with the time of birth, the weight and the sex from this note. It is made once per baby.</p>
+    </section>
+  );
+}
+
 export function DocumentPage() {
   const { patient, reload: reloadPatient } = useOutletContext();
   const { admissionId, docId } = useParams();
@@ -642,15 +710,7 @@ export function DocumentPage() {
         </section>
       )}
 
-      {kind === 'delivery' && d.status === 'signed' && (d.content.babies ?? []).some((b) => b.outcome === 'live') && (
-        <section className="card">
-          <h2>The baby's record</h2>
-          <p>A baby is a patient of her own, linked to her mother. Register each live baby from New patient → Newborn, choosing {patient.fullName} as the mother.</p>
-          <Link to="/patients/new/newborn" className="btn btn-secondary">
-            Register a newborn
-          </Link>
-        </section>
-      )}
+      {kind === 'delivery' && d.status === 'signed' && (d.content.babies ?? []).some((b) => b.outcome === 'live') && <BabyRecords documentId={d.id} motherName={patient.fullName} onMade={reloadPatient} />}
 
       {d.status === 'signed' && (d.additions.length > 0 || page.access.canAddAddition) && (
         <section className="card vs-additions" aria-labelledby="doc-add-title">
