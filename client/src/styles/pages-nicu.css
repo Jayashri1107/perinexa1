@@ -36,3 +36,26 @@
 @media screen and (max-width: 640px) {
   .nicu-exam { grid-template-columns: 1fr; }
 }
+
+/* Hospital admin → NICU units */
+.nicu-settings .ca-table th, .nicu-settings .ca-table td { vertical-align: middle; }
+.nicu-settings .ca-table tbody th { min-width: 0; }
+.nicu-settings .ca-table select { width: 100%; min-width: 9.5rem; }
+.nicu-units-table input:not([type='checkbox']) { width: 100%; min-width: 8rem; }
+.nicu-units-table input.nicu-num { width: 4.5rem; min-width: 0; text-align: right; }
+.nicu-units-table select { min-width: 7.5rem; }
+.nicu-units-table td:last-child { white-space: nowrap; }
+.nicu-beds-table { table-layout: fixed; }
+.nicu-beds-table th:first-child { width: 22%; }
+.nicu-ward { display: grid; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.nicu-ward:first-of-type { border-top: 0; padding-top: 0; }
+.nicu-ward-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.nicu-ward-head h3 { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.nicu-ward-all { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; white-space: nowrap; }
+.nicu-ward-all select { min-width: 10rem; }
+@media screen and (max-width: 720px) {
+  .nicu-ward-all { margin-left: 0; width: 100%; }
+  .nicu-ward-all select { flex: 1; }
+  .nicu-beds-table { table-layout: auto; }
+  .nicu-units-table input.nicu-num { width: 100%; text-align: left; }
+}
