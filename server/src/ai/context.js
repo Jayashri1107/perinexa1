@@ -21,10 +21,17 @@ const ga = (edd, d) => {
 /** Removes the patient's name (each part of 3+ letters) and phone-like numbers from typed text. */
 export function scrub(text, patient) {
   let t = String(text ?? '');
-  for (const part of String(patient.fullName ?? '').split(/\s+/).filter((p) => p.length >= 3)) {
-    t = t.replace(new RegExp(`\\b${part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), '[patient]');
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Her patient number (and any patient number typed in) – never sent
+  if (patient.mrn) t = t.replace(new RegExp(esc(String(patient.mrn)), 'gi'), '[patient number]');
+  t = t.replace(/\bP-\d{6}\b/gi, '[patient number]');
+  // Each part of her name of 3+ letters; a one-word name whatever its length
+  const parts = String(patient.fullName ?? '').split(/\s+/).filter(Boolean);
+  for (const part of parts.length === 1 ? parts.filter((p) => p.length >= 2) : parts.filter((p) => p.length >= 3)) {
+    t = t.replace(new RegExp(`\\b${esc(part)}\\b`, 'gi'), '[patient]');
   }
-  return t.replace(/\+?\d(?:[\s-]?\d){9,12}/g, '[number]').trim();
+  // Phone-like numbers, also with brackets: "(022) 2345 6789"
+  return t.replace(/\+?\(?\d(?:[\s\-()]*\d){9,12}/g, '[number]').trim();
 }
 
 const line = (label, value) => (value === '' || value == null ? null : `${label}: ${value}`);

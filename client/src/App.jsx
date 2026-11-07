@@ -244,6 +244,8 @@ const ImagingStudyPage = screen(load91, 'ImagingStudyPage');
 const ImagingWorklistPage = screen(load91, 'ImagingWorklistPage');
 const load92 = () => import('./pages/lab/PatientLabTab.jsx');
 const PatientLabTab = screen(load92, 'PatientLabTab');
+const loadAsk = () => import('./pages/ai/PatientAskTab.jsx');
+const PatientAskTab = screen(loadAsk, 'PatientAskTab');
 const load93 = () => import('./pages/inpatient/DocumentPage.jsx');
 const DocumentPage = screen(load93, 'DocumentPage');
 const load94 = () => import('./pages/visits/PrescriptionDesignPage.jsx');
@@ -465,6 +467,7 @@ export function App() {
                   <Route path="stays/:admissionId" element={<AdmissionPage />} />
                   <Route path="stays/:admissionId/docs/:docId" element={<DocumentPage />} />
                   <Route path="lab" element={<PatientLabTab />} />
+                  <Route path="ask" element={<PatientAskTab />} />
                   {/* Her referrals from other doctors (doctors and RMOs; the server lists only those this person may open) */}
                   <Route path="referrals" element={<PatientReferralsTab />} />
                   <Route path="specimens" element={<PatientSpecimensTab />} />

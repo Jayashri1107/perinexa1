@@ -3,7 +3,7 @@ import { Tip } from '../../components/Tip.jsx';
 import { FoldCards } from '../../components/FoldCards.jsx';
 import { PregnancyTimeline } from './PregnancyTimeline.jsx';
 import { KeepsakeButton } from './KeepsakeCard.jsx';
-import { Archive, BadgeCheck, BedDouble, CalendarDays, CalendarPlus, Copy, Eye, FileSignature, FileText, Files, FlaskConical, HeartPulse, IdCard, Info, ListChecks, Lock, MessageCircle, MoreHorizontal, Pencil, ReceiptText, ScanLine, Send, Siren, Stethoscope, Undo2, UserRound } from 'lucide-react';
+import { Archive, BadgeCheck, BedDouble, CalendarDays, CalendarPlus, Copy, Eye, FileSignature, FileText, Files, FlaskConical, HeartPulse, IdCard, Info, ListChecks, Lock, MessageCircle, MoreHorizontal, Pencil, ReceiptText, ScanLine, Send, Siren, Sparkles, Stethoscope, Undo2, UserRound } from 'lucide-react';
 import { BookScanDialog } from '../imaging/ImagingPages.jsx';
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -194,6 +194,7 @@ const PLACE_ICONS = {
   ABHA: IdCard,
   'Consent forms': FileSignature,
   'Information given': Info,
+  'Ask AI': Sparkles,
 };
 
 /** Phones: the rest of her record as large buttons on her overview (mobile.css; hidden on larger screens). */
@@ -301,6 +302,8 @@ export function PatientDetailPage() {
   // On the Edit details tab, "Save changes" is the screen's one primary action: the header's Edit button is hidden
   // there, and today's visit button is shown as a secondary button.
   const onEditTab = /\/edit\/?$/.test(location.pathname);
+  // Ask AI has its own primary button (Ask): the header's visit button is shown as a secondary one there
+  const onAskTab = /\/ask\/?$/.test(location.pathname);
   // The Referrals tab: for doctors and RMOs who may see her visits, when she has a referral (or while it is open)
   const referralsTab =
     seesReferrals && a.canViewVisits && (referrals.data?.referrals?.length > 0 || /\/referrals\/?$/.test(location.pathname));
@@ -444,6 +447,9 @@ export function PatientDetailPage() {
     ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'doctor', 'rmo') ? [{ label: 'ABHA', to: `${base}/abha`, end: true }] : []),
     ...(a.canViewConsents ? [{ label: 'Consent forms', to: `${base}/consents`, end: true }] : []),
     ...(a.canViewConsents ? [{ label: 'Information given', to: `${base}/information`, end: true }] : []),
+    // Ask AI about her (docs/ASK_AI_PLAN.md, the owner's version brought over 7 Nov 2026): her doctor (any doctor
+    // while she has none) and RMOs – as the AI brief and letters
+    ...(a.canEditClinical && hasRole(activeMembership, 'doctor', 'rmo') ? [{ label: 'Ask AI', to: `${base}/ask`, end: true }] : []),
     // Edit details: in the header (More, or the main button) – no tab of its own, except while it is open
     ...(onEditTab ? [{ label: 'Edit details', to: `${base}/edit`, end: true }] : []),
   ];
@@ -506,17 +512,17 @@ export function PatientDetailPage() {
               </button>
             )}
             {visitButton?.kind === 'open' && !location.pathname.startsWith(visitButton.to) && (
-              <Link to={visitButton.to} className={`btn ${onEditTab ? 'btn-secondary' : 'btn-primary'}`}>
+              <Link to={visitButton.to} className={`btn ${onEditTab || onAskTab ? 'btn-secondary' : 'btn-primary'}`}>
                 <Stethoscope aria-hidden="true" /> Open today's visit
               </Link>
             )}
             {visitButton?.kind === 'start' && (
-              <button type="button" className={`btn ${onEditTab ? 'btn-secondary' : 'btn-primary'}`} onClick={startVisit} disabled={startingVisit}>
+              <button type="button" className={`btn ${onEditTab || onAskTab ? 'btn-secondary' : 'btn-primary'}`} onClick={startVisit} disabled={startingVisit}>
                 <Stethoscope aria-hidden="true" /> {startingVisit ? 'Starting…' : "Start today's visit"}
               </button>
             )}
             {!visitButton && canEdit && !onEditTab && (
-              <Link to={`${base}/edit`} className="btn btn-primary">
+              <Link to={`${base}/edit`} className={`btn ${onAskTab ? 'btn-secondary' : 'btn-primary'}`}>
                 <Pencil aria-hidden="true" /> Edit details
               </Link>
             )}

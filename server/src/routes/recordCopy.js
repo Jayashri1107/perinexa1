@@ -18,6 +18,14 @@ import { FertilityPlan } from '../models/FertilityPlan.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { WorkDone } from '../models/WorkDone.js';
+import { ClinicalScore } from '../models/ClinicalScore.js';
+import { ImagingOrder } from '../models/ImagingOrder.js';
+import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
+import { Referral } from '../models/Referral.js';
+import { Specimen } from '../models/Specimen.js';
+import { fullView, referralAccess, viewContext } from '../referrals/referralService.js';
+import { itemsFor as followUpItems } from './newbornFollowUp.js';
+import { overdue as specimenOverdue } from './specimens.js';
 import { NOT_DUPLICATE } from '../patients/duplicateRules.js';
 import { earlierRecordsFor } from '../patients/duplicateService.js';
 import {
@@ -25,6 +33,11 @@ import {
   catalogueFor,
   consentForCopy,
   documentForCopy,
+  followUpForCopy,
+  imagingForCopy,
+  referralForCopy,
+  scoreForCopy,
+  specimenForCopy,
   labOrderForCopy,
   noteForCopy,
   nursingEntryForCopy,
@@ -65,7 +78,7 @@ const forbidden = (message) => new HttpError(403, message, 'FORBIDDEN');
 
 // A copy must be complete. A record has far fewer entries than this; if one ever has more, the newest are copied
 // and the copy says which part is not complete (`cut`) – it never looks complete when it is not.
-export const COPY_LIMITS = { visits: 1000, labOrders: 1000, stays: 200, documents: 3000, nursing: 10000, consents: 1000, appointments: 1000, workDone: 1000, notes: 500, carePlans: 50, fertilityPlans: 50, fertilityCycles: 300 };
+export const COPY_LIMITS = { visits: 1000, labOrders: 1000, stays: 200, documents: 3000, nursing: 10000, consents: 1000, appointments: 1000, workDone: 1000, notes: 500, carePlans: 50, fertilityPlans: 50, fertilityCycles: 300, imaging: 500, referrals: 200, specimens: 500, scores: 500 };
 
 function assertCanCopy(req, patient) {
   const access = patientAccess(req, patient);
@@ -123,6 +136,71 @@ async function fertilityCyclesPart(req, patient, cut) {
   return found.rows.map(fertilityCycleView);
 }
 
+/** The users who signed (name and professional details, never more), by id. */
+async function signersOf(stamps) {
+  const userIds = [...new Set(stamps.filter((s) => s?.by).map((s) => String(s.by)))];
+  if (!userIds.length) return new Map();
+  return new Map((await User.find({ _id: { $in: userIds } }, { name: 1, professional: 1 }).lean()).map((u) => [String(u._id), u]));
+}
+
+/**
+ * Her scans (USG and radiology), oldest first: a signed report whole, others listed (patients/recordCopyView.js
+ * imagingForCopy). The person making the copy sees her medical details, so sees every report as the Scans tab does.
+ */
+async function imagingPart(req, patient, cut) {
+  const found = await newest(ImagingOrder.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ createdAt: -1, _id: -1 }).lean(), COPY_LIMITS.imaging);
+  if (found.more) cut.push('imaging');
+  if (!found.rows.length) return [];
+  const signers = await signersOf(found.rows.filter((o) => o.status === 'signed').map((o) => o.signed));
+  return found.rows.map((o) => imagingForCopy(o, o.status === 'signed' ? (signers.get(String(o.signed?.by)) ?? null) : null));
+}
+
+/**
+ * The referrals linked to her record, oldest first, as her doctor sees them (referrals/referralService.js fullView,
+ * the same referrals as the Referrals pages), with her answers on sharing. A copy is refused rather than made
+ * without the words of a consultant note.
+ */
+async function referralsPart(req, patient, cut) {
+  const found = await newest(Referral.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ receivedAt: -1, _id: -1 }), COPY_LIMITS.referrals);
+  if (found.more) cut.push('referrals');
+  if (!found.rows.length) return [];
+  const access = referralAccess(req, found.rows[0], patient); // (the same for every referral of hers)
+  if (!access.view || !access.seesNote) throw forbidden("Only the patient's doctor or an RMO can make a copy of the whole record.");
+  const [ctx, signers] = await Promise.all([
+    viewContext(req, found.rows, { patients: new Map([[String(patient._id), patient]]) }),
+    signersOf(found.rows.filter((r) => r.note?.status === 'signed').map((r) => r.note.signed)),
+  ]);
+  return found.rows.map((r) => {
+    const signer = r.note?.status === 'signed' ? (signers.get(String(r.note.signed?.by)) ?? null) : null;
+    return referralForCopy(fullView(r, ctx, access, { signer }), r.sharingHistory);
+  });
+}
+
+/** Her specimens sent for histopathology or cytology, oldest first, with the report, the review and when she was told. */
+async function specimensPart(req, patient, cut) {
+  const found = await newest(Specimen.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ sentAt: -1, _id: -1 }).lean(), COPY_LIMITS.specimens);
+  if (found.more) cut.push('specimens');
+  const now = req.now ?? new Date();
+  return found.rows.map((s) => {
+    const o = specimenOverdue(s, now);
+    return specimenForCopy(s, o.overdue ? o.days : null);
+  });
+}
+
+/** Her EPDS and VTE risk scores, oldest first, as kept on the day. */
+async function scoresPart(req, patient, cut) {
+  const found = await newest(ClinicalScore.find({ tenantId: req.tenantId, patientId: patient._id }).sort({ on: -1, _id: -1 }).lean(), COPY_LIMITS.scores);
+  if (found.more) cut.push('scores');
+  return found.rows.map(scoreForCopy);
+}
+
+/** A baby's screening log and high-risk follow-up (null for anyone else, and for a baby with no day of birth). */
+async function followUpPart(req, patient) {
+  if (patient.careType !== 'newborn' || !patient.newborn?.birthAt) return null;
+  const doc = await NewbornFollowUp.findOne({ tenantId: req.tenantId, patientId: patient._id }).lean();
+  return followUpForCopy(doc, followUpItems(patient, doc, req.now ?? new Date()));
+}
+
 /** Her stays, each with its documents and nursing chart, oldest first. */
 async function staysPart(req, patient, cut) {
   const tenantId = req.tenantId;
@@ -177,7 +255,7 @@ recordCopyRouter.get('/', async (req, res) => {
   // rest of the record, which only reads.
   const plans = await carePlansForCopy(planCtx(req), patient, { limit: COPY_LIMITS.carePlans });
   if (plans.more) cut.push('carePlans');
-  const [patientView, visits, orders, work, notes, consents, stays, appointments, fertilityPlans, fertilityCycles] = await Promise.all([
+  const [patientView, visits, orders, work, notes, consents, stays, appointments, fertilityPlans, fertilityCycles, imaging, referrals, specimens, scores, followUp] = await Promise.all([
     patientPart(req, patient, access),
     newest(Visit.find(own).sort({ visitOn: -1, createdAt: -1, _id: -1 }), COPY_LIMITS.visits),
     newest(LabOrder.find(own).sort({ createdAt: -1, _id: -1 }), COPY_LIMITS.labOrders),
@@ -189,6 +267,11 @@ recordCopyRouter.get('/', async (req, res) => {
     appointmentsPart(req, patient, cut),
     fertilityPlansPart(req, patient, cut),
     fertilityCyclesPart(req, patient, cut),
+    imagingPart(req, patient, cut),
+    referralsPart(req, patient, cut),
+    specimensPart(req, patient, cut),
+    scoresPart(req, patient, cut),
+    followUpPart(req, patient),
   ]);
   for (const [key, part] of Object.entries({ visits, labOrders: orders, workDone: work, notes, consents })) if (part.more) cut.push(key);
 
@@ -209,6 +292,11 @@ recordCopyRouter.get('/', async (req, res) => {
     appointments,
     fertilityPlans,
     fertilityCycles,
+    imaging,
+    referrals,
+    specimens,
+    scores,
+    followUp,
     cut,
   };
   await audit(req, 'PATIENT_RECORD_COPIED', { details: ids(patient, access) });

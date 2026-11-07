@@ -154,6 +154,7 @@ export function createApp({
   app.use(cors({ origin: config.CLIENT_URL, credentials: true, allowedHeaders: ['Content-Type', 'X-Tenant-Id'] }));
   // A photo or PDF of a report read by AI (Smart features) is larger than any other request.
   app.use(/^\/api\/patients\/[^/]+\/ai\/read-report$/, express.json({ limit: '10mb' }));
+  app.use(/^\/api\/patients\/[^/]+\/ai\/ask$/, express.json({ limit: '200kb' })); // Ask AI: the conversation so far
   app.use('/api/ai/transcribe', express.json({ limit: '12mb' }));
   // A lab report file (PDF or photo, at most 5 MB; base64 makes it about a third larger).
   app.use(/^\/api\/lab\/orders\/[^/]+\/files$/, express.json({ limit: '8mb' }));

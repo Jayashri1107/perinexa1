@@ -24,6 +24,7 @@ Fake data only, as always. Nothing an AI writes is saved without a doctor checki
 | 8 ✓ | Reading lab and scan reports | AI reads a photo/PDF; doctor checks values before saving | Yes |
 | 9 ✓ | Ask your records | AI turns a question into a safe search; answers come from the database | Yes |
 | 10 ✓ | AI brief (owner's request, 2 Oct 2026) | On Today, the Calendar and a patient's page, "Brief me" gives 3–6 points on what to look at first. Patients are sent as labels ([P3]) – no names, phones, addresses, patient numbers or typed notes – and HIV is never sent. Cheaper model (GPT-5.4 mini): about ₹0.07–0.20 a brief | Yes |
+| 11 ✓ | Ask AI about a patient (owner's request, 15 Oct 2026 – `docs/ASK_AI_PLAN.md`) | A tab on her record: the doctor asks and follows up; answers from her record (with sources) and general knowledge (labelled); not kept; the cheaper model, "Think harder" for the stronger one (about ₹0.30–0.80 / ₹2–5 a question) | Yes |
 
 ## Before any AI feature is used with real patients
 - An AI provider with a data-privacy agreement suitable for medical data.
