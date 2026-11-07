@@ -141,6 +141,8 @@ Audit: WITNESS_CONFIRMED (purpose), WITNESS_FAILED (a security event). Branch `c
 DRAFT list (`server/src/clinical/patientAlerts.js`, owner's approval before `main`): difficult airway, declines blood
 products, infection precautions (the precaution only – never the diagnosis or a test result), fall risk, needs an
 interpreter, implant or device, other. Model `PatientAlert`, route `/api/patient-alerts` (band, list, add, end).
+- Worked out by Perinexa and shown with them (cannot be ended by hand): high-risk pregnancy (for those who may see the
+  risk), MEOWS trigger on the latest observations of her current stay, PPH chart open.
 - Shown in the safety strip (with allergies and blood group) on every screen of her record – her stays and documents
   included – and on the theatre case page (`PatientSafetyBand`). Only for those who may see her medical details.
 - Her doctor, RMOs and nurses add them ("Add an alert" / "Alerts" in the strip) and end them with a reason; never
@@ -148,3 +150,58 @@ interpreter, implant or device, other. Model `PatientAlert`, route `/api/patient
 - Audit: PATIENT_ALERT_ADDED, PATIENT_ALERT_ENDED, PATIENT_ALERTS_VIEWED – ids and the kind, never the note.
 - Test: open a patient → in the strip under her name, **Add an alert** → Difficult airway, a note → it shows in red
   with a warning icon; open her operation from the Theatre list – the same band; **Alerts** → End, with a reason.
+
+## Group C – maternal death and near-miss review (PX-OBG-30) with corrections and sealing (PX-X-05), 7 Nov 2026
+DRAFT lists (`server/src/clinical/caseReview.js`, owner's approval before `main`): WHO near-miss criteria (2011), WHO
+ICD-MM groups of causes (2012), the three delays as in India's MDSR guidelines (2017). Model `CaseReview`, route
+`/api/case-reviews`. Clinical audit → **Death and near-miss reviews** (doctors, RMOs, quality lead – not the admin).
+- Start a review by her patient number (death or near miss, when it happened). The list shows mothers' deaths recorded
+  in the last year that have no review yet; one death review per mother.
+- A draft is filled in and saved by the team: summary, near-miss criteria, cause, the three delays, avoidable, factors,
+  lessons, actions (who, by when), the meeting day and who was present.
+- **Sealing**: a doctor signs and seals it once the required parts are filled in. A sealed review is never changed –
+  the route refuses and the model itself refuses any save that changes it. A mistake found later is a **correction**
+  added on top (which part, what it should say, why, who, when); the sealed text stays as signed.
+- Confidential: nothing is shown on her record or in the copy of her record. Audit: CASE_REVIEW_* – ids, kind and
+  step, never the text. In the hospital export.
+- Not done: corrections and sealing for the other Group A and B records (scores, specimens, MEOWS, PPH, theatre…) –
+  they keep "entered in error" with a reason; when a record should seal (end of shift, 24 hours, signature) is a
+  decision for the owner and the developer.
+- Test: Clinical audit → Death and near-miss reviews → **Start a review** (a fake patient number, Maternal near miss)
+  → **Sign and seal** at once: the missing parts are named → fill them → **Sign and seal** → shown as signed →
+  add a correction (Summary, what it should say, why) → it shows under Corrections; the summary is unchanged.
+
+## Group C – clinical privileges (PX-X-07), 7 Nov 2026
+DRAFT list (`server/src/clinical/privileges.js`, owner's approval before `main`): caesarean, operative vaginal birth,
+complex perineal repair, hysterectomy, laparoscopy, hysteroscopy, cerclage, ectopic surgery, surgical MTP, minor
+gynaecological procedures, obstetric ultrasound, egg collection and embryo transfer, general and regional anaesthesia,
+newborn intubation and resuscitation – with reminders of the MTP Act, PC-PNDT and ART Act (not checked by Perinexa).
+Model `StaffPrivilege`, route `/api/privileges`, page **Privileges** (`/privileges`).
+- The hospital admin and the quality lead grant a privilege to a doctor, RMO or nurse (until a last day, or no end
+  date) and end it with a reason; never deleted. Past its last day it shows as lapsed. Doctors, RMOs and nurses read it.
+- The theatre list's **Add an operation** has "The surgeon's privilege it needs"; the theatre case shows whether the
+  surgeon holds it and whether the anaesthetist holds the privilege for the anaesthesia chosen (general → general
+  anaesthesia; spinal or epidural → regional). The names are matched to staff by name. **A warning only** – whether a
+  missing privilege should block the operation is for the owner to decide.
+- Audit: PRIVILEGE_GRANTED, PRIVILEGE_ENDED (no patient data). In the hospital export.
+- Test: sign in as the quality lead or admin → Privileges → **Grant a privilege** → a doctor, Caesarean section →
+  "In force"; as a doctor → Theatre → Add an operation with that doctor's name as surgeon and the privilege chosen →
+  open it: "… holds the privilege: Caesarean section"; a name not on the staff list says to check by hand.
+
+## Group C – form versions and the document register (PX-X-02), printing as the manual's page (PX-X-03), 7 Nov 2026
+`server/src/clinical/formRegister.js` (DRAFT list of the Perinexa screens that stand in for the manual's forms; codes
+known so far: OBG-F-16 WHO checklist, OBG-F-05 MEOWS). Model `FormVersion`, route `/api/forms`, page Clinical audit →
+**Document register**.
+- The quality lead or the admin records a version (screen, the manual's code, title, version, in force from, review
+  due); a doctor approves it. An approved version is in force from its day until a later approved version of the same
+  screen; never changed after approval, never deleted – a draft entered by mistake is withdrawn with a reason. A review
+  date that has passed shows "Review overdue".
+- **Print as the manual's page** (A4, `components/print/ManualPage.jsx`): the hospital's letterhead with the form's box
+  – code, title and the version in force on the record's day; the header repeats on every page. With no approved
+  version the box says "No form code … not in the document register yet". Added to: the theatre case (WHO checklist),
+  the MEOWS chart, and a sealed death or near-miss review. The other screens in the list (PPH chart, discharge
+  checklist, PAC, pain chart, newborn records, NICU register, incident, specimen) get the same button next.
+- Audit: FORM_VERSION_RECORDED / _APPROVED / _WITHDRAWN (no patient data). In the hospital export.
+- Test: as the quality lead → Clinical audit → Document register → **Record a form version** (WHO Surgical Safety
+  Checklist, OBG-F-16, 1.0, in force from a past day) → as a doctor → **Approve** → "In force" → open an operation on the
+  Theatre list → **Print as the manual's page**: the box shows OBG-F-16, version 1.0.

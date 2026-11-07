@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { ANAESTHESIA, CASE_STATUS, PHASES, PHASE_ORDER, URGENCY, WHO_SOURCE, missingInPhase } from '../clinical/whoChecklist.js';
 import { Admission } from '../models/Admission.js';
 import { latestPac } from './anaesthesia.js';
+import { privilegeCheck } from './privileges.js';
+import { ANAESTHESIA_PRIVILEGE, PRIVILEGES, SURGEON_PRIVILEGES } from '../clinical/privileges.js';
 import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { TheatreCase } from '../models/TheatreCase.js';
@@ -59,6 +61,7 @@ function view(c, patient, full = false) {
     site: c.site,
     urgency: c.urgency,
     surgeon: c.surgeon,
+    privilegeKey: c.privilegeKey ?? '',
     assistant: c.assistant,
     anaesthetist: c.anaesthetist,
     anaesthesia: c.anaesthesia,
@@ -77,7 +80,7 @@ theatreRouter.get('/', async (req, res) => {
   const byId = new Map(patients.map((p) => [String(p._id), p]));
   const shown = cases.filter((c) => byId.has(String(c.patientId)) && mayView(req, byId.get(String(c.patientId))));
   await audit(req, 'THEATRE_LIST_VIEWED', { details: { date: date.toISOString().slice(0, 10), count: shown.length } });
-  res.json({ cases: shown.map((c) => view(c, byId.get(String(c.patientId)))), rules: { urgency: URGENCY, anaesthesia: ANAESTHESIA, status: CASE_STATUS } });
+  res.json({ cases: shown.map((c) => view(c, byId.get(String(c.patientId)))), rules: { urgency: URGENCY, anaesthesia: ANAESTHESIA, status: CASE_STATUS, privileges: Object.fromEntries(SURGEON_PRIVILEGES.map((k) => [k, PRIVILEGES[k].label])) } });
 });
 
 const createBody = z
@@ -91,6 +94,7 @@ const createBody = z
     site: safeText('Site', 100).default(''),
     urgency: z.enum(Object.keys(URGENCY)).default('elective'),
     surgeon: safeText('Surgeon', 150).default(''),
+    privilegeKey: z.enum(['', ...SURGEON_PRIVILEGES]).default(''),
     assistant: safeText('Assistant', 150).default(''),
     anaesthetist: safeText('Anaesthetist', 150).default(''),
     anaesthesia: z.enum(['', ...Object.keys(ANAESTHESIA)]).default(''),
@@ -125,7 +129,13 @@ async function loadOne(req) {
 theatreRouter.get('/:id', async (req, res) => {
   const { c, patient } = await loadOne(req);
   await audit(req, 'THEATRE_CASE_VIEWED', { details: ids(c, patient) });
-  res.json({ case: view(c, patient, true), pac: await latestPac(req.tenantId, patient._id), access: { write: mayWrite(req, patient) && !c.cancelled }, rules: { phases: PHASES, order: PHASE_ORDER, source: WHO_SOURCE, urgency: URGENCY, anaesthesia: ANAESTHESIA, status: CASE_STATUS } });
+  // The privileges check (PX-X-07): the surgeon for the operation's privilege, the anaesthetist for the anaesthesia's.
+  const onDay = c.listDate.toISOString().slice(0, 10);
+  const privileges = {
+    surgeon: await privilegeCheck(req.tenantId, c.surgeon, c.privilegeKey, onDay),
+    anaesthetist: await privilegeCheck(req.tenantId, c.anaesthetist, ANAESTHESIA_PRIVILEGE[c.anaesthesia] ?? '', onDay),
+  };
+  res.json({ case: view(c, patient, true), privileges, pac: await latestPac(req.tenantId, patient._id), access: { write: mayWrite(req, patient) && !c.cancelled }, rules: { phases: PHASES, order: PHASE_ORDER, source: WHO_SOURCE, urgency: URGENCY, anaesthesia: ANAESTHESIA, status: CASE_STATUS, privileges: Object.fromEntries(SURGEON_PRIVILEGES.map((k) => [k, PRIVILEGES[k].label])) } });
 });
 
 const answersFor = (phase) =>

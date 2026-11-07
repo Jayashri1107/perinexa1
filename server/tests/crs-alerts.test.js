@@ -1,6 +1,7 @@
 // Clinical Requirements Group C (PX-X-13): alerts that follow the patient – DRAFT list. Shown with her medical details
 // on her record and, through the band, on her stay and her operation; added and ended (never deleted) by her doctor,
 // RMOs and nurses. Fake data only.
+import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
@@ -110,5 +111,20 @@ describe('alerts that follow the patient (DRAFT)', () => {
     const p = await patient();
     const r = await add('drA', p, { kind: 'other', note: 'Baby is a boy' });
     expect(r.status).toBe(400);
+  });
+
+  it('works out a MEOWS trigger and an open PPH chart on her current stay; they cannot be ended by hand', async () => {
+    const p = await patient({ careType: 'postnatal' });
+    const a = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-10T01:00:00.000Z', ward: 'Postnatal ward', bed: '3', reason: 'After delivery' })).body.admission;
+    const band = async () => (await (await as('nurse')).get(`/api/patient-alerts/band?patientId=${p.id}`)).body.alerts;
+    expect(await band()).toEqual([]);
+    const m = await (await as('nurse')).post('/api/meows').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, at: '2026-11-10T05:30:00.000Z', rr: 32, spo2: 98, temp: 36.8, sbp: 118, dbp: 76, hr: 84, avpu: 'A', escalatedTo: 'Dr Sample' });
+    expect(m.body.entry.level).toBe('trigger');
+    await (await as('nurse')).post('/api/pph').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, recognisedAt: '2026-11-10T04:00:00.000Z', causes: ['tone'] });
+    expect((await band()).map((x) => [x.label, x.auto])).toEqual([['MEOWS trigger', true], ['PPH chart open', true]]);
+    expect((await (await as('drA')).get(`/api/patients/${p.id}`)).body.patient.alerts.map((x) => x.kind)).toEqual(['meows_trigger', 'pph_open']);
+    // a normal set afterwards: the trigger goes
+    await (await as('nurse')).post('/api/meows').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, at: '2026-11-10T05:50:00.000Z', rr: 16, spo2: 98, temp: 36.8, sbp: 118, dbp: 76, hr: 84, avpu: 'A' });
+    expect((await band()).map((x) => x.kind)).toEqual(['pph_open']);
   });
 });

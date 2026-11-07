@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { ALERT_KINDS, ALERT_KIND_KEYS, ALERT_SOURCE } from '../clinical/patientAlerts.js';
+import { Admission } from '../models/Admission.js';
+import { MeowsEntry } from '../models/MeowsEntry.js';
 import { PatientAlert } from '../models/PatientAlert.js';
+import { PphChart } from '../models/PphChart.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
@@ -39,6 +42,29 @@ export async function activeAlerts(tenantId, patientId) {
   return list.map(alertView);
 }
 
+/**
+ * The alerts Perinexa works out itself (shown with the typed ones, never ended by hand): high risk (antenatal, for
+ * those who may see the risk), the latest MEOWS observations of her current stay at TRIGGER, and a PPH chart open.
+ */
+export async function autoAlerts(tenantId, patient, access) {
+  const out = [];
+  if (patient.careType === 'antenatal' && patient.risk?.level === 'high' && access.view.has('risk')) {
+    const why = (patient.risk.reasons ?? []).filter((r) => r.level === 'high').map((r) => r.label).slice(0, 3).join(', ');
+    out.push({ id: 'auto-risk', auto: true, kind: 'high_risk', label: 'High-risk pregnancy', note: why });
+  }
+  if (patient.careType !== 'newborn') {
+    const stay = await Admission.findOne({ tenantId, patientId: patient._id, status: 'admitted' }, { _id: 1 }).lean();
+    if (stay) {
+      const latest = await MeowsEntry.findOne({ tenantId, admissionId: stay._id, cancelled: null }, { level: 1 }).sort({ at: -1, _id: -1 }).lean();
+      if (latest?.level === 'trigger') out.push({ id: 'auto-meows', auto: true, kind: 'meows_trigger', label: 'MEOWS trigger', note: 'latest observations on the chart of this stay' });
+      if (await PphChart.exists({ tenantId, patientId: patient._id, admissionId: stay._id, status: 'open', cancelled: null })) {
+        out.push({ id: 'auto-pph', auto: true, kind: 'pph_open', label: 'PPH chart open', note: '' });
+      }
+    }
+  }
+  return out;
+}
+
 async function load(req, patientId) {
   const patient = await findPatientById(req.tenantId, patientId);
   const access = patientAccess(req, patient);
@@ -62,7 +88,7 @@ patientAlertsRouter.get('/band', async (req, res) => {
       ...(p.careType === 'abortion' && p.abortion ? { abortion: { lossType: p.abortion.lossType, antiD: p.abortion.antiD ?? null } } : {}),
       ...(p.careType === 'postnatal' ? { postnatal: { breastfeeding: p.postnatal?.breastfeeding ?? '' } } : {}),
     },
-    alerts: await activeAlerts(req.tenantId, patient._id),
+    alerts: [...(await autoAlerts(req.tenantId, patient, access)), ...(await activeAlerts(req.tenantId, patient._id))],
     access: { write: mayWrite(access) },
   });
 });

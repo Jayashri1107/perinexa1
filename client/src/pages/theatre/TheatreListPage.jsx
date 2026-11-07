@@ -37,8 +37,8 @@ export function ChecklistProgress({ progress }) {
   );
 }
 
-function AddDialog({ date, onDone, onCancel }) {
-  const [f, setF] = useState({ patientNo: '', listDate: date, theatre: 'Theatre 1', order: '1', procedure: '', site: '', urgency: 'elective', surgeon: '', assistant: '', anaesthetist: '', anaesthesia: '' });
+function AddDialog({ date, privileges = {}, onDone, onCancel }) {
+  const [f, setF] = useState({ patientNo: '', listDate: date, theatre: 'Theatre 1', order: '1', procedure: '', site: '', urgency: 'elective', surgeon: '', privilegeKey: '', assistant: '', anaesthetist: '', anaesthesia: '' });
   const [requestId] = useState(newRequestId);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -83,6 +83,16 @@ function AddDialog({ date, onDone, onCancel }) {
           </select>
         </Field>
         {text('surgeon', 'Surgeon (optional)', 150)}
+        <Field label="The surgeon's privilege it needs (optional)" id="th-priv" error={fe('privilegeKey')}>
+          <select id="th-priv" value={f.privilegeKey} onChange={set('privilegeKey')}>
+            <option value="">Not chosen</option>
+            {Object.entries(privileges).map(([k, w]) => (
+              <option key={k} value={k}>
+                {w}
+              </option>
+            ))}
+          </select>
+        </Field>
         {text('assistant', 'Assistant (optional)', 150)}
         {text('anaesthetist', 'Anaesthetist (optional)', 150)}
         <Field label="Anaesthesia (optional)" id="th-an">
@@ -157,6 +167,7 @@ export function TheatreListPage() {
       </div>
       {adding && (
         <AddDialog
+          privileges={data?.rules?.privileges}
           date={date}
           onCancel={() => setAdding(false)}
           onDone={(d) => {
