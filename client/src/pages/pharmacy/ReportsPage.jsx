@@ -5,7 +5,7 @@ import { apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
-import { Alert, Field, KpiCard, StatusPill } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { gstinProblem } from './gstin.js';
@@ -84,6 +84,28 @@ const VIEWS = [
   ['purchases', 'Purchases'],
   ['registers', 'Registers'],
 ];
+
+/**
+ * One figure in the summary panel: what it is, the amount, and a short line under it (a status pill – colour, icon and
+ * words – for the stock). A click opens the report it comes from. lead: the counter's sales, a little larger.
+ */
+function Stat({ to, icon: Icon, label, value, sub, status = null, lead = false }) {
+  return (
+    <Link to={to} className={lead ? 'ph-stat is-lead' : 'ph-stat'}>
+      <span className="ph-stat-label">
+        <Icon aria-hidden="true" /> {label}
+      </span>
+      <strong className="ph-stat-value tabular">{value}</strong>
+      {status ? (
+        <StatusPill tone={status.tone} icon={status.icon}>
+          {sub}
+        </StatusPill>
+      ) : (
+        sub && <span className="ph-stat-sub">{sub}</span>
+      )}
+    </Link>
+  );
+}
 
 /** The period: quick choices, or any two dates. */
 function Period({ from, to, setFrom, setTo }) {
@@ -405,31 +427,46 @@ export function ReportsPage() {
     <>
       <PharmacyHeader title="Pharmacy reports" crumb="Reports" subtitle="Choose the period, then the report you need." />
       <div className="pf-content bill-page">
-        {/* The period, with the stock as it is now beside it; then the period's money in one even row (7 Nov 2026) */}
-        <div className="ph-rep-head">
-          <section className="card bill-section ph-rep-top" aria-label="Period">
+        {/* One summary panel (7 Nov 2026): the period on top, then this period's money and the stock as it is now, as
+            even cells that rearrange with the width – never one card left alone on a row */}
+        <section className="card ph-glance" aria-label="Pharmacy at a glance">
+          <div className="ph-glance-period">
             <Period from={from} to={to} setFrom={setFrom} setTo={setTo} />
-          </section>
-          <div className="kpi-grid ph-rep-stock" aria-label="Stock now">
-            <KpiCard to={card('alerts')} tone={a?.low.length ? 'watch' : 'neutral'} icon={PackageSearch} label="Low stock" value={a ? String(a.low.length) : '—'} sub={a ? (a.low.length ? 'Medicines to order' : 'Nothing to order') : undefined} />
-            <KpiCard
-              to={card('alerts')}
-              tone={expired ? 'high' : soon ? 'watch' : 'neutral'}
-              icon={CalendarClock}
-              label="Expiring or expired"
-              value={a ? String(a.expiring.length) : '—'}
-              sub={a ? (expired ? `${expired} expired – take off the shelf` : soon ? `Within ${a.days} days` : 'Nothing expiring') : undefined}
-            />
           </div>
-        </div>
-
-        <div className="kpi-grid ph-rep-money" aria-label="This period at a glance">
-          <KpiCard to={card('sales')} icon={ShoppingCart} label="Sold at the counter" value={s ? money(sum('salePaise')) : '—'} textValue sub={s ? `${sum('invoices')} bills in this period` : undefined} />
-          <KpiCard to={card('sales')} icon={BedDouble} label="Issued to wards" value={s ? money(sum('issuePaise')) : '—'} textValue sub="On the patients' hospital bills" />
-          <KpiCard to={card('sales')} icon={RotateCcw} label="Returned by patients" value={s ? money(sum('returnedPaise')) : '—'} textValue sub="Credit notes" />
-          <KpiCard to={card('sales')} icon={Receipt} label="GST on sales" value={s ? money(s.totals.cgstPaise + s.totals.sgstPaise) : '—'} textValue sub="CGST + SGST" />
-          <KpiCard to={card('purchases')} icon={Truck} label="Bought from suppliers" value={p ? money(p.netPaise) : '—'} textValue sub="After returns, before GST" />
-        </div>
+          <div className="ph-glance-groups">
+            <div className="ph-glance-group is-money">
+              <h2 className="ph-glance-title">This period</h2>
+              <div className="ph-stats">
+                <Stat to={card('sales')} icon={ShoppingCart} label="Sold at the counter" value={s ? money(sum('salePaise')) : '—'} sub={s ? `${sum('invoices')} bill${sum('invoices') === 1 ? '' : 's'}` : ''} lead />
+                <Stat to={card('sales')} icon={BedDouble} label="Issued to wards" value={s ? money(sum('issuePaise')) : '—'} sub="On hospital bills" />
+                <Stat to={card('sales')} icon={RotateCcw} label="Returned by patients" value={s ? money(sum('returnedPaise')) : '—'} sub="Credit notes" />
+                <Stat to={card('sales')} icon={Receipt} label="GST on sales" value={s ? money(s.totals.cgstPaise + s.totals.sgstPaise) : '—'} sub="CGST + SGST" />
+                <Stat to={card('purchases')} icon={Truck} label="Bought from suppliers" value={p ? money(p.netPaise) : '—'} sub="After returns, before GST" />
+              </div>
+            </div>
+            <div className="ph-glance-group is-stock">
+              <h2 className="ph-glance-title">Stock now</h2>
+              <div className="ph-stats">
+                <Stat
+                  to={card('alerts')}
+                  icon={PackageSearch}
+                  label="Low stock"
+                  value={a ? String(a.low.length) : '—'}
+                  sub={a ? (a.low.length ? 'Medicines to order' : 'Nothing to order') : ''}
+                  status={a?.low.length ? { tone: 'watch', icon: CircleAlert } : a ? { tone: 'stable', icon: CircleCheck } : null}
+                />
+                <Stat
+                  to={card('alerts')}
+                  icon={CalendarClock}
+                  label="Expiring or expired"
+                  value={a ? String(a.expiring.length) : '—'}
+                  sub={a ? (expired ? `${expired} expired – take off the shelf` : soon ? `Within ${a.days} days` : 'Nothing expiring') : ''}
+                  status={a ? (expired ? { tone: 'high', icon: CircleAlert } : soon ? { tone: 'watch', icon: Clock } : { tone: 'stable', icon: CircleCheck }) : null}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="segmented ph-rep-tabs" role="group" aria-label="Report">
           {views.map(([k, label]) => (

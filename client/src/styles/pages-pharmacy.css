@@ -419,14 +419,14 @@
    totals and the buttons on the right */
 .ph-counter { container-type: inline-size; display: flex; flex-direction: column; gap: var(--space-3); }
 .ph-counter-main { display: grid; grid-template-columns: minmax(250px, 290px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
-.ph-counter-right { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); min-width: 0; }
+.ph-counter-right { container: phbill / inline-size; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); min-width: 0; }
 /* The bill's left card (7 Nov 2026): a header band with the net amount, then the patient and the prescription */
 .ph-counter-left { display: flex; flex-direction: column; min-width: 0; padding: 0; overflow: hidden; }
 .ph-bill-head { display: flex; flex-direction: column; gap: 2px; padding: var(--space-4); background: var(--indigo-800); color: var(--surface); }
 .ph-bill-head-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
-.ph-bill-tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: var(--indigo-700); font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0.02em; }
+.ph-bill-tag { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: var(--indigo-700); font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0.02em; }
 .ph-bill-tag svg.lucide { width: 14px; height: 14px; }
-.ph-bill-when { font-size: var(--fs-caption); opacity: 0.85; }
+.ph-bill-when { font-size: var(--fs-caption); opacity: 0.85; white-space: nowrap; }
 .ph-bill-net-label { font-size: var(--fs-caption); text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; }
 .ph-bill-net { font-size: var(--fs-kpi); line-height: var(--lh-kpi); font-weight: 600; }
 .ph-bill-count { margin-top: var(--space-1); padding-top: var(--space-2); border-top: 1px solid var(--indigo-700); font-size: var(--fs-caption); opacity: 0.85; }
@@ -484,7 +484,9 @@
 .ph-item-add { justify-self: start; }
 .ph-item-name { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .ph-item-name .ph-finder { margin: 0; }
-.ph-item-name .ph-medlist { position: absolute; z-index: 20; top: 100%; left: 0; width: min(720px, 80vw); margin-top: var(--space-1); }
+.ph-item-row { position: relative; }
+.ph-item-row .ph-finder { position: static; }
+.ph-item-name .ph-medlist { position: absolute; z-index: 20; top: calc(var(--lh-label) + var(--space-1) + 46px); left: 0; right: 0; width: auto; }
 .ph-item-chosen { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); min-height: 40px; }
 .ph-item-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
 .ph-item-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
@@ -527,44 +529,76 @@
 .ph-total-reason input { text-align: left; }
 .ph-total-net input { font-weight: 700; }
 .ph-counter-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border); }
-/* A wide screen: the whole item row on one line, as in the earlier software */
-@container (min-width: 1380px) {
+/* The bill card wide enough: the whole item row on one line, as in the earlier software */
+@container phbill (min-width: 1000px) {
   .ph-item-row { grid-template-columns: minmax(220px, 3fr) minmax(90px, 1.1fr) 70px minmax(70px, 0.9fr) 64px minmax(80px, 1fr) minmax(150px, 1.6fr) auto; }
   .ph-item-name, .ph-item-dose { grid-column: auto; }
 }
+/* The bill card narrow: the item row on three lines, the totals three a row */
+@container phbill (max-width: 620px) {
+  /* The medicine list: name, quantity and MRP only, so the names stay readable */
+  .ph-item-row .ph-medlist-head, .ph-item-row .ph-medlist-row { grid-template-columns: minmax(0, 1fr) 52px 70px; }
+  .ph-item-row .ph-medlist-head > :nth-child(n + 4), .ph-item-row .ph-medlist-row > :nth-child(n + 4) { display: none; }
+  .ph-item-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ph-item-name { grid-column: 1 / -1; }
+  .ph-item-dose { grid-column: span 2; }
+  .ph-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container phbill (max-width: 420px) {
+  .ph-item-row, .ph-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-item-dose, .ph-total-reason { grid-column: 1 / -1; }
+}
 /* A tablet, or the bill beside Sold's filters: the patient above the bill */
-@container (max-width: 820px) {
+@container (max-width: 700px) {
   .ph-counter-main { grid-template-columns: 1fr; }
   /* Stacked: the header band beside the patient, and the patient's details two a row */
   .ph-counter-left { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); }
   .ph-counter-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); align-content: start; }
-  .ph-counter-body > :is(.ph-type-tabs, .ph-section-label, .ph-section-row, .ph-person, .ph-counter-rx, .ph-find-slim, .ph-elsewhere, .appt-pick-list, .ph-today-title, .alert, p, .ph-rx-seen) { grid-column: 1 / -1; }
+  .ph-counter-body > :is(.ph-type-tabs, .ph-section-label, .ph-section-row, input.bill-search-plain, .ph-person, .ph-counter-rx, .ph-find-slim, .ph-elsewhere, .appt-pick-list, .ph-today-title, .alert, p, .ph-rx-seen) { grid-column: 1 / -1; }
   .ph-walkin { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
   .ph-walkin > .ph-buyer { grid-column: 1 / -1; }
   .ph-counter-left .ph-rx-seen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
   .ph-counter-left .ph-rx-seen > :is(.hint, .appt-reason, .ph-section-label) { grid-column: 1 / -1; }
-  .ph-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@container (max-width: 560px) {
-  .ph-item-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ph-item-name, .ph-item-dose { grid-column: 1 / -1; }
-  .ph-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ph-total-reason { grid-column: 1 / -1; }
 }
 /* Sold: a bill number, time and amount never break over two lines */
 .ph-sold-results .dt td:nth-child(1), .ph-sold-results .dt td:nth-child(2), .ph-sold-results .dt td:last-child { white-space: nowrap; }
-/* Reports (7 Nov 2026): the period with the stock now beside it, the period's money in one even row, and the
-   expiring batches given the wider column */
-.ph-rep-head { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: var(--space-3); align-items: stretch; margin-bottom: var(--space-3); }
-.ph-rep-head > .ph-rep-top { display: flex; align-items: center; margin: 0; }
-.ph-rep-head .ph-rep-period { flex-wrap: nowrap; gap: var(--space-3); }
-.ph-rep-head .ph-rep-date input { width: 150px; }
-.ph-rep-head > .ph-rep-stock { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
-.kpi-grid.ph-rep-money { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* Reports (7 Nov 2026): one summary panel – the period, then this period's money and the stock now as even cells */
+.ph-glance { container: phglance / inline-size; display: flex; flex-direction: column; gap: 0; padding: 0; margin-bottom: var(--space-4); overflow: hidden; }
+.ph-glance-period { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); background: var(--mist-50); }
+.ph-glance-period .ph-rep-period { gap: var(--space-3); align-items: end; }
+.ph-glance-groups { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 2fr); }
+.ph-glance-group { display: flex; flex-direction: column; min-width: 0; }
+.ph-glance-group.is-stock { border-left: 1px solid var(--border); }
+.ph-glance-title { margin: 0; padding: var(--space-3) var(--space-4) 0; font-size: var(--fs-caption); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate-600); }
+.ph-stats { display: grid; gap: 1px; background: var(--border); flex: 1; }
+.is-money .ph-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.is-stock .ph-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ph-stat { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); min-width: 0; padding: var(--space-3) var(--space-4) var(--space-4); background: var(--surface); color: inherit; text-decoration: none; }
+.ph-stat:hover { background: var(--mist-50); }
+.ph-stat:focus-visible { outline: 2px solid var(--indigo-700); outline-offset: -2px; }
+.ph-stat-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-label); font-weight: 500; color: var(--slate-600); }
+.ph-stat-label svg.lucide { width: 16px; height: 16px; flex: none; color: var(--indigo-700); }
+.ph-stat-value { font-size: calc(var(--fs-kpi) * 0.75); line-height: 1.2; font-weight: 600; color: var(--ink); }
+.ph-stat.is-lead .ph-stat-value { color: var(--indigo-700); }
+.ph-stat-sub { font-size: var(--fs-caption); color: var(--slate-600); }
+/* The panel narrower: the two groups one under the other */
+@container phglance (max-width: 1050px) {
+  .ph-glance-groups { grid-template-columns: minmax(0, 1fr); }
+  .ph-glance-group.is-stock { border-left: 0; border-top: 1px solid var(--border); }
+}
+/* Narrower still: the counter's sales across the top, the other four two a row */
+@container phglance (max-width: 720px) {
+  .is-money .ph-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .is-money .ph-stat.is-lead { grid-column: 1 / -1; }
+}
+/* The stock alerts: the expiring batches given the wider column */
 .ph-rep-alerts { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 .ph-rep-alerts .bill-report td:nth-child(4), .ph-rep-alerts .bill-report td:nth-child(5) { white-space: nowrap; }
-@media (max-width: 1250px) {
-  .ph-rep-head { grid-template-columns: minmax(0, 1fr); }
-  .kpi-grid.ph-rep-money { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-}
 @media (max-width: 1000px) { .ph-rep-alerts { grid-template-columns: minmax(0, 1fr); } }
+/* The bill card's patient lists (7 Nov 2026): the IPD search an ordinary box, each patient's icon beside the name */
+.ph-counter-body > input.bill-search-plain { flex: none; width: 100%; max-width: none; height: 40px; margin: 0; }
+.ph-counter-left .appt-pick-list { margin: 0; }
+.ph-counter-left .appt-pick > strong { display: inline-flex; align-items: center; gap: 6px; }
+.ph-counter-left .appt-pick > strong svg.lucide { width: 16px; height: 16px; flex: none; color: var(--indigo-700); }
+/* Never wider than the screen: anything too wide scrolls inside its own box */
+.ph-counter, .ph-counter-main, .ph-counter-main > * { min-width: 0; max-width: 100%; }
