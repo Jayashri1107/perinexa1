@@ -33,14 +33,25 @@ export function NewbornFollowUpPage() {
             rows={(data?.babies ?? []).map((b) => ({ ...b, id: b.patientId }))}
             emptyText="No babies here."
             columns={[
-              { key: 'baby', header: 'Baby', render: (b) => <Link to={`/newborn-follow-up/${b.patientId}`}>{`${b.fullName} · ${b.mrn}`}</Link> },
-              { key: 'birthAt', header: 'Born', render: (b) => formatDate(b.birthAt) },
-              { key: 'phone', header: 'Phone', render: (b) => b.phone || '—' },
+              {
+                key: 'baby',
+                header: 'Baby',
+                main: true,
+                wide: true,
+                render: (b) => (
+                  <span className="nbf-baby">
+                    <Link to={`/newborn-follow-up/${b.patientId}`}>{b.fullName}</Link>
+                    <span className="hint">{b.mrn}</span>
+                  </span>
+                ),
+              },
+              { key: 'birthAt', header: 'Born', nowrap: true, render: (b) => formatDate(b.birthAt) },
+              { key: 'phone', header: 'Phone', nowrap: true, render: (b) => b.phone || '—' },
               {
                 key: 'items',
                 header: 'Due or missed',
                 render: (b) => (
-                  <span className="row">
+                  <span className="nbf-due">
                     {openItems(b).map((x) => {
                       const look = itemLook(x);
                       return (

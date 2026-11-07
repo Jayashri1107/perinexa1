@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { TriangleAlert } from 'lucide-react';
 import { api } from '../../api.js';
 import { Alert, Field, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -158,20 +159,23 @@ function Items({ title, items, kind, canRecord, onRecord }) {
   return (
     <section className="card" aria-labelledby={`nb-${kind}`}>
       <h2 id={`nb-${kind}`}>{title}</h2>
-      <ul className="plain-list stack">
+      <ul className="plain-list nbf-items">
         {items.map((x) => {
           const look = itemLook(x);
           return (
-            <li key={x.key} className="row">
-              <StatusPill tone={look.tone} icon={look.icon}>
-                {look.word}
-              </StatusPill>
-              <span className="grow">
-                <strong>{x.label}</strong> · {x.dueOn ? `due ${formatDate(x.dueOn)}` : `from ${formatDate(x.dueFrom)} to ${formatDate(x.dueBy)}`}
-                {x.record && <span className="hint">{` · ${formatDate(x.record.on)}, recorded by ${x.record.byName}${x.record.note ? ` – ${x.record.note}` : ''}`}</span>}
+            <li key={x.key} className="nbf-item">
+              <span className="nbf-item-status">
+                <StatusPill tone={look.tone} icon={look.icon}>
+                  {look.word}
+                </StatusPill>
+              </span>
+              <span className="nbf-item-text">
+                <strong>{x.label}</strong>
+                <span className="hint">{x.dueOn ? `Due ${formatDate(x.dueOn)}` : `Due from ${formatDate(x.dueFrom)} to ${formatDate(x.dueBy)}`}</span>
+                {x.record && <span className="hint">{`Done ${formatDate(x.record.on)}, recorded by ${x.record.byName}${x.record.note ? ` – ${x.record.note}` : ''}`}</span>}
               </span>
               {!x.record && canRecord && (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRecord(x, kind)}>
+                <button type="button" className="btn btn-secondary btn-sm nbf-item-action" onClick={() => onRecord(x, kind)}>
                   Record
                 </button>
               )}
@@ -196,7 +200,7 @@ export function NewbornLog({ patientId }) {
     reload();
   };
   return (
-    <div className="stack">
+    <div className="stack nbf-log">
       {notice && (
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}
@@ -204,7 +208,25 @@ export function NewbornLog({ patientId }) {
       )}
       <section className="card">
         <h2>{`${baby.fullName} · ${baby.mrn}`}</h2>
-        <p className="hint">{`Born ${formatDate(baby.birthAt)}${baby.birthWeightGrams ? ` · ${baby.birthWeightGrams / 1000} kg (${baby.birthWeightGrams} g)` : ''}${baby.gestationWeeks != null ? ` · ${baby.gestationWeeks} weeks ${baby.gestationDays ?? 0} days` : ''}${baby.phone ? ` · ${baby.phone}` : ''}${baby.highRisk ? ' · high-risk follow-up' : ''}`}</p>
+        <ul className="nbf-facts">
+          {[
+            `Born ${formatDate(baby.birthAt)}`,
+            baby.birthWeightGrams && `${baby.birthWeightGrams / 1000} kg (${baby.birthWeightGrams} g)`,
+            baby.gestationWeeks != null && `${baby.gestationWeeks} weeks ${baby.gestationDays ?? 0} days at birth`,
+            baby.phone,
+          ]
+            .filter(Boolean)
+            .map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          {baby.highRisk && (
+            <li>
+              <StatusPill tone="watch" icon={TriangleAlert}>
+                High-risk follow-up
+              </StatusPill>
+            </li>
+          )}
+        </ul>
         {access.write && <DetailsForm baby={baby} reasons={data.highRiskReasons ?? []} onSaved={() => reload()} />}
         <p className="muted small">DRAFT schedule until the Lead Neonatologist confirms it. Source: {data.source}.</p>
       </section>
