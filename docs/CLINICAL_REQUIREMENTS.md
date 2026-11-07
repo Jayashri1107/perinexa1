@@ -150,3 +150,23 @@ interpreter, implant or device, other. Model `PatientAlert`, route `/api/patient
 - Audit: PATIENT_ALERT_ADDED, PATIENT_ALERT_ENDED, PATIENT_ALERTS_VIEWED – ids and the kind, never the note.
 - Test: open a patient → in the strip under her name, **Add an alert** → Difficult airway, a note → it shows in red
   with a warning icon; open her operation from the Theatre list – the same band; **Alerts** → End, with a reason.
+
+## Group C – maternal death and near-miss review (PX-OBG-30) with corrections and sealing (PX-X-05), 7 Nov 2026
+DRAFT lists (`server/src/clinical/caseReview.js`, owner's approval before `main`): WHO near-miss criteria (2011), WHO
+ICD-MM groups of causes (2012), the three delays as in India's MDSR guidelines (2017). Model `CaseReview`, route
+`/api/case-reviews`. Clinical audit → **Death and near-miss reviews** (doctors, RMOs, quality lead – not the admin).
+- Start a review by her patient number (death or near miss, when it happened). The list shows mothers' deaths recorded
+  in the last year that have no review yet; one death review per mother.
+- A draft is filled in and saved by the team: summary, near-miss criteria, cause, the three delays, avoidable, factors,
+  lessons, actions (who, by when), the meeting day and who was present.
+- **Sealing**: a doctor signs and seals it once the required parts are filled in. A sealed review is never changed –
+  the route refuses and the model itself refuses any save that changes it. A mistake found later is a **correction**
+  added on top (which part, what it should say, why, who, when); the sealed text stays as signed.
+- Confidential: nothing is shown on her record or in the copy of her record. Audit: CASE_REVIEW_* – ids, kind and
+  step, never the text. In the hospital export.
+- Not done: corrections and sealing for the other Group A and B records (scores, specimens, MEOWS, PPH, theatre…) –
+  they keep "entered in error" with a reason; when a record should seal (end of shift, 24 hours, signature) is a
+  decision for the owner and the developer.
+- Test: Clinical audit → Death and near-miss reviews → **Start a review** (a fake patient number, Maternal near miss)
+  → **Sign and seal** at once: the missing parts are named → fill them → **Sign and seal** → shown as signed →
+  add a correction (Summary, what it should say, why) → it shows under Corrections; the summary is unchanged.

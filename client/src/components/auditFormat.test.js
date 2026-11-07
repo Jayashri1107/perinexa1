@@ -470,6 +470,12 @@ const FILTER_ACTIONS = [
   'PATIENT_ALERTS_VIEWED',
   'PATIENT_ALERT_ADDED',
   'PATIENT_ALERT_ENDED',
+  'CASE_REVIEWS_VIEWED',
+  'CASE_REVIEW_STARTED',
+  'CASE_REVIEW_VIEWED',
+  'CASE_REVIEW_SAVED',
+  'CASE_REVIEW_SEALED',
+  'CASE_REVIEW_CORRECTED',
 ];
 
 describe('every event in the audit log has a plain name', () => {

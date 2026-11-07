@@ -6,7 +6,7 @@ import { Alert, Field, KpiCard, StatusPill, formatDateTime } from '../../compone
 import { useFetch } from '../../hooks/useFetch.js';
 import { isReportMonth, monthWords, thisMonth } from '../analytics/analyticsFormat.js';
 import { ROBSON_GROUPS } from '../inpatient/robson.js';
-import { QUALITY_TABS } from './qualityFormat.js';
+import { useQualityTabs } from './qualityFormat.js';
 
 // Clinical audit → Deliveries (Clinical Requirements Group A, items 1 and 2): the month's Robson ten-group table and
 // its caesareans with category and decision-to-delivery interval (server/src/routes/clinicalAudit.js). Doctors and
@@ -108,6 +108,7 @@ function CaesareanList({ list }) {
 }
 
 export function ClinicalAuditPage() {
+  const qualityTabs = useQualityTabs();
   const [params, setParams] = useSearchParams();
   const month = isReportMonth(params.get('month')) ? params.get('month') : thisMonth();
   const robson = useFetch('/clinical-audit/robson', { month });
@@ -123,7 +124,7 @@ export function ClinicalAuditPage() {
         title="Clinical audit"
         documentTitle="Clinical audit"
         subtitle="Deliveries confirmed by a doctor: the Robson ten-group table and the caesarean decision-to-delivery times."
-        tabs={QUALITY_TABS}
+        tabs={qualityTabs}
       />
       <div className="pf-content stack">
         <Alert type="error">{robson.error ?? cs.error}</Alert>
