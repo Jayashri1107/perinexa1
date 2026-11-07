@@ -170,7 +170,7 @@ export function InvoicesPage() {
           { key: 'kind', header: 'Kind', render: (v) => (v.kind === 'issue' ? 'Inpatient issue' : 'Counter sale') },
           { key: 'who', header: 'Patient / customer', render: whoOf },
           { key: 'items', header: 'Medicines sold', render: (v) => soldItems(v.lines) },
-          { key: 'net', header: 'Amount', align: 'right', render: (v) => <span className="tabular">{money(v.netPaise)}</span> },
+          { key: 'net', header: 'Amount', align: 'right', render: (v) => <span className="tabular">{paper(v.netPaise)}</span> },
         ]}
       />
     </>

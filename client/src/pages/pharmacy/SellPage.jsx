@@ -322,8 +322,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const addFromBatch = (m, batch, qty, dose) =>
     setLines((ls) => {
       const same = ls.find((l) => l.medicine.id === m.id && (l.batchId === batch.id || (!l.batchId && !l.prescribed)));
-      if (same) return ls.map((l) => (l === same ? { ...l, batchId: batch.id, mrpPaise: batch.mrpPaise, qty: String((Number(l.qty) || 0) + qty), dose: dose || l.dose } : l));
-      return [...ls, { key: `${m.id}-${batch.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: batch.id, mrpPaise: batch.mrpPaise, expiry: batch.expiry, dose }];
+      if (same) return ls.map((l) => (l === same ? { ...l, batchId: batch.id, batchNo: batch.batch, mrpPaise: batch.mrpPaise, expiry: batch.expiry, qty: String((Number(l.qty) || 0) + qty), dose: dose || l.dose } : l));
+      return [...ls, { key: `${m.id}-${batch.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: batch.id, batchNo: batch.batch, mrpPaise: batch.mrpPaise, expiry: batch.expiry, dose }];
     });
   // As in the store's earlier software (6 and 7 Nov 2026): choose the medicine from the drop-down, then its batch from
   // the batch list, write the quantity and dose, then Add
@@ -542,7 +542,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
               Medicines
             </h2>
             {!(patient || who === 'walkin') ? (
-              <p className="muted ph-counter-wait">Choose the patient on the left, then add the medicines here.</p>
+              <p className="muted ph-counter-wait">Choose the patient first, then add the medicines here.</p>
             ) : (
               <>
                 <div className="ph-item-row" role="group" aria-label="Medicine to add">
@@ -624,7 +624,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                         <th scope="col">Exp. date</th>
                         <th scope="col" className="num">Qty</th>
                         <th scope="col">Dose</th>
-                        <th scope="col" className="num">GST %</th>
+                        <th scope="col" className="num">GST%</th>
                         <th scope="col" className="num">MRP</th>
                         <th scope="col" className="num">Total</th>
                         <th scope="col">
@@ -646,8 +646,9 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                             <td data-label="Item name" className="ph-grid-name">
                               <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} />
                             </td>
-                            <td data-label="Batch no">
-                              <BatchPicker line={l} onChange={(batchId) => setLine(l.key, { batchId })} onPrice={(info) => setLine(l.key, info)} />
+                            <td data-label="Batch no" className="tabular">
+                              {/* Chosen from the batch list: its number, as on the earlier bill; else (a prescription's line) a choice */}
+                              {l.batchNo ? l.batchNo : <BatchPicker line={l} onChange={(batchId) => setLine(l.key, { batchId })} onPrice={(info) => setLine(l.key, info)} />}
                             </td>
                             <td data-label="Exp. date" className="tabular">
                               {l.expiry ? expiryLabel(l.expiry) : '–'}
@@ -723,7 +724,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                     <input inputMode="decimal" className="tabular" value={discountAmount} maxLength={12} disabled={!lines.length} onChange={(e) => changeAmount(e.target.value)} />
                   </label>
                   <label className="ph-total-field ph-total-reason">
-                    <span>Conc. reason{pct > 0 ? '' : ' (with a discount)'}</span>
+                    <span>Conc. reason</span>
                     <input value={discountReason} maxLength={200} disabled={!(pct > 0)} onChange={(e) => setDiscountReason(e.target.value)} />
                   </label>
                   <label className="ph-total-field">
