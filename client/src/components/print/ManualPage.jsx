@@ -32,9 +32,10 @@ export function FormBox({ form, screenLabel }) {
 
 /**
  * A "Print as the manual's page" button and its preview. screen: the register's screen key; on: the record's day
- * ('YYYY-MM-DD'); title: what is printed (never a patient's name – it can print in the browser's header).
+ * ('YYYY-MM-DD'); title: what is printed (never a patient's name – it can print in the browser's header); footer: an
+ * optional line repeated at the foot of every page (e.g. "NEO-F-03 · v1.0").
  */
-export function ManualPrint({ screen, on, title, children }) {
+export function ManualPrint({ screen, on, title, footer, children }) {
   const [open, setOpen] = useState(false);
   const form = useFetch(open ? '/forms/in-force' : null, { screen, on });
   const lh = useFetch(open ? '/tenant/settings/letterhead' : null);
@@ -48,6 +49,7 @@ export function ManualPrint({ screen, on, title, children }) {
           {form.data && lh.data && (
             <PrintDocument
               className="mp-doc"
+              footer={footer}
               head={
                 <div className="mp-head">
                   <Letterhead letterhead={lh.data.letterhead} />

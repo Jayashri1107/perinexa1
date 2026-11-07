@@ -9,6 +9,7 @@ import { Incident } from '../models/Incident.js';
 import { MeowsEntry } from '../models/MeowsEntry.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { NicuAdmission } from '../models/NewbornCare.js';
+import { nicuDashboardValues } from './nicuData.js';
 import { Patient } from '../models/Patient.js';
 import { Specimen } from '../models/Specimen.js';
 import { TheatreCase } from '../models/TheatreCase.js';
@@ -68,6 +69,7 @@ export async function departmentRows(tenantId, department, { start, end }, now =
       v.nicuAdmissions = count(nicuList.length);
       v.nicuDeaths = count(nicuList.filter((n) => n.outcome?.result === 'died').length);
       v.hearingDone = rate(doneScreen('hearing'), born.length);
+      Object.assign(v, await nicuDashboardValues(tenantId, { start, end }, now)); // Build 13 – NEO-A-05
     }
   }
   if (department === 'theatre') {

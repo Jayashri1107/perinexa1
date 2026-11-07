@@ -5,6 +5,8 @@
 // Sources: WHO Robson Implementation Manual (2017); NICE NG192 (2021); WHO/UNICEF Every Newborn indicators (2015);
 // MoHFW India – LaQshya (2017) labour room and maternity OT quality indicators; WHO Surgical Safety Checklist (2009).
 
+import { NICU_INDICATORS } from './nicuAdmission.js';
+
 export const DASHBOARD_SOURCE =
   'WHO Robson Implementation Manual (2017); NICE NG192 (2021); WHO/UNICEF Every Newborn indicators (2015); MoHFW LaQshya quality indicators (2017); WHO Surgical Safety Checklist (2009)';
 
@@ -32,6 +34,7 @@ export const INDICATORS = [
   { key: 'nicu', department: 'newborn', unit: 'percent', label: 'Admitted to NICU or SNCU', definition: 'Live births admitted to the NICU or SNCU ÷ live births where it was recorded.' },
   { key: 'nicuAdmissions', department: 'newborn', unit: 'count', label: 'NICU or SNCU admissions (register)', definition: 'Admissions in the NICU / SNCU register this month (not entered in error).' },
   { key: 'nicuDeaths', department: 'newborn', unit: 'count', better: 'lower', label: 'Deaths in the NICU or SNCU', definition: 'Admissions of this month whose outcome is death.', adminHidden: true },
+  ...NICU_INDICATORS, // Build 13 – NEO-A-05 (clinical/nicuAdmission.js)
   { key: 'cchdDone', department: 'newborn', unit: 'percent', better: 'higher', label: 'Pulse oximetry (CCHD) screen done', definition: "Babies registered as born this month whose pulse oximetry is recorded done ÷ those babies." },
   { key: 'hearingDone', department: 'newborn', unit: 'percent', better: 'higher', label: 'Hearing screen done', definition: 'Babies registered as born this month whose hearing screen is recorded done ÷ those babies.' },
   { key: 'operations', department: 'theatre', unit: 'count', label: 'Operations done', definition: 'Operations on the theatre list this month that were done.' },

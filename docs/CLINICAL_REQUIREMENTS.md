@@ -124,6 +124,67 @@ and NEO-L-05. **Owner's approval before `main`.**
 - Two newborn dashboard rows added now that their fields exist: NICU / SNCU admissions; deaths in the unit (hidden
   from the hospital admin). Identity bands checked by two people wait for the base rules (Group C).
 
+### Build 13 – the NICU admission as NEO-F-03, its register NEO-L-05 and unit board NEO-A-01 (7 Nov 2026)
+From the field schema `docs/field_schemas/build13_nicu_admission.json` (NEO-F-03 v1.0, NEO-SOP-03, NEO-A-01, NEO-L-05,
+NEO-A-05, PX-NEO-04, PX-X-01, PX-X-14). Branch `claude/build13-nicu-f03-85abb9`, not merged, not pushed.
+**Owner's approvals (recorded by the developer, 7 Nov 2026):** the owner approved the three field schemas as clinical
+content – for this build the NEO-F-03 fields, the computed rules (maturity, ROP, cranial ultrasound, hearing), the
+thresholds (temperature 36.5–37.5 °C and under 36.0 °C, glucose under 45 mg/dL, the 28 weeks / 1000 g floor, nurse:baby
+1:2, counselling and completion within 60 minutes) and the NEO-A-05 targets. The owner also reversed four earlier "not
+built" decisions: the **late-entry badge (PX-X-04)** – built here for the admission time and the counselling time;
+**level-of-care gates (PX-X-01)** – built here; **printed fixed doses** and **Director alerts** (the in-app notification
+bell, no SMS service) – not part of NEO-F-03 (no dose and no Director alert on this form), so nothing in this build.
+- **Code:** rules `server/src/clinical/nicuAdmission.js` (pure), form checks `clinical/nicuForm.js`, database work
+  `clinical/nicuData.js` (pre-fill, ROP screen, N1, board, NEO-A-05 numbers); routes `routes/newbornCare.js`; models
+  `NicuAdmission` (format `f03`) and `NicuRoster` in `models/NewbornCare.js`, `Bed.nicu`, `Tenant.nicu`,
+  `NewbornFollowUp.events`. Website `client/src/pages/newborn/` (NicuAdmissionSection, nicuFields, NicuF03Print,
+  NicuRegisterPage, NicuBoardPage, NicuSettingsPage).
+- **Units are settings, not code** (Hospital admin → NICU units): the schema's Garkheda (level IIIA, 6 beds), Adalat
+  Road and Waluj (level II) are typed by the admin; the sources `transfer_<unit key>` follow the units. A hospital that
+  never set them has NICU and SNCU at level II (the DRAFT's units), so the level IIIA screens stay hidden until set.
+- **Old records:** DRAFT admissions (6 Nov) keep their fields, outcome words and hospital-wide number ("No. 4"); they are
+  read-only. New outcomes use NEO-L-05's list (discharged home, transferred, died, LAMA).
+- **Register number:** per unit per year (UNIT-YEAR-0001), given when the admission is saved (the next number after the
+  unit's last of the year, retried on a clash – a failed save uses no number), never changed (the model refuses), kept
+  when entered in error; the register checks and shows that no number is missing. The year is the admission day's.
+- **Decisions made here (developer and owner to confirm):**
+  1. *Admin override of a full unit (N4).* A hospital admin works in admin mode with no patient records, so the admin
+     cannot admit. Built as "one more admission" allowed by the admin on NICU units (with a reason, used once within 2
+     hours); the admission shows who allowed it and why.
+  2. *ROP rule (Confirm 4).* NICU babies use NEO-F-03's rule (under 34 weeks, under 2000 g, or under 37 weeks with an
+     unstable course; first examination at the later of 30 days and 31 weeks' PMA) and the date is put in the baby's
+     screening log. Other babies keep the screening log's NNF / RBSK schedule (owner's decision of 5 Nov: under 34 weeks
+     or 1750 g; by day 30, or day 21 under 28 weeks / 1200 g). The owner decides whether NEO-F-03's rule replaces it.
+  3. *Late entry (PX-X-04):* "typed more than 60 minutes after the time it records" – the schema gives no threshold.
+  4. *KPI denominators:* temperature in range counts every admission (a missing temperature is "not in range");
+     counselling and completion within 1 hour count NEO-F-03 admissions only (the DRAFT had no such fields); survival
+     counts admissions that ended in the month; ROP on time counts eligible babies whose first exam fell due in the month.
+  5. *Serology pre-fill:* only a positive from the mother's recorded conditions (syphilis → VDRL, hepatitis B → HBsAg,
+     HIV); the absence of a condition is not a negative test, so those start empty. HIV is shown and printed under the
+     neutral name "Lab test (confidential)".
+- **Gaps – stored as fields or flags, not built:**
+  - No weight-centile tables (Fenton, INTERGROWTH-21st, WHO) in Perinexa: the chart is chosen (Fenton under 37 weeks,
+    WHO from 37 by default) and the centile typed; SGA / AGA / LGA come from the typed centile. Not invented.
+  - EOS calculator (Build 12, NEO-SOP-06): sepsis risk and pathway are typed; "culture before antibiotics" (needs order
+    times) is not worked out.
+  - Transfer form NEO-F-18: transfers suggested (floor, capability, full unit) but no form; decision and departure times
+    are typed on the outcome for the 2-hour KPI; the HIE "departed by 3 hours of life" KPI is not worked out.
+  - Fluids NEO-F-05, parent counselling NEO-F-19, ventilator chart NEO-F-10, consent NEO-F-14 (a yes / no and a typed
+    reference, not linked to Consent forms), M&M review NEO-A-06 (a typed reference).
+  - SOP-04 hypothermia and SOP-08 hypoglycaemia pathways: the banners prompt them; the steps and the glucose-check
+    schedule (the schema gives no intervals) are not built. The TSB due time is stored, not reminded.
+  - Not recorded at birth in Perinexa, so typed on NEO-F-03: cord pH, base excess, clamping seconds (the record at birth
+    gives delayed / early), vitamin K time, first feed time, delivery-room glucose; GBS and rubella.
+  - No staff roster: the nurses on duty are typed on the unit board (the latest entry counts).
+  - The hospital's bed board (Beds) does not show a NICU bed as taken by a NICU admission – only by a stay; the NICU board
+    shows both. A baby's **Edit details → Care after birth** (NICU dates) is not filled from the admission.
+  - Hearing (AABR) and cranial ultrasound: shown as due on the admission; no screening entry or task is made (the log
+    already has the hearing screen). Exchange transfusion and TPN order screens do not exist in Perinexa; the gate covers
+    the form's ventilator and central-line choices.
+  - The NEO-L-05 register is exported as CSV; it has no printed page.
+- **Test:** `docs/PROGRESS.md` → "How to test Build 13 – the NICU admission". Automated: `server/tests/build13-nicu-admission.test.js`
+  (AT1–AT7 of the schema) and `client/src/pages/newborn/newbornCare.test.jsx`.
+
 ## Group C – the second-person check (PX-X-06, 6 Nov 2026)
 `server/src/auth/witness.js`. A step that needs two people is confirmed by a SECOND member of staff who types their own
 email and password on the same screen: someone else, active, a member of this hospital as a doctor, RMO or nurse; the

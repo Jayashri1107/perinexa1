@@ -15,7 +15,8 @@ export const FORM_SCREENS = {
   pain_chart: { label: 'Pain chart', code: '' },
   newborn_birth: { label: 'Newborn – record at birth', code: '' },
   newborn_exam: { label: 'Newborn examination', code: '' },
-  nicu_register: { label: 'NICU / SNCU register', code: '' },
+  nicu_register: { label: 'NICU / SNCU register', code: 'NEO-L-05' },
+  nicu_admission: { label: 'NICU admission', code: 'NEO-F-03' }, // Build 13
   case_review: { label: 'Maternal death and near-miss review', code: '' },
   incident: { label: 'Incident report', code: '' },
   specimen: { label: 'Specimen log', code: '' },

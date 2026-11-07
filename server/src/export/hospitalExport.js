@@ -60,7 +60,7 @@ import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { TheatreCase } from '../models/TheatreCase.js';
 import { DashboardSignoff, DashboardTarget } from '../models/DashboardSignoff.js';
 import { PacAssessment, PainEntry } from '../models/AnaesthesiaRecords.js';
-import { BilirubinReading, NewbornBirthCare, NewbornExam, NicuAdmission } from '../models/NewbornCare.js';
+import { BilirubinReading, NewbornBirthCare, NewbornExam, NicuAdmission, NicuRoster } from '../models/NewbornCare.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { Specimen } from '../models/Specimen.js';
 import { ConsentForm } from '../models/ConsentForm.js';
@@ -107,6 +107,7 @@ import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { WorkDone } from '../models/WorkDone.js';
 import { referralSettingsFor } from '../referrals/settings.js';
+import { nicuUnitsFor } from '../clinical/nicuAdmission.js';
 
 /** The project folder (where package.json and server/ are): the export is never written inside it. */
 export const PROJECT_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -204,7 +205,8 @@ export const KINDS = [
   { file: 'newborn-at-birth.json', model: NewbornBirthCare, what: "Each baby's record at birth: cried, resuscitation, cord clamping, the first steps (drying, skin-to-skin, vitamin K, eye care, identity band, breastfeeding) and temperature (DRAFT form)." },
   { file: 'newborn-examinations.json', model: NewbornExam, what: 'Newborn examinations on the ward: each part normal or not with notes, weight, readiness for discharge (DRAFT form).' },
   { file: 'newborn-bilirubin.json', model: BilirubinReading, what: 'Bilirubin readings of each baby (serum or skin meter, mg/dL) with their time.' },
-  { file: 'nicu-register.json', model: NicuAdmission, what: 'The NICU / SNCU admission and outcome register: number, unit, inborn or outborn, reasons, weight and temperature at admission, and how each admission ended.' },
+  { file: 'nicu-register.json', model: NicuAdmission, what: 'The NICU admissions (NEO-F-03) and their register (NEO-L-05): register number per unit and year, unit, where the baby came from, bed, the maternal and perinatal history, the admission assessment, problems and plan, counselling and consent, who signed, and how each admission ended (DRAFT records of 6 Nov 2026 with their fewer fields).' },
+  { file: 'nicu-nurses-on-duty.json', model: NicuRoster, what: 'The nurses on duty in each NICU unit as entered on the unit board, with who entered it and when.' },
   { file: 'settings-formulary.json', model: FormularyItem, what: 'Settings: the formulary rows, their versions, and who confirmed each version.' },
 ];
 
@@ -338,6 +340,8 @@ function hospitalRecord(t) {
     messaging: { ...pick(t.messaging, ['remindersEnabled', 'portalEnabled', 'portalBooking', 'whatsappDocuments']), waitingRoomScreenOn: Boolean(t.messaging?.displayKey) },
     // The referral settings as the referral clocks use them (the defaults where the admin never saved them)
     referrals: referralSettingsFor(t),
+    // The NICU units (Build 13): name, level of care and admission floor (the defaults where the admin never saved them)
+    nicuUnits: nicuUnitsFor(t),
     // The Tally link's settings as the batches use them (the starting account names where the admin never changed them)
     tally: tallySettingsWithDefaults(t.tally),
   });
