@@ -1,5 +1,5 @@
 import { formatDate, formatDateTime } from '../../components/ui.jsx';
-import { ASSESSMENT_FIELDS, FOLLOW_ON_FIELDS, MATERNAL_FIELDS, OUTCOME_FIELDS, PLAN_FIELDS, labelOf, valueAt, valueWords } from './nicuFields.js';
+import { ASSESSMENT_FIELDS, FOLLOW_ON_FIELDS, MATERNAL_FIELDS, OUTCOME_FIELDS, PLAN_FIELDS, bannerText, labelOf, valueAt, valueWords } from './nicuFields.js';
 
 // The NICU admission printed as NEO-F-03 v1.0 (A4 portrait): the header, the allergy band, §1 maternal and perinatal
 // history in two columns, §2 admission assessment in three, §3 problem list and plan in two, then the sign-offs. The
@@ -59,7 +59,7 @@ export function NicuF03Print({ admission: n, baby, rules }) {
         ))}
       </dl>
       <p className="nicu-allergy">{`Allergy alert: ${n.allergyAlert || 'none recorded'}`}</p>
-      {(n.banners ?? []).filter((b) => b.key !== 'late').length > 0 && <p className="pdoc-kind">{`At admission: ${n.banners.filter((b) => b.key !== 'late').map((b) => b.text).join(' ')}`}</p>}
+      {(n.banners ?? []).filter((b) => b.key !== 'late').length > 0 && <p className="pdoc-kind">{`At admission: ${n.banners.filter((b) => b.key !== 'late').map(bannerText).join(' ')}`}</p>}
 
       <h2>§1 Maternal and perinatal history</h2>
       <Columns n={2} fields={MATERNAL_FIELDS} values={n.maternal} unknown={n.maternal?.unknown ?? []} rules={rules} />
@@ -112,7 +112,15 @@ export function NicuF03Print({ admission: n, baby, rules }) {
       </table>
 
       <h2>§3 Problem list and plan</h2>
-      <ol className="pdoc-kind">{(n.plan?.problems ?? []).length ? n.plan.problems.map((p, i) => <li key={i}>{p}</li>) : <li>No problems listed</li>}</ol>
+      {(n.plan?.problems ?? []).length ? (
+        <ol className="pdoc-kind">
+          {n.plan.problems.map((p, i) => (
+            <li key={i}>{p}</li>
+          ))}
+        </ol>
+      ) : (
+        <p className="pdoc-kind">No problems listed</p>
+      )}
       <Columns n={2} fields={[...PLAN_FIELDS, ...FOLLOW_ON_FIELDS]} values={{ ...(n.plan ?? {}), ...(n.followOn ?? {}) }} top={n} rules={rules} />
 
       {n.outcome && (
