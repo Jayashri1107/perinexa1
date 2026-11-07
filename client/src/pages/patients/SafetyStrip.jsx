@@ -1,5 +1,8 @@
-import { Baby, CalendarDays, Droplet, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react';
+import { useState } from 'react';
+import { Baby, CalendarDays, Droplet, ShieldAlert, ShieldCheck, ShieldQuestion, TriangleAlert } from 'lucide-react';
 import { StatusPill, formatDate } from '../../components/ui.jsx';
+import { useFetch } from '../../hooks/useFetch.js';
+import { PatientAlertsDialog } from './PatientAlerts.jsx';
 import { allergyStatus, isRhNegative } from './patientFormat.js';
 
 /**
@@ -7,11 +10,15 @@ import { allergyStatus, isRhNegative } from './patientFormat.js';
  * Visits, a visit and its prescription): allergies, blood group with Rh and, in a pregnancy, the EDD used; after a
  * pregnancy loss in an Rh-negative woman, anti-D until it is recorded; after delivery, whether she is breastfeeding
  * (the medicine safety check uses it).
+ * With them, the alerts that follow the patient (PX-X-13 – difficult airway, declines blood products …); those who
+ * may write her chart add and end them from here (canAlerts), on every screen the strip is on.
  * Shown only to people who may see medical details. Each fact is colour + icon + words.
  */
-export function SafetyStrip({ patient }) {
+export function SafetyStrip({ patient, canAlerts = false, onAlertsChanged }) {
+  const [open, setOpen] = useState(false);
   const medical = patient.medical;
   if (medical === undefined) return null;
+  const alerts = patient.alerts ?? [];
   const isNewborn = patient.careType === 'newborn';
   const allergies = allergyStatus(medical?.allergies);
   const bloodGroup = medical?.bloodGroup ?? '';
@@ -25,6 +32,14 @@ export function SafetyStrip({ patient }) {
 
   return (
     <section className="safety-strip" aria-label="Safety details">
+      {alerts.map((a) => (
+        <StatusPill key={a.id} tone="high" icon={TriangleAlert} large className="safety-allergy" title={a.auto ? 'Worked out by Perinexa from her record' : `Added by ${a.byName}`}>
+          <span>
+            <strong>{a.label}</strong>
+            {a.note ? `: ${a.note}` : ''}
+          </span>
+        </StatusPill>
+      ))}
       {!isNewborn && allergies === 'recorded' && (
         <StatusPill tone="high" icon={ShieldAlert} large className="safety-allergy">
           <span>
@@ -77,6 +92,22 @@ export function SafetyStrip({ patient }) {
           Breastfeeding not recorded – ask
         </StatusPill>
       )}
+      {canAlerts && (
+        <button type="button" className="btn btn-link" onClick={() => setOpen(true)}>
+          {alerts.length ? 'Alerts' : 'Add an alert'}
+        </button>
+      )}
+      {open && <PatientAlertsDialog patientId={patient.id} newborn={isNewborn} onClose={() => setOpen(false)} onChanged={onAlertsChanged} />}
     </section>
   );
+}
+
+/**
+ * The same band on a screen outside her record (her operation, …): fetched for this patient. Nothing is shown to
+ * someone who may not see her medical details.
+ */
+export function PatientSafetyBand({ patientId }) {
+  const { data, reload } = useFetch(patientId ? '/patient-alerts/band' : null, { patientId });
+  if (!data) return null;
+  return <SafetyStrip patient={{ ...data.patient, alerts: data.alerts }} canAlerts={data.access.write} onAlertsChanged={reload} />;
 }

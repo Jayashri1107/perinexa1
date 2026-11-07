@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { BadgeCheck } from 'lucide-react';
+import { BadgeCheck, CircleHelp, TriangleAlert } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
+import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { ShowChoice } from '../quality/SimpleTable.jsx';
+import { PatientSafetyBand } from '../patients/SafetyStrip.jsx';
+import { ManualPrint } from '../../components/print/ManualPage.jsx';
 import { ChecklistProgress, STATUS_LOOK } from './TheatreListPage.jsx';
 import { FITNESS_LOOK } from '../anaesthesia/PacTab.jsx';
 import { FITNESS } from '../anaesthesia/anaesthesiaRules.js';
@@ -28,6 +31,7 @@ function Phase({ c, phase, canWrite, onSaved }) {
   const [fields, setFields] = useState({});
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [witness, setWitness] = useState(emptyWitness);
   useEffect(() => {
     setAnswers(c.checklist[phase].answers);
     setNotes(c.checklist[phase].notes);
@@ -37,7 +41,8 @@ function Phase({ c, phase, canWrite, onSaved }) {
   const call = async (path, method, okText) => {
     setBusy(true);
     try {
-      await api(path, { method, body: body() });
+      await api(path, { method, body: { ...body(), ...(phase === 'signOut' && method === 'POST' ? { witness } : {}) } });
+      setWitness(emptyWitness());
       setFields({});
       setMessage({ type: 'success', text: okText });
       onSaved();
@@ -82,7 +87,9 @@ function Phase({ c, phase, canWrite, onSaved }) {
           );
         })}
       </div>
-      {phase === 'signOut' && <p className="hint">The counts are recorded by one person for now; a second person checking them comes with the base rules. Wrong counts: also report an incident.</p>}
+      {phase === 'signOut' && editable && <WitnessFields id="th-wit" value={witness} onChange={setWitness} errors={fields} what="The instrument, swab and needle count" />}
+      {phase === 'signOut' && c.checklist.signOut.witness && <p>{`Counts ${witnessWords(c.checklist.signOut.witness, formatDateTime).replace(/^Checked/, 'checked')}`}</p>}
+      {phase === 'signOut' && <p className="hint">Wrong counts: also report an incident.</p>}
       {editable && (
         <div className="row">
           <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => call(`/theatre/${c.id}/checklist/${phase}`, 'PUT', 'Saved.')}>
@@ -119,6 +126,85 @@ function CancelDialog({ c, onDone, onCancel }) {
   );
 }
 
+// The privileges check (PX-X-07): whether the surgeon and the anaesthetist hold the privilege this operation needs.
+const PRIVILEGE_STATE = {
+  in_force: { tone: 'stable', icon: BadgeCheck, word: (who, l) => `${who} holds the privilege: ${l}` },
+  none: { tone: 'high', icon: TriangleAlert, word: (who, l) => `No privilege recorded for ${who}: ${l}` },
+  not_staff: { tone: 'watch', icon: CircleHelp, word: (who, l) => `${who} is not a member of staff by this name – check “${l}” by hand` },
+};
+/** The case as printed on the manual's page (PX-X-03): the operation, the team and each WHO step as confirmed. */
+export function TheatrePrint({ c }) {
+  return (
+    <>
+      <h2>{`${c.patient.fullName} · ${c.patient.mrn}`}</h2>
+      <table className="mp-table">
+        <tbody>
+          <tr>
+            <th scope="row">Operation</th>
+            <td>{[c.procedure, c.site].filter(Boolean).join(' – ')}</td>
+            <th scope="row">Day, theatre</th>
+            <td>{`${formatDate(c.listDate)}, ${c.theatre} · ${c.order}`}</td>
+          </tr>
+          <tr>
+            <th scope="row">Surgeon</th>
+            <td>{c.surgeon || '–'}</td>
+            <th scope="row">Anaesthetist</th>
+            <td>{[c.anaesthetist, ANAESTHESIA[c.anaesthesia]].filter(Boolean).join(' – ') || '–'}</td>
+          </tr>
+        </tbody>
+      </table>
+      {PHASE_ORDER.map((p) => {
+        const done = c.progress[p];
+        const ch = c.checklist[p];
+        return (
+          <div key={p}>
+            <h2>{PHASES[p].label}</h2>
+            <table className="mp-table">
+              <tbody>
+                {PHASES[p].items.map((i) => (
+                  <tr key={i.key}>
+                    <td>{i.label}</td>
+                    <td>{[ANSWER_WORDS[ch.answers[i.key]] ?? '–', ch.notes[i.key]].filter(Boolean).join(' – ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p>{done ? `Confirmed by ${done.byName} (${done.role}), ${formatDateTime(done.at)}` : 'Not confirmed'}</p>
+            {ch.witness && <p>{`Counts checked by ${ch.witness.byName} (${ch.witness.role}), ${formatDateTime(ch.witness.at)}`}</p>}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+export function PrivilegeCheck({ privileges, surgeon, anaesthetist }) {
+  const rows = [
+    ['surgeon', surgeon || 'The surgeon'],
+    ['anaesthetist', anaesthetist || 'The anaesthetist'],
+  ].filter(([k]) => privileges[k].state !== 'not_set');
+  if (!rows.length) return null;
+  return (
+    <section className="card" aria-label="Privileges">
+      <h2>Privileges</h2>
+      <ul className="pa-list">
+        {rows.map(([k, who]) => {
+          const p = privileges[k];
+          const look = PRIVILEGE_STATE[p.state];
+          return (
+            <li key={k}>
+              <StatusPill tone={look.tone} icon={look.icon}>
+                {look.word(who, p.label)}
+              </StatusPill>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="hint">From the hospital’s privileges register. A warning only: the team decides.</p>
+    </section>
+  );
+}
+
 export function TheatreCasePage() {
   const { id } = useParams();
   const { data, error, reload } = useFetch(`/theatre/${id}`);
@@ -131,6 +217,7 @@ export function TheatreCasePage() {
     <>
       <PageHeader breadcrumbs={[{ label: 'Theatre list', to: `/theatre?date=${c.listDate}` }, { label: c.procedure }]} title={c.procedure} documentTitle="Theatre case" />
       <div className="pf-content stack">
+        <PatientSafetyBand patientId={c.patient.id} />
         <section className="card">
           <div className="item-editor-head">
             <strong>{`${c.patient.fullName} · ${c.patient.mrn}`}</strong>
@@ -159,12 +246,18 @@ export function TheatreCasePage() {
           </p>
           {c.status !== 'cancelled' && <ChecklistProgress progress={c.progress} />}
           {c.cancelled && <p>{`Taken off the list by ${c.cancelled.byName}: ${c.cancelled.reason}`}</p>}
+          <div className="row">
+            <ManualPrint screen="who_checklist" on={c.listDate} title="WHO Surgical Safety Checklist">
+              <TheatrePrint c={c} />
+            </ManualPrint>
+          </div>
           {data.access.write && c.status !== 'done' && !c.cancelled && (
             <button type="button" className="btn btn-link" onClick={() => setCancelling(true)}>
               Take off the list
             </button>
           )}
         </section>
+        {data.privileges && <PrivilegeCheck privileges={data.privileges} surgeon={c.surgeon} anaesthetist={c.anaesthetist} />}
         {PHASE_ORDER.map((p) => (
           <Phase key={p} c={c} phase={p} canWrite={data.access.write} onSaved={reload} />
         ))}

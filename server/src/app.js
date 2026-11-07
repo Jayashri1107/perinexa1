@@ -74,6 +74,12 @@ import { clinicalScoresRouter } from './routes/clinicalScores.js';
 import { incidentsRouter } from './routes/incidents.js';
 import { formularyRouter } from './routes/formulary.js';
 import { meowsRouter } from './routes/meows.js';
+import { patientAlertsRouter } from './routes/patientAlerts.js';
+import { caseReviewsRouter } from './routes/caseReviews.js';
+import { privilegesRouter } from './routes/privileges.js';
+import { formRegisterRouter } from './routes/formRegister.js';
+import { pregnancyEpisodesRouter } from './routes/pregnancyEpisodes.js';
+import { deliveryBabiesRouter } from './routes/deliveryBabies.js';
 import { pphRouter } from './routes/pph.js';
 import { dischargeChecklistRouter } from './routes/dischargeChecklist.js';
 import { theatreRouter } from './routes/theatre.js';
@@ -329,6 +335,12 @@ export function createApp({
   app.use('/api/formulary', ...inTenant, formularyRouter);
   // Clinical Requirements Group B, item 8: the MEOWS chart (DRAFT)
   app.use('/api/meows', ...inTenant, meowsRouter);
+  app.use('/api/patient-alerts', ...inTenant, patientAlertsRouter);
+  app.use('/api/case-reviews', ...inTenant, caseReviewsRouter);
+  app.use('/api/privileges', ...inTenant, privilegesRouter);
+  app.use('/api/forms', ...inTenant, formRegisterRouter);
+  app.use('/api/pregnancy-episodes', ...inTenant, pregnancyEpisodesRouter);
+  app.use('/api/delivery-babies', ...inTenant, deliveryBabiesRouter);
   // Clinical Requirements Group B, item 15: the PPH chart (DRAFT)
   app.use('/api/pph', ...inTenant, pphRouter);
   // Clinical Requirements Group B, item 14: the postnatal discharge checklist and danger-sign teaching (DRAFT)

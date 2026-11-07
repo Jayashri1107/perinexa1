@@ -7,6 +7,7 @@ import { DataTable } from '../../components/DataTable.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
+import { WitnessFields, emptyWitness } from '../../components/WitnessFields.jsx';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { SUPPLIER_RETURN_REASONS, debitSums, expiryLabel, medicineLabel, momentDay, returnBatchesShown, returnChosen, unitsLabel } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
@@ -79,7 +80,7 @@ export function NewSupplierReturnPage() {
   const [onlyExpired, setOnlyExpired] = useState(false);
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
-  const [witness, setWitness] = useState('');
+  const [witness, setWitness] = useState(emptyWitness);
   const s = useSend((res) => navigate(`/pharmacy/supplier-returns/${res.return.id}`, { state: { flash: `Returned – debit note ${res.return.number}.` } }));
 
   const data = supplierId && offer.data?.supplier?.id === supplierId ? offer.data : null;
@@ -92,11 +93,11 @@ export function NewSupplierReturnPage() {
   const bad = chosen.filter((x) => x.qty == null);
   const controlled = chosen.some((x) => x.b.controlled);
   const sums = debitSums(chosen.filter((x) => x.qty != null).map((x) => ({ qty: x.qty, ratePaise: x.b.ratePaise, gstRate: x.b.gstRate })));
-  const ready = chosen.length > 0 && bad.length === 0 && reason && (!controlled || witness.trim().length >= 2);
+  const ready = chosen.length > 0 && bad.length === 0 && reason && (!controlled || (witness.email.trim().length >= 3 && witness.password.length >= 1));
   const choose = (id) => {
     setSupplierId(id);
     setQty({});
-    setWitness('');
+    setWitness(emptyWitness());
   };
 
   return (
@@ -281,12 +282,8 @@ export function NewSupplierReturnPage() {
             </table>
             {controlled && (
               <>
-                <Alert type="warning">A narcotic or Schedule X medicine is going back: write the name of the staff member who saw it handed over. The return goes in its register.</Alert>
-                <div className="form-grid">
-                  <Field label="Witness (staff who saw it handed over)" id="sr-witness" error={s.fields.witness}>
-                    <input id="sr-witness" value={witness} maxLength={150} onChange={(e) => setWitness(e.target.value)} />
-                  </Field>
-                </div>
+                <Alert type="warning">A narcotic or Schedule X medicine is going back: a second member of staff who saw it handed over signs in below. The return goes in its register.</Alert>
+                <WitnessFields id="sr-wit" value={witness} onChange={setWitness} errors={s.fields} what="Handing over a narcotic or Schedule X medicine" />
               </>
             )}
             <p className="hint">The stock leaves the pharmacy now. Check the list above first. A return entered by mistake can be cancelled from its own page: the stock then goes back on its batches.</p>
@@ -295,7 +292,7 @@ export function NewSupplierReturnPage() {
                 type="button"
                 className="btn btn-primary"
                 disabled={!ready || s.busy}
-                onClick={() => s.send('/pharmacy/supplier-returns', { supplierId, reason, note: note.trim(), witness: witness.trim(), lines: chosen.map((x) => ({ batchId: x.b.id, qty: x.qty })) })}
+                onClick={() => s.send('/pharmacy/supplier-returns', { supplierId, reason, note: note.trim(), witness: controlled ? witness : '', lines: chosen.map((x) => ({ batchId: x.b.id, qty: x.qty })) })}
               >
                 <Undo2 aria-hidden="true" /> {s.busy ? 'Saving…' : 'Return and make the debit note'}
               </button>
@@ -443,9 +440,9 @@ function DebitNotePrint({ ret, settings, onClose }) {
 /** Cancelling a return that was entered by mistake: a reason, and a witness when controlled stock comes back. */
 export function CancelReturnForm({ ret, onClose, onDone }) {
   const [reason, setReason] = useState('');
-  const [witness, setWitness] = useState('');
+  const [witness, setWitness] = useState(emptyWitness);
   const s = useSend(onDone);
-  const ready = reason.trim().length >= 3 && (!ret.controlled || witness.trim().length >= 2);
+  const ready = reason.trim().length >= 3 && (!ret.controlled || (witness.email.trim().length >= 3 && witness.password.length >= 1));
   return (
     <>
       <p>
@@ -457,12 +454,10 @@ export function CancelReturnForm({ ret, onClose, onDone }) {
         <input id="ph-sr-cancel-reason" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} autoFocus />
       </Field>
       {ret.controlled && (
-        <Field label="Witness (staff who saw it put back in stock)" id="ph-sr-cancel-witness" error={s.fields.witness} keepHint hint="A narcotic or Schedule X medicine comes back into stock: the cancelling goes in its register.">
-          <input id="ph-sr-cancel-witness" value={witness} maxLength={150} onChange={(e) => setWitness(e.target.value)} />
-        </Field>
+        <WitnessFields id="ph-sr-cancel-wit" value={witness} onChange={setWitness} errors={s.fields} what="A narcotic or Schedule X medicine coming back into stock (the cancelling goes in its register)" />
       )}
       <div className="row">
-        <button type="button" className="btn btn-danger" disabled={!ready || s.busy} onClick={() => s.send(`/pharmacy/supplier-returns/${ret.id}/cancel`, { reason: reason.trim(), witness: witness.trim() })}>
+        <button type="button" className="btn btn-danger" disabled={!ready || s.busy} onClick={() => s.send(`/pharmacy/supplier-returns/${ret.id}/cancel`, { reason: reason.trim(), witness: ret.controlled ? witness : '' })}>
           {s.busy ? 'Saving…' : 'Cancel the return'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>

@@ -244,3 +244,12 @@
 .adm-transfers td { height: 9mm; }
 .adm-transfers td, .adm-transfers th { border-bottom: 1px solid var(--print-rule); }
 .adm-surgery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+
+/* Printed as the manual's page (Group C, PX-X-03): the letterhead with the form's box beside it */
+.mp-head { display: flex; align-items: flex-start; gap: var(--space-4); }
+.mp-head .lh { flex: 1; }
+.mp-formbox { border: 1.5px solid var(--indigo-700); padding: var(--space-2) var(--space-3); min-width: 52mm; font-size: 0.8em; line-height: 1.35; }
+.mp-formbox .mp-code { font-weight: 600; font-size: 1.15em; }
+.mp-doc h2 { font-size: 1.05em; margin: var(--space-3) 0 var(--space-1); }
+.mp-doc table.mp-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+.mp-doc table.mp-table th, .mp-doc table.mp-table td { border: 1px solid var(--ink); padding: 2px 6px; text-align: left; vertical-align: top; }

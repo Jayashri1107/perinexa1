@@ -13,7 +13,7 @@ import { AuditLog } from '../src/models/AuditLog.js';
 import { Patient } from '../src/models/Patient.js';
 import { Medicine } from '../src/models/Pharmacy.js';
 import { User } from '../src/models/User.js';
-import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
+import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-09-28T06:00:00Z'); // Monday 28 Sep 2026, 11:30 in the hospital
 const ROLES = { drA: 'doctor', nurse: 'nurse', reception: 'receptionist', pharm: 'pharmacist', admin: 'admin' };
@@ -344,7 +344,7 @@ describe('narcotic and Schedule X medicines', () => {
 
     const batch = (await ph('get', `/stock/${n.id}`)).body.batches[0];
     expect((await ph('post', `/batches/${batch.id}/count`, { counted: 7, reason: 'Ampoule broken' })).status).toBe(400);
-    expect((await ph('post', `/batches/${batch.id}/count`, { counted: 7, reason: 'Ampoule broken', witness: 'Sister Sample' })).status).toBe(200);
+    expect((await ph('post', `/batches/${batch.id}/count`, { counted: 7, reason: 'Ampoule broken', witness: { email: people.nurse.email, password: PASSWORD } })).status).toBe(200);
 
     const reg = (await ph('get', '/reports/register?type=narcotic&from=2026-09-01&to=2026-09-30')).body;
     expect(reg.pages).toHaveLength(1);
@@ -355,7 +355,7 @@ describe('narcotic and Schedule X medicines', () => {
       ['count', 0, 1, 7],
     ]);
     expect(reg.pages[0].rows[1]).toMatchObject({ patient: `Narcotic Mother (${p.mrn})`, doctor: 'Sample drA, Reg. MMC-12345' });
-    expect(reg.pages[0].rows[2]).toMatchObject({ witness: 'Sister Sample', reason: 'Ampoule broken' });
+    expect(reg.pages[0].rows[2]).toMatchObject({ witness: 'Sample nurse (Nurse)', reason: 'Ampoule broken' });
   });
 });
 

@@ -55,6 +55,9 @@ export const entryView = (e) => ({
   medicine: e.kind === 'medicine' ? { drug: e.medicine?.drug ?? '', dose: e.medicine?.dose ?? '', route: e.medicine?.route ?? '' } : null,
   note: e.note ?? '',
   escalatedTo: e.kind === 'escalation' ? (e.escalatedTo ?? '') : '',
+  highAlert: Boolean(e.highAlert),
+  discarded: e.discarded ?? '',
+  witness: e.witness ? { byName: e.witness.byName, role: e.witness.role, at: e.witness.at } : null,
   byName: e.byName,
   cancelled: e.cancelled ? { reason: e.cancelled.reason, byName: e.cancelled.byName, at: e.cancelled.at } : null,
 });

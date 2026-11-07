@@ -7,7 +7,7 @@ import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { PHASES, missingInPhase } from '../src/clinical/whoChecklist.js';
 import { AuditLog } from '../src/models/AuditLog.js';
-import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
+import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-11-10T06:00:00Z');
 const ROLES = { drA: 'doctor', nurse: 'nurse', reception: 'receptionist', admin: 'admin' };
@@ -89,8 +89,10 @@ describe('the theatre list', () => {
     expect(ok.body.case).toMatchObject({ status: 'in_theatre', progress: { signIn: { byName: 'Sample nurse', role: 'Nurse' } } });
     expect((await confirm('drA', c, 'signIn', allYes('signIn'))).status).toBe(409); // locked
     await confirm('drA', c, 'timeOut', allYes('timeOut', { imaging: 'na' }));
-    const done = await confirm('nurse', c, 'signOut', allYes('signOut', { specimen: 'na' }));
-    expect(done.body.case).toMatchObject({ status: 'done', progress: { timeOut: { byName: 'Sample drA', role: 'Doctor' }, signOut: { byName: 'Sample nurse' } } });
+    const noWitness = await confirm('nurse', c, 'signOut', allYes('signOut', { specimen: 'na' }));
+    expect(noWitness.body.error.fields['witness.email']).toMatch(/second person/);
+    const done = await confirm('nurse', c, 'signOut', { ...allYes('signOut', { specimen: 'na' }), witness: { email: people.drA.email, password: PASSWORD } });
+    expect(done.body.case).toMatchObject({ status: 'done', progress: { timeOut: { byName: 'Sample drA', role: 'Doctor' }, signOut: { byName: 'Sample nurse' } }, checklist: { signOut: { witness: { byName: 'Sample drA', role: 'Doctor' } } } });
     expect((await (await as('nurse')).post(`/api/theatre/${c.id}/cancel`).send({ reason: 'Not needed now' })).status).toBe(409);
 
     const audited = await AuditLog.find({ tenantId: hospital._id, action: 'THEATRE_CHECKLIST_CONFIRMED' }).lean();

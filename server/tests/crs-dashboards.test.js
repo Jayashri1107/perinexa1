@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { INDICATORS, againstTarget, rate } from '../src/clinical/dashboards.js';
-import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
+import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const ROLES = { drA: 'doctor', rmo: 'rmo', nurse: 'nurse', lead: 'quality', admin: 'admin' };
 let app;
@@ -99,7 +99,7 @@ describe('the monthly dashboards', () => {
     const yes = (phase, items, extra = {}) => ({ answers: Object.fromEntries(items.map((k) => [k, ['allergy', 'airway', 'bloodLoss', 'equipment'].includes(k) ? 'no' : 'yes'])), notes: {}, ...extra });
     await (await as('drA')).post(`/api/theatre/${c.id}/checklist/signIn/confirm`).send(yes('signIn', ['identity', 'siteMarked', 'anaesthesiaCheck', 'oximeter', 'allergy', 'airway', 'bloodLoss']));
     await (await as('drA')).post(`/api/theatre/${c.id}/checklist/timeOut/confirm`).send(yes('timeOut', ['team', 'confirm', 'antibiotic', 'surgeonReview', 'anaesthetistReview', 'nursingReview', 'imaging']));
-    await (await as('drA')).post(`/api/theatre/${c.id}/checklist/signOut/confirm`).send({ answers: { procedureRecorded: 'yes', counts: 'no', specimen: 'na', equipment: 'no', recovery: 'yes' }, notes: { counts: 'Swab found, recounted' } });
+    await (await as('drA')).post(`/api/theatre/${c.id}/checklist/signOut/confirm`).send({ answers: { procedureRecorded: 'yes', counts: 'no', specimen: 'na', equipment: 'no', recovery: 'yes' }, notes: { counts: 'Swab found, recounted' }, witness: { email: people.nurse.email, password: PASSWORD } });
     await (await as('nurse')).post('/api/incidents').send({ clientRequestId: randomUUID(), occurredAt: '2026-11-19T03:00:00.000Z', kind: 'fall', severity: 'moderate', description: 'Sample fall.' });
 
     const th = await dash('drA', 'theatre');

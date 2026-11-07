@@ -123,3 +123,115 @@ and NEO-L-05. **Owner's approval before `main`.**
 - CCHD helper in the screening log: right-hand and foot SpO2 → pass, repeat or refer.
 - Two newborn dashboard rows added now that their fields exist: NICU / SNCU admissions; deaths in the unit (hidden
   from the hospital admin). Identity bands checked by two people wait for the base rules (Group C).
+
+## Group C – the second-person check (PX-X-06, 6 Nov 2026)
+`server/src/auth/witness.js`. A step that needs two people is confirmed by a SECOND member of staff who types their own
+email and password on the same screen: someone else, active, a member of this hospital as a doctor, RMO or nurse; the
+same 3-tries / 2-minute lock as sign-in on their email; the password is never stored or audited – only who, role, when.
+Audit: WITNESS_CONFIRMED (purpose), WITNESS_FAILED (a security event). Branch `crs-c-witness`.
+- Theatre sign out: the instrument, swab and needle counts (PX-OT-02).
+- Newborn at birth: the identity band (PX-NEO-17, part).
+- Nursing chart: a medicine ticked high-alert or controlled, or listed high-alert in the formulary, and any amount
+  discarded – narcotic wastage in the labour room and on the ward (PX-OT-07, part).
+- Pharmacy (Schedule X and narcotic medicines): a stock count, a supplier return and cancelling a return – the second
+  person (pharmacist, doctor, RMO or nurse) signs in; the register shows "Name (Role)". Older rows keep the typed name.
+  Test: Pharmacy → Stock → a narcotic batch → Count; Pharmacy → Supplier returns with a narcotic batch.
+
+## Group C – alerts that follow the patient (PX-X-13, 7 Nov 2026)
+DRAFT list (`server/src/clinical/patientAlerts.js`, owner's approval before `main`): difficult airway, declines blood
+products, infection precautions (the precaution only – never the diagnosis or a test result), fall risk, needs an
+interpreter, implant or device, other. Model `PatientAlert`, route `/api/patient-alerts` (band, list, add, end).
+- Worked out by Perinexa and shown with them (cannot be ended by hand): high-risk pregnancy (for those who may see the
+  risk), MEOWS trigger on the latest observations of her current stay, PPH chart open.
+- Shown in the safety strip (with allergies and blood group) on every screen of her record – her stays and documents
+  included – and on the theatre case page (`PatientSafetyBand`). Only for those who may see her medical details.
+- Her doctor, RMOs and nurses add them ("Add an alert" / "Alerts" in the strip) and end them with a reason; never
+  deleted. One of each kind at a time (except "Other"). The note follows the fetal-sex protection.
+- Audit: PATIENT_ALERT_ADDED, PATIENT_ALERT_ENDED, PATIENT_ALERTS_VIEWED – ids and the kind, never the note.
+- Test: open a patient → in the strip under her name, **Add an alert** → Difficult airway, a note → it shows in red
+  with a warning icon; open her operation from the Theatre list – the same band; **Alerts** → End, with a reason.
+
+## Group C – maternal death and near-miss review (PX-OBG-30) with corrections and sealing (PX-X-05), 7 Nov 2026
+DRAFT lists (`server/src/clinical/caseReview.js`, owner's approval before `main`): WHO near-miss criteria (2011), WHO
+ICD-MM groups of causes (2012), the three delays as in India's MDSR guidelines (2017). Model `CaseReview`, route
+`/api/case-reviews`. Clinical audit → **Death and near-miss reviews** (doctors, RMOs, quality lead – not the admin).
+- Start a review by her patient number (death or near miss, when it happened). The list shows mothers' deaths recorded
+  in the last year that have no review yet; one death review per mother.
+- A draft is filled in and saved by the team: summary, near-miss criteria, cause, the three delays, avoidable, factors,
+  lessons, actions (who, by when), the meeting day and who was present.
+- **Sealing**: a doctor signs and seals it once the required parts are filled in. A sealed review is never changed –
+  the route refuses and the model itself refuses any save that changes it. A mistake found later is a **correction**
+  added on top (which part, what it should say, why, who, when); the sealed text stays as signed.
+- Confidential: nothing is shown on her record or in the copy of her record. Audit: CASE_REVIEW_* – ids, kind and
+  step, never the text. In the hospital export.
+- Not done: corrections and sealing for the other Group A and B records (scores, specimens, MEOWS, PPH, theatre…) –
+  they keep "entered in error" with a reason; when a record should seal (end of shift, 24 hours, signature) is a
+  decision for the owner and the developer.
+- Test: Clinical audit → Death and near-miss reviews → **Start a review** (a fake patient number, Maternal near miss)
+  → **Sign and seal** at once: the missing parts are named → fill them → **Sign and seal** → shown as signed →
+  add a correction (Summary, what it should say, why) → it shows under Corrections; the summary is unchanged.
+
+## Group C – clinical privileges (PX-X-07), 7 Nov 2026
+DRAFT list (`server/src/clinical/privileges.js`, owner's approval before `main`): caesarean, operative vaginal birth,
+complex perineal repair, hysterectomy, laparoscopy, hysteroscopy, cerclage, ectopic surgery, surgical MTP, minor
+gynaecological procedures, obstetric ultrasound, egg collection and embryo transfer, general and regional anaesthesia,
+newborn intubation and resuscitation – with reminders of the MTP Act, PC-PNDT and ART Act (not checked by Perinexa).
+Model `StaffPrivilege`, route `/api/privileges`, page **Privileges** (`/privileges`).
+- The hospital admin and the quality lead grant a privilege to a doctor, RMO or nurse (until a last day, or no end
+  date) and end it with a reason; never deleted. Past its last day it shows as lapsed. Doctors, RMOs and nurses read it.
+- The theatre list's **Add an operation** has "The surgeon's privilege it needs"; the theatre case shows whether the
+  surgeon holds it and whether the anaesthetist holds the privilege for the anaesthesia chosen (general → general
+  anaesthesia; spinal or epidural → regional). The names are matched to staff by name. **A warning only** – whether a
+  missing privilege should block the operation is for the owner to decide.
+- Audit: PRIVILEGE_GRANTED, PRIVILEGE_ENDED (no patient data). In the hospital export.
+- Test: sign in as the quality lead or admin → Privileges → **Grant a privilege** → a doctor, Caesarean section →
+  "In force"; as a doctor → Theatre → Add an operation with that doctor's name as surgeon and the privilege chosen →
+  open it: "… holds the privilege: Caesarean section"; a name not on the staff list says to check by hand.
+
+## Group C – form versions and the document register (PX-X-02), printing as the manual's page (PX-X-03), 7 Nov 2026
+`server/src/clinical/formRegister.js` (DRAFT list of the Perinexa screens that stand in for the manual's forms; codes
+known so far: OBG-F-16 WHO checklist, OBG-F-05 MEOWS). Model `FormVersion`, route `/api/forms`, page Clinical audit →
+**Document register**.
+- The quality lead or the admin records a version (screen, the manual's code, title, version, in force from, review
+  due); a doctor approves it. An approved version is in force from its day until a later approved version of the same
+  screen; never changed after approval, never deleted – a draft entered by mistake is withdrawn with a reason. A review
+  date that has passed shows "Review overdue".
+- **Print as the manual's page** (A4, `components/print/ManualPage.jsx`): the hospital's letterhead with the form's box
+  – code, title and the version in force on the record's day; the header repeats on every page. With no approved
+  version the box says "No form code … not in the document register yet". Added to: the theatre case (WHO checklist),
+  the MEOWS chart, and a sealed death or near-miss review. The other screens in the list (PPH chart, discharge
+  checklist, PAC, pain chart, newborn records, NICU register, incident, specimen) get the same button next.
+- Audit: FORM_VERSION_RECORDED / _APPROVED / _WITHDRAWN (no patient data). In the hospital export.
+- Test: as the quality lead → Clinical audit → Document register → **Record a form version** (WHO Surgical Safety
+  Checklist, OBG-F-16, 1.0, in force from a past day) → as a doctor → **Approve** → "In force" → open an operation on the
+  Theatre list → **Print as the manual's page**: the box shows OBG-F-16, version 1.0.
+
+## Group C – pregnancy episode (PX-X-15) and GREEN / AMBER / RED tiers (DRAFT, not in use), 7 Nov 2026
+Route `/api/pregnancy-episodes`, patient tab **Pregnancies** (antenatal, postnatal and abortion records; those who may
+see the visits).
+- One entry per pregnancy: each antenatal care plan is one pregnancy (closed as delivered, pregnancy ended, new
+  pregnancy …); a pregnancy without a plan yet is the current one. Each shows its EDD, from–to, and what belongs to it
+  between two weeks before the LMP and its end: visits, stays (linked), signed delivery notes, operations, lab orders and
+  babies linked to her. Nothing is moved or copied – read from the records as they are. Audit: PREGNANCY_EPISODES_VIEWED.
+- **Tiers** (`server/src/clinical/riskTiers.js`, DRAFT from India's PMSMA high-risk list and NICE NG201): RED (high
+  risk), AMBER (additional care), GREEN (routine), or "Not enough recorded". Worked out from the same facts as today's
+  risk rules and shown on the Pregnancies tab **beside today's risk level only – not used anywhere**. Replacing today's
+  risk rules with the tiers (the manual's own criteria) is the owner's decision. Labels never name a confidential test.
+- Not built (need the manual's content and the owner): the antenatal record laid out as OBG-F-01, standing
+  prescriptions, the labour admission form (PX-OBG-01, 02, 03, 07).
+- Test: open a pregnant patient → OPD → **Pregnancies**: the tier card (DRAFT) with today's risk level, then
+  "Pregnancy 1 – current" with her stays and operations; fill in her conditions, G P A and blood group → the tier
+  changes from "Not enough recorded".
+
+## Group C – the baby's record made from the delivery (PX-X-14), 7 Nov 2026
+Route `/api/delivery-babies`; on a signed delivery note, the card **The babies' records** (was: "register by hand").
+- For each live-born baby on the note a doctor or RMO presses **Make the baby's record**: the baby is registered as by
+  hand (patient number, checks, registration fee, audit) – "Baby of <mother>" or "First / Second Baby of <mother>" for
+  more than one – linked to the mother, with the time of birth, weight and sex from the note (written after the birth).
+  The record remembers the note and the baby (`newborn.fromDelivery`, unique), so it is made once.
+- Records that may already be this baby are shown first, as on New patient; **Make the record anyway** after checking.
+  A twin made from the same note is not a match for the other twin. Babies already linked to the mother by hand are
+  listed under the card. No record for a stillbirth. Audit: BABY_RECORD_FROM_DELIVERY (plus PATIENT_CREATED).
+- The identity band checked by two people at birth is already in place (second-person check).
+- Test: open a mother's stay → a signed delivery note with a live baby → **Make the baby's record** → "Record made:
+  Baby of … · P-…" with a link; the baby's record shows the mother, time of birth, weight and sex.

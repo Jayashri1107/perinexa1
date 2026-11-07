@@ -15,6 +15,10 @@ const entrySchema = new mongoose.Schema(
     at: { type: Date, required: true },
     vitals: { bpSystolic: Number, bpDiastolic: Number, pulse: Number, temperatureF: Number, spo2: Number },
     medicine: { drug: String, dose: String, route: String },
+    // A high-alert or controlled medicine, an amount discarded, and the second person who checked it (PX-X-06)
+    highAlert: { type: Boolean, default: false },
+    discarded: { type: String, default: '' },
+    witness: { type: new mongoose.Schema({ by: mongoose.Schema.Types.ObjectId, byName: String, role: String, at: Date }, { _id: false }), default: null },
     note: { type: String, default: '' },
     escalatedTo: { type: String, default: '' }, // escalation: whom the nurse or RMO told
     by: { type: ObjectId, ref: 'User', required: true },

@@ -2962,6 +2962,18 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
    greyed. Reception and the hospital admin have no MEOWS chart.
 
+## How to test the second-person check – Group C (fake data only)
+You need two fake staff logins (for example a nurse and a doctor).
+1. As the nurse: an admitted mother's stay → **Nursing chart** → **Medicine given** → tick **High-alert or controlled
+   medicine** (or fill **Amount discarded**): a **Second person** box appears. Save with your own email there: refused
+   ("must be someone else"). The doctor types their email and password → saved; the entry says "Checked by … (Doctor)".
+2. **Theatre** → a case → sign in, time out → **Sign out**: refused without the second person; with the doctor's
+   sign-in it is confirmed and shows "Counts checked by …".
+3. A baby's **Newborn care** → **At birth** with **Identity band = Yes**: the Second person box; the record shows who
+   checked the band.
+4. Three wrong passwords for the second person lock that email for 2 minutes, as at sign-in. The audit log shows
+   "Second person confirmed a check" and "Second-person check failed" – never a password.
+
 ## How to test Group B items 9, 10, 12 and 13 – DRAFT (fake data only)
 1. **Pre-anaesthesia check-up:** a made-up patient → **Anaesthesia** tab (as a doctor or RMO) → ASA, Mallampati, plan,
    fitness **Fit, with conditions** → **Sign the check-up**: refused until the conditions and "risks explained" are
@@ -4587,3 +4599,19 @@ Or, from the project folder:
 Then open http://localhost:5173. After updating to Feature 7, run the demo script (removed 12 Oct 2026) once so the demo
 pregnancies get a care plan. Logins are listed in `docs/TEST_ACCOUNTS.md` (super admin:
 `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` from `server/.env`; first login asks for a new password). Stop with Ctrl + C. Stop the database with `npm run db:stop`.
+
+## Clinical Requirements Group C – built 6–7 Nov 2026 (DRAFT clinical content, owner's approval before `main`)
+All on master in C:\perinexa1; details and the browser test steps for each are in `docs/CLINICAL_REQUIREMENTS.md`.
+- Second-person check (PX-X-06): theatre counts, identity band at birth, high-alert / controlled medicines and wastage,
+  pharmacy controlled-medicine counts and returns.
+- Alerts that follow the patient (PX-X-13): typed alerts plus high risk, MEOWS trigger and open PPH chart, on every
+  screen of her record and on the theatre case.
+- Maternal death and near-miss review (PX-OBG-30) with sealing and corrections (PX-X-05): Clinical audit → Death and
+  near-miss reviews.
+- Clinical privileges (PX-X-07): Privileges page; warning on the theatre case.
+- Document register (PX-X-02) and printing as the manual's A4 page (PX-X-03): theatre case, MEOWS chart, sealed review.
+- Pregnancy episode (PX-X-15) with GREEN / AMBER / RED tiers shown beside today's risk level, not in use.
+- The baby's record made from the signed delivery note (PX-X-14).
+Waiting for the owner: approval of every DRAFT list; whether a missing privilege should block an operation; whether the
+tiers replace today's risk rules; when other records should seal; the manual's codes for each form; the antenatal
+record (OBG-F-01), standing prescriptions and labour admission form; labour epidural and tubal ligation consents.

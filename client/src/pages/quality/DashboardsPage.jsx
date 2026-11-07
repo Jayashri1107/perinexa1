@@ -9,7 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { isReportMonth, monthWords, thisMonth } from '../analytics/analyticsFormat.js';
 import { FormDialog } from './FormDialog.jsx';
 import { ShowChoice } from './SimpleTable.jsx';
-import { QUALITY_TABS } from './qualityFormat.js';
+import { useQualityTabs } from './qualityFormat.js';
 
 // Clinical audit → Monthly dashboards (Clinical Requirements Group B, item 17): each department's rows for a month,
 // worked out from what Perinexa records (numbers only), with the hospital's targets and whether they were met; a doctor
@@ -79,6 +79,7 @@ function SignoffDialog({ department, month, onDone, onCancel }) {
 }
 
 export function DashboardsPage() {
+  const qualityTabs = useQualityTabs();
   const [params, setParams] = useSearchParams();
   const month = isReportMonth(params.get('month')) ? params.get('month') : thisMonth();
   const department = DEPTS.some(([k]) => k === params.get('department')) ? params.get('department') : 'obstetrics';
@@ -94,7 +95,7 @@ export function DashboardsPage() {
 
   return (
     <>
-      <PageHeader title="Clinical audit" documentTitle="Monthly dashboards" subtitle="Each department's month in numbers, from what Perinexa records, with the hospital's targets and the lead's sign-off." tabs={QUALITY_TABS} />
+      <PageHeader title="Clinical audit" documentTitle="Monthly dashboards" subtitle="Each department's month in numbers, from what Perinexa records, with the hospital's targets and the lead's sign-off." tabs={qualityTabs} />
       <div className="pf-content stack">
         <Alert type="error">{error}</Alert>
         <div className="row reg-toolbar">

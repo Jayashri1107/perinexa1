@@ -51,6 +51,10 @@ import { ClinicalScore } from '../models/ClinicalScore.js';
 import { FormularyItem } from '../models/FormularyItem.js';
 import { Incident } from '../models/Incident.js';
 import { MeowsEntry } from '../models/MeowsEntry.js';
+import { PatientAlert } from '../models/PatientAlert.js';
+import { CaseReview } from '../models/CaseReview.js';
+import { StaffPrivilege } from '../models/StaffPrivilege.js';
+import { FormVersion } from '../models/FormVersion.js';
 import { PphChart } from '../models/PphChart.js';
 import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { TheatreCase } from '../models/TheatreCase.js';
@@ -186,6 +190,10 @@ export const KINDS = [
   { file: 'clinical-scores.json', model: ClinicalScore, what: 'EPDS scores (the ten answers\' scores, never the questions) and VTE risk scores, with the band and advice of the day, and those marked entered in error.' },
   { file: 'incidents.json', model: Incident, what: 'Incident reports, kept apart from the patients\' records: what happened, the quality lead\'s review, actions and closure.' },
   { file: 'meows-charts.json', model: MeowsEntry, what: 'MEOWS observations of each stay: the readings, their bands and level as worked out on the day (DRAFT rules), whom a trigger was told to, and entries marked entered in error.' },
+  { file: 'patient-alerts.json', model: PatientAlert, what: 'Alerts that follow each patient (difficult airway, declines blood products, infection precautions and others – DRAFT list): who added each, and when and why it was ended.' },
+  { file: 'death-and-near-miss-reviews.json', model: CaseReview, what: 'Maternal death and near-miss reviews (DRAFT lists): the case, criteria, cause, the three delays, avoidability, lessons and actions; who sealed each and the corrections added after sealing.' },
+  { file: 'clinical-privileges.json', model: StaffPrivilege, what: 'Clinical privileges granted to staff (DRAFT list): which procedure, until when, who granted it, and when and why each was ended.' },
+  { file: 'document-register.json', model: FormVersion, what: 'The document register: each version of each controlled form (code, title, version, in force from, review due), who recorded and approved it, and withdrawn drafts.' },
   { file: 'pph-charts.json', model: PphChart, what: 'PPH charts of each stay: when the bleeding was recognised, the cause, each amount of blood lost, each step with its time (medicines with the dose and route typed), observations, how it ended, and lines marked entered in error (DRAFT chart).' },
   { file: 'postnatal-discharge-checklists.json', model: DischargeChecklist, what: 'Postnatal discharge checklists of each stay: the checks answered, the danger signs explained, the teach-back, the next visit, who completed it, and ones marked entered in error (DRAFT checklist).' },
   { file: 'theatre-list.json', model: TheatreCase, what: 'The theatre list: each operation with its day, theatre, order, team and status, and its WHO Surgical Safety Checklist (sign in, time out, sign out – the answers, notes and who confirmed each), and operations taken off the list with the reason.' },

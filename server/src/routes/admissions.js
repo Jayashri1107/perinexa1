@@ -12,6 +12,8 @@ import { User } from '../models/User.js';
 import { planCtx } from '../careplans/plansService.js';
 import { DOC_KINDS, ONE_PER_ADMISSION, SIGNED_BY, TIME_FIELDS, contentSchema, groupARules, missingToSign, nursingSchema } from '../inpatient/docSchemas.js';
 import { reportLateCategory1 } from '../incidents/autoIncidents.js';
+import { verifyWitness } from '../auth/witness.js';
+import { FormularyItem } from '../models/FormularyItem.js';
 import { admissionView, documentView, entryView } from '../inpatient/inpatientView.js';
 import { redFlagsForPatient } from '../redflags/redFlagService.js';
 import { audit } from '../utils/audit.js';
@@ -424,6 +426,15 @@ admissionsRouter.post('/:admissionId/nursing', async (req, res) => {
   const at = body.at ? new Date(body.at) : now;
   if (at.getTime() > now.getTime() + 5 * 60 * 1000) throw invalid({ at: "The time can't be in the future." });
   if (at < admission.admittedAt) throw invalid({ at: 'The time is before she was admitted – please check it.' });
+  // A high-alert medicine (ticked, or a high-alert row of the formulary) or an amount discarded: a second person (PX-X-06)
+  let witness = null;
+  let highAlert = false;
+  if (body.kind === 'medicine') {
+    const name = body.medicine.drug.trim();
+    const listed = name ? await FormularyItem.findOne({ tenantId: req.tenantId, isActive: true, highAlert: true, name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, { _id: 1 }).lean() : null;
+    highAlert = body.highAlert || Boolean(listed);
+    if (highAlert || body.discarded) witness = await verifyWitness(req, body.witness, { purpose: body.discarded ? 'medicine_discarded' : 'high_alert_medicine' });
+  }
   const entry = await NursingEntry.create({
     tenantId: req.tenantId,
     patientId: patient._id,
@@ -431,7 +442,7 @@ admissionsRouter.post('/:admissionId/nursing', async (req, res) => {
     kind: body.kind,
     at,
     ...(body.kind === 'vitals' ? { vitals: body.vitals } : {}),
-    ...(body.kind === 'medicine' ? { medicine: body.medicine } : {}),
+    ...(body.kind === 'medicine' ? { medicine: body.medicine, highAlert, discarded: body.discarded, witness } : {}),
     ...(body.kind === 'escalation' ? { escalatedTo: body.escalatedTo } : {}),
     note: body.note,
     by: req.user._id,

@@ -1,4 +1,5 @@
 import { cloneElement, useRef, useState } from 'react';
+import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { MeowsChart } from './MeowsChart.jsx';
 import { PainChartSection } from '../anaesthesia/PainChart.jsx';
 import { PphChartSection } from './PphChart.jsx';
@@ -49,7 +50,8 @@ function VitalStepper({ label, value, step, onChange, children, ...aria }) {
 }
 
 function NursingChart({ patient, page, onSaved }) {
-  const blank = { kind: 'vitals', at: '', bpSystolic: '', bpDiastolic: '', pulse: '', temperatureF: '', spo2: '', drug: '', dose: '', route: '', note: '', escalatedTo: '' };
+  const blank = { kind: 'vitals', at: '', bpSystolic: '', bpDiastolic: '', pulse: '', temperatureF: '', spo2: '', drug: '', dose: '', route: '', note: '', escalatedTo: '', highAlert: false, discarded: '' };
+  const [witness, setWitness] = useState(emptyWitness);
   const [form, setForm] = useState(blank);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
@@ -70,7 +72,7 @@ function NursingChart({ patient, page, onSaved }) {
       kind: form.kind,
       at: fromLocalInput(form.at),
       ...(form.kind === 'vitals' ? { vitals: { bpSystolic: form.bpSystolic, bpDiastolic: form.bpDiastolic, pulse: form.pulse, temperatureF: form.temperatureF, spo2: form.spo2 } } : {}),
-      ...(form.kind === 'medicine' ? { medicine: { drug: form.drug, dose: form.dose, route: form.route } } : {}),
+      ...(form.kind === 'medicine' ? { medicine: { drug: form.drug, dose: form.dose, route: form.route }, highAlert: form.highAlert, discarded: form.discarded, ...(form.highAlert || form.discarded ? { witness } : {}) } : {}),
       ...(form.kind === 'escalation' ? { escalatedTo: form.escalatedTo } : {}),
       note: form.note,
     };
@@ -78,6 +80,7 @@ function NursingChart({ patient, page, onSaved }) {
       const res = await api(`/patients/${patient.id}/admissions/${a.id}/nursing`, { method: 'POST', body });
       requestId.current = newRequestId();
       setForm({ ...blank, kind: form.kind });
+      setWitness(emptyWitness());
       onSaved(res);
     } catch (err) {
       setError(err.message);
@@ -154,8 +157,15 @@ function NursingChart({ patient, page, onSaved }) {
                 <Field label="Route" id="nc-route" error={fields['medicine.route']}>
                   <input id="nc-route" value={form.route} maxLength={40} onChange={set('route')} />
                 </Field>
+                <Field label="Amount discarded (optional)" id="nc-discard" error={fields.discarded}>
+                  <input id="nc-discard" value={form.discarded} maxLength={60} onChange={set('discarded')} />
+                </Field>
+                <label className="check">
+                  <input type="checkbox" checked={form.highAlert} onChange={(e) => setForm({ ...form, highAlert: e.target.checked })} /> High-alert or controlled medicine
+                </label>
               </>
             )}
+            {form.kind === 'medicine' && (form.highAlert || form.discarded) && <WitnessFields id="nc-wit" value={witness} onChange={setWitness} errors={fields} what={form.discarded ? 'An amount discarded' : 'A high-alert medicine'} />}
             {form.kind === 'escalation' && (
               <Field label="Told whom" id="nc-to" error={fields.escalatedTo} hint="The consultant or the doctor on call, e.g. Dr Sample" keepHint>
                 <input id="nc-to" value={form.escalatedTo} maxLength={100} onChange={set('escalatedTo')} />
@@ -187,7 +197,8 @@ function NursingChart({ patient, page, onSaved }) {
               <strong>{NURSING_WORDS[e.kind]}</strong>
               <span>
                 {e.kind === 'vitals' && vitalsLine(e.vitals)}
-                {e.kind === 'medicine' && [e.medicine.drug, e.medicine.dose, e.medicine.route].filter(Boolean).join(' · ')}
+                {e.kind === 'medicine' && [e.medicine.drug, e.medicine.dose, e.medicine.route, e.highAlert && 'high-alert', e.discarded && `discarded ${e.discarded}`].filter(Boolean).join(' · ')}
+                {e.kind === 'medicine' && e.witness && <span className="ca-group-words">{witnessWords(e.witness, formatDateTime)}</span>}
                 {e.kind === 'escalation' && e.escalatedTo && `Told ${e.escalatedTo}`}
                 {e.note && `${['note', 'handover'].includes(e.kind) ? '' : ' – '}${e.note}`}
               </span>

@@ -20,6 +20,8 @@ const birthSchema = new mongoose.Schema(
     checks: { type: mongoose.Schema.Types.Mixed, default: {} }, // { key: 'yes' | 'no' | 'na' }
     temperatureC: { type: Number, default: null }, // at one hour
     note: { type: String, maxlength: 1000, default: '' },
+    // The second person who checked the identity band (Group C, PX-X-06)
+    idBandWitness: { type: new mongoose.Schema({ by: ObjectId, byName: String, role: String, at: Date }, { _id: false }), default: null },
     ...stamp,
     cancelled: cancel,
     live: { type: Boolean, default: true },
