@@ -4,7 +4,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { NewbornLog } from './NewbornLog.jsx';
-import { itemLook } from './newbornFormat.js';
+import { itemLook, useNewbornTabs } from './newbornFormat.js';
 
 // Newborn follow-up (Clinical Requirements Group A, item 4): babies with a screen or a clinic visit due, the
 // defaulters to call (a screen past its last day, a visit missed by 14 days), and all. Doctors, RMOs, nurses and the
@@ -21,26 +21,47 @@ export function NewbornFollowUpPage() {
   const [params, setParams] = useSearchParams();
   const show = SHOW.some(([k]) => k === params.get('show')) ? params.get('show') : 'due';
   const { data, error, loading } = useFetch('/newborn-follow-up', { show });
+  const tabs = useNewbornTabs();
+  const count = data?.babies?.length;
   return (
     <>
-      <PageHeader title="Newborn follow-up" documentTitle="Newborn follow-up" help="Screening and the high-risk follow-up clinic: what is due now, the defaulters to call, and every baby. DRAFT schedule (NNF / RBSK) until the Lead Neonatologist confirms it." />
-      <div className="pf-content">
+      <PageHeader
+        title="Newborn follow-up"
+        documentTitle="Newborn follow-up"
+        subtitle="Screening and the high-risk follow-up clinic: what is due now, the defaulters to call, and every baby."
+        tabs={tabs.length > 1 ? tabs : undefined}
+      />
+      <div className="pf-content stack">
         <Alert type="error">{error}</Alert>
-        <ShowChoice options={SHOW} value={show} onChange={(k) => setParams({ show: k }, { replace: true })} />
-        <section className="card">
+        <section className="card" aria-labelledby="nbf-title">
+          <div className="nbf-card-head">
+            <h2 id="nbf-title">{`Babies${count != null ? ` · ${count}` : ''}`}</h2>
+            <ShowChoice options={SHOW} value={show} onChange={(k) => setParams({ show: k }, { replace: true })} />
+          </div>
           <SimpleTable
             loading={loading && !data}
             rows={(data?.babies ?? []).map((b) => ({ ...b, id: b.patientId }))}
             emptyText="No babies here."
             columns={[
-              { key: 'baby', header: 'Baby', render: (b) => <Link to={`/newborn-follow-up/${b.patientId}`}>{`${b.fullName} · ${b.mrn}`}</Link> },
-              { key: 'birthAt', header: 'Born', render: (b) => formatDate(b.birthAt) },
-              { key: 'phone', header: 'Phone', render: (b) => b.phone || '—' },
+              {
+                key: 'baby',
+                header: 'Baby',
+                main: true,
+                wide: true,
+                render: (b) => (
+                  <span className="nbf-baby">
+                    <Link to={`/newborn-follow-up/${b.patientId}`}>{b.fullName}</Link>
+                    <span className="hint">{b.mrn}</span>
+                  </span>
+                ),
+              },
+              { key: 'birthAt', header: 'Born', nowrap: true, render: (b) => formatDate(b.birthAt) },
+              { key: 'phone', header: 'Phone', nowrap: true, render: (b) => b.phone || '—' },
               {
                 key: 'items',
                 header: 'Due or missed',
                 render: (b) => (
-                  <span className="row">
+                  <span className="nbf-due">
                     {openItems(b).map((x) => {
                       const look = itemLook(x);
                       return (
@@ -55,6 +76,7 @@ export function NewbornFollowUpPage() {
               },
             ]}
           />
+          <p className="muted small">DRAFT schedule (NNF / RBSK) until the Lead Neonatologist confirms it.</p>
         </section>
       </div>
     </>

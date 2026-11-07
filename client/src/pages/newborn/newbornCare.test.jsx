@@ -44,7 +44,7 @@ describe('newborn care', () => {
   });
   it('the register lists the month with its totals', () => {
     const out = text(<NicuRegisterPage />);
-    expect(out).toContain('Baby Sample · P-000009');
+    expect(out).toMatch(/Baby Sample P-000009/);
     expect(out).toContain('Admitted now');
     expect(out).toContain('1 inborn · 0 outborn');
   });
