@@ -141,6 +141,8 @@ Audit: WITNESS_CONFIRMED (purpose), WITNESS_FAILED (a security event). Branch `c
 DRAFT list (`server/src/clinical/patientAlerts.js`, owner's approval before `main`): difficult airway, declines blood
 products, infection precautions (the precaution only – never the diagnosis or a test result), fall risk, needs an
 interpreter, implant or device, other. Model `PatientAlert`, route `/api/patient-alerts` (band, list, add, end).
+- Worked out by Perinexa and shown with them (cannot be ended by hand): high-risk pregnancy (for those who may see the
+  risk), MEOWS trigger on the latest observations of her current stay, PPH chart open.
 - Shown in the safety strip (with allergies and blood group) on every screen of her record – her stays and documents
   included – and on the theatre case page (`PatientSafetyBand`). Only for those who may see her medical details.
 - Her doctor, RMOs and nurses add them ("Add an alert" / "Alerts" in the strip) and end them with a reason; never

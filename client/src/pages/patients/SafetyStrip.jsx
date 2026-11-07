@@ -33,7 +33,7 @@ export function SafetyStrip({ patient, canAlerts = false, onAlertsChanged }) {
   return (
     <section className="safety-strip" aria-label="Safety details">
       {alerts.map((a) => (
-        <StatusPill key={a.id} tone="high" icon={TriangleAlert} large className="safety-allergy" title={`Added by ${a.byName}`}>
+        <StatusPill key={a.id} tone="high" icon={TriangleAlert} large className="safety-allergy" title={a.auto ? 'Worked out by Perinexa from her record' : `Added by ${a.byName}`}>
           <span>
             <strong>{a.label}</strong>
             {a.note ? `: ${a.note}` : ''}
