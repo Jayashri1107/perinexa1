@@ -22,6 +22,16 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **7 Nov 2026 – Build 8: the MEOWS chart as OBG-F-05 v1.0 (branch `claude/build8-meows-f05-694f40`, not merged):**
+  the DRAFT CEMACH chart upgraded to the manual's field schema (`docs/field_schemas/build8_meows.json`, approved by the
+  owner as clinical content): RED / AMBER bands ("yellow" is now amber), the chart header (context, ordered frequency –
+  doctors and RMOs – blood loss from the delivery note, LMWH), the new fields (urine, new confusion, pain, lochia,
+  fundus, wound, nurse concern, action taken, doctor informed), shock index, hypertensive-emergency banner, the
+  late-entry badge (PX-X-04, `server/src/utils/lateEntry.js` for any chart), escalation E1–E4 through the notification
+  bell and the ward list (no SMS), three OBG-A-05 dashboard rows, and the A4-landscape printout with 12 sets per sheet.
+  The owner's approvals and what is left out: `docs/CLINICAL_REQUIREMENTS.md`, item 8. How to test: "How to test the
+  MEOWS chart" below. **Next:** the developer reads the branch; the Lead Obstetrician runs the five acceptance tests on
+  fake data and confirms the readings listed in item 8.
 - **7 Nov 2026 – five more parts in the copy of the whole record (branch `record-copy-parts`, developer's request):**
   the copy now also has **Scan reports** (a signed report whole: the study, why it was asked for, every measurement
   with its unit, findings, impression, the signer with qualification and registration, a change after signing with
@@ -2983,15 +2993,26 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
   small credit limit) and paste it after `OPENAI_API_KEY=` in `server/.env` yourself – never in chat – then
   restart Perinexa. Fake data only.
 
-## How to test the MEOWS chart – Group B item 8, DRAFT (fake data only)
-1. As a **nurse** (or her doctor or an RMO): a made-up mother who is admitted → her **IPD** → **Current stay**. The
-   **MEOWS chart** is above the nursing chart.
-2. Time with AM/PM; Respiratory rate **22**, Heart rate **108**, the rest normal (SpO2 98, temperature 36.8 °C, BP
-   118/76, AVPU Alert). The box shows **Trigger – tell the doctor now · 0 red, 2 yellow** and asks **Whom you told**.
-3. **Save the observations** with that empty: refused. Write a doctor's name and save: the table shows 22 and 108 as
-   **Yellow** pills and the result **Trigger**, with whom you told. The header shows the latest result.
-4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
-   greyed. Reception and the hospital admin have no MEOWS chart.
+## How to test the MEOWS chart – Group B item 8, OBG-F-05 v1.0 (fake data only)
+1. As **her doctor or an RMO**: a made-up mother who is admitted → her **IPD** → **Current stay**. The **MEOWS chart
+   (OBG-F-05)** is above the nursing chart. **Start the chart**: context **Postnatal**, detail "Postnatal day 0",
+   observations every **4 hours** (blood loss is offered from a signed delivery note on the stay). Save: the header line
+   shows them and "Next observations due …". A nurse sees the header but no **Start the chart**.
+2. As a **nurse**: Pulse **105**, temperature **37.6 °C**, the rest normal (RR 16, SpO2 98, BP 118/76, AVPU A). The box
+   shows **Trigger · 0 red, 2 amber** and the E1 line. Saving with no **Action taken** is refused; write one and save.
+   The RMO and her doctor get a **MEOWS E1** notification in the bell; **Escalation** shows "Resident at the bedside ·
+   due by" (30 min) with **Mark done**, and the next set is due 30 min after the trigger.
+3. Pulse **125**, systolic **88** (diastolic 60): **2 red**, shock index **1.42**, E1, E2, E3 – the red shock-index
+   banner with **Consider the PPH chart (below)**, the consultant and anaesthetist tasks, and the pathway buttons
+   (Sepsis six, PPH, Severe hypertension) with "offer HDU transfer". Choose **Sepsis six**, then **Record the first
+   antibiotic's time**.
+4. Systolic **165**: the **Hypertensive emergency** banner; **Record the antihypertensive's time** under Escalation.
+5. Clinical time **90 minutes ago**: the line shows **Late entry** (and so does the printout).
+6. **Print as the manual's page**: A4 landscape, 12 columns per sheet, the RED / AMBER limits, totals, action and
+   signature rows, footer "OBG-F-05 · v1.0 · effective …" (the date from the document register).
+7. Overdue: on **Today** the nurse's ward cards show **MEOWS overdue** and the stay's row a red "MEOWS overdue since …"
+   pill once a set is more than 15 min late. **Dashboards → Obstetrics** has the three MEOWS rows.
+8. **Entered in error** asks for a reason; the line stays, greyed. Reception and the hospital admin have no MEOWS chart.
 
 ## How to test the second-person check – Group C (fake data only)
 You need two fake staff logins (for example a nurse and a doctor).

@@ -7,6 +7,7 @@ import { ClinicalScore } from '../models/ClinicalScore.js';
 import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { Incident } from '../models/Incident.js';
 import { MeowsEntry } from '../models/MeowsEntry.js';
+import { meowsKpis } from './meowsKpi.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { NicuAdmission } from '../models/NewbornCare.js';
 import { Patient } from '../models/Patient.js';
@@ -41,6 +42,7 @@ export async function departmentRows(tenantId, department, { start, end }, now =
       v.stillbirths = rate(babies.filter((b) => b.outcome === 'stillbirth').length, babies.filter((b) => b.outcome).length, 'per1000');
       const meows = await MeowsEntry.find({ tenantId, at: { $gte: start, $lt: end }, cancelled: null }, { level: 1 }).lean();
       v.meowsTriggers = count(meows.filter((m) => m.level === 'trigger').length);
+      Object.assign(v, await meowsKpis(tenantId, { start, end }, now));
       const scores = await ClinicalScore.find({ tenantId, on: { $gte: start, $lt: end }, cancelled: null }, { kind: 1, total: 1 }).lean();
       v.epdsScreened = count(scores.filter((s) => s.kind === 'epds').length);
       v.epdsLikely = count(scores.filter((s) => s.kind === 'epds' && s.total >= 13).length);

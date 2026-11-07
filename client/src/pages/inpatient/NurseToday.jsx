@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { formatNumber, LIST_PAGES, Paged } from '../../components/DataTable.jsx';
 import { KpiCard, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { FlagCountPill } from '../worklist/WorklistSections.jsx';
+import { meowsNeedsAction } from './MeowsWardPills.jsx';
 
 // Vitals count as due when none were recorded in the last 8 hours – one nursing shift (owner, 13 Oct 2026). A
 // reminder from what is on the nursing chart, not a clinical rule: the doctor's orders say how often to check.
@@ -22,6 +23,7 @@ export function WardToday({ inpatients, rmo = false }) {
   const value = (n) => (admitted ? formatNumber(n) : '—');
   const flagged = count((s) => s.redFlags?.length > 0);
   const due = count((s) => vitalsDue(s));
+  const meowsDue = count((s) => meowsNeedsAction(s.meows));
   const drafts = admitted ? admitted.reduce((n, s) => n + (s.drafts ?? 0), 0) : 0;
   const noAdmissionNote = count((s) => !s.hasAdmissionNote);
   const noRound = count((s) => !s.roundNoteToday);
@@ -41,6 +43,7 @@ export function WardToday({ inpatients, rmo = false }) {
           )}
           {rmo && <KpiCard to={list} tone={noRound ? 'watch' : 'neutral'} icon={NotebookPen} label="Round notes due today" value={value(noRound)} sub="No round note written today" />}
           <KpiCard to={list} tone={due ? 'watch' : 'neutral'} icon={Activity} label="Vitals due" value={value(due)} sub={`None recorded in the last ${VITALS_DUE_HOURS} hours`} />
+          {meowsDue > 0 && <KpiCard to={list} tone="high" icon={Clock} label="MEOWS overdue" value={value(meowsDue)} sub="Observations overdue or an escalation task past due" />}
           {!rmo && <KpiCard to={list} tone={drafts ? 'watch' : 'neutral'} icon={PenLine} label="Notes to finish" value={value(drafts)} sub="Notes of the stays left as drafts" />}
           {rmo && (
             <KpiCard

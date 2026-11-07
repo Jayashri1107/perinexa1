@@ -1,0 +1,59 @@
+{
+  "build": "Build 8 — MEOWS chart",
+  "source": ["OBG-F-05 v1.0", "OBG-SOP-11 §1–2", "OBG-SOP-12 §2", "PX-OBG-11", "PX-X-04", "PX-X-09"],
+  "entity": "MEOWSObservation",
+  "parent": "InpatientStay (antenatal, postnatal, post-operative, HDU)",
+  "chart_header": {
+    "context": {"type": "enum", "values": ["antenatal", "postnatal", "post_operative", "hdu"], "required": true},
+    "context_detail": {"type": "string", "example": "GA 34 wk / postnatal day 2 / post-op day 1"},
+    "diagnosis_or_procedure": {"type": "string"},
+    "frequency_ordered_minutes": {"type": "enum", "values": [15, 30, 60, 240, 480], "required": true, "note": "set by doctor order; overdue flag at frequency + 15 min"},
+    "blood_loss_at_delivery_ml": {"type": "integer", "copied_from": "OBG-F-08.measured_blood_loss_ml"},
+    "lmwh_prescribed": {"type": "boolean", "copied_from": "OBG-F-10"}
+  },
+  "observation_fields": {
+    "clinical_time": {"type": "datetime", "required": true, "rule": "PX-X-04 — stored separately from system_time; late_entry flag if system_time - clinical_time > 60 min"},
+    "resp_rate": {"type": "integer", "unit": "/min", "range": [4, 60], "red": "<10 or >30", "amber": "21-30"},
+    "spo2": {"type": "integer", "unit": "%", "range": [50, 100], "red": "<92", "amber": "92-94"},
+    "temperature_c": {"type": "decimal", "unit": "°C", "range": [33, 42], "red": "<35 or >=38", "amber": "35-36 or 37.5-37.9"},
+    "pulse": {"type": "integer", "unit": "/min", "range": [20, 220], "red": "<40 or >120", "amber": "40-50 or 100-120"},
+    "systolic_bp": {"type": "integer", "unit": "mmHg", "range": [40, 260], "red": "<90 or >=160", "amber": "90-100 or 150-159"},
+    "diastolic_bp": {"type": "integer", "unit": "mmHg", "range": [20, 160], "red": ">=110", "amber": "90-109"},
+    "urine_ml_per_4h": {"type": "integer", "unit": "ml", "red": "<100", "amber": "100-120", "note": "catheterised patients; optional otherwise"},
+    "consciousness_avpu": {"type": "enum", "values": ["A", "V", "P", "U"], "red": "P or U", "amber": "V or new_confusion"},
+    "new_confusion": {"type": "boolean", "amber": true},
+    "pain_score": {"type": "integer", "range": [0, 10], "amber": ">=7", "feeds": "ANA-F-03 pain chart (same observation)"},
+    "lochia_or_pv_loss": {"type": "enum", "values": ["normal", "heavy", "offensive", "heavy_and_offensive", "na"], "red": "heavy or offensive"},
+    "fundus": {"type": "enum", "values": ["firm", "soft", "rising", "na"], "red": "soft or rising"},
+    "wound_or_perineum": {"type": "enum", "values": ["normal", "concern", "na"]},
+    "nurse_concern": {"type": "boolean", "red": true, "note": "nurse concern alone is a valid trigger — SOP-11 §1"},
+    "action_taken": {"type": "string"},
+    "doctor_informed_time": {"type": "datetime"},
+    "recorded_by": {"type": "user_ref", "required": true}
+  },
+  "computed": {
+    "shock_index": {"formula": "pulse / systolic_bp", "decimals": 2, "flag_red_if": ">=0.9", "label": "significant haemorrhage even if blood not visible"},
+    "red_count": "number of fields in red zone (nurse_concern counts as 1)",
+    "amber_count": "number of fields in amber zone",
+    "hypertensive_emergency": "systolic_bp >= 160 OR diastolic_bp >= 110 → separate red banner: treat within 30 min (OBG-SOP-03; OBG-F-15)"
+  },
+  "escalation_rules": [
+    {"id": "E1", "when": "red_count >= 1 OR amber_count >= 2", "then": ["create task: resident at bedside within 30 min", "repeat observations within 30 min (auto-sets next due)", "notify consultant (message)"], "kpi": "time from trigger to resident_review_time"},
+    {"id": "E2", "when": "red_count >= 2 OR (E1 open for 60 min without improvement)", "then": ["task: consultant at bedside", "task: anaesthetist informed", "suggest pathway buttons: Sepsis-six (OBG-ALG-07) / PPH (OBG-ALG-01) / Severe HTN (OBG-ALG-02)", "offer HDU transfer"]},
+    {"id": "E3", "when": "shock_index >= 0.9", "then": ["red banner 'shock index ≥ 0.9'", "suggest PPH chart (Build 15) if postnatal ≤ 24 h"]},
+    {"id": "E4", "when": "observation overdue by 15 min versus frequency_ordered_minutes", "then": ["worklist flag for the ward nurse", "counts against KPI 'MEOWS 4-hourly first 24 h'"]}
+  ],
+  "print": {"layout": "A4 landscape, 12 observation columns per sheet, rows = parameters with RED/AMBER threshold columns, totals row, action row, signature row — identical to OBG-F-05 master", "footer": "OBG-F-05 · v1.0 · effective date"},
+  "kpi_feeds": [
+    {"dashboard": "OBG-A-05", "indicator": "MEOWS completed 4-hourly in the first 24 h postnatal", "numerator": "stays with no overdue observation in first 24 h", "denominator": "postnatal stays", "target": ">=95%"},
+    {"dashboard": "OBG-A-05", "indicator": "Suspected sepsis: antibiotics within 1 h of trigger", "numerator": "E1/E2 triggers with sepsis pathway where antibiotic_time - trigger_time <= 60 min", "denominator": "triggers with sepsis pathway", "target": ">=90%"},
+    {"dashboard": "OBG-A-05", "indicator": "Severe HTN treated within 30 min", "numerator": "hypertensive_emergency flags with antihypertensive given <= 30 min", "denominator": "hypertensive_emergency flags", "target": ">=95%"}
+  ],
+  "acceptance_tests": [
+    "HR 125 + SBP 88 → shock_index 1.42, red_count 2, consultant task created, PPH suggestion shown",
+    "Temp 37.6 + pulse 105 → amber_count 2 → E1 fires; resident task with 30-min due",
+    "Frequency 240 min; last obs 10:00; at 14:16 the stay shows overdue",
+    "Entry at 03:40 with clinical_time 02:10 shows 'late entry' on screen and print",
+    "Print of a 24-h sheet matches OBG-F-05 side by side"
+  ]
+}
