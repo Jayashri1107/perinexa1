@@ -32,6 +32,8 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  PRIVILEGE_GRANTED: 'Clinical privilege granted',
+  PRIVILEGE_ENDED: 'Clinical privilege ended',
   CASE_REVIEWS_VIEWED: 'Death and near-miss reviews opened',
   CASE_REVIEW_STARTED: 'Death or near-miss review started',
   CASE_REVIEW_VIEWED: 'Death or near-miss review opened',
@@ -462,6 +464,8 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  PRIVILEGE_GRANTED: 'info',
+  PRIVILEGE_ENDED: 'info',
   CASE_REVIEWS_VIEWED: 'patient',
   CASE_REVIEW_STARTED: 'patient',
   CASE_REVIEW_VIEWED: 'patient',

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { SURGEON_PRIVILEGES } from '../clinical/privileges.js';
 import { ANAESTHESIA, CASE_STATUS, URGENCY } from '../clinical/whoChecklist.js';
 import { tenantScoped } from '../utils/tenantScope.js';
 
@@ -29,6 +30,8 @@ const caseSchema = new mongoose.Schema(
     site: { type: String, trim: true, maxlength: 100, default: '' },
     urgency: { type: String, enum: Object.keys(URGENCY), default: 'elective' },
     surgeon: { type: String, trim: true, maxlength: 150, default: '' },
+    // The surgeon's privilege this operation needs (PX-X-07, clinical/privileges.js) – '' when not chosen
+    privilegeKey: { type: String, enum: ['', ...SURGEON_PRIVILEGES], default: '' },
     assistant: { type: String, trim: true, maxlength: 150, default: '' },
     anaesthetist: { type: String, trim: true, maxlength: 150, default: '' },
     anaesthesia: { type: String, enum: ['', ...Object.keys(ANAESTHESIA)], default: '' },

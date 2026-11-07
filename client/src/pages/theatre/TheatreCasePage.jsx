@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BadgeCheck } from 'lucide-react';
+import { BadgeCheck, CircleHelp, TriangleAlert } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -125,6 +125,39 @@ function CancelDialog({ c, onDone, onCancel }) {
   );
 }
 
+// The privileges check (PX-X-07): whether the surgeon and the anaesthetist hold the privilege this operation needs.
+const PRIVILEGE_STATE = {
+  in_force: { tone: 'stable', icon: BadgeCheck, word: (who, l) => `${who} holds the privilege: ${l}` },
+  none: { tone: 'high', icon: TriangleAlert, word: (who, l) => `No privilege recorded for ${who}: ${l}` },
+  not_staff: { tone: 'watch', icon: CircleHelp, word: (who, l) => `${who} is not a member of staff by this name – check “${l}” by hand` },
+};
+export function PrivilegeCheck({ privileges, surgeon, anaesthetist }) {
+  const rows = [
+    ['surgeon', surgeon || 'The surgeon'],
+    ['anaesthetist', anaesthetist || 'The anaesthetist'],
+  ].filter(([k]) => privileges[k].state !== 'not_set');
+  if (!rows.length) return null;
+  return (
+    <section className="card" aria-label="Privileges">
+      <h2>Privileges</h2>
+      <ul className="pa-list">
+        {rows.map(([k, who]) => {
+          const p = privileges[k];
+          const look = PRIVILEGE_STATE[p.state];
+          return (
+            <li key={k}>
+              <StatusPill tone={look.tone} icon={look.icon}>
+                {look.word(who, p.label)}
+              </StatusPill>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="hint">From the hospital’s privileges register. A warning only: the team decides.</p>
+    </section>
+  );
+}
+
 export function TheatreCasePage() {
   const { id } = useParams();
   const { data, error, reload } = useFetch(`/theatre/${id}`);
@@ -172,6 +205,7 @@ export function TheatreCasePage() {
             </button>
           )}
         </section>
+        {data.privileges && <PrivilegeCheck privileges={data.privileges} surgeon={c.surgeon} anaesthetist={c.anaesthetist} />}
         {PHASE_ORDER.map((p) => (
           <Phase key={p} c={c} phase={p} canWrite={data.access.write} onSaved={reload} />
         ))}

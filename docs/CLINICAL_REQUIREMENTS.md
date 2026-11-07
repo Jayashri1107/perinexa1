@@ -170,3 +170,20 @@ ICD-MM groups of causes (2012), the three delays as in India's MDSR guidelines (
 - Test: Clinical audit → Death and near-miss reviews → **Start a review** (a fake patient number, Maternal near miss)
   → **Sign and seal** at once: the missing parts are named → fill them → **Sign and seal** → shown as signed →
   add a correction (Summary, what it should say, why) → it shows under Corrections; the summary is unchanged.
+
+## Group C – clinical privileges (PX-X-07), 7 Nov 2026
+DRAFT list (`server/src/clinical/privileges.js`, owner's approval before `main`): caesarean, operative vaginal birth,
+complex perineal repair, hysterectomy, laparoscopy, hysteroscopy, cerclage, ectopic surgery, surgical MTP, minor
+gynaecological procedures, obstetric ultrasound, egg collection and embryo transfer, general and regional anaesthesia,
+newborn intubation and resuscitation – with reminders of the MTP Act, PC-PNDT and ART Act (not checked by Perinexa).
+Model `StaffPrivilege`, route `/api/privileges`, page **Privileges** (`/privileges`).
+- The hospital admin and the quality lead grant a privilege to a doctor, RMO or nurse (until a last day, or no end
+  date) and end it with a reason; never deleted. Past its last day it shows as lapsed. Doctors, RMOs and nurses read it.
+- The theatre list's **Add an operation** has "The surgeon's privilege it needs"; the theatre case shows whether the
+  surgeon holds it and whether the anaesthetist holds the privilege for the anaesthesia chosen (general → general
+  anaesthesia; spinal or epidural → regional). The names are matched to staff by name. **A warning only** – whether a
+  missing privilege should block the operation is for the owner to decide.
+- Audit: PRIVILEGE_GRANTED, PRIVILEGE_ENDED (no patient data). In the hospital export.
+- Test: sign in as the quality lead or admin → Privileges → **Grant a privilege** → a doctor, Caesarean section →
+  "In force"; as a doctor → Theatre → Add an operation with that doctor's name as surgeon and the privilege chosen →
+  open it: "… holds the privilege: Caesarean section"; a name not on the staff list says to check by hand.
