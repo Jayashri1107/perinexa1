@@ -74,6 +74,7 @@ import { clinicalScoresRouter } from './routes/clinicalScores.js';
 import { incidentsRouter } from './routes/incidents.js';
 import { formularyRouter } from './routes/formulary.js';
 import { meowsRouter } from './routes/meows.js';
+import { patientAlertsRouter } from './routes/patientAlerts.js';
 import { pphRouter } from './routes/pph.js';
 import { dischargeChecklistRouter } from './routes/dischargeChecklist.js';
 import { theatreRouter } from './routes/theatre.js';
@@ -329,6 +330,7 @@ export function createApp({
   app.use('/api/formulary', ...inTenant, formularyRouter);
   // Clinical Requirements Group B, item 8: the MEOWS chart (DRAFT)
   app.use('/api/meows', ...inTenant, meowsRouter);
+  app.use('/api/patient-alerts', ...inTenant, patientAlertsRouter);
   // Clinical Requirements Group B, item 15: the PPH chart (DRAFT)
   app.use('/api/pph', ...inTenant, pphRouter);
   // Clinical Requirements Group B, item 14: the postnatal discharge checklist and danger-sign teaching (DRAFT)

@@ -8,6 +8,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
 import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { ShowChoice } from '../quality/SimpleTable.jsx';
+import { PatientSafetyBand } from '../patients/SafetyStrip.jsx';
 import { ChecklistProgress, STATUS_LOOK } from './TheatreListPage.jsx';
 import { FITNESS_LOOK } from '../anaesthesia/PacTab.jsx';
 import { FITNESS } from '../anaesthesia/anaesthesiaRules.js';
@@ -136,6 +137,7 @@ export function TheatreCasePage() {
     <>
       <PageHeader breadcrumbs={[{ label: 'Theatre list', to: `/theatre?date=${c.listDate}` }, { label: c.procedure }]} title={c.procedure} documentTitle="Theatre case" />
       <div className="pf-content stack">
+        <PatientSafetyBand patientId={c.patient.id} />
         <section className="card">
           <div className="item-editor-head">
             <strong>{`${c.patient.fullName} · ${c.patient.mrn}`}</strong>

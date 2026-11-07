@@ -527,7 +527,7 @@ export function PatientDetailPage() {
         <DuplicateBanner patient={patient} onUndo={() => setUndoingDuplicate(true)} />
         <ClosedBanner patient={patient} onUndo={() => setUndoingDeath(true)} />
         <EarlierRecordsNote patient={patient} />
-        <SafetyStrip patient={patient} />
+        <SafetyStrip patient={patient} canAlerts={a.canEditClinical || a.canRecordVitals} onAlertsChanged={reload} />
         <InformationDue patient={patient} />
         {location.pathname === base && <PatientPlaces places={places} />}
         <Alert type="success" onClose={() => setFlash(null)}>

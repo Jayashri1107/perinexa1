@@ -467,6 +467,9 @@ const FILTER_ACTIONS = [
   'NICU_REGISTER_VIEWED',
   'WITNESS_CONFIRMED',
   'WITNESS_FAILED',
+  'PATIENT_ALERTS_VIEWED',
+  'PATIENT_ALERT_ADDED',
+  'PATIENT_ALERT_ENDED',
 ];
 
 describe('every event in the audit log has a plain name', () => {
