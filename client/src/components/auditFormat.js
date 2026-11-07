@@ -32,6 +32,9 @@ const LOGIN_METHOD_WORDS = { password: 'with email and password', otp: 'with mob
 const PORTAL_FAIL_WORDS = { unknown_email: 'Email not signed up', wrong_password: 'Wrong password', wrong_otp: 'Wrong OTP', otp_expired: 'OTP expired or not asked for' };
 
 export const AUDIT_LABELS = {
+  PATIENT_ALERTS_VIEWED: 'Viewed patient alerts',
+  PATIENT_ALERT_ADDED: 'Added a patient alert',
+  PATIENT_ALERT_ENDED: 'Ended a patient alert',
   WITNESS_CONFIRMED: 'Second person confirmed a check',
   WITNESS_FAILED: 'Second-person check failed (wrong password or not allowed)',
   NEWBORN_CARE_VIEWED: "Baby's care at birth opened",
@@ -453,6 +456,9 @@ export const AUDIT_LABELS = {
 const REGISTER_WORDS = { form_f: 'Form F (PC-PNDT)', mtp: 'MTP register', mtp_summary: 'MTP monthly report' };
 
 export const AUDIT_TONES = {
+  PATIENT_ALERTS_VIEWED: 'patient',
+  PATIENT_ALERT_ADDED: 'patient',
+  PATIENT_ALERT_ENDED: 'patient',
   WITNESS_CONFIRMED: 'patient',
   WITNESS_FAILED: 'warn',
   NEWBORN_CARE_VIEWED: 'patient',

@@ -136,3 +136,15 @@ Audit: WITNESS_CONFIRMED (purpose), WITNESS_FAILED (a security event). Branch `c
 - Pharmacy (Schedule X and narcotic medicines): a stock count, a supplier return and cancelling a return – the second
   person (pharmacist, doctor, RMO or nurse) signs in; the register shows "Name (Role)". Older rows keep the typed name.
   Test: Pharmacy → Stock → a narcotic batch → Count; Pharmacy → Supplier returns with a narcotic batch.
+
+## Group C – alerts that follow the patient (PX-X-13, 7 Nov 2026)
+DRAFT list (`server/src/clinical/patientAlerts.js`, owner's approval before `main`): difficult airway, declines blood
+products, infection precautions (the precaution only – never the diagnosis or a test result), fall risk, needs an
+interpreter, implant or device, other. Model `PatientAlert`, route `/api/patient-alerts` (band, list, add, end).
+- Shown in the safety strip (with allergies and blood group) on every screen of her record – her stays and documents
+  included – and on the theatre case page (`PatientSafetyBand`). Only for those who may see her medical details.
+- Her doctor, RMOs and nurses add them ("Add an alert" / "Alerts" in the strip) and end them with a reason; never
+  deleted. One of each kind at a time (except "Other"). The note follows the fetal-sex protection.
+- Audit: PATIENT_ALERT_ADDED, PATIENT_ALERT_ENDED, PATIENT_ALERTS_VIEWED – ids and the kind, never the note.
+- Test: open a patient → in the strip under her name, **Add an alert** → Difficult airway, a note → it shows in red
+  with a warning icon; open her operation from the Theatre list – the same band; **Alerts** → End, with a reason.
