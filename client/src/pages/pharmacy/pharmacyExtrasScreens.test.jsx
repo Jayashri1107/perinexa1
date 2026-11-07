@@ -378,13 +378,14 @@ describe('barcodes', () => {
     // card uses this same row (FindMedicine), rendered on its own:
     const find = at('/pharmacy', '/pharmacy', <FindMedicine onPick={() => {}} onScan={() => {}} />);
     expect(find).toContain(box);
-    expect(find).toContain('placeholder="Add a medicine: brand or generic name"');
+    expect(find).toContain('placeholder="Add a medicine: type a letter of the brand or generic name"');
     const stock = at('/pharmacy/stock', '/pharmacy/stock', <StockPage />);
     expect(text(stock)).toContain('Only the exact barcode is found.');
     brand(stock);
     for (const kind of ['sale', 'issue']) {
       const page = at('/pharmacy', '/pharmacy', <SellPage kind={kind} />);
-      expect(text(page)).toContain('Who is it for'); // OPD, IPD or External on both (owner, 26 Oct 2026)
+      // OPD, IPD or External on both (owner, 26 Oct 2026), as three tabs on the bill's card (7 Nov 2026)
+      for (const type of ['OPD', 'IPD', 'External']) expect(text(page)).toContain(type);
       expect(page).not.toContain(box); // nobody chosen yet: no medicines card
       brand(page);
     }
