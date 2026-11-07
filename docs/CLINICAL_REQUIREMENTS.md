@@ -147,7 +147,8 @@ bell, no SMS service) – not part of NEO-F-03 (no dose and no Director alert on
 - **Register number:** per unit per year (UNIT-YEAR-0001), given when the admission is saved (the next number after the
   unit's last of the year, retried on a clash – a failed save uses no number), never changed (the model refuses), kept
   when entered in error; the register checks and shows that no number is missing. The year is the admission day's.
-- **Decisions made here (developer and owner to confirm):**
+- **Owner confirmed all the Build 13 changes as built (developer, 7 Nov 2026)**, including the five decisions below.
+- **Decisions made here (confirmed by the owner, 7 Nov 2026):**
   1. *Admin override of a full unit (N4).* A hospital admin works in admin mode with no patient records, so the admin
      cannot admit. Built as "one more admission" allowed by the admin on NICU units (with a reason, used once within 2
      hours); the admission shows who allowed it and why.
