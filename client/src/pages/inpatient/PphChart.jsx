@@ -183,8 +183,7 @@ export function bodyFrom(f, c) {
       .map(([k, v]) => [k, TIMES.includes(k) ? iso(v) : v]),
   );
   const changed =
-    f.header.declared_at &&
-    iso(f.header.declared_at) !== new Date(c.declared_at).toISOString();
+    f.header.declared_at && f.header.declared_at !== toLocal(c.declared_at);
   if (changed) header.declared_at = iso(f.header.declared_at);
   const bundle = Object.fromEntries(
     BUNDLE.filter((b) => b.key && b.kind !== "doses").map((b) => [
@@ -309,8 +308,7 @@ function F07Form({ chart: c, staff, canWrite, onSaved }) {
     });
   const dis = !canWrite;
   const declaredChanged =
-    f.header.declared_at &&
-    iso(f.header.declared_at) !== new Date(c.declared_at).toISOString();
+    f.header.declared_at && f.header.declared_at !== toLocal(c.declared_at);
 
   const save = async (e) => {
     e.preventDefault();

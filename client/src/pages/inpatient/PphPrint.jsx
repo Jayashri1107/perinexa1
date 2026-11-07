@@ -173,7 +173,11 @@ export function PphPrintSheet({ chart: c, patient, letterhead }) {
                           <tr>
                             <td>{tick(e.balloon?.inserted_at)}</td>
                             <td>{`Balloon${e.balloon?.volume_ml != null ? ` ${e.balloon.volume_ml} ml` : ""}`}</td>
-                            <td>{`${tm(e.balloon?.inserted_at)} – ${tm(e.balloon?.removed_at)}`}</td>
+                            <td>
+                              {e.balloon?.inserted_at
+                                ? `${tm(e.balloon.inserted_at)} – ${tm(e.balloon?.removed_at)}`
+                                : "—"}
+                            </td>
                           </tr>
                           <tr>
                             <td>{tick(e.laparotomy_at)}</td>
@@ -182,9 +186,8 @@ export function PphPrintSheet({ chart: c, patient, letterhead }) {
                           </tr>
                           <tr>
                             <td>{tick(e.procedures?.length)}</td>
-                            <td
-                              colSpan={2}
-                            >{`${words(PROCEDURES, e.procedures)}${e.procedures_other ? ` (${e.procedures_other})` : ""}`}</td>
+                            <td>Procedures</td>
+                            <td>{`${words(PROCEDURES, e.procedures)}${e.procedures_other ? ` (${e.procedures_other})` : ""}`}</td>
                           </tr>
                           <tr>
                             <td>{tick(e.hysterectomy_at)}</td>
