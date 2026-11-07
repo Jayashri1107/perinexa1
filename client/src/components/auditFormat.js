@@ -19,6 +19,8 @@ const AI_FEATURES = {
   brief_today: 'brief of the Today page',
   brief_calendar: 'brief of the calendar',
   brief_patient: 'brief of the patient page',
+  ask_patient: 'question about the patient (Ask AI)',
+  ask_patient_deep: 'question about the patient (Ask AI, thought harder)',
 };
 
 // Plain-English names for audit log events.

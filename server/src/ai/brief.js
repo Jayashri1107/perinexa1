@@ -46,7 +46,11 @@ export function patientLabels() {
 
 // ---------- HIV is never sent ----------
 
-const HIV_WORDS = /\b(hiv|plhiv|aids|retro\s*-?\s*(?:viral|positive|reactive)|rvd|pptct|ictc)\b/i;
+// Also antiretroviral treatment and the medicines used only for HIV (15 Oct 2026: a medicine line or a discharge card
+// could otherwise give it away). Not tenofovir or lamivudine alone (also for hepatitis B) and not "ART" alone (also
+// assisted reproduction). DRAFT list – the owner checks it.
+const HIV_WORDS =
+  /\b(hiv|plhiv|aids|(?:anti\s*-?\s*)?retro\s*-?\s*(?:virals?|positive|reactive)|rvd|pptct|ictc|art\s+cent(?:re|er)|cd4|viral\s+load|dolutegravir|efavirenz|zidovudine|nevirapine|lopinavir|atazanavir|raltegravir|abacavir|tld|tle)\b/i;
 export const mentionsHiv = (text) => HIV_WORDS.test(String(text ?? '').replace(/_/g, ' '));
 const hivReason = (r) => mentionsHiv(r?.label) || mentionsHiv(r?.key);
 const hivTest = (t) => mentionsHiv(t?.key) || mentionsHiv(t?.name);
@@ -121,7 +125,7 @@ export function flaggedValues(order) {
     for (const v of t.values ?? []) {
       if (!isAbnormal(v.flag)) continue;
       const f = fieldOf(t, v.key);
-      out.push(`${f?.label ?? t.name} ${v.value}${f?.unit ? ` ${f.unit}` : ''} (${v.flag})`);
+      out.push(`${f?.name ?? f?.label ?? t.name} ${v.value}${f?.unit ? ` ${f.unit}` : ''} (${v.flag})`); // lab fields are named `name`
     }
   }
   return out;

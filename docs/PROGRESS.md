@@ -38,6 +38,21 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   only). "Not in this copy" now also names the EPDS questions, scan pictures, the referral desk's own records and
   incident reports. Not in the copy on purpose: incidents (never part of a record). How to test: steps 4a–4e of "How
   to test the copy of the whole record".
+- **7 Nov 2026 – Ask AI about a patient (branch `ask-ai-tab`, developer's request – the owner's version of 15 Oct
+  2026 brought over, `docs/ASK_AI_PLAN.md`):** a new **Ask AI** tab on the patient's record for her doctor (any doctor
+  while she has none) and RMOs: a conversation with follow-up questions; each answer split into "From her record" (with
+  where), "General medical knowledge – check against current guidelines" and "Not in her record"; **Think harder** asks
+  the stronger model for one question. Nothing is kept (leaving the tab clears it); the audit log records each use
+  (feature, model, token counts – never the words). Never sent: her name, phone, address, patient number, private notes,
+  HIV (questions about it are refused) or anything about the baby's sex. Her record for the AI adds lab values (never
+  typed results), signed scan reports from perinexa1's Imaging module (measurements, findings, impression), stays with
+  confirmed discharge cards, and referrals with the signed consultant note. Off until an OpenAI key is in `server/.env`
+  (`OPENAI_API_KEY`), like the other AI features; fake data only until the OpenAI data agreement and the developer's
+  review. **How to test:** log in as a doctor → one of your fake patients → **Ask AI** → press a suggested question →
+  **Ask**; ask a follow-up ("And her Hb?"); press **Think harder** on an answer; ask about the baby's sex or HIV
+  (refused); as a nurse, reception or another doctor there is no Ask AI tab; Hospital admin → Audit log shows "AI used –
+  question about the patient (Ask AI)" with the model and token counts, never the question. Without a key the tab says
+  AI is not set up for this hospital.
 - **6 Nov 2026 – the hospital's doctors by department (branch `doctors-list`, developer's request):** the handwritten
   lists are in `server/scripts/hospital-doctors.js` (`npm run doctors:hospital -w server -- "<hospital name>"`): 22
   doctors with their departments and OPD timings (Mon–Sat 10–5, Sun 11–4); safe to run again. The real emails are not

@@ -37,10 +37,10 @@ export class AiUnavailable extends HttpError {
  *  req: the request (for the audit log); feature: its short name ("visit_summary"); ids: { patientId, mrn }.
  *  instructions: what the AI must do (the "developer" message); content: text, or content parts (text / image).
  *  schema: JSON schema of the answer (strict: every property required, no others).
- *  fast: use the faster, cheaper model.
+ *  fast: use the faster, cheaper model. timeoutMs: how long to wait (the stronger model thinking longer needs more).
  * Returns the parsed answer. Throws 503 (not set up), 502 (the service failed) or 422 (it declined).
  */
-export async function askAI(req, { feature, ids = {}, instructions, content, schema, fast = false, maxTokens = 4000 }) {
+export async function askAI(req, { feature, ids = {}, instructions, content, schema, fast = false, maxTokens = 4000, timeoutMs = TIMEOUT_MS }) {
   const s = settings();
   if (!usable(s.key)) throw new AiUnavailable();
   const model = fast ? s.fastModel : s.model;
@@ -61,7 +61,7 @@ export async function askAI(req, { feature, ids = {}, instructions, content, sch
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${s.key}` },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     console.error('AI request failed', err?.name ?? err);

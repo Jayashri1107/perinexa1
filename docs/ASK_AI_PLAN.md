@@ -1,6 +1,6 @@
 # Ask AI about a patient – plan
 
-> Copied from the owner's repository (`girishsolanke/perinexa`) on 27 Oct 2026 for reference. perinexa1 does this its own way; this file describes the owner's plan, not perinexa1.
+> Copied from the owner's repository (`girishsolanke/perinexa`) on 27 Oct 2026. Built in perinexa1 on 7 Nov 2026 from the owner's version (branch `ask-ai-tab`), with one difference: her scans come from perinexa1's Imaging module (signed scan reports with their measurements, findings and impression) instead of the owner's ultrasound reports.
 
 Planned with the owner on 15 Oct 2026 and built the same day at the owner's request (another exception to the
 feature pause). Fake data only; no real patient before the OpenAI data-privacy agreement (`docs/AI_FEATURES_PLAN.md`,
