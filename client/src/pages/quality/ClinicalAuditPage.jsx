@@ -21,16 +21,16 @@ function RobsonTable({ data }) {
   const rows = [...data.rows, { group: null, ...data.unclassified }].filter((r) => r.group || r.women);
   return (
     <div className="an-table-wrap">
-      <table className="ca-table">
+      <table className="ca-table ca-robson">
         <thead>
           <tr>
             <th scope="col">Robson group</th>
             <th scope="col" className="num">Women</th>
             <th scope="col" className="num">Caesareans</th>
-            <th scope="col" className="num">Share of all women</th>
-            <th scope="col" className="num">Caesarean rate in the group</th>
-            <th scope="col" className="num">Adds to the overall rate</th>
-            <th scope="col" className="num">Share of all caesareans</th>
+            <th scope="col" className="num" title="Share of all women in this group">Group size</th>
+            <th scope="col" className="num" title="Caesarean rate within the group">CS rate</th>
+            <th scope="col" className="num" title="What the group adds to the overall caesarean rate">Adds to total</th>
+            <th scope="col" className="num" title="Share of all caesareans that are in this group">Share of CS</th>
           </tr>
         </thead>
         <tbody>
@@ -42,10 +42,10 @@ function RobsonTable({ data }) {
               </th>
               <td data-label="Women" className="num">{formatNumber(r.women)}</td>
               <td data-label="Caesareans" className="num">{formatNumber(r.caesareans)}</td>
-              <td data-label="Share of all women" className="num">{r.group ? pct(r.groupSize) : '–'}</td>
-              <td data-label="Caesarean rate in the group" className="num">{r.group ? pct(r.caesareanRate) : '–'}</td>
-              <td data-label="Adds to the overall rate" className="num">{r.group ? pct(r.absoluteContribution) : '–'}</td>
-              <td data-label="Share of all caesareans" className="num">{r.group ? pct(r.relativeContribution) : '–'}</td>
+              <td data-label="Group size" className="num">{r.group ? pct(r.groupSize) : '–'}</td>
+              <td data-label="CS rate" className="num">{r.group ? pct(r.caesareanRate) : '–'}</td>
+              <td data-label="Adds to total" className="num">{r.group ? pct(r.absoluteContribution) : '–'}</td>
+              <td data-label="Share of CS" className="num">{r.group ? pct(r.relativeContribution) : '–'}</td>
             </tr>
           ))}
         </tbody>
@@ -54,10 +54,10 @@ function RobsonTable({ data }) {
             <th scope="row">All women</th>
             <td data-label="Women" className="num">{formatNumber(data.women)}</td>
             <td data-label="Caesareans" className="num">{formatNumber(data.caesareans)}</td>
-            <td data-label="Share of all women" className="num">100%</td>
-            <td data-label="Caesarean rate in the group" className="num">{pct(data.caesareanRate)}</td>
-            <td data-label="Adds to the overall rate" className="num">{pct(data.caesareanRate)}</td>
-            <td data-label="Share of all caesareans" className="num">{data.caesareans ? '100%' : '–'}</td>
+            <td data-label="Group size" className="num">100%</td>
+            <td data-label="CS rate" className="num">{pct(data.caesareanRate)}</td>
+            <td data-label="Adds to total" className="num">{pct(data.caesareanRate)}</td>
+            <td data-label="Share of CS" className="num">{data.caesareans ? '100%' : '–'}</td>
           </tr>
         </tfoot>
       </table>
@@ -68,7 +68,7 @@ function RobsonTable({ data }) {
 function CaesareanList({ list }) {
   return (
     <div className="an-table-wrap">
-      <table className="ca-table">
+      <table className="ca-table ca-cs">
         <thead>
           <tr>
             <th scope="col">Delivered</th>
@@ -84,8 +84,10 @@ function CaesareanList({ list }) {
             <tr key={r.documentId}>
               <td data-label="Delivered">{formatDateTime(r.deliveredAt)}</td>
               <td data-label="Patient">
-                <Link to={`/patients/${r.patientId}/stays/${r.admissionId}/docs/${r.documentId}`}>{r.fullName}</Link>
-                <span className="ca-group-words">{r.mrn}</span>
+                <span className="nbf-baby">
+                  <Link to={`/patients/${r.patientId}/stays/${r.admissionId}/docs/${r.documentId}`}>{r.fullName}</Link>
+                  <span className="hint">{r.mrn}</span>
+                </span>
               </td>
               <td data-label="Category">{r.category ? CATEGORY_WORDS[r.category] : 'Not recorded'}</td>
               <td data-label="Decision">{r.decisionAt ? formatDateTime(r.decisionAt) : '–'}</td>
@@ -126,16 +128,16 @@ export function ClinicalAuditPage() {
         subtitle="Deliveries confirmed by a doctor: the Robson ten-group table and the caesarean decision-to-delivery times."
         tabs={qualityTabs}
       />
-      <div className="pf-content stack">
+      <div className="pf-content stack ca-page">
         <Alert type="error">{robson.error ?? cs.error}</Alert>
         <div className="row reg-toolbar">
           <Field label="Month" id="ca-month">
             <input id="ca-month" type="month" value={month} max={thisMonth()} onChange={(e) => e.target.value && setParams({ month: e.target.value }, { replace: true })} />
           </Field>
+          {month === thisMonth() && <p className="hint ca-month-note">This month is not over yet: the numbers grow until its last day.</p>}
         </div>
-        {month === thisMonth() && <p className="hint">This month is not over yet: the numbers grow until its last day.</p>}
 
-        <div className="kpi-grid">
+        <div className="kpi-grid ca-kpis">
           <KpiCard icon={Baby} label="Women delivered" value={r ? formatNumber(r.women) : '–'} sub={monthWords(month)} />
           <KpiCard icon={Scissors} label="Caesareans" value={r ? formatNumber(r.caesareans) : '–'} sub={r?.women ? `${pct(r.caesareanRate)} of deliveries` : 'No deliveries yet'} />
           <KpiCard
@@ -159,6 +161,26 @@ export function ClinicalAuditPage() {
           {robson.loading && !r && <p className="muted">Loading…</p>}
           {r && !r.women && <p className="muted">{`No delivery note was confirmed in ${monthWords(month)}. A delivery note is counted here once a doctor confirms it.`}</p>}
           {r?.women > 0 && <RobsonTable data={r} />}
+          {r?.women > 0 && (
+            <dl className="ca-key">
+              <div>
+                <dt>Group size</dt>
+                <dd>share of all women delivered who are in the group</dd>
+              </div>
+              <div>
+                <dt>CS rate</dt>
+                <dd>caesareans within the group</dd>
+              </div>
+              <div>
+                <dt>Adds to total</dt>
+                <dd>what the group adds to the overall caesarean rate</dd>
+              </div>
+              <div>
+                <dt>Share of CS</dt>
+                <dd>share of all caesareans that are in the group</dd>
+              </div>
+            </dl>
+          )}
           {r && <p className="hint">{`DRAFT until the Lead Obstetrician confirms it. Source: ${r.source}.`}</p>}
         </section>
 
