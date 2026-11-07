@@ -1,0 +1,38 @@
+/* Build 13 – the NICU admission (NEO-F-03), its unit board and register. Colours from tokens.css only. */
+
+/* The admission's banners: colour + icon + word (BRAND.md) */
+.nicu-banners { display: grid; gap: var(--space-2); }
+.nicu-banner { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border: 1px solid transparent; }
+.nicu-banner svg.lucide { flex: none; margin-top: 2px; }
+.nicu-banner-high { background: var(--status-high-bg); color: var(--status-high-fg); border-color: var(--status-high-fg); font-weight: 600; }
+.nicu-banner-watch { background: var(--status-watch-bg); color: var(--status-watch-fg); }
+.nicu-banner-due { background: var(--status-due-bg); color: var(--status-due-fg); }
+.nicu-banner-neutral { background: var(--status-inactive-bg); color: var(--status-inactive-fg); }
+.nicu-allergy { padding: var(--space-1) var(--space-3); border: 2px solid var(--status-high-fg); color: var(--status-high-fg); border-radius: var(--radius-sm); font-weight: 600; }
+.nicu-from { font-size: 0.8em; color: var(--status-due-fg); }
+
+/* The form's parts */
+.nicu-part > summary { cursor: pointer; font-weight: 600; padding: var(--space-2) 0; }
+.nicu-exam { display: grid; grid-template-columns: minmax(10rem, 1.2fr) auto minmax(8rem, 2fr); gap: var(--space-1) var(--space-3); align-items: center; }
+
+/* The unit board */
+.nicu-board-units { display: grid; gap: var(--space-4); }
+.nicu-beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--space-2); }
+.nicu-bed { border: 1px solid var(--border, var(--slate-300)); border-radius: var(--radius-sm); padding: var(--space-2); display: grid; gap: var(--space-1); min-width: 0; }
+.nicu-bed-free { border-style: dashed; }
+
+/* Printed as NEO-F-03: A4 portrait – header, allergy band, §1 in two columns, §2 in three, §3 in two, sign-offs */
+.nicu-print h2 { font-size: 1.05em; margin: var(--space-3) 0 var(--space-1); border-bottom: 1.5px solid var(--print-ink); }
+.nicu-print .nicu-cols-2, .nicu-print .nicu-cols-3 { display: grid; gap: 0 var(--space-4); font-size: 0.85em; }
+.nicu-print .nicu-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nicu-print .nicu-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.nicu-print dl { margin: 0; }
+.nicu-print .nicu-pf { display: flex; gap: var(--space-2); justify-content: space-between; border-bottom: 1px solid var(--print-rule); padding: 1px 0; break-inside: avoid; }
+.nicu-print .nicu-pf dt { color: var(--slate-600); }
+.nicu-print .nicu-pf dd { margin: 0; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+.nicu-print .nicu-allergy { margin: var(--space-2) 0; color: var(--print-ink); border-color: var(--print-ink); }
+.nicu-print .nicu-signs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-6); font-size: 0.85em; break-inside: avoid; }
+.nicu-print .nicu-signs > div { border-top: 1px solid var(--print-ink); padding-top: var(--space-1); }
+@media screen and (max-width: 640px) {
+  .nicu-exam { grid-template-columns: 1fr; }
+}

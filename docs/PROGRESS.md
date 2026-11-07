@@ -22,6 +22,28 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **7 Nov 2026 – Build 8: the MEOWS chart as OBG-F-05 v1.0 (branch `claude/build8-meows-f05-694f40`, not merged):**
+  the DRAFT CEMACH chart upgraded to the manual's field schema (`docs/field_schemas/build8_meows.json`, approved by the
+  owner as clinical content): RED / AMBER bands ("yellow" is now amber), the chart header (context, ordered frequency –
+  doctors and RMOs – blood loss from the delivery note, LMWH), the new fields (urine, new confusion, pain, lochia,
+  fundus, wound, nurse concern, action taken, doctor informed), shock index, hypertensive-emergency banner, the
+  late-entry badge (PX-X-04, `server/src/utils/lateEntry.js` for any chart), escalation E1–E4 through the notification
+  bell and the ward list (no SMS), three OBG-A-05 dashboard rows, and the A4-landscape printout with 12 sets per sheet.
+  The owner's approvals and what is left out: `docs/CLINICAL_REQUIREMENTS.md`, item 8. How to test: "How to test the
+  MEOWS chart" below. **Next:** the developer reads the branch; the Lead Obstetrician runs the five acceptance tests on
+  fake data and confirms the readings listed in item 8.
+- **7 Nov 2026 – Build 15: PPH management and blood-loss chart as OBG-F-07 v1.0 (branch
+  `claude/build15-pph-f07-efe494`, developer's request; not merged):** the DRAFT PPH chart upgraded exactly to the
+  manual's field schema (`docs/field_schemas/build15_pph.json`), approved by the owner as clinical content. One-tap
+  **Declare PPH** on the patient banner with the minutes-since clock and the ALG-01 card; a transcription screen laid
+  out like OBG-F-07 (header, E-MOTIVE bundle with times and "within 15 min", escalation, observation rows with blood
+  products and the second-person check, Hb and labs, outcome); the schema's fixed doses shown; contraindications as
+  warnings; carboprost A3 block; TXA rules; loss bands 500–999 / 1000–1499 / ≥1500; late entry with the paper scan
+  before the consultant's sign-off, which locks it and keeps the KPI fields (A5); near miss → review, Lead
+  Obstetrician told, M&M list (A1); massive haemorrhage → Director told by the bell and the blood bank pack request
+  recorded (A4); five OBG-A-05 rows in the monthly dashboards; print as OBG-F-07 with the footer "OBG-F-07 · v1.0".
+  Not done: A2's "MEOWS every 5 minutes" (after Build 8 is merged – TODO in the code). Details and the owner's
+  approvals: `docs/CLINICAL_REQUIREMENTS.md`, Group B item 15. How to test: "How to test the PPH chart – Build 15".
 - **7 Nov 2026 – five more parts in the copy of the whole record (branch `record-copy-parts`, developer's request):**
   the copy now also has **Scan reports** (a signed report whole: the study, why it was asked for, every measurement
   with its unit, findings, impression, the signer with qualification and registration, a change after signing with
@@ -2983,15 +3005,26 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
   small credit limit) and paste it after `OPENAI_API_KEY=` in `server/.env` yourself – never in chat – then
   restart Perinexa. Fake data only.
 
-## How to test the MEOWS chart – Group B item 8, DRAFT (fake data only)
-1. As a **nurse** (or her doctor or an RMO): a made-up mother who is admitted → her **IPD** → **Current stay**. The
-   **MEOWS chart** is above the nursing chart.
-2. Time with AM/PM; Respiratory rate **22**, Heart rate **108**, the rest normal (SpO2 98, temperature 36.8 °C, BP
-   118/76, AVPU Alert). The box shows **Trigger – tell the doctor now · 0 red, 2 yellow** and asks **Whom you told**.
-3. **Save the observations** with that empty: refused. Write a doctor's name and save: the table shows 22 and 108 as
-   **Yellow** pills and the result **Trigger**, with whom you told. The header shows the latest result.
-4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
-   greyed. Reception and the hospital admin have no MEOWS chart.
+## How to test the MEOWS chart – Group B item 8, OBG-F-05 v1.0 (fake data only)
+1. As **her doctor or an RMO**: a made-up mother who is admitted → her **IPD** → **Current stay**. The **MEOWS chart
+   (OBG-F-05)** is above the nursing chart. **Start the chart**: context **Postnatal**, detail "Postnatal day 0",
+   observations every **4 hours** (blood loss is offered from a signed delivery note on the stay). Save: the header line
+   shows them and "Next observations due …". A nurse sees the header but no **Start the chart**.
+2. As a **nurse**: Pulse **105**, temperature **37.6 °C**, the rest normal (RR 16, SpO2 98, BP 118/76, AVPU A). The box
+   shows **Trigger · 0 red, 2 amber** and the E1 line. Saving with no **Action taken** is refused; write one and save.
+   The RMO and her doctor get a **MEOWS E1** notification in the bell; **Escalation** shows "Resident at the bedside ·
+   due by" (30 min) with **Mark done**, and the next set is due 30 min after the trigger.
+3. Pulse **125**, systolic **88** (diastolic 60): **2 red**, shock index **1.42**, E1, E2, E3 – the red shock-index
+   banner with **Consider the PPH chart (below)**, the consultant and anaesthetist tasks, and the pathway buttons
+   (Sepsis six, PPH, Severe hypertension) with "offer HDU transfer". Choose **Sepsis six**, then **Record the first
+   antibiotic's time**.
+4. Systolic **165**: the **Hypertensive emergency** banner; **Record the antihypertensive's time** under Escalation.
+5. Clinical time **90 minutes ago**: the line shows **Late entry** (and so does the printout).
+6. **Print as the manual's page**: A4 landscape, 12 columns per sheet, the RED / AMBER limits, totals, action and
+   signature rows, footer "OBG-F-05 · v1.0 · effective …" (the date from the document register).
+7. Overdue: on **Today** the nurse's ward cards show **MEOWS overdue** and the stay's row a red "MEOWS overdue since …"
+   pill once a set is more than 15 min late. **Dashboards → Obstetrics** has the three MEOWS rows.
+8. **Entered in error** asks for a reason; the line stays, greyed. Reception and the hospital admin have no MEOWS chart.
 
 ## How to test the second-person check – Group C (fake data only)
 You need two fake staff logins (for example a nurse and a doctor).
@@ -3013,10 +3046,62 @@ You need two fake staff logins (for example a nurse and a doctor).
    told". Saved scores show "8 · Severe pain".
 3. **Newborn care:** a made-up baby → **Newborn care** tab → **At birth** (every step Yes/No) → **New examination**
    (a part "Not normal" needs what was found) → **Bilirubin** two readings: the chart shows them by hours of age.
-4. **NICU:** same tab → **Admit to the NICU or SNCU** (temperature 35.9: "Cold at admission") → as a doctor **Record how
-   it ended**. **Newborn follow-up → NICU register** lists it with the month's totals.
+4. **NICU:** replaced by Build 13 (NEO-F-03) – see "Build 13 – NICU admission" below.
 5. **CCHD helper:** the baby's **Screening** tab → Record pulse oximetry → right hand 97, foot 96 → "Pass" → **Use this
    result**.
+
+## Build 13 – NICU admission (NEO-F-03), its register (NEO-L-05) and unit board (7 Nov 2026)
+Branch `claude/build13-nicu-f03-85abb9` (not merged, not pushed). From `docs/field_schemas/build13_nicu_admission.json`
+(owner-approved clinical content; details, decisions and gaps in `docs/CLINICAL_REQUIREMENTS.md`, Group B items 12 and 13).
+- **What changed.** The DRAFT NICU / SNCU admission became the whole NEO-F-03 form, on the same record
+  (`NicuAdmission`, format `f03`); DRAFT admissions of 6 Nov keep their fields and are shown as they were.
+  - Units are hospital settings (**Hospital admin → NICU units**): name, level II or level IIIA, admission floor
+    (28 weeks / 1000 g), which beds are NICU beds (unit, intensive or step-down, incubator / warmer / cot), and "one more
+    admission" to a full unit. No unit name is in the code.
+  - Admitting (baby's **Newborn care** tab → **Admit to the NICU**): unit, where from (born here, postnatal ward,
+    transfer from each other unit, other hospital), bed, admitting doctor, consultant, weight, gestation, temperature,
+    main reason. §1 is pre-filled from the mother's record, the delivery note and the record at birth (each field says
+    where from; changing one by hand drops that), only for staff who may see the mother's pregnancy details.
+  - The form's parts §1–§3 and "Parents, consent and the consultant"; the admitting doctor (doctor or RMO) signs once
+    the examination, respiratory support and problems are filled in – then §1–§3 are locked.
+  - Worked out: maturity, size from the typed centile, ROP eligibility and first-exam date (a ROP screen added to the
+    baby's screening log), cranial ultrasound dates, hearing (AABR) before discharge, length of stay.
+  - Banners: red under 36.0 °C (hypothermia pathway), glucose under 45, ROP due, outside a level II unit's capability
+    (transfer to the level IIIA unit suggested), below the floor (consultant's decision required), parents not counselled
+    after 1 hour (and a notification to the admitting doctor), record not complete after 1 hour, late entry.
+  - Level IIIA only: ventilator, UVC, UAC, PICC (PX-X-01). A full unit is refused ("Unit full – transfer pathway")
+    unless the hospital admin allowed one more.
+  - **Newborn follow-up → NICU board**: each unit's beds, nurses on duty (typed) with the 1:2 warning, each baby's flags.
+  - **NICU register**: number per unit per year (GARKHEDA-2026-0001 …, never changed, no gaps), the NEO-L-05 columns,
+    survival by weight (n/N), **Export CSV**.
+  - Monthly dashboards → Newborn: 22 NEO-A-05 rows (temperature in range, counselled in 1 hour, complete in 1 hour,
+    by weight and gestation, survival by weight, inborn / outborn, transfers, ROP on time); the schema's targets apply
+    until the hospital sets its own.
+  - Print: **Print as the manual's page** on an admission – A4 NEO-F-03 with the footer "NEO-F-03 · v1.0".
+- **Tests:** `server/tests/build13-nicu-admission.test.js` (the seven acceptance tests AT1–AT7 and the rules) and
+  `client/src/pages/newborn/newbornCare.test.jsx` (screens and the printout).
+- **Gaps (not built):** see the list in `docs/CLINICAL_REQUIREMENTS.md` (centile tables, EOS calculator, NEO-F-18,
+  NEO-F-05, NEO-F-19, NEO-F-10, NEO-F-14 link, SOP-04 / SOP-08 steps, staff roster, …).
+
+## How to test Build 13 – the NICU admission (fake data only)
+1. As the hospital admin → **Hospital admin → Beds**: add a ward "NICU" with beds 1–6 → **Hospital admin → NICU units**:
+   **Add a unit** "Garkheda" (level IIIA) and "Waluj" (level II), untick "In use" for the starting NICU and SNCU →
+   **Save units and beds** → mark beds 1–4 Garkheda (intensive), 5–6 Waluj → **Save units and beds**.
+2. As a doctor: a made-up mother's signed delivery note → **Make the baby's record**; on the baby's **Newborn care** →
+   **At birth** (resuscitation "Bag-and-mask", second person for the band) → **Admit to the NICU**: Garkheda, "Inborn",
+   bed 1, temperature 35.9 → the red banner "Start the hypothermia pathway"; open §1: Apgar "From the delivery note",
+   resuscitation "From the record at birth".
+3. A second baby (30 weeks, 1100 g): the banner "ROP screening: first eye examination due …" and the baby's
+   **Screening** tab shows the ROP screen with that date.
+4. A 29-week baby at Waluj, "Transfer – other hospital": "Outside this unit's capability … transfer to Garkheda
+   suggested"; in §2 Respiratory support has no Ventilator, in §3 Lines no UVC / UAC / PICC.
+5. Fill in §2 (every examination part) and §3 → **Sign the admission** → §1–§3 locked; **Record counselling and
+   consent** still opens. An admission over an hour old without counselling: the admitting doctor's bell shows the task.
+6. Fill Waluj's beds → the next admission is refused "Unit full"; as the admin → NICU units → **Allow one more
+   admission** → it goes through once.
+7. **Newborn follow-up → NICU register**: the numbers GARKHEDA-2026-0001 …, "No gaps", **Export CSV**; **NICU board**:
+   type 1 nurse with 3 babies in intensive beds → the 1:2 warning. **Clinical audit → Monthly dashboards → Newborn**:
+   the NICU rows. On an admission → **Print as the manual's page** → the A4 page with the footer "NEO-F-03 · v1.0".
 
 ## How to test the monthly dashboards – Group B item 17, DRAFT (fake data only)
 1. As a doctor (or the quality lead) → **Clinical audit** → **Monthly dashboards**. Choose the month and **Obstetrics**,
@@ -3046,16 +3131,30 @@ You need two fake staff logins (for example a nurse and a doctor).
 4. Tick every danger sign (mother and baby) and **She (or her family) said the danger signs back**, choose who →
    "Everything is filled in" → **Mark complete**: "Complete – name, time"; the answers are locked.
 
-## How to test the PPH chart – Group B item 15, DRAFT (fake data only)
-1. As a **nurse**, her doctor or an RMO: a made-up admitted mother → **IPD** → **Current stay** → **PPH chart** (under
-   the MEOWS chart) → **Start a PPH chart**: when recognised (AM/PM), tick **Tone** → **Start the chart**.
-2. **Blood loss** 700 mL measured → **Add to the chart**; again 450 mL estimated: "Blood loss so far 1150 mL – Major
-   PPH – moderate".
-3. **Step taken** → Oxytocin → **Add to the chart** without a dose: refused ("Write the dose given"). Type a dose → added.
-4. **Observations** pulse 124, BP 92/58, SpO2 96: "Shock index 1.35 · Yellow – watch closely".
-5. **Entered in error** on a line (with a reason): it is struck through and the total drops.
-6. As her doctor or an RMO: **Close the chart** → Bleeding controlled. The chart shows "Closed" and how it ended; a new
-   chart can be started.
+## How to test the PPH chart – Build 15, OBG-F-07 v1.0 (fake data only)
+Automated: `npm test` (server `tests/crs-pph.test.js` – acceptance tests 1–5 and the rules; website
+`pages/inpatient/pph.test.jsx` – the screen and acceptance test 6, the print).
+1. As the **hospital admin**: **Clinical audit → PPH M&M list → Who the PPH chart tells** – tick a made-up doctor as
+   Lead Obstetrician and someone as Director → **Save who is told**.
+2. As a **nurse**: a made-up admitted mother → her record: the banner shows **Declare PPH** – click it. The banner
+   now shows "PPH declared HH:MM · N min" (counting), **ALG-01 card** (read-only bundle with the doses) and **Open the
+   PPH chart**.
+3. On the stay page → **PPH chart (OBG-F-07)**: fill the header (loss at declaration 600 ml, weighed swabs, pulse 118,
+   systolic 96 → shock index 1.23 red; tick Tone). In the E-MOTIVE block give TXA a time 10 minutes after the
+   declaration → **Save the chart**: "Within 15 min". Add a carboprost dose; another 10 minutes later is refused; a
+   9th dose is refused.
+4. Tick the risk factor **Pre-eclampsia** and give ergometrine a time → saved, with the warning (not a block).
+5. **Add the row** with a cumulative loss lower than before: refused. Add a blood product with a unit number: it needs
+   a second person's email and password.
+6. Labs: fibrinogen 1.6 → "cryoprecipitate 2 pools". Outcome: total loss 1600 → near miss: review started, the Lead
+   Obstetrician's bell shows it, and it is on **Clinical audit → PPH M&M list**. Escalation: massive haemorrhage time
+   → the Director's bell, and the pack request is recorded on the chart.
+7. **Type in a paper chart** (on another made-up stay) with a declaration time 2 hours ago: fields show **Late entry**;
+   as a doctor, **Sign off and lock** is refused until **Attach the scan** (a PDF or photo) – then it signs off and
+   locks.
+8. **Print OBG-F-07**: A4 portrait – header, E-MOTIVE in three columns, observations, labs and outcome, footer
+   "OBG-F-07 · v1.0".
+9. **Clinical audit → Monthly dashboards → Obstetrics**: the five PPH rows (OBG-A-05).
 
 ## How to test Clinical Requirements Group A (fake data only)
 Automatic tests: `npm test` from the project root (server files `crs-*.test.js`; website tests next to each page).

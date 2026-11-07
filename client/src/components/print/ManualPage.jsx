@@ -33,8 +33,11 @@ export function FormBox({ form, screenLabel }) {
 /**
  * A "Print as the manual's page" button and its preview. screen: the register's screen key; on: the record's day
  * ('YYYY-MM-DD'); title: what is printed (never a patient's name – it can print in the browser's header).
+ * Optional: page – the paper (PrintPreview's page, e.g. { size: 'A4 landscape' }); footer(form) – the line repeated
+ * at the bottom of every printed page, from the version in force (form, or null when not in the register), or a fixed
+ * line such as "NEO-F-03 · v1.0".
  */
-export function ManualPrint({ screen, on, title, children }) {
+export function ManualPrint({ screen, on, title, page, footer, children }) {
   const [open, setOpen] = useState(false);
   const form = useFetch(open ? '/forms/in-force' : null, { screen, on });
   const lh = useFetch(open ? '/tenant/settings/letterhead' : null);
@@ -44,10 +47,11 @@ export function ManualPrint({ screen, on, title, children }) {
         <Printer aria-hidden="true" /> Print as the manual’s page
       </button>
       {open && (
-        <PrintPreview title={title} onClose={() => setOpen(false)} docKey={form.data && lh.data ? `${screen}-${on}` : null} pageNumbers>
+        <PrintPreview title={title} onClose={() => setOpen(false)} docKey={form.data && lh.data ? `${screen}-${on}` : null} page={page} pageNumbers>
           {form.data && lh.data && (
             <PrintDocument
               className="mp-doc"
+              footer={typeof footer === 'function' ? footer(form.data.form) : footer}
               head={
                 <div className="mp-head">
                   <Letterhead letterhead={lh.data.letterhead} />

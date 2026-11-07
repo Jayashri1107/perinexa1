@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { CircleAlert, CircleCheck, Thermometer } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
-import { api, newRequestId } from '../../api.js';
+import { CircleAlert, CircleCheck } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { api } from '../../api.js';
 import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { WeightInput } from '../../components/WeightInput.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { FormDialog } from '../quality/FormDialog.jsx';
 import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { ShowChoice } from '../quality/SimpleTable.jsx';
-import { BILI_METHODS, BIRTH_CHECKS, CORD_CLAMPING, DISCHARGE_READY, EXAM_ITEMS, NEWBORN_CARE_SOURCE, NICU_OUTCOMES, NICU_REASONS, NICU_SOURCES, NICU_UNITS, RESUSCITATION } from './newbornCareRules.js';
+import { BILI_METHODS, BIRTH_CHECKS, CORD_CLAMPING, DISCHARGE_READY, EXAM_ITEMS, NEWBORN_CARE_SOURCE, RESUSCITATION } from './newbornCareRules.js';
+import { NicuAdmissionSection } from './NicuAdmissionSection.jsx';
 
 // A baby's care at birth and on the ward, her bilirubin chart and her NICU / SNCU admissions (Clinical Requirements Group
 // B, items 12 and 13 – DRAFT until NEO-F-01, F-02, F-03 and NEO-L-05 replace them). The bilirubin chart shows the
@@ -335,145 +335,6 @@ function BiliSection({ patientId, data, reload }) {
   );
 }
 
-function OutcomeDialog({ admission, onDone, onCancel }) {
-  const [f, setF] = useState({ result: '', at: nowLocal(), note: '' });
-  const [error, setError] = useState(null);
-  const submit = async () => {
-    try {
-      await api(`/newborn-care/nicu/${admission.id}/outcome`, { method: 'POST', body: { ...f, at: iso(f.at) } });
-      onDone();
-    } catch (err) {
-      setError(err);
-    }
-  };
-  return (
-    <FormDialog id="nc-out" title={`How admission ${admission.serial} ended`} submitLabel="Save" onSubmit={submit} onCancel={onCancel}>
-      <Alert type="error">{error?.message}</Alert>
-      <Pick id="nc-res" label="Outcome" value={f.result} onChange={(v) => setF({ ...f, result: v })} options={NICU_OUTCOMES} error={error?.fields?.result} />
-      <Field label="When" id="nc-oat" error={error?.fields?.at}>
-        <DateTimeInput id="nc-oat" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
-      </Field>
-      <Field label="Note (optional)" id="nc-onote">
-        <input id="nc-onote" maxLength={500} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
-      </Field>
-    </FormDialog>
-  );
-}
-
-function NicuSection({ patientId, data, reload }) {
-  const [f, setF] = useState({ unit: '', source: 'inborn', admittedAt: nowLocal(), reasons: [], reasonNote: '', weightGrams: '', temperatureC: '', gestationWeeks: '' });
-  const [requestId, setRequestId] = useState(newRequestId);
-  const [open, setOpen] = useState(false);
-  const [closing, setClosing] = useState(null);
-  const { result, setResult, save } = useSaver(reload);
-  const fe = (k) => result?.error?.fields?.[k];
-  const openStay = data.nicu.find((n) => !n.outcome && !n.cancelled);
-  return (
-    <section className="card" aria-labelledby="nc-nicu">
-      <div className="item-editor-head">
-        <h2 id="nc-nicu">NICU or SNCU</h2>
-        <span className="row">
-          <Link to="/nicu-register" className="btn btn-link">
-            The register
-          </Link>
-          {data.access.write && !openStay && !open && (
-            <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)}>
-              Admit to the NICU or SNCU
-            </button>
-          )}
-        </span>
-      </div>
-      <Notice result={result} setResult={setResult} />
-      {open && (
-        <form
-          className="stack"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const ok = await save('/newborn-care/nicu', { ...f, clientRequestId: requestId, patientId, admittedAt: iso(f.admittedAt) }, 'Admitted.');
-            if (ok) {
-              setOpen(false);
-              setRequestId(newRequestId());
-            }
-          }}
-        >
-          <div className="form-grid">
-            <Pick id="nc-unit" label="Unit" value={f.unit} onChange={(v) => setF({ ...f, unit: v })} options={NICU_UNITS} error={fe('unit')} />
-            <Pick id="nc-src" label="Born" value={f.source} onChange={(v) => setF({ ...f, source: v })} options={NICU_SOURCES} error={fe('source')} />
-            <Field label="Admitted" id="nc-adm" error={fe('admittedAt')}>
-              <DateTimeInput id="nc-adm" value={f.admittedAt} onChange={(e) => setF({ ...f, admittedAt: e.target.value })} />
-            </Field>
-            <Field label="Weight at admission (optional)" id="nc-awt" error={fe('weightGrams')}>
-              <WeightInput id="nc-awt" value={f.weightGrams} onChange={(e) => setF({ ...f, weightGrams: e.target.value })} />
-            </Field>
-            <Field label="Temperature at admission – °C (optional)" id="nc-atemp" error={fe('temperatureC')}>
-              <input id="nc-atemp" inputMode="decimal" value={f.temperatureC} onChange={(e) => setF({ ...f, temperatureC: e.target.value })} />
-            </Field>
-            <Field label="Weeks of pregnancy at birth (optional)" id="nc-aga" error={fe('gestationWeeks')}>
-              <input id="nc-aga" inputMode="numeric" value={f.gestationWeeks} onChange={(e) => setF({ ...f, gestationWeeks: e.target.value })} />
-            </Field>
-          </div>
-          <fieldset className="fieldset">
-            <legend>Why</legend>
-            {fe('reasons') && <p className="field-error">{fe('reasons')}</p>}
-            <div className="check-grid">
-              {Object.entries(NICU_REASONS).map(([k, w]) => (
-                <label key={k} className="check">
-                  <input type="checkbox" checked={f.reasons.includes(k)} onChange={(e) => setF({ ...f, reasons: e.target.checked ? [...f.reasons, k] : f.reasons.filter((x) => x !== k) })} /> {w}
-                </label>
-              ))}
-            </div>
-            {f.reasons.includes('other') && (
-              <Field label="Other reason" id="nc-areason" error={fe('reasonNote')}>
-                <input id="nc-areason" maxLength={500} value={f.reasonNote} onChange={(e) => setF({ ...f, reasonNote: e.target.value })} />
-              </Field>
-            )}
-          </fieldset>
-          <div className="row">
-            <button type="submit" className="btn btn-secondary">
-              Admit
-            </button>
-            <button type="button" className="btn btn-link" onClick={() => setOpen(false)}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-      {!data.nicu.length && !open && <p className="muted">Not admitted to the NICU or SNCU.</p>}
-      <ul className="plain-list stack">
-        {data.nicu.map((n) => (
-          <li key={n.id} className={n.cancelled ? 'muted' : undefined}>
-            <span className="row">
-              <StatusPill tone={n.outcome ? (n.outcome.result === 'died' ? 'inactive' : 'stable') : 'due'}>{n.outcome ? NICU_OUTCOMES[n.outcome.result] : 'Admitted now'}</StatusPill>
-              <strong>{`No. ${n.serial} · ${NICU_UNITS[n.unit]} · ${formatDateTime(n.admittedAt)}${n.ageHours != null ? ` (${n.ageHours} h of age)` : ''}`}</strong>
-              {n.cold && (
-                <StatusPill tone="watch" icon={Thermometer}>
-                  {`Cold at admission – ${n.temperatureC} °C`}
-                </StatusPill>
-              )}
-              {data.access.outcome && !n.outcome && !n.cancelled && (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setClosing(n)}>
-                  Record how it ended
-                </button>
-              )}
-            </span>
-            <span className="ca-group-words">{`${NICU_SOURCES[n.source]} · ${n.reasons.map((r) => NICU_REASONS[r]).join(', ')}${n.reasonNote ? ` – ${n.reasonNote}` : ''}${n.stayDays != null ? ` · ${n.stayDays} days` : ''}`}</span>
-          </li>
-        ))}
-      </ul>
-      {closing && (
-        <OutcomeDialog
-          admission={closing}
-          onCancel={() => setClosing(null)}
-          onDone={() => {
-            setClosing(null);
-            reload();
-          }}
-        />
-      )}
-    </section>
-  );
-}
-
 export function NewbornCareTab() {
   const { id } = useParams();
   const { data, error, reload } = useFetch(`/newborn-care`, { patientId: id });
@@ -484,8 +345,8 @@ export function NewbornCareTab() {
       <BirthSection patientId={id} data={data} reload={reload} />
       <ExamSection patientId={id} data={data} reload={reload} />
       <BiliSection patientId={id} data={data} reload={reload} />
-      <NicuSection patientId={id} data={data} reload={reload} />
-      <p className="muted small">{`DRAFT until the Lead Neonatologist replaces these with the manual's forms (NEO-F-01, F-02, F-03, NEO-L-05). Sources: ${NEWBORN_CARE_SOURCE}.`}</p>
+      <NicuAdmissionSection patientId={id} data={data} reload={reload} baby={data.baby ?? { id, fullName: '', mrn: '', birthAt: data.birthAt }} />
+      <p className="muted small">{`DRAFT until the Lead Neonatologist replaces these with the manual's forms (NEO-F-01, F-02); the NICU admission follows NEO-F-03 and its register NEO-L-05. Sources: ${NEWBORN_CARE_SOURCE}.`}</p>
     </div>
   );
 }

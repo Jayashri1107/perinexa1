@@ -1,5 +1,6 @@
 import { category1Late, decisionToDeliveryMinutes } from './caesarean.js';
 import { robsonGroup } from './robson.js';
+import { pphRows } from './pphKpi.js';
 import { INDICATORS, count, rate } from './dashboards.js';
 import { Admission } from '../models/Admission.js';
 import { ClinicalDocument } from '../models/ClinicalDocument.js';
@@ -7,8 +8,10 @@ import { ClinicalScore } from '../models/ClinicalScore.js';
 import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { Incident } from '../models/Incident.js';
 import { MeowsEntry } from '../models/MeowsEntry.js';
+import { meowsKpis } from './meowsKpi.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { NicuAdmission } from '../models/NewbornCare.js';
+import { nicuDashboardValues } from './nicuData.js';
 import { Patient } from '../models/Patient.js';
 import { Specimen } from '../models/Specimen.js';
 import { TheatreCase } from '../models/TheatreCase.js';
@@ -38,9 +41,11 @@ export async function departmentRows(tenantId, department, { start, end }, now =
       v.cat1In30 = rate(cat1.filter((c) => !category1Late(c)).length, cat1.length);
       v.pphRate = rate(notes.filter((c) => c.pph === 'yes').length, notes.length);
       v.majorPph = count(notes.filter((c) => Number(c.bloodLossMl) > 1000).length);
+      Object.assign(v, await pphRows(tenantId, { start, end })); // the PPH chart's OBG-A-05 rows (Build 15)
       v.stillbirths = rate(babies.filter((b) => b.outcome === 'stillbirth').length, babies.filter((b) => b.outcome).length, 'per1000');
       const meows = await MeowsEntry.find({ tenantId, at: { $gte: start, $lt: end }, cancelled: null }, { level: 1 }).lean();
       v.meowsTriggers = count(meows.filter((m) => m.level === 'trigger').length);
+      Object.assign(v, await meowsKpis(tenantId, { start, end }, now));
       const scores = await ClinicalScore.find({ tenantId, on: { $gte: start, $lt: end }, cancelled: null }, { kind: 1, total: 1 }).lean();
       v.epdsScreened = count(scores.filter((s) => s.kind === 'epds').length);
       v.epdsLikely = count(scores.filter((s) => s.kind === 'epds' && s.total >= 13).length);
@@ -68,6 +73,7 @@ export async function departmentRows(tenantId, department, { start, end }, now =
       v.nicuAdmissions = count(nicuList.length);
       v.nicuDeaths = count(nicuList.filter((n) => n.outcome?.result === 'died').length);
       v.hearingDone = rate(doneScreen('hearing'), born.length);
+      Object.assign(v, await nicuDashboardValues(tenantId, { start, end }, now)); // Build 13 – NEO-A-05
     }
   }
   if (department === 'theatre') {

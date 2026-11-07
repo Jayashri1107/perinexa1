@@ -13,6 +13,7 @@ import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { isClosed } from '../patients/deathRules.js';
 import { addDays, hospitalDayStart, hospitalToday } from '../careplans/dates.js';
+import { meowsWardStatus } from '../clinical/meowsWard.js';
 
 // The hospital's inpatients today (Version 2): GET /api/inpatients – for doctors, RMOs and nurses, only patients
 // whose medical details they may see:
@@ -91,6 +92,8 @@ export async function inpatientsFor(req) {
         .limit(100)
         .lean()
     : [];
+  // The MEOWS chart of each stay (Group B, item 8): next set due, overdue (E4), escalation tasks still open
+  const meows = await meowsWardStatus(tenantId, shown, now);
   const admitted = shown.map((s) => ({
     patient: who(visible.get(String(s.patientId))),
     admissionId: String(s._id),
@@ -108,6 +111,7 @@ export async function inpatientsFor(req) {
     redFlagsChecked: !flagged.notChecked.has(String(s.patientId)),
     redFlagsCareType: flagged.careTypes.get(String(s.patientId)) ?? null,
     redFlagsWorkupOnly: flagged.workupOnly.has(String(s.patientId)),
+    meows: meows.get(String(s._id)) ?? null,
   }));
   const mine = (p) => !p.assignedDoctor || String(p.assignedDoctor) === String(req.user._id);
   const toConfirm = isDoctor

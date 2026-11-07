@@ -5,10 +5,12 @@ import { tenantScoped } from '../utils/tenantScope.js';
 // bar. A new appointment or an arrival for a doctor, a checkup marked done for reception, lab results to review, an
 // admission request. Only to people who may see that patient's name in their work; the text is short and never
 // clinical. Kept 30 days.
+// pph (7 Nov 2026, Build 15): PPH near-miss criteria met (to the Lead Obstetrician) and a massive haemorrhage declared
+// (to the Director) – the ward and bed only, never her name or values.
 const notificationSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    kind: { type: String, enum: ['appointment', 'arrived', 'done', 'lab', 'admission'], required: true },
+    kind: { type: String, enum: ['appointment', 'arrived', 'done', 'lab', 'admission', 'meows', 'pph', 'nicu'], required: true },
     text: { type: String, required: true, maxlength: 300 },
     link: { type: String, default: '/', maxlength: 200 },
     readAt: { type: Date, default: null },

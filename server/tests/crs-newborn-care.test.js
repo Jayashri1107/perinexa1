@@ -7,6 +7,7 @@ import * as website from '../../client/src/pages/newborn/newbornCareRules.js';
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { BIRTH_CHECKS, EXAM_ITEMS, cchdResult, coldAtAdmission } from '../src/clinical/newbornCare.js';
+import { Bed } from '../src/models/Bed.js';
 import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-11-10T06:00:00Z');
@@ -76,17 +77,20 @@ describe("a baby's care", () => {
 
   it('a NICU admission with its register number; one open at a time; the outcome by a doctor; the month register', async () => {
     const b = await baby();
-    const admit = async (over = {}) => (await as('nurse')).post('/api/newborn-care/nicu').send({ clientRequestId: randomUUID(), patientId: b.id, unit: 'sncu', source: 'inborn', admittedAt: '2026-11-09T07:00:00.000Z', reasons: ['lbw', 'hypothermia'], weightGrams: 2100, temperatureC: 35.9, gestationWeeks: 35, ...over });
-    expect((await admit({ reasons: [] })).body.error.fields.reasons).toMatch(/why/);
+    // Build 13: the admission is NEO-F-03 at a unit with NICU beds (set by the hospital admin)
+    const bed = await Bed.create({ tenantId: hospital._id, ward: 'SNCU', name: 'Cot 1' });
+    expect((await (await as('admin')).put('/api/newborn-care/settings').send({ beds: [{ bedId: String(bed._id), nicu: { unit: 'sncu', level: 'step_down', kind: 'cot' } }] })).status).toBe(200);
+    const admit = async (over = {}) => (await as('nurse')).post('/api/newborn-care/nicu').send({ clientRequestId: randomUUID(), patientId: b.id, unit: 'sncu', source: 'transfer_other', transferFromName: 'Sample clinic', admittedAt: '2026-11-09T07:00:00.000Z', bedId: String(bed._id), admittingDoctorId: people.drA._id.toString(), reasonPrimary: 'lbw_feeding', weightGrams: 2100, temperatureC: 35.9, gestationWeeks: 35, ...over });
+    expect((await admit({ reasonPrimary: undefined })).body.error.fields.reasonPrimary).toMatch(/reason/);
     const a = await admit();
     expect(a.status, JSON.stringify(a.body)).toBe(201);
-    expect(a.body.admission).toMatchObject({ serial: 1, cold: true, ageHours: 1, outcome: null });
+    expect(a.body.admission).toMatchObject({ serial: 1, registerLabel: 'SNCU-2026-0001', cold: true, ageHours: 1, outcome: null });
     expect((await admit()).status).toBe(409);
-    expect((await (await as('nurse')).post(`/api/newborn-care/nicu/${a.body.admission.id}/outcome`).send({ result: 'discharged', at: '2026-11-10T05:00:00.000Z' })).status).toBe(403);
-    const closed = await (await as('drA')).post(`/api/newborn-care/nicu/${a.body.admission.id}/outcome`).send({ result: 'discharged', at: '2026-11-10T05:00:00.000Z' });
-    expect(closed.body.admission).toMatchObject({ outcome: { result: 'discharged', byName: 'Sample drA' }, stayDays: 1 });
+    expect((await (await as('nurse')).post(`/api/newborn-care/nicu/${a.body.admission.id}/outcome`).send({ result: 'discharged_home', at: '2026-11-10T05:00:00.000Z' })).status).toBe(403);
+    const closed = await (await as('drA')).post(`/api/newborn-care/nicu/${a.body.admission.id}/outcome`).send({ result: 'discharged_home', at: '2026-11-10T05:00:00.000Z' });
+    expect(closed.body.admission).toMatchObject({ outcome: { result: 'discharged_home', byName: 'Sample drA' }, stayDays: 1 });
     const reg = await (await as('drA')).get('/api/newborn-care/register?month=2026-11');
-    expect(reg.body.totals).toMatchObject({ admissions: 1, inborn: 1, cold: 1, stillAdmitted: 0, outcomes: { discharged: 1, died: 0 } });
+    expect(reg.body.totals).toMatchObject({ admissions: 1, outborn: 1, cold: 1, stillAdmitted: 0, outcomes: { discharged_home: 1, died: 0 } });
     expect(reg.body.rows[0]).toMatchObject({ serial: 1, baby: { fullName: 'Baby Care' } });
     const dash = await (await as('drA')).get('/api/dashboards?department=newborn&month=2026-11');
     expect(dash.body.rows.find((r) => r.key === 'nicuAdmissions').value).toBe(1);

@@ -50,17 +50,17 @@ import { ClinicalDocument } from '../models/ClinicalDocument.js';
 import { ClinicalScore } from '../models/ClinicalScore.js';
 import { FormularyItem } from '../models/FormularyItem.js';
 import { Incident } from '../models/Incident.js';
-import { MeowsEntry } from '../models/MeowsEntry.js';
+import { MeowsChartHeader, MeowsEntry } from '../models/MeowsEntry.js';
 import { PatientAlert } from '../models/PatientAlert.js';
 import { CaseReview } from '../models/CaseReview.js';
 import { StaffPrivilege } from '../models/StaffPrivilege.js';
 import { FormVersion } from '../models/FormVersion.js';
-import { PphChart } from '../models/PphChart.js';
+import { PphChart, PphSettings } from '../models/PphChart.js';
 import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { TheatreCase } from '../models/TheatreCase.js';
 import { DashboardSignoff, DashboardTarget } from '../models/DashboardSignoff.js';
 import { PacAssessment, PainEntry } from '../models/AnaesthesiaRecords.js';
-import { BilirubinReading, NewbornBirthCare, NewbornExam, NicuAdmission } from '../models/NewbornCare.js';
+import { BilirubinReading, NewbornBirthCare, NewbornExam, NicuAdmission, NicuRoster } from '../models/NewbornCare.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { Specimen } from '../models/Specimen.js';
 import { ConsentForm } from '../models/ConsentForm.js';
@@ -107,6 +107,7 @@ import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { WorkDone } from '../models/WorkDone.js';
 import { referralSettingsFor } from '../referrals/settings.js';
+import { nicuUnitsFor } from '../clinical/nicuAdmission.js';
 
 /** The project folder (where package.json and server/ are): the export is never written inside it. */
 export const PROJECT_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -189,12 +190,14 @@ export const KINDS = [
   { file: 'newborn-follow-up.json', model: NewbornFollowUp, what: "Babies' screening logs and high-risk follow-up: gestation at birth, high-risk reasons, and each screen or clinic visit recorded (result, who, when)." },
   { file: 'clinical-scores.json', model: ClinicalScore, what: 'EPDS scores (the ten answers\' scores, never the questions) and VTE risk scores, with the band and advice of the day, and those marked entered in error.' },
   { file: 'incidents.json', model: Incident, what: 'Incident reports, kept apart from the patients\' records: what happened, the quality lead\'s review, actions and closure.' },
-  { file: 'meows-charts.json', model: MeowsEntry, what: 'MEOWS observations of each stay: the readings, their bands and level as worked out on the day (DRAFT rules), whom a trigger was told to, and entries marked entered in error.' },
+  { file: 'meows-charts.json', model: MeowsEntry, what: 'MEOWS observations of each stay (OBG-F-05; sets before 7 Nov 2026 under the DRAFT CEMACH rules): the clinical time and the time typed, the readings, their bands, counts, level and escalation (E1–E3) as worked out on the day, the escalation tasks and who did them when, the action taken, the pathway, antibiotic and antihypertensive times, and entries marked entered in error.' },
+  { file: 'meows-chart-headers.json', model: MeowsChartHeader, what: 'The MEOWS chart header of each stay: context, diagnosis or procedure, the ordered frequency, blood loss at delivery and LMWH, and who set them.' },
   { file: 'patient-alerts.json', model: PatientAlert, what: 'Alerts that follow each patient (difficult airway, declines blood products, infection precautions and others – DRAFT list): who added each, and when and why it was ended.' },
   { file: 'death-and-near-miss-reviews.json', model: CaseReview, what: 'Maternal death and near-miss reviews (DRAFT lists): the case, criteria, cause, the three delays, avoidability, lessons and actions; who sealed each and the corrections added after sealing.' },
   { file: 'clinical-privileges.json', model: StaffPrivilege, what: 'Clinical privileges granted to staff (DRAFT list): which procedure, until when, who granted it, and when and why each was ended.' },
   { file: 'document-register.json', model: FormVersion, what: 'The document register: each version of each controlled form (code, title, version, in force from, review due), who recorded and approved it, and withdrawn drafts.' },
-  { file: 'pph-charts.json', model: PphChart, what: 'PPH charts of each stay: when the bleeding was recognised, the cause, each amount of blood lost, each step with its time (medicines with the dose and route typed), observations, how it ended, and lines marked entered in error (DRAFT chart).' },
+  { file: 'pph-charts.json', model: PphChart, what: 'PPH episodes (OBG-F-07 v1.0): the declaration, header, E-MOTIVE bundle times, carboprost doses, escalation, observation rows with blood products and their second-person check, labs, outcome, when each timed field was typed, warnings shown, the near-miss and massive-haemorrhage records, the M&M list, the KPI fields kept at sign-off, and lines marked entered in error (earlier DRAFT charts as they were).' },
+  { file: 'pph-settings.json', model: PphSettings, what: 'Who the PPH chart tells: the Lead Obstetrician(s) and the Director(s) named by the hospital admin.' },
   { file: 'postnatal-discharge-checklists.json', model: DischargeChecklist, what: 'Postnatal discharge checklists of each stay: the checks answered, the danger signs explained, the teach-back, the next visit, who completed it, and ones marked entered in error (DRAFT checklist).' },
   { file: 'theatre-list.json', model: TheatreCase, what: 'The theatre list: each operation with its day, theatre, order, team and status, and its WHO Surgical Safety Checklist (sign in, time out, sign out – the answers, notes and who confirmed each), and operations taken off the list with the reason.' },
   { file: 'dashboard-signoffs.json', model: DashboardSignoff, what: 'Monthly dashboards signed off by a department lead: the department, the month, the numbers as they were then (no patient), and the comment.' },
@@ -204,7 +207,8 @@ export const KINDS = [
   { file: 'newborn-at-birth.json', model: NewbornBirthCare, what: "Each baby's record at birth: cried, resuscitation, cord clamping, the first steps (drying, skin-to-skin, vitamin K, eye care, identity band, breastfeeding) and temperature (DRAFT form)." },
   { file: 'newborn-examinations.json', model: NewbornExam, what: 'Newborn examinations on the ward: each part normal or not with notes, weight, readiness for discharge (DRAFT form).' },
   { file: 'newborn-bilirubin.json', model: BilirubinReading, what: 'Bilirubin readings of each baby (serum or skin meter, mg/dL) with their time.' },
-  { file: 'nicu-register.json', model: NicuAdmission, what: 'The NICU / SNCU admission and outcome register: number, unit, inborn or outborn, reasons, weight and temperature at admission, and how each admission ended.' },
+  { file: 'nicu-register.json', model: NicuAdmission, what: 'The NICU admissions (NEO-F-03) and their register (NEO-L-05): register number per unit and year, unit, where the baby came from, bed, the maternal and perinatal history, the admission assessment, problems and plan, counselling and consent, who signed, and how each admission ended (DRAFT records of 6 Nov 2026 with their fewer fields).' },
+  { file: 'nicu-nurses-on-duty.json', model: NicuRoster, what: 'The nurses on duty in each NICU unit as entered on the unit board, with who entered it and when.' },
   { file: 'settings-formulary.json', model: FormularyItem, what: 'Settings: the formulary rows, their versions, and who confirmed each version.' },
 ];
 
@@ -338,6 +342,8 @@ function hospitalRecord(t) {
     messaging: { ...pick(t.messaging, ['remindersEnabled', 'portalEnabled', 'portalBooking', 'whatsappDocuments']), waitingRoomScreenOn: Boolean(t.messaging?.displayKey) },
     // The referral settings as the referral clocks use them (the defaults where the admin never saved them)
     referrals: referralSettingsFor(t),
+    // The NICU units (Build 13): name, level of care and admission floor (the defaults where the admin never saved them)
+    nicuUnits: nicuUnitsFor(t),
     // The Tally link's settings as the batches use them (the starting account names where the admin never changed them)
     tally: tallySettingsWithDefaults(t.tally),
   });
