@@ -166,7 +166,7 @@ describe('newborn care', () => {
     expect(out).toContain('0 of 2 beds free');
     expect(out).toContain('Worse than 1 nurse to 2 babies in intensive beds');
     expect(out).toContain('1 admission record not complete within 1 hour');
-    expect(out).toContain('Parents not counselled yet');
+    expect(out).toContain('Parents not counselled'); // short flags in the bed cards
   });
 });
 

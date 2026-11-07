@@ -231,9 +231,9 @@ export function bannersFor(n, unit, units, computed, now) {
   if (counselOverdue) banners.push({ key: 'counsel', tone: 'high', text: 'Parents not counselled yet – more than 1 hour since admission.' });
   const incomplete = !n.cancelled && !n.signed && now - new Date(n.admittedAt) > COMPLETE_WITHIN_MIN * MIN;
   if (incomplete) banners.push({ key: 'incomplete', tone: 'watch', text: 'Admission record not complete within 1 hour of admission.' });
-  if (lateEntry(n.admittedAt, n.createdAt)) banners.push({ key: 'late', tone: 'neutral', text: 'Late entry: the admission was typed more than 1 hour after the admission time', on: n.createdAt });
+  if (lateEntry(n.admittedAt, n.createdAt)) banners.push({ key: 'late', tone: 'neutral', text: 'Late entry: the admission was typed more than 1 hour after the admission time – typed on', on: n.createdAt });
   const typed = n.followOn?.typedAt?.counselledAt;
-  if (lateEntry(n.followOn?.counselledAt, typed)) banners.push({ key: 'late', tone: 'neutral', text: 'Late entry: the counselling time was typed more than 1 hour after it', on: typed });
+  if (lateEntry(n.followOn?.counselledAt, typed)) banners.push({ key: 'late', tone: 'neutral', text: 'Late entry: the counselling time was typed more than 1 hour after it – typed on', on: typed });
   return { banners, flags: { hypothermia: hypothermic(n.temperatureC), hypoglycaemia: hypoglycaemic(g), outsideCapability: cap, belowFloor: floor, counselOverdue, incomplete, lateEntry: lateEntry(n.admittedAt, n.createdAt) } };
 }
 
