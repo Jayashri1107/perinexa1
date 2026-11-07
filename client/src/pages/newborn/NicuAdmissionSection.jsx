@@ -9,7 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
 import { NICU_OUTCOMES, NICU_REASONS } from './newbornCareRules.js';
 import { NicuF03Print } from './NicuF03Print.jsx';
-import { ASSESSMENT_FIELDS, FOLLOW_ON_FIELDS, FROM_WORDS, MATERNAL_FIELDS, OUTCOME_FIELDS, PLAN_FIELDS, fromForm, labelOf, nowLocal, setAt, toForm, toIso, valueAt, valueWords } from './nicuFields.js';
+import { ASSESSMENT_FIELDS, FOLLOW_ON_FIELDS, FROM_WORDS, MATERNAL_FIELDS, OUTCOME_FIELDS, PLAN_FIELDS, bannerText, fromForm, labelOf, missingWords, nowLocal, setAt, toForm, toIso, valueAt, valueWords } from './nicuFields.js';
 
 // Build 13 – a baby's NICU admission (NEO-F-03) on the Newborn care tab: admit (unit, where from, bed, the first
 // findings – the mother's history, Apgar, resuscitation and cord data come from her record, the delivery note and the
@@ -18,7 +18,6 @@ import { ASSESSMENT_FIELDS, FOLLOW_ON_FIELDS, FROM_WORDS, MATERNAL_FIELDS, OUTCO
 // signature, the outcome (NEO-L-05), and printing as NEO-F-03. The lists come from the server (rules.f03).
 
 const BANNER_ICON = { high: TriangleAlert, watch: CircleAlert, due: CalendarClock, neutral: Clock };
-const banner = (b) => (b.on ? `${b.text} ${b.key === 'rop' ? formatDate(b.on) : formatDateTime(b.on)}.` : b.text);
 
 export function Banners({ list }) {
   if (!list?.length) return null;
@@ -28,7 +27,7 @@ export function Banners({ list }) {
         const Icon = BANNER_ICON[b.tone] ?? Info;
         return (
           <p key={`${b.key}-${i}`} className={`nicu-banner nicu-banner-${b.tone}`}>
-            <Icon aria-hidden="true" /> <span>{banner(b)}</span>
+            <Icon aria-hidden="true" /> <span>{bannerText(b)}</span>
           </p>
         );
       })}
@@ -455,8 +454,8 @@ export function NicuAdmissionCard({ n, baby, data, reload }) {
       {result?.error && <Alert type="error">{result.error.message}</Alert>}
       {result?.error?.fields && (
         <ul className="plain-list small">
-          {Object.entries(result.error.fields).map(([k, m]) => (
-            <li key={k}>{m}</li>
+          {missingWords(result.error.fields, rules).map((m) => (
+            <li key={m}>{m}</li>
           ))}
         </ul>
       )}

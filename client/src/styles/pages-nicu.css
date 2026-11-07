@@ -17,8 +17,10 @@
 
 /* The unit board */
 .nicu-board-units { display: grid; gap: var(--space-4); }
-.nicu-beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--space-2); }
-.nicu-bed { border: 1px solid var(--border, var(--slate-300)); border-radius: var(--radius-sm); padding: var(--space-2); display: grid; gap: var(--space-1); min-width: 0; }
+.nicu-beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--space-2); }
+.nicu-bed { border: 1px solid var(--border, var(--slate-300)); border-radius: var(--radius-sm); padding: var(--space-2); display: grid; gap: var(--space-1); min-width: 0; align-content: start; }
+.nicu-flags { display: flex; flex-wrap: wrap; gap: var(--space-1); min-width: 0; }
+.nicu-flags .pill { white-space: normal; max-width: 100%; height: auto; text-align: left; }
 .nicu-bed-free { border-style: dashed; }
 
 /* Printed as NEO-F-03: A4 portrait – header, allergy band, §1 in two columns, §2 in three, §3 in two, sign-offs */

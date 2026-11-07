@@ -5,7 +5,7 @@ import { api } from '../../api.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
-import { Banners } from './NicuAdmissionSection.jsx';
+import { FLAG_WORDS } from './nicuFields.js';
 import { useNewbornTabs } from './newbornFormat.js';
 
 // The NICU unit board (Build 13, NEO-A-01): each unit with its level of care, its beds and who is in them, the nurses
@@ -89,7 +89,17 @@ export function NicuBoardPage() {
                           <CircleCheck aria-hidden="true" /> Free
                         </span>
                       )}
-                      {a?.banners?.length > 0 && <Banners list={a.banners} />}
+                      {a?.banners?.length > 0 && (
+                        <span className="nicu-flags">
+                          {a.banners
+                            .filter((b) => FLAG_WORDS[b.key])
+                            .map((b) => (
+                              <StatusPill key={b.key} tone={b.tone === 'due' ? 'due' : b.tone === 'high' ? 'high' : 'watch'}>
+                                {FLAG_WORDS[b.key](b)}
+                              </StatusPill>
+                            ))}
+                        </span>
+                      )}
                     </div>
                   );
                 })}

@@ -3,7 +3,7 @@
 // server (GET /api/newborn-care → rules.f03), so they are never copied here. Field names follow
 // server/src/clinical/nicuForm.js. Types: int, num, text, enum (options: a rules.f03 list), multi, yn (yes / no /
 // unknown), at (date and time).
-import { formatDateTime } from '../../components/ui.jsx';
+import { formatDate, formatDateTime } from '../../components/ui.jsx';
 
 export const MATERNAL_FIELDS = [
   { key: 'motherAge', label: 'Mother’s age (years)', type: 'int' },
@@ -147,6 +147,36 @@ export const OUTCOME_FIELDS = [
   { key: 'transferDecisionAt', label: 'Decision to transfer', type: 'at', when: 'transferred' },
   { key: 'transferDepartedAt', label: 'Departed', type: 'at', when: 'transferred' },
 ];
+
+/** A banner in words, with its date (the ROP due day; the time something was typed). */
+export const bannerText = (b) => (b.on ? `${b.text} ${b.key === 'rop' ? formatDate(b.on) : formatDateTime(b.on)}.` : b.text);
+/** A banner as a short flag for the unit board's bed cards. */
+export const FLAG_WORDS = {
+  hypothermia: () => 'Under 36.0 °C – hypothermia pathway',
+  hypoglycaemia: () => 'Glucose under 45',
+  rop: (b) => `ROP exam due ${formatDate(b.on)}`,
+  capability: () => 'Outside unit capability',
+  floor: () => 'Below admission floor',
+  counsel: () => 'Parents not counselled',
+  incomplete: () => 'Record not complete',
+};
+/** What is missing before signing, in words: the examination parts together, then each other field by its label. */
+export function missingWords(fields, rules) {
+  const all = [...ASSESSMENT_FIELDS, ...PLAN_FIELDS];
+  const exam = [];
+  const out = [];
+  for (const [key, message] of Object.entries(fields ?? {})) {
+    const m = /^assessment\.exam\.(.+)$/.exec(key);
+    if (m) {
+      exam.push(`${rules?.examSystems?.[m[1]] ?? m[1]}${message === 'Write what was found' ? ' (write what was found)' : ''}`);
+      continue;
+    }
+    const f = all.find((x) => x.key === key.split('.').pop());
+    out.push(f ? `${f.label}: ${message}` : message);
+  }
+  if (exam.length) out.unshift(`Examination – choose normal or not normal for ${exam.length === Object.keys(rules?.examSystems ?? {}).length ? 'every part' : exam.join(', ')}`);
+  return out;
+}
 
 export const FROM_WORDS = { mother: "From the mother's record", delivery: 'From the delivery note', birth: 'From the record at birth' };
 const YN = { yes: 'Yes', no: 'No', unknown: 'Unknown' };
