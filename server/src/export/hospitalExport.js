@@ -50,7 +50,7 @@ import { ClinicalDocument } from '../models/ClinicalDocument.js';
 import { ClinicalScore } from '../models/ClinicalScore.js';
 import { FormularyItem } from '../models/FormularyItem.js';
 import { Incident } from '../models/Incident.js';
-import { MeowsEntry } from '../models/MeowsEntry.js';
+import { MeowsChartHeader, MeowsEntry } from '../models/MeowsEntry.js';
 import { PatientAlert } from '../models/PatientAlert.js';
 import { CaseReview } from '../models/CaseReview.js';
 import { StaffPrivilege } from '../models/StaffPrivilege.js';
@@ -189,7 +189,8 @@ export const KINDS = [
   { file: 'newborn-follow-up.json', model: NewbornFollowUp, what: "Babies' screening logs and high-risk follow-up: gestation at birth, high-risk reasons, and each screen or clinic visit recorded (result, who, when)." },
   { file: 'clinical-scores.json', model: ClinicalScore, what: 'EPDS scores (the ten answers\' scores, never the questions) and VTE risk scores, with the band and advice of the day, and those marked entered in error.' },
   { file: 'incidents.json', model: Incident, what: 'Incident reports, kept apart from the patients\' records: what happened, the quality lead\'s review, actions and closure.' },
-  { file: 'meows-charts.json', model: MeowsEntry, what: 'MEOWS observations of each stay: the readings, their bands and level as worked out on the day (DRAFT rules), whom a trigger was told to, and entries marked entered in error.' },
+  { file: 'meows-charts.json', model: MeowsEntry, what: 'MEOWS observations of each stay (OBG-F-05; sets before 7 Nov 2026 under the DRAFT CEMACH rules): the clinical time and the time typed, the readings, their bands, counts, level and escalation (E1–E3) as worked out on the day, the escalation tasks and who did them when, the action taken, the pathway, antibiotic and antihypertensive times, and entries marked entered in error.' },
+  { file: 'meows-chart-headers.json', model: MeowsChartHeader, what: 'The MEOWS chart header of each stay: context, diagnosis or procedure, the ordered frequency, blood loss at delivery and LMWH, and who set them.' },
   { file: 'patient-alerts.json', model: PatientAlert, what: 'Alerts that follow each patient (difficult airway, declines blood products, infection precautions and others – DRAFT list): who added each, and when and why it was ended.' },
   { file: 'death-and-near-miss-reviews.json', model: CaseReview, what: 'Maternal death and near-miss reviews (DRAFT lists): the case, criteria, cause, the three delays, avoidability, lessons and actions; who sealed each and the corrections added after sealing.' },
   { file: 'clinical-privileges.json', model: StaffPrivilege, what: 'Clinical privileges granted to staff (DRAFT list): which procedure, until when, who granted it, and when and why each was ended.' },

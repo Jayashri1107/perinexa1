@@ -41,14 +41,74 @@ branch is local: it is not pushed and not merged into `master` – the developer
 - Not in perinexa1's delivery note before: gestation at birth on a baby's record – it is typed in her screening log.
 - Not built (owner): PC-PNDT, MTP, sterilisation register and consent, the "late entry" badge, PX-X-01.
 
-## Group B, item 8 – MEOWS chart (DRAFT, 6 Nov 2026)
-Built before the manual page was given, at the developer's request: the published CEMACH MEOWS chart (Saving Mothers'
-Lives 2003–2005, 2007; Singh et al., Anaesthesia 2012). Every trigger is a constant in `server/src/clinical/meows.js`
-with its source, marked DRAFT on screen, and is replaced by OBG-F-05 when the Lead Obstetrician gives it.
-**Needs the owner's approval as clinical content before it goes to `main`.** Branch `crs-8-meows`.
-- Where: a mother's stay page, above the nursing chart (`client/src/pages/inpatient/MeowsChart.jsx`; API `/api/meows`).
-- One red or two yellow readings = trigger: saving asks whom you told. One yellow = watch.
-- Temperature in °C or °F (stored °C). Entries are never changed: "entered in error" with a reason.
+## Group B, item 8 – MEOWS chart (OBG-F-05 v1.0, 7 Nov 2026; first DRAFT 6 Nov 2026)
+Built on 6 Nov 2026 as a DRAFT from the published CEMACH chart; **upgraded on 7 Nov 2026 to the manual page** as the
+field schema `docs/field_schemas/build8_meows.json` gives it (OBG-F-05 v1.0, OBG-SOP-11 §1–2, OBG-SOP-12 §2, PX-OBG-11,
+PX-X-04, PX-X-09). Branch `claude/build8-meows-f05-694f40` (Build 8), from `master` at `76e29b84`; not merged, not pushed.
+
+**Owner's approvals, recorded here (7 Nov 2026, given through the developer):**
+- The three field schemas (Build 8 MEOWS, Build 15 PPH, Build 13 NICU admission) are **approved as clinical content**.
+  The MEOWS rules are therefore no longer marked DRAFT on screen; the manual masters are v1.0 and the department lead's
+  sign-off on fake data (the schema's acceptance tests) is still to come.
+- **Reversed** – the earlier "not built" decisions: the **late-entry badge (PX-X-04)** is built (here, as a helper any
+  chart can use); the **level-of-care gates (PX-X-01)**, **printed fixed doses** and **Director alerts** may be built –
+  Director alerts go through the in-app notification bell, never a new SMS or outside service. Of these, only the
+  late-entry badge applies to the MEOWS chart; this build adds no level-of-care gate, dose or Director alert.
+
+What the chart does now:
+- **Bands (RED / AMBER)** from the page, in `server/src/clinical/meows.js` (the website's copy
+  `client/src/pages/inpatient/meowsRules.js` is checked by a test): RR red <10 or >30, amber 21–30; SpO2 red <92, amber
+  92–94; temperature red <35 or ≥38, amber 35–36 or 37.5–37.9; pulse red <40 or >120, amber 40–50 or 100–120; systolic
+  red <90 or ≥160, amber 90–100 or 150–159; diastolic red ≥110, amber 90–109; urine/4 h red <100, amber 100–120; AVPU
+  red P or U, amber V or new confusion; pain amber ≥7; lochia red heavy or offensive; fundus red soft or rising; nurse
+  concern red (counts as one red). "Yellow" is now "Amber"; sets saved before keep their CEMACH bands and source, shown
+  as amber.
+- **Chart header** (doctors and RMOs – the frequency is a doctor's order): context (antenatal, postnatal,
+  post-operative, HDU), detail, diagnosis or procedure, frequency (15, 30, 60, 240, 480 min; 5 is accepted by the API
+  for the PPH chart later), blood loss at delivery (offered from the stay's signed delivery note, marked "delivery note"
+  or "typed"), LMWH prescribed (offered from the latest VTE score: LMWH before birth or high risk).
+- **Observation fields:** clinical time (kept apart from the time typed), the vitals, urine in 4 h, new confusion,
+  pain 0–10, lochia, fundus, wound / perineum, nurse concern, action taken, doctor informed at, recorded by (the login).
+- **Worked out:** shock index (pulse ÷ systolic, two decimals, red at 0.9 or more – not added to the red count, as in
+  acceptance test 1), red and amber counts, hypertensive emergency (systolic ≥160 or diastolic ≥110: its own red
+  banner, "treat within 30 minutes").
+- **Late entry (PX-X-04):** `server/src/utils/lateEntry.js` (`isLateEntry`, `entryDelayMinutes`) – typed more than 60
+  minutes after the clinical time shows "Late entry" on screen and on the printout.
+- **Escalation** (stored on the set that raised it): **E1** (one red or two amber) – a task "resident at the bedside"
+  due in 30 min, the next set due in 30 min, the RMOs and her consultant told through the **notification bell** (kind
+  `meows`; the text has her name, ward and bed and the rule, never the readings); a trigger needs the action taken.
+  **E2** (two red, or E1 still met 60 min after it began) – tasks "consultant at the bedside" and "anaesthetist
+  informed", the bell again; the chart shows pathway buttons – Sepsis six (OBG-ALG-07), PPH (OBG-ALG-01, opens the
+  existing PPH chart on the stay page), Severe hypertension (OBG-ALG-02) – and "offer HDU transfer" as a suggestion.
+  An E1 left 60 minutes with no newer set shows "escalate to E2" on the chart. **E3** (shock index ≥0.9) – red banner;
+  the PPH chart is suggested for a postnatal mother (within 24 h of birth when the delivery note gives it). **E4** –
+  overdue at the ordered frequency + 15 min: on the chart, and on the ward list of Today (a pill per stay and a "MEOWS
+  overdue" card for nurses and RMOs). One task of each kind is open at a time on a stay; a task is marked done with its
+  time and who.
+- **Dashboard (OBG-A-05)** – three rows on the obstetrics dashboard (`server/src/clinical/meowsKpi.js`): MEOWS completed
+  4-hourly in the first 24 h postnatal (target 95%), suspected sepsis – antibiotics within 1 h of the trigger (90%),
+  severe hypertension treated within 30 min (95%). The times come from the chart: the pathway chosen, the first
+  antibiotic's time and the antihypertensive's time, each recorded once on the set, by whom and when.
+- **Print (PX-X-03):** A4 landscape, 12 sets per sheet, rows = the page's parameters with their RED and AMBER limits,
+  then totals, action and signature rows; footer "OBG-F-05 · v1.0 · effective <date>" from the document register.
+- Where: a mother's stay page, above the nursing chart; API `/api/meows` (GET, PUT `/chart`, POST, POST `/:id/tasks/:key`,
+  POST `/:id/follow-up`, POST `/:id/cancel`). Every action is audited with ids, the level and rule ids only.
+
+Readings of the schema to confirm with the Lead Obstetrician (the page wins if it differs):
+- "35–36 °C" amber is read as 35.0 to 36.0 inclusive; "37.5–37.9" as 37.5 up to (not including) 38.
+- New confusion and AVPU are one row (one amber at most between them).
+- "E1 open 60 min without improvement" = every set since the first trigger of the run is still a trigger.
+- The 4-hourly indicator counts from the time of birth on the signed delivery note (else admission), allows the ordered
+  frequency (at most 4 h) + 15 min between sets, and counts stays whose chart context is postnatal.
+- Severe hypertension counts each run of flagged sets once (treated if an antihypertensive is recorded within 30 min of
+  its first flag).
+
+Left out (later, or another build):
+- The pain score is not copied into the pain chart (ANA-F-03) yet – it stays on the MEOWS chart.
+- The PPH chart setting the MEOWS frequency to 5 min (Build 15 adds that hook; the frequency 5 is accepted).
+- Antibiotic and antihypertensive times are typed on the MEOWS set, not taken from the nursing chart's medicines.
+- An HDU transfer is suggested, not recorded; anaesthetists have no login role, so their task is marked by the nurse or
+  doctor who told them.
 
 ## Group B, item 15 – PPH chart (DRAFT, 6 Nov 2026)
 Built before OBG-F-07 was given, at the developer's request, from RCOG Green-top 52 (2016), WHO PPH recommendations

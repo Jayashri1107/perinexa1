@@ -37,6 +37,15 @@
   padding: var(--print-sheet-margin); background: var(--surface); box-shadow: var(--shadow-card);
 }
 .pv-sheet-a5 { max-width: var(--print-sheet-width-a5); }
+.pv-sheet-landscape { max-width: var(--print-sheet-width-landscape); } /* A4 landscape (the MEOWS chart, OBG-F-05) */
+/* The MEOWS chart on paper: 12 observation columns per sheet, each sheet on its own page */
+.mw-sheet { break-after: page; }
+.mw-sheet:last-child { break-after: auto; }
+.mw-print { table-layout: fixed; width: 100%; font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.mw-print th, .mw-print td { padding: 1px 3px; overflow-wrap: anywhere; }
+.mw-print .mw-param { width: 30mm; }
+.mw-print .mw-limit { width: 17mm; }
+.mw-print .mw-band { font-weight: 600; }
 
 /* ---------- The document ---------- */
 .pdoc {
