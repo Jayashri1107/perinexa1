@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { BedDouble, CalendarClock, CircleX, ClipboardList, ListChecks, Minus, Plus, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
+import { BedDouble, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, ListChecks, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus, UserRound } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -37,6 +37,15 @@ const nowStamp = () => {
   const time = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
   return { date, time };
 };
+
+// The patient's initials for the round badge on the bill: "Madhavi Patil" → "MP"
+const initialsOf = (name = '') =>
+  name
+    .split(/\s+/)
+    .filter((w) => /^[A-Za-z]/.test(w))
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || '·';
 
 const OWN = '__own';
 /**
@@ -94,7 +103,7 @@ export function ChoiceBox({ value, onChange, choices, placeholder, label, ownLab
  * Today's OPD patients from the daily register (never the whole patient list), and finding someone from another day.
  * onPickIpd: someone found who is admitted (else the Issue to ward page opens with her).
  */
-export function TodayOpdPicker({ onPick, onPickIpd = null }) {
+export function TodayOpdPicker({ onPick, onPickIpd = null, slim = false }) {
   const navigate = useNavigate();
   const res = useFetch('/pharmacy/register');
   const [text, setText] = useState('');
@@ -103,7 +112,7 @@ export function TodayOpdPicker({ onPick, onPickIpd = null }) {
   const opd = (res.data?.rows ?? []).filter((r) => r.type === 'opd').filter((r) => !term || [r.patient.fullName, r.patient.mrn, r.patient.phone, r.opdNo].some((v) => v && String(v).toLowerCase().includes(term)));
   return (
     <>
-      <FindElsewhere bare onPick={({ type, patient }) => (type === 'ipd' ? (onPickIpd ? onPickIpd(patient) : navigate('/pharmacy/issue', { state: { patient } })) : onPick(patient))} onOpenBills={(patient) => navigate(...billsPlace(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} onText={setText} />
+      <FindElsewhere bare={!slim} slim={slim} onPick={({ type, patient }) => (type === 'ipd' ? (onPickIpd ? onPickIpd(patient) : navigate('/pharmacy/issue', { state: { patient } })) : onPick(patient))} onOpenBills={(patient) => navigate(...billsPlace(patient))} onOpenBill={(id) => navigate(`/pharmacy/invoices/${id}`)} onText={setText} />
       <h3 className="ph-today-title">Today's OPD patients</h3>
       {res.error && <Alert type="error">{res.error}</Alert>}
       {res.data && !opd.length && <p className="muted">{term ? "Nobody on today's list matches." : "No OPD patient on today's register yet."}</p>}
@@ -194,42 +203,65 @@ function Prescriptions({ patientId, onUse, chosenVisit, useFirst = null }) {
   if (res.data.patient?.duplicateOf) {
     return (
       <Alert type="warning">
-        This record ({res.data.patient.mrn}) is marked as a duplicate of {res.data.patient.duplicateOf.mrn} and takes no new sale. Press "Choose someone else" and find{' '}
+        This record ({res.data.patient.mrn}) is marked as a duplicate of {res.data.patient.duplicateOf.mrn} and takes no new sale. Press "Change" and find{' '}
         {res.data.patient.duplicateOf.mrn}: her prescriptions written on this record are listed there too.
       </Alert>
     );
   }
   // A closed record takes no counter sale (never said why)
   if (res.data.patient?.closed) {
-    return <Alert type="info">This record ({res.data.patient.mrn}) is closed and takes no new sale at the counter. Press "Choose someone else".</Alert>;
+    return <Alert type="info">This record ({res.data.patient.mrn}) is closed and takes no new sale at the counter. Press "Change".</Alert>;
   }
-  if (!res.data.prescriptions.length) return <p className="muted">No prescriptions in Perinexa. Add medicines from the stock list below.</p>;
+  if (!res.data.prescriptions.length) return <p className="muted ph-rx-none">No prescription in Perinexa. Add the medicines on the right.</p>;
+  // Each prescription a small card (7 Nov 2026): the day and doctor, each medicine with how it is taken and whether the
+  // stock list has it, and one button to put it on the bill
   return (
-    <ul className="appt-lines">
-      {res.data.prescriptions.map((rx) => (
-        <li key={rx.visitId} className={chosenVisit === rx.visitId ? 'ph-rx is-chosen' : 'ph-rx'}>
-          <div className="row-between">
-            <strong>
-              {dayLabel(rx.date)}
-              {rx.doctor ? ` · ${rx.doctor.name}${rx.doctor.reg ? ` (Reg. ${rx.doctor.reg})` : ''}` : ''}
-              {/* Written on a record that was marked as a duplicate of hers: the paper carries that number */}
-              {rx.fromRecord ? ` · written on her earlier record ${rx.fromRecord}` : ''}
-            </strong>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onUse(rx)}>
-              <ClipboardList aria-hidden="true" /> {chosenVisit === rx.visitId ? 'Using this one' : 'Use this prescription'}
+    <ul className="ph-rx-list">
+      {res.data.prescriptions.map((rx) => {
+        const chosen = chosenVisit === rx.visitId;
+        return (
+          <li key={rx.visitId} className={chosen ? 'ph-rx-card is-chosen' : 'ph-rx-card'}>
+            <div className="ph-rx-card-head">
+              <span className="ph-rx-date">
+                <CalendarDays aria-hidden="true" /> {dayLabel(rx.date)}
+              </span>
+              {rx.doctor && (
+                <span className="ph-rx-doc">
+                  {rx.doctor.name}
+                  {rx.doctor.reg ? ` · Reg. ${rx.doctor.reg}` : ''}
+                </span>
+              )}
+            </div>
+            {/* Written on a record that was marked as a duplicate of hers: the paper carries that number */}
+            {rx.fromRecord && <p className="hint ph-rx-from">Written on her earlier record {rx.fromRecord}</p>}
+            <ul className="ph-rx-meds">
+              {rx.items.map((it) => (
+                <li key={it.id}>
+                  <strong>
+                    {it.drug} {it.strength}
+                  </strong>
+                  <span className="ph-rx-how">
+                    {it.dose} {FREQUENCY_WORDS[it.frequency] || it.frequencyText}
+                    {it.durationValue ? `, ${it.durationValue} ${it.durationUnit}` : ''}
+                  </span>
+                  {it.matches.length ? (
+                    <span className="ph-rx-match">
+                      <CircleCheck aria-hidden="true" /> In stock: {it.matches.map((m) => `${m.name} (${m.inStock})`).join(', ')}
+                    </span>
+                  ) : (
+                    <span className="ph-rx-match is-missing">
+                      <PackageX aria-hidden="true" /> Not on the stock list
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <button type="button" className={`btn btn-sm ph-rx-use ${chosen ? 'btn-secondary is-chosen' : 'btn-secondary'}`} onClick={() => onUse(rx)}>
+              {chosen ? <CircleCheck aria-hidden="true" /> : <ClipboardList aria-hidden="true" />} {chosen ? 'On the bill' : 'Use this prescription'}
             </button>
-          </div>
-          <ul className="ph-rx-items">
-            {rx.items.map((it) => (
-              <li key={it.id}>
-                {it.drug} {it.strength} – {it.dose} {FREQUENCY_WORDS[it.frequency] || it.frequencyText}
-                {it.durationValue ? `, ${it.durationValue} ${it.durationUnit}` : ''}
-                <span className="muted"> · {it.matches.length ? `on the list: ${it.matches.map((m) => `${m.name} (${m.inStock})`).join(', ')}` : 'not on the stock list'}</span>
-              </li>
-            ))}
-          </ul>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -435,105 +467,114 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
         <div className="ph-counter-main">
           {/* Left, as the store's earlier Sales Bill (7 Nov 2026): the date and time, the bill's net amount, then the patient */}
           <aside className="card ph-counter-left" aria-labelledby="ph-who">
-            <div className="ph-counter-when">
-              <div className="ph-counter-stamp">
-                <span>Date</span>
-                <strong className="tabular">{nowStamp().date}</strong>
-                <span>Time</span>
-                <strong className="tabular">{nowStamp().time}</strong>
+            {/* The bill's header band (7 Nov 2026): what it is, when, and the net amount large */}
+            <header className="ph-bill-head">
+              <div className="ph-bill-head-row">
+                <span className="ph-bill-tag">
+                  <Receipt aria-hidden="true" /> {issue ? 'Issue to ward' : 'Sales bill'}
+                </span>
+                <span className="ph-bill-when tabular">
+                  {nowStamp().date} · {nowStamp().time}
+                </span>
               </div>
-              <div className="ph-counter-net" aria-label="Net amount">
-                <span className="tabular">{(totalPaise / 100).toFixed(2)}</span>
-              </div>
-            </div>
-            {!patient && !embedded && (
-              <div className="ph-counter-types" role="radiogroup" aria-label="Type of patient">
-                <label>
-                  <input type="radio" name="ph-type" checked={who === 'patient'} onChange={() => (issue ? navigate('/pharmacy') : setWho('patient'))} /> <Stethoscope aria-hidden="true" /> OPD patients
-                </label>
-                <label>
-                  <input type="radio" name="ph-type" checked={who === 'inpatient'} onChange={() => !issue && navigate('/pharmacy/issue')} /> <BedDouble aria-hidden="true" /> IPD patients
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="ph-type"
-                    checked={who === 'walkin'}
-                    onChange={() => {
+              <span className="ph-bill-net-label">Net amount</span>
+              <strong className="ph-bill-net tabular" aria-label="Net amount">
+                ₹{(totalPaise / 100).toFixed(2)}
+              </strong>
+              <span className="ph-bill-count">
+                {lines.length ? `${lines.length} medicine${lines.length === 1 ? '' : 's'} · ${lines.reduce((n, l) => n + (Number(l.qty) || 0), 0)} units` : 'No medicine yet'}
+              </span>
+            </header>
+
+            <div className="ph-counter-body">
+              {!patient && !embedded && (
+                <div className="ph-type-tabs" role="radiogroup" aria-label="Type of patient">
+                  <button type="button" role="radio" aria-checked={who === 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
+                    <Stethoscope aria-hidden="true" /> OPD
+                  </button>
+                  <button type="button" role="radio" aria-checked={who === 'inpatient'} onClick={() => !issue && navigate('/pharmacy/issue')}>
+                    <BedDouble aria-hidden="true" /> IPD
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={who === 'walkin'}
+                    onClick={() => {
                       if (issue) return navigate('/pharmacy', { state: { type: 'external' } });
                       setWho('walkin');
                       reset();
                     }}
-                  />{' '}
-                  <UserPlus aria-hidden="true" /> External
-                </label>
-              </div>
-            )}
-            <h2 id="ph-who" className="ph-counter-h">
-              Patient information
-            </h2>
-            {who === 'patient' && !patient && <TodayOpdPicker onPick={setPatient} />}
-            {who === 'inpatient' && !patient && <InpatientPicker onPick={setPatient} />}
-            {patient && (
-              <dl className="ph-counter-facts">
-                <div>
-                  <dt>UHID</dt>
-                  <dd className="tabular">{patient.mrn}</dd>
+                  >
+                    <UserPlus aria-hidden="true" /> External
+                  </button>
                 </div>
-                <div>
-                  <dt>Patient name</dt>
-                  <dd>
-                    <TypePill type={issue ? 'ipd' : 'opd'} /> {patient.fullName}
-                  </dd>
-                </div>
-                {patient.phone && (
-                  <div>
-                    <dt>Phone</dt>
-                    <dd>{patient.phone}</dd>
-                  </div>
-                )}
-                <div>
-                  <dt>Doctor name</dt>
-                  <dd>{doctor.name ? `${doctor.name}${doctor.reg ? ` (Reg. ${doctor.reg})` : ''}` : '–'}</dd>
-                </div>
-                <button type="button" className="btn btn-link btn-sm" onClick={embedded && onCancel ? onCancel : reset}>
-                  Choose someone else
-                </button>
-              </dl>
-            )}
-            {who === 'walkin' && (
-              <>
-                <Field label={business ? 'Name of the person collecting' : 'Patient name'} id="ph-cust-name" error={s.fields['customer.name']}>
-                  <input id="ph-cust-name" value={customer.name} maxLength={150} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
-                </Field>
-                <Field label="Phone (optional)" id="ph-cust-phone">
-                  <input id="ph-cust-phone" type="tel" value={customer.phone} maxLength={30} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
-                </Field>
-                <BusinessBuyerFields business={business} setBusiness={setBusiness} buyer={buyer} setBuyer={setBuyer} errors={s.fields} />
-              </>
-            )}
-            {patient && (
-              <div className="ph-counter-rx">
-                <h2 id="ph-rx" className="ph-counter-h">
-                  Get prescription
+              )}
+
+              <div className="ph-section-row">
+                <h2 id="ph-who" className="ph-section-label">
+                  Patient
                 </h2>
-                <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} useFirst={start.patient?.id === patient.id ? (start.visitId ?? null) : null} />
+                {patient && (
+                  <button type="button" className="btn btn-link btn-sm ph-person-change" onClick={embedded && onCancel ? onCancel : reset}>
+                    Change
+                  </button>
+                )}
               </div>
-            )}
-            {(patient || who === 'walkin') && !visitId && (needsRx || who === 'walkin') && (
-              <div className="ph-rx-seen">
-                <p className="hint">{controlled ? 'A narcotic or Schedule X medicine: the doctor’s registration number is required, and it is given only to a registered patient.' : needsRx ? 'A prescription medicine: write the doctor’s name and tick that you saw the prescription.' : 'If there is a prescription, write the doctor’s name.'}</p>
-                <Field label="Doctor name" id="ph-doc-name">
-                  <input id="ph-doc-name" value={doctor.name} maxLength={150} onChange={(e) => setDoctor({ ...doctor, name: e.target.value })} />
-                </Field>
-                <Field label="Registration number" id="ph-doc-reg">
-                  <input id="ph-doc-reg" value={doctor.reg} maxLength={60} onChange={(e) => setDoctor({ ...doctor, reg: e.target.value })} />
-                </Field>
-                <label className="appt-reason">
-                  <input type="checkbox" checked={rxSeen} onChange={(e) => setRxSeen(e.target.checked)} /> I have seen the prescription
-                </label>
-              </div>
-            )}
+              {who === 'patient' && !patient && <TodayOpdPicker slim onPick={setPatient} />}
+              {who === 'inpatient' && !patient && <InpatientPicker onPick={setPatient} />}
+              {patient && (
+                <div className="ph-person">
+                  <span className="ph-person-avatar" aria-hidden="true">
+                    {initialsOf(patient.fullName)}
+                  </span>
+                  <div className="ph-person-main">
+                    <strong className="ph-person-name">{patient.fullName}</strong>
+                    <span className="ph-person-meta">
+                      <TypePill type={issue ? 'ipd' : 'opd'} /> <span className="tabular">{patient.mrn}</span>
+                    </span>
+                    {patient.phone && <span className="ph-person-doc tabular">{patient.phone}</span>}
+                    <span className="ph-person-doc">
+                      <UserRound aria-hidden="true" /> {doctor.name ? `${doctor.name}${doctor.reg ? ` · Reg. ${doctor.reg}` : ''}` : 'No doctor yet'}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {who === 'walkin' && (
+                <div className="ph-walkin">
+                  <Field label={business ? 'Name of the person collecting' : 'Patient name'} id="ph-cust-name" error={s.fields['customer.name']}>
+                    <input id="ph-cust-name" value={customer.name} maxLength={150} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
+                  </Field>
+                  <Field label="Phone (optional)" id="ph-cust-phone">
+                    <input id="ph-cust-phone" type="tel" value={customer.phone} maxLength={30} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
+                  </Field>
+                  <BusinessBuyerFields business={business} setBusiness={setBusiness} buyer={buyer} setBuyer={setBuyer} errors={s.fields} />
+                </div>
+              )}
+
+              {patient && (
+                <div className="ph-counter-rx">
+                  <h2 id="ph-rx" className="ph-section-label">
+                    Prescription
+                  </h2>
+                  <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} useFirst={start.patient?.id === patient.id ? (start.visitId ?? null) : null} />
+                </div>
+              )}
+              {(patient || who === 'walkin') && !visitId && (needsRx || who === 'walkin') && (
+                <div className="ph-rx-seen">
+                  <h2 className="ph-section-label">Outside prescription</h2>
+                  <p className="hint">{controlled ? 'A narcotic or Schedule X medicine: the doctor’s registration number is required, and it is given only to a registered patient.' : needsRx ? 'A prescription medicine: write the doctor’s name and tick that you saw the prescription.' : 'If there is a prescription, write the doctor’s name.'}</p>
+                  <Field label="Doctor name" id="ph-doc-name">
+                    <input id="ph-doc-name" value={doctor.name} maxLength={150} onChange={(e) => setDoctor({ ...doctor, name: e.target.value })} />
+                  </Field>
+                  <Field label="Registration number" id="ph-doc-reg">
+                    <input id="ph-doc-reg" value={doctor.reg} maxLength={60} onChange={(e) => setDoctor({ ...doctor, reg: e.target.value })} />
+                  </Field>
+                  <label className="appt-reason">
+                    <input type="checkbox" checked={rxSeen} onChange={(e) => setRxSeen(e.target.checked)} /> I have seen the prescription
+                  </label>
+                </div>
+              )}
+            </div>
           </aside>
 
           {/* Right: the item row, the bill's grid, the totals and the buttons */}
