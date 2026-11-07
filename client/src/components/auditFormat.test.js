@@ -478,6 +478,9 @@ const FILTER_ACTIONS = [
   'CASE_REVIEW_CORRECTED',
   'PRIVILEGE_GRANTED',
   'PRIVILEGE_ENDED',
+  'FORM_VERSION_RECORDED',
+  'FORM_VERSION_APPROVED',
+  'FORM_VERSION_WITHDRAWN',
 ];
 
 describe('every event in the audit log has a plain name', () => {

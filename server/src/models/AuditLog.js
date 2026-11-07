@@ -386,6 +386,9 @@ export const AUDIT_ACTIONS = [
   // never a web page; src/export/hospitalExport.js). No actor (not done by a signed-in person); counts only.
   'HOSPITAL_DATA_EXPORTED',
   // Clinical Requirements Group A (PX-REQ-00)
+  'FORM_VERSION_RECORDED',
+  'FORM_VERSION_APPROVED',
+  'FORM_VERSION_WITHDRAWN',
   'PRIVILEGE_GRANTED',
   'PRIVILEGE_ENDED',
   'CASE_REVIEWS_VIEWED',
@@ -496,6 +499,9 @@ export const AUDIT_CATEGORIES = {
     'LIST_EXPORTED',
   ],
   access: [
+    'FORM_VERSION_RECORDED',
+    'FORM_VERSION_APPROVED',
+    'FORM_VERSION_WITHDRAWN',
     'PRIVILEGE_GRANTED',
     'PRIVILEGE_ENDED',
     'USER_CREATED',

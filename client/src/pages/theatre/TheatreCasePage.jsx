@@ -9,6 +9,7 @@ import { FormDialog } from '../quality/FormDialog.jsx';
 import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { ShowChoice } from '../quality/SimpleTable.jsx';
 import { PatientSafetyBand } from '../patients/SafetyStrip.jsx';
+import { ManualPrint } from '../../components/print/ManualPage.jsx';
 import { ChecklistProgress, STATUS_LOOK } from './TheatreListPage.jsx';
 import { FITNESS_LOOK } from '../anaesthesia/PacTab.jsx';
 import { FITNESS } from '../anaesthesia/anaesthesiaRules.js';
@@ -131,6 +132,52 @@ const PRIVILEGE_STATE = {
   none: { tone: 'high', icon: TriangleAlert, word: (who, l) => `No privilege recorded for ${who}: ${l}` },
   not_staff: { tone: 'watch', icon: CircleHelp, word: (who, l) => `${who} is not a member of staff by this name – check “${l}” by hand` },
 };
+/** The case as printed on the manual's page (PX-X-03): the operation, the team and each WHO step as confirmed. */
+export function TheatrePrint({ c }) {
+  return (
+    <>
+      <h2>{`${c.patient.fullName} · ${c.patient.mrn}`}</h2>
+      <table className="mp-table">
+        <tbody>
+          <tr>
+            <th scope="row">Operation</th>
+            <td>{[c.procedure, c.site].filter(Boolean).join(' – ')}</td>
+            <th scope="row">Day, theatre</th>
+            <td>{`${formatDate(c.listDate)}, ${c.theatre} · ${c.order}`}</td>
+          </tr>
+          <tr>
+            <th scope="row">Surgeon</th>
+            <td>{c.surgeon || '–'}</td>
+            <th scope="row">Anaesthetist</th>
+            <td>{[c.anaesthetist, ANAESTHESIA[c.anaesthesia]].filter(Boolean).join(' – ') || '–'}</td>
+          </tr>
+        </tbody>
+      </table>
+      {PHASE_ORDER.map((p) => {
+        const done = c.progress[p];
+        const ch = c.checklist[p];
+        return (
+          <div key={p}>
+            <h2>{PHASES[p].label}</h2>
+            <table className="mp-table">
+              <tbody>
+                {PHASES[p].items.map((i) => (
+                  <tr key={i.key}>
+                    <td>{i.label}</td>
+                    <td>{[ANSWER_WORDS[ch.answers[i.key]] ?? '–', ch.notes[i.key]].filter(Boolean).join(' – ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p>{done ? `Confirmed by ${done.byName} (${done.role}), ${formatDateTime(done.at)}` : 'Not confirmed'}</p>
+            {ch.witness && <p>{`Counts checked by ${ch.witness.byName} (${ch.witness.role}), ${formatDateTime(ch.witness.at)}`}</p>}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 export function PrivilegeCheck({ privileges, surgeon, anaesthetist }) {
   const rows = [
     ['surgeon', surgeon || 'The surgeon'],
@@ -199,6 +246,11 @@ export function TheatreCasePage() {
           </p>
           {c.status !== 'cancelled' && <ChecklistProgress progress={c.progress} />}
           {c.cancelled && <p>{`Taken off the list by ${c.cancelled.byName}: ${c.cancelled.reason}`}</p>}
+          <div className="row">
+            <ManualPrint screen="who_checklist" on={c.listDate} title="WHO Surgical Safety Checklist">
+              <TheatrePrint c={c} />
+            </ManualPrint>
+          </div>
           {data.access.write && c.status !== 'done' && !c.cancelled && (
             <button type="button" className="btn btn-link" onClick={() => setCancelling(true)}>
               Take off the list

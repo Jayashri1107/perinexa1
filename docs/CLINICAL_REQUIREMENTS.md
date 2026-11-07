@@ -187,3 +187,21 @@ Model `StaffPrivilege`, route `/api/privileges`, page **Privileges** (`/privileg
 - Test: sign in as the quality lead or admin → Privileges → **Grant a privilege** → a doctor, Caesarean section →
   "In force"; as a doctor → Theatre → Add an operation with that doctor's name as surgeon and the privilege chosen →
   open it: "… holds the privilege: Caesarean section"; a name not on the staff list says to check by hand.
+
+## Group C – form versions and the document register (PX-X-02), printing as the manual's page (PX-X-03), 7 Nov 2026
+`server/src/clinical/formRegister.js` (DRAFT list of the Perinexa screens that stand in for the manual's forms; codes
+known so far: OBG-F-16 WHO checklist, OBG-F-05 MEOWS). Model `FormVersion`, route `/api/forms`, page Clinical audit →
+**Document register**.
+- The quality lead or the admin records a version (screen, the manual's code, title, version, in force from, review
+  due); a doctor approves it. An approved version is in force from its day until a later approved version of the same
+  screen; never changed after approval, never deleted – a draft entered by mistake is withdrawn with a reason. A review
+  date that has passed shows "Review overdue".
+- **Print as the manual's page** (A4, `components/print/ManualPage.jsx`): the hospital's letterhead with the form's box
+  – code, title and the version in force on the record's day; the header repeats on every page. With no approved
+  version the box says "No form code … not in the document register yet". Added to: the theatre case (WHO checklist),
+  the MEOWS chart, and a sealed death or near-miss review. The other screens in the list (PPH chart, discharge
+  checklist, PAC, pain chart, newborn records, NICU register, incident, specimen) get the same button next.
+- Audit: FORM_VERSION_RECORDED / _APPROVED / _WITHDRAWN (no patient data). In the hospital export.
+- Test: as the quality lead → Clinical audit → Document register → **Record a form version** (WHO Surgical Safety
+  Checklist, OBG-F-16, 1.0, in force from a past day) → as a doctor → **Approve** → "In force" → open an operation on the
+  Theatre list → **Print as the manual's page**: the box shows OBG-F-16, version 1.0.

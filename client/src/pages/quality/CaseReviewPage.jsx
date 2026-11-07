@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { toIso } from './FormDialog.jsx';
+import { ManualPrint } from '../../components/print/ManualPage.jsx';
 import { REVIEW_LOOK, reviewNumber } from './CaseReviewsPage.jsx';
 
 // One maternal death or near-miss review (Clinical Requirements Group C – PX-OBG-30, DRAFT lists; PX-X-05 sealing): a
@@ -235,6 +236,27 @@ function SealedView({ review, rules, onSaved }) {
   ];
   return (
     <div className="stack">
+      <div className="row">
+        <ManualPrint screen="case_review" on={String(review.eventAt).slice(0, 10)} title="Death or near-miss review">
+          <h2>{`${rules.kinds[review.kind]} review ${reviewNumber(review.serial)} · ${review.patient?.fullName ?? ''} · ${review.patient?.mrn ?? ''}`}</h2>
+          <table className="mp-table">
+            <tbody>
+              {rows.map(([k, v]) => (
+                <tr key={k}>
+                  <th scope="row">{k}</th>
+                  <td>{v || '–'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p>{`Signed and sealed by ${review.sealed.byName}, ${formatDateTime(review.sealed.at)}`}</p>
+          {review.corrections.length > 0 && <h2>Corrections after sealing</h2>}
+          {review.corrections.map((x) => (
+            <p key={x.id}>{`${rules.correctable[x.part]}: should say ${x.should} – ${x.reason} (${x.byName}, ${formatDateTime(x.at)})`}</p>
+          ))}
+          <p>Confidential: for the review committee only.</p>
+        </ManualPrint>
+      </div>
       <section className="card">
         <h2>The review as signed</h2>
         <dl className="details">
