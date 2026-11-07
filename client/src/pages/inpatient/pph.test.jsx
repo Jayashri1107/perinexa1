@@ -222,7 +222,9 @@ describe("acceptance test 6 – the print matches the OBG-F-07 master", () => {
       "utf8",
     );
     expect(css).toMatch(/@page \{ size: A4; margin: 12mm; \}/); // A4, portrait by default
-    expect(css).not.toMatch(/landscape/);
+    // Landscape is only for a page that asks for it (the MEOWS chart, OBG-F-05): never the default, never this sheet
+    expect(css).not.toMatch(/@page \{[^}]*landscape/);
+    expect(html).not.toMatch(/landscape/);
   });
 
   it("in the order of the paper page: header, E-MOTIVE in three columns, observations, then labs and outcome", () => {
