@@ -301,6 +301,11 @@ const loadCrs12 = () => import('./pages/newborn/NewbornCareTab.jsx');
 const NewbornCareTab = screen(loadCrs12, 'NewbornCareTab');
 const loadCrs13 = () => import('./pages/newborn/NicuRegisterPage.jsx');
 const NicuRegisterPage = screen(loadCrs13, 'NicuRegisterPage');
+// Build 13 – the NICU unit board and the hospital admin's NICU units
+const loadB13Board = () => import('./pages/newborn/NicuBoardPage.jsx');
+const NicuBoardPage = screen(loadB13Board, 'NicuBoardPage');
+const loadB13Units = () => import('./pages/newborn/NicuSettingsPage.jsx');
+const NicuSettingsPage = screen(loadB13Units, 'NicuSettingsPage');
 const loadCrs6 = () => import('./pages/incidents/IncidentsPage.jsx');
 const IncidentsPage = screen(loadCrs6, 'IncidentsPage');
 const IncidentPage = screen(loadCrs6, 'IncidentPage');
@@ -509,6 +514,9 @@ export function App() {
                 <Route path="nicu-register" element={<RequireTenantRole roles={THEATRE_ROLES} message="The NICU register is for doctors, RMOs and nurses." />}>
                   <Route index element={<NicuRegisterPage />} />
                 </Route>
+                <Route path="nicu-board" element={<RequireTenantRole roles={THEATRE_ROLES} message="The NICU unit board is for doctors, RMOs and nurses." />}>
+                  <Route index element={<NicuBoardPage />} />
+                </Route>
                 <Route path="theatre" element={<RequireTenantRole roles={THEATRE_ROLES} message="The theatre list is for doctors, RMOs and nurses." />}>
                   <Route index element={<TheatreListPage />} />
                   <Route path=":id" element={<TheatreCasePage />} />
@@ -689,6 +697,8 @@ export function App() {
                   <Route path="abdm" element={<AbdmSettingsPage />} />
                   {/* The referral settings: centres, desk number, consultants' direct lines, working hours, holidays */}
                   <Route path="referrals" element={<ReferralSettingsPage />} />
+                  {/* Build 13 – NICU units: level of care, admission floor, NICU beds, one more admission */}
+                  <Route path="nicu-units" element={<NicuSettingsPage />} />
                   {/* The ultrasound machine's scan bridge key (docs/USG_MACHINE_PLAN.md) */}
                   <Route path="ultrasound-machine" element={<ScanBridgeSettingsPage />} />
                   <Route path="audit-log" element={<HospitalAuditLogPage />} />

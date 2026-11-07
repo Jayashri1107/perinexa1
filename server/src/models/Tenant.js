@@ -158,6 +158,35 @@ const tenantSchema = new mongoose.Schema(
       updatedByName: { type: String, trim: true, maxlength: 100, default: '' },
       updatedAt: { type: Date, default: null },
     },
+    // NICU units (Build 13, NEO-A-01), kept by the hospital admin (Newborn follow-up → NICU units): each unit's key,
+    // name, level of care (level_II | level_IIIA – PX-X-01 gates) and admission floor. Read through
+    // clinical/nicuAdmission.js nicuUnitsFor, which gives the defaults when never saved. The beds are Bed.nicu.
+    nicu: {
+      units: {
+        type: [
+          new mongoose.Schema(
+            {
+              key: { type: String, maxlength: 30 },
+              name: { type: String, trim: true, maxlength: 60 },
+              level: { type: String, enum: ['level_II', 'level_IIIA'] },
+              active: { type: Boolean, default: true },
+              minGestationWeeks: { type: Number, min: 22, max: 40 },
+              minBirthWeightGrams: { type: Number, min: 300, max: 3000 },
+            },
+            { _id: false },
+          ),
+        ],
+        default: undefined,
+      },
+      // N4: "one more admission" to a full unit, allowed by the hospital admin (admin mode has no patient records, so the
+      // admin allows it here and the clinical staff admit): used once, within 2 hours. Kept (the last 50) as a record.
+      overrides: {
+        type: [new mongoose.Schema({ unit: String, reason: String, byName: String, at: Date, usedAt: { type: Date, default: null }, usedFor: { type: mongoose.Schema.Types.ObjectId, default: null } }, { _id: true })],
+        default: undefined,
+      },
+      updatedByName: { type: String, default: '' },
+      updatedAt: { type: Date, default: null },
+    },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },

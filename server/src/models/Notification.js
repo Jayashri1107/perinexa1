@@ -10,7 +10,7 @@ import { tenantScoped } from '../utils/tenantScope.js';
 const notificationSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    kind: { type: String, enum: ['appointment', 'arrived', 'done', 'lab', 'admission', 'meows', 'pph'], required: true },
+    kind: { type: String, enum: ['appointment', 'arrived', 'done', 'lab', 'admission', 'meows', 'pph', 'nicu'], required: true },
     text: { type: String, required: true, maxlength: 300 },
     link: { type: String, default: '/', maxlength: 200 },
     readAt: { type: Date, default: null },

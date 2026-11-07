@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Activity, Bell, CalendarClock, CheckCircle2, Droplet, FlaskConical, BedDouble, UserCheck } from 'lucide-react';
+import { Activity, Baby, Bell, CalendarClock, CheckCircle2, Droplet, FlaskConical, BedDouble, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { formatDateTime } from './ui.jsx';
@@ -9,7 +9,7 @@ import { formatDateTime } from './ui.jsx';
 // is open and visible; this does not count as activity, so the 30-minute logout still happens (it counts only the
 // mouse and keyboard).
 const REFRESH_MS = 60 * 1000;
-const KIND_ICON = { appointment: CalendarClock, arrived: UserCheck, done: CheckCircle2, lab: FlaskConical, admission: BedDouble, meows: Activity, pph: Droplet };
+const KIND_ICON = { appointment: CalendarClock, arrived: UserCheck, done: CheckCircle2, lab: FlaskConical, admission: BedDouble, meows: Activity, pph: Droplet, nicu: Baby };
 
 export function NotificationBell() {
   const [data, setData] = useState(null);

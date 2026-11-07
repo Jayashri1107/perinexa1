@@ -43,6 +43,6 @@ export function itemLook(x) {
 export function useNewbornTabs() {
   const membership = useAuth()?.activeMembership;
   const tabs = [{ label: 'Newborn follow-up', to: '/newborn-follow-up', end: true }];
-  if (membership && hasRole(membership, 'doctor', 'rmo', 'nurse')) tabs.push({ label: 'NICU register', to: '/nicu-register', end: true });
+  if (membership && hasRole(membership, 'doctor', 'rmo', 'nurse')) tabs.push({ label: 'NICU register', to: '/nicu-register', end: true }, { label: 'NICU board', to: '/nicu-board', end: true });
   return tabs;
 }

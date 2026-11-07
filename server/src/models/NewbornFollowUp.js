@@ -31,6 +31,12 @@ const followUpSchema = new mongoose.Schema(
     highRisk: { type: Boolean, default: false },
     highRiskReasons: { type: [{ type: String, enum: HIGH_RISK_REASONS }], default: [] },
     records: { type: [recordSchema], default: [] },
+    // Screens Perinexa added for this baby (Build 13, N3): the NICU admission's ROP screen with its first-exam due date
+    // (NEO-F-15 ScreeningEvent, Confirm 4 – later of 30 days and 31 weeks' PMA). It replaces the schedule's ROP dates.
+    events: {
+      type: [new mongoose.Schema({ key: { type: String, enum: ['rop'], required: true }, dueBy: { type: Date, required: true }, admissionId: ObjectId, reason: String, byName: String, at: Date }, { _id: false })],
+      default: [],
+    },
     updatedByName: { type: String, default: null },
   },
   { timestamps: true, optimisticConcurrency: true },

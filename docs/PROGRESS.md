@@ -3046,10 +3046,62 @@ You need two fake staff logins (for example a nurse and a doctor).
    told". Saved scores show "8 · Severe pain".
 3. **Newborn care:** a made-up baby → **Newborn care** tab → **At birth** (every step Yes/No) → **New examination**
    (a part "Not normal" needs what was found) → **Bilirubin** two readings: the chart shows them by hours of age.
-4. **NICU:** same tab → **Admit to the NICU or SNCU** (temperature 35.9: "Cold at admission") → as a doctor **Record how
-   it ended**. **Newborn follow-up → NICU register** lists it with the month's totals.
+4. **NICU:** replaced by Build 13 (NEO-F-03) – see "Build 13 – NICU admission" below.
 5. **CCHD helper:** the baby's **Screening** tab → Record pulse oximetry → right hand 97, foot 96 → "Pass" → **Use this
    result**.
+
+## Build 13 – NICU admission (NEO-F-03), its register (NEO-L-05) and unit board (7 Nov 2026)
+Branch `claude/build13-nicu-f03-85abb9` (not merged, not pushed). From `docs/field_schemas/build13_nicu_admission.json`
+(owner-approved clinical content; details, decisions and gaps in `docs/CLINICAL_REQUIREMENTS.md`, Group B items 12 and 13).
+- **What changed.** The DRAFT NICU / SNCU admission became the whole NEO-F-03 form, on the same record
+  (`NicuAdmission`, format `f03`); DRAFT admissions of 6 Nov keep their fields and are shown as they were.
+  - Units are hospital settings (**Hospital admin → NICU units**): name, level II or level IIIA, admission floor
+    (28 weeks / 1000 g), which beds are NICU beds (unit, intensive or step-down, incubator / warmer / cot), and "one more
+    admission" to a full unit. No unit name is in the code.
+  - Admitting (baby's **Newborn care** tab → **Admit to the NICU**): unit, where from (born here, postnatal ward,
+    transfer from each other unit, other hospital), bed, admitting doctor, consultant, weight, gestation, temperature,
+    main reason. §1 is pre-filled from the mother's record, the delivery note and the record at birth (each field says
+    where from; changing one by hand drops that), only for staff who may see the mother's pregnancy details.
+  - The form's parts §1–§3 and "Parents, consent and the consultant"; the admitting doctor (doctor or RMO) signs once
+    the examination, respiratory support and problems are filled in – then §1–§3 are locked.
+  - Worked out: maturity, size from the typed centile, ROP eligibility and first-exam date (a ROP screen added to the
+    baby's screening log), cranial ultrasound dates, hearing (AABR) before discharge, length of stay.
+  - Banners: red under 36.0 °C (hypothermia pathway), glucose under 45, ROP due, outside a level II unit's capability
+    (transfer to the level IIIA unit suggested), below the floor (consultant's decision required), parents not counselled
+    after 1 hour (and a notification to the admitting doctor), record not complete after 1 hour, late entry.
+  - Level IIIA only: ventilator, UVC, UAC, PICC (PX-X-01). A full unit is refused ("Unit full – transfer pathway")
+    unless the hospital admin allowed one more.
+  - **Newborn follow-up → NICU board**: each unit's beds, nurses on duty (typed) with the 1:2 warning, each baby's flags.
+  - **NICU register**: number per unit per year (GARKHEDA-2026-0001 …, never changed, no gaps), the NEO-L-05 columns,
+    survival by weight (n/N), **Export CSV**.
+  - Monthly dashboards → Newborn: 22 NEO-A-05 rows (temperature in range, counselled in 1 hour, complete in 1 hour,
+    by weight and gestation, survival by weight, inborn / outborn, transfers, ROP on time); the schema's targets apply
+    until the hospital sets its own.
+  - Print: **Print as the manual's page** on an admission – A4 NEO-F-03 with the footer "NEO-F-03 · v1.0".
+- **Tests:** `server/tests/build13-nicu-admission.test.js` (the seven acceptance tests AT1–AT7 and the rules) and
+  `client/src/pages/newborn/newbornCare.test.jsx` (screens and the printout).
+- **Gaps (not built):** see the list in `docs/CLINICAL_REQUIREMENTS.md` (centile tables, EOS calculator, NEO-F-18,
+  NEO-F-05, NEO-F-19, NEO-F-10, NEO-F-14 link, SOP-04 / SOP-08 steps, staff roster, …).
+
+## How to test Build 13 – the NICU admission (fake data only)
+1. As the hospital admin → **Hospital admin → Beds**: add a ward "NICU" with beds 1–6 → **Hospital admin → NICU units**:
+   **Add a unit** "Garkheda" (level IIIA) and "Waluj" (level II), untick "In use" for the starting NICU and SNCU →
+   **Save units and beds** → mark beds 1–4 Garkheda (intensive), 5–6 Waluj → **Save units and beds**.
+2. As a doctor: a made-up mother's signed delivery note → **Make the baby's record**; on the baby's **Newborn care** →
+   **At birth** (resuscitation "Bag-and-mask", second person for the band) → **Admit to the NICU**: Garkheda, "Inborn",
+   bed 1, temperature 35.9 → the red banner "Start the hypothermia pathway"; open §1: Apgar "From the delivery note",
+   resuscitation "From the record at birth".
+3. A second baby (30 weeks, 1100 g): the banner "ROP screening: first eye examination due …" and the baby's
+   **Screening** tab shows the ROP screen with that date.
+4. A 29-week baby at Waluj, "Transfer – other hospital": "Outside this unit's capability … transfer to Garkheda
+   suggested"; in §2 Respiratory support has no Ventilator, in §3 Lines no UVC / UAC / PICC.
+5. Fill in §2 (every examination part) and §3 → **Sign the admission** → §1–§3 locked; **Record counselling and
+   consent** still opens. An admission over an hour old without counselling: the admitting doctor's bell shows the task.
+6. Fill Waluj's beds → the next admission is refused "Unit full"; as the admin → NICU units → **Allow one more
+   admission** → it goes through once.
+7. **Newborn follow-up → NICU register**: the numbers GARKHEDA-2026-0001 …, "No gaps", **Export CSV**; **NICU board**:
+   type 1 nurse with 3 babies in intensive beds → the 1:2 warning. **Clinical audit → Monthly dashboards → Newborn**:
+   the NICU rows. On an admission → **Print as the manual's page** → the A4 page with the footer "NEO-F-03 · v1.0".
 
 ## How to test the monthly dashboards – Group B item 17, DRAFT (fake data only)
 1. As a doctor (or the quality lead) → **Clinical audit** → **Monthly dashboards**. Choose the month and **Obstetrics**,

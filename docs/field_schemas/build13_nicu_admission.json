@@ -1,0 +1,121 @@
+{
+  "build": "Build 13 — NICU admission",
+  "source": ["NEO-F-03 v1.0", "NEO-SOP-03", "NEO-A-01", "NEO-L-05", "NEO-A-05", "PX-NEO-04", "PX-X-01", "PX-X-14"],
+  "entities": ["NICUAdmission (child of Newborn patient; links mother's PregnancyEpisode and Delivery)", "NICUBed (per unit; level intensive|step_down; capacity config)", "AdmissionOutcomeRegisterRow (view over NICUAdmission — NEO-L-05)"],
+  "unit_configuration": {
+    "level_of_care": {"type": "enum per unit", "values": ["level_II", "level_IIIA"], "current": {"garkheda": "level_IIIA", "adalat_road": "level_II", "waluj": "level_II"}, "gates": "ventilation / TPN / exchange / central-line order screens visible only where level_IIIA (PX-X-01)"},
+    "beds": {"garkheda": 6, "ratio_rule": "nurse:baby ≤ 1:2 for intensive beds — warning on the unit board when roster count makes ratio worse (NEO-A-01)"},
+    "admission_floor": {"min_gestation_wk": 28, "min_birth_weight_g": 1000, "rule": "below floor → transfer pathway (NEO-F-18) suggested, not blocked; consultant decision recorded"}
+  },
+  "header_fields": {
+    "newborn_ref": {"required": true, "created_from": "OBG-F-08 delivery (inborn) or registration (outborn)"},
+    "mother_ref": {"required_if": "inborn"},
+    "admitted_at": {"type": "datetime", "required": true},
+    "source": {"type": "enum", "values": ["inborn_lr_ot", "postnatal_ward", "transfer_adalat_road", "transfer_waluj", "transfer_other"], "required": true},
+    "transfer_from_name": {"string": true, "required_if": "transfer_other"},
+    "admitted_by": "user_ref", "consultant": "user_ref",
+    "bed": {"ref": "NICUBed", "required": true}, "bed_type": {"enum": ["incubator", "warmer", "cot"]},
+    "allergy_alert": {"copied_from": "mother alerts; editable"}
+  },
+  "maternal_perinatal_history": {
+    "note": "pre-filled from the mother's episode where linked (PX-X-14); editable; mark 'unknown' allowed for outborn",
+    "mother_age": "integer", "gravida": "integer", "para": "integer", "living": "integer", "abortions": "integer",
+    "booked": "boolean", "blood_group": "string",
+    "serology": {"vdrl": "enum N|P|NK", "hbsag": "enum N|P|NK", "hiv": "enum N|P|NK (display rule: neutral wording — existing Perinexa HIV rule)", "gbs": "enum N|P|NK", "rubella": "enum immune|non_immune|NK"},
+    "antenatal_problems": {"multi_enum": ["uneventful", "pih_preeclampsia", "gdm_dm", "aph", "prom", "fever", "chorioamnionitis", "iugr", "polyhydramnios", "oligohydramnios", "anomaly_scan_abnormal", "thyroid", "anaemia", "other"]},
+    "prom_hours": "integer", "anaemia_hb": "decimal", "anomaly_scan_detail": "string",
+    "drugs_in_pregnancy": "string", "substances": "boolean",
+    "antenatal_steroids": {"enum": ["none", "partial", "complete"], "last_dose_at": "datetime"},
+    "mgso4_given": "boolean", "maternal_antibiotics": {"drug": "string", "at": "datetime"},
+    "labour_onset": {"enum": ["spontaneous", "induced", "no_labour"]}, "labour_duration_h": "decimal",
+    "liquor": {"enum": ["clear", "msl", "foul", "blood"]}, "fetal_distress": {"boolean": true, "ctg_detail": "string"},
+    "delivery_mode": {"enum": ["svd", "vacuum", "forceps", "breech", "lscs"]}, "lscs_category": "integer 1-4", "lscs_indication": "string",
+    "presentation": "string", "anaesthesia": "string", "ddi_min": {"integer": true, "copied_from": "OBG-F-09"},
+    "apgar": {"1": "int", "5": "int", "10": "int"},
+    "resuscitation": {"multi_enum": ["none", "ppv", "intubated", "compressions", "drugs"], "ppv_minutes": "integer", "copied_from": "NEO-F-01"},
+    "cord_clamp_seconds": "integer", "cord_ph": "decimal", "cord_be": "decimal",
+    "delivery_room": {"temp_c": "decimal", "skin_to_skin": "boolean", "vit_k_at": "datetime", "eye_care": "boolean", "bands_verified": "boolean (two users — PX-X-06)", "first_feed_at": "datetime", "glucose_mg_dl": "decimal", "glucose_at": "datetime"}
+  },
+  "admission_assessment": {
+    "weight_g": {"integer": true, "required": true, "centile": "computed on selected chart"},
+    "length_cm": "decimal", "ofc_cm": "decimal",
+    "growth_chart": {"enum": ["fenton", "intergrowth", "who"], "default": "fenton if GA < 37 wk else who"},
+    "ga_weeks": {"integer": true, "required": true}, "ga_days": "integer 0-6",
+    "ga_method": {"enum": ["lmp", "usg", "new_ballard"]}, "ballard_score": "integer",
+    "maturity_class": {"computed": "term ≥37 | late_preterm 34–36+6 | preterm 28–33+6 | extreme_preterm <28"},
+    "size_class": {"computed from weight centile": "sga <10th | aga | lga >90th", "symmetry": "enum symmetric|asymmetric (manual)"},
+    "vitals": {
+      "temp_c": {"decimal": true, "required": true, "in_range": "36.5–37.5 → KPI 'admission temperature in range'; <36.0 red banner (hypothermia pathway SOP-04)"},
+      "hr": "integer", "rr": "integer", "spo2": "integer", "spo2_support": {"enum": ["air", "o2", "cpap"]}, "fio2": "decimal", "cpap_peep": "decimal",
+      "bp_systolic": "integer", "bp_diastolic": "integer", "bp_mean": "integer", "crt_seconds": "decimal",
+      "glucose_mg_dl": {"decimal": true, "rule": "<45 → SOP-08 hypoglycaemia pathway prompt"},
+      "silverman_andersen": "integer 0-10", "nips_pain": "integer"
+    },
+    "respiratory_support_at_admission": {"enum": ["none", "o2", "cpap", "ventilator"], "ventilator_settings_ref": "NEO-F-10 (R3)"},
+    "examination": {"systems": ["general_activity", "skin_colour_jaundice", "head_fontanelle", "eyes", "ent_palate", "chest_air_entry", "heart_murmur_pulses", "abdomen_cord_liver", "genitalia_anus", "spine", "hips", "limbs", "neuro_tone", "neuro_reflexes"], "each": {"status": "enum normal|abnormal", "note": "string"}},
+    "sarnat_stage": {"integer 1-3": true, "required_if": "hie_flag"},
+    "anomaly": {"boolean": true, "detail": "string"}, "birth_injury": {"boolean": true, "detail": "string"}
+  },
+  "problem_list_and_plan": {
+    "problems": "array<string> max 6",
+    "working_diagnosis": "string", "icd10": "code",
+    "admission_reason_primary": {"enum (fixed list for NEO-L-05 and dashboard)": ["prematurity", "rds", "ttn", "mas", "asphyxia_hie", "sepsis_suspected", "sepsis_proven", "jaundice", "hypoglycaemia", "lbw_feeding", "congenital_anomaly", "observation_at_risk", "surgical", "other"], "required": true},
+    "risk_flags": {
+      "sepsis_risk": {"boolean": true, "pathway": "enum culture_and_antibiotics|observe", "links": "NEO-SOP-06 (EOS calculator — Build 12)"},
+      "hypoglycaemia_screen": "boolean → schedules glucose checks per SOP-08",
+      "jaundice_risk": {"boolean": true, "tsb_due_at": "datetime"},
+      "hie": {"boolean": true, "sarnat_1h": "integer", "cooling_centre_called_at": {"datetime": true, "kpi": "departed by 3 h of life (NEO-F-18)"}},
+      "rop_eligible": {"computed": "ga_weeks < 34 OR weight_g < 2000 OR (ga < 37 AND unstable course flag)", "first_exam_due": "computed: later of (DOB + 30 days, 31 wk PMA) — creates NEO-F-15 ScreeningEvent (Confirm 4)"},
+      "hearing_aabr_due": "computed: before discharge if NICU stay > 5 days",
+      "cranial_usg_due": "computed if ga < 32 wk or weight < 1500 g: day 3, 7, 28, 36 wk PMA"
+    },
+    "plan": {
+      "thermal": {"enum": ["incubator", "warmer", "kmc"], "humidity_pct": "integer"},
+      "respiratory": "string",
+      "fluids_ml_kg_day": {"integer": true, "link": "NEO-F-05 (R2)"},
+      "feeds": {"enum": ["npo", "ebm", "formula_with_consent"], "volume_ml_kg_day": "integer", "route": "enum og|paladai|breast"},
+      "lines": {"multi_enum": ["piv", "uvc", "uac", "picc"], "gate": "uvc/uac/picc only where level_IIIA"},
+      "investigations_sent": {"multi_enum": ["culture", "cbc", "crp", "glucose", "gas", "tsb", "electrolytes", "group_dat", "cxr", "other"], "culture_before_antibiotics": "computed from order times (Build 12 KPI)"}
+    },
+    "parents_counselled": {"by": "user_ref", "at": {"datetime": true, "kpi": "≤ 60 min of admitted_at → NEO-A-05 'parents counselled within 1 h'"}, "both_parents": "boolean", "link": "NEO-F-19 (R2)"},
+    "admission_consent_signed": {"boolean": true, "consent_ref": "NEO-F-14"},
+    "mother_expressing_started_at": "datetime", "lactation_counsellor_informed": "boolean",
+    "admitting_doctor": "user_ref", "admitting_doctor_signed_at": "datetime",
+    "consultant_informed_at": "datetime", "consultant_review_at": {"datetime": true, "consultant": "user_ref"}
+  },
+  "outcome_fields_for_register (NEO-L-05)": {
+    "discharged_at": "datetime", "outcome": {"enum": ["discharged_home", "transferred", "died", "lama"]},
+    "length_of_stay_days": "computed", "weight_at_discharge_g": "integer",
+    "morbidities": {"multi_enum": ["ivh_grade_3_4", "pvl", "nec_stage_2_plus", "bpd", "rop_type_1_plus", "sepsis_culture_proven", "clabsi", "vap", "pneumothorax", "none"]},
+    "ventilated": "boolean", "ventilator_days": "decimal", "cpap_days": "decimal", "surfactant": "boolean", "tpn": "boolean", "central_line_days": "decimal",
+    "death": {"at": "datetime", "cause_icd10": "code", "mm_review_ref": "NEO-A-06"},
+    "transfer": {"to": "string", "reason": "string", "ref": "NEO-F-18"}
+  },
+  "automations": [
+    {"id": "N1", "when": "admitted_at set and parents_counselled.at empty after 60 min", "then": "task to admitting doctor; dashboard counter"},
+    {"id": "N2", "when": "vitals.temp_c < 36.0", "then": "red banner + hypothermia pathway prompt (SOP-04)"},
+    {"id": "N3", "when": "rop_eligible computed true", "then": "create ScreeningEvent(type=ROP, due=first_exam_due) — Confirm 4 — and show due date on the admission banner"},
+    {"id": "N4", "when": "bed assigned at a unit with no free bed", "then": "block with 'unit full — transfer pathway' unless admin override"},
+    {"id": "N5", "when": "admission source = transfer_* and level_of_care of this unit = level_II and (ga < 32 or weight < 1500 or ventilated)", "then": "warning: outside unit capability (NEO-A-01) — Garkheda transfer suggested"},
+    {"id": "N6", "when": "admission record not completed within 60 min of admitted_at", "then": "incomplete flag on the unit board (KPI: admission assessment complete ≤ 1 h)"}
+  ],
+  "kpi_feeds": [
+    {"dashboard": "NEO-A-05", "indicator": "Admission temperature 36.5–37.5 °C", "numerator": "admissions with temp in range", "denominator": "admissions", "target": "≥90%"},
+    {"dashboard": "NEO-A-05", "indicator": "Parents counselled within 1 h of admission", "numerator": "counselled_at - admitted_at ≤ 60 min", "denominator": "admissions", "target": "≥95%"},
+    {"dashboard": "NEO-A-05", "indicator": "Admissions per month; by weight band (<1000, 1000–1499, 1500–2499, ≥2500) and GA band", "numerator": "count", "denominator": "—", "target": "report"},
+    {"dashboard": "NEO-A-05", "indicator": "Survival to discharge by weight band", "numerator": "discharged_home", "denominator": "admissions closed in band", "target": "track; n/N"},
+    {"dashboard": "NEO-A-05", "indicator": "Inborn vs outborn; transfers out (decision-to-departure ≤ 2 h)", "numerator": "per NEO-F-18", "denominator": "transfers", "target": "≥90%"},
+    {"dashboard": "NEO-A-05", "indicator": "ROP-eligible babies with first exam on time", "numerator": "ScreeningEvent ROP done ≤ due", "denominator": "ROP-eligible admissions", "target": "100%"}
+  ],
+  "register_view (NEO-L-05)": {"columns": ["serial", "admitted_at", "baby_uhid", "mother_uhid", "inborn_outborn", "ga", "weight_g", "admission_reason_primary", "ventilated", "surfactant", "tpn", "morbidities", "outcome", "discharged_at", "los_days", "weight_at_discharge", "mm_ref"], "rules": "serial per unit per year, no gaps, non-editable; export CSV for NNF / NABH"},
+  "print": {"layout": "A4 portrait as NEO-F-03: header, allergy band, §1 maternal & perinatal history (two columns), §2 admission assessment (three columns), §3 problem list & plan (two columns), sign-offs", "footer": "NEO-F-03 · v1.0"},
+  "acceptance_tests": [
+    "Inborn admission from a delivery record pre-fills mother history, Apgar, resuscitation, cord data without re-typing",
+    "Temp 35.9 → red banner and hypothermia prompt",
+    "30-wk 1100 g baby → ROP due computed (later of DOB+30 d and 31 wk PMA) and visible on the banner; ScreeningEvent exists",
+    "Admission at Waluj (level_II) of a 29-wk baby → capability warning",
+    "Counselled_at blank at 61 min → task; dashboard numerator correct for the month",
+    "NEO-L-05 export for the month lists every admission with serials and no gaps; survival <1500 g shows n/N",
+    "Print matches NEO-F-03 master"
+  ]
+}

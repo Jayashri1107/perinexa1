@@ -38,7 +38,9 @@ async function rowsWithTargets(req, department, month) {
   return rows.map((r) => {
     const def = INDICATORS.find((i) => i.key === r.key);
     const t = byKey.get(r.key);
-    return { ...r, target: t?.target ?? null, targetSetBy: t?.setByName ?? null, status: againstTarget(def, r.value, t?.target ?? null) };
+    // A row's target: the hospital's own, else the target its manual page gives (defaultTarget – NEO-A-05)
+    const target = t ? t.target : (def.defaultTarget ?? null);
+    return { ...r, target, targetSetBy: t?.setByName ?? (def.defaultTarget != null ? 'NEO-A-05' : null), status: againstTarget(def, r.value, target) };
   });
 }
 
