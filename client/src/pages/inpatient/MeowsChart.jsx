@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ManualPrint } from '../../components/print/ManualPage.jsx';
 import { CircleAlert, CircleCheck, TriangleAlert } from 'lucide-react';
 import { api, newRequestId } from '../../api.js';
 import { DateTimeInput } from '../../components/DateTimeInput.jsx';
@@ -59,6 +60,45 @@ function CancelDialog({ entry, onDone, onCancel }) {
         <input id="mw-reason" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
     </FormDialog>
+  );
+}
+
+const BAND_WORDS = { red: 'red', yellow: 'yellow' };
+/** One reading as printed: the value, and its band in words when it is not normal (the printout may be black and white). */
+const printed = (v, band, unit = '') => (v == null ? '–' : `${v}${unit}${BAND_WORDS[band] ? ` (${BAND_WORDS[band]})` : ''}`);
+
+/** The chart as printed on the manual's page (PX-X-03): oldest first, each band in words. */
+export function MeowsPrint({ patient, entries }) {
+  return (
+    <>
+      <h2>{`MEOWS chart · ${patient.fullName} · ${patient.mrn}`}</h2>
+      <table className="mp-table">
+        <thead>
+          <tr>
+            <th scope="col">Time</th>
+            {MEOWS_PARAMETERS.map((p) => (
+              <th key={p.key} scope="col">{`${p.label} (${p.unit})`}</th>
+            ))}
+            <th scope="col">AVPU</th>
+            <th scope="col">Result</th>
+            <th scope="col">By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...entries].reverse().map((e) => (
+            <tr key={e.id}>
+              <td>{formatDateTime(e.at)}</td>
+              {MEOWS_PARAMETERS.map((p) => (
+                <td key={p.key}>{printed(e.values[p.key], e.bands[p.key])}</td>
+              ))}
+              <td>{printed(e.values.avpu, e.bands.avpu)}</td>
+              <td>{e.cancelled ? `Entered in error: ${e.cancelled.reason}` : [LEVEL_LOOK[e.level].word.split(' – ')[0], e.escalatedTo && `told ${e.escalatedTo}`, e.note].filter(Boolean).join(' · ')}</td>
+              <td>{e.byName}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }
 
@@ -173,6 +213,13 @@ export function MeowsChart({ patient, admissionId }) {
         </form>
       )}
       <h3>Observations of this stay</h3>
+      {data?.entries.length > 0 && (
+        <div className="row">
+          <ManualPrint screen="meows" on={String(data.entries[data.entries.length - 1].at).slice(0, 10)} title="MEOWS chart">
+            <MeowsPrint patient={patient} entries={data.entries} />
+          </ManualPrint>
+        </div>
+      )}
       {data && !data.entries.length && <p className="muted">No observations yet.</p>}
       {data?.entries.length > 0 && (
         <div className="an-table-wrap">

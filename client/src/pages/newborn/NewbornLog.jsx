@@ -4,6 +4,7 @@ import { Alert, Field, StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
 import { HIGH_RISK_LABELS, RESULTS_FOR, RESULT_LABELS, itemLook } from './newbornFormat.js';
+import { cchdResult } from './newbornCareRules.js';
 
 // One baby's screening log and follow-up clinic (Clinical Requirements Group A, item 4): her gestation at birth and
 // whether she is high-risk (doctors, RMOs, nurses), the screens with their due dates and results, and the clinic
@@ -18,6 +19,14 @@ function RecordDialog({ patientId, item, kind, onDone, onCancel }) {
   const [note, setNote] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [spo2, setSpo2] = useState({ hand: '', foot: '', attempt: '1' });
+  const cchd = item.key === 'cchd' && spo2.hand !== '' && spo2.foot !== '' ? cchdResult(Number(spo2.hand), Number(spo2.foot), Number(spo2.attempt)) : null;
+  const useCchd = () => {
+    if (!cchd || cchd === 'repeat') return;
+    setStatus('done');
+    setResult(cchd === 'pass' ? 'pass' : 'refer');
+    setNote(`Right hand ${spo2.hand}%, foot ${spo2.foot}%${spo2.attempt === '2' ? ' (repeat)' : ''}`);
+  };
   const submit = async () => {
     setBusy(true);
     try {
@@ -42,6 +51,36 @@ function RecordDialog({ patientId, item, kind, onDone, onCancel }) {
       <Field label={kind === 'visit' ? 'Attended on' : 'On'} id="nb-on" error={fe('on')}>
         <input id="nb-on" type="date" value={on} max={today()} onChange={(e) => setOn(e.target.value)} />
       </Field>
+      {item.key === 'cchd' && (
+        <fieldset className="fieldset">
+          <legend>Pulse oximetry readings (optional helper)</legend>
+          <div className="form-grid">
+            <Field label="Right hand SpO2 %" id="nb-hand">
+              <input id="nb-hand" inputMode="numeric" value={spo2.hand} onChange={(e) => setSpo2({ ...spo2, hand: e.target.value })} />
+            </Field>
+            <Field label="Foot SpO2 %" id="nb-foot">
+              <input id="nb-foot" inputMode="numeric" value={spo2.foot} onChange={(e) => setSpo2({ ...spo2, foot: e.target.value })} />
+            </Field>
+            <Field label="Which reading" id="nb-att">
+              <select id="nb-att" value={spo2.attempt} onChange={(e) => setSpo2({ ...spo2, attempt: e.target.value })}>
+                <option value="1">First</option>
+                <option value="2">Repeat</option>
+              </select>
+            </Field>
+          </div>
+          {cchd && (
+            <p className="row">
+              <StatusPill tone={cchd === 'pass' ? 'stable' : cchd === 'repeat' ? 'watch' : 'high'}>{cchd === 'pass' ? 'Pass' : cchd === 'repeat' ? 'Repeat in one hour' : 'Refer – tell the doctor now'}</StatusPill>
+              {cchd !== 'repeat' && (
+                <button type="button" className="btn btn-link btn-sm" onClick={useCchd}>
+                  Use this result
+                </button>
+              )}
+            </p>
+          )}
+          <p className="hint">AAP 2020: 95% or more in the hand or foot with a difference of 3 or less passes; under 90% in both refers; anything else is repeated once. DRAFT.</p>
+        </fieldset>
+      )}
       {kind === 'screen' && status === 'done' && (
         <Field label="Result" id="nb-result" error={fe('result')}>
           <select id="nb-result" value={result} onChange={(e) => setResult(e.target.value)}>

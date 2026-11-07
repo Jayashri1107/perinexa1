@@ -1,5 +1,9 @@
-import { useRef, useState } from 'react';
+import { cloneElement, useRef, useState } from 'react';
+import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { MeowsChart } from './MeowsChart.jsx';
+import { PainChartSection } from '../anaesthesia/PainChart.jsx';
+import { PphChartSection } from './PphChart.jsx';
+import { DischargeChecklistSection } from './DischargeChecklist.jsx';
 import { ArrowLeft, BedDouble, CircleCheck, CircleMinus, FilePlus2, HeartPulse, Scale, Siren } from 'lucide-react';
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -22,8 +26,32 @@ const NURSING_WORDS = { vitals: 'Vital signs', medicine: 'Medicine given', note:
 // The stay's red flags as one text, to see whether a chart entry changed them
 const flagKeys = (redFlags) => (redFlags?.flags ?? []).map((f) => `${f.key}:${f.detail}`).join('|');
 
+/** One step up or down from what is typed (phones show − and +; mobile.css). Nothing is suggested: an empty box stays empty. */
+export const stepVital = (value, step) => {
+  const n = Number(String(value).trim());
+  if (String(value).trim() === '' || !Number.isFinite(n)) return value;
+  return String(Math.round((n + step) * 10) / 10);
+};
+
+// Field gives its first child the error's aria-* props: here they belong to the box, not to the row around it
+function VitalStepper({ label, value, step, onChange, children, ...aria }) {
+  const empty = String(value).trim() === '' || !Number.isFinite(Number(value));
+  return (
+    <span className="ip-stepper">
+      <button type="button" className="ip-step" aria-label={`${label}: one less`} disabled={empty} onClick={() => onChange(stepVital(value, -step))}>
+        −
+      </button>
+      {cloneElement(children, aria)}
+      <button type="button" className="ip-step" aria-label={`${label}: one more`} disabled={empty} onClick={() => onChange(stepVital(value, step))}>
+        +
+      </button>
+    </span>
+  );
+}
+
 function NursingChart({ patient, page, onSaved }) {
-  const blank = { kind: 'vitals', at: '', bpSystolic: '', bpDiastolic: '', pulse: '', temperatureF: '', spo2: '', drug: '', dose: '', route: '', note: '', escalatedTo: '' };
+  const blank = { kind: 'vitals', at: '', bpSystolic: '', bpDiastolic: '', pulse: '', temperatureF: '', spo2: '', drug: '', dose: '', route: '', note: '', escalatedTo: '', highAlert: false, discarded: '' };
+  const [witness, setWitness] = useState(emptyWitness);
   const [form, setForm] = useState(blank);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
@@ -44,7 +72,7 @@ function NursingChart({ patient, page, onSaved }) {
       kind: form.kind,
       at: fromLocalInput(form.at),
       ...(form.kind === 'vitals' ? { vitals: { bpSystolic: form.bpSystolic, bpDiastolic: form.bpDiastolic, pulse: form.pulse, temperatureF: form.temperatureF, spo2: form.spo2 } } : {}),
-      ...(form.kind === 'medicine' ? { medicine: { drug: form.drug, dose: form.dose, route: form.route } } : {}),
+      ...(form.kind === 'medicine' ? { medicine: { drug: form.drug, dose: form.dose, route: form.route }, highAlert: form.highAlert, discarded: form.discarded, ...(form.highAlert || form.discarded ? { witness } : {}) } : {}),
       ...(form.kind === 'escalation' ? { escalatedTo: form.escalatedTo } : {}),
       note: form.note,
     };
@@ -52,6 +80,7 @@ function NursingChart({ patient, page, onSaved }) {
       const res = await api(`/patients/${patient.id}/admissions/${a.id}/nursing`, { method: 'POST', body });
       requestId.current = newRequestId();
       setForm({ ...blank, kind: form.kind });
+      setWitness(emptyWitness());
       onSaved(res);
     } catch (err) {
       setError(err.message);
@@ -101,13 +130,19 @@ function NursingChart({ patient, page, onSaved }) {
                   <input id="nc-dia" inputMode="numeric" value={form.bpDiastolic} onChange={set('bpDiastolic')} />
                 </Field>
                 <Field label="Pulse" id="nc-pulse" error={fields['vitals.pulse']}>
-                  <input id="nc-pulse" inputMode="numeric" value={form.pulse} onChange={set('pulse')} />
+                  <VitalStepper label="Pulse" value={form.pulse} step={1} onChange={(v) => setForm((f) => ({ ...f, pulse: v }))}>
+                    <input id="nc-pulse" inputMode="numeric" value={form.pulse} onChange={set('pulse')} />
+                  </VitalStepper>
                 </Field>
                 <Field label="Temp (°F)" id="nc-temp" error={fields['vitals.temperatureF']}>
-                  <input id="nc-temp" inputMode="decimal" value={form.temperatureF} onChange={set('temperatureF')} />
+                  <VitalStepper label="Temperature" value={form.temperatureF} step={0.1} onChange={(v) => setForm((f) => ({ ...f, temperatureF: v }))}>
+                    <input id="nc-temp" inputMode="decimal" value={form.temperatureF} onChange={set('temperatureF')} />
+                  </VitalStepper>
                 </Field>
                 <Field label="SpO2 (%)" id="nc-spo2" error={fields['vitals.spo2'] ?? fields.vitals}>
-                  <input id="nc-spo2" inputMode="numeric" value={form.spo2} onChange={set('spo2')} />
+                  <VitalStepper label="SpO2" value={form.spo2} step={1} onChange={(v) => setForm((f) => ({ ...f, spo2: v }))}>
+                    <input id="nc-spo2" inputMode="numeric" value={form.spo2} onChange={set('spo2')} />
+                  </VitalStepper>
                 </Field>
               </>
             )}
@@ -122,8 +157,15 @@ function NursingChart({ patient, page, onSaved }) {
                 <Field label="Route" id="nc-route" error={fields['medicine.route']}>
                   <input id="nc-route" value={form.route} maxLength={40} onChange={set('route')} />
                 </Field>
+                <Field label="Amount discarded (optional)" id="nc-discard" error={fields.discarded}>
+                  <input id="nc-discard" value={form.discarded} maxLength={60} onChange={set('discarded')} />
+                </Field>
+                <label className="check">
+                  <input type="checkbox" checked={form.highAlert} onChange={(e) => setForm({ ...form, highAlert: e.target.checked })} /> High-alert or controlled medicine
+                </label>
               </>
             )}
+            {form.kind === 'medicine' && (form.highAlert || form.discarded) && <WitnessFields id="nc-wit" value={witness} onChange={setWitness} errors={fields} what={form.discarded ? 'An amount discarded' : 'A high-alert medicine'} />}
             {form.kind === 'escalation' && (
               <Field label="Told whom" id="nc-to" error={fields.escalatedTo} hint="The consultant or the doctor on call, e.g. Dr Sample" keepHint>
                 <input id="nc-to" value={form.escalatedTo} maxLength={100} onChange={set('escalatedTo')} />
@@ -155,7 +197,8 @@ function NursingChart({ patient, page, onSaved }) {
               <strong>{NURSING_WORDS[e.kind]}</strong>
               <span>
                 {e.kind === 'vitals' && vitalsLine(e.vitals)}
-                {e.kind === 'medicine' && [e.medicine.drug, e.medicine.dose, e.medicine.route].filter(Boolean).join(' · ')}
+                {e.kind === 'medicine' && [e.medicine.drug, e.medicine.dose, e.medicine.route, e.highAlert && 'high-alert', e.discarded && `discarded ${e.discarded}`].filter(Boolean).join(' · ')}
+                {e.kind === 'medicine' && e.witness && <span className="ca-group-words">{witnessWords(e.witness, formatDateTime)}</span>}
                 {e.kind === 'escalation' && e.escalatedTo && `Told ${e.escalatedTo}`}
                 {e.note && `${['note', 'handover'].includes(e.kind) ? '' : ' – '}${e.note}`}
               </span>
@@ -333,6 +376,12 @@ export function AdmissionPage() {
       </section>
 
       <MeowsChart patient={patient} admissionId={a.id} />
+
+      <PainChartSection patient={patient} admissionId={a.id} />
+
+      <PphChartSection patient={patient} admissionId={a.id} />
+
+      <DischargeChecklistSection patient={patient} admissionId={a.id} />
 
       <NursingChart
         patient={patient}

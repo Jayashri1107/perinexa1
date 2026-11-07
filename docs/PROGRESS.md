@@ -2962,6 +2962,70 @@ owner's or an expert's check: the care-plan templates, the lab's usual ranges, t
 4. Temperature **99.5** with **°F**: it shows "= 37.5 °C". **Entered in error** asks for a reason; the line stays,
    greyed. Reception and the hospital admin have no MEOWS chart.
 
+## How to test the second-person check – Group C (fake data only)
+You need two fake staff logins (for example a nurse and a doctor).
+1. As the nurse: an admitted mother's stay → **Nursing chart** → **Medicine given** → tick **High-alert or controlled
+   medicine** (or fill **Amount discarded**): a **Second person** box appears. Save with your own email there: refused
+   ("must be someone else"). The doctor types their email and password → saved; the entry says "Checked by … (Doctor)".
+2. **Theatre** → a case → sign in, time out → **Sign out**: refused without the second person; with the doctor's
+   sign-in it is confirmed and shows "Counts checked by …".
+3. A baby's **Newborn care** → **At birth** with **Identity band = Yes**: the Second person box; the record shows who
+   checked the band.
+4. Three wrong passwords for the second person lock that email for 2 minutes, as at sign-in. The audit log shows
+   "Second person confirmed a check" and "Second-person check failed" – never a password.
+
+## How to test Group B items 9, 10, 12 and 13 – DRAFT (fake data only)
+1. **Pre-anaesthesia check-up:** a made-up patient → **Anaesthesia** tab (as a doctor or RMO) → ASA, Mallampati, plan,
+   fitness **Fit, with conditions** → **Sign the check-up**: refused until the conditions and "risks explained" are
+   filled. Put her on the **Theatre** list: the case shows "Pre-anaesthesia check-up …: Fit, with conditions · ASA …".
+2. **Pain chart:** her stay page → **Pain chart** → score 8 without "What was done": refused; POSS 3 asks "Whom you
+   told". Saved scores show "8 · Severe pain".
+3. **Newborn care:** a made-up baby → **Newborn care** tab → **At birth** (every step Yes/No) → **New examination**
+   (a part "Not normal" needs what was found) → **Bilirubin** two readings: the chart shows them by hours of age.
+4. **NICU:** same tab → **Admit to the NICU or SNCU** (temperature 35.9: "Cold at admission") → as a doctor **Record how
+   it ended**. **Newborn follow-up → NICU register** lists it with the month's totals.
+5. **CCHD helper:** the baby's **Screening** tab → Record pulse oximetry → right hand 97, foot 96 → "Pass" → **Use this
+   result**.
+
+## How to test the monthly dashboards – Group B item 17, DRAFT (fake data only)
+1. As a doctor (or the quality lead) → **Clinical audit** → **Monthly dashboards**. Choose the month and **Obstetrics**,
+   **Newborn**, **Theatre and anaesthesia** or **Safety**. Each row says what it counts and shows "x of y".
+2. Next to **Caesarean rate** → **Set** → 30 → **Save the target**: "Target met" or "Target missed (at most 30%)".
+3. Choose last month (it is over) → **Sign off** with a comment: "Signed off by …". Add a delivery note dated last
+   month afterwards: **Live numbers now** changes, **As signed off** does not.
+4. As the hospital admin: the dashboards open without the stillbirth and EPDS-positive rows; no Set or Sign off.
+
+## How to test the theatre list and WHO checklist – Group B item 16 (fake data only)
+1. As a doctor, RMO or nurse → **Theatre** in the menu → **Add an operation**: a made-up patient's number, the
+   operation, surgeon, anaesthetist → **Add to the list**. It shows **Planned** with Sign in · Time out · Sign out.
+2. Open it. **Confirm time out** is not possible yet ("Confirm sign in first").
+3. Sign in: answer each item (questions No); answer **Does she have a known allergy?** Yes → **Confirm sign in**:
+   refused until **Which allergy** is written. Then it shows "Confirmed – name (role), time" and the case is **In
+   theatre**; its answers are locked.
+4. Time out, then sign out (counts **Yes**; specimen **Not applicable**) → the case is **Done**. Counts **No** needs a
+   note of what was done.
+5. **Take off the list** (before it is done) asks for a reason.
+
+## How to test the postnatal discharge checklist – Group B item 14, DRAFT (fake data only)
+1. As a **nurse**, her doctor or an RMO: a made-up admitted mother → **IPD** → **Current stay** → **Postnatal discharge
+   checklist** (under the PPH chart).
+2. **Mark complete** straight away: refused, with every part still to do highlighted.
+3. Answer each check **Yes** (anti-D: **Not applicable**), give the next visit's date → **Save draft**: "Draft – saved
+   by …" and "Still to do: 2 parts".
+4. Tick every danger sign (mother and baby) and **She (or her family) said the danger signs back**, choose who →
+   "Everything is filled in" → **Mark complete**: "Complete – name, time"; the answers are locked.
+
+## How to test the PPH chart – Group B item 15, DRAFT (fake data only)
+1. As a **nurse**, her doctor or an RMO: a made-up admitted mother → **IPD** → **Current stay** → **PPH chart** (under
+   the MEOWS chart) → **Start a PPH chart**: when recognised (AM/PM), tick **Tone** → **Start the chart**.
+2. **Blood loss** 700 mL measured → **Add to the chart**; again 450 mL estimated: "Blood loss so far 1150 mL – Major
+   PPH – moderate".
+3. **Step taken** → Oxytocin → **Add to the chart** without a dose: refused ("Write the dose given"). Type a dose → added.
+4. **Observations** pulse 124, BP 92/58, SpO2 96: "Shock index 1.35 · Yellow – watch closely".
+5. **Entered in error** on a line (with a reason): it is struck through and the total drops.
+6. As her doctor or an RMO: **Close the chart** → Bleeding controlled. The chart shows "Closed" and how it ended; a new
+   chart can be started.
+
 ## How to test Clinical Requirements Group A (fake data only)
 Automatic tests: `npm test` from the project root (server files `crs-*.test.js`; website tests next to each page).
 In the browser, use made-up patients only. Restart Perinexa first (the server changed). Add two new staff as the
@@ -4535,3 +4599,19 @@ Or, from the project folder:
 Then open http://localhost:5173. After updating to Feature 7, run the demo script (removed 12 Oct 2026) once so the demo
 pregnancies get a care plan. Logins are listed in `docs/TEST_ACCOUNTS.md` (super admin:
 `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` from `server/.env`; first login asks for a new password). Stop with Ctrl + C. Stop the database with `npm run db:stop`.
+
+## Clinical Requirements Group C – built 6–7 Nov 2026 (DRAFT clinical content, owner's approval before `main`)
+All on master in C:\perinexa1; details and the browser test steps for each are in `docs/CLINICAL_REQUIREMENTS.md`.
+- Second-person check (PX-X-06): theatre counts, identity band at birth, high-alert / controlled medicines and wastage,
+  pharmacy controlled-medicine counts and returns.
+- Alerts that follow the patient (PX-X-13): typed alerts plus high risk, MEOWS trigger and open PPH chart, on every
+  screen of her record and on the theatre case.
+- Maternal death and near-miss review (PX-OBG-30) with sealing and corrections (PX-X-05): Clinical audit → Death and
+  near-miss reviews.
+- Clinical privileges (PX-X-07): Privileges page; warning on the theatre case.
+- Document register (PX-X-02) and printing as the manual's A4 page (PX-X-03): theatre case, MEOWS chart, sealed review.
+- Pregnancy episode (PX-X-15) with GREEN / AMBER / RED tiers shown beside today's risk level, not in use.
+- The baby's record made from the signed delivery note (PX-X-14).
+Waiting for the owner: approval of every DRAFT list; whether a missing privilege should block an operation; whether the
+tiers replace today's risk rules; when other records should seal; the manual's codes for each form; the antenatal
+record (OBG-F-01), standing prescriptions and labour admission form; labour epidural and tubal ligation consents.

@@ -331,7 +331,7 @@ export async function writeOff(req, batch, qty, reason) {
 
 /** Sets a batch to the counted quantity, with a reason (and a witness for Schedule X and narcotic medicines). */
 export async function countStock(req, batch, counted, reason, witness, medicine) {
-  if (CONTROLLED.includes(medicine.schedule) && (witness ?? '').trim().length < 2) throw bad(`${medicine.name} is a controlled medicine: write the name of the staff member who checked the count.`, { witness: 'Write the witness’s name.' });
+  if (CONTROLLED.includes(medicine.schedule) && (witness ?? '').trim().length < 2) throw bad(`${medicine.name} is a controlled medicine: a second person who checked the count signs in for it.`, { 'witness.email': 'A second person (pharmacist, doctor, RMO or nurse) types their email and password.' });
   const diff = counted - batch.qtyLeft;
   if (!diff) throw bad('The count is the same as the stock shown: nothing to change.');
   return moveStock(req, batch, diff, { kind: 'count', reason, witness: witness ?? '' });

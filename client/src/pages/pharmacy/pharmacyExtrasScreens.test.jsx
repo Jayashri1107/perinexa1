@@ -286,7 +286,7 @@ describe('returns to a supplier', () => {
     expect(text(form)).toContain('For a return entered by mistake');
     expect(text(form)).toContain('Its 40 units go back on the batch they left, and the return no longer counts in the reports.');
     expect(text(form)).toContain('Why is it cancelled');
-    expect(text(form)).toContain('Witness (staff who saw it put back in stock)');
+    expect(text(form)).toContain('Their password');
     expect(form).toMatch(/<button type="button" class="btn btn-danger" disabled="">Cancel the return<\/button>/); // waits for the reason
     expect(text(form)).toContain('Keep it');
     expect(text(renderToStaticMarkup(<CancelReturnForm ret={{ ...RET, controlled: false }} onClose={() => {}} onDone={() => {}} />))).not.toContain('Witness');

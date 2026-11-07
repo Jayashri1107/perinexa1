@@ -507,3 +507,23 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 /* The AM / PM date-and-time picker needs room for its four parts: two columns of a form grid */
 .form-grid > .field:has(> .datetime-input) { grid-column: span 2; }
 @media screen and (max-width: 720px) { .form-grid > .field:has(> .datetime-input) { grid-column: auto; } }
+/* PPH chart (Group B item 15): each chart of a stay set apart */
+.pph-chart { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.pph-sum { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.pph-sum .pill { align-self: flex-start; white-space: normal; }
+/* Postnatal discharge checklist (Group B item 14) */
+.dc-items { display: flex; flex-direction: column; }
+.dc-item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.dc-item:last-child { border-bottom: 0; }
+.dc-item-label { flex: 1 1 20em; }
+.dc-item .field-error { flex-basis: 100%; }
+.dc-signs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-4); }
+.inline-icon { width: 1em; height: 1em; vertical-align: -0.15em; }
+
+/* Bilirubin chart (Group B item 12) */
+.bili-chart { width: 100%; max-width: 560px; height: auto; }
+.bili-axis { stroke: var(--border); stroke-width: 1; }
+.bili-label { font-size: 11px; fill: var(--slate-600); }
+.bili-line { fill: none; stroke: var(--indigo-700); stroke-width: 2; }
+.bili-dot { fill: var(--indigo-700); }
+.bili-dot-skin { fill: var(--surface); stroke: var(--indigo-700); stroke-width: 2; }

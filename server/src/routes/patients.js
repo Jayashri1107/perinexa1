@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { activeAlerts, autoAlerts } from './patientAlerts.js';
 import { billRegistered } from '../billing/hooks.js';
 import { z } from 'zod';
 import { Appointment } from '../models/Appointment.js';
@@ -952,6 +953,8 @@ patientsRouter.get('/:id', async (req, res) => {
     ...(redFlags === undefined ? {} : { redFlags }),
   };
   const projected = projectPatient(full, access);
+  // Alerts that follow the patient (PX-X-13): with the medical details, for the safety band. Covered by PATIENT_VIEWED.
+  if (access.view.has('medical')) projected.alerts = [...(await autoAlerts(req.tenantId, patient, access)), ...(await activeAlerts(req.tenantId, patient._id))];
   // Today's visit (the header's "Open today's visit"): only for those who may see visits. Covered by PATIENT_VIEWED.
   if (projected.access.canViewVisits) {
     const todays = await Visit.findOne({ tenantId: req.tenantId, patientId: patient._id, visitOn: hospitalToday(req.now), status: 'active' }, { _id: 1 })

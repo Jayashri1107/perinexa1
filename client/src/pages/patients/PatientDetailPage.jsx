@@ -408,8 +408,14 @@ export function PatientDetailPage() {
     ...(referralsTab ? [{ label: 'Referrals', to: `${base}/referrals`, end: true }] : []),
     // Clinical Requirements Group A: her specimens sent for histopathology (doctors, RMOs and nurses)
     ...(a.canViewVisits && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Specimens', to: `${base}/specimens`, end: true }] : []),
+    // Pre-anaesthesia check-ups (Group B item 9): doctors, RMOs and nurses; not on a baby's record
+    ...(a.canViewVisits && patient.careType !== 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Anaesthesia', to: `${base}/anaesthesia`, end: true }] : []),
+    // Her pregnancies, each with its visits, stays and delivery, and the DRAFT tier (Group C, PX-X-15)
+    ...(a.canViewVisits && ['antenatal', 'postnatal', 'abortion'].includes(patient.careType) ? [{ label: 'Pregnancies', to: `${base}/pregnancies`, end: true }] : []),
     // EPDS and VTE risk scores in pregnancy and after delivery (Group A item 5)
     ...(a.canViewVisits && ['antenatal', 'postnatal', 'abortion'].includes(patient.careType) && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Scores', to: `${base}/scores`, end: true }] : []),
+    // A baby's care at birth and on the ward, bilirubin and NICU / SNCU admissions (Group B items 12 and 13)
+    ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Newborn care', to: `${base}/newborn-care`, end: true }] : []),
     // A baby's screening log and follow-up clinic (Group A item 4)
     ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Screening', to: `${base}/screening`, end: true }] : []),
   ];
@@ -523,7 +529,7 @@ export function PatientDetailPage() {
         <DuplicateBanner patient={patient} onUndo={() => setUndoingDuplicate(true)} />
         <ClosedBanner patient={patient} onUndo={() => setUndoingDeath(true)} />
         <EarlierRecordsNote patient={patient} />
-        <SafetyStrip patient={patient} />
+        <SafetyStrip patient={patient} canAlerts={a.canEditClinical || a.canRecordVitals} onAlertsChanged={reload} />
         <InformationDue patient={patient} />
         {location.pathname === base && <PatientPlaces places={places} />}
         <Alert type="success" onClose={() => setFlash(null)}>
