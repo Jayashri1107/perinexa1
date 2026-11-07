@@ -580,3 +580,20 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .ca-cs .pill { white-space: normal; height: auto; }
 .nbf-register .ca-table .pill { white-space: normal; height: auto; }
 .nbf-register .ca-table th, .nbf-register .ca-table td { padding-left: var(--space-2); padding-right: var(--space-2); }
+
+/* Clinical privileges (Group C, PX-X-07): staff as compact cards in a grid, each privilege a row */
+.pf-content.pv-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.pf-content.pv-page > * { margin-top: 0; margin-bottom: 0; }
+.pv-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.pv-toolbar h2 { margin: 0; }
+.pv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); align-items: start; }
+.pv-grid > .card { margin: 0; }
+.pv-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-3); border-bottom: 1px solid var(--border); }
+.pv-person { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv-empty { margin: var(--space-3) 0 0; }
+.pv-rows { margin: 0; }
+.pv-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); align-items: start; padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.pv-row:first-child { border-top: 0; }
+.pv-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); }
+@media screen and (max-width: 520px) { .pv-grid { grid-template-columns: minmax(0, 1fr); } }

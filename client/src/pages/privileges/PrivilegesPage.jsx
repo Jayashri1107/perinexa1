@@ -114,46 +114,66 @@ export function PrivilegesPage() {
           )
         }
       />
-      <div className="pf-content stack">
+      <div className="pf-content pv-page">
         <Alert type="error">{error}</Alert>
-        {data && <p className="hint">{`${data.rules.source}. The legal registrations (MTP Act, PC-PNDT, ART Act) remain the hospital's own duty.`}</p>}
         {data && (
-          <label className="check">
-            <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} /> Show ended and lapsed privileges
-          </label>
+          <div className="pv-toolbar">
+            <h2>{`Staff · ${data.staff.length}`}</h2>
+            <label className="check">
+              <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} /> Show ended and lapsed privileges
+            </label>
+          </div>
         )}
-        {data?.staff.map((s) => {
-          const list = s.privileges.filter((p) => showEnded || p.state === 'in_force');
-          return (
-            <section key={s.id} className="card">
-              <h2>{`${s.name} · ${s.roles.map((r) => ROLE_WORDS[r]).join(', ')}`}</h2>
-              {list.length === 0 && <p className="muted">No privileges recorded.</p>}
-              <ul className="pa-list">
-                {list.map((p) => {
-                  const look = PRIVILEGE_LOOK[p.state];
-                  return (
-                    <li key={p.id}>
-                      <StatusPill tone={look.tone} icon={look.icon}>
-                        {look.word}
-                      </StatusPill>
-                      <strong>{p.label}</strong>
-                      <span>
-                        {[p.validUntil ? `until ${formatDate(p.validUntil)}` : 'no end date', p.note, `granted by ${p.byName}, ${formatDateTime(p.at)}`, p.ended && `ended by ${p.ended.byName}, ${formatDateTime(p.ended.at)}: ${p.ended.reason}`]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                      {keep && p.state !== 'ended' && (
-                        <button type="button" className="btn btn-link" onClick={() => setEnding(p)}>
-                          End
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          );
-        })}
+        {data && data.staff.length === 0 && <p className="muted">No doctors, RMOs or nurses in this hospital yet.</p>}
+        <div className="pv-grid">
+          {data?.staff.map((s) => {
+            const list = s.privileges.filter((p) => showEnded || p.state === 'in_force');
+            const inForce = s.privileges.filter((p) => p.state === 'in_force').length;
+            return (
+              <section key={s.id} className="card pv-card" aria-label={s.name}>
+                <div className="pv-card-head">
+                  <span className="pv-person">
+                    <strong>{s.name}</strong>
+                    <span className="hint">{s.roles.map((r) => ROLE_WORDS[r]).join(', ')}</span>
+                  </span>
+                  <StatusPill tone={inForce ? 'stable' : 'neutral'} icon={inForce ? BadgeCheck : CircleSlash}>
+                    {inForce ? `${inForce} in force` : 'None in force'}
+                  </StatusPill>
+                </div>
+                {list.length === 0 ? (
+                  <p className="muted pv-empty">No privileges recorded.</p>
+                ) : (
+                  <ul className="plain-list pv-rows">
+                    {list.map((p) => {
+                      const look = PRIVILEGE_LOOK[p.state];
+                      return (
+                        <li key={p.id} className="pv-row">
+                          <span className="pv-row-text">
+                            <strong>{p.label}</strong>
+                            <span className="hint">{[p.validUntil ? `Until ${formatDate(p.validUntil)}` : 'No end date', p.note].filter(Boolean).join(' · ')}</span>
+                            <span className="hint">{`Granted by ${p.byName}, ${formatDateTime(p.at)}`}</span>
+                            {p.ended && <span className="hint">{`Ended by ${p.ended.byName}, ${formatDateTime(p.ended.at)}: ${p.ended.reason}`}</span>}
+                          </span>
+                          <span className="pv-row-side">
+                            <StatusPill tone={look.tone} icon={look.icon}>
+                              {look.word}
+                            </StatusPill>
+                            {keep && p.state !== 'ended' && (
+                              <button type="button" className="btn btn-link btn-sm" onClick={() => setEnding(p)}>
+                                End
+                              </button>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+            );
+          })}
+        </div>
+        {data && <p className="muted small">{`${data.rules.source}. The legal registrations (MTP Act, PC-PNDT, ART Act) remain the hospital's own duty.`}</p>}
       </div>
       {granting && <GrantDialog staff={data.staff} rules={data.rules} onDone={done} onCancel={() => setGranting(false)} />}
       {ending && <EndDialog privilege={ending} onDone={done} onCancel={() => setEnding(null)} />}

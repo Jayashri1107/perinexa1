@@ -20,9 +20,10 @@ const text = (el) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>).rep
 describe('clinical privileges', () => {
   it('lists each member of staff with the privileges in force', () => {
     const out = text(<PrivilegesPage />);
-    expect(out).toContain('Sample Doctor · Doctor');
-    expect(out).toMatch(/In force Caesarean section until .*2027/);
-    expect(out).toContain('Sample Nurse · Nurse No privileges recorded.');
+    expect(out).toContain('Staff · 2');
+    expect(out).toContain('Sample Doctor Doctor 1 in force');
+    expect(out).toMatch(/Caesarean section Until .*2027.*In force End/);
+    expect(out).toContain('Sample Nurse Nurse None in force No privileges recorded.');
     expect(out).toContain('Grant a privilege');
     expect(out).toContain('DRAFT – sample list');
     expect(out).not.toMatch(/!/);
