@@ -30,10 +30,17 @@ import {
   fertilityCycleBlock,
   fertilityHistoryRows,
   fertilityPlanBlock,
+  followUpRows,
+  followUpTable,
+  IMAGING_NOTE,
+  imagingBlock,
   obstetricRows,
   planBlock,
   pregnancyRows,
+  referralBlock,
   riskRows,
+  scoreBlock,
+  specimenBlock,
   stayBlock,
   visitBlock,
   workRows,
@@ -155,6 +162,11 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
   const fertility = fertilityHistoryRows(copy);
   const fertilityPlans = copy.fertilityPlans ?? [];
   const fertilityCycles = copy.fertilityCycles ?? [];
+  const imaging = copy.imaging ?? [];
+  const referrals = copy.referrals ?? [];
+  const specimens = copy.specimens ?? [];
+  const scores = copy.scores ?? [];
+  const scoreCare = ['antenatal', 'postnatal', 'abortion'].includes(p.careType);
   return (
     <PrintDocument
       className="rc-doc"
@@ -302,9 +314,55 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
           ))}
       </Part>
 
+      {(!baby || specimens.length > 0) && (
+        <Part title="Specimens and histopathology" empty={!specimens.length}>
+          {specimens.map(specimenBlock).map((s) => (
+            <Entry key={s.key} title={s.title} status={s.status} error={s.error}>
+              <Rows rows={s.rows} />
+            </Entry>
+          ))}
+        </Part>
+      )}
+
       <Part title="Scans and procedures done" empty={!work.length}>
         <Table head={['Day', 'Kind', 'What was done', 'Recorded by']} rows={work} oneLine={[1, 3]} />
       </Part>
+
+      {(!baby || imaging.length > 0) && (
+        <Part title="Scan reports" empty={!imaging.length}>
+          {imaging.length > 0 && <p className="pdoc-note">{IMAGING_NOTE}</p>}
+          {imaging.map(imagingBlock).map((s) => (
+            <Entry key={s.key} title={s.title} status={s.status} error={s.error}>
+              <Rows rows={s.rows} />
+              {s.amendments.map((a) => (
+                <div key={a.key}>
+                  <p className="rc-sub">{a.title}</p>
+                  <Rows rows={a.rows} />
+                </div>
+              ))}
+            </Entry>
+          ))}
+        </Part>
+      )}
+
+      {(scoreCare || scores.length > 0) && (
+        <Part title="Scores (EPDS and VTE risk)" empty={!scores.length}>
+          {scores.length > 0 && <p className="pdoc-note">The rules that turn the scores into advice are DRAFT until the hospital’s leads check them. The treating doctor decides.</p>}
+          {scores.map(scoreBlock).map((s) => (
+            <Entry key={s.key} title={s.title} status={s.status} error={s.error}>
+              <Rows rows={s.rows} />
+            </Entry>
+          ))}
+        </Part>
+      )}
+
+      {copy.followUp && (
+        <Part title="Screening and follow-up">
+          <p className="pdoc-note">The due days are worked out from the birth, the weeks at birth and the birth weight, by a DRAFT schedule (NNF / RBSK) for the Lead Neonatologist to confirm.</p>
+          <Rows rows={followUpRows(copy.followUp)} />
+          <Table head={['Screen or visit', 'Due', 'State', 'Result', 'Done']} rows={followUpTable(copy.followUp)} oneLine={[2, 3]} />
+        </Part>
+      )}
 
       <Part title="Stays in hospital" empty={!copy.stays.length}>
         {copy.stays.map((s) => {
@@ -341,6 +399,41 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
       <Part title="Appointments" empty={!appointments.length}>
         <Table head={['Day', 'Time', 'Visit', 'Doctor', 'Status']} rows={appointments} oneLine={[1, 3]} />
       </Part>
+
+      {(!baby || referrals.length > 0) && (
+        <Part title="Referrals from other doctors" empty={!referrals.length}>
+          {referrals
+            .map((r) => referralBlock(r, hospital))
+            .map((r) => (
+              <Entry key={r.key} title={r.title} status={r.status} error={r.error}>
+                <Rows rows={r.rows} />
+                {r.note && (
+                  <>
+                    <p className="rc-sub">
+                      {r.note.title}
+                      <span className="rc-status"> · {r.note.status}</span>
+                    </p>
+                    {r.note.error && <p className="pdoc-note">{r.note.error}</p>}
+                    <Rows rows={r.note.rows} />
+                    <Additions items={r.note.additions} />
+                  </>
+                )}
+                {r.messages.length > 0 && (
+                  <>
+                    <p className="rc-sub">Messages sent to the referring doctor</p>
+                    <Table head={['Marked sent', 'What was sent', 'By']} rows={r.messages} oneLine={[2]} />
+                  </>
+                )}
+                {r.files.length > 0 && (
+                  <>
+                    <p className="rc-sub">Files – listed by name only; the files are not in this copy</p>
+                    <Table head={['Added', 'Kind', 'File name', 'By']} rows={r.files} oneLine={[3]} />
+                  </>
+                )}
+              </Entry>
+            ))}
+        </Part>
+      )}
 
       <Part title="Not in this copy">
         <ul className="pdoc-list rc-left-out">

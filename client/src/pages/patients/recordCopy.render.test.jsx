@@ -35,10 +35,14 @@ describe('the copy of the whole record on paper', () => {
       'Visits',
       'Care plans',
       'Lab orders and results',
+      'Specimens and histopathology',
       'Scans and procedures done',
+      'Scan reports',
+      'Scores (EPDS and VTE risk)',
       'Stays in hospital',
       'Consent forms and information given',
       'Appointments',
+      'Referrals from other doctors',
       'Not in this copy',
     ]);
     expect(words).toContain('Copy of the whole record');

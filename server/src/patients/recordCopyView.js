@@ -17,7 +17,10 @@
 //  - lab values that were saved but not reported yet;
 //  - consent forms and information given: titles and dates only.
 
+import { VTE_FACTORS } from '../clinical/scores.js';
+import { studyByKey } from '../imaging/templates.js';
 import { testByKey } from '../lab/labTests.js';
+import { NOTE_FIELDS, SENT_FIELDS } from '../models/Referral.js';
 
 /** Who and when (never an id). */
 const stamp = (x) => (x ? { byName: x.byName ?? null, at: x.at ?? null } : null);
@@ -336,6 +339,186 @@ export const noteForCopy = (n) => ({ id: String(n._id ?? n.id), at: n.createdAt 
 export function planForCopy(v) {
   const { log: _log, recentChanges: _recent, canEdit: _e, canChangePlan: _c, canClose: _x, canReopen: _r, readOnly: _o, items, ...plan } = v;
   return { ...plan, items: list(items).map(({ history: _h, rev: _rev, ...it }) => it) };
+}
+
+// ---------- Scan reports (USG and radiology – routes/imaging.js) ----------
+
+/** The signer's name and professional details as printed under a signed report (never an id). */
+const signerStamp = (s, user) =>
+  s ? { byName: s.byName ?? null, at: s.at ?? null, qualification: user?.professional?.qualification ?? '', registrationNumber: user?.professional?.registrationNumber ?? '', council: user?.professional?.council ?? '' } : null;
+
+/** A report's values as label rows, in the template's order – only the fields that were filled in. */
+function reportForCopy(report, study) {
+  if (!report) return null;
+  const values = report.values ?? {};
+  const fields = study?.fields ?? [];
+  const known = new Set(fields.map((f) => f.key));
+  const rows = [
+    ...fields.filter((f) => values[f.key] !== undefined && values[f.key] !== null && String(values[f.key]).trim() !== '').map((f) => ({ name: f.name, unit: f.unit ?? '', value: String(values[f.key]) })),
+    // (a value whose field is no longer in the template is still copied, under its key)
+    ...Object.keys(values)
+      .filter((k) => !known.has(k) && values[k] !== null && String(values[k]).trim() !== '')
+      .map((k) => ({ name: k, unit: '', value: String(values[k]) })),
+  ];
+  return { values: rows, findings: report.findings ?? '', impression: report.impression ?? '' };
+}
+
+const IMAGING_OPEN = ['requested', 'ordered', 'scheduled', 'done'];
+
+/**
+ * One scan (ImagingOrder document). A signed report whole – the study, why it was asked for, every measurement with
+ * its name and unit, findings, impression, who signed it with qualification and registration, changes made after
+ * signing (why, by whom, and the report as it was), whether the measurements came from the ultrasound machine, and
+ * how many pictures print with it (the pictures themselves are not in the copy). A scan not reported and signed yet
+ * is listed only (a report is not part of the record until signed). A cancelled scan only as "cancelled", with who
+ * and when – no study, content or reason (it may have been ordered on the wrong patient).
+ * `signer`: the signing doctor's user (name and professional details), or null.
+ */
+export function imagingForCopy(o, signer = null) {
+  const id = String(o._id ?? o.id);
+  if (o.status === 'cancelled') return { id, status: 'cancelled', at: o.createdAt ?? null, cancelled: stamp(o.cancelled) };
+  const study = studyByKey.get(o.study);
+  const base = { id, status: o.status, studyName: study?.name ?? o.study, modality: study?.modality ?? 'other', urgent: Boolean(o.urgent), at: o.done?.at ?? o.scheduledFor ?? o.createdAt ?? null, ordered: stamp(o.ordered) };
+  if (IMAGING_OPEN.includes(o.status)) return { ...base, scheduledFor: o.scheduledFor ?? null, done: stamp(o.done) };
+  const m = o.report?.machine;
+  return {
+    ...base,
+    indication: o.indication ?? '',
+    done: stamp(o.done),
+    report: reportForCopy(o.report, study),
+    fromMachine: m ? { machine: m.machine ?? '', studyAt: m.studyAt ?? null } : null,
+    pictures: list(o.images).filter((i) => !i.removed && i.inPrint !== false).length,
+    signed: signerStamp(o.signed, signer),
+    amendments: list(o.amendments).map((a) => ({ byName: a.byName ?? null, at: a.at ?? null, reason: a.reason ?? '', report: reportForCopy(a.report, study) })),
+  };
+}
+
+// ---------- Referrals from other doctors (referrals/referralService.js) ----------
+
+/**
+ * One referral, from fullView as her doctor sees it, with her answers on sharing (`history`). A referral cancelled as
+ * logged by mistake is listed only. Never the referral clocks or the weekly review notes (about the hospital's own
+ * work), the referring doctor's phone, the consultant's direct line, file or staff ids. The consultant note's words
+ * only once it is signed; files by name and date only.
+ */
+export function referralForCopy(v, history = []) {
+  const base = { id: v.id, number: v.number, receivedAt: v.receivedAt ?? null };
+  if (v.status === 'cancelled') return { ...base, status: 'cancelled', cancelled: stamp(v.cancelled) };
+  const fileName = new Map(list(v.releases).map((x) => [x.id, x.fileName ?? '']));
+  const n = v.note;
+  const note = !n
+    ? null
+    : n.status === 'signed'
+      ? {
+          status: 'signed',
+          ...Object.fromEntries(Object.keys(NOTE_FIELDS).map((k) => [k, n[k] ?? ''])),
+          signed: n.signed ? { byName: n.signed.byName ?? null, at: n.signed.at ?? null, qualification: n.signed.qualification ?? '', registrationNumber: n.signed.registrationNumber ?? '', council: n.signed.council ?? '' } : null,
+          additions: list(n.additions).map((x) => ({ text: x.text, byName: x.byName ?? null, at: x.at ?? null })),
+        }
+      : { status: 'draft', saved: stamp(n.saved) };
+  return {
+    ...base,
+    status: v.status,
+    via: v.via ?? null,
+    urgency: v.urgency ?? null,
+    centreName: v.centreName ?? '',
+    referringDoctor: { name: v.referringDoctor?.name ?? '', clinic: v.referringDoctor?.clinic ?? '' },
+    consultantName: v.consultant?.name ?? null,
+    reasons: list(v.reasons).map((x) => x.label ?? x.key),
+    otherReason: v.otherReason ?? '',
+    question: v.question ?? '',
+    sent: Object.fromEntries(SENT_FIELDS.map((k) => [k, v.sent?.[k] ?? ''])),
+    note,
+    sharing: list(history).map((h) => ({ answer: h.answer, byName: h.byName ?? null, at: h.at ?? null })),
+    messages: list(v.messages).map((m) => ({ what: m.what, fileName: m.releaseFileId ? (fileName.get(m.releaseFileId) ?? null) : null, byName: m.byName ?? null, at: m.at ?? null })),
+    attachments: list(v.attachments).map((a) => ({ fileName: a.fileName ?? '', byName: a.byName ?? null, at: a.at ?? null })),
+    releases: list(v.releases).map((x) => ({ kind: x.kind, fileName: x.fileName ?? '', byName: x.byName ?? null, at: x.at ?? null, superseded: Boolean(x.superseded) })),
+    created: stamp(v.created),
+    closed: v.closed ? { byName: v.closed.byName ?? null, at: v.closed.at ?? null, reason: v.closed.reason ?? '' } : null,
+  };
+}
+
+// ---------- Specimens and histopathology (routes/specimens.js) ----------
+
+/**
+ * One specimen (Specimen document): what was sent, from which procedure, when, to which laboratory, the report as
+ * entered, the doctor's review and when she was told. The report file is counted only. One cancelled as logged by
+ * mistake is listed with who and when – not what was sent or why.
+ * `overdueDays`: days since it was sent when it is overdue (sent, no report, past the limit), else null.
+ */
+export function specimenForCopy(s, overdueDays = null) {
+  const base = { id: String(s._id ?? s.id), serial: s.serial, sentAt: s.sentAt ?? null };
+  if (s.status === 'cancelled') return { ...base, status: 'cancelled', cancelled: stamp(s.cancelled) };
+  return {
+    ...base,
+    status: s.status,
+    kind: s.kind,
+    specimen: s.specimen ?? '',
+    procedure: s.procedure ?? '',
+    collectedAt: s.collectedAt ?? null,
+    lab: s.lab ?? '',
+    labReference: s.labReference ?? '',
+    overdueDays,
+    loggedByName: s.createdByName ?? null,
+    report: s.report ? { receivedAt: s.report.receivedAt ?? null, summary: s.report.summary ?? '', byName: s.report.byName ?? null, at: s.report.at ?? null, file: Boolean(s.report.file?.fileId) } : null,
+    review: s.review ? { note: s.review.note ?? '', informedAt: s.review.informedAt ?? null, byName: s.review.byName ?? null, at: s.review.at ?? null } : null,
+  };
+}
+
+// ---------- Scores: EPDS and VTE risk (routes/clinicalScores.js) ----------
+
+const vteLabel = new Map(VTE_FACTORS.map((f) => [f.key, f.label]));
+
+/**
+ * One score (ClinicalScore document) as kept on the day: the ten answers' scores (never the questions – their wording
+ * is the Royal College of Psychiatrists' copyright), or the VTE risk factors in words; the total, the band, the advice
+ * and its source. One marked "entered in error" is listed with who and when only.
+ */
+export function scoreForCopy(s) {
+  const base = { id: String(s._id ?? s.id), kind: s.kind, on: s.on ?? null };
+  if (s.cancelled) return { ...base, enteredInError: stamp(s.cancelled) };
+  return {
+    ...base,
+    phase: s.phase,
+    ...(s.kind === 'epds' ? { epdsScores: list(s.epdsScores), selfHarm: Boolean(s.selfHarm) } : { vteFactors: list(s.vteFactors).map((k) => vteLabel.get(k) ?? k), antenatalLmwh: Boolean(s.antenatalLmwh) }),
+    total: s.total,
+    band: s.band,
+    advice: list(s.advice),
+    source: s.source ?? '',
+    note: s.note ?? '',
+    byName: s.byName ?? null,
+    at: s.createdAt ?? null,
+  };
+}
+
+// ---------- A baby's screening and follow-up (routes/newbornFollowUp.js) ----------
+
+const followItem = (x) => ({
+  key: x.key,
+  label: x.label,
+  state: x.state,
+  ...(x.dueOn ? { dueOn: x.dueOn } : { dueFrom: x.dueFrom ?? null, dueBy: x.dueBy ?? null }),
+  record: x.record ? { status: x.record.status, on: x.record.on ?? null, result: x.record.result ?? '', note: x.record.note ?? '', byName: x.record.byName ?? null, at: x.record.at ?? null } : null,
+});
+
+/**
+ * The baby's screening log and high-risk follow-up: the gestation at birth, whether she is followed as high-risk and
+ * why, and each screen and clinic visit with its due days (worked out, never stored) and what was done – the result,
+ * the note, who recorded it. `items`: itemsFor(baby, doc, now); `doc`: the NewbornFollowUp document or null (nobody
+ * opened the log yet – the schedule is still shown from the birth).
+ */
+export function followUpForCopy(doc, items) {
+  return {
+    started: Boolean(doc),
+    gestationWeeks: doc?.gestationWeeks ?? null,
+    gestationDays: doc?.gestationDays ?? 0,
+    highRisk: Boolean(doc?.highRisk),
+    highRiskReasons: list(doc?.highRiskReasons),
+    needsRop: Boolean(items.rop),
+    screens: list(items.screens).map(followItem),
+    visits: list(items.visits).map(followItem),
+    updatedByName: doc?.updatedByName ?? null,
+  };
 }
 
 /**
