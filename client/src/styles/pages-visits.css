@@ -212,6 +212,9 @@
 .ip-chart h2 { display: flex; align-items: center; gap: var(--space-2); }
 .ip-chart-form { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
 .ip-chart-form .btn { align-self: flex-start; }
+/* A vital's − and + (phones only, mobile.css): on larger screens only its box shows */
+.ip-stepper { display: contents; }
+.ip-step { display: none; }
 .ip-chart-list { list-style: none; margin: 0; padding: 0; }
 .ip-cancel { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .ip-place { align-items: flex-end; }

@@ -1204,6 +1204,16 @@ html.in-app { --safe-top: 0px; }
   .ip-chart-grid > .field { min-width: 0; margin: 0; }
   .ip-chart-grid > .field:has(#nc-note, #nc-at, #nc-drug, #nc-to) { grid-column: 1 / -1; }
   .ip-chart-grid input { width: 100%; min-width: 0; }
+  /* Pulse, temperature and SpO2: a row each, − and + beside a large box (6 Nov 2026, the app design) */
+  .ip-chart-grid > .field:has(.ip-stepper) { grid-column: 1 / -1; }
+  .ip-stepper { display: flex; align-items: center; gap: var(--space-2); }
+  .ip-stepper > input { flex: 1 1 auto; min-height: 48px; text-align: center; font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ip-step {
+    display: grid; place-items: center; flex: none; width: 48px; height: 48px; padding: 0; border: 0; border-radius: var(--radius-md);
+    background: var(--indigo-100); color: var(--indigo-700); font-family: var(--font-sans); font-size: var(--fs-h1); line-height: 1; font-weight: 600; cursor: pointer;
+  }
+  .ip-step:disabled { opacity: 0.4; cursor: default; }
+  .ip-step:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   /* Save at the foot, in place of the bottom bar */
   .pf-has-tabbar:has(.ip-chart-form) .pf-tabbar { display: none; }
   .pf-main:has(.ip-chart-form) .pf-content { padding-bottom: 92px; }

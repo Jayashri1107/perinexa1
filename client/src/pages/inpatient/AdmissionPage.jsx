@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { cloneElement, useRef, useState } from 'react';
 import { MeowsChart } from './MeowsChart.jsx';
 import { PainChartSection } from '../anaesthesia/PainChart.jsx';
 import { PphChartSection } from './PphChart.jsx';
@@ -24,6 +24,29 @@ import { DOCTOR_CONFIRMS, KIND_LABELS, ONE_PER_STAY, docStatusLook, docTime, fro
 const NURSING_WORDS = { vitals: 'Vital signs', medicine: 'Medicine given', note: 'Note', handover: 'Handover note', escalation: 'Told the consultant' };
 // The stay's red flags as one text, to see whether a chart entry changed them
 const flagKeys = (redFlags) => (redFlags?.flags ?? []).map((f) => `${f.key}:${f.detail}`).join('|');
+
+/** One step up or down from what is typed (phones show − and +; mobile.css). Nothing is suggested: an empty box stays empty. */
+export const stepVital = (value, step) => {
+  const n = Number(String(value).trim());
+  if (String(value).trim() === '' || !Number.isFinite(n)) return value;
+  return String(Math.round((n + step) * 10) / 10);
+};
+
+// Field gives its first child the error's aria-* props: here they belong to the box, not to the row around it
+function VitalStepper({ label, value, step, onChange, children, ...aria }) {
+  const empty = String(value).trim() === '' || !Number.isFinite(Number(value));
+  return (
+    <span className="ip-stepper">
+      <button type="button" className="ip-step" aria-label={`${label}: one less`} disabled={empty} onClick={() => onChange(stepVital(value, -step))}>
+        −
+      </button>
+      {cloneElement(children, aria)}
+      <button type="button" className="ip-step" aria-label={`${label}: one more`} disabled={empty} onClick={() => onChange(stepVital(value, step))}>
+        +
+      </button>
+    </span>
+  );
+}
 
 function NursingChart({ patient, page, onSaved }) {
   const blank = { kind: 'vitals', at: '', bpSystolic: '', bpDiastolic: '', pulse: '', temperatureF: '', spo2: '', drug: '', dose: '', route: '', note: '', escalatedTo: '' };
@@ -104,13 +127,19 @@ function NursingChart({ patient, page, onSaved }) {
                   <input id="nc-dia" inputMode="numeric" value={form.bpDiastolic} onChange={set('bpDiastolic')} />
                 </Field>
                 <Field label="Pulse" id="nc-pulse" error={fields['vitals.pulse']}>
-                  <input id="nc-pulse" inputMode="numeric" value={form.pulse} onChange={set('pulse')} />
+                  <VitalStepper label="Pulse" value={form.pulse} step={1} onChange={(v) => setForm((f) => ({ ...f, pulse: v }))}>
+                    <input id="nc-pulse" inputMode="numeric" value={form.pulse} onChange={set('pulse')} />
+                  </VitalStepper>
                 </Field>
                 <Field label="Temp (°F)" id="nc-temp" error={fields['vitals.temperatureF']}>
-                  <input id="nc-temp" inputMode="decimal" value={form.temperatureF} onChange={set('temperatureF')} />
+                  <VitalStepper label="Temperature" value={form.temperatureF} step={0.1} onChange={(v) => setForm((f) => ({ ...f, temperatureF: v }))}>
+                    <input id="nc-temp" inputMode="decimal" value={form.temperatureF} onChange={set('temperatureF')} />
+                  </VitalStepper>
                 </Field>
                 <Field label="SpO2 (%)" id="nc-spo2" error={fields['vitals.spo2'] ?? fields.vitals}>
-                  <input id="nc-spo2" inputMode="numeric" value={form.spo2} onChange={set('spo2')} />
+                  <VitalStepper label="SpO2" value={form.spo2} step={1} onChange={(v) => setForm((f) => ({ ...f, spo2: v }))}>
+                    <input id="nc-spo2" inputMode="numeric" value={form.spo2} onChange={set('spo2')} />
+                  </VitalStepper>
                 </Field>
               </>
             )}
