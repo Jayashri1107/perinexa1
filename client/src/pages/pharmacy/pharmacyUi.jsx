@@ -77,13 +77,20 @@ export function ScheduleMark({ schedule }) {
   );
 }
 
-/** Find a medicine on the stock list (name or generic), with what is in stock. */
+/**
+ * Find a medicine on the stock list (name or generic), as the store's earlier software did it (7 Nov 2026): one letter
+ * opens a drop-down of the medicines that match, in columns – name, quantity in stock, MRP, GST and unit. The arrow keys
+ * move up and down the list, Enter takes the medicine marked, Esc closes it; a click works too.
+ */
 export function MedicineFinder({ onPick, label = 'Add a medicine', autoFocus = false }) {
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
+  const [at, setAt] = useState(0); // the row marked
+  const [open, setOpen] = useState(true);
+  const list = useRef(null);
   const term = text.trim();
   useEffect(() => {
-    if (term.length < 2) {
+    if (!term) {
       setResult(null);
       return undefined;
     }
@@ -91,46 +98,107 @@ export function MedicineFinder({ onPick, label = 'Add a medicine', autoFocus = f
     const timer = setTimeout(async () => {
       try {
         const res = await api('/pharmacy/medicines', { query: { search: term, active: '1' } });
-        if (current) setResult({ medicines: res.medicines.slice(0, 10) });
+        if (current) {
+          setResult({ medicines: res.medicines.slice(0, 100) });
+          setAt(0);
+        }
       } catch (err) {
         if (current) setResult({ error: err.message });
       }
-    }, 250);
+    }, 150);
     return () => {
       current = false;
       clearTimeout(timer);
     };
   }, [term]);
+  // The marked row stays in sight as the arrows move through a long list
+  useEffect(() => {
+    list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [at]);
+  const meds = result?.medicines ?? [];
+  const shown = open && Boolean(term) && Boolean(result);
+  const pick = (m) => {
+    onPick(m);
+    setText('');
+    setResult(null);
+  };
+  const keys = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setOpen(true);
+      if (meds.length) setAt((i) => (e.key === 'ArrowDown' ? Math.min(meds.length - 1, i + 1) : Math.max(0, i - 1)));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (shown && meds[at]) pick(meds[at]);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
+  const optionId = (i) => `ph-med-opt-${i}`;
   return (
     <div className="ph-finder">
       <label className="bill-search">
         <Search aria-hidden="true" />
         <span className="sr-only">{label}</span>
-        <input type="search" placeholder={`${label}: brand or generic name`} value={text} onChange={(e) => setText(e.target.value)} autoFocus={autoFocus} />
+        <input
+          type="search"
+          role="combobox"
+          aria-expanded={shown}
+          aria-controls="ph-med-list"
+          aria-autocomplete="list"
+          aria-activedescendant={shown && meds[at] ? optionId(at) : undefined}
+          autoComplete="off"
+          placeholder={`${label}: type a letter of the brand or generic name`}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            setOpen(true);
+          }}
+          onKeyDown={keys}
+          autoFocus={autoFocus}
+        />
       </label>
       {result?.error && <p className="field-error">{result.error}</p>}
-      {result?.medicines && (
-        <ul className="appt-pick-list" aria-label="Medicines found">
-          {!result.medicines.length && <li className="muted">Not on the stock list. Add it under Medicines first.</li>}
-          {result.medicines.map((m) => (
-            <li key={m.id}>
-              <button
-                type="button"
-                className="appt-pick"
-                onClick={() => {
-                  onPick(m);
-                  setText('');
-                }}
-              >
-                <strong>{medicineLabel(m)}</strong>
-                <span className="muted">
-                  {m.inStock} {m.unit}
-                  {m.inStock === 1 ? '' : 's'} in stock · {m.gstRate}% GST{m.scheduleLabel && m.schedule ? ` · ${m.scheduleLabel}` : ''}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+      {shown && result.medicines && (
+        <div className="ph-medlist" ref={list}>
+          {!meds.length ? (
+            <p className="muted ph-medlist-none">Not on the stock list. Add it under Medicines first.</p>
+          ) : (
+            <>
+              <div className="ph-medlist-head" aria-hidden="true">
+                <span>Item name</span>
+                <span className="num">Qty</span>
+                <span className="num">MRP</span>
+                <span className="num">GST %</span>
+                <span>Unit</span>
+              </div>
+              <ul id="ph-med-list" role="listbox" aria-label="Medicines found">
+                {meds.map((m, i) => (
+                  <li
+                    key={m.id}
+                    id={optionId(i)}
+                    role="option"
+                    aria-selected={i === at}
+                    className={`ph-medlist-row${m.inStock ? '' : ' is-out'}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseMove={() => setAt(i)}
+                    onClick={() => pick(m)}
+                  >
+                    <span className="ph-medlist-name">
+                      {medicineLabel(m)}
+                      {m.schedule ? <span className="muted"> · {m.scheduleLabel}</span> : null}
+                    </span>
+                    <span className="num tabular">{m.inStock}</span>
+                    <span className="num tabular">{m.mrpPaise ? (m.mrpPaise / 100).toFixed(2) : '–'}</span>
+                    <span className="num tabular">{Number(m.gstRate).toFixed(2)}</span>
+                    <span>{m.unit}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="hint ph-medlist-keys">↑ ↓ to move, Enter to choose, Esc to close.</p>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

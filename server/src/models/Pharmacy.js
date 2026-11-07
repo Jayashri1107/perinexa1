@@ -293,11 +293,26 @@ const invoiceSchema = new mongoose.Schema(
     discountPercent: { type: Number, min: 0, max: 100, default: 0 },
     discountReason: { type: String, default: '' },
     billId: { type: ObjectId, ref: 'Bill', default: null }, // the patient's hospital bill it went on
-    // A walk-in pays at the counter: payments and refunds on the invoice itself.
+    // A walk-in pays at the counter: payments and refunds on the invoice itself. From the Payment window (7 Nov 2026)
+    // one bill may be paid in parts (cash and a card …), each with the cheque, card or transaction number (a card's
+    // last 4 digits only, never the whole number), the bank or wallet, its date, and for a cheque who authorised it.
     payments: {
-      type: [new mongoose.Schema({ kind: { type: String, enum: ['payment', 'refund'] }, mode: { type: String, enum: COUNTER_MODES }, amountPaise: Number, reference: String, ...stamp })],
+      type: [
+        new mongoose.Schema({
+          kind: { type: String, enum: ['payment', 'refund'] },
+          mode: { type: String, enum: COUNTER_MODES },
+          amountPaise: Number,
+          reference: String,
+          bank: { type: String, default: '' },
+          on: { type: Date, default: null },
+          authorisedBy: { type: String, default: '' },
+          narration: { type: String, default: '' },
+          ...stamp,
+        }),
+      ],
       default: [],
     },
+    paymentRemarks: { type: String, default: '' }, // the Payment window's Remarks
     // Returns: each a GST credit note (CN-000001)
     returns: { type: [new mongoose.Schema({ number: String, lines: [returnLineSchema], reason: String, ...stamp })], default: [] },
     created: { type: stampSchema, required: true },

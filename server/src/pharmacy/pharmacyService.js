@@ -28,6 +28,7 @@ import { lineMoney, partOf, sum } from './gst.js';
 import { CONTROLLED, NEEDS_PRESCRIPTION } from './pharmacyRules.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
+const rupeesOf = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const bad = (message, fields) => Object.assign(new HttpError(400, message, 'VALIDATION'), fields ? { fields } : {});
 const conflict = (message, code = 'CONFLICT') => new HttpError(409, message, code);
 
@@ -164,8 +165,11 @@ async function allocate(req, medicine, qty, batchId, today) {
  * discountReason, payment { mode, reference } (a walk-in pays at once), buyer? { name, gstin, address, place, pin } (a
  * walk-in sale to a business with a GSTIN – never a patient) }. The doctor comes from the prescription (visitId) when
  * there is one. Returns the invoice.
+ * payments [{ mode, amountPaise, reference, bank, on, authorisedBy, narration }] (the Payment window, 7 Nov 2026): a
+ * walk-in's bill paid in one or more parts, which must add up to the bill exactly; paymentRemarks: its Remarks.
+ * dryRun: only what the bill would come to ({ totalPaise, atMrpPaise, lines }) – no stock taken, no number used.
  */
-export async function createInvoice(req, body) {
+export async function createInvoice(req, body, { dryRun = false } = {}) {
   const tenantId = req.tenantId;
   const today = hospitalToday(req.now);
   let patient = null;
@@ -215,7 +219,7 @@ export async function createInvoice(req, body) {
   if (Object.keys(fields).length) throw bad(Object.values(fields)[0], fields);
 
   // Take the stock (batch by batch); if any line can't be had, what was taken goes back.
-  const number = padded('PH', await nextNumber(tenantId, 'pharmacy-invoice'));
+  const number = dryRun ? '' : padded('PH', await nextNumber(tenantId, 'pharmacy-invoice'));
   const taken = [];
   const lines = [];
   const pct = body.discountPercent ?? 0;
@@ -232,8 +236,10 @@ export async function createInvoice(req, body) {
     for (const l of body.lines) {
       const m = meds.get(String(l.medicineId));
       for (const part of await allocate(req, m, l.qty, l.batchId, today)) {
-        const after = await moveStock(req, part.batch, -part.qty, meta);
-        taken.push({ batch: after, qty: part.qty });
+        if (!dryRun) {
+          const after = await moveStock(req, part.batch, -part.qty, meta);
+          taken.push({ batch: after, qty: part.qty });
+        }
         lines.push({
           medicineId: m._id,
           name: m.name,
@@ -251,11 +257,29 @@ export async function createInvoice(req, body) {
         });
       }
     }
+    // Paid in parts at the Payment window: the parts make up the bill exactly (else nothing is sold)
+    const owed = sum(lines).amountPaise;
+    const paid = (body.payments ?? []).reduce((n, p) => n + p.amountPaise, 0);
+    if (!dryRun && !patient && body.payments && paid !== owed) {
+      throw bad(`The bill comes to ${rupeesOf(owed)}, and the amounts paid add up to ${rupeesOf(paid)}. Make them the same.`, { payments: 'The amounts paid must make up the bill.' });
+    }
   } catch (err) {
     for (const t of taken) await moveStock(req, t.batch, t.qty, { ...meta, kind: 'return', reason: 'Sale not completed' }).catch(() => {});
     throw err;
   }
   const total = sum(lines).amountPaise;
+  if (dryRun) {
+    return {
+      totalPaise: total,
+      atMrpPaise: lines.reduce((n, l) => n + l.qty * l.mrpPaise, 0),
+      lines: lines.map((l) => ({ medicineId: String(l.medicineId), name: l.name, batch: l.batch, expiry: l.expiry, qty: l.qty, mrpPaise: l.mrpPaise, amountPaise: l.amountPaise })),
+    };
+  }
+  const counterPaid = body.payments
+    ? body.payments.map((p) => ({ kind: 'payment', mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', bank: p.bank ?? '', on: p.on ?? null, authorisedBy: p.authorisedBy ?? '', narration: p.narration ?? '', ...stampOf(req) }))
+    : body.payment
+      ? [{ kind: 'payment', mode: body.payment.mode, amountPaise: total, reference: body.payment.reference ?? '', ...stampOf(req) }]
+      : [];
   const invoice = await PharmacyInvoice.create({
     _id: invoiceId,
     tenantId,
@@ -271,7 +295,8 @@ export async function createInvoice(req, body) {
     lines,
     discountPercent: pct,
     discountReason: pct ? (body.discountReason ?? '') : '',
-    payments: !patient && body.payment ? [{ kind: 'payment', mode: body.payment.mode, amountPaise: total, reference: body.payment.reference ?? '', ...stampOf(req) }] : [],
+    payments: patient ? [] : counterPaid,
+    paymentRemarks: patient ? '' : (body.paymentRemarks ?? ''),
     created: stampOf(req),
   });
 
@@ -395,7 +420,8 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
       sgstPaise: l.sgstPaise,
     })),
     returns: (inv.returns ?? []).map((r) => ({ number: r.number, at: r.at, byName: r.byName ?? '', reason: r.reason ?? '', amountPaise: sum(r.lines).amountPaise, lines: r.lines.map((x) => ({ lineId: String(x.lineId), qty: x.qty, amountPaise: x.amountPaise })) })),
-    payments: (inv.payments ?? []).map((p) => ({ kind: p.kind, mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', at: p.at, byName: p.byName ?? '' })),
+    payments: (inv.payments ?? []).map((p) => ({ kind: p.kind, mode: p.mode, amountPaise: p.amountPaise, reference: p.reference ?? '', bank: p.bank ?? '', on: p.on ? isoDay(p.on) : null, authorisedBy: p.authorisedBy ?? '', narration: p.narration ?? '', at: p.at, byName: p.byName ?? '' })),
+    paymentRemarks: inv.paymentRemarks ?? '',
     ...invoiceTotals(inv),
     byName: inv.created?.byName ?? '',
   };

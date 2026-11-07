@@ -355,3 +355,130 @@
 .ph-pager { padding: 0; }
 .card > .dt-footer { padding: var(--space-4) 0 0; }
 .ph-pager .dt-footer { border-top: none; }
+
+/* The counter, as the store's earlier software (7 Nov 2026) */
+/* The medicine drop-down: one letter lists the matches in columns; the arrow keys move the marked row */
+.ph-finder { position: relative; }
+.ph-medlist { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-card); overflow: hidden; }
+.ph-medlist ul { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.ph-medlist-head, .ph-medlist-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 84px 64px 90px; gap: var(--space-3); align-items: center; padding: var(--space-1) var(--space-3); }
+.ph-medlist-head { font-size: var(--fs-label); font-weight: 600; color: var(--slate-600); background: var(--mist-50); border-bottom: 1px solid var(--border); }
+.ph-medlist-row { cursor: pointer; font-size: var(--fs-body); }
+.ph-medlist-row[aria-selected='true'] { background: var(--selected-bg); box-shadow: var(--selected-edge); }
+.ph-medlist-row.is-out { color: var(--slate-600); }
+.ph-medlist-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ph-medlist-head .num, .ph-medlist-row .num { text-align: right; }
+.ph-medlist-none, .ph-medlist-keys { margin: 0; padding: var(--space-2) var(--space-3); }
+.ph-medlist-keys { border-top: 1px solid var(--border); }
+/* The batch list of the medicine chosen */
+.ph-batchgrid { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-left: 4px solid var(--indigo-700); border-radius: var(--radius-md); background: var(--mist-50); }
+.ph-batchgrid-title { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.ph-batchgrid-scroll { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.ph-batchgrid-scroll:focus-visible { outline: 2px solid var(--indigo-700); outline-offset: 2px; }
+.ph-batchgrid-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+.ph-batchgrid-table th { position: sticky; top: 0; padding: var(--space-1) var(--space-2); background: var(--mist-50); border-bottom: 1px solid var(--border); font-size: var(--fs-label); color: var(--slate-600); text-align: left; white-space: nowrap; }
+.ph-batchgrid-table td { padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.ph-batchgrid-table .num { text-align: right; }
+.ph-batchgrid-table tr[aria-selected='true'] td { background: var(--selected-bg); }
+.ph-batchgrid-table tr[aria-selected='true'] td:first-child { box-shadow: var(--selected-edge); font-weight: 600; }
+.ph-batchgrid-table tbody tr { cursor: pointer; }
+.ph-batchgrid-from { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.ph-batch-soon { color: var(--slate-600); }
+.ph-entry-short { flex: 1 1 100%; }
+.ph-blank { padding: var(--space-6) var(--space-4); text-align: center; }
+/* The Payment window: the bill on the left, how it is paid on the right */
+.modal.ph-pay { width: min(1100px, calc(100vw - 32px)); max-width: none; }
+.ph-pay-title { margin-top: 0; }
+.ph-pay-body { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: var(--space-4); }
+.ph-pay-left, .ph-pay-right { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.ph-pay-fact { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.ph-pay-fact label { font-size: var(--fs-label); color: var(--slate-600); }
+.ph-pay-fact input { width: 100%; min-width: 0; background: var(--mist-50); }
+.ph-pay-grid { display: flex; flex-direction: column; gap: var(--space-2); }
+.ph-pay-way { display: grid; grid-template-columns: 150px 110px repeat(3, minmax(0, 1fr)); gap: var(--space-2); align-items: end; margin: 0; padding: var(--space-2); border: 1px solid transparent; border-radius: var(--radius-md); }
+.ph-pay-way.is-on { border-color: var(--border); background: var(--mist-50); }
+.ph-pay-tick { display: flex; align-items: center; gap: var(--space-2); padding-bottom: var(--space-2); font-weight: 600; }
+.ph-pay-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
+.ph-pay-field > span { font-size: var(--fs-label); color: var(--slate-600); }
+.ph-pay-field input { width: 100%; min-width: 0; }
+.ph-pay-extra { grid-column: 2 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-2); }
+.ph-pay-hospital { margin: 0; }
+.ph-pay-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); }
+.ph-pay-sums { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.ph-pay-sums .ph-pay-fact { grid-template-columns: auto 120px; }
+.ph-pay-actions { display: flex; gap: var(--space-2); margin-left: auto; }
+@media (max-width: 860px) {
+  .ph-pay-body { grid-template-columns: 1fr; }
+  .ph-pay-way { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-pay-tick { grid-column: 1 / -1; }
+  .ph-pay-extra { grid-column: 1 / -1; grid-template-columns: 1fr; }
+  .ph-medlist-head, .ph-medlist-row { grid-template-columns: minmax(0, 1fr) 48px 72px; }
+  .ph-medlist-head > :nth-child(n + 4), .ph-medlist-row > :nth-child(n + 4) { display: none; }
+}
+/* The bill screen as the store's earlier Sales Bill (7 Nov 2026): the patient on the left, the item row, the grid, the
+   totals and the buttons on the right */
+.ph-counter { container-type: inline-size; display: flex; flex-direction: column; gap: var(--space-3); }
+.ph-counter-main { display: grid; grid-template-columns: minmax(260px, 320px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.ph-counter-left, .ph-counter-right { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); min-width: 0; }
+.ph-counter-when { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); align-items: stretch; }
+.ph-counter-stamp { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); align-items: center; font-size: var(--fs-label); }
+.ph-counter-stamp > span { color: var(--slate-600); }
+.ph-counter-net { display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); background: var(--teal-700); color: var(--surface); font-size: var(--fs-kpi); line-height: var(--lh-kpi); font-weight: 600; }
+.ph-counter-types { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+.ph-counter-types label { display: inline-flex; align-items: center; gap: var(--space-1); margin: 0; font-weight: 500; cursor: pointer; }
+.ph-counter-types svg.lucide { width: 16px; height: 16px; color: var(--slate-600); }
+.ph-counter-h { margin: 0; font-size: var(--fs-body); font-weight: 600; }
+.ph-counter-facts { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.ph-counter-facts > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-2); }
+.ph-counter-facts dt { font-size: var(--fs-label); color: var(--slate-600); }
+.ph-counter-facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.ph-counter-facts .btn { align-self: flex-start; }
+.ph-counter-left .appt-pick-list { max-height: 360px; overflow-y: auto; }
+.ph-counter-wait { margin: var(--space-6) 0; text-align: center; }
+/* The item row: Item name, Batch no, Qty, MRP, GST %, Amount, Dose, Add */
+.ph-item-row { display: grid; grid-template-columns: minmax(220px, 3fr) minmax(90px, 1.1fr) 70px minmax(70px, 0.9fr) 64px minmax(80px, 1fr) minmax(150px, 1.6fr) auto; gap: var(--space-2); align-items: end; }
+.ph-item-name { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.ph-item-name .ph-finder { margin: 0; }
+.ph-item-name .ph-medlist { position: absolute; z-index: 20; top: 100%; left: 0; width: min(720px, 80vw); margin-top: var(--space-1); }
+.ph-item-chosen { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); min-height: 40px; }
+.ph-item-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-item-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; }
+.ph-item-field input, .ph-item-field select { width: 100%; min-width: 0; max-width: none; margin: 0; }
+.ph-item-field input[readonly] { background: var(--mist-50); }
+.ph-item-dose .ph-choice, .ph-item-dose .ph-choice-own { width: 100%; }
+.ph-item-dose .ph-choice-own input { width: 100%; }
+.ph-counter-barcode summary { cursor: pointer; font-size: var(--fs-label); color: var(--slate-600); }
+.ph-counter-barcode[open] summary { margin-bottom: var(--space-2); }
+/* The bill's grid */
+.ph-grid-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); min-height: 220px; }
+.ph-grid { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+.ph-grid th { position: sticky; top: 0; padding: var(--space-2); background: var(--indigo-700); color: var(--surface); font-size: var(--fs-label); font-weight: 500; text-align: left; white-space: nowrap; }
+.ph-grid td { padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--border); vertical-align: middle; }
+.ph-grid .num { text-align: right; }
+.ph-grid-name { min-width: 160px; }
+.ph-grid { min-width: 900px; }
+.ph-grid .ph-batch { width: 190px; max-width: none; }
+.ph-grid .bill-price-input { width: 64px; text-align: right; }
+.ph-grid .ph-dose-input { width: 170px; max-width: none; }
+.ph-grid-empty { padding: var(--space-6) var(--space-2) !important; text-align: center; }
+/* The totals under the grid */
+.ph-totals { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); align-items: end; }
+.ph-total-field { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; min-width: 0; }
+.ph-total-field > span { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; color: var(--slate-600); }
+.ph-total-field input { width: 100%; min-width: 0; max-width: none; margin: 0; text-align: right; }
+.ph-total-field input[readonly] { background: var(--mist-50); }
+.ph-total-reason input { text-align: left; }
+.ph-total-net input { font-weight: 700; }
+.ph-counter-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+@container (max-width: 1100px) {
+  .ph-counter-main { grid-template-columns: 1fr; }
+  .ph-item-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ph-item-name { grid-column: 1 / -1; }
+  .ph-item-dose { grid-column: span 2; }
+  .ph-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container (max-width: 560px) {
+  .ph-item-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-total-reason { grid-column: 1 / -1; }
+}

@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { BedDouble, ClipboardList, Minus, Plus, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { BedDouble, CalendarClock, CircleX, ClipboardList, ListChecks, Minus, Plus, Receipt, Stethoscope, Trash2, UserPlus } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
-import { CONTROLLED, FREQUENCY_WORDS, MODE_LABELS, einvoiceHsnOk, expiryLabel, medicineLabel, prescribedLines, scannedForList } from './pharmacyFormat.js';
-import { FindMedicine, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { CONTROLLED, FREQUENCY_WORDS, einvoiceHsnOk, expiryLabel, medicineLabel, prescribedLines, scannedForList } from './pharmacyFormat.js';
+import { BatchGrid, PaymentWindow } from './CounterParts.jsx';
+import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
 
 // Pharmacy → New bill (counter) and → Issue to ward (kind 'issue', admitted patients only): choose OPD, IPD or External
@@ -27,7 +28,15 @@ export const DOSE_CHOICES = Object.entries(FREQUENCY_WORDS)
     if (words.toLowerCase().startsWith(k)) return words[0].toUpperCase() + words.slice(1); // weekly, alternate days
     return `${k.toUpperCase()} (${words})`; // SOS, STAT
   });
-const QTY_CHOICES = [1, 2, 3, 4, 5, 6, 10, 15, 20, 30];
+
+// The bill's total at MRP (before any discount), and the hospital's date and time for the top of the bill
+const grossOf = (lines) => lines.reduce((n, l) => n + (l.mrpPaise && /^\d+$/.test(l.qty) ? l.mrpPaise * Number(l.qty) : 0), 0);
+const nowStamp = () => {
+  const d = new Date();
+  const date = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+  return { date, time };
+};
 
 const OWN = '__own';
 /**
@@ -148,11 +157,13 @@ export function InpatientPicker({ onPick }) {
 function BatchPicker({ line, onChange, onPrice = null }) {
   const res = useFetch(`/pharmacy/medicines/${line.medicine.id}/batches`);
   const batches = res.data?.batches ?? [];
-  // The MRP of the batch chosen, else of the one sold first (earliest expiry), for the row's amount
-  const mrp = (batches.find((b) => b.id === line.batchId) ?? batches[0])?.mrpPaise ?? null;
+  // The MRP and expiry of the batch chosen, else of the one sold first (earliest expiry), for the row
+  const shown = batches.find((b) => b.id === line.batchId) ?? batches[0];
+  const mrp = shown?.mrpPaise ?? null;
+  const expiry = shown?.expiry ?? null;
   useEffect(() => {
-    if (onPrice && mrp !== (line.mrpPaise ?? null)) onPrice(mrp);
-  }, [mrp, line.mrpPaise, onPrice]);
+    if (onPrice && (mrp !== (line.mrpPaise ?? null) || expiry !== (line.expiry ?? null))) onPrice({ mrpPaise: mrp, expiry });
+  }, [mrp, expiry, line.mrpPaise, line.expiry, onPrice]);
   return (
     <select className="ph-batch" aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
       <option value="">Earliest expiry first</option>
@@ -298,22 +309,37 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [doctor, setDoctor] = useState({ name: '', reg: '' });
   const [rxSeen, setRxSeen] = useState(false);
   const [lines, setLines] = useState([]); // { key, medicine, qty, batchId }
-  const [discount, setDiscount] = useState('');
+  const [discount, setDiscount] = useState(''); // Disc % (what the invoice keeps)
+  const [discountAmount, setDiscountAmount] = useState(''); // Disc amount in rupees: the % is worked out from it
   const [discountReason, setDiscountReason] = useState('');
-  const [mode, setMode] = useState('cash');
-  const [reference, setReference] = useState('');
+  const [paying, setPaying] = useState(null); // the Payment window is open: the invoice about to be made
   const [business, setBusiness] = useState(false);
   const [buyer, setBuyer] = useState({ name: '', gstin: '', address: '', place: '', pin: '' });
   const s = useSend((res) => (onMade ? onMade(res.invoice) : navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } })));
 
   const addMedicine = (m, qty = 1, dose = '') => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null, dose }]));
-  // On Sold, as in the store's earlier software (6 Nov 2026): choose the medicine, write its quantity and dose, then Add
-  const [entry, setEntry] = useState(null); // { medicine, qty, dose }
-  const entryOk = Boolean(entry) && /^\d+$/.test(entry.qty) && Number(entry.qty) >= 1;
+  // A medicine taken from its batch list: the same batch again adds to its quantity, another batch is a line of its own
+  const addFromBatch = (m, batch, qty, dose) =>
+    setLines((ls) => {
+      const same = ls.find((l) => l.medicine.id === m.id && (l.batchId === batch.id || (!l.batchId && !l.prescribed)));
+      if (same) return ls.map((l) => (l === same ? { ...l, batchId: batch.id, mrpPaise: batch.mrpPaise, qty: String((Number(l.qty) || 0) + qty), dose: dose || l.dose } : l));
+      return [...ls, { key: `${m.id}-${batch.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: batch.id, mrpPaise: batch.mrpPaise, expiry: batch.expiry, dose }];
+    });
+  // As in the store's earlier software (6 and 7 Nov 2026): choose the medicine from the drop-down, then its batch from
+  // the batch list, write the quantity and dose, then Add
+  const [entry, setEntry] = useState(null); // { medicine, batch, qty, dose }
+  const entryOk = Boolean(entry?.batch) && /^\d+$/.test(entry.qty) && Number(entry.qty) >= 1 && Number(entry.qty) <= entry.batch.qtyLeft;
+  const [finderKey, setFinderKey] = useState(0); // a new, empty Item name box (with the cursor) after each Add
+  const qtyBox = useRef(null);
+  // A batch chosen: the cursor goes to Qty, as in the earlier software
+  useEffect(() => {
+    if (entry?.batch) qtyBox.current?.select();
+  }, [entry?.batch]);
   const addEntry = () => {
     if (!entryOk) return;
-    addMedicine(entry.medicine, Number(entry.qty), entry.dose.trim());
+    addFromBatch(entry.medicine, entry.batch, Number(entry.qty), entry.dose.trim());
     setEntry(null);
+    setFinderKey((k) => k + 1);
   };
   // The doctor's prescription on the bill (owner's developer, 28 Oct 2026): its medicines are marked `prescribed` and
   // cannot be taken off – only their quantity and batch change; medicines the pharmacist adds can be. Another
@@ -343,14 +369,27 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const needsRx = lines.some((l) => NEEDS_RX.includes(l.medicine.schedule));
   const controlled = lines.some((l) => CONTROLLED.includes(l.medicine.schedule));
   const pct = discount === '' ? 0 : Number(discount);
+  // Disc % and Disc amount fill each other in (7 Nov 2026): the invoice keeps the %, worked out to 4 places from an amount
+  const changePct = (text) => {
+    setDiscount(text);
+    const n = Number(text);
+    setDiscountAmount(text === '' || !Number.isFinite(n) ? '' : ((grossOf(lines) * n) / 10000).toFixed(2));
+  };
+  const changeAmount = (text) => {
+    setDiscountAmount(text);
+    const n = Number(text);
+    const gross = grossOf(lines);
+    setDiscount(text === '' || !Number.isFinite(n) || !gross ? '' : String(Math.round(((n * 100) / gross) * 100 * 10000) / 10000));
+  };
   const qtyOk = lines.length > 0 && lines.every((l) => /^\d+$/.test(l.qty) && Number(l.qty) > 0);
   const whoOk = who === 'walkin' ? customer.name.trim().length >= 2 : Boolean(patient);
   const ready = qtyOk && whoOk && (!isBusiness || buyerOk) && (pct === 0 || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100;
 
-  const submit = () => {
+  // Save: the Payment window opens with the bill's figures; its Save makes the invoice (a walk-in with how they paid)
+  const bodyOf = () => {
     const body = {
       kind,
-      ...(who === 'walkin' ? { customer: { name: customer.name.trim(), phone: customer.phone.trim() }, payment: { mode, reference: reference.trim() } } : { patientId: patient.id }),
+      ...(who === 'walkin' ? { customer: { name: customer.name.trim(), phone: customer.phone.trim() } } : { patientId: patient.id }),
       ...(isBusiness ? { buyer: { name: buyer.name.trim(), gstin: cleanGstin(buyer.gstin), address: buyer.address.trim(), place: buyer.place.trim(), pin: buyer.pin.trim() } } : {}),
       ...(visitId ? { visitId } : {}),
       ...(!visitId && (doctor.name.trim() || doctor.reg.trim()) ? { doctor: { name: doctor.name.trim(), reg: doctor.reg.trim() } } : {}),
@@ -359,8 +398,13 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
       discountPercent: pct,
       discountReason: discountReason.trim(),
     };
-    s.send('/pharmacy/invoices', body);
+    return body;
   };
+  const save = () => {
+    s.setError(null);
+    setPaying(bodyOf());
+  };
+  const submit = (payment) => s.send('/pharmacy/invoices', { ...paying, ...payment });
 
   // Phones, as in the app design (2 Nov 2026): one less, one more beside the quantity
   const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
@@ -368,253 +412,364 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const setLine = (key, change) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, ...change } : x)));
   // Each row's amount at its batch MRP, and the total after the discount (the invoice has the exact figures)
   const rowPaise = (l) => (l.mrpPaise && /^\d+$/.test(l.qty) ? l.mrpPaise * Number(l.qty) : null);
-  const grossPaise = lines.reduce((n, l) => n + (rowPaise(l) ?? 0), 0);
+  const grossPaise = grossOf(lines);
   const totalPaise = Math.round(grossPaise * (1 - (Number.isFinite(pct) ? pct : 0) / 100));
+  // The GST inside the prices (MRP includes GST), after the discount
+  const gstPaise = Math.round(lines.reduce((n, l) => n + ((rowPaise(l) ?? 0) * (1 - (Number.isFinite(pct) ? pct : 0) / 100) * l.medicine.gstRate) / (100 + l.medicine.gstRate), 0));
+  const entryAmount = entry?.batch && /^\d+$/.test(entry.qty) ? entry.batch.mrpPaise * Number(entry.qty) : null;
+  const close = embedded && onCancel ? onCancel : () => navigate('/pharmacy/invoices');
+  // Medicines added or changed after a discount was given: the % stays, the amount follows it
+  useEffect(() => {
+    const n = Number(discount);
+    if (discount !== '' && Number.isFinite(n)) setDiscountAmount(((grossPaise * n) / 10000).toFixed(2));
+  }, [grossPaise]);
   const stepQty = (l, by) => setQty(l.key, String(Math.max(1, (Number(l.qty) || 0) + by)));
 
   return (
     <>
       {!embedded && <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'New bill'} crumb={issue ? 'Issue to ward' : 'New bill'} />}
-      <div className={embedded ? 'bill-page ph-sold-bill' : 'pf-content bill-page'}>
+      <div className={embedded ? 'ph-counter is-embedded' : 'pf-content ph-counter'}>
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
         </Alert>
-
-        <section className="card bill-section" aria-labelledby="ph-who">
-          <h2 id="ph-who">Who is it for</h2>
-          {!patient && !embedded && (
-            <div className="segmented" role="group" aria-label="Type of patient">
-              <button type="button" aria-pressed={who === 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
-                <Stethoscope aria-hidden="true" /> OPD patient
-              </button>
-              <button type="button" aria-pressed={who === 'inpatient'} onClick={() => !issue && navigate('/pharmacy/issue')}>
-                <BedDouble aria-hidden="true" /> IPD patient
-              </button>
-              <button
-                type="button"
-                aria-pressed={who === 'walkin'}
-                onClick={() => {
-                  if (issue) return navigate('/pharmacy', { state: { type: 'external' } });
-                  setWho('walkin');
-                  reset();
-                }}
-              >
-                <UserPlus aria-hidden="true" /> External (walk-in)
-              </button>
+        <div className="ph-counter-main">
+          {/* Left, as the store's earlier Sales Bill (7 Nov 2026): the date and time, the bill's net amount, then the patient */}
+          <aside className="card ph-counter-left" aria-labelledby="ph-who">
+            <div className="ph-counter-when">
+              <div className="ph-counter-stamp">
+                <span>Date</span>
+                <strong className="tabular">{nowStamp().date}</strong>
+                <span>Time</span>
+                <strong className="tabular">{nowStamp().time}</strong>
+              </div>
+              <div className="ph-counter-net" aria-label="Net amount">
+                <span className="tabular">{(totalPaise / 100).toFixed(2)}</span>
+              </div>
             </div>
-          )}
-          {who === 'patient' && !patient && <TodayOpdPicker onPick={setPatient} />}
-          {who === 'inpatient' && !patient && <InpatientPicker onPick={setPatient} />}
-          {patient && (
-            <div className="appt-chosen">
-              <TypePill type={issue ? 'ipd' : 'opd'} />
-              <strong>{patient.fullName}</strong>
-              <span className="muted">
-                {patient.mrn}
-                {patient.phone ? ` · ${patient.phone}` : ''}
-              </span>
-              <button type="button" className="btn btn-link btn-sm" onClick={embedded && onCancel ? onCancel : reset}>
-                Choose someone else
-              </button>
-            </div>
-          )}
-          {who === 'walkin' && (
-            <>
-              <div className="form-grid">
-                <Field label={business ? 'Name of the person collecting' : "Customer's name"} id="ph-cust-name" error={s.fields['customer.name']}>
+            {!patient && !embedded && (
+              <div className="ph-counter-types" role="radiogroup" aria-label="Type of patient">
+                <label>
+                  <input type="radio" name="ph-type" checked={who === 'patient'} onChange={() => (issue ? navigate('/pharmacy') : setWho('patient'))} /> <Stethoscope aria-hidden="true" /> OPD patients
+                </label>
+                <label>
+                  <input type="radio" name="ph-type" checked={who === 'inpatient'} onChange={() => !issue && navigate('/pharmacy/issue')} /> <BedDouble aria-hidden="true" /> IPD patients
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="ph-type"
+                    checked={who === 'walkin'}
+                    onChange={() => {
+                      if (issue) return navigate('/pharmacy', { state: { type: 'external' } });
+                      setWho('walkin');
+                      reset();
+                    }}
+                  />{' '}
+                  <UserPlus aria-hidden="true" /> External
+                </label>
+              </div>
+            )}
+            <h2 id="ph-who" className="ph-counter-h">
+              Patient information
+            </h2>
+            {who === 'patient' && !patient && <TodayOpdPicker onPick={setPatient} />}
+            {who === 'inpatient' && !patient && <InpatientPicker onPick={setPatient} />}
+            {patient && (
+              <dl className="ph-counter-facts">
+                <div>
+                  <dt>UHID</dt>
+                  <dd className="tabular">{patient.mrn}</dd>
+                </div>
+                <div>
+                  <dt>Patient name</dt>
+                  <dd>
+                    <TypePill type={issue ? 'ipd' : 'opd'} /> {patient.fullName}
+                  </dd>
+                </div>
+                {patient.phone && (
+                  <div>
+                    <dt>Phone</dt>
+                    <dd>{patient.phone}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>Doctor name</dt>
+                  <dd>{doctor.name ? `${doctor.name}${doctor.reg ? ` (Reg. ${doctor.reg})` : ''}` : '–'}</dd>
+                </div>
+                <button type="button" className="btn btn-link btn-sm" onClick={embedded && onCancel ? onCancel : reset}>
+                  Choose someone else
+                </button>
+              </dl>
+            )}
+            {who === 'walkin' && (
+              <>
+                <Field label={business ? 'Name of the person collecting' : 'Patient name'} id="ph-cust-name" error={s.fields['customer.name']}>
                   <input id="ph-cust-name" value={customer.name} maxLength={150} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
                 </Field>
                 <Field label="Phone (optional)" id="ph-cust-phone">
                   <input id="ph-cust-phone" type="tel" value={customer.phone} maxLength={30} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
                 </Field>
-              </div>
-              <BusinessBuyerFields business={business} setBusiness={setBusiness} buyer={buyer} setBuyer={setBuyer} errors={s.fields} />
-            </>
-          )}
-        </section>
-
-        {patient && (
-          <section className="card bill-section" aria-labelledby="ph-rx">
-            <h2 id="ph-rx">Her prescriptions</h2>
-            <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} useFirst={start.patient?.id === patient.id ? (start.visitId ?? null) : null} />
-          </section>
-        )}
-
-        {(patient || who === 'walkin') && (
-          <section className="card bill-section" aria-labelledby="ph-lines">
-            <h2 id="ph-lines">Medicines</h2>
-            <FindMedicine onPick={(m) => (embedded ? setEntry({ medicine: m, qty: '1', dose: '' }) : addMedicine(m))} onScan={scan} />
-            {embedded && entry && (
-              <div className="ph-entry" role="group" aria-label="Medicine to add">
-                <strong className="ph-entry-name">
-                  {medicineLabel(entry.medicine)} <ScheduleMark schedule={entry.medicine.schedule} />
-                  <span className="muted"> · {entry.medicine.inStock} in stock</span>
-                </strong>
-                <div className="ph-entry-field ph-entry-qty">
-                  <span>Quantity</span>
-                  <ChoiceBox label="Quantity" value={entry.qty} choices={QTY_CHOICES} placeholder="Choose" ownLabel="Another number…" inputMode="numeric" maxLength={5} onChange={(qty) => setEntry({ ...entry, qty })} onEnter={addEntry} autoFocus />
-                </div>
-                <div className="ph-entry-field ph-entry-dose">
-                  <span>Dose (optional)</span>
-                  <ChoiceBox label="Dose" value={entry.dose} choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={(dose) => setEntry({ ...entry, dose })} onEnter={addEntry} />
-                </div>
-                <button type="button" className="btn btn-secondary" disabled={!entryOk} onClick={addEntry}>
-                  <Plus aria-hidden="true" /> Add
-                </button>
-                <button type="button" className="btn btn-link" onClick={() => setEntry(null)}>
-                  Cancel
-                </button>
+                <BusinessBuyerFields business={business} setBusiness={setBusiness} buyer={buyer} setBuyer={setBuyer} errors={s.fields} />
+              </>
+            )}
+            {patient && (
+              <div className="ph-counter-rx">
+                <h2 id="ph-rx" className="ph-counter-h">
+                  Get prescription
+                </h2>
+                <Prescriptions patientId={patient.id} onUse={useRx} chosenVisit={visitId} useFirst={start.patient?.id === patient.id ? (start.visitId ?? null) : null} />
               </div>
             )}
-            {lines.length > 0 && (
-              <table className="bill-lines ph-lines">
-                <thead>
-                  <tr>
-                    <th scope="col">Medicine and batch</th>
-                    <th scope="col" className="num">
-                      Quantity
-                    </th>
-                    <th scope="col">Dose</th>
-                    <th scope="col" className="num">
-                      MRP
-                    </th>
-                    <th scope="col" className="num">
-                      Amount
-                    </th>
-                    <th scope="col">
-                      <span className="sr-only">Remove</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((l) => (
-                    <tr key={l.key}>
-                      <td data-label="Medicine" className="ph-line-med">
-                        <span className="ph-line-name">
-                          <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} />
-                        </span>
-                        <span className="ph-line-meta">{[[l.medicine.generic, l.medicine.strength].filter(Boolean).join(' '), `${l.medicine.inStock} in stock`].filter(Boolean).join(' · ')}</span>
-                        <BatchPicker line={l} onChange={(batchId) => setLine(l.key, { batchId })} onPrice={(mrpPaise) => setLine(l.key, { mrpPaise })} />
-                        {l.prescribed && l.medicine.inStock < Number(l.qty) && <span className="field-error ph-prescribed-short">Not enough in stock: it stays on the bill, so the invoice can be made once it is received.</span>}
-                      </td>
-                      <td data-label="Quantity" className="num">
-                        {onPhone && (
-                          <button type="button" className="ph-qty-step" aria-label={`One less ${l.medicine.name}`} onClick={() => stepQty(l, -1)}>
-                            <Minus aria-hidden="true" />
-                          </button>
-                        )}
-                        <input className="bill-price-input" inputMode="numeric" aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setQty(l.key, e.target.value)} />
-                        {onPhone && (
-                          <button type="button" className="ph-qty-step" aria-label={`One more ${l.medicine.name}`} onClick={() => stepQty(l, 1)}>
-                            <Plus aria-hidden="true" />
-                          </button>
-                        )}
-                      </td>
-                      <td data-label="Dose">
-                        <ChoiceBox className="ph-dose-input" label={`Dose of ${l.medicine.name}`} value={l.dose ?? ''} choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={(dose) => setLine(l.key, { dose })} />
-                      </td>
-                      <td data-label="MRP" className="num tabular">
-                        {l.mrpPaise ? money(l.mrpPaise) : '–'}
-                      </td>
-                      <td data-label="Amount" className="num tabular">
-                        {rowPaise(l) != null ? money(rowPaise(l)) : '–'}
-                      </td>
-                      <td>
-                        {l.prescribed ? (
-                          <span className="ph-prescribed" title="Prescribed by the doctor: it stays on the bill. Change the quantity or the batch.">
-                            <ClipboardList aria-hidden="true" /> Prescribed
-                          </span>
-                        ) : (
-                          <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
-                            <Trash2 aria-hidden="true" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="ph-lines-total">
-                    <th scope="row" colSpan={4}>
-                      {pct > 0 ? `Total after ${pct}% discount` : 'Total'}
-                    </th>
-                    <td className="num tabular">
-                      <strong>{money(totalPaise)}</strong>
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-            {isBusiness && <ShortHsnWarning medicines={lines.map((l) => l.medicine)} />}
-            {!visitId && (needsRx || who === 'walkin') && (
+            {(patient || who === 'walkin') && !visitId && (needsRx || who === 'walkin') && (
               <div className="ph-rx-seen">
                 <p className="hint">{controlled ? 'A narcotic or Schedule X medicine: the doctor’s registration number is required, and it is given only to a registered patient.' : needsRx ? 'A prescription medicine: write the doctor’s name and tick that you saw the prescription.' : 'If there is a prescription, write the doctor’s name.'}</p>
-                <div className="form-grid">
-                  <Field label="Doctor's name" id="ph-doc-name">
-                    <input id="ph-doc-name" value={doctor.name} maxLength={150} onChange={(e) => setDoctor({ ...doctor, name: e.target.value })} />
-                  </Field>
-                  <Field label="Registration number" id="ph-doc-reg">
-                    <input id="ph-doc-reg" value={doctor.reg} maxLength={60} onChange={(e) => setDoctor({ ...doctor, reg: e.target.value })} />
-                  </Field>
-                </div>
+                <Field label="Doctor name" id="ph-doc-name">
+                  <input id="ph-doc-name" value={doctor.name} maxLength={150} onChange={(e) => setDoctor({ ...doctor, name: e.target.value })} />
+                </Field>
+                <Field label="Registration number" id="ph-doc-reg">
+                  <input id="ph-doc-reg" value={doctor.reg} maxLength={60} onChange={(e) => setDoctor({ ...doctor, reg: e.target.value })} />
+                </Field>
                 <label className="appt-reason">
                   <input type="checkbox" checked={rxSeen} onChange={(e) => setRxSeen(e.target.checked)} /> I have seen the prescription
                 </label>
               </div>
             )}
-            {visitId && (
-              <p className="hint">
-                From her Perinexa prescription{doctor.name ? ` by ${doctor.name}` : ''}
-                {doctor.reg ? ` (Reg. ${doctor.reg})` : ''}.
-              </p>
-            )}
-          </section>
-        )}
+          </aside>
 
-        {lines.length > 0 && (
-          <section className="card bill-section" aria-labelledby="ph-pay">
-            <h2 id="ph-pay">{who === 'walkin' ? 'Payment' : 'Discount'}</h2>
-            <div className="form-grid">
-              <Field label="Discount (%) – optional" id="ph-disc" error={s.fields.discountPercent}>
-                <input id="ph-disc" inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} />
-              </Field>
-              {pct > 0 && (
-                <Field label="Reason for the discount" id="ph-disc-reason" error={s.fields.discountReason}>
-                  <input id="ph-disc-reason" value={discountReason} maxLength={200} onChange={(e) => setDiscountReason(e.target.value)} />
-                </Field>
-              )}
-              {who === 'walkin' && (
-                <>
-                  <Field label="Paid by" id="ph-mode">
-                    <select id="ph-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
-                      {Object.entries(MODE_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v}
-                        </option>
+          {/* Right: the item row, the bill's grid, the totals and the buttons */}
+          <section className="card ph-counter-right" aria-labelledby="ph-lines">
+            <h2 id="ph-lines" className="sr-only">
+              Medicines
+            </h2>
+            {!(patient || who === 'walkin') ? (
+              <p className="muted ph-counter-wait">Choose the patient on the left, then add the medicines here.</p>
+            ) : (
+              <>
+                <div className="ph-item-row" role="group" aria-label="Medicine to add">
+                  <div className="ph-item-name">
+                    <span className="ph-item-label">Item name</span>
+                    {entry ? (
+                      <div className="ph-item-chosen">
+                        <strong>{medicineLabel(entry.medicine)}</strong> <ScheduleMark schedule={entry.medicine.schedule} />
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm"
+                          onClick={() => {
+                            setEntry(null);
+                            setFinderKey((k) => k + 1);
+                          }}
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <MedicineFinder key={finderKey} label="Item name" autoFocus={finderKey > 0} onPick={(m) => setEntry({ medicine: m, batch: null, qty: '1', dose: '' })} />
+                    )}
+                  </div>
+                  <label className="ph-item-field">
+                    <span className="ph-item-label">Batch no</span>
+                    <input readOnly className="tabular" value={entry?.batch?.batch ?? ''} onClick={() => entry?.batch && setEntry({ ...entry, batch: null })} />
+                  </label>
+                  <label className="ph-item-field ph-item-qty">
+                    <span className="ph-item-label">Qty</span>
+                    <input
+                      ref={qtyBox}
+                      inputMode="numeric"
+                      className="tabular"
+                      maxLength={5}
+                      disabled={!entry?.batch}
+                      value={entry?.batch ? entry.qty : ''}
+                      onChange={(e) => setEntry({ ...entry, qty: e.target.value.replace(/\D/g, '') })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addEntry();
+                        }
+                      }}
+                    />
+                  </label>
+                  <label className="ph-item-field">
+                    <span className="ph-item-label">MRP</span>
+                    <input readOnly className="tabular" value={entry?.batch ? (entry.batch.mrpPaise / 100).toFixed(2) : ''} />
+                  </label>
+                  <label className="ph-item-field ph-item-gst">
+                    <span className="ph-item-label">GST %</span>
+                    <input readOnly className="tabular" value={entry ? Number(entry.medicine.gstRate).toFixed(2) : ''} />
+                  </label>
+                  <label className="ph-item-field">
+                    <span className="ph-item-label">Amount</span>
+                    <input readOnly className="tabular" value={entryAmount != null ? (entryAmount / 100).toFixed(2) : ''} />
+                  </label>
+                  <div className="ph-item-field ph-item-dose">
+                    <span className="ph-item-label">Dose</span>
+                    <ChoiceBox label="Dose" value={entry?.dose ?? ''} choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={(dose) => entry && setEntry({ ...entry, dose })} onEnter={addEntry} />
+                  </div>
+                  <button type="button" className="btn btn-secondary ph-item-add" disabled={!entryOk} onClick={addEntry}>
+                    <Plus aria-hidden="true" /> Add
+                  </button>
+                </div>
+                {entry?.batch && Number(entry.qty) > entry.batch.qtyLeft && <p className="field-error">Only {entry.batch.qtyLeft} in batch {entry.batch.batch}: choose another batch for the rest.</p>}
+                {entry && !entry.batch && <BatchGrid medicine={entry.medicine} onPick={(batch) => setEntry({ ...entry, batch })} onCancel={() => { setEntry(null); setFinderKey((k) => k + 1); }} />}
+                <details className="ph-counter-barcode">
+                  <summary>Scan a barcode</summary>
+                  <BarcodeBox onPick={scan} />
+                </details>
+
+                <div className="ph-grid-wrap">
+                  <table className="ph-grid">
+                    <thead>
+                      <tr>
+                        <th scope="col">Item name</th>
+                        <th scope="col">Batch no</th>
+                        <th scope="col">Exp. date</th>
+                        <th scope="col" className="num">Qty</th>
+                        <th scope="col">Dose</th>
+                        <th scope="col" className="num">GST %</th>
+                        <th scope="col" className="num">MRP</th>
+                        <th scope="col" className="num">Total</th>
+                        <th scope="col">
+                          <span className="sr-only">Remove</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {!lines.length && (
+                        <tr>
+                          <td colSpan={9} className="muted ph-grid-empty">
+                            No medicine on the bill yet.
+                          </td>
+                        </tr>
+                      )}
+                      {lines.map((l) => (
+                        <Fragment key={l.key}>
+                          <tr>
+                            <td data-label="Item name" className="ph-grid-name">
+                              <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} />
+                            </td>
+                            <td data-label="Batch no">
+                              <BatchPicker line={l} onChange={(batchId) => setLine(l.key, { batchId })} onPrice={(info) => setLine(l.key, info)} />
+                            </td>
+                            <td data-label="Exp. date" className="tabular">
+                              {l.expiry ? expiryLabel(l.expiry) : '–'}
+                            </td>
+                            <td data-label="Qty" className="num">
+                              {onPhone && (
+                                <button type="button" className="ph-qty-step" aria-label={`One less ${l.medicine.name}`} onClick={() => stepQty(l, -1)}>
+                                  <Minus aria-hidden="true" />
+                                </button>
+                              )}
+                              <input className="bill-price-input" inputMode="numeric" aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setQty(l.key, e.target.value.replace(/\D/g, ''))} />
+                              {onPhone && (
+                                <button type="button" className="ph-qty-step" aria-label={`One more ${l.medicine.name}`} onClick={() => stepQty(l, 1)}>
+                                  <Plus aria-hidden="true" />
+                                </button>
+                              )}
+                            </td>
+                            <td data-label="Dose">
+                              <ChoiceBox className="ph-dose-input" label={`Dose of ${l.medicine.name}`} value={l.dose ?? ''} choices={DOSE_CHOICES} placeholder="No dose" ownLabel="Type another dose…" onChange={(dose) => setLine(l.key, { dose })} />
+                            </td>
+                            <td data-label="GST %" className="num tabular">
+                              {Number(l.medicine.gstRate).toFixed(2)}
+                            </td>
+                            <td data-label="MRP" className="num tabular">
+                              {l.mrpPaise ? (l.mrpPaise / 100).toFixed(2) : '–'}
+                            </td>
+                            <td data-label="Total" className="num tabular">
+                              {rowPaise(l) != null ? (rowPaise(l) / 100).toFixed(2) : '–'}
+                            </td>
+                            <td>
+                              {l.prescribed ? (
+                                <span className="ph-prescribed" title="Prescribed by the doctor: it stays on the bill. Change the quantity or the batch.">
+                                  <ClipboardList aria-hidden="true" /> Prescribed
+                                </span>
+                              ) : (
+                                <button type="button" className="icon-btn" aria-label={`Remove ${l.medicine.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
+                                  <Trash2 aria-hidden="true" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                          {l.prescribed && l.medicine.inStock < Number(l.qty) && (
+                            <tr>
+                              <td colSpan={9} className="field-error ph-prescribed-short">
+                                {l.medicine.name}: not enough in stock. It stays on the bill, so the invoice can be made once it is received.
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       ))}
-                    </select>
-                  </Field>
-                  {mode !== 'cash' && (
-                    <Field label="Reference (optional)" id="ph-ref">
-                      <input id="ph-ref" value={reference} maxLength={80} onChange={(e) => setReference(e.target.value)} />
-                    </Field>
-                  )}
-                </>
+                    </tbody>
+                  </table>
+                </div>
+                {isBusiness && <ShortHsnWarning medicines={lines.map((l) => l.medicine)} />}
+                {visitId && (
+                  <p className="hint">
+                    From her Perinexa prescription{doctor.name ? ` by ${doctor.name}` : ''}
+                    {doctor.reg ? ` (Reg. ${doctor.reg})` : ''}.
+                  </p>
+                )}
+
+                <div className="ph-totals">
+                  <label className="ph-total-field">
+                    <span>GST amount</span>
+                    <input readOnly className="tabular" value={(gstPaise / 100).toFixed(2)} />
+                  </label>
+                  <label className="ph-total-field">
+                    <span>Disc %</span>
+                    <input inputMode="decimal" className="tabular" value={discount} maxLength={8} disabled={!lines.length} onChange={(e) => changePct(e.target.value)} />
+                  </label>
+                  <label className="ph-total-field">
+                    <span>Disc amount</span>
+                    <input inputMode="decimal" className="tabular" value={discountAmount} maxLength={12} disabled={!lines.length} onChange={(e) => changeAmount(e.target.value)} />
+                  </label>
+                  <label className="ph-total-field ph-total-reason">
+                    <span>Conc. reason{pct > 0 ? '' : ' (with a discount)'}</span>
+                    <input value={discountReason} maxLength={200} disabled={!(pct > 0)} onChange={(e) => setDiscountReason(e.target.value)} />
+                  </label>
+                  <label className="ph-total-field">
+                    <span>Total amount</span>
+                    <input readOnly className="tabular" value={(grossPaise / 100).toFixed(2)} />
+                  </label>
+                  <label className="ph-total-field ph-total-net">
+                    <span>Net amount</span>
+                    <input readOnly className="tabular" value={(totalPaise / 100).toFixed(2)} />
+                  </label>
+                </div>
+                {(s.fields.discountPercent || s.fields.discountReason) && <p className="field-error">{s.fields.discountPercent || s.fields.discountReason}</p>}
+                {pct > 100 && <p className="field-error">The discount cannot be more than the bill.</p>}
+                <p className="hint">
+                  {who === 'walkin' ? 'Save opens the Payment window: the customer pays here, by cash, cheque, card, NEFT / RTGS or online, or in parts.' : issue ? 'The invoice goes on her stay’s bill.' : 'The invoice goes on her hospital bill; she pays at the billing desk.'} Prices are the batch MRP (GST included).
+                </p>
+              </>
+            )}
+            <div className="ph-counter-actions">
+              <Link className="btn btn-secondary" to="/pharmacy/reports">
+                <CalendarClock aria-hidden="true" /> Expiry list
+              </Link>
+              {!embedded && (
+                <Link className="btn btn-secondary" to="/pharmacy/invoices">
+                  <ListChecks aria-hidden="true" /> Bill list
+                </Link>
               )}
+              <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
+                <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={close}>
+                <CircleX aria-hidden="true" /> Close
+              </button>
             </div>
-            <p className="hint">
-              {who === 'walkin'
-                ? 'The customer pays the invoice total here.'
-                : issue
-                  ? 'The invoice goes on her stay’s bill.'
-                  : 'The invoice goes on her hospital bill; she pays at the billing desk.'}{' '}
-              Prices are the batch MRP (GST included).
-            </p>
-            <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={submit}>
-              <Receipt aria-hidden="true" /> {s.busy ? 'Making the invoice…' : issue ? 'Issue and make the invoice' : 'Make the invoice'}
-            </button>
           </section>
+        </div>
+        {paying && (
+          <PaymentWindow
+            body={paying}
+            who={who === 'walkin' ? { uhid: '', name: customer.name.trim() } : { uhid: patient?.mrn ?? '', name: patient?.fullName ?? '' }}
+            walkIn={who === 'walkin'}
+            saving={s.busy}
+            error={s.error}
+            onSave={submit}
+            onClose={() => setPaying(null)}
+          />
         )}
       </div>
     </>

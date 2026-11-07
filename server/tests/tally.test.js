@@ -205,7 +205,7 @@ describe('settings and who may use the link', () => {
     const first = ok(await tally('get', '/settings'));
     expect(first.settings).toMatchObject({ companyName: '', booksFrom: null, inpatientIssues: 'taxable', ledgers: expect.objectContaining({ patients: 'Patients', modes: expect.objectContaining({ upi: 'Bank (UPI)' }) }), voucherTypes: expect.objectContaining({ sales: 'Perinexa Sales' }) });
     const saved = ok(await settings({ ledgers: { modes: { upi: 'HDFC Bank' } } }));
-    expect(saved.settings).toMatchObject({ companyName: 'Tally Hospital Books', booksFrom: '2026-09-01T00:00:00.000Z', updatedByName: 'Sample admin', ledgers: expect.objectContaining({ patients: 'Patients', modes: { cash: 'Cash', upi: 'HDFC Bank', card: 'Bank (card)', insurance: 'Insurance receivable' } }) });
+    expect(saved.settings).toMatchObject({ companyName: 'Tally Hospital Books', booksFrom: '2026-09-01T00:00:00.000Z', updatedByName: 'Sample admin', ledgers: expect.objectContaining({ patients: 'Patients', modes: { cash: 'Cash', upi: 'HDFC Bank', card: 'Bank (card)', cheque: 'Bank (cheque)', neft: 'Bank (NEFT / RTGS)', insurance: 'Insurance receivable' } }) });
     ok(await settings({ ledgers: { modes: { upi: 'HDFC Bank' } } })); // nothing changed: no new audit entry
     const entries = await AuditLog.find({ action: 'TALLY_SETTINGS_CHANGED' }).lean();
     expect(entries).toHaveLength(1);
@@ -215,7 +215,7 @@ describe('settings and who may use the link', () => {
     expect((await tally('put', '/settings', { voucherTypes: { sales: '' } })).status).toBe(400);
     expect(ok(await tally('put', '/settings', { voucherTypes: { creditNote: 'Perinexa Sales' } }), 400).error.fields).toEqual({ voucherTypes: 'Each voucher type needs a different name.' });
     // Naming one account never resets the others in its section
-    expect(ok(await settings({ ledgers: { modes: { card: 'Axis Bank' } } })).settings.ledgers.modes).toEqual({ cash: 'Cash', upi: 'HDFC Bank', card: 'Axis Bank', insurance: 'Insurance receivable' });
+    expect(ok(await settings({ ledgers: { modes: { card: 'Axis Bank' } } })).settings.ledgers.modes).toEqual({ cash: 'Cash', upi: 'HDFC Bank', card: 'Axis Bank', cheque: 'Bank (cheque)', neft: 'Bank (NEFT / RTGS)', insurance: 'Insurance receivable' });
   });
 
   it('what stops a batch: no company name or start of the books, a day that is not over, a day before the books start', async () => {
