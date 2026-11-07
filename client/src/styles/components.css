@@ -530,13 +530,13 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 
 /* SimpleTable column options: a date or phone number on one line; a name column that is not squeezed */
 .ca-table .ca-nowrap { white-space: nowrap; }
+.nbf-baby .ca-nowrap { white-space: nowrap; }
 .ca-table .ca-wide { min-width: 12em; }
 
 /* Newborn follow-up (Group A item 4): the list and a baby's screening log */
 .nbf-baby { display: flex; flex-direction: column; gap: 2px; }
 .nbf-baby a { font-weight: 600; }
 .nbf-due { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
-.nbf-log { gap: var(--space-6); }
 .nbf-facts { list-style: none; margin: var(--space-1) 0 var(--space-6); padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); color: var(--slate-600); font-size: var(--fs-label); }
 .nbf-items { margin: 0; }
 .nbf-item { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
@@ -550,3 +550,33 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .nbf-due .pill { white-space: normal; text-align: left; max-width: 100%; height: auto; align-items: flex-start; }
 .nbf-due .pill svg { flex: none; margin-top: 2px; }
 .ca-table tbody th.ca-wide { min-width: 10em; }
+
+/* Clinical audit → Deliveries: four number cards in one row, or 2 × 2 on a narrower screen (never 3 + 1) */
+.pf-content.ca-page, .nbf-log { display: flex; flex-direction: column; gap: var(--space-6); }
+.pf-content.ca-page > *, .nbf-log > * { margin-top: 0; margin-bottom: 0; }
+.ca-page .reg-toolbar { margin-bottom: 0; align-items: flex-end; gap: var(--space-4); }
+.ca-page .reg-toolbar .field { margin-bottom: 0; }
+.ca-month-note { margin: 0 0 var(--space-2); }
+.ca-robson .num { min-width: 0; }
+.ca-robson thead th.num { white-space: normal; min-width: 4.5em; }
+.ca-robson tbody th, .ca-robson tfoot th { min-width: 12em; }
+.ca-robson th, .ca-robson td { padding-left: var(--space-2); padding-right: var(--space-2); }
+.ca-kpis { margin-bottom: 0; }
+@media screen and (max-width: 1180px) { .ca-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media screen and (max-width: 520px) { .ca-kpis { grid-template-columns: minmax(0, 1fr); } }
+.ca-key { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-1) var(--space-6); margin: var(--space-3) 0 0; font-size: var(--fs-caption); color: var(--slate-600); }
+.ca-key > div { display: flex; gap: var(--space-2); }
+.ca-key dt { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.ca-key dd { margin: 0; }
+
+/* Newborn follow-up: the card's heading with the Due now / Defaulters / All babies choice beside it */
+.nbf-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.nbf-card-head h2 { margin: 0; }
+/* Caesareans: the category boxes in one row (2 × 2 when narrow); dates and categories kept on one line */
+.ca-page .ca-cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media screen and (max-width: 1180px) { .ca-page .ca-cats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ca-cs td[data-label="Category"], .ca-cs td[data-label="Patient"] .hint { white-space: nowrap; }
+.ca-cs th, .ca-cs td { padding-left: var(--space-2); padding-right: var(--space-2); }
+.ca-cs .pill { white-space: normal; height: auto; }
+.nbf-register .ca-table .pill { white-space: normal; height: auto; }
+.nbf-register .ca-table th, .nbf-register .ca-table td { padding-left: var(--space-2); padding-right: var(--space-2); }

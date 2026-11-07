@@ -1,5 +1,7 @@
 // Newborn screening and follow-up (Clinical Requirements Group A, item 4). Same roles as
 // server/src/routes/newbornFollowUp.js. DRAFT schedule (NNF / RBSK) until the Lead Neonatologist checks it.
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { hasRole } from '../../components/ui.jsx';
 import { CalendarClock, CircleCheck, CircleMinus, Clock, TriangleAlert } from 'lucide-react';
 
 export const NEWBORN_FOLLOW_UP_ROLES = ['doctor', 'rmo', 'nurse', 'followup_coordinator'];
@@ -35,4 +37,12 @@ export function itemLook(x) {
     default:
       return { tone: 'neutral', icon: Clock, word: 'Later' };
   }
+}
+
+/** The module's tabs: Newborn follow-up, and the NICU / SNCU register for doctors, RMOs and nurses (never the coordinator). */
+export function useNewbornTabs() {
+  const membership = useAuth()?.activeMembership;
+  const tabs = [{ label: 'Newborn follow-up', to: '/newborn-follow-up', end: true }];
+  if (membership && hasRole(membership, 'doctor', 'rmo', 'nurse')) tabs.push({ label: 'NICU register', to: '/nicu-register', end: true });
+  return tabs;
 }
