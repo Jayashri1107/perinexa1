@@ -22,6 +22,22 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **7 Nov 2026 – five more parts in the copy of the whole record (branch `record-copy-parts`, developer's request):**
+  the copy now also has **Scan reports** (a signed report whole: the study, why it was asked for, every measurement
+  with its unit, findings, impression, the signer with qualification and registration, a change after signing with
+  the report as it was, whether the measurements came from the machine, how many pictures print – the pictures
+  themselves are not copied; a scan not signed yet is listed only; a cancelled one only as cancelled, with who and
+  when), **Referrals from other doctors** (the owner's version brought over unchanged: the referring doctor and
+  clinic, reasons, question, what was sent, her answers on sharing, the signed consultant note, messages and files by
+  name – never the clocks, review notes or the doctor's phone), **Specimens and histopathology** (what was sent, the
+  procedure, laboratory, the report, the review and when she was told, overdue days; the report file counted only),
+  **Scores (EPDS and VTE risk)** (the ten answers' scores, never the questions; the VTE factors in words; total, band,
+  advice and its DRAFT source) and, on a baby's copy, **Screening and follow-up** (weeks at birth, high-risk and why,
+  each screen and clinic visit with its due days, state, result and who recorded it). Anything cancelled or entered in
+  error is listed without its content. Same access as before (her doctor or an RMO) and the same audit entry (ids
+  only). "Not in this copy" now also names the EPDS questions, scan pictures, the referral desk's own records and
+  incident reports. Not in the copy on purpose: incidents (never part of a record). How to test: steps 4a–4e of "How
+  to test the copy of the whole record".
 - **6 Nov 2026 – the hospital's doctors by department (branch `doctors-list`, developer's request):** the handwritten
   lists are in `server/scripts/hospital-doctors.js` (`npm run doctors:hospital -w server -- "<hospital name>"`): 22
   doctors with their departments and OPD timings (Mon–Sat 10–5, Sun 11–4); safe to run again. The real emails are not
@@ -3424,6 +3440,21 @@ Use made-up patients only. Steps 1–10 in the app; steps 11–13 in the Mac's T
    background, Obstetric history, Pregnancy with "Risk level and its reasons", Visits, Care plans, Lab orders and
    results, Scans and procedures done, Stays in hospital, Consent forms and information given, Appointments, Not in
    this copy. An empty part says "None recorded."
+4a. **Scan reports** (7 Nov 2026). Order a scan for her, do it, write and sign the report, then change it once with a
+    reason; order a second and leave it unsigned; cancel a third. The copy's **Scan reports** part has the signed
+    report whole with "Signature …" and the change with the report as it was, the second "Done – report not signed
+    yet" without its words, and the third only "Cancelled" with who and when.
+4b. **Referrals.** As the referral desk log a referral linked to her, record her Yes; as her doctor write and sign the
+    consultant note. **Referrals from other doctors** shows the referral, her answer and the signed note; the
+    referring doctor's phone is nowhere.
+4c. **Specimens.** Lab and scans → Specimens → log one, enter its report and review it with the day she was told;
+    log a second and cancel it. **Specimens and histopathology** shows the first with the report and review, the
+    second only as cancelled.
+4d. **Scores.** On a postnatal patient → Scores → record an EPDS and a VTE score; mark a third entered in error. The
+    **Scores** part shows the ten answers' scores (no questions), the VTE factors in words and the advice; the third
+    only as entered in error.
+4e. **A baby.** On a baby → Follow-up → set the weeks at birth and record the hearing screen. The baby's copy has
+    **Screening and follow-up** with each screen and visit; a woman's copy never has this part.
 5. **What must not be there.** The visit marked entered in error shows only that, with who marked it – not what was
    written. The private note is nowhere. The lab result says "Sample taken: Not recorded – the results were entered
    without it", and above the lab orders a note says Low and High come from a DRAFT list. The consent form shows its

@@ -3,6 +3,8 @@
 // (RecordCopy.jsx). Plain functions, so they can be tested without a browser. The server decides what a copy
 // holds (server/src/patients/recordCopyView.js); nothing is added or worked out here beyond wording.
 import { formatDate, formatDateTime } from '../../components/ui.jsx';
+import { HIGH_RISK_LABELS, RESULT_LABELS } from '../newborn/newbornFormat.js';
+import { MESSAGE_LABELS, RELEASE_LABELS, SENT_FIELDS, URGENCY_LOOK, VIA_LABELS, noteFields } from '../referrals/referralFormat.js';
 import { PLAN_STATUS_LOOK, fertilityRows, outcomeText, planDatesText } from './fertilityFormat.js';
 import { CANCEL_REASON_LABELS, CLINICAL_LABELS, CYCLE_STATUS_LOOK, PATTERN_WORDS, TEST_RESULT_WORDS, TIMING_WORDS, protocolText } from './fertilityCycleFormat.js';
 import { STATUS_LOOK, VISIT_TYPE_LABELS, whenLabel } from '../appointments/appointmentFormat.js';
@@ -96,6 +98,12 @@ const CUT_WORDS = {
   workDone: 'scans and procedures',
   notes: 'emergency treatment notes',
   carePlans: 'care plans',
+  fertilityPlans: 'fertility treatment plans',
+  fertilityCycles: 'cycle sheets',
+  imaging: 'scan reports',
+  referrals: 'referrals',
+  specimens: 'specimens',
+  scores: 'scores',
 };
 /** A warning when a part of the record was too long for one copy (null when the copy is complete). */
 export function cutWarning(copy) {
@@ -108,13 +116,20 @@ export function cutWarning(copy) {
 export function notInCopy(copy) {
   const p = copy.patient;
   const baby = p.careType === 'newborn';
+  const referrals = (copy.referrals ?? []).length > 0;
+  const pictures = (copy.imaging ?? []).some((s) => s.pictures > 0);
   return [
     'The doctor’s private notes of a visit. They are never printed.',
-    'What was written in a visit, a document or a chart entry that was marked “entered in error”, and in a lab order that was cancelled. They are listed, without their content.',
-    'Inpatient documents that are not signed yet. They are listed as drafts.',
-    'Lab values that the lab has not reported yet, and the report files and scanned papers attached in Perinexa. Ask for those separately.',
+    'What was written in a visit, a document, a chart entry or a score that was marked “entered in error”, and in a lab order, a scan, a specimen or a referral that was cancelled. They are listed, without their content.',
+    'Inpatient documents, scan reports and consultant notes that are not signed yet. They are listed as drafts.',
+    'Lab values that the lab has not reported yet, and the files kept in Perinexa: lab and histopathology report files, scanned papers, scan pictures and the files of a referral (listed by name or counted only). Ask for those separately.',
     'What was typed into a consent form. The signed paper is the record; only its title and dates are listed.',
+    'The questions of the EPDS. Their wording belongs to the Royal College of Psychiatrists; only the score of each answer is copied.',
     'Bills, payments and pharmacy invoices, and the reminder messages that were sent.',
+    // (only when there is one: the pictures, and the referral desk's own records about the hospital's work)
+    ...(pictures ? ['The scan pictures. The copy says how many print with each report.'] : []),
+    ...(referrals ? ['The referral desk’s clocks and the weekly review notes on the hospital’s promises to the referring doctor. They are about the hospital’s own work.'] : []),
+    'Incident reports. They are about the hospital’s safety work, not part of a patient’s record.',
     // (only when there is one: a copy for a woman after a pregnancy loss must not speak of babies she does not have)
     ...(baby && p.motherMrn ? ['The mother’s record. It is a separate record, named here by its patient number only.'] : []),
     ...(!baby && p.babyMrns?.length
@@ -560,3 +575,230 @@ export const appointmentRows = (appointments) =>
     key: a.id,
     cells: [formatDate(`${a.date}T00:00:00Z`), whenLabel(a), VISIT_TYPE_LABELS[a.visitType] ?? a.visitType, a.doctorName ?? '', STATUS_LOOK[a.status]?.label ?? a.status],
   }));
+
+// ---------- Scan reports (USG and radiology) ----------
+
+/** Who signed: name, qualification and registration number, as printed under a signed report. */
+const signerText = (s) =>
+  s ? `${s.byName ?? '—'}${s.qualification ? `, ${s.qualification}` : ''}${s.registrationNumber ? ` – Reg. No. ${s.registrationNumber}${s.council ? ` (${s.council})` : ''}` : ''}` : '—';
+
+const IMAGING_STATUS = { requested: 'Booked, waiting for a doctor to confirm', ordered: 'Ordered', scheduled: 'Scheduled', done: 'Done – report not signed yet' };
+const valueLine = (v) => `${v.value}${v.unit ? ` ${v.unit}` : ''}`;
+const reportRows = (r) => (r ? filled([...r.values.map((v) => [v.name, valueLine(v)]), ['Findings', r.findings], ['Impression', r.impression]]) : []);
+
+/** The note above the scan reports: the templates are DRAFT, images are not read, the sex of a fetus is never recorded. */
+export const IMAGING_NOTE =
+  'The report templates are DRAFT until a doctor approves them. Perinexa does not read scan images. The sex of the fetus is not disclosed (PC-PNDT Act) – there is no field for it.';
+
+/**
+ * One scan: { key, title, status, error, rows, amendments }. A signed report whole; one not signed yet listed only;
+ * a cancelled one with who and when only. amendments: each change after signing with the report as it was before.
+ */
+export function imagingBlock(s) {
+  if (s.status === 'cancelled') {
+    return { key: s.id, title: dayOf(s.at), status: 'Cancelled', error: `This scan was cancelled${by(s.cancelled?.byName)}${s.cancelled?.at ? ` on ${formatDateTime(s.cancelled.at)}` : ''}. Its content is not copied.`, rows: [], amendments: [] };
+  }
+  const title = `${s.studyName} · ${dayOf(s.at)}${s.urgent ? ' · urgent' : ''}`;
+  if (s.status !== 'signed') {
+    return {
+      key: s.id,
+      title,
+      status: IMAGING_STATUS[s.status] ?? s.status,
+      error: null,
+      rows: filled([
+        ['Ordered', stampText(s.ordered)],
+        ['Scheduled for', s.scheduledFor ? formatDateTime(s.scheduledFor) : ''],
+        ['Done', stampText(s.done)],
+        ['Report', s.status === 'done' ? 'Not signed yet – not part of the record until then, and not copied.' : ''],
+      ]),
+      amendments: [],
+    };
+  }
+  const rows = filled([
+    ['Asked for', s.indication],
+    ['Ordered', stampText(s.ordered)],
+    ['Done', stampText(s.done)],
+    ...reportRows(s.report),
+    [
+      'Measurements',
+      s.fromMachine
+        ? `From the ultrasound machine${s.fromMachine.machine ? ` (${s.fromMachine.machine})` : ''}${s.fromMachine.studyAt ? `, ${formatDateTime(s.fromMachine.studyAt)}` : ''} – checked by the person who wrote the report`
+        : '',
+    ],
+    ['Pictures', s.pictures ? `${s.pictures} printed with the report (not in this copy)` : ''],
+    ['Signature', signerText(s.signed)],
+  ]);
+  const amendments = (s.amendments ?? []).map((a, i) => ({
+    key: `${s.id}-change-${i}`,
+    title: `Changed ${stampText(a)}${a.reason ? ` – ${a.reason}` : ''}. The report before the change:`,
+    rows: reportRows(a.report),
+  }));
+  return { key: s.id, title, status: `Signed by ${s.signed?.byName ?? '—'} on ${formatDateTime(s.signed?.at)}`, error: null, rows, amendments };
+}
+
+// ---------- Referrals from other doctors ----------
+
+const SHARING_WORDS = { yes: 'She agreed', no: 'She did not agree' };
+const FILE_KIND = (x) => (x.kind ? `${RELEASE_LABELS[x.kind] ?? x.kind} (PDF released to the referral desk)${x.superseded ? ' – replaced by a newer PDF' : ''}` : 'Sent by the referring doctor');
+
+/**
+ * One referral: { key, title, status, error, rows, note, messages, files }. note: { title, status, error, rows,
+ * additions } – the consultant note's words only once signed ("Next at …" names this hospital, `hospital`). messages
+ * and files: table rows; the files by name and date only (they are not in the copy). A referral cancelled as logged by
+ * mistake has only the `error` sentence.
+ */
+export function referralBlock(r, hospital) {
+  const title = `${r.number} · came ${formatDateTime(r.receivedAt)}`;
+  if (r.status === 'cancelled') {
+    return {
+      key: r.id,
+      title,
+      status: 'Cancelled',
+      error: `This referral was cancelled as logged by mistake${by(r.cancelled?.byName)}${r.cancelled?.at ? ` on ${formatDateTime(r.cancelled.at)}` : ''}. Its content is not copied.`,
+      rows: [],
+      note: null,
+      messages: [],
+      files: [],
+    };
+  }
+  const rd = r.referringDoctor ?? {};
+  const sent = SENT_FIELDS.filter((f) => has(r.sent?.[f.key])).map((f) => `${f.label}: ${r.sent[f.key]}`);
+  const sharing = (r.sharing ?? []).map((h) => `${SHARING_WORDS[h.answer] ?? h.answer} – recorded ${stampText(h)}`);
+  const rows = filled([
+    ['Referred by', [rd.name, rd.clinic].filter(Boolean).join(', ')],
+    ['How it came', [VIA_LABELS[r.via] ?? r.via, URGENCY_LOOK[r.urgency]?.word ?? r.urgency, r.centreName].filter(Boolean).join(' · ')],
+    ['Reasons', [...(r.reasons ?? []), r.otherReason].filter(Boolean).join('\n')],
+    ['The doctor’s question', r.question],
+    ['What the doctor sent', sent.join('\n')],
+    ['Consultant', r.consultantName],
+    ['Logged', stampText(r.created)],
+    ['Sharing with the referring doctor', sharing.join('\n') || 'Not asked yet'],
+    ['Closed', r.closed ? `${stampText(r.closed)}${r.closed.reason ? ` – ${r.closed.reason}` : ''}` : ''],
+  ]);
+  const n = r.note;
+  const note = !n
+    ? null
+    : n.status === 'signed'
+      ? {
+          title: 'Consultant note',
+          status: `Signed by ${signerText(n.signed)} on ${formatDateTime(n.signed?.at)}`,
+          error: null,
+          rows: filled(noteFields(hospital).map((f) => [f.label, n[f.key]])),
+          additions: (n.additions ?? []).map((x, i) => ({ key: `${r.id}-note-${i}`, text: x.text, by: `${x.byName}, ${formatDateTime(x.at)}` })),
+        }
+      : {
+          title: 'Consultant note',
+          status: 'Draft',
+          error: `A draft${n.saved?.at ? ` last saved ${stampText(n.saved)}` : ''}, not signed yet. It is not part of the record until then and is not copied.`,
+          rows: [],
+          additions: [],
+        };
+  const files = [...(r.attachments ?? []).map((a) => ({ ...a, kind: null })), ...(r.releases ?? [])]
+    .sort((a, b) => new Date(a.at ?? 0) - new Date(b.at ?? 0))
+    .map((x, i) => ({ key: `${r.id}-file-${i}`, cells: [formatDateTime(x.at), FILE_KIND(x), x.fileName, x.byName ?? ''] }));
+  const messages = (r.messages ?? []).map((m, i) => ({ key: `${r.id}-msg-${i}`, cells: [formatDateTime(m.at), `${MESSAGE_LABELS[m.what] ?? m.what}${m.fileName ? ` – ${m.fileName}` : ''}`, m.byName ?? ''] }));
+  return { key: r.id, title, status: r.status === 'closed' ? 'Closed' : 'Open', error: null, rows, note, messages, files };
+}
+
+// ---------- Specimens and histopathology ----------
+
+const SPECIMEN_KINDS = { histopathology: 'Histopathology', cytology: 'Cytology', other: 'Other examination' };
+const SPECIMEN_STATUS = { sent: 'Waiting for the report', reported: 'Report back – to be reviewed', reviewed: 'Reviewed' };
+
+/** One specimen: { key, title, status, error, rows }. A cancelled one with who and when only. */
+export function specimenBlock(s) {
+  const title = `Specimen no. ${s.serial} · sent ${dayOf(s.sentAt)}`;
+  if (s.status === 'cancelled') {
+    return { key: s.id, title, status: 'Cancelled', error: `This specimen was cancelled as logged by mistake${by(s.cancelled?.byName)}${s.cancelled?.at ? ` on ${formatDateTime(s.cancelled.at)}` : ''}. Its content is not copied.`, rows: [] };
+  }
+  const r = s.report;
+  const v = s.review;
+  return {
+    key: s.id,
+    title,
+    status: `${SPECIMEN_STATUS[s.status] ?? s.status}${s.overdueDays != null ? ` · overdue, ${s.overdueDays} days since it was sent` : ''}`,
+    error: null,
+    rows: filled([
+      ['Examination', SPECIMEN_KINDS[s.kind] ?? s.kind],
+      ['What was sent', s.specimen],
+      ['Procedure', s.procedure],
+      ['Taken', s.collectedAt ? formatDateTime(s.collectedAt) : ''],
+      ['Sent', s.sentAt ? formatDateTime(s.sentAt) : ''],
+      ['Laboratory', [s.lab, s.labReference && `ref. ${s.labReference}`].filter(Boolean).join(', ')],
+      ['Logged by', s.loggedByName],
+      ['Report received', r?.receivedAt ? formatDateTime(r.receivedAt) : ''],
+      ['What the report says', r?.summary],
+      ['Report entered', r ? stampText(r) : ''],
+      ['Report file', r?.file ? 'Attached in Perinexa (not in this copy)' : ''],
+      ['Reviewed', v ? stampText(v) : ''],
+      ['Review note', v?.note],
+      ['Told the patient', v ? (v.informedAt ? formatDateTime(v.informedAt) : NOT_RECORDED) : ''],
+    ]),
+  };
+}
+
+// ---------- Scores: EPDS and VTE risk ----------
+
+const SCORE_KINDS = { epds: 'EPDS (Edinburgh Postnatal Depression Scale)', vte: 'VTE risk score' };
+const BAND_WORDS = { unlikely: 'Depression unlikely', possible: 'Possible depression', likely: 'Likely depression', low: 'Lower risk', intermediate: 'Intermediate risk', high: 'High risk' };
+const PHASE_WORDS = { antenatal: 'Before the birth', postnatal: 'After the birth' };
+
+/** One score: { key, title, status, error, rows }. One entered in error with who and when only. */
+export function scoreBlock(s) {
+  const title = `${SCORE_KINDS[s.kind] ?? s.kind} · ${formatDate(s.on)}`;
+  if (s.enteredInError) return { key: s.id, title, status: 'Entered in error', error: errorText('This score', s.enteredInError), rows: [] };
+  const epds = s.kind === 'epds';
+  return {
+    key: s.id,
+    title,
+    status: `Total ${s.total}${epds ? ' of 30' : ''} · ${BAND_WORDS[s.band] ?? s.band}${epds && s.selfHarm ? ' · question 10 (thoughts of self-harm) scored' : ''}`,
+    error: null,
+    rows: filled([
+      ['When', PHASE_WORDS[s.phase] ?? s.phase],
+      ...(epds
+        ? [['Scores of the ten answers', (s.epdsScores ?? []).map((n, i) => `${i + 1}: ${n}`).join(' · ')]]
+        : [
+            ['Risk factors', (s.vteFactors ?? []).join('\n') || 'None ticked'],
+            ['Low-molecular-weight heparin before the birth', s.phase === 'postnatal' && s.antenatalLmwh ? 'Yes' : ''],
+          ]),
+      ['Advice', (s.advice ?? []).join('\n')],
+      ['Note', s.note],
+      ['Recorded', stampText({ byName: s.byName, at: s.at })],
+      ['Rules (DRAFT)', s.source],
+    ]),
+  };
+}
+
+// ---------- A baby's screening and follow-up ----------
+
+const FOLLOW_STATE = { done: 'Done', not_needed: 'Not needed', attended: 'Attended', overdue: 'Overdue', defaulter: 'Missed', due: 'Due now', upcoming: 'Later' };
+
+/** The rows about the log itself (gestation at birth, high-risk and why, whether an eye examination is needed). */
+export function followUpRows(f) {
+  if (!f) return [];
+  return filled([
+    ['Weeks of pregnancy at birth', f.gestationWeeks != null ? `${f.gestationWeeks} w ${f.gestationDays ?? 0} d` : NOT_RECORDED],
+    ['High-risk follow-up', f.highRisk ? `Yes${f.highRiskReasons?.length ? ` – ${f.highRiskReasons.map((k) => HIGH_RISK_LABELS[k] ?? k).join(', ')}` : ''}` : 'No'],
+    ['Eye examination for ROP', f.needsRop ? 'Needed (from the weeks at birth and the birth weight)' : 'Not needed by the rule'],
+    ['Log', f.started ? '' : 'Not started yet – the due days below are worked out from the birth'],
+  ]);
+}
+
+/** Table rows [what, due, state, result, day done with note and who] for each screen and clinic visit. */
+export function followUpTable(f) {
+  if (!f) return [];
+  const due = (x) => (x.dueOn ? formatDate(x.dueOn) : [x.dueFrom && formatDate(x.dueFrom), x.dueBy && formatDate(x.dueBy)].filter(Boolean).join(' – '));
+  return [...(f.screens ?? []), ...(f.visits ?? [])].map((x) => {
+    const r = x.record;
+    return {
+      key: x.key,
+      cells: [
+        x.label,
+        due(x),
+        FOLLOW_STATE[x.state] ?? x.state,
+        r?.result ? (RESULT_LABELS[r.result] ?? r.result) : '',
+        r ? [r.on && formatDate(r.on), r.note, r.byName && `recorded by ${r.byName}`].filter(Boolean).join(' · ') : '',
+      ],
+    };
+  });
+}
