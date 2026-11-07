@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { GROUPS, PAYMENT_MODES } from '../billing/billingRules.js';
+import { COUNTER_MODES } from '../pharmacy/pharmacyRules.js';
 import { addDays, hospitalToday, isoDay } from '../careplans/dates.js';
 import { hasRole } from '../models/Membership.js';
 import { TallyVoucher } from '../models/TallyVoucher.js';
@@ -44,7 +45,7 @@ const settingsSchema = z
     ledgers: z
       .object({
         income: names(GROUPS),
-        modes: names(PAYMENT_MODES),
+        modes: names([...new Set([...PAYMENT_MODES, ...COUNTER_MODES])]), // the pharmacy counter also takes cheques and NEFT
         schemes: z.array(z.object({ scheme: z.string().trim().min(1).max(80), ledger: name })).max(50),
         patients: name,
         counter: name,

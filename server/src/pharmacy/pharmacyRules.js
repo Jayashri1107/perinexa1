@@ -28,7 +28,8 @@ export const CONTROLLED = ['X', 'narcotic']; // the strictest: own register, doc
 export const EXPIRY_WARNING_DAYS = 30;
 export const EXPIRY_REPORT_DAYS = 90;
 // Payment modes of a walk-in customer (not a registered patient) paying at the counter.
-export const COUNTER_MODES = ['cash', 'upi', 'card'];
+// Cheque and NEFT / RTGS were added for the counter's Payment window (7 Nov 2026), as in the store's earlier software.
+export const COUNTER_MODES = ['cash', 'upi', 'card', 'cheque', 'neft'];
 // Reasons are required for these, at least this long.
 export const MIN_REASON = 3;
 // Upper limits.

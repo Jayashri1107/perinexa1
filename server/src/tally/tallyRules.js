@@ -36,7 +36,7 @@ export const DEFAULT_LEDGERS = {
   // One income account per group of the price list (hospital services, no GST).
   income: { consultation: 'Consultation income', procedure: 'Procedure income', scan: 'Scan income', lab: 'Lab test income', inpatient: 'Inpatient income', medicine: 'Medicine income (hospital bill)', other: 'Other income' },
   // Where the money lands, by how the patient paid. Insurance: the account used when no scheme has its own.
-  modes: { cash: 'Cash', upi: 'Bank (UPI)', card: 'Bank (card)', insurance: 'Insurance receivable' },
+  modes: { cash: 'Cash', upi: 'Bank (UPI)', card: 'Bank (card)', cheque: 'Bank (cheque)', neft: 'Bank (NEFT / RTGS)', insurance: 'Insurance receivable' },
   // An insurer or scheme with its own account: [{ scheme: 'PM-JAY', ledger: 'PM-JAY receivable' }].
   schemes: [],
   patients: 'Patients', // one shared account, never one per patient (owner's decision 4)

@@ -440,6 +440,8 @@ const MODES = [
   ['cash', 'Cash'],
   ['upi', 'UPI'],
   ['card', 'Card'],
+  ['cheque', 'Cheque (pharmacy counter)'],
+  ['neft', 'NEFT / RTGS (pharmacy counter)'],
   ['insurance', 'Insurance or scheme (when the scheme has no account of its own)'],
 ];
 const SINGLE = [

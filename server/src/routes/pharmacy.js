@@ -177,7 +177,15 @@ pharmacyRouter.get('/medicines', async (req, res) => {
   // imported opening stock can bring a thousand medicines.
   const meds = await Medicine.find(filter).sort({ name: 1 }).limit(q.search ? 500 : 20000).lean();
   const stock = await stockOf(req.tenantId, meds.map((m) => m._id));
-  res.json({ medicines: meds.map((m) => medicineView(m, stock.get(String(m._id)) ?? 0)) });
+  // A search (the counter's drop-down, 7 Nov 2026) also gives the MRP of the batch sold next: the earliest expiry in stock
+  const next = new Map();
+  if (q.search) {
+    const t = today(req);
+    for (const b of await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(t) } }, { medicineId: 1, mrpPaise: 1, expiry: 1 }).sort({ expiry: 1 }).lean()) {
+      if (!next.has(String(b.medicineId))) next.set(String(b.medicineId), b.mrpPaise);
+    }
+  }
+  res.json({ medicines: meds.map((m) => ({ ...medicineView(m, stock.get(String(m._id)) ?? 0), ...(q.search ? { mrpPaise: next.get(String(m._id)) ?? null } : {}) })) });
 });
 
 pharmacyRouter.post('/medicines', async (req, res) => {
@@ -518,7 +526,18 @@ pharmacyRouter.post('/batches/:id/count', async (req, res) => {
 pharmacyRouter.get('/medicines/:id/batches', async (req, res) => {
   const t = today(req);
   const list = await StockBatch.find({ tenantId: req.tenantId, medicineId: idParam(req), qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(t) } }).sort({ expiry: 1 }).lean();
-  res.json({ batches: list.map((b) => batchView(b, t)), warnDays: EXPIRY_WARNING_DAYS });
+  // As the store's earlier software showed them at the counter (7 Nov 2026): where each batch was bought – the supplier,
+  // its bill number and date – and the pack it came in (units per pack and the pack's MRP). Opening stock has none.
+  const purchases = new Map(
+    (await Purchase.find({ tenantId: req.tenantId, _id: { $in: list.map((b) => b.purchaseId).filter(Boolean) } }, { invoiceNo: 1, invoiceDate: 1, lines: 1 }).lean()).map((p) => [String(p._id), p]),
+  );
+  const suppliers = new Map((await Supplier.find({ tenantId: req.tenantId, _id: { $in: list.map((b) => b.supplierId).filter(Boolean) } }, { name: 1 }).lean()).map((s) => [String(s._id), s.name]));
+  const bought = (b) => {
+    const p = b.purchaseId ? purchases.get(String(b.purchaseId)) : null;
+    const line = p?.lines?.find((l) => String(l.batchId) === String(b._id));
+    return { supplier: b.supplierId ? (suppliers.get(String(b.supplierId)) ?? '') : '', billNo: p?.invoiceNo ?? '', billDate: p?.invoiceDate ? isoDay(p.invoiceDate) : null, conv: line?.pack?.conv ?? 1, packMrpPaise: line?.pack?.mrpPaise ?? b.mrpPaise };
+  };
+  res.json({ batches: list.map((b) => ({ ...batchView(b, t), ...bought(b) })), warnDays: EXPIRY_WARNING_DAYS });
 });
 
 // ---------- What to sell or issue ----------
@@ -603,7 +622,22 @@ pharmacyRouter.get('/inpatients', async (req, res) => {
 
 // ---------- Invoices ----------
 
-const invoiceSchema = z
+// One part of a walk-in's payment from the Payment window (7 Nov 2026). reference: the cheque number, a card's last 4
+// digits (never the whole card number) or the transaction id.
+const paymentPart = z
+  .object({
+    mode: z.enum(COUNTER_MODES),
+    amountPaise: z.number().int().min(1, 'Write the amount paid.').max(1_000_000_000),
+    reference: z.string().trim().max(80).default(''),
+    bank: z.string().trim().max(80).default(''),
+    on: requiredDateOnly('Date').optional(),
+    authorisedBy: z.string().trim().max(100).default(''),
+    narration: z.string().trim().max(200).default(''),
+  })
+  .strict()
+  .refine((p) => p.mode !== 'card' || !p.reference || /^\d{4}$/.test(p.reference), { message: 'Write only the last 4 digits of the card.', path: ['reference'] });
+
+const invoiceFields = z
   .object({
     kind: z.enum(['sale', 'issue']),
     patientId: objectId.optional(),
@@ -615,6 +649,8 @@ const invoiceSchema = z
     discountPercent: z.number().min(0).max(100).default(0),
     discountReason: z.string().trim().max(200).default(''),
     payment: z.object({ mode: z.enum(COUNTER_MODES), reference: z.string().trim().max(80).default('') }).strict().optional(),
+    payments: z.array(paymentPart).min(1).max(5).optional(),
+    paymentRemarks: z.string().trim().max(200).default(''),
     // A walk-in sale to a business that gives its GSTIN (for its tax invoice and the e-invoice file). Its state is
     // read from the GSTIN's first two digits.
     buyer: z
@@ -638,9 +674,12 @@ const invoiceSchema = z
   .strict()
   .refine((b) => !b.buyer || (!b.patientId && b.kind === 'sale'), { message: 'A business buyer is for a walk-in sale at the counter, not for a patient.', path: ['buyer'] })
   .refine((b) => Boolean(b.patientId) !== Boolean(b.customer), { message: 'Choose the patient, or write a walk-in customer’s name.', path: ['patientId'] })
-  .refine((b) => b.patientId || b.payment, { message: 'A walk-in customer pays at the counter: choose how.', path: ['payment'] })
   .refine((b) => !b.discountPercent || b.discountReason.length >= MIN_REASON, { message: 'Please write why the discount is given.', path: ['discountReason'] })
-  .refine((b) => b.kind === 'sale' || b.patientId, { message: 'Medicines are issued to an admitted patient.', path: ['patientId'] });
+  .refine((b) => b.kind === 'sale' || b.patientId, { message: 'Medicines are issued to an admitted patient.', path: ['patientId'] })
+  // A registered patient's invoice goes on her hospital bill: she pays at the billing desk, never here
+  .refine((b) => !b.patientId || (!b.payment && !b.payments), { message: 'A registered patient pays at the billing desk: the invoice goes on her hospital bill.', path: ['payments'] })
+  .refine((b) => !(b.payment && b.payments), { message: 'Send the payment once.', path: ['payments'] });
+const invoiceSchema = invoiceFields.refine((b) => b.patientId || b.payment || b.payments, { message: 'A walk-in customer pays at the counter: choose how.', path: ['payment'] });
 
 const loadInvoice = async (req) => {
   const inv = await PharmacyInvoice.findOne({ tenantId: req.tenantId, _id: idParam(req) });
@@ -658,6 +697,14 @@ pharmacyRouter.post('/invoices', async (req, res) => {
     details: { invoiceId: String(inv._id), number: inv.number, ...(inv.patientId ? { patientId: String(inv.patientId) } : { walkIn: true }), ...(inv.buyer ? { business: true } : {}), lines: inv.lines.length, amountPaise: t.netPaise, controlled: inv.lines.some((l) => CONTROLLED.includes(l.schedule)) },
   });
   res.status(201).json({ invoice: await oneView(req, inv) });
+});
+
+// The Payment window (7 Nov 2026): what the bill will come to – the same medicines, batches and discount as the
+// invoice about to be made, with nothing taken from the stock and no number used.
+pharmacyRouter.post('/invoices/quote', async (req, res) => {
+  desk(req);
+  const body = parse(invoiceFields, req.body);
+  res.json({ quote: await createInvoice(req, body, { dryRun: true }) });
 });
 
 pharmacyRouter.get('/invoices', async (req, res) => {

@@ -70,12 +70,15 @@ export function InvoicesPage() {
   const go = (d) => {
     setParams({ date: d }, { replace: true });
     setPerson(null);
+    setBlank(false); // a day chosen: that day's bills
   };
   const name = useDebounced(nameText.trim(), 300);
   const mrn = useDebounced(mrnText.trim(), 300);
   const amount = useDebounced(amountText.replace(/[^\d.]/g, ''), 300).replace(/^\./, '');
   // Search (6 Nov 2026, as the store's earlier software): with a type chosen, that type's people – nothing typed needed
   const [searched, setSearched] = useState(false);
+  // A type just chosen (All, OPD, IPD or External, 7 Nov 2026): the list stays empty until Search is pressed
+  const [blank, setBlank] = useState(false);
   const looking = desk && Boolean(name || mrn || searched);
   const doctors = useFetch(desk ? '/pharmacy/invoices/doctors' : null);
   const found = useFetch(
@@ -108,6 +111,7 @@ export function InvoicesPage() {
     res.reload();
   };
   const closePerson = () => {
+    setBlank(false);
     setPerson(null);
     setNameText('');
     setMrnText('');
@@ -200,6 +204,10 @@ export function InvoicesPage() {
                       setPerson(null);
                       setBilling(null);
                       setMade(null);
+                      setSearched(false);
+                      setNameText('');
+                      setMrnText('');
+                      setBlank(true);
                     }}
                   >
                     <Icon aria-hidden="true" /> {label}
@@ -211,6 +219,7 @@ export function InvoicesPage() {
                 className="btn btn-secondary ph-search-btn"
                 onClick={() => {
                   setSearched(true);
+                  setBlank(false);
                   setPerson(null);
                   setBilling(null);
                   setMade(null);
@@ -276,6 +285,12 @@ export function InvoicesPage() {
                 <SoldBill billing={billing} onCancel={() => setBilling(null)} onMade={billMade} onBills={(x) => { setBilling(null); setPerson(x); }} />
               ) : looking ? (
                 <PeopleFound found={found} people={people} onPick={(x) => setBilling({ person: x })} onBills={setPerson} />
+              ) : blank ? (
+                <section className="card ph-found ph-blank" aria-label="People found">
+                  <p className="muted">
+                    Press Search to list {type === 'all' ? 'all' : TYPE_CHOICES.find(([k]) => k === type)?.[1]} patients, or type a patient’s name or number.
+                  </p>
+                </section>
               ) : (
                 dayList
               )}
@@ -939,7 +954,10 @@ export function InvoicePage() {
               {v.payments.map((p, i) => (
                 <li key={`p${i}`}>
                   {p.kind === 'refund' ? 'Refund' : 'Paid'} {money(p.amountPaise)} · {MODE_LABELS[p.mode]}
-                  {p.reference ? ` · ${p.reference}` : ''} <span className="muted">· {formatDateTime(p.at)} · {p.byName}</span>
+                  {p.reference ? ` · ${p.mode === 'card' ? `card ending ${p.reference}` : p.reference}` : ''}
+                  {p.bank ? ` · ${p.bank}` : ''}
+                  {p.authorisedBy ? ` · authorised by ${p.authorisedBy}` : ''}
+                  {p.narration ? ` · ${p.narration}` : ''} <span className="muted">· {formatDateTime(p.at)} · {p.byName}</span>
                 </li>
               ))}
               {v.returns.map((r) => (
@@ -948,6 +966,7 @@ export function InvoicePage() {
                 </li>
               ))}
             </ul>
+            {v.paymentRemarks && <p className="hint">Remarks: {v.paymentRemarks}</p>}
           </section>
         )}
         {v.doctor && (
