@@ -22,6 +22,18 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **7 Nov 2026 – Build 15: PPH management and blood-loss chart as OBG-F-07 v1.0 (branch
+  `claude/build15-pph-f07-efe494`, developer's request; not merged):** the DRAFT PPH chart upgraded exactly to the
+  manual's field schema (`docs/field_schemas/build15_pph.json`), approved by the owner as clinical content. One-tap
+  **Declare PPH** on the patient banner with the minutes-since clock and the ALG-01 card; a transcription screen laid
+  out like OBG-F-07 (header, E-MOTIVE bundle with times and "within 15 min", escalation, observation rows with blood
+  products and the second-person check, Hb and labs, outcome); the schema's fixed doses shown; contraindications as
+  warnings; carboprost A3 block; TXA rules; loss bands 500–999 / 1000–1499 / ≥1500; late entry with the paper scan
+  before the consultant's sign-off, which locks it and keeps the KPI fields (A5); near miss → review, Lead
+  Obstetrician told, M&M list (A1); massive haemorrhage → Director told by the bell and the blood bank pack request
+  recorded (A4); five OBG-A-05 rows in the monthly dashboards; print as OBG-F-07 with the footer "OBG-F-07 · v1.0".
+  Not done: A2's "MEOWS every 5 minutes" (after Build 8 is merged – TODO in the code). Details and the owner's
+  approvals: `docs/CLINICAL_REQUIREMENTS.md`, Group B item 15. How to test: "How to test the PPH chart – Build 15".
 - **7 Nov 2026 – five more parts in the copy of the whole record (branch `record-copy-parts`, developer's request):**
   the copy now also has **Scan reports** (a signed report whole: the study, why it was asked for, every measurement
   with its unit, findings, impression, the signer with qualification and registration, a change after signing with
@@ -3046,16 +3058,30 @@ You need two fake staff logins (for example a nurse and a doctor).
 4. Tick every danger sign (mother and baby) and **She (or her family) said the danger signs back**, choose who →
    "Everything is filled in" → **Mark complete**: "Complete – name, time"; the answers are locked.
 
-## How to test the PPH chart – Group B item 15, DRAFT (fake data only)
-1. As a **nurse**, her doctor or an RMO: a made-up admitted mother → **IPD** → **Current stay** → **PPH chart** (under
-   the MEOWS chart) → **Start a PPH chart**: when recognised (AM/PM), tick **Tone** → **Start the chart**.
-2. **Blood loss** 700 mL measured → **Add to the chart**; again 450 mL estimated: "Blood loss so far 1150 mL – Major
-   PPH – moderate".
-3. **Step taken** → Oxytocin → **Add to the chart** without a dose: refused ("Write the dose given"). Type a dose → added.
-4. **Observations** pulse 124, BP 92/58, SpO2 96: "Shock index 1.35 · Yellow – watch closely".
-5. **Entered in error** on a line (with a reason): it is struck through and the total drops.
-6. As her doctor or an RMO: **Close the chart** → Bleeding controlled. The chart shows "Closed" and how it ended; a new
-   chart can be started.
+## How to test the PPH chart – Build 15, OBG-F-07 v1.0 (fake data only)
+Automated: `npm test` (server `tests/crs-pph.test.js` – acceptance tests 1–5 and the rules; website
+`pages/inpatient/pph.test.jsx` – the screen and acceptance test 6, the print).
+1. As the **hospital admin**: **Clinical audit → PPH M&M list → Who the PPH chart tells** – tick a made-up doctor as
+   Lead Obstetrician and someone as Director → **Save who is told**.
+2. As a **nurse**: a made-up admitted mother → her record: the banner shows **Declare PPH** – click it. The banner
+   now shows "PPH declared HH:MM · N min" (counting), **ALG-01 card** (read-only bundle with the doses) and **Open the
+   PPH chart**.
+3. On the stay page → **PPH chart (OBG-F-07)**: fill the header (loss at declaration 600 ml, weighed swabs, pulse 118,
+   systolic 96 → shock index 1.23 red; tick Tone). In the E-MOTIVE block give TXA a time 10 minutes after the
+   declaration → **Save the chart**: "Within 15 min". Add a carboprost dose; another 10 minutes later is refused; a
+   9th dose is refused.
+4. Tick the risk factor **Pre-eclampsia** and give ergometrine a time → saved, with the warning (not a block).
+5. **Add the row** with a cumulative loss lower than before: refused. Add a blood product with a unit number: it needs
+   a second person's email and password.
+6. Labs: fibrinogen 1.6 → "cryoprecipitate 2 pools". Outcome: total loss 1600 → near miss: review started, the Lead
+   Obstetrician's bell shows it, and it is on **Clinical audit → PPH M&M list**. Escalation: massive haemorrhage time
+   → the Director's bell, and the pack request is recorded on the chart.
+7. **Type in a paper chart** (on another made-up stay) with a declaration time 2 hours ago: fields show **Late entry**;
+   as a doctor, **Sign off and lock** is refused until **Attach the scan** (a PDF or photo) – then it signs off and
+   locks.
+8. **Print OBG-F-07**: A4 portrait – header, E-MOTIVE in three columns, observations, labs and outcome, footer
+   "OBG-F-07 · v1.0".
+9. **Clinical audit → Monthly dashboards → Obstetrics**: the five PPH rows (OBG-A-05).
 
 ## How to test Clinical Requirements Group A (fake data only)
 Automatic tests: `npm test` from the project root (server files `crs-*.test.js`; website tests next to each page).

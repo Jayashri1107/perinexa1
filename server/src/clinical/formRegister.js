@@ -9,7 +9,7 @@ export const FORM_REGISTER_SOURCE = 'DRAFT – Perinexa screens that stand in fo
 export const FORM_SCREENS = {
   who_checklist: { label: 'WHO Surgical Safety Checklist (theatre case)', code: 'OBG-F-16' },
   meows: { label: 'MEOWS chart', code: 'OBG-F-05' },
-  pph_chart: { label: 'PPH chart', code: '' },
+  pph_chart: { label: 'PPH chart', code: 'OBG-F-07' },
   discharge_checklist: { label: 'Postnatal discharge checklist', code: '' },
   pac: { label: 'Pre-anaesthetic check', code: '' },
   pain_chart: { label: 'Pain chart', code: '' },

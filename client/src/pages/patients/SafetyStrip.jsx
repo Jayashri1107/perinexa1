@@ -3,6 +3,7 @@ import { Baby, CalendarDays, Droplet, ShieldAlert, ShieldCheck, ShieldQuestion, 
 import { StatusPill, formatDate } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PatientAlertsDialog } from './PatientAlerts.jsx';
+import { PphBanner } from '../inpatient/PphBanner.jsx';
 import { allergyStatus, isRhNegative } from './patientFormat.js';
 
 /**
@@ -92,6 +93,8 @@ export function SafetyStrip({ patient, canAlerts = false, onAlertsChanged }) {
           Breastfeeding not recorded – ask
         </StatusPill>
       )}
+      {/* Build 15 (A2): Declare PPH in one tap, then the minutes since declaration – for those who write her chart */}
+      {canAlerts && !isNewborn && <PphBanner patient={patient} />}
       {canAlerts && (
         <button type="button" className="btn btn-link" onClick={() => setOpen(true)}>
           {alerts.length ? 'Alerts' : 'Add an alert'}

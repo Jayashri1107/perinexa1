@@ -13,6 +13,8 @@ export const QUALITY_TABS = [
   { label: 'Monthly dashboards', to: '/clinical-audit/dashboards', end: true },
   // The document register: the manual's forms and their versions (Group C, PX-X-02)
   { label: 'Document register', to: '/clinical-audit/documents', end: true },
+  // PPH episodes meeting the near-miss criteria, for M&M, and who the PPH chart tells (Build 15)
+  { label: 'PPH M&M list', to: '/clinical-audit/pph-reviews', end: true },
 ];
 
 /** Death and near-miss reviews (Group C, PX-OBG-30): doctors, RMOs and the quality lead – not the hospital admin. */

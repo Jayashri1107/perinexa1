@@ -279,6 +279,8 @@ const loadCrsDocs = () => import('./pages/quality/DocumentRegisterPage.jsx');
 const DocumentRegisterPage = screen(loadCrsDocs, 'DocumentRegisterPage');
 const loadCrsReviews = () => import('./pages/quality/CaseReviewsPage.jsx');
 const CaseReviewsPage = screen(loadCrsReviews, 'CaseReviewsPage');
+const loadCrsPph = () => import('./pages/quality/PphReviewsPage.jsx');
+const PphReviewsPage = screen(loadCrsPph, 'PphReviewsPage');
 const loadCrsReview = () => import('./pages/quality/CaseReviewPage.jsx');
 const CaseReviewPage = screen(loadCrsReview, 'CaseReviewPage');
 const loadCrs3 = () => import('./pages/specimens/SpecimensPage.jsx');
@@ -532,6 +534,7 @@ export function App() {
                   <Route index element={<ClinicalAuditPage />} />
                   <Route path="dashboards" element={<DashboardsPage />} />
                   <Route path="documents" element={<DocumentRegisterPage />} />
+                  <Route path="pph-reviews" element={<PphReviewsPage />} />
                   <Route path="reviews" element={<RequireTenantRole roles={CASE_REVIEW_ROLES} message="Death and near-miss reviews are for doctors, RMOs and the quality lead." />}>
                     <Route index element={<CaseReviewsPage />} />
                     <Route path=":id" element={<CaseReviewPage />} />

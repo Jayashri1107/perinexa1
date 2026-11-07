@@ -55,7 +55,7 @@ import { PatientAlert } from '../models/PatientAlert.js';
 import { CaseReview } from '../models/CaseReview.js';
 import { StaffPrivilege } from '../models/StaffPrivilege.js';
 import { FormVersion } from '../models/FormVersion.js';
-import { PphChart } from '../models/PphChart.js';
+import { PphChart, PphSettings } from '../models/PphChart.js';
 import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { TheatreCase } from '../models/TheatreCase.js';
 import { DashboardSignoff, DashboardTarget } from '../models/DashboardSignoff.js';
@@ -194,7 +194,8 @@ export const KINDS = [
   { file: 'death-and-near-miss-reviews.json', model: CaseReview, what: 'Maternal death and near-miss reviews (DRAFT lists): the case, criteria, cause, the three delays, avoidability, lessons and actions; who sealed each and the corrections added after sealing.' },
   { file: 'clinical-privileges.json', model: StaffPrivilege, what: 'Clinical privileges granted to staff (DRAFT list): which procedure, until when, who granted it, and when and why each was ended.' },
   { file: 'document-register.json', model: FormVersion, what: 'The document register: each version of each controlled form (code, title, version, in force from, review due), who recorded and approved it, and withdrawn drafts.' },
-  { file: 'pph-charts.json', model: PphChart, what: 'PPH charts of each stay: when the bleeding was recognised, the cause, each amount of blood lost, each step with its time (medicines with the dose and route typed), observations, how it ended, and lines marked entered in error (DRAFT chart).' },
+  { file: 'pph-charts.json', model: PphChart, what: 'PPH episodes (OBG-F-07 v1.0): the declaration, header, E-MOTIVE bundle times, carboprost doses, escalation, observation rows with blood products and their second-person check, labs, outcome, when each timed field was typed, warnings shown, the near-miss and massive-haemorrhage records, the M&M list, the KPI fields kept at sign-off, and lines marked entered in error (earlier DRAFT charts as they were).' },
+  { file: 'pph-settings.json', model: PphSettings, what: 'Who the PPH chart tells: the Lead Obstetrician(s) and the Director(s) named by the hospital admin.' },
   { file: 'postnatal-discharge-checklists.json', model: DischargeChecklist, what: 'Postnatal discharge checklists of each stay: the checks answered, the danger signs explained, the teach-back, the next visit, who completed it, and ones marked entered in error (DRAFT checklist).' },
   { file: 'theatre-list.json', model: TheatreCase, what: 'The theatre list: each operation with its day, theatre, order, team and status, and its WHO Surgical Safety Checklist (sign in, time out, sign out – the answers, notes and who confirmed each), and operations taken off the list with the reason.' },
   { file: 'dashboard-signoffs.json', model: DashboardSignoff, what: 'Monthly dashboards signed off by a department lead: the department, the month, the numbers as they were then (no patient), and the comment.' },
