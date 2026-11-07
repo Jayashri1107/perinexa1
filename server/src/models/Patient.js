@@ -367,6 +367,9 @@ const patientSchema = new mongoose.Schema(
       sex: { type: String, enum: [...NEWBORN_SEX, ''], default: '' },
       mother: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', default: null },
       fatherName: { type: String, trim: true, maxlength: 150, default: '' }, // owner, 24 Oct 2026 – the parents on the baby's record
+      // Made from the mother's signed delivery note (Group C, PX-X-14): which note and which baby on it – so a baby's
+      // record is made once only. null for a baby registered by hand.
+      fromDelivery: { type: new mongoose.Schema({ documentId: mongoose.Schema.Types.ObjectId, index: Number }, { _id: false }), default: null },
     },
     // A baby's care after birth (only on a baby's record; a clinical detail – reception sees the birth details above,
     // not these): admission to the NICU or SNCU with its dates, and breastfeeding at discharge. Every field has a
@@ -521,6 +524,7 @@ const patientSchema = new mongoose.Schema(
   { timestamps: true, optimisticConcurrency: true },
 );
 patientSchema.plugin(tenantScoped);
+patientSchema.index({ tenantId: 1, 'newborn.fromDelivery.documentId': 1, 'newborn.fromDelivery.index': 1 }, { unique: true, partialFilterExpression: { 'newborn.fromDelivery.documentId': { $exists: true } } });
 patientSchema.index({ tenantId: 1, mrn: 1 }, { unique: true });
 patientSchema.index({ tenantId: 1, lastVisitOn: -1 });
 patientSchema.index({ tenantId: 1, fullName: 1 });

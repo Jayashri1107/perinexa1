@@ -222,3 +222,16 @@ see the visits).
 - Test: open a pregnant patient → OPD → **Pregnancies**: the tier card (DRAFT) with today's risk level, then
   "Pregnancy 1 – current" with her stays and operations; fill in her conditions, G P A and blood group → the tier
   changes from "Not enough recorded".
+
+## Group C – the baby's record made from the delivery (PX-X-14), 7 Nov 2026
+Route `/api/delivery-babies`; on a signed delivery note, the card **The babies' records** (was: "register by hand").
+- For each live-born baby on the note a doctor or RMO presses **Make the baby's record**: the baby is registered as by
+  hand (patient number, checks, registration fee, audit) – "Baby of <mother>" or "First / Second Baby of <mother>" for
+  more than one – linked to the mother, with the time of birth, weight and sex from the note (written after the birth).
+  The record remembers the note and the baby (`newborn.fromDelivery`, unique), so it is made once.
+- Records that may already be this baby are shown first, as on New patient; **Make the record anyway** after checking.
+  A twin made from the same note is not a match for the other twin. Babies already linked to the mother by hand are
+  listed under the card. No record for a stillbirth. Audit: BABY_RECORD_FROM_DELIVERY (plus PATIENT_CREATED).
+- The identity band checked by two people at birth is already in place (second-person check).
+- Test: open a mother's stay → a signed delivery note with a live baby → **Make the baby's record** → "Record made:
+  Baby of … · P-…" with a link; the baby's record shows the mother, time of birth, weight and sex.
