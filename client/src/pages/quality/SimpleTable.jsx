@@ -1,7 +1,10 @@
 // A compact table for the Clinical Requirements pages (Specimens, Newborn follow-up, Incidents, Formulary): it fits the
 // page (cells wrap instead of scrolling sideways), and on phones each row becomes a small card with the column names
 // beside the values (styles in components.css, .ca-table).
-// columns: [{ key, header, render(row), num?: true, main?: true (the row's title on phones) }]
+// columns: [{ key, header, render(row), num?: true, main?: true (the row's title on phones), nowrap?: true (kept on one
+// line, e.g. a date or a phone number), wide?: true (a name column that must not be squeezed) }]
+
+const cellClass = (c) => [c.num && 'num', c.nowrap && 'ca-nowrap', c.wide && 'ca-wide'].filter(Boolean).join(' ') || undefined;
 
 export function SimpleTable({ columns, rows, emptyText = 'Nothing here.', loading = false, rowKey = 'id' }) {
   if (loading) return <p className="muted">Loading…</p>;
@@ -12,7 +15,7 @@ export function SimpleTable({ columns, rows, emptyText = 'Nothing here.', loadin
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key} scope="col" className={c.num ? 'num' : undefined}>
+              <th key={c.key} scope="col" className={cellClass(c)}>
                 {c.header}
               </th>
             ))}
@@ -23,11 +26,11 @@ export function SimpleTable({ columns, rows, emptyText = 'Nothing here.', loadin
             <tr key={r[rowKey]}>
               {columns.map((c) =>
                 c.main ? (
-                  <th key={c.key} scope="row">
+                  <th key={c.key} scope="row" className={cellClass(c)}>
                     {c.render(r)}
                   </th>
                 ) : (
-                  <td key={c.key} data-label={c.header || undefined} className={c.num ? 'num' : undefined}>
+                  <td key={c.key} data-label={c.header || undefined} className={cellClass(c)}>
                     {c.render(r)}
                   </td>
                 ),

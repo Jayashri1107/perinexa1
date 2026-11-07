@@ -30,7 +30,7 @@ describe('newborn follow-up', () => {
 
   it('lists each baby with her phone and what is due or missed', () => {
     const out = text(<NewbornFollowUpPage />);
-    expect(out).toContain('Baby Sample · P-000009');
+    expect(out).toMatch(/Baby Sample P-000009/);
     expect(out).toContain('+91 00000 00000');
     expect(out).toContain('Pulse oximetry: Overdue');
   });

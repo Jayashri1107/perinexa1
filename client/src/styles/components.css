@@ -527,3 +527,26 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .bili-line { fill: none; stroke: var(--indigo-700); stroke-width: 2; }
 .bili-dot { fill: var(--indigo-700); }
 .bili-dot-skin { fill: var(--surface); stroke: var(--indigo-700); stroke-width: 2; }
+
+/* SimpleTable column options: a date or phone number on one line; a name column that is not squeezed */
+.ca-table .ca-nowrap { white-space: nowrap; }
+.ca-table .ca-wide { min-width: 12em; }
+
+/* Newborn follow-up (Group A item 4): the list and a baby's screening log */
+.nbf-baby { display: flex; flex-direction: column; gap: 2px; }
+.nbf-baby a { font-weight: 600; }
+.nbf-due { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+.nbf-log { gap: var(--space-6); }
+.nbf-facts { list-style: none; margin: var(--space-1) 0 var(--space-6); padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); color: var(--slate-600); font-size: var(--fs-label); }
+.nbf-items { margin: 0; }
+.nbf-item { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.nbf-item:first-child { border-top: 0; padding-top: var(--space-1); }
+.nbf-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nbf-item-action { justify-self: end; }
+@media screen and (max-width: 720px) {
+  .nbf-item { grid-template-columns: minmax(0, 1fr) auto; }
+  .nbf-item-status { grid-column: 1 / -1; }
+}
+.nbf-due .pill { white-space: normal; text-align: left; max-width: 100%; height: auto; align-items: flex-start; }
+.nbf-due .pill svg { flex: none; margin-top: 2px; }
+.ca-table tbody th.ca-wide { min-width: 10em; }
