@@ -289,6 +289,8 @@ const NewbornLogPage = screen(loadCrs4, 'NewbornLogPage');
 const PatientScreeningTab = screen(loadCrs4, 'PatientScreeningTab');
 const loadCrs5 = () => import('./pages/scores/PatientScoresTab.jsx');
 const PatientScoresTab = screen(loadCrs5, 'PatientScoresTab');
+const loadCrsPreg = () => import('./pages/patients/PregnanciesTab.jsx');
+const PregnanciesTab = screen(loadCrsPreg, 'PregnanciesTab');
 const loadCrs9 = () => import('./pages/anaesthesia/PacTab.jsx');
 const PacTab = screen(loadCrs9, 'PacTab');
 const loadCrs12 = () => import('./pages/newborn/NewbornCareTab.jsx');
@@ -469,6 +471,7 @@ export function App() {
                   <Route path="screening" element={<PatientScreeningTab />} />
                   <Route path="scores" element={<PatientScoresTab />} />
                   <Route path="anaesthesia" element={<PacTab />} />
+                  <Route path="pregnancies" element={<PregnanciesTab />} />
                   <Route path="newborn-care" element={<NewbornCareTab />} />
                   <Route path="lab/:orderId" element={<LabOrderPage />} />
                   <Route path="edit" element={<PatientEditTab />} />
