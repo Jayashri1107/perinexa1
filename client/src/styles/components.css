@@ -586,7 +586,7 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .pf-content.pv-page > * { margin-top: 0; margin-bottom: 0; }
 .pv-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .pv-toolbar h2 { margin: 0; }
-.pv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); align-items: start; }
+.pv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); align-items: stretch; }
 .pv-grid > .card { margin: 0; }
 .pv-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-3); border-bottom: 1px solid var(--border); }
 .pv-person { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -597,3 +597,56 @@ td.empty { text-align: center; color: var(--slate-600); padding: var(--space-8);
 .pv-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pv-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); }
 @media screen and (max-width: 520px) { .pv-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* The PPH chart as OBG-F-07 (Build 15): the E-MOTIVE block in three columns, warnings (colour + icon + words) */
+.pph-sec { padding: var(--space-3) var(--space-4); }
+.pph-emotive { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--space-4); align-items: start; }
+.pph-letter { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.pph-letter h3 { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+.pph-tags { margin-top: var(--space-1); gap: var(--space-2); }
+.pph-tags:empty { display: none; }
+.pph-warn { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; color: var(--status-high-fg); }
+.pph-warn svg.lucide { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; }
+.pph-doses ol { margin: var(--space-1) 0; padding-left: var(--space-5, var(--space-4)); }
+.pph-si { display: flex; flex-direction: column; gap: var(--space-1); justify-content: center; }
+.pph-product { align-items: end; }
+.pph-note { margin: 0; }
+.pph-alg { max-width: 640px; }
+
+/* Clinical audit → Document register: totals, then one card per screen in an even grid; each version row laid out the
+   same way (state and code, the facts in two columns, who recorded and approved it, the actions on the right). */
+.dr-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+.dr-total {
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: var(--space-3); align-items: center;
+  padding: var(--space-4); background: var(--surface); border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+}
+.dr-total-icon { grid-row: 1 / span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--radius-md); }
+.dr-total-icon svg.lucide { width: 20px; height: 20px; }
+.dr-total-value { font-size: var(--fs-h2, 22px); line-height: 1.2; font-weight: 600; color: var(--ink); }
+.dr-total-label { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.dr-total-stable .dr-total-icon { background: var(--status-stable-bg); color: var(--status-stable-fg); }
+.dr-total-due .dr-total-icon { background: var(--status-due-bg); color: var(--status-due-fg); }
+.dr-total-watch .dr-total-icon { background: var(--status-watch-bg); color: var(--status-watch-fg); }
+.dr-total-neutral .dr-total-icon { background: var(--mist-100); color: var(--ink); }
+.dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: var(--space-4); align-items: stretch; }
+.dr-card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-5, var(--space-4)); margin: 0; }
+.dr-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.dr-card-head h2 { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.dr-code { flex-shrink: 0; padding: 2px var(--space-2); border-radius: var(--radius-sm); background: var(--mist-100); color: var(--ink); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 600; }
+.dr-empty { margin: 0; }
+.dr-versions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.dr-version { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-md); background: var(--mist-50); }
+.dr-version-in_force { background: var(--surface); border-color: var(--status-stable-fg); }
+.dr-version-superseded, .dr-version-withdrawn { opacity: 0.8; }
+.dr-version-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.dr-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); margin: 0; }
+.dr-facts > div { min-width: 0; }
+.dr-facts .dr-wide { grid-column: 1 / -1; }
+.dr-facts dt { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.dr-facts dd { margin: 0; overflow-wrap: anywhere; }
+.dr-who { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--slate-600); }
+.dr-actions { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-2); }
+@media (max-width: 900px) { .dr-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .dr-facts { grid-template-columns: minmax(0, 1fr); } }
+.pf-content.dr-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.pf-content.dr-page > * { margin-top: 0; margin-bottom: 0; }

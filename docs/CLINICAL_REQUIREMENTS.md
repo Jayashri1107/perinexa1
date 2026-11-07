@@ -110,15 +110,75 @@ Left out (later, or another build):
 - An HDU transfer is suggested, not recorded; anaesthetists have no login role, so their task is marked by the nurse or
   doctor who told them.
 
-## Group B, item 15 – PPH chart (DRAFT, 6 Nov 2026)
-Built before OBG-F-07 was given, at the developer's request, from RCOG Green-top 52 (2016), WHO PPH recommendations
-(2012, tranexamic acid 2017) and the shock index of Nathan et al. (BJOG 2015). Constants in `server/src/clinical/pph.js`,
-marked DRAFT on screen. **Needs the owner's approval as clinical content before it goes to `main`.** Branch `crs-15-pph`.
-- Where: a mother's stay page, under the MEOWS chart (`client/src/pages/inpatient/PphChart.jsx`; API `/api/pph`).
-- Start when bleeding is recognised (or to type in the paper chart afterwards); add blood loss, steps and observations
-  with their times; blood loss added up and banded (minor 500–1000 mL, major over 1000); shock index worked out
-  (0.9 watch, 1.4 urgent); the four Ts; closed by her doctor or an RMO with how it ended.
-- Perinexa gives no dose: a medicine step needs the dose typed by whoever gave it. Lines are never changed.
+## Group B, item 15 – PPH management and blood-loss chart (Build 15, OBG-F-07 v1.0, 7 Nov 2026)
+Replaces the DRAFT chart of 6 Nov 2026 (RCOG 52 / WHO / Nathan bands). Built exactly from the manual's field schema
+`docs/field_schemas/build15_pph.json` (OBG-F-07 v1.0, OBG-SOP-09 §3–5, OBG-ALG-01; issued 6 Nov 2026). Branch
+`claude/build15-pph-f07-efe494`. The existing chart was upgraded – same model (`PphChart`), route (`/api/pph`) and
+screen – not a second system.
+
+**Owner's approvals (recorded 7 Nov 2026, given through the developer):**
+- The schema's fields, bands, rules and wording are **approved as clinical content** – the chart is no longer DRAFT.
+- **Late-entry badge (PX-X-04): built** – reverses "not built (owner)" in Group A's list above, for this chart.
+- **Level-of-care gates (PX-X-01): approved** – reverses "not built (owner)". The PPH schema names no gate of its own,
+  so none was added here beyond the consultant-only sign-off; the approval is recorded for the builds that need one.
+- **Fixed doses printed:** "Perinexa gives no dose" no longer applies to the schema's doses – oxytocin 10 IU IM,
+  infusion 20–40 IU in 500 ml at 125–250 ml/h, misoprostol 800 micrograms, tranexamic acid 1 g. No other dose is shown
+  (carboprost and ergometrine have none in the schema).
+- **Director alerts** go through the in-app notification bell – no SMS or push service was added.
+
+**What it does** (rules in `server/src/clinical/pph.js`; the website's copy `client/src/pages/inpatient/pphRules.js`
+is checked word for word by a server test):
+- **Paper first.** "Declare PPH" in one tap – on the patient banner (safety strip) or the stay page – stamps
+  `declared_at` and `declared_by` and starts the banner clock (minutes since declaration) with the read-only ALG-01
+  card (A2). "Type in a paper chart" starts one with the paper's declaration time. `declared_at` is editable with a
+  reason (kept).
+- **Transcription screen laid out like OBG-F-07:** header (delivery mode and time copied from the delivery note, loss
+  at declaration and method, pulse and systolic → shock index at declaration, help/consultant/anaesthetist/blood bank
+  times, 4 Ts, risk factors, recorder); the E-MOTIVE bundle, each item with its time and "within 15 min of declared_at";
+  escalation; observation rows; Hb series and labs; outcome with debrief.
+- **Observation rows:** cumulative loss never goes down (and not below the loss at declaration); the outcome's total
+  can't be less than the last row. Blood products with their unit numbers need the second person's check
+  (`auth/witness.js`, PX-X-06).
+- **Bands:** loss 500–999 / 1000–1499 / 1500 or more (severe) – 500–999 amber, 1000 and more red (the schema gives no
+  colours; chosen to match the rest of the app). Shock index 0.9 or more red.
+- **A3:** a carboprost dose less than 15 minutes from another, or a 9th dose, is refused (and audited). Tranexamic
+  acid more than 3 hours after birth: a warning; the repeat before the first + 30 minutes: refused.
+- **Warnings, never blocks:** asthma on her record → carboprost; hypertension (her record or this pregnancy),
+  pre-eclampsia (risk factor ticked) or heart disease → ergometrine. Each warning shown is kept on the episode.
+- **Labs:** fibrinogen under 2 g/L → "cryoprecipitate 2 pools".
+- **A1** (total ≥1500 ml, or ≥4 units, or hysterectomy, or ICU / transferred / death): a near-miss review (the
+  existing `CaseReview`, kind near miss – the OBG-F-19 record; `server/src/incidents/` holds incident reports, not
+  near misses) is started pre-filled with the criteria; the Lead Obstetrician is told by the bell; the episode goes on
+  the **PPH M&M list** (Clinical audit → PPH M&M list) with "review by" 7 days.
+- **A4** (massive haemorrhage declared): the Director is told by the bell, and the blood bank's massive-transfusion
+  pack request is recorded with its time (ANA-ALG-06 named). There is no blood bank module yet: the request is a
+  record on the episode, shown on screen and on the printout.
+- **Who is told:** the hospital admin names the Lead Obstetrician(s) and Director(s) on the PPH M&M page; until
+  named, A1 goes to the quality lead and A4 to the hospital admin. The bell's text has the ward and bed only.
+- **Late entry (PX-X-04):** any timed field, row, dose or product typed more than 60 minutes after its clinical time
+  (declaration fields: after `declared_at`) shows "Late entry"; the consultant can sign off only once the scan of the
+  paper OBG-F-07 is attached (stored files, kind `pph_paper_scan`). A small local helper in the PPH module – to be
+  unified with Build 8's shared helper in `server/src/utils/` after both are merged.
+- **A5:** the consultant (a doctor who may edit her record) signs off: the KPI fields are worked out and kept, and the
+  episode is locked.
+- **KPI feeds (OBG-A-05)** in the monthly dashboards (`server/src/clinical/pphKpi.js`, five rows in `dashboards.js`):
+  births with measured blood loss recorded; PPH ≥500 ml after a vaginal birth and ≥1000 ml after a caesarean (two
+  rows); PPH with TXA and a second uterotonic within 15 min; severe PPH / ≥4 units / hysterectomy per 1000.
+- **Print:** "Print OBG-F-07" – A4 portrait, header, the E-MOTIVE three-column tick-with-time block, observations,
+  labs and outcome; footer "OBG-F-07 · v1.0" on every page. The document register's code for the PPH chart is now
+  OBG-F-07.
+- **Tests:** the schema's six acceptance tests are automated – 1–5 in `server/tests/crs-pph.test.js`, 6 (the print)
+  in `client/src/pages/inpatient/pph.test.jsx`.
+
+**Not done / for later:**
+- **TODO – A2 "MEOWS frequency set to 5 min"**: not wired (the MEOWS chart is Build 8's). To be added after both
+  builds are merged; a TODO marks the place in `routes/pph.js`, `clinical/pph.js` and `PphBanner.jsx`.
+- `shock_index_at_declaration` comes from the pulse and systolic typed on the PPH screen; reading the latest MEOWS set
+  was left out (it would touch Build 8's files).
+- The ALG-01 card shows the bundle, doses and rules from the schema; the OBG-ALG-01 page itself was not given.
+- Blood products are typed by hand until the blood bank's issue records exist (Build 16+/PX-OBG-16).
+- PPH charts started on the DRAFT chart (6 Nov 2026, fake data only) are kept as they were and shown as "earlier
+  DRAFT chart"; they cannot be signed off.
 
 ## Group B, item 14 – postnatal discharge checklist and danger-sign teaching (DRAFT, 6 Nov 2026)
 Built before OBG-F-11 and OBG-P-03 were given, at the developer's request, from WHO's postnatal recommendations (2022)

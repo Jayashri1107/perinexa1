@@ -1,0 +1,92 @@
+{
+  "build": "Build 15 — PPH management & blood-loss chart",
+  "source": ["OBG-F-07 v1.0", "OBG-SOP-09 §3–5", "OBG-ALG-01", "PX-OBG-12", "PX-X-18", "OBG-F-19 (near-miss auto-create)"],
+  "entity": "PPHEpisode (one per declaration; child of Delivery or CaesareanRecord; may also hang on a gynae stay for secondary PPH)",
+  "design_rule": "PAPER-FIRST at the bedside. The app offers (a) 'Declare PPH' one-tap from the patient banner which stamps declaration_time and starts the clock, and (b) a transcription screen laid out exactly like OBG-F-07 for entry within 24 h with the paper scanned and attached. Live entry during the event is optional, never required.",
+  "header_fields": {
+    "delivery_mode": {"type": "enum", "values": ["vaginal", "instrumental", "lscs"], "copied_from": "OBG-F-08 / F-09"},
+    "delivery_time": {"type": "datetime", "copied_from": "OBG-F-08 / F-09"},
+    "declared_at": {"type": "datetime", "required": true, "rule": "one-tap; editable with reason"},
+    "declared_by": {"type": "user_ref", "required": true},
+    "loss_at_declaration_ml": {"type": "integer", "required": true},
+    "loss_method": {"type": "enum", "values": ["calibrated_drape", "weighed_swabs", "estimated"], "required": true, "note": "'estimated' counts against the KPI 'measured blood loss recorded'"},
+    "shock_index_at_declaration": {"computed": "pulse / systolic from the latest MEOWS or entered here"},
+    "help_called_at": {"type": "datetime"},
+    "consultant": {"user_ref": true}, "consultant_arrived_at": {"type": "datetime"},
+    "anaesthetist": {"user_ref": true}, "anaesthetist_arrived_at": {"type": "datetime"},
+    "blood_bank_informed_at": {"type": "datetime"},
+    "cause_4T": {"type": "multi_enum", "values": ["tone", "trauma", "tissue", "thrombin"], "required": true},
+    "risk_factors": {"type": "multi_enum", "values": ["previous_pph", "praevia_accreta", "multiple", "polyhydramnios", "macrosomia", "grand_multipara", "fibroids", "anticoagulant", "coagulopathy", "pre_eclampsia", "prolonged_or_induced_labour", "chorioamnionitis", "anaemia", "none"]},
+    "recorder": {"user_ref": true}
+  },
+  "emotive_bundle": {
+    "note": "each item is a boolean with a time; 'within 15 min of declared_at' computed per item",
+    "M_uterine_massage_at": "datetime",
+    "M_bladder_emptied_at": "datetime",
+    "M_bimanual_compression_at": "datetime",
+    "O_oxytocin_10iu_im_at": "datetime",
+    "O_oxytocin_infusion_at": {"datetime": true, "dose_text": "20–40 IU in 500 ml at 125–250 ml/h"},
+    "O_carboprost_doses": {"type": "array<datetime>", "max": 8, "interval_min": 15, "contraindication_check": "asthma flag on patient → warning, not block"},
+    "O_ergometrine_at": {"datetime": true, "contraindication_check": "hypertension / pre-eclampsia / cardiac flag → warning"},
+    "O_misoprostol_800_at": "datetime",
+    "T_txa_1g_at": {"datetime": true, "rule": "within 3 h of birth; warning if later"},
+    "T_txa_repeat_at": {"datetime": true, "rule": "not before first + 30 min"},
+    "I_iv_access_x2_at": "datetime",
+    "I_bloods_sent_at": {"datetime": true, "items": ["cbc", "coag", "fibrinogen", "crossmatch_units"]},
+    "I_crystalloid_ml": "integer",
+    "I_oxygen_started": "boolean", "I_catheter": "boolean", "I_warming": "boolean",
+    "V_placenta_complete": {"type": "enum", "values": ["complete", "incomplete_explored", "retained_mrop", "accreta"]},
+    "V_genital_tract_inspected": "boolean", "V_repair_done": "boolean", "V_inversion_replaced_at": "datetime",
+    "E_escalated": "boolean (set automatically when any escalation field below is filled)"
+  },
+  "escalation_fields": {
+    "massive_haemorrhage_declared_at": {"datetime": true, "triggers": ["notify Director", "blood bank massive-transfusion pack request record", "ANA-ALG-06 reference"]},
+    "to_ot_at": "datetime",
+    "balloon_tamponade": {"inserted_at": "datetime", "volume_ml": "integer", "removed_at": "datetime"},
+    "laparotomy_at": "datetime",
+    "procedures": {"type": "multi_enum", "values": ["b_lynch", "uterine_artery_ligation", "internal_iliac_ligation", "hysterectomy_subtotal", "hysterectomy_total", "other"]},
+    "hysterectomy_at": "datetime"
+  },
+  "observation_rows": {
+    "repeat": "every 5–15 min until stable; each row = {time, pulse, bp, rr, spo2, urine_ml, cumulative_loss_ml, crystalloid_ml, colloid_ml, products[], temp, notes}",
+    "products": {"type": "array", "item": {"type": "enum PRBC|FFP|platelets|cryo", "unit_number": "string", "issued_at": "datetime", "two_person_check": "required (PX-X-06)"}, "source": "blood bank issue records when Build 16+/PX-OBG-16 exists; manual entry until then"},
+    "cumulative_loss_ml": {"rule": "monotonic non-decreasing; final value = total_loss_ml"}
+  },
+  "labs": {"hb_series": "array<{time, value}>", "platelets": "integer", "inr": "decimal", "aptt": "integer", "fibrinogen_g_l": {"decimal": true, "flag_if": "<2 → 'cryoprecipitate 2 pools' prompt"}, "calcium": "decimal", "lactate": "decimal"},
+  "outcome": {
+    "total_loss_ml": {"type": "integer", "required": true},
+    "units": {"prbc": "integer", "ffp": "integer", "platelets": "integer", "cryo": "integer"},
+    "disposition": {"type": "enum", "values": ["ward", "hdu", "icu", "transferred", "death"]},
+    "debrief_done": {"boolean": true, "by": "user_ref", "at": "datetime"},
+    "consultant_signoff": {"user_ref": true, "at": "datetime"},
+    "paper_scan": {"type": "attachment", "required_if": "any field entered > 60 min after clinical time (transcription)"}
+  },
+  "automations": [
+    {"id": "A1", "when": "total_loss_ml >= 1500 OR (prbc + ffp + platelets + cryo) >= 4 OR hysterectomy_at OR disposition in [icu, transferred, death]", "then": ["create OBG-F-19 near-miss record pre-filled (criteria ticked)", "notify Lead Obstetrician", "add to next M&M list"]},
+    {"id": "A2", "when": "declared_at set", "then": ["banner clock on the patient: minutes since declaration", "ALG-01 card one tap (read-only)", "MEOWS frequency set to 5 min"]},
+    {"id": "A3", "when": "carboprost dose entered with < 15 min since previous OR 9th dose", "then": "block with message"},
+    {"id": "A4", "when": "massive_haemorrhage_declared_at set", "then": ["Director notification (push/SMS)", "record created for blood bank pack request with time"]},
+    {"id": "A5", "when": "episode closed", "then": "compute KPI fields below and lock"}
+  ],
+  "computed_for_kpi": {
+    "txa_within_15_min": "T_txa_1g_at - declared_at <= 15 min",
+    "second_uterotonic_within_15_min": "earliest of (carboprost[0], ergometrine, misoprostol) - declared_at <= 15 min",
+    "bundle_complete_15_min": "txa_within_15_min AND second_uterotonic_within_15_min AND I_iv_access_x2_at within 15 min AND O_oxytocin_infusion_at within 15 min",
+    "pph_category": "500–999 | 1000–1499 | >=1500 (severe)"
+  },
+  "kpi_feeds": [
+    {"dashboard": "OBG-A-05", "indicator": "Births with measured blood loss recorded", "numerator": "deliveries with loss_method != estimated", "denominator": "all deliveries (OBG-F-08)", "target": "100%"},
+    {"dashboard": "OBG-A-05", "indicator": "PPH ≥500 ml (vaginal) / ≥1000 ml (LSCS) rate", "numerator": "PPHEpisodes by mode", "denominator": "deliveries by mode", "target": "track; ≤10% / ≤6%"},
+    {"dashboard": "OBG-A-05", "indicator": "PPH with TXA + second uterotonic within 15 min", "numerator": "episodes with txa_within_15_min AND second_uterotonic_within_15_min", "denominator": "PPHEpisodes", "target": ">=90%"},
+    {"dashboard": "OBG-A-05", "indicator": "Severe PPH ≥1500 / transfusion ≥4 units / peripartum hysterectomy per 1000", "numerator": "A1 triggers", "denominator": "deliveries", "target": "track; each reviewed ≤7 days"}
+  ],
+  "print": {"layout": "A4 portrait exactly as OBG-F-07: header, E-MOTIVE three-column tick-with-time block, observations table, labs/outcome", "footer": "OBG-F-07 · v1.0"},
+  "acceptance_tests": [
+    "Declare at 02:10, TXA 02:20, carboprost 02:22 → both 'within 15 min' true",
+    "Total loss 1600 ml saved → F-19 pre-filled, Lead notified, episode appears in M&M list",
+    "9th carboprost entry refused; 2nd dose at +10 min refused",
+    "Ergometrine entry on a patient with pre-eclampsia flag shows warning (not block)",
+    "Transcribed entries show 'late entry' and require the paper scan before consultant sign-off",
+    "Print matches OBG-F-07 master"
+  ]
+}
