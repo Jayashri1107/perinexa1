@@ -602,3 +602,5 @@
 .ph-counter-left .appt-pick > strong svg.lucide { width: 16px; height: 16px; flex: none; color: var(--indigo-700); }
 /* Never wider than the screen: anything too wide scrolls inside its own box */
 .ph-counter, .ph-counter-main, .ph-counter-main > * { min-width: 0; max-width: 100%; }
+/* The New bill tab (9 Nov 2026): above the people list, what to do and a new walk-in customer */
+.ph-pick-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
