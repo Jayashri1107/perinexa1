@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { AdmissionLabelFields } from '../../components/AdmissionLabels.jsx';
 import { Alert, Field, hasRole } from '../../components/ui.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -97,7 +98,7 @@ export function NicuNewBabyPage() {
       </div>
     </>
   );
-  const form = f ?? { motherName: '', phone: '', address: '', birthAt: nowLocal(), sex: '', birthWeightGrams: '', unit: o.units[0]?.key ?? '', source: '', transferFromName: '', admittedAt: nowLocal(), bedId: '', admittingDoctorId: '', consultantId: '' };
+  const form = f ?? { motherName: '', phone: '', address: '', birthAt: nowLocal(), sex: '', birthWeightGrams: '', unit: o.units[0]?.key ?? '', source: '', transferFromName: '', admittedAt: nowLocal(), bedId: '', admittingDoctorId: '', consultantId: '', billingType: '' };
   const set = (k, v) => setF({ ...form, [k]: v });
   const unit = o.units.find((u) => u.key === form.unit);
   const beds = o.beds.filter((b) => b.unit === form.unit);
@@ -228,6 +229,8 @@ export function NicuNewBabyPage() {
             <Field label="Admitted" id="nb-at" error={fe('admittedAt')}>
               <DateTimeInput id="nb-at" value={form.admittedAt} onChange={(e) => set('admittedAt', e.target.value)} />
             </Field>
+            {/* Asked at every admission, the baby's too (owner, 9 Nov 2026) */}
+            <AdmissionLabelFields value={form} onChange={setF} fields={error?.fields ?? {}} idPrefix="nb" stayType={false} />
             <Field label="Bed" id="nb-bed" error={fe('bedId')} hint={beds.length ? `${beds.filter((b) => !b.occupied).length} of ${beds.length} free` : 'No NICU beds set up for this unit'}>
               <select id="nb-bed" value={form.bedId} onChange={(e) => set('bedId', e.target.value)}>
                 <option value="">Choose…</option>

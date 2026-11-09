@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { BILLING_TYPES, STAY_TYPES, stayTypeOf } from '../inpatient/admissionLabels.js';
 import { z } from 'zod';
 import { billAdmitted } from '../billing/hooks.js';
 import { BOARD_ROLES, REASON_CODES, SETUP_ROLES, mayAdmit, mayMoveBed, reasonFor, reasonText } from '../inpatient/beds.js';
@@ -219,6 +220,10 @@ const admitSchema = z
     mlcAt: z.preprocess((v) => (v === '' ? undefined : v), z.iso.datetime('Enter the MLC date and time').optional()),
     mlcConstable: safeText('Constable', 100).default(''),
     mlcBuckleNo: safeText('Buckle number', 30).default(''),
+    // Asked at every admission (owner, 9 Nov 2026 – inpatient/admissionLabels.js): Insurance, Cash or Package, and
+    // ANC, PNC, Delivered or Other (a baby is Other when not chosen)
+    billingType: z.enum(BILLING_TYPES, 'Choose Insurance, Cash or Package'),
+    stayType: z.enum(STAY_TYPES, 'Choose ANC, PNC, Delivered or Other').optional(),
   })
   .strict()
   .superRefine((b, ctx) => {
@@ -246,8 +251,10 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
   // The checklist: when the hospital requires it, complete for a planned or day-care admission (an emergency goes in at
   // once and is completed later). Otherwise it is optional: left out, the stay has none and nothing is flagged; one
   // started but not finished is flagged on the bed board until it is completed.
+  const stayType = stayTypeOf(body, patient);
   const rules = await deskRules(req.tenantId);
-  const checklist = body.checklist || rules.requireChecklist ? checklistDoc(req, checklistSchema.parse(body.checklist ?? {})) : null;
+  // The checklist's "who pays" is the billing type asked above
+  const checklist = body.checklist || rules.requireChecklist ? checklistDoc(req, { ...checklistSchema.parse(body.checklist ?? {}), payer: body.billingType }) : null;
   if (rules.requireChecklist && body.admissionType !== 'emergency') {
     const missing = checklistMissing(checklist);
     if (Object.keys(missing).length) throw invalid(missing, 'Complete the admission checklist (an emergency can be admitted first and completed later).');
@@ -284,6 +291,8 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
       reason: reasonText(body.reasonCode, body.reasonNote),
       reasonCode: body.reasonCode,
       admissionType: body.admissionType,
+      billingType: body.billingType,
+      stayType,
       mlc: body.mlc,
       mlcPolice: body.mlc ? body.mlcPolice.trim() : '',
       mlcNo: body.mlc ? body.mlcNo.trim() : '',

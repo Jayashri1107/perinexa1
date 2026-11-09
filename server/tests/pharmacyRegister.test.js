@@ -72,7 +72,7 @@ describe('the daily register', () => {
     await register('Not Today Mother');
     await arrive(arrived);
     const writtenVisit = await prescribe(written);
-    await (await as('drA')).post(`/api/patients/${admitted.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour room', bed: '4', reason: 'In labour' });
+    await (await as('drA')).post(`/api/patients/${admitted.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour room', bed: '4', reason: 'In labour' });
     expect((await ph('post', '/invoices', { kind: 'sale', customer: { name: 'Walk In', phone: '9876500011' }, payment: { mode: 'cash' }, lines: [{ medicineId: m.id, qty: 2 }] })).status).toBe(201);
 
     let reg = (await ph('get', '/register')).body;

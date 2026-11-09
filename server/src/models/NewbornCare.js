@@ -114,6 +114,9 @@ const nicuSchema = new mongoose.Schema(
     allergyAlert: { type: String, maxlength: 500, default: '' },
     consultant: personRef,
     admittingDoctor: personRef,
+    // The billing type, asked at every admission – the baby's too (owner, 9 Nov 2026 – inpatient/admissionLabels.js).
+    // Empty on older admissions.
+    billingType: { type: String, enum: ['insurance', 'cash', 'package', ''], default: '' },
     // Below the unit's floor: the consultant's decision (admit here, or the transfer pathway)
     floorDecision: { type: new mongoose.Schema({ decision: { type: String, enum: ['admit_here', 'transfer'] }, consultantId: ObjectId, consultantName: String, note: String, at: Date }, { _id: false }), default: null },
     // Admitted at the desk by reception (9 Nov 2026): the header only; the clinical team completes the form

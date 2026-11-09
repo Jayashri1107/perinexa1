@@ -47,7 +47,7 @@ async function setUpBeds() {
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return Object.fromEntries(res.body.beds.map((b) => [b.name, b]));
 }
-const admit = async (who, bed, p, body = {}) => (await as(who)).post(`/api/beds/${bed.id}/admit`).send({ clientRequestId: randomUUID(), patientId: p.id, reasonCode: 'labour', ...body });
+const admit = async (who, bed, p, body = {}) => (await as(who)).post(`/api/beds/${bed.id}/admit`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', patientId: p.id, reasonCode: 'labour', ...body });
 const board = async (who) => (await as(who)).get('/api/beds');
 
 describe('wards and beds', () => {
@@ -144,7 +144,7 @@ describe('admitting at the desk', () => {
     await addMember(outsider, other, 'receptionist');
     const s = await loginAs(outsider, { app });
     const p = await register();
-    expect((await s.post(`/api/beds/${beds.G1.id}/admit`).send({ clientRequestId: randomUUID(), patientId: p.id, reasonCode: 'labour' })).status).toBe(404);
+    expect((await s.post(`/api/beds/${beds.G1.id}/admit`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', patientId: p.id, reasonCode: 'labour' })).status).toBe(404);
     expect((await s.get('/api/beds')).body.wards).toEqual([]);
   });
 });
@@ -183,7 +183,7 @@ describe('the bed board', () => {
 
     // A stay admitted from her record (typed reason, typed bed) is listed apart, and reception sees no reason
     const q = await register('Typed Mother');
-    const typed = await (await as('rmo')).post(`/api/patients/${q.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour ward', bed: '3', reason: 'In labour, 39 weeks' });
+    const typed = await (await as('rmo')).post(`/api/patients/${q.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour ward', bed: '3', reason: 'In labour, 39 weeks' });
     expect(typed.status).toBe(201);
     const desk = (await board('reception')).body;
     expect(desk.elsewhere).toHaveLength(1);

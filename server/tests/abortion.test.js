@@ -420,7 +420,7 @@ describe('who sees and changes the details', () => {
 
 describe('a stay in hospital', () => {
   const base = (p) => `/api/patients/${p.id}/admissions`;
-  const admit = async (p) => (await as('rmo')).post(base(p)).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-01T02:00:00.000Z', reason: 'Bleeding PV' });
+  const admit = async (p) => (await as('rmo')).post(base(p)).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-01T02:00:00.000Z', reason: 'Bleeding PV' });
   const newDoc = async (p, a, kind) => (await as('rmo')).post(`${base(p)}/${a.id}/documents`).send({ clientRequestId: randomUUID(), kind });
 
   it('no delivery note for abortion care (an operation note instead); an earlier delivery draft opens but cannot be saved or confirmed', async () => {

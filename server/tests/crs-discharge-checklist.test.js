@@ -38,7 +38,7 @@ afterEach(() => vi.useRealTimers());
 const as = async (who) => (sessions[who] ??= await loginAs(people[who], { app }));
 async function admitted(careType = 'postnatal') {
   const p = (await (await as('drA')).post('/api/patients').send(samplePatient({ careType, fullName: 'Discharge Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
-  const a = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-08T01:00:00.000Z', ward: 'Postnatal ward', bed: '4', reason: 'After delivery' })).body.admission;
+  const a = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-11-08T01:00:00.000Z', ward: 'Postnatal ward', bed: '4', reason: 'After delivery' })).body.admission;
   return { p, a };
 }
 const allYes = () => Object.fromEntries(DISCHARGE_ITEMS.map((i) => [i.key, 'yes']));

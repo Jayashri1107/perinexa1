@@ -26,6 +26,21 @@ module was carried over, by hand, onto this copy's code (local branch `mrd-recor
 - **Not built (later):** paper file tracking, the retention list, MRD statistics, moving files to object storage (S3
   needs `@aws-sdk/client-s3`, a new dependency for the developer to agree to).
 
+## Colour labels: billing type and admission type (9 Nov 2026)
+- **Built, on branch `admission-colours`:** every admission now asks **Billing type** (Insurance, Cash, Package) and
+  **Admission type** (ANC, PNC, Delivered, Other) – the bed board, the ward admission on the Stays tab, and the three
+  NICU forms for a baby (billing type only; a baby is "Other"). The old payer types moved: Self → Cash; insurance,
+  scheme, employer → Insurance (the name is kept), once at server start. On the doctor's and RMO's **Today → In
+  hospital**, patients are grouped under their **department** and sorted ANC, Delivered, PNC, Other, each with a
+  colour label (colour + icon + word); the **billing label is sent only to doctors and RMOs** – nurses no longer get
+  who pays. The stay page shows both labels and has **Change admission type** (e.g. ANC → Delivered), kept on the stay
+  and in the audit log. The bed board's old "Admission type" (planned / emergency / day care) is now called "Planned or
+  emergency". Plan: `docs/ADMISSION_COLOURS_PLAN.md`.
+- **Not built:** "Set of medicine to add" – the owner will send the list.
+- **How to test (fake data only):** as reception, Beds → a free bed → Admit: Billing type and Admission type must be
+  chosen. Sign in as a doctor or RMO → Today → In hospital: the department headings and the coloured labels. As a
+  nurse the billing label is not there. Open a stay → Change admission type → Delivered.
+
 ## IPD discharge and the IPD bill window (9 Nov 2026)
 - **Built, on branch `ipd-discharge` (not in `master` yet):** Billing → **IPD**, like the hospital's old HIMS. A list of
   patients in hospital (or discharged in the last 30 days) and one stay's **bill window**: her details and the bill's

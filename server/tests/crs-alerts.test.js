@@ -115,7 +115,7 @@ describe('alerts that follow the patient (DRAFT)', () => {
 
   it('works out a MEOWS trigger and an open PPH chart on her current stay; they cannot be ended by hand', async () => {
     const p = await patient({ careType: 'postnatal' });
-    const a = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-10T01:00:00.000Z', ward: 'Postnatal ward', bed: '3', reason: 'After delivery' })).body.admission;
+    const a = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-11-10T01:00:00.000Z', ward: 'Postnatal ward', bed: '3', reason: 'After delivery' })).body.admission;
     const band = async () => (await (await as('nurse')).get(`/api/patient-alerts/band?patientId=${p.id}`)).body.alerts;
     expect(await band()).toEqual([]);
     const m = await (await as('nurse')).post('/api/meows').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, at: '2026-11-10T05:30:00.000Z', rr: 32, spo2: 98, temp: 36.8, sbp: 118, dbp: 76, hr: 84, avpu: 'A', escalatedTo: 'Dr Sample' });

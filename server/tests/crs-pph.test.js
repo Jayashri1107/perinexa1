@@ -120,6 +120,8 @@ async function admitted(over = {}) {
       .post(`/api/patients/${p.id}/admissions`)
       .send({
         clientRequestId: randomUUID(),
+        billingType: "cash",
+        stayType: "anc",
         admittedAt: "2026-11-10T01:00:00.000Z",
         ward: "Labour ward",
         bed: "2",

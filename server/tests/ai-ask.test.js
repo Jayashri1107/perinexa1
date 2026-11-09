@@ -191,7 +191,7 @@ async function fullRecord() {
 
   // A stay: admitted for IV iron, the discharge card confirmed by her doctor (which discharges her)
   const stays = `/api/patients/${p.id}/admissions`;
-  const a = ok(await dr.post(stays).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-05T02:00:00.000Z', ward: 'Ward 2', bed: '4', reason: 'IV iron for anaemia' }), 201).admission;
+  const a = ok(await dr.post(stays).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-05T02:00:00.000Z', ward: 'Ward 2', bed: '4', reason: 'IV iron for anaemia' }), 201).admission;
   const card = ok(await dr.post(`${stays}/${a.id}/documents`).send({ clientRequestId: randomUUID(), kind: 'discharge' }), 201).document;
   const saved = ok(
     await dr.put(`${stays}/${a.id}/documents/${card.id}`).send({

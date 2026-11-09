@@ -73,6 +73,7 @@ const IDENTITY_FIELDS = [
   'createdAt',
   'updatedAt',
 ];
+const NURSE_IDENTITY = IDENTITY_FIELDS.filter((f) => f !== 'payer');
 const NEWBORN_FIELDS = ['newborn', 'motherInfo', 'babies'];
 // carePlanSummary: the care plan's short summary (Feature 7) is a clinical detail too.
 // redFlags: warnings from the latest visit's recorded values (Smart features) – a clinical detail too.
@@ -199,7 +200,8 @@ function forRole(role, patient, ctx) {
       };
     }
     case 'nurse':
-      return { ...NONE, view: sensitive ? IDENTITY_FIELDS : [...IDENTITY_FIELDS, ...CLINICAL_FIELDS], recordVitals: !sensitive };
+      // Not who pays: the billing type is for doctors, RMOs, the desk and billing (owner, 9 Nov 2026)
+      return { ...NONE, view: sensitive ? NURSE_IDENTITY : [...NURSE_IDENTITY, ...CLINICAL_FIELDS], recordVitals: !sensitive };
     case 'receptionist':
       // documentsDesk (developer's choice, 9 Nov 2026): reception attaches scanned papers and sees the list of documents
       // (kind, title, date) – never opens a file or reads its note; none of it on a sensitive record (routes/records.js)
