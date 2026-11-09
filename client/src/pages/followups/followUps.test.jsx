@@ -19,7 +19,8 @@ const SAMPLE = {
   babiesSoon: [{ patient: who('6', 'Baby Soon'), dueFrom: '2026-10-05', draft: false }],
   cut: false,
 };
-vi.mock('../../hooks/useFetch.js', () => ({ useFetch: () => ({ data: SAMPLE, loading: false, error: null, reload: () => {} }) }));
+let served = SAMPLE;
+vi.mock('../../hooks/useFetch.js', () => ({ useFetch: () => ({ data: served, loading: false, error: null, reload: () => {} }) }));
 const { FollowUpsPage, VaccinationFollowUpsPage } = await import('./FollowUpsPage.jsx');
 const text = (el, url = '/follow-ups') => renderToStaticMarkup(<MemoryRouter initialEntries={[url]}>{el}</MemoryRouter>).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 const fmt = (iso) => `[${iso}]`;
@@ -60,6 +61,19 @@ describe('follow-ups: the two tabs', () => {
     expect(shown).toContain('Coming up – next 7 days (2)');
     expect(shown).toMatch(/Today \(1\).*Asha Sample.*Arrived.*Tomorrow \(1\).*Needs a time.*Meera Sample.*New.*Booked/);
     expect(renderToStaticMarkup(<MemoryRouter><FollowUpsPage /></MemoryRouter>)).toContain('href="tel:9876543210"');
+  });
+
+  it('a long list to call is shown 10 patients a page, with the page bar (reception, 9 Nov 2026)', () => {
+    served = { ...SAMPLE, overdue: [], dueNow: Array.from({ length: 25 }, (_, i) => ({ patient: who(`c${i}`, `Call Sample ${i + 1}`), dueFrom: '2026-09-29' })) };
+    try {
+      const shown = text(<FollowUpsPage />);
+      expect(shown).toContain('To call – not booked (25)');
+      expect(shown).toContain('Showing 1 – 10 of 25 patients');
+      expect(shown).toContain('Call Sample 10 ');
+      expect(shown).not.toContain('Call Sample 11 ');
+    } finally {
+      served = SAMPLE;
+    }
   });
 
   it('Vaccinations shows babies overdue and due soon in general words, with the draft mark in words', () => {
