@@ -119,6 +119,23 @@ describe('discharge, final bill and clearance', () => {
     expect((await desk.post(ipd(`/bills/${bill._id}/reopen`)).send({ reason: 'Charge missed' })).body.error.code).toBe('CLEARED');
   });
 
+  it('IPD → Discharge lists every discharge by step and days, and one patient’s stays for her record', async () => {
+    const { patient, stay } = await admitted();
+    const desk = await as('reception');
+    const list = async (query) => (await desk.get(ipd(`/stays?${query}`))).body;
+    await discharge(stay.id);
+    let r = await list('status=discharged');
+    expect(r.stays).toMatchObject([{ id: stay.id, step: 'record' }]);
+    expect(r.counts).toEqual({ record: 1, final_due: 0, to_clear: 0, cleared: 0 });
+    await desk.post(ipd(`/stays/${stay.id}/discharge`)).send({ type: 'normal' });
+    expect((await list('status=discharged&step=final_due')).stays.map((s) => s.id)).toEqual([stay.id]);
+    expect((await list('status=discharged&step=record')).stays).toEqual([]);
+    expect((await list('status=discharged&from=2026-11-10&to=2026-11-12')).stays).toEqual([]); // not in those days
+    expect((await list('status=discharged&from=2026-11-09&to=2026-11-09')).stays).toHaveLength(1);
+    expect((await list(`status=all&patientId=${patient.id}`)).stays.map((s) => s.id)).toEqual([stay.id]);
+    expect((await desk.get(ipd('/stays?status=discharged&from=9-11-2026'))).status).toBe(400);
+  });
+
   it('a concession records who authorised it, from the hospital’s doctors and admins only', async () => {
     const { stay } = await admitted();
     const bill = await Bill.findOne({ tenantId: hospital._id, admissionId: stay.id }).lean();

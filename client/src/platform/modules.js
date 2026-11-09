@@ -473,7 +473,17 @@ export function patientMenu(roles = []) {
     // One item: the list opens on today's patients, with All patients one click away on the page
     { label: 'OPD patients', to: '/patients', match: (p, q) => onList(p) && q.get('dept') !== 'ipd' },
   ];
-  const ipd = any(roles, BED_ROLES) ? [{ label: 'Admitted patients', to: '/patients?dept=ipd', match: (p, q) => onList(p) && q.get('dept') === 'ipd' }] : [];
+  const ipd = [
+    ...(any(roles, BED_ROLES) ? [{ label: 'Admitted patients', to: '/patients?dept=ipd', match: (p, q) => onList(p) && q.get('dept') === 'ipd' }] : []),
+    // Like the HIMS's IPD menu (owner, 9 Nov 2026): IPD advance and services of those in hospital, and every discharge
+    // with its bill – reception, billing and the admin
+    ...(any(roles, BILLING_MODULE_ROLES)
+      ? [
+          { label: 'IPD advance and services', to: '/billing/ipd', match: (p) => p === '/billing/ipd' },
+          { label: 'Discharge', to: '/billing/ipd/discharges', match: (p) => p === '/billing/ipd/discharges' },
+        ]
+      : []),
+  ];
   return [
     { key: 'opd', label: 'OPD', items: opd },
     ...(ipd.length ? [{ key: 'ipd', label: 'IPD', items: ipd }] : []),

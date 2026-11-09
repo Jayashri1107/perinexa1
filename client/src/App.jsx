@@ -124,6 +124,8 @@ const SettlementPage = screen(load38, 'SettlementPage');
 const loadIpd = () => import('./pages/billing/IpdPages.jsx');
 const IpdStaysPage = screen(loadIpd, 'IpdStaysPage');
 const IpdBillPage = screen(loadIpd, 'IpdBillPage');
+const IpdDischargesPage = screen(loadIpd, 'IpdDischargesPage');
+const PatientIpdBillRoute = screen(loadIpd, 'PatientIpdBillRoute');
 const load39 = () => import('./pages/patients/PatientsPage.jsx');
 const PatientsPage = screen(load39, 'PatientsPage');
 const load40 = () => import('./pages/patients/OpdRegistrationPage.jsx');
@@ -475,6 +477,8 @@ export function App() {
                   <Route path="visits/:visitId" element={<VisitPage />} />
                   <Route path="appointments" element={<PatientAppointmentsTab />} />
                   <Route path="bills" element={<PatientBillsTab />} />
+                  {/* Her IPD bill: discharge, advance, services, final bill, clearance – reception, billing, the admin (9 Nov 2026) */}
+                  <Route path="ipd-bill" element={<PatientIpdBillRoute />} />
                   <Route path="abha" element={<PatientAbhaTab />} />
                   <Route path="consents" element={<PatientConsentsTab />} />
                   <Route path="information" element={<PatientConsentsTab kind="information" key="information" />} />
@@ -625,6 +629,7 @@ export function App() {
                   <Route path="bills/:id" element={<BillPage />} />
                   <Route path="unpaid" element={<UnpaidPage />} />
                   <Route path="ipd" element={<IpdStaysPage />} />
+                  <Route path="ipd/discharges" element={<IpdDischargesPage />} />
                   <Route path="ipd/:id" element={<IpdBillPage />} />
                   <Route path="refund" element={<RefundPage />} />
                   <Route path="settlement" element={<SettlementPage />} />

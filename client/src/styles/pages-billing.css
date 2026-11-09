@@ -403,3 +403,19 @@
   .ipd-foot { grid-template-columns: 1fr; }
 }
 .ipd-page .table-scroll, .pf-content .table-scroll { overflow-x: auto; max-width: 100%; }
+
+/* IPD → Discharge and In hospital: the bill window over the list (the HIMS pop-up), row actions, filters */
+.ipd-sheet-backdrop { align-items: start; overflow-y: auto; }
+.ipd-sheet { width: 100%; max-width: 1280px; background: var(--mist-100); border-radius: var(--radius-xl); padding: var(--space-4); box-shadow: var(--shadow-pop); outline: none; }
+.ipd-sheet-close { display: flex; justify-content: flex-end; }
+.ipd-embed-head { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3); }
+.ipd-embed-head h2 { margin: 0; }
+.ipd-embed-head p { margin: 0 0 var(--space-2); }
+.ipd-embed-badges, .ipd-embed-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ipd-embedded { display: flex; flex-direction: column; gap: var(--space-3); }
+.ipd-row-actions { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.ipd-dates { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.ipd-dates label { display: inline-flex; gap: var(--space-2); align-items: center; color: var(--slate-600); }
+.ipd-steps { flex-wrap: wrap; }
+.ipd-stay-choice { display: inline-flex; gap: var(--space-2); align-items: center; margin-bottom: var(--space-3); }
+@media (max-width: 719px) { .ipd-sheet { padding: var(--space-2); border-radius: var(--radius-lg); } }
