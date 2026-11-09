@@ -125,7 +125,7 @@ export async function pushLines(req, billId, lines) {
     const rate = l.ratePaise ?? l.item?.pricePaise ?? 0;
     return {
       priceItemId: l.item?._id ?? null,
-      key: l.item?.key ?? null,
+      key: l.key ?? l.item?.key ?? null,
       name: l.name ?? l.item.name,
       group: l.group ?? l.item.group,
       qty: l.qty ?? 1,
@@ -137,7 +137,8 @@ export async function pushLines(req, billId, lines) {
       added: stampOf(req),
     };
   });
-  return Bill.findOneAndUpdate({ tenantId: req.tenantId, _id: billId, status: 'open' }, { $push: { lines: { $each: docs } } }, { returnDocument: 'after' }).lean();
+  // A final bill takes nothing new (reopened first – routes/ipdBilling.js)
+  return Bill.findOneAndUpdate({ tenantId: req.tenantId, _id: billId, status: 'open', final: null }, { $push: { lines: { $each: docs } } }, { returnDocument: 'after' }).lean();
 }
 
 /** Marks the live lines added by this work (a visit, a lab order – or one of its tests) as removed, on any bill. */
@@ -160,7 +161,7 @@ export async function removeLinesOf(req, ref, reason) {
  * price of automatic lines still at ₹0 once the admin has set it. Returns the bill after, or null when unchanged.
  */
 export async function syncBed(req, bill, stay) {
-  if (bill.status !== 'open' || bill.kind !== 'ipd') return null;
+  if (bill.status !== 'open' || bill.kind !== 'ipd' || bill.final) return null;
   const days = bedDays(stay.admittedAt, stay.dischargedAt, req.now ?? new Date());
   // Nursing per day (once its price is set) follows the same days as the bed
   const nursed = (await syncNursing(req, bill, stay, days)) ?? bill;
@@ -595,11 +596,12 @@ export function billView(b, { patients, stays, doctors = new Map(), departments 
     doctorDepartment: p?.assignedDoctor ? (departments.get(String(p.assignedDoctor)) ?? '') : '',
     // age: as printed on the bill (a baby's record has none here)
     patient: p ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn, phone: p.phone ?? '', age: p.careType === 'newborn' ? null : currentAge(p), duplicateOf: isDuplicate(p) ? { id: String(p.duplicateOf.patient), mrn: p.duplicateOf.mrn } : null } : null,
-    stay: s ? { ward: s.ward ?? '', bed: s.bed ?? '', admittedAt: s.admittedAt, dischargedAt: s.dischargedAt ?? null, inHospital: s.status === 'admitted' } : null,
+    stay: s ? { id: String(s._id), ward: s.ward ?? '', bed: s.bed ?? '', admittedAt: s.admittedAt, dischargedAt: s.dischargedAt ?? null, inHospital: s.status === 'admitted' } : null,
     ...t,
     items: (b.lines ?? []).filter((l) => !l.removed).length,
     priceNotSet: (b.lines ?? []).some((l) => !l.removed && l.ratePaise === 0),
-    discountInfo: b.discount?.paise ? { mode: b.discount.mode, value: b.discount.value, reason: b.discount.reason ?? '', byName: b.discount.byName ?? '' } : null,
+    discountInfo: b.discount?.paise ? { mode: b.discount.mode, value: b.discount.value, reason: b.discount.reason ?? '', byName: b.discount.byName ?? '', authorisedByName: b.discount.authorisedByName ?? '' } : null,
+    final: b.final ? { byName: b.final.byName ?? '', at: b.final.at ?? null } : null,
     cancelled: b.status === 'cancelled' && b.cancelled ? { reason: b.cancelled.reason ?? '', byName: b.cancelled.byName ?? '', at: b.cancelled.at ?? null } : null,
     insurer: b.insurance?.insurer ?? '', // who the claim is with (lists); every detail only with the full bill
     lastPayment: lastPayment(b), // the latest money in or out, for lists: when, how and what kind (null: none yet)
@@ -619,6 +621,16 @@ export async function findBill(req, id) {
   const bill = await Bill.findOne({ tenantId: req.tenantId, _id: id }).lean();
   if (!bill) throw new HttpError(404, 'Bill not found.', 'NOT_FOUND');
   return bill;
+}
+
+// Items are not added to or taken off a final bill (docs/IPD_DISCHARGE_BILLING_PLAN.md): it is reopened first
+export const FINAL_MESSAGE = 'This is the final bill. Reopen it (with the reason) to change its items.';
+
+/** Who may authorise a concession (9 Nov 2026): the hospital's active doctors and admins – [{ id, name }], by name. */
+export async function concessionAuthorities(tenantId) {
+  const members = await Membership.find({ tenantId, isActive: true, roles: { $in: ['doctor', 'admin'] } }, { userId: 1 }).lean();
+  const names = await userNames(members.map((m) => m.userId));
+  return [...names].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Doctors' names (users looked up by id only). */

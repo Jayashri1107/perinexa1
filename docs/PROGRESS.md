@@ -1,5 +1,21 @@
 # Progress
 
+## IPD discharge and the IPD bill window (9 Nov 2026)
+- **Built, on branch `ipd-discharge` (not in `master` yet):** Billing → **IPD**, like the hospital's old HIMS. A list of
+  patients in hospital (or discharged in the last 30 days) and one stay's **bill window**: her details and the bill's
+  sums on the left; Services, Advance list, Previous bills, Bed transfers and Summary in tabs; print as **Date-wise
+  draft / Details / Summary**; administrative charges; a **concession** with who authorised it (a doctor or the
+  admin). The order is the HIMS's: the doctor signs the discharge card → the desk records the **discharge** (Normal,
+  DAMA, LAMA, DOR, Transfer; a death is taken from her record and shows as "Record closed" to the desk) → **final bill**
+  (bed days stop, items locked; billing or the admin reopen it with a reason) → payment or settlement → **clearance**
+  and the gate pass (clearance now needs the discharge and the final bill). While she is in hospital the bill prints
+  as an **interim bill**. Bed moves are now kept on the stay. Plan: `docs/IPD_DISCHARGE_BILLING_PLAN.md`.
+- **Not built:** IPD packages (on the ideas list – the owner decides their prices and contents).
+- **How to test (fake data only):** sign in as reception or billing → Billing → IPD → a patient in hospital → Take
+  advance, Add services, Print interim bill. Have a doctor sign her discharge card, then → Discharged → the patient →
+  Record discharge (type DAMA, a remark) → Administrative charges → Give concession (authorised by a doctor) → Make
+  final bill (Add services is gone) → Take payment → Clear for leaving → the gate pass prints. Try each print layout.
+
 ## Clinical Requirements, Group A (6 Nov 2026)
 - **Built, on branch `crs-group-a` only (not in `master`):** the seven Group A items of PX-REQ-00 – Robson group and
   table, caesarean times, specimens, newborn screening and follow-up, EPDS and VTE score, incidents, the formulary.

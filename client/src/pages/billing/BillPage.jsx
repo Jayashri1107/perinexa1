@@ -30,7 +30,7 @@ import { amountInWords } from './amountWords.js';
 // button adds them all. Lab tests, scans, beds, nursing, ward rounds and medicines come onto the bill by themselves.
 const QUICK_GROUPS = ['consultation', 'procedure', 'inpatient', 'other'];
 
-function AddItemDialog({ bill, onClose, onDone }) {
+export function AddItemDialog({ bill, onClose, onDone }) {
   const prices = useFetch('/billing/prices');
   const doctors = useFetch('/tenant/doctors'); // with each doctor's department (Admin → Users)
   const [query, setQuery] = useState('');
@@ -282,7 +282,7 @@ function AddItemDialog({ bill, onClose, onDone }) {
   );
 }
 
-function PaymentDialog({ bill, refund = false, onClose, onDone }) {
+export function PaymentDialog({ bill, refund = false, onClose, onDone }) {
   const due = refund ? -bill.balance : Math.max(bill.balance, 0);
   const deposit = !refund && bill.stay?.inHospital;
   const [amount, setAmount] = useState(toInput(due));
@@ -361,16 +361,18 @@ function PaymentDialog({ bill, refund = false, onClose, onDone }) {
   );
 }
 
-function DiscountDialog({ bill, onClose, onDone }) {
+// authorities: who may allow a concession ([{ id, name }] – the IPD bill window); none: the field is not shown
+export function DiscountDialog({ bill, authorities = null, title = 'Discount', onClose, onDone }) {
   const [mode, setMode] = useState(bill.discountInfo?.mode ?? 'amount');
   const [value, setValue] = useState(bill.discountInfo ? (bill.discountInfo.mode === 'amount' ? toInput(bill.discountInfo.value) : String(bill.discountInfo.value)) : '');
   const [reason, setReason] = useState(bill.discountInfo?.reason ?? '');
+  const [authorisedBy, setAuthorisedBy] = useState(() => authorities?.find((a) => a.name === bill.discountInfo?.authorisedByName)?.id ?? '');
   const s = useSend(onDone);
   const v = mode === 'amount' ? toPaise(value || '0') : Number(value || 0);
   const ok = v != null && !Number.isNaN(v) && v >= 0 && (mode === 'amount' || v <= 100);
   const shown = ok ? (mode === 'percent' ? Math.round((bill.subtotal * v) / 100) : v) : null;
   return (
-    <Modal id="bill-discount" title="Discount" onClose={onClose}>
+    <Modal id="bill-discount" title={title} onClose={onClose}>
       <p>Bill before discount: {rupees(bill.subtotal)}. Enter 0 to take the discount off.</p>
       <Alert type="error">{s.error}</Alert>
       <div className="segmented" role="group" aria-label="Discount as">
@@ -382,12 +384,24 @@ function DiscountDialog({ bill, onClose, onDone }) {
         </button>
       </div>
       <div className="form-grid">
-        <Field label={mode === 'amount' ? 'Discount (₹)' : 'Discount (%)'} id="bill-disc-value" error={s.fields.value}>
+        <Field label={mode === 'amount' ? `${title} (₹)` : `${title} (%)`} id="bill-disc-value" error={s.fields.value}>
           <input id="bill-disc-value" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
         </Field>
         <Field label="Reason" id="bill-disc-reason" error={s.fields.reason} hint={`For example: staff family, hardship. ${NO_SEX_WORDS_HINT}`}>
           <input id="bill-disc-reason" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
         </Field>
+        {authorities && (
+          <Field label="Authorised by (optional)" id="bill-disc-auth" error={s.fields.authorisedBy} hint="The doctor or hospital admin who allowed it.">
+            <select id="bill-disc-auth" value={authorisedBy} onChange={(e) => setAuthorisedBy(e.target.value)}>
+              <option value="">Not recorded</option>
+              {authorities.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
       </div>
       {shown != null && shown > 0 && <p className="appt-when">Discount {rupees(shown)} · to pay {rupees(bill.subtotal - shown)}</p>}
       <div className="row">
@@ -395,9 +409,9 @@ function DiscountDialog({ bill, onClose, onDone }) {
           type="button"
           className="btn btn-primary"
           disabled={!ok || s.busy}
-          onClick={() => s.send(`/billing/bills/${bill.id}/discount`, { mode, value: v, reason: reason.trim() }, () => (v ? 'Discount saved.' : 'Discount taken off.'))}
+          onClick={() => s.send(`/billing/bills/${bill.id}/discount`, { mode, value: v, reason: reason.trim(), ...(authorities ? { authorisedBy: authorisedBy || null } : {}) }, () => (v ? `${title} saved.` : `${title} taken off.`))}
         >
-          <BadgePercent aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save discount'}
+          <BadgePercent aria-hidden="true" /> {s.busy ? 'Saving…' : `Save ${title.toLowerCase()}`}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
           Cancel
@@ -407,7 +421,7 @@ function DiscountDialog({ bill, onClose, onDone }) {
   );
 }
 
-function ReasonDialog({ id, title, text, label, confirmLabel, path, message, onClose, onDone }) {
+export function ReasonDialog({ id, title, text, label, confirmLabel, path, message, onClose, onDone }) {
   const [reason, setReason] = useState('');
   const s = useSend(onDone);
   return (
@@ -552,7 +566,7 @@ function SetPriceDialog({ bill, line, onClose, onDone }) {
 }
 
 /** The bill's live items by service group, in the price list's order (the printed bill's sections). */
-function linesByGroup(lines) {
+export function linesByGroup(lines) {
   const known = Object.keys(GROUP_LABELS);
   const groups = known.map((g) => ({ group: g, lines: lines.filter((l) => l.group === g) }));
   const rest = lines.filter((l) => !known.includes(l.group));
@@ -854,6 +868,12 @@ export function BillPage() {
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
+        {b.stay?.id && (
+          <Alert type="info">
+            {b.final ? `Final bill, made by ${b.final.byName} on ${formatDateTime(b.final.at)}. Items can no longer be added or taken off. ` : ''}
+            The stay’s discharge, final bill and prints are in the <Link to={`/billing/ipd/${b.stay.id}`}>IPD bill window</Link>.
+          </Alert>
+        )}
         {b.cancelled && (
           <Alert type="warning" icon={Ban}>
             Cancelled by {b.cancelled.byName} on {formatDateTime(b.cancelled.at)}: {b.cancelled.reason}

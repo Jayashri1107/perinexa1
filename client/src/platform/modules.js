@@ -250,6 +250,7 @@ const HOSPITAL_BILLING = {
   to: '/billing',
   tabs: [
     { label: 'Bills', to: '/billing', end: false },
+    { label: 'IPD', to: '/billing/ipd', end: false },
     { label: 'Unpaid', to: '/billing/unpaid', end: true },
     { label: 'Daily summary', to: '/billing/daily', end: true },
     { label: 'Cash handover', to: '/cash-handover', end: true },

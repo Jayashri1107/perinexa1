@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { BILLING_ROLES, BILL_PCPNDT_MESSAGE, CLAIM_LAYOUTS, GROUPS, GROUP_LABELS, INSURANCE_FIELDS, INSURANCE_LABELS, MAX_PAISE, MIN_REASON, MODE_LABELS, PAYMENT_MODES, PRICE_ROLES, REPORT_ROLES, SETTINGS_ROLES, UPI_MIN_PAISE } from '../billing/billingRules.js';
-import { billViews, billingSettings, billingSettingsHistory, claimForm, earlierInsurance, ensurePriceList, findBill, freshBill, labLineName, noteInsurer, openBillFor, padded, pushLines, refuseFetalSex as refuseFetalSexFor, saveBillingSettings, stampOf, userNames } from '../billing/billingService.js';
+import { FINAL_MESSAGE, billViews, billingSettings, billingSettingsHistory, claimForm, concessionAuthorities, earlierInsurance,ensurePriceList, findBill, freshBill, labLineName, noteInsurer, openBillFor, padded, pushLines, refuseFetalSex as refuseFetalSexFor, saveBillingSettings, stampOf, userNames } from '../billing/billingService.js';
 import { discountPaise, liveLines, rupees, totals } from '../billing/money.js';
 import { PAYEE_NAME_MAX, UPI_ID_MAX, payeeNameProblem, upiIdProblem, upiLink, upiMessage } from '../billing/upi.js';
 import { addDays, daysBetween, hospitalDayStart, hospitalToday, isoDay, timeIn, toHospitalDate } from '../careplans/dates.js';
@@ -23,6 +23,7 @@ import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js
 import { mentionsFetalSex } from '../utils/pcpndt.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { documentOffer, offerView, sendPatientPdf } from '../visits/whatsappDocuments.js';
+import { ipdBillingRouter } from './ipdBilling.js';
 
 // Billing (docs/BILLING_PLAN.md, approved 3 Oct 2026), for reception and the hospital admin:
 //  - /api/billing/prices            the price list (everyone who bills reads it; the admin changes it)
@@ -195,6 +196,10 @@ const openBill = async (req) => {
   if (bill.status === 'cancelled') throw conflict('This bill was cancelled.', 'CANCELLED');
   return bill;
 };
+// Items are not added to or taken off a final bill (docs/IPD_DISCHARGE_BILLING_PLAN.md): it is reopened first
+const refuseFinal = (bill) => {
+  if (bill.final) throw conflict(FINAL_MESSAGE, 'FINAL');
+};
 
 // Add an item from the price list. An item priced ₹0 (e.g. "Other charge") needs the amount, and may take a name.
 const lineSchema = z
@@ -209,6 +214,7 @@ const lineSchema = z
 
 billingRouter.post('/bills/:id/lines', async (req, res) => {
   const bill = await openBill(req);
+  refuseFinal(bill);
   const body = parse(lineSchema, req.body);
   const item = await PriceItem.findOne({ tenantId: req.tenantId, _id: body.priceItemId, active: true }).lean();
   if (!item) throw new HttpError(400, 'Choose an item that is in use on the price list.', 'VALIDATION');
@@ -219,13 +225,14 @@ billingRouter.post('/bills/:id/lines', async (req, res) => {
   const listed = item.key?.startsWith('lab:') ? labLineName({ key: item.key.slice(4), name: item.name }) : item.name;
   if (body.doctorId && !(await Membership.exists({ tenantId: req.tenantId, userId: body.doctorId, roles: 'doctor', isActive: true }))) throw Object.assign(new HttpError(400, 'Choose a doctor of this hospital.', 'VALIDATION'), { fields: { doctorId: 'Choose a doctor of this hospital.' } });
   const after = await pushLines(req, bill._id, [{ item, name: !item.pricePaise && body.name ? body.name : listed, qty: body.qty, ratePaise: rate, source: 'manual', doctorId: body.doctorId ?? null }]);
-  if (!after) throw conflict('This bill was cancelled.', 'CANCELLED');
+  if (!after) throw (await Bill.exists({ tenantId: req.tenantId, _id: bill._id, final: { $ne: null } })) ? conflict(FINAL_MESSAGE, 'FINAL') : conflict('This bill was cancelled.', 'CANCELLED');
   await audit(req, 'BILL_ITEM_ADDED', { details: ids(bill, { priceItemId: String(item._id), amountPaise: rate * body.qty }) });
   res.status(201).json({ bill: await viewOf(req, after) });
 });
 
 billingRouter.post('/bills/:id/lines/:lineId/remove', async (req, res) => {
   const bill = await openBill(req);
+  refuseFinal(bill);
   const { lineId } = parse(z.object({ id: objectId, lineId: objectId }), req.params);
   const body = parse(z.object({ reason: reason('Taking an item off') }).strict(), req.body);
   await refuseFetalSex(req, bill, { reason: body.reason });
@@ -243,7 +250,12 @@ billingRouter.post('/bills/:id/lines/:lineId/remove', async (req, res) => {
 
 // A discount: an amount (paise) or a percentage, with a reason. Value 0 takes the discount off.
 const discountSchema = z
-  .object({ mode: z.enum(['amount', 'percent']), value: z.number().min(0).max(MAX_PAISE), reason: z.string().trim().max(200).default('') })
+  .object({
+    mode: z.enum(['amount', 'percent']),
+    value: z.number().min(0).max(MAX_PAISE),
+    reason: z.string().trim().max(200).default(''),
+    authorisedBy: objectId.nullable().optional(), // who allowed it: a doctor or the hospital admin (9 Nov 2026)
+  })
   .strict()
   .refine((d) => d.mode !== 'percent' || d.value <= 100, { message: 'A percentage can be at most 100.', path: ['value'] })
   .refine((d) => d.mode !== 'amount' || Number.isInteger(d.value), { message: 'Enter the amount in paise.', path: ['value'] })
@@ -256,14 +268,22 @@ billingRouter.post('/bills/:id/discount', async (req, res) => {
   const { subtotal } = totals(bill);
   const amount = discountPaise(body, subtotal);
   if (amount > subtotal) throw Object.assign(new HttpError(400, 'The discount is more than the bill.', 'VALIDATION'), { fields: { value: 'More than the bill.' } });
+  let authority = null;
+  if (body.authorisedBy && body.value) {
+    authority = (await concessionAuthorities(req.tenantId)).find((a) => a.id === String(body.authorisedBy));
+    if (!authority) throw Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields: { authorisedBy: 'Choose a doctor or the hospital admin of this hospital.' } });
+  }
   const after = await Bill.findOneAndUpdate(
     { tenantId: req.tenantId, _id: bill._id, status: 'open' },
-    { $set: { discount: body.value ? { mode: body.mode, value: body.value, paise: amount, reason: body.reason, ...stampOf(req) } : null } },
+    { $set: { discount: body.value ? { mode: body.mode, value: body.value, paise: amount, reason: body.reason, authorisedBy: authority?.id ?? null, authorisedByName: authority?.name ?? '', ...stampOf(req) } : null } },
     { returnDocument: 'after' },
   ).lean();
-  await audit(req, 'DISCOUNT_GIVEN', { details: ids(bill, { mode: body.mode, value: body.value, discountPaise: amount, reason: body.reason }) });
+  await audit(req, 'DISCOUNT_GIVEN', { details: ids(bill, { mode: body.mode, value: body.value, discountPaise: amount, reason: body.reason, ...(authority ? { authorisedBy: authority.id } : {}) }) });
   res.json({ bill: await viewOf(req, after) });
 });
+
+// The IPD desk (Billing → IPD): the stays, the IPD bill window, the final bill, administrative charges
+billingRouter.use('/ipd', ipdBillingRouter);
 
 // A payment (a deposit while she is in hospital), or a refund of money paid beyond the bill.
 const paymentSchema = z

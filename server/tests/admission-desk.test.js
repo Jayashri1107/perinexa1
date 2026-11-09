@@ -147,6 +147,11 @@ describe('the papers, clearance and the gate pass', () => {
     const toClear = (await (await as('billing')).get('/api/admission-desk/to-clear')).body;
     expect(toClear).toMatchObject({ canClear: true, stays: [{ id: stay.id, ipdNo: 'IP-2026-000001', balancePaise: 150000 }] });
     expect((await (await as('nurse')).post(`/api/admission-desk/stays/${stay.id}/clear`).send({})).status).toBe(403);
+    // The HIMS order (9 Nov 2026): the discharge details, then the final bill, then clearance
+    expect((await (await as('billing')).post(`/api/admission-desk/stays/${stay.id}/clear`).send({})).body.error.code).toBe('NO_DISCHARGE_DETAILS');
+    expect((await (await as('billing')).post(`/api/billing/ipd/stays/${stay.id}/discharge`).send({ type: 'normal' })).status).toBe(200);
+    expect((await (await as('billing')).post(`/api/admission-desk/stays/${stay.id}/clear`).send({})).body.error.code).toBe('NOT_FINAL');
+    expect((await (await as('billing')).post(`/api/billing/ipd/bills/${bill._id}/final`).send({})).status).toBe(200);
     const dues = await (await as('billing')).post(`/api/admission-desk/stays/${stay.id}/clear`).send({});
     expect(dues.body.error.fields.note).toMatch(/1,500 is still due/);
     const ok = await (await as('billing')).post(`/api/admission-desk/stays/${stay.id}/clear`).send({ note: 'Insurance claim pending (practice)' });

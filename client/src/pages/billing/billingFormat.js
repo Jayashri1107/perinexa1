@@ -44,6 +44,8 @@ export const GROUP_LABELS = { consultation: 'Consultation', procedure: 'Procedur
 /** The billing pages' tabs: Monthly for the admin and the billing department, Settings for the admin only. */
 export const billingTabs = (roles = []) => [
   { label: 'Bills', to: '/billing', end: false, activeFor: '/billing/bills' },
+  // The IPD desk: advances, services, discharge, final bill and clearance (9 Nov 2026)
+  { label: 'IPD', to: '/billing/ipd', end: false },
   { label: 'Unpaid', to: '/billing/unpaid', end: true },
   // Refund of a bill and settling a credit bill (owner, 28 Oct 2026)
   { label: 'Refund', to: '/billing/refund', end: true },

@@ -140,3 +140,11 @@ health check. The plan when it is picked:
   every line and the totals to check against the old software's sheet (Pharmacy → Stock → Stock sheet prints the same
   layout).
 - **Real stock and prices only on the real server** after the go-live checklist, never on a developer's computer.
+
+## IPD packages (9 Nov 2026, not built)
+The old HIMS bill window has a "Package Details" tab: a fixed price for a stay such as a normal delivery or an LSCS,
+with the services it includes shown at no extra charge. Left out of the IPD bill window (`docs/IPD_DISCHARGE_BILLING_PLAN.md`)
+because package prices, what each includes, and what happens to charges beyond it are the owner's decisions. When it
+is picked: a package on the price list with its included groups or items, chosen on the stay's bill; lines it covers
+print at ₹0 under the package; anything beyond prints as extra.
+
