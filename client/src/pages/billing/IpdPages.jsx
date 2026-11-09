@@ -14,7 +14,7 @@ import { AddItemDialog, DiscountDialog, PaymentDialog, ReasonDialog, linesByGrou
 import { BillStatus } from './BillsPage.jsx';
 import { amountInWords } from './amountWords.js';
 import { GROUP_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
-import { Modal, useSend } from './billingUi.jsx';
+import { InlineForms, Modal, useSend } from './billingUi.jsx';
 import { BILL_LAYOUTS, adminChargeOf, advanceTotal, billTitle, linesByDate, stayStep, summaryByGroup } from './ipdFormat.js';
 
 // Billing → IPD (docs/IPD_DISCHARGE_BILLING_PLAN.md, 9 Nov 2026), like the hospital's old HIMS: the patients in hospital
@@ -666,6 +666,54 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
+        {/* The forms open here, in the page above the bill (owner, 9 Nov 2026) – not as windows over it */}
+        <InlineForms.Provider value>
+      {dialog === 'add' && <AddItemDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
+      {(dialog === 'advance' || dialog === 'refund') && <PaymentDialog bill={bill} refund={dialog === 'refund'} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog === 'discharge' && <DischargeDialog data={data} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog === 'admin' && <AdminChargeDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog === 'concession' && <DiscountDialog bill={bill} title="Concession" authorities={data.authorities} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog === 'final' && <FinalDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog === 'reopen' && (
+        <ReasonDialog
+          id="ipd-reopen"
+          title="Reopen the final bill"
+          text="Items can then be added or taken off again. The reason is kept with the bill."
+          label="Reason"
+          confirmLabel="Reopen"
+          path={`/billing/ipd/bills/${bill.id}/reopen`}
+          message="Final bill reopened."
+          onClose={() => setDialog(null)}
+          onDone={done}
+        />
+      )}
+      {dialog?.remove && (
+        <ReasonDialog
+          id="ipd-remove"
+          title={`Take off ${dialog.remove.name}`}
+          text={`${rupees(dialog.remove.amountPaise)} comes off the bill. The item stays on the list as taken off.`}
+          label="Reason"
+          confirmLabel="Take it off"
+          path={`/billing/bills/${bill.id}/lines/${dialog.remove.id}/remove`}
+          message="Item taken off."
+          onClose={() => setDialog(null)}
+          onDone={done}
+        />
+      )}
+      {dialog === 'clear' && (
+        <ClearDialog
+          stay={{ id: stay.id, balancePaise: bill ? bill.balance : 0, patient }}
+          onClose={() => setDialog(null)}
+          onCleared={() => {
+            setDialog(null);
+            setFlash('Cleared for leaving. Print the gate pass for the security desk.');
+            res.reload();
+            onChanged?.();
+            setPrinting('gatepass');
+          }}
+        />
+      )}
+        </InlineForms.Provider>
         {step.next && !flash && <p className="muted">{step.next}</p>}
         {!bill && <Alert type="info">This stay has no bill.</Alert>}
         <div className="ipd-layout">
@@ -1097,51 +1145,6 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         </div>
       </div>
 
-      {dialog === 'add' && <AddItemDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
-      {(dialog === 'advance' || dialog === 'refund') && <PaymentDialog bill={bill} refund={dialog === 'refund'} onClose={() => setDialog(null)} onDone={done} />}
-      {dialog === 'discharge' && <DischargeDialog data={data} onClose={() => setDialog(null)} onDone={done} />}
-      {dialog === 'admin' && <AdminChargeDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
-      {dialog === 'concession' && <DiscountDialog bill={bill} title="Concession" authorities={data.authorities} onClose={() => setDialog(null)} onDone={done} />}
-      {dialog === 'final' && <FinalDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
-      {dialog === 'reopen' && (
-        <ReasonDialog
-          id="ipd-reopen"
-          title="Reopen the final bill"
-          text="Items can then be added or taken off again. The reason is kept with the bill."
-          label="Reason"
-          confirmLabel="Reopen"
-          path={`/billing/ipd/bills/${bill.id}/reopen`}
-          message="Final bill reopened."
-          onClose={() => setDialog(null)}
-          onDone={done}
-        />
-      )}
-      {dialog?.remove && (
-        <ReasonDialog
-          id="ipd-remove"
-          title={`Take off ${dialog.remove.name}`}
-          text={`${rupees(dialog.remove.amountPaise)} comes off the bill. The item stays on the list as taken off.`}
-          label="Reason"
-          confirmLabel="Take it off"
-          path={`/billing/bills/${bill.id}/lines/${dialog.remove.id}/remove`}
-          message="Item taken off."
-          onClose={() => setDialog(null)}
-          onDone={done}
-        />
-      )}
-      {dialog === 'clear' && (
-        <ClearDialog
-          stay={{ id: stay.id, balancePaise: bill ? bill.balance : 0, patient }}
-          onClose={() => setDialog(null)}
-          onCleared={() => {
-            setDialog(null);
-            setFlash('Cleared for leaving. Print the gate pass for the security desk.');
-            res.reload();
-            onChanged?.();
-            setPrinting('gatepass');
-          }}
-        />
-      )}
       {printing === 'bill' && bill && <IpdBillPrint data={data} layout={layout} onClose={() => setPrinting(null)} />}
       {printing === 'gatepass' && <StayPaper stay={{ id: stay.id }} what="gatepass" onClose={() => setPrinting(null)} />}
     </>

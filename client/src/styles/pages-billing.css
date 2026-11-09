@@ -516,3 +516,8 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .ipd-main .bill-report td:nth-child(2) { white-space: nowrap; }
 .ipd-main .bill-report td:nth-child(3) { min-width: 180px; }
 .ipd-page .ipd-layout { grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); }
+/* A form opened in the IPD bill page: a panel above the bill, its heading and Close on one row */
+.inline-form { border: 1px solid var(--indigo-200); box-shadow: var(--shadow-card); scroll-margin-top: var(--space-12); outline: none; }
+.inline-form-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.inline-form-head h2 { margin: 0; font-size: 1.125rem; }
+.inline-form .row { margin-top: var(--space-4); }
