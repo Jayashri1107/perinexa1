@@ -302,8 +302,12 @@ export function UserHospitalsTab() {
     }
   };
 
-  const saveRoles = async (h, roles) => {
-    await api(`/platform/tenants/${h.tenantId}/members/${h.memberId}/roles`, { method: 'PATCH', body: { roles } });
+  const saveRoles = async (h, roles, departments = []) => {
+    if (roles.join() !== h.roles.join()) await api(`/platform/tenants/${h.tenantId}/members/${h.memberId}/roles`, { method: 'PATCH', body: { roles } });
+    // A doctor's departments (owner, 9 Nov 2026), after the roles: only a doctor has them
+    if (roles.includes('doctor') && departments.join() !== (h.departments ?? []).join()) {
+      await api(`/platform/tenants/${h.tenantId}/members/${h.memberId}/department`, { method: 'PATCH', body: { departments } });
+    }
     setEditing(null);
     setError(null);
     setSuccess(`Roles at ${h.tenantName}: ${rolesLabel(roles)}.`);
@@ -432,7 +436,8 @@ export function UserHospitalsTab() {
         <RolesDialog
           title={`Roles for ${user.name} at ${editing.tenantName}`}
           initialRoles={editing.roles}
-          onSave={(roles) => saveRoles(editing, roles)}
+          initialDepartments={editing.departments ?? []}
+          onSave={(roles, departments) => saveRoles(editing, roles, departments)}
           onCancel={() => setEditing(null)}
         />
       )}

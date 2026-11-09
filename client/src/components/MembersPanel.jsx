@@ -156,11 +156,14 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
     }
   };
 
-  const saveRoles = async (m, roles) => {
-    await api(`${basePath}/${m.id}/roles`, { method: 'PATCH', body: { roles } });
+  const saveRoles = async (m, roles, departments = []) => {
+    const before = m.departments?.length ? m.departments : m.department ? [m.department] : [];
+    if (roles.join() !== m.roles.join()) await api(`${basePath}/${m.id}/roles`, { method: 'PATCH', body: { roles } });
+    // A doctor's departments (owner, 9 Nov 2026), after the roles: only a doctor has them
+    if (roles.includes('doctor') && departments.join() !== before.join()) await api(`${basePath}/${m.id}/department`, { method: 'PATCH', body: { departments } });
     setEditing(null);
     clearMessages();
-    setSuccess(`${m.user.name}'s roles here are now: ${rolesLabel(roles)}.`);
+    setSuccess(`${m.user.name}'s roles here are now: ${rolesLabel(roles)}${roles.includes('doctor') && departments.length ? ` (${departments.join(', ')})` : ''}.`);
     reload();
     onChanged?.();
   };
@@ -317,7 +320,8 @@ export function MembersPanel({ basePath, allowAccountChanges = false, linkToUser
         <RolesDialog
           title={`Roles for ${editing.user.name}`}
           initialRoles={editing.roles}
-          onSave={(roles) => saveRoles(editing, roles)}
+          initialDepartments={editing.departments?.length ? editing.departments : editing.department ? [editing.department] : []}
+          onSave={(roles, departments) => saveRoles(editing, roles, departments)}
           onCancel={() => setEditing(null)}
         />
       )}
