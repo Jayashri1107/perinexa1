@@ -22,6 +22,14 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **9 Nov 2026 – Pharmacy: New bill and Sold as one Sales bill page with two tabs (branch `sales-bill-tabs`, at the
+  developer's request – an exception to the feature freeze):** one sidebar item, **Sales bill**, with the tabs **New
+  bill** (making a bill; Issue to ward is its IPD) and **Bill list** (the former Sold: filters, the day's bills, a
+  person's bills, printing), as the store's earlier Sales Bill screen with its Bill List. Making a bill happens in one
+  place only: a name clicked in Bill list opens the New bill tab with that person (an issue to the ward for someone
+  admitted now, a walk-in bill for an External customer); Save goes to Bill list with that person's bills and the print
+  preview open. The old addresses (`/pharmacy`, `/pharmacy/issue`, `/pharmacy/invoices`) still work. The hospital admin
+  keeps Sold as before. **How to test:** Pharmacy → Sales bill; Bill list → OPD → Search → click a name; save the bill.
 - **9 Nov 2026 – Pharmacy: the whole patient list on Sold and New bill (branch `pharmacy-full-list`). Owner's rule
   changed again (approval passed on by the developer, 9 Nov 2026; before it: 26 Oct "the pharmacist never sees the
   whole patient list", 5 Nov "a search of two letters also finds patients without a bill, never without a search"):**

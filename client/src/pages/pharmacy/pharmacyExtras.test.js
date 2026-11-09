@@ -16,6 +16,7 @@ import {
   momentDay,
   orderLook,
   pharmacyTabs,
+  salesBillSections,
   receiveLines,
   prescribedLines,
   soldItems,
@@ -256,6 +257,8 @@ describe('the pharmacy’s tabs', () => {
       ['Returns to supplier', '/pharmacy/supplier-returns'],
     ]);
     expect(pharmacyTabs(['admin']).map((t) => t.label)).toEqual(['Sold', 'Stock', 'Purchases', 'Medicines', 'Suppliers', 'Reports', 'Settings']);
+    // The pharmacist's Sales bill page: its two tabs (9 Nov 2026)
+    expect(salesBillSections().map((t) => [t.label, t.to])).toEqual([['New bill', '/pharmacy'], ['Bill list', '/pharmacy/invoices']]);
     expect(pharmacyTabs(['pharmacist']).map((t) => t.label).slice(0, 2)).toEqual(['Sell', 'Issue to ward']);
   });
 });
