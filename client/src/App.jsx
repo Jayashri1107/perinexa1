@@ -299,6 +299,8 @@ const loadCrs9 = () => import('./pages/anaesthesia/PacTab.jsx');
 const PacTab = screen(loadCrs9, 'PacTab');
 const loadCrs12 = () => import('./pages/newborn/NewbornCareTab.jsx');
 const NewbornCareTab = screen(loadCrs12, 'NewbornCareTab');
+const loadB13Desk = () => import('./pages/newborn/NicuDeskTab.jsx');
+const NicuDeskTab = screen(loadB13Desk, 'NicuDeskTab');
 const loadCrs13 = () => import('./pages/newborn/NicuRegisterPage.jsx');
 const NicuRegisterPage = screen(loadCrs13, 'NicuRegisterPage');
 // Build 13 – the NICU unit board and the hospital admin's NICU units
@@ -483,6 +485,7 @@ export function App() {
                   <Route path="anaesthesia" element={<PacTab />} />
                   <Route path="pregnancies" element={<PregnanciesTab />} />
                   <Route path="newborn-care" element={<NewbornCareTab />} />
+                  <Route path="nicu-desk" element={<NicuDeskTab />} />
                   <Route path="lab/:orderId" element={<LabOrderPage />} />
                   <Route path="edit" element={<PatientEditTab />} />
                 </Route>

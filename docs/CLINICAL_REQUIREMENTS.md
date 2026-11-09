@@ -283,6 +283,14 @@ bell, no SMS service) – not part of NEO-F-03 (no dose and no Director alert on
   5. *Serology pre-fill:* only a positive from the mother's recorded conditions (syphilis → VDRL, hepatitis B → HBsAg,
      HIV); the absence of a condition is not a negative test, so those start empty. HIV is shown and printed under the
      neutral name "Lab test (confidential)".
+- **Reception admits at the desk (developer's request, 9 Nov 2026).** A baby's record → **NICU** tab, for reception
+  only: admit with the unit, bed, where from, when and the admitting doctor (required); then only where the baby is
+  ("In the NICU – unit, bed, number", "Left the NICU" with the day – never how it ended). Reception never sees the NICU
+  form, the register or the board, and the server refuses every other NICU call from reception (need-to-know access
+  unchanged). The admission shows "Admitted at the desk – enter the weight, gestation and temperature (§2) and the main
+  reason (§3)" until a nurse or doctor does; the admitting doctor and the nurses get a notification. §1 is not
+  pre-filled at the desk (reception may not read the mother's record): **Fill in from the linked records** in §1 fills
+  the empty fields later (also usable any time before signing). Audit: NICU_DESK_VIEWED; NICU_ADMITTED with atDesk.
 - **Gaps – stored as fields or flags, not built:**
   - No weight-centile tables (Fenton, INTERGROWTH-21st, WHO) in Perinexa: the chart is chosen (Fenton under 37 weeks,
     WHO from 37 by default) and the centile typed; SGA / AGA / LGA come from the typed centile. Not invented.

@@ -3078,6 +3078,11 @@ Branch `claude/build13-nicu-f03-85abb9` (not merged, not pushed). From `docs/fie
     by weight and gestation, survival by weight, inborn / outborn, transfers, ROP on time); the schema's targets apply
     until the hospital sets its own.
   - Print: **Print as the manual's page** on an admission – A4 NEO-F-03 with the footer "NEO-F-03 · v1.0".
+- **9 Nov 2026 – reception admits to the NICU at the desk:** a baby's record → **NICU** tab (reception only): unit, bed,
+  where from, when, admitting doctor; reception then sees only where the baby is. The nurse or doctor completes the
+  form ("Admitted at the desk – …" banner, notification bell; §1 **Fill in from the linked records**). Test: as reception
+  → a baby → **NICU** → **Admit to the NICU** → "In the NICU … Waiting for the nurse or doctor"; as a nurse → the bell and
+  the amber banner on the baby's Newborn care tab → §2 weight, gestation, temperature → the banner goes.
 - **Tests:** `server/tests/build13-nicu-admission.test.js` (the seven acceptance tests AT1–AT7 and the rules) and
   `client/src/pages/newborn/newbornCare.test.jsx` (screens and the printout).
 - **Gaps (not built):** see the list in `docs/CLINICAL_REQUIREMENTS.md` (centile tables, EOS calculator, NEO-F-18,

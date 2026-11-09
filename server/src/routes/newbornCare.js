@@ -16,6 +16,7 @@ import { verifyWitness, witnessSchema, witnessView } from '../auth/witness.js';
 import { audit } from '../utils/audit.js';
 import { toCsv } from '../utils/csv.js';
 import { HttpError } from '../utils/httpError.js';
+import { notify } from '../notifications/notify.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -144,9 +145,20 @@ newbornCareRouter.put('/settings', async (req, res) => {
   res.json(await settingsView(req));
 });
 
+// Reception admits a baby to the NICU at the desk (developer's request, 9 Nov 2026): the header only – unit, bed, where
+// from, when, the admitting doctor – and sees only where the baby is. Never the form, the register or the board.
+const DESK_CALLS = [
+  ['GET', '/nicu/desk'],
+  ['GET', '/nicu/options'],
+  ['POST', '/nicu'],
+];
 newbornCareRouter.use((req, _res, next) => {
-  if (!hasRole(req.membership, ...ROLES)) throw forbidden('Newborn care records are for doctors, RMOs and nurses.');
-  next();
+  if (hasRole(req.membership, ...ROLES)) return next();
+  if (hasRole(req.membership, 'receptionist') && DESK_CALLS.some(([m, p]) => req.method === m && req.path === p)) {
+    req.nicuDesk = true; // reception, without a clinical role
+    return next();
+  }
+  throw forbidden('Newborn care records are for doctors, RMOs and nurses.');
 });
 const mayView = (req, p) => patientAccess(req, p).view.has('pregnancy');
 const mayWrite = (req, p) => {
@@ -159,6 +171,14 @@ async function babyFor(req, id, write = false) {
   if (baby.careType !== 'newborn') throw invalid({ patientId: "These records belong on a baby's record." });
   if (!mayView(req, baby)) throw forbidden("You can't see this baby's medical details.");
   if (write && !mayWrite(req, baby)) throw forbidden("You may not write in this baby's record.");
+  return baby;
+}
+/** A baby's record for the desk: reception may change her identity and birth details, never see her medical details. */
+async function babyForDesk(req, id) {
+  const baby = await findPatientById(req.tenantId, id);
+  if (baby.careType !== 'newborn') throw invalid({ patientId: "The NICU is for a baby's record." });
+  const a = patientAccess(req, baby);
+  if (!(a.editNewborn || a.editIdentity)) throw forbidden("You may not admit this baby.");
   return baby;
 }
 const ids = (baby, extra = {}) => ({ patientId: String(baby._id), mrn: baby.mrn, ...extra });
@@ -213,6 +233,7 @@ const nicuView = (n, baby, ctx) => {
     admittingDoctor: person(n.admittingDoctor),
     floorDecision: n.floorDecision ? { decision: n.floorDecision.decision, consultantName: n.floorDecision.consultantName, note: n.floorDecision.note, at: n.floorDecision.at } : null,
     fullOverride: n.fullOverride ? { reason: n.fullOverride.reason, byName: n.fullOverride.byName, at: n.fullOverride.at } : null,
+    atDesk: n.desk ? { byName: n.desk.byName, at: n.desk.at } : null,
     maternal: n.maternal ?? null,
     maternalFrom: n.maternalFrom ?? {},
     assessment: n.assessment ?? null,
@@ -367,16 +388,44 @@ const bedView = (b) => ({ id: String(b._id), name: b.name, ward: b.ward, unit: b
 
 newbornCareRouter.get('/nicu/options', async (req, res) => {
   const { patientId } = parse(z.object({ patientId: objectId }).strict(), req.query);
-  const baby = await babyFor(req, patientId, true);
+  const baby = req.nicuDesk ? await babyForDesk(req, patientId) : await babyFor(req, patientId, true);
   const [units, beds, people] = await Promise.all([unitsOf(req.tenantId), nicuBeds(req.tenantId), doctorsOf(req.tenantId)]);
-  const prefill = await prefillFor(req, baby, baby.newborn?.mother ?? null);
+  const mother = baby.newborn?.mother ? await Patient.findOne({ _id: baby.newborn.mother, tenantId: req.tenantId }, { mrn: 1 }).lean() : null;
+  const prefill = req.nicuDesk ? { motherId: mother ? String(mother._id) : null, motherMrn: mother?.mrn ?? null, motherHidden: false, allergyAlert: '', gestationWeeks: null, weightGrams: null, from: {} } : await prefillFor(req, baby, baby.newborn?.mother ?? null);
   res.json({
     units: units.filter((u) => u.active).map((u) => ({ ...u, sources: F03.sourcesFor(units, u.key), intensive: F03.allowsIntensive(u) })),
     beds: beds.map(bedView),
     people,
     prefill: { motherId: prefill.motherId, motherMrn: prefill.motherMrn, motherHidden: prefill.motherHidden, allergyAlert: prefill.allergyAlert, gestationWeeks: prefill.gestationWeeks, weightGrams: prefill.weightGrams, fields: Object.keys(prefill.from) },
-    access: { override: hasRole(req.membership, 'admin') },
+    access: { override: hasRole(req.membership, 'admin'), desk: Boolean(req.nicuDesk) },
   });
+});
+
+/** An admission as reception sees it: where the baby is, never how she is (no outcome word – only that she left). */
+const deskView = (n, units) => {
+  const unit = unitOf(units, n.unit);
+  return {
+    id: String(n._id),
+    registerLabel: registerLabelOf(n),
+    unitName: unit.name,
+    bed: n.bedName || null,
+    admittedAt: n.admittedAt,
+    sourceWords: F03.sourceWords(units, n.source),
+    transferFromName: n.transferFromName ?? '',
+    admittingDoctor: n.admittingDoctor?.name ?? null,
+    byName: n.byName,
+    atDesk: Boolean(n.desk),
+    state: n.cancelled ? 'cancelled' : n.outcome ? 'left' : 'in',
+    leftAt: n.cancelled ? null : (n.outcome?.at ?? null),
+    assessmentNeeded: n.format === 'f03' && !n.cancelled && !n.outcome && (n.weightGrams == null || n.gestationWeeks == null || n.temperatureC == null || !n.reasonPrimary),
+  };
+};
+newbornCareRouter.get('/nicu/desk', async (req, res) => {
+  const { patientId } = parse(z.object({ patientId: objectId }).strict(), req.query);
+  const baby = await babyForDesk(req, patientId);
+  const [list, units] = await Promise.all([NicuAdmission.find({ tenantId: req.tenantId, patientId: baby._id }).sort({ admittedAt: -1 }).lean(), unitsOf(req.tenantId)]);
+  await audit(req, 'NICU_DESK_VIEWED', { details: ids(baby) });
+  res.json({ baby: { id: String(baby._id), fullName: baby.fullName, mrn: baby.mrn }, admissions: list.map((n) => deskView(n, units)), access: { admit: !list.some((n) => !n.outcome && !n.cancelled) } });
 });
 
 const createBody = z
@@ -402,13 +451,15 @@ const createBody = z
   })
   .strict();
 
+const deskBody = createBody.omit({ weightGrams: true, gestationWeeks: true, gestationDays: true, temperatureC: true, reasonPrimary: true, allergyAlert: true, floorDecision: true });
 newbornCareRouter.post('/nicu', async (req, res) => {
-  const b = parse(createBody, req.body);
-  const baby = await babyFor(req, b.patientId, true);
+  const desk = Boolean(req.nicuDesk);
+  const b = parse(desk ? deskBody : createBody, req.body);
+  const baby = desk ? await babyForDesk(req, b.patientId) : await babyFor(req, b.patientId, true);
   const units = await unitsOf(req.tenantId);
   const ctx = async (n) => ({ units, now: nowOf(req), mothers: await mothersOf(req.tenantId, [n]) });
   const same = await NicuAdmission.findOne({ tenantId: req.tenantId, clientRequestId: b.clientRequestId });
-  if (same) return res.json({ admission: nicuView(same, baby, await ctx(same)) });
+  if (same) return res.json({ admission: desk ? deskView(same, units) : nicuView(same, baby, await ctx(same)) });
   if (future(req, b.admittedAt)) throw invalid({ admittedAt: "This can't be in the future." });
   if (baby.newborn?.birthAt && b.admittedAt < new Date(baby.newborn.birthAt)) throw invalid({ admittedAt: 'This is before the baby was born.' });
   if (await NicuAdmission.findOne({ tenantId: req.tenantId, patientId: baby._id, ...openFilter })) throw conflict('The baby is already admitted: record how that admission ended first.');
@@ -461,9 +512,10 @@ newbornCareRouter.post('/nicu', async (req, res) => {
     if (!used) throw conflict('Unit full – transfer pathway (NEO-F-18). The hospital admin can allow one more admission (NICU units).', 'UNIT_FULL');
     fullOverride = { reason: used.reason, byName: used.byName, at: used.at };
   }
-  // §1 starts from what the linked records already say (PX-X-14)
-  const prefill = await prefillFor(req, baby, motherId);
-  const maternal = maternalSchema.parse(prefill.values);
+  // §1 starts from what the linked records already say (PX-X-14) – not at the desk: reception may not read them; the
+  // clinical team fills §1 in from the linked records later (POST /nicu/:id/prefill)
+  const prefill = desk ? { values: null, from: {}, allergyAlert: '' } : await prefillFor(req, baby, motherId);
+  const maternal = desk ? null : maternalSchema.parse(prefill.values);
   const year = F03.registerYearOf(b.admittedAt);
   const doc = {
     format: 'f03',
@@ -485,14 +537,15 @@ newbornCareRouter.post('/nicu', async (req, res) => {
     admittingDoctor: admitting,
     floorDecision,
     fullOverride,
-    reasonPrimary: b.reasonPrimary,
-    weightGrams: b.weightGrams,
-    gestationWeeks: b.gestationWeeks,
-    gestationDays: b.gestationDays,
-    temperatureC: b.temperatureC,
+    reasonPrimary: b.reasonPrimary ?? null,
+    weightGrams: b.weightGrams ?? null,
+    gestationWeeks: b.gestationWeeks ?? null,
+    gestationDays: b.gestationDays ?? null,
+    temperatureC: b.temperatureC ?? null,
     maternal,
     maternalFrom: prefill.from,
-    assessment: { growthChart: F03.defaultChart(b.gestationWeeks) },
+    assessment: desk ? null : { growthChart: F03.defaultChart(b.gestationWeeks) },
+    desk: desk ? { by: req.user._id, byName: req.user.name, at: nowOf(req) } : null,
     by: req.user._id,
     byName: req.user.name,
   };
@@ -507,13 +560,18 @@ newbornCareRouter.post('/nicu', async (req, res) => {
       if (e?.code === 11000 && e.keyPattern?.registerNo && i < 8) continue;
       if (e?.code === 11000 && e.keyPattern?.clientRequestId) {
         const again = await NicuAdmission.findOne({ tenantId: req.tenantId, clientRequestId: b.clientRequestId });
-        return res.json({ admission: nicuView(again, baby, await ctx(again)) });
+        return res.json({ admission: desk ? deskView(again, units) : nicuView(again, baby, await ctx(again)) });
       }
       throw e;
     }
   }
   await syncRopEvent(req.tenantId, baby, n, req.user.name);
-  await audit(req, 'NICU_ADMITTED', { details: ids(baby, { admissionId: String(n._id), serial: n.serial, unit: n.unit, registerNo: n.registerNo, ...(motherId ? { motherId: String(motherId) } : {}), prefilledFrom: [...new Set(Object.values(prefill.from))], ...(fullOverride ? { override: true } : {}) }) });
+  await audit(req, 'NICU_ADMITTED', { details: ids(baby, { admissionId: String(n._id), serial: n.serial, unit: n.unit, registerNo: n.registerNo, ...(motherId ? { motherId: String(motherId) } : {}), prefilledFrom: [...new Set(Object.values(prefill.from))], ...(fullOverride ? { override: true } : {}), ...(desk ? { atDesk: true } : {}) }) });
+  if (desk) {
+    // The admitting doctor and the nurses are told: the admission assessment is theirs (the notification bell)
+    await notify(req, { userIds: [admitting.id], roles: ['nurse'] }, { kind: 'nicu', text: `NICU: ${baby.fullName} (${baby.mrn}) admitted at the desk to ${unit.name}, ${bed.name} – the admission assessment is needed.`, link: `/patients/${baby._id}/newborn-care` });
+    return res.status(201).json({ admission: deskView(n, units) });
+  }
   const view = nicuView(n, baby, await ctx(n));
   res.status(201).json({ admission: view, warnings: view.banners });
 });
@@ -628,6 +686,50 @@ newbornCareRouter.put('/nicu/:id', async (req, res) => {
   await syncRopEvent(req.tenantId, baby, n, req.user.name);
   await audit(req, 'NICU_ADMISSION_UPDATED', { details: ids(baby, { admissionId: String(n._id), parts }) });
   await respond(req, res, n, baby);
+});
+
+// §1 filled in from the linked records (PX-X-14) – for an admission made at the desk, or to bring in what was recorded
+// since: only fields still empty are filled; nothing typed is changed. The mother's record only for those who may see it.
+const isEmpty = (v) => v == null || v === '' || (Array.isArray(v) && !v.length);
+newbornCareRouter.post('/nicu/:id/prefill', async (req, res) => {
+  const { n, baby } = await admissionFor(req);
+  if (n.format !== 'f03' || n.cancelled) throw conflict('This admission cannot be filled in.');
+  if (n.signed) throw conflict('The admission is signed: §1 can no longer be changed.');
+  const p = await prefillFor(req, baby, n.motherId ?? baby.newborn?.mother ?? null);
+  const was = plain(n.maternal) ?? maternalSchema.parse({});
+  const from = { ...(n.maternalFrom ?? {}) };
+  const filled = [];
+  for (const [k, v] of Object.entries(p.values)) {
+    if (k === 'serology') {
+      was.serology ??= {};
+      for (const [t, r] of Object.entries(v)) {
+        if (!isEmpty(was.serology[t])) continue;
+        was.serology[t] = r;
+        filled.push(`serology.${t}`);
+        from.serology = p.from.serology;
+      }
+    } else if (isEmpty(was[k])) {
+      was[k] = v;
+      from[k] = p.from[k];
+      filled.push(k);
+    }
+  }
+  n.maternal = maternalSchema.parse(was);
+  n.maternalFrom = from;
+  n.markModified('maternal');
+  n.markModified('maternalFrom');
+  for (const k of ['allergyAlert', 'weightGrams', 'gestationWeeks']) {
+    if (isEmpty(n[k]) && !isEmpty(p[k])) {
+      n[k] = p[k];
+      filled.push(k);
+    }
+  }
+  n.editedAt = nowOf(req);
+  n.editedByName = req.user.name;
+  await n.save();
+  await syncRopEvent(req.tenantId, baby, n, req.user.name);
+  await audit(req, 'NICU_ADMISSION_UPDATED', { details: ids(baby, { admissionId: String(n._id), parts: ['prefill'], prefilledFrom: [...new Set(Object.values(p.from))] }) });
+  await respond(req, res, n, baby, { filled: filled.length, motherHidden: p.motherHidden });
 });
 
 newbornCareRouter.post('/nicu/:id/sign', async (req, res) => {

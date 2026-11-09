@@ -421,6 +421,15 @@ export function NicuAdmissionCard({ n, baby, data, reload }) {
   const [closing, setClosing] = useState(false);
   const [result, setResult] = useState(null);
   const open = !n.outcome && !n.cancelled;
+  const prefill = async () => {
+    try {
+      const r = await api(`/newborn-care/nicu/${n.id}/prefill`, { method: 'POST' });
+      setResult({ text: r.filled ? `${r.filled} ${r.filled === 1 ? "field" : "fields"} filled in from the linked records.` : r.motherHidden ? "Nothing to fill in: you may not see the mother's record." : 'Nothing new to fill in from the linked records.' });
+      reload();
+    } catch (err) {
+      setResult({ error: err });
+    }
+  };
   const sign = async () => {
     try {
       await api(`/newborn-care/nicu/${n.id}/sign`, { method: 'POST' });
@@ -442,10 +451,23 @@ export function NicuAdmissionCard({ n, baby, data, reload }) {
           !n.cancelled && <StatusPill tone="watch">Not signed yet</StatusPill>
         )}
       </span>
-      <span className="ca-group-words">{`${n.sourceWords}${n.transferFromName ? ` – ${n.transferFromName}` : ''} · ${n.bed?.name ?? 'no bed'} · ${rules.reasons[n.reasonPrimary] ?? ''} · ${n.weightGrams} g · ${n.gestationWeeks}+${n.gestationDays ?? 0} weeks (${rules.maturity[c.maturityClass] ?? ''})${c.sizeClass ? ` · ${rules.size[c.sizeClass]}` : ''}${n.stayDays != null ? ` · ${n.stayDays} days` : ''}`}</span>
+      <span className="ca-group-words">
+        {[
+          `${n.sourceWords}${n.transferFromName ? ` – ${n.transferFromName}` : ''}`,
+          n.bed?.name ?? 'no bed',
+          rules.reasons[n.reasonPrimary],
+          n.weightGrams != null && `${n.weightGrams} g`,
+          n.gestationWeeks != null && `${n.gestationWeeks}+${n.gestationDays ?? 0} weeks${c.maturityClass ? ` (${rules.maturity[c.maturityClass]})` : ''}`,
+          c.sizeClass && rules.size[c.sizeClass],
+          n.stayDays != null && `${n.stayDays} days`,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </span>
       {n.allergyAlert && <p className="nicu-allergy">{`Allergy alert: ${n.allergyAlert}`}</p>}
       {open && <Banners list={n.banners} />}
       {n.fullOverride && <p className="hint">{`Admitted to a full unit: allowed by ${n.fullOverride.byName} – ${n.fullOverride.reason}`}</p>}
+      {n.atDesk && <p className="hint">{`Admitted at the desk by ${n.atDesk.byName}, ${formatDateTime(n.atDesk.at)}`}</p>}
       {(c.cranialUsg?.length > 0 || c.hearingAabrBeforeDischarge) && (
         <p className="hint">
           {[c.cranialUsg?.length && `Cranial ultrasound: ${c.cranialUsg.map((x) => `${x.label} ${formatDate(x.on)}`).join(', ')}`, c.hearingAabrBeforeDischarge && 'Hearing screen (AABR) before discharge – stay over 5 days'].filter(Boolean).join(' · ')}
@@ -500,9 +522,16 @@ export function NicuAdmissionCard({ n, baby, data, reload }) {
                   )}
                   {p.key === 'followOn' && n.followOn?.counselledByName && <p className="hint">{`Counselled by ${n.followOn.counselledByName}`}</p>}
                   {canEdit && (
-                    <button type="button" className="btn btn-link" onClick={() => setEditing(p.key)}>
-                      {p.action}
-                    </button>
+                    <span className="row">
+                      <button type="button" className="btn btn-link" onClick={() => setEditing(p.key)}>
+                        {p.action}
+                      </button>
+                      {p.key === 'maternal' && (
+                        <button type="button" className="btn btn-link" onClick={prefill}>
+                          Fill in from the linked records
+                        </button>
+                      )}
+                    </span>
                   )}
                 </>
               )}
