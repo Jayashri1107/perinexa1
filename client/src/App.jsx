@@ -86,6 +86,8 @@ const ReportsPage = screen(load25, 'ReportsPage');
 const load26 = () => import('./pages/pharmacy/RegisterPage.jsx');
 const RegisterRedirect = screen(load26, 'RegisterRedirect');
 const load27 = () => import('./pages/pharmacy/SellPage.jsx');
+const loadNewBill = () => import('./pages/pharmacy/NewBillPage.jsx');
+const NewBillPage = screen(loadNewBill, 'NewBillPage');
 const SellPage = screen(load27, 'SellPage');
 const load28 = () => import('./pages/pharmacy/StockPage.jsx');
 const MedicineStockPage = screen(load28, 'MedicineStockPage');
@@ -124,6 +126,8 @@ const SettlementPage = screen(load38, 'SettlementPage');
 const loadIpd = () => import('./pages/billing/IpdPages.jsx');
 const IpdStaysPage = screen(loadIpd, 'IpdStaysPage');
 const IpdBillPage = screen(loadIpd, 'IpdBillPage');
+const IpdDischargesPage = screen(loadIpd, 'IpdDischargesPage');
+const PatientIpdBillRoute = screen(loadIpd, 'PatientIpdBillRoute');
 const load39 = () => import('./pages/patients/PatientsPage.jsx');
 const PatientsPage = screen(load39, 'PatientsPage');
 const load40 = () => import('./pages/patients/OpdRegistrationPage.jsx');
@@ -475,6 +479,8 @@ export function App() {
                   <Route path="visits/:visitId" element={<VisitPage />} />
                   <Route path="appointments" element={<PatientAppointmentsTab />} />
                   <Route path="bills" element={<PatientBillsTab />} />
+                  {/* Her IPD bill: discharge, advance, services, final bill, clearance – reception, billing, the admin (9 Nov 2026) */}
+                  <Route path="ipd-bill" element={<PatientIpdBillRoute />} />
                   <Route path="abha" element={<PatientAbhaTab />} />
                   <Route path="consents" element={<PatientConsentsTab />} />
                   <Route path="information" element={<PatientConsentsTab kind="information" key="information" />} />
@@ -586,7 +592,7 @@ export function App() {
                 </Route>
                 <Route path="pharmacy" element={<RequireTenantRole roles={PHARMACY_MODULE_ROLES} message="The pharmacy is for pharmacists and the hospital admin." />}>
                   <Route element={<RequireTenantRole roles={['pharmacist']} message="Selling and issuing medicines is for the pharmacist." />}>
-                    <Route index element={<SellPage key="sale" kind="sale" />} />
+                    <Route index element={<NewBillPage />} />
                     <Route path="issue" element={<SellPage key="issue" kind="issue" />} />
                     {/* The day's OPD, IPD and External patients are on Today (owner, 26 Oct 2026) */}
                     <Route path="register" element={<RegisterRedirect />} />
@@ -625,6 +631,7 @@ export function App() {
                   <Route path="bills/:id" element={<BillPage />} />
                   <Route path="unpaid" element={<UnpaidPage />} />
                   <Route path="ipd" element={<IpdStaysPage />} />
+                  <Route path="ipd/discharges" element={<IpdDischargesPage />} />
                   <Route path="ipd/:id" element={<IpdBillPage />} />
                   <Route path="refund" element={<RefundPage />} />
                   <Route path="settlement" element={<SettlementPage />} />

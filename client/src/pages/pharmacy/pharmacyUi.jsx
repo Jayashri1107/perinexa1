@@ -7,16 +7,17 @@ import { PageHeader } from '../../components/PageHeader.jsx';
 import { Alert, StatusPill, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { rupees } from '../billing/billingFormat.js';
-import { buyingSections, cleanBarcode, isBarcode, medicineLabel, pharmacyTabs, scanQueue, scheduleLook } from './pharmacyFormat.js';
+import { buyingSections, cleanBarcode, isBarcode, medicineLabel, pharmacyTabs, salesBillSections, scanQueue, scheduleLook } from './pharmacyFormat.js';
 
 // Small pieces shared by the pharmacy pages: the header with the pharmacy's tabs, a dialog frame, sending a change,
 // the schedule mark, finding a medicine on the stock list, and the "Scan or type a barcode" box.
 
 /**
  * buying: the page belongs to the Purchases tab (purchases, orders, returns to a supplier) and shows its sections.
+ * sales: the Sales bill page – its New bill and Bill list tabs, for the pharmacist (9 Nov 2026).
  * A pharmacist has the pharmacy's sections in the sidebar (owner, 26 Oct 2026), so no tabs; the admin keeps them.
  */
-export function PharmacyHeader({ title, crumb, actions, subtitle, badges, buying = false, className }) {
+export function PharmacyHeader({ title, crumb, actions, subtitle, badges, buying = false, sales = false, className }) {
   const { activeMembership } = useAuth();
   const pharmacist = activeMembership.roles.includes('pharmacist');
   return (
@@ -28,7 +29,7 @@ export function PharmacyHeader({ title, crumb, actions, subtitle, badges, buying
       badges={badges}
       actions={actions}
       tabs={pharmacist ? undefined : pharmacyTabs(activeMembership.roles)}
-      subtabs={buying ? buyingSections() : undefined}
+      subtabs={buying ? buyingSections() : sales && pharmacist ? salesBillSections() : undefined}
     />
   );
 }

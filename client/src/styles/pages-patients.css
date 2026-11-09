@@ -472,3 +472,13 @@ textarea.hs-blank { min-height: 0; height: 4.2em; }
 /* Patient alerts dialog (PX-X-13) */
 .pa-list { list-style: none; padding: 0; margin: 0 0 var(--space-4); display: grid; gap: var(--space-2); }
 .pa-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+/* The discharge of a stay on the patient's record (9 Nov 2026 – docs/IPD_DISCHARGE_BILLING_PLAN.md) */
+.stay-discharge { display: flex; flex-direction: column; gap: var(--space-3); }
+.stay-discharge-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; }
+.stay-discharge-head h3 { margin: 0; }
+.stay-discharge-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2) var(--space-4); margin: 0; }
+.stay-discharge-facts dt { font-size: 0.8125rem; color: var(--slate-600); }
+.stay-discharge-facts dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.stay-discharge-cell { display: inline-flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
+.stay-discharge p { margin: 0; }

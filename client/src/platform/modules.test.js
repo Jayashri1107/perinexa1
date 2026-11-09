@@ -87,9 +87,11 @@ describe('the left menu by role', () => {
     for (const roles of [['receptionist'], ['doctor'], ['rmo'], ['referral_desk', 'receptionist']]) expect(newPatientLinks(roles).map((l) => l.to), roles.join()).toContain('/patients/new/newborn');
     for (const roles of [['nurse'], ['receptionist'], ['lab'], ['pharmacist'], ['admin']]) expect(menu(roles), roles[0]).not.toContain('Referrals');
     expect(moduleByKey('referrals').tabs.map((t) => t.to)).toEqual(['/referrals', '/referrals/doctors', '/referrals/review', '/referrals/slip']);
-    // The pharmacist (owner, 26 Oct 2026): the pharmacy's sections in the sidebar, no whole patient list
-    expect(menu(['pharmacist'])).toEqual(['Today', 'New bill', 'Sold', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
+    // The pharmacist (owner, 26 Oct 2026): the pharmacy's sections in the sidebar; New bill and Sold as one Sales bill
+    // page with two tabs (9 Nov 2026)
+    expect(menu(['pharmacist'])).toEqual(['Today', 'Sales bill', 'Suppliers', 'Purchase bills', 'Stock', 'Medicines', 'Reports', 'Pharmacy settings', 'Formulary', 'Incidents']);
     expect(menu(['pharmacist', 'receptionist'])).toContain('Patients');
+    expect(hospitalModules(['pharmacist']).find((m) => m.label === 'Sales bill').activeFor).toEqual(['/pharmacy/issue', '/pharmacy/invoices']);
     expect(hospitalModules(['admin']).find((m) => m.label === 'Pharmacy').to).toBe('/pharmacy/stock'); // the counter is for pharmacists
     expect(menu(['receptionist', 'lab'])).not.toContain('Analytics');
     expect(hospitalModules(['nurse', 'rmo']).find((m) => m.label === 'Analytics').tabs.map((t) => t.label)).toEqual(['Ask your records']);
@@ -123,13 +125,13 @@ describe('the Lab item', () => {
 describe('the Patients menu', () => {
   const labels = (roles) => Object.fromEntries(patientMenu(roles).map((g) => [g.label, g.items.map((i) => i.label)]));
   it('shows only what the main menu does not already have', () => {
-    expect(labels(['receptionist'])).toEqual({ OPD: ['OPD registration', 'OPD patients'], IPD: ['Admitted patients'] });
+    expect(labels(['receptionist'])).toEqual({ OPD: ['OPD registration', 'OPD patients'], IPD: ['Admitted patients', 'IPD bills', 'Discharge'] });
     // none of them is a page the main menu already links to (Patients itself only opens this list)
     const main = new Set(hospitalModules(['receptionist']).filter((m) => m.key !== 'patients').map((m) => m.to.split('?')[0]));
     for (const item of patientMenu(['receptionist']).flatMap((g) => g.items)) expect(main.has(item.to.split('?')[0]), item.label).toBe(false);
   });
-  it('gives the billing department OPD registration (registered patients) and no IPD', () => {
-    expect(labels(['billing'])).toEqual({ OPD: ['OPD registration', 'OPD patients'] });
+  it('gives the billing department OPD registration (registered patients) and the IPD bill desk – no admitted list (9 Nov 2026)', () => {
+    expect(labels(['billing'])).toEqual({ OPD: ['OPD registration', 'OPD patients'], IPD: ['IPD bills', 'Discharge'] });
   });
   it("tells registration, today's, all and the admitted patients apart by the address", () => {
     const items = patientMenu(['rmo']).flatMap((g) => g.items);

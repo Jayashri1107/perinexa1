@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { BedDouble, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, ListChecks, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus, UserRound } from 'lucide-react';
+import { BedDouble, CalendarClock, CalendarDays, CircleCheck, CircleX, ClipboardList, Minus, PackageX, Plus, Receipt, Stethoscope, Trash2, UserPlus, UserRound } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -360,7 +360,7 @@ export const buyerComplete = (buyer) => buyer.name.trim().length >= 3 && Boolean
  * embedded (Sold, 6 Nov 2026): the same bill inside another page – start gives the patient or { type: 'external' },
  * onMade(invoice) gets the new invoice instead of opening it, onCancel goes back to choosing someone.
  */
-export function SellPage({ kind = 'sale', start: given = null, embedded = false, onMade = null, onCancel = null }) {
+export function SellPage({ kind = 'sale', start: given = null, embedded = false, fromList = false, onMade = null, onCancel = null }) {
   const navigate = useNavigate();
   // From the Daily register: { patient } already chosen, or { type: 'external' }
   const routed = useLocation().state;
@@ -379,7 +379,14 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [paying, setPaying] = useState(null); // the Payment window is open: the invoice about to be made
   const [business, setBusiness] = useState(false);
   const [buyer, setBuyer] = useState({ name: '', gstin: '', address: '', place: '', pin: '' });
-  const s = useSend((res) => (onMade ? onMade(res.invoice) : navigate(`/pharmacy/invoices/${res.invoice.id}`, { state: { flash: `Invoice ${res.invoice.number} made.` } })));
+  // Saved (9 Nov 2026): the Bill list tab, with this person's bills and the bill's print preview open
+  const s = useSend((res) =>
+    onMade
+      ? onMade(res.invoice)
+      : navigate('/pharmacy/invoices', {
+          state: { made: { invoice: { id: res.invoice.id, number: res.invoice.number }, name: who === 'walkin' ? res.invoice.customer?.name || customer.name.trim() : (patient?.fullName ?? ''), mrn: who === 'walkin' ? '' : (patient?.mrn ?? ''), type: who === 'walkin' ? 'external' : issue ? 'ipd' : 'opd' } },
+        }),
+  );
 
   const addMedicine = (m, qty = 1, dose = '') => setLines((ls) => (ls.some((l) => l.medicine.id === m.id) ? ls : [...ls, { key: `${m.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: null, dose }]));
   // A medicine taken from its batch list: the same batch again adds to its quantity, another batch is a line of its own
@@ -491,7 +498,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
 
   return (
     <>
-      {!embedded && <PharmacyHeader title={issue ? 'Issue to an admitted patient' : 'New bill'} crumb={issue ? 'Issue to ward' : 'New bill'} />}
+      {!embedded && <PharmacyHeader title="Sales bill" crumb={issue ? 'Issue to ward' : 'New bill'} subtitle={issue ? 'Issue to ward: medicines for an admitted patient, on her stay’s bill.' : undefined} sales />}
       <div className={embedded ? 'ph-counter is-embedded' : 'pf-content ph-counter'}>
         <Alert type="error" onClose={() => s.setError(null)}>
           {s.error}
@@ -519,7 +526,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
             </header>
 
             <div className="ph-counter-body">
-              {!patient && !embedded && (
+              {!patient && !embedded && !fromList && (
                 <div className="ph-type-tabs" role="radiogroup" aria-label="Type of patient">
                   <button type="button" role="radio" aria-checked={who === 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
                     <Stethoscope aria-hidden="true" /> OPD
@@ -546,8 +553,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 <h2 id="ph-who" className="ph-section-label">
                   Patient
                 </h2>
-                {patient && (
-                  <button type="button" className="btn btn-link btn-sm ph-person-change" onClick={embedded && onCancel ? onCancel : reset}>
+                {(patient || (fromList && who === 'walkin')) && (
+                  <button type="button" className="btn btn-link btn-sm ph-person-change" onClick={(embedded || fromList) && onCancel ? onCancel : reset}>
                     Change
                   </button>
                 )}
@@ -820,11 +827,6 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
               <Link className="btn btn-secondary" to="/pharmacy/reports">
                 <CalendarClock aria-hidden="true" /> Expiry list
               </Link>
-              {!embedded && (
-                <Link className="btn btn-secondary" to="/pharmacy/invoices">
-                  <ListChecks aria-hidden="true" /> Bill list
-                </Link>
-              )}
               <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={save}>
                 <Receipt aria-hidden="true" /> {issue ? 'Save the issue' : 'Save'}
               </button>
