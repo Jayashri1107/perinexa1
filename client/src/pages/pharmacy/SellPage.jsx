@@ -360,7 +360,7 @@ export const buyerComplete = (buyer) => buyer.name.trim().length >= 3 && Boolean
  * embedded (Sold, 6 Nov 2026): the same bill inside another page – start gives the patient or { type: 'external' },
  * onMade(invoice) gets the new invoice instead of opening it, onCancel goes back to choosing someone.
  */
-export function SellPage({ kind = 'sale', start: given = null, embedded = false, onMade = null, onCancel = null }) {
+export function SellPage({ kind = 'sale', start: given = null, embedded = false, fromList = false, onMade = null, onCancel = null }) {
   const navigate = useNavigate();
   // From the Daily register: { patient } already chosen, or { type: 'external' }
   const routed = useLocation().state;
@@ -526,7 +526,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
             </header>
 
             <div className="ph-counter-body">
-              {!patient && !embedded && (
+              {!patient && !embedded && !fromList && (
                 <div className="ph-type-tabs" role="radiogroup" aria-label="Type of patient">
                   <button type="button" role="radio" aria-checked={who === 'patient'} onClick={() => (issue ? navigate('/pharmacy') : setWho('patient'))}>
                     <Stethoscope aria-hidden="true" /> OPD
@@ -553,8 +553,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                 <h2 id="ph-who" className="ph-section-label">
                   Patient
                 </h2>
-                {patient && (
-                  <button type="button" className="btn btn-link btn-sm ph-person-change" onClick={embedded && onCancel ? onCancel : reset}>
+                {(patient || (fromList && who === 'walkin')) && (
+                  <button type="button" className="btn btn-link btn-sm ph-person-change" onClick={(embedded || fromList) && onCancel ? onCancel : reset}>
                     Change
                   </button>
                 )}
