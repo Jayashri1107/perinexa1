@@ -424,10 +424,13 @@ export function PatientDetailPage() {
     // A baby's screening log and follow-up clinic (Group A item 4)
     ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Screening', to: `${base}/screening`, end: true }] : []),
   ];
+  // Her IPD bill – discharge, advance, services, final bill, clearance (owner, 9 Nov 2026): reception, billing, the admin
+  const billsIpd = hasRole(activeMembership, 'receptionist', 'billing', 'admin');
   const ipdSections = a.canViewVisits
     ? [
         { label: 'Admissions', to: `${base}/stays`, end: true },
         ...(patient.currentAdmission ? [{ label: 'Current stay', to: `${base}/stays/${patient.currentAdmission.id}`, end: false }] : []),
+        ...(billsIpd ? [{ label: 'IPD bill', to: `${base}/ipd-bill`, end: true }] : []),
       ]
     : [];
   const inSections = (list) => list.some((t) => location.pathname === t.to || location.pathname.startsWith(`${t.to}/`));
@@ -440,9 +443,11 @@ export function PatientDetailPage() {
     ...(grouped
       ? [
           ...(opdSections.length ? [{ label: 'OPD', to: opdSections[0].to, activeFor: opdSections.map((t) => t.to) }] : []),
-          { label: 'IPD', to: ipdSections[0].to, activeFor: [`${base}/stays`] },
+          { label: 'IPD', to: ipdSections[0].to, activeFor: [`${base}/stays`, `${base}/ipd-bill`] },
         ]
       : opdSections),
+    // Reception and billing (no inpatient records): the IPD tab is her IPD bill
+    ...(!ipdSections.length && billsIpd ? [{ label: 'IPD', to: `${base}/ipd-bill`, end: true }] : []),
     // Billing: reception and the billing department (the hospital admin opens bills from Billing)
     ...(hasRole(activeMembership, 'receptionist', 'billing') ? [{ label: 'Bills', to: `${base}/bills`, end: true }] : []),
     // ABDM linking (M1): her ABHA – reception, doctors and RMOs

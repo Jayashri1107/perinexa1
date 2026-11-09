@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { BadgePercent, DoorOpen, FileCheck, LockOpen, Plus, Printer, Search, Wallet } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { BadgePercent, DoorOpen, FileCheck, LockOpen, Plus, Printer, Search, Wallet, X } from 'lucide-react';
+import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -32,54 +32,95 @@ const STEP_LOOK = (stay, bill) => {
   );
 };
 
-// ---------- The list ----------
+// ---------- The lists ----------
+
+// The IPD desk's two lists, like the HIMS's IPD menu: patients in hospital (advance, services) and the discharges
+export const IPD_SUBTABS = [
+  { label: 'In hospital', to: '/billing/ipd', end: true },
+  { label: 'Discharge', to: '/billing/ipd/discharges', end: true },
+];
+
+/** The bill window over a list (the HIMS's pop-up): Escape closes it unless one of its own dialogs is open. */
+function IpdBillSheet({ stayId, initialDialog = null, onClose, onChanged }) {
+  const ref = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const node = ref.current;
+    node?.focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape' && node && !node.querySelector('.modal-backdrop')) {
+        e.preventDefault();
+        closeRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+  return (
+    <div className="modal-backdrop ipd-sheet-backdrop">
+      <div ref={ref} tabIndex={-1} className="ipd-sheet" role="dialog" aria-modal="true" aria-label="IPD bill">
+        <div className="ipd-sheet-close">
+          <button type="button" className="btn btn-link" onClick={onClose}>
+            <X aria-hidden="true" /> Close
+          </button>
+        </div>
+        <IpdBillWindow stayId={stayId} embedded initialDialog={initialDialog} onChanged={onChanged} />
+      </div>
+    </div>
+  );
+}
+
+function SearchBox({ onSearch, label = 'Name, UHID or IPD number' }) {
+  const [typed, setTyped] = useState('');
+  return (
+    <form
+      className="ipd-search"
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSearch(typed.trim());
+      }}
+    >
+      <label htmlFor="ipd-q" className="sr-only">
+        {label}
+      </label>
+      <input id="ipd-q" type="search" placeholder={label} value={typed} maxLength={60} onChange={(e) => setTyped(e.target.value)} />
+      <button type="submit" className="btn btn-secondary">
+        <Search aria-hidden="true" /> Search
+      </button>
+    </form>
+  );
+}
 
 export function IpdStaysPage() {
   const { activeMembership } = useAuth();
-  const [status, setStatus] = useState('admitted');
-  const [typed, setTyped] = useState('');
   const [q, setQ] = useState('');
-  const res = useFetch('/billing/ipd/stays', { status, q });
+  const [sheet, setSheet] = useState(null); // { id, dialog }
+  const res = useFetch('/billing/ipd/stays', { status: 'admitted', q });
   const stays = res.data?.stays ?? [];
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD' }]} title="IPD billing" subtitle="Advances, services, discharge, final bill and clearance of patients in hospital." tabs={billingTabs(activeMembership.roles)} />
+      <PageHeader
+        breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD' }]}
+        title="IPD – in hospital"
+        subtitle="IPD advance and services (bill) of the patients in hospital. Discharges are under Discharge."
+        tabs={billingTabs(activeMembership.roles)}
+        subtabs={IPD_SUBTABS}
+      />
       <div className="pf-content">
         <section className="card ipd-find" aria-label="Find a patient">
-          <div className="segmented" role="group" aria-label="Show">
-            <button type="button" aria-pressed={status === 'admitted'} onClick={() => setStatus('admitted')}>
-              In hospital
-            </button>
-            <button type="button" aria-pressed={status === 'discharged'} onClick={() => setStatus('discharged')}>
-              Discharged (last 30 days)
-            </button>
-          </div>
-          <form
-            className="ipd-search"
-            role="search"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setQ(typed.trim());
-            }}
-          >
-            <label htmlFor="ipd-q" className="sr-only">
-              Name, UHID or IPD number
-            </label>
-            <input id="ipd-q" type="search" placeholder="Name, UHID or IPD number" value={typed} maxLength={60} onChange={(e) => setTyped(e.target.value)} />
-            <button type="submit" className="btn btn-secondary">
-              <Search aria-hidden="true" /> Search
-            </button>
-          </form>
+          <SearchBox onSearch={setQ} />
         </section>
         <Alert type="error">{res.error}</Alert>
         <section className="card" aria-labelledby="ipd-list-title">
-          <h2 id="ipd-list-title">{status === 'admitted' ? 'In hospital' : 'Discharged'} ({stays.length})</h2>
+          <h2 id="ipd-list-title">In hospital ({stays.length})</h2>
           {res.loading && !res.data ? (
             <p className="muted" aria-busy="true">
               Loading…
             </p>
           ) : stays.length === 0 ? (
-            <p className="muted">{q ? 'No patient matches this search.' : status === 'admitted' ? 'No patient is in hospital.' : 'No discharge in the last 30 days.'}</p>
+            <p className="muted">{q ? 'No patient matches this search.' : 'No patient is in hospital.'}</p>
           ) : (
             <div className="table-scroll">
               <table className="bill-report ipd-table">
@@ -88,7 +129,7 @@ export function IpdStaysPage() {
                     <th scope="col">IPD no.</th>
                     <th scope="col">UHID</th>
                     <th scope="col">Patient</th>
-                    <th scope="col">{status === 'admitted' ? 'Admitted' : 'Discharged'}</th>
+                    <th scope="col">Admitted</th>
                     <th scope="col">Ward / bed</th>
                     <th scope="col">Doctor</th>
                     <th scope="col" className="num">
@@ -97,7 +138,9 @@ export function IpdStaysPage() {
                     <th scope="col" className="num">
                       Balance
                     </th>
-                    <th scope="col">Status</th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -105,15 +148,25 @@ export function IpdStaysPage() {
                     <tr key={s.id}>
                       <td className="tabular">{s.ipdNo ?? '–'}</td>
                       <td className="tabular">{s.patient.mrn}</td>
-                      <td>
-                        <Link to={`/billing/ipd/${s.id}`}>{s.patient.fullName}</Link>
-                      </td>
-                      <td>{formatDateTime(status === 'admitted' ? s.admittedAt : s.dischargedAt)}</td>
+                      <td>{s.patient.fullName}</td>
+                      <td>{formatDateTime(s.admittedAt)}</td>
                       <td>{[s.ward, s.bed].filter(Boolean).join(' · ') || '–'}</td>
                       <td>{s.doctorName || '–'}</td>
                       <td className="num tabular">{s.bill ? rupees(s.bill.total) : '–'}</td>
                       <td className="num tabular">{s.bill ? rupees(s.bill.balance) : '–'}</td>
-                      <td>{STEP_LOOK(s, s.bill)}</td>
+                      <td>
+                        <span className="ipd-row-actions">
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: 'advance' })}>
+                            <Wallet aria-hidden="true" /> IPD advance<span className="sr-only"> for {s.patient.fullName}</span>
+                          </button>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: 'add' })}>
+                            <Plus aria-hidden="true" /> Add services<span className="sr-only"> for {s.patient.fullName}</span>
+                          </button>
+                          <button type="button" className="btn btn-link btn-sm" onClick={() => setSheet({ id: s.id, dialog: null })}>
+                            Open bill<span className="sr-only"> of {s.patient.fullName}</span>
+                          </button>
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -122,7 +175,183 @@ export function IpdStaysPage() {
           )}
         </section>
       </div>
+      {sheet && <IpdBillSheet stayId={sheet.id} initialDialog={sheet.dialog} onClose={() => setSheet(null)} onChanged={res.reload} />}
     </>
+  );
+}
+
+// The Discharge list's steps (server: routes/ipdBilling.js DISCHARGE_STEPS)
+const DISCHARGE_FILTERS = [
+  { key: '', label: 'All' },
+  { key: 'record', label: 'To record' },
+  { key: 'final_due', label: 'Final bill due' },
+  { key: 'to_clear', label: 'To clear' },
+  { key: 'cleared', label: 'Cleared' },
+];
+const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const isoDaysAgo = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return isoOf(d);
+};
+
+/**
+ * IPD → Discharge (owner, 9 Nov 2026), like the HIMS's Discharge menu: every discharge (the doctor has signed the card)
+ * in the chosen days, by step – to record at the desk, final bill due, to clear, cleared. Each row opens the bill
+ * window over the list, straight on the step to do: Patient discharge, Final bill or Discharge clearance.
+ */
+export function IpdDischargesPage() {
+  const { activeMembership } = useAuth();
+  const [q, setQ] = useState('');
+  const [step, setStep] = useState('');
+  const [from, setFrom] = useState(() => isoDaysAgo(30));
+  const [to, setTo] = useState(() => isoOf(new Date()));
+  const [sheet, setSheet] = useState(null); // { id, dialog }
+  const res = useFetch('/billing/ipd/stays', { status: 'discharged', q, from, to, ...(step ? { step } : {}) });
+  const stays = res.data?.stays ?? [];
+  const counts = res.data?.counts ?? {};
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const action = (s) => {
+    if (s.step === 'record') return { label: 'Patient discharge', icon: DoorOpen, dialog: 'discharge' };
+    if (s.step === 'final_due') return { label: 'Final bill', icon: FileCheck, dialog: 'final' };
+    if (s.step === 'to_clear') return s.bill?.balance > 0 ? { label: 'Take payment', icon: Wallet, dialog: 'advance' } : { label: 'Discharge clearance', icon: DoorOpen, dialog: 'clear' };
+    return null;
+  };
+  return (
+    <>
+      <PageHeader
+        breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD', to: '/billing/ipd' }, { label: 'Discharge' }]}
+        title="IPD – discharge"
+        subtitle="Every discharge: record it, make the final bill, take the balance and clear her for leaving – from this list."
+        tabs={billingTabs(activeMembership.roles)}
+        subtabs={IPD_SUBTABS}
+      />
+      <div className="pf-content">
+        <section className="card ipd-find" aria-label="Find discharges">
+          <div className="segmented ipd-steps" role="group" aria-label="Step">
+            {DISCHARGE_FILTERS.map((f) => (
+              <button key={f.key || 'all'} type="button" aria-pressed={step === f.key} onClick={() => setStep(f.key)}>
+                {f.label} ({f.key ? (counts[f.key] ?? 0) : total})
+              </button>
+            ))}
+          </div>
+          <div className="ipd-dates">
+            <label>
+              From <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+            </label>
+            <label>
+              To <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+            </label>
+          </div>
+          <SearchBox onSearch={setQ} />
+        </section>
+        <Alert type="error">{res.error}</Alert>
+        <section className="card" aria-labelledby="ipd-dis-title">
+          <h2 id="ipd-dis-title">Discharges ({stays.length})</h2>
+          {res.loading && !res.data ? (
+            <p className="muted" aria-busy="true">
+              Loading…
+            </p>
+          ) : stays.length === 0 ? (
+            <p className="muted">{q ? 'No discharge matches this search.' : 'No discharge in these days.'}</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="bill-report ipd-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Discharged</th>
+                    <th scope="col">IPD no.</th>
+                    <th scope="col">UHID</th>
+                    <th scope="col">Patient</th>
+                    <th scope="col">Ward / bed</th>
+                    <th scope="col">Doctor</th>
+                    <th scope="col">Type</th>
+                    <th scope="col" className="num">
+                      Net bill
+                    </th>
+                    <th scope="col" className="num">
+                      Balance
+                    </th>
+                    <th scope="col">Status</th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stays.map((s) => {
+                    const a = action(s);
+                    return (
+                      <tr key={s.id}>
+                        <td>{formatDateTime(s.dischargedAt)}</td>
+                        <td className="tabular">{s.ipdNo ?? '–'}</td>
+                        <td className="tabular">{s.patient.mrn}</td>
+                        <td>{s.patient.fullName}</td>
+                        <td>{[s.ward, s.bed].filter(Boolean).join(' · ') || '–'}</td>
+                        <td>{s.doctorName || '–'}</td>
+                        <td>{s.discharge?.label ?? <span className="muted">Not recorded</span>}</td>
+                        <td className="num tabular">{s.bill ? rupees(s.bill.total) : '–'}</td>
+                        <td className="num tabular">{s.bill ? rupees(s.bill.balance) : '–'}</td>
+                        <td>{STEP_LOOK(s, s.bill)}</td>
+                        <td>
+                          <span className="ipd-row-actions">
+                            {a && (
+                              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: a.dialog })}>
+                                <a.icon aria-hidden="true" /> {a.label}
+                                <span className="sr-only"> for {s.patient.fullName}</span>
+                              </button>
+                            )}
+                            <button type="button" className="btn btn-link btn-sm" onClick={() => setSheet({ id: s.id, dialog: null })}>
+                              Open bill<span className="sr-only"> of {s.patient.fullName}</span>
+                            </button>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+      {sheet && <IpdBillSheet stayId={sheet.id} initialDialog={sheet.dialog} onClose={() => setSheet(null)} onChanged={res.reload} />}
+    </>
+  );
+}
+
+/** Her record's IPD tab for reception and billing (owner, 9 Nov 2026): the bill window of her stay, a choice when there are several. */
+export function PatientIpdBillRoute() {
+  const { patient } = useOutletContext();
+  const { activeMembership } = useAuth();
+  if (!(activeMembership?.roles ?? []).some((r) => ['receptionist', 'billing', 'admin'].includes(r))) return <div className="card">The IPD bill is for reception, the billing department and the hospital admin.</div>;
+  return <PatientIpdBillTab patientId={patient.id} />;
+}
+
+export function PatientIpdBillTab({ patientId }) {
+  const res = useFetch('/billing/ipd/stays', { status: 'all', patientId });
+  const stays = res.data?.stays ?? [];
+  const [chosen, setChosen] = useState(null);
+  if (res.error) return <Alert type="error">{res.error}</Alert>;
+  if (!res.data) return <p className="muted" aria-busy="true">Loading…</p>;
+  if (!stays.length) return <div className="card">No stay in hospital yet.</div>;
+  const id = chosen ?? stays[0].id;
+  return (
+    <div className="ipd-patient-tab">
+      {stays.length > 1 && (
+        <label className="ipd-stay-choice">
+          Stay{' '}
+          <select value={id} onChange={(e) => setChosen(e.target.value)}>
+            {stays.map((s) => (
+              <option key={s.id} value={s.id}>
+                {[s.ipdNo, `admitted ${formatDateTime(s.admittedAt)}`, s.status === 'admitted' ? 'in hospital' : `discharged ${formatDateTime(s.dischargedAt)}`].filter(Boolean).join(' · ')}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <IpdBillWindow key={id} stayId={id} embedded onChanged={res.reload} />
+    </div>
   );
 }
 
@@ -273,13 +502,21 @@ const TABS = [
 
 export function IpdBillPage() {
   const { id } = useParams();
+  return <IpdBillWindow stayId={id} />;
+}
+
+/**
+ * The bill window of one stay. embedded: inside another page (the IPD → Discharge pop-up, her record's IPD tab) –
+ * a heading of its own in place of the page header. onChanged: told after every change (to refresh a list).
+ */
+export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDialog = null }) {
   const { activeMembership } = useAuth();
-  const res = useFetch(`/billing/ipd/stays/${id}`);
+  const res = useFetch(`/billing/ipd/stays/${stayId}`);
   const [tab, setTab] = useState('services');
   const [group, setGroup] = useState('');
   const [showRemoved, setShowRemoved] = useState(false);
   const [layout, setLayout] = useState('details');
-  const [dialog, setDialog] = useState(null); // add | advance | refund | discharge | admin | concession | final | reopen | clear | { remove: line }
+  const [dialog, setDialog] = useState(initialDialog); // add | advance | refund | discharge | admin | concession | final | reopen | clear | { remove: line }
   const [printing, setPrinting] = useState(null); // 'bill' | 'gatepass'
   const [flash, setFlash] = useState(null);
   const data = res.data;
@@ -287,10 +524,11 @@ export function IpdBillPage() {
     setDialog(null);
     setFlash(message ?? null);
     res.reload();
+    onChanged?.();
   };
 
-  if (res.error && !data) return <div className="pf-content"><Alert type="error">{res.error}</Alert></div>;
-  if (!data) return <div className="pf-content"><p className="muted" aria-busy="true">Loading the IPD bill…</p></div>;
+  if (res.error && !data) return <div className={embedded ? '' : 'pf-content'}><Alert type="error">{res.error}</Alert></div>;
+  if (!data) return <div className={embedded ? '' : 'pf-content'}><p className="muted" aria-busy="true">Loading the IPD bill…</p></div>;
   const { stay, patient, bill } = data;
   const step = stayStep(stay, bill);
   const open = bill && !bill.cancelled;
@@ -308,23 +546,16 @@ export function IpdBillPage() {
   else if (open && step.key === 'final' && bill.balance > 0) primary = { label: 'Take payment', icon: Wallet, onClick: () => setDialog('advance') };
   else if (step.key === 'final') primary = { label: 'Clear for leaving', icon: DoorOpen, onClick: () => setDialog('clear') };
 
-  return (
+  const title = `IPD bill${stay.ipdNo ? ` – ${stay.ipdNo}` : ''}`;
+  const badges = (
     <>
-      <PageHeader
-        breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD', to: '/billing/ipd' }, { label: patient.fullName }]}
-        title={`IPD bill${stay.ipdNo ? ` – ${stay.ipdNo}` : ''}`}
-        documentTitle="IPD bill"
-        subtitle={[patient.fullName, patient.mrn].join(' · ')}
-        badges={
-          <>
-            <StatusPill tone={step.tone} icon={step.icon}>
-              {step.label}
-            </StatusPill>
-            {bill && <BillStatus status={bill.status} />}
-          </>
-        }
-        tabs={billingTabs(activeMembership.roles)}
-        actions={
+      <StatusPill tone={step.tone} icon={step.icon}>
+        {step.label}
+      </StatusPill>
+      {bill && <BillStatus status={bill.status} />}
+    </>
+  );
+  const actions = (
           <>
             {bill && (
               <button type="button" className="btn btn-secondary" onClick={() => setPrinting('bill')}>
@@ -348,9 +579,31 @@ export function IpdBillPage() {
               </button>
             )}
           </>
-        }
-      />
-      <div className="pf-content ipd-page">
+  );
+
+  return (
+    <>
+      {embedded ? (
+        <div className="ipd-embed-head">
+          <div>
+            <h2>{title}</h2>
+            <p className="muted">{[patient.fullName, patient.mrn].join(' · ')}</p>
+            <div className="ipd-embed-badges">{badges}</div>
+          </div>
+          <div className="ipd-embed-actions">{actions}</div>
+        </div>
+      ) : (
+        <PageHeader
+          breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD', to: '/billing/ipd' }, { label: patient.fullName }]}
+          title={title}
+          documentTitle="IPD bill"
+          subtitle={[patient.fullName, patient.mrn].join(' · ')}
+          badges={badges}
+          tabs={billingTabs(activeMembership.roles)}
+          actions={actions}
+        />
+      )}
+      <div className={embedded ? 'ipd-page ipd-embedded' : 'pf-content ipd-page'}>
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
@@ -825,6 +1078,7 @@ export function IpdBillPage() {
             setDialog(null);
             setFlash('Cleared for leaving. Print the gate pass for the security desk.');
             res.reload();
+            onChanged?.();
             setPrinting('gatepass');
           }}
         />
