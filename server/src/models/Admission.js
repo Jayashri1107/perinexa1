@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { tenantScoped } from '../utils/tenantScope.js';
 import { ID_PROOF_TYPES, PAYER_TYPES } from './Patient.js';
+import { DISCHARGE_TYPES } from '../inpatient/dischargeTypes.js';
 
 // A stay in hospital (Version 2, inpatients): admitted on a date, in a ward and bed, for a reason; discharged when
 // a doctor confirms the discharge card. Its documents (models/ClinicalDocument.js) and nursing chart
@@ -66,6 +67,27 @@ const admissionSchema = new mongoose.Schema(
     clearance: {
       type: new mongoose.Schema({ ...byFields, balancePaise: Number, note: { type: String, default: '' }, passNo: String }, { _id: false }),
       default: null,
+    },
+    // The discharge details recorded at the desk after the doctor's card (9 Nov 2026 – docs/IPD_DISCHARGE_BILLING_PLAN.md):
+    // how the stay ended, the discharging doctor and a remark. A death is taken from her record, never typed at the
+    // desk. Changed until she is cleared for leaving. null on older stays and until the desk records it.
+    dischargeInfo: {
+      type: new mongoose.Schema(
+        {
+          type: { type: String, enum: DISCHARGE_TYPES, required: true },
+          doctorId: { type: ObjectId, ref: 'User', default: null },
+          doctorName: { type: String, default: '' },
+          remark: { type: String, trim: true, maxlength: 300, default: '' },
+          ...byFields,
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
+    // Each move to another bed (9 Nov 2026), for the bill's "Bed transfers" tab. Moves before this are in the audit log.
+    moves: {
+      type: [new mongoose.Schema({ fromWard: String, fromBed: String, toWard: String, toBed: String, ...byFields }, { _id: false })],
+      default: [],
     },
     status: { type: String, enum: ['admitted', 'discharged'], default: 'admitted' },
     dischargedAt: { type: Date, default: null },

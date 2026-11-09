@@ -218,6 +218,9 @@ admissionDeskRouter.post('/stays/:id/clear', async (req, res) => {
   const { stay, patient } = await findStay(req);
   if (stay.status !== 'discharged') throw conflict('The doctor confirms the discharge card first.', 'NOT_DISCHARGED');
   if (stay.clearance) throw conflict(`Already cleared – gate pass ${stay.clearance.passNo}.`);
+  // The HIMS order (docs/IPD_DISCHARGE_BILLING_PLAN.md, 9 Nov 2026): the discharge details, then the final bill, then clearance
+  if (!stay.dischargeInfo) throw conflict('Record the discharge first (Billing → IPD → Discharge): type, doctor and remark.', 'NO_DISCHARGE_DETAILS');
+  if (await Bill.exists({ tenantId: req.tenantId, admissionId: stay._id, kind: 'ipd', status: 'open', final: null })) throw conflict('Make the final bill first (Billing → IPD → Final bill).', 'NOT_FINAL');
   const balance = await stayBalance(req.tenantId, stay._id);
   if (balance > 0 && body.note.trim().length < 5) throw invalid({ note: `₹${(balance / 100).toLocaleString('en-IN')} is still due on her bill: write why she may leave (e.g. insurance claim pending).` }, 'The bill is not settled.');
   stay.clearance = { ...stampOf(req), balancePaise: balance, note: body.note.trim(), passNo: await nextPassNo(req.tenantId, req.now) };

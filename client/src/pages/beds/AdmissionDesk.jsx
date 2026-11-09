@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ClipboardCheck, DoorOpen, FileText, LogIn, Tag, TriangleAlert } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 import { Barcode } from '../../components/print/Barcode.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
@@ -262,7 +263,7 @@ export function RequestsSection({ data, onAdmit }) {
 
 // ---------- Clearance for leaving and the gate pass ----------
 
-function ClearDialog({ stay, onClose, onCleared }) {
+export function ClearDialog({ stay, onClose, onCleared }) {
   const [note, setNote] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -324,6 +325,12 @@ export function ToClearSection({ onCleared }) {
                       <StatusPill tone="stable" icon={ClipboardCheck}>
                         Bill settled
                       </StatusPill>
+                    )}
+                    {/* The discharge details and the final bill come first (docs/IPD_DISCHARGE_BILLING_PLAN.md) */}
+                    {res.data.canClear && (
+                      <Link className="btn btn-link btn-sm" to={`/billing/ipd/${s.id}`}>
+                        IPD bill
+                      </Link>
                     )}
                     {res.data.canClear && (
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setClearing(s)}>

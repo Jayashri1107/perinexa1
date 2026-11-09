@@ -120,6 +120,10 @@ const DailyExpensesPage = screen(load37, 'DailyExpensesPage');
 const load38 = () => import('./pages/billing/RefundSettlementPages.jsx');
 const RefundPage = screen(load38, 'RefundPage');
 const SettlementPage = screen(load38, 'SettlementPage');
+// Billing → IPD: the HIMS-style IPD desk and bill window (docs/IPD_DISCHARGE_BILLING_PLAN.md, 9 Nov 2026)
+const loadIpd = () => import('./pages/billing/IpdPages.jsx');
+const IpdStaysPage = screen(loadIpd, 'IpdStaysPage');
+const IpdBillPage = screen(loadIpd, 'IpdBillPage');
 const load39 = () => import('./pages/patients/PatientsPage.jsx');
 const PatientsPage = screen(load39, 'PatientsPage');
 const load40 = () => import('./pages/patients/OpdRegistrationPage.jsx');
@@ -620,6 +624,8 @@ export function App() {
                   <Route index element={<BillsPage />} />
                   <Route path="bills/:id" element={<BillPage />} />
                   <Route path="unpaid" element={<UnpaidPage />} />
+                  <Route path="ipd" element={<IpdStaysPage />} />
+                  <Route path="ipd/:id" element={<IpdBillPage />} />
                   <Route path="refund" element={<RefundPage />} />
                   <Route path="settlement" element={<SettlementPage />} />
                   <Route path="daily" element={<DailySummaryPage />} />

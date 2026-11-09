@@ -320,6 +320,7 @@ bedsRouter.post('/stays/:admissionId/move', async (req, res) => {
   if (admission.bedId?.equals(bed._id)) return res.json({ admission: { id: String(admission._id), ward: admission.ward, bed: admission.bed } });
   await assertFree(req, bed);
   const from = admission.bedId ? String(admission.bedId) : null;
+  admission.moves.push({ fromWard: admission.ward, fromBed: admission.bed, toWard: bed.ward, toBed: bed.name, by: req.user._id, byName: req.user.name, at: req.now ?? new Date() });
   admission.bedId = bed._id;
   admission.ward = bed.ward;
   admission.bed = bed.name;

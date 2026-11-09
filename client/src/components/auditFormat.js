@@ -376,6 +376,12 @@ export const AUDIT_LABELS = {
   ADMISSION_FORM_PRINTED: 'Admission form printed',
   WRISTBAND_PRINTED: 'Wristband printed',
   DISCHARGE_CLEARED: 'Cleared for leaving (gate pass)',
+  // IPD discharge and the IPD bill window (9 Nov 2026)
+  DISCHARGE_DETAILS_RECORDED: 'Discharge recorded at the desk',
+  IPD_STAYS_VIEWED: 'IPD billing list viewed',
+  BILL_FINALISED: 'Final bill made',
+  BILL_REOPENED: 'Final bill reopened',
+  BILL_ADMIN_CHARGE_SET: 'Administrative charges set',
   GATE_PASS_PRINTED: 'Gate pass printed',
   OPD_CASE_PAPER_PRINTED: 'OPD case paper printed',
   ADMISSION_RULES_CHANGED: 'Admission rules changed',
@@ -746,6 +752,11 @@ export const AUDIT_TONES = {
   ADMISSION_FORM_PRINTED: 'patient',
   WRISTBAND_PRINTED: 'patient',
   DISCHARGE_CLEARED: 'patient',
+  DISCHARGE_DETAILS_RECORDED: 'patient',
+  IPD_STAYS_VIEWED: 'patient',
+  BILL_FINALISED: 'patient',
+  BILL_REOPENED: 'patient',
+  BILL_ADMIN_CHARGE_SET: 'patient',
   GATE_PASS_PRINTED: 'patient',
   OPD_CASE_PAPER_PRINTED: 'patient',
   ADMISSION_RULES_CHANGED: 'info',
@@ -949,6 +960,8 @@ const periodOf = (d) => (d.from && d.to ? (d.from === d.to ? formatDate(d.from) 
 // Billing: the bill's and the receipt's numbers and the amounts – never a reason that was typed, an item's name or a
 // payment reference. The super admin's log holds no bill number and no amount ("A bill").
 const PAYMENT_MODE_WORDS = { cash: 'cash', upi: 'UPI', card: 'card', insurance: 'insurance or scheme' };
+// How a stay ended (server/src/inpatient/dischargeTypes.js); a death is logged as "closed"
+const DISCHARGE_TYPE_WORDS = { normal: 'normal', dama: 'DAMA', lama: 'LAMA', dor: 'DOR', transfer: 'transfer', closed: 'record closed' };
 const BILLING_EXPORT_WORDS = { items: 'Bill items', payments: 'Payments' };
 const paidOf = (d) => [d.receipt ? `receipt ${d.receipt}` : '', d.amountPaise != null ? `${rupeesOf(d.amountPaise)}${PAYMENT_MODE_WORDS[d.mode] ? ` by ${PAYMENT_MODE_WORDS[d.mode]}` : ''}` : ''];
 
@@ -1388,6 +1401,11 @@ export function describeAudit(entry) {
       return `${record(d)}${d.complete ? ' – complete' : ' – not complete yet'}`;
     case 'DISCHARGE_CLEARED':
       return `${record(d)}${d.balancePaise > 0 ? ` – ₹${(d.balancePaise / 100).toLocaleString('en-IN')} still due` : ' – bill settled'}`;
+    // A death is kept as "closed": the admin who reads the log sees only that the record is closed
+    case 'DISCHARGE_DETAILS_RECORDED':
+      return `${record(d)}${d.type ? ` – ${DISCHARGE_TYPE_WORDS[d.type] ?? d.type}` : ''}${d.changed ? ' (changed)' : ''}`;
+    case 'IPD_STAYS_VIEWED':
+      return `${d.status === 'discharged' ? 'Discharged' : 'In hospital'}${d.count != null ? ` – ${d.count} shown` : ''}${d.searched ? ', searched' : ''}`;
     case 'OPD_CASE_PAPER_PRINTED':
       return `${record(d)}${d.opdNo ? ` – ${d.opdNo}` : ''}`;
     case 'ADMISSION_RULES_CHANGED':
@@ -1624,6 +1642,12 @@ export function describeAudit(entry) {
       return joined(billOf(d), d.totalPaise != null ? `total ${rupeesOf(d.totalPaise)}` : '');
     case 'BILL_PRINTED':
       return joined(billOf(d), d.receipt ? `receipt ${d.receipt}` : '');
+    case 'BILL_FINALISED':
+      return joined(billOf(d), d.totalPaise != null ? `total ${rupeesOf(d.totalPaise)}` : '', d.balancePaise ? `balance ${rupeesOf(d.balancePaise)}` : '');
+    case 'BILL_REOPENED':
+      return joined(billOf(d), d.reason ?? '');
+    case 'BILL_ADMIN_CHARGE_SET':
+      return joined(billOf(d), d.amountPaise != null ? `${d.beforePaise ? `was ${rupeesOf(d.beforePaise)}, now ` : ''}${rupeesOf(d.amountPaise)}` : '');
     case 'PRICE_LIST_CHANGED': {
       // The item is kept as an id only
       let price = '';

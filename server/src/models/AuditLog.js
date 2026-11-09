@@ -100,6 +100,12 @@ export const AUDIT_ACTIONS = [
   'ADMISSION_FORM_PRINTED',
   'WRISTBAND_PRINTED',
   'DISCHARGE_CLEARED',
+  // IPD discharge and the IPD bill window (docs/IPD_DISCHARGE_BILLING_PLAN.md, 9 Nov 2026)
+  'DISCHARGE_DETAILS_RECORDED',
+  'IPD_STAYS_VIEWED',
+  'BILL_FINALISED',
+  'BILL_REOPENED',
+  'BILL_ADMIN_CHARGE_SET',
   'GATE_PASS_PRINTED',
   'OPD_CASE_PAPER_PRINTED',
   'QUEUE_TIME_SENT',
@@ -631,6 +637,8 @@ export const AUDIT_CATEGORIES = {
 };
 // Build 13 – the NICU admission's events about a patient's record (added here, not in the long line above)
 AUDIT_CATEGORIES.patients.push('NICU_ADMISSION_UPDATED', 'NICU_ADMISSION_SIGNED', 'NICU_REGISTER_EXPORTED', 'NICU_BOARD_VIEWED', 'NICU_DESK_VIEWED');
+// IPD discharge and the IPD bill window (9 Nov 2026)
+AUDIT_CATEGORIES.patients.push('DISCHARGE_DETAILS_RECORDED', 'IPD_STAYS_VIEWED', 'BILL_FINALISED', 'BILL_REOPENED', 'BILL_ADMIN_CHARGE_SET');
 
 const auditLogSchema = new mongoose.Schema({
   action: { type: String, enum: AUDIT_ACTIONS, required: true, index: true },

@@ -73,9 +73,14 @@ const billSchema = new mongoose.Schema(
     admissionId: { type: ObjectId, ref: 'Admission', default: null },
     lines: { type: [lineSchema], default: [] },
     discount: {
-      type: new mongoose.Schema({ mode: { type: String, enum: ['amount', 'percent'] }, value: Number, paise: Number, reason: String, ...stamp }, { _id: false }),
+      // authorisedBy / authorisedByName: who allowed the concession – a doctor or the hospital admin (9 Nov 2026)
+      type: new mongoose.Schema({ mode: { type: String, enum: ['amount', 'percent'] }, value: Number, paise: Number, reason: String, authorisedBy: { type: ObjectId, ref: 'User', default: null }, authorisedByName: { type: String, default: '' }, ...stamp }, { _id: false }),
       default: null,
     },
+    // The final bill of a stay (9 Nov 2026 – docs/IPD_DISCHARGE_BILLING_PLAN.md): made after the discharge; the bed days
+    // stop and no item can be added or taken off. Reopened with a reason (kept in `reopened`), never undone silently.
+    final: { type: stampSchema, default: null },
+    reopened: { type: [new mongoose.Schema({ ...stamp, reason: String }, { _id: false })], default: [] },
     payments: { type: [paymentSchema], default: [] },
     insurance: { type: insuranceSchema, default: null },
     status: { type: String, enum: ['open', 'cancelled'], default: 'open' },
