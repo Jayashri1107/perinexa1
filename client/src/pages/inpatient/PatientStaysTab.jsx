@@ -10,6 +10,7 @@ import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { fromLocalInput, toLocalInput } from './inpatientFormat.js';
 import { RequestAdmissionDialog } from '../beds/AdmissionDesk.jsx';
 import { AdmissionLabelFields, startStayType } from '../../components/AdmissionLabels.jsx';
+import { DischargeStepPill } from './StayDischarge.jsx';
 
 // The Stays tab on the patient record (Version 2, inpatients): every stay in hospital, newest first, and "Admit"
 // (the patient's doctor or an RMO). A stay opens on its own page: its documents and the nursing chart.
@@ -106,6 +107,21 @@ export function PatientStaysTab() {
           <StatusPill tone="stable" icon={CircleCheck}>
             Discharged {formatDateTime(s.dischargedAt)}
           </StatusPill>
+        ),
+    },
+    // The discharge recorded at the desk, the final bill and the gate pass (9 Nov 2026)
+    {
+      key: 'discharge',
+      header: 'Discharge',
+      className: 'wrap',
+      render: (s) =>
+        s.status === 'discharged' ? (
+          <span className="stay-discharge-cell">
+            <span>{s.discharge?.label ?? <span className="muted">Type not recorded</span>}</span>
+            <DischargeStepPill a={s} />
+          </span>
+        ) : (
+          <span className="muted">—</span>
         ),
     },
     { key: 'docs', header: 'Documents', render: (s) => `${s.signed} signed${s.drafts ? ` · ${s.drafts} draft${s.drafts > 1 ? 's' : ''}` : ''}` },

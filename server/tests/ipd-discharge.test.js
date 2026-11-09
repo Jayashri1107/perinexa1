@@ -110,9 +110,30 @@ describe('discharge, final bill and clearance', () => {
 
     // Final again, then cleared: the discharge can no longer be changed, nor the bill reopened
     await desk.post(ipd(`/bills/${bill._id}/final`)).send({});
+    // The patient's record shows her doctor what the desk recorded, and that the bill is final (no amounts)
+    const stays = (await (await as('drA')).get(`/api/patients/${String(bill.patientId)}/admissions`)).body.admissions;
+    expect(stays[0]).toMatchObject({ discharge: { type: 'dama', label: expect.stringMatching(/^DAMA/), doctorName: 'Sample drA', remark: 'Relatives wish to go home' }, bill: { final: { byName: 'Sample billing' } } });
+    expect(stays[0].bill).not.toHaveProperty('total');
     expect((await desk.post(`/api/admission-desk/stays/${stay.id}/clear`).send({ note: 'Balance to be paid by the relative (practice)' })).status).toBe(200);
     expect((await desk.post(ipd(`/stays/${stay.id}/discharge`)).send({ type: 'normal' })).body.error.code).toBe('CLEARED');
     expect((await desk.post(ipd(`/bills/${bill._id}/reopen`)).send({ reason: 'Charge missed' })).body.error.code).toBe('CLEARED');
+  });
+
+  it('IPD → Discharge lists every discharge by step and days, and one patient’s stays for her record', async () => {
+    const { patient, stay } = await admitted();
+    const desk = await as('reception');
+    const list = async (query) => (await desk.get(ipd(`/stays?${query}`))).body;
+    await discharge(stay.id);
+    let r = await list('status=discharged');
+    expect(r.stays).toMatchObject([{ id: stay.id, step: 'record' }]);
+    expect(r.counts).toEqual({ record: 1, final_due: 0, to_clear: 0, cleared: 0 });
+    await desk.post(ipd(`/stays/${stay.id}/discharge`)).send({ type: 'normal' });
+    expect((await list('status=discharged&step=final_due')).stays.map((s) => s.id)).toEqual([stay.id]);
+    expect((await list('status=discharged&step=record')).stays).toEqual([]);
+    expect((await list('status=discharged&from=2026-11-10&to=2026-11-12')).stays).toEqual([]); // not in those days
+    expect((await list('status=discharged&from=2026-11-09&to=2026-11-09')).stays).toHaveLength(1);
+    expect((await list(`status=all&patientId=${patient.id}`)).stays.map((s) => s.id)).toEqual([stay.id]);
+    expect((await desk.get(ipd('/stays?status=discharged&from=9-11-2026'))).status).toBe(400);
   });
 
   it('a concession records who authorised it, from the hospital’s doctors and admins only', async () => {
@@ -134,5 +155,8 @@ describe('discharge, final bill and clearance', () => {
     expect((await Admission.findOne({ tenantId: hospital._id, _id: stay.id }).lean()).dischargeInfo.type).toBe('death');
     expect((await (await as('reception')).get(ipd('/stays?status=discharged'))).body.stays[0].discharge).toMatchObject({ type: 'closed' });
     expect(JSON.stringify((await AuditLog.findOne({ action: 'DISCHARGE_DETAILS_RECORDED' }).lean()).details)).not.toMatch(/death/i);
+    // Her doctor sees the word on her record's Stays tab and stay page
+    expect((await (await as('drA')).get(`/api/patients/${patient.id}/admissions`)).body.admissions[0].discharge).toMatchObject({ type: 'death', label: 'Death' });
+    expect((await (await as('drA')).get(`/api/patients/${patient.id}/admissions/${stay.id}`)).body.admission.discharge).toMatchObject({ type: 'death' });
   });
 });

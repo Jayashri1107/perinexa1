@@ -59,16 +59,45 @@ function dischargeView(req, stay) {
 
 // ---------- The list ----------
 
+// Where a discharged stay is in the HIMS order (the IPD → Discharge list): the desk records the discharge, the final
+// bill is made, she is cleared for leaving
+export const DISCHARGE_STEPS = ['record', 'final_due', 'to_clear', 'cleared'];
+export function dischargeStepOf(stay, bill) {
+  if (stay.status !== 'discharged') return null;
+  if (stay.clearance) return 'cleared';
+  if (bill?.final) return 'to_clear';
+  if (stay.dischargeInfo) return 'final_due';
+  return 'record';
+}
+const dayStart = (iso) => hospitalDayStart(new Date(`${iso}T00:00:00Z`));
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'A date as YYYY-MM-DD');
+
 ipdBillingRouter.get('/stays', async (req, res) => {
-  const q = parse(z.object({ status: z.enum(['admitted', 'discharged']).default('admitted'), q: z.string().trim().max(60).default('') }), req.query);
-  const filter = { tenantId: req.tenantId, status: q.status };
-  if (q.status === 'discharged') filter.dischargedAt = { $gte: hospitalDayStart(addDays(hospitalToday(req.now), -DISCHARGED_DAYS)) };
+  const q = parse(
+    z.object({
+      status: z.enum(['admitted', 'discharged', 'all']).default('admitted'),
+      q: z.string().trim().max(60).default(''),
+      // Discharged between these days (hospital days, both counted); default: the last 30 days
+      from: isoDate.optional(),
+      to: isoDate.optional(),
+      step: z.enum(DISCHARGE_STEPS).optional(),
+      patientId: objectId.optional(), // one patient's stays (her record's IPD tab)
+    }),
+    req.query,
+  );
+  const filter = { tenantId: req.tenantId };
+  if (q.status !== 'all') filter.status = q.status;
+  if (q.patientId) filter.patientId = q.patientId;
+  if (q.status === 'discharged') {
+    filter.dischargedAt = { $gte: q.from ? dayStart(q.from) : hospitalDayStart(addDays(hospitalToday(req.now), -DISCHARGED_DAYS)) };
+    if (q.to) filter.dischargedAt.$lt = hospitalDayStart(addDays(new Date(`${q.to}T00:00:00Z`), 1));
+  }
   if (q.q) {
     const text = new RegExp(escapeRegex(q.q), 'i');
     const found = await Patient.find({ tenantId: req.tenantId, $or: [{ fullName: text }, { mrn: text }] }, { _id: 1 }).limit(200).lean();
     filter.$or = [{ patientId: { $in: found.map((p) => p._id) } }, { ipdNo: text }];
   }
-  const stays = await Admission.find(filter).sort(q.status === 'admitted' ? { admittedAt: -1 } : { dischargedAt: -1 }).limit(200).lean();
+  const stays = await Admission.find(filter).sort(q.status === 'discharged' ? { dischargedAt: -1 } : { admittedAt: -1 }).limit(q.status === 'discharged' ? 500 : 200).lean();
   const patients = new Map((stays.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: stays.map((s) => s.patientId) } }, { fullName: 1, mrn: 1, assignedDoctor: 1 }).lean() : []).map((p) => [String(p._id), p]));
   const bills = stays.length ? await Bill.find({ tenantId: req.tenantId, admissionId: { $in: stays.map((s) => s._id) }, status: 'open' }).lean() : [];
   const billOf = new Map(bills.map((b) => [String(b.admissionId), b]));
@@ -78,7 +107,9 @@ ipdBillingRouter.get('/stays', async (req, res) => {
     const p = patients.get(String(s.patientId));
     if (!p) continue;
     const b = billOf.get(String(s._id));
+    const step = dischargeStepOf(s, b);
     list.push({
+      step,
       id: String(s._id),
       ipdNo: s.ipdNo ?? null,
       admittedAt: s.admittedAt,
@@ -93,8 +124,11 @@ ipdBillingRouter.get('/stays', async (req, res) => {
       patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn },
     });
   }
-  await audit(req, 'IPD_STAYS_VIEWED', { details: { status: q.status, count: list.length, searched: Boolean(q.q) } });
-  res.json({ stays: list });
+  // How many at each step (the Discharge list's filter buttons), then the step asked for
+  const counts = Object.fromEntries(DISCHARGE_STEPS.map((k) => [k, list.filter((s) => s.step === k).length]));
+  const shown = q.step ? list.filter((s) => s.step === q.step) : list;
+  await audit(req, 'IPD_STAYS_VIEWED', { details: { status: q.status, count: shown.length, searched: Boolean(q.q), ...(q.step ? { step: q.step } : {}), ...(q.patientId ? { patientId: q.patientId } : {}) } });
+  res.json({ stays: shown, counts });
 });
 
 // ---------- The bill window ----------

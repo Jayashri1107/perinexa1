@@ -1,9 +1,12 @@
 import { caesareanTimes } from '../clinical/caesarean.js';
 import { robsonGroup, robsonMissing } from '../clinical/robson.js';
 import { groupARules } from './docSchemas.js';
+import { dischargeTypeFor } from './dischargeTypes.js';
 // What the website receives about stays, documents and the nursing chart (pure). Never staff ids.
 
-export const admissionView = (a) => ({
+// medical: may this person see why a record is closed (doctors, RMOs, nurses)? Otherwise a death discharge reads
+// "Record closed" (inpatient/dischargeTypes.js). bill: the stay's bill as the ward sees it – final or not, no amounts.
+export const admissionView = (a, { medical = false, bill = undefined } = {}) => ({
   id: String(a._id),
   patientId: String(a.patientId),
   careType: a.careType,
@@ -22,6 +25,11 @@ export const admissionView = (a) => ({
   dischargedAt: a.dischargedAt ?? null,
   admittedByName: a.admittedByName,
   dischargedByName: a.dischargedByName ?? null,
+  // The discharge recorded at the desk after the card (9 Nov 2026 – docs/IPD_DISCHARGE_BILLING_PLAN.md)
+  discharge: a.dischargeInfo
+    ? { ...dischargeTypeFor(a.dischargeInfo.type, { medical }), doctorName: a.dischargeInfo.doctorName ?? '', remark: a.dischargeInfo.remark ?? '', byName: a.dischargeInfo.byName ?? '', at: a.dischargeInfo.at ?? null }
+    : null,
+  ...(bill !== undefined ? { bill: bill ? { number: bill.number, final: bill.final ? { byName: bill.final.byName ?? '', at: bill.final.at ?? null } : null } : null } : {}),
 });
 
 export const documentView = (d) => ({

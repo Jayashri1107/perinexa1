@@ -25,6 +25,16 @@
   (bed days stop, items locked; billing or the admin reopen it with a reason) → payment or settlement → **clearance**
   and the gate pass (clearance now needs the discharge and the final bill). While she is in hospital the bill prints
   as an **interim bill**. Bed moves are now kept on the stay. Plan: `docs/IPD_DISCHARGE_BILLING_PLAN.md`.
+- **On the patient's record too:** the IPD (Stays) tab has a **Discharge** column (the type, and "Discharge to record
+  at the desk" / "Final bill due" / "Final bill made" / "Left – gate pass …"); a discharged stay's page has a
+  **Discharge** panel – the card's date and doctor, the type, discharging doctor, remark, who recorded it, the bill
+  (final or not – no amounts) and the gate pass. Reception, billing and the admin get a link to the IPD bill. A death
+  reads "Death" to doctors, RMOs and nurses only.
+- **IPD menu for reception (owner, 9 Nov 2026), like the HIMS:** Patients → IPD → **IPD bills**
+  (patients in hospital: IPD advance, Add services, Open bill on each row) and **Discharge** (every discharge in the
+  chosen days, by step: To record · Final bill due · To clear · Cleared; each row's button opens the bill window over
+  the list on that step – Patient discharge, Final bill, Take payment, Discharge clearance). Reception, billing and the
+  admin also have an **IPD** tab on the patient's record with her IPD bill (a choice of stay when she had several).
 - **Not built:** IPD packages (on the ideas list – the owner decides their prices and contents).
 - **How to test (fake data only):** sign in as reception or billing → Billing → IPD → a patient in hospital → Take
   advance, Add services, Print interim bill. Have a doctor sign her discharge card, then → Discharged → the patient →
