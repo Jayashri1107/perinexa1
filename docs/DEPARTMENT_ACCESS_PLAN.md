@@ -18,6 +18,7 @@ a doctor can open other doctors' patients read-only).
 | 3 | A patient from another department | **Hidden completely.** No read-only view and no emergency note. |
 | 4 | Anesthesia, Radiology, Counselling, Diet and yoga | **They see a patient when she is referred to them.** Her doctor refers her to that department. |
 | 5 | A doctor with no department | **Sees no patients**, apart from their own (`assignedDoctor`), until the admin gives them a department. |
+| 6 | A delivery | **The paediatrician sees the mother's record too.** A doctor who may open the baby's record may also open the mother's record (the baby's `motherInfo` link), **read-only**, with sensitive records showing the identity details only. This is the same as a same-department colleague's patient. Each opening is written to the audit log. |
 
 The owner was told about the risk of decision 3: a doctor who needs a file at night has no way in. The RMO role still
 sees every patient (unchanged), so the RMO on duty is the way in at night.
@@ -81,5 +82,4 @@ admin. A doctor who is also an RMO still sees everything.
 
 ## Questions for the owner before the build
 
-- A **delivery**: the mother is in Obgy and the baby is in Pediatric. Does the paediatrician need to see the mother's
-  record (proposed: no, the baby's record carries the birth details)?
+None left. Next step: the developer reads this plan, then the build starts on this branch.
