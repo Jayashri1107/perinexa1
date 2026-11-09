@@ -116,6 +116,8 @@ const nicuSchema = new mongoose.Schema(
     admittingDoctor: personRef,
     // Below the unit's floor: the consultant's decision (admit here, or the transfer pathway)
     floorDecision: { type: new mongoose.Schema({ decision: { type: String, enum: ['admit_here', 'transfer'] }, consultantId: ObjectId, consultantName: String, note: String, at: Date }, { _id: false }), default: null },
+    // Admitted at the desk by reception (9 Nov 2026): the header only; the clinical team completes the form
+    desk: { type: new mongoose.Schema({ by: ObjectId, byName: String, at: Date }, { _id: false }), default: null },
     // N4: admitted to a full unit by the hospital admin's override
     fullOverride: { type: new mongoose.Schema({ reason: String, by: ObjectId, byName: String, at: Date }, { _id: false }), default: null },
     // §1–§3 and what follows the admission (counselling, consent, consultant review) – checked by routes/newbornCare.js

@@ -227,6 +227,9 @@ export function bannersFor(n, unit, units, computed, now) {
     const d = n.floorDecision;
     banners.push({ key: 'floor', tone: 'watch', text: `Below the admission floor (${unit.minGestationWeeks} weeks / ${unit.minBirthWeightGrams} g): transfer pathway (NEO-F-18) suggested.${d ? ` Consultant's decision (${d.consultantName}): ${d.decision === 'transfer' ? 'transfer' : 'admit here'}.` : ''}` });
   }
+  // Admitted at the desk: the nurse or doctor enters the first findings
+  const pending = open && (n.weightGrams == null || n.gestationWeeks == null || n.temperatureC == null || !n.reasonPrimary);
+  if (pending) banners.unshift({ key: 'pending', tone: 'watch', text: `Admitted at the desk${n.desk?.byName ? ` by ${n.desk.byName}` : ''} – enter the weight, gestation and temperature (§2) and the main reason (§3).` });
   const counselOverdue = open && !n.followOn?.counselledAt && now - new Date(n.admittedAt) > COUNSEL_WITHIN_MIN * MIN;
   if (counselOverdue) banners.push({ key: 'counsel', tone: 'high', text: 'Parents not counselled yet – more than 1 hour since admission.' });
   const incomplete = !n.cancelled && !n.signed && now - new Date(n.admittedAt) > COMPLETE_WITHIN_MIN * MIN;
@@ -234,7 +237,7 @@ export function bannersFor(n, unit, units, computed, now) {
   if (lateEntry(n.admittedAt, n.createdAt)) banners.push({ key: 'late', tone: 'neutral', text: 'Late entry: the admission was typed more than 1 hour after the admission time – typed on', on: n.createdAt });
   const typed = n.followOn?.typedAt?.counselledAt;
   if (lateEntry(n.followOn?.counselledAt, typed)) banners.push({ key: 'late', tone: 'neutral', text: 'Late entry: the counselling time was typed more than 1 hour after it – typed on', on: typed });
-  return { banners, flags: { hypothermia: hypothermic(n.temperatureC), hypoglycaemia: hypoglycaemic(g), outsideCapability: cap, belowFloor: floor, counselOverdue, incomplete, lateEntry: lateEntry(n.admittedAt, n.createdAt) } };
+  return { banners, flags: { pending, hypothermia: hypothermic(n.temperatureC), hypoglycaemia: hypoglycaemic(g), outsideCapability: cap, belowFloor: floor, counselOverdue, incomplete, lateEntry: lateEntry(n.admittedAt, n.createdAt) } };
 }
 
 // ---------- N1: the counselling task to the admitting doctor ----------

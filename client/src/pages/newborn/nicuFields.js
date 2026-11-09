@@ -152,6 +152,7 @@ export const OUTCOME_FIELDS = [
 export const bannerText = (b) => (b.on ? `${b.text} ${b.key === 'rop' ? formatDate(b.on) : formatDateTime(b.on)}.` : b.text);
 /** A banner as a short flag for the unit board's bed cards. */
 export const FLAG_WORDS = {
+  pending: () => 'Admitted at the desk – assessment needed',
   hypothermia: () => 'Under 36.0 °C – hypothermia pathway',
   hypoglycaemia: () => 'Glucose under 45',
   rop: (b) => `ROP exam due ${formatDate(b.on)}`,
