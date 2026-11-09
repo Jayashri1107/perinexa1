@@ -17,6 +17,7 @@ a doctor can open other doctors' patients read-only).
 | 2 | How a patient gets a department | **Reception chooses it at registration.** Existing patients need one too (see Moving the old records). |
 | 3 | A patient from another department | **Hidden completely.** No read-only view and no emergency note. |
 | 4 | Anesthesia, Radiology, Counselling, Diet and yoga | **They see a patient when she is referred to them.** Her doctor refers her to that department. |
+| 5 | A doctor with no department | **Sees no patients**, apart from their own (`assignedDoctor`), until the admin gives them a department. |
 
 The owner was told about the risk of decision 3: a doctor who needs a file at night has no way in. The RMO role still
 sees every patient (unchanged), so the RMO on duty is the way in at night.
@@ -80,7 +81,5 @@ admin. A doctor who is also an RMO still sees everything.
 
 ## Questions for the owner before the build
 
-- A doctor with **no department** (for example, a new doctor not set up yet): should they see no patients (proposed) or
-  all patients?
 - A **delivery**: the mother is in Obgy and the baby is in Pediatric. Does the paediatrician need to see the mother's
   record (proposed: no, the baby's record carries the birth details)?
