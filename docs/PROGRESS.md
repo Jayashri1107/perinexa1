@@ -3101,6 +3101,11 @@ Branch `claude/build13-nicu-f03-85abb9` (not merged, not pushed). From `docs/fie
   form ("Admitted at the desk – …" banner, notification bell; §1 **Fill in from the linked records**). Test: as reception
   → a baby → **NICU** → **Admit to the NICU** → "In the NICU … Waiting for the nurse or doctor"; as a nurse → the bell and
   the amber banner on the baby's Newborn care tab → §2 weight, gestation, temperature → the banner goes.
+- **9 Nov 2026 – a new baby admitted in one step, named B/O:** Beds → **NICU – new baby** (reception, RMOs) or Newborn
+  follow-up → **NICU – new baby** (doctors, RMOs) registers a baby with no record yet as "B/O <mother's name>" and admits
+  her to the NICU (header only). Babies made from the delivery note are now named "B/O <mother>" too. Test: as reception
+  → Beds → **NICU – new baby** → the mother's name, the birth, Garkheda, a bed, the admitting doctor → **Register and
+  admit** → the baby's record "B/O …" opens on its NICU tab.
 - **Tests:** `server/tests/build13-nicu-admission.test.js` (the seven acceptance tests AT1–AT7 and the rules) and
   `client/src/pages/newborn/newbornCare.test.jsx` (screens and the printout).
 - **Gaps (not built):** see the list in `docs/CLINICAL_REQUIREMENTS.md` (centile tables, EOS calculator, NEO-F-18,

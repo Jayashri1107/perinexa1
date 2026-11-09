@@ -110,8 +110,9 @@ const board = {
   bedKinds: F03.BED_KINDS,
   units: [{ key: 'waluj', name: 'Waluj', level: 'level_II', capacity: 2, free: 0, intensiveBabies: 2, nurses: { nurses: 0, at: '2026-11-10T05:00:00Z', byName: 'Sample nurse' }, ratio: 'worse', counts: { incomplete: 1, counselOverdue: 1 }, beds: [{ id: 'b1', name: 'B1', kind: 'incubator', level: 'intensive', occupied: true }], admissions: [{ id: 'n2', bedId: 'b1', baby: { id: 'p1', fullName: 'Baby Sample', mrn: 'P-000009' }, banners: [{ key: 'counsel', tone: 'high', text: 'Parents not counselled yet – more than 1 hour since admission.' }] }] }],
 };
+const newBabyOptions = { units: [{ key: 'garkheda', name: 'Garkheda', sources: { transfer_other: 'Transfer – other hospital' } }], beds: [{ id: 'b1', unit: 'garkheda', ward: 'NICU', name: 'N1', occupied: false }], people: [{ id: 'u1', name: 'Dr Sample', roles: ['doctor'] }] };
 const desk = { baby: { id: 'p1', fullName: 'Baby Sample', mrn: 'P-000009' }, access: { admit: false }, admissions: [{ id: 'n3', registerLabel: 'GARKHEDA-2026-0003', unitName: 'Garkheda', bed: 'NICU · N2', admittedAt: '2026-11-09T07:00:00Z', sourceWords: 'Transfer – other hospital', transferFromName: 'Sample clinic', admittingDoctor: 'Dr Sample', byName: 'Sample reception', atDesk: true, state: 'in', leftAt: null, assessmentNeeded: true }] };
-vi.mock('../../hooks/useFetch.js', () => ({ useFetch: (path) => ({ data: path === '/newborn-care/register' ? register : path === '/newborn-care/board' ? board : path === '/newborn-care/nicu/desk' ? desk : path ? care : null, error: null, loading: false, reload: () => {} }) }));
+vi.mock('../../hooks/useFetch.js', () => ({ useFetch: (path) => ({ data: path === '/newborn-care/register' ? register : path === '/newborn-care/board' ? board : path === '/newborn-care/nicu/desk' ? desk : path === '/newborn-care/nicu/new-baby/options' ? newBabyOptions : path ? care : null, error: null, loading: false, reload: () => {} }) }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig()), useParams: () => ({ id: 'p1' }) }));
 vi.mock('../analytics/analyticsFormat.js', async (orig) => ({ ...(await orig()), thisMonth: () => '2026-11' }));
 const { NewbornCareTab, BiliChart } = await import('./NewbornCareTab.jsx');
@@ -119,6 +120,7 @@ const { NicuRegisterPage } = await import('./NicuRegisterPage.jsx');
 const { NicuBoardPage } = await import('./NicuBoardPage.jsx');
 const { NicuF03Print } = await import('./NicuF03Print.jsx');
 const { NicuDeskTab } = await import('./NicuDeskTab.jsx');
+const { NicuNewBabyPage } = await import('./NicuNewBabyPage.jsx');
 const html = (el) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>).replace(/&#x27;/g, "'");
 const text = (el) => html(el).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -181,6 +183,14 @@ describe('reception at the desk (9 Nov 2026)', () => {
     expect(out).toContain('admitting doctor: Dr Sample');
     expect(out).not.toMatch(/Temperature|Maternal|§1|Sign the admission/);
     expect(out).not.toMatch(/!/);
+  });
+});
+
+describe('a new baby registered as B/O <mother> and admitted (9 Nov 2026)', () => {
+  it('asks for the mother, the birth and the NICU place, and says the name the baby gets', () => {
+    const out = text(<NicuNewBabyPage />);
+    for (const t of ['The mother', 'Find her record', "Mother's name", 'The baby is registered as: B/O …', 'Date and time of birth', 'The NICU', 'NICU · N1 – free', 'Register and admit']) expect(out).toContain(t);
+    expect(out).not.toMatch(/Temperature|Gestation|!/);
   });
 });
 

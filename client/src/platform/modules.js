@@ -521,7 +521,7 @@ export function hospitalModules(roles = []) {
   if (any(roles, SPECIMEN_ROLES)) modules.push(HOSPITAL_SPECIMENS);
   if (any(roles, NEWBORN_FOLLOW_UP_ROLES)) {
     // The NICU / SNCU register (Group B item 13): for doctors, RMOs and nurses only – never the coordinator
-    const tabs = any(roles, THEATRE_ROLES) ? [...HOSPITAL_NEWBORN_FOLLOW_UP.tabs, { label: 'NICU register', to: '/nicu-register', end: true }, { label: 'NICU board', to: '/nicu-board', end: true }] : HOSPITAL_NEWBORN_FOLLOW_UP.tabs;
+    const tabs = any(roles, THEATRE_ROLES) ? [...HOSPITAL_NEWBORN_FOLLOW_UP.tabs, { label: 'NICU register', to: '/nicu-register', end: true }, { label: 'NICU board', to: '/nicu-board', end: true }, ...(any(roles, ['doctor', 'rmo']) ? [{ label: 'NICU – new baby', to: '/nicu-admit', end: true }] : [])] : HOSPITAL_NEWBORN_FOLLOW_UP.tabs;
     modules.push({ ...HOSPITAL_NEWBORN_FOLLOW_UP, tabs });
   }
   if (any(roles, CLINICAL_AUDIT_ROLES)) {

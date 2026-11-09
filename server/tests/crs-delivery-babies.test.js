@@ -62,7 +62,7 @@ describe("the baby's record from the delivery note", () => {
 
     const first = await make('rmo', documentId, 0);
     expect(first.status, JSON.stringify(first.body)).toBe(201);
-    expect(first.body.baby.fullName).toBe('First Baby of Birth Mother');
+    expect(first.body.baby.fullName).toBe('B/O Birth Mother (Triplet 1)'); // three babies on the note (9 Nov 2026: B/O)
     expect((await make('drA', documentId, 0)).status).toBe(409);
     expect((await make('drA', documentId, 2)).body.error.message).toMatch(/born alive/);
     expect((await make('nurse', documentId, 1)).status).toBe(403);
@@ -84,7 +84,7 @@ describe("the baby's record from the delivery note", () => {
     expect((await make('drA', documentId, 0)).body.error.message).toMatch(/Sign the delivery note/);
     const signed = await note({ ...BASE, babies: [live()] });
     const made = await (await as('drA')).post('/api/delivery-babies').send({ documentId: signed.documentId, index: 0, registerAnyway: true });
-    expect(made.body.baby.fullName).toBe('Baby of Birth Mother');
+    expect(made.body.baby.fullName).toBe('B/O Birth Mother');
   });
 
   it('reception, who may not see her delivery, cannot open it', async () => {
@@ -99,7 +99,7 @@ describe("the baby's record from the delivery note", () => {
 
     const single = await note({ ...BASE, babies: [live()] });
     // a baby registered by hand with the same name and phone, not linked to this note
-    await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'newborn', fullName: 'Baby of Birth Mother', newborn: { birthAt: '2026-11-18T05:00:00.000Z' } }));
+    await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'newborn', fullName: 'B/O Birth Mother', newborn: { birthAt: '2026-11-18T05:00:00.000Z' } }));
     const first = await make('drA', single.documentId, 0);
     expect(first.status).toBe(409);
     expect(first.body.error.code).toBe('POSSIBLE_MATCHES');
