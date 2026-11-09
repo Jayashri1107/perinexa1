@@ -65,9 +65,7 @@ try {
   for (const t of tenants) moved += await migrateAdmissionLabels(t._id);
   if (moved) console.log(`Billing and admission types: ${moved} older record(s) moved to the new types.`);
 } catch (err) {
-  console.error('
-⚠️  WARNING: could not move the older billing and admission types at startup. Details:', err.message, '
-');
+  console.error('\n⚠️  WARNING: could not move the older billing and admission types at startup. Details:', err.message, '\n');
 }
 
 const server = createApp().listen(config.API_PORT, () => {
