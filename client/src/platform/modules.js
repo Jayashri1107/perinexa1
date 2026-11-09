@@ -276,8 +276,8 @@ const HOSPITAL_PHARMACY = {
 // The pharmacist's menu (owner, 26 Oct 2026): the pharmacy's sections in the sidebar itself; the day's register (OPD,
 // IPD and External patients) is on Today. "New bill" keeps the key 'pharmacy' (Help's guide).
 const PHARMACIST_MENU = [
-  { key: 'pharmacy', label: 'New bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: '/pharmacy/issue' },
-  { key: 'pharmacy-bills', label: 'Sold', icon: FileText, to: '/pharmacy/invoices' },
+  // New bill and Sold as one Sales bill page with two tabs (9 Nov 2026); a bill opened from the list stays under it
+  { key: 'pharmacy', label: 'Sales bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: ['/pharmacy/issue', '/pharmacy/invoices'] },
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },
   { key: 'pharmacy-purchases', label: 'Purchase bills', icon: PackagePlus, to: '/pharmacy/purchases', activeFor: ['/pharmacy/orders', '/pharmacy/supplier-returns'] },
   { key: 'pharmacy-stock', label: 'Stock', icon: Boxes, to: '/pharmacy/stock' },

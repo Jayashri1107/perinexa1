@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BedDouble, ChevronLeft, ChevronRight, FileJson, History, Printer, ReceiptText, RotateCcw, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight, FileJson, History, Printer, RotateCcw, Search, Stethoscope, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -16,7 +16,6 @@ import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { TypePill } from './RegisterPage.jsx';
-import { SellPage } from './SellPage.jsx';
 
 // Pharmacy → Invoices: a day's invoices (or a search), one invoice with its GST tax invoice to print, and returns of
 // unopened medicines before their expiry (each a credit note). A walk-in sale to a business with a GSTIN shows the
@@ -50,7 +49,14 @@ export function InvoicesPage() {
   const [params, setParams] = useSearchParams();
   const { activeMembership } = useAuth();
   const desk = activeMembership.roles.includes('pharmacist');
-  const start = useLocation().state?.find; // a double click on a patient elsewhere: their patient number
+  const routed = useLocation().state;
+  const start = routed?.find; // a double click on a patient elsewhere: their patient number
+  // A bill just saved on the New bill tab (9 Nov 2026): that person's bills here, its print preview open, once
+  const madeNow = routed?.made ?? null;
+  // Read once: a refresh of the page does not open the print preview again
+  useEffect(() => {
+    if (madeNow) navigate('.', { replace: true, state: null });
+  }, []);
   const [text, setText] = useState('');
   const search = useDebounced(text.trim(), 300);
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date') : undefined;
@@ -66,7 +72,9 @@ export function InvoicesPage() {
   const [mrnText, setMrnText] = useState(start ?? '');
   const [amountText, setAmountText] = useState('');
   const [paidBy, setPaidBy] = useState('');
-  const [person, setPerson] = useState(null);
+  const [person, setPerson] = useState(() =>
+    madeNow ? { key: madeNow.invoice.id, name: madeNow.name, mrn: madeNow.mrn ?? '', type: madeNow.type, billCount: 1, bills: [{ id: madeNow.invoice.id, number: madeNow.invoice.number, at: new Date().toISOString() }], printNow: true } : null,
+  );
   const go = (d) => {
     setParams({ date: d }, { replace: true });
     setPerson(null);
@@ -97,20 +105,25 @@ export function InvoicesPage() {
       setPerson(hit);
     }
   }, [start, people]);
-  // A new bill made here (6 Nov 2026): choose OPD, IPD or External, pick the patient from that list, then the same bill
-  // as New bill, made and printed without leaving Sold. { type: 'opd' | 'ipd' | 'external', patient? }
-  const [billing, setBilling] = useState(null);
-  const [made, setMade] = useState(null); // "Invoice … made."
+  // A name clicked in the list (9 Nov 2026): the New bill tab opens with that person chosen – an issue to the ward for
+  // someone admitted now, a walk-in bill with the name and phone for an External customer
+  const [made, setMade] = useState(madeNow ? `Invoice ${madeNow.invoice.number} made.` : null);
+  const [opening, setOpening] = useState(null);
   const typed = (set) => (e) => {
     set(e.target.value);
     setPerson(null);
-    setBilling(null);
   };
-  const billMade = (invoice, who) => {
-    setBilling(null);
-    setMade(`Invoice ${invoice.number} made.`);
-    setPerson({ key: invoice.id, name: who.name, mrn: who.mrn ?? '', type: who.type, billCount: 1, bills: [{ id: invoice.id, number: invoice.number, at: new Date().toISOString() }], printNow: true });
-    res.reload();
+  const openBill = async (x) => {
+    if (!x.mrn) return navigate('/pharmacy', { state: { type: 'external', customer: { name: x.name, phone: x.phone ?? '' } } });
+    setOpening(x.key);
+    try {
+      const { inpatients } = await api('/pharmacy/inpatients');
+      const patient = { id: x.key, fullName: x.name, mrn: x.mrn };
+      navigate(inpatients.some((s) => s.patient.id === x.key) ? '/pharmacy/issue' : '/pharmacy', { state: { patient } });
+    } catch {
+      setOpening(null);
+      navigate('/pharmacy', { state: { patient: { id: x.key, fullName: x.name, mrn: x.mrn } } });
+    }
   };
   const closePerson = () => {
     setBlank(false);
@@ -179,18 +192,7 @@ export function InvoicesPage() {
   );
   return (
     <>
-      <PharmacyHeader
-        className="ph-fab"
-        title="Sold"
-        crumb="Sold"
-        actions={
-          desk && (
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/pharmacy')}>
-              <ReceiptText aria-hidden="true" /> New bill
-            </button>
-          )
-        }
-      />
+      <PharmacyHeader className="ph-fab" title={desk ? 'Sales bill' : 'Sold'} crumb={desk ? 'Bill list' : 'Sold'} sales />
       <div className="pf-content bill-page ph-sold">
         {desk ? (
           <div className="ph-sold-split">
@@ -204,7 +206,6 @@ export function InvoicesPage() {
                     onClick={() => {
                       setType(k);
                       setPerson(null);
-                      setBilling(null);
                       setMade(null);
                       setSearched(false);
                       setNameText('');
@@ -224,7 +225,6 @@ export function InvoicesPage() {
                   setPages(1);
                   setBlank(false);
                   setPerson(null);
-                  setBilling(null);
                   setMade(null);
                 }}
               >
@@ -284,10 +284,8 @@ export function InvoicesPage() {
               )}
               {person ? (
                 <PersonBills key={person.key} person={person} onClose={closePerson} />
-              ) : billing ? (
-                <SoldBill billing={billing} onCancel={() => setBilling(null)} onMade={billMade} onBills={(x) => { setBilling(null); setPerson(x); }} />
               ) : looking ? (
-                <PeopleFound found={found} people={people} onPick={(x) => setBilling({ person: x })} onBills={setPerson} onMore={found.data?.pages ? () => setPages((n) => n + 1) : null} />
+                <PeopleFound found={found} people={people} onPick={openBill} opening={opening} onBills={setPerson} onMore={found.data?.pages ? () => setPages((n) => n + 1) : null} />
               ) : blank ? (
                 <section className="card ph-found ph-blank" aria-label="People found">
                   <p className="muted">
@@ -308,16 +306,16 @@ export function InvoicesPage() {
 }
 
 /** The people a search found: nothing is listed until a search. Clicking someone opens a new bill for them. */
-export function PeopleFound({ found, people, onPick, onBills = null, onMore = null }) {
+export function PeopleFound({ found, people, onPick, onBills = null, onMore = null, opening = null }) {
   return (
     <section className="card ph-found" aria-label="People found">
       {found.error && <Alert type="error">{found.error}</Alert>}
       {found.data && !people.length && <p className="muted">Nobody matches.</p>}
-      {people.length > 0 && <p className="hint">Click a name to make a new bill. Those to bill today and those with bills come first.</p>}
+      {people.length > 0 && <p className="hint">Click a name to make a new bill on the New bill tab. Those to bill today and those with bills come first.</p>}
       <ul>
         {people.map((x) => (
           <li key={x.key} className="ph-found-item">
-            <button type="button" className="ph-found-row" onClick={() => onPick(x)}>
+            <button type="button" className="ph-found-row" disabled={Boolean(opening)} aria-busy={opening === x.key} onClick={() => onPick(x)}>
               <strong>{x.name}</strong>
               <span className="tabular">{x.mrn}</span>
               {x.type ? <TypePill type={x.type} /> : <span />}
@@ -343,49 +341,6 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
         ) : (
           <p className="hint">The first {people.length} are listed. Type part of the name or number to find anyone else.</p>
         ))}
-    </section>
-  );
-}
-
-const BILL_FOR = { opd: 'OPD patient', ipd: 'IPD patient', external: 'External (walk-in)' };
-
-/**
- * The new bill on Sold: New bill's own screen (medicines, quantities, doses, batches, prescription rules, prices from
- * stock). A person who is admitted now gets an issue to the ward; a walk-in found by name, a walk-in bill with the name.
- */
-function SoldBill({ billing, onCancel, onMade, onBills }) {
-  const { person } = billing;
-  const walkIn = !person.mrn;
-  const inpatients = useFetch(walkIn ? null : '/pharmacy/inpatients');
-  if (!walkIn && !inpatients.data && !inpatients.error) return <p className="muted">Opening the bill…</p>;
-  const admitted = !walkIn && (inpatients.data?.inpatients ?? []).some((x) => x.patient.id === person.key);
-  const type = walkIn ? 'external' : admitted ? 'ipd' : 'opd';
-  const patient = walkIn ? null : { id: person.key, fullName: person.name, mrn: person.mrn };
-  return (
-    <section className="ph-sold-billing" aria-label="New bill">
-      <div className="ph-person-head">
-        <h2>
-          New bill · {person.name || 'Walk-in customer'} <span className="muted">· {BILL_FOR[type]}</span>
-        </h2>
-        <div className="ph-person-actions">
-          {person.billCount > 0 && (
-            <button type="button" className="btn btn-secondary" onClick={() => onBills(person)}>
-              <History aria-hidden="true" /> Past bills ({person.billCount})
-            </button>
-          )}
-          <button type="button" className="btn btn-link" onClick={onCancel}>
-            Back to the list
-          </button>
-        </div>
-      </div>
-      <SellPage
-        key={`${type}-${person.key}`}
-        kind={admitted ? 'issue' : 'sale'}
-        start={walkIn ? { type: 'external', customer: { name: person.name, phone: person.phone ?? '' } } : { patient }}
-        embedded
-        onCancel={onCancel}
-        onMade={(invoice) => onMade(invoice, walkIn ? { name: invoice.customer?.name ?? person.name, type } : { name: person.name, mrn: person.mrn, type })}
-      />
     </section>
   );
 }
