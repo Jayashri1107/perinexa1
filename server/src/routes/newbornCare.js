@@ -19,7 +19,7 @@ import { HttpError } from '../utils/httpError.js';
 import { notify } from '../notifications/notify.js';
 import { babyOfName } from '../utils/personName.js';
 import { registerPatient } from './patients.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, departmentListed, listedPatientIds, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { objectId, parse } from '../utils/validate.js';
 import { monthRange } from './clinicalAudit.js';
@@ -171,7 +171,8 @@ const mayWrite = (req, p) => {
 };
 const maySign = (req, p) => hasRole(req.membership, 'doctor', 'rmo') && patientAccess(req, p).editClinical;
 async function babyFor(req, id, write = false) {
-  const baby = await findPatientById(req.tenantId, id);
+  // Another department's baby is "not found" for a doctor (departments, 9 Nov 2026)
+  const baby = assertNotHidden(req, await findPatientById(req.tenantId, id));
   if (baby.careType !== 'newborn') throw invalid({ patientId: "These records belong on a baby's record." });
   if (!mayView(req, baby)) throw forbidden("You can't see this baby's medical details.");
   if (write && !mayWrite(req, baby)) throw forbidden("You may not write in this baby's record.");
@@ -179,7 +180,7 @@ async function babyFor(req, id, write = false) {
 }
 /** A baby's record for the desk: reception may change her identity and birth details, never see her medical details. */
 async function babyForDesk(req, id) {
-  const baby = await findPatientById(req.tenantId, id);
+  const baby = assertNotHidden(req, await findPatientById(req.tenantId, id)); // departments, 9 Nov 2026
   if (baby.careType !== 'newborn') throw invalid({ patientId: "The NICU is for a baby's record." });
   const a = patientAccess(req, baby);
   if (!(a.editNewborn || a.editIdentity)) throw forbidden("You may not admit this baby.");
@@ -251,10 +252,13 @@ const nicuView = (n, baby, ctx) => {
     flags,
   };
 };
-async function mothersOf(tenantId, list) {
+async function mothersOf(req, list) {
   const idsList = [...new Set(list.map((n) => n.motherId).filter(Boolean).map(String))];
   if (!idsList.length) return new Map();
-  return new Map((await Patient.find({ tenantId, _id: { $in: idsList } }, { mrn: 1 }).lean()).map((p) => [String(p._id), p.mrn]));
+  // A mother hidden from this doctor by the department rule: no number shown (departments, 9 Nov 2026)
+  const listed = await listedPatientIds(req, Patient, idsList);
+  const shown = listed ? idsList.filter((id) => listed.has(id)) : idsList;
+  return new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: shown } }, { mrn: 1 }).lean()).map((p) => [String(p._id), p.mrn]));
 }
 const F03_RULES = {
   levels: F03.LEVELS,
@@ -306,7 +310,7 @@ newbornCareRouter.get('/', async (req, res) => {
     NicuAdmission.find({ tenantId: req.tenantId, patientId: baby._id }).sort({ admittedAt: -1 }).lean(),
     unitsOf(req.tenantId),
   ]);
-  const ctx = { units, now: nowOf(req), mothers: await mothersOf(req.tenantId, nicu) };
+  const ctx = { units, now: nowOf(req), mothers: await mothersOf(req, nicu) };
   await audit(req, 'NEWBORN_CARE_VIEWED', { details: ids(baby) });
   res.json({
     birthAt: baby.newborn?.birthAt ?? null,
@@ -472,7 +476,7 @@ newbornCareRouter.post('/nicu', async (req, res) => {
  */
 async function admitBaby(req, b, baby, { desk, dryRun = false }) {
   const units = await unitsOf(req.tenantId);
-  const ctx = async (n) => ({ units, now: nowOf(req), mothers: await mothersOf(req.tenantId, [n]) });
+  const ctx = async (n) => ({ units, now: nowOf(req), mothers: await mothersOf(req, [n]) });
   const same = await NicuAdmission.findOne({ tenantId: req.tenantId, clientRequestId: b.clientRequestId });
   if (same) return { status: 200, body: { admission: desk ? deskView(same, units) : nicuView(same, baby, await ctx(same)) }, same: true };
   if (future(req, b.admittedAt)) throw invalid({ admittedAt: "This can't be in the future." });
@@ -488,7 +492,11 @@ async function admitBaby(req, b, baby, { desk, dryRun = false }) {
   const motherId = b.motherId ?? baby.newborn?.mother ?? null;
   let mother = null;
   if (motherId) {
-    mother = await Patient.findOne({ _id: motherId, tenantId: req.tenantId }, { careType: 1, mrn: 1 }).lean();
+    mother = await Patient.findOne({ _id: motherId, tenantId: req.tenantId }, { careType: 1, mrn: 1, assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 }).lean();
+    // A different mother chosen here who is hidden from this doctor by the department rule counts as not found – the
+    // baby's own linked mother stays usable (departments, 9 Nov 2026)
+    const chosen = b.motherId && String(b.motherId) !== String(baby.newborn?.mother ?? '');
+    if (mother && chosen && !departmentListed(req, mother)) mother = null;
     if (!mother || mother.careType === 'newborn') fields.motherId = "Choose the mother's record.";
   } else if (F03.isInborn(b.source)) fields.motherId = "A baby born here needs the mother's record: link the baby to the mother first.";
   // The bed (N4: a full unit is blocked unless the hospital admin overrides)
@@ -626,7 +634,9 @@ newbornCareRouter.post('/nicu/new-baby', async (req, res) => {
   const fields = {};
   let mother = null;
   if (b.motherId) {
-    mother = await Patient.findOne({ _id: b.motherId, tenantId: req.tenantId }, { fullName: 1, phone: 1, address: 1, careType: 1 }).lean();
+    mother = await Patient.findOne({ _id: b.motherId, tenantId: req.tenantId }, { fullName: 1, phone: 1, address: 1, careType: 1, assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 }).lean();
+    // Hidden from this doctor by the department rule: not found (departments, 9 Nov 2026)
+    if (mother && !departmentListed(req, mother)) mother = null;
     if (!mother || mother.careType === 'newborn') fields.motherId = "Choose the mother's record.";
   } else if (!b.motherName) fields.motherName = "Write the mother's name (the baby is registered as B/O her name).";
   if (future(req, b.birthAt)) fields.birthAt = "This can't be in the future.";
@@ -663,7 +673,7 @@ async function admissionFor(req, write = true) {
 }
 const respond = async (req, res, n, baby, extra = {}) => {
   const units = await unitsOf(req.tenantId);
-  res.json({ admission: nicuView(n, baby, { units, now: nowOf(req), mothers: await mothersOf(req.tenantId, [n]) }), ...extra });
+  res.json({ admission: nicuView(n, baby, { units, now: nowOf(req), mothers: await mothersOf(req, [n]) }), ...extra });
 };
 
 // The form's parts (§1–§3 until the admitting doctor signs; what follows the admission at any time while it is open)
@@ -874,7 +884,7 @@ async function registerRows(req, month, unitKey) {
   const babies = await Patient.find({ tenantId: req.tenantId, _id: { $in: list.map((n) => n.patientId) } });
   const byId = new Map(babies.map((b) => [String(b._id), b]));
   const shown = list.filter((n) => byId.has(String(n.patientId)) && mayView(req, byId.get(String(n.patientId))));
-  const ctx = { units, now: nowOf(req), mothers: await mothersOf(req.tenantId, shown) };
+  const ctx = { units, now: nowOf(req), mothers: await mothersOf(req, shown) };
   const rows = shown.map((n) => {
     const v = nicuView(n, byId.get(String(n.patientId)), ctx);
     const o = n.outcome?.details ?? {};
@@ -975,7 +985,7 @@ newbornCareRouter.get('/board', async (req, res) => {
   const open = await NicuAdmission.find({ tenantId: req.tenantId, ...openFilter }).sort({ admittedAt: 1 }).lean();
   const babies = new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: open.map((n) => n.patientId) } })).map((p) => [String(p._id), p]));
   const roster = await latestRoster(req.tenantId, units.map((u) => u.key));
-  const ctx = { units, now, mothers: await mothersOf(req.tenantId, open) };
+  const ctx = { units, now, mothers: await mothersOf(req, open) };
   const shownBaby = (id) => {
     const p = babies.get(String(id));
     return p && mayView(req, p) ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn } : null;

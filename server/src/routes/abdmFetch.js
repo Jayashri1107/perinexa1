@@ -12,6 +12,7 @@ import { HttpError } from '../utils/httpError.js';
 import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
 import { RECORDS_ROLES, recordsAccess } from './abdmRecords.js';
 import { hasRole } from '../models/Membership.js';
+import { patientAccess } from '../utils/patientAccess.js';
 
 // ABDM milestone M3 – her records from other hospitals, fetched through ABDM with her consent (abdm/fetchRecords.js).
 // Mounted inside routes/abdm.js.
@@ -34,7 +35,8 @@ const forbidden = (message) => new HttpError(403, message, 'FORBIDDEN');
 async function patientFor(req, id, { ask = false } = {}) {
   if (!hasRole(req.membership, ...RECORDS_ROLES)) throw forbidden('Her records from other hospitals are for her doctors and RMOs.');
   const patient = await Patient.findOne({ tenantId: req.tenantId, _id: id });
-  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  // (another department's patient is "not found" for a doctor – departments, 9 Nov 2026)
+  if (!patient || patientAccess(req, patient).hidden) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
   const access = recordsAccess(req, patient);
   if (!access.see) throw forbidden("You can't see this patient's medical records.");
   if (ask && !access.link) throw forbidden('Only her doctor or an RMO asks for her records from other hospitals.');

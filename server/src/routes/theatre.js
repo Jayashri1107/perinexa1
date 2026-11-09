@@ -106,6 +106,8 @@ theatreRouter.post('/', async (req, res) => {
   const found = await Patient.findOne({ tenantId: req.tenantId, mrn: b.patientNo.toUpperCase() }, { _id: 1 }).lean();
   if (!found) throw invalid({ patientNo: 'No patient with this number in this hospital.' });
   const patient = await findPatientById(req.tenantId, found._id);
+  // Another department's patient: as if there were no such number (departments, 9 Nov 2026)
+  if (patientAccess(req, patient).hidden) throw invalid({ patientNo: 'No patient with this number in this hospital.' });
   if (!mayView(req, patient) || !mayWrite(req, patient)) throw forbidden("You can't put this patient on the theatre list.");
   if (same) return res.json({ case: view(same, patient, true) });
   const now = req.now ?? new Date();

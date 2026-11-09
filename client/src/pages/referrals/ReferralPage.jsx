@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { DEPARTMENTS } from '../../platform/departments.js';
 import {
   ArrowLeft,
   CalendarCheck,
@@ -259,12 +260,12 @@ const REGISTER_CARE_TYPES = Object.keys(CARE_TYPE_LABELS).filter((t) => t !== 'n
 /** Registers her with her identity details only (the desk never enters medical details), then links the referral. */
 function RegisterDialog({ referral, doctors, onDone, onCancel }) {
   const g = referral.guest ?? {};
-  const [form, setForm] = useState({ careType: 'antenatal', fullName: g.name ?? '', ageYears: g.ageYears != null ? String(g.ageYears) : '', phone: g.phone ?? '', assignedDoctor: referral.consultant?.id ?? '' });
+  const [form, setForm] = useState({ careType: 'antenatal', department: referral.consultant?.department ?? '', fullName: g.name ?? '', ageYears: g.ageYears != null ? String(g.ageYears) : '', phone: g.phone ?? '', assignedDoctor: referral.consultant?.id ?? '' });
   const [fields, setFields] = useState({});
   const [error, setError] = useState(null);
   const [matches, setMatches] = useState(null); // "She may already be registered": { list, total }
   const [busy, setBusy] = useState(null); // 'register' | a record's id | null
-  const payload = () => ({ careType: form.careType, fullName: form.fullName.trim(), ageYears: form.ageYears, phone: form.phone.trim(), assignedDoctor: form.assignedDoctor || null });
+  const payload = () => ({ careType: form.careType, department: form.department, fullName: form.fullName.trim(), ageYears: form.ageYears, phone: form.phone.trim(), assignedDoctor: form.assignedDoctor || null });
 
   const link = async (patient, registered) => {
     try {
@@ -282,6 +283,11 @@ function RegisterDialog({ referral, doctors, onDone, onCancel }) {
   };
   const register = async (anyway = false) => {
     if (mentionsFetalSex(form.fullName)) return setError(PCPNDT_MESSAGE);
+    // Her department (owner, 9 Nov 2026): only its doctors see her record
+    if (!form.department) {
+      setFields({ department: 'Choose a department' });
+      return setError('Please choose her department.');
+    }
     setBusy('register');
     setError(null);
     setFields({});
@@ -362,6 +368,16 @@ function RegisterForm({ form, setForm, fields, error, busy, doctors, onSubmit, o
           </Field>
           <Field label="Phone number" id="ref-reg-phone" error={fields.phone}>
             <input id="ref-reg-phone" type="tel" maxLength={30} value={form.phone} onChange={set('phone')} />
+          </Field>
+          <Field label="Department" id="ref-reg-dept" error={fields.department}>
+            <select id="ref-reg-dept" value={form.department} onChange={set('department')}>
+              <option value="">Choose a department…</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Her doctor" id="ref-reg-doctor" error={fields.assignedDoctor}>
             <select id="ref-reg-doctor" value={form.assignedDoctor} onChange={set('assignedDoctor')}>

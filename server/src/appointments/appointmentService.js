@@ -27,10 +27,14 @@ import { appointmentChangeMessage, timeWords } from '../reminders/messages.js';
 import { mobileNumber } from '../reminders/phone.js';
 import { sendSoon } from '../reminders/reminderService.js';
 import { HttpError } from '../utils/httpError.js';
+import { assertNotHidden, departmentListed } from '../utils/patientAccess.js';
 import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { MAX_DAYS_AHEAD, SLOT_MINUTES } from './appointmentRules.js';
 import { coveredStarts, firstFreeSlot, hospitalMinutes, leaveOn, lengthFor, minutesOf, sessionsOn, slotCheck, slotStarts, walkInStarts } from './slots.js';
+
+// What the department rule needs to judge a patient (utils/patientAccess.js – departments, 9 Nov 2026)
+const DEPT_FIELDS = { assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 };
 
 const who = (req) => ({ by: req.user?._id ?? null, byName: req.user?.name ?? 'Perinexa', at: req.now ?? new Date() });
 
@@ -148,7 +152,7 @@ export async function lookups(tenantId, appts) {
   const pids = [...new Set(appts.map((a) => a.patientId && String(a.patientId)).filter(Boolean))];
   const dids = [...new Set(appts.map((a) => String(a.doctorId)))];
   const [patients, doctors] = await Promise.all([
-    pids.length ? Patient.find({ tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, assignedDoctor: 1 }).lean() : [],
+    pids.length ? Patient.find({ tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, ...DEPT_FIELDS }).lean() : [],
     dids.length ? User.find({ _id: { $in: dids } }, { name: 1 }).lean() : [],
   ]);
   // Consultation fees taken in advance (billing): only for registered patients' time slots
@@ -189,10 +193,23 @@ export function appointmentView(a, { patients, doctors, states, today, fees = nu
   };
 }
 
-/** Views of many appointments, with their lookups and states. */
-export async function viewsOf(tenantId, appts, today) {
+/**
+ * A booking of a patient the department rule hides from this person (departments, 9 Nov 2026): only that the time is
+ * taken – no name, number, phone, fee or reason – so a doctor's own day still shows the slot as booked.
+ */
+const hiddenView = (v) => ({ ...v, emergency: false, purpose: null, patient: null, guest: null, cancelled: null, bookedBy: '', fee: null, hidden: true });
+
+/**
+ * Views of many appointments, with their lookups and states. req (optional): the person asking – a booking of a
+ * patient hidden from them by the department rule comes back without her details (`hidden: true`); lists drop those.
+ */
+export async function viewsOf(tenantId, appts, today, req = null) {
   const [{ patients, doctors, fees }, states] = await Promise.all([lookups(tenantId, appts), statesFor(tenantId, appts)]);
-  return appts.map((a) => appointmentView(a, { patients, doctors, states, today, fees }));
+  return appts.map((a) => {
+    const view = appointmentView(a, { patients, doctors, states, today, fees });
+    const p = req && a.patientId ? patients.get(String(a.patientId)) : null;
+    return p && !departmentListed(req, p) ? hiddenView(view) : view;
+  });
 }
 
 // ---------- Messages ----------
@@ -269,7 +286,9 @@ async function checkSlot(req, { doctor, day, start, visitType, patientId, except
   const wanted = new Set(coveredStarts(start, minutes));
   const taken = (await bookedSlots(req.tenantId, doctor.id, day, exceptId)).find((r) => coveredStarts(r.start, r.minutes ?? SLOT_MINUTES).some((s) => wanted.has(s)));
   if (taken) {
-    const p = taken.patientId ? await Patient.findOne({ tenantId: req.tenantId, _id: taken.patientId }, { fullName: 1 }).lean() : null;
+    const found = taken.patientId ? await Patient.findOne({ tenantId: req.tenantId, _id: taken.patientId }, { fullName: 1, ...DEPT_FIELDS }).lean() : null;
+    // never the name of a patient the department rule hides from this person (departments, 9 Nov 2026)
+    const p = found && departmentListed(req, found) ? found : null;
     const when = taken.start === start ? `${timeWords(start)} is already booked` : `${timeWords(taken.start)} is booked`;
     throw conflict(`${when} for ${p?.fullName ?? taken.guest?.name ?? 'another patient'}${minutes > SLOT_MINUTES && taken.start !== start ? `, and this visit takes ${minutes} minutes` : ''}. Book anyway?`, 'SLOT_TAKEN', { confirmable: true });
   }
@@ -289,8 +308,9 @@ export async function bookSlot(req, body) {
   const day = utcDay(body.date);
   let patientId = null;
   if (body.patientId) {
-    const p = await Patient.findOne({ tenantId: req.tenantId, _id: body.patientId }, { _id: 1, duplicateOf: 1, 'death.on': 1 }).lean();
+    const p = await Patient.findOne({ tenantId: req.tenantId, _id: body.patientId }, { _id: 1, duplicateOf: 1, 'death.on': 1, ...DEPT_FIELDS }).lean();
     if (!p) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+    assertNotHidden(req, p); // another department's patient: "not found" for a doctor (departments, 9 Nov 2026)
     refuseNewOnDuplicate(p, 'appointment'); // a record marked as a duplicate takes no new appointment
     refuseNewOnClosed(p, 'appointment'); // nor a record closed after a death
     patientId = p._id;
@@ -316,10 +336,15 @@ export async function bookSlot(req, body) {
   return appt;
 }
 
-/** The appointment with this id in this hospital (404 otherwise). */
+/** The appointment with this id in this hospital (404 otherwise – also when the department rule hides her). */
 export async function findAppointment(req, id) {
   const appt = await Appointment.findOne({ tenantId: req.tenantId, _id: id });
   if (!appt) throw new HttpError(404, 'Appointment not found.', 'NOT_FOUND');
+  if (appt.patientId) {
+    // A booking of another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+    const p = await Patient.findOne({ tenantId: req.tenantId, _id: appt.patientId }, DEPT_FIELDS).lean();
+    if (p && !departmentListed(req, p)) throw new HttpError(404, 'Appointment not found.', 'NOT_FOUND');
+  }
   return appt;
 }
 
@@ -373,8 +398,9 @@ export async function cancelAppointment(req, appt, reason, { message = true } = 
 /** Links a quick booking to the patient she was registered as. */
 export async function linkPatient(req, appt, patientId) {
   if (appt.patientId) throw new HttpError(409, 'This appointment already belongs to a registered patient.', 'LINKED');
-  const p = await Patient.findOne({ tenantId: req.tenantId, _id: patientId }, { _id: 1, duplicateOf: 1, 'death.on': 1 }).lean();
+  const p = await Patient.findOne({ tenantId: req.tenantId, _id: patientId }, { _id: 1, duplicateOf: 1, 'death.on': 1, ...DEPT_FIELDS }).lean();
   if (!p) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  assertNotHidden(req, p); // departments, 9 Nov 2026
   refuseNewOnDuplicate(p, 'appointment');
   refuseNewOnClosed(p, 'appointment');
   appt.patientId = p._id;

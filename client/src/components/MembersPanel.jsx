@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { canEditArea } from '../platform/modules.js';
 import { DEPARTMENTS } from '../platform/departments.js';
+import { DepartmentPicker, departmentsMissing } from './DepartmentPicker.jsx';
 import { useFetch } from '../hooks/useFetch.js';
 import { useListParams } from '../hooks/useListParams.js';
 import { ClearFilters, DataTable, FilterSelect, SearchInput, TablePagination } from './DataTable.jsx';
@@ -22,7 +23,7 @@ const ACCESS_OPTIONS = [
 ];
 
 function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = false }) {
-  const [form, setForm] = useState({ email: '', name: '', roles: noAdmin ? defaultRoles.filter((r) => r !== 'admin') : defaultRoles });
+  const [form, setForm] = useState({ email: '', name: '', roles: noAdmin ? defaultRoles.filter((r) => r !== 'admin') : defaultRoles, departments: [] });
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -32,9 +33,16 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
     e.preventDefault();
     setError(null);
     setFieldErrors({});
+    const missing = departmentsMissing(form.roles, form.departments);
+    if (missing) {
+      setError(missing);
+      setFieldErrors({ departments: missing });
+      return;
+    }
     setSubmitting(true);
     try {
-      const res = await api(basePath, { method: 'POST', body: { ...form, name: form.name || undefined } });
+      const doctor = form.roles.includes('doctor');
+      const res = await api(basePath, { method: 'POST', body: { ...form, name: form.name || undefined, departments: doctor ? form.departments : [] } });
       onAdded(res);
     } catch (err) {
       setError(err.message);
@@ -71,6 +79,9 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
         {noAdmin && <p className="hint">Only the super admin makes someone a hospital admin.</p>}
         <FieldError>{fieldErrors.roles}</FieldError>
       </fieldset>
+      {form.roles.includes('doctor') && (
+        <DepartmentPicker value={form.departments} onChange={(departments) => setForm({ ...form, departments })} idPrefix="member-dept" error={fieldErrors.departments} />
+      )}
       <div className="row add-form-actions">
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? 'Adding…' : 'Add to hospital'}
@@ -90,7 +101,7 @@ function AddMemberForm({ basePath, defaultRoles, onAdded, onCancel, noAdmin = fa
  * - linkToUser: super admins get a link to the person's full account page
  */
 /** A doctor's departments: a short summary that opens to a tick list of every department. */
-function DoctorDepartments({ m, busy, onChange }) {
+export function DoctorDepartments({ m, busy, onChange }) {
   const list = m.departments?.length ? m.departments : m.department ? [m.department] : [];
   return (
     <details className="member-departments">

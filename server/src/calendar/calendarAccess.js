@@ -5,23 +5,27 @@
 //  - null: the patient is left out.
 // Only calendar roles count: a nurse who is also a receptionist gets reception detail, never clinical.
 
-import { hasRole } from '../models/Membership.js';
+import { departmentsOf, hasRole } from '../models/Membership.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { EVENT_TYPES, PREGNANCY_TYPES } from './calendarRules.js';
 
 // Every patient lookup of the calendar selects these fields. calendarLevel needs sensitive and assignedDoctor
-// (a narrower select would make another doctor's sensitive record look "not sensitive").
-export const PATIENT_FIELDS = '_id mrn fullName phone careType pregnancy assignedDoctor sensitive';
+// (a narrower select would make another doctor's sensitive record look "not sensitive"), and the department fields
+// for the department rule (departments, 9 Nov 2026: without them she would look "no department yet" = seen by all).
+export const PATIENT_FIELDS = '_id mrn fullName phone careType pregnancy assignedDoctor sensitive department departmentReferrals babyDepartments';
 
 const CLINICAL_ROLES = ['doctor', 'rmo'];
 
 /** The person's clinical calendar roles (doctor, RMO) in this hospital. */
 export const clinicalRoles = (req) => CLINICAL_ROLES.filter((r) => hasRole(req.membership, r));
 
-/** 'clinical' | 'reception' | null for one patient (needs PATIENT_FIELDS). */
+/**
+ * 'clinical' | 'reception' | null for one patient (needs PATIENT_FIELDS). A doctor gets null for another department's
+ * patient (the doctor role sees nothing of her – departments, 9 Nov 2026), unless also a receptionist.
+ */
 export function calendarLevel(req, patient) {
   const roles = clinicalRoles(req);
-  if (roles.length && patientAccess({ user: req.user, membership: { roles } }, patient).view.has('pregnancy')) return 'clinical';
+  if (roles.length && patientAccess({ user: req.user, membership: { roles, departments: departmentsOf(req.membership) } }, patient).view.has('pregnancy')) return 'clinical';
   if (hasRole(req.membership, 'receptionist')) return 'reception';
   return null;
 }

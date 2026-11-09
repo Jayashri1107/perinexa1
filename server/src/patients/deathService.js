@@ -11,6 +11,7 @@ import { Admission } from '../models/Admission.js';
 import { Appointment } from '../models/Appointment.js';
 import { NursingEntry } from '../models/NursingEntry.js';
 import { Patient } from '../models/Patient.js';
+import { departmentListFilter } from '../utils/patientAccess.js';
 import { PortalAccess } from '../models/PortalAccess.js';
 import { ReminderMessage } from '../models/ReminderMessage.js';
 import { User } from '../models/User.js';
@@ -99,7 +100,8 @@ export async function closeRecord(req, patient, progress = { appointmentsCancell
 
   const [stay, babies] = await Promise.all([
     Admission.exists({ tenantId, patientId: patient._id, status: 'admitted' }),
-    patient.careType === 'newborn' ? [] : Patient.find({ tenantId, 'newborn.mother': patient._id, ...IN_USE }, { mrn: 1 }).sort({ createdAt: 1 }).lean(),
+    // (a baby the department rule hides from this doctor is not named – departments, 9 Nov 2026)
+    patient.careType === 'newborn' ? [] : Patient.find({ tenantId, 'newborn.mother': patient._id, ...IN_USE, ...departmentListFilter(req) }, { mrn: 1 }).sort({ createdAt: 1 }).lean(),
   ]);
   return { ...progress, inHospital: Boolean(stay), babies: babies.map((b) => ({ id: String(b._id), mrn: b.mrn })) };
 }

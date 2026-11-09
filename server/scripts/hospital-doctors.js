@@ -13,7 +13,7 @@
 import { randomBytes } from 'node:crypto';
 import mongoose from 'mongoose';
 import { config } from '../src/config.js';
-import { DEPARTMENTS, Membership } from '../src/models/Membership.js';
+import { DEPARTMENTS, Membership, OLD_DEPARTMENTS, newDepartments } from '../src/models/Membership.js';
 import { OpdSchedule } from '../src/models/OpdSchedule.js';
 import { Tenant } from '../src/models/Tenant.js';
 import { User } from '../src/models/User.js';
@@ -35,11 +35,13 @@ const BY_DEPARTMENT = {
 };
 const WEEK = [0, 1, 2, 3, 4, 5, 6].map((day) => ({ day, sessions: [day === 0 ? { from: '11:00', to: '16:00' } : { from: '10:00', to: '17:00' }] }));
 
-for (const d of Object.keys(BY_DEPARTMENT)) if (!DEPARTMENTS.includes(d)) throw new Error(`Not a department in Perinexa: ${d}`);
-// Each doctor with all their departments, in the departments list's order
+for (const d of Object.keys(BY_DEPARTMENT)) if (!(d in OLD_DEPARTMENTS)) throw new Error(`Not a department in Perinexa: ${d}`);
+// Each doctor with all their departments, in the departments list's order. The handwritten lists use the departments
+// before 9 Nov 2026: they are moved to the owner's 9 (a doctor only in a department that is not one of them is added
+// with none – the hospital admin chooses one in Staff).
 const doctors = new Map();
 for (const [department, names] of Object.entries(BY_DEPARTMENT)) for (const n of names) doctors.set(n, [...(doctors.get(n) ?? []), department]);
-for (const [n, list] of doctors) doctors.set(n, DEPARTMENTS.filter((d) => list.includes(d)));
+for (const [n, list] of doctors) doctors.set(n, newDepartments(list));
 
 const name = process.argv.slice(2).join(' ').trim();
 if (!name) {
@@ -74,7 +76,7 @@ let updated = 0;
 for (const [doctorName, departments] of doctors) {
   const have = byName.get(doctorName.toLowerCase());
   if (have) {
-    const now = have.departments?.length ? have.departments : have.department ? [have.department] : [];
+    const now = newDepartments(have.departments?.length ? have.departments : have.department ? [have.department] : []);
     const wanted = DEPARTMENTS.filter((d) => now.includes(d) || departments.includes(d));
     if (wanted.length !== now.length) {
       await Membership.updateOne({ _id: have._id, tenantId: tenant._id }, { $set: { departments: wanted, department: wanted[0] ?? '' } });
@@ -88,7 +90,7 @@ for (const [doctorName, departments] of doctors) {
   for (let n = 2; await User.exists({ email }); n += 1) email = `${local}.${n}@doctors.${slug}.invalid`;
   const user = await User.create({ name: doctorName, email, passwordHash: await hashPassword(randomBytes(32).toString('base64url')), mustChangePassword: true });
   await audit(req, 'USER_CREATED', { target: user, tenantId: tenant._id, details: { name: user.name } });
-  await Membership.create({ tenantId: tenant._id, userId: user._id, roles: ['doctor'], departments, department: departments[0], createdBy: admin._id });
+  await Membership.create({ tenantId: tenant._id, userId: user._id, roles: ['doctor'], departments, department: departments[0] ?? '', createdBy: admin._id });
   await audit(req, 'MEMBER_ADDED', { target: user, tenantId: tenant._id, details: { roles: ['doctor'] } });
   await OpdSchedule.updateOne({ tenantId: tenant._id, doctorId: user._id }, { $setOnInsert: { tenantId: tenant._id, doctorId: user._id, week: WEEK, leave: [], updatedBy: admin._id, updatedByName: admin.name } }, { upsert: true });
   await audit(req, 'OPD_TIMINGS_CHANGED', { details: { doctorId: String(user._id), days: 7, leave: 0 } });

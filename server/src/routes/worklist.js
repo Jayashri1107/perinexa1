@@ -18,7 +18,7 @@ import { redFlagCareTypes, redFlagsForPatients } from '../redflags/redFlagServic
 import { VACCINATION_LIST_DAYS } from '../reminders/reminderRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { departmentListFilter, patientAccess } from '../utils/patientAccess.js';
 import { parse } from '../utils/validate.js';
 import { config } from '../config.js';
 import { cachedWorklist } from '../utils/worklistCache.js';
@@ -88,8 +88,9 @@ export async function worklistFor(req, askedScope) {
   const now = req.now ?? new Date();
   const today = hospitalToday(now);
   // The scope, and never a record marked as a duplicate of another (she is on her main record's lists), nor a record
-  // closed after a death (IN_USE)
-  const scopeFilter = { ...(scope === 'mine' ? { assignedDoctor: { $in: [req.user._id, null] } } : {}), ...IN_USE };
+  // closed after a death (IN_USE), nor a patient the department rule hides from this doctor (departments, 9 Nov 2026;
+  // patientAccess below hides her too – this keeps her from taking a place before the list is cut)
+  const scopeFilter = { ...(scope === 'mine' ? { assignedDoctor: { $in: [req.user._id, null] } } : {}), ...IN_USE, ...departmentListFilter(req) };
   await refreshDueRisks(req.tenantId);
 
   // Today's visits (any type of care), then the antenatal patients in scope plus anyone seen today.

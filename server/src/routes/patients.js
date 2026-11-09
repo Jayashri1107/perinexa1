@@ -4,7 +4,7 @@ import { billRegistered } from '../billing/hooks.js';
 import { z } from 'zod';
 import { Appointment } from '../models/Appointment.js';
 import { nextNumber } from '../models/Counter.js';
-import { Membership, hasRole, departmentsOf } from '../models/Membership.js';
+import { DEPARTMENTS, Membership, hasRole, departmentsOf } from '../models/Membership.js';
 import { PatientNote } from '../models/PatientNote.js';
 import { addDays, hospitalDayStart, hospitalToday, sameDay, toHospitalDate } from '../careplans/dates.js';
 import {
@@ -67,6 +67,7 @@ import { patientPortalAccessRouter } from './portal.js';
 import { patientDuplicateRouter } from './patientDuplicates.js';
 import { patientDeathRouter } from './patientDeath.js';
 import { recordCopyRouter } from './recordCopy.js';
+import { departmentForNew, refreshBabyDepartments } from '../patients/departments.js';
 import { capitalizeName } from '../utils/personName.js';
 import {
   CLINICAL_EDIT,
@@ -74,6 +75,8 @@ import {
   NEWBORN_EDIT,
   PATIENT_ROLES,
   creationAccess,
+  departmentListFilter,
+  pregnancyVisibleFilter,
   patientAccess,
   projectPatient,
 } from '../utils/patientAccess.js';
@@ -441,6 +444,8 @@ const makeCreateSchema = ({ requireDates }) => z
     ...identity,
     ageYears: z.preprocess(emptyToNull, z.union([z.null(), z.coerce.number().int('Age must be a whole number').min(0).max(120, 'Please check the age')])).default(null),
     assignedDoctor: z.preprocess(emptyToNull, z.union([objectId, z.null()])).default(null),
+    // Her department (owner, 9 Nov 2026): the website asks for it; a baby is in Pediatric unless chosen otherwise.
+    department: z.preprocess((v) => v ?? '', z.enum(['', ...DEPARTMENTS], 'Choose a department from the list')).default(''),
     pregnancy: pregnancySchema.default({}),
     obstetric: obstetricSchema.default({}),
     medical: medicalSchema.default({}),
@@ -499,6 +504,8 @@ function pregnancyCountIssues(p) {
 // Editing: every section is optional; only what is sent is changed.
 const updateSchema = z.object({
   careType: z.enum(CARE_TYPES).optional(),
+  // Her department (owner, 9 Nov 2026): reception, RMOs and her doctor may move her (PATIENT_UPDATED names the field)
+  department: z.enum(DEPARTMENTS, 'Choose a department from the list').optional(),
   fullName: identity.fullName.optional(),
   phone: identity.phone.optional(),
   address: identity.address.optional(),
@@ -532,6 +539,8 @@ const updateSchema = z.object({
 const listSchema = z.object({
   search: z.string().trim().max(100).default(''),
   careType: z.enum(CARE_TYPES).optional(),
+  // Her department (owner, 9 Nov 2026); none = not given one yet (reception's "Needs a department")
+  department: z.enum(['none', ...DEPARTMENTS]).optional(),
   // mine_or_unassigned: patients of the logged-in doctor plus unassigned ones (whose risk any doctor may override)
   doctor: z.union([z.enum(['me', 'mine_or_unassigned', 'unassigned', 'all']), objectId]).optional(),
   // risk level filter; "review" = doctor's override may be out of date
@@ -654,10 +663,8 @@ const findingBy = (req, extra = {}) => ({ by: req.user._id, byName: req.user.nam
 // null = none. RMOs: all; doctors: all except other doctors' sensitive records; nurses: non-sensitive.
 function riskVisibleFilter(req) {
   const roles = req.membership?.roles ?? [];
-  if (roles.includes('rmo')) return {};
-  if (roles.includes('doctor')) return { $or: [{ sensitive: { $ne: true } }, { assignedDoctor: req.user._id }, { assignedDoctor: null }] };
-  if (roles.includes('nurse')) return { sensitive: { $ne: true } };
-  return null;
+  // (doctors: only within the department rule – utils/patientAccess.js pregnancyVisibleFilter)
+  return pregnancyVisibleFilter(roles.filter((r) => ['rmo', 'doctor', 'nurse'].includes(r)), req.user._id, departmentsOf(req.membership));
 }
 
 // Sorting by due date: only an antenatal record's due date counts. Patients of other types (a pregnancy that
@@ -686,6 +693,7 @@ patientsRouter.get('/', async (req, res) => {
   const q = parse(listSchema, req.query);
   const filter = { tenantId: req.tenantId };
   if (q.careType) filter.careType = q.careType;
+  if (q.department) filter.department = q.department === 'none' ? { $in: ['', null] } : q.department;
   if (q.registeredFrom || q.registeredTo) {
     filter.createdAt = {
       ...(q.registeredFrom ? { $gte: hospitalDayStart(q.registeredFrom) } : {}),
@@ -697,6 +705,9 @@ patientsRouter.get('/', async (req, res) => {
   else if (q.doctor === 'unassigned') filter.assignedDoctor = null;
   else if (q.doctor && q.doctor !== 'all') filter.assignedDoctor = q.doctor;
   const and = [];
+  // Departments (owner, 9 Nov 2026): a doctor lists only the patients of their departments
+  const byDepartment = departmentListFilter(req);
+  if (Object.keys(byDepartment).length) and.push(byDepartment);
   if (q.risk) {
     // Filtering by risk would reveal medical information, so only those who may see risk can use it,
     // and only over the records whose risk they may see.
@@ -751,7 +762,7 @@ patientsRouter.get('/', async (req, res) => {
   // duplicateOf: the main record's number of a record marked as a duplicate ("Duplicate of P-…" in the list).
   // death: a closed record stays in the list and in every search, marked "Record closed" (everyone sees `closed`;
   // the date only those who may see the medical details – projectPatient).
-  const fieldsShown = 'mrn careType fullName ageYears ageRecordedOn phone assignedDoctor sensitive pregnancy abortion.lossType newborn risk createdAt tenantId duplicateOf death';
+  const fieldsShown = 'mrn careType department departmentReferrals babyDepartments fullName ageYears ageRecordedOn phone assignedDoctor sensitive pregnancy abortion.lossType newborn risk createdAt tenantId duplicateOf death';
   const [patients, total] = await Promise.all([
     q.sort.endsWith('pregnancy.effectiveEdd')
       ? byDueDate(filter, q, fieldsShown)
@@ -853,6 +864,7 @@ export async function registerPatient(req, body) {
     ...data,
     newborn: data.careType === 'newborn' ? data.newborn : undefined,
     abortion: data.careType === 'abortion' ? (data.abortion ?? null) : null,
+    department: departmentForNew(data.careType, data.department),
     ageYears: data.careType === 'newborn' ? null : data.ageYears,
     ageRecordedOn: data.careType === 'newborn' ? null : new Date(),
     sensitive: data.careType === 'infertility',
@@ -863,6 +875,8 @@ export async function registerPatient(req, body) {
   // Only ids go into the audit log, never the patient's personal details.
   await audit(req, 'PATIENT_CREATED', { details: { patientId: patient._id.toString(), mrn: patient.mrn, careType: patient.careType } });
   await billRegistered(req, patient); // the registration fee, when the hospital charges one
+  // A baby: the mother's record learns the baby's department (its doctors may read hers – patients/departments.js)
+  if (patient.careType === 'newborn') await refreshBabyDepartments(req.tenantId, patient.newborn?.mother);
   // Registered although matching records were shown: which records (ids only – never a name or a phone number)
   if (found.total) {
     await audit(req, 'PATIENT_REGISTERED_ANYWAY', { details: { patientId: patient._id.toString(), mrn: patient.mrn, matches: found.total, matchIds: found.ids.slice(0, 20) } });
@@ -937,11 +951,11 @@ patientsRouter.get('/:id', async (req, res) => {
   const earlierRecords = earlier.shown;
   // Newborns registered to this mother – also those linked to an earlier record of hers (nothing is moved: the
   // baby stays linked to that record, and is listed here so that it is not missed). A baby's own duplicate record
-  // is not listed twice.
+  // is not listed twice. A baby the department rule hides from this doctor is not listed (departments, 9 Nov 2026).
   const babies =
     patient.careType === 'newborn'
       ? []
-      : await Patient.find({ tenantId: req.tenantId, 'newborn.mother': { $in: [patient._id, ...earlier.ids] }, ...NOT_DUPLICATE }, { fullName: 1, mrn: 1, 'newborn.birthAt': 1, 'death.on': 1 }).lean();
+      : await Patient.find({ tenantId: req.tenantId, 'newborn.mother': { $in: [patient._id, ...earlier.ids] }, ...NOT_DUPLICATE, ...departmentListFilter(req) }, { fullName: 1, mrn: 1, 'newborn.birthAt': 1, 'death.on': 1 }).lean();
   const full = {
     ...out,
     createdByName: createdBy?.name ?? null,
@@ -1112,7 +1126,7 @@ patientsRouter.patch('/:id', async (req, res) => {
   if (data.newborn?.mother && data.newborn.mother === patient._id.toString()) {
     throw new HttpError(400, 'A patient cannot be their own mother.', 'VALIDATION');
   }
-  for (const key of ['careType', 'fullName', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'emergencyContact', 'idProof', 'notes']) if (data[key] !== undefined) patient[key] = data[key];
+  for (const key of ['careType', 'department', 'fullName', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'emergencyContact', 'idProof', 'notes']) if (data[key] !== undefined) patient[key] = data[key];
   // Only a genuinely different age resets the date it was recorded on – otherwise every save (the form always
   // sends the age) would stop the age from ever increasing, and age-based risk rules would never apply.
   const ageChanged = data.ageYears !== undefined && data.ageYears !== currentAge(patient);
@@ -1208,6 +1222,8 @@ patientsRouter.patch('/:id', async (req, res) => {
   if (fields.length) {
     await audit(req, 'PATIENT_UPDATED', { details: { patientId: patient._id.toString(), mrn: patient.mrn, fields } });
   }
+  // A baby moved to another department: the mother's record follows (patients/departments.js)
+  if (fields.includes('department') && patient.careType === 'newborn') await refreshBabyDepartments(req.tenantId, patient.newborn?.mother);
   // The care plan follows the patient's details (dates, blood group, risk, type of care …): built, re-dated,
   // paused or resumed. Not audited on its own (the PATIENT_UPDATED entry is), and it never fails this save
   // (syncPlanSafely does nothing for a patient who isn't antenatal and has no plan).
@@ -1445,6 +1461,43 @@ patientsRouter.post('/:id/emergency-notes', async (req, res) => {
     details: { patientId: patient._id.toString(), mrn: patient.mrn, noteId: note._id.toString(), reason: data.reason },
   });
   res.status(201).json({ note });
+});
+
+// Sending her to another department (owner, 9 Nov 2026 – docs/DEPARTMENT_ACCESS_PLAN.md): Anesthesia before an
+// operation, Counselling, Diet and yoga … While the referral is open, that department's doctors may open her record as
+// they would their own department's patients (utils/patientAccess.js doctorReach). Her doctor or an RMO (whoever may
+// change her medical details) sends her; they, or a doctor of that department, close it. Audited as PATIENT_UPDATED
+// with the field's name only – which department would be a clinical hint in the hospital admin's log.
+const departmentReferralSchema = z.object({ department: z.enum(DEPARTMENTS, 'Choose a department from the list'), reason: safeText('Reason', 300).default('') }).strict();
+patientsRouter.post('/:id/department-referrals', async (req, res) => {
+  const data = parse(departmentReferralSchema, req.body);
+  const patient = await findPatient(req);
+  const access = patientAccess(req, patient);
+  if (!access.editClinical) throw forbidden('Her doctor or an RMO sends her to another department.');
+  if (data.department === patient.department) throw validation('She is already in this department.', { department: 'She is already in this department' });
+  if (patient.departmentReferrals.some((r) => !r.closedAt && r.department === data.department)) {
+    throw validation('She has already been sent to this department.', { department: 'Already sent to this department' });
+  }
+  patient.departmentReferrals.push({ ...data, by: req.user._id, byName: req.user.name, at: req.now ?? new Date() });
+  await patient.save();
+  await audit(req, 'PATIENT_UPDATED', { details: { patientId: patient._id.toString(), mrn: patient.mrn, fields: ['departmentReferrals'] } });
+  const [out] = await withNames([patient]);
+  res.status(201).json({ patient: projectPatient(out, patientAccess(req, patient)) });
+});
+
+patientsRouter.post('/:id/department-referrals/:referralId/close', async (req, res) => {
+  const { referralId } = parse(z.object({ id: objectId, referralId: objectId }), req.params);
+  const patient = await findPatient(req);
+  const referral = patient.departmentReferrals.id(referralId);
+  if (!referral || referral.closedAt) throw new HttpError(404, 'This referral is not open.', 'NOT_FOUND');
+  const access = patientAccess(req, patient);
+  const ofThatDepartment = hasRole(req.membership, 'doctor') && departmentsOf(req.membership).includes(referral.department);
+  if (!access.editClinical && !ofThatDepartment) throw forbidden("Her doctor, an RMO or a doctor of that department closes the referral.");
+  Object.assign(referral, { closedAt: req.now ?? new Date(), closedBy: req.user._id, closedByName: req.user.name });
+  await patient.save();
+  await audit(req, 'PATIENT_UPDATED', { details: { patientId: patient._id.toString(), mrn: patient.mrn, fields: ['departmentReferrals'] } });
+  const [out] = await withNames([patient]);
+  res.json({ patient: projectPatient(out, patientAccess(req, patient)) });
 });
 
 // Doctors in this hospital (for the "assigned doctor" dropdown). Any staff member may read it.

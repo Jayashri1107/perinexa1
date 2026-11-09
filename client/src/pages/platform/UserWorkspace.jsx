@@ -8,6 +8,8 @@ import { AuditLogView } from '../../components/AuditLogView.jsx';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { RolesDialog } from '../../components/RolesDialog.jsx';
+import { DepartmentPicker, departmentsMissing } from '../../components/DepartmentPicker.jsx';
+import { DoctorDepartments } from '../../components/MembersPanel.jsx';
 import { Alert, Avatar, Field, RoleBadges, RolePicker, StatusPill, TemporaryPassword, formatDateTime, rolesLabel, useConfirm } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PLATFORM_AREA_LABELS, canEditArea } from '../../platform/modules.js';
@@ -270,7 +272,7 @@ export function UserProfileTab() {
 export function UserHospitalsTab() {
   const { user, reload } = useOutletContext();
   const hospitals = useFetch(user.isSuperAdmin || user.isPlatformAdmin ? null : '/platform/tenants', { status: 'active', limit: 100, sort: 'name' });
-  const [tag, setTag] = useState({ tenantId: '', roles: ['doctor'] });
+  const [tag, setTag] = useState({ tenantId: '', roles: ['doctor'], departments: [] });
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -319,10 +321,11 @@ export function UserHospitalsTab() {
   const addToHospital = (e) => {
     e.preventDefault();
     run(async () => {
-      await api(`/platform/tenants/${tag.tenantId}/members`, { method: 'POST', body: { email: user.email, roles: tag.roles } });
+      const departments = tag.roles.includes('doctor') ? tag.departments : [];
+      await api(`/platform/tenants/${tag.tenantId}/members`, { method: 'POST', body: { email: user.email, roles: tag.roles, departments } });
       const h = hospitals.data?.tenants.find((x) => x.id === tag.tenantId);
       setSuccess(`${user.name} was added to ${h?.name ?? 'the hospital'} as ${rolesLabel(tag.roles)}.`);
-      setTag({ tenantId: '', roles: ['doctor'] });
+      setTag({ tenantId: '', roles: ['doctor'], departments: [] });
     });
   };
 
@@ -355,6 +358,19 @@ export function UserHospitalsTab() {
           <button type="button" className="btn btn-link btn-sm" disabled={busy} onClick={() => setEditing(h)}>
             Edit<span className="sr-only"> roles at {h.tenantName}</span>
           </button>
+          {/* A doctor's departments at this hospital (owner, 9 Nov 2026): the doctor sees only their patients */}
+          {h.roles.includes('doctor') && (
+            <DoctorDepartments
+              m={{ departments: h.departments ?? [], user: { name: user.name } }}
+              busy={busy}
+              onChange={(next) =>
+                run(async () => {
+                  await api(`/platform/tenants/${h.tenantId}/members/${h.memberId}/department`, { method: 'PATCH', body: { departments: next } });
+                  setSuccess(next.length ? `${user.name} at ${h.tenantName}: ${next.join(', ')}.` : `${user.name}'s departments at ${h.tenantName} are cleared.`);
+                })
+              }
+            />
+          )}
         </span>
       ),
     },
@@ -407,7 +423,8 @@ export function UserHospitalsTab() {
           <legend>Roles in this hospital</legend>
           <RolePicker value={tag.roles} onChange={(roles) => setTag({ ...tag, roles })} idPrefix="tag-role" />
         </fieldset>
-        <button type="submit" className="btn btn-primary" disabled={busy || !tag.tenantId || tag.roles.length === 0}>
+        {tag.roles.includes('doctor') && <DepartmentPicker value={tag.departments} onChange={(departments) => setTag({ ...tag, departments })} idPrefix="tag-dept" />}
+        <button type="submit" className="btn btn-primary" disabled={busy || !tag.tenantId || tag.roles.length === 0 || Boolean(departmentsMissing(tag.roles, tag.departments))}>
           Add to hospital
         </button>
       </form>

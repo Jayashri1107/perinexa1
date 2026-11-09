@@ -6,7 +6,7 @@ import { DischargeChecklist } from '../models/DischargeChecklist.js';
 import { hasRole } from '../models/Membership.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -40,7 +40,8 @@ const mayWrite = (req, p) => {
 const ids = (patient, admission, extra = {}) => ({ patientId: String(patient._id), mrn: patient.mrn, admissionId: String(admission._id), ...extra });
 
 async function load(req, patientId, admissionId) {
-  const patient = await findPatientById(req.tenantId, patientId);
+  // Another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  const patient = assertNotHidden(req, await findPatientById(req.tenantId, patientId));
   if (!mayView(req, patient)) throw forbidden("You can't see this patient's medical details.");
   if (!CARE_TYPES.includes(patient.careType)) throw invalid({ patientId: 'The postnatal discharge checklist is for a mother after delivery.' });
   const admission = await Admission.findOne({ _id: admissionId, tenantId: req.tenantId, patientId: patient._id });

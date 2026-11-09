@@ -14,6 +14,7 @@ import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
+import { assertNotHidden, departmentListed } from '../utils/patientAccess.js';
 import { loadPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -102,9 +103,13 @@ bedsRouter.get('/', async (req, res) => {
   const doctorIds = [...new Set(patients.map((p) => p.assignedDoctor && String(p.assignedDoctor)).filter(Boolean))];
   const doctors = new Map((doctorIds.length ? await User.find({ _id: { $in: doctorIds } }, { name: 1 }).lean() : []).map((u) => [String(u._id), u.name]));
 
+  // A bed whose patient the department rule hides from this doctor (departments, 9 Nov 2026): the bed shows as taken,
+  // with nothing about who is in it
+  const hiddenStay = { id: null, hidden: true, admittedAt: null, reason: null, patient: { id: null, fullName: '', mrn: '', assignedDoctorName: null, hidden: true }, canMove: false, ipdNo: null, checklistIncomplete: false, checklistComplete: false, mlc: false };
   const stayView = (s) => {
     const p = byId.get(String(s.patientId));
     if (!p) return null;
+    if (!departmentListed(req, p)) return hiddenStay;
     return {
       id: String(s._id),
       admittedAt: s.admittedAt,
@@ -128,7 +133,7 @@ bedsRouter.get('/', async (req, res) => {
       .map((b) => ({ ...bedView(b), stay: inBed.has(String(b._id)) ? stayView(inBed.get(String(b._id))) : null })),
   }));
   // Stays admitted without a bed from the list (typed ward and bed, or before the list existed)
-  const elsewhere = stays.filter((s) => !s.bedId).map((s) => ({ ...stayView(s), ward: s.ward || '', bed: s.bed || '' })).filter((s) => s.patient);
+  const elsewhere = stays.filter((s) => !s.bedId).map((s) => ({ ...stayView(s), ward: s.ward || '', bed: s.bed || '' })).filter((s) => s.patient && !s.hidden);
   const counts = wards.reduce((c, w) => ({ total: c.total + w.beds.filter((b) => b.active).length, occupied: c.occupied + w.beds.filter((b) => b.stay).length }), { total: 0, occupied: 0 });
   await audit(req, 'BEDS_VIEWED', { details: { occupied: counts.occupied, withoutBed: elsewhere.length } });
   res.json({
@@ -171,10 +176,11 @@ bedsRouter.get('/desk', async (req, res) => {
     });
   }
   const ids = [...going, ...gone].map((s) => s.patientId);
-  const patients = new Map((ids.length ? await Patient.find({ tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const patients = new Map((ids.length ? await Patient.find({ tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1, assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 }).lean() : []).map((p) => [String(p._id), p]));
   const who = (s) => {
     const p = patients.get(String(s.patientId));
-    return p ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn } : null;
+    // Another department's patient is left off the lists (departments, 9 Nov 2026)
+    return p && departmentListed(req, p) ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn } : null;
   };
   const goingHome = going.map((s) => ({ stayId: String(s._id), patient: who(s), ward: s.ward, bed: s.bed, cardStarted: writing.get(String(s._id)) })).filter((x) => x.patient);
   const dischargedToday = gone.map((s) => ({ stayId: String(s._id), patient: who(s), ward: s.ward, bed: s.bed, dischargedAt: s.dischargedAt, byName: s.dischargedByName ?? '' })).filter((x) => x.patient);
@@ -223,7 +229,8 @@ bedsRouter.post('/:bedId/admit', async (req, res) => {
   assertRole(req, ['receptionist', 'doctor', 'rmo'], 'Patients are admitted by reception, doctors and RMOs.');
   const body = parse(admitSchema, req.body);
   const bed = await findBed(req, req.params.bedId);
-  const patient = await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, body.patientId);
+  // Another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  const patient = assertNotHidden(req, await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, body.patientId));
   if (!mayAdmit(req, patient)) throw forbidden("This is another doctor's patient: ask her doctor, an RMO or reception to admit her.");
   const same = await Admission.findOne({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
   if (same) {
@@ -314,7 +321,7 @@ bedsRouter.post('/stays/:admissionId/move', async (req, res) => {
   const admission = await Admission.findOne({ tenantId: req.tenantId, _id: parse(objectId, req.params.admissionId) });
   if (!admission) throw notFound('This stay was not found.');
   if (admission.status !== 'admitted') throw conflict('She has been discharged: this stay can no longer be changed.');
-  const patient = await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, String(admission.patientId));
+  const patient = assertNotHidden(req, await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, String(admission.patientId))); // departments, 9 Nov 2026
   if (!mayMoveBed(req, patient)) throw forbidden("This is another doctor's patient: ask her doctor, an RMO, a nurse or reception to change her bed.");
   const bed = await findBed(req, body.bedId);
   if (admission.bedId?.equals(bed._id)) return res.json({ admission: { id: String(admission._id), ward: admission.ward, bed: admission.bed } });

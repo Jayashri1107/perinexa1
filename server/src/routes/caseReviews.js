@@ -7,6 +7,7 @@ import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
+import { departmentListed, departmentListFilter } from '../utils/patientAccess.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
 
@@ -27,6 +28,8 @@ const conflict = (m) => new HttpError(409, m, 'CONFLICT');
 const invalid = (fields) => Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields });
 const stamp = (req) => ({ by: req.user._id, byName: req.user.name, at: req.now ?? new Date() });
 const day = z.union([z.literal(''), z.iso.date('Please enter a valid date')]);
+// What the department rule needs to judge a patient (departments, 9 Nov 2026)
+const DEPT_FIELDS = { assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 };
 
 caseReviewsRouter.use((req, _res, next) => {
   if (!hasRole(req.membership, ...ROLES)) throw forbidden('Death and near-miss reviews are for doctors, RMOs and the quality lead.');
@@ -64,12 +67,16 @@ function view(r, patient, req) {
 }
 
 caseReviewsRouter.get('/', async (req, res) => {
-  const reviews = await CaseReview.find({ tenantId: req.tenantId }).sort({ eventAt: -1 }).limit(300).lean();
+  const found = await CaseReview.find({ tenantId: req.tenantId }).sort({ eventAt: -1 }).limit(300).lean();
   const yearAgo = new Date((req.now ?? new Date()).getTime() - 366 * 864e5);
-  const reviewed = new Set(reviews.filter((r) => r.kind === 'maternal_death').map((r) => String(r.patientId)));
-  const deaths = await Patient.find({ tenantId: req.tenantId, careType: { $ne: 'newborn' }, 'death.on': { $gte: yearAgo }, duplicateOf: null }, { fullName: 1, mrn: 1, 'death.on': 1 }).lean();
-  const patients = await Patient.find({ tenantId: req.tenantId, _id: { $in: reviews.map((r) => r.patientId) } }, { fullName: 1, mrn: 1 }).lean();
+  const reviewed = new Set(found.filter((r) => r.kind === 'maternal_death').map((r) => String(r.patientId)));
+  // Patients the department rule hides from this doctor: neither their reviews nor their deaths are listed
+  // (departments, 9 Nov 2026)
+  const deaths = await Patient.find({ tenantId: req.tenantId, careType: { $ne: 'newborn' }, 'death.on': { $gte: yearAgo }, duplicateOf: null, ...departmentListFilter(req) }, { fullName: 1, mrn: 1, 'death.on': 1 }).lean();
+  const patients = await Patient.find({ tenantId: req.tenantId, _id: { $in: found.map((r) => r.patientId) } }, { fullName: 1, mrn: 1, ...DEPT_FIELDS }).lean();
+  const hidden = new Set(patients.filter((p) => !departmentListed(req, p)).map((p) => String(p._id)));
   const byId = new Map(patients.map((p) => [String(p._id), p]));
+  const reviews = found.filter((r) => !hidden.has(String(r.patientId)));
   await audit(req, 'CASE_REVIEWS_VIEWED', { details: { count: reviews.length } });
   res.json({
     reviews: reviews.map((r) => {
@@ -92,7 +99,8 @@ const startBody = z
 caseReviewsRouter.post('/', async (req, res) => {
   const b = parse(startBody, req.body);
   const patient = await Patient.findOne({ tenantId: req.tenantId, mrn: b.mrn.toUpperCase() });
-  if (!patient) throw invalid({ mrn: 'No patient with this number in this hospital.' });
+  // (another department's patient is "no patient" for a doctor – departments, 9 Nov 2026)
+  if (!patient || !departmentListed(req, patient)) throw invalid({ mrn: 'No patient with this number in this hospital.' });
   if (patient.careType === 'newborn') throw invalid({ mrn: 'This review is for the mother, not a baby.' });
   if (b.eventAt.getTime() > (req.now ?? new Date()).getTime() + 5 * 60 * 1000) throw invalid({ eventAt: "The time can't be in the future." });
   if (b.kind === 'maternal_death' && (await CaseReview.exists({ tenantId: req.tenantId, patientId: patient._id, kind: 'maternal_death' }))) {
@@ -106,7 +114,9 @@ caseReviewsRouter.post('/', async (req, res) => {
 async function load(req, id) {
   const r = await CaseReview.findOne({ _id: id, tenantId: req.tenantId });
   if (!r) throw new HttpError(404, 'This review was not found.', 'NOT_FOUND');
-  const patient = await Patient.findOne({ _id: r.patientId, tenantId: req.tenantId }, { fullName: 1, mrn: 1 });
+  const patient = await Patient.findOne({ _id: r.patientId, tenantId: req.tenantId }, { fullName: 1, mrn: 1, ...DEPT_FIELDS });
+  // A review of a patient the department rule hides from this doctor is "not found" (departments, 9 Nov 2026)
+  if (patient && !departmentListed(req, patient)) throw new HttpError(404, 'This review was not found.', 'NOT_FOUND');
   return { r, patient };
 }
 const idParam = (req) => parse(z.object({ id: objectId }).strict(), req.params).id;

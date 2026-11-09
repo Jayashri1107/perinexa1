@@ -1,8 +1,24 @@
 # Department access – plan (owner, 9 Nov 2026)
 
-**Status: plan only, nothing built.** The developer must read this plan before the build starts. It changes the
-"need-to-know" rules in `server/src/utils/patientAccess.js` and the agreed rule in `docs/USE_CASE.md` (line 163:
-a doctor can open other doctors' patients read-only).
+**Status: built 9 Nov 2026 on branch `department-access`** (the owner asked for it to be built before the developer's
+review: "build it now"). `npm test` and `npm run build` pass. **The developer still reads it before it goes to main**: it
+changes the need-to-know rules in `server/src/utils/patientAccess.js` and the agreed rule in `docs/USE_CASE.md` (line
+163, a doctor could open other doctors' patients read-only).
+
+Built as planned, with these points for the review:
+- The server accepts a patient or a doctor without a department; the website asks for one. A patient without one is seen
+  by every doctor with a department, which is the same as before. A doctor without one sees only their own patients.
+- A mother's record is opened read-only by the doctors of her **babies' departments** (`babyDepartments` on her record),
+  not only by the baby's own doctor.
+- Doctor and quality lead, or doctor and admin: these count as doctor-only for the rule, because admin and quality are
+  not patient roles.
+- Analytics: doctor-only users' counts also leave out other departments' patients.
+- Bed board: another department's patient's bed shows as "Occupied" with no name. Appointments: their slot shows as
+  booked with no name.
+- Referrals to a department and moving a patient are audited as `PATIENT_UPDATED` with the field name only.
+- Old departments are moved once, when the server starts (`server/src/patients/moveDepartments.js`).
+- Test doctors are in every department unless a test says otherwise (`server/tests/helpers.js`). The new rules are
+  tested in `server/tests/departments.test.js`.
 
 ## What the owner asked for
 

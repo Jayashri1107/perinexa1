@@ -45,13 +45,13 @@ async function register(fullName = 'Form Mother') {
 
 describe('a doctor in more than one department', () => {
   it('the admin ticks several departments; the doctors list gives them all; one department still works; new departments', async () => {
-    let res = await setDepartments('drA', { departments: ['Neonatology', 'General Medicine'] });
+    let res = await setDepartments('drA', { departments: ['Pediatric', 'Cardiology'] });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.member).toMatchObject({ department: 'Neonatology', departments: ['Neonatology', 'General Medicine'] });
-    res = await setDepartments('drB', { departments: ['Genetic Counselling', 'General'] });
-    expect(res.body.member.departments).toEqual(['General', 'Genetic Counselling']); // in the list's order
+    expect(res.body.member).toMatchObject({ department: 'Pediatric', departments: ['Pediatric', 'Cardiology'] });
+    res = await setDepartments('drB', { departments: ['Counselling', 'Obgy'] });
+    expect(res.body.member.departments).toEqual(['Obgy', 'Counselling']); // in the list's order
     const doctors = (await (await as('reception')).get('/api/tenant/doctors')).body.doctors;
-    expect(doctors.find((d) => d.name === 'Sample drA')).toMatchObject({ department: 'Neonatology', departments: ['Neonatology', 'General Medicine'] });
+    expect(doctors.find((d) => d.name === 'Sample drA')).toMatchObject({ department: 'Pediatric', departments: ['Pediatric', 'Cardiology'] });
     expect((await setDepartments('drA', { department: 'Cardiology' })).body.member.departments).toEqual(['Cardiology']);
     expect((await setDepartments('drA', { departments: [] })).body.member).toMatchObject({ department: '', departments: [] });
     expect((await setDepartments('drA', { departments: ['Astrology'] })).status).toBe(400);
@@ -60,8 +60,8 @@ describe('a doctor in more than one department', () => {
 
 describe('admitting with the hospital form', () => {
   it('department → its doctor in charge, the referring doctor, MLC papers and the attendant address are kept and printed', async () => {
-    await setDepartments('drA', { departments: ['Obstetrics & Gynaecology'] });
-    await setDepartments('drB', { departments: ['Neonatology'] });
+    await setDepartments('drA', { departments: ['Obgy'] });
+    await setDepartments('drB', { departments: ['Pediatric'] });
     const setup = await (await as('admin')).post('/api/beds/setup').send({ floor: '2nd floor', ward: 'Deluxe AC', names: ['204', '205'] });
     expect(setup.status, JSON.stringify(setup.body)).toBe(201);
     expect(setup.body.beds[0]).toMatchObject({ floor: '2nd floor', ward: 'Deluxe AC', name: '204' });
@@ -70,12 +70,12 @@ describe('admitting with the hospital form', () => {
     const admit = (body) => as('reception').then((s) => s.post(`/api/beds/${b204.id}/admit`).send({ clientRequestId: randomUUID(), patientId: p.id, reasonCode: 'labour', admissionType: 'emergency', ...body }));
 
     // A doctor not in the department chosen is refused
-    let res = await admit({ department: 'Obstetrics & Gynaecology', doctorId: people.drB._id.toString() });
+    let res = await admit({ department: 'Obgy', doctorId: people.drB._id.toString() });
     expect(res.status).toBe(400);
-    expect(res.body.error.fields.doctorId).toMatch(/not in Obstetrics/);
+    expect(res.body.error.fields.doctorId).toMatch(/not in Obgy/);
     // An MLC needs its police station; then its papers are kept
     res = await admit({
-      department: 'Neonatology',
+      department: 'Pediatric',
       doctorId: people.drB._id.toString(),
       refDoctorName: 'Dr Sample Outside',
       mlc: true,
@@ -89,7 +89,7 @@ describe('admitting with the hospital form', () => {
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     const papers = (await (await as('reception')).get(`/api/admission-desk/stays/${res.body.admission.id}/papers`)).body.papers;
     expect(papers).toMatchObject({
-      department: 'Neonatology',
+      department: 'Pediatric',
       refDoctorName: 'Dr Sample Outside',
       mlcNo: 'MLC-12',
       mlcConstable: 'Sample Constable',

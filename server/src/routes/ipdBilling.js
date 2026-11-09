@@ -12,6 +12,7 @@ import { Patient, currentAge } from '../models/Patient.js';
 import { isClosed } from '../patients/deathRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
+import { assertNotHidden, departmentListed } from '../utils/patientAccess.js';
 import { safeText } from '../utils/pcpndt.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
 
@@ -38,9 +39,18 @@ const DISCHARGED_DAYS = 30;
 const medicalOf = (req) => hasRole(req.membership, ...MEDICAL_ROLES);
 const billIds = (b, extra = {}) => ({ billId: String(b._id), number: b.number, patientId: String(b.patientId), ...extra });
 
+// The fields the department rule needs (utils/patientAccess.js)
+const DEPT = { assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 };
+/** A doctor (e.g. also the hospital admin) whose departments do not include her: "not found" (departments, 9 Nov 2026). */
+async function assertPatientShown(req, patientId) {
+  const p = await Patient.findOne({ tenantId: req.tenantId, _id: patientId }, DEPT).lean();
+  assertNotHidden(req, p);
+}
+
 async function findStay(req, id) {
   const stay = await Admission.findOne({ tenantId: req.tenantId, _id: parse(objectId, id) }).lean();
   if (!stay) throw notFound('This stay was not found.');
+  await assertPatientShown(req, stay.patientId);
   return stay;
 }
 
@@ -69,14 +79,14 @@ ipdBillingRouter.get('/stays', async (req, res) => {
     filter.$or = [{ patientId: { $in: found.map((p) => p._id) } }, { ipdNo: text }];
   }
   const stays = await Admission.find(filter).sort(q.status === 'admitted' ? { admittedAt: -1 } : { dischargedAt: -1 }).limit(200).lean();
-  const patients = new Map((stays.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: stays.map((s) => s.patientId) } }, { fullName: 1, mrn: 1, assignedDoctor: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const patients = new Map((stays.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: stays.map((s) => s.patientId) } }, { fullName: 1, mrn: 1, ...DEPT }).lean() : []).map((p) => [String(p._id), p]));
   const bills = stays.length ? await Bill.find({ tenantId: req.tenantId, admissionId: { $in: stays.map((s) => s._id) }, status: 'open' }).lean() : [];
   const billOf = new Map(bills.map((b) => [String(b.admissionId), b]));
   const doctors = await userNames(stays.map((s) => (s.doctorName ? null : patients.get(String(s.patientId))?.assignedDoctor)));
   const list = [];
   for (const s of stays) {
     const p = patients.get(String(s.patientId));
-    if (!p) continue;
+    if (!p || !departmentListed(req, p)) continue; // another department's patient: left out (departments, 9 Nov 2026)
     const b = billOf.get(String(s._id));
     list.push({
       id: String(s._id),
@@ -184,6 +194,7 @@ async function stayBillFor(req) {
   if (bill.status === 'cancelled') throw conflict('This bill was cancelled.', 'CANCELLED');
   const stay = await Admission.findOne({ tenantId: req.tenantId, _id: bill.admissionId }).lean();
   if (!stay) throw notFound('This stay was not found.');
+  await assertPatientShown(req, stay.patientId); // departments, 9 Nov 2026
   return { bill, stay };
 }
 const viewOf = async (req, bill) => (await billViews(req.tenantId, [bill]))[0];

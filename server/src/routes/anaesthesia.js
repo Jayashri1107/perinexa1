@@ -6,7 +6,7 @@ import { PacAssessment, PainEntry } from '../models/AnaesthesiaRecords.js';
 import { hasRole } from '../models/Membership.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -38,7 +38,8 @@ const mayChart = (req, p) => {
 };
 const mayPac = (req, p) => hasRole(req.membership, 'doctor', 'rmo') && patientAccess(req, p).editClinical;
 async function patientFor(req, id) {
-  const patient = await findPatientById(req.tenantId, id);
+  // Another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  const patient = assertNotHidden(req, await findPatientById(req.tenantId, id));
   if (!mayView(req, patient)) throw forbidden("You can't see this patient's medical details.");
   return patient;
 }

@@ -1,10 +1,7 @@
 // A doctor's department in a hospital (owner, 27 Oct 2026): set by the hospital admin (Users), shown first on
 // registration so only that department's doctors are offered. The same list as server/src/models/Membership.js.
-export const DEPARTMENTS = [
-  'Obstetrics & Gynaecology', 'Paediatrics', 'Neonatology', 'General', 'General Medicine', 'General Surgery', 'Anaesthesia', 'Cardiology', 'Dietetics',
-  'Gastroenterology', 'Genetic Counselling', 'Lactation', 'Neurology', 'Medical Oncology', 'Surgical Oncology', 'Orthopaedics', 'Pathology', 'Physiotherapy',
-  'Plastic & Reconstructive Surgery', 'Radiology', 'Interventional Radiology', 'Urology', 'Yoga',
-];
+// The owner's 9 departments (9 Nov 2026): a doctor sees only the patients of their departments.
+export const DEPARTMENTS = ['Obgy', 'Pediatric', 'Radiology', 'Anesthesia', 'Diet and yoga', 'Surgery', 'Fetal medicine', 'Counselling', 'Cardiology'];
 
 // A doctor may work in more than one department (29 Oct 2026): /tenant/doctors gives each doctor's departments.
 /** A doctor's departments (also from a list that gives only one). */
