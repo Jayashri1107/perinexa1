@@ -20,7 +20,8 @@ import { Patient } from '../models/Patient.js';
 import { IN_USE } from '../patients/deathRules.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
-import { pregnancyVisibleFilter } from '../utils/patientAccess.js';
+import { departmentListFilter, pregnancyVisibleFilter } from '../utils/patientAccess.js';
+import { departmentsOf } from '../models/Membership.js';
 import { PATIENT_FIELDS, calendarLevel, clinicalRoles, personLevel, scopeFilter } from './calendarAccess.js';
 import { appointmentEvent, bookedEvent, countDays, eddEvent, limitPerDay, lmpEvent, planEvents, projectPatient, receptionIds, sortEvents } from './calendarEvents.js';
 import { MAX_EVENTS_PER_DAY, MAX_ROWS } from './calendarRules.js';
@@ -83,15 +84,18 @@ export async function loadCalendar(req, { view, from, to, types, scope }) {
   }
   // The scope, and never a record marked as a duplicate or closed after a death (every patient lookup below carries this filter)
   const scopeF = { ...scopeFilter(req, scope), ...IN_USE };
+  // A doctor's calendar: only patients the department rule lets them see (departments, 9 Nov 2026). Narrows the
+  // queries (kept in their own $and entry: it has an $or); calendarLevel is still checked on every patient.
+  const deptF = departmentListFilter(req);
 
   // 1–2. LMP and EDD of current pregnancies (doctors and RMOs, for patients whose pregnancy they may see).
   const pregnancyTypes = ['lmp', 'edd'].filter((t) => types.includes(t));
-  const visible = pregnancyVisibleFilter(clinicalRoles(req), req.user._id);
+  const visible = pregnancyVisibleFilter(clinicalRoles(req), req.user._id, departmentsOf(req.membership));
   if (pregnancyTypes.length && visible) {
     const found = new Map();
     for (const type of pregnancyTypes) {
       const field = type === 'lmp' ? 'pregnancy.lmp' : 'pregnancy.effectiveEdd';
-      const rows = await Patient.find(scoped(tenantId, [scopeF, visible, { careType: ANTENATAL, [field]: inRange }]))
+      const rows = await Patient.find(scoped(tenantId, [scopeF, deptF, visible, { careType: ANTENATAL, [field]: inRange }]))
         .select(PATIENT_FIELDS)
         .limit(limit + 1)
         .lean();
@@ -136,7 +140,7 @@ export async function loadCalendar(req, { view, from, to, types, scope }) {
     const plans = capped(await CarePlan.aggregate(pipeline));
     if (plans.length) {
       const patients = await Patient.find(
-        scoped(tenantId, [{ _id: { $in: plans.map((p) => p.patientId) } }, { careType: ANTENATAL }, scopeF]),
+        scoped(tenantId, [{ _id: { $in: plans.map((p) => p.patientId) } }, { careType: ANTENATAL }, scopeF, deptF]),
       )
         .select(PATIENT_FIELDS)
         .limit(limit + 1)
@@ -170,7 +174,7 @@ export async function loadCalendar(req, { view, from, to, types, scope }) {
         await Visit.aggregate(latestVisitsPipeline({ tenantId, patientIds: pidObjects, limit })),
       );
       const latestOf = new Map(latest.map((l) => [String(l._id), String(l.visitId)]));
-      const patients = await Patient.find(scoped(tenantId, [{ _id: { $in: pidObjects } }, scopeF]))
+      const patients = await Patient.find(scoped(tenantId, [{ _id: { $in: pidObjects } }, scopeF, deptF]))
         .select(PATIENT_FIELDS)
         .limit(limit + 1)
         .lean();
@@ -223,7 +227,7 @@ export async function loadCalendar(req, { view, from, to, types, scope }) {
     );
     if (appts.length) {
       const pids = [...new Set(appts.map((a) => String(a.patientId)))];
-      const patients = await Patient.find(scoped(tenantId, [{ _id: { $in: pids } }, scopeF])).select(PATIENT_FIELDS).limit(limit + 1).lean();
+      const patients = await Patient.find(scoped(tenantId, [{ _id: { $in: pids } }, scopeF, deptF])).select(PATIENT_FIELDS).limit(limit + 1).lean();
       const byId = new Map(capped(patients).map((p) => [String(p._id), p]));
       const [states, doctors, visits] = await Promise.all([
         statesFor(tenantId, appts),

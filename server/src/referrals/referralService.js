@@ -63,6 +63,8 @@ export function referralAccess(req, referral, patient) {
     release: writeNote,
     review: clinicalView,
     desk,
+    // her record is hidden from this doctor by the department rule: "not found" (departments, 9 Nov 2026)
+    hidden: Boolean(a?.hidden),
   };
 }
 
@@ -217,7 +219,8 @@ export function sameWoman(guest, record) {
 
 // ---------- What the website gets ----------
 
-const PATIENT_FIELDS = { fullName: 1, mrn: 1, ageYears: 1, ageRecordedOn: 1, createdAt: 1, assignedDoctor: 1, sensitive: 1, careType: 1, duplicateOf: 1, 'death.on': 1 };
+// (with the department fields: the department rule needs them – departments, 9 Nov 2026)
+const PATIENT_FIELDS = { fullName: 1, mrn: 1, ageYears: 1, ageRecordedOn: 1, createdAt: 1, assignedDoctor: 1, sensitive: 1, careType: 1, duplicateOf: 1, 'death.on': 1, department: 1, departmentReferrals: 1, babyDepartments: 1 };
 
 /** The patients of these referrals (enough to check access, and name, number and age): Map "<id>" → patient. */
 export async function patientsOf(tenantId, referrals) {

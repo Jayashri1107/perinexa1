@@ -8,7 +8,7 @@ import { cannotBeDuplicate, isDuplicate } from '../patients/duplicateRules.js';
 import { duplicatesOf, markDuplicate, openVisitToday, settleDuplicate, undoDuplicate } from '../patients/duplicateService.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { findPatient } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -58,6 +58,7 @@ async function mainRecord(req, dup, mainId) {
   if (mainId === String(dup._id)) throw invalid(cannotBeDuplicate(dup, dup), { mainId: 'Choose the other record.' });
   const main = await Patient.findOne({ _id: mainId, tenantId: req.tenantId });
   if (!main) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  assertNotHidden(req, main); // another department's patient: "not found" for a doctor (departments, 9 Nov 2026)
   assertMayJoin(req, main, true);
   return main;
 }

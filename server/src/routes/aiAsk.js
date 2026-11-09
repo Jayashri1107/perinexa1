@@ -14,7 +14,7 @@ import { Visit } from '../models/Visit.js';
 import { redFlagsForPatients } from '../redflags/redFlagService.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { departmentListFilter, patientAccess } from '../utils/patientAccess.js';
 import { parse } from '../utils/validate.js';
 import { RX_DURATION_UNITS, RX_FORMS, RX_FREQUENCIES, RX_ROUTES, RX_TIMINGS } from '../visits/rxCodes.js';
 
@@ -89,7 +89,8 @@ aiAskRouter.post('/ask', async (req, res) => {
   await refreshDueRisks(req.tenantId);
   // A record marked as a duplicate is left out of every search; so is a record closed after a death (IN_USE): these
   // answers are follow-up and call lists, with red flags and overdue care-plan items. The Patients list still finds it.
-  const q = { tenantId: req.tenantId, ...IN_USE };
+  // Patients the department rule hides from this doctor are never searched (departments, 9 Nov 2026)
+  const q = { tenantId: req.tenantId, ...IN_USE, ...departmentListFilter(req) };
   if (f.careTypes?.length) q.careType = { $in: f.careTypes };
   if (f.mine) q.assignedDoctor = { $in: [req.user._id, null] };
   if (f.riskLevels?.length) q['risk.level'] = { $in: f.riskLevels };

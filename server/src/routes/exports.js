@@ -27,6 +27,7 @@ import { ReferringDoctor } from '../models/ReferringDoctor.js';
 import { audit } from '../utils/audit.js';
 import { toCsv } from '../utils/csv.js';
 import { HttpError } from '../utils/httpError.js';
+import { listedPatientIds } from '../utils/patientAccess.js';
 import { parse, requiredDateOnly } from '../utils/validate.js';
 
 export const EXPORTS = {
@@ -94,7 +95,10 @@ const builders = {
   async appointments(req, doctorId, q) {
     const filter = { tenantId: req.tenantId, doctorId, on: { $gte: utcDay(q.from), $lte: utcDay(q.to) } };
     tooMany(await Appointment.countDocuments(filter));
-    const list = await Appointment.find(filter).sort({ on: 1, start: 1, token: 1 }).lean();
+    const all = await Appointment.find(filter).sort({ on: 1, start: 1, token: 1 }).lean();
+    // never a patient the department rule hides from this doctor (departments, 9 Nov 2026)
+    const listed = await listedPatientIds(req, Patient, all.map((a) => a.patientId).filter(Boolean));
+    const list = listed ? all.filter((a) => !a.patientId || listed.has(String(a.patientId))) : all;
     const who = await identities(req.tenantId, list.map((a) => a.patientId).filter(Boolean));
     return [
       ['Date', 'Time', 'Token', 'Patient number', 'Name', 'Phone', 'Visit type', 'Booked through', 'Status'],
@@ -154,7 +158,10 @@ const builders = {
   async referrals(req, doctorId, q) {
     const filter = { tenantId: req.tenantId, consultantId: doctorId, receivedAt: instants(q) };
     tooMany(await Referral.countDocuments(filter));
-    const list = await Referral.find(filter, { number: 1, receivedAt: 1, urgency: 1, status: 1, via: 1, patientId: 1, guest: 1, referringDoctorId: 1 }).sort({ receivedAt: 1 }).lean();
+    const all = await Referral.find(filter, { number: 1, receivedAt: 1, urgency: 1, status: 1, via: 1, patientId: 1, guest: 1, referringDoctorId: 1 }).sort({ receivedAt: 1 }).lean();
+    // never a patient the department rule hides from this doctor (departments, 9 Nov 2026)
+    const listed = await listedPatientIds(req, Patient, all.map((r) => r.patientId).filter(Boolean));
+    const list = listed ? all.filter((r) => !r.patientId || listed.has(String(r.patientId))) : all;
     const who = await identities(req.tenantId, list.map((r) => r.patientId).filter(Boolean));
     const doctors = await ReferringDoctor.find({ tenantId: req.tenantId, _id: { $in: list.map((r) => r.referringDoctorId) } }, { name: 1 }).lean();
     const byId = new Map(doctors.map((d) => [String(d._id), d.name]));

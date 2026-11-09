@@ -11,7 +11,7 @@ import { refuseNewOnClosed } from '../patients/deathRules.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, listedPatientIds, patientAccess } from '../utils/patientAccess.js';
 import { objectId, parse } from '../utils/validate.js';
 
 // Follow-ups added by hand (26 Oct 2026): "she will come back to Dr X to show her reports". Reception, doctors and RMOs
@@ -65,8 +65,13 @@ export async function openFollowUpsOf(tenantId, patientIds) {
 }
 
 async function patientFor(req, id) {
-  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: id }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, 'death.on': 1, careType: 1, assignedDoctor: 1, sensitive: 1, tenantId: 1 });
+  // (department, departmentReferrals, babyDepartments: for the department rule)
+  const patient = await Patient.findOne(
+    { tenantId: req.tenantId, _id: id },
+    { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, 'death.on': 1, careType: 1, assignedDoctor: 1, sensitive: 1, tenantId: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 },
+  );
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  assertNotHidden(req, patient); // another department's patient: "not found" for a doctor (departments, 9 Nov 2026)
   if (!patientAccess(req, patient).view.has('phone')) throw new HttpError(403, "You can't see this patient's follow-ups.", 'FORBIDDEN');
   return patient;
 }
@@ -91,7 +96,10 @@ addedFollowUpsRouter.get('/', async (req, res) => {
   const filter = { tenantId: req.tenantId, status: 'open' };
   if (patientId) filter.patientId = (await patientFor(req, patientId))._id;
   if (mine) filter.doctorId = req.user._id;
-  const rows = await withLiveBookings(req.tenantId, await FollowUp.find(filter).sort({ from: 1, 'created.at': 1 }).limit(MAX_ROWS + 1).lean());
+  const found = await FollowUp.find(filter).sort({ from: 1, 'created.at': 1 }).limit(MAX_ROWS + 1).lean();
+  // Patients the department rule hides from this doctor are left out (departments, 9 Nov 2026)
+  const listed = await listedPatientIds(req, Patient, [...new Set(found.map((f) => String(f.patientId)))]);
+  const rows = await withLiveBookings(req.tenantId, listed ? found.filter((f) => listed.has(String(f.patientId))) : found);
   const patients = new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: rows.map((f) => f.patientId) } }, { fullName: 1, mrn: 1, phone: 1 }).lean()).map((p) => [String(p._id), p]));
   const doctors = new Map((await hospitalDoctors(req.tenantId)).map((d) => [d.id, d.name]));
   res.json({ today: isoDay(hospitalToday(req.now)), followUps: rows.slice(0, MAX_ROWS).map((f) => followUpView(f, { patients, doctors })), cut: rows.length > MAX_ROWS });

@@ -61,7 +61,7 @@ afterEach(() => vi.useRealTimers());
 
 // A request as the app would build it (for access checks and audit entries).
 const ctxFor = (user, role, tenant = hospital, now = new Date()) =>
-  planCtx({ tenantId: tenant._id, user, membership: { roles: [role] }, now, ip: '127.0.0.1', get: () => 'vitest' });
+  planCtx({ tenantId: tenant._id, user, membership: { roles: [role], departments: role === 'doctor' ? ['Obgy'] : [] }, now, ip: '127.0.0.1', get: () => 'vitest' });
 
 async function newPatient(overrides = {}) {
   seq += 1;

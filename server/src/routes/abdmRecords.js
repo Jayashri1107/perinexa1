@@ -54,7 +54,8 @@ export function recordsAccess(req, patient) {
 async function patientFor(req, id, { link = false } = {}) {
   if (!hasRole(req.membership, ...RECORDS_ROLES)) throw forbidden('Her records in ABHA are for her doctor and RMOs.');
   const patient = await Patient.findOne({ tenantId: req.tenantId, _id: id });
-  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  // (another department's patient is "not found" for a doctor – departments, 9 Nov 2026)
+  if (!patient || patientAccess(req, patient).hidden) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
   const access = recordsAccess(req, patient);
   if (!access.see) throw forbidden("You can't see this patient's medical records.");
   if (link && !access.link) throw forbidden('Only her doctor or an RMO links her records to her ABHA.');

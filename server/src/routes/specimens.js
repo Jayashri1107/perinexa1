@@ -7,7 +7,7 @@ import { Patient } from '../models/Patient.js';
 import { SPECIMEN_KINDS, Specimen } from '../models/Specimen.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
@@ -114,7 +114,8 @@ const createBody = z
 specimensRouter.post('/', async (req, res) => {
   const body = parse(createBody, req.body);
   const same = await Specimen.findOne({ tenantId: req.tenantId, clientRequestId: body.clientRequestId });
-  const patient = await findPatientById(req.tenantId, body.patientId);
+  // another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  const patient = assertNotHidden(req, await findPatientById(req.tenantId, body.patientId));
   if (!mayWrite(req, patient)) throw forbidden('You can log specimens only for patients whose medical record you may write in.');
   if (same) return res.status(200).json({ specimen: view(same, patient, req.now ?? new Date()) });
   const now = req.now ?? new Date();

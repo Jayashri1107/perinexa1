@@ -107,6 +107,7 @@ async function loadReferral(req) {
   const facts = await refreshFacts(req.tenantId, [r]);
   const patient = await patientOf(req.tenantId, r.patientId);
   const access = referralAccess(req, r, patient);
+  if (access.hidden) throw notFound(); // another department's patient, for a doctor (departments, 9 Nov 2026)
   if (!access.view) throw forbidden("You can't open this referral: her medical details are for her doctor and the RMOs.");
   return { r, patient, access, facts };
 }
@@ -371,7 +372,8 @@ referralsRouter.post('/', async (req, res) => {
   let patient = null;
   if (body.patientId) {
     patient = await patientOf(req.tenantId, body.patientId);
-    if (!patient) throw notFound('Patient not found.');
+    // (another department's patient is "not found" for a doctor – departments, 9 Nov 2026)
+    if (!patient || referralAccess(req, null, patient).hidden) throw notFound('Patient not found.');
     refuseNewOnDuplicate(patient, 'referral');
     refuseNewOnClosed(patient, 'referral');
     if (!referralAccess(req, null, patient).view) throw forbidden("This is a sensitive record of another doctor's patient: her doctor, an RMO or the referral desk logs the referral.");
@@ -492,7 +494,7 @@ referralsRouter.post('/:referralId/link', async (req, res) => {
     if (String(r.patientId) !== patientId) throw conflict('This referral is already linked to another record.', 'LINKED');
   } else {
     const patient = await patientOf(req.tenantId, patientId);
-    if (!patient) throw notFound('Patient not found.');
+    if (!patient || referralAccess(req, r, patient).hidden) throw notFound('Patient not found.'); // departments, 9 Nov 2026
     refuseNewOnDuplicate(patient, 'referral');
     refuseNewOnClosed(patient, 'referral');
     if (!referralAccess(req, r, patient).view) throw forbidden("This is a sensitive record of another doctor's patient: her doctor, an RMO or the referral desk links it.");

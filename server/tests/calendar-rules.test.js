@@ -252,7 +252,7 @@ describe('projectPatient', () => {
 describe('calendarLevel', () => {
   const me = oid();
   const other = oid();
-  const req = (...roles) => ({ user: { _id: me }, membership: { roles } });
+  const req = (...roles) => ({ user: { _id: me }, membership: { roles, departments: ['Obgy'] } }); // the doctor in Obgy; the patients have no department yet
   const own = { assignedDoctor: me, sensitive: false };
   const unassigned = { assignedDoctor: null, sensitive: false };
   const others = { assignedDoctor: other, sensitive: false };

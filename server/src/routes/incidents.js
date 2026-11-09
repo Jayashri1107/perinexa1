@@ -7,6 +7,7 @@ import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
+import { departmentListed } from '../utils/patientAccess.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
 
@@ -28,6 +29,10 @@ const required = (label, max) => safeText(label, max).refine((v) => v.length > 0
 const isLead = (req) => hasRole(req.membership, LEAD);
 const seesAll = (req) => isLead(req) || hasRole(req.membership, 'admin');
 const seesPatient = (req) => isLead(req);
+// The fields the department rule needs (utils/patientAccess.js) – a lead who is also a doctor sees only the patients
+// of her departments named (departments, 9 Nov 2026)
+const DEPT = { assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 };
+const named = (req, p) => (p && departmentListed(req, p) ? p : null);
 const stamp = (req) => ({ by: req.user._id, byName: req.user.name, at: req.now ?? new Date() });
 
 function view(i, req, patient) {
@@ -66,8 +71,8 @@ incidentsRouter.get('/', async (req, res) => {
   if (show === 'open') filter.status = { $ne: 'closed' };
   if (show === 'closed') filter.status = 'closed';
   const items = await Incident.find(filter).sort({ occurredAt: -1, _id: -1 }).limit(500);
-  const patients = seesPatient(req) ? await Patient.find({ tenantId: req.tenantId, _id: { $in: items.map((i) => i.patientId).filter(Boolean) } }, { fullName: 1, mrn: 1 }).lean() : [];
-  const byId = new Map(patients.map((p) => [String(p._id), p]));
+  const patients = seesPatient(req) ? await Patient.find({ tenantId: req.tenantId, _id: { $in: items.map((i) => i.patientId).filter(Boolean) } }, { fullName: 1, mrn: 1, ...DEPT }).lean() : [];
+  const byId = new Map(patients.filter((p) => named(req, p)).map((p) => [String(p._id), p]));
   await audit(req, 'INCIDENTS_VIEWED', { details: { show, count: items.length } });
   res.json({ incidents: items.map((i) => view(i, req, byId.get(String(i.patientId)))), lead: isLead(req), kinds: INCIDENT_KINDS, severities: SEVERITIES, source: INCIDENT_SOURCE });
 });
@@ -93,7 +98,7 @@ incidentsRouter.post('/', async (req, res) => {
   // The patient it concerns, by her number (optional): only the number is asked, so no one searches records from here
   let patientId = null;
   if (b.patientNo) {
-    const p = await Patient.findOne({ tenantId: req.tenantId, mrn: b.patientNo.toUpperCase() }, { _id: 1 }).lean();
+    const p = named(req, await Patient.findOne({ tenantId: req.tenantId, mrn: b.patientNo.toUpperCase() }, { _id: 1, ...DEPT }).lean()); // departments, 9 Nov 2026
     if (!p) throw invalid({ patientNo: 'No patient with this number in this hospital.' });
     patientId = p._id;
   }
@@ -113,7 +118,7 @@ async function loadOne(req) {
 }
 async function answer(req, res, i, action) {
   if (action) await audit(req, action, { details: { incidentId: String(i._id), serial: i.serial, kind: i.kind } });
-  const patient = seesPatient(req) && i.patientId ? await Patient.findOne({ _id: i.patientId, tenantId: req.tenantId }, { fullName: 1, mrn: 1 }).lean() : null;
+  const patient = seesPatient(req) && i.patientId ? named(req, await Patient.findOne({ _id: i.patientId, tenantId: req.tenantId }, { fullName: 1, mrn: 1, ...DEPT }).lean()) : null;
   res.json({ incident: view(i, req, patient) });
 }
 const leadOnly = (req) => {

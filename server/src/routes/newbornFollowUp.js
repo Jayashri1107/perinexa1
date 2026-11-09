@@ -7,7 +7,7 @@ import { Patient } from '../models/Patient.js';
 import { isClosed } from '../patients/deathRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, departmentListed, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -102,7 +102,8 @@ newbornFollowUpRouter.get('/', async (req, res) => {
   const babies = await Patient.find({ tenantId: req.tenantId, _id: { $in: ids }, careType: 'newborn' });
   const byPatient = new Map(docs.map((d) => [String(d.patientId), d]));
   const rows = babies
-    .filter((b) => isCoordinator(req) || clinicalView(req, b))
+    // Another department's baby is left out for a doctor, also when she is the coordinator too (departments, 9 Nov 2026)
+    .filter((b) => departmentListed(req, b) && (isCoordinator(req) || clinicalView(req, b)))
     .map((b) => babyView(b, byPatient.get(String(b._id)), now, clinicalView(req, b)))
     .filter((r) => show === 'all' || (show === 'due' ? r.due || r.defaulter : r.defaulter))
     .sort((a, b) => new Date(a.birthAt) - new Date(b.birthAt));
@@ -112,7 +113,8 @@ newbornFollowUpRouter.get('/', async (req, res) => {
 
 async function loadBaby(req) {
   const { patientId } = parse(z.object({ patientId: objectId }), req.params);
-  const baby = await findPatientById(req.tenantId, patientId);
+  // Another department's baby is "not found" for a doctor (departments, 9 Nov 2026)
+  const baby = assertNotHidden(req, await findPatientById(req.tenantId, patientId));
   if (baby.careType !== 'newborn') throw invalid({ patientId: 'The screening log is for a baby’s record.' });
   if (!isCoordinator(req) && !clinicalView(req, baby)) throw forbidden("You can't see this baby's medical details.");
   const doc = await NewbornFollowUp.findOne({ tenantId: req.tenantId, patientId: baby._id });

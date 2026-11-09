@@ -15,7 +15,7 @@ import { ReminderMessage } from '../models/ReminderMessage.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { departmentListed, patientAccess } from '../utils/patientAccess.js';
 import { leftBehind, markingCheck } from './duplicateCompare.js';
 import { DUPLICATE_MESSAGE_REASON, isDuplicate, lastFourDigits, matchedOn, nameKey, namePattern, phoneKeys, phonePattern } from './duplicateRules.js';
 import { CLOSED_CANCEL_REASON, isClosed } from './deathRules.js';
@@ -27,7 +27,8 @@ import { cancelAppointment } from '../appointments/appointmentService.js';
 export const MAX_MATCHES_SHOWN = 5;
 const MAX_CANDIDATES = 200;
 // What is read of a candidate: what the warning may show, and what the need-to-know rules look at. Nothing clinical.
-const MATCH_FIELDS = 'mrn fullName phone ageYears ageRecordedOn createdAt careType newborn.birthAt assignedDoctor sensitive duplicateOf';
+// (department, departmentReferrals, babyDepartments: for the department rule – departments, 9 Nov 2026)
+const MATCH_FIELDS = 'mrn fullName phone ageYears ageRecordedOn createdAt careType newborn.birthAt assignedDoctor sensitive duplicateOf department departmentReferrals babyDepartments';
 
 /**
  * Records of THIS hospital that may be the person being registered: the same phone number (digits compared, with or
@@ -62,7 +63,9 @@ export async function possibleMatches(req, { fullName, phone, careType }) {
   }
   // The closest first: the same phone AND name, then the same phone, then the same name; the newest first in each
   const rank = (m) => (m.on.size === 2 ? 0 : m.on.has('phone') ? 1 : 2);
-  const all = [...byId.values()].sort((a, b) => rank(a) - rank(b) || b.p.createdAt - a.p.createdAt);
+  // A record the department rule hides from this doctor is not a match for them – not shown, not counted
+  // (departments, 9 Nov 2026)
+  const all = [...byId.values()].filter((m) => departmentListed(req, m.p)).sort((a, b) => rank(a) - rank(b) || b.p.createdAt - a.p.createdAt);
   const shown = all.slice(0, MAX_MATCHES_SHOWN);
   const doctorIds = [...new Set(shown.map((m) => m.p.assignedDoctor && String(m.p.assignedDoctor)).filter(Boolean))];
   const doctors = new Map((doctorIds.length ? await User.find({ _id: { $in: doctorIds } }, { name: 1 }).lean() : []).map((u) => [String(u._id), u.name]));
@@ -99,7 +102,8 @@ function matchView(req, p, on, doctors) {
 
 // What is read of an earlier record: who may open it, and what detailsOnlyOn compares (medical details – they are
 // sent only to those who may see them on BOTH records).
-const EARLIER_FIELDS = 'mrn careType assignedDoctor sensitive duplicateOf createdAt medical obstetric pregnancy risk';
+// (department, departmentReferrals, babyDepartments: for the department rule – departments, 9 Nov 2026)
+const EARLIER_FIELDS = 'mrn careType assignedDoctor sensitive duplicateOf createdAt medical obstetric pregnancy risk department departmentReferrals babyDepartments';
 
 /** The records marked as duplicates of this one (lean, oldest first). */
 export const duplicatesOf = (tenantId, patientId) => Patient.find({ tenantId, 'duplicateOf.patient': patientId }).select(EARLIER_FIELDS).sort({ createdAt: 1, _id: 1 }).lean();

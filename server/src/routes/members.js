@@ -24,7 +24,14 @@ const listSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
-const addSchema = z.object({ email, name: z.string().trim().max(100).transform(capitalizeName).optional(), roles });
+// departments: a doctor's departments, chosen on the Add person form when "Doctor" is ticked (owner, 9 Nov 2026 – the
+// website asks for at least one; a doctor with none sees only their own patients)
+const addSchema = z.object({
+  email,
+  name: z.string().trim().max(100).transform(capitalizeName).optional(),
+  roles,
+  departments: z.array(z.enum(DEPARTMENTS, 'Choose a department from the list')).max(DEPARTMENTS.length).default([]),
+});
 const editSchema = z
   .object({ name: name.optional(), email: email.optional() })
   .refine((d) => d.name !== undefined || d.email !== undefined, 'Nothing to update');
@@ -219,13 +226,19 @@ export function membersRouter({ resolveTenantId, allowAccountChanges = false }) 
       await audit(req, 'USER_CREATED', { target: user, tenantId: req.scopeTenantId, details: { name: user.name } });
     }
 
+    const departments = data.roles.includes('doctor') ? DEPARTMENTS.filter((d) => data.departments.includes(d)) : [];
     const membership = await Membership.create({
       tenantId: req.scopeTenantId,
       userId: user._id,
       roles: data.roles,
+      departments,
+      department: departments[0] ?? '',
       createdBy: req.user._id,
     });
     await audit(req, 'MEMBER_ADDED', { target: user, tenantId: req.scopeTenantId, details: { roles: data.roles } });
+    if (departments.length) {
+      await audit(req, 'MEMBER_ROLE_CHANGED', { target: user, tenantId: req.scopeTenantId, details: { department: { from: '', to: departments.join(', ') } } });
+    }
     membership.userId = user;
     const shared = await otherTenantUserIds(req.scopeTenantId, [user._id]);
     res.status(201).json({ member: toMember(membership, shared), temporaryPassword, existingUser: !temporaryPassword });

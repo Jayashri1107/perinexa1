@@ -18,7 +18,7 @@ import { Patient } from '../models/Patient.js';
 import { IN_USE } from '../patients/deathRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { loadPatientById } from '../utils/patientLookup.js';
 import { ANTENATAL_DRAFT } from './antenatalDraft.js';
 import { addDays, dayZero, daysBetween, gaOn, hospitalToday, sameDay, timeIn, utcDay, weekEnd } from './dates.js';
@@ -74,6 +74,7 @@ export function carePlanAccess(req, patient) {
 
 /** 403 unless this person may see the care plan. Returns carePlanAccess. */
 export function assertCanView(req, patient) {
+  assertNotHidden(req, patient); // another department's patient: "not found" for a doctor (departments, 9 Nov 2026)
   const a = carePlanAccess(req, patient);
   if (a.view) return a;
   if (!hasRole(req.membership, ...CLINICAL_ROLES)) throw forbidden("Your role doesn't include care plans.");

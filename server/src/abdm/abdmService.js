@@ -10,6 +10,7 @@ import { config } from '../config.js';
 import { Patient } from '../models/Patient.js';
 import { Tenant } from '../models/Tenant.js';
 import { HttpError } from '../utils/httpError.js';
+import { departmentListed } from '../utils/patientAccess.js';
 import * as shared from '../utils/sharedState.js';
 import { practiceClient } from './practiceClient.js';
 import { v3Client } from './v3Client.js';
@@ -95,11 +96,13 @@ export const profileView = (p) => ({
  */
 export async function linkAbha(req, patientId, profile, method) {
   if (!profile?.abhaNumber) throw new HttpError(400, 'ABDM sent no ABHA number to link.', 'ABDM');
-  const other = await Patient.findOne({ tenantId: req.tenantId, 'abha.number': profile.abhaNumber, _id: { $ne: patientId } }, { fullName: 1, mrn: 1, duplicateOf: 1 }).lean();
+  const other = await Patient.findOne({ tenantId: req.tenantId, 'abha.number': profile.abhaNumber, _id: { $ne: patientId } }, { fullName: 1, mrn: 1, duplicateOf: 1, assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 }).lean();
   // On a record marked as a duplicate of this one: it is her own earlier record – said plainly, with what to do
   if (other && String(other.duplicateOf?.patient ?? '') === String(patientId)) {
     throw new HttpError(409, `Her ABHA is on her earlier record ${other.mrn}. Unlink it there first (ABHA tab of ${other.mrn}), then link it here.`, 'ABHA_ON_EARLIER_RECORD');
   }
+  // never the name of a record the department rule hides from this person (departments, 9 Nov 2026)
+  if (other && !departmentListed(req, other)) throw new HttpError(409, 'This ABHA is already linked to another record of this hospital.', 'ABHA_IN_USE');
   if (other) throw new HttpError(409, `This ABHA is already linked to ${other.fullName} (${other.mrn}).`, 'ABHA_IN_USE');
   const patient = await Patient.findOne({ tenantId: req.tenantId, _id: patientId });
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');

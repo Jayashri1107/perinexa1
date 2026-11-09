@@ -240,6 +240,8 @@ async function loadOrder(req) {
   if (!order) throw notFound();
   const patient = await Patient.findOne({ _id: order.patientId, tenantId: req.tenantId });
   if (!patient) throw notFound();
+  // An order of another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  if (patientAccess(req, patient).hidden) throw notFound();
   return { order, patient, access: labAccess(req, patient) };
 }
 /** The order's view for this person, with the hospital's check worked out. */

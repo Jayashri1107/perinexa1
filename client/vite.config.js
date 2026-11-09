@@ -6,9 +6,11 @@ import react from '@vitejs/plugin-react';
 // (Perinexa1 uses 5174/4001 so it can run beside Perinexa, which uses 5173/4000.)
 export default defineConfig({
   plugins: [react()],
+  // PERINEXA_CLIENT_PORT / PERINEXA_API_PORT: a second copy of perinexa1 (another branch, its own database) beside
+  // this one, e.g. 5184 and 4011 – the server's API_PORT in that copy's server/.env must match.
   server: {
-    port: 5174,
+    port: Number(process.env.PERINEXA_CLIENT_PORT) || 5174,
     strictPort: true,
-    proxy: { '/api': 'http://localhost:4001' },
+    proxy: { '/api': `http://localhost:${Number(process.env.PERINEXA_API_PORT) || 4001}` },
   },
 });

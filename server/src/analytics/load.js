@@ -29,6 +29,11 @@ export const PATIENT_FIELDS = [
   'ageRecordedOn',
   'assignedDoctor',
   'sensitive',
+  // The department rule (departments, 9 Nov 2026): a doctor's numbers and lists leave out other departments'
+  // patients (analytics/visibility.js) – without these she would look "no department yet", seen by every doctor
+  'department',
+  'departmentReferrals',
+  'babyDepartments',
   'pregnancy.lmp',
   'pregnancy.effectiveEdd',
   'pregnancy.scanEdd',
