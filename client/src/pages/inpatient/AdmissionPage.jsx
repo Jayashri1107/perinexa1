@@ -1,4 +1,5 @@
 import { cloneElement, useRef, useState } from 'react';
+import { BillingLabel, STAY_TYPE_HINT, STAY_TYPE_OPTIONS, StayTypeLabel } from '../../components/AdmissionLabels.jsx';
 import { WitnessFields, emptyWitness, witnessWords } from '../../components/WitnessFields.jsx';
 import { MeowsChart } from './MeowsChart.jsx';
 import { PainChartSection } from '../anaesthesia/PainChart.jsx';
@@ -242,6 +243,7 @@ export function AdmissionPage() {
   const [latest, setLatest] = useState(null);
   const [notice, setNotice] = useState(null);
   const [place, setPlace] = useState(null); // editing the ward and bed
+  const [stayType, setStayType] = useState(null); // changing the admission type (ANC → Delivered …)
   const page = latest && latest.admission.id === admissionId ? latest : data;
   if (error && !page) return <Alert type="error">{error}</Alert>;
   if (!page) return <div className="card plan-loading" aria-busy="true" />;
@@ -261,6 +263,15 @@ export function AdmissionPage() {
     }
   };
   const kinds = ['admission', 'round', 'operation', ...(['newborn', 'abortion'].includes(patient.careType) ? [] : ['delivery']), 'discharge'].filter((k) => !(ONE_PER_STAY.includes(k) && active(k)));
+  const saveStayType = async () => {
+    try {
+      setLatest(await api(`/patients/${patient.id}/admissions/${a.id}`, { method: 'PATCH', body: { stayType } }));
+      setStayType(null);
+      setNotice({ type: 'success', text: 'Admission type changed.' });
+    } catch (err) {
+      setNotice({ type: 'error', text: err.message });
+    }
+  };
   const savePlace = async () => {
     try {
       setLatest(await api(`/patients/${patient.id}/admissions/${a.id}`, { method: 'PATCH', body: { ward: place.ward.trim(), bed: place.bed.trim() } }));
@@ -308,6 +319,9 @@ export function AdmissionPage() {
               Medico-legal case
             </StatusPill>
           )}
+          {/* The colour labels (owner, 9 Nov 2026): the billing type comes only to doctors and RMOs */}
+          <StayTypeLabel type={a.stayType} />
+          {a.billingType && <BillingLabel type={a.billingType} />}
         </div>
         <p className="hint">
           {a.reason} · admitted by {a.admittedByName}
@@ -336,7 +350,32 @@ export function AdmissionPage() {
                 Change ward or bed
               </button>
             )}
+            {page.access.canWrite && a.status === 'admitted' && stayType === null && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setStayType(a.stayType ?? '')}>
+                Change admission type
+              </button>
+            )}
           </p>
+        )}
+        {stayType !== null && (
+          <div className="row ip-place">
+            <Field label="Admission type" id="ip-staytype" hint={STAY_TYPE_HINT}>
+              <select id="ip-staytype" value={stayType} onChange={(e) => setStayType(e.target.value)}>
+                <option value="">Choose…</option>
+                {STAY_TYPE_OPTIONS.map(([k, w]) => (
+                  <option key={k} value={k}>
+                    {w}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <button type="button" className="btn btn-secondary" disabled={!stayType} onClick={saveStayType}>
+              Save
+            </button>
+            <button type="button" className="btn btn-link" onClick={() => setStayType(null)}>
+              Cancel
+            </button>
+          </div>
         )}
       </section>
       {/* The discharge recorded at the desk, the final bill and the gate pass (9 Nov 2026) */}

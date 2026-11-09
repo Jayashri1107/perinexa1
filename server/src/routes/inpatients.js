@@ -14,6 +14,7 @@ import { patientAccess } from '../utils/patientAccess.js';
 import { isClosed } from '../patients/deathRules.js';
 import { addDays, hospitalDayStart, hospitalToday } from '../careplans/dates.js';
 import { meowsWardStatus } from '../clinical/meowsWard.js';
+import { seesBillingType } from '../inpatient/admissionLabels.js';
 
 // The hospital's inpatients today (Version 2): GET /api/inpatients – for doctors, RMOs and nurses, only patients
 // whose medical details they may see:
@@ -94,12 +95,18 @@ export async function inpatientsFor(req) {
     : [];
   // The MEOWS chart of each stay (Group B, item 8): next set due, overdue (E4), escalation tasks still open
   const meows = await meowsWardStatus(tenantId, shown, now);
+  // The colour labels (owner, 9 Nov 2026 – inpatient/admissionLabels.js): the department heading and the admission type
+  // for everyone here; the billing type only for doctors and RMOs – never sent to a nurse
+  const billing = seesBillingType(req.membership);
   const admitted = shown.map((s) => ({
     patient: who(visible.get(String(s.patientId))),
     admissionId: String(s._id),
     admittedAt: s.admittedAt,
     ward: s.ward ?? '',
     bed: s.bed ?? '',
+    department: s.department ?? '',
+    stayType: s.stayType ?? null,
+    ...(billing ? { billingType: s.billingType || '' } : {}),
     drafts: drafts.filter((d) => String(d.admissionId) === String(s._id)).length,
     lastVitalsAt: lastAt(s._id, 'vitals'),
     lastMedicineAt: lastAt(s._id, 'medicine'),

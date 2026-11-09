@@ -385,7 +385,7 @@ describe('marking a record as a duplicate: who may, and what cannot be joined', 
       expect([res.status, res.body.error.message]).toEqual([400, "A baby's record and an adult's record cannot be the same person."]);
     }
     // In hospital on the record: the ward works on it
-    const admit = await (await as('drA')).post(`/api/patients/${third.id}/admissions`).send({ clientRequestId: randomUUID(), reason: 'Observation' });
+    const admit = await (await as('drA')).post(`/api/patients/${third.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', reason: 'Observation' });
     expect(admit.status, JSON.stringify(admit.body)).toBe(201);
     const admitted = await mark('drA', third, main);
     expect([admitted.status, admitted.body.error.code]).toEqual([409, 'ADMITTED']);
@@ -441,7 +441,7 @@ describe('a record marked as a duplicate', () => {
       nextVisit: await drA.patch(`/api/patients/${dup.id}/visits/${visit.id}`).send({ details: { rev: 0, nextVisitOn: '2026-10-05' } }),
       prescription: await drA.put(`/api/patients/${dup.id}/visits/${visit.id}/prescription`).send({ rev: 0, items: [], notes: '', warningReasons: [] }),
       lab: await drA.post(`/api/patients/${dup.id}/lab-orders`).send({ clientRequestId: randomUUID(), tests: [{ key: 'cbc' }] }),
-      admission: await drA.post(`/api/patients/${dup.id}/admissions`).send({ clientRequestId: randomUUID(), reason: 'Observation' }),
+      admission: await drA.post(`/api/patients/${dup.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', reason: 'Observation' }),
       appointment: await book(dup, '2026-09-30'),
       arrival: await reception.post('/api/arrivals').send({ patientId: dup.id, doctorId: id('drA') }),
       scan: await drA.post(`/api/patients/${dup.id}/work-done`).send({ clientRequestId: randomUUID(), priceItemId: scan.id }),

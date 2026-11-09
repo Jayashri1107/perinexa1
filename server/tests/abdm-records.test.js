@@ -129,7 +129,7 @@ const HIV = { key: 'hiv', values: [{ key: 'hiv', value: 'Reactive' }] };
 /** A stay with a discharge card confirmed by her doctor (unless sign: false). */
 async function discharge(p, { sign = true } = {}) {
   const drA = await as('drA');
-  const a = ok(await drA.post(stays(p)).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-01T04:00:00.000Z', ward: 'Ward 1', bed: '3', reason: 'Observation' }), 201).admission;
+  const a = ok(await drA.post(stays(p)).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-01T04:00:00.000Z', ward: 'Ward 1', bed: '3', reason: 'Observation' }), 201).admission;
   const d = ok(await drA.post(stays(p, `/${a.id}/documents`)).send({ clientRequestId: randomUUID(), kind: 'discharge' }), 201).document;
   const saved = ok(
     await drA.put(stays(p, `/${a.id}/documents/${d.id}`)).send({

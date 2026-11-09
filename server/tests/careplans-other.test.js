@@ -95,7 +95,7 @@ describe('care plans for the other types of care', () => {
     const p = await register({ careType: 'antenatal', fullName: 'Postnatal Mother', pregnancy: { scanEdd: '2026-10-05' }, medical: { allergies: 'None known', bloodGroup: 'O+' } });
     expect((await plan('drA', p)).plan.careType).toBe('antenatal');
     // Delivered (confirmed delivery note) on 28 Sep by caesarean
-    const a = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-09-27T02:00:00.000Z', reason: 'In labour' })).body.admission;
+    const a = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-09-27T02:00:00.000Z', reason: 'In labour' })).body.admission;
     const d = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions/${a.id}/documents`).send({ clientRequestId: randomUUID(), kind: 'delivery' })).body.document;
     const saved = (await (await as('rmo')).put(`/api/patients/${p.id}/admissions/${a.id}/documents/${d.id}`).send({ rev: 0, content: { deliveredAt: '2026-09-28T05:00:00.000Z', mode: 'lscs', indication: 'Fetal distress', babies: [{ outcome: 'live', sex: 'male', weightGrams: 3100 }] } })).body.document;
     expect((await (await as('drA')).post(`/api/patients/${p.id}/admissions/${a.id}/documents/${d.id}/sign`).send({ rev: saved.rev })).status).toBe(200);

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { BILI_METHODS, BIRTH_CHECKS, CORD_CLAMPING, DISCHARGE_READY, EXAM_ITEMS, NEWBORN_CARE_SOURCE, NICU_OUTCOMES, NICU_REASONS, NICU_SOURCES, NICU_UNITS, RESUSCITATION, coldAtAdmission } from '../clinical/newbornCare.js';
 import * as F03 from '../clinical/nicuAdmission.js';
+import { BILLING_TYPES } from '../inpatient/admissionLabels.js';
 import { ADMISSION_REASON_KEYS, SEROLOGY_TESTS, assessmentSchema, followOnSchema, maternalSchema, missingForSign, outcomeDetailsSchema, outcomeResult, planSchema } from '../clinical/nicuForm.js';
 import { bannersFor, computedFor, latestRoster, memberWith, nicuBeds, openFilter, prefillFor, ratioWarning, registerLabelOf, runNicuAutomations, syncRopEvent, unitsOf } from '../clinical/nicuData.js';
 import { Bed } from '../models/Bed.js';
@@ -449,6 +450,7 @@ const createBody = z
     bedType: z.enum(Object.keys(F03.BED_KINDS)).optional(),
     consultantId: z.union([z.null(), z.literal(''), objectId]).optional(),
     admittingDoctorId: z.union([z.null(), z.literal(''), objectId]).optional(),
+    billingType: z.enum(BILLING_TYPES, 'Choose Insurance, Cash or Package'),
     weightGrams: need('weight', 300, 7000, true),
     gestationWeeks: need('gestation', 22, 44, true),
     gestationDays: z.coerce.number().int().min(0).max(6).default(0),
@@ -563,6 +565,7 @@ async function admitBaby(req, b, baby, { desk, dryRun = false }) {
     allergyAlert: b.allergyAlert ?? prefill.allergyAlert ?? '',
     consultant,
     admittingDoctor: admitting,
+    billingType: b.billingType,
     floorDecision,
     fullOverride,
     reasonPrimary: b.reasonPrimary ?? null,

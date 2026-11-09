@@ -132,7 +132,7 @@ async function fullRecord() {
 
   // A stay: a signed admission note with a correction, a round note still a draft, an operation note entered in
   // error, and the nursing chart (one entry entered in error)
-  const a = ok(await drA.post(stays(p)).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-04T02:00:00.000Z', ward: 'Ward 2', bed: '7', reason: 'Observation for vomiting' }), 201).admission;
+  const a = ok(await drA.post(stays(p)).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-04T02:00:00.000Z', ward: 'Ward 2', bed: '7', reason: 'Observation for vomiting' }), 201).admission;
   const doc = async (kind, content) => {
     const d = ok(await rmo.post(stays(p, `/${a.id}/documents`)).send({ clientRequestId: randomUUID(), kind }), 201).document;
     return ok(await rmo.put(stays(p, `/${a.id}/documents/${d.id}`)).send({ rev: d.rev, content })).document;

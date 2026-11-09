@@ -344,3 +344,10 @@
 
 /* The indigo welcome band: phones only (mobile.css) */
 .td-hero { display: none; }
+
+/* In hospital on the doctor's and RMO's Today: department headings, and the colour labels beside the name (owner,
+   9 Nov 2026 – components/AdmissionLabels.jsx) */
+.wl-list > .td-dept-head { list-style: none; padding: var(--space-3) 0 var(--space-1); border: 0; }
+.wl-list > .td-dept-head:first-child { padding-top: 0; }
+.td-dept-head h3 { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 700; color: var(--slate-600); text-transform: uppercase; letter-spacing: 0.04em; }
+.wl-row-toggle .adm-label { flex: none; }

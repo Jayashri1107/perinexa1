@@ -207,7 +207,7 @@ describe('babies due – reception (the Today page)', () => {
     const withMum = await baby('Baby With Mother', { phone: '90000 00003', mother: mum.id });
     on('2026-10-09');
     for (const p of [nursery, mum]) {
-      expect((await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: new Date().toISOString(), reason: 'Sample reason' })).status).toBe(201);
+      expect((await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: new Date().toISOString(), reason: 'Sample reason' })).status).toBe(201);
     }
     expect((await today('reception')).body.babiesDue.map((r) => r.patient.fullName)).toEqual(['Baby Home']);
     // Doctors, RMOs and nurses still see all three (a birth dose not given in the nursery is theirs to act on)

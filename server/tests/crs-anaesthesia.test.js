@@ -78,7 +78,7 @@ describe('the pre-anaesthesia check-up', () => {
 describe('the pain chart', () => {
   it('scores with bands; too much sedation needs whom you told; severe pain needs what was done', async () => {
     const p = await registered();
-    const a = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-10T01:00:00.000Z', ward: 'Ward', bed: '5', reason: 'Surgery' })).body.admission;
+    const a = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-11-10T01:00:00.000Z', ward: 'Ward', bed: '5', reason: 'Surgery' })).body.admission;
     const post = async (body) => (await as('nurse')).post('/api/anaesthesia/pain').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, at: '2026-11-10T05:00:00.000Z', ...body });
     expect((await post({ score: 5, poss: '3' })).body.error.fields.escalatedTo).toMatch(/hold opioids/);
     expect((await post({ score: 8 })).body.error.fields.action).toMatch(/what was done/);

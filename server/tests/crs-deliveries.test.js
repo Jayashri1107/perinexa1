@@ -53,7 +53,7 @@ async function registered() {
   return res.body.patient;
 }
 const base = (p) => `/api/patients/${p.id}/admissions`;
-const admit = async (p) => (await (await as('rmo')).post(base(p)).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-08T02:00:00.000Z', ward: 'Labour ward', bed: '2', reason: 'In labour' })).body.admission;
+const admit = async (p) => (await (await as('rmo')).post(base(p)).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-11-08T02:00:00.000Z', ward: 'Labour ward', bed: '2', reason: 'In labour' })).body.admission;
 const newNote = async (p, a) => (await (await as('rmo')).post(`${base(p)}/${a.id}/documents`).send({ clientRequestId: randomUUID(), kind: 'delivery' })).body.document;
 const save = async (p, a, d, content) => (await as('rmo')).put(`${base(p)}/${a.id}/documents/${d.id}`).send({ rev: d.rev, content });
 const sign = async (p, a, d) => (await as('drA')).post(`${base(p)}/${a.id}/documents/${d.id}/sign`).send({ rev: d.rev });

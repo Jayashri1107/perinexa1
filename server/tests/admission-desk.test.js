@@ -48,8 +48,8 @@ async function beds() {
   const res = await (await as('admin')).post('/api/beds/setup').send({ ward: 'General ward', names: ['G1', 'G2', 'G3'] });
   return Object.fromEntries(res.body.beds.map((b) => [b.name, b]));
 }
-const CHECKLIST = { idProof: 'aadhaar', idLast4: '1234', attendantName: 'Sample Husband', attendantRelation: 'Husband', attendantPhone: '98765 11111', payer: 'self', payerName: '', consentSigned: true };
-const admit = async (who, bed, p, body = {}) => (await as(who)).post(`/api/beds/${bed.id}/admit`).send({ clientRequestId: randomUUID(), patientId: p.id, reasonCode: 'labour', ...body });
+const CHECKLIST = { idProof: 'aadhaar', idLast4: '1234', attendantName: 'Sample Husband', attendantRelation: 'Husband', attendantPhone: '98765 11111', payer: 'cash', payerName: '', consentSigned: true };
+const admit = async (who, bed, p, body = {}) => (await as(who)).post(`/api/beds/${bed.id}/admit`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', patientId: p.id, reasonCode: 'labour', ...body });
 const rules = async (body) => (await as('admin')).put('/api/admission-desk/rules').send(body);
 
 describe('IPD numbers and the checklist', () => {

@@ -42,7 +42,7 @@ async function register(overrides = {}) {
   return res.body.patient;
 }
 const base = (p) => `/api/patients/${p.id}/admissions`;
-const admit = async (who, p, body = {}) => (await as(who)).post(base(p)).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-01T02:00:00.000Z', ward: 'Labour ward', bed: '3', reason: 'In labour, 39 weeks', ...body });
+const admit = async (who, p, body = {}) => (await as(who)).post(base(p)).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-01T02:00:00.000Z', ward: 'Labour ward', bed: '3', reason: 'In labour, 39 weeks', ...body });
 const newDoc = async (who, p, a, kind) => (await as(who)).post(`${base(p)}/${a.id}/documents`).send({ clientRequestId: randomUUID(), kind });
 const save = async (who, p, a, d, content) => (await as(who)).put(`${base(p)}/${a.id}/documents/${d.id}`).send({ rev: d.rev, content });
 const sign = async (who, p, a, d) => (await as(who)).post(`${base(p)}/${a.id}/documents/${d.id}/sign`).send({ rev: d.rev });

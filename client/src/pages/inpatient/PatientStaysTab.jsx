@@ -9,13 +9,14 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { fromLocalInput, toLocalInput } from './inpatientFormat.js';
 import { RequestAdmissionDialog } from '../beds/AdmissionDesk.jsx';
+import { AdmissionLabelFields, startStayType } from '../../components/AdmissionLabels.jsx';
 import { DischargeStepPill } from './StayDischarge.jsx';
 
 // The Stays tab on the patient record (Version 2, inpatients): every stay in hospital, newest first, and "Admit"
 // (the patient's doctor or an RMO). A stay opens on its own page: its documents and the nursing chart.
 
 function AdmitDialog({ patient, onDone, onCancel }) {
-  const [form, setForm] = useState({ admittedAt: toLocalInput(new Date().toISOString()), ward: '', bed: '', reason: '' });
+  const [form, setForm] = useState({ admittedAt: toLocalInput(new Date().toISOString()), ward: '', bed: '', reason: '', billingType: patient.payer?.type ?? '', stayType: startStayType(patient.careType) });
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
   const [saving, setSaving] = useState(false);
@@ -24,14 +25,19 @@ function AdmitDialog({ patient, onDone, onCancel }) {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const save = async (e) => {
     e.preventDefault();
-    if (form.reason.trim().length < 3) return setFields({ reason: 'Write the reason for admission' });
+    const missing = {
+      ...(form.reason.trim().length < 3 ? { reason: 'Write the reason for admission' } : {}),
+      ...(form.billingType ? {} : { billingType: 'Choose Insurance, Cash or Package' }),
+      ...(form.stayType ? {} : { stayType: 'Choose ANC, PNC, Delivered or Other' }),
+    };
+    if (Object.keys(missing).length) return setFields(missing);
     if (patient.careType !== 'newborn' && ['reason', 'ward', 'bed'].some((k) => mentionsFetalSex(form[k]))) return setFields({ reason: PCPNDT_MESSAGE });
     setSaving(true);
     setError(null);
     try {
       const res = await api(`/patients/${patient.id}/admissions`, {
         method: 'POST',
-        body: { clientRequestId: requestId.current, admittedAt: fromLocalInput(form.admittedAt) ?? '', ward: form.ward.trim(), bed: form.bed.trim(), reason: form.reason.trim() },
+        body: { clientRequestId: requestId.current, admittedAt: fromLocalInput(form.admittedAt) ?? '', ward: form.ward.trim(), bed: form.bed.trim(), reason: form.reason.trim(), billingType: form.billingType, stayType: form.stayType },
       });
       onDone(res.admission);
     } catch (err) {
@@ -59,6 +65,7 @@ function AdmitDialog({ patient, onDone, onCancel }) {
           <Field label="Admitted at" id="admit-at" error={fields.admittedAt}>
             <DateTimeInput id="admit-at" value={form.admittedAt} onChange={set('admittedAt')} />
           </Field>
+          <AdmissionLabelFields value={form} onChange={setForm} fields={fields} idPrefix="admit" />
         </div>
         <div className="row">
           <button type="submit" className="btn btn-primary" disabled={saving}>

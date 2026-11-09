@@ -102,7 +102,7 @@ describe('the monthly report', () => {
     expect(o.status).toBe('reported');
     // A caesarean delivery: a live baby of 2300 g
     const m = await register('drA', { fullName: 'Delivered Mother', pregnancy: { scanEdd: '2026-10-05' } });
-    const a = (await (await as('drA')).post(`/api/patients/${m.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-09-30T20:00:00.000Z', reason: 'In labour' })).body.admission;
+    const a = (await (await as('drA')).post(`/api/patients/${m.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-09-30T20:00:00.000Z', reason: 'In labour' })).body.admission;
     const d = (await (await as('drA')).post(`/api/patients/${m.id}/admissions/${a.id}/documents`).send({ clientRequestId: randomUUID(), kind: 'delivery' })).body.document;
     const saved = (
       await (await as('drA'))

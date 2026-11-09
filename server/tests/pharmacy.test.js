@@ -366,7 +366,7 @@ describe('issuing to admitted patients', () => {
     await purchase(sup, [{ medicineId: m.id, batch: 'OX1', expiry: '2027-06', qty: 20, ratePaise: 1000, mrpPaise: 2100 }]);
     const p = await register('Ward Mother');
     expect((await ph('post', '/invoices', { kind: 'issue', patientId: p.id, lines: [{ medicineId: m.id, qty: 2 }] })).body.error.message).toMatch(/not admitted/);
-    await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour room', reason: 'In labour' });
+    await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour room', reason: 'In labour' });
     expect((await ph('get', '/inpatients')).body.inpatients.map((x) => x.patient.fullName)).toEqual(['Ward Mother']);
     const res = await ph('post', '/invoices', { kind: 'issue', patientId: p.id, lines: [{ medicineId: m.id, qty: 4 }] });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
@@ -384,7 +384,7 @@ describe('issuing to admitted patients', () => {
     const m = await medicine({ name: 'Iron Sample 100', hsn: '3004' });
     await purchase(sup, [{ medicineId: m.id, batch: 'IR1', expiry: '2028-06', qty: 20, ratePaise: 100, mrpPaise: 300 }]);
     const p = await register('Admitted Mother');
-    await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour room', reason: 'In labour' });
+    await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour room', reason: 'In labour' });
     const people = async (query) => (await (await as('pharm')).get('/api/pharmacy/invoices/people').query(query)).body.people;
     expect(await people({ type: 'ipd' })).toEqual([expect.objectContaining({ key: p.id, type: 'ipd', name: 'Admitted Mother', billCount: 0 })]);
     expect(await people({ type: 'external' })).toEqual([]);
@@ -511,7 +511,7 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     const seen = await register('Sample Opd Mother');
     await (await as('drA')).post(`/api/patients/${seen.id}/visits`).send({ clientRequestId: randomUUID() });
     const stayed = await register('Sample Ipd Mother');
-    await (await as('drA')).post(`/api/patients/${stayed.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour room', reason: 'In labour' });
+    await (await as('drA')).post(`/api/patients/${stayed.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour room', reason: 'In labour' });
     const quiet = await register('Sample Registered Only');
     const hidden = await register('Sample Sensitive Mother');
     await Patient.updateOne({ tenantId: hospital._id, _id: hidden.id }, { $set: { sensitive: true } });
