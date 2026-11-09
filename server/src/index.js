@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { createApp } from './app.js';
 import { expireAllDue } from './abdm/fetchRecords.js';
 import { ensureStandardTemplates } from './careplans/templatesService.js';
+import { migrateAdmissionLabels } from './inpatient/admissionLabels.js';
 import { convertNextVisits } from './appointments/appointmentService.js';
 import { Appointment } from './models/Appointment.js';
 import { CarePlanTemplate } from './models/CarePlanTemplate.js';
@@ -54,6 +55,19 @@ try {
   if (made) console.log(`Appointments: ${made} next-visit date(s) turned into appointments.`);
 } catch (err) {
   console.error('\n⚠️  WARNING: could not prepare appointment booking at startup. Details:', err.message, '\n');
+}
+
+// The billing types (Insurance, Cash, Package) and the admission types of old stays (owner, 9 Nov 2026) – once;
+// running again finds nothing to do (inpatient/admissionLabels.js).
+try {
+  const tenants = await Tenant.find({}, { _id: 1 }).lean();
+  let moved = 0;
+  for (const t of tenants) moved += await migrateAdmissionLabels(t._id);
+  if (moved) console.log(`Billing and admission types: ${moved} older record(s) moved to the new types.`);
+} catch (err) {
+  console.error('
+⚠️  WARNING: could not move the older billing and admission types at startup. Details:', err.message, '
+');
 }
 
 const server = createApp().listen(config.API_PORT, () => {

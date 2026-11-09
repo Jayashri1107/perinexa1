@@ -418,7 +418,7 @@ describe('batches, files, corrections and the trail', () => {
     ok(await settings({}));
     await prices({ bed: 100000, consult_new: 50000 });
     const mother = await register('Stay Mother');
-    const admitted = ok(await (await as('drA')).post(`/api/patients/${mother.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'general', reason: 'Labour pains' }), 201).admission;
+    const admitted = ok(await (await as('drA')).post(`/api/patients/${mother.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'general', reason: 'Labour pains' }), 201).admission;
     await startVisit(mother);
     const [b] = await billsOf(mother);
     expect(b).toMatchObject({ kind: 'ipd' });
@@ -469,7 +469,7 @@ describe('batches, files, corrections and the trail', () => {
     ok(await settings({}));
     await prices({ bed: 100000, consult_new: 50000 });
     const mother = await register('Cancelled Stay Mother');
-    const admitted = ok(await (await as('drA')).post(`/api/patients/${mother.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'general', reason: 'Observation' }), 201).admission;
+    const admitted = ok(await (await as('drA')).post(`/api/patients/${mother.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'general', reason: 'Observation' }), 201).admission;
     await startVisit(mother);
     const [b] = await billsOf(mother);
     await pay(b.id, { mode: 'cash', amountPaise: 300000 }); // R-000001, a deposit

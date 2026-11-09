@@ -38,7 +38,7 @@ const BASE = { gestationWeeks: 39, labourOnset: 'spontaneous', parity: 'nullipar
 async function note(content, { sign = true } = {}) {
   const p = (await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'antenatal', fullName: 'Birth Mother', assignedDoctor: people.drA._id.toString(), pregnancy: { scanEdd: '2026-11-25' } }))).body.patient;
   const base = `/api/patients/${p.id}/admissions`;
-  const a = (await (await as('rmo')).post(base).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-18T01:00:00.000Z', ward: 'Labour', bed: '1', reason: 'In labour' })).body.admission;
+  const a = (await (await as('rmo')).post(base).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-11-18T01:00:00.000Z', ward: 'Labour', bed: '1', reason: 'In labour' })).body.admission;
   const d = (await (await as('rmo')).post(`${base}/${a.id}/documents`).send({ clientRequestId: randomUUID(), kind: 'delivery' })).body.document;
   const s = (await (await as('rmo')).put(`${base}/${a.id}/documents/${d.id}`).send({ rev: d.rev, content })).body.document;
   if (sign) {

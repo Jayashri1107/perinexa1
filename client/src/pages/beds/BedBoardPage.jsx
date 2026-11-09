@@ -17,6 +17,7 @@ import { AdmitRegister } from './AdmitRegister.jsx';
 import { REASONS, freeBeds, nowLocal } from './bedFormat.js';
 import { ChecklistDialog, ChecklistFields, EMPTY_CHECKLIST, RequestsSection, StayPaper, ToClearSection, checklistFromPatient } from './AdmissionDesk.jsx';
 import { ExportButton } from '../../components/ExportButton.jsx';
+import { AdmissionLabelFields, startStayType } from '../../components/AdmissionLabels.jsx';
 
 // The bed board (owner, 13 Oct 2026 – docs/RECEPTION_ADMISSION_PLAN.md): each ward's beds, free or occupied, with who
 // is in each bed, her doctor, since when and – as the server allows – the reason. Reception, doctors and RMOs admit a
@@ -379,8 +380,12 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
   const chosenDoctor = doctorId ?? (own && offered.some((d) => d.id === own.id) ? own.id : '');
   // The checklist, first filled from her record (ID proof, payer, emergency contact); her open request, if any
   const record = useFetch(patient ? `/patients/${patient.id}` : null);
+  // Asked at every admission (owner, 9 Nov 2026): billing type – from her record to start with – and admission type
+  const [labels, setLabels] = useState(null);
+  const shownLabels = labels ?? { billingType: record.data?.patient?.payer?.type ?? '', stayType: startStayType(record.data?.patient?.careType ?? patient?.careType) };
   const [checklist, setChecklist] = useState(null);
-  const shownChecklist = checklist ?? (record.data?.patient ? checklistFromPatient(record.data.patient) : EMPTY_CHECKLIST);
+  // The checklist's "who pays" is the billing type above
+  const shownChecklist = { ...(checklist ?? (record.data?.patient ? checklistFromPatient(record.data.patient) : EMPTY_CHECKLIST)), payer: shownLabels.billingType };
   // Optional (5 Nov 2026): filled in only for the patient who needs it, unless the hospital's rule requires it
   const rules = useFetch('/admission-desk/rules');
   const [wantChecklist, setWantChecklist] = useState(false);
@@ -396,6 +401,12 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
   const blocked = patient && (patient.duplicateOf || patient.closed);
 
   const send = async () => {
+    const missing = { ...(shownLabels.billingType ? {} : { billingType: 'Choose Insurance, Cash or Package' }), ...(shownLabels.stayType ? {} : { stayType: 'Choose ANC, PNC, Delivered or Other' }) };
+    if (Object.keys(missing).length) {
+      setError('Please check the highlighted fields.');
+      setFields(missing);
+      return;
+    }
     setBusy(true);
     setError(null);
     setFields({});
@@ -406,6 +417,8 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
         reasonCode: form.reasonCode,
         reasonNote: form.reasonNote.trim(),
         admissionType: form.admissionType,
+        billingType: shownLabels.billingType,
+        stayType: shownLabels.stayType,
         mlc: form.mlc,
         mlcPolice: form.mlc ? form.mlcPolice.trim() : '',
         mlcNo: form.mlc ? form.mlcNo.trim() : '',
@@ -492,13 +505,14 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
             <Field label="Admitted at" id="bed-at" error={fields.admittedAt}>
               <DateTimeInput id="bed-at" value={form.admittedAt} onChange={set('admittedAt')} max={nowLocal()} />
             </Field>
-            <Field label="Admission type" id="bed-type" error={fields.admissionType}>
+            <Field label="Planned or emergency" id="bed-type" error={fields.admissionType}>
               <select id="bed-type" value={form.admissionType} onChange={set('admissionType')}>
                 <option value="planned">Planned</option>
                 <option value="emergency">Emergency</option>
                 <option value="day_care">Day care</option>
               </select>
             </Field>
+            <AdmissionLabelFields value={shownLabels} onChange={setLabels} fields={fields} idPrefix="bed" />
             {departments.length > 0 && (
               <Field label="Department" id="bed-dept">
                 <select
@@ -562,7 +576,7 @@ export function AdmitDialog({ bed: fixedBed = null, patient: preset = null, requ
               pays, consent) – optional, and it can be done later from her bed
             </label>
           )}
-          {showChecklist && <ChecklistFields value={shownChecklist} onChange={setChecklist} fields={fields} idPrefix="bed-ck" />}
+          {showChecklist && <ChecklistFields value={shownChecklist} onChange={setChecklist} fields={fields} idPrefix="bed-ck" payerAsked />}
           {form.admissionType === 'emergency' && showChecklist && <p className="hint">An emergency is admitted at once: anything missing in the checklist can be completed later (Checklist on her bed).</p>}
           <p className="hint">Her bill for the stay opens with this ward's bed charge. The RMO writes the admission notes.</p>
         </>

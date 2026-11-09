@@ -67,7 +67,7 @@ describe('admitting with the hospital form', () => {
     expect(setup.body.beds[0]).toMatchObject({ floor: '2nd floor', ward: 'Deluxe AC', name: '204' });
     const [b204] = setup.body.beds;
     const p = await register();
-    const admit = (body) => as('reception').then((s) => s.post(`/api/beds/${b204.id}/admit`).send({ clientRequestId: randomUUID(), patientId: p.id, reasonCode: 'labour', admissionType: 'emergency', ...body }));
+    const admit = (body) => as('reception').then((s) => s.post(`/api/beds/${b204.id}/admit`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', patientId: p.id, reasonCode: 'labour', admissionType: 'emergency', ...body }));
 
     // A doctor not in the department chosen is refused
     let res = await admit({ department: 'Obstetrics & Gynaecology', doctorId: people.drB._id.toString() });
@@ -105,7 +105,7 @@ describe('admitting with the hospital form', () => {
   it('without a doctor chosen, her assigned doctor is the doctor in charge', async () => {
     const [bed] = (await (await as('admin')).post('/api/beds/setup').send({ ward: 'General ward', names: ['G1'] })).body.beds;
     const p = await register('Default Mother');
-    const res = await (await as('reception')).post(`/api/beds/${bed.id}/admit`).send({ clientRequestId: randomUUID(), patientId: p.id, reasonCode: 'labour', admissionType: 'emergency' });
+    const res = await (await as('reception')).post(`/api/beds/${bed.id}/admit`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', patientId: p.id, reasonCode: 'labour', admissionType: 'emergency' });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     const papers = (await (await as('reception')).get(`/api/admission-desk/stays/${res.body.admission.id}/papers`)).body.papers;
     expect(papers.patient.doctorName).toBe('Sample drA');

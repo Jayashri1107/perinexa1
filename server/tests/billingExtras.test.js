@@ -448,7 +448,7 @@ describe('the claim form and the PM-JAY claim sheet', () => {
   it("a stay's form has the dates of admission and discharge – never the ward or the reason for admission; a baby's form has the date of birth", async () => {
     await prices({ bed: 100000 });
     const p = await register('Stay Mother', { careType: 'antenatal' });
-    const admitted = await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour ward', reason: 'Labour pains at term' });
+    const admitted = await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour ward', reason: 'Labour pains at term' });
     expect(admitted.status, JSON.stringify(admitted.body)).toBe(201);
     const [b] = await billsOf(p);
     const res = await (await as('reception')).get(`/api/billing/bills/${b.id}/claim-form`);

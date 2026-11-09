@@ -13,7 +13,10 @@ export const ID_PROOF_TYPES = ['aadhaar', 'voter_id', 'pan', 'driving_licence', 
 
 // Who pays (owner, 14 Oct 2026): herself, an insurance company or TPA, a government scheme (e.g. PM-JAY, JSY), or an
 // employer.
-export const PAYER_TYPES = ['self', 'insurance', 'govt_scheme', 'corporate'];
+// Who pays – the billing type (owner, 9 Nov 2026 – docs/ADMISSION_COLOURS_PLAN.md): only Insurance, Cash or Package. A
+// government scheme or a company counts as Insurance; its name goes in the name field. Older records were moved
+// (inpatient/admissionLabels.js migrateAdmissionLabels).
+export const PAYER_TYPES = ['insurance', 'cash', 'package'];
 
 // What kind of OBGY care the patient is registered for. New types go at the END (analytics cell codes and
 // list links follow this order; the website's menu has its own order).

@@ -74,7 +74,7 @@ async function makeBaby({ birthAt = ago(120), weight = 2100, mother = null, name
   expect(r.status, JSON.stringify(r.body)).toBe(201);
   return r.body.patient;
 }
-const admitBody = (baby, over = {}) => ({ clientRequestId: randomUUID(), patientId: baby.id, unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample District Hospital', admittedAt: ago(30), bedId: beds.garkheda[0], admittingDoctorId: people.drA._id.toString(), weightGrams: 2100, gestationWeeks: 35, gestationDays: 2, temperatureC: 36.8, reasonPrimary: 'observation_at_risk', ...over });
+const admitBody = (baby, over = {}) => ({ clientRequestId: randomUUID(), billingType: 'cash', patientId: baby.id, unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample District Hospital', admittedAt: ago(30), bedId: beds.garkheda[0], admittingDoctorId: people.drA._id.toString(), weightGrams: 2100, gestationWeeks: 35, gestationDays: 2, temperatureC: 36.8, reasonPrimary: 'observation_at_risk', ...over });
 const admit = async (who, baby, over) => (await as(who)).post('/api/newborn-care/nicu').send(admitBody(baby, over));
 const complete = () => ({ respiratorySupport: 'none', exam: Object.fromEntries(Object.keys(EXAM_SYSTEMS).map((k) => [k, { status: 'normal', note: '' }])) });
 
@@ -95,7 +95,7 @@ describe('Build 13 acceptance tests', () => {
   it('AT1: an inborn admission from a delivery record pre-fills the mother’s history, Apgar, resuscitation and cord data', async () => {
     const mother = (await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'antenatal', fullName: 'Nicu Mother', assignedDoctor: people.drA._id.toString(), pregnancy: { scanEdd: '2026-12-20' }, obstetric: { gravida: 2, para: 1, living: 1, abortions: 0 }, medical: { bloodGroup: 'B+', allergies: 'Penicillin (sample)', conditions: ['diabetes'], conditionsReviewed: true } }))).body.patient;
     const base = `/api/patients/${mother.id}/admissions`;
-    const stay = (await (await as('rmo')).post(base).send({ clientRequestId: randomUUID(), admittedAt: ago(600), ward: 'Labour', bed: '1', reason: 'In labour' })).body.admission;
+    const stay = (await (await as('rmo')).post(base).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: ago(600), ward: 'Labour', bed: '1', reason: 'In labour' })).body.admission;
     const d = (await (await as('rmo')).post(`${base}/${stay.id}/documents`).send({ clientRequestId: randomUUID(), kind: 'delivery' })).body.document;
     const content = { gestationWeeks: 34, labourOnset: 'spontaneous', parity: 'multipara', previousCaesarean: 'no', presentation: 'cephalic', bloodLossMl: 300, deliveredAt: ago(180), mode: 'normal', babies: [{ outcome: 'live', sex: 'female', weightGrams: 2100, apgar1: 5, apgar5: 7, breastfedWithinHour: 'no', nicu: 'yes' }] };
     const s = await (await as('rmo')).put(`${base}/${stay.id}/documents/${d.id}`).send({ rev: d.rev, content });
@@ -355,7 +355,7 @@ describe('reception admits at the desk (header only, 9 Nov 2026)', () => {
     const opts = await desk.get(`/api/newborn-care/nicu/options?patientId=${baby.id}`);
     expect(opts.status, JSON.stringify(opts.body)).toBe(200);
     expect(opts.body).toMatchObject({ access: { desk: true }, prefill: { fields: [], gestationWeeks: null, weightGrams: null, allergyAlert: '' } });
-    const body = { clientRequestId: randomUUID(), patientId: baby.id, unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample District Hospital', admittedAt: ago(10), bedId: beds.garkheda[0] };
+    const body = { clientRequestId: randomUUID(), billingType: 'cash', patientId: baby.id, unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample District Hospital', admittedAt: ago(10), bedId: beds.garkheda[0] };
     expect((await desk.post('/api/newborn-care/nicu').send({ ...body, weightGrams: 2100 })).status).toBe(400); // no clinical field at the desk
     expect((await desk.post('/api/newborn-care/nicu').send(body)).body.error.fields.admittingDoctorId).toMatch(/admitting doctor/);
     const a = await desk.post('/api/newborn-care/nicu').send({ ...body, admittingDoctorId: people.drA._id.toString() });
@@ -389,7 +389,7 @@ describe('reception admits at the desk (header only, 9 Nov 2026)', () => {
     const baby = await makeBaby({ name: 'Baby Fill' });
     const checks = Object.fromEntries(BIRTH_CHECKS.map((c) => [c.key, c.key === 'idBand' ? 'no' : 'yes']));
     expect((await (await as('nurse')).post('/api/newborn-care/birth').send({ patientId: baby.id, criedAtBirth: 'no', resuscitation: 'bagMask', cordClamping: 'delayed', checks, temperatureC: 36.2, note: 'Band put on in the ward (sample)' })).status).toBe(201);
-    const a = (await (await as('reception')).post('/api/newborn-care/nicu').send({ clientRequestId: randomUUID(), patientId: baby.id, unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample clinic', admittedAt: ago(10), bedId: beds.garkheda[1], admittingDoctorId: people.drA._id.toString() })).body.admission;
+    const a = (await (await as('reception')).post('/api/newborn-care/nicu').send({ clientRequestId: randomUUID(), billingType: 'cash', patientId: baby.id, unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample clinic', admittedAt: ago(10), bedId: beds.garkheda[1], admittingDoctorId: people.drA._id.toString() })).body.admission;
     const nurse = await as('nurse');
     const m = (await nurse.get(`/api/newborn-care?patientId=${baby.id}`)).body.nicu[0];
     expect(m.maternal).toBe(null);
@@ -404,7 +404,7 @@ describe('reception admits at the desk (header only, 9 Nov 2026)', () => {
 });
 
 describe('a new baby registered as B/O <mother> and admitted in one step (9 Nov 2026)', () => {
-  const nicuPart = (over = {}) => ({ clientRequestId: randomUUID(), unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample Rural Hospital', admittedAt: ago(20), bedId: beds.garkheda[0], admittingDoctorId: people.drA._id.toString(), birthAt: ago(300), ...over });
+  const nicuPart = (over = {}) => ({ clientRequestId: randomUUID(), billingType: 'insurance', unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample Rural Hospital', admittedAt: ago(20), bedId: beds.garkheda[0], admittingDoctorId: people.drA._id.toString(), birthAt: ago(300), ...over });
   it('reception registers B/O <mother> and admits; the checks run before any record is made; possible duplicates are shown', async () => {
     const desk = await as('reception');
     expect((await desk.get('/api/newborn-care/nicu/new-baby/options')).body.units.map((u) => u.key)).toEqual(['garkheda', 'adalat_road', 'waluj']);

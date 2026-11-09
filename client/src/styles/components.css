@@ -145,6 +145,7 @@ input[type='date'], input[type='datetime-local'] { font-variant-numeric: tabular
 .pill-stable, .badge-active, .risk-low { background: var(--status-stable-bg); color: var(--status-stable-fg); }
 .pill-due, .badge-info { background: var(--status-due-bg); color: var(--status-due-fg); }
 .pill-admitted { background: var(--status-admitted-bg); color: var(--status-admitted-fg); }
+.pill-teal { background: var(--teal-100); color: var(--teal-700); } /* the ANC admission type (components/AdmissionLabels.jsx) */
 .pill-watch, .badge-warn, .badge-draft, .risk-moderate, .risk-incomplete { background: var(--status-watch-bg); color: var(--status-watch-fg); }
 .pill-high, .badge-danger, .risk-high { background: var(--status-high-bg); color: var(--status-high-fg); }
 .pill-inactive, .badge-inactive, .badge-muted { background: var(--status-inactive-bg); color: var(--status-inactive-fg); }

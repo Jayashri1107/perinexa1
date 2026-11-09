@@ -80,7 +80,7 @@ describe("a baby's care", () => {
     // Build 13: the admission is NEO-F-03 at a unit with NICU beds (set by the hospital admin)
     const bed = await Bed.create({ tenantId: hospital._id, ward: 'SNCU', name: 'Cot 1' });
     expect((await (await as('admin')).put('/api/newborn-care/settings').send({ beds: [{ bedId: String(bed._id), nicu: { unit: 'sncu', level: 'step_down', kind: 'cot' } }] })).status).toBe(200);
-    const admit = async (over = {}) => (await as('nurse')).post('/api/newborn-care/nicu').send({ clientRequestId: randomUUID(), patientId: b.id, unit: 'sncu', source: 'transfer_other', transferFromName: 'Sample clinic', admittedAt: '2026-11-09T07:00:00.000Z', bedId: String(bed._id), admittingDoctorId: people.drA._id.toString(), reasonPrimary: 'lbw_feeding', weightGrams: 2100, temperatureC: 35.9, gestationWeeks: 35, ...over });
+    const admit = async (over = {}) => (await as('nurse')).post('/api/newborn-care/nicu').send({ clientRequestId: randomUUID(), billingType: 'cash', patientId: b.id, unit: 'sncu', source: 'transfer_other', transferFromName: 'Sample clinic', admittedAt: '2026-11-09T07:00:00.000Z', bedId: String(bed._id), admittingDoctorId: people.drA._id.toString(), reasonPrimary: 'lbw_feeding', weightGrams: 2100, temperatureC: 35.9, gestationWeeks: 35, ...over });
     expect((await admit({ reasonPrimary: undefined })).body.error.fields.reasonPrimary).toMatch(/reason/);
     const a = await admit();
     expect(a.status, JSON.stringify(a.body)).toBe(201);

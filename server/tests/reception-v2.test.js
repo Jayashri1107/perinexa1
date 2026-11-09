@@ -130,7 +130,7 @@ describe('the charges a hospital system bills', () => {
     expect(withScan.lines.find((l) => l.ref?.kind === 'scan')).toMatchObject({ amountPaise: 120000 });
 
     // Admitted two days ago: admission charge and 3 days of nursing with the bed
-    const stay = await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-09-26T05:00:00.000Z', reason: 'Observation (demo)' });
+    const stay = await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-09-26T05:00:00.000Z', reason: 'Observation (demo)' });
     expect(stay.status, JSON.stringify(stay.body)).toBe(201);
     const bills = (await (await as('reception')).get(`/api/billing/bills?patientId=${p.id}`)).body;
     const ipd = (bills.bills ?? bills).find?.((b) => b.kind === 'ipd') ?? null;

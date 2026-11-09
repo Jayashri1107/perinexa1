@@ -262,6 +262,7 @@ export const AUDIT_LABELS = {
   ADMISSION_VIEWED: 'Stay opened',
   ADMISSION_CREATED: 'Patient admitted',
   ADMISSION_UPDATED: 'Ward or bed changed',
+  ADMISSION_STAY_TYPE_CHANGED: 'Admission type changed (ANC, PNC, Delivered, Other)',
   ADMISSION_BED_CHANGED: 'Moved to another bed',
   BEDS_VIEWED: 'Bed board viewed',
   DISCHARGES_VIEWED: 'Discharges viewed (Today)',
@@ -668,6 +669,7 @@ export const AUDIT_TONES = {
   ADMISSION_VIEWED: 'patient',
   ADMISSION_CREATED: 'patient',
   ADMISSION_UPDATED: 'patient',
+  ADMISSION_STAY_TYPE_CHANGED: 'patient',
   ADMISSION_BED_CHANGED: 'patient',
   BEDS_VIEWED: 'patient',
   DISCHARGES_VIEWED: 'patient',
@@ -1315,6 +1317,7 @@ export function describeAudit(entry) {
     case 'ADMISSION_VIEWED':
     case 'ADMISSION_CREATED':
     case 'ADMISSION_UPDATED':
+    case 'ADMISSION_STAY_TYPE_CHANGED':
     case 'ADMISSION_BED_CHANGED':
     case 'PATIENT_DISCHARGED':
     case 'DOCUMENT_CREATED':

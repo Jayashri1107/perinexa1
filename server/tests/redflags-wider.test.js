@@ -537,7 +537,7 @@ async function labOrder(p, tests) {
 const putResults = async (who, o, tests, body = {}) => (await as(who)).put(lab(`${o.id}/results`)).send({ rev: o.rev, tests, ...body });
 const cbc = (hb) => [{ key: 'cbc', values: [{ key: 'hb', value: hb }, { key: 'tlc', value: '8000' }, { key: 'platelets', value: '2.1' }] }];
 const admit = async (p, who = 'drA') => {
-  const res = await (await as(who)).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-04T01:00:00.000Z', ward: 'Ward 1', bed: '4', reason: 'For observation' });
+  const res = await (await as(who)).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-04T01:00:00.000Z', ward: 'Ward 1', bed: '4', reason: 'For observation' });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body.admission;
 };

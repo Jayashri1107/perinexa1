@@ -8,6 +8,9 @@ import { DISCHARGE_TYPES } from '../inpatient/dischargeTypes.js';
 // (models/NursingEntry.js) belong to it. One stay at a time per patient. Never deleted.
 
 const { ObjectId } = mongoose.Schema.Types;
+// The admission type (owner, 9 Nov 2026 – docs/ADMISSION_COLOURS_PLAN.md): chosen at admission, changed by hand
+// during the stay (e.g. ANC → Delivered after the delivery).
+export const STAY_TYPES = ['anc', 'pnc', 'delivered', 'other'];
 const byFields = { by: { type: ObjectId, ref: 'User' }, byName: String, at: Date };
 // The admission checklist at the desk (owner, 17 Oct 2026 – docs/ADMISSION_DESK_PLAN.md). The ID proof's number is
 // never kept: only its type and last 4 digits. null on older stays.
@@ -43,6 +46,11 @@ const admissionSchema = new mongoose.Schema(
     // Planned, emergency or day care, and whether it is a medico-legal case (owner, 14 Oct 2026 – as other hospitals'
     // admission and insurance forms ask). Not set on older stays.
     admissionType: { type: String, enum: ['planned', 'emergency', 'day_care', null], default: null },
+    // The billing type (Insurance, Cash or Package) and the admission type (ANC, PNC, Delivered, Other), asked at every
+    // admission since 9 Nov 2026 (inpatient/admissionLabels.js). Older stays were given them from the record.
+    billingType: { type: String, enum: [...PAYER_TYPES, ''], default: '' },
+    stayType: { type: String, enum: [...STAY_TYPES, null], default: null },
+    stayTypeChanges: [{ _id: false, from: String, to: String, by: { type: ObjectId, ref: 'User' }, byName: String, at: Date }],
     mlc: { type: Boolean, default: false },
     // HIMS-style admission (owner, 17 Oct 2026 – docs/ADMISSION_DESK_PLAN.md): the IPD number (IP-2026-000001), the
     // checklist, the police station of a medico-legal case, the doctor's request it came from, and the clearance for

@@ -42,7 +42,7 @@ export function checklistMissing(c) {
   if (!c?.attendantName?.trim()) m['checklist.attendantName'] = "Write the attendant's name.";
   if ((c?.attendantPhone ?? '').replace(/\D/g, '').length < 10) m['checklist.attendantPhone'] = "Write the attendant's phone number.";
   if (!c?.payer) m['checklist.payer'] = 'Choose who pays.';
-  else if (['insurance', 'govt_scheme', 'corporate'].includes(c.payer) && !c.payerName?.trim()) m['checklist.payerName'] = 'Write the insurer, scheme or employer.';
+  else if (c.payer === 'insurance' && !c.payerName?.trim()) m['checklist.payerName'] = 'Write the insurer, scheme or employer.';
   if (!c?.consentSigned) m['checklist.consentSigned'] = 'The general consent for admission must be signed.';
   return m;
 }

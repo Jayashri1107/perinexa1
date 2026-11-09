@@ -54,7 +54,7 @@ const clock = (iso) => {
 };
 async function admitted(careType = 'postnatal', admittedAt = '2026-11-10T01:00:00.000Z') {
   const p = (await (await as('drA')).post('/api/patients').send(samplePatient({ careType, fullName: 'Meows Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
-  const a = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt, ward: 'Postnatal ward', bed: '3', reason: 'After delivery' })).body.admission;
+  const a = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt, ward: 'Postnatal ward', bed: '3', reason: 'After delivery' })).body.admission;
   return { p, a };
 }
 const record = async (who, p, a, over = {}) => (await as(who)).post('/api/meows').send({ clientRequestId: randomUUID(), patientId: p.id, admissionId: a.id, at: '2026-11-10T05:30:00.000Z', ...over });

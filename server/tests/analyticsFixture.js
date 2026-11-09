@@ -122,7 +122,7 @@ export async function buildFixture() {
   // A stay in hospital, a delivery note written (and, with `confirm`, confirmed by that doctor), a note marked entered
   // in error, a death recorded (and undone) – through the inpatient and death routes.
   const admit = (key, who) => async () => {
-    const res = await (await as(who)).post(`/api/patients/${ids[key]}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour ward', bed: '1', reason: 'In labour' });
+    const res = await (await as(who)).post(`/api/patients/${ids[key]}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'Labour ward', bed: '1', reason: 'In labour' });
     stays[key] = check(res, 201, `admitting ${key}`).admission.id;
   };
   const docs = (key) => `/api/patients/${ids[key]}/admissions/${stays[key]}/documents`;

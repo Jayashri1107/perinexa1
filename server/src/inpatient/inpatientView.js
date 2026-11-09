@@ -15,6 +15,8 @@ export const admissionView = (a, { medical = false, bill = undefined } = {}) => 
   bed: a.bed ?? '',
   reason: a.reason ?? '',
   admissionType: a.admissionType ?? null,
+  stayType: a.stayType ?? null, // ANC, PNC, Delivered, Other (inpatient/admissionLabels.js); the billing type is added for doctors and RMOs only
+  department: a.department ?? '',
   mlc: Boolean(a.mlc),
   ipdNo: a.ipdNo ?? null, // docs/ADMISSION_DESK_PLAN.md
   checklistIncomplete: Boolean(a.checklist) && !a.checklist.complete,

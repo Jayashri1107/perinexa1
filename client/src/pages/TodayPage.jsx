@@ -20,6 +20,7 @@ import { BillingToday } from './billing/BillingToday.jsx';
 import { PharmacyActions, PharmacyToday } from './pharmacy/PharmacyToday.jsx';
 import { DailyRegister } from './pharmacy/RegisterPage.jsx';
 import { DoctorFollowUps } from './followups/DoctorFollowUps.jsx';
+import { BillingLabel, StayTypeLabel, groupByDepartment } from '../components/AdmissionLabels.jsx';
 import { HandoverList, VITALS_DUE_HOURS, WardHome, WardToday, vitalsDue } from './inpatient/NurseToday.jsx';
 import { LabHome } from './lab/LabHome.jsx';
 import { timeLabel } from './appointments/appointmentFormat.js';
@@ -1040,10 +1041,18 @@ function RoleToday({ roles, lensBar = null }) {
         )}
         {!wardHome && inpatients.data && inpatients.data.admitted.length > 0 && (
           <Section id="td-inpatients" icon={BedDouble} title="In hospital" count={inpatients.data.admitted.length} empty="">
-            <Paged rows={inpatients.data.admitted} label="patients" {...LIST_PAGES}>
+            {/* Grouped under the department, then by admission type, with the colour labels (owner, 9 Nov 2026) */}
+            <Paged rows={groupByDepartment(inpatients.data.admitted).flatMap((g) => g.stays)} label="patients" {...LIST_PAGES}>
               {(page) => (
                 <ul className="wl-list">
-                  {page.map((s) => (
+                  {page.flatMap((s, i) => [
+                    ...(i === 0 || (page[i - 1].department || '') !== (s.department || '')
+                      ? [
+                          <li key={`dept-${s.department || 'none'}-${s.admissionId}`} className="td-dept-head">
+                            <h3>{s.department || 'No department'}</h3>
+                          </li>,
+                        ]
+                      : []),
                     <PatientRow
                       key={s.admissionId}
                       patient={s.patient}
@@ -1051,6 +1060,8 @@ function RoleToday({ roles, lensBar = null }) {
                       openLabel="Open the stay"
                       marker={
                         <>
+                          <StayTypeLabel type={s.stayType} />
+                          {s.billingType && <BillingLabel type={s.billingType} />}
                           <FlagCountPill flags={s.redFlags} />
                           {/* Seen without opening the row (owner, 13 Oct 2026) */}
                           {vitalsDue(s) && (
@@ -1086,8 +1097,8 @@ function RoleToday({ roles, lensBar = null }) {
                       {s.redFlags?.length > 0 && <RedFlagItems flags={s.redFlags} brief patientId={s.patient.id} />}
                       {/* No rule for her type of care: say that nothing was checked, never leave it looking like "no red flags" */}
                       {s.redFlagsChecked === false && <p className="hint">{notCheckedCareText(s.redFlagsCareType ?? s.patient.careType, s.redFlagsWorkupOnly)}</p>}
-                    </PatientRow>
-                  ))}
+                    </PatientRow>,
+                  ])}
                 </ul>
               )}
             </Paged>
