@@ -44,5 +44,6 @@ export function useNewbornTabs() {
   const membership = useAuth()?.activeMembership;
   const tabs = [{ label: 'Newborn follow-up', to: '/newborn-follow-up', end: true }];
   if (membership && hasRole(membership, 'doctor', 'rmo', 'nurse')) tabs.push({ label: 'NICU register', to: '/nicu-register', end: true }, { label: 'NICU board', to: '/nicu-board', end: true });
+  if (membership && hasRole(membership, 'doctor', 'rmo')) tabs.push({ label: 'NICU – new baby', to: '/nicu-admit', end: true });
   return tabs;
 }

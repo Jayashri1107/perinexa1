@@ -291,6 +291,14 @@ bell, no SMS service) – not part of NEO-F-03 (no dose and no Director alert on
   reason (§3)" until a nurse or doctor does; the admitting doctor and the nurses get a notification. §1 is not
   pre-filled at the desk (reception may not read the mother's record): **Fill in from the linked records** in §1 fills
   the empty fields later (also usable any time before signing). Audit: NICU_DESK_VIEWED; NICU_ADMITTED with atDesk.
+- **A new baby admitted in one step, named B/O (developer's request, 9 Nov 2026).** Beds → **NICU – new baby** (reception,
+  RMOs) or Newborn follow-up → **NICU – new baby** (doctors, RMOs): for a baby with no record yet (born elsewhere, or not
+  registered) – the mother (her record here, or only her name, phone and address), the time of birth, sex and weight,
+  and the NICU place. Every NICU check runs first, so no record is made for a baby who cannot be admitted (a full unit,
+  no free bed …); then the usual "may already be registered" check. The record is "B/O <mother's name>", linked to her
+  record when she has one, with the admitting doctor as the baby's doctor; the admission is the desk's (header only).
+  Babies made from the delivery note are now also "B/O <mother's name>" – "(Twin 1)", "(Triplet 2)" for more than one –
+  instead of "Baby of …" (records made before keep their names).
 - **Gaps – stored as fields or flags, not built:**
   - No weight-centile tables (Fenton, INTERGROWTH-21st, WHO) in Perinexa: the chart is chosen (Fenton under 37 weeks,
     WHO from 37 by default) and the centile typed; SGA / AGA / LGA come from the typed centile. Not invented.
@@ -416,8 +424,8 @@ see the visits).
 ## Group C – the baby's record made from the delivery (PX-X-14), 7 Nov 2026
 Route `/api/delivery-babies`; on a signed delivery note, the card **The babies' records** (was: "register by hand").
 - For each live-born baby on the note a doctor or RMO presses **Make the baby's record**: the baby is registered as by
-  hand (patient number, checks, registration fee, audit) – "Baby of <mother>" or "First / Second Baby of <mother>" for
-  more than one – linked to the mother, with the time of birth, weight and sex from the note (written after the birth).
+  hand (patient number, checks, registration fee, audit) – "B/O <mother>", or "B/O <mother> (Twin 1)" for more than one
+  (9 Nov 2026; before: "Baby of <mother>") – linked to the mother, with the time of birth, weight and sex from the note (written after the birth).
   The record remembers the note and the baby (`newborn.fromDelivery`, unique), so it is made once.
 - Records that may already be this baby are shown first, as on New patient; **Make the record anyway** after checking.
   A twin made from the same note is not a match for the other twin. Babies already linked to the mother by hand are

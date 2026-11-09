@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DateTimeInput } from '../../components/DateTimeInput.jsx';
-import { ArrowRightLeft, BedDouble, BedSingle, Building2, Check, ChevronDown, ChevronUp, CircleSlash, ClipboardList, Eye, FileText, LogIn, Plus, Receipt, Search, Tag, User, Users } from 'lucide-react';
+import { ArrowRightLeft, Baby, BedDouble, BedSingle, Building2, Check, ChevronDown, ChevronUp, CircleSlash, ClipboardList, Eye, FileText, LogIn, Plus, Receipt, Search, Tag, User, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -116,6 +116,12 @@ export function BedBoardPage() {
         actions={
           <>
             <ExportButton what="admissions" />
+            {/* A baby with no record yet: registered as B/O her mother and admitted to the NICU (9 Nov 2026) */}
+            {hasRole(activeMembership, 'receptionist', 'rmo') && (
+              <Link to="/nicu-admit" className="btn btn-secondary">
+                <Baby aria-hidden="true" /> NICU – new baby
+              </Link>
+            )}
             {data?.canAdmit && (
               <button type="button" className="btn btn-primary" onClick={() => setAdmitTo('any')} disabled={!free.length} title={free.length ? undefined : 'No bed is free'}>
                 <Plus aria-hidden="true" /> Admit a patient

@@ -17,6 +17,8 @@ import { audit } from '../utils/audit.js';
 import { toCsv } from '../utils/csv.js';
 import { HttpError } from '../utils/httpError.js';
 import { notify } from '../notifications/notify.js';
+import { babyOfName } from '../utils/personName.js';
+import { registerPatient } from './patients.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -151,6 +153,8 @@ const DESK_CALLS = [
   ['GET', '/nicu/desk'],
   ['GET', '/nicu/options'],
   ['POST', '/nicu'],
+  ['POST', '/nicu/new-baby'],
+  ['GET', '/nicu/new-baby/options'],
 ];
 newbornCareRouter.use((req, _res, next) => {
   if (hasRole(req.membership, ...ROLES)) return next();
@@ -456,13 +460,24 @@ newbornCareRouter.post('/nicu', async (req, res) => {
   const desk = Boolean(req.nicuDesk);
   const b = parse(desk ? deskBody : createBody, req.body);
   const baby = desk ? await babyForDesk(req, b.patientId) : await babyFor(req, b.patientId, true);
+  const out = await admitBaby(req, b, baby, { desk });
+  res.status(out.status).json(out.body);
+});
+
+/**
+ * Admits a baby to the NICU: every check (unit, where from, mother, bed, doctors, floor, a full unit), then the
+ * register number and the record. desk: the header only (reception, or a baby just registered). dryRun: the checks
+ * only – nothing is saved and no 'one more admission' is used (before a new baby's record is made). Returns
+ * { status, body }.
+ */
+async function admitBaby(req, b, baby, { desk, dryRun = false }) {
   const units = await unitsOf(req.tenantId);
   const ctx = async (n) => ({ units, now: nowOf(req), mothers: await mothersOf(req.tenantId, [n]) });
   const same = await NicuAdmission.findOne({ tenantId: req.tenantId, clientRequestId: b.clientRequestId });
-  if (same) return res.json({ admission: desk ? deskView(same, units) : nicuView(same, baby, await ctx(same)) });
+  if (same) return { status: 200, body: { admission: desk ? deskView(same, units) : nicuView(same, baby, await ctx(same)) }, same: true };
   if (future(req, b.admittedAt)) throw invalid({ admittedAt: "This can't be in the future." });
   if (baby.newborn?.birthAt && b.admittedAt < new Date(baby.newborn.birthAt)) throw invalid({ admittedAt: 'This is before the baby was born.' });
-  if (await NicuAdmission.findOne({ tenantId: req.tenantId, patientId: baby._id, ...openFilter })) throw conflict('The baby is already admitted: record how that admission ended first.');
+  if (baby._id && (await NicuAdmission.findOne({ tenantId: req.tenantId, patientId: baby._id, ...openFilter }))) throw conflict('The baby is already admitted: record how that admission ended first.');
   const unit = units.find((u) => u.key === b.unit && u.active);
   if (!unit) throw invalid({ unit: 'Choose one of the units.' });
   const sources = F03.sourcesFor(units, unit.key);
@@ -503,15 +518,20 @@ newbornCareRouter.post('/nicu', async (req, res) => {
     if (beds.some((x) => !x.occupied)) throw conflict('This bed is taken – choose a free bed.', 'BED_OCCUPIED');
     // A full unit: only with "one more admission" allowed by the hospital admin (used once, within 2 hours)
     const since = new Date(nowOf(req).getTime() - OVERRIDE_MS);
-    const t = await Tenant.findOneAndUpdate(
+    if (dryRun) {
+      const open = await Tenant.exists({ _id: req.tenantId, 'nicu.overrides': { $elemMatch: { unit: unit.key, usedAt: null, at: { $gte: since } } } });
+      if (!open) throw conflict('Unit full – transfer pathway (NEO-F-18). The hospital admin can allow one more admission (NICU units).', 'UNIT_FULL');
+    }
+    const t = dryRun ? null : await Tenant.findOneAndUpdate(
       { _id: req.tenantId, 'nicu.overrides': { $elemMatch: { unit: unit.key, usedAt: null, at: { $gte: since } } } },
       { $set: { 'nicu.overrides.$.usedAt': nowOf(req) } },
       { returnDocument: 'before', projection: { nicu: 1 } },
     ).lean();
     const used = t?.nicu?.overrides?.find((o) => o.unit === unit.key && !o.usedAt && new Date(o.at) >= since);
-    if (!used) throw conflict('Unit full – transfer pathway (NEO-F-18). The hospital admin can allow one more admission (NICU units).', 'UNIT_FULL');
-    fullOverride = { reason: used.reason, byName: used.byName, at: used.at };
+    if (!used && !dryRun) throw conflict('Unit full – transfer pathway (NEO-F-18). The hospital admin can allow one more admission (NICU units).', 'UNIT_FULL');
+    fullOverride = used ? { reason: used.reason, byName: used.byName, at: used.at } : null;
   }
+  if (dryRun) return null;
   // §1 starts from what the linked records already say (PX-X-14) – not at the desk: reception may not read them; the
   // clinical team fills §1 in from the linked records later (POST /nicu/:id/prefill)
   const prefill = desk ? { values: null, from: {}, allergyAlert: '' } : await prefillFor(req, baby, motherId);
@@ -560,7 +580,7 @@ newbornCareRouter.post('/nicu', async (req, res) => {
       if (e?.code === 11000 && e.keyPattern?.registerNo && i < 8) continue;
       if (e?.code === 11000 && e.keyPattern?.clientRequestId) {
         const again = await NicuAdmission.findOne({ tenantId: req.tenantId, clientRequestId: b.clientRequestId });
-        return res.json({ admission: desk ? deskView(again, units) : nicuView(again, baby, await ctx(again)) });
+        return { status: 200, body: { admission: desk ? deskView(again, units) : nicuView(again, baby, await ctx(again)) }, same: true };
       }
       throw e;
     }
@@ -570,10 +590,68 @@ newbornCareRouter.post('/nicu', async (req, res) => {
   if (desk) {
     // The admitting doctor and the nurses are told: the admission assessment is theirs (the notification bell)
     await notify(req, { userIds: [admitting.id], roles: ['nurse'] }, { kind: 'nicu', text: `NICU: ${baby.fullName} (${baby.mrn}) admitted at the desk to ${unit.name}, ${bed.name} – the admission assessment is needed.`, link: `/patients/${baby._id}/newborn-care` });
-    return res.status(201).json({ admission: deskView(n, units) });
+    return { status: 201, body: { admission: deskView(n, units) } };
   }
   const view = nicuView(n, baby, await ctx(n));
-  res.status(201).json({ admission: view, warnings: view.banners });
+  return { status: 201, body: { admission: view, warnings: view.banners } };
+}
+
+// A baby with no record yet (born elsewhere, or not registered): registered as "B/O <mother's name>" and admitted to
+// the NICU in one step (9 Nov 2026) – the header only, like the desk; the nurse or doctor completes the form. Reception,
+// doctors and RMOs (those who register patients). Every NICU check runs first, so no record is made for a baby who
+// cannot be admitted; then the same "may already be registered" check as registering by hand.
+const newBabyBody = deskBody
+  .omit({ patientId: true, motherId: true })
+  .extend({
+    motherId: z.union([z.null(), z.literal(''), objectId]).optional(),
+    motherName: z.string().trim().max(140, "The mother's name is too long").default(''),
+    phone: z.string().trim().max(30).default(''),
+    address: z.string().trim().max(300).default(''),
+    birthAt: time('Date and time of birth'),
+    sex: z.enum(['', 'female', 'male', 'indeterminate']).default(''),
+    birthWeightGrams: num('Birth weight', 300, 7000),
+    registerAnyway: z.boolean().default(false),
+  })
+  .strict();
+// The lists the new-baby form needs (no baby yet): units with their sources, NICU beds (free or taken), doctors
+newbornCareRouter.get('/nicu/new-baby/options', async (req, res) => {
+  if (!hasRole(req.membership, 'receptionist', 'doctor', 'rmo')) throw forbidden('A new baby is registered by reception, doctors and RMOs.');
+  const [units, beds, people] = await Promise.all([unitsOf(req.tenantId), nicuBeds(req.tenantId), doctorsOf(req.tenantId)]);
+  res.json({ units: units.filter((u) => u.active).map((u) => ({ ...u, sources: F03.sourcesFor(units, u.key) })), beds: beds.map(bedView), people });
+});
+
+newbornCareRouter.post('/nicu/new-baby', async (req, res) => {
+  if (!hasRole(req.membership, 'receptionist', 'doctor', 'rmo')) throw forbidden('A new baby is registered by reception, doctors and RMOs.');
+  const b = parse(newBabyBody, req.body);
+  const fields = {};
+  let mother = null;
+  if (b.motherId) {
+    mother = await Patient.findOne({ _id: b.motherId, tenantId: req.tenantId }, { fullName: 1, phone: 1, address: 1, careType: 1 }).lean();
+    if (!mother || mother.careType === 'newborn') fields.motherId = "Choose the mother's record.";
+  } else if (!b.motherName) fields.motherName = "Write the mother's name (the baby is registered as B/O her name).";
+  if (future(req, b.birthAt)) fields.birthAt = "This can't be in the future.";
+  if (b.admittedAt < b.birthAt) fields.admittedAt = 'This is before the baby was born.';
+  if (Object.keys(fields).length) throw invalid(fields);
+  const motherId = mother ? String(mother._id) : null;
+  const header = { ...b, patientId: null, motherId };
+  // Every NICU check first (nothing saved, no "one more admission" used)
+  const dry = await admitBaby(req, header, { _id: null, newborn: { mother: motherId, birthAt: b.birthAt } }, { desk: true, dryRun: true });
+  if (dry?.same) return res.status(dry.status).json(dry.body);
+  // The record: "B/O <mother>", her phone and address, the admitting doctor as the baby's doctor
+  const doctor = b.admittingDoctorId ? await memberWith(req.tenantId, b.admittingDoctorId, ['doctor']) : null;
+  const out = await registerPatient(req, {
+    careType: 'newborn',
+    fullName: babyOfName(mother?.fullName ?? b.motherName),
+    ...(b.phone || mother?.phone ? { phone: b.phone || mother.phone } : {}),
+    ...(b.address || mother?.address ? { address: b.address || mother.address } : {}),
+    ...(doctor ? { assignedDoctor: String(doctor.id) } : {}),
+    newborn: { birthAt: b.birthAt.toISOString(), birthWeightGrams: b.birthWeightGrams, sex: b.sex, ...(motherId ? { mother: motherId } : {}) },
+    registerAnyway: b.registerAnyway,
+  });
+  if (out.matches) return res.status(409).json({ error: out.matches });
+  const baby = out.patient;
+  const admitted = await admitBaby(req, { ...header, patientId: String(baby._id) }, baby, { desk: true });
+  res.status(201).json({ baby: { id: String(baby._id), mrn: baby.mrn, fullName: baby.fullName }, ...admitted.body });
 });
 
 async function admissionFor(req, write = true) {
