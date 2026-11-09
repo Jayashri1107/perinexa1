@@ -299,6 +299,8 @@ const loadCrs9 = () => import('./pages/anaesthesia/PacTab.jsx');
 const PacTab = screen(loadCrs9, 'PacTab');
 const loadCrs12 = () => import('./pages/newborn/NewbornCareTab.jsx');
 const NewbornCareTab = screen(loadCrs12, 'NewbornCareTab');
+const loadB13New = () => import('./pages/newborn/NicuNewBabyPage.jsx');
+const NicuNewBabyPage = screen(loadB13New, 'NicuNewBabyPage');
 const loadB13Desk = () => import('./pages/newborn/NicuDeskTab.jsx');
 const NicuDeskTab = screen(loadB13Desk, 'NicuDeskTab');
 const loadCrs13 = () => import('./pages/newborn/NicuRegisterPage.jsx');
@@ -516,6 +518,9 @@ export function App() {
                 </Route>
                 <Route path="nicu-register" element={<RequireTenantRole roles={THEATRE_ROLES} message="The NICU register is for doctors, RMOs and nurses." />}>
                   <Route index element={<NicuRegisterPage />} />
+                </Route>
+                <Route path="nicu-admit" element={<RequireTenantRole roles={['receptionist', 'doctor', 'rmo']} message="A new baby is registered by reception, doctors and RMOs." />}>
+                  <Route index element={<NicuNewBabyPage />} />
                 </Route>
                 <Route path="nicu-board" element={<RequireTenantRole roles={THEATRE_ROLES} message="The NICU unit board is for doctors, RMOs and nurses." />}>
                   <Route index element={<NicuBoardPage />} />

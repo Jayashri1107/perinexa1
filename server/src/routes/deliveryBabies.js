@@ -8,6 +8,7 @@ import { HttpError } from '../utils/httpError.js';
 import { patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { objectId, parse } from '../utils/validate.js';
+import { babyOfName } from '../utils/personName.js';
 import { registerPatient } from './patients.js';
 
 // The baby's record made from the delivery (Clinical Requirements Group C – PX-X-14): /api/delivery-babies.
@@ -22,7 +23,6 @@ import { registerPatient } from './patients.js';
 export const deliveryBabiesRouter = Router();
 const forbidden = (m) => new HttpError(403, m, 'FORBIDDEN');
 const conflict = (m) => new HttpError(409, m, 'CONFLICT');
-const ORDINAL = ['First', 'Second', 'Third', 'Fourth'];
 
 async function load(req, documentId) {
   const doc = await ClinicalDocument.findOne({ _id: documentId, tenantId: req.tenantId, kind: 'delivery' });
@@ -64,7 +64,7 @@ deliveryBabiesRouter.post('/', async (req, res) => {
     throw conflict("This baby's record was already made from the delivery note.");
   }
   const birthAt = doc.content?.deliveredAt ? new Date(doc.content.deliveredAt).toISOString() : null;
-  const name = babies.length > 1 ? `${ORDINAL[b.index]} baby of ${mother.fullName}` : `Baby of ${mother.fullName}`;
+  const name = babyOfName(mother.fullName, b.index, babies.length); // "B/O <mother>", "(Twin 1)" … (9 Nov 2026)
   const body = {
     careType: 'newborn',
     fullName: name,

@@ -15,6 +15,7 @@ import { AuditLog } from '../src/models/AuditLog.js';
 import { Bed } from '../src/models/Bed.js';
 import { NicuAdmission } from '../src/models/NewbornCare.js';
 import { Notification } from '../src/models/Notification.js';
+import { Patient } from '../src/models/Patient.js';
 import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-11-20T06:00:00Z');
@@ -399,5 +400,42 @@ describe('reception admits at the desk (header only, 9 Nov 2026)', () => {
     expect(p.body.admission.maternalFrom).toMatchObject({ resuscitation: 'birth' });
     expect(p.body.admission.weightGrams).toBe(2100); // the birth weight on her record
     expect((await (await as('reception')).post(`/api/newborn-care/nicu/${a.id}/prefill`)).status).toBe(403);
+  });
+});
+
+describe('a new baby registered as B/O <mother> and admitted in one step (9 Nov 2026)', () => {
+  const nicuPart = (over = {}) => ({ clientRequestId: randomUUID(), unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample Rural Hospital', admittedAt: ago(20), bedId: beds.garkheda[0], admittingDoctorId: people.drA._id.toString(), birthAt: ago(300), ...over });
+  it('reception registers B/O <mother> and admits; the checks run before any record is made; possible duplicates are shown', async () => {
+    const desk = await as('reception');
+    expect((await desk.get('/api/newborn-care/nicu/new-baby/options')).body.units.map((u) => u.key)).toEqual(['garkheda', 'adalat_road', 'waluj']);
+    expect((await desk.post('/api/newborn-care/nicu/new-baby').send(nicuPart())).body.error.fields.motherName).toMatch(/mother's name/);
+    // a full unit: refused before the baby's record is made
+    await admit('nurse', await makeBaby({ name: 'Baby W1' }), { unit: 'waluj', bedId: beds.waluj[0] });
+    await admit('nurse', await makeBaby({ name: 'Baby W2' }), { unit: 'waluj', bedId: beds.waluj[1] });
+    const full = await desk.post('/api/newborn-care/nicu/new-baby').send(nicuPart({ motherName: 'sample outborn mother', unit: 'waluj', bedId: beds.waluj[0] }));
+    expect(full.body.error.code).toBe('UNIT_FULL');
+    expect(await Patient.countDocuments({ tenantId: hospital._id, fullName: /^B\/O/ })).toBe(0);
+    const r = await desk.post('/api/newborn-care/nicu/new-baby').send(nicuPart({ motherName: 'sample outborn mother', phone: '+91 00000 00001', sex: 'male', birthWeightGrams: 1800 }));
+    expect(r.status, JSON.stringify(r.body)).toBe(201);
+    expect(r.body).toMatchObject({ baby: { fullName: 'B/O Sample Outborn Mother', mrn: expect.stringMatching(/^P-/) }, admission: { registerLabel: 'GARKHEDA-2026-0001', state: 'in', atDesk: true, assessmentNeeded: true } });
+    const baby = await Patient.findOne({ _id: r.body.baby.id, tenantId: hospital._id }).lean();
+    expect(baby).toMatchObject({ careType: 'newborn', newborn: expect.objectContaining({ birthWeightGrams: 1800, sex: 'male', mother: null }) });
+    expect(String(baby.assignedDoctor)).toBe(String(people.drA._id));
+    // the same mother again: "may already be registered", then anyway
+    const again = await desk.post('/api/newborn-care/nicu/new-baby').send(nicuPart({ motherName: 'Sample Outborn Mother', phone: '+91 00000 00001', bedId: beds.garkheda[1] }));
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('POSSIBLE_MATCHES');
+    expect((await desk.post('/api/newborn-care/nicu/new-baby').send(nicuPart({ motherName: 'Sample Outborn Mother', phone: '+91 00000 00001', bedId: beds.garkheda[1], registerAnyway: true }))).status).toBe(201);
+    // nurses do not register patients
+    expect((await (await as('nurse')).post('/api/newborn-care/nicu/new-baby').send(nicuPart({ motherName: 'X Y', bedId: beds.garkheda[2] }))).status).toBe(403);
+  });
+
+  it('a mother registered here: the baby is B/O her name and linked to her record', async () => {
+    const mother = (await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'postnatal', fullName: 'Linked Sample Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
+    const r = await (await as('rmo')).post('/api/newborn-care/nicu/new-baby').send(nicuPart({ motherId: mother.id, source: 'postnatal_ward', transferFromName: '' }));
+    expect(r.status, JSON.stringify(r.body)).toBe(201);
+    expect(r.body.baby.fullName).toBe('B/O Linked Sample Mother');
+    const baby = await Patient.findOne({ _id: r.body.baby.id, tenantId: hospital._id }).lean();
+    expect(String(baby.newborn.mother)).toBe(mother.id);
   });
 });
