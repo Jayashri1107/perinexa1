@@ -37,9 +37,8 @@ label is never confused with a warning.
 | Other | `--status-inactive-fg / -bg` (grey) | dot |
 
 Billing and admission labels appear in different places on a row, so sharing a colour (for example Cash and Delivered)
-does not mix them up. **Departments**: 9 different colours are not in the tokens. The proposal is that the department is
-shown as a word on a neutral label, and the list is **grouped under department headings**. If the owner still wants a
-colour per department, new tokens need the developer's agreement (brand change).
+does not mix them up. **Departments** (owner, 9 Nov 2026): **no colour per department.** The list is grouped under
+department headings, and no new tokens are needed.
 
 ## What gets built (backend first, then frontend)
 
@@ -67,6 +66,5 @@ colour per department, new tokens need the developer's agreement (brand change).
 
 ## Questions left
 
-- Departments: are grouping and a neutral label enough, or does each department need its own colour (new tokens)?
 - Package: should the desk also choose **which** package (from the price list) at admission, or only the word
   "Package"?
