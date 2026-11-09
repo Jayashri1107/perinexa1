@@ -11,7 +11,10 @@ import mongoose from 'mongoose';
 // screening and follow-up clinic dates and the defaulters to call – never the medical record (routes/newbornFollowUp.js).
 // "quality" = the quality lead (Group A, item 6): reviews incidents, records their actions and closes them; reads the
 // clinical audit's numbers – never the medical record (routes/incidents.js).
-export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk', 'followup_coordinator', 'quality'];
+// "records" = the medical records staff (9 Nov 2026, the medical records module from the other Perinexa copy): a
+// patient role that sees a record's identity details and the documents attached to it – never the clinical notes – and
+// the Records menu (routes/records.js).
+export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk', 'followup_coordinator', 'quality', 'records'];
 
 // What a hospital admin may do to the hospital's staff – only what the super admin gave them (owner, 12 Oct 2026):
 // reset a password, remove or restore access, change roles, edit name and email. Without it they see who works there.

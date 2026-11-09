@@ -39,6 +39,7 @@ export const NEW_THINGS = {
   appointment: 'new appointments',
   arrival: 'new arrivals',
   work: 'new scans or procedures',
+  patientFile: 'new documents',
   bill: 'new bills',
   sale: 'new pharmacy sales',
   referral: 'new referrals', // a referral is linked to her main record (routes/referrals.js)

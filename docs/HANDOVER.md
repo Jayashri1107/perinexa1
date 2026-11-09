@@ -95,6 +95,14 @@ client/src/
 scripts/db.mjs        Local MongoDB start / stop
 ```
 
+- **Medical records module (9 Nov 2026, ported from `girishsolanke/perinexa` bcb7f949):** patient role `records`
+  (identity view + a `documents` flag in `utils/patientAccess.js`; never clinical fields), models `PatientDocument`
+  and `RecordCopyIssue` (`tenantScoped`, in the hospital export), `StoredFile` kind `patient_document` (15 MB;
+  `utils/storedFiles.js` takes the limit from the caller), `routes/records.js` (`/api/patients/:id/documents`,
+  `/api/records`, with the department rule), nine audit actions. Files still live in MongoDB; `utils/storedFiles.js`
+  is the one place to swap in object storage. `openStoredFile` in `client/src/components/fileUpload.js` replaces plain
+  `<a href="/api/…">` links, which cannot send `X-Tenant-Id`.
+
 ## 6. Security and privacy model – review this first
 
 - **Sign-in.** JWT in an `httpOnly`, `sameSite=strict` cookie (`secure` in production), bcrypt, no public sign-up,

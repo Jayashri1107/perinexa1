@@ -34,7 +34,7 @@ import { HttpError } from './httpError.js';
 // their own patients. A patient with no department yet (records from before) is seen by every doctor with a
 // department. Inside the department the rules above stay. RMOs and every other role are not limited by department.
 
-export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk'];
+export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk', 'records'];
 
 // duplicateOf: the record is marked as a duplicate of another (that record's number, who marked it and when) –
 // everyone who may open the record sees it, so nobody works on the wrong record. earlierRecords: on the main
@@ -129,7 +129,7 @@ export const NEWBORN_EDIT = ['newborn'];
 // history: the history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md).
 export const CLINICAL_EDIT = ['pregnancy', 'abortion', 'obstetric', 'medical', 'notes', 'delivery', 'postnatal', 'newbornCare', 'fertility', 'history'];
 
-const NONE = { view: [], editIdentity: false, editNewborn: false, editClinical: false, emergencyNote: false, viewNotes: false, assign: false, markSensitive: false, overrideRisk: false, recordVitals: false };
+const NONE = { view: [], editIdentity: false, editNewborn: false, editClinical: false, emergencyNote: false, viewNotes: false, assign: false, markSensitive: false, overrideRisk: false, recordVitals: false, documents: false, documentsDesk: false };
 
 /** The person's departments here and their id: what the doctor role's department rule needs. */
 export const departmentContext = (req) => ({ userId: req.user?._id, departments: departmentsOf(req.membership) });
@@ -203,7 +203,9 @@ function forRole(role, patient, ctx) {
       // Not who pays: the billing type is for doctors, RMOs, the desk and billing (owner, 9 Nov 2026)
       return { ...NONE, view: sensitive ? NURSE_IDENTITY : [...NURSE_IDENTITY, ...CLINICAL_FIELDS], recordVitals: !sensitive };
     case 'receptionist':
-      return { ...NONE, view: [...IDENTITY_FIELDS, ...NEWBORN_FIELDS], editIdentity: true, editNewborn: true, assign: true };
+      // documentsDesk (developer's choice, 9 Nov 2026): reception attaches scanned papers and sees the list of documents
+      // (kind, title, date) – never opens a file or reads its note; none of it on a sensitive record (routes/records.js)
+      return { ...NONE, view: [...IDENTITY_FIELDS, ...NEWBORN_FIELDS], editIdentity: true, editNewborn: true, assign: true, documentsDesk: patient.sensitive !== true };
     case 'lab':
       return { ...NONE, view: LAB_FIELDS };
     case 'sonographer':
@@ -216,6 +218,10 @@ function forRole(role, patient, ctx) {
     case 'referral_desk':
       // Identity details only, and nothing to change: she is registered through POST /api/patients (creationAccess)
       return { ...NONE, view: DESK_FIELDS };
+    case 'records':
+      // The medical records staff (9 Nov 2026): identity details and the documents attached to the record
+      // (routes/records.js) – every record's, since they file every record's papers – never the clinical notes
+      return { ...NONE, view: DESK_FIELDS, documents: true };
     default:
       return NONE;
   }
@@ -229,7 +235,7 @@ export function patientAccess(req, patient) {
   for (const role of roles) {
     const r = forRole(role, patient, ctx);
     r.view.forEach((f) => merged.view.add(f));
-    for (const k of ['editIdentity', 'editNewborn', 'editClinical', 'emergencyNote', 'viewNotes', 'assign', 'markSensitive', 'overrideRisk', 'recordVitals']) {
+    for (const k of ['editIdentity', 'editNewborn', 'editClinical', 'emergencyNote', 'viewNotes', 'assign', 'markSensitive', 'overrideRisk', 'recordVitals', 'documents', 'documentsDesk']) {
       merged[k] = merged[k] || r[k];
     }
   }
@@ -301,6 +307,10 @@ export function projectPatient(json, access) {
     // (a record that was infertility care and still carries the history – she conceived – keeps the tab, read-only)
     canViewFertilityPlan: access.view.has('pregnancy') && (json.careType === 'infertility' || !fertilityEmpty(json.fertility)),
     canEditFertilityPlan: json.careType === 'infertility' && access.editClinical === true,
+    // Documents attached to the record (routes/records.js): seen with the medical details, or by the medical records
+    // staff; attached by those who may record on the record, and by the records staff
+    canViewDocuments: access.view.has('pregnancy') || access.documents === true || access.documentsDesk === true,
+    canUploadDocuments: access.documents === true || access.documentsDesk === true || access.editClinical === true || access.recordVitals === true,
   };
   return out;
 }

@@ -63,6 +63,8 @@ import { PacAssessment, PainEntry } from '../models/AnaesthesiaRecords.js';
 import { BilirubinReading, NewbornBirthCare, NewbornExam, NicuAdmission, NicuRoster } from '../models/NewbornCare.js';
 import { NewbornFollowUp } from '../models/NewbornFollowUp.js';
 import { Specimen } from '../models/Specimen.js';
+import { PatientDocument } from '../models/PatientDocument.js';
+import { RecordCopyIssue } from '../models/RecordCopyIssue.js';
 import { ConsentForm } from '../models/ConsentForm.js';
 import { Counter } from '../models/Counter.js';
 import { LabOrder } from '../models/LabOrder.js';
@@ -186,6 +188,8 @@ export const KINDS = [
   { file: 'settings-opd-timings.json', model: OpdSchedule, what: 'Settings: each doctor\'s OPD timings and days on leave.' },
   { file: 'settings-beds.json', model: Bed, what: 'Settings: the wards and their beds (in use or not).' },
   // Clinical Requirements Group A (6 Nov 2026)
+  { file: 'patient-documents.json', model: PatientDocument, what: 'Scanned and outside documents attached to the records: what each is, its title and date, the stay it belongs to, who attached it, and one marked as put on the wrong record. The files themselves are in the "files" folder.' },
+  { file: 'record-copies.json', model: RecordCopyIssue, what: 'The copies register: every copy of a record given out – for whom, who received it, on what request or authorisation, when it was asked for and given, and who recorded it.' },
   { file: 'specimens.json', model: Specimen, what: 'Specimens sent for histopathology or cytology (the register): when sent, the report and who reviewed it, and cancelled ones with the reason. Report files are in the "files" folder.' },
   { file: 'newborn-follow-up.json', model: NewbornFollowUp, what: "Babies' screening logs and high-risk follow-up: gestation at birth, high-risk reasons, and each screen or clinic visit recorded (result, who, when)." },
   { file: 'clinical-scores.json', model: ClinicalScore, what: 'EPDS scores (the ten answers\' scores, never the questions) and VTE risk scores, with the band and advice of the day, and those marked entered in error.' },

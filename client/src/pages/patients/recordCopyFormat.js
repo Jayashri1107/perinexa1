@@ -10,6 +10,7 @@ import { CANCEL_REASON_LABELS, CLINICAL_LABELS, CYCLE_STATUS_LOOK, PATTERN_WORDS
 import { STATUS_LOOK, VISIT_TYPE_LABELS, whenLabel } from '../appointments/appointmentFormat.js';
 import { DOCTOR_CONFIRMS, DELIVERY_MODE_LABELS, KIND_LABELS, vitalsLine } from '../inpatient/inpatientFormat.js';
 import { FLAG_LOOK, ORDER_STATUS, resultLine } from '../lab/labFormat.js';
+import { DOC_TYPE_LABELS } from '../records/recordLists.js';
 import { instructionLine, medicineName, pregnancyCheckText, vitalsText } from '../visits/rxFormat.js';
 import {
   ANTI_D,
@@ -103,6 +104,7 @@ const CUT_WORDS = {
   imaging: 'scan reports',
   referrals: 'referrals',
   specimens: 'specimens',
+  patientDocuments: 'documents attached',
   scores: 'scores',
 };
 /** A warning when a part of the record was too long for one copy (null when the copy is complete). */
@@ -706,6 +708,23 @@ const SPECIMEN_KINDS = { histopathology: 'Histopathology', cytology: 'Cytology',
 const SPECIMEN_STATUS = { sent: 'Waiting for the report', reported: 'Report back – to be reviewed', reviewed: 'Reviewed' };
 
 /** One specimen: { key, title, status, error, rows }. A cancelled one with who and when only. */
+// ---------- Documents attached to the record (scans and outside papers) ----------
+
+/** A document attached to the record: what it is and when it was attached, never the file. One put on the wrong record has no content. */
+export function patientDocumentBlock(d) {
+  const title = d.documentOn ? `Dated ${formatDate(d.documentOn)}` : 'No date on it';
+  if (d.enteredInError) return { key: d.id, title, status: 'Wrong record', error: `This document was marked as put on the wrong record${by(d.enteredInError.byName)} and is not copied.` };
+  return {
+    key: d.id,
+    title: `${title} · ${DOC_TYPE_LABELS[d.docType] ?? d.docType}: ${d.title}`,
+    rows: filled([
+      ['File', d.fileName ? `${d.fileName} (the file itself is not part of this copy)` : ''],
+      ['Attached', d.uploaded ? `${formatDateTime(d.uploaded.at)}${by(d.uploaded.byName)}` : ''],
+      ['Note', d.note],
+    ]),
+  };
+}
+
 export function specimenBlock(s) {
   const title = `Specimen no. ${s.serial} · sent ${dayOf(s.sentAt)}`;
   if (s.status === 'cancelled') {

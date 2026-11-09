@@ -71,6 +71,7 @@ export const CLOSED_THINGS = {
   appointment: 'new appointments',
   arrival: 'new arrivals',
   work: 'new scans or procedures',
+  patientFile: 'new documents',
   sale: 'new pharmacy sales',
   message: 'reminders or messages',
   portal: 'patient portal access',

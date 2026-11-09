@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Ban, CircleCheck, FileText, Inbox, Paperclip, Printer, Siren, Tag, TestTube, Upload } from 'lucide-react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
+import { openStoredFile } from '../../components/fileUpload.js';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { HOSPITAL_LAB } from '../../platform/modules.js';
 import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
@@ -377,9 +378,10 @@ function Files({ order, pcpndt, onSaved }) {
         <ul className="plain-list">
           {order.files.map((f) => (
             <li key={f.id}>
-              <a href={fileUrl(order, f)} target="_blank" rel="noopener noreferrer">
+              {/* (through the API with the hospital header – a plain link could not send it) */}
+              <button type="button" className="btn btn-link btn-sm" onClick={() => openStoredFile(fileUrl(order, f).replace(/^\/api/, '')).catch((err) => setError(err.message))}>
                 {f.fileName}
-              </a>{' '}
+              </button>{' '}
               <span className="muted">
                 · {fileSize(f.size)} · {f.byName}, {formatDateTime(f.at)}
               </span>

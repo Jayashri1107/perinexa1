@@ -6,6 +6,7 @@ import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintFacts, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
+import { CopyIssueDialog } from '../records/RecordsPages.jsx';
 import { DocContent } from '../inpatient/DocumentPage.jsx';
 import { StaffPlanTable } from './CarePlanPrint.jsx';
 import {
@@ -19,6 +20,7 @@ import {
   deathRows,
   deliveryRows,
   documentBlock,
+  patientDocumentBlock,
   identityRows,
   labBlock,
   labFlagNote,
@@ -396,6 +398,14 @@ export function RecordCopyDocument({ copy, letterhead, printedAt, printedByName 
         <Table head={['Printed', 'Kind', 'Title', 'Signed copy']} rows={consents} oneLine={[1]} />
       </Part>
 
+      <Part title="Documents attached (scans and outside papers)" empty={!(copy.patientDocuments ?? []).length}>
+        {(copy.patientDocuments ?? []).map(patientDocumentBlock).map((b) => (
+          <Entry key={b.key} title={b.title} status={b.status} error={b.error}>
+            {b.rows && <Rows rows={b.rows} />}
+          </Entry>
+        ))}
+      </Part>
+
       <Part title="Appointments" empty={!appointments.length}>
         <Table head={['Day', 'Time', 'Visit', 'Doctor', 'Status']} rows={appointments} oneLine={[1, 3]} />
       </Part>
@@ -501,6 +511,8 @@ export function RecordCopy({ patient, onClose }) {
   const { copy, error } = useCopyOnce(patient.id);
   const lh = useFetch('/tenant/settings/letterhead');
   const [printedAt] = useState(() => new Date());
+  const [registering, setRegistering] = useState(false); // the copies register: to whom this copy went
+  const [registered, setRegistered] = useState(null);
   if (!copy || lh.loading) return <CopyWaiting error={copy ? null : error} onClose={onClose} />;
 
   const stored = lh.data?.letterhead ?? {};
@@ -519,14 +531,41 @@ export function RecordCopy({ patient, onClose }) {
       to {referredTo}. Opening, printing and saving this copy are recorded in the audit log.
     </>
   );
-  const controls = copy.patient.sensitive ? (
-    <Alert type="warning">
-      This record is marked sensitive. Hand the copy in person to {owner}, or give it only to {referredTo}.
-    </Alert>
-  ) : null;
+  const controls = (
+    <>
+      {copy.patient.sensitive && (
+        <Alert type="warning">
+          This record is marked sensitive. Hand the copy in person to {owner}, or give it only to {referredTo}.
+        </Alert>
+      )}
+      {/* The copies register (the Records menu): to whom this copy went, on what authority, and when */}
+      {registered ? (
+        <Alert type="success">Recorded in the copies register: given to {registered}.</Alert>
+      ) : (
+        <div className="row">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRegistering(true)}>
+            Record in the copies register
+          </button>
+        </div>
+      )}
+    </>
+  );
   return (
-    <PrintPreview title="Copy of the whole record – print preview" hint={hint} controls={controls} onPrint={() => record('paper')} pdf={pdf} docKey="copy" onClose={onClose}>
-      <RecordCopyDocument copy={copy} letterhead={letterhead} printedAt={printedAt} printedByName={user.name} />
-    </PrintPreview>
+    <>
+      <PrintPreview title="Copy of the whole record – print preview" hint={hint} controls={controls} onPrint={() => record('paper')} pdf={pdf} docKey="copy" onClose={onClose}>
+        <RecordCopyDocument copy={copy} letterhead={letterhead} printedAt={printedAt} printedByName={user.name} />
+      </PrintPreview>
+      {registering && (
+        <CopyIssueDialog
+          patient={{ id: patient.id, fullName: copy.patient.fullName, mrn: copy.patient.mrn }}
+          defaultWhat="whole_record"
+          onCancel={() => setRegistering(false)}
+          onDone={(issue) => {
+            setRegistering(false);
+            setRegistered(issue.receiverName || 'the patient');
+          }}
+        />
+      )}
+    </>
   );
 }

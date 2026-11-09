@@ -319,6 +319,16 @@ export const AUDIT_LABELS = {
   LAB_RESULTS_REVIEWED: 'Lab results reviewed by a doctor',
   LAB_ORDER_CANCELLED: 'Lab order cancelled',
   // Referrals from other doctors (docs/REFERRALS_PLAN.md): ids, the record number and which part – never what was written
+  // The medical records module: the record, the kind of document or copy – never a title, a file or a name
+  PATIENT_FILES_VIEWED: 'Documents of a record listed',
+  PATIENT_FILE_UPLOADED: 'Document attached to a record',
+  PATIENT_FILE_OPENED: 'Attached document opened',
+  PATIENT_FILE_CANCELLED: 'Attached document marked as wrong record',
+  RECORDS_INDEX_VIEWED: 'Records index opened',
+  RECORDS_INCOMPLETE_VIEWED: 'Incomplete-records list opened',
+  RECORD_COPIES_VIEWED: 'Copies register opened',
+  RECORD_COPY_ISSUED: 'Copy of a record given (register)',
+  RECORD_COPY_ISSUE_CANCELLED: 'Copies register entry marked as a mistake',
   REFERRAL_CREATED: 'Referral logged',
   REFERRAL_VIEWED: 'Referral opened',
   REFERRAL_UPDATED: 'Referral details changed',
@@ -705,6 +715,12 @@ export const AUDIT_TONES = {
   LAB_REPORT_OPENED: 'patient',
   LAB_RESULTS_REVIEWED: 'patient',
   LAB_ORDER_CANCELLED: 'patient',
+  PATIENT_FILES_VIEWED: 'patient',
+  PATIENT_FILE_UPLOADED: 'patient',
+  PATIENT_FILE_OPENED: 'patient',
+  PATIENT_FILE_CANCELLED: 'patient',
+  RECORD_COPY_ISSUED: 'patient',
+  RECORD_COPY_ISSUE_CANCELLED: 'patient',
   REFERRAL_CREATED: 'patient',
   REFERRAL_VIEWED: 'patient',
   REFERRAL_UPDATED: 'patient',
@@ -1151,6 +1167,19 @@ function abdmText(action, d) {
   }
 }
 
+// The medical records module: the kind of document or of copy, and who a copy went to (a kind, never a name)
+const DOCUMENT_TYPE_WORDS = {
+  case_sheet: 'old paper case sheet',
+  outside_discharge: 'discharge summary from another hospital',
+  outside_report: 'outside report',
+  outside_prescription: 'prescription from another doctor',
+  referral_letter: 'referral letter',
+  operation_note: 'operation or procedure note on paper',
+  other: 'other document',
+};
+const COPY_WHAT_WORDS = { whole_record: 'copy of the whole record', discharge_summary: 'discharge summary', documents: 'particular documents', other: 'something else' };
+const GIVEN_TO_WORDS = { patient: 'the patient', relative: 'a relative', insurer: 'an insurer', court: 'a court', police: 'the police', other_hospital: 'another hospital or doctor', other: 'someone else' };
+
 export function describeAudit(entry) {
   const d = entry.details || {};
   switch (entry.action) {
@@ -1351,6 +1380,21 @@ export function describeAudit(entry) {
     case 'WORK_DONE_VIEWED':
     case 'WORK_DONE_RECORDED':
     case 'WORK_DONE_CANCELLED':
+      return record(d);
+    case 'PATIENT_FILES_VIEWED':
+      return joined(record(d), d.shown != null ? count(d.shown, 'document') : '');
+    case 'PATIENT_FILE_UPLOADED':
+    case 'PATIENT_FILE_OPENED':
+    case 'PATIENT_FILE_CANCELLED':
+      return joined(record(d), DOCUMENT_TYPE_WORDS[d.docType] ?? d.docType ?? '');
+    case 'RECORDS_INDEX_VIEWED':
+    case 'RECORD_COPIES_VIEWED':
+      return joined(d.shown != null ? count(d.shown, 'entry', 'entries') : '', d.page ? `page ${d.page}` : '');
+    case 'RECORDS_INCOMPLETE_VIEWED':
+      return joined(d.visits != null ? count(d.visits, 'visit') + ' unsigned' : '', d.documents != null ? count(d.documents, 'document') + ' in draft' : '');
+    case 'RECORD_COPY_ISSUED':
+      return joined(record(d), COPY_WHAT_WORDS[d.what] ?? d.what ?? '', d.givenTo ? `to ${GIVEN_TO_WORDS[d.givenTo] ?? d.givenTo}` : '', d.late ? 'after the 72 hours' : '');
+    case 'RECORD_COPY_ISSUE_CANCELLED':
       return record(d);
     case 'REFERRAL_CREATED':
     case 'REFERRAL_VIEWED':

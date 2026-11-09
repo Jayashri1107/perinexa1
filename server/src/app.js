@@ -73,6 +73,7 @@ import { newbornFollowUpRouter } from './routes/newbornFollowUp.js';
 import { clinicalScoresRouter } from './routes/clinicalScores.js';
 import { incidentsRouter } from './routes/incidents.js';
 import { formularyRouter } from './routes/formulary.js';
+import { recordsRouter } from './routes/records.js';
 import { meowsRouter } from './routes/meows.js';
 import { patientAlertsRouter } from './routes/patientAlerts.js';
 import { caseReviewsRouter } from './routes/caseReviews.js';
@@ -173,6 +174,7 @@ export function createApp({
   // (Each field has its own limit, so the list's "at most 300 entries" is reached before this one.)
   app.use('/api/medicine-safety', express.json({ limit: '2mb' }));
   app.use(/^\/api\/specimens\/[^/]+\/report$/, express.json({ limit: '8mb' })); // a histopathology report's file
+  app.use(/^\/api\/patients\/[^/]+\/documents$/, express.json({ limit: '21mb' })); // a scanned case sheet of up to 15 MB, as base64
   // The pharmacy's opening stock: up to 5,000 lines read from the old software's file (pharmacy/openingStock.js).
   app.use('/api/pharmacy/opening-stock', express.json({ limit: '4mb' }));
   app.use('/api/auth/me/photo', express.json({ limit: '200kb' })); // My profile: a small staff photo
@@ -335,6 +337,9 @@ export function createApp({
   app.use('/api/clinical-scores', ...inTenant, clinicalScoresRouter);
   app.use('/api/incidents', ...inTenant, incidentsRouter);
   app.use('/api/formulary', ...inTenant, formularyRouter);
+  // The medical records module (from the other Perinexa copy, 9 Nov 2026): the records index, the incomplete-records
+  // list and the copies register (routes/records.js; a record's documents are under /api/patients/:id/documents)
+  app.use('/api/records', ...inTenant, recordsRouter);
   // Clinical Requirements Group B, item 8: the MEOWS chart (DRAFT)
   app.use('/api/meows', ...inTenant, meowsRouter);
   app.use('/api/patient-alerts', ...inTenant, patientAlertsRouter);
