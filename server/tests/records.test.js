@@ -174,7 +174,7 @@ describe('documents on a record, and the records module', () => {
     expect((await upload('drA', p, { mediaType: 'text/plain' })).status).toBe(400);
     expect((await upload('drA', p, { colour: 'blue' })).status).toBe(400);
     // The stay it belongs to must be hers; the records login links to none (no clinical access)
-    const stay = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-07T04:00:00.000Z', ward: 'Postnatal', bed: '3', reason: 'After delivery' })).body.admission;
+    const stay = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'pnc', admittedAt: '2026-11-07T04:00:00.000Z', ward: 'Postnatal', bed: '3', reason: 'After delivery' })).body.admission;
     const otherP = await patient();
     expect((await upload('drA', p, { admissionId: stay.id, title: 'Linked to the wrong stay' })).status).toBe(201); // (hers: fine)
     expect((await upload('drA', otherP, { admissionId: stay.id })).body.error.fields.admissionId).toMatch(/not on her record/);
@@ -208,7 +208,7 @@ describe('documents on a record, and the records module', () => {
     const b = await patient({ fullName: 'Index Beta', careType: 'gynaecology' });
     ok(await upload('nurse', a));
     ok(await upload('nurse', a, { title: 'Second paper' }));
-    const stay = (await (await as('rmo')).post(`/api/patients/${a.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-07T04:00:00.000Z', ward: 'Postnatal', bed: '3', reason: 'After delivery' })).body.admission;
+    const stay = (await (await as('rmo')).post(`/api/patients/${a.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'pnc', admittedAt: '2026-11-07T04:00:00.000Z', ward: 'Postnatal', bed: '3', reason: 'After delivery' })).body.admission;
     for (const who of ['nurse', 'reception', 'lab', 'admin']) expect((await (await as(who)).get('/api/records/index')).status, who).toBe(403);
     const all = (await (await as('records')).get('/api/records/index')).body;
     expect(all.total).toBe(2);
@@ -230,7 +230,7 @@ describe('documents on a record, and the records module', () => {
   it('incomplete records: a visit unsigned the day after, an inpatient document still a draft after a week', async () => {
     const p = await patient();
     const visit = (await (await as('nurse')).post(`/api/patients/${p.id}/visits`).send({ clientRequestId: randomUUID(), visitOn: '2026-11-09' })).body.visit;
-    const stay = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-08T04:00:00.000Z', ward: 'Postnatal', bed: '3', reason: 'After delivery' })).body.admission;
+    const stay = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'pnc', admittedAt: '2026-11-08T04:00:00.000Z', ward: 'Postnatal', bed: '3', reason: 'After delivery' })).body.admission;
     const draft = (await (await as('rmo')).post(`/api/patients/${p.id}/admissions/${stay.id}/documents`).send({ clientRequestId: randomUUID(), kind: 'round' })).body.document;
     expect(visit && stay && draft).toBeTruthy();
     // Today: nothing is late yet
