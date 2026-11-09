@@ -405,9 +405,6 @@
 .ipd-page .table-scroll, .pf-content .table-scroll { overflow-x: auto; max-width: 100%; }
 
 /* IPD → Discharge and In hospital: the bill window over the list (the HIMS pop-up), row actions, filters */
-.ipd-sheet-backdrop { align-items: start; overflow-y: auto; }
-.ipd-sheet { width: 100%; max-width: 1280px; background: var(--mist-100); border-radius: var(--radius-xl); padding: var(--space-4); box-shadow: var(--shadow-pop); outline: none; }
-.ipd-sheet-close { display: flex; justify-content: flex-end; }
 .ipd-embed-head { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3); }
 .ipd-embed-head h2 { margin: 0; }
 .ipd-embed-head p { margin: 0 0 var(--space-2); }
@@ -418,4 +415,45 @@
 .ipd-dates label { display: inline-flex; gap: var(--space-2); align-items: center; color: var(--slate-600); }
 .ipd-steps { flex-wrap: wrap; }
 .ipd-stay-choice { display: inline-flex; gap: var(--space-2); align-items: center; margin-bottom: var(--space-3); }
-@media (max-width: 719px) { .ipd-sheet { padding: var(--space-2); border-radius: var(--radius-lg); } }
+
+/* The IPD bill pop-up (HIMS-style window), compact: centred with room around it, scrolls inside itself, tighter spacing */
+.ipd-sheet-backdrop { place-items: center; padding: var(--space-6); }
+.ipd-sheet {
+  width: min(1080px, 100%); max-height: calc(100vh - 2 * var(--space-6)); overflow-y: auto; outline: none;
+  background: var(--mist-100); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); box-shadow: var(--shadow-pop);
+  font-size: 0.875rem;
+}
+.ipd-sheet .ipd-embed-head { margin-bottom: var(--space-2); align-items: center; }
+.ipd-sheet .ipd-embed-head h2 { font-size: 1.125rem; }
+.ipd-sheet .ipd-embed-head p { margin: 0 0 var(--space-1); }
+.ipd-sheet .ipd-embed-actions .btn { min-height: 34px; padding: var(--space-1) var(--space-3); font-size: 0.875rem; }
+.ipd-sheet .ipd-sheet-x { padding: var(--space-1); min-height: 34px; }
+.ipd-sheet .ipd-embedded { gap: var(--space-2); }
+.ipd-sheet .ipd-embedded > p { margin: 0; }
+.ipd-sheet .card { padding: var(--space-3); border-radius: var(--radius-md); box-shadow: none; }
+.ipd-sheet .ipd-layout { grid-template-columns: 230px minmax(0, 1fr); gap: var(--space-3); }
+.ipd-sheet .ipd-side { gap: var(--space-2); }
+.ipd-sheet .ipd-facts { gap: var(--space-1) var(--space-3); }
+.ipd-sheet .ipd-facts dt, .ipd-sheet .ipd-sums dt, .ipd-sheet .ipd-totals dt { font-size: 0.75rem; }
+.ipd-sheet .ipd-sums { padding: var(--space-2); gap: var(--space-1) var(--space-2); }
+.ipd-sheet .ipd-side-title { margin-top: var(--space-1); font-size: 0.9375rem; }
+.ipd-sheet .ipd-main { gap: var(--space-2); }
+.ipd-sheet .ipd-toolbar .btn { min-height: 34px; padding: var(--space-1) var(--space-3); font-size: 0.875rem; }
+.ipd-sheet .ipd-tabs [role='tab'] { padding: var(--space-1) var(--space-2); }
+.ipd-sheet .ipd-panel { min-height: 120px; max-height: 280px; overflow: auto; }
+.ipd-sheet .ipd-filters { gap: var(--space-3); margin-bottom: var(--space-1); }
+.ipd-sheet .ipd-filters select { min-height: 32px; padding: 2px var(--space-2); width: auto; }
+.ipd-sheet .bill-report th, .ipd-sheet .bill-report td { padding: var(--space-1) var(--space-2); }
+.ipd-sheet .ipd-foot { gap: var(--space-3); padding-top: var(--space-2); }
+.ipd-sheet .ipd-layouts { flex-direction: row; flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
+.ipd-sheet .ipd-layouts legend { width: 100%; }
+.ipd-sheet .ipd-foot-actions { gap: var(--space-1); }
+@media (max-width: 860px) {
+  .ipd-sheet .ipd-layout { grid-template-columns: 1fr; }
+  .ipd-sheet .ipd-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .ipd-sheet-backdrop { padding: var(--space-2); }
+  .ipd-sheet { max-height: calc(100vh - 2 * var(--space-2)); padding: var(--space-2); }
+  .ipd-sheet .ipd-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
