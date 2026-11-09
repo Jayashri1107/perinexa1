@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BadgePercent, DoorOpen, FileCheck, LockOpen, Plus, Printer, Search, Wallet, X } from 'lucide-react';
+import { BadgePercent, BedDouble, ClipboardCheck, DoorOpen, FileCheck, FileClock, LockOpen, Plus, Printer, Search, Wallet, X } from 'lucide-react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -80,13 +80,81 @@ function SearchBox({ onSearch, label = 'Name, UHID or IPD number' }) {
       <label htmlFor="ipd-q" className="sr-only">
         {label}
       </label>
-      <input id="ipd-q" type="search" placeholder={label} value={typed} maxLength={60} onChange={(e) => setTyped(e.target.value)} />
+      <span className="ipd-search-box">
+        <Search aria-hidden="true" />
+        <input id="ipd-q" type="search" placeholder={label} value={typed} maxLength={60} onChange={(e) => setTyped(e.target.value)} />
+      </span>
       <button type="submit" className="btn btn-secondary">
-        <Search aria-hidden="true" /> Search
+        Search
       </button>
     </form>
   );
 }
+
+// ---------- Cells shared by the two lists ----------
+
+/** Her name (opens the bill window) with UHID and IPD number under it. */
+function WhoCell({ s, onOpen }) {
+  return (
+    <td className="ipd-who">
+      <button type="button" className="ipd-name" onClick={onOpen} title="Open the IPD bill">
+        {s.patient.fullName}
+        <span className="sr-only"> – open the IPD bill</span>
+      </button>
+      <span className="ipd-sub tabular">
+        {s.patient.mrn}
+        {s.ipdNo ? ` · ${s.ipdNo}` : ''}
+      </span>
+    </td>
+  );
+}
+/** A date on one line, its time under it. */
+function WhenCell({ at }) {
+  if (!at) return <td>–</td>;
+  const text = formatDateTime(at);
+  const [day, time] = text.split(', ');
+  return (
+    <td className="ipd-when">
+      <span>{day}</span>
+      {time && <span className="ipd-sub">{time}</span>}
+    </td>
+  );
+}
+function PlaceCell({ s }) {
+  return (
+    <td className="ipd-place">
+      <span>{s.ward || '–'}</span>
+      {s.bed && <span className="ipd-sub">Bed {s.bed}</span>}
+    </td>
+  );
+}
+/** "DAMA (discharge against medical advice)" → "DAMA" in the list; the full words on hover. */
+const shortType = (label) => (label ? label.split(' (')[0] : '');
+
+/** A number tile at the top of a list; a button when it filters the list. */
+function Tile({ label, value, tone = 'neutral', pressed, onClick, icon: Icon }) {
+  const body = (
+    <>
+      <span className="ipd-tile-label">
+        {Icon && <Icon aria-hidden="true" />} {label}
+      </span>
+      <strong className="ipd-tile-value tabular">{value}</strong>
+    </>
+  );
+  return onClick ? (
+    <button type="button" className={`ipd-tile ipd-tile-${tone}`} aria-pressed={pressed} onClick={onClick}>
+      {body}
+    </button>
+  ) : (
+    <div className={`ipd-tile ipd-tile-${tone}`}>{body}</div>
+  );
+}
+
+const Loading = () => (
+  <p className="muted" aria-busy="true">
+    Loading…
+  </p>
+);
 
 export function IpdStaysPage() {
   const { activeMembership } = useAuth();
@@ -94,35 +162,38 @@ export function IpdStaysPage() {
   const [sheet, setSheet] = useState(null); // { id, dialog }
   const res = useFetch('/billing/ipd/stays', { status: 'admitted', q });
   const stays = res.data?.stays ?? [];
+  const sum = (k) => stays.reduce((t, s) => t + (s.bill?.[k] ?? 0), 0);
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD' }]}
-        title="IPD – in hospital"
-        subtitle="IPD advance and services (bill) of the patients in hospital. Discharges are under Discharge."
+        breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD bills' }]}
+        title="IPD bills"
+        subtitle="Patients in hospital: take an advance, add services, print the interim bill."
         tabs={billingTabs(activeMembership.roles)}
         subtabs={IPD_SUBTABS}
       />
-      <div className="pf-content">
-        <section className="card ipd-find" aria-label="Find a patient">
-          <SearchBox onSearch={setQ} />
-        </section>
-        <Alert type="error">{res.error}</Alert>
-        <section className="card" aria-labelledby="ipd-list-title">
-          <h2 id="ipd-list-title">In hospital ({stays.length})</h2>
+      <div className="pf-content ipd-list-page">
+        <div className="ipd-tiles" aria-label="In hospital now">
+          <Tile label="In hospital" value={stays.length} icon={BedDouble} />
+          <Tile label="Net bill" value={rupees(sum('total'))} />
+          <Tile label="Advance taken" value={rupees(sum('paid'))} />
+          <Tile label="Balance due" value={rupees(Math.max(0, sum('balance')))} tone={sum('balance') > 0 ? 'watch' : 'neutral'} />
+        </div>
+        <section className="card ipd-list-card" aria-labelledby="ipd-list-title">
+          <div className="ipd-list-head">
+            <h2 id="ipd-list-title">In hospital</h2>
+            <SearchBox onSearch={setQ} />
+          </div>
+          <Alert type="error">{res.error}</Alert>
           {res.loading && !res.data ? (
-            <p className="muted" aria-busy="true">
-              Loading…
-            </p>
+            <Loading />
           ) : stays.length === 0 ? (
-            <p className="muted">{q ? 'No patient matches this search.' : 'No patient is in hospital.'}</p>
+            <p className="muted ipd-empty">{q ? 'No patient matches this search.' : 'No patient is in hospital.'}</p>
           ) : (
             <div className="table-scroll">
               <table className="bill-report ipd-table">
                 <thead>
                   <tr>
-                    <th scope="col">IPD no.</th>
-                    <th scope="col">UHID</th>
                     <th scope="col">Patient</th>
                     <th scope="col">Admitted</th>
                     <th scope="col">Ward / bed</th>
@@ -131,9 +202,12 @@ export function IpdStaysPage() {
                       Net bill
                     </th>
                     <th scope="col" className="num">
+                      Advance
+                    </th>
+                    <th scope="col" className="num">
                       Balance
                     </th>
-                    <th scope="col">
+                    <th scope="col" className="ipd-act-col">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
@@ -141,24 +215,22 @@ export function IpdStaysPage() {
                 <tbody>
                   {stays.map((s) => (
                     <tr key={s.id}>
-                      <td className="tabular">{s.ipdNo ?? '–'}</td>
-                      <td className="tabular">{s.patient.mrn}</td>
-                      <td>{s.patient.fullName}</td>
-                      <td>{formatDateTime(s.admittedAt)}</td>
-                      <td>{[s.ward, s.bed].filter(Boolean).join(' · ') || '–'}</td>
-                      <td>{s.doctorName || '–'}</td>
+                      <WhoCell s={s} onOpen={() => setSheet({ id: s.id, dialog: null })} />
+                      <WhenCell at={s.admittedAt} />
+                      <PlaceCell s={s} />
+                      <td className="ipd-doc">{s.doctorName || '–'}</td>
                       <td className="num tabular">{s.bill ? rupees(s.bill.total) : '–'}</td>
-                      <td className="num tabular">{s.bill ? rupees(s.bill.balance) : '–'}</td>
-                      <td>
+                      <td className="num tabular">{s.bill ? rupees(s.bill.paid) : '–'}</td>
+                      <td className="num tabular">
+                        <strong>{s.bill ? rupees(s.bill.balance) : '–'}</strong>
+                      </td>
+                      <td className="ipd-act-col">
                         <span className="ipd-row-actions">
                           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: 'advance' })}>
-                            <Wallet aria-hidden="true" /> IPD advance<span className="sr-only"> for {s.patient.fullName}</span>
+                            <Wallet aria-hidden="true" /> Advance<span className="sr-only"> for {s.patient.fullName}</span>
                           </button>
                           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: 'add' })}>
-                            <Plus aria-hidden="true" /> Add services<span className="sr-only"> for {s.patient.fullName}</span>
-                          </button>
-                          <button type="button" className="btn btn-link btn-sm" onClick={() => setSheet({ id: s.id, dialog: null })}>
-                            Open bill<span className="sr-only"> of {s.patient.fullName}</span>
+                            <Plus aria-hidden="true" /> Services<span className="sr-only"> for {s.patient.fullName}</span>
                           </button>
                         </span>
                       </td>
@@ -175,13 +247,12 @@ export function IpdStaysPage() {
   );
 }
 
-// The Discharge list's steps (server: routes/ipdBilling.js DISCHARGE_STEPS)
+// The Discharge list's steps (server: routes/ipdBilling.js DISCHARGE_STEPS), each with its look
 const DISCHARGE_FILTERS = [
-  { key: '', label: 'All' },
-  { key: 'record', label: 'To record' },
-  { key: 'final_due', label: 'Final bill due' },
-  { key: 'to_clear', label: 'To clear' },
-  { key: 'cleared', label: 'Cleared' },
+  { key: 'record', label: 'To record', tone: 'watch', icon: ClipboardCheck },
+  { key: 'final_due', label: 'Final bill due', tone: 'watch', icon: FileClock },
+  { key: 'to_clear', label: 'To clear', tone: 'due', icon: FileCheck },
+  { key: 'cleared', label: 'Cleared', tone: 'stable', icon: DoorOpen },
 ];
 const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const isoDaysAgo = (n) => {
@@ -207,57 +278,52 @@ export function IpdDischargesPage() {
   const counts = res.data?.counts ?? {};
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const action = (s) => {
-    if (s.step === 'record') return { label: 'Patient discharge', icon: DoorOpen, dialog: 'discharge' };
+    if (s.step === 'record') return { label: 'Discharge', icon: DoorOpen, dialog: 'discharge' };
     if (s.step === 'final_due') return { label: 'Final bill', icon: FileCheck, dialog: 'final' };
-    if (s.step === 'to_clear') return s.bill?.balance > 0 ? { label: 'Take payment', icon: Wallet, dialog: 'advance' } : { label: 'Discharge clearance', icon: DoorOpen, dialog: 'clear' };
+    if (s.step === 'to_clear') return s.bill?.balance > 0 ? { label: 'Payment', icon: Wallet, dialog: 'advance' } : { label: 'Clearance', icon: DoorOpen, dialog: 'clear' };
     return null;
   };
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD', to: '/billing/ipd' }, { label: 'Discharge' }]}
-        title="IPD – discharge"
-        subtitle="Every discharge: record it, make the final bill, take the balance and clear her for leaving – from this list."
+        breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD bills', to: '/billing/ipd' }, { label: 'Discharge' }]}
+        title="Discharge"
+        subtitle="Record the discharge, make the final bill, take the balance and clear her for leaving."
         tabs={billingTabs(activeMembership.roles)}
         subtabs={IPD_SUBTABS}
       />
-      <div className="pf-content">
-        <section className="card ipd-find" aria-label="Find discharges">
-          <div className="segmented ipd-steps" role="group" aria-label="Step">
-            {DISCHARGE_FILTERS.map((f) => (
-              <button key={f.key || 'all'} type="button" aria-pressed={step === f.key} onClick={() => setStep(f.key)}>
-                {f.label} ({f.key ? (counts[f.key] ?? 0) : total})
-              </button>
-            ))}
+      <div className="pf-content ipd-list-page">
+        <div className="ipd-tiles" role="group" aria-label="Show the discharges at this step">
+          <Tile label="All discharges" value={total} pressed={step === ''} onClick={() => setStep('')} />
+          {DISCHARGE_FILTERS.map((f) => (
+            <Tile key={f.key} label={f.label} value={counts[f.key] ?? 0} tone={f.tone} icon={f.icon} pressed={step === f.key} onClick={() => setStep(step === f.key ? '' : f.key)} />
+          ))}
+        </div>
+        <section className="card ipd-list-card" aria-labelledby="ipd-dis-title">
+          <div className="ipd-list-head ipd-list-head-stack">
+            <h2 id="ipd-dis-title">{step ? DISCHARGE_FILTERS.find((f) => f.key === step)?.label : 'All discharges'}</h2>
+            <div className="ipd-list-filters">
+              <label className="ipd-date">
+                From <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+              </label>
+              <label className="ipd-date">
+                To <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+              </label>
+              <SearchBox onSearch={setQ} />
+            </div>
           </div>
-          <div className="ipd-dates">
-            <label>
-              From <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
-            </label>
-            <label>
-              To <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
-            </label>
-          </div>
-          <SearchBox onSearch={setQ} />
-        </section>
-        <Alert type="error">{res.error}</Alert>
-        <section className="card" aria-labelledby="ipd-dis-title">
-          <h2 id="ipd-dis-title">Discharges ({stays.length})</h2>
+          <Alert type="error">{res.error}</Alert>
           {res.loading && !res.data ? (
-            <p className="muted" aria-busy="true">
-              Loading…
-            </p>
+            <Loading />
           ) : stays.length === 0 ? (
-            <p className="muted">{q ? 'No discharge matches this search.' : 'No discharge in these days.'}</p>
+            <p className="muted ipd-empty">{q ? 'No discharge matches this search.' : 'No discharge in these days.'}</p>
           ) : (
             <div className="table-scroll">
               <table className="bill-report ipd-table">
                 <thead>
                   <tr>
-                    <th scope="col">Discharged</th>
-                    <th scope="col">IPD no.</th>
-                    <th scope="col">UHID</th>
                     <th scope="col">Patient</th>
+                    <th scope="col">Discharged</th>
                     <th scope="col">Ward / bed</th>
                     <th scope="col">Doctor</th>
                     <th scope="col">Type</th>
@@ -268,7 +334,7 @@ export function IpdDischargesPage() {
                       Balance
                     </th>
                     <th scope="col">Status</th>
-                    <th scope="col">
+                    <th scope="col" className="ipd-act-col">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
@@ -278,17 +344,17 @@ export function IpdDischargesPage() {
                     const a = action(s);
                     return (
                       <tr key={s.id}>
-                        <td>{formatDateTime(s.dischargedAt)}</td>
-                        <td className="tabular">{s.ipdNo ?? '–'}</td>
-                        <td className="tabular">{s.patient.mrn}</td>
-                        <td>{s.patient.fullName}</td>
-                        <td>{[s.ward, s.bed].filter(Boolean).join(' · ') || '–'}</td>
-                        <td>{s.doctorName || '–'}</td>
-                        <td>{s.discharge?.label ?? <span className="muted">Not recorded</span>}</td>
+                        <WhoCell s={s} onOpen={() => setSheet({ id: s.id, dialog: null })} />
+                        <WhenCell at={s.dischargedAt} />
+                        <PlaceCell s={s} />
+                        <td className="ipd-doc">{s.doctorName || '–'}</td>
+                        <td title={s.discharge?.label}>{s.discharge ? shortType(s.discharge.label) : <span className="muted">Not recorded</span>}</td>
                         <td className="num tabular">{s.bill ? rupees(s.bill.total) : '–'}</td>
-                        <td className="num tabular">{s.bill ? rupees(s.bill.balance) : '–'}</td>
+                        <td className="num tabular">
+                          <strong>{s.bill ? rupees(s.bill.balance) : '–'}</strong>
+                        </td>
                         <td>{STEP_LOOK(s, s.bill)}</td>
-                        <td>
+                        <td className="ipd-act-col">
                           <span className="ipd-row-actions">
                             {a && (
                               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: a.dialog })}>
@@ -296,9 +362,6 @@ export function IpdDischargesPage() {
                                 <span className="sr-only"> for {s.patient.fullName}</span>
                               </button>
                             )}
-                            <button type="button" className="btn btn-link btn-sm" onClick={() => setSheet({ id: s.id, dialog: null })}>
-                              Open bill<span className="sr-only"> of {s.patient.fullName}</span>
-                            </button>
                           </span>
                         </td>
                       </tr>

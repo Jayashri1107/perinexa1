@@ -457,3 +457,56 @@
   .ipd-sheet { max-height: calc(100vh - 2 * var(--space-2)); padding: var(--space-2); }
   .ipd-sheet .ipd-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* IPD bills and Discharge lists (9 Nov 2026): number tiles, one filter row, a table that does not break its numbers */
+.ipd-list-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.ipd-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); }
+.ipd-tile {
+  display: flex; flex-direction: column; gap: var(--space-1); text-align: left; font: inherit; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4);
+}
+button.ipd-tile { cursor: pointer; }
+button.ipd-tile:hover { border-color: var(--indigo-200); }
+button.ipd-tile:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shadow: var(--selected-edge); border-color: transparent; }
+.ipd-tile-label { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 0.8125rem; color: var(--slate-600); }
+.ipd-tile-label svg { width: 16px; height: 16px; }
+.ipd-tile-value { font-size: 1.375rem; line-height: 1.2; }
+.ipd-tile-watch .ipd-tile-label svg { color: var(--status-watch-fg); }
+.ipd-tile-due .ipd-tile-label svg { color: var(--status-due-fg); }
+.ipd-tile-stable .ipd-tile-label svg { color: var(--status-stable-fg); }
+.ipd-list-card { display: flex; flex-direction: column; gap: var(--space-3); }
+.ipd-list-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; }
+.ipd-list-head h2 { margin: 0; font-size: 1.125rem; }
+.ipd-list-filters { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.ipd-date { display: inline-flex; gap: var(--space-2); align-items: center; font-size: 0.875rem; color: var(--slate-600); }
+.ipd-date input { min-height: 36px; padding: 0 var(--space-2); }
+.ipd-list-page .ipd-search { flex: 0 1 360px; max-width: 360px; }
+.ipd-search-box { position: relative; flex: 1; min-width: 0; display: flex; }
+.ipd-search-box svg { position: absolute; left: var(--space-2); top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--slate-600); pointer-events: none; }
+.ipd-search-box input { flex: 1; min-width: 0; min-height: 36px; padding-left: calc(var(--space-2) + 22px); }
+.ipd-list-page .ipd-search .btn { min-height: 36px; }
+.ipd-empty { margin: 0; padding: var(--space-4) 0; }
+.ipd-table { width: 100%; }
+.ipd-table th, .ipd-table td { white-space: nowrap; vertical-align: middle; }
+.ipd-table td.ipd-who { white-space: normal; min-width: 180px; }
+.ipd-name { display: block; border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--teal-700); text-align: left; cursor: pointer; }
+.ipd-name:hover { text-decoration: underline; }
+.ipd-name:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+.ipd-sub { display: block; font-size: 0.8125rem; color: var(--slate-600); }
+.ipd-when span:first-child, .ipd-place span:first-child { display: block; }
+.ipd-doc { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.ipd-act-col { text-align: right; width: 1%; }
+.ipd-row-actions { flex-wrap: nowrap; justify-content: flex-end; }
+@media (max-width: 719px) {
+  .ipd-list-page .ipd-search { flex: 1 1 100%; max-width: none; }
+  .ipd-tile-value { font-size: 1.125rem; }
+}
+.ipd-list-page .ipd-table { margin-bottom: 0; }
+.ipd-list-page .ipd-table th, .ipd-list-page .ipd-table td { padding: var(--space-2); }
+.ipd-table td.ipd-who { min-width: 150px; }
+.ipd-who .ipd-sub { white-space: nowrap; }
+.ipd-list-filters .ipd-search { flex: 0 1 300px; max-width: 300px; }
+@media (max-width: 719px) { .ipd-list-filters .ipd-search { flex: 1 1 100%; max-width: none; } }
+.ipd-list-head-stack { flex-direction: column; align-items: stretch; }
+.ipd-list-head-stack .ipd-list-filters { justify-content: flex-start; }
