@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import { InlineForms, InlinePanel } from '../billing/billingUi.jsx';
 import { ClipboardCheck, DoorOpen, FileText, LogIn, Tag, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -35,7 +36,12 @@ export const checklistFromPatient = (p) => ({
   payerName: p?.payer?.name ?? '',
 });
 
-export function Modal({ id, title, onClose, children }) {
+// In the IPD bill page the clearance opens in the page (billing/billingUi.jsx InlineForms)
+export function Modal(props) {
+  return useContext(InlineForms) ? <InlinePanel {...props} /> : <DeskModal {...props} />;
+}
+
+function DeskModal({ id, title, onClose, children }) {
   const ref = useDialogFocus(onClose);
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
