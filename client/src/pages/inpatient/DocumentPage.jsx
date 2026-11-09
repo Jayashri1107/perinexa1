@@ -521,7 +521,9 @@ export function BabyRecords({ documentId, motherName, onMade }) {
           <li key={b.index}>
             <strong>{`Baby ${b.index + 1}`}</strong>
             <span>{[OUTCOME_LABELS[b.outcome] ?? b.outcome, BABY_SEX_LABELS[b.sex], b.weightGrams && `${b.weightGrams} g`].filter(Boolean).join(' · ')}</span>
-            {b.record ? (
+            {b.record?.hidden ? (
+              <span className="muted">Record made (another department)</span>
+            ) : b.record ? (
               <Link to={`/patients/${b.record.id}`}>{`${b.record.fullName} · ${b.record.mrn}`}</Link>
             ) : b.outcome === 'live' && data.access.create ? (
               <button type="button" className="btn btn-secondary" disabled={busy !== null} onClick={() => make(b.index)}>

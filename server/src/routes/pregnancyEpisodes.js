@@ -12,7 +12,7 @@ import { TheatreCase } from '../models/TheatreCase.js';
 import { Visit } from '../models/Visit.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, departmentListFilter, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { objectId, parse } from '../utils/validate.js';
 
@@ -31,6 +31,7 @@ const MATERNAL = ['antenatal', 'postnatal', 'abortion'];
 pregnancyEpisodesRouter.get('/', async (req, res) => {
   const { patientId } = parse(z.object({ patientId: objectId }).strict(), req.query);
   const patient = await findPatientById(req.tenantId, patientId);
+  assertNotHidden(req, patient); // another department's patient: "not found" for a doctor (departments, 9 Nov 2026)
   const access = patientAccess(req, patient);
   if (!access.view.has('pregnancy')) throw new HttpError(403, "You can't see this patient's pregnancy details.", 'FORBIDDEN');
   if (!MATERNAL.includes(patient.careType) && patient.careType !== 'infertility') return res.json({ episodes: [], tier: null });
@@ -53,7 +54,8 @@ pregnancyEpisodesRouter.get('/', async (req, res) => {
         ClinicalDocument.find({ ...t, kind: 'delivery', status: 'signed', createdAt: { $gte: from } }, { admissionId: 1, 'content.deliveredAt': 1, createdAt: 1 }).lean(),
         TheatreCase.find({ ...t, listDate: { $gte: from }, cancelled: null }, { procedure: 1, listDate: 1, status: 1 }).sort({ listDate: 1 }).lean(),
         LabOrder.find({ ...t, status: { $ne: 'cancelled' }, createdAt: { $gte: from } }, { createdAt: 1 }).lean(),
-        Patient.find({ tenantId: req.tenantId, 'newborn.mother': patient._id, 'newborn.birthAt': { $gte: from } }, { fullName: 1, mrn: 1, 'newborn.birthAt': 1 }).lean(),
+        // (a baby the department rule hides from this doctor is not listed – departments, 9 Nov 2026)
+        Patient.find({ tenantId: req.tenantId, 'newborn.mother': patient._id, 'newborn.birthAt': { $gte: from }, ...departmentListFilter(req) }, { fullName: 1, mrn: 1, 'newborn.birthAt': 1 }).lean(),
       ])
     : [[], [], [], [], [], []];
 

@@ -5,7 +5,7 @@ import { hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, departmentListed, departmentListFilter, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { objectId, parse } from '../utils/validate.js';
 import { babyOfName } from '../utils/personName.js';
@@ -27,7 +27,8 @@ const conflict = (m) => new HttpError(409, m, 'CONFLICT');
 async function load(req, documentId) {
   const doc = await ClinicalDocument.findOne({ _id: documentId, tenantId: req.tenantId, kind: 'delivery' });
   if (!doc) throw new HttpError(404, 'This delivery note was not found.', 'NOT_FOUND');
-  const mother = await findPatientById(req.tenantId, doc.patientId);
+  // Another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  const mother = assertNotHidden(req, await findPatientById(req.tenantId, doc.patientId));
   const access = patientAccess(req, mother);
   if (!access.view.has('pregnancy')) throw forbidden("You can't see this patient's delivery.");
   return { doc, mother };
@@ -37,11 +38,15 @@ const babyRef = (p) => ({ id: String(p._id), mrn: p.mrn, fullName: p.fullName })
 deliveryBabiesRouter.get('/', async (req, res) => {
   const { documentId } = parse(z.object({ documentId: objectId }).strict(), req.query);
   const { doc, mother } = await load(req, documentId);
-  const made = await Patient.find({ tenantId: req.tenantId, 'newborn.fromDelivery.documentId': doc._id }, { mrn: 1, fullName: 1, 'newborn.fromDelivery': 1 }).lean();
-  const byHand = await Patient.find({ tenantId: req.tenantId, 'newborn.mother': mother._id, 'newborn.fromDelivery': null }, { mrn: 1, fullName: 1, 'newborn.birthAt': 1 }).lean();
+  const DEPT = { assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 };
+  const made = await Patient.find({ tenantId: req.tenantId, 'newborn.fromDelivery.documentId': doc._id }, { mrn: 1, fullName: 1, 'newborn.fromDelivery': 1, ...DEPT }).lean();
+  // Babies hidden from this doctor by the department rule are left out (departments, 9 Nov 2026)
+  const byHand = await Patient.find({ tenantId: req.tenantId, 'newborn.mother': mother._id, 'newborn.fromDelivery': null, ...departmentListFilter(req) }, { mrn: 1, fullName: 1, 'newborn.birthAt': 1 }).lean();
   const babies = (doc.content?.babies ?? []).map((b, index) => {
     const rec = made.find((p) => p.newborn?.fromDelivery?.index === index);
-    return { index, outcome: b.outcome || '', sex: b.sex || '', weightGrams: b.weightGrams ?? null, record: rec ? babyRef(rec) : null };
+    // A record made but hidden from this doctor (another department): only that it exists, so it is not made twice
+    const record = rec ? (departmentListed(req, rec) ? babyRef(rec) : { hidden: true }) : null;
+    return { index, outcome: b.outcome || '', sex: b.sex || '', weightGrams: b.weightGrams ?? null, record };
   });
   res.json({
     signed: doc.status === 'signed',

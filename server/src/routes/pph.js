@@ -51,7 +51,7 @@ import { notify } from "../notifications/notify.js";
 import { findingsView } from "../patients/pregnancyFindings.js";
 import { audit } from "../utils/audit.js";
 import { HttpError } from "../utils/httpError.js";
-import { patientAccess } from "../utils/patientAccess.js";
+import { assertNotHidden, departmentListed, patientAccess } from "../utils/patientAccess.js";
 import { findPatientById } from "../utils/patientLookup.js";
 import { safeText } from "../utils/pcpndt.js";
 import {
@@ -147,7 +147,8 @@ const cancelView = (c) =>
 const isOpen = (c) => c.status === "open" && !c.cancelled;
 
 async function load(req, patientId, admissionId) {
-  const patient = await findPatientById(req.tenantId, patientId);
+  // Another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  const patient = assertNotHidden(req, await findPatientById(req.tenantId, patientId));
   if (!mayView(req, patient))
     throw forbidden("You can't see this patient's medical details.");
   if (patient.careType === "newborn")
@@ -493,7 +494,7 @@ const RULES = {
 // ---------- Reading ----------
 pphRouter.get("/current", async (req, res) => {
   const q = parse(z.object({ patientId: objectId }).strict(), req.query);
-  const patient = await findPatientById(req.tenantId, q.patientId);
+  const patient = assertNotHidden(req, await findPatientById(req.tenantId, q.patientId)); // departments, 9 Nov 2026
   if (!mayView(req, patient) || patient.careType === "newborn")
     return res.json({ admissionId: null, open: null, canDeclare: false });
   const stay = await Admission.findOne(
@@ -1336,7 +1337,7 @@ pphReviewsRouter.use((req, _res, next) => {
 pphReviewsRouter.get("/", async (req, res) => {
   if (!hasRole(req.membership, ...REVIEW_ROLES))
     throw forbidden("The M&M list is for doctors, RMOs and the quality lead.");
-  const list = await PphChart.find({
+  const all = await PphChart.find({
     tenantId: req.tenantId,
     mm: { $ne: null },
     cancelled: null,
@@ -1347,11 +1348,16 @@ pphReviewsRouter.get("/", async (req, res) => {
   const patients = new Map(
     (
       await Patient.find(
-        { tenantId: req.tenantId, _id: { $in: list.map((c) => c.patientId) } },
-        { fullName: 1, mrn: 1 },
+        { tenantId: req.tenantId, _id: { $in: all.map((c) => c.patientId) } },
+        { fullName: 1, mrn: 1, assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 },
       ).lean()
     ).map((p) => [String(p._id), p]),
   );
+  // Episodes of another department's patients are left out for a doctor (departments, 9 Nov 2026)
+  const list = all.filter((c) => {
+    const p = patients.get(String(c.patientId));
+    return !p || departmentListed(req, p);
+  });
   const now = nowOf(req);
   await audit(req, "PPH_MM_LIST_VIEWED", { details: { count: list.length } });
   res.json({
@@ -1395,6 +1401,12 @@ pphReviewsRouter.post("/:id/discussed", async (req, res) => {
     mm: { $ne: null },
   });
   if (!chart) throw notFound();
+  // Another department's patient: not found (departments, 9 Nov 2026)
+  const owner = await Patient.findOne(
+    { _id: chart.patientId, tenantId: req.tenantId },
+    { assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 },
+  ).lean();
+  if (owner && !departmentListed(req, owner)) throw notFound();
   if (chart.mm.discussedAt) throw conflict("Already marked discussed.");
   chart.mm.discussedAt = nowOf(req);
   chart.mm.discussedByName = req.user.name;

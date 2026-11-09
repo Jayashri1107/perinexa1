@@ -26,6 +26,7 @@ import { DuplicateBanner, DuplicateHistory, EarlierRecordsNote, MarkDuplicateDia
 import { ClosedBanner, DeathHistory, RecordDeathDialog, UndoDeathDialog } from './DeathDialogs.jsx';
 import { PatientMessagesDialog } from './PatientMessagesDialog.jsx';
 import { PatientForm } from './PatientForm.jsx';
+import { DepartmentReferralsCard, SendToDepartmentDialog } from './DepartmentReferrals.jsx';
 import { RecordCopy } from './RecordCopy.jsx';
 import { RiskBadge, RiskCard } from './RiskCard.jsx';
 import { SafetyStrip } from './SafetyStrip.jsx';
@@ -244,6 +245,7 @@ export function PatientDetailPage() {
   const [confirmSensitive, setConfirmSensitive] = useState(false);
   const [writingLetter, setWritingLetter] = useState(false);
   const [changingDoctor, setChangingDoctor] = useState(false);
+  const [sendingToDepartment, setSendingToDepartment] = useState(false);
   const [messaging, setMessaging] = useState(false);
   const [printingCard, setPrintingCard] = useState(false); // the patient card (reception)
   const [admitting, setAdmitting] = useState(false); // admit to a free bed (reception, her doctor, RMOs)
@@ -314,6 +316,7 @@ export function PatientDetailPage() {
     patient.currentAge !== undefined || patient.newborn ? ageText(patient) : null,
     patient.careType === 'antenatal' && patient.gestationalAge ? `${formatGestationShort(patient.gestationalAge)} pregnant` : null,
     patient.careType === 'abortion' ? (LOSS_LABELS[patient.abortion?.lossType] ?? null) : null,
+    patient.department !== undefined ? (patient.department ? patient.department : 'No department yet') : null,
     patient.assignedDoctorName !== undefined ? (patient.assignedDoctorName ? `Doctor: ${patient.assignedDoctorName}` : 'No doctor assigned') : null,
     patient.abha?.linked ? `ABHA ${patient.abha.masked}` : null,
   ]
@@ -363,6 +366,8 @@ export function PatientDetailPage() {
     ...(isReception && open ? [{ group: 'This record', label: 'Book a scan', icon: ScanLine, onSelect: () => setBookingScan(true) }] : []),
     ...(editInMenu ? [{ group: 'This record', label: 'Edit details', icon: Pencil, onSelect: () => navigate(`${base}/edit`) }] : []),
     ...(a.canAssign ? [{ group: 'This record', label: 'Change doctor', icon: UserRound, onSelect: () => setChangingDoctor(true) }] : []),
+    // Sending her to another department (owner, 9 Nov 2026): her doctor or an RMO
+    ...(open && a.canEditClinical ? [{ group: 'This record', label: 'Send to another department', icon: Send, onSelect: () => setSendingToDepartment(true) }] : []),
     ...(a.canMarkSensitive ? [{ label: patient.sensitive ? 'Remove sensitive marking' : 'Mark sensitive', group: 'This record', icon: Lock, onSelect: () => setConfirmSensitive(true) }] : []),
     ...(a.canAddEmergencyNote ? [{ group: 'This record', label: 'Emergency note', icon: Siren, onSelect: () => setEmergencyOpen(true) }] : []),
     ...(a.canEditClinical && hasRole(activeMembership, 'doctor', 'rmo') ? [{ group: 'Print and send', label: 'Write a letter', icon: FileText, onSelect: () => setWritingLetter(true) }] : []),
@@ -660,6 +665,17 @@ export function PatientDetailPage() {
           onDone={(text) => {
             setMessaging(false);
             setFlash(text);
+            reload();
+          }}
+        />
+      )}
+      {sendingToDepartment && (
+        <SendToDepartmentDialog
+          patient={patient}
+          onCancel={() => setSendingToDepartment(false)}
+          onSent={(department) => {
+            setSendingToDepartment(false);
+            setFlash(`Sent to ${department}. Its doctors can now open her record.`);
             reload();
           }}
         />
@@ -1123,6 +1139,13 @@ export function PatientOverviewTab() {
           {p.access.canViewNotes && <NotesCard patient={p} version={notesVersion} />}
         </div>
       )}
+      <DepartmentReferralsCard
+        patient={p}
+        onChanged={(text) => {
+          setFlash(text);
+          reload();
+        }}
+      />
       {wasDuplicate && <DuplicateHistory patient={p} />}
       <DeathHistory patient={p} />
     </FoldCards>

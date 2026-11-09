@@ -1,4 +1,6 @@
 import { fertilityEmpty } from '../fertility/fertilityFields.js';
+import { departmentsOf } from '../models/Membership.js';
+import { HttpError } from './httpError.js';
 
 // "Need to know" rules for patient records: what each role may see and change for ONE patient.
 // Everything here is decided on the server, so it can't be bypassed from the browser.
@@ -22,8 +24,15 @@ import { fertilityEmpty } from '../fertility/fertilityFields.js';
 // - Sonography staff (owner, 24 Oct 2026): name, patient number, type of care and age – no phone, address or anything
 //   medical in her record. What a scan needs (the indication, her EDD by dates, the report) comes through
 //   routes/imaging.js for her studies only.
-// - Hospital admin (with no clinical role): no patient data.
+// – Hospital admin (with no clinical role): no patient data.
 // A person with several roles gets everything any of their roles allows.
+//
+// Departments (owner, 9 Nov 2026 – docs/DEPARTMENT_ACCESS_PLAN.md): a DOCTOR sees a patient only when she is their own
+// patient, in one of their departments, sent to one of their departments (an open referral) or – read-only – the
+// mother of a baby in one of their departments. Every other patient is hidden from the doctor role completely: not in
+// any list, and "not found" when opened (no read-only view, no emergency note). A doctor with no department sees only
+// their own patients. A patient with no department yet (records from before) is seen by every doctor with a
+// department. Inside the department the rules above stay. RMOs and every other role are not limited by department.
 
 export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk'];
 
@@ -39,9 +48,10 @@ const LAB_FIELDS = ['id', 'mrn', 'fullName', 'careType', 'tenantId', 'duplicateO
 // The referral desk's details (see the rules above): what it needs to register her, find her again and book her –
 // with her doctor, so the booking goes to the right consultant. Not `sensitive`: whether a record is sensitive is
 // itself a clinical hint, and the desk's view is the same on every record.
-const DESK_FIELDS = [...LAB_FIELDS, 'closed', 'ageYears', 'ageRecordedOn', 'currentAge', 'phone', 'assignedDoctor', 'assignedDoctorName', 'createdAt', 'updatedAt'];
+const DESK_FIELDS = [...LAB_FIELDS, 'department', 'closed', 'ageYears', 'ageRecordedOn', 'currentAge', 'phone', 'assignedDoctor', 'assignedDoctorName', 'createdAt', 'updatedAt'];
 const IDENTITY_FIELDS = [
   ...LAB_FIELDS,
+  'department', // her department (owner, 9 Nov 2026): reception chooses it and books her with its doctors
   'closed',
   'ageYears',
   'ageRecordedOn',
@@ -81,7 +91,10 @@ const NEWBORN_FIELDS = ['newborn', 'motherInfo', 'babies'];
 // history: the history-taking sheet (complaint, periods, marriage, previous deliveries, other history) – a clinical
 // detail. fertility: her fertility history (Infertility type of care) – a clinical detail; its treatment plans through
 // routes/fertilityPlans.js.
+// departmentReferrals: where her doctor sent her and why (Anesthesia, Counselling …) – a clinical hint, so with the
+// medical details.
 const CLINICAL_FIELDS = [
+  'departmentReferrals',
   'pregnancy',
   'abortion',
   'fertility',
@@ -107,7 +120,7 @@ const CLINICAL_FIELDS = [
 const NOTES_FIELDS = ['notes'];
 
 // Field groups that can be edited
-export const IDENTITY_EDIT = ['careType', 'fullName', 'ageYears', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'emergencyContact', 'idProof'];
+export const IDENTITY_EDIT = ['careType', 'department', 'fullName', 'ageYears', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'emergencyContact', 'idProof'];
 export const NEWBORN_EDIT = ['newborn'];
 // delivery: a delivery at another hospital (no delivery note here), so the postnatal plan can start from it.
 // postnatal: whether she is breastfeeding (postnatal patients).
@@ -118,7 +131,28 @@ export const CLINICAL_EDIT = ['pregnancy', 'abortion', 'obstetric', 'medical', '
 
 const NONE = { view: [], editIdentity: false, editNewborn: false, editClinical: false, emergencyNote: false, viewNotes: false, assign: false, markSensitive: false, overrideRisk: false, recordVitals: false };
 
-function forRole(role, patient, userId) {
+/** The person's departments here and their id: what the doctor role's department rule needs. */
+export const departmentContext = (req) => ({ userId: req.user?._id, departments: departmentsOf(req.membership) });
+
+const openReferralTo = (patient, departments) =>
+  (patient.departmentReferrals ?? []).some((r) => !r.closedAt && departments.includes(r.department));
+
+/**
+ * How a doctor reaches this patient (owner, 9 Nov 2026): 'own' (their patient), 'department' (her department is one
+ * of theirs, she has none yet, or she was sent to one of theirs), 'mother' (a baby of hers is in one of their
+ * departments: read-only), or null (another department's patient: hidden). PURE.
+ */
+export function doctorReach(patient, { userId, departments = [] }) {
+  if (patient.assignedDoctor && String(patient.assignedDoctor) === String(userId)) return 'own';
+  if (!departments.length) return null; // a doctor with no department: only their own patients
+  if (!patient.department || departments.includes(patient.department)) return 'department';
+  if (openReferralTo(patient, departments)) return 'department';
+  if ((patient.babyDepartments ?? []).some((d) => departments.includes(d))) return 'mother';
+  return null;
+}
+
+function forRole(role, patient, ctx) {
+  const userId = ctx.userId;
   const mine = patient.assignedDoctor && String(patient.assignedDoctor) === String(userId);
   const unassigned = !patient.assignedDoctor;
   const sensitive = Boolean(patient.sensitive);
@@ -136,7 +170,13 @@ function forRole(role, patient, userId) {
         markSensitive: true,
         recordVitals: true,
       };
-    case 'doctor':
+    case 'doctor': {
+      const reach = doctorReach(patient, ctx);
+      if (!reach) return NONE; // another department's patient: hidden
+      if (reach === 'mother') {
+        // The mother of a baby in the doctor's department: read-only (sensitive: identity only), no emergency note.
+        return { ...NONE, view: sensitive ? IDENTITY_FIELDS : [...IDENTITY_FIELDS, ...CLINICAL_FIELDS, ...NOTES_FIELDS], viewNotes: !sensitive };
+      }
       if (mine || unassigned) {
         return {
           view: [...IDENTITY_FIELDS, ...CLINICAL_FIELDS, ...NOTES_FIELDS],
@@ -151,13 +191,14 @@ function forRole(role, patient, userId) {
           recordVitals: true,
         };
       }
-      // Another doctor's patient: read-only (sensitive: identity only), plus an emergency note.
+      // Another doctor's patient in the same department: read-only (sensitive: identity only), plus an emergency note.
       return {
         ...NONE,
         view: sensitive ? IDENTITY_FIELDS : [...IDENTITY_FIELDS, ...CLINICAL_FIELDS, ...NOTES_FIELDS],
         emergencyNote: true,
         viewNotes: !sensitive,
       };
+    }
     case 'nurse':
       // Not who pays: the billing type is for doctors, RMOs, the desk and billing (owner, 9 Nov 2026)
       return { ...NONE, view: sensitive ? NURSE_IDENTITY : [...NURSE_IDENTITY, ...CLINICAL_FIELDS], recordVitals: !sensitive };
@@ -183,9 +224,10 @@ function forRole(role, patient, userId) {
 /** What the logged-in person may see and do for this patient (req.membership has their roles here). */
 export function patientAccess(req, patient) {
   const roles = req.membership?.roles ?? [];
+  const ctx = departmentContext(req);
   const merged = { ...NONE, view: new Set() };
   for (const role of roles) {
-    const r = forRole(role, patient, req.user._id);
+    const r = forRole(role, patient, ctx);
     r.view.forEach((f) => merged.view.add(f));
     for (const k of ['editIdentity', 'editNewborn', 'editClinical', 'emergencyNote', 'viewNotes', 'assign', 'markSensitive', 'overrideRisk', 'recordVitals']) {
       merged[k] = merged[k] || r[k];
@@ -196,7 +238,10 @@ export function patientAccess(req, patient) {
   // Recording a death (and undoing one recorded in error) is for a DOCTOR who may change this record: the patient's
   // doctor, or any doctor for an unassigned patient – as for confirming a delivery note. Never an RMO, a nurse or
   // reception. Judged on the doctor role alone, so a doctor who is also an RMO gets no wider right from that role.
-  merged.recordDeath = roles.includes('doctor') && forRole('doctor', patient, req.user._id).editClinical === true;
+  merged.recordDeath = roles.includes('doctor') && forRole('doctor', patient, ctx).editClinical === true;
+  // Hidden by the department rule: a doctor (with no other role that shows her) and another department's patient.
+  // The routes answer "not found" (assertNotHidden), so nobody learns that the record exists.
+  merged.hidden = roles.includes('doctor') && merged.view.size === 0 && doctorReach(patient, ctx) === null;
 
   const v = merged.view;
   let level = 'none';
@@ -278,13 +323,69 @@ export function creationAccess(req) {
  * forRole above: CLINICAL_FIELDS for that patient). {} = all patients; null = none. Used to narrow a list
  * query before the rules above are checked again on each row (never instead of them).
  */
-export function pregnancyVisibleFilter(roles = [], userId) {
+export function pregnancyVisibleFilter(roles = [], userId, departments = []) {
   const filters = [];
   for (const role of roles) {
     if (role === 'rmo') return {};
-    if (role === 'doctor') filters.push({ $or: [{ sensitive: { $ne: true } }, { assignedDoctor: userId }, { assignedDoctor: null }] });
+    if (role === 'doctor') {
+      filters.push({ $and: [doctorVisibleFilter(userId, departments), { $or: [{ sensitive: { $ne: true } }, { assignedDoctor: userId }, { assignedDoctor: null }] }] });
+    }
     if (role === 'nurse') filters.push({ sensitive: { $ne: true } });
   }
   if (!filters.length) return null;
   return filters.length === 1 ? filters[0] : { $or: filters };
+}
+
+/**
+ * The database filter for the patients a doctor may reach at all (mirrors doctorReach above): their own, their
+ * departments', those with no department yet, those sent to their departments, and mothers of their departments'
+ * babies. Narrows a query; the rules above are checked again on each record.
+ */
+export function doctorVisibleFilter(userId, departments = []) {
+  if (!departments.length) return { assignedDoctor: userId };
+  return {
+    $or: [
+      { assignedDoctor: userId },
+      { department: { $in: [...departments, '', null] } },
+      { departmentReferrals: { $elemMatch: { department: { $in: departments }, closedAt: null } } },
+      { babyDepartments: { $in: departments } },
+    ],
+  };
+}
+
+/** Does this person see patients only through the doctor role (so the department rule limits every list)? */
+const doctorOnly = (req) => {
+  const roles = req.membership?.roles ?? [];
+  return roles.includes('doctor') && !roles.some((r) => r !== 'doctor' && PATIENT_ROLES.includes(r));
+};
+
+/**
+ * The department rule for a LIST of patients (owner, 9 Nov 2026): {} when this person's roles show every patient
+ * (an RMO, a nurse, reception and every other patient role: nothing changes for them); for someone whose only patient
+ * role is doctor, the doctor's filter above. Add it to every query that lists or counts patients.
+ */
+export function departmentListFilter(req) {
+  if (!doctorOnly(req)) return {};
+  const { userId, departments } = departmentContext(req);
+  return doctorVisibleFilter(userId, departments);
+}
+
+/** Is this patient listed for this person (the department rule only)? The PURE twin of departmentListFilter. */
+export function departmentListed(req, patient) {
+  if (!doctorOnly(req)) return true;
+  return doctorReach(patient, departmentContext(req)) !== null;
+}
+
+/** The ids of the patients this person may list, of those given (one query) – for lists kept in other collections. */
+export async function listedPatientIds(req, Patient, ids) {
+  if (!doctorOnly(req)) return null; // null = no limit
+  const rows = await Patient.find({ tenantId: req.tenantId, _id: { $in: ids }, ...departmentListFilter(req) }, { _id: 1 }).lean();
+  return new Set(rows.map((r) => String(r._id)));
+}
+
+/** "Patient not found" for a patient the department rule hides from this person (never "not allowed": that would show
+ * that the record exists). Every route that opens one patient by id goes through this (utils/patientLookup.js). */
+export function assertNotHidden(req, patient) {
+  if (patient && patientAccess(req, patient).hidden) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  return patient;
 }

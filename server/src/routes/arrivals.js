@@ -17,7 +17,7 @@ import { objectId, parse } from '../utils/validate.js';
 import { nextOpdNo } from '../inpatient/admissionDesk.js';
 import { currentAge } from '../models/Patient.js';
 import { User } from '../models/User.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { sendQueueTime } from '../appointments/queueTime.js';
 
 // "Mark arrived" (Feature 10): POST /api/arrivals { patientId, doctorId? } marks a patient as arrived today; DELETE
@@ -35,9 +35,10 @@ arrivalsRouter.use((req, _res, next) => {
 });
 
 async function patientOf(req, id) {
-  const patient = await Patient.findOne({ _id: id, tenantId: req.tenantId }, { _id: 1, mrn: 1, duplicateOf: 1, 'death.on': 1 });
+  const patient = await Patient.findOne({ _id: id, tenantId: req.tenantId }, { _id: 1, mrn: 1, duplicateOf: 1, 'death.on': 1, assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 });
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
-  return patient;
+  // Another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  return assertNotHidden(req, patient);
 }
 
 arrivalsRouter.post('/', async (req, res) => {
@@ -104,6 +105,7 @@ arrivalsRouter.get('/:patientId/case-paper', async (req, res) => {
   const { patientId } = parse(z.object({ patientId: objectId }), req.params);
   const patient = await Patient.findOne({ _id: patientId, tenantId: req.tenantId });
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  assertNotHidden(req, patient); // departments, 9 Nov 2026
   const a = patientAccess(req, patient);
   if (!a.view.has('phone')) throw new HttpError(403, "You can't see this patient's details.", 'FORBIDDEN');
   const on = hospitalToday(req.now);

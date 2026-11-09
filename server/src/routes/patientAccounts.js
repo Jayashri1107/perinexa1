@@ -9,7 +9,7 @@ import { possibleMatches } from '../patients/duplicateService.js';
 import { isClosed } from '../patients/deathRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { departmentListed, listedPatientIds, patientAccess } from '../utils/patientAccess.js';
 import { objectId, parse } from '../utils/validate.js';
 import { isoDay } from '../careplans/dates.js';
 import { registerPatient } from './patients.js';
@@ -57,7 +57,9 @@ patientAccountsRouter.get('/', async (req, res) => {
       : await PatientAccount.find({ tenantId: req.tenantId, status: { $ne: 'pending' } }).sort({ updatedAt: -1 }).limit(100).lean();
   const ids = accounts.map((a) => a.patientId).filter(Boolean);
   const patients = new Map((ids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: ids } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
-  res.json({ accounts: accounts.map((a) => view(a, patients)) });
+  // an account of a record the department rule hides from this doctor is left out (departments, 9 Nov 2026)
+  const listed = ids.length ? await listedPatientIds(req, Patient, ids) : null;
+  res.json({ accounts: accounts.filter((a) => !listed || !a.patientId || listed.has(String(a.patientId))).map((a) => view(a, patients)) });
 });
 
 async function pendingAccount(req) {
@@ -80,7 +82,8 @@ patientAccountsRouter.post('/:id/approve', async (req, res) => {
   const account = await pendingAccount(req);
   const { patientId } = parse(z.object({ patientId: objectId }).strict(), req.body);
   const patient = await Patient.findOne({ tenantId: req.tenantId, _id: patientId });
-  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  // (another department's patient is "not found" for a doctor – departments, 9 Nov 2026)
+  if (!patient || patientAccess(req, patient).hidden) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
   if (!patientAccess(req, patient).view.has('phone')) throw new HttpError(403, "You can't give portal access to this patient.", 'FORBIDDEN');
   if (isClosed(patient)) throw new HttpError(409, 'This record is closed: it takes no portal access.', 'CLOSED');
   if (isDuplicate(patient)) throw new HttpError(409, `This record is a duplicate of ${patient.duplicateOf.mrn}. Approve her on ${patient.duplicateOf.mrn} instead.`, 'DUPLICATE');
@@ -152,12 +155,20 @@ const changeView = (r, patient) => ({
 patientAccountsRouter.get('/changes', async (req, res) => {
   const list = await PatientChangeRequest.find({ tenantId: req.tenantId, status: 'pending' }).sort({ createdAt: 1 }).limit(200).lean();
   const patients = new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: list.map((r) => r.patientId) } })).map((p) => [String(p._id), p]));
-  res.json({ requests: list.map((r) => changeView(r, patients.get(String(r.patientId)))) });
+  // only patients the department rule lets this person see (departments, 9 Nov 2026)
+  const shown = list.filter((r) => {
+    const p = patients.get(String(r.patientId));
+    return !p || departmentListed(req, p);
+  });
+  res.json({ requests: shown.map((r) => changeView(r, patients.get(String(r.patientId)))) });
 });
 
 async function pendingChange(req) {
   const r = await PatientChangeRequest.findOne({ tenantId: req.tenantId, _id: parse(objectId, req.params.id) });
   if (!r) throw new HttpError(404, 'This request was not found.', 'NOT_FOUND');
+  // a request of another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  const p = await Patient.findOne({ tenantId: req.tenantId, _id: r.patientId }, { assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 }).lean();
+  if (p && !departmentListed(req, p)) throw new HttpError(404, 'This request was not found.', 'NOT_FOUND');
   if (r.status !== 'pending') throw new HttpError(409, 'This request was already handled.', 'CONFLICT');
   return r;
 }

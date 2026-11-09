@@ -15,6 +15,7 @@ import { Tenant } from './models/Tenant.js';
 import { runReminders } from './reminders/reminderService.js';
 import { takeTurn } from './utils/sharedState.js';
 import { runNicuAutomationsAll } from './clinical/nicuData.js';
+import { moveDepartments } from './patients/moveDepartments.js';
 
 // A hosted database with its own CA certificate (docs/DEPLOY.md): the certificate is written to a private temporary
 // file, which the database driver reads.
@@ -57,6 +58,17 @@ try {
   console.error('\n⚠️  WARNING: could not prepare appointment booking at startup. Details:', err.message, '\n');
 }
 
+// The owner's 9 departments (9 Nov 2026): old department names moved, patients given their doctor's department – once;
+// running again finds nothing to do (patients/moveDepartments.js).
+try {
+  const moved = await moveDepartments();
+  if (moved.doctors || moved.stays || moved.patients || moved.mothers) {
+    console.log(`Departments: ${moved.doctors} doctor(s), ${moved.stays} stay(s) and ${moved.patients} patient(s) moved to the new departments; ${moved.mothers} mother(s) linked to their babies' departments.`);
+  }
+} catch (err) {
+  console.error('\n⚠️  WARNING: could not move the old departments at startup. Details:', err.message, '\n');
+}
+
 // The billing types (Insurance, Cash, Package) and the admission types of old stays (owner, 9 Nov 2026) – once;
 // running again finds nothing to do (inpatient/admissionLabels.js).
 try {
@@ -65,9 +77,7 @@ try {
   for (const t of tenants) moved += await migrateAdmissionLabels(t._id);
   if (moved) console.log(`Billing and admission types: ${moved} older record(s) moved to the new types.`);
 } catch (err) {
-  console.error('
-⚠️  WARNING: could not move the older billing and admission types at startup. Details:', err.message, '
-');
+  console.error('\n⚠️  WARNING: could not move the older billing and admission types at startup. Details:', err.message, '\n');
 }
 
 const server = createApp().listen(config.API_PORT, () => {

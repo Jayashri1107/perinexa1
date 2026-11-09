@@ -44,7 +44,7 @@ import { lookupPin } from './pinLookup.js';
 import { useUnsavedWarning } from '../../hooks/useUnsavedWarning.js';
 import { HistorySheet } from './HistorySheet.jsx';
 import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues, withHistorySheet } from './historyFormat.js';
-import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
+import { DEPARTMENTS, inDepartment } from '../../platform/departments.js';
 import { FertilitySection } from './FertilitySection.jsx';
 import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
 import { FormSteps } from '../../components/FormSteps.jsx';
@@ -90,6 +90,7 @@ function initialValues(p) {
     emergencyContact: { name: p?.emergencyContact?.name ?? '', relation: p?.emergencyContact?.relation ?? '', phone: p?.emergencyContact?.phone ?? '' },
     idProof: { kind: p?.idProof?.kind ?? '', last4: p?.idProof?.last4 ?? '' },
     assignedDoctor: p?.assignedDoctor ?? '',
+    department: p?.department ?? '', // her department (owner, 9 Nov 2026)
     // findings: ticked for this pregnancy. findingsSeen: the list as this form opened (sent with the changes, so a
     // finding a colleague ticks meanwhile is not unticked by saving this form).
     pregnancy: {
@@ -175,8 +176,10 @@ export function toPayload(v, isEdit, access, part, loaded = null) {
     for (const k of ['pinCode', 'city', 'state', 'referredBy', 'payer']) if (payload[k] === undefined) delete payload[k];
     if (!isNewborn) Object.assign(payload, { ageYears: v.ageYears, emergencyContact: v.emergencyContact, idProof: v.idProof });
     if (isNewborn && access.canEditNewborn) payload.newborn = { ...v.newborn, birthAt: v.newborn.birthAt ? new Date(v.newborn.birthAt).toISOString() : '' };
+    // Her department (owner, 9 Nov 2026): a doctor sees only the patients of their departments
+    if (v.department) payload.department = v.department;
     if (!access.canEditIdentity) {
-      for (const k of ['careType', 'fullName', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'ageYears', 'emergencyContact', 'idProof']) delete payload[k];
+      for (const k of ['careType', 'department', 'fullName', 'phone', 'address', 'pinCode', 'city', 'state', 'referredBy', 'payer', 'ageYears', 'emergencyContact', 'idProof']) delete payload[k];
     }
     if (!isEdit) payload.assignedDoctor = v.assignedDoctor;
   }
@@ -418,8 +421,6 @@ export function PatientForm({
   const canChangeDoctor = !isEdit || Boolean(access?.canAssign);
   const doctors = useFetch(canChangeDoctor ? '/tenant/doctors' : null);
   const allDoctors = doctors.data?.doctors ?? [];
-  // Only the departments that have a doctor (all in the list's order)
-  const departments = departmentsWithDoctors(allDoctors);
 
   // Another page (or another type of care from the New patient menu): the recording stops, so the microphone
   // never stays on for a page that is no longer being filled in.
@@ -483,8 +484,8 @@ export function PatientForm({
   // PIN code → city and state (owner, 27 Oct 2026): filled when empty, or when they still hold what an earlier PIN
   // filled in – never over what was typed by hand.
   const pinFilled = useRef({ city: '', state: '' });
-  // Registration: the department first, then only its doctors (owner, 27 Oct 2026) – a filter, not saved on the record
-  const [department, setDepartment] = useState('');
+  // Her department first, then only its doctors (owner, 27 Oct 2026); saved on the record from 9 Nov 2026
+  const department = v.department;
   const setPinCode = (e) => {
     const pin = e.target.value.replace(/\D/g, '').slice(0, 6);
     unmark('pinCode');
@@ -608,6 +609,13 @@ export function PatientForm({
     }
     setError(null);
     setFieldErrors({});
+    // Her department (owner, 9 Nov 2026): asked at registration (a baby goes to Pediatric when none is chosen)
+    if (!isEdit && !v.department && v.careType !== 'newborn') {
+      setError('Please choose her department.');
+      setFieldErrors({ department: 'Choose a department' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     // Allergies must be asked: an empty note can't be told apart from "never asked" (safety strip, prescriptions).
     if (showMedical && allergyStatus(v.medical.allergies) === 'not_asked') {
       setError('Please answer the allergy question: write her allergies, or tick "None known".');
@@ -863,21 +871,26 @@ export function PatientForm({
                           </Field>
                         </>
                       )}
-                      {canChangeDoctor && departments.length > 0 && (
-                        <Field label="Department" id="department">
+                      {(!isEdit || access?.canEditIdentity) && (
+                        <Field
+                          label="Department"
+                          id="department"
+                          error={fe('department')}
+                          hint={type === 'newborn' ? 'A baby goes to Pediatric unless you choose another department.' : "Only this department's doctors see her record."}
+                        >
                           <select
                             id="department"
                             value={department}
                             onChange={(e) => {
                               const next = e.target.value;
-                              setDepartment(next);
+                              unmark('department');
                               // a doctor of another department is no longer offered
-                              const chosen = allDoctors.find((d) => d.id === v.assignedDoctor);
-                              if (next && chosen && !inDepartment(chosen, next)) setV((cur) => ({ ...cur, assignedDoctor: '' }));
+                              const chosen = canChangeDoctor ? allDoctors.find((d) => d.id === v.assignedDoctor) : null;
+                              setV((cur) => ({ ...cur, department: next, ...(next && chosen && !inDepartment(chosen, next) ? { assignedDoctor: '' } : {}) }));
                             }}
                           >
-                            <option value="">All departments</option>
-                            {departments.map((d) => (
+                            <option value="">{isEdit ? 'Not given yet' : 'Choose a department…'}</option>
+                            {DEPARTMENTS.map((d) => (
                               <option key={d} value={d}>
                                 {d}
                               </option>

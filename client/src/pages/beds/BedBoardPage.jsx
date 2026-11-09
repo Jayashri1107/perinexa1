@@ -240,7 +240,15 @@ export function BedBoardPage() {
                       <ul className="bb-grid" id={`${id}-beds`}>
                         {w.shown.map((b) => (
                           <li key={b.id} className={`bb-bed is-${bedState(b)}`}>
-                            {b.stay ? (
+                            {b.stay?.hidden ? (
+                              // Another department's patient (departments, 9 Nov 2026): the bed is taken – no name
+                              <span className="bb-bed-top">
+                                <strong className="bb-bed-name">{b.name}</strong>
+                                <StatusPill tone="inactive" icon={CircleSlash}>
+                                  Occupied
+                                </StatusPill>
+                              </span>
+                            ) : b.stay ? (
                               <Occupant
                                 bedName={b.name}
                                 stay={b.stay}

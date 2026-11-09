@@ -7,6 +7,7 @@ import { ClinicalDocument } from '../models/ClinicalDocument.js';
 import { Patient } from '../models/Patient.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
+import { listedPatientIds } from '../utils/patientAccess.js';
 import { parse } from '../utils/validate.js';
 
 // Clinical audit of deliveries (Clinical Requirements Group A, items 1 and 2): /api/clinical-audit.
@@ -72,7 +73,10 @@ clinicalAuditRouter.get('/caesareans', async (req, res) => {
   }
   const patients = await Patient.find({ tenantId: req.tenantId, _id: { $in: docs.map((d) => d.patientId) } }, { fullName: 1, mrn: 1 }).lean();
   const byId = new Map(patients.map((p) => [String(p._id), p]));
+  // The counts above stay whole; the named list leaves out another department's patients (departments, 9 Nov 2026)
+  const listed = await listedPatientIds(req, Patient, docs.map((d) => d.patientId));
   const list = items
+    .filter(({ doc }) => !listed || listed.has(String(doc.patientId)))
     .map(({ doc, times }) => ({
       patientId: String(doc.patientId),
       admissionId: String(doc.admissionId),

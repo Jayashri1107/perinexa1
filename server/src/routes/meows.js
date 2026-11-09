@@ -26,7 +26,7 @@ import { notify } from '../notifications/notify.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { isLateEntry } from '../utils/lateEntry.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -66,7 +66,8 @@ const mayWrite = (req, p) => {
 const mayOrder = (req, p) => hasRole(req.membership, 'doctor', 'rmo') && patientAccess(req, p).editClinical;
 
 async function load(req, patientId, admissionId) {
-  const patient = await findPatientById(req.tenantId, patientId);
+  // Another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  const patient = assertNotHidden(req, await findPatientById(req.tenantId, patientId));
   if (!mayView(req, patient)) throw forbidden("You can't see this patient's medical details.");
   if (patient.careType === 'newborn') throw invalid({ patientId: 'The MEOWS chart is for the mother, not a baby.' });
   const admission = await Admission.findOne({ _id: admissionId, tenantId: req.tenantId, patientId: patient._id });

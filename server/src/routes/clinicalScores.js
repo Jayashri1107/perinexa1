@@ -5,7 +5,7 @@ import { ClinicalScore, SCORE_KINDS } from '../models/ClinicalScore.js';
 import { hasRole } from '../models/Membership.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { findPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse } from '../utils/validate.js';
@@ -50,6 +50,7 @@ const view = (s) => ({
 
 async function patientFor(req, id) {
   const patient = await findPatientById(req.tenantId, id);
+  assertNotHidden(req, patient); // another department's patient: "not found" for a doctor (departments, 9 Nov 2026)
   if (!mayView(req, patient)) throw forbidden("You can't see this patient's medical details.");
   return patient;
 }

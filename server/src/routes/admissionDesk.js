@@ -16,7 +16,7 @@ import { isClosed } from '../patients/deathRules.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, departmentListed, patientAccess } from '../utils/patientAccess.js';
 import { loadPatientById } from '../utils/patientLookup.js';
 import { safeText } from '../utils/pcpndt.js';
 import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
@@ -50,7 +50,8 @@ async function findStay(req) {
   const stay = await Admission.findOne({ tenantId: req.tenantId, _id: parse(objectId, req.params.id) });
   if (!stay) throw notFound('This stay was not found.');
   const patient = await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, String(stay.patientId));
-  return { stay, patient };
+  // Another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  return { stay, patient: assertNotHidden(req, patient) };
 }
 
 // ---------- The hospital's rule ----------
@@ -101,6 +102,7 @@ admissionDeskRouter.get('/requests', async (req, res) => {
     .map((r) => {
       const p = patients.get(String(r.patientId));
       if (!p || isClosed(p) || isDuplicate(p)) return null;
+      if (!departmentListed(req, p)) return null; // another department's patient (departments, 9 Nov 2026)
       const a = patientAccess(req, p);
       const reasonOk = a.view.has('pregnancy') || (hasRole(req.membership, 'receptionist') && !p.sensitive && p.careType !== 'abortion');
       const v = requestView(r, p, { canCancel: a.editClinical });
@@ -125,7 +127,7 @@ const requestSchema = z
 admissionDeskRouter.post('/requests', async (req, res) => {
   if (!hasRole(req.membership, 'doctor', 'rmo')) throw forbidden('A doctor or an RMO asks for an admission.');
   const body = parse(requestSchema, req.body);
-  const patient = await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, body.patientId);
+  const patient = assertNotHidden(req, await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, body.patientId)); // departments, 9 Nov 2026
   if (!patientAccess(req, patient).editClinical) throw forbidden("This is another doctor's patient: ask her doctor or an RMO.");
   if (isClosed(patient) || isDuplicate(patient)) throw conflict('This record takes no admission.', 'NOT_ALLOWED');
   if (body.reasonCode === 'other' && body.reasonNote.trim().length < 3) throw invalid({ reasonNote: 'Write a short note for "Other".' });
@@ -147,7 +149,7 @@ admissionDeskRouter.post('/requests/:id/cancel', async (req, res) => {
   const body = parse(z.object({ reason: safeText('Reason', 300) }).strict(), req.body);
   const r = await AdmissionRequest.findOne({ tenantId: req.tenantId, _id: parse(objectId, req.params.id) });
   if (!r) throw notFound('This request was not found.');
-  const patient = await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, String(r.patientId));
+  const patient = assertNotHidden(req, await loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, String(r.patientId))); // departments, 9 Nov 2026
   if (!patientAccess(req, patient).editClinical) throw forbidden('Her doctor or an RMO cancels the request.');
   if (r.status !== 'open') throw conflict('This request is no longer open.');
   if (body.reason.trim().length < 3) throw invalid({ reason: 'Write why it is cancelled.' });
@@ -202,11 +204,11 @@ admissionDeskRouter.get('/to-clear', async (req, res) => {
   if (!hasRole(req.membership, ...BOARD_ROLES, ...CLEAR_ROLES)) throw forbidden('This list is for reception, billing, doctors, RMOs and nurses.');
   const since = hospitalDayStart(addDays(hospitalToday(req.now), -7));
   const stays = await Admission.find({ tenantId: req.tenantId, status: 'discharged', clearance: null, dischargedAt: { $gte: since } }).sort({ dischargedAt: 1 }).limit(200).lean();
-  const patients = new Map((stays.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: stays.map((s) => s.patientId) } }, { fullName: 1, mrn: 1 }).lean() : []).map((p) => [String(p._id), p]));
+  const patients = new Map((stays.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: stays.map((s) => s.patientId) } }, { fullName: 1, mrn: 1, assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 }).lean() : []).map((p) => [String(p._id), p]));
   const list = [];
   for (const s of stays) {
     const p = patients.get(String(s.patientId));
-    if (!p) continue;
+    if (!p || !departmentListed(req, p)) continue; // another department's patient: left out (departments, 9 Nov 2026)
     list.push({ id: String(s._id), ipdNo: s.ipdNo ?? null, ward: s.ward, bed: s.bed, dischargedAt: s.dischargedAt, balancePaise: await stayBalance(req.tenantId, s._id), patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn } });
   }
   res.json({ stays: list, canClear: hasRole(req.membership, ...CLEAR_ROLES) });

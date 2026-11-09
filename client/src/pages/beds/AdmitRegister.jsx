@@ -5,12 +5,13 @@ import { Alert, Field } from '../../components/ui.jsx';
 import { AadhaarQrFill } from '../patients/AadhaarQrFill.jsx';
 import { CARE_TYPE_LABELS, CARE_TYPES } from '../patients/patientFormat.js';
 import { asName } from '../../personName.js';
+import { DEPARTMENTS } from '../../platform/departments.js';
 
 // Admitting someone not registered yet (owner, 17 Oct 2026: Aadhaar upload "at registration and admission"): her details
 // from the Aadhaar card's QR (or typed), registered here, then admitted in the same dialog. The phone is typed – the
 // Aadhaar QR does not hold the mobile number. Records that may be hers are shown first, as on New patient.
 
-const EMPTY = { careType: 'antenatal', fullName: '', ageYears: '', phone: '', address: '', pinCode: '', city: '', state: '', last4: '' };
+const EMPTY = { careType: 'antenatal', department: '', fullName: '', ageYears: '', phone: '', address: '', pinCode: '', city: '', state: '', last4: '' };
 const MOTHER_TYPES = CARE_TYPES.filter((t) => t !== 'newborn');
 
 /** onRegistered(patient) with the new (or chosen existing) record, as the admit dialog's patient. */
@@ -28,6 +29,13 @@ export function AdmitRegister({ onRegistered }) {
     setBusy(true);
     setError(null);
     setFields({});
+    // Her department (owner, 9 Nov 2026): only its doctors see her record
+    if (!v.department) {
+      setBusy(false);
+      setError('Please choose her department.');
+      setFields({ department: 'Choose a department' });
+      return;
+    }
     try {
       const { last4, ...rest } = v;
       const body = { ...rest, ...(last4 ? { idProof: { kind: 'aadhaar', last4 } } : {}), ...(anyway ? { registerAnyway: true } : {}) };
@@ -89,6 +97,16 @@ export function AdmitRegister({ onRegistered }) {
             {MOTHER_TYPES.map((t) => (
               <option key={t} value={t}>
                 {CARE_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Department" id="ar-dept" error={fields.department}>
+          <select id="ar-dept" value={v.department} onChange={set('department')}>
+            <option value="">Choose a department…</option>
+            {DEPARTMENTS.map((d) => (
+              <option key={d} value={d}>
+                {d}
               </option>
             ))}
           </select>

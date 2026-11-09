@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { Membership, TENANT_ROLES } from '../models/Membership.js';
+import { Membership, TENANT_ROLES, departmentsOf } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
 import { PLATFORM_AREAS, User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { audit } from '../utils/audit.js';
@@ -61,6 +61,7 @@ async function hospitalsFor(userIds) {
       tenantName: t.name,
       tenantActive: t.isActive,
       roles: m.roles,
+      departments: m.roles.includes('doctor') ? departmentsOf(m) : [], // a doctor's departments there (9 Nov 2026)
       isActive: m.isActive,
     });
     byUser.set(m.userId.toString(), list);
