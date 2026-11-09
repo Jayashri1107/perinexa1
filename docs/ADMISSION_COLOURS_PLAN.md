@@ -43,8 +43,8 @@ department headings, and no new tokens are needed.
 ## What gets built (backend first, then frontend)
 
 1. **Billing type.** `PAYER_TYPES` becomes `['cash', 'insurance', 'package']` in `models/Patient.js`, used by
-   `models/Admission.js`. The billing code (`billing/billingRules.js`, IPD bills, Tally, reports) follows it. A package
-   admission links to the package code and name already in `INSURANCE_FIELDS` where it is used.
+   `models/Admission.js`. The billing code (`billing/billingRules.js`, IPD bills, Tally, reports) follows it. The admission
+   records only the word "Package". Which package is chosen on the bill, as today.
 2. **Admission form.** "Billing type" is **required** (Insurance / Cash / Package) for every admission, including NICU
    B/O babies (`clinical/nicuAdmission.js`) and the admission desk (`inpatient/admissionDesk.js`). It starts from the
    patient's own billing type. "Admission type" is required too: ANC / PNC / Delivered / Other (`Admission.stayType`).
@@ -66,5 +66,5 @@ department headings, and no new tokens are needed.
 
 ## Questions left
 
-- Package: should the desk also choose **which** package (from the price list) at admission, or only the word
-  "Package"?
+None left. Package (owner, 9 Nov 2026): the desk marks only **"Package"** at admission. Which package is chosen
+later, on the bill, as today.
