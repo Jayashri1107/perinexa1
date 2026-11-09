@@ -110,6 +110,10 @@ describe('discharge, final bill and clearance', () => {
 
     // Final again, then cleared: the discharge can no longer be changed, nor the bill reopened
     await desk.post(ipd(`/bills/${bill._id}/final`)).send({});
+    // The patient's record shows her doctor what the desk recorded, and that the bill is final (no amounts)
+    const stays = (await (await as('drA')).get(`/api/patients/${String(bill.patientId)}/admissions`)).body.admissions;
+    expect(stays[0]).toMatchObject({ discharge: { type: 'dama', label: expect.stringMatching(/^DAMA/), doctorName: 'Sample drA', remark: 'Relatives wish to go home' }, bill: { final: { byName: 'Sample billing' } } });
+    expect(stays[0].bill).not.toHaveProperty('total');
     expect((await desk.post(`/api/admission-desk/stays/${stay.id}/clear`).send({ note: 'Balance to be paid by the relative (practice)' })).status).toBe(200);
     expect((await desk.post(ipd(`/stays/${stay.id}/discharge`)).send({ type: 'normal' })).body.error.code).toBe('CLEARED');
     expect((await desk.post(ipd(`/bills/${bill._id}/reopen`)).send({ reason: 'Charge missed' })).body.error.code).toBe('CLEARED');
@@ -134,5 +138,8 @@ describe('discharge, final bill and clearance', () => {
     expect((await Admission.findOne({ tenantId: hospital._id, _id: stay.id }).lean()).dischargeInfo.type).toBe('death');
     expect((await (await as('reception')).get(ipd('/stays?status=discharged'))).body.stays[0].discharge).toMatchObject({ type: 'closed' });
     expect(JSON.stringify((await AuditLog.findOne({ action: 'DISCHARGE_DETAILS_RECORDED' }).lean()).details)).not.toMatch(/death/i);
+    // Her doctor sees the word on her record's Stays tab and stay page
+    expect((await (await as('drA')).get(`/api/patients/${patient.id}/admissions`)).body.admissions[0].discharge).toMatchObject({ type: 'death', label: 'Death' });
+    expect((await (await as('drA')).get(`/api/patients/${patient.id}/admissions/${stay.id}`)).body.admission.discharge).toMatchObject({ type: 'death' });
   });
 });

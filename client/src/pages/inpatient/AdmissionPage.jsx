@@ -4,6 +4,7 @@ import { MeowsChart } from './MeowsChart.jsx';
 import { PainChartSection } from '../anaesthesia/PainChart.jsx';
 import { PphChartSection } from './PphChart.jsx';
 import { DischargeChecklistSection } from './DischargeChecklist.jsx';
+import { StayDischargeCard } from './StayDischarge.jsx';
 import { ArrowLeft, BedDouble, CircleCheck, CircleMinus, FilePlus2, HeartPulse, Scale, Siren } from 'lucide-react';
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -338,6 +339,8 @@ export function AdmissionPage() {
           </p>
         )}
       </section>
+      {/* The discharge recorded at the desk, the final bill and the gate pass (9 Nov 2026) */}
+      <StayDischargeCard a={a} />
       {notice && (
         <Alert type={notice.type} onClose={() => setNotice(null)}>
           {notice.text}

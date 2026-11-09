@@ -15,6 +15,8 @@ import { reportLateCategory1 } from '../incidents/autoIncidents.js';
 import { verifyWitness } from '../auth/witness.js';
 import { FormularyItem } from '../models/FormularyItem.js';
 import { admissionView, documentView, entryView } from '../inpatient/inpatientView.js';
+import { MEDICAL_ROLES } from '../inpatient/dischargeTypes.js';
+import { Bill } from '../models/Bill.js';
 import { redFlagsForPatient } from '../redflags/redFlagService.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
@@ -106,14 +108,29 @@ function pageAccess(req, a, admission) {
 // The stay's page. While she is in hospital it also has her current red flags (from the nursing chart of this stay,
 // her lab results and her latest visit) – worked out now, never stored; everyone who reaches this page may see the
 // medical details (assertCanView). A stay that has ended has none.
+// Who may see why a record is closed (a death discharge); the others read "Record closed"
+const medicalOf = (req) => hasRole(req.membership, ...MEDICAL_ROLES);
+/** The stays' bills (open one, else the latest): Map of admissionId → bill (number and final only). */
+async function stayBills(req, stayIds) {
+  if (!stayIds.length) return new Map();
+  const bills = await Bill.find({ tenantId: req.tenantId, admissionId: { $in: stayIds }, kind: 'ipd' }, { admissionId: 1, number: 1, final: 1, status: 1, createdAt: 1 }).sort({ createdAt: 1 }).lean();
+  const map = new Map();
+  for (const b of bills) {
+    const key = String(b.admissionId);
+    if (!map.has(key) || b.status === 'open') map.set(key, b);
+  }
+  return map;
+}
+
 async function admissionPage(req, patient, admission, a) {
-  const [docs, entries, redFlags] = await Promise.all([
+  const [docs, entries, redFlags, bills] = await Promise.all([
     ClinicalDocument.find({ tenantId: req.tenantId, admissionId: admission._id }).sort({ createdAt: 1 }),
     NursingEntry.find({ tenantId: req.tenantId, admissionId: admission._id }).sort({ at: -1 }).limit(500),
     admission.status === 'admitted' && a.view ? redFlagsForPatient(planCtx(req), patient) : null,
+    stayBills(req, [admission._id]),
   ]);
   return {
-    admission: admissionView(admission),
+    admission: admissionView(admission, { medical: medicalOf(req), bill: bills.get(String(admission._id)) ?? null }),
     documents: docs.map(documentView),
     nursing: entries.map(entryView),
     access: pageAccess(req, a, admission),
@@ -133,8 +150,9 @@ admissionsRouter.get('/', async (req, res) => {
   ]);
   const countOf = (id, status) => counts.find((c) => String(c._id.admissionId) === String(id) && c._id.status === status)?.n ?? 0;
   await audit(req, 'ADMISSIONS_VIEWED', { details: ids(patient, { access: a.level }) });
+  const bills = await stayBills(req, stays.map((s) => s._id));
   res.json({
-    admissions: stays.map((s) => ({ ...admissionView(s), drafts: countOf(s._id, 'draft'), signed: countOf(s._id, 'signed') })),
+    admissions: stays.map((s) => ({ ...admissionView(s, { medical: medicalOf(req), bill: bills.get(String(s._id)) ?? null }), drafts: countOf(s._id, 'draft'), signed: countOf(s._id, 'signed') })),
     canAdmit: a.edit && !stays.some((s) => s.status === 'admitted') && !isDuplicate(patient) && !isClosed(patient),
   });
 });
@@ -268,7 +286,7 @@ admissionsRouter.get('/:admissionId/documents/:docId', async (req, res) => {
   const admission = await findAdmission(req, patient, req.params.admissionId);
   const doc = await findDocument(req, patient, admission, req.params.docId);
   await audit(req, 'DOCUMENT_VIEWED', { details: ids(patient, { admissionId: String(admission._id), documentId: String(doc._id), kind: doc.kind, access: a.level }) });
-  res.json({ document: documentView(doc), admission: admissionView(admission), signer: await signerOf(doc), access: pageAccess(req, a, admission) });
+  res.json({ document: documentView(doc), admission: admissionView(admission, { medical: medicalOf(req) }), signer: await signerOf(doc), access: pageAccess(req, a, admission) });
 });
 
 // Saves a draft (only the version the person edited)
@@ -358,7 +376,7 @@ admissionsRouter.post('/:admissionId/documents/:docId/sign', async (req, res) =>
     await reportLateCategory1(req, doc);
   }
   const latest = await findAdmission(req, patient, req.params.admissionId);
-  res.json({ document: documentView(await findDocument(req, patient, latest, req.params.docId)), admission: admissionView(latest), access: pageAccess(req, a, latest) });
+  res.json({ document: documentView(await findDocument(req, patient, latest, req.params.docId)), admission: admissionView(latest, { medical: medicalOf(req) }), access: pageAccess(req, a, latest) });
 });
 
 // A correction or addition to a signed document (doctors, RMOs and nurses of the patient)
