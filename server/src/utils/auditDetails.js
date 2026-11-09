@@ -56,6 +56,10 @@ const REFERRAL_DETAIL_FIELDS = ['patientId', 'mrn', 'referralId', 'what', 'kind'
 // Registers removed 2 Oct 2026 – kept so old entries still display. REPORT_VIEWED (the monthly report) is still written.
 const REGISTER_ACTIONS = new Set(AUDIT_CATEGORIES.patients.filter((a) => a.startsWith('REGISTER_') || a === 'REPORT_VIEWED'));
 const REGISTER_DETAIL_FIELDS = ['register', 'report', 'entryId', 'patientId', 'mrn', 'fileId', 'month'];
+// The medical records module: ids, the kind of document or of copy, who a copy went to (a kind, never a name),
+// sizes and counts – never a title, a note, a receiver's name or an authorisation.
+const RECORDS_ACTIONS = new Set(AUDIT_CATEGORIES.patients.filter((a) => a.startsWith('PATIENT_FILE') || a.startsWith('RECORDS_') || a.startsWith('RECORD_COP')));
+const RECORDS_DETAIL_FIELDS = ['patientId', 'mrn', 'documentId', 'docType', 'fileId', 'size', 'issueId', 'what', 'givenTo', 'late', 'shown', 'page', 'visits', 'documents'];
 
 // Duplicate records: the ids and patient numbers of the records and counts – never a name, a phone number or the
 // reason a doctor typed. matchIds: the records that were shown as possible matches when someone registered anyway.
@@ -154,6 +158,10 @@ const PLATFORM_FIELDS_BY_ACTION = {
   INPATIENTS_VIEWED: ['admitted', 'flagged'],
   // Duplicate records: counts only – never which records
   PATIENT_REGISTERED_ANYWAY: ['matches'],
+  // The records module's lists: counts only – never a record
+  RECORDS_INDEX_VIEWED: ['shown', 'page'],
+  RECORDS_INCOMPLETE_VIEWED: ['shown', 'visits', 'documents'],
+  RECORD_COPIES_VIEWED: ['shown', 'page'],
   PATIENT_MARKED_DUPLICATE: ['appointmentsMoved'],
   PATIENT_DUPLICATE_UNDONE: ['appointmentsMoved'],
   // A record closed or reopened: counts only – never which record
@@ -183,6 +191,7 @@ function trimmedByAction(action, details) {
   if (AI_ACTIONS.has(action)) return only(details, AI_DETAIL_FIELDS);
   if (LAB_ACTIONS.has(action)) return only(details, LAB_DETAIL_FIELDS);
   if (REFERRAL_ACTIONS.has(action)) return only(details, REFERRAL_DETAIL_FIELDS);
+  if (RECORDS_ACTIONS.has(action)) return only(details, RECORDS_DETAIL_FIELDS);
   if (TALLY_ACTIONS.has(action)) return only(details, TALLY_DETAIL_FIELDS);
   if (REGISTER_ACTIONS.has(action)) return only(details, REGISTER_DETAIL_FIELDS);
   if (BILLING_EXTRA_ACTIONS.has(action)) return only(details, BILLING_EXTRA_DETAIL_FIELDS);

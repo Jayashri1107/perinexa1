@@ -67,6 +67,7 @@ import { patientPortalAccessRouter } from './portal.js';
 import { patientDuplicateRouter } from './patientDuplicates.js';
 import { patientDeathRouter } from './patientDeath.js';
 import { recordCopyRouter } from './recordCopy.js';
+import { patientDocumentsRouter } from './records.js';
 import { departmentForNew, refreshBabyDepartments } from '../patients/departments.js';
 import { capitalizeName } from '../utils/personName.js';
 import {
@@ -636,6 +637,7 @@ patientsRouter.use('/:id/admissions', admissionsRouter);
 patientsRouter.use('/:id/lab-orders', patientLabRouter);
 patientsRouter.use('/:id/imaging', patientImagingRouter); // USG and radiology (Lab version 2)
 patientsRouter.use('/:id/work-done', workDoneRouter);
+patientsRouter.use('/:id/documents', patientDocumentsRouter); // scanned and outside documents (routes/records.js)
 patientsRouter.use('/:id/reminder-consent', patientReminderConsentRouter);
 patientsRouter.use('/:id/portal-access', patientPortalAccessRouter);
 patientsRouter.use('/:id/reminder', remindersRouter);

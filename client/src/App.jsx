@@ -16,7 +16,7 @@ import { AppLayout } from './components/AppLayout.jsx';
 import { PageHeader } from './components/PageHeader.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, FORMULARY_ROLES, THEATRE_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, FORMULARY_ROLES, THEATRE_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, RECORDS_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 import { CASE_REVIEW_ROLES } from './pages/quality/qualityFormat.js';
 import { PRIVILEGE_ROLES } from './pages/privileges/privilegeRoles.js';
 
@@ -59,6 +59,13 @@ const load16 = () => import('./pages/beds/BedSetupPage.jsx');
 const BedSetupPage = screen(load16, 'BedSetupPage');
 const load17 = () => import('./pages/appointments/DisplayPage.jsx');
 const DisplayPage = screen(load17, 'DisplayPage');
+// The medical records module (from the other Perinexa copy, 9 Nov 2026)
+const loadRecords = () => import('./pages/records/RecordsPages.jsx');
+const RecordsIndexPage = screen(loadRecords, 'RecordsIndexPage');
+const IncompleteRecordsPage = screen(loadRecords, 'IncompleteRecordsPage');
+const RecordCopiesPage = screen(loadRecords, 'RecordCopiesPage');
+const loadDocumentsTab = () => import('./pages/records/PatientDocumentsTab.jsx');
+const PatientDocumentsTab = screen(loadDocumentsTab, 'PatientDocumentsTab');
 const load18 = () => import('./pages/appointments/PatientAppointmentsTab.jsx');
 const PatientAppointmentsTab = screen(load18, 'PatientAppointmentsTab');
 const load19 = () => import('./pages/billing/BillPage.jsx');
@@ -494,6 +501,8 @@ export function App() {
                   <Route path="specimens" element={<PatientSpecimensTab />} />
                   <Route path="screening" element={<PatientScreeningTab />} />
                   <Route path="scores" element={<PatientScoresTab />} />
+                  {/* Scanned and outside documents attached to the record (those who see her medical details, and the records staff) */}
+                  <Route path="documents" element={<PatientDocumentsTab />} />
                   <Route path="anaesthesia" element={<PacTab />} />
                   <Route path="pregnancies" element={<PregnanciesTab />} />
                   <Route path="newborn-care" element={<NewbornCareTab />} />
@@ -538,6 +547,12 @@ export function App() {
                 <Route path="theatre" element={<RequireTenantRole roles={THEATRE_ROLES} message="The theatre list is for doctors, RMOs and nurses." />}>
                   <Route index element={<TheatreListPage />} />
                   <Route path=":id" element={<TheatreCasePage />} />
+                </Route>
+                {/* The medical records module: the records login, doctors and RMOs */}
+                <Route path="records" element={<RequireTenantRole roles={RECORDS_ROLES} message="The records module is for the medical records staff, doctors and RMOs." />}>
+                  <Route index element={<RecordsIndexPage />} />
+                  <Route path="incomplete" element={<IncompleteRecordsPage />} />
+                  <Route path="copies" element={<RecordCopiesPage />} />
                 </Route>
                 <Route path="formulary" element={<RequireTenantRole roles={FORMULARY_ROLES} message="The formulary is for doctors, RMOs, nurses and the pharmacist." />}>
                   <Route index element={<FormularyPage />} />

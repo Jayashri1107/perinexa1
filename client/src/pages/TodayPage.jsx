@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tip } from '../components/Tip.jsx';
-import { Archive, Baby, BadgeCheck, Banknote, BedDouble, CalendarPlus, ClockAlert, Siren, DoorOpen, FileOutput, FilePen, FlaskConical, MessageCircleReply, PhoneCall, Receipt, Send, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
+import { Archive, Baby, FileClock, BadgeCheck, Banknote, BedDouble, CalendarPlus, ClockAlert, Siren, DoorOpen, FileOutput, FilePen, FlaskConical, MessageCircleReply, PhoneCall, Receipt, Send, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -416,6 +416,8 @@ function RoleToday({ roles, lensBar = null }) {
   // Lab (Version 2): results waiting for this doctor's review; the lab's own counts
   const labReview = useFetch(isDoctor ? '/lab/to-review' : null);
   const labWork = useFetch(roles.includes('lab') ? '/lab/worklist' : null);
+  // The medical records staff: what is still unfinished in the records (the Records menu)
+  const recordsWork = useFetch(roles.includes('records') ? '/records/incomplete' : null);
   // The billing department: unpaid bills and the money owed
   // and reception (the "To collect" card and the payments to collect now)
   const isReception = roles.includes('receptionist');
@@ -622,6 +624,9 @@ function RoleToday({ roles, lensBar = null }) {
     labWork.data && labWork.data.counts.verify > 0 && <KpiCard key="lab-verify" to="/lab?list=verify" tone="due" icon={FlaskConical} label="Results to check" value={formatNumber(labWork.data.counts.verify)} sub="Entered, waiting for a second person" />,
     labWork.data && <KpiCard key="lab-home" to="/lab?list=home" tone={labWork.data.counts.home ? 'due' : 'neutral'} icon={TestTube} label="Home collections" value={formatNumber(labWork.data.counts.home ?? 0)} sub="Samples to collect at home" />,
     labWork.data && <KpiCard key="lab-outside" to="/lab?list=outside" tone={labWork.data.counts.outside ? 'watch' : 'neutral'} icon={FlaskConical} label="At outside labs" value={formatNumber(labWork.data.counts.outside ?? 0)} sub="Sent out, results not back" />,
+    recordsWork.data && (
+      <KpiCard key="records-incomplete" to="/records/incomplete" tone={recordsWork.data.rows.length ? 'due' : 'neutral'} icon={FileClock} label="Incomplete records" value={formatNumber(recordsWork.data.rows.length)} sub="Visits unsigned and inpatient documents still drafts" />
+    ),
     seesRisk && (
       <KpiCard
         key="risk"

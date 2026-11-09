@@ -1,4 +1,4 @@
-import { BadgeCheck, BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Scissors, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
+import { BadgeCheck, FolderArchive, BedDouble, Boxes, Building2, CalendarCheck, CalendarClock, CalendarDays, ChartColumn, CirclePlus, ClipboardPen, FileSignature, FileText, FlaskConical, Handshake, HeartPulse, Info, LayoutDashboard, Library, ListChecks, PackagePlus, PhoneCall, Pill, Receipt, ReceiptText, ScanLine, Scissors, Settings, ShieldCheck, Siren, Stethoscope, TestTube, Truck, UserCog, Users, Wallet } from 'lucide-react';
 import { ANALYTICS_ROLES } from '../pages/analytics/analyticsRoles.js';
 import { NEW_PATIENT_LINKS } from '../pages/patients/patientFormat.js';
 import { CASE_REVIEW_ROLES, CLINICAL_AUDIT_ROLES, QUALITY_TABS } from '../pages/quality/qualityFormat.js';
@@ -194,6 +194,21 @@ const HOSPITAL_SCANS = {
 // Nurses, reception, lab staff, pharmacists and sonologists have no Referrals; the hospital admin has only its
 // settings (Hospital admin → Referrals), because referrals are patient data.
 export const REFERRAL_ROLES = ['referral_desk', 'doctor', 'rmo'];
+// The medical records module (9 Nov 2026, from the other Perinexa copy): the records index, the incomplete-records
+// list and the copies register. The medical records login, doctors and RMOs. Same list as server/src/routes/records.js.
+export const RECORDS_ROLES = ['records', 'doctor', 'rmo'];
+const HOSPITAL_RECORDS = {
+  key: 'records',
+  label: 'Records',
+  icon: FolderArchive,
+  to: '/records',
+  tabs: [
+    { label: 'Index', to: '/records', end: true },
+    { label: 'Incomplete records', to: '/records/incomplete', end: true },
+    { label: 'Copies register', to: '/records/copies', end: true },
+  ],
+};
+
 const HOSPITAL_REFERRALS = {
   key: 'referrals',
   label: 'Referrals',
@@ -429,7 +444,7 @@ const HOSPITAL_BEDS = {
 // Roles that work with patient records, and those that may register new patients.
 // The referral desk registers a referred patient with her identity details only (name, age, phone, type of care,
 // doctor), as reception does (brought over 19 Oct 2026).
-export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk'];
+export const PATIENT_ROLES = ['doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk', 'records'];
 export const REGISTER_ROLES = ['doctor', 'rmo', 'receptionist', 'referral_desk'];
 const any = (roles, list) => roles.some((r) => list.includes(r));
 // Babies (their birth details and their mother) are registered by reception, doctors and RMOs; the referral desk
@@ -516,6 +531,7 @@ export function hospitalModules(roles = []) {
   const modules = [HOSPITAL_TODAY];
   if (any(roles, FOLLOW_UP_ROLES)) modules.push(HOSPITAL_FOLLOW_UPS);
   if (seesPatientList(roles)) modules.push({ ...HOSPITAL_PATIENTS, groups: patientMenu(roles) });
+  if (any(roles, RECORDS_ROLES)) modules.push(HOSPITAL_RECORDS);
   if (canSeeAppointments(roles)) modules.push(HOSPITAL_APPOINTMENTS);
   // An RMO alone does not get the calendar in the menu (follow-up reminders and booking are front-desk work – owner,
   // 13 Oct 2026); their Today still lists today's patients and who is waiting.
@@ -621,7 +637,7 @@ export const accountTabs = (memberships = []) => {
 /** Doctors and RMOs (anywhere): their professional details print on prescriptions. */
 export const isPrescriber = (memberships = []) => any(allRoles(memberships), PRESCRIBER_ROLES);
 
-const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_EXPENSES, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_THEATRE, HOSPITAL_SPECIMENS, HOSPITAL_NEWBORN_FOLLOW_UP, HOSPITAL_CLINICAL_AUDIT, HOSPITAL_FORMULARY, HOSPITAL_INCIDENTS, HOSPITAL_PRIVILEGES, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
+const ALL = [...PLATFORM_MODULES, HOSPITAL_TODAY, HOSPITAL_FOLLOW_UPS, HOSPITAL_PATIENTS, HOSPITAL_RECORDS, HOSPITAL_APPOINTMENTS, HOSPITAL_CALENDAR, HOSPITAL_BEDS, HOSPITAL_LAB, HOSPITAL_REFERRALS, HOSPITAL_BILLING, HOSPITAL_EXPENSES, HOSPITAL_PHARMACY, HOSPITAL_ANALYTICS, HOSPITAL_THEATRE, HOSPITAL_SPECIMENS, HOSPITAL_NEWBORN_FOLLOW_UP, HOSPITAL_CLINICAL_AUDIT, HOSPITAL_FORMULARY, HOSPITAL_INCIDENTS, HOSPITAL_PRIVILEGES, HOSPITAL_KNOWLEDGE, HOSPITAL_ADMIN, ACCOUNT_MODULE];
 export const moduleByKey = (key) => ALL.find((m) => m.key === key);
 
 // Platform admins see every platform page; a tab that only makes something new shows when they may change that area.

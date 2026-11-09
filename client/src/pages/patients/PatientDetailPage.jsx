@@ -413,6 +413,8 @@ export function PatientDetailPage() {
     // Appointment booking: for reception, the referral desk, doctors, RMOs and nurses who may see her phone number
     ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse') ? [{ label: 'Appointments', to: `${base}/appointments`, end: true }] : []),
     ...(a.canViewVisits ? [{ label: 'Lab and scans', to: `${base}/lab`, end: false }] : []),
+    // Scanned and outside documents attached to the record (also the medical records staff)
+    ...(a.canViewDocuments ? [{ label: 'Documents', to: `${base}/documents`, end: true }] : []),
     ...(referralsTab ? [{ label: 'Referrals', to: `${base}/referrals`, end: true }] : []),
     // Clinical Requirements Group A: her specimens sent for histopathology (doctors, RMOs and nurses)
     ...(a.canViewVisits && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Specimens', to: `${base}/specimens`, end: true }] : []),

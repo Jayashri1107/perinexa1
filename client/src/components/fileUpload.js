@@ -6,11 +6,23 @@ export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 export const fileSize = (bytes) => (bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
-/** Why this file can't be attached ('' when it can). */
-export function fileProblem(file) {
+/** Why this file can't be attached ('' when it can). maxBytes: a scanned document may be bigger than a lab report. */
+export function fileProblem(file, { maxBytes = MAX_FILE_BYTES } = {}) {
   if (!FILE_TYPES.includes(file.type)) return 'Choose a PDF or a photo (JPEG, PNG or WebP).';
-  if (file.size > MAX_FILE_BYTES) return 'The file is too large (at most 5 MB).';
+  if (file.size > maxBytes) return `The file is too large (at most ${Math.round(maxBytes / (1024 * 1024))} MB).`;
   return '';
+}
+
+/**
+ * Opens a stored file (a lab report, a scan, a document) in a new tab. It is fetched with the session's hospital
+ * header – a plain link cannot send it – and shown from a temporary address that is dropped after a minute.
+ */
+export async function openStoredFile(path) {
+  const { apiFile } = await import('../api.js');
+  const { blob } = await apiFile(path);
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 /** A chosen file as base64 (without the "data:…;base64," start), for the upload. */

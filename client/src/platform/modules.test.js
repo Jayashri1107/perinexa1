@@ -68,10 +68,10 @@ describe('My settings and Hospital admin', () => {
 
 describe('the left menu by role', () => {
   it('Analytics for doctors and hospital admins only; Appointments for reception, doctors, RMOs and nurses; Calendar for doctors, RMOs and reception; Billing for reception and admins; Pharmacy for pharmacists and admins (exact lists pin the order too)', () => {
-    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents', 'Privileges']);
+    expect(menu(['doctor'])).toEqual(['Today', 'Patients', 'Records', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents', 'Privileges']);
     expect(menu(['admin'])).toEqual(['Today', 'Sonography', 'Billing', 'Daily expenses', 'Pharmacy', 'Clinical audit', 'Analytics', 'Incidents', 'Privileges', 'Hospital admin']); // Sonography: the counts only (owner, 24 Oct 2026)
-    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Billing', 'Daily expenses', 'Pharmacy', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents', 'Privileges', 'Hospital admin']); // once, not twice
-    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Appointments', 'Beds', 'Lab', 'Sonography', 'Referrals', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
+    expect(menu(['doctor', 'admin'])).toEqual(['Today', 'Patients', 'Records', 'Appointments', 'Calendar', 'Lab', 'Sonography', 'Referrals', 'Billing', 'Daily expenses', 'Pharmacy', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents', 'Privileges', 'Hospital admin']); // once, not twice
+    expect(menu(['rmo'])).toEqual(['Today', 'Patients', 'Records', 'Appointments', 'Beds', 'Lab', 'Sonography', 'Referrals', 'Theatre', 'Specimens', 'Newborn follow-up', 'Clinical audit', 'Analytics', 'Clinic library', 'Formulary', 'Incidents']); // Analytics: only Ask your records; no Calendar for an RMO alone (owner, 13 Oct 2026)
     expect(menu(['rmo', 'doctor'])).toContain('Calendar');
     // Sonography for doctors, RMOs and sonography staff; their own area for sonography staff (owner, 24 Oct 2026)
     expect(menu(['sonographer'])).toEqual(['Today', 'Patients', 'Sonography', 'Incidents']);

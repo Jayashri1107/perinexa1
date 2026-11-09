@@ -41,6 +41,7 @@ describe('the copy of the whole record on paper', () => {
       'Scores (EPDS and VTE risk)',
       'Stays in hospital',
       'Consent forms and information given',
+      'Documents attached (scans and outside papers)',
       'Appointments',
       'Referrals from other doctors',
       'Not in this copy',
@@ -116,12 +117,13 @@ describe('a short record and a record too long for one copy', () => {
       'Scans and procedures done',
       'Stays in hospital',
       'Consent forms and information given',
+      'Documents attached (scans and outside papers)',
       'Appointments',
       'Not in this copy',
     ]);
     expect(words).toContain('Mother Patient no. P-000007 – her record is separate; not in this copy.');
     expect(words).toContain('Made for the patient (the parents of a baby), or for a doctor the patient is referred to.');
-    expect(words.match(/None recorded\./g)).toHaveLength(7);
+    expect(words.match(/None recorded\./g)).toHaveLength(8); // (with the documents attached, 9 Nov 2026)
     expect(words).not.toContain('only draw attention'); // no lab results, no note about their marks
     expect(words).toContain('Copy of the whole record Name Baby of Asha Sample Patient no. P-000003 Copy made');
   });
