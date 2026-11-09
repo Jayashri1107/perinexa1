@@ -110,13 +110,15 @@ const board = {
   bedKinds: F03.BED_KINDS,
   units: [{ key: 'waluj', name: 'Waluj', level: 'level_II', capacity: 2, free: 0, intensiveBabies: 2, nurses: { nurses: 0, at: '2026-11-10T05:00:00Z', byName: 'Sample nurse' }, ratio: 'worse', counts: { incomplete: 1, counselOverdue: 1 }, beds: [{ id: 'b1', name: 'B1', kind: 'incubator', level: 'intensive', occupied: true }], admissions: [{ id: 'n2', bedId: 'b1', baby: { id: 'p1', fullName: 'Baby Sample', mrn: 'P-000009' }, banners: [{ key: 'counsel', tone: 'high', text: 'Parents not counselled yet – more than 1 hour since admission.' }] }] }],
 };
-vi.mock('../../hooks/useFetch.js', () => ({ useFetch: (path) => ({ data: path === '/newborn-care/register' ? register : path === '/newborn-care/board' ? board : path ? care : null, error: null, loading: false, reload: () => {} }) }));
+const desk = { baby: { id: 'p1', fullName: 'Baby Sample', mrn: 'P-000009' }, access: { admit: false }, admissions: [{ id: 'n3', registerLabel: 'GARKHEDA-2026-0003', unitName: 'Garkheda', bed: 'NICU · N2', admittedAt: '2026-11-09T07:00:00Z', sourceWords: 'Transfer – other hospital', transferFromName: 'Sample clinic', admittingDoctor: 'Dr Sample', byName: 'Sample reception', atDesk: true, state: 'in', leftAt: null, assessmentNeeded: true }] };
+vi.mock('../../hooks/useFetch.js', () => ({ useFetch: (path) => ({ data: path === '/newborn-care/register' ? register : path === '/newborn-care/board' ? board : path === '/newborn-care/nicu/desk' ? desk : path ? care : null, error: null, loading: false, reload: () => {} }) }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig()), useParams: () => ({ id: 'p1' }) }));
 vi.mock('../analytics/analyticsFormat.js', async (orig) => ({ ...(await orig()), thisMonth: () => '2026-11' }));
 const { NewbornCareTab, BiliChart } = await import('./NewbornCareTab.jsx');
 const { NicuRegisterPage } = await import('./NicuRegisterPage.jsx');
 const { NicuBoardPage } = await import('./NicuBoardPage.jsx');
 const { NicuF03Print } = await import('./NicuF03Print.jsx');
+const { NicuDeskTab } = await import('./NicuDeskTab.jsx');
 const html = (el) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>).replace(/&#x27;/g, "'");
 const text = (el) => html(el).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -167,6 +169,18 @@ describe('newborn care', () => {
     expect(out).toContain('Worse than 1 nurse to 2 babies in intensive beds');
     expect(out).toContain('1 admission record not complete within 1 hour');
     expect(out).toContain('Parents not counselled'); // short flags in the bed cards
+  });
+});
+
+describe('reception at the desk (9 Nov 2026)', () => {
+  it('shows where the baby is and that the nurse or doctor is still to assess – never the form', () => {
+    const out = text(<NicuDeskTab />);
+    expect(out).toContain('In the NICU');
+    expect(out).toContain('GARKHEDA-2026-0003 · Garkheda');
+    expect(out).toContain('Waiting for the nurse or doctor');
+    expect(out).toContain('admitting doctor: Dr Sample');
+    expect(out).not.toMatch(/Temperature|Maternal|§1|Sign the admission/);
+    expect(out).not.toMatch(/!/);
   });
 });
 

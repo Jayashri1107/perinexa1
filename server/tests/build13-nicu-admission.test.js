@@ -346,3 +346,58 @@ describe('the form: sign, lock, outcome, old records', () => {
     expect((await (await as('drA')).post(`/api/newborn-care/nicu/${care.nicu[0].id}/outcome`).send({ result: 'discharged_home', at: ago(10) })).status).toBe(200);
   });
 });
+
+describe('reception admits at the desk (header only, 9 Nov 2026)', () => {
+  it('reception admits with unit, bed, where from and the admitting doctor; sees where the baby is, never the form', async () => {
+    const baby = await makeBaby({ name: 'Baby Desk' });
+    const desk = await as('reception');
+    const opts = await desk.get(`/api/newborn-care/nicu/options?patientId=${baby.id}`);
+    expect(opts.status, JSON.stringify(opts.body)).toBe(200);
+    expect(opts.body).toMatchObject({ access: { desk: true }, prefill: { fields: [], gestationWeeks: null, weightGrams: null, allergyAlert: '' } });
+    const body = { clientRequestId: randomUUID(), patientId: baby.id, unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample District Hospital', admittedAt: ago(10), bedId: beds.garkheda[0] };
+    expect((await desk.post('/api/newborn-care/nicu').send({ ...body, weightGrams: 2100 })).status).toBe(400); // no clinical field at the desk
+    expect((await desk.post('/api/newborn-care/nicu').send(body)).body.error.fields.admittingDoctorId).toMatch(/admitting doctor/);
+    const a = await desk.post('/api/newborn-care/nicu').send({ ...body, admittingDoctorId: people.drA._id.toString() });
+    expect(a.status, JSON.stringify(a.body)).toBe(201);
+    expect(a.body.admission).toMatchObject({ registerLabel: 'GARKHEDA-2026-0001', unitName: 'Garkheda', bed: 'NICU garkheda · B1', state: 'in', atDesk: true, assessmentNeeded: true, admittingDoctor: 'Sample drA' });
+    expect(JSON.stringify(a.body)).not.toMatch(/maternal|temperature|banners|reasonPrimary/);
+    // the admitting doctor and the nurses are told
+    const told = await Notification.find({ tenantId: hospital._id, kind: 'nicu' }).lean();
+    expect(told.map((x) => String(x.userId)).sort()).toEqual([String(people.drA._id), String(people.nurse._id)].sort());
+    expect(told[0].text).toMatch(/Baby Desk .* admitted at the desk to Garkheda, B1 – the admission assessment is needed/);
+    // the desk view: where, not how
+    const view = (await desk.get(`/api/newborn-care/nicu/desk?patientId=${baby.id}`)).body;
+    expect(view).toMatchObject({ access: { admit: false }, admissions: [{ state: 'in', atDesk: true }] });
+    expect(JSON.stringify(view)).not.toMatch(/maternal|temperature|outcome|died/);
+    // everything else stays clinical
+    expect((await desk.get(`/api/newborn-care?patientId=${baby.id}`)).status).toBe(403);
+    expect((await desk.put(`/api/newborn-care/nicu/${a.body.admission.id}`).send({ temperatureC: 36.8 })).status).toBe(403);
+    expect((await desk.get('/api/newborn-care/register?month=2026-11')).status).toBe(403);
+    expect((await desk.get('/api/newborn-care/board')).status).toBe(403);
+    // the nurse sees "admitted at the desk", enters the first findings, and the banner goes
+    const care = (await (await as('nurse')).get(`/api/newborn-care?patientId=${baby.id}`)).body.nicu[0];
+    expect(care.banners[0]).toMatchObject({ key: 'pending', text: expect.stringMatching(/Admitted at the desk by Sample reception/) });
+    expect(care.atDesk).toMatchObject({ byName: 'Sample reception' });
+    const done = await (await as('nurse')).put(`/api/newborn-care/nicu/${care.id}`).send({ weightGrams: 2100, gestationWeeks: 35, temperatureC: 36.8, reasonPrimary: 'observation_at_risk' });
+    expect(done.status, JSON.stringify(done.body)).toBe(200);
+    expect(done.body.admission.banners.map((x) => x.key)).not.toContain('pending');
+    expect((await desk.get(`/api/newborn-care/nicu/desk?patientId=${baby.id}`)).body.admissions[0].assessmentNeeded).toBe(false);
+  });
+
+  it('the clinical team fills §1 in from the linked records later – only empty fields, never what was typed', async () => {
+    const baby = await makeBaby({ name: 'Baby Fill' });
+    const checks = Object.fromEntries(BIRTH_CHECKS.map((c) => [c.key, c.key === 'idBand' ? 'no' : 'yes']));
+    expect((await (await as('nurse')).post('/api/newborn-care/birth').send({ patientId: baby.id, criedAtBirth: 'no', resuscitation: 'bagMask', cordClamping: 'delayed', checks, temperatureC: 36.2, note: 'Band put on in the ward (sample)' })).status).toBe(201);
+    const a = (await (await as('reception')).post('/api/newborn-care/nicu').send({ clientRequestId: randomUUID(), patientId: baby.id, unit: 'garkheda', source: 'transfer_other', transferFromName: 'Sample clinic', admittedAt: ago(10), bedId: beds.garkheda[1], admittingDoctorId: people.drA._id.toString() })).body.admission;
+    const nurse = await as('nurse');
+    const m = (await nurse.get(`/api/newborn-care?patientId=${baby.id}`)).body.nicu[0];
+    expect(m.maternal).toBe(null);
+    await nurse.put(`/api/newborn-care/nicu/${a.id}`).send({ maternal: { cordClamping: 'early' } });
+    const p = await nurse.post(`/api/newborn-care/nicu/${a.id}/prefill`);
+    expect(p.status, JSON.stringify(p.body)).toBe(200);
+    expect(p.body.admission.maternal).toMatchObject({ resuscitation: ['ppv'], drTempC: 36.2, cordClamping: 'early' }); // typed value kept
+    expect(p.body.admission.maternalFrom).toMatchObject({ resuscitation: 'birth' });
+    expect(p.body.admission.weightGrams).toBe(2100); // the birth weight on her record
+    expect((await (await as('reception')).post(`/api/newborn-care/nicu/${a.id}/prefill`)).status).toBe(403);
+  });
+});

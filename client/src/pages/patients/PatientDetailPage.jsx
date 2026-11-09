@@ -419,6 +419,8 @@ export function PatientDetailPage() {
     ...(a.canViewVisits && ['antenatal', 'postnatal', 'abortion'].includes(patient.careType) && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Scores', to: `${base}/scores`, end: true }] : []),
     // A baby's care at birth and on the ward, bilirubin and NICU / SNCU admissions (Group B items 12 and 13)
     ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Newborn care', to: `${base}/newborn-care`, end: true }] : []),
+    // Reception admits a baby to the NICU at the desk and sees where she is – never the NICU form (9 Nov 2026)
+    ...(patient.careType === 'newborn' && hasRole(activeMembership, 'receptionist') && !hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'NICU', to: `${base}/nicu-desk`, end: true }] : []),
     // A baby's screening log and follow-up clinic (Group A item 4)
     ...(a.canViewVisits && patient.careType === 'newborn' && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Screening', to: `${base}/screening`, end: true }] : []),
   ];
