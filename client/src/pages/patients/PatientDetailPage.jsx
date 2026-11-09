@@ -413,8 +413,6 @@ export function PatientDetailPage() {
     // Appointment booking: for reception, the referral desk, doctors, RMOs and nurses who may see her phone number
     ...(patient.phone !== undefined && hasRole(activeMembership, 'receptionist', 'referral_desk', 'doctor', 'rmo', 'nurse') ? [{ label: 'Appointments', to: `${base}/appointments`, end: true }] : []),
     ...(a.canViewVisits ? [{ label: 'Lab and scans', to: `${base}/lab`, end: false }] : []),
-    // Scanned and outside documents attached to the record (also the medical records staff)
-    ...(a.canViewDocuments ? [{ label: 'Documents', to: `${base}/documents`, end: true }] : []),
     ...(referralsTab ? [{ label: 'Referrals', to: `${base}/referrals`, end: true }] : []),
     // Clinical Requirements Group A: her specimens sent for histopathology (doctors, RMOs and nurses)
     ...(a.canViewVisits && hasRole(activeMembership, 'doctor', 'rmo', 'nurse') ? [{ label: 'Specimens', to: `${base}/specimens`, end: true }] : []),
@@ -440,6 +438,9 @@ export function PatientDetailPage() {
         ...(billsIpd ? [{ label: 'IPD bill', to: `${base}/ipd-bill`, end: true }] : []),
       ]
     : [];
+  // Scanned and outside documents attached to the record (also reception and the medical records staff): a tab of its
+  // own in the main row, beside OPD and IPD – the papers belong to her visits and to her stays (developer, 9 Nov 2026)
+  const documentsTab = a.canViewDocuments ? [{ label: 'Documents', to: `${base}/documents`, end: true }] : [];
   const inSections = (list) => list.some((t) => location.pathname === t.to || location.pathname.startsWith(`${t.to}/`));
   // In hospital now or before (or a stay page open): then OPD and IPD are shown apart
   const grouped = ipdSections.length > 0 && (patient.hadStay || Boolean(patient.currentAdmission) || inSections(ipdSections));
@@ -455,6 +456,7 @@ export function PatientDetailPage() {
       : opdSections),
     // Reception and billing (no inpatient records): the IPD tab is her IPD bill
     ...(!ipdSections.length && billsIpd ? [{ label: 'IPD', to: `${base}/ipd-bill`, end: true }] : []),
+    ...documentsTab,
     // Billing: reception and the billing department (the hospital admin opens bills from Billing)
     ...(hasRole(activeMembership, 'receptionist', 'billing') ? [{ label: 'Bills', to: `${base}/bills`, end: true }] : []),
     // ABDM linking (M1): her ABHA – reception, doctors and RMOs
@@ -469,7 +471,7 @@ export function PatientDetailPage() {
   ];
   // Phones (the app's look, 6 Nov 2026): her overview opens on large buttons to the rest of the record, in place of
   // the row of tabs; OPD and IPD stand for their sections
-  const places = (grouped ? [...opdSections, ...ipdSections] : tabs).filter((t) => t.to !== base && t.to !== `${base}/edit`);
+  const places = (grouped ? [...opdSections, ...ipdSections, ...documentsTab] : tabs).filter((t) => t.to !== base && t.to !== `${base}/edit`);
   return (
     <>
       <PageHeader
