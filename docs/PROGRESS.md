@@ -22,6 +22,24 @@
 ## Handover to a developer (from 5 Oct 2026)
 The owner has hired a developer to make Perinexa ready for commercial use; she works with Claude. The plan, with the
 timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner shares with her.
+- **9 Nov 2026 – Pharmacy: the whole patient list on Sold and New bill (branch `pharmacy-full-list`). Owner's rule
+  changed again (approval passed on by the developer, 9 Nov 2026; before it: 26 Oct "the pharmacist never sees the
+  whole patient list", 5 Nov "a search of two letters also finds patients without a bill, never without a search"):**
+  on Sold, choosing All, OPD, IPD or External and pressing Search lists – after the people to bill now and those billed
+  – every patient of that type from the first registration to today: OPD anyone who ever checked in or had a visit, IPD
+  anyone ever admitted, All everyone registered; 200 at a time with "Show more". Name and number only; never a
+  sensitive record or a duplicate; every list opened is in the audit log with how many it showed (never the names). A
+  name typed with OPD or IPD chosen now finds that type's patients without a bill too, so the counts match the other
+  screens. New bill's OPD tab has "All OPD patients" under today's list, narrowed by what is typed. Also an exception
+  to the feature freeze. **How to test:** Pharmacy → Sold → OPD → Search; then New bill → OPD and scroll below today's
+  list.
+- **7 Nov 2026 – Pharmacy counter as the store's earlier Sales Bill (branch `pharmacy-pay-dialog`, merged into
+  `master`, tested together with `main` on 886113df):** Sold's type buttons leave the list empty until Search; New bill
+  laid out as the earlier software (patient card with the net amount, item row, grid, totals); the medicine drop-down
+  from one letter with the arrow keys; the batch list (supplier, bill no and date, landed cost, pack); Disc % or amount;
+  the Payment window on Save (cash, cheque, card last 4 digits only, NEFT / RTGS, online, in parts that must make up
+  the bill; a registered patient still pays at the billing desk); cheque and NEFT / RTGS as Tally accounts; Reports'
+  figures in one summary panel. Exceptions to the feature freeze at the developer's request.
 - **7 Nov 2026 – Build 8: the MEOWS chart as OBG-F-05 v1.0 (branch `claude/build8-meows-f05-694f40`, not merged):**
   the DRAFT CEMACH chart upgraded to the manual's field schema (`docs/field_schemas/build8_meows.json`, approved by the
   owner as clinical content): RED / AMBER bands ("yellow" is now amber), the chart header (context, ordered frequency –

@@ -100,7 +100,8 @@ export function ChoiceBox({ value, onChange, choices, placeholder, label, ownLab
 }
 
 /**
- * Today's OPD patients from the daily register (never the whole patient list), and finding someone from another day.
+ * Today's OPD patients from the daily register, finding someone from another day, and – the owner's approval of 9 Nov
+ * 2026 – every OPD patient from the first registration to today below them (a page at a time, narrowed by what is typed).
  * onPickIpd: someone found who is admitted (else the Issue to ward page opens with her).
  */
 export function TodayOpdPicker({ onPick, onPickIpd = null, slim = false }) {
@@ -128,6 +129,37 @@ export function TodayOpdPicker({ onPick, onPickIpd = null, slim = false }) {
           </li>
         ))}
       </ul>
+      <AllOpdPatients term={term} onPick={onPick} skip={new Set(opd.map((r) => r.patient.id))} />
+    </>
+  );
+}
+
+/** Every OPD patient, from the first registration to today (owner's approval, 9 Nov 2026): name and number, newest first. */
+function AllOpdPatients({ term, onPick, skip }) {
+  const [pages, setPages] = useState(1);
+  const search = term.length >= 2 ? term : '';
+  const res = useFetch('/pharmacy/invoices/people', { type: 'opd', ...(search ? { search } : {}), ...(pages > 1 && !search ? { pages } : {}) });
+  const people = (res.data?.people ?? []).filter((x) => x.mrn && !skip.has(x.key));
+  return (
+    <>
+      <h3 className="ph-today-title">All OPD patients</h3>
+      {res.error && <Alert type="error">{res.error}</Alert>}
+      {res.data && !people.length && <p className="muted">{search ? 'Nobody matches.' : 'No OPD patient yet.'}</p>}
+      <ul className="appt-pick-list ph-all-opd" aria-label="All OPD patients">
+        {people.map((x) => (
+          <li key={x.key}>
+            <button type="button" className="appt-pick" onClick={() => onPick({ id: x.key, fullName: x.name, mrn: x.mrn })}>
+              <strong>{x.name}</strong>
+              <span className="muted">{[x.mrn, x.billCount ? `${x.billCount} pharmacy bill${x.billCount === 1 ? '' : 's'}` : 'No pharmacy bill yet'].join(' · ')}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {res.data?.more && !search && (
+        <button type="button" className="btn btn-secondary btn-sm" disabled={res.loading} onClick={() => setPages((n) => n + 1)}>
+          {res.loading ? 'Loading…' : 'Show more'}
+        </button>
+      )}
     </>
   );
 }

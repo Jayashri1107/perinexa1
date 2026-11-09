@@ -77,13 +77,15 @@ export function InvoicesPage() {
   const amount = useDebounced(amountText.replace(/[^\d.]/g, ''), 300).replace(/^\./, '');
   // Search (6 Nov 2026, as the store's earlier software): with a type chosen, that type's people – nothing typed needed
   const [searched, setSearched] = useState(false);
+  // The whole list (owner's approval, 9 Nov 2026): how many pages of it are shown – "Show more" adds one
+  const [pages, setPages] = useState(1);
   // A type just chosen (All, OPD, IPD or External, 7 Nov 2026): the list stays empty until Search is pressed
   const [blank, setBlank] = useState(false);
   const looking = desk && Boolean(name || mrn || searched);
   const doctors = useFetch(desk ? '/pharmacy/invoices/doctors' : null);
   const found = useFetch(
     looking ? '/pharmacy/invoices/people' : null,
-    looking ? { ...(name ? { search: name } : {}), ...(mrn ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(amount ? { amount } : {}), ...(paidBy ? { paidBy } : {}) } : undefined,
+    looking ? { ...(name ? { search: name } : {}), ...(mrn ? { mrn } : {}), ...(type !== 'all' ? { type } : {}), ...(doctor ? { doctor } : {}), ...(amount ? { amount } : {}), ...(paidBy ? { paidBy } : {}), ...(pages > 1 ? { pages } : {}) } : undefined,
   );
   const people = looking ? (found.data?.people ?? []) : [];
   // Came with a patient's number: open their bills as soon as they are found
@@ -219,6 +221,7 @@ export function InvoicesPage() {
                 className="btn btn-secondary ph-search-btn"
                 onClick={() => {
                   setSearched(true);
+                  setPages(1);
                   setBlank(false);
                   setPerson(null);
                   setBilling(null);
@@ -284,7 +287,7 @@ export function InvoicesPage() {
               ) : billing ? (
                 <SoldBill billing={billing} onCancel={() => setBilling(null)} onMade={billMade} onBills={(x) => { setBilling(null); setPerson(x); }} />
               ) : looking ? (
-                <PeopleFound found={found} people={people} onPick={(x) => setBilling({ person: x })} onBills={setPerson} />
+                <PeopleFound found={found} people={people} onPick={(x) => setBilling({ person: x })} onBills={setPerson} onMore={found.data?.pages ? () => setPages((n) => n + 1) : null} />
               ) : blank ? (
                 <section className="card ph-found ph-blank" aria-label="People found">
                   <p className="muted">
@@ -305,7 +308,7 @@ export function InvoicesPage() {
 }
 
 /** The people a search found: nothing is listed until a search. Clicking someone opens a new bill for them. */
-export function PeopleFound({ found, people, onPick, onBills = null }) {
+export function PeopleFound({ found, people, onPick, onBills = null, onMore = null }) {
   return (
     <section className="card ph-found" aria-label="People found">
       {found.error && <Alert type="error">{found.error}</Alert>}
@@ -331,7 +334,15 @@ export function PeopleFound({ found, people, onPick, onBills = null }) {
           </li>
         ))}
       </ul>
-      {found.data?.more && <p className="hint">The first {people.length} are listed. Type part of the name or number to find anyone else.</p>}
+      {found.data && people.length > 0 && <p className="hint ph-found-count">{people.length} {people.length === 1 ? 'person' : 'people'} listed{found.data.more ? ' so far' : ''}.</p>}
+      {found.data?.more &&
+        (onMore ? (
+          <button type="button" className="btn btn-secondary ph-found-more" disabled={found.loading} onClick={onMore}>
+            {found.loading ? 'Loading…' : 'Show more'}
+          </button>
+        ) : (
+          <p className="hint">The first {people.length} are listed. Type part of the name or number to find anyone else.</p>
+        ))}
     </section>
   );
 }

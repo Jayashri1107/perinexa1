@@ -417,7 +417,9 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
 
     const all = await ph('get', '/invoices/people');
     expect(all.status).toBe(200);
-    expect(all.body.people.map((x) => x.name)).toEqual(['Sample Walkin', 'Sample Asha Kale']);
+    // Those billed first; then (owner's approval, 9 Nov 2026) every other registered patient, by name and number only
+    expect(all.body.people.map((x) => x.name)).toEqual(['Sample Walkin', 'Sample Asha Kale', 'Sample Never Billed']);
+    expect(all.body.people[2]).toMatchObject({ billCount: 0, phone: '', bills: [] });
     expect(all.body.people[0]).toMatchObject({ type: 'external', billCount: 1, bills: [{ id: walkIn.id, number: walkIn.number }] });
     expect(all.body.people[1]).toMatchObject({ key: billed.id, type: 'opd', mrn: billed.mrn, billCount: 2 });
     expect(all.body.people[1].bills.map((b) => b.id)).toEqual([second.id, first.id]);
@@ -432,7 +434,7 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect(JSON.stringify(log.details)).not.toMatch(/asha/i);
   });
 
-  it('a search also finds patients without a bill: name and number only, never a sensitive record, a duplicate or the whole list', async () => {
+  it('a search also finds patients without a bill: name and number only, never a sensitive record or a duplicate', async () => {
     const med = await stocked();
     const billed = await register('Sample Mira Billed');
     const plain = await register('Sample Mira Unbilled');
@@ -447,8 +449,9 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect(found.people.map((x) => x.name)).toEqual(['Sample Mira Billed', 'Sample Mira Unbilled']);
     expect(found.people[1]).toEqual({ key: plain.id, type: '', name: 'Sample Mira Unbilled', mrn: plain.mrn, phone: '', lastAt: null, billCount: 0, bills: [] });
     expect((await q({ mrn: plain.mrn })).people.map((x) => x.name)).toEqual(['Sample Mira Unbilled']);
-    // Nothing without a search or with one letter; a bill's filter asks about bills
-    expect((await q({})).people.map((x) => x.name)).toEqual(['Sample Mira Billed']);
+    // With nothing typed (owner's approval, 9 Nov 2026) the whole list – still never a sensitive record or a duplicate;
+    // one letter finds only the billed; a bill's filter asks about bills
+    expect((await q({})).people.map((x) => x.name)).toEqual(['Sample Mira Billed', 'Sample Mira Unbilled']);
     expect((await q({ search: 'm' })).people.map((x) => x.name)).toEqual(['Sample Mira Billed']);
     expect((await q({ search: 'mira', type: 'opd' })).people.map((x) => x.name)).toEqual(['Sample Mira Billed']);
     // In the audit log, by record and never by what was typed
@@ -503,15 +506,47 @@ describe('the people billed, on Sold’s side list (3 Nov 2026)', () => {
     expect((await ph('get', '/invoices/doctors', undefined, 'admin')).status).toBe(403);
   });
 
+  it('Search with nothing typed lists every patient of the type from the first registration (owner, 9 Nov 2026)', async () => {
+    const med = await stocked();
+    const seen = await register('Sample Opd Mother');
+    await (await as('drA')).post(`/api/patients/${seen.id}/visits`).send({ clientRequestId: randomUUID() });
+    const stayed = await register('Sample Ipd Mother');
+    await (await as('drA')).post(`/api/patients/${stayed.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'Labour room', reason: 'In labour' });
+    const quiet = await register('Sample Registered Only');
+    const hidden = await register('Sample Sensitive Mother');
+    await Patient.updateOne({ tenantId: hospital._id, _id: hidden.id }, { $set: { sensitive: true } });
+    await (await as('drA')).post(`/api/patients/${hidden.id}/visits`).send({ clientRequestId: randomUUID() });
+    await sell({ customer: { name: 'Sample Walkin', phone: '' }, lines: [{ medicineId: med.id, qty: 1 }], payment: { mode: 'cash' } });
+    const names = async (query) => (await (await as('pharm')).get('/api/pharmacy/invoices/people').query(query)).body.people.map((x) => x.name);
+
+    expect(await names({ type: 'opd' })).toEqual(['Sample Opd Mother']);
+    expect(await names({ type: 'ipd' })).toEqual(['Sample Ipd Mother']);
+    expect(await names({ type: 'external' })).toEqual(['Sample Walkin']);
+    const all = await names({});
+    expect(all).toEqual(expect.arrayContaining(['Sample Walkin', 'Sample Opd Mother', 'Sample Ipd Mother', 'Sample Registered Only']));
+    expect(all).not.toContain('Sample Sensitive Mother');
+    expect(new Set(all).size).toBe(all.length); // nobody twice
+    // A name typed with OPD or IPD chosen finds that type's patients without a bill too, so the counts match the other screens
+    expect(await names({ type: 'opd', search: 'Sample' })).toEqual(['Sample Opd Mother']);
+    expect(await names({ type: 'ipd', search: 'ipd' })).toEqual(['Sample Ipd Mother']);
+    expect(await names({ type: 'opd', search: 'Registered' })).toEqual([]);
+    expect(quiet.id).toBeTruthy();
+    // Each list opened is in the audit log, with how many it showed – never the names
+    const log = await AuditLog.findOne({ action: 'PHARMACY_PATIENT_LOOKED_UP', 'details.by': 'list', 'details.type': 'opd' }).lean();
+    expect(log.details).toMatchObject({ wholeList: 1, pages: 1 });
+    expect(JSON.stringify(log.details)).not.toMatch(/Opd Mother/);
+  });
+
   it('keeps hospitals apart and is for the pharmacist only', async () => {
     const med = await stocked();
     await sell({ customer: { name: 'Sample Walkin', phone: '' }, lines: [{ medicineId: med.id, qty: 1 }], payment: { mode: 'cash' } });
     const other = await createTenant('Other Hospital');
     const otherPharm = await createUser({ name: 'Sample Other Pharmacist' });
     await addMember(otherPharm, other, 'pharmacist');
+    await register('Sample This Hospital Only');
     const res = await (await loginAs(otherPharm, { app })).get('/api/pharmacy/invoices/people');
     expect(res.status).toBe(200);
-    expect(res.body.people).toEqual([]);
+    expect(res.body.people).toEqual([]); // not this hospital's walk-in, nor its patients in the whole list
     expect((await ph('get', '/invoices/people', undefined, 'admin')).status).toBe(403);
     expect((await ph('get', '/invoices/people', undefined, 'nurse')).status).toBe(403);
   });
