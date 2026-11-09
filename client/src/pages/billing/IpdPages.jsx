@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BadgePercent, BedDouble, ClipboardCheck, DoorOpen, FileCheck, FileClock, LockOpen, Plus, Printer, Search, Wallet, X } from 'lucide-react';
-import { Link, useOutletContext, useParams } from 'react-router-dom';
+import { Link, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
@@ -40,32 +40,6 @@ export const IPD_SUBTABS = [
   { label: 'Discharge', to: '/billing/ipd/discharges', end: true },
 ];
 
-/** The bill window over a list (the HIMS's pop-up): Escape closes it unless one of its own dialogs is open. */
-function IpdBillSheet({ stayId, initialDialog = null, onClose, onChanged }) {
-  const ref = useRef(null);
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  useEffect(() => {
-    const node = ref.current;
-    node?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape' && node && !node.querySelector('.modal-backdrop')) {
-        e.preventDefault();
-        closeRef.current();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
-  return (
-    <div className="modal-backdrop ipd-sheet-backdrop">
-      <div ref={ref} tabIndex={-1} className="ipd-sheet" role="dialog" aria-modal="true" aria-label="IPD bill">
-        <IpdBillWindow stayId={stayId} embedded initialDialog={initialDialog} onChanged={onChanged} onClose={onClose} />
-      </div>
-    </div>
-  );
-}
-
 function SearchBox({ onSearch, label = 'Name, UHID or IPD number' }) {
   const [typed, setTyped] = useState('');
   return (
@@ -93,14 +67,22 @@ function SearchBox({ onSearch, label = 'Name, UHID or IPD number' }) {
 
 // ---------- Cells shared by the two lists ----------
 
-/** Her name (opens the bill window) with UHID and IPD number under it. */
-function WhoCell({ s, onOpen }) {
+/** The IPD bill page of a stay, opened on a step (do) and with the list it came from (back link). */
+const billPath = (id, step, from) => {
+  const q = new URLSearchParams();
+  if (step) q.set('do', step);
+  if (from) q.set('from', from);
+  const text = q.toString();
+  return `/billing/ipd/${id}${text ? `?${text}` : ''}`;
+};
+
+/** Her name (opens the bill page) with UHID and IPD number under it. */
+function WhoCell({ s, from }) {
   return (
     <td className="ipd-who">
-      <button type="button" className="ipd-name" onClick={onOpen} title="Open the IPD bill">
+      <Link className="ipd-name" to={billPath(s.id, null, from)} title="Open the IPD bill">
         {s.patient.fullName}
-        <span className="sr-only"> – open the IPD bill</span>
-      </button>
+      </Link>
       <span className="ipd-sub tabular">
         {s.patient.mrn}
         {s.ipdNo ? ` · ${s.ipdNo}` : ''}
@@ -157,9 +139,9 @@ const Loading = () => (
 );
 
 export function IpdStaysPage() {
+  const FROM = 'ipd';
   const { activeMembership } = useAuth();
   const [q, setQ] = useState('');
-  const [sheet, setSheet] = useState(null); // { id, dialog }
   const res = useFetch('/billing/ipd/stays', { status: 'admitted', q });
   const stays = res.data?.stays ?? [];
   const sum = (k) => stays.reduce((t, s) => t + (s.bill?.[k] ?? 0), 0);
@@ -215,7 +197,7 @@ export function IpdStaysPage() {
                 <tbody>
                   {stays.map((s) => (
                     <tr key={s.id}>
-                      <WhoCell s={s} onOpen={() => setSheet({ id: s.id, dialog: null })} />
+                      <WhoCell s={s} from={FROM} />
                       <WhenCell at={s.admittedAt} />
                       <PlaceCell s={s} />
                       <td className="ipd-doc">{s.doctorName || '–'}</td>
@@ -226,12 +208,12 @@ export function IpdStaysPage() {
                       </td>
                       <td className="ipd-act-col">
                         <span className="ipd-row-actions">
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: 'advance' })}>
-                            <Wallet aria-hidden="true" /> Advance<span className="sr-only"> for {s.patient.fullName}</span>
-                          </button>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: 'add' })}>
-                            <Plus aria-hidden="true" /> Services<span className="sr-only"> for {s.patient.fullName}</span>
-                          </button>
+                          <Link className="btn btn-secondary btn-sm" to={billPath(s.id, 'advance', FROM)} aria-label={`IPD advance for ${s.patient.fullName}`}>
+                            <Wallet aria-hidden="true" /> Advance
+                          </Link>
+                          <Link className="btn btn-secondary btn-sm" to={billPath(s.id, 'add', FROM)} aria-label={`Add services for ${s.patient.fullName}`}>
+                            <Plus aria-hidden="true" /> Services
+                          </Link>
                         </span>
                       </td>
                     </tr>
@@ -242,7 +224,6 @@ export function IpdStaysPage() {
           )}
         </section>
       </div>
-      {sheet && <IpdBillSheet stayId={sheet.id} initialDialog={sheet.dialog} onClose={() => setSheet(null)} onChanged={res.reload} />}
     </>
   );
 }
@@ -267,12 +248,12 @@ const isoDaysAgo = (n) => {
  * window over the list, straight on the step to do: Patient discharge, Final bill or Discharge clearance.
  */
 export function IpdDischargesPage() {
+  const FROM = 'discharges';
   const { activeMembership } = useAuth();
   const [q, setQ] = useState('');
   const [step, setStep] = useState('');
   const [from, setFrom] = useState(() => isoDaysAgo(30));
   const [to, setTo] = useState(() => isoOf(new Date()));
-  const [sheet, setSheet] = useState(null); // { id, dialog }
   const res = useFetch('/billing/ipd/stays', { status: 'discharged', q, from, to, ...(step ? { step } : {}) });
   const stays = res.data?.stays ?? [];
   const counts = res.data?.counts ?? {};
@@ -344,7 +325,7 @@ export function IpdDischargesPage() {
                     const a = action(s);
                     return (
                       <tr key={s.id}>
-                        <WhoCell s={s} onOpen={() => setSheet({ id: s.id, dialog: null })} />
+                        <WhoCell s={s} from={FROM} />
                         <WhenCell at={s.dischargedAt} />
                         <PlaceCell s={s} />
                         <td className="ipd-doc">{s.doctorName || '–'}</td>
@@ -357,10 +338,9 @@ export function IpdDischargesPage() {
                         <td className="ipd-act-col">
                           <span className="ipd-row-actions">
                             {a && (
-                              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet({ id: s.id, dialog: a.dialog })}>
+                              <Link className="btn btn-secondary btn-sm" to={billPath(s.id, a.dialog, FROM)} aria-label={`${a.label} for ${s.patient.fullName}`}>
                                 <a.icon aria-hidden="true" /> {a.label}
-                                <span className="sr-only"> for {s.patient.fullName}</span>
-                              </button>
+                              </Link>
                             )}
                           </span>
                         </td>
@@ -373,7 +353,6 @@ export function IpdDischargesPage() {
           )}
         </section>
       </div>
-      {sheet && <IpdBillSheet stayId={sheet.id} initialDialog={sheet.dialog} onClose={() => setSheet(null)} onChanged={res.reload} />}
     </>
   );
 }
@@ -558,16 +537,30 @@ const TABS = [
   { key: 'summary', label: 'Summary' },
 ];
 
+// The steps a list may open the page on (?do=), and the list it came from (?from=) for the way back
+const PAGE_STEPS = ['advance', 'add', 'discharge', 'final', 'clear'];
+const BACK_TO = { ipd: { label: 'IPD bills', to: '/billing/ipd' }, discharges: { label: 'Discharge', to: '/billing/ipd/discharges' } };
+
 export function IpdBillPage() {
   const { id } = useParams();
-  return <IpdBillWindow stayId={id} />;
+  const [params, setParams] = useSearchParams();
+  const [step] = useState(() => (PAGE_STEPS.includes(params.get('do')) ? params.get('do') : null));
+  // The step is opened once: a reload of the page does not open it again
+  useEffect(() => {
+    if (!params.has('do')) return;
+    const next = new URLSearchParams(params);
+    next.delete('do');
+    setParams(next, { replace: true });
+  }, []);
+  const back = BACK_TO[params.get('from')] ?? BACK_TO.ipd;
+  return <IpdBillWindow key={id} stayId={id} initialDialog={step} back={back} />;
 }
 
 /**
  * The bill window of one stay. embedded: inside another page (the IPD → Discharge pop-up, her record's IPD tab) –
  * a heading of its own in place of the page header. onChanged: told after every change (to refresh a list).
  */
-export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDialog = null, onClose = null }) {
+export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDialog = null, onClose = null, back = { label: 'IPD bills', to: '/billing/ipd' } }) {
   const { activeMembership } = useAuth();
   const res = useFetch(`/billing/ipd/stays/${stayId}`);
   const [tab, setTab] = useState('services');
@@ -660,7 +653,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         </div>
       ) : (
         <PageHeader
-          breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: 'IPD', to: '/billing/ipd' }, { label: patient.fullName }]}
+          breadcrumbs={[{ label: 'Billing', to: '/billing' }, back, { label: patient.fullName }]}
           title={title}
           documentTitle="IPD bill"
           subtitle={[patient.fullName, patient.mrn].join(' · ')}

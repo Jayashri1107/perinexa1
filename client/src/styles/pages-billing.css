@@ -510,3 +510,9 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 @media (max-width: 719px) { .ipd-list-filters .ipd-search { flex: 1 1 100%; max-width: none; } }
 .ipd-list-head-stack { flex-direction: column; align-items: stretch; }
 .ipd-list-head-stack .ipd-list-filters { justify-content: flex-start; }
+/* The IPD bill page's tables: dates on one line, the service name wraps only when it must */
+.ipd-main .bill-report { margin-bottom: 0; }
+.ipd-main .bill-report th, .ipd-main .bill-report td { padding: var(--space-2); }
+.ipd-main .bill-report td:nth-child(2) { white-space: nowrap; }
+.ipd-main .bill-report td:nth-child(3) { min-width: 180px; }
+.ipd-page .ipd-layout { grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); }
