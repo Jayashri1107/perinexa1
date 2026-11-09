@@ -86,6 +86,8 @@ const ReportsPage = screen(load25, 'ReportsPage');
 const load26 = () => import('./pages/pharmacy/RegisterPage.jsx');
 const RegisterRedirect = screen(load26, 'RegisterRedirect');
 const load27 = () => import('./pages/pharmacy/SellPage.jsx');
+const loadNewBill = () => import('./pages/pharmacy/NewBillPage.jsx');
+const NewBillPage = screen(loadNewBill, 'NewBillPage');
 const SellPage = screen(load27, 'SellPage');
 const load28 = () => import('./pages/pharmacy/StockPage.jsx');
 const MedicineStockPage = screen(load28, 'MedicineStockPage');
@@ -586,7 +588,7 @@ export function App() {
                 </Route>
                 <Route path="pharmacy" element={<RequireTenantRole roles={PHARMACY_MODULE_ROLES} message="The pharmacy is for pharmacists and the hospital admin." />}>
                   <Route element={<RequireTenantRole roles={['pharmacist']} message="Selling and issuing medicines is for the pharmacist." />}>
-                    <Route index element={<SellPage key="sale" kind="sale" />} />
+                    <Route index element={<NewBillPage />} />
                     <Route path="issue" element={<SellPage key="issue" kind="issue" />} />
                     {/* The day's OPD, IPD and External patients are on Today (owner, 26 Oct 2026) */}
                     <Route path="register" element={<RegisterRedirect />} />

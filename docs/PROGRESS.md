@@ -44,7 +44,9 @@ timeline and a go-live checklist, is the "Perinexa Handover Plan" page the owner
   person's bills, printing), as the store's earlier Sales Bill screen with its Bill List. Making a bill happens in one
   place only: a name clicked in Bill list opens the New bill tab with that person (an issue to the ward for someone
   admitted now, a walk-in bill for an External customer); Save goes to Bill list with that person's bills and the print
-  preview open. The old addresses (`/pharmacy`, `/pharmacy/issue`, `/pharmacy/invoices`) still work. The hospital admin
+  preview open. The New bill tab itself opens with Sold's panel (All, OPD, IPD, External, Search, the filters) and its
+  people list; a name clicked starts the bill on the same tab, Change goes back to the list, and "New walk-in customer"
+  starts a walk-in bill. The old addresses (`/pharmacy`, `/pharmacy/issue`, `/pharmacy/invoices`) still work. The hospital admin
   keeps Sold as before. **How to test:** Pharmacy → Sales bill; Bill list → OPD → Search → click a name; save the bill.
 - **9 Nov 2026 – Pharmacy: the whole patient list on Sold and New bill (branch `pharmacy-full-list`). Owner's rule
   changed again (approval passed on by the developer, 9 Nov 2026; before it: 26 Oct "the pharmacist never sees the

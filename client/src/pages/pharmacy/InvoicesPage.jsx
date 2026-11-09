@@ -15,7 +15,7 @@ import { TallyMarks } from '../billing/TallyPage.jsx';
 import { amountInWords } from '../billing/amountWords.js';
 import { MODE_LABELS, expiryLabel, soldItems } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
-import { TypePill } from './RegisterPage.jsx';
+import { TypePill, billsPlace } from './RegisterPage.jsx';
 
 // Pharmacy → Invoices: a day's invoices (or a search), one invoice with its GST tax invoice to print, and returns of
 // unopened medicines before their expiry (each a credit note). A walk-in sale to a business with a GSTIN shows the
@@ -44,7 +44,11 @@ export const billFits = (v, { type = 'all', doctor = '', amount = '', paidBy = '
   (!amount || String(v.netPaise / 100).startsWith(amount)) &&
   (!paidBy || (paidBy === 'hospital' ? Boolean(v.patient) : (v.payments ?? []).some((p) => p.mode === paidBy)));
 
-export function InvoicesPage() {
+/**
+ * pick (the New bill tab, 9 Nov 2026): the same panel and people list, to choose who the bill is for – { onPick(person),
+ * onWalkIn() }. Nothing of the day's bills is shown then; a person's past bills open on the Bill list tab.
+ */
+export function InvoicesPage({ pick = null }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { activeMembership } = useAuth();
@@ -88,7 +92,7 @@ export function InvoicesPage() {
   // The whole list (owner's approval, 9 Nov 2026): how many pages of it are shown – "Show more" adds one
   const [pages, setPages] = useState(1);
   // A type just chosen (All, OPD, IPD or External, 7 Nov 2026): the list stays empty until Search is pressed
-  const [blank, setBlank] = useState(false);
+  const [blank, setBlank] = useState(Boolean(pick));
   const looking = desk && Boolean(name || mrn || searched);
   const doctors = useFetch(desk ? '/pharmacy/invoices/doctors' : null);
   const found = useFetch(
@@ -192,7 +196,7 @@ export function InvoicesPage() {
   );
   return (
     <>
-      <PharmacyHeader className="ph-fab" title={desk ? 'Sales bill' : 'Sold'} crumb={desk ? 'Bill list' : 'Sold'} sales />
+      <PharmacyHeader className="ph-fab" title={desk ? 'Sales bill' : 'Sold'} crumb={pick ? 'New bill' : desk ? 'Bill list' : 'Sold'} sales />
       <div className="pf-content bill-page ph-sold">
         {desk ? (
           <div className="ph-sold-split">
@@ -282,11 +286,26 @@ export function InvoicesPage() {
                   {made}
                 </Alert>
               )}
-              {person ? (
+              {pick && (
+                <div className="ph-pick-bar">
+                  <span className="muted">Choose who the bill is for: search on the left and click a name.</span>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={pick.onWalkIn}>
+                    <UserPlus aria-hidden="true" /> New walk-in customer
+                  </button>
+                </div>
+              )}
+              {person && !pick ? (
                 <PersonBills key={person.key} person={person} onClose={closePerson} />
               ) : looking ? (
-                <PeopleFound found={found} people={people} onPick={openBill} opening={opening} onBills={setPerson} onMore={found.data?.pages ? () => setPages((n) => n + 1) : null} />
-              ) : blank ? (
+                <PeopleFound
+                  found={found}
+                  people={people}
+                  onPick={pick ? pick.onPick : openBill}
+                  opening={opening}
+                  onBills={pick ? (x) => x.mrn && navigate(...billsPlace({ mrn: x.mrn })) : setPerson}
+                  onMore={found.data?.pages ? () => setPages((n) => n + 1) : null}
+                />
+              ) : blank || pick ? (
                 <section className="card ph-found ph-blank" aria-label="People found">
                   <p className="muted">
                     Press Search to list {type === 'all' ? 'all' : TYPE_CHOICES.find(([k]) => k === type)?.[1]} patients, or type a patient’s name or number.
@@ -311,7 +330,7 @@ export function PeopleFound({ found, people, onPick, onBills = null, onMore = nu
     <section className="card ph-found" aria-label="People found">
       {found.error && <Alert type="error">{found.error}</Alert>}
       {found.data && !people.length && <p className="muted">Nobody matches.</p>}
-      {people.length > 0 && <p className="hint">Click a name to make a new bill on the New bill tab. Those to bill today and those with bills come first.</p>}
+      {people.length > 0 && <p className="hint">Click a name to make a new bill for them. Those to bill today and those with bills come first.</p>}
       <ul>
         {people.map((x) => (
           <li key={x.key} className="ph-found-item">
