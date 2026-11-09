@@ -73,7 +73,7 @@ describe('the pregnancy episode', () => {
       )
     ).body.patient;
     await (await as('drA')).get(`/api/patients/${p.id}`); // the care plan is built on first view
-    await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-09T01:00:00.000Z', ward: 'Antenatal ward', bed: '2', reason: 'Observation' });
+    await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-11-09T01:00:00.000Z', ward: 'Antenatal ward', bed: '2', reason: 'Observation' });
 
     const r = await (await as('nurse')).get('/api/pregnancy-episodes').query({ patientId: p.id });
     expect(r.status).toBe(200);

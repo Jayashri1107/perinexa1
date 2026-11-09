@@ -197,7 +197,7 @@ describe('recording a death', () => {
     expect((await error({ on: '2026-10-06', timing: 'pregnancy' })).fields.on).toBe(
       'A visit is recorded on 7 Oct 2026, after this date. Check the date – or, if that visit is on the wrong record, mark it as entered in error first.',
     );
-    expect((await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-08T04:00:00.000Z', reason: 'Observation' })).status).toBe(201);
+    expect((await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-08T04:00:00.000Z', reason: 'Observation' })).status).toBe(201);
     expect((await error({ on: '2026-10-07', timing: 'pregnancy' })).fields.on).toBe('She was admitted on 8 Oct 2026, after this date. Please check the date.');
     expect((await one(Patient, p.id)).death).toBeNull();
     expect((await record('drA', p, { on: '2026-10-08', timing: 'delivery', confirmed: true })).status).toBe(200);
@@ -245,7 +245,7 @@ describe('recording a death', () => {
 
   it('is refused for a day before vital signs or a medicine on her nursing chart (a note is fine): the death may be on the wrong record', async () => {
     const p = await registered('drA', antenatal());
-    const stay = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-07T04:00:00.000Z', reason: 'In labour' })).body.admission;
+    const stay = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-07T04:00:00.000Z', reason: 'In labour' })).body.admission;
     const chart = async (kind, at, extra) => {
       const res = await (await as('nurse')).post(`/api/patients/${p.id}/admissions/${stay.id}/nursing`).send({ clientRequestId: randomUUID(), kind, at, ...extra });
       expect(res.status, JSON.stringify(res.body)).toBe(201);
@@ -268,7 +268,7 @@ describe('recording a death', () => {
   it("a mother's record: the answer names her babies' records that stay in use, and whether she is still in hospital", async () => {
     const mother = await registered('drA', antenatal());
     const baby = await registered('drA', newborn({ mother: mother.id }));
-    expect((await (await as('drA')).post(`/api/patients/${mother.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-08T04:00:00.000Z', reason: 'In labour' })).status).toBe(201);
+    expect((await (await as('drA')).post(`/api/patients/${mother.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-08T04:00:00.000Z', reason: 'In labour' })).status).toBe(201);
     const res = await closeNow(mother, { on: TODAY, timing: 'delivery' });
     expect(res).toMatchObject({ inHospital: true, babies: [{ id: baby.id, mrn: baby.mrn }] });
     // The stay is not ended by itself: the discharge card ends it
@@ -364,7 +364,7 @@ describe('a closed record', () => {
     const refused = {
       visit: [await drA.post(`/api/patients/${p.id}/visits`).send({ clientRequestId: randomUUID() }), 'new visits'],
       lab: [await drA.post(`/api/patients/${p.id}/lab-orders`).send({ clientRequestId: randomUUID(), tests: [{ key: 'cbc' }] }), 'new lab orders'],
-      admission: [await drA.post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), reason: 'Observation' }), 'new admissions'],
+      admission: [await drA.post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', reason: 'Observation' }), 'new admissions'],
       appointment: [await book(p, '2026-10-13'), 'new appointments'],
       arrival: [await reception.post('/api/arrivals').send({ patientId: p.id, doctorId: id('drA') }), 'new arrivals'],
       scan: [await drA.post(`/api/patients/${p.id}/work-done`).send({ clientRequestId: randomUUID(), priceItemId: scan.id }), 'new scans or procedures'],
@@ -474,7 +474,7 @@ describe('a closed record', () => {
 
   it('stays on the In hospital list while the stay is open – marked closed, its red flags still worked out (a death recorded on the wrong record must not hide a living patient\'s flags) – and the discharge card can still be written', async () => {
     const p = await registered('drA', antenatal());
-    const stay = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-10-08T04:00:00.000Z', reason: 'In labour' })).body.admission;
+    const stay = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-10-08T04:00:00.000Z', reason: 'In labour' })).body.admission;
     // A very high blood pressure on her nursing chart this morning
     expect((await (await as('nurse')).post(`/api/patients/${p.id}/admissions/${stay.id}/nursing`).send({ clientRequestId: randomUUID(), kind: 'vitals', at: '2026-10-09T02:00:00.000Z', vitals: { bpSystolic: 170, bpDiastolic: 115 } })).status).toBe(201);
     const flagsNow = async () => (await (await as('drA')).get('/api/inpatients')).body.admitted.map((r) => [r.patient.id, Boolean(r.patient.closed), r.redFlags.length > 0, r.redFlagsChecked]);

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { ManualPrint } from '../../components/print/ManualPage.jsx';
+import { AdmissionLabelFields } from '../../components/AdmissionLabels.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
@@ -252,7 +253,7 @@ function AdmitForm({ patientId, reasons, onDone, onCancel }) {
   const [busy, setBusy] = useState(false);
   if (loadError) return <Alert type="error">{loadError}</Alert>;
   if (!o) return <p className="muted">Loading…</p>;
-  const form = f ?? { unit: o.units[0]?.key ?? '', source: '', transferFromName: '', admittedAt: nowLocal(), bedId: '', consultantId: '', admittingDoctorId: '', weightGrams: o.prefill.weightGrams ?? '', gestationWeeks: o.prefill.gestationWeeks ?? '', gestationDays: '0', temperatureC: '', reasonPrimary: '', allergyAlert: o.prefill.allergyAlert ?? '', floor: { decision: '', consultantId: '', note: '' } };
+  const form = f ?? { unit: o.units[0]?.key ?? '', source: '', transferFromName: '', admittedAt: nowLocal(), bedId: '', consultantId: '', admittingDoctorId: '', weightGrams: o.prefill.weightGrams ?? '', gestationWeeks: o.prefill.gestationWeeks ?? '', gestationDays: '0', temperatureC: '', reasonPrimary: '', allergyAlert: o.prefill.allergyAlert ?? '', floor: { decision: '', consultantId: '', note: '' }, billingType: '' };
   const set = (k, v) => setF({ ...form, [k]: v });
   const unit = o.units.find((u) => u.key === form.unit);
   const beds = o.beds.filter((b) => b.unit === form.unit);
@@ -311,6 +312,8 @@ function AdmitForm({ patientId, reasons, onDone, onCancel }) {
         <Field label="Admitted" id="na-at" error={fe('admittedAt')}>
           <DateTimeInput id="na-at" value={form.admittedAt} onChange={(e) => set('admittedAt', e.target.value)} />
         </Field>
+        {/* Asked at every admission, the baby's too (owner, 9 Nov 2026) */}
+        <AdmissionLabelFields value={form} onChange={setF} fields={error?.fields ?? {}} idPrefix="na" stayType={false} />
         <Field label="Bed" id="na-bed" error={fe('bedId')} hint={beds.length ? `${beds.filter((b) => !b.occupied).length} of ${beds.length} free` : 'No NICU beds set up for this unit'}>
           <select id="na-bed" value={form.bedId} onChange={(e) => set('bedId', e.target.value)}>
             <option value="">Choose…</option>

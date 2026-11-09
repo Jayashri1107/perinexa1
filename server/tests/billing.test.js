@@ -143,7 +143,7 @@ describe('charges added by the work done', () => {
   it('a stay has one bill with its bed days; charges during the stay go on it; payments then are deposits', async () => {
     await prices({ bed: 100000, consult_new: 50000, 'Bed charge per day – private room': 250000 });
     const p = await register('Stay Mother');
-    const admitted = await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), ward: 'private', reason: 'Labour pains' });
+    const admitted = await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', ward: 'private', reason: 'Labour pains' });
     expect(admitted.status, JSON.stringify(admitted.body)).toBe(201);
     await startVisit(p);
     let [b] = await billsOf(p);

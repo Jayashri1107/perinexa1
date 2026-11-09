@@ -63,6 +63,7 @@ const IDENTITY_FIELDS = [
   'createdAt',
   'updatedAt',
 ];
+const NURSE_IDENTITY = IDENTITY_FIELDS.filter((f) => f !== 'payer');
 const NEWBORN_FIELDS = ['newborn', 'motherInfo', 'babies'];
 // carePlanSummary: the care plan's short summary (Feature 7) is a clinical detail too.
 // redFlags: warnings from the latest visit's recorded values (Smart features) – a clinical detail too.
@@ -158,7 +159,8 @@ function forRole(role, patient, userId) {
         viewNotes: !sensitive,
       };
     case 'nurse':
-      return { ...NONE, view: sensitive ? IDENTITY_FIELDS : [...IDENTITY_FIELDS, ...CLINICAL_FIELDS], recordVitals: !sensitive };
+      // Not who pays: the billing type is for doctors, RMOs, the desk and billing (owner, 9 Nov 2026)
+      return { ...NONE, view: sensitive ? NURSE_IDENTITY : [...NURSE_IDENTITY, ...CLINICAL_FIELDS], recordVitals: !sensitive };
     case 'receptionist':
       return { ...NONE, view: [...IDENTITY_FIELDS, ...NEWBORN_FIELDS], editIdentity: true, editNewborn: true, assign: true };
     case 'lab':

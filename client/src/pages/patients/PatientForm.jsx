@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { BILLING_OPTIONS } from '../../components/AdmissionLabels.jsx';
 import { DateTimeInput } from '../../components/DateTimeInput.jsx';
 import { WeightInput } from '../../components/WeightInput.jsx';
 import { Info, Mic } from 'lucide-react';
@@ -61,14 +62,10 @@ export const ID_PROOF_OPTIONS = [
   ['other', 'Other'],
 ];
 
-// Who pays (same keys as server/src/models/Patient.js PAYER_TYPES), and what the payer's name is called
-export const PAYER_OPTIONS = [
-  ['self', 'She pays herself'],
-  ['insurance', 'Insurance or TPA'],
-  ['govt_scheme', 'Government scheme (e.g. PM-JAY, JSY)'],
-  ['corporate', 'Employer (corporate)'],
-];
-export const PAYER_NAME_LABELS = { insurance: 'Insurer or TPA', govt_scheme: 'Scheme', corporate: 'Employer' };
+// Who pays – the billing type (same keys as server/src/models/Patient.js PAYER_TYPES; owner, 9 Nov 2026): Insurance,
+// Cash or Package. A government scheme or an employer counts as Insurance, its name in the name field.
+export const PAYER_OPTIONS = BILLING_OPTIONS;
+export const PAYER_NAME_LABELS = { insurance: 'Insurer, TPA, scheme or employer' };
 // Suggested in the State box (any other spelling can still be typed)
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
@@ -173,7 +170,7 @@ export function toPayload(v, isEdit, access, part, loaded = null) {
       state: v.state,
       referredBy: v.referredBy,
       // the insurer and number only when someone other than she pays
-      payer: v.payer && (v.payer.type && v.payer.type !== 'self' ? v.payer : { type: v.payer.type, name: '', number: '' }),
+      payer: v.payer && (v.payer.type === 'insurance' ? v.payer : { type: v.payer.type, name: '', number: '' }),
     });
     for (const k of ['pinCode', 'city', 'state', 'referredBy', 'payer']) if (payload[k] === undefined) delete payload[k];
     if (!isNewborn) Object.assign(payload, { ageYears: v.ageYears, emergencyContact: v.emergencyContact, idProof: v.idProof });
@@ -817,7 +814,7 @@ export function PatientForm({
                         ))}
                       </select>
                     </Field>
-                    {v.payer.type && v.payer.type !== 'self' && (
+                    {v.payer.type === 'insurance' && (
                       <>
                         <Field label={PAYER_NAME_LABELS[v.payer.type]} id="payerName" error={fe('payer.name')}>
                           <input id="payerName" value={v.payer.name} onChange={setIn('payer', 'name')} maxLength={100} />

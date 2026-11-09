@@ -46,7 +46,7 @@ afterEach(() => vi.useRealTimers());
 const as = async (who) => (sessions[who] ??= await loginAs(people[who], { app }));
 async function stay() {
   const p = (await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'postnatal', fullName: 'Witness Mother', assignedDoctor: people.drA._id.toString() }))).body.patient;
-  const a = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: '2026-11-10T01:00:00.000Z', ward: 'Ward', bed: '2', reason: 'After delivery' })).body.admission;
+  const a = (await (await as('drA')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: '2026-11-10T01:00:00.000Z', ward: 'Ward', bed: '2', reason: 'After delivery' })).body.admission;
   return { p, a };
 }
 const give = async ({ p, a }, medicine, extra = {}) => (await as('nurse')).post(`/api/patients/${p.id}/admissions/${a.id}/nursing`).send({ clientRequestId: randomUUID(), kind: 'medicine', at: '2026-11-10T05:00:00.000Z', medicine, ...extra });

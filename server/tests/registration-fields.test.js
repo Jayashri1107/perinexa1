@@ -25,7 +25,7 @@ beforeEach(async () => {
 });
 
 const as = async (who) => (sessions[who] ??= await loginAs(people[who], { app }));
-const PAYER = { type: 'govt_scheme', name: 'Sample scheme', number: 'SMP-0001' };
+const PAYER = { type: 'insurance', name: 'Sample scheme', number: 'SMP-0001' };
 
 describe('PIN code, city, state, referred by and who pays', () => {
   it('reception registers and changes them; billing sees who pays only; lab sees none', async () => {
@@ -34,12 +34,12 @@ describe('PIN code, city, state, referred by and who pays', () => {
     expect(res.body.patient).toMatchObject({ pinCode: '411001', city: 'Pune', state: 'Maharashtra', referredBy: 'Sample Clinic', payer: PAYER });
     const id = res.body.patient.id;
 
-    const changed = await (await as('reception')).patch(`/api/patients/${id}`).send({ payer: { type: 'self', name: '', number: '' }, pinCode: '411002' });
+    const changed = await (await as('reception')).patch(`/api/patients/${id}`).send({ payer: { type: 'cash', name: '', number: '' }, pinCode: '411002' });
     expect(changed.status, JSON.stringify(changed.body)).toBe(200);
-    expect(changed.body.patient).toMatchObject({ pinCode: '411002', payer: { type: 'self' } });
+    expect(changed.body.patient).toMatchObject({ pinCode: '411002', payer: { type: 'cash' } });
 
     const billing = (await (await as('billing')).get(`/api/patients/${id}`)).body.patient;
-    expect(billing.payer).toMatchObject({ type: 'self' });
+    expect(billing.payer).toMatchObject({ type: 'cash' });
     expect(billing.pinCode).toBeUndefined();
     expect(billing.referredBy).toBeUndefined();
     const lab = (await (await as('lab')).get(`/api/patients/${id}`)).body.patient;

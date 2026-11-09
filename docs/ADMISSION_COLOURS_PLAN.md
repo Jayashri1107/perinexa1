@@ -1,7 +1,9 @@
 # Colour labels for billing type and admission type – plan (owner, 9 Nov 2026)
 
-**Status: plan only, nothing built.** The developer reads it first. The department part depends on
-`docs/DEPARTMENT_ACCESS_PLAN.md` (branch `department-access`), which brings the 9 departments.
+**Status: built on branch `admission-colours` (9 Nov 2026).** The department headings use the department chosen on the
+admission form (`Admission.department`); who may see which department's patients is still
+`docs/DEPARTMENT_ACCESS_PLAN.md` (not built). Code: `server/src/inpatient/admissionLabels.js`,
+`client/src/components/AdmissionLabels.jsx`; tests: `server/tests/admission-labels.test.js`.
 
 ## What the owner asked for
 

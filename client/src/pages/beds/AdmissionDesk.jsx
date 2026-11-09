@@ -48,7 +48,8 @@ export function Modal({ id, title, onClose, children }) {
 }
 
 /** The checklist's fields (the admit dialog and the checklist dialog). value/onChange: the checklist; fields: errors. */
-export function ChecklistFields({ value, onChange, fields = {}, idPrefix = 'ck' }) {
+// payerAsked: who pays was already asked as the billing type (the admission form), so only the insurer's name is here
+export function ChecklistFields({ value, onChange, fields = {}, idPrefix = 'ck', payerAsked = false }) {
   const set = (k) => (e) => onChange({ ...value, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const err = (k) => fields[`checklist.${k}`];
   return (
@@ -80,16 +81,18 @@ export function ChecklistFields({ value, onChange, fields = {}, idPrefix = 'ck' 
         <Field label="Attendant's phone" id={`${idPrefix}-ph`} error={err('attendantPhone')}>
           <input id={`${idPrefix}-ph`} inputMode="tel" maxLength={20} value={value.attendantPhone} onChange={set('attendantPhone')} />
         </Field>
-        <Field label="Who pays" id={`${idPrefix}-payer`} error={err('payer')}>
-          <select id={`${idPrefix}-payer`} value={value.payer} onChange={set('payer')}>
-            <option value="">Choose…</option>
-            {PAYER_OPTIONS.map(([k, w]) => (
-              <option key={k} value={k}>
-                {w}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {!payerAsked && (
+          <Field label="Who pays" id={`${idPrefix}-payer`} error={err('payer')}>
+            <select id={`${idPrefix}-payer`} value={value.payer} onChange={set('payer')}>
+              <option value="">Choose…</option>
+              {PAYER_OPTIONS.map(([k, w]) => (
+                <option key={k} value={k}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         {PAYER_NAME_LABELS[value.payer] && (
           <Field label={PAYER_NAME_LABELS[value.payer]} id={`${idPrefix}-payername`} error={err('payerName')}>
             <input id={`${idPrefix}-payername`} maxLength={100} value={value.payerName} onChange={set('payerName')} />

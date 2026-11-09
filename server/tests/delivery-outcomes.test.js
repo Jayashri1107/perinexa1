@@ -57,7 +57,7 @@ const baby = (overrides = {}) =>
   registered({ careType: 'newborn', fullName: 'Baby Outcome', ageYears: undefined, pregnancy: undefined, medical: undefined, newborn: { birthAt: '2026-10-01T03:00:00.000Z', birthWeightGrams: 2900, sex: 'female' }, ...overrides });
 const base = (p) => `/api/patients/${p.id}/admissions`;
 const admit = async (p, admittedAt = '2026-10-08T02:00:00.000Z') =>
-  (await (await as('rmo')).post(base(p)).send({ clientRequestId: randomUUID(), admittedAt, ward: 'Labour ward', bed: '2', reason: 'In labour' })).body.admission;
+  (await (await as('rmo')).post(base(p)).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt, ward: 'Labour ward', bed: '2', reason: 'In labour' })).body.admission;
 const newNote = async (p, a) => (await (await as('rmo')).post(`${base(p)}/${a.id}/documents`).send({ clientRequestId: randomUUID(), kind: 'delivery' })).body.document;
 const save = async (p, a, d, content) => (await as('rmo')).put(`${base(p)}/${a.id}/documents/${d.id}`).send({ rev: d.rev, content });
 const sign = async (p, a, d) => (await as('drA')).post(`${base(p)}/${a.id}/documents/${d.id}/sign`).send({ rev: d.rev });

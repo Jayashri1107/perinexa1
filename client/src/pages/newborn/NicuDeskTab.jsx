@@ -3,6 +3,7 @@ import { BedDouble, CircleCheck, Clock, Hospital } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
 import { DateTimeInput } from '../../components/DateTimeInput.jsx';
+import { AdmissionLabelFields } from '../../components/AdmissionLabels.jsx';
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { nowLocal, toIso } from './nicuFields.js';
@@ -19,7 +20,7 @@ function DeskAdmit({ patientId, onDone, onCancel }) {
   const [busy, setBusy] = useState(false);
   if (loadError) return <Alert type="error">{loadError}</Alert>;
   if (!o) return <p className="muted">Loading…</p>;
-  const form = f ?? { unit: o.units[0]?.key ?? '', source: '', transferFromName: '', admittedAt: nowLocal(), bedId: '', admittingDoctorId: '', consultantId: '' };
+  const form = f ?? { unit: o.units[0]?.key ?? '', source: '', transferFromName: '', admittedAt: nowLocal(), bedId: '', admittingDoctorId: '', consultantId: '', billingType: '' };
   const set = (k, v) => setF({ ...form, [k]: v });
   const unit = o.units.find((u) => u.key === form.unit);
   const beds = o.beds.filter((b) => b.unit === form.unit);
@@ -73,6 +74,8 @@ function DeskAdmit({ patientId, onDone, onCancel }) {
         <Field label="Admitted" id="nd-at" error={fe('admittedAt')}>
           <DateTimeInput id="nd-at" value={form.admittedAt} onChange={(e) => set('admittedAt', e.target.value)} />
         </Field>
+        {/* Asked at every admission, the baby's too (owner, 9 Nov 2026) */}
+        <AdmissionLabelFields value={form} onChange={setF} fields={error?.fields ?? {}} idPrefix="nd" stayType={false} />
         <Field label="Bed" id="nd-bed" error={fe('bedId')} hint={beds.length ? `${beds.filter((b) => !b.occupied).length} of ${beds.length} free` : 'No NICU beds set up for this unit'}>
           <select id="nd-bed" value={form.bedId} onChange={(e) => set('bedId', e.target.value)}>
             <option value="">Choose…</option>

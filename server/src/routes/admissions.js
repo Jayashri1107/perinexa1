@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { BILLING_TYPES, STAY_TYPES, seesBillingType, stayTypeOf } from '../inpatient/admissionLabels.js';
 import { billRound } from '../billing/hooks.js';
 import { nextIpdNo } from '../inpatient/admissionDesk.js';
 import { billAdmitted } from '../billing/hooks.js';
@@ -113,7 +114,7 @@ async function admissionPage(req, patient, admission, a) {
     admission.status === 'admitted' && a.view ? redFlagsForPatient(planCtx(req), patient) : null,
   ]);
   return {
-    admission: admissionView(admission),
+    admission: { ...admissionView(admission), ...(seesBillingType(req.membership) ? { billingType: admission.billingType || '' } : {}) },
     documents: docs.map(documentView),
     nursing: entries.map(entryView),
     access: pageAccess(req, a, admission),
@@ -146,6 +147,9 @@ const admitSchema = z
     ward: safeText('Ward', 60).default(''),
     bed: safeText('Bed', 30).default(''),
     reason: safeText('Reason for admission', 300).refine((t) => t.trim().length >= 3, 'Write the reason for admission'),
+    // Asked at every admission (owner, 9 Nov 2026 – inpatient/admissionLabels.js)
+    billingType: z.enum(BILLING_TYPES, 'Choose Insurance, Cash or Package'),
+    stayType: z.enum(STAY_TYPES, 'Choose ANC, PNC, Delivered or Other').optional(),
   })
   .strict();
 
@@ -160,6 +164,7 @@ admissionsRouter.post('/', async (req, res) => {
   }
   refuseNewOnDuplicate(patient, 'admission'); // a record marked as a duplicate takes no new admission
   refuseNewOnClosed(patient, 'admission'); // nor a record closed after a death (an open stay is finished with its discharge card)
+  const stayType = stayTypeOf(body, patient);
   const now = req.now ?? new Date();
   const admittedAt = body.admittedAt ? new Date(body.admittedAt) : now;
   if (admittedAt.getTime() > now.getTime() + 5 * 60 * 1000) throw invalid({ admittedAt: "The admission can't be in the future." });
@@ -173,6 +178,8 @@ admissionsRouter.post('/', async (req, res) => {
       ward: body.ward,
       bed: body.bed,
       reason: body.reason,
+      billingType: body.billingType,
+      stayType,
       ipdNo: await nextIpdNo(req.tenantId, now), // docs/ADMISSION_DESK_PLAN.md
       admittedBy: req.user._id,
       admittedByName: req.user.name,
@@ -195,17 +202,25 @@ admissionsRouter.get('/:admissionId', async (req, res) => {
   res.json(await admissionPage(req, patient, admission, a));
 });
 
-// The ward and bed (while she is admitted)
+// The ward and bed, and the admission type (while she is admitted). The admission type is changed by hand, e.g. ANC →
+// Delivered after the delivery (owner, 9 Nov 2026): each change is kept on the stay and audited.
 admissionsRouter.patch('/:admissionId', async (req, res) => {
   const patient = await loadPatientForPlan(req);
   const a = assertCanEdit(req, patient);
-  const body = parse(z.object({ ward: safeText('Ward', 60).optional(), bed: safeText('Bed', 30).optional() }).strict(), req.body);
+  const body = parse(z.object({ ward: safeText('Ward', 60).optional(), bed: safeText('Bed', 30).optional(), stayType: z.enum(STAY_TYPES, 'Choose ANC, PNC, Delivered or Other').optional() }).strict(), req.body);
   const admission = await findAdmission(req, patient, req.params.admissionId);
   if (admission.status !== 'admitted') throw conflict('She has been discharged: this stay can no longer be changed.');
   if (body.ward !== undefined) admission.ward = body.ward;
   if (body.bed !== undefined) admission.bed = body.bed;
+  const from = admission.stayType ?? null;
+  const typeChanged = body.stayType !== undefined && body.stayType !== from;
+  if (typeChanged) {
+    admission.stayType = body.stayType;
+    admission.stayTypeChanges.push({ from: from ?? '', to: body.stayType, by: req.user._id, byName: req.user.name, at: req.now ?? new Date() });
+  }
   await admission.save();
-  await audit(req, 'ADMISSION_UPDATED', { details: ids(patient, { admissionId: String(admission._id) }) });
+  if (typeChanged) await audit(req, 'ADMISSION_STAY_TYPE_CHANGED', { details: ids(patient, { admissionId: String(admission._id), from, to: body.stayType }) });
+  if (body.ward !== undefined || body.bed !== undefined || !typeChanged) await audit(req, 'ADMISSION_UPDATED', { details: ids(patient, { admissionId: String(admission._id) }) });
   res.json(await admissionPage(req, patient, admission, a));
 });
 

@@ -42,7 +42,7 @@ async function admitted(fullName = 'Ward Mother') {
   const p = await (await as('drA')).post('/api/patients').send(samplePatient({ careType: 'antenatal', fullName, ageYears: 27, assignedDoctor: people.drA._id.toString(), pregnancy: { scanEdd: '2026-11-20' } }));
   expect(p.status, JSON.stringify(p.body)).toBe(201);
   const beds = (await (await as('admin')).post('/api/beds/setup').send({ ward: 'Semi private', names: ['S1', 'S2'] })).body.beds;
-  const stay = await (await as('reception')).post(`/api/beds/${beds[0].id}/admit`).send({ clientRequestId: randomUUID(), patientId: p.body.patient.id, reasonCode: 'labour' });
+  const stay = await (await as('reception')).post(`/api/beds/${beds[0].id}/admit`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', patientId: p.body.patient.id, reasonCode: 'labour' });
   expect(stay.status, JSON.stringify(stay.body)).toBe(201);
   return { patient: p.body.patient, stay: stay.body.admission, beds };
 }

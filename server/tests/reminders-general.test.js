@@ -100,7 +100,7 @@ const act = async (p, item, body, who = 'drA') => {
 const appointment = (p, day, extra = {}) =>
   Appointment.create({ tenantId: hospital._id, patientId: p?.id ?? null, doctorId: people.drA._id, on: D(day), kind: 'slot', start: '10:30', minutes: 10, source: 'booked', created: { by: people.reception._id, byName: 'Sample reception', at: new Date() }, ...extra });
 const startVisit = async (p, who = 'nurse') => expect((await (await as(who)).post(`/api/patients/${p.id}/visits`).send({ clientRequestId: randomUUID() })).status).toBe(201);
-const admit = async (p) => expect((await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), admittedAt: new Date().toISOString(), reason: 'Sample reason' })).status).toBe(201);
+const admit = async (p) => expect((await (await as('rmo')).post(`/api/patients/${p.id}/admissions`).send({ clientRequestId: randomUUID(), billingType: 'cash', stayType: 'anc', admittedAt: new Date().toISOString(), reason: 'Sample reason' })).status).toBe(201);
 // A stay in hospital that is over (as the Stays tab would have recorded it)
 const pastStay = (p, from, to) =>
   Admission.create({ tenantId: hospital._id, patientId: p.id, careType: p.careType, admittedAt: new Date(from), status: 'discharged', dischargedAt: new Date(to), admittedBy: people.rmo._id, admittedByName: 'Sample rmo', dischargedByName: 'Sample drA', clientRequestId: randomUUID() });
