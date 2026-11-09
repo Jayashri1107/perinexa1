@@ -254,6 +254,9 @@ export function FollowUpsPage() {
             caption="Patients to call"
             loading={res.loading}
             rows={calls}
+            // Reception: 10 a page (or 20 or 40) – 25 at once was too long to work down (9 Nov 2026)
+            pageSize={10}
+            pageLabel="patients"
             emptyText={filter.active ? NO_MATCH : 'Nobody to call: every patient with a visit due is booked or has come.'}
             columns={[
               { key: 'patient', header: 'Patient', render: patientCell },
