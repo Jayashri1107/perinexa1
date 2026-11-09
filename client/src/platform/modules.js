@@ -479,7 +479,7 @@ export function patientMenu(roles = []) {
     // with its bill – reception, billing and the admin
     ...(any(roles, BILLING_MODULE_ROLES)
       ? [
-          { label: 'IPD advance and services', to: '/billing/ipd', match: (p) => p === '/billing/ipd' },
+          { label: 'IPD bills', to: '/billing/ipd', match: (p) => p === '/billing/ipd' },
           { label: 'Discharge', to: '/billing/ipd/discharges', match: (p) => p === '/billing/ipd/discharges' },
         ]
       : []),

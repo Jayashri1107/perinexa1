@@ -60,12 +60,7 @@ function IpdBillSheet({ stayId, initialDialog = null, onClose, onChanged }) {
   return (
     <div className="modal-backdrop ipd-sheet-backdrop">
       <div ref={ref} tabIndex={-1} className="ipd-sheet" role="dialog" aria-modal="true" aria-label="IPD bill">
-        <div className="ipd-sheet-close">
-          <button type="button" className="btn btn-link" onClick={onClose}>
-            <X aria-hidden="true" /> Close
-          </button>
-        </div>
-        <IpdBillWindow stayId={stayId} embedded initialDialog={initialDialog} onChanged={onChanged} />
+        <IpdBillWindow stayId={stayId} embedded initialDialog={initialDialog} onChanged={onChanged} onClose={onClose} />
       </div>
     </div>
   );
@@ -509,7 +504,7 @@ export function IpdBillPage() {
  * The bill window of one stay. embedded: inside another page (the IPD → Discharge pop-up, her record's IPD tab) –
  * a heading of its own in place of the page header. onChanged: told after every change (to refresh a list).
  */
-export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDialog = null }) {
+export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDialog = null, onClose = null }) {
   const { activeMembership } = useAuth();
   const res = useFetch(`/billing/ipd/stays/${stayId}`);
   const [tab, setTab] = useState('services');
@@ -590,7 +585,15 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
             <p className="muted">{[patient.fullName, patient.mrn].join(' · ')}</p>
             <div className="ipd-embed-badges">{badges}</div>
           </div>
-          <div className="ipd-embed-actions">{actions}</div>
+          <div className="ipd-embed-actions">
+            {actions}
+            {/* The pop-up's close, in the same row as its buttons */}
+            {onClose && (
+              <button type="button" className="btn btn-link ipd-sheet-x" onClick={onClose} aria-label="Close the IPD bill">
+                <X aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <PageHeader
