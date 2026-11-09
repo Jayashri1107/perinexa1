@@ -65,9 +65,7 @@ try {
     console.log(`Departments: ${moved.doctors} doctor(s), ${moved.stays} stay(s) and ${moved.patients} patient(s) moved to the new departments; ${moved.mothers} mother(s) linked to their babies' departments.`);
   }
 } catch (err) {
-  console.error('
-⚠️  WARNING: could not move the old departments at startup. Details:', err.message, '
-');
+  console.error('\n⚠️  WARNING: could not move the old departments at startup. Details:', err.message, '\n');
 }
 
 const server = createApp().listen(config.API_PORT, () => {
