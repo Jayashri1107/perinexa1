@@ -1072,6 +1072,8 @@ export function PatientCarePlanTab() {
           options={printing.options}
           onBack={(kept) => setPrinting({ step: 'dialog', options: { ...printing.options, ...kept } })}
           onClose={() => setPrinting(null)}
+          onSaved={saved}
+          onConflict={conflict}
         />
       )}
       {confirmDialog}

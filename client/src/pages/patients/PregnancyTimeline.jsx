@@ -54,11 +54,33 @@ export function PregnancyTimeline({ patient }) {
         <span style={{ left: 0 }}>LMP</span>
         <span style={{ left: `${(14 * 7 * 100) / 294}%` }}>14 w</span>
         <span style={{ left: `${(28 * 7 * 100) / 294}%` }}>28 w</span>
-        <span style={{ left: `${(280 * 100) / 294}%` }}>EDD {formatDate(t.edd)}</span>
+        {/* Only the word at the end: the date (in the card above) ran into "28 w" in a narrow card */}
+        <span style={{ left: `${(280 * 100) / 294}%` }} title={`EDD ${formatDate(t.edd)}`}>
+          EDD
+        </span>
       </div>
+      {/* Each mark stays on one line with its word, so a wrap never leaves a dot at the end of a line */}
       <p className="ptl-legend muted">
-        <span className="ptl-key ptl-key-visit" /> Visit · scans: <span className="ptl-key ptl-stable" /> Done <span className="ptl-key ptl-due" /> Due <span className="ptl-key ptl-high" /> Missed{' '}
-        <span className="ptl-key ptl-neutral" /> Coming <span className="ptl-key ptl-key-today" /> Today · trimester weeks DRAFT
+        <span className="ptl-leg">
+          <span className="ptl-key ptl-key-visit" /> Visit
+        </span>
+        <span className="ptl-leg">Scans:</span>
+        <span className="ptl-leg">
+          <span className="ptl-key ptl-stable" /> Done
+        </span>
+        <span className="ptl-leg">
+          <span className="ptl-key ptl-due" /> Due
+        </span>
+        <span className="ptl-leg">
+          <span className="ptl-key ptl-high" /> Missed
+        </span>
+        <span className="ptl-leg">
+          <span className="ptl-key ptl-neutral" /> Coming
+        </span>
+        <span className="ptl-leg">
+          <span className="ptl-key ptl-key-today" /> Today
+        </span>
+        <span className="ptl-leg">· trimester weeks DRAFT</span>
       </p>
       {items.length > 0 && (
         <details className="ptl-list">

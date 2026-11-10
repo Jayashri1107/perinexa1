@@ -1,5 +1,52 @@
 # Progress
 
+## History-taking sheet: dictation fixes from the tablet test (10 Nov 2026)
+- **Complaints (C/o):** Dictate now also takes the complaint from "came (first time) with …", "c/o …", "chief complaint …" and
+  "presented with …", and stops before "advise …" (advice still goes to the notes) – before, only "with complaints of" did.
+- **Previous deliveries:** also from "previous delivery", "previously delivered", "past deliveries", "delivery history" and
+  "previous LSCS / caesarean / normal delivery …".
+- **The grey line of what was heard** has a **Remove** button (it is shown only, never saved; the blanks it filled stay).
+- **How to check:** New patient → a type with the history sheet → Dictate "Came first time with PV bleeding since
+  morning. Advise sonography. Previous delivery one normal delivery in 2021" → C/o and Previous deliveries are filled
+  and marked From voice; "Advise sonography" is offered for the notes; Remove takes the grey line away.
+## Patient timeline and waiting times (10 Nov 2026)
+The owner agreed to build it now (freeze lifted for this feature, `docs/HANDOVER.md`). First version, OPD visits only
+(`docs/PATIENT_FLOW_PLAN.md` section 9). Times are noted by themselves from what staff already do – no new buttons:
+when the New patient form was opened, the first vital signs, the first time an RMO and then a doctor opens the visit
+on its day, and the visit finished (printed, sent or signed); arrival, payment, lab and pharmacy times are read from
+their own records. The role is kept, never the person.
+- **Time in hospital** (visit page, fold-out panel): her doctor only – each look is in the audit log; never RMOs,
+  nurses, reception, the hospital admin or a super admin. The moments of the day and the minutes of each stage, with
+  "Longer than usual" once the hospital has 30 visits of a stage in the last three months.
+- **Analytics → Waiting times**: each stage's usual and slow time, by hour, weekday and month, and how complete the
+  numbers are. Doctors: exact, their patients; hospital admin: finished months, "Too few visits to show" below 10
+  visits; super admin (Platform → Analytics → Waiting times): numbers only, per hospital.
+- **Before using it:** tell the staff that stage times are measured, to find queues – not to rank people.
+- **How to check (fake data only):** register a new patient (reception), start a visit and save vital signs (nurse),
+  open the visit as an RMO, then as the doctor, print the prescription. As the doctor: the visit page → **Time in
+  hospital**. As the doctor: Analytics → **Waiting times** → "This month so far". As an RMO or the hospital admin, the
+  panel is not there; the admin sees "Last month" only.
+
+## The pregnancy plan as a month-by-month table (10 Nov 2026)
+The owner agreed to build it now (freeze lifted for this feature, `docs/HANDOVER.md`). Care plan tab → **Print** →
+Patient copy – a pregnancy plan opens as the **month-by-month table** (Layout in the dialog, and a Month table / List
+switch in the preview; other plans and pregnancy-loss care keep the list). One row per month of pregnancy with its weeks and dates, columns Visit dates, Scans, Tests, Medicines &
+vaccines, Advice; each line a box to tick with its date. **Only from today's visit** (ticked to start with) leaves out
+the months that have passed and what is done or not needed; overdue items stay under **Now** in this month. Unticked:
+all nine months, the months before registration in grey, done items with a tick and the date. In the preview, a
+doctor or RMO who may change the plan sees **Add** in each cell (opens Add item with that column's type and that
+month's weeks) and **Remove** on each line (opens Not needed with the usual reasons): both change her saved plan,
+with its history and audit entries, and never print. Marathi or Hindi headings under the English (DRAFT). Defaults
+for the owner's open points: `docs/PLAN_TABLE_LAYOUT.md` section 7. No server change.
+- **Same day: laid out like the owner's sample sheet** ("9-Month Pregnancy Plan"): her facts, Special care needed,
+  "Month 3 · 9–13 wk", visit days only, **Today:** in each column of this month, "☐ text · 07 Dec", delivery plan and
+  doctor's remarks typed at printing, ten danger signs, three reminders, the closing line. The clinical wording is
+  **DRAFT for the owner to approve** (`docs/PLAN_TABLE_LAYOUT.md` section 7a).
+- **How to check (fake data only):** a pregnancy patient with an active plan → Care plan → Print → Patient copy →
+  Month-by-month table → Preview. Untick "Only from today's visit" to see all months. Click Add in Scans of next
+  month, save, and the line appears; Remove a line, choose a reason, and it disappears (the Care plan tab shows it as
+  Not needed). Print: the buttons are not on paper.
+
 ## Medical records module (9 Nov 2026, from the other Perinexa copy)
 Brought from `girishsolanke/perinexa` (branch `mrd-records`, commit bcb7f949 of 9 Nov 2026, the owner's request
 there). That copy has its own history and its own versions of Clinical Requirements items 1–7, so only the records

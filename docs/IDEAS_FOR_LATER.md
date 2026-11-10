@@ -148,7 +148,9 @@ because package prices, what each includes, and what happens to charges beyond i
 is picked: a package on the price list with its included groups or items, chosen on the stay's bill; lines it covers
 print at ₹0 under the package; anything beyond prints as extra.
 
-## The pregnancy plan as a month-by-month table (10 Nov 2026, not built)
+## The pregnancy plan as a month-by-month table (10 Nov 2026) – built 10 Nov 2026 at the owner's go-ahead
+Built in perinexa1 the same day (`docs/PLAN_TABLE_LAYOUT.md` section 7); the text below is the original entry.
+
 From the other Perinexa copy (`girishsolanke/perinexa`). The owner wants the patient's copy of the pregnancy plan as a
 table like the ANC desk's "9-Month Pregnancy Plan" sheet – one row per month; columns for visit dates, scans, tests,
 medicines and vaccines, and advice – with an option to leave out what has passed its dates, and editable so the
@@ -157,7 +159,9 @@ The owner's decisions of 10 Nov 2026: not built now, and an edit in the table ch
 = plan item, removed line = "not needed"), not the printout only. Layout, mapping onto the care plan and print code,
 and the open points: `docs/PLAN_TABLE_LAYOUT.md` (section 5 decisions, section 6 open).
 
-## Patient timeline and waiting times (10 Nov 2026, not built)
+## Patient timeline and waiting times (10 Nov 2026) – first version built 10 Nov 2026 at the owner's go-ahead
+Built in perinexa1 the same day (`docs/PATIENT_FLOW_PLAN.md` section 9); the text below is the original entry.
+
 From the other Perinexa copy. The owner wants the time noted at every point of contact of an outpatient's day
 (reception, registration, vitals, RMO, doctor, lab, billing, pharmacy) so a delay can be traced, and a "Waiting times"
 section in Analytics. Seven owner decisions of 10 Nov 2026: not built now; "RMO/doctor login" = the moment each

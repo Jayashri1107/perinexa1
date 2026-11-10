@@ -17,7 +17,8 @@ import { HttpError } from '../utils/httpError.js';
 import { parse } from '../utils/validate.js';
 import { shouldLogView } from '../analytics/auditThrottle.js';
 import { parsePeriod } from '../analytics/period.js';
-import { platformSection } from '../analytics/platformTotals.js';
+import { platformHospitals, platformSection } from '../analytics/platformTotals.js';
+import { WAIT_PERIODS, platformWaitingTimes } from '../analytics/waitingTimes.js';
 import { SECTIONS } from '../analytics/registry.js';
 import { cachedPlatformSection, keepPlatformSection, platformCacheKey } from '../analytics/sectionCache.js';
 
@@ -75,4 +76,16 @@ platformAnalyticsRouter.get('/sections/:section', async (req, res) => {
   if (shouldLogView(key, req.now)) await audit(req, 'ANALYTICS_VIEWED', { tenantId: null, details: { section, scope: 'platform', hospital } });
 
   res.json(page);
+});
+
+// Waiting times for the super admin (docs/PATIENT_FLOW_PLAN.md section 6): per hospital and for all hospitals
+// together, whole finished months, numbers only – no patient, no name, no list (analytics/waitingTimes.js).
+platformAnalyticsRouter.get('/waiting-times', async (req, res) => {
+  const q = parse(z.object({ hospital: querySchema.shape.hospital, period: z.enum(Object.keys(WAIT_PERIODS)).optional() }), req.query);
+  const tenants = await platformHospitals(q.hospital);
+  const body = await platformWaitingTimes(tenants, { periodKey: q.period, now: req.now });
+  const hospital = q.hospital === 'all' ? 'all' : String(tenants[0]._id);
+  const key = `${req.user._id}|platform|${hospital}|waiting|platform`;
+  if (shouldLogView(key, req.now)) await audit(req, 'ANALYTICS_VIEWED', { tenantId: null, details: { section: 'waiting', scope: 'platform', hospital } });
+  res.json({ audience: 'platform', calculatedAt: req.now, ...body });
 });

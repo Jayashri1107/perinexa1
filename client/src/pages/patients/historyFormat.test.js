@@ -24,6 +24,19 @@ describe('reading the sentence as written on the paper template', () => {
     expect(readSentence('')).toEqual({});
     expect(readSentence('she is well')).toEqual({});
   });
+  it('takes the complaint from the words doctors say instead of the template’s, and stops before advice (10 Nov 2026)', () => {
+    expect(readSentence('Came first time with PV bleeding since morning. Advise sonography.')).toEqual({ complaint: 'PV bleeding since morning' });
+    expect(readSentence('Came 1st time with PV bleeding since morning advised sonography')).toEqual({ complaint: 'PV bleeding since morning' });
+    expect(readSentence('C/O white discharge for one week')).toEqual({ complaint: 'white discharge for one week' });
+    expect(readSentence('Chief complaint is pain in abdomen. LMP 2 October cycle regular')).toEqual({ complaint: 'pain in abdomen', cycle: 'regular' });
+    expect(readSentence('She presented with headache and swelling of feet')).toEqual({ complaint: 'headache and swelling of feet' });
+  });
+  it('fills previous deliveries from the other ways of saying it (10 Nov 2026)', () => {
+    expect(readSentence('Previous delivery one normal delivery in 2021')).toEqual({ previousDeliveries: 'one normal delivery in 2021' });
+    expect(readSentence('Previously delivered twice, both normal')).toEqual({ previousDeliveries: 'twice, both normal' });
+    expect(readSentence('Past deliveries two caesareans')).toEqual({ previousDeliveries: 'two caesareans' });
+    expect(readSentence('Previous LSCS in 2020 for breech. Any other history nil')).toEqual({ previousDeliveries: 'LSCS in 2020 for breech', otherHistory: 'nil' });
+  });
 });
 
 describe("the type of care's own line", () => {
@@ -61,6 +74,16 @@ describe('one Dictate for the whole page', () => {
     expect(r.found.find((f) => f.path === 'history.cycle')).toMatchObject({ label: 'Cycle', text: 'Regular', part: 'clinical' });
     // What the sheet took is not offered again as "not understood"
     expect(r.unused.some((u) => /backache/i.test(u.text))).toBe(false);
+  });
+  it('fills C/o and previous deliveries from the way doctors say it, and asks only about the advice (tablet test, 10 Nov 2026)', () => {
+    const spoken = 'Came first time with PV bleeding since morning. Advise sonography. Previous delivery one normal delivery in 2021.';
+    const r = withHistorySheet(extractPatientDetails(spoken, { careType: 'gynaecology', now }), spoken, { careType: 'gynaecology', readDate, now });
+    expect(r.values.history).toMatchObject({ complaint: 'PV bleeding since morning', previousDeliveries: 'one normal delivery in 2021' });
+    expect(r.paths).toEqual(expect.arrayContaining(['history.complaint', 'history.previousDeliveries']));
+    // "Previous delivery" is the blank's heading, not something to ask about; the advice is offered for the notes
+    expect(r.unused.map((u) => u.text)).toEqual(['Advise sonography']);
+    const twice = 'C/O white discharge for one week. Previously delivered twice, both normal.';
+    expect(withHistorySheet(extractPatientDetails(twice, { careType: 'antenatal', now }), twice, { careType: 'antenatal', readDate, now }).unused).toEqual([]);
   });
   it("adds the type of care's line only when it is on the page", () => {
     const text = 'Trying to conceive since 2 years';

@@ -28,6 +28,7 @@ import { mobileNumber } from '../reminders/reminderService.js';
 import { PRINT_COPIES, visitParams, visitSchemas } from '../visits/visitSchemas.js';
 import { sendDocument, whatsappStatus } from '../visits/whatsappSender.js';
 import { rxItemView, visitSummary, visitView } from '../visits/visitView.js';
+import { STAGES, flowOfVisit, flowRole, noteOnce, noteSeeing, usualTimes } from '../visits/flow.js';
 
 // A patient's visits (Feature 8): /api/patients/:id/visits. Mounted inside the patients router, after its role
 // gate. Who may do what follows the patient access rules (utils/patientAccess.js):
@@ -187,6 +188,7 @@ visitsRouter.post('/', async (req, res) => {
       clientRequestId: body.clientRequestId,
       createdBy: req.user._id,
       createdByName: req.user.name,
+      flow: { startedRole: req.membership?.platform ? 'other' : flowRole(req.membership) }, // patient timeline
     });
   } catch (e) {
     if (e?.code !== 11000) throw e;
@@ -287,6 +289,7 @@ visitsRouter.get('/:visitId', async (req, res) => {
   const patient = await loadPatientForPlan(req);
   const access = assertCanView(req, patient);
   const visit = await findVisit(req, patient);
+  await noteSeeing(req, visit); // patient timeline: the RMO or the doctor starts seeing her (docs/PATIENT_FLOW_PLAN.md)
   await audit(req, 'VISIT_VIEWED', { details: ids(patient, visit, { access: access.level }) });
   res.json(await visitPage(req, patient, visit, access));
 });
@@ -337,6 +340,7 @@ visitsRouter.patch('/:visitId', async (req, res) => {
     saved.push(part);
   }
   if (saved.length) await audit(req, 'VISIT_UPDATED', { details: ids(patient, visit, { sections: saved }) });
+  if (saved.includes('vitals')) await noteOnce(req, visit, 'vitalsFirstAt'); // patient timeline
   // New vital signs: the risk level is worked out again (lowest haemoglobin, latest blood pressure). Covered by
   // the VISIT_UPDATED entry – a change of level is never audited on its own.
   const risk = saved.includes('vitals') ? await riskAfterReadings(req, patient) : { patient, riskChanged: false, recordChanged: false };
@@ -442,6 +446,7 @@ visitsRouter.post('/:visitId/sign', async (req, res) => {
     throw conflict('Someone saved this visit at the same moment. Reload to see the latest, then sign again.');
   }
   await audit(req, 'VISIT_SIGNED', { details: ids(patient, visit) });
+  await noteOnce(req, visit, 'finishedAt'); // patient timeline: the visit is finished (the first of signed, printed, sent)
   res.json(await visitPage(req, patient, await findVisit(req, patient), access));
 });
 
@@ -544,6 +549,7 @@ visitsRouter.post('/:visitId/printed', async (req, res) => {
   }
   const via = as === 'whatsapp' ? { via: 'whatsapp' } : {};
   await audit(req, PRINT_ACTIONS[copy][as === 'paper' ? 'paper' : 'pdf'], { details: ids(patient, visit, { access: access.level, ...via }) });
+  await noteOnce(req, visit, 'finishedAt'); // patient timeline
   res.json({ printed: true });
 });
 
@@ -606,7 +612,47 @@ visitsRouter.post('/:visitId/whatsapp', async (req, res) => {
     throw new HttpError(502, `It was not sent: ${err?.message ?? 'WhatsApp could not be reached'}. Print it, or use Download PDF.`, 'WHATSAPP_FAILED');
   }
   await audit(req, SENT_ACTIONS[body.copy], { details: ids(patient, visit, { access: access.level, ...(offer.practice ? { practice: true } : {}) }) });
+  await noteOnce(req, visit, 'finishedAt'); // patient timeline
   res.status(201).json({ sent: true, practice: offer.practice });
+});
+
+// ---------- Time in hospital: one visit's timeline (owner's decisions of 10 Nov 2026 – docs/PATIENT_FLOW_PLAN.md) ----------
+// For her doctor only (decision 3): a person with the doctor role who may see her clinical record – her treating
+// doctor, or another doctor through the read-only and emergency-access rules. Never an RMO, nurse, reception, the
+// hospital admin, and never a super admin or platform admin, also when working inside a hospital (developer's
+// decision, 10 Nov 2026: numbers only, always). Times and stage names only – no staff names, no clinical content.
+// Every look is in the audit log.
+
+visitsRouter.get('/:visitId/timeline', async (req, res) => {
+  const patient = await loadPatientForPlan(req);
+  if (req.membership?.platform || req.user.isSuperAdmin || !hasRole(req.membership, 'doctor')) {
+    throw forbidden('The time in hospital of one patient is for her doctor only.');
+  }
+  const access = assertCanView(req, patient);
+  const visit = await findVisit(req, patient);
+  const [row, usual] = await Promise.all([flowOfVisit(req.tenantId, visit), usualTimes(req.tenantId, req.now)]);
+  await audit(req, 'VISIT_TIMELINE_VIEWED', { details: ids(patient, visit, { access: access.level }) });
+  const iso = (ms) => (ms == null ? null : new Date(ms).toISOString());
+  const m = row?.moments ?? {};
+  res.json({
+    moments: {
+      registrationStart: iso(m.registrationStart),
+      registered: iso(m.registered),
+      arrived: iso(m.arrived),
+      vitals: iso(m.vitals),
+      rmo: iso(m.rmo),
+      doctor: iso(m.doctor),
+      finished: iso(m.finished),
+      paid: iso(m.paid),
+      sold: iso(m.sold),
+      left: iso(m.left),
+    },
+    stages: STAGES.map((s) => {
+      const value = row?.stages?.[s.key] ?? null;
+      const slow = usual[s.key];
+      return { key: s.key, label: s.label, minutes: value, usualLimit: slow, longer: value != null && slow != null && value > slow };
+    }),
+  });
 });
 
 // ---------- Nothing gets lost: the person's own unsaved typing on this visit (doctor ideas #4) ----------

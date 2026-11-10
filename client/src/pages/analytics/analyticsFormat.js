@@ -253,10 +253,12 @@ export const monthWords = (month) => {
 
 /**
  * The page tabs, each keeping the chosen filters. base: '/analytics' or '/platform/analytics'.
- * report: the Monthly report tab (doctors of a hospital only); ask: Ask your records (doctors; always last).
+ * report: the Monthly report tab (doctors of a hospital only); ask: Ask your records (doctors; always last);
+ * waiting: the Waiting times page (docs/PATIENT_FLOW_PLAN.md – doctors, hospital admins and the super admin).
  */
-export function analyticsTabs(base, search = '', { ask = false, report = false } = {}) {
+export function analyticsTabs(base, search = '', { ask = false, report = false, waiting = false } = {}) {
   const tabs = SECTIONS.map((s) => ({ label: SECTION_LABELS[s], to: `${s === 'overview' ? base : `${base}/${s}`}${search}`, end: true }));
+  if (waiting) tabs.push({ label: 'Waiting times', to: `${base}/waiting`, end: true });
   if (report) tabs.push({ label: 'By doctor', to: '/analytics/doctors', end: true }, { label: 'Monthly report', to: '/analytics/report', end: true });
   if (ask) tabs.push({ label: 'Ask your records', to: '/analytics/ask', end: true });
   return tabs;

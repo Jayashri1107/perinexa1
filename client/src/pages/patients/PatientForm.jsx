@@ -985,6 +985,7 @@ export function PatientForm({
                     onLmp={type === 'antenatal' ? (x) => setV((cur) => ({ ...cur, pregnancy: { ...cur.pregnancy, lmp: x } })) : type === 'abortion' ? (x) => setAbortion('lmp', x) : null}
                     medicalOpen={Boolean(fe('medical.allergies'))}
                     heard={heard}
+                    onClearHeard={() => setHeard('')}
                     voiced={(k) => voiced(`history.${k}`)}
                     extraLine={
                       type === 'infertility' ? (

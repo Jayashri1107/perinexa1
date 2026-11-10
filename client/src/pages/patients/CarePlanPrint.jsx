@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarDays, Eye } from 'lucide-react';
+import { CalendarDays, Check, Eye, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { BiLabel, PrintLanguageChoice, Translation } from '../../components/print/Bilingual.jsx';
@@ -15,6 +15,24 @@ import {
   DRAFT_PLAN_WORDS,
   PATIENT_COPY_LABELS as L,
   PATIENT_KIND_LABELS,
+  DANGER_SIGNS,
+  PLAN_REMINDERS,
+  TABLE_COLUMNS,
+  TABLE_LABELS,
+  TABLE_NOTE,
+  monthDates,
+  specialCareWords,
+  tableFacts,
+  addKindForColumn,
+  addWeeksForRow,
+  canPrintMonthTable,
+  monthTable,
+  monthWeeks,
+  monthWords,
+  tableHasContent,
+  tableItemDone,
+  tableLineDate,
+  tableUntranslatedCount,
   PRINT_KINDS,
   PRINT_KIND_LABELS,
   choosableItems,
@@ -34,6 +52,7 @@ import {
   startDayLabel,
   untranslatedCount,
 } from './carePlanPrintFormat.js';
+import { AddItemDialog, NotNeededDialog } from './carePlanDialogs.jsx';
 import { ageText, formatGestation } from './patientFormat.js';
 import { RISK_LABELS } from './riskFormat.js';
 
@@ -62,7 +81,12 @@ export function PrintPlanDialog({ plan, initial, onPreview, onCancel }) {
   const [kinds, setKinds] = useState(initial?.kinds ?? ['visit', 'scan']);
   const [ids, setIds] = useState(initial?.ids ?? []);
   const [includeDone, setIncludeDone] = useState(initial?.includeDone ?? false);
+  const tableAllowed = canPrintMonthTable(plan);
+  // A pregnancy plan's patient copy opens as the month table (owner's sample sheet, 10 Nov 2026); List stays one click away
+  const [layout, setLayout] = useState(tableAllowed ? (initial?.layout ?? 'table') : 'list');
+  const [fromToday, setFromToday] = useState(initial?.fromToday ?? true);
   const [advice, setAdvice] = useState(initial?.advice ?? '');
+  const [deliveryPlan, setDeliveryPlan] = useState(initial?.deliveryPlan ?? '');
   const [errors, setErrors] = useState({});
   const ref = useDialogFocus(onCancel);
   const choosable = choosableItems(plan);
@@ -71,15 +95,17 @@ export function PrintPlanDialog({ plan, initial, onPreview, onCancel }) {
 
   const preview = (e) => {
     e.preventDefault();
-    const options = { copy, scope, kinds, ids, includeDone, advice: advice.trim(), ...(initial?.language ? { language: initial.language } : {}) };
+    const options = { copy, scope, kinds, ids, includeDone, layout, fromToday, advice: advice.trim(), deliveryPlan: layout === 'table' ? deliveryPlan.trim() : '', ...(initial?.language ? { language: initial.language } : {}) };
     const found = {};
     if (copy === 'patient') {
       if (scope === 'kinds' && kinds.length === 0) found.kinds = 'Tick at least one type.';
       if (scope === 'items' && ids.length === 0) found.ids = 'Tick at least one item.';
-      if (!found.kinds && !found.ids && !hasContent(patientCopy(plan, options)) && !options.advice) {
+      const anything = layout === 'table' ? tableHasContent(monthTable(plan, options)) : hasContent(patientCopy(plan, options));
+      if (!found.kinds && !found.ids && !anything && !options.advice) {
         found.scope = 'Nothing still to come matches this choice. Choose other types or items, or add advice.';
       }
       if (mentionsFetalSex(options.advice)) found.advice = PCPNDT_MESSAGE;
+      if (mentionsFetalSex(options.deliveryPlan)) found.deliveryPlan = PCPNDT_MESSAGE;
     }
     setErrors(found);
     if (Object.keys(found).length === 0) onPreview(options);
@@ -124,6 +150,25 @@ export function PrintPlanDialog({ plan, initial, onPreview, onCancel }) {
 
         {copy === 'patient' && (
           <>
+            {tableAllowed && (
+              <fieldset className="fieldset">
+                <legend>Layout</legend>
+                <label className="check" htmlFor="print-layout-list">
+                  <input id="print-layout-list" type="radio" name="print-layout" checked={layout === 'list'} onChange={() => setLayout('list')} />
+                  <span>List – one item below the other, by date</span>
+                </label>
+                <label className="check" htmlFor="print-layout-table">
+                  <input id="print-layout-table" type="radio" name="print-layout" checked={layout === 'table'} onChange={() => setLayout('table')} />
+                  <span>Month-by-month table – one row for each month of pregnancy</span>
+                </label>
+                {layout === 'table' && (
+                  <label className="checkbox print-sub" htmlFor="print-from-today">
+                    <input id="print-from-today" type="checkbox" checked={fromToday} onChange={(e) => setFromToday(e.target.checked)} />
+                    <span>Only from today's visit – leave out the months and items that have passed (overdue items stay, under Now)</span>
+                  </label>
+                )}
+              </fieldset>
+            )}
             <fieldset className="fieldset" aria-describedby={errors.scope ? 'print-scope-error' : undefined}>
               <legend>What to print</legend>
               <label className="check" htmlFor="print-scope-all">
@@ -176,13 +221,18 @@ export function PrintPlanDialog({ plan, initial, onPreview, onCancel }) {
               )}
               <FieldError id="print-scope-error">{errors.scope}</FieldError>
             </fieldset>
-            {scope !== 'items' && (
+            {scope !== 'items' && layout !== 'table' && (
               <label className="checkbox" htmlFor="print-done">
                 <input id="print-done" type="checkbox" checked={includeDone} onChange={(e) => setIncludeDone(e.target.checked)} />
                 <span>Also list what is already done, with the dates</span>
               </label>
             )}
-            <Field label="Advice from the doctor (optional)" id="print-advice" error={errors.advice} hint="Printed on this copy only – it is not saved in the record." keepHint>
+            {layout === 'table' && (
+              <Field label="Delivery plan (optional)" id="print-delivery" error={errors.deliveryPlan} hint="Printed on this copy only – it is not saved in the record." keepHint>
+                <textarea id="print-delivery" rows={2} maxLength={1000} value={deliveryPlan} onChange={(e) => setDeliveryPlan(e.target.value)} />
+              </Field>
+            )}
+            <Field label={layout === 'table' ? "Doctor's remarks (optional)" : 'Advice from the doctor (optional)'} id="print-advice" error={errors.advice} hint="Printed on this copy only – it is not saved in the record." keepHint>
               <textarea id="print-advice" rows={3} maxLength={1000} value={advice} onChange={(e) => setAdvice(e.target.value)} />
             </Field>
           </>
@@ -208,7 +258,7 @@ export function PrintPlanDialog({ plan, initial, onPreview, onCancel }) {
  * window. onBack({ language }) goes back to the dialog with the same choices (and the language chosen here).
  * The patient copy has a language choice: English only, or English with Marathi or Hindi.
  */
-export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose }) {
+export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose, onSaved, onConflict }) {
   const { user, activeMembership } = useAuth();
   const lh = useFetch('/tenant/settings/letterhead');
   const letterhead = lh.data?.letterhead ?? { name: activeMembership.tenantName };
@@ -228,12 +278,68 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose }
       draftLabel
     );
   const signs = hasRole(activeMembership, 'doctor', 'rmo');
-  const englishOnly = untranslatedCount(patientCopy(plan, options), lang);
+  // The layout can be switched here too (Table / List), without going back to the dialog (10 Nov 2026)
+  const tableAllowed = !staff && canPrintMonthTable(plan);
+  const [layout, setLayout] = useState(options.layout ?? 'list');
+  const shown = { ...options, layout: tableAllowed ? layout : 'list' };
+  const asTable = shown.layout === 'table';
+  const englishOnly = asTable ? tableUntranslatedCount(monthTable(plan, shown), lang) : untranslatedCount(patientCopy(plan, shown), lang);
+  // Adding or removing a line in the table changes her saved plan (owner's decision 2, 10 Nov 2026), with the Care plan
+  // tab's own dialogs: the same checks, reasons, history and audit entries. Only for those who may change the plan.
+  const [edit, setEdit] = useState(null); // { type: 'add', initial } | { type: 'not_needed', item }
+  const canEditTable = asTable && Boolean(plan.canChangePlan) && Boolean(onSaved);
+  // The preview shows the page as it prints: Add and Remove appear only after "Add or remove lines" (10 Nov 2026 – with
+  // them on every line the cells wrapped and the page did not look like the paper)
+  const [editing, setEditing] = useState(false);
+  const editProps = {
+    patient,
+    plan,
+    onSaved: (res, message) => {
+      setEdit(null);
+      onSaved(res, message);
+    },
+    onConflict: (message) => {
+      setEdit(null);
+      onConflict?.(message);
+    },
+    onCancel: () => setEdit(null),
+  };
+  const tableEdit =
+    canEditTable && editing
+    ? {
+        onAdd: (row, col) => {
+          const w = addWeeksForRow(row, plan);
+          setEdit({ type: 'add', initial: { kind: addKindForColumn(col), timingType: 'weeks', fromWeek: String(w.fromWeek), toWeek: String(w.toWeek) } });
+        },
+        onRemove: (item) => setEdit({ type: 'not_needed', item }),
+      }
+    : null;
 
   const record = () =>
     api(`/patients/${patient.id}/care-plan/printed`, { method: 'POST', body: { copy: options.copy, planId: plan.id, ...(staff ? {} : { language: lang }) } });
 
   const controls = staff ? null : (
+    <>
+    {tableAllowed && (
+      <div className="pv-lang">
+        <span id="pv-layout-label" className="pv-lang-label">
+          Layout
+        </span>
+        <div className="segmented" role="group" aria-labelledby="pv-layout-label">
+          <button type="button" aria-pressed={layout === 'table'} onClick={() => setLayout('table')}>
+            Month table
+          </button>
+          <button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')}>
+            List
+          </button>
+        </div>
+        {canEditTable && asTable && (
+          <button type="button" className="btn btn-secondary btn-sm" aria-pressed={editing} onClick={() => setEditing((on) => !on)}>
+            {editing ? 'Done changing lines' : 'Add or remove lines'}
+          </button>
+        )}
+      </div>
+    )}
     <PrintLanguageChoice
       value={language}
       onChange={setLanguage}
@@ -248,6 +354,7 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose }
           : []
       }
     />
+    </>
   );
 
   const footer = (
@@ -262,14 +369,16 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose }
   );
 
   return (
+    <>
     <PrintPreview
       title={staff ? 'Care plan – staff copy' : 'Care plan – patient copy'}
       hint={
         <>
           {lh.error && !lh.data ? "The letterhead couldn't be loaded, so only the hospital's name is printed. " : ''}
           Check the page, then print it on A4 paper.{' '}
+          {canEditTable && editing && 'Add and Remove change her saved care plan; they do not print. '}
           {!staff && (
-            <button type="button" className="btn btn-link plan-inline-link" onClick={() => onBack({ language })}>
+            <button type="button" className="btn btn-link plan-inline-link" onClick={() => onBack({ language, layout })}>
               Change what is printed
             </button>
           )}
@@ -284,12 +393,15 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose }
         {staff ? (
           <StaffCopy patient={patient} plan={plan} />
         ) : (
-          <PatientCopy patient={patient} plan={plan} options={options} lang={lang} />
+          <PatientCopy patient={patient} plan={plan} options={shown} lang={lang} edit={tableEdit} />
         )}
         {signs && <DoctorSignature user={user} />}
         <LetterheadFooter letterhead={letterhead} />
       </PrintDocument>
     </PrintPreview>
+    {edit?.type === 'add' && <AddItemDialog {...editProps} initial={edit.initial} />}
+    {edit?.type === 'not_needed' && <NotNeededDialog {...editProps} item={edit.item} />}
+    </>
   );
 }
 
@@ -311,8 +423,9 @@ function BiValue({ en, other, lang }) {
  * under or after the English. Items print in her language only when they have a translation (planItemText); the
  * doctor's advice always prints as typed.
  */
-export function PatientCopy({ patient, plan, options, lang = 'en' }) {
+export function PatientCopy({ patient, plan, options, lang = 'en', edit = null }) {
   const second = secondLanguage(lang);
+  const asTable = options.layout === 'table' && canPrintMonthTable(plan);
   const copy = patientCopy(plan, options);
   const withVisits = options.scope === 'all' || (options.scope === 'kinds' && options.kinds.includes('visit'));
   const next = withVisits ? nextCheckUp(plan) : '';
@@ -327,6 +440,7 @@ export function PatientCopy({ patient, plan, options, lang = 'en' }) {
     </>
   );
   const start = startDayLabel(plan);
+  if (asTable) return <TablePage patient={patient} plan={plan} options={options} lang={lang} what={what} edit={edit} />;
   return (
     <>
       <h1 className="pdoc-title">{title}</h1>
@@ -446,6 +560,213 @@ export function PatientCopy({ patient, plan, options, lang = 'en' }) {
       <p className="pdoc-note">{patientNote(plan)}</p>
       <Translation as="p" className="pdoc-note" text={second ? patientNote(plan, second) : ''} english={patientNote(plan)} lang={lang} />
     </>
+  );
+}
+
+/**
+ * The patient copy as the owner's "9-Month Pregnancy Plan" sheet (10 Nov 2026): the title, her facts, "Special care
+ * needed", the month table, the delivery plan and the doctor's remarks typed at printing (printed only, never saved),
+ * the danger signs, three reminders and the closing line. ⚠️ DRAFT wording (see carePlanPrintFormat.js).
+ * edit ({ onAdd(row, column), onRemove(item) }, or null): the Add and Remove buttons in the preview, which never print.
+ */
+function TablePage({ patient, plan, options, lang, what, edit }) {
+  const second = secondLanguage(lang);
+  const T = (key) => <BiLabel words={TABLE_LABELS[key]} lang={lang} />;
+  const label = (key) => <BiLabel words={L[key]} lang={lang} />;
+  const facts = tableFacts(patient);
+  const care = specialCareWords(patient.risk?.reasons);
+  const careOther = second ? specialCareWords(patient.risk?.reasons, second) : [];
+  const eddFrom = plan.eddSource === 'scan' ? TABLE_LABELS.fromScan : TABLE_LABELS.fromLmp;
+  const Bi = ({ words, as: As = 'span', className }) => (
+    <>
+      <As className={className}>{words.en}</As>
+      {second && words[second] && words[second] !== words.en && (
+        <As className={className} lang={second}>
+          {' / '}
+          {words[second]}
+        </As>
+      )}
+    </>
+  );
+  return (
+    <>
+      <h1 className="pdoc-title">{TABLE_LABELS.title.en}</h1>
+      {second && (
+        <p className="pdoc-title pdoc-title-2" lang={second}>
+          {TABLE_LABELS.title[second]}
+        </p>
+      )}
+      <PrintFacts
+        items={[
+          [label('name'), patient.fullName],
+          [label('age'), <BiValue key="age" en={ageText(patient)} other={second ? ageWords(patient, second) : ''} lang={lang} />],
+          [label('patientNo'), <span key="mrn" className="pdoc-tabular">{patient.mrn}</span>],
+          [T('mobile'), facts.mobile ? <span key="mob" className="pdoc-tabular">{facts.mobile}</span> : ''],
+          [T('obstetricScore'), facts.score],
+          [T('lmp'), facts.lmp ? formatDate(facts.lmp) : ''],
+          [
+            label('edd'),
+            <span key="edd">
+              {formatDate(plan.edd)} ({eddFrom.en}
+              {second && eddFrom[second] ? <span lang={second}> / {eddFrom[second]}</span> : null})
+            </span>,
+          ],
+          [T('bloodGroup'), facts.bloodGroup],
+        ]}
+      />
+      {care.length > 0 && (
+        <p className="pdoc-box pmt-special">
+          <strong>{T('specialCare')}:</strong> {care.join(' · ')}
+          {second && careOther.join('') !== care.join('') && (
+            <span className="pdoc-sub" lang={second}>
+              {careOther.join(' · ')}
+            </span>
+          )}
+        </p>
+      )}
+      <MonthTable plan={plan} options={options} lang={lang} what={what} edit={edit} />
+      {options.deliveryPlan && (
+        <section className="pdoc-box">
+          <h2>{T('deliveryPlan')}</h2>
+          <p className="pre-line">{options.deliveryPlan}</p>
+        </section>
+      )}
+      {options.advice && (
+        <section className="pdoc-box">
+          <h2>{T('remarks')}</h2>
+          <p className="pre-line">{options.advice}</p>
+        </section>
+      )}
+      <section className="pdoc-box pmt-danger">
+        <h2>{T('danger')}</h2>
+        <ul className="pmt-danger-list">
+          {DANGER_SIGNS.map((d) => (
+            <li key={d.en}>
+              <Bi words={d} />
+            </li>
+          ))}
+        </ul>
+      </section>
+      <ul className="pdoc-list pmt-reminders">
+        {PLAN_REMINDERS.map((r) => (
+          <li key={r.en}>
+            <Bi words={r} />
+          </li>
+        ))}
+      </ul>
+      <p className="pdoc-note">
+        <Bi words={TABLE_NOTE} />
+      </p>
+    </>
+  );
+}
+
+/**
+ * The month table: a row for each month of pregnancy ("Month 3 · 9–13 wk", its dates), a column for each type of item.
+ * Visit dates lists the days of the check-ups; the other columns a box to tick (or a tick when done) and the day, as
+ * "☐ Anomaly scan · 14 Dec". This month's row starts each column with "Today:" – what is due now or overdue.
+ */
+export function MonthTable({ plan, options, lang = 'en', what, edit = null }) {
+  const second = secondLanguage(lang);
+  const rows = monthTable(plan, options);
+  const label = (words) => <BiLabel words={words} lang={lang} />;
+  const removeButton = (it) =>
+    edit && !tableItemDone(it) ? (
+      // A small delete icon at the end of the line (the words are its label and tooltip), so the line keeps its width
+      <button type="button" className="btn btn-link pmt-edit pmt-remove" onClick={() => edit.onRemove(it)} aria-label={`Remove ${it.name} – mark it not needed`} title="Remove – mark it not needed">
+        <Trash2 aria-hidden="true" />
+      </button>
+    ) : null;
+  const line = (it) => {
+    const done = tableItemDone(it);
+    const date = tableLineDate(it);
+    return (
+      <li key={it.id} className={done ? 'pmt-done' : undefined}>
+        {done ? <Check aria-label="Done" className="pmt-box" /> : <span className="pmt-box pmt-empty" aria-hidden="true" />}
+        <span>
+          {what(it)}
+          {date && <span className="pdoc-tabular pmt-date"> · {date}</span>}
+        </span>
+        {removeButton(it)}
+      </li>
+    );
+  };
+  // Visit dates: the days only ("07 Dec"), with a tick when attended
+  const visitLine = (it) => (
+    <li key={it.id} className={tableItemDone(it) ? 'pmt-done' : undefined}>
+      {tableItemDone(it) && <Check aria-label="Done" className="pmt-box" />}
+      <span className="pdoc-tabular">{tableLineDate(it) || what(it)}</span>
+      {removeButton(it)}
+    </li>
+  );
+  return (
+    <table className="ptable pdoc-table pmt">
+      <thead>
+        <tr>
+          <th scope="col" className="pmt-month">
+            {label(TABLE_LABELS.month)}
+          </th>
+          {TABLE_COLUMNS.map((c) => (
+            <th key={c.key} scope="col" className={`pmt-col-${c.key}`}>
+              {label(TABLE_LABELS[c.key])}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.month} className={[row.beforeRegistration ? 'pmt-before' : '', row.current ? 'pmt-current' : ''].filter(Boolean).join(' ') || undefined}>
+            <th scope="row" className="pmt-month">
+              <strong>{monthWords(row.month)}</strong>
+              <span className="pdoc-sub">
+                {second ? <span lang={second}>{monthWords(row.month, second)} · </span> : null}
+                {monthWeeks(row)}
+              </span>
+              {row.from && <span className="pdoc-sub pdoc-tabular">{monthDates(row)}</span>}
+            </th>
+            {TABLE_COLUMNS.map((c) => {
+              const isVisit = c.key === 'visit';
+              const render = isVisit ? visitLine : line;
+              const today = row.today[c.key];
+              return (
+                <td key={c.key}>
+                  {isVisit && row.beforeRegistration && <span className="pdoc-sub">{label(TABLE_LABELS.beforeRegistration)}</span>}
+                  {isVisit && row.current && today.length === 0 && <strong className="pmt-today-mark">{label(TABLE_LABELS.today)}</strong>}
+                  {today.length > 0 &&
+                    (edit ? (
+                      // Changing lines: one per line, each with its Remove
+                      <div className="pmt-today">
+                        <strong>{label(TABLE_LABELS.today)}:</strong>
+                        <ul className="pmt-list">{today.map(render)}</ul>
+                      </div>
+                    ) : (
+                      // On paper, as on the sample sheet: one box and one line – "☐ Today: NT scan; Double marker"
+                      <p className="pmt-today pmt-today-line">
+                        <span className="pmt-box pmt-empty" aria-hidden="true" />
+                        <span>
+                          <strong>{label(TABLE_LABELS.today)}:</strong>{' '}
+                          {today.map((it, i) => (
+                            <span key={it.id}>
+                              {i > 0 && '; '}
+                              {isVisit ? tableLineDate(it) || what(it) : what(it)}
+                            </span>
+                          ))}
+                        </span>
+                      </p>
+                    ))}
+                  {row.cells[c.key].length > 0 && <ul className="pmt-list">{row.cells[c.key].map(render)}</ul>}
+                  {edit && !row.beforeRegistration && (
+                    <button type="button" className="btn btn-link pmt-edit" onClick={() => edit.onAdd(row, c.key)} aria-label={`Add to ${TABLE_LABELS[c.key].en}, ${monthWords(row.month)}`}>
+                      <Plus aria-hidden="true" /> Add
+                    </button>
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

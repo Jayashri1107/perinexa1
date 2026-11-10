@@ -458,8 +458,9 @@
 .ptl-scale { position: relative; height: 18px; margin-top: 4px; font-size: var(--fs-caption); }
 .ptl-scale span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
 .ptl-scale span:first-child { transform: none; }
-.ptl-scale span:last-child { transform: translateX(-80%); }
-.ptl-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: var(--space-2) 0 0; font-size: var(--fs-caption); }
+.ptl-scale span:last-child { transform: translateX(-60%); }
+.ptl-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: var(--space-2) 0 0; font-size: var(--fs-caption); }
+.ptl-leg { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .ptl-key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 .ptl-key-visit { width: 4px; height: 12px; border-radius: 2px; background: var(--indigo-700); }
 .ptl-key-today { width: 3px; height: 12px; border-radius: 2px; background: var(--ink); }

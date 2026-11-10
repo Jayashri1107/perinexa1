@@ -132,12 +132,33 @@ export function pregnancyDetailLines(p) {
 // The paper template's own words are the anchors: what follows "with complaints of" is the complaint, "cycle regular"
 // sets the cycle, "married since" the years, "consanguinity" yes or no, what follows "previous deliveries" goes into
 // that blank until the next anchor, and what follows "any other" (or "other history") the last line.
+// 10 Nov 2026 (the developer's test on a tablet): also the words doctors say instead of the template's – "came first
+// time with", "c/o", "chief complaint", "presented with" start the complaint, which stops before "advise…" (that goes to
+// notes); "previous delivery", "previously delivered", "past deliveries", "delivery history" and "previous LSCS /
+// caesarean / normal delivery" start the previous-deliveries blank.
+
+const COMPLAINT_WORDS = [
+  /\bwith (?:the )?complaints? of\b/,
+  /\bcomplain(?:s|ing|ed)? of\b/,
+  /\bchief complaints?(?: (?:is|are|of))?\b/,
+  /\bc\s?\/\s?o\b/,
+  /\bpresent(?:s|ed|ing) with\b/,
+  /\b(?:came|comes|come|has come|coming)(?: for the| the)?(?: (?:first|1st) time| today)?(?: to (?:the )?(?:hospital|opd|clinic))? with\b/,
+  /\bcomplaints?\b/,
+];
+const DELIVERY_WORDS = [
+  /\b(?:previous(?:ly)?|prev\.?|past|earlier) deliver(?:y|ies|ed)\b/,
+  /\bdelivery history\b/,
+  // "previous LSCS in 2021": the anchor is "previous" alone, so the kind of delivery stays in the blank
+  /\bprevious(?=\s+(?:lscs|caesarean|cesarean|c[\s-]?section|normal|ftnd|nvd|vaginal|full[\s-]term))/,
+];
+const anyOf = (list) => new RegExp(list.map((rx) => rx.source).join('|'), 'i');
 
 const ANCHORS = [
-  ['complaint', /\bwith (?:the )?complaints? of\b|\bcomplain(?:s|ing)? of\b|\bcomplaints?\b/i],
+  ['complaint', anyOf(COMPLAINT_WORDS)],
   ['menstrual', /\bmenstrual history\b|\bL\.?\s?M\.?\s?P\b/i],
   ['married', /\bmarried (?:since|for)\b|\bobstetric history\b/i],
-  ['deliveries', /\bprevious deliver(?:y|ies)\b/i],
+  ['deliveries', anyOf(DELIVERY_WORDS)],
   ['other', /\bany other\b|\bother (?:personal|medical|history)\b/i],
 ];
 // The one more line of a type of care (decision 7): infertility and postnatal care only, so the words end a blank there
@@ -184,7 +205,8 @@ export function readSentence(text, { careType } = {}) {
   for (const f of parts(text, careType)) {
     const t = f.text;
     if (f.key === 'complaint') {
-      const c = clean(t.replace(/\b(?:menstrual|obstetric) history\b.*$/i, ''));
+      // Ends before the template's next words, or before advice or a plan said in the same breath (that goes to notes)
+      const c = clean(t.replace(/\b(?:menstrual|obstetric) history\b.*$/i, '').replace(/(?:[.;]\s*|\s)(?:advise[ds]?|advice|plan(?:ned)?|investigations?)\b.*$/i, ''));
       if (c) out.complaint = c;
     }
     if (f.key === 'menstrual' || f.key === 'complaint') {
@@ -268,9 +290,14 @@ export function withHistorySheet(result, text, { careType, careLine = false, rea
   if (line.on) add('delivery', 'on', line.on, 'Delivered on');
   if (line.mode) add('delivery', 'mode', line.mode, 'Mode of delivery');
   const taken = [...Object.values(sheet), ...Object.values(line)].map(plainWords).filter((t) => t.length > 2);
+  // A piece is covered when the sheet took it – also once its anchor words are left out ("Previous delivery", "Previously
+  // delivered twice" when the blank took "twice, both normal"): those words are the blank's heading, not something to ask
+  const anchorsOf = [...ANCHORS, ...(CARE_ANCHORS[careType] ?? [])].map(([, rx]) => new RegExp(rx.source, 'gi'));
   const covered = (u) => {
     const t = plainWords(u.text);
-    return !t || taken.some((s) => s.includes(t) || t.includes(s));
+    if (!t || taken.some((s) => s.includes(t) || t.includes(s))) return true;
+    const rest = plainWords(anchorsOf.reduce((x, rx) => x.replace(rx, ' '), u.text));
+    return !rest || taken.some((s) => s.includes(rest));
   };
   return { ...result, values, paths: [...new Set(paths)], found, unused: (result.unused ?? []).filter((u) => !covered(u)) };
 }
