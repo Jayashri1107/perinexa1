@@ -4,6 +4,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import appIcon from '../assets/brand/perinexa-app-icon.png';
 import logoReversed from '../assets/brand/perinexa-logo-reversed.png';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { PagePrintHead } from './print/PagePrintHead.jsx';
 import { useFetch } from '../hooks/useFetch.js';
 import { CARE_TYPES } from '../pages/patients/patientFormat.js';
 import { ACCOUNT_MODULE, PLATFORM_AREA_LABELS, hospitalModules, platformModules, seesPatientList, tabBarModules } from '../platform/modules.js';
@@ -581,6 +582,8 @@ export function AppLayout() {
             </div>
           )}
           {/* Re-create the page when the hospital changes, so no data from the previous hospital stays on screen. */}
+          {/* On paper only: the letterhead when a screen is printed with Ctrl+P */}
+          <PagePrintHead key={`print-${activeTenantId ?? 'platform'}`} />
           <TitleSlotContext.Provider value={phone && !sheet ? titleSlot : null}>
             <LoadingOutlet key={activeTenantId ?? 'platform'} />
           </TitleSlotContext.Provider>

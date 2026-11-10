@@ -288,3 +288,40 @@
 .pph-box { display: inline-block; width: 3.2mm; height: 3.2mm; border: 1px solid var(--print-ink); line-height: 3mm; text-align: center; font-size: 0.75em; }
 .pph-print-code { font-weight: 600; }
 .pph-p-late { font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+
+/* ---------- One fixed letterhead on every print (10 Nov 2026) ---------- */
+/* The same header size whatever logo the hospital uploads: the logo sits in a fixed 40 × 18 mm box (the plain mark in 18 mm), the
+   name, address and contact lines keep their print sizes, and the registration number stays on the right. */
+.pdoc .lh { display: flex; align-items: center; gap: 4mm; min-height: 20mm; }
+.pdoc .lh-logo { flex: 0 0 auto; width: 40mm; height: 18mm; max-width: 40mm; object-fit: contain; object-position: left center; }
+.pdoc .lh-mark { flex: 0 0 18mm; width: 18mm; height: 18mm; display: grid; place-items: center; }
+.pdoc .lh-mark svg.lucide { width: 10mm; height: 10mm; }
+.pdoc .lh-text { flex: 1 1 auto; min-width: 0; }
+.pdoc .lh-reg { flex: 0 0 auto; align-self: flex-start; text-align: right; }
+.pdoc .lh-centered .lh-text { text-align: center; }
+
+/* ---------- Printing a screen of the app with Ctrl+P (not the print preview) ---------- */
+/* Only the page's content prints, under the letterhead: no menu, top bar, tabs or buttons, cards as ruled boxes. */
+.page-print-head { display: none; }
+@media print {
+  body:not(.pv-open) { background: var(--surface); }
+  body:not(.pv-open) .page-print-head { display: block; margin: 0 0 4mm; }
+  body:not(.pv-open) .page-print-head .lh { margin-bottom: 0; }
+  body:not(.pv-open) .page-print-meta { margin: 1mm 0 0; text-align: right; font-size: var(--fs-print-small); line-height: var(--lh-print-small); color: var(--print-ink); }
+  body:not(.pv-open) :is(.sb, .sb-overlay, .pf-topbar, .pf-tabbar, .pf-menu-backdrop, .pf-notice, .pf-sheet-bar, .ph-crumbs, .ph-actions, .ph-tabs, .ph-subtabs, .ph-jump-btn, .ph-info-btn, .tip, .segmented, .btn, .icon-btn) {
+    display: none !important;
+  }
+  body:not(.pv-open) .pf { display: block; min-height: 0; background: none; }
+  body:not(.pv-open) :is(.pf-body, .pf-main) { display: block; }
+  body:not(.pv-open) .ph { position: static; padding: 0 0 2mm; border-bottom: 1px solid var(--print-rule); background: none; box-shadow: none; }
+  body:not(.pv-open) .pf-content { max-width: none; padding: 3mm 0 0; }
+  body:not(.pv-open) :is(.pf-main, .card) { color: var(--print-ink); }
+  body:not(.pv-open) .card { box-shadow: none; border: 1px solid var(--print-rule); border-radius: var(--radius-sm); padding: 3mm 4mm; break-inside: avoid; }
+  body:not(.pv-open) .card > h2 { break-after: avoid; }
+  body:not(.pv-open) .stack { gap: 3mm; }
+  /* A patient's Overview on paper: two columns of fact cards, each only as tall as its content */
+  body:not(.pv-open) .patient-overview { gap: 3mm; }
+  body:not(.pv-open) .ov-row.ov-top { grid-template-columns: minmax(0, 1fr); }
+  body:not(.pv-open) .ov-row.ov-facts { display: block; columns: 2; column-gap: 3mm; }
+  body:not(.pv-open) .ov-facts > .card { display: block; width: 100%; margin: 0 0 3mm; }
+}
