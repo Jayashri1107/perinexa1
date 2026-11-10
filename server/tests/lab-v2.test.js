@@ -273,11 +273,14 @@ describe('USG and radiology', () => {
     expect(s.indication).toBeUndefined(); // reception does not see her clinical details
     expect(await Bill.countDocuments({ tenantId: hospital._id, patientId: p.id, 'lines.ref.kind': 'scan' })).toBe(0); // not billed yet
 
-    // Waiting for a doctor: on the To confirm list and the dashboard, not to scan; no one schedules or does it
+    // Waiting for a doctor: on the doctor's and RMO's To confirm list (Today) and Sonography's To confirm list and
+    // dashboard, not to scan; no one schedules or does it (owner, 10 Nov 2026: the Sonography module for its role)
     const rmo = await as('rmo');
-    expect((await rmo.get('/api/imaging/worklist?list=requested')).body.studies.map((x) => x.id)).toEqual([s.id]);
-    expect((await rmo.get('/api/imaging/worklist?list=ordered')).body.studies).toEqual([]);
-    expect((await rmo.get('/api/imaging/dashboard')).body.counts).toMatchObject({ toConfirm: 1, toScan: 0, bookedToday: 0 });
+    expect((await rmo.get('/api/imaging/to-confirm')).body.studies.map((x) => x.id)).toEqual([s.id]);
+    const sono = await as('sono');
+    expect((await sono.get('/api/imaging/worklist?list=requested')).body.studies.map((x) => x.id)).toEqual([s.id]);
+    expect((await sono.get('/api/imaging/worklist?list=ordered')).body.studies).toEqual([]);
+    expect((await sono.get('/api/imaging/dashboard')).body.counts).toMatchObject({ toConfirm: 1, toScan: 0, bookedToday: 0 });
     expect((await (await as('sono')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).status).toBe(403);
     expect((await (await as('sono')).post(`/api/imaging/${s.id}/confirm`).send({ rev: s.rev })).status).toBe(403); // a doctor or RMO confirms
     expect((await (await as('drA')).post(`/api/imaging/${s.id}/confirm`).send({ rev: s.rev, indication: 'It is a boy' })).status).toBe(400); // PCPNDT
@@ -318,10 +321,11 @@ describe('USG and radiology', () => {
     expect((await add('reception', s)).status).toBe(403);
     expect((await add('drA', s, { mediaType: 'application/pdf' })).status).toBe(400); // pictures only
     expect((await add('drA', s, { data: Buffer.from('not a picture at all').toString('base64') })).status).toBe(400);
-    const added = await add('rmo', s);
+    expect((await add('rmo', s)).status).toBe(403); // the Sonography role adds pictures (owner, 10 Nov 2026)
+    const added = await add('sono', s);
     expect(added.status, JSON.stringify(added.body)).toBe(201);
     s = added.body.study;
-    expect(s.images).toMatchObject([{ fileName: 'nt-1.jpg', mediaType: 'image/jpeg', inPrint: true, byName: 'Sample rmo' }]);
+    expect(s.images).toMatchObject([{ fileName: 'nt-1.jpg', mediaType: 'image/jpeg', inPrint: true, byName: 'Sample sono' }]);
     const fileId = s.images[0].fileId;
     const opened = await (await as('drA')).get(`/api/imaging/${s.id}/images/${fileId}`);
     expect(opened.status).toBe(200);
