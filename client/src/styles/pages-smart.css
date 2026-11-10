@@ -351,3 +351,7 @@
 .wl-list > .td-dept-head:first-child { padding-top: 0; }
 .td-dept-head h3 { margin: 0; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 700; color: var(--slate-600); text-transform: uppercase; letter-spacing: 0.04em; }
 .wl-row-toggle .adm-label { flex: none; }
+
+/* Today's patients as a table (owner, 10 Nov 2026 – TodayPage.jsx TodaysPatients): name over number, labels in a row */
+.td-pt { display: flex; flex-direction: column; gap: 2px; }
+.td-labels { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
