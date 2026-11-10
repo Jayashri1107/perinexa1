@@ -534,3 +534,18 @@
 }
 .img-report-form > .card:first-child .form-grid { row-gap: var(--space-5, 20px); margin-top: var(--space-2); }
 .img-report-form .form-grid input, .img-report-form .form-grid select { min-height: 44px; }
+
+/* Sonography list (10 Nov 2026): the machine as one status line, the list as a table with a next-step button per row */
+.img-machine { padding-block: var(--space-3); }
+.img-machine-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.img-machine-line h2 { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-body); }
+.img-machine-line .hint { flex: 1 1 260px; margin: 0; }
+.img-worklist { padding: 0; overflow: hidden; }
+.img-worklist > .dt-wrap { margin: 0; border: 0; }
+.img-table td, .img-table th { vertical-align: middle; }
+.img-table .strong-name { display: block; }
+.img-sub { display: block; color: var(--slate-600); font-size: var(--fs-caption); }
+.img-pills { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.img-next { text-align: right; white-space: nowrap; }
+.img-empty { padding: var(--space-6); margin: 0; text-align: center; }
+.img-lists { margin-bottom: var(--space-2); }
