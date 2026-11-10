@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarDays, Check, Eye, Plus, X } from 'lucide-react';
+import { CalendarDays, Check, Eye, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { BiLabel, PrintLanguageChoice, Translation } from '../../components/print/Bilingual.jsx';
@@ -672,9 +672,9 @@ export function MonthTable({ plan, options, lang = 'en', what, edit = null }) {
   const label = (words) => <BiLabel words={words} lang={lang} />;
   const removeButton = (it) =>
     edit && !tableItemDone(it) ? (
-      // A small × at the end of the line (the words are its label and tooltip), so the line keeps its width
+      // A small delete icon at the end of the line (the words are its label and tooltip), so the line keeps its width
       <button type="button" className="btn btn-link pmt-edit pmt-remove" onClick={() => edit.onRemove(it)} aria-label={`Remove ${it.name} – mark it not needed`} title="Remove – mark it not needed">
-        <X aria-hidden="true" />
+        <Trash2 aria-hidden="true" />
       </button>
     ) : null;
   const line = (it) => {

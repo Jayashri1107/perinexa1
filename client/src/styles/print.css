@@ -128,7 +128,7 @@
 .pmt-danger-list li { break-inside: avoid; margin: 0 0 var(--space-1); }
 .pmt-reminders { margin: var(--space-2) 0; }
 .pmt-edit { display: inline-flex; align-items: center; gap: 2px; padding: 0; min-height: 0; font-size: var(--fs-print-small); }
-/* Changing lines: a small × at the end of each line (Remove), and Add on its own line under the cell */
+/* Changing lines: a small delete icon at the end of each line (Remove), and Add on its own line under the cell */
 .pmt-list li > .pmt-remove { flex: 0 0 auto; justify-content: center; width: 20px; height: 20px; border-radius: var(--radius-sm); }
 .pmt-list li > .pmt-remove svg { width: 14px; height: 14px; }
 .pmt td > .pmt-edit { display: flex; margin-top: var(--space-1); }
