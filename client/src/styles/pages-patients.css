@@ -161,15 +161,19 @@
 .patient-overview { display: flex; flex-direction: column; gap: var(--space-4); }
 .ov-row { display: grid; gap: var(--space-4); align-items: stretch; }
 .ov-top { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
-.ov-facts { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-.ov-facts:empty { display: none; }
-/* On a computer the fact cards (pregnancy, history, obstetric, medical …) are packed into up to three columns, each card
-   only as tall as its content – in one grid row the short cards were stretched to the Pregnancy card's height and left
-   big empty boxes. The order still reads top to bottom, left to right. */
-@media (min-width: 720px) {
-  .ov-row.ov-facts { display: block; columns: 3 340px; column-gap: var(--space-4); }
-  .ov-facts > .card { break-inside: avoid; display: block; width: 100%; margin: 0 0 var(--space-4); }
-  .ov-facts > .card:last-child { margin-bottom: 0; }
+/* The fact cards: the Pregnancy card on the left (a third of the width), every other card (history, obstetric,
+   medical …) beside it in two balanced columns, each card only as tall as its content – so no tall empty boxes and no
+   empty column at the right. Without a Pregnancy card the other cards take the whole width, up to three columns. */
+.ov-row.ov-facts { display: block; }
+.ov-facts:not(:has(.card)) { display: none; }
+.ov-facts-side { columns: 3 300px; column-gap: var(--space-4); }
+.ov-facts-side:empty { display: none; }
+.ov-facts-side > .card { break-inside: avoid; display: block; width: 100%; margin: 0 0 var(--space-4); }
+.ov-facts-side > .card:last-child { margin-bottom: 0; }
+.ov-facts > .ov-preg + .ov-facts-side { margin-top: var(--space-4); }
+@media (min-width: 900px) {
+  .ov-row.ov-facts:has(> .ov-preg) { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(0, 2fr); gap: var(--space-4); align-items: start; }
+  .ov-facts > .ov-preg + .ov-facts-side { margin-top: 0; columns: 2 280px; }
 }
 .ov-row > .card-wide { grid-column: auto; }
 .patient-overview .card { padding: var(--space-4) var(--space-6); }
