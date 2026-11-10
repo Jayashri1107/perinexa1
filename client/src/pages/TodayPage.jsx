@@ -460,6 +460,7 @@ function RoleToday({ roles, lensBar = null }) {
   const labReview = useFetch(isDoctor ? '/lab/to-review' : null);
   // Urgent scan findings of her doctor's patients, until a doctor marks them seen (docs/USG_APPS_REVIEW.md U2)
   const scanUrgent = useFetch(isDoctor ? '/imaging/urgent' : null);
+  const scanConfirm = useFetch(isDoctor || roles.includes('rmo') ? '/imaging/to-confirm' : null);
   const labWork = useFetch(roles.includes('lab') ? '/lab/worklist' : null);
   // The medical records staff: what is still unfinished in the records (the Records menu)
   const recordsWork = useFetch(roles.includes('records') ? '/records/incomplete' : null);
@@ -1104,6 +1105,21 @@ function RoleToday({ roles, lensBar = null }) {
                 >
                   <p className="hint">
                     {o.studyName} · {o.urgentFindings.map((u) => u.text).join('; ')} · signed by {o.signed?.byName}, {formatDateTime(o.signed?.at)}
+                  </p>
+                </PatientRow>
+              ))}
+            </ul>
+          </Section>
+        )}
+        {scanConfirm.data?.studies && scanConfirm.data.studies.length > 0 && (
+          // Scans reception booked, for her doctor or an RMO to confirm (owner, 10 Nov 2026 – no longer in Sonography's list)
+          <Section id="td-scan-confirm" icon={BadgeCheck} title="Scans to confirm" count={scanConfirm.data.studies.length} empty="">
+            <ul className="wl-list">
+              {scanConfirm.data.studies.map((o) => (
+                <PatientRow key={o.id} patient={o.patient} to={`/scans/${o.id}`} openLabel="Confirm or decline">
+                  <p className="hint">
+                    {o.studyName} · booked by {o.ordered?.byName}
+                    {o.requestedBy ? ` for ${o.requestedBy.name}` : ''}, {formatDateTime(o.ordered?.at)}
                   </p>
                 </PatientRow>
               ))}

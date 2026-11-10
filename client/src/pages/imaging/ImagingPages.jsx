@@ -710,7 +710,9 @@ export function ImagingStudyPage() {
       failed(err);
     }
   };
-  const header = <PageHeader breadcrumbs={[{ label: 'Scans', to: '/scans' }, { label: s?.patient?.fullName ?? 'Scan' }]} title={s?.studyName ?? 'Scan'} documentTitle="Scan" />;
+  // The Sonography module's users go back to its list; her doctor or RMO back to her Lab tab (owner, 10 Nov 2026)
+  const back = s?.access?.isSonography === false && s?.patient ? { label: 'Lab tab', to: `/patients/${s.patient.id}/lab` } : { label: 'Scans', to: '/scans' };
+  const header = <PageHeader breadcrumbs={[back, { label: s?.patient?.fullName ?? 'Scan' }]} title={s?.studyName ?? 'Scan'} documentTitle="Scan" />;
   if (!s) return (<>{header}<div className="pf-content">{error ? <Alert type="error">{error}</Alert> : <p className="muted">Loading…</p>}</div></>);
   const a = s.access;
   return (
@@ -737,6 +739,7 @@ export function ImagingStudyPage() {
             {s.accession ? ` · scan number on the machine ${s.accession}` : ''}
           </p>
           {s.indication && <p>Indication: {s.indication}</p>}
+          {!a.isSonography && !['signed', 'cancelled'].includes(s.status) && <p className="hint">With sonography – the report shows here once it is signed.</p>}
           {s.status === 'requested' && (a.canConfirm ? <ConfirmBooking s={s} act={act} /> : <p className="hint">Booked by reception. A doctor or RMO who sees her details confirms it before it is scheduled or done.</p>)}
           <div className="row">
             {a.canSchedule && (
@@ -765,7 +768,7 @@ export function ImagingStudyPage() {
           </div>
         </section>
         {/* Full width: the average table needs the room */}
-        {s.images && !reviewing && s.status !== 'requested' && <MachinePanel s={s} onSaved={saved} onError={failed} />}
+        {a.isSonography && s.images && !reviewing && s.status !== 'requested' && <MachinePanel s={s} onSaved={saved} onError={failed} />}
         <div className="img-study">
         <div className="img-study-main">
         <UrgentFindings s={s} onSaved={saved} onError={failed} />

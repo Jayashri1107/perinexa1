@@ -10,7 +10,8 @@ import { AuditLog } from '../src/models/AuditLog.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-11-10T05:30:00Z');
-const ROLES = { drA: 'doctor', drB: 'doctor', rmo: 'rmo', sono: 'sonographer', nurse: 'nurse' };
+// drA: her doctor (orders, sees the signed report); sono: sonography staff; sonoDr: a doctor who scans and signs
+const ROLES = { drA: 'doctor', drB: 'doctor', rmo: 'rmo', sono: 'sonographer', sonoDr: ['doctor', 'sonographer'], nurse: 'nurse' };
 let app;
 let hospital;
 let people;
@@ -47,7 +48,7 @@ async function signedScan(p, study, values) {
   s = (await (await as('sono')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).body.study;
   const saved = await (await as('sono')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, values, findings: 'Sample findings.', impression: 'Sample impression.' });
   expect(saved.status, JSON.stringify(saved.body)).toBe(200);
-  const signed = await (await as('drA')).post(`/api/imaging/${s.id}/sign`).send({ rev: saved.body.study.rev });
+  const signed = await (await as('sonoDr')).post(`/api/imaging/${s.id}/sign`).send({ rev: saved.body.study.rev });
   expect(signed.status, JSON.stringify(signed.body)).toBe(200);
   return signed.body.study;
 }
@@ -121,3 +122,37 @@ describe('twins and the growth across scans', () => {
     expect(JSON.stringify(page.growth)).not.toMatch(/placenta|Sample findings/); // measurements only
   });
 });
+
+describe('who works the scans (owner, 10 Nov 2026)', () => {
+  it('her doctor orders and sees the report once signed; the Sonography role does the scan; a doctor with that role signs', async () => {
+    const p = await mother();
+    let s = (await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_growth' })).body.study;
+    // her doctor: no Sonography module, cannot mark done or write
+    expect((await (await as('drA')).get('/api/imaging/worklist?list=ordered')).status).toBe(403);
+    expect((await (await as('rmo')).get('/api/imaging/dashboard')).status).toBe(403);
+    expect((await (await as('drA')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).status).toBe(403);
+    expect((await (await as('sono')).get('/api/imaging/worklist?list=ordered')).body.studies.map((x) => x.id)).toEqual([s.id]);
+    s = (await (await as('sono')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).body.study;
+    expect((await (await as('drA')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, impression: 'x' })).status).toBe(403);
+    s = (await (await as('sono')).put(`/api/imaging/${s.id}/report`).send({ rev: s.rev, values: { fhr: '140' }, impression: 'Sample impression.' })).body.study;
+    // before signing her doctor sees the scan is with sonography, not its values or words
+    const before = (await (await as('drA')).get(`/api/imaging/${s.id}`)).body.study;
+    expect(before.report).toBeNull();
+    expect(before.access).toMatchObject({ isSonography: false, canSign: false, canReport: false });
+    // sonography staff without the doctor role write but do not sign; her doctor without the role does not sign either
+    expect((await (await as('sono')).post(`/api/imaging/${s.id}/sign`).send({ rev: s.rev })).status).toBe(403);
+    expect((await (await as('drA')).post(`/api/imaging/${s.id}/sign`).send({ rev: s.rev })).status).toBe(403);
+    expect((await (await as('sonoDr')).post(`/api/imaging/${s.id}/sign`).send({ rev: s.rev })).status).toBe(200);
+    const after = (await (await as('drA')).get(`/api/imaging/${s.id}`)).body.study;
+    expect(after.report.impression).toBe('Sample impression.');
+    expect(after.access.canPrint).toBe(true);
+  });
+  it('another doctor cannot open her scan; doctors and RMOs have the to-confirm list, sonography staff not', async () => {
+    const p = await mother();
+    const s = (await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_growth' })).body.study;
+    expect((await (await as('drB')).get(`/api/imaging/${s.id}`)).status).toBe(404);
+    expect((await (await as('drA')).get('/api/imaging/to-confirm')).body.studies).toEqual([]);
+    expect((await (await as('sono')).get('/api/imaging/to-confirm')).body.studies).toBeNull();
+  });
+});
+

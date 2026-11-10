@@ -189,6 +189,12 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   it now (reversing "not built now" of the same morning); the developer chose the defaults for the open points –
   no new patient wording beyond the table's headings, the usual reason on removing a line, no rewording or moving in
   the table – `docs/PLAN_TABLE_LAYOUT.md` section 7.
+- **Who works the scans (owner, 10 Nov 2026 – replaces the rule of 19 and 24 Oct)**: the ordering doctor or RMO orders
+  from her Lab tab and sees her scans and the **signed** report ("with sonography" until then), the urgent findings and
+  the scans to confirm on Today. The **Sonography module** (menu, worklist, schedule, mark done, the machine, values,
+  writing the report) is for the **Sonography role** only; the report is **signed by a doctor who also has the
+  Sonography role** (the authorised sonologist – PC-PNDT). A doctor who scans needs both roles: the hospital admin adds
+  Sonography in Users & access. Code: `server/src/routes/imaging.js` (top), `client/src/platform/modules.js`.
 - **Feature freeze lifted for sonography U1–U5 (10 Nov 2026)**: the owner agreed to build them; built in two stages
   (developer's choice). Stage 1, built: U2 urgent findings to her doctor, U4 twins template, U1 the weight graph and the
   measurements across scans. Stage 2, waiting for the owner's published tables: U3 Doppler normal ranges, U5 a second

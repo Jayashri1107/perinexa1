@@ -37,10 +37,15 @@ import { urgentFindingsOf } from '../imaging/urgentFindings.js';
 // details confirms it (with the indication) or declines it with a reason. Reception types no clinical text.
 // PCPNDT: no field holds a fetus's sex; any text about it is refused. The audit log gets ids only.
 
+// Owner's decision of 10 Nov 2026 (replaces the rule of 19 and 24 Oct): the ordering doctor or RMO orders a scan and
+// sees her scans and the signed report; the Sonography module – the worklist, scheduling, marking done, the machine's
+// readings and pictures, writing the report – is for the Sonography role only; the report is signed by a doctor who
+// also has the Sonography role (the authorised sonologist – PC-PNDT: a registered sonologist reports a pregnancy scan).
+// A doctor who scans is given both roles by the hospital admin. Until a report is signed, its values and words are
+// seen only in the Sonography module; her doctor sees "with sonography".
 export const imagingRouter = Router();
 export const patientImagingRouter = Router({ mergeParams: true });
 const WORK_ROLES = ['doctor', 'rmo', 'sonographer'];
-const REPORT_ROLES = ['doctor', 'rmo', 'sonographer'];
 const CONFIRM_ROLES = ['doctor', 'rmo'];
 const forbidden = (m) => new HttpError(403, m, 'FORBIDDEN');
 const conflict = (m) => new HttpError(409, m, 'CONFLICT');
@@ -61,6 +66,9 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 function view(req, o, patient) {
   const clinical = clinicalOf(req, patient);
+  const sono = hasRole(req.membership, 'sonographer');
+  // Outside the Sonography module the report is seen once it is signed (her doctor: "with sonography" until then)
+  const reportShown = sono || o.status === 'signed';
   const study = studyByKey.get(o.study);
   return {
     id: String(o._id),
@@ -81,7 +89,7 @@ function view(req, o, patient) {
     saved: stampView(o.saved),
     signed: stampView(o.signed),
     cancelled: o.cancelled ? { ...stampView(o.cancelled), reason: o.cancelled.reason } : null,
-    ...(clinical ? { urgentFindings: o.urgentFindings ?? [], urgentSeen: stampView(o.urgentSeen), indication: o.indication ?? '', images: imagesView(o), report: reportView(o.report), amendments: (o.amendments ?? []).map((m) => ({ ...stampView(m), reason: m.reason, report: reportView(m.report) })) } : {}),
+    ...(clinical ? { urgentFindings: o.urgentFindings ?? [], urgentSeen: stampView(o.urgentSeen), indication: o.indication ?? '', images: reportShown ? imagesView(o) : [], report: reportShown ? reportView(o.report) : null, amendments: reportShown ? (o.amendments ?? []).map((m) => ({ ...stampView(m), reason: m.reason, report: reportView(m.report) })) : [] } : {}),
     rev: o.rev ?? 0,
     patient: patient
       ? {
@@ -94,14 +102,15 @@ function view(req, o, patient) {
         }
       : null,
     access: {
-      canSchedule: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
-      canDone: hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
-      canReport: clinical && hasRole(req.membership, ...REPORT_ROLES) && ['done', 'signed'].includes(o.status),
-      canSign: clinical && hasRole(req.membership, 'doctor') && o.status === 'done' && Boolean(o.report),
+      canSchedule: sono && ['ordered', 'scheduled'].includes(o.status),
+      canDone: sono && ['ordered', 'scheduled'].includes(o.status),
+      canReport: clinical && sono && ['done', 'signed'].includes(o.status),
+      canSign: clinical && sono && hasRole(req.membership, 'doctor') && o.status === 'done' && Boolean(o.report),
       canConfirm: clinical && hasRole(req.membership, ...CONFIRM_ROLES) && o.status === 'requested',
-      canCancel: o.status === 'requested' ? clinical && hasRole(req.membership, ...CONFIRM_ROLES) : hasRole(req.membership, ...WORK_ROLES) && ['ordered', 'scheduled'].includes(o.status),
+      canCancel: o.status === 'requested' ? clinical && hasRole(req.membership, ...CONFIRM_ROLES) : (sono || (clinical && hasRole(req.membership, ...CONFIRM_ROLES))) && ['ordered', 'scheduled'].includes(o.status),
       canPrint: clinical && o.status === 'signed',
-      canImages: clinical && hasRole(req.membership, ...REPORT_ROLES) && o.status === 'done',
+      canImages: clinical && sono && o.status === 'done',
+      isSonography: sono,
     },
   };
 }
@@ -213,8 +222,12 @@ imagingRouter.use((req, _res, next) => {
   // The hospital admin: the dashboard's counts only (owner, 24 Oct 2026)
   if (req.method === 'GET' && req.path === '/dashboard' && hasRole(req.membership, 'admin')) return next();
   if (!hasRole(req.membership, ...WORK_ROLES)) throw forbidden('Scans are for doctors, RMOs and sonography staff.');
+  // The Sonography module's own pages: the Sonography role only (the ordering doctor uses her Lab tab and the report)
+  if (SONOGRAPHY_ONLY.some((rx) => rx.test(req.path)) && !hasRole(req.membership, 'sonographer')) throw forbidden(SONOGRAPHY_MESSAGE);
   next();
 });
+const SONOGRAPHY_ONLY = [/^\/worklist$/, /^\/dashboard$/, /^\/machine\//, /^\/[^/]+\/machine(\/|$)/];
+const SONOGRAPHY_MESSAGE = 'The Sonography module is for the Sonography role. Doctors order scans from her Lab tab and see the signed report.';
 
 imagingRouter.get('/studies', (_req, res) => {
   res.json({ modalities: MODALITIES, studies: STUDIES });
@@ -270,6 +283,16 @@ imagingRouter.get('/urgent', async (req, res) => {
   res.json({ studies: rows.filter((o) => mine.has(String(o.patientId))).map((o) => view(req, o, mine.get(String(o.patientId)))) });
 });
 
+// Scans booked by reception waiting for her doctor or an RMO to confirm (owner, 10 Nov 2026: doctors no longer use the
+// Sonography module's list): on the Today page, for the patients whose clinical details this person may change.
+imagingRouter.get('/to-confirm', async (req, res) => {
+  if (!hasRole(req.membership, ...CONFIRM_ROLES)) return res.json({ studies: null });
+  const rows = await ImagingOrder.find({ tenantId: req.tenantId, status: 'requested' }).sort({ urgent: -1, createdAt: 1 }).limit(200);
+  const found = rows.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: rows.map((r) => r.patientId) } }) : [];
+  const mine = new Map(found.filter((p) => clinicalOf(req, p) && patientAccess(req, p).editClinical).map((p) => [String(p._id), p]));
+  res.json({ studies: rows.filter((o) => mine.has(String(o.patientId))).map((o) => view(req, o, mine.get(String(o.patientId)))) });
+});
+
 imagingRouter.post('/:id/urgent-seen', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   if (!(hasRole(req.membership, 'doctor') && patientAccess(req, patient).editClinical)) throw forbidden("Her doctor marks the scan's urgent findings seen.");
@@ -293,7 +316,7 @@ async function growthOf(req, o, patient) {
     tenantId: req.tenantId,
     patientId: patient._id,
     study: { $in: ['usg_anomaly', 'usg_growth', 'usg_twins'] },
-    status: { $in: ['done', 'signed'] },
+    status: { $in: hasRole(req.membership, 'sonographer') ? ['done', 'signed'] : ['signed'] },
     ...(since ? { 'done.at': { $gte: since } } : {}),
   })
     .sort({ 'done.at': 1 })
@@ -306,6 +329,8 @@ async function growthOf(req, o, patient) {
 
 imagingRouter.get('/:id', async (req, res) => {
   const { o, patient } = await loadStudy(req);
+  // Outside the Sonography module: only a scan of a patient whose details this person may see (her treating team)
+  if (!hasRole(req.membership, 'sonographer') && !clinicalOf(req, patient)) throw new HttpError(404, 'This study was not found.', 'NOT_FOUND');
   await audit(req, 'IMAGING_VIEWED', { details: ids(o, patient) });
   res.json({ study: view(req, o, patient), template: studyByKey.get(o.study) ?? null, growth: await growthOf(req, o, patient) });
 });
@@ -363,7 +388,7 @@ imagingRouter.put('/:id/report', async (req, res) => {
     z.object({ rev: z.number().int().min(0), values: z.record(z.string().max(40), z.union([z.string().max(300), z.number(), z.null()])).default({}), findings: safeText('Findings', 4000).default(''), impression: safeText('Impression', 1000).default(''), reason: safeText('Reason', 300).default('') }).strict(),
     req.body,
   );
-  if (!view(req, o, patient).access.canReport) throw forbidden('A doctor, RMO or sonography staff writes the report once the study is done.');
+  if (!view(req, o, patient).access.canReport) throw forbidden('Sonography writes the report once the study is done.');
   checkRev(o, body.rev);
   const report = { ...checkedReport(o, body), machine: o.report?.machine ?? null };
   if (o.status === 'signed') {
@@ -382,7 +407,7 @@ imagingRouter.put('/:id/report', async (req, res) => {
 imagingRouter.post('/:id/sign', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   const body = parse(z.object({ rev: z.number().int().min(0) }).strict(), req.body);
-  if (!view(req, o, patient).access.canSign) throw forbidden('A doctor signs the report once it is written.');
+  if (!view(req, o, patient).access.canSign) throw forbidden('A doctor with the Sonography role signs the report once it is written.');
   checkRev(o, body.rev);
   if (!o.report.impression && !o.report.findings) throw invalid({ impression: 'Write the findings or the impression before signing.' });
   // Urgent findings from the signed values (a change after signing and a new signature works them out again)
