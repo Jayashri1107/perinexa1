@@ -986,17 +986,35 @@ export function PatientOverviewTab() {
           <section className="card ov-preg">
             <h2>Pregnancy</h2>
             {!p.pregnancy?.effectiveEdd && <Alert type="warning">Pregnancy dates not entered yet – a doctor or RMO should add the LMP or scan EDD.</Alert>}
-            <Details
-              rows={[
-                ['Weeks today', <strong key="ga" className="ga-value">{formatGestation(p.gestationalAge)}</strong>],
-                ['EDD', p.pregnancy?.effectiveEdd ? `${formatDate(p.pregnancy.effectiveEdd)}${p.pregnancy?.scanEdd ? ' (from scan)' : ' (from LMP)'}` : ''],
-                ['LMP', p.pregnancy?.lmp ? formatDate(p.pregnancy.lmp) : ''],
+            {/* The three dates at a glance, as tiles; the rest of the dates and the visit's details in rows under them */}
+            <dl className="preg-facts">
+              <div className="preg-fact preg-fact-main">
+                <dt>Weeks today</dt>
+                <dd>
+                  <strong className="ga-value">{formatGestation(p.gestationalAge) || '—'}</strong>
+                </dd>
+              </div>
+              <div className="preg-fact">
+                <dt>EDD</dt>
+                <dd>
+                  {p.pregnancy?.effectiveEdd ? formatDate(p.pregnancy.effectiveEdd) : '—'}
+                  {p.pregnancy?.effectiveEdd && <span className="preg-fact-sub">{p.pregnancy?.scanEdd ? '(from scan)' : '(from LMP)'}</span>}
+                </dd>
+              </div>
+              <div className="preg-fact">
+                <dt>LMP</dt>
+                <dd>{p.pregnancy?.lmp ? formatDate(p.pregnancy.lmp) : '—'}</dd>
+              </div>
+            </dl>
+            {(() => {
+              const more = [
                 // The LMP's EDD only when the scan's is used instead, to compare
                 ...(p.pregnancy?.scanEdd && p.pregnancy?.edd ? [['EDD from LMP', formatDate(p.pregnancy.edd)]] : []),
                 // Recorded at the visit (the owner, 27 Oct 2026)
                 ...pregnancyDetailLines(p.pregnancy),
-              ]}
-            />
+              ];
+              return more.length > 0 ? <Details rows={more} /> : null;
+            })()}
             <PregnancyFindings patient={p} carePlanSummary={carePlanSummary} />
             {p.pregnancy?.effectiveEdd && <PregnancyTimeline patient={p} />}
           </section>

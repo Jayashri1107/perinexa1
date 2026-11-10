@@ -497,3 +497,27 @@ textarea.hs-blank { min-height: 0; height: 4.2em; }
 .stay-discharge-facts dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
 .stay-discharge-cell { display: inline-flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
 .stay-discharge p { margin: 0; }
+
+/* ---------- The Overview's Pregnancy card (10 Nov 2026) ---------- */
+/* Weeks today, EDD and LMP as three tiles at the top (weeks today in Lavender Wash, the others in Mist Light), then
+   "Findings in this pregnancy" and "Pregnancy timeline" as sections under a thin rule, each with the same heading. */
+.ov-preg { container-type: inline-size; }
+.preg-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-2) 0 var(--space-3); }
+.preg-fact { min-width: 0; margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--mist-50); }
+.preg-fact dt { color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 500; }
+.preg-fact dd { margin: var(--space-1) 0 0; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.preg-fact-sub { display: block; color: var(--slate-600); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; }
+.preg-fact-main { border-color: var(--indigo-200); background: var(--indigo-100); }
+.patient-overview .preg-fact-main .ga-value { color: var(--indigo-700); font-size: var(--fs-h2); line-height: var(--lh-h2); }
+@container (max-width: 360px) {
+  .preg-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .preg-fact-main { grid-column: 1 / -1; }
+}
+.ov-preg > .details { margin: 0 0 var(--space-2); }
+/* The two sections: the same rule above and the same heading */
+.ov-preg .pf-findings, .ov-preg .ptl { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.ov-preg .pf-findings > h3, .ov-preg .ptl-title { margin: 0 0 var(--space-2); color: var(--ink); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.ov-preg .ptl-title .muted { font-weight: 400; }
+.ov-preg .pf-findings .details { margin: var(--space-1) 0 0; }
+.ov-preg .pf-findings .hint { margin-top: var(--space-2); font-size: var(--fs-label); line-height: var(--lh-label); }
+.ov-preg .ptl .tip { margin-bottom: var(--space-3); }
