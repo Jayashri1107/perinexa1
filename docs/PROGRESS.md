@@ -1,5 +1,21 @@
 # Progress
 
+## The pregnancy plan as a month-by-month table (10 Nov 2026)
+The owner agreed to build it now (freeze lifted for this feature, `docs/HANDOVER.md`). Care plan tab → **Print** →
+Patient copy → **Layout: Month-by-month table** (pregnancy plans only; other plans and pregnancy-loss care keep the
+list). One row per month of pregnancy with its weeks and dates, columns Visit dates, Scans, Tests, Medicines &
+vaccines, Advice; each line a box to tick with its date. **Only from today's visit** (ticked to start with) leaves out
+the months that have passed and what is done or not needed; overdue items stay under **Now** in this month. Unticked:
+all nine months, the months before registration in grey, done items with a tick and the date. In the preview, a
+doctor or RMO who may change the plan sees **Add** in each cell (opens Add item with that column's type and that
+month's weeks) and **Remove** on each line (opens Not needed with the usual reasons): both change her saved plan,
+with its history and audit entries, and never print. Marathi or Hindi headings under the English (DRAFT). Defaults
+for the owner's open points: `docs/PLAN_TABLE_LAYOUT.md` section 7. No server change.
+- **How to check (fake data only):** a pregnancy patient with an active plan → Care plan → Print → Patient copy →
+  Month-by-month table → Preview. Untick "Only from today's visit" to see all months. Click Add in Scans of next
+  month, save, and the line appears; Remove a line, choose a reason, and it disappears (the Care plan tab shows it as
+  Not needed). Print: the buttons are not on paper.
+
 ## Medical records module (9 Nov 2026, from the other Perinexa copy)
 Brought from `girishsolanke/perinexa` (branch `mrd-records`, commit bcb7f949 of 9 Nov 2026, the owner's request
 there). That copy has its own history and its own versions of Clinical Requirements items 1–7, so only the records

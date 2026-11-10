@@ -622,3 +622,21 @@ couple after a treatment cycle (REPORT_WORDS), the medicines of a cycle (PROTOCO
 (PATTERN_WORDS), relations or IUI (TIMING_WORDS) and the pregnancy test result (TEST_RESULT_WORDS), each in Marathi and
 Hindi. Written by Claude, not yet checked by a fluent speaker; the report shows "Language for the patient" with the
 draft hint until they are.
+
+## Care plan patient copy: the month-by-month table (added 10 Nov 2026)
+
+In `client/src/pages/patients/carePlanPrintFormat.js` (`TABLE_LABELS`). Printed under the English headings when the
+patient copy is printed as a table (Care plan tab → Print → Patient copy → Layout: Month-by-month table).
+
+| English | Marathi | Hindi |
+| --- | --- | --- |
+| Month (as in "Month 5") | महिना | महीना |
+| Visit dates | तपासणीच्या तारखा | जाँच की तारीख़ें |
+| Scans | सोनोग्राफी | सोनोग्राफ़ी |
+| Tests | चाचण्या | टेस्ट |
+| Medicines & vaccines | औषधे व लसी | दवाइयाँ और टीके |
+| Advice | सल्ला | सलाह |
+| Now | आता | अभी |
+| Before registration | नोंदणीपूर्वी | पंजीकरण से पहले |
+| weeks (as in "18–22 weeks") | आठवडे | हफ़्ते |
+

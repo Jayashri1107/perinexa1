@@ -1,4 +1,4 @@
-# Pregnancy plan as a month-by-month table – asked 10 Nov 2026 (nothing built)
+# Pregnancy plan as a month-by-month table – asked 10 Nov 2026 (built in perinexa1 on 10 Nov 2026 – section 7)
 
 > **Perinexa1 copy (brought over 10 Nov 2026 from `girishsolanke/perinexa`, commit 23be8de3).** The owner wrote this
 > against the other Perinexa copy. Section 1 matches perinexa1: the patient copy is printed from the same files
@@ -111,3 +111,27 @@ The server already has both actions, with their checks and audit entries, so no 
    note (patient wording – the owner approves).
 5. Whether a line can also be **reworded or moved to another month** in the table (today: Edit item and Move date on
    the Care plan tab).
+
+## 7. Built in perinexa1 (10 Nov 2026)
+
+The owner agreed the same day to build it now. Built as section 3 proposes, with these defaults for section 6 (the
+owner can change any of them later):
+
+1. Section 3 as written: months 1–9 from the sample (month 9 printed 36–40 weeks, its dates to 42 w 6 d); columns
+   Visit dates, Scans, Tests, Medicines & vaccines, Advice; "Only from today's visit" ticked to start with; the Print
+   dialog opens with **List**, as before – the table is chosen under **Layout**.
+2. Removing a line opens the usual **Not needed** dialog with its reasons (no one-click default).
+3. **No "Special care needed" and no Delivery plan** on the sheet: no new clinical wording until the owner writes it.
+4. **The closing note stays** as today; no new standing reminders or danger-sign list.
+5. **No rewording or moving** in the table: Edit item and Move date stay on the Care plan tab.
+
+Also: the Advice column holds the plan's advice items; the doctor's own advice still prints in its box under the
+table, on this copy only. Overdue items stay, in this month's row under **Now**. Add and Remove show in the print
+preview only for those who may change the plan, and never print. The Marathi and Hindi headings are DRAFT
+(`docs/TRANSLATIONS_TO_CHECK.md`).
+
+Code: `monthTable()` and the words in `client/src/pages/patients/carePlanPrintFormat.js`; `MonthTable`, the Layout
+choice and the edit buttons in `CarePlanPrint.jsx`; the starting type and weeks of an added line through
+`AddItemDialog`'s `initial` (`carePlanDialogs.jsx`). No server change – the existing add and not-needed endpoints.
+Tests: `client/src/pages/patients/carePlanMonthTable.test.jsx`.
+

@@ -430,9 +430,10 @@ function WhenFields({ id, plan, form, setForm, errors }) {
 const WHEN_FIELDS = ['timing.fromWeek', 'timing.toWeek', 'timing.dueFrom', 'timing.dueBy'];
 
 /** Add an item to this patient's plan (Type, Name, When, text for the patient's copy, note, reason). */
-export function AddItemDialog({ patient, plan, onSaved, onConflict, onCancel }) {
+export function AddItemDialog({ patient, plan, initial = null, onSaved, onConflict, onCancel }) {
   const [clientRequestId] = useState(newRequestId);
-  const [form, setForm] = useState(emptyItemForm);
+  // initial: a starting type and weeks (from a cell of the month-by-month patient copy, CarePlanPrint.jsx)
+  const [form, setForm] = useState(() => ({ ...emptyItemForm(), ...(initial ?? {}) }));
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const save = useSave((res) => onSaved(res, `${form.name.trim()} added to the plan.`), onConflict);
 

@@ -185,6 +185,10 @@ The owner is a doctor, not a software person. Ask them before changing any of th
 - **Feature freeze lifted for WhatsApp at the desk (17 Oct 2026)**: OTP on WhatsApp with SMS fallback, appointment,
   bill and reviewed lab-report messages, queue time, daily cash handover – `docs/WHATSAPP_DESK_PLAN.md`. The hospital's
   WhatsApp number: +91 88880 24000.
+- **Feature freeze lifted for the pregnancy plan as a month-by-month table (10 Nov 2026)**: the owner agreed to build
+  it now (reversing "not built now" of the same morning); the developer chose the defaults for the open points –
+  no new patient wording beyond the table's headings, the usual reason on removing a line, no rewording or moving in
+  the table – `docs/PLAN_TABLE_LAYOUT.md` section 7.
 - **Feature freeze lifted for admission like a hospital system (17 Oct 2026)**: IPD/OPD numbers, admission form,
   wristband, checklist, doctor's admission request, discharge clearance and gate pass – `docs/ADMISSION_DESK_PLAN.md`.
 - **Lab version 2 (17 Oct 2026)**: the freeze is lifted for 8 more lab parts, and **the lab may register walk-in

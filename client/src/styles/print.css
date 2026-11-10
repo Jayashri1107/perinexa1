@@ -102,6 +102,19 @@
 .pdoc-table th, .pdoc-table td { padding: var(--space-1) var(--space-2); text-align: left; vertical-align: top; border-bottom: 1px solid var(--print-rule); }
 .pdoc-table th { font-size: var(--fs-print-small); line-height: var(--lh-print-small); font-weight: 600; border-bottom: 1.5px solid var(--print-ink); }
 .pdoc-table tr { break-inside: avoid; }
+/* The patient copy as a month-by-month table (docs/PLAN_TABLE_LAYOUT.md) */
+.pmt th, .pmt td { font-size: var(--fs-print-small); line-height: var(--lh-print-small); }
+.pmt .pmt-month { width: 18%; text-align: left; font-weight: 400; }
+.pmt-list { margin: 0; padding: 0; list-style: none; }
+.pmt-list li { display: flex; gap: var(--space-1); align-items: flex-start; margin: 0 0 var(--space-1); }
+.pmt-box { flex-shrink: 0; width: 3mm; height: 3mm; margin-top: 0.6mm; }
+.pmt-empty { display: inline-block; border: 1px solid var(--print-ink); }
+.pmt-now { margin: 0 0 var(--space-1); }
+.pmt-before th, .pmt-before td { color: var(--slate-600); background: var(--status-inactive-bg); }
+.pmt-current .pmt-month strong { text-decoration: underline; }
+.pmt-edit { display: inline-flex; align-items: center; gap: 2px; padding: 0; min-height: 0; font-size: var(--fs-print-small); }
+.pmt-edit svg { width: 12px; height: 12px; }
+@media print { .pmt-edit { display: none !important; } }
 .pdoc-table .pdoc-group td { padding-top: var(--space-3); font-weight: 600; border-bottom: 1.5px solid var(--print-ink); }
 .pdoc-table .pdoc-col-when { width: 23%; }
 .pdoc-table .pdoc-col-status { width: 22%; }

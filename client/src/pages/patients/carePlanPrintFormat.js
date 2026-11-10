@@ -309,6 +309,151 @@ export function patientNote(plan, lang = 'en') {
 /** The Draft band of a patient copy in Marathi or Hindi, printed after the English band. */
 export const DRAFT_PLAN_WORDS = W('', 'मसुदा – डॉक्टरांनी अजून मंजूर केलेले नाही.', 'ड्राफ़्ट – डॉक्टर ने अभी मंज़ूरी नहीं दी है।');
 
+// ---------- Patient copy as a month-by-month table (10 Nov 2026, docs/PLAN_TABLE_LAYOUT.md) ----------
+// A second layout of the patient copy, for pregnancy plans only: one row for each month of pregnancy, one column for
+// each type of item. Built at the owner's go-ahead with the defaults agreed with the developer for the open points
+// (section 6): no new patient wording beyond the headings – the closing note stays as it is, no "Special care needed"
+// or delivery plan; the Marathi and Hindi headings are ⚠️ DRAFT (docs/TRANSLATIONS_TO_CHECK.md).
+
+/** The months of pregnancy as on the owner's sample sheet: [month, from week, to week]. Month 9 runs on to 42 w 6 d. */
+export const PREGNANCY_MONTHS = [
+  [1, 0, 4],
+  [2, 5, 8],
+  [3, 9, 13],
+  [4, 14, 17],
+  [5, 18, 22],
+  [6, 23, 27],
+  [7, 28, 31],
+  [8, 32, 35],
+  [9, 36, 42],
+];
+
+/** The table's columns, in order, with the item types each one holds. */
+export const TABLE_COLUMNS = [
+  { key: 'visit', kinds: ['visit'] },
+  { key: 'scan', kinds: ['scan'] },
+  { key: 'test', kinds: ['investigation'] },
+  { key: 'medicine', kinds: ['vaccination', 'medication'] },
+  { key: 'advice', kinds: ['advice'] },
+];
+
+/** The fixed words of the table ({ en, mr, hi }). ⚠️ DRAFT Marathi and Hindi. */
+export const TABLE_LABELS = {
+  month: W('Month', 'महिना', 'महीना'),
+  visit: W('Visit dates', 'तपासणीच्या तारखा', 'जाँच की तारीख़ें'),
+  scan: W('Scans', 'सोनोग्राफी', 'सोनोग्राफ़ी'),
+  test: W('Tests', 'चाचण्या', 'टेस्ट'),
+  medicine: W('Medicines & vaccines', 'औषधे व लसी', 'दवाइयाँ और टीके'),
+  advice: W('Advice', 'सल्ला', 'सलाह'),
+  now: W('Now', 'आता', 'अभी'),
+  beforeRegistration: W('Before registration', 'नोंदणीपूर्वी', 'पंजीकरण से पहले'),
+  weeks: W('weeks', 'आठवडे', 'हफ़्ते'),
+};
+
+/** The month (1–9) a week of pregnancy falls in; before week 0 → 1, after month 9 → 9; null when not a number. */
+export function monthOfWeek(week) {
+  if (!Number.isFinite(week)) return null;
+  const m = PREGNANCY_MONTHS.find(([, , to]) => week <= to);
+  return m ? m[0] : 9;
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+const addDaysTo = (d, n) => new Date(new Date(d).getTime() + n * DAY);
+// The week of pregnancy on a day, counted from the plan's day zero (the LMP).
+const weekOn = (plan, d) => (d && plan?.dayZero ? Math.floor((new Date(d).getTime() - new Date(plan.dayZero).getTime()) / (7 * DAY)) : null);
+
+/** The month an item belongs in: where its window starts, else its estimated or due date; null when nothing is known. */
+export function itemMonth(item, plan) {
+  if (item.gaWindow?.from) return monthOfWeek(item.gaWindow.from.weeks);
+  const d = item.estimateFrom ?? item.due?.from ?? null;
+  return d ? monthOfWeek(weekOn(plan, d)) : null;
+}
+
+/** Whether the patient copy can be printed as the month table: pregnancy plans only (never pregnancy-loss care). */
+export const canPrintMonthTable = (plan) => isAntenatalPlan(plan) && plan?.careType !== 'abortion' && Boolean(plan?.dayZero);
+
+/**
+ * The month table: [{ month, fromWeek, toWeek, from, to, current, beforeRegistration, now: [items], cells: { visit,
+ * scan, test, medicine, advice } }]. options as patientCopy (scope, kinds, ids) plus fromToday:
+ * - fromToday (the default): only what is still to come, from this month on; an item still to come whose month has
+ *   passed goes in this month, and an overdue one in this month's Now line – never dropped by itself.
+ * - otherwise: all nine months, the months before registration marked, and done items too (with their date).
+ * Done, not needed, does not apply, missed visits and items waiting for a doctor's decision are never "still to
+ * come" (the same as the list layout).
+ */
+export function monthTable(plan, { scope = 'all', kinds = [], ids = [], fromToday = true } = {}) {
+  const items = plan?.items ?? [];
+  const chosen = new Set(ids);
+  const wanted = (it) => (scope === 'kinds' ? kinds.includes(it.kind) : scope === 'items' ? chosen.has(it.id) : true);
+  const current = monthOfWeek(plan?.gestationToday?.weeks ?? 0) ?? 1;
+  const bookedMonth = plan?.bookedAt ? monthOfWeek(plan.bookedAt.weeks) : null;
+  const rows = PREGNANCY_MONTHS.map(([month, fromWeek, toWeek]) => ({
+    month,
+    fromWeek,
+    toWeek,
+    from: plan?.dayZero ? addDaysTo(plan.dayZero, 7 * fromWeek) : null,
+    to: plan?.dayZero ? addDaysTo(plan.dayZero, 7 * toWeek + 6) : null,
+    current: month === current,
+    beforeRegistration: bookedMonth != null && month < bookedMonth,
+    now: [],
+    cells: Object.fromEntries(TABLE_COLUMNS.map((c) => [c.key, []])),
+  }));
+  const columnOf = (it) => TABLE_COLUMNS.find((c) => c.kinds.includes(it.kind))?.key;
+  for (const it of items) {
+    const col = columnOf(it);
+    if (!col || !wanted(it)) continue;
+    const toCome = isToCome(it);
+    if (!toCome && !(isDone(it) && !fromToday)) continue;
+    let month = itemMonth(it, plan) ?? current;
+    if (toCome && month < current) month = current;
+    const row = rows[month - 1];
+    if (toCome && it.status === 'overdue') row.now.push(it);
+    else row.cells[col].push(it);
+  }
+  for (const row of rows) {
+    row.now.sort(byStart);
+    for (const c of TABLE_COLUMNS) row.cells[c.key].sort((a, b) => (isDone(a) === isDone(b) ? byStart(a, b) : isDone(a) ? -1 : 1));
+  }
+  return fromToday ? rows.filter((r) => r.month >= current) : rows;
+}
+
+/** Whether the month table has any item to print. */
+export const tableHasContent = (rows) => rows.some((r) => r.now.length > 0 || TABLE_COLUMNS.some((c) => r.cells[c.key].length > 0));
+
+/** How many items of the table print in English only, in this language (0 for English). */
+export function tableUntranslatedCount(rows, lang) {
+  if (lang !== 'mr' && lang !== 'hi') return 0;
+  return rows.flatMap((r) => [...r.now, ...TABLE_COLUMNS.flatMap((c) => r.cells[c.key])]).filter((it) => !patientWhatIn(it, lang)).length;
+}
+
+/** "Month 5" in a language. */
+export const monthWords = (month, lang = 'en') => `${pick(TABLE_LABELS.month, lang)} ${month}`;
+
+/** "18–22 weeks" for a month row, in a language (month 9 reads 36–40). */
+export const monthWeeks = (row, lang = 'en') => `${row.fromWeek}–${row.month === 9 ? 40 : row.toWeek} ${pick(TABLE_LABELS.weeks, lang)}`;
+
+/** The date on a line of the table: the window's dates, "From about …" for a waiting item, "was due by …" for an overdue one, or the day it was done. */
+export function tableLineDate(item, lang = 'en') {
+  if (isDone(item)) return patientDone(item, lang);
+  if (item.status === 'waiting') return patientWhen(item, lang).when;
+  if (item.status === 'overdue') return patientWhen(item, lang).weeks;
+  return item.due ? windowText(item.due.from, item.due.to) : '';
+}
+
+/** Whether an item on the table has been done (printed with a tick instead of an empty box). */
+export const tableItemDone = (item) => isDone(item);
+
+/** The weeks a line added in a month row starts with: that month's weeks, not before today's week in this month. */
+export function addWeeksForRow(row, plan) {
+  const today = plan?.gestationToday?.weeks ?? 0;
+  const toWeek = row.month === 9 ? 40 : row.toWeek;
+  const fromWeek = row.current ? Math.min(Math.max(row.fromWeek, today), toWeek) : row.fromWeek;
+  return { fromWeek, toWeek };
+}
+
+/** The item type a line added in a column starts with. */
+export const addKindForColumn = (col) => TABLE_COLUMNS.find((c) => c.key === col)?.kinds[0] ?? '';
+
 // ---------- Staff copy ----------
 
 /** Every item, grouped by stage of pregnancy like the All view, with the items that do not apply last. */
