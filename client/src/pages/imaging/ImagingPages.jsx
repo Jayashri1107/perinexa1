@@ -127,7 +127,7 @@ function ScanWorklist() {
   return (
     <>
       <PageHeader title="Sonography" actions={<ExportButton what="scans" />} help="USG and radiology: studies to schedule, scheduled, to report and signed. Doctors order scans from the patient's Lab tab." />
-      <div className="pf-content">
+      <div className="pf-content img-page">
         <ScanDashboard />
         {/* The machine's status and its studies to link, above the lists the tabs switch between */}
         <MachineUnmatched />
@@ -241,7 +241,7 @@ export function MachineUnmatched() {
     <section className="card img-machine" aria-labelledby="img-unlinked-title">
       {/* One line: the machine's state – "Connected" only once the scan bridge has been heard from */}
       <div className="img-machine-line">
-        <h2 id="img-unlinked-title">
+        <h2 id="img-unlinked-title" className="img-heading">
           <MonitorDown aria-hidden="true" /> Ultrasound machine
         </h2>
         {data.bridge?.on && data.bridge.lastContactAt ? (
@@ -257,14 +257,14 @@ export function MachineUnmatched() {
             Not set up
           </StatusPill>
         )}
-        <span className="hint">
+      </div>
+      <p className="hint img-machine-words">
           {data.bridge?.on
             ? data.bridge.lastContactAt
               ? `Last heard from ${formatDateTime(data.bridge.lastContactAt)}. Open a scan to use its pictures and readings.`
               : 'The key is made; the scan bridge on the hospital PC has not connected yet (scan-bridge/README.md).'
             : 'Set up by the hospital admin: Hospital admin → Ultrasound machine.'}
-        </span>
-      </div>
+      </p>
       <Alert type="success" onClose={() => setNotice(null)}>
         {notice}
       </Alert>
@@ -666,6 +666,42 @@ function ReportPrint({ s, template, growth = null, onClose, autoPrint = false })
   );
 }
 
+/**
+ * Where the study is, as a line of steps (colour + icon + word): Ordered → Scheduled → Scan done → Report written →
+ * Signed. A cancelled study shows that instead.
+ */
+function ScanSteps({ s }) {
+  if (s.status === 'cancelled' || s.status === 'requested') return null;
+  const reached = {
+    ordered: true,
+    scheduled: Boolean(s.scheduledFor) || ['done', 'signed'].includes(s.status),
+    done: ['done', 'signed'].includes(s.status),
+    report: s.status === 'signed' || Boolean(s.report?.findings || s.report?.impression) || Boolean(s.saved),
+    signed: s.status === 'signed',
+  };
+  const steps = [
+    ['ordered', 'Ordered', s.ordered?.at],
+    ['scheduled', 'Scheduled', s.scheduledFor],
+    ['done', 'Scan done', s.done?.at],
+    ['report', 'Report written', s.saved?.at],
+    ['signed', 'Signed', s.signed?.at],
+  ];
+  const current = steps.find(([k]) => !reached[k])?.[0];
+  return (
+    <ol className="img-steps" aria-label="Where this scan is">
+      {steps.map(([k, word, at]) => (
+        <li key={k} className={reached[k] ? 'is-done' : k === current ? 'is-now' : undefined} aria-current={k === current ? 'step' : undefined}>
+          {reached[k] ? <CircleCheck aria-hidden="true" /> : <Clock aria-hidden="true" />}
+          <span>
+            {word}
+            {reached[k] && at ? <span className="img-step-when">{formatDateTime(at)}</span> : null}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 /** A scan booked by reception: the doctor or RMO checks the study, writes the indication and confirms – or declines. */
 function ConfirmBooking({ s, act }) {
   const studies = useFetch('/imaging/studies');
@@ -778,18 +814,19 @@ export function ImagingStudyPage() {
   return (
     <>
       {header}
-      <div className="pf-content">
+      <div className="pf-content img-page">
         <Alert type="success" onClose={() => setNotice(null)}>
           {notice}
         </Alert>
         <Alert type="error">{actionError}</Alert>
-        <section className="card">
+        <section className="card img-head">
           <div className="plan-card-head">
-            <h2>
+            <h2 className="img-heading">
               <ScanLine aria-hidden="true" /> {s.patient.fullName} <span className="muted tabular">{s.patient.mrn}</span>
             </h2>
             <StudyStatus s={s} />
           </div>
+          <ScanSteps s={s} />
           <p className="muted">
             {s.requestedBy ? `Booked by ${s.ordered.byName} for ${s.requestedBy.name}` : `Ordered by ${s.ordered.byName}`}, {formatDateTime(s.ordered.at)}
             {s.confirmed ? ` · confirmed by ${s.confirmed.byName}` : ''}
@@ -801,18 +838,21 @@ export function ImagingStudyPage() {
           {s.indication && <p>Indication: {s.indication}</p>}
           {!a.isSonography && !['signed', 'cancelled'].includes(s.status) && <p className="hint">With sonography – the report shows here once it is signed.</p>}
           {s.status === 'requested' && (a.canConfirm ? <ConfirmBooking s={s} act={act} /> : <p className="hint">Booked by reception. A doctor or RMO who sees her details confirms it before it is scheduled or done.</p>)}
-          <div className="row">
+          <div className="row img-actions">
             {a.canSchedule && (
-              <>
-                <input type="datetime-local" className="img-when" aria-label="Day and time" value={when} onChange={(e) => setWhen(e.target.value)} />
+              <span className="img-book">
+                <label htmlFor="img-when" className="img-book-label">
+                  Book for
+                </label>
+                <input id="img-when" type="datetime-local" className="img-when" value={when} onChange={(e) => setWhen(e.target.value)} />
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => act('schedule', { scheduledFor: new Date(when).toISOString() }, 'Scheduled.')}>
-                  Schedule
+                  <CalendarClock aria-hidden="true" /> {s.status === 'scheduled' ? 'Change the time' : 'Schedule'}
                 </button>
-              </>
+              </span>
             )}
             {a.canDone && (
-              <button type="button" className="btn btn-secondary btn-sm img-done" onClick={() => act('done', {}, 'Marked done. A doctor writes the report.')}>
-                Mark done
+              <button type="button" className="btn btn-primary btn-sm img-done" onClick={() => act('done', {}, 'Marked done. Write the report from the readings.')}>
+                <CircleCheck aria-hidden="true" /> Scan done
               </button>
             )}
             {!reviewing && s.status === 'done' && s.report && (a.canSign || a.canReport) && (
