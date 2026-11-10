@@ -79,9 +79,9 @@ describe('the months of pregnancy', () => {
     expect(itemMonth(item('x', 'scan', 'upcoming', { gaWindow: null, due: null }), PLAN)).toBeNull();
   });
 
-  it('prints month 9 as 36–40 weeks', () => {
-    expect(monthWeeks({ month: 9, fromWeek: 36, toWeek: 42 })).toBe('36–40 weeks');
-    expect(monthWeeks({ month: 5, fromWeek: 18, toWeek: 22 }, 'mr')).toBe('18–22 आठवडे');
+  it('prints month 9 as 36–40 wk, and Marathi with Devanagari digits as on the sample', () => {
+    expect(monthWeeks({ month: 9, fromWeek: 36, toWeek: 42 })).toBe('36–40 wk');
+    expect(monthWeeks({ month: 5, fromWeek: 18, toWeek: 22 }, 'mr')).toBe('१८–२२ आठवडे');
   });
 });
 
@@ -109,13 +109,15 @@ describe('Only from today’s visit (ticked to start with)', () => {
     expect(ids(row(rows, 7).cells.advice)).toEqual(['advMove']);
   });
 
-  it('keeps what is overdue under Now in this month, and moves what is still to come from a past month into this one', () => {
-    expect(ids(row(rows, 5).now)).toEqual(['visit16']);
-    expect(ids(row(rows, 5).cells.medicine)).toEqual(['iron']);
+  it('puts what is overdue, or still to come from a month that has passed, under Today in this month – in its own column', () => {
+    expect(ids(row(rows, 5).today.visit)).toEqual(['visit16']);
+    expect(ids(row(rows, 5).today.medicine)).toEqual(['iron']);
+    expect(ids(row(rows, 5).cells.medicine)).toEqual([]);
+    expect(Object.values(row(rows, 6).today).flat()).toEqual([]); // Today only in this month
   });
 
   it('leaves out what is done, not needed or does not apply', () => {
-    const all = rows.flatMap((r) => [...r.now, ...Object.values(r.cells).flat()]);
+    const all = rows.flatMap((r) => [...Object.values(r.today).flat(), ...Object.values(r.cells).flat()]);
     expect(ids(all)).not.toContain('scanNt');
     expect(ids(all)).not.toContain('labCbc');
     expect(ids(all)).not.toContain('labNa');
@@ -138,7 +140,8 @@ describe('all nine months (Only from today’s visit unticked)', () => {
 
   it('lists done items too, in their month', () => {
     expect(ids(row(rows, 3).cells.scan)).toEqual(['scanNt']);
-    expect(tableLineDate(ITEMS[6])).toBe('Done 14 Aug 2026');
+    expect(tableLineDate(ITEMS[6])).toBe('14 Aug');
+    expect(tableLineDate(ITEMS[1])).toBe('12 Oct');
   });
 
   it('still never prints an item that is not needed or does not apply', () => {
@@ -167,20 +170,46 @@ describe('the table on paper', () => {
   it('has the six columns, the months with their weeks, and the items in the patient’s words', () => {
     const t = text(html());
     for (const h of ['Month', 'Visit dates', 'Scans', 'Tests', 'Medicines & vaccines', 'Advice']) expect(t).toContain(h);
-    expect(t).toContain('Month 5 18–22 weeks');
-    expect(t).toContain('Detailed ultrasound of baby');
-    expect(t).toContain('Now:');
+    expect(t).toContain('Month 5 18–22 wk 28 Sep–01 Nov');
+    expect(t).toContain('Detailed ultrasound of baby · 12 Oct');
+    expect(t).toContain('Today:');
     expect(t).not.toContain('What is planned'); // not the list as well
   });
 
-  it('keeps the closing note as it is today (open point 4: no new patient wording)', () => {
-    expect(text(html())).toContain('Bring this sheet to every visit.');
+  it('is laid out like the owner’s sample sheet: title, danger signs, reminders and the closing line (DRAFT wording)', () => {
+    const t = text(html());
+    expect(t).toContain('9-Month Pregnancy Plan');
+    expect(t).toContain('Danger signs – come to hospital immediately');
+    expect(t).toContain('Baby moving less');
+    expect(t).toContain('Bring this plan and all reports to every visit.');
+    expect(t).toContain('Fetal sex is not disclosed (PC-PNDT Act).');
+  });
+
+  it('prints the delivery plan and the doctor’s remarks only when typed', () => {
+    expect(text(html())).not.toContain('Delivery plan');
+    const t = text(html('en', { deliveryPlan: 'Sample plan: delivery at this hospital', advice: 'Sample remark' }));
+    expect(t).toContain('Delivery plan Sample plan: delivery at this hospital');
+    expect(t).toContain('Doctor’s remarks Sample remark');
+  });
+
+  it('prints Special care needed in plain words, and never the reasons a family must not read', () => {
+    const risk = { reasons: [{ key: 'age' }, { key: 'hb10' }, { key: 'hb7' }, { key: 'infection' }, { key: 'mental' }, { key: 'stillbirth' }, { key: 'tb' }, { key: 'rhneg' }] };
+    const t = text(renderToStaticMarkup(<PatientCopy patient={{ fullName: 'Sample Mother', mrn: 'P-000003', currentAge: 36, risk }} plan={PLAN} options={{ scope: 'all', kinds: [], ids: [], layout: 'table', advice: '' }} />));
+    expect(t).toContain('Special care needed');
+    expect(t).toContain('Mother’s age (under 18 or over 35) · Anaemia · Rh-negative blood group');
+    for (const never of ['Infection', 'Mental', 'Stillbirth', 'Tuberculosis', 'HIV']) expect(t).not.toContain(never);
+  });
+
+  it('prints her facts from the record: obstetric score, LMP, blood group and mobile', () => {
+    const patient = { fullName: 'Sample Mother', mrn: 'P-000003', currentAge: 36, phone: '9800000010', obstetric: { gravida: 3, para: 2, living: 2, abortions: 0 }, medical: { bloodGroup: 'B-' }, pregnancy: { lmp: day('2026-05-25') } };
+    const t = text(renderToStaticMarkup(<PatientCopy patient={patient} plan={PLAN} options={{ scope: 'all', kinds: [], ids: [], layout: 'table', advice: '' }} />));
+    for (const fact of ['G3 P2 L2 A0', '25 May 2026', 'B-', '9800000010']) expect(t).toContain(fact);
   });
 
   it('prints the headings in Marathi under the English (DRAFT wording)', () => {
     const t = text(html('mr'));
     expect(t).toContain(TABLE_LABELS.medicine.mr);
-    expect(t).toContain('महिना 5');
+    expect(t).toContain('महिना ५');
     expect(tableUntranslatedCount(monthTable(PLAN), 'mr')).toBeGreaterThan(0); // items a doctor added print as typed
   });
 

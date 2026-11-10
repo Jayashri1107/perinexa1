@@ -310,10 +310,12 @@ export function patientNote(plan, lang = 'en') {
 export const DRAFT_PLAN_WORDS = W('', 'मसुदा – डॉक्टरांनी अजून मंजूर केलेले नाही.', 'ड्राफ़्ट – डॉक्टर ने अभी मंज़ूरी नहीं दी है।');
 
 // ---------- Patient copy as a month-by-month table (10 Nov 2026, docs/PLAN_TABLE_LAYOUT.md) ----------
-// A second layout of the patient copy, for pregnancy plans only: one row for each month of pregnancy, one column for
-// each type of item. Built at the owner's go-ahead with the defaults agreed with the developer for the open points
-// (section 6): no new patient wording beyond the headings – the closing note stays as it is, no "Special care needed"
-// or delivery plan; the Marathi and Hindi headings are ⚠️ DRAFT (docs/TRANSLATIONS_TO_CHECK.md).
+// A second layout of the patient copy, for pregnancy plans only, laid out like the owner's "9-Month Pregnancy Plan"
+// sample sheet (Anandi Hospital): the facts, "Special care needed", one row for each month of pregnancy with a column
+// for each type of item, "Today:" in this month, the delivery plan and the doctor's remarks typed at printing, the
+// danger signs, three reminders and the closing line.
+// ⚠️ DRAFT: the sample's English wording is the owner's; the Marathi and Hindi, the plain words for the risk reasons and
+// the danger-sign list wait for the owner's approval and a fluent speaker (docs/TRANSLATIONS_TO_CHECK.md).
 
 /** The months of pregnancy as on the owner's sample sheet: [month, from week, to week]. Month 9 runs on to 42 w 6 d. */
 export const PREGNANCY_MONTHS = [
@@ -337,18 +339,113 @@ export const TABLE_COLUMNS = [
   { key: 'advice', kinds: ['advice'] },
 ];
 
-/** The fixed words of the table ({ en, mr, hi }). ⚠️ DRAFT Marathi and Hindi. */
+/** The fixed words of the table page ({ en, mr, hi }). ⚠️ DRAFT Marathi and Hindi. */
 export const TABLE_LABELS = {
+  title: W('9-Month Pregnancy Plan', 'गरोदरपणाचा ९ महिन्यांचा तपासणी प्रवास', '९ महीने की गर्भावस्था योजना'),
   month: W('Month', 'महिना', 'महीना'),
-  visit: W('Visit dates', 'तपासणीच्या तारखा', 'जाँच की तारीख़ें'),
+  visit: W('Visit dates', 'भेटी', 'जाँच की तारीख़ें'),
   scan: W('Scans', 'सोनोग्राफी', 'सोनोग्राफ़ी'),
-  test: W('Tests', 'चाचण्या', 'टेस्ट'),
+  test: W('Tests', 'तपासण्या', 'टेस्ट'),
   medicine: W('Medicines & vaccines', 'औषधे व लसी', 'दवाइयाँ और टीके'),
   advice: W('Advice', 'सल्ला', 'सलाह'),
-  now: W('Now', 'आता', 'अभी'),
+  today: W('Today', 'आज', 'आज'),
   beforeRegistration: W('Before registration', 'नोंदणीपूर्वी', 'पंजीकरण से पहले'),
-  weeks: W('weeks', 'आठवडे', 'हफ़्ते'),
+  wk: W('wk', 'आठवडे', 'हफ़्ते'),
+  obstetricScore: W('Obstetric score', 'प्रसूती इतिहास', 'प्रसूति इतिहास'),
+  lmp: W('LMP', 'शेवटची पाळी', 'आख़िरी माहवारी'),
+  bloodGroup: W('Blood group', 'रक्तगट', 'ब्लड ग्रुप'),
+  mobile: W('Mobile', 'मोबाइल', 'मोबाइल'),
+  fromLmp: W('LMP', 'पाळीवरून', 'माहवारी से'),
+  fromScan: W('scan', 'सोनोग्राफीवरून', 'सोनोग्राफ़ी से'),
+  specialCare: W('Special care needed', 'विशेष काळजी', 'विशेष देखभाल'),
+  deliveryPlan: W('Delivery plan', 'प्रसूतीची योजना', 'प्रसव की योजना'),
+  remarks: W('Doctor’s remarks', 'डॉक्टरांची टिप्पणी', 'डॉक्टर की टिप्पणी'),
+  danger: W('Danger signs – come to hospital immediately', 'धोक्याची लक्षणे – त्वरित रुग्णालयात या', 'ख़तरे के लक्षण – तुरंत अस्पताल आएँ'),
+  date: W('Date', 'तारीख', 'तारीख़'),
 };
+
+/** The danger signs of the sample sheet, in its order (two columns on paper). ⚠️ DRAFT – the owner approves. */
+export const DANGER_SIGNS = [
+  W('Bleeding from vagina', 'योनीमार्गातून रक्तस्राव', 'योनि से ख़ून आना'),
+  W('Leaking of water', 'पाणी जाणे', 'पानी जाना'),
+  W('Baby moving less', 'बाळाची हालचाल कमी होणे', 'शिशु की हलचल कम होना'),
+  W('Severe headache / blurred vision', 'तीव्र डोकेदुखी / धूसर दिसणे', 'तेज़ सिरदर्द / धुंधला दिखना'),
+  W('Swelling of face or hands', 'चेहरा / हातांवर सूज', 'चेहरे या हाथों पर सूजन'),
+  W('Severe pain in abdomen', 'पोटात तीव्र दुखणे', 'पेट में तेज़ दर्द'),
+  W('Fever', 'ताप', 'बुख़ार'),
+  W('Fits / convulsions', 'झटके येणे', 'दौरे / झटके'),
+  W('Breathlessness', 'दम लागणे', 'साँस फूलना'),
+  W('Continuous vomiting', 'सतत उलट्या', 'लगातार उल्टी'),
+];
+
+/** The three standing reminders of the sample sheet. ⚠️ DRAFT – the owner approves. */
+export const PLAN_REMINDERS = [
+  W('From 28 weeks count baby movements daily – at least 10 in 2 hours.', '२८ आठवड्यांनंतर रोज बाळाच्या हालचाली मोजा – २ तासांत किमान १० हालचाली.', '२८ हफ़्ते के बाद रोज़ शिशु की हलचल गिनें – २ घंटे में कम से कम १०।'),
+  W('Take iron and calcium tablets daily, at different times.', 'लोह व कॅल्शियमच्या गोळ्या रोज, वेगवेगळ्या वेळी घ्या.', 'आयरन और कैल्शियम की गोलियाँ रोज़, अलग-अलग समय पर लें।'),
+  W('Bring this plan and all reports to every visit.', 'प्रत्येक भेटीला ही योजना व सर्व रिपोर्ट्स सोबत आणा.', 'हर जाँच पर यह योजना और सभी रिपोर्ट साथ लाएँ।'),
+];
+
+/** The closing line of the sample sheet. ⚠️ DRAFT Marathi and Hindi. */
+export const TABLE_NOTE = W(
+  'Dates are approximate target dates; the doctor may change the plan at any visit. Fetal sex is not disclosed (PC-PNDT Act).',
+  'तारखा अंदाजे आहेत; डॉक्टर कोणत्याही भेटीत योजना बदलू शकतात. गर्भाचे लिंग सांगितले जात नाही (PC-PNDT कायदा).',
+  'तारीख़ें अनुमानित हैं; डॉक्टर किसी भी जाँच पर योजना बदल सकते हैं। गर्भ का लिंग नहीं बताया जाता (PC-PNDT अधिनियम)।',
+);
+
+/**
+ * "Special care needed": her risk reasons in plain words for a paper the family reads. Only the reasons listed here
+ * print; the others never do – an infection needing specialist care (it may be HIV: the neutral-name rule), a mental
+ * health condition, tuberculosis, a stillbirth or newborn death before. Several reasons with the same plain words print
+ * once. ⚠️ DRAFT – the owner approves the words and the list.
+ */
+export const SPECIAL_CARE_WORDS = {
+  age: W('Mother’s age (under 18 or over 35)', 'आईचे वय (१८ पेक्षा कमी किंवा ३५ पेक्षा जास्त)', 'माँ की उम्र (१८ से कम या ३५ से ज़्यादा)'),
+  bmi30: W('High body weight', 'जास्त वजन', 'ज़्यादा वज़न'),
+  bmi40: W('High body weight', 'जास्त वजन', 'ज़्यादा वज़न'),
+  height: W('Short height', 'कमी उंची', 'कम लंबाई'),
+  hb7: W('Anaemia', 'रक्तक्षय (ॲनिमिया)', 'ख़ून की कमी (एनीमिया)'),
+  hb10: W('Anaemia', 'रक्तक्षय (ॲनिमिया)', 'ख़ून की कमी (एनीमिया)'),
+  rhneg: W('Rh-negative blood group', 'Rh-निगेटिव्ह रक्तगट', 'Rh-नेगेटिव ब्लड ग्रुप'),
+  isoimmunisation: W('Rh antibodies in an earlier pregnancy', 'मागील गरोदरपणात Rh प्रतिपिंडे', 'पिछली गर्भावस्था में Rh एंटीबॉडी'),
+  cs1: W('Previous caesarean', 'यापूर्वी सिझेरियन', 'पहले सिज़ेरियन'),
+  cs2: W('Two or more previous caesareans', 'यापूर्वी दोन किंवा अधिक सिझेरियन', 'पहले दो या अधिक सिज़ेरियन'),
+  uterine: W('Earlier operation on the womb', 'गर्भाशयावर यापूर्वी शस्त्रक्रिया', 'गर्भाशय का पहले ऑपरेशन'),
+  grand: W('Four or more births before', 'यापूर्वी चार किंवा अधिक प्रसूती', 'पहले चार या अधिक प्रसव'),
+  past: W('A problem in an earlier pregnancy', 'मागील गरोदरपणात त्रास', 'पिछली गर्भावस्था में समस्या'),
+  multiple: W('Twins or more', 'जुळी किंवा अधिक बाळे', 'जुड़वाँ या अधिक बच्चे'),
+  praevia: W('Low-lying placenta', 'वार खाली असणे', 'आँवल नीचे होना'),
+  bleeding: W('Bleeding in this pregnancy', 'या गरोदरपणात रक्तस्राव', 'इस गर्भावस्था में ख़ून आना'),
+  chronic_htn: W('High blood pressure', 'उच्च रक्तदाब', 'हाई ब्लड प्रेशर'),
+  pih: W('High blood pressure', 'उच्च रक्तदाब', 'हाई ब्लड प्रेशर'),
+  bp140: W('High blood pressure', 'उच्च रक्तदाब', 'हाई ब्लड प्रेशर'),
+  bp160: W('High blood pressure', 'उच्च रक्तदाब', 'हाई ब्लड प्रेशर'),
+  diabetes: W('Diabetes (high sugar)', 'मधुमेह (साखर)', 'मधुमेह (शुगर)'),
+  gdm: W('Diabetes (high sugar)', 'मधुमेह (साखर)', 'मधुमेह (शुगर)'),
+  thyroid: W('Thyroid problem', 'थायरॉईडचा त्रास', 'थायरॉइड की समस्या'),
+  asthma: W('Asthma', 'दमा', 'दमा'),
+  heart: W('Heart problem', 'हृदयाचा आजार', 'दिल की बीमारी'),
+  renal: W('Kidney problem', 'मूत्रपिंडाचा आजार', 'गुर्दे की बीमारी'),
+  liver: W('Liver problem', 'यकृताचा आजार', 'लिवर की बीमारी'),
+  epilepsy: W('Fits (epilepsy)', 'फिट्स (अपस्मार)', 'मिर्गी'),
+  thrombophilia: W('Blood clotting problem', 'रक्त गोठण्याचा त्रास', 'ख़ून जमने की समस्या'),
+  autoimmune: W('Autoimmune illness', 'ऑटोइम्यून आजार', 'ऑटोइम्यून बीमारी'),
+};
+
+/** Her risk reasons for "Special care needed", in a language: plain words, listed ones only, each once. */
+export function specialCareWords(reasons, lang = 'en') {
+  const out = [];
+  for (const r of reasons ?? []) {
+    const words = SPECIAL_CARE_WORDS[r?.key];
+    if (!words) continue;
+    const w = pick(words, lang);
+    if (!out.includes(w)) out.push(w);
+  }
+  return out;
+}
+
+const DEVANAGARI = '०१२३४५६७८९';
+/** Numbers in Devanagari digits for Marathi and Hindi ("महिना ३"), as on the sample; English keeps 0–9. */
+export const localDigits = (text, lang = 'en') => (lang === 'mr' || lang === 'hi' ? String(text).replace(/[0-9]/g, (d) => DEVANAGARI[d]) : String(text));
 
 /** The month (1–9) a week of pregnancy falls in; before week 0 → 1, after month 9 → 9; null when not a number. */
 export function monthOfWeek(week) {
@@ -361,6 +458,13 @@ const DAY = 24 * 60 * 60 * 1000;
 const addDaysTo = (d, n) => new Date(new Date(d).getTime() + n * DAY);
 // The week of pregnancy on a day, counted from the plan's day zero (the LMP).
 const weekOn = (plan, d) => (d && plan?.dayZero ? Math.floor((new Date(d).getTime() - new Date(plan.dayZero).getTime()) / (7 * DAY)) : null);
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "07 Dec" – a day on the table, without the year (as on the sample). */
+export function shortDate(d) {
+  if (!d) return '';
+  const x = new Date(d);
+  return `${String(x.getUTCDate()).padStart(2, '0')} ${SHORT_MONTHS[x.getUTCMonth()]}`;
+}
 
 /** The month an item belongs in: where its window starts, else its estimated or due date; null when nothing is known. */
 export function itemMonth(item, plan) {
@@ -372,11 +476,14 @@ export function itemMonth(item, plan) {
 /** Whether the patient copy can be printed as the month table: pregnancy plans only (never pregnancy-loss care). */
 export const canPrintMonthTable = (plan) => isAntenatalPlan(plan) && plan?.careType !== 'abortion' && Boolean(plan?.dayZero);
 
+const emptyCells = () => Object.fromEntries(TABLE_COLUMNS.map((c) => [c.key, []]));
+
 /**
- * The month table: [{ month, fromWeek, toWeek, from, to, current, beforeRegistration, now: [items], cells: { visit,
- * scan, test, medicine, advice } }]. options as patientCopy (scope, kinds, ids) plus fromToday:
- * - fromToday (the default): only what is still to come, from this month on; an item still to come whose month has
- *   passed goes in this month, and an overdue one in this month's Now line – never dropped by itself.
+ * The month table: [{ month, fromWeek, toWeek, from, to, current, beforeRegistration, today: { column: [items] },
+ * cells: { column: [items] } }]. options as patientCopy (scope, kinds, ids) plus fromToday:
+ * - "Today" (this month only): what is due now or overdue, and what is still to come from a month that has passed –
+ *   never dropped by itself – in its own column, as the sample's "Today:" lines.
+ * - fromToday (the default): only what is still to come, from this month on.
  * - otherwise: all nine months, the months before registration marked, and done items too (with their date).
  * Done, not needed, does not apply, missed visits and items waiting for a doctor's decision are never "still to
  * come" (the same as the list layout).
@@ -395,8 +502,8 @@ export function monthTable(plan, { scope = 'all', kinds = [], ids = [], fromToda
     to: plan?.dayZero ? addDaysTo(plan.dayZero, 7 * toWeek + 6) : null,
     current: month === current,
     beforeRegistration: bookedMonth != null && month < bookedMonth,
-    now: [],
-    cells: Object.fromEntries(TABLE_COLUMNS.map((c) => [c.key, []])),
+    today: emptyCells(),
+    cells: emptyCells(),
   }));
   const columnOf = (it) => TABLE_COLUMNS.find((c) => c.kinds.includes(it.kind))?.key;
   for (const it of items) {
@@ -405,43 +512,56 @@ export function monthTable(plan, { scope = 'all', kinds = [], ids = [], fromToda
     const toCome = isToCome(it);
     if (!toCome && !(isDone(it) && !fromToday)) continue;
     let month = itemMonth(it, plan) ?? current;
-    if (toCome && month < current) month = current;
+    const late = toCome && month < current;
+    if (late) month = current;
     const row = rows[month - 1];
-    if (toCome && it.status === 'overdue') row.now.push(it);
+    if (toCome && (late || it.status === 'overdue' || (row.current && it.status === 'due'))) row.today[col].push(it);
     else row.cells[col].push(it);
   }
   for (const row of rows) {
-    row.now.sort(byStart);
-    for (const c of TABLE_COLUMNS) row.cells[c.key].sort((a, b) => (isDone(a) === isDone(b) ? byStart(a, b) : isDone(a) ? -1 : 1));
+    for (const c of TABLE_COLUMNS) {
+      row.today[c.key].sort(byStart);
+      row.cells[c.key].sort((a, b) => (isDone(a) === isDone(b) ? byStart(a, b) : isDone(a) ? -1 : 1));
+    }
   }
   return fromToday ? rows.filter((r) => r.month >= current) : rows;
 }
 
+const rowItems = (r) => TABLE_COLUMNS.flatMap((c) => [...r.today[c.key], ...r.cells[c.key]]);
+
 /** Whether the month table has any item to print. */
-export const tableHasContent = (rows) => rows.some((r) => r.now.length > 0 || TABLE_COLUMNS.some((c) => r.cells[c.key].length > 0));
+export const tableHasContent = (rows) => rows.some((r) => rowItems(r).length > 0);
 
 /** How many items of the table print in English only, in this language (0 for English). */
 export function tableUntranslatedCount(rows, lang) {
   if (lang !== 'mr' && lang !== 'hi') return 0;
-  return rows.flatMap((r) => [...r.now, ...TABLE_COLUMNS.flatMap((c) => r.cells[c.key])]).filter((it) => !patientWhatIn(it, lang)).length;
+  return rows.flatMap(rowItems).filter((it) => it.kind !== 'visit' && !patientWhatIn(it, lang)).length;
 }
 
-/** "Month 5" in a language. */
-export const monthWords = (month, lang = 'en') => `${pick(TABLE_LABELS.month, lang)} ${month}`;
+/** "Month 5" in a language ("महिना ५"). */
+export const monthWords = (month, lang = 'en') => localDigits(`${pick(TABLE_LABELS.month, lang)} ${month}`, lang);
 
-/** "18–22 weeks" for a month row, in a language (month 9 reads 36–40). */
-export const monthWeeks = (row, lang = 'en') => `${row.fromWeek}–${row.month === 9 ? 40 : row.toWeek} ${pick(TABLE_LABELS.weeks, lang)}`;
+/** "18–22 wk" for a month row (month 9 reads 36–40), in a language. */
+export const monthWeeks = (row, lang = 'en') => localDigits(`${row.fromWeek}–${row.month === 9 ? 40 : row.toWeek} ${pick(TABLE_LABELS.wk, lang)}`, lang);
 
-/** The date on a line of the table: the window's dates, "From about …" for a waiting item, "was due by …" for an overdue one, or the day it was done. */
-export function tableLineDate(item, lang = 'en') {
-  if (isDone(item)) return patientDone(item, lang);
-  if (item.status === 'waiting') return patientWhen(item, lang).when;
-  if (item.status === 'overdue') return patientWhen(item, lang).weeks;
-  return item.due ? windowText(item.due.from, item.due.to) : '';
+/** "10 Aug–13 Sep": a month row's dates. */
+export const monthDates = (row) => (row.from ? `${shortDate(row.from)}–${shortDate(row.to)}` : '');
+
+/** The day on a line of the table: the day it was done, about when (waiting), or the start of its window ("07 Dec"). */
+export function tableLineDate(item) {
+  if (isDone(item)) return shortDate(item.done?.on);
+  return shortDate(item.status === 'waiting' ? item.estimateFrom : item.due?.from);
 }
 
 /** Whether an item on the table has been done (printed with a tick instead of an empty box). */
 export const tableItemDone = (item) => isDone(item);
+
+/** The facts at the top of the table page that the list does not have: obstetric score, LMP, blood group, mobile. */
+export function tableFacts(patient) {
+  const o = patient?.obstetric;
+  const score = o && [o.gravida, o.para, o.living, o.abortions].some((v) => v != null) ? `G${o.gravida ?? '?'} P${o.para ?? '?'} L${o.living ?? '?'} A${o.abortions ?? '?'}` : '';
+  return { score, lmp: patient?.pregnancy?.lmp ?? null, bloodGroup: patient?.medical?.bloodGroup ?? '', mobile: patient?.phone ?? '' };
+}
 
 /** The weeks a line added in a month row starts with: that month's weeks, not before today's week in this month. */
 export function addWeeksForRow(row, plan) {

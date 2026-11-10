@@ -2,8 +2,8 @@
 
 ## The pregnancy plan as a month-by-month table (10 Nov 2026)
 The owner agreed to build it now (freeze lifted for this feature, `docs/HANDOVER.md`). Care plan tab → **Print** →
-Patient copy → **Layout: Month-by-month table** (pregnancy plans only; other plans and pregnancy-loss care keep the
-list). One row per month of pregnancy with its weeks and dates, columns Visit dates, Scans, Tests, Medicines &
+Patient copy – a pregnancy plan opens as the **month-by-month table** (Layout in the dialog, and a Month table / List
+switch in the preview; other plans and pregnancy-loss care keep the list). One row per month of pregnancy with its weeks and dates, columns Visit dates, Scans, Tests, Medicines &
 vaccines, Advice; each line a box to tick with its date. **Only from today's visit** (ticked to start with) leaves out
 the months that have passed and what is done or not needed; overdue items stay under **Now** in this month. Unticked:
 all nine months, the months before registration in grey, done items with a tick and the date. In the preview, a
@@ -11,6 +11,10 @@ doctor or RMO who may change the plan sees **Add** in each cell (opens Add item 
 month's weeks) and **Remove** on each line (opens Not needed with the usual reasons): both change her saved plan,
 with its history and audit entries, and never print. Marathi or Hindi headings under the English (DRAFT). Defaults
 for the owner's open points: `docs/PLAN_TABLE_LAYOUT.md` section 7. No server change.
+- **Same day: laid out like the owner's sample sheet** ("9-Month Pregnancy Plan"): her facts, Special care needed,
+  "Month 3 · 9–13 wk", visit days only, **Today:** in each column of this month, "☐ text · 07 Dec", delivery plan and
+  doctor's remarks typed at printing, ten danger signs, three reminders, the closing line. The clinical wording is
+  **DRAFT for the owner to approve** (`docs/PLAN_TABLE_LAYOUT.md` section 7a).
 - **How to check (fake data only):** a pregnancy patient with an active plan → Care plan → Print → Patient copy →
   Month-by-month table → Preview. Untick "Only from today's visit" to see all months. Click Add in Scans of next
   month, save, and the line appears; Remove a line, choose a reason, and it disappears (the Care plan tab shows it as

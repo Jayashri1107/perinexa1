@@ -640,3 +640,63 @@ patient copy is printed as a table (Care plan tab → Print → Patient copy →
 | Before registration | नोंदणीपूर्वी | पंजीकरण से पहले |
 | weeks (as in "18–22 weeks") | आठवडे | हफ़्ते |
 
+### The same table laid out like the owner's sample sheet (added 10 Nov 2026)
+
+Also in `carePlanPrintFormat.js`: `TABLE_LABELS` (the title "9-Month Pregnancy Plan", Today, Obstetric score, LMP,
+Blood group, Mobile, Special care needed, Delivery plan, Doctor's remarks, the danger-sign heading, wk),
+`DANGER_SIGNS` (ten), `PLAN_REMINDERS` (three), `TABLE_NOTE` (the closing line) and `SPECIAL_CARE_WORDS` (her
+risk reasons in plain words). The column headings changed to the sample's: Visit dates = भेटी, Tests = तपासण्या.
+The English is the owner's sample wording except the risk reasons, which are new plain words – **the owner approves
+them as the doctor**. Numbers in Marathi and Hindi print in Devanagari digits (महिना ३).
+
+Every phrase of the table page, word for word (`TABLE_LABELS`, `DANGER_SIGNS`, `PLAN_REMINDERS`, `TABLE_NOTE`, `SPECIAL_CARE_WORDS`):
+
+| English | Marathi | Hindi |
+| --- | --- | --- |
+| 9-Month Pregnancy Plan | गरोदरपणाचा ९ महिन्यांचा तपासणी प्रवास | ९ महीने की गर्भावस्था योजना |
+| Obstetric score | प्रसूती इतिहास | प्रसूति इतिहास |
+| LMP | शेवटची पाळी | आख़िरी माहवारी |
+| LMP | पाळीवरून | माहवारी से |
+| scan | सोनोग्राफीवरून | सोनोग्राफ़ी से |
+| Special care needed | विशेष काळजी | विशेष देखभाल |
+| Delivery plan | प्रसूतीची योजना | प्रसव की योजना |
+| Doctor’s remarks | डॉक्टरांची टिप्पणी | डॉक्टर की टिप्पणी |
+| Danger signs – come to hospital immediately | धोक्याची लक्षणे – त्वरित रुग्णालयात या | ख़तरे के लक्षण – तुरंत अस्पताल आएँ |
+| Bleeding from vagina | योनीमार्गातून रक्तस्राव | योनि से ख़ून आना |
+| Baby moving less | बाळाची हालचाल कमी होणे | शिशु की हलचल कम होना |
+| Severe headache / blurred vision | तीव्र डोकेदुखी / धूसर दिसणे | तेज़ सिरदर्द / धुंधला दिखना |
+| Swelling of face or hands | चेहरा / हातांवर सूज | चेहरे या हाथों पर सूजन |
+| Severe pain in abdomen | पोटात तीव्र दुखणे | पेट में तेज़ दर्द |
+| Fits / convulsions | झटके येणे | दौरे / झटके |
+| Breathlessness | दम लागणे | साँस फूलना |
+| Continuous vomiting | सतत उलट्या | लगातार उल्टी |
+| From 28 weeks count baby movements daily – at least 10 in 2 hours. | २८ आठवड्यांनंतर रोज बाळाच्या हालचाली मोजा – २ तासांत किमान १० हालचाली. | २८ हफ़्ते के बाद रोज़ शिशु की हलचल गिनें – २ घंटे में कम से कम १०। |
+| Take iron and calcium tablets daily, at different times. | लोह व कॅल्शियमच्या गोळ्या रोज, वेगवेगळ्या वेळी घ्या. | आयरन और कैल्शियम की गोलियाँ रोज़, अलग-अलग समय पर लें। |
+| Bring this plan and all reports to every visit. | प्रत्येक भेटीला ही योजना व सर्व रिपोर्ट्स सोबत आणा. | हर जाँच पर यह योजना और सभी रिपोर्ट साथ लाएँ। |
+| Dates are approximate target dates; the doctor may change the plan at any visit. Fetal sex is not disclosed (PC-PNDT Act). | तारखा अंदाजे आहेत; डॉक्टर कोणत्याही भेटीत योजना बदलू शकतात. गर्भाचे लिंग सांगितले जात नाही (PC-PNDT कायदा). | तारीख़ें अनुमानित हैं; डॉक्टर किसी भी जाँच पर योजना बदल सकते हैं। गर्भ का लिंग नहीं बताया जाता (PC-PNDT अधिनियम)। |
+| Mother’s age (under 18 or over 35) | आईचे वय (१८ पेक्षा कमी किंवा ३५ पेक्षा जास्त) | माँ की उम्र (१८ से कम या ३५ से ज़्यादा) |
+| High body weight | जास्त वजन | ज़्यादा वज़न |
+| Short height | कमी उंची | कम लंबाई |
+| Anaemia | रक्तक्षय (ॲनिमिया) | ख़ून की कमी (एनीमिया) |
+| Rh-negative blood group | Rh-निगेटिव्ह रक्तगट | Rh-नेगेटिव ब्लड ग्रुप |
+| Rh antibodies in an earlier pregnancy | मागील गरोदरपणात Rh प्रतिपिंडे | पिछली गर्भावस्था में Rh एंटीबॉडी |
+| Previous caesarean | यापूर्वी सिझेरियन | पहले सिज़ेरियन |
+| Two or more previous caesareans | यापूर्वी दोन किंवा अधिक सिझेरियन | पहले दो या अधिक सिज़ेरियन |
+| Earlier operation on the womb | गर्भाशयावर यापूर्वी शस्त्रक्रिया | गर्भाशय का पहले ऑपरेशन |
+| Four or more births before | यापूर्वी चार किंवा अधिक प्रसूती | पहले चार या अधिक प्रसव |
+| A problem in an earlier pregnancy | मागील गरोदरपणात त्रास | पिछली गर्भावस्था में समस्या |
+| Twins or more | जुळी किंवा अधिक बाळे | जुड़वाँ या अधिक बच्चे |
+| Low-lying placenta | वार खाली असणे | आँवल नीचे होना |
+| Bleeding in this pregnancy | या गरोदरपणात रक्तस्राव | इस गर्भावस्था में ख़ून आना |
+| High blood pressure | उच्च रक्तदाब | हाई ब्लड प्रेशर |
+| Diabetes (high sugar) | मधुमेह (साखर) | मधुमेह (शुगर) |
+| Thyroid problem | थायरॉईडचा त्रास | थायरॉइड की समस्या |
+| Asthma | दमा | दमा |
+| Heart problem | हृदयाचा आजार | दिल की बीमारी |
+| Kidney problem | मूत्रपिंडाचा आजार | गुर्दे की बीमारी |
+| Liver problem | यकृताचा आजार | लिवर की बीमारी |
+| Fits (epilepsy) | फिट्स (अपस्मार) | मिर्गी |
+| Blood clotting problem | रक्त गोठण्याचा त्रास | ख़ून जमने की समस्या |
+| Autoimmune illness | ऑटोइम्यून आजार | ऑटोइम्यून बीमारी |
+
+Also in that file: `०१२३४५६७८९` (Devanagari digits for "महिना ३").
