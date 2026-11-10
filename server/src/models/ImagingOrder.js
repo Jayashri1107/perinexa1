@@ -64,6 +64,10 @@ const imagingSchema = new mongoose.Schema(
     // The scan number on the ultrasound machine's worklist (DICOM accession number, at most 16 characters): given the
     // first time the order goes to the machine (routes/scanBridge.js), e.g. US00000012. null: never sent.
     accession: { type: String, default: null },
+    // Urgent findings (docs/USG_APPS_REVIEW.md U2): worked out from the report's values when it is signed
+    // (imaging/urgentFindings.js); shown on her doctor's Today page until a doctor marks them seen (urgentSeen).
+    urgentFindings: { type: [new mongoose.Schema({ key: String, text: String }, { _id: false })], default: [] },
+    urgentSeen: stamp(),
     rev: { type: Number, default: 0 },
     clientRequestId: { type: String, required: true, maxlength: 64 },
   },

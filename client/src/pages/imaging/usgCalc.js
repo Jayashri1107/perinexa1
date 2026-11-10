@@ -74,10 +74,18 @@ function normalCdf(z) {
   return z >= 0 ? (1 + erf) / 2 : (1 - erf) / 2;
 }
 
+/** The mean fetal weight in grams for the weeks (Hadlock 1991 in-utero standard). */
+export const meanWeight = (weeks) => Math.exp(0.578 + 0.332 * weeks - 0.00354 * weeks ** 2);
+/** The 10th, 50th and 90th centile weights for the weeks (Hadlock 1991: SD 12.7 % of the mean) – the growth graph's lines. */
+export function weightBand(weeks) {
+  const m = meanWeight(weeks);
+  return { p10: m * (1 - 1.2816 * 0.127), p50: m, p90: m * (1 + 1.2816 * 0.127) };
+}
+
 /** The centile (1–99) of a fetal weight for the weeks by her dates (Hadlock 1991: mean, SD 12.7 % of the mean). */
 export function weightCentile(grams, weeks) {
   if (!has(grams) || !has(weeks) || weeks < 10 || weeks > 42) return null;
-  const mean = Math.exp(0.578 + 0.332 * weeks - 0.00354 * weeks ** 2);
+  const mean = meanWeight(weeks);
   const c = Math.round(100 * normalCdf((grams - mean) / (0.127 * mean)));
   return Math.min(99, Math.max(1, c));
 }
@@ -89,8 +97,22 @@ const dayOf = (d) => {
 };
 const showDay = (ms) => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-const PREGNANCY_STUDIES = ['usg_early', 'usg_nt', 'usg_anomaly', 'usg_growth'];
+const PREGNANCY_STUDIES = ['usg_early', 'usg_nt', 'usg_anomaly', 'usg_growth', 'usg_twins'];
 export const isPregnancyStudy = (study) => PREGNANCY_STUDIES.includes(study);
+
+/** Weeks of pregnancy by her dates on a day (the EDD on her record); null when not known. */
+export function weeksByDates(eddByDates, on) {
+  if (!eddByDates || !on) return null;
+  const w = (280 - (dayOf(eddByDates) - dayOf(on)) / DAY) / 7;
+  return w > 0 && w < 45 ? w : null;
+}
+
+/** The weight difference between twins in % of the larger (null when either weight is missing) – the server's rule too. */
+export function twinDiscordance(a, b) {
+  const [x, y] = [reading(a), reading(b)];
+  if (!x || !y) return null;
+  return Math.round((100 * Math.abs(x - y)) / Math.max(x, y));
+}
 
 /**
  * What is worked out from the readings of a scan. on: the scan day; eddByDates: the EDD on her record (null when
@@ -100,6 +122,7 @@ export function workOut(study, values, { on = new Date(), eddByDates = null } = 
   const v = Object.fromEntries(['crl', 'msd', 'bpd', 'hc', 'ac', 'fl'].map((k) => [k, reading(values?.[k])]));
   const out = { ga: null, gaFrom: null, edd: null, efw: null, efwCentile: null, datesGa: null, fill: {} };
   if (!isPregnancyStudy(study)) return out;
+  if (study === 'usg_twins') return workOutTwins(values, { on, eddByDates }, out);
   const fromCrl = study === 'usg_early' || study === 'usg_nt' ? weeksFromCrl(v.crl) : null;
   const fromBio = study === 'usg_anomaly' || study === 'usg_growth' ? weeksFromBiometry(v) : null;
   const fromMsd = study === 'usg_early' && !fromCrl && v.msd && v.msd <= 60 ? (v.msd + 30) / 7 : null;
@@ -123,6 +146,25 @@ export function workOut(study, values, { on = new Date(), eddByDates = null } = 
   if (out.edd && study === 'usg_early') out.fill.edd = out.edd;
   if (out.efw) out.fill.efw = String(out.efw);
   if (out.efwCentile && study === 'usg_growth') out.fill.efwCentile = `${ordinal(out.efwCentile)} centile for ${gaWords(out.datesGa)} by dates`;
+  return out;
+}
+
+// Twins (docs/USG_APPS_REVIEW.md U4): each twin's estimated weight (Hadlock 1985) and its centile for the weeks by her
+// dates, and the weight difference. No scan dating from twins' biometry: their weeks come from her dates.
+function workOutTwins(values, { on, eddByDates }, out) {
+  const w = weeksByDates(eddByDates, on);
+  if (w) out.datesGa = weeksDays(w);
+  out.twins = [1, 2].map((n) => {
+    const v = Object.fromEntries(['bpd', 'hc', 'ac', 'fl'].map((k) => [k, reading(values?.[`${k}${n}`])]));
+    const efw = estimatedWeight(v);
+    return { efw, centile: efw && w ? weightCentile(efw, w) : null };
+  });
+  out.twins.forEach((t, i) => {
+    if (t.efw) out.fill[`efw${i + 1}`] = String(t.efw);
+  });
+  const [a, b] = out.twins.map((t, i) => t.efw ?? reading(values?.[`efw${i + 1}`]));
+  out.discordance = twinDiscordance(a, b);
+  if (out.discordance != null) out.fill.discordance = `${out.discordance} %${a !== b ? ` (twin ${a > b ? 1 : 2} heavier)` : ''}`;
   return out;
 }
 
@@ -178,12 +220,32 @@ export function draftReport(study, values, calc, fields = []) {
     if (filled(v.doppler)) lines.push(`Doppler: ${v.doppler}`);
     if (filled(v.anatomy)) lines.push(`Fetal anatomy: ${v.anatomy}`);
     if (reading(v.cervix)) lines.push(`Cervical length ${fmt(v.cervix)} mm.`);
+  } else if (study === 'usg_twins') {
+    if (filled(v.chorionicity)) lines.push(`Twin pregnancy, ${v.chorionicity}.`);
+    for (const n of [1, 2]) {
+      const c = calc.twins?.[n - 1];
+      const parts = [['bpd', 'BPD'], ['hc', 'HC'], ['ac', 'AC'], ['fl', 'FL']].filter(([k]) => reading(v[`${k}${n}`])).map(([k, l]) => `${l} ${fmt(v[`${k}${n}`])} mm`);
+      const each = [
+        filled(v[`presentation${n}`]) ? `${v[`presentation${n}`]} presentation` : '',
+        reading(v[`fhr${n}`]) ? `fetal heart rate ${fmt(v[`fhr${n}`])} bpm` : '',
+        parts.length ? `biometry ${parts.join(', ')}` : '',
+        c?.efw ? `estimated fetal weight ${c.efw} g${c.centile ? ` (${ordinal(c.centile)} centile for ${gaWords(calc.datesGa)} by dates)` : ''}` : '',
+        reading(v[`dvp${n}`]) ? `deepest vertical pocket ${fmt(v[`dvp${n}`])} cm` : '',
+      ].filter(Boolean);
+      if (each.length) lines.push(`Twin ${n}: ${each.join('; ')}.`);
+    }
+    if (calc.discordance != null) lines.push(`Weight difference between the twins ${calc.discordance} %.`);
+    if (filled(v.placenta)) lines.push(`Placenta(s): ${v.placenta}`);
+    if (reading(v.cervix)) lines.push(`Cervical length ${fmt(v.cervix)} mm.`);
   } else {
     // Other scans: each reading as a line, in the template's order
     for (const f of fields) if (filled(v[f.key])) lines.push(`${f.name}: ${fmt(v[f.key])}${f.unit && reading(v[f.key]) ? ` ${f.unit}` : ''}.`.replace(/\.\.$/, '.'));
   }
   let impression = '';
-  if (isPregnancyStudy(study) && !(study === 'usg_early' && v.site === 'Not seen in the uterus')) {
+  if (study === 'usg_twins') {
+    const live = reading(v.fhr1) && reading(v.fhr2) ? ' live' : '';
+    impression = `Twin${live} pregnancy${filled(v.chorionicity) && v.chorionicity !== 'Not certain' ? `, ${v.chorionicity}` : ''}${calc.datesGa ? `, ${gaWords(calc.datesGa)} by dates` : ''}.`;
+  } else if (isPregnancyStudy(study) && !(study === 'usg_early' && v.site === 'Not seen in the uterus')) {
     const many = v.number === 'Twins' ? 'Twin' : v.number === 'More than two' ? 'Multiple' : 'Single';
     const live = v.cardiac === 'Present' || (study !== 'usg_early' && reading(v.fhr)) ? ' live' : '';
     const where = study === 'usg_early' && v.site === 'Intrauterine' ? ' intrauterine' : '';

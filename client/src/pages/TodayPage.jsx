@@ -458,6 +458,8 @@ function RoleToday({ roles, lensBar = null }) {
   const inpatients = useFetch(clinicalWork ? '/inpatients' : null);
   // Lab (Version 2): results waiting for this doctor's review; the lab's own counts
   const labReview = useFetch(isDoctor ? '/lab/to-review' : null);
+  // Urgent scan findings of her doctor's patients, until a doctor marks them seen (docs/USG_APPS_REVIEW.md U2)
+  const scanUrgent = useFetch(isDoctor ? '/imaging/urgent' : null);
   const labWork = useFetch(roles.includes('lab') ? '/lab/worklist' : null);
   // The medical records staff: what is still unfinished in the records (the Records menu)
   const recordsWork = useFetch(roles.includes('records') ? '/records/incomplete' : null);
@@ -1083,6 +1085,29 @@ function RoleToday({ roles, lensBar = null }) {
                 </ul>
               )}
             </Paged>
+          </Section>
+        )}
+        {scanUrgent.data?.studies && scanUrgent.data.studies.length > 0 && (
+          <Section id="td-scan-urgent" icon={Siren} title="Urgent scan findings" count={scanUrgent.data.studies.length} empty="">
+            <ul className="wl-list">
+              {scanUrgent.data.studies.map((o) => (
+                <PatientRow
+                  key={o.id}
+                  patient={o.patient}
+                  to={`/scans/${o.id}`}
+                  openLabel="Open the scan report"
+                  marker={
+                    <StatusPill tone="high" icon={Siren}>
+                      Urgent
+                    </StatusPill>
+                  }
+                >
+                  <p className="hint">
+                    {o.studyName} · {o.urgentFindings.map((u) => u.text).join('; ')} · signed by {o.signed?.byName}, {formatDateTime(o.signed?.at)}
+                  </p>
+                </PatientRow>
+              ))}
+            </ul>
           </Section>
         )}
         {!wardHome && inpatients.data && inpatients.data.admitted.length > 0 && (

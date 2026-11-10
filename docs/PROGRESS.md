@@ -1,5 +1,21 @@
 # Progress
 
+## Sonography, stage 1: urgent findings, twins, growth across scans (10 Nov 2026)
+The owner agreed to build U1–U5 of `docs/USG_APPS_REVIEW.md`; stage 1 is built (section 9 there).
+- **Urgent findings:** a signed scan report with, for example, no cardiac activity, placenta covering the os, very
+  little liquor or a short cervix shows on **Today → Urgent scan findings** of her doctor, and on the scan's page,
+  until a doctor clicks **Seen** (audited). The list and limits are **DRAFT for the owner**.
+- **Twins template:** Scans → order **USG – twins**: chorionicity and each twin's measurements; each twin's weight,
+  centile and the weight difference are worked out and written into the report.
+- **Growth across scans:** on an anomaly, growth or twins scan's page and printout, the weight of each of her scans on
+  the Hadlock 10th / 50th / 90th lines, and a table of BPD, HC, AC, FL and weight across the scans.
+- **Waiting for the owner's published tables (stage 2):** Doppler normal ranges, a second growth chart, centile bands
+  for each measurement.
+- **How to check (fake data only):** a pregnancy patient with an EDD → Lab tab → order a growth scan → as sonography
+  staff mark it done and fill in BPD, HC, AC, FL, placenta "Covering the internal os" → a doctor signs it. The scan's
+  page shows **Urgent findings** and the growth graph; her doctor's **Today** lists it under Urgent scan findings until
+  **Seen**. Order **USG – twins** and fill in both twins to see the weights and the weight difference.
+
 ## Lab and pharmacy notes from the other Perinexa copy (10 Nov 2026, nothing built)
 Brought over from `girishsolanke/perinexa` with a note at the top of each on where perinexa1 differs: the lab –
 `docs/PATHOLOGY_APPS_REVIEW.md` and `docs/LAB_BUILD_NOTE.md` (the owner's four features P4, P5, P6, P9); the pharmacy
