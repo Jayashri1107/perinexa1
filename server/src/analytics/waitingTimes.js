@@ -93,7 +93,7 @@ export async function hospitalWaitingTimes(req, { audience, periodKey }) {
   let rows = await loadFlows(req.tenantId, period.from, period.to);
   if (audience === 'doctor' && rows.length) {
     const ids = [...new Set(rows.map((r) => r.patientId))];
-    const patients = await Patient.find({ tenantId: req.tenantId, _id: { $in: ids } }).select(PATIENT_FIELDS.join(' ')).lean();
+    const patients = await Patient.find({ tenantId: req.tenantId, _id: { $in: ids } }).select(PATIENT_FIELDS).lean();
     const visible = visibleSet(req, patients);
     rows = rows.filter((r) => visible.has(r.patientId));
   }

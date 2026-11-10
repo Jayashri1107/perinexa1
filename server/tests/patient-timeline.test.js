@@ -72,25 +72,30 @@ async function aDay() {
   expect(rx.status, JSON.stringify(rx.body)).toBe(200);
   vi.setSystemTime(at(65));
   expect((await (await as('drA')).post(url(p, `/${v.id}/printed`)).send({})).status).toBe(200);
+  sessions = {}; // the day took over 30 minutes: everyone signs in afresh (the inactivity logout)
   return { p, v };
 }
+// Records read in a test always name the hospital (the app refuses a query without it)
+const visitDoc = (id) => Visit.findOne({ _id: id, tenantId: hospital._id }).lean();
+const patientDoc = (id) => Patient.findOne({ _id: id, tenantId: hospital._id }).lean();
 
 describe('the moments are noted by themselves, once each', () => {
   it('registration start, vitals, the RMO, the doctor and the finish – with the role, never the person', async () => {
     const { p, v } = await aDay();
-    const saved = await Visit.findById(v.id).lean();
+    const saved = await visitDoc(v.id);
     expect(saved.flow).toEqual({ startedRole: 'nurse', vitalsFirstAt: at(10), rmoFirstAt: at(25), doctorFirstAt: at(50), finishedAt: at(65) });
-    const patient = await Patient.findById(p.id).lean();
+    const patient = await patientDoc(p.id);
     expect(patient.registrationStartedAt).toEqual(new Date(START.getTime() - 300_000));
   });
 
   it('a form left open more than an hour is not kept; a visit opened on another day is not "starts seeing her"', async () => {
     const p = await register('reception', { registrationSeconds: 7200 });
-    expect((await Patient.findById(p.id).lean()).registrationStartedAt).toBeNull();
+    expect((await patientDoc(p.id)).registrationStartedAt).toBeNull();
     const v = (await (await as('nurse')).post(url(p)).send({ clientRequestId: randomUUID() })).body.visit;
     vi.setSystemTime(new Date('2026-11-11T05:00:00Z'));
-    await (await as('drA')).get(url(p, `/${v.id}`));
-    expect((await Visit.findById(v.id).lean()).flow.doctorFirstAt).toBeNull();
+    sessions = {};
+    expect((await (await as('drA')).get(url(p, `/${v.id}`))).status).toBe(200);
+    expect((await visitDoc(v.id)).flow.doctorFirstAt).toBeNull();
   });
 });
 
@@ -109,14 +114,16 @@ describe('Time in hospital: one visit, for her doctor only', () => {
 
   it('RMOs, nurses, reception and the hospital admin get 403; another hospital cannot reach the visit', async () => {
     const { p, v } = await aDay();
-    for (const who of ['rmo', 'nurse', 'reception', 'admin']) expect((await (await as(who)).get(url(p, `/${v.id}/timeline`))).status).toBe(403);
+    for (const who of ['rmo', 'nurse', 'reception', 'admin']) expect((await (await as(who)).get(url(p, `/${v.id}/timeline`))).status, who).toBe(403);
     expect([403, 404]).toContain((await (await as('outsider')).get(url(p, `/${v.id}/timeline`))).status);
   });
 
   it('a super admin working inside the hospital never sees one patient’s timeline (numbers only, always)', async () => {
     const { p, v } = await aDay();
     const root = await loginAs(await createSuperAdmin(), { app });
-    expect((await root.switchTo(hospital)).status).toBe(200);
+    const opened = await root.agent.post('/api/auth/open-hospital').send({ tenantId: hospital._id.toString() });
+    expect(opened.status, JSON.stringify(opened.body)).toBe(200);
+    root.activeTenantId = opened.body.activeTenantId;
     expect((await root.get(url(p, `/${v.id}/timeline`))).status).toBe(403);
   });
 });
