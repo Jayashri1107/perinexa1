@@ -29,6 +29,34 @@ export function suggestedStayType(careType) {
   return '';
 }
 
+/**
+ * The two colour labels of patients on the doctor's Today list (owner, 10 Nov 2026), for doctors and RMOs only:
+ *  - admission type: her stay's while she is admitted (so Delivered can show); otherwise from her type of care –
+ *    antenatal → ANC, postnatal → PNC, anyone else → Other;
+ *  - billing type: her stay's while she is admitted, otherwise her own (Insurance, Cash, Package; '' when not set).
+ * patients: lean records with _id and careType. Returns Map(patient id → { stayType, billingType }).
+ */
+export async function todayLabelsOf(tenantId, patients) {
+  const out = new Map();
+  if (!patients.length) return out;
+  const ids = patients.map((p) => p._id);
+  const [stays, payers] = await Promise.all([
+    Admission.find({ tenantId, status: 'admitted', patientId: { $in: ids } }, { patientId: 1, stayType: 1, billingType: 1 }).lean(),
+    Patient.find({ tenantId, _id: { $in: ids } }, { 'payer.type': 1 }).lean(),
+  ]);
+  const stayOf = new Map(stays.map((s) => [String(s.patientId), s]));
+  const payerOf = new Map(payers.map((p) => [String(p._id), p.payer?.type || '']));
+  for (const p of patients) {
+    const id = String(p._id);
+    const stay = stayOf.get(id);
+    out.set(id, {
+      stayType: stay?.stayType || suggestedStayType(p.careType) || 'other',
+      billingType: stay?.billingType || payerOf.get(id) || '',
+    });
+  }
+  return out;
+}
+
 /** The admission type sent with an admission – a baby's is Other when not chosen; anyone else's must be chosen. */
 export function stayTypeOf(body, patient) {
   if (body.stayType) return body.stayType;
