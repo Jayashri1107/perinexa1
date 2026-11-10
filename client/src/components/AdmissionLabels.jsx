@@ -38,7 +38,7 @@ export function BillingLabel({ type }) {
   const b = BILLING[type];
   if (!b) return null;
   return (
-    <StatusPill tone={b.tone} icon={b.icon} title={`Billing: ${b.word}`} className="adm-label">
+    <StatusPill tone={b.tone} icon={b.icon} title={`Billing: ${b.word}`} className={`adm-label bill-label bill-${type}`}>
       {b.word}
     </StatusPill>
   );

@@ -19,6 +19,7 @@ import { patientsWithMissingDetails } from '../patients/missingDetails.js';
 import { openFollowUpsOf } from './addedFollowUps.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
+import { seesBillingType, todayLabelsOf } from '../inpatient/admissionLabels.js';
 import { inHospitalNow } from '../reminders/generalReminders.js';
 import { VACCINATION_LIST_DAYS } from '../reminders/reminderRules.js';
 import { HttpError } from '../utils/httpError.js';
@@ -109,6 +110,9 @@ export async function todayFor(req, askedScope) {
   const shown = found.map((p) => ({ p, level: calendarLevel(req, p) })).filter(({ p, level }) => level && inScope(req, scope, p));
   // Follow-ups added by hand that are still open (she has not checked in for them yet)
   const followUps = await openFollowUpsOf(tenantId, shown.map(({ p }) => p._id));
+  // The colour labels – admission type and billing type – for doctors and RMOs only (owner, 10 Nov 2026 –
+  // docs/ADMISSION_COLOURS_PLAN.md): never sent to reception or nurses
+  const labels = seesBillingType(req.membership) ? await todayLabelsOf(tenantId, shown.map(({ p }) => p)) : null;
 
   // The call lists (reception).
   const seenToday = new Set([...firstVisit.keys(), ...arrivals.keys(), ...registered.keys()]);
@@ -156,6 +160,7 @@ export async function todayFor(req, askedScope) {
         // Why she came (marked at check-in), and her open follow-up (with which doctor, what for)
         purpose: marked?.purpose?.kind ? { kind: marked.purpose.kind, note: marked.purpose.note ?? '' } : null,
         followUp: followUps.get(id)?.[0] ?? null,
+        ...(labels?.get(id) ?? {}),
         // The visit to open: doctors and RMOs who may see this patient's visits only.
         ...(level === 'clinical' && visit ? { visitId: String(visit._id) } : {}),
       };
