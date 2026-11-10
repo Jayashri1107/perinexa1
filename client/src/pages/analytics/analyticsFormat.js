@@ -258,7 +258,7 @@ export const monthWords = (month) => {
  */
 export function analyticsTabs(base, search = '', { ask = false, report = false, waiting = false } = {}) {
   const tabs = SECTIONS.map((s) => ({ label: SECTION_LABELS[s], to: `${s === 'overview' ? base : `${base}/${s}`}${search}`, end: true }));
-  if (waiting) tabs.push({ label: 'Waiting times', to: `${base}/waiting`, end: true });
+  if (waiting) tabs.push({ label: 'Waiting times', to: `${base}/waiting`, end: true }, { label: 'Lab times', to: `${base}/lab-times`, end: true });
   if (report) tabs.push({ label: 'By doctor', to: '/analytics/doctors', end: true }, { label: 'Monthly report', to: '/analytics/report', end: true });
   if (ask) tabs.push({ label: 'Ask your records', to: '/analytics/ask', end: true });
   return tabs;

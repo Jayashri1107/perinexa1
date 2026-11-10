@@ -6,7 +6,7 @@
 > `docs/LAB_V2_PLAN.md`), sample numbers and labels, the check before the report, outside labs, QC
 > (`labQc.js`), stock (`labStock.js`) and packages. Read section 1 ("what exists") again against this code before
 > building – for example the test list is not only in `lab/labTests.js` here. The ideas list in this repository is
-> `docs/IDEAS_FOR_LATER.md`. **Nothing is built**; when is for the developer and the owner to agree.
+> `docs/IDEAS_FOR_LATER.md`. **Built on 10 Nov 2026 (branch `lab-four`) without the clinical numbers – see section 0.**
 
 Written 10 Nov 2026 for the developer, at the owner's request. After a review of pathology laboratory software
 (`docs/PATHOLOGY_APPS_REVIEW.md`), the owner chose **four features and only these four** for the lab module:
@@ -18,9 +18,35 @@ Written 10 Nov 2026 for the developer, at the owner's request. After a review of
 | P6 | **Earlier results, a graph, and a second look at a big change** | The last values beside today's, a graph over time, and a question to the lab when a result is far from the last one |
 | P9 | **Time taken** | An expected time for each test, what is late in the Lab list, and the lab's times in Analytics |
 
-**Nothing is built.** The feature pause in `CLAUDE.md` still holds: when these are built is for the developer and the
-owner to agree. The numbers P4, P5, P6 and P9 are the owner's names for them and are kept so that both mean the same
+**Built in perinexa1 on 10 Nov 2026 (section 0)**, with every clinical number left for the owner (section 7). The numbers P4, P5, P6 and P9 are the owner's names for them and are kept so that both mean the same
 thing. Sections 2 to 6 are written engineer to engineer; section 7 is the owner's part.
+
+## 0. Built in perinexa1 (10 Nov 2026, branch `lab-four`) – what differs from this note
+
+The four features are built with **no clinical numbers filled in** (section 7 is still the owner's). Against the note:
+- **P4** – perinexa1 already had group ranges (age, sex, pregnant or not – `lab/labSetup.js` bands, DRAFT and approved
+  per test in Lab → Tests). Added to them: `fromWeeks` / `toWeeks` (only with "pregnant"; weeks from `eddInUse` on the
+  sample's day) and `pregnant: 'postnatal'` (after delivery). The context is worked out at the sample's time
+  (`sampleTime` in `routes/lab.js`). Each value keeps `range` (words without the weeks – what the lab sees and the
+  report prints) and `rangeWho` ("Pregnant, 14–27 weeks" – clinical users only). The red-flag rules are **not** yet
+  shown beside the ranges on the approval screen.
+- **P5** – the critical limits are `criticalLow` / `criticalHigh` on a number value **in the hospital's test settings**
+  (`LabTestSetting`, the same DRAFT → doctor-approved versions as the ranges) rather than a separate list document.
+  Number values only: a critical *choice* (a baby's blood culture "Growth") is not built yet. The order keeps
+  `critical { values, calls, notReached, acknowledged, open }`; `PUT /results` (report or amendment) and
+  `POST /verify` (the hospital's check) answer `409 CRITICAL_CALL` without a call or a not-reached note;
+  `POST /orders/:id/critical-call` and `POST /orders/:id/acknowledge` (whoever may review; reviewing also
+  acknowledges). The worklist has a `critical` list. Who acknowledges at night (RMO or doctor) is still open.
+- **P6** – perinexa1 already had her earlier results beside each value and a "Big change" mark (`deltaPercent`, Lab
+  version 2). Added: the question before the report (`409 DELTA_CHECK` unless `deltaConfirmed`; kept in
+  `order.deltaChecks`, audited `LAB_DELTA_CONFIRMED`), asked once per value; Results over time and inline-SVG graphs on
+  the Lab tab (`LabTrends.jsx`, `GRAPH_VALUES` in `labFormat.js` – the proposed set). Not built: `withinDays` (a big
+  change is measured against her last result however old).
+- **P9** – perinexa1 already had due times per test (`tatHours`, `urgentTatHours`, `dueAt`) and the Late mark in the
+  lists. Added: `firstReported` and **Analytics → Lab times** (`analytics/labTimes.js`, its own page beside Waiting
+  times, the same protection). Old orders: `reported` when never amended, else left out – the audit-log fallback was
+  not built. Closed hours are counted (open point), and the lab in-charge sees no figures.
+- Tests: `server/tests/lab-four.test.js`.
 
 ## 1. What exists today (read in the code, 10 Nov 2026)
 

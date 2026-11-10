@@ -47,7 +47,8 @@ const INPATIENT_DETAIL_FIELDS = ['patientId', 'mrn', 'admissionId', 'documentId'
 const LAB_ACTIONS = new Set(AUDIT_CATEGORIES.patients.filter((a) => a.startsWith('LAB_')));
 // reason: the code of a rejected sample's reason (haemolysed …); confidential: a printed report included a confidential
 // test; from, to, results: the dates of the lab register and how many orders a list showed.
-const LAB_DETAIL_FIELDS = ['patientId', 'mrn', 'orderId', 'fileId', 'tests', 'reason', 'confidential', 'from', 'to', 'results', 'practice', 'status', 'walkIn'];
+// values: how many values a critical call or a big-change check was about (a count - never a value or a test)
+const LAB_DETAIL_FIELDS = ['patientId', 'mrn', 'orderId', 'fileId', 'tests', 'reason', 'confidential', 'from', 'to', 'results', 'practice', 'status', 'walkIn', 'values'];
 // Referrals from other doctors (docs/REFERRALS_PLAN.md) and the referring doctors: ids, which message was marked sent
 // (what), the kind of PDF (kind), her Yes or No to sharing (answer), which promise a review is about, and the names
 // of the fields changed – never the referring doctor's words, the question, a reason, the consultant note, a name or a

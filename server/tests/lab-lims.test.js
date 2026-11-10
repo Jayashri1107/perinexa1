@@ -151,7 +151,8 @@ describe("the hospital's test list", () => {
       return { field: view.catalogue.tests.find((x) => x.key === 'hb').fields[0], value: res.body.order.tests[0].values[0] };
     };
     const m = await report(mother);
-    expect(m.field).toMatchObject({ low: 10.5, high: 14, band: 'Pregnant' });
+    expect(m.field).toMatchObject({ low: 10.5, high: 14 });
+    expect(m.field.band).toBeUndefined(); // P4 (docs/LAB_BUILD_NOTE.md): the lab sees the numbers, not whom the range is for
     expect(m.value).toMatchObject({ value: '10.8', flag: 'normal', range: '10.5–14 g/dL (pregnant)' });
     const g = await report(gyn);
     expect(g.field).toMatchObject({ low: 11, high: 16 });

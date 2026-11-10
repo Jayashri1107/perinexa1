@@ -20,10 +20,35 @@ import { TestStatus, rupees } from './LabTestsPage.jsx';
 
 const num = (v) => (v === '' || v == null ? null : Number(v));
 const text = (v) => (v == null ? '' : String(v));
-const emptyBand = () => ({ pregnant: '', sex: '', ageUnit: 'years', fromAge: '', toAge: '', low: '', high: '', range: '' });
-const bandForm = (b) => ({ pregnant: b.pregnant ?? '', sex: b.sex ?? '', ageUnit: b.ageUnit ?? 'years', fromAge: text(b.fromAge), toAge: text(b.toAge), low: text(b.low), high: text(b.high), range: b.range ?? '' });
-const bandBody = (b) => ({ pregnant: b.pregnant, sex: b.sex, ageUnit: b.ageUnit, fromAge: num(b.fromAge), toAge: num(b.toAge), low: num(b.low), high: num(b.high), range: b.range.trim() });
-const emptyField = () => ({ name: '', type: 'number', unit: '', low: '', high: '', range: '', deltaPercent: '', options: '', abnormal: '', bands: [], section: '', long: false });
+// fromWeeks / toWeeks: weeks of pregnancy at the sample (P4 - docs/LAB_BUILD_NOTE.md), only for "Pregnant"
+const emptyBand = () => ({ pregnant: '', sex: '', ageUnit: 'years', fromAge: '', toAge: '', fromWeeks: '', toWeeks: '', low: '', high: '', range: '' });
+const bandForm = (b) => ({ pregnant: b.pregnant ?? '', sex: b.sex ?? '', ageUnit: b.ageUnit ?? 'years', fromAge: text(b.fromAge), toAge: text(b.toAge), fromWeeks: text(b.fromWeeks), toWeeks: text(b.toWeeks), low: text(b.low), high: text(b.high), range: b.range ?? '' });
+const bandBody = (b) => ({
+  pregnant: b.pregnant,
+  sex: b.sex,
+  ageUnit: b.ageUnit,
+  fromAge: num(b.fromAge),
+  toAge: num(b.toAge),
+  ...(b.pregnant === 'yes' ? { fromWeeks: num(b.fromWeeks), toWeeks: num(b.toWeeks) } : {}),
+  low: num(b.low),
+  high: num(b.high),
+  range: b.range.trim(),
+});
+const emptyField = () => ({ name: '', type: 'number', unit: '', low: '', high: '', range: '', deltaPercent: '', criticalLow: '', criticalHigh: '', options: '', abnormal: '', bands: [], section: '', long: false });
+
+/** The critical limits of one number value (P5): a value at or beyond one needs the lab's call to a doctor. */
+function CriticalLimits({ id, value, onChange, disabled }) {
+  return (
+    <>
+      <Field label="Critical at or below" id={`${id}-clow`} hint="Empty = none. DRAFT until a doctor approves.">
+        <input id={`${id}-clow`} inputMode="decimal" className="tabular" value={value.criticalLow} disabled={disabled} onChange={(e) => onChange('criticalLow', e.target.value)} />
+      </Field>
+      <Field label="Critical at or above" id={`${id}-chigh`} hint="Empty = none.">
+        <input id={`${id}-chigh`} inputMode="decimal" className="tabular" value={value.criticalHigh} disabled={disabled} onChange={(e) => onChange('criticalHigh', e.target.value)} />
+      </Field>
+    </>
+  );
+}
 const lines = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
 const list = (t) => t.split(',').map((x) => x.trim()).filter(Boolean);
 
@@ -42,9 +67,21 @@ function Bands({ bands, baby, prefix, errors, onChange, disabled }) {
                 <select id={`${id}-preg`} value={b.pregnant} disabled={disabled} onChange={(e) => set(j, 'pregnant', e.target.value)}>
                   <option value="">Any</option>
                   <option value="yes">Pregnant (antenatal care)</option>
+                  <option value="postnatal">After delivery (postnatal care)</option>
                   <option value="no">Not pregnant</option>
                 </select>
               </Field>
+              {/* Weeks of pregnancy at the sample, from her EDD (P4). Lab staff see the numbers, not the weeks. */}
+              {b.pregnant === 'yes' && !baby && (
+                <>
+                  <Field label="From week of pregnancy" id={`${id}-fromw`}>
+                    <input id={`${id}-fromw`} inputMode="numeric" value={b.fromWeeks} disabled={disabled} onChange={(e) => set(j, 'fromWeeks', e.target.value)} />
+                  </Field>
+                  <Field label="To week of pregnancy" id={`${id}-tow`} hint="For example 14 to 27 for the second trimester.">
+                    <input id={`${id}-tow`} inputMode="numeric" value={b.toWeeks} disabled={disabled} onChange={(e) => set(j, 'toWeeks', e.target.value)} />
+                  </Field>
+                </>
+              )}
               {/* The patient's own sex: a baby's recorded after birth, an adult's (a man registered by the lab) */}
               <Field label={baby ? "Baby's sex (after birth)" : 'Sex'} id={`${id}-sex`}>
                 <select id={`${id}-sex`} value={b.sex} disabled={disabled} onChange={(e) => set(j, 'sex', e.target.value)}>
@@ -84,7 +121,7 @@ function Bands({ bands, baby, prefix, errors, onChange, disabled }) {
       })}
       {!disabled && bands.length < 10 && (
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => onChange([...bands, { ...emptyBand(), ageUnit: baby ? 'days' : 'years' }])}>
-          <Plus aria-hidden="true" /> Add a range for a group (age, sex, pregnant)
+          <Plus aria-hidden="true" /> Add a range for a group (age, sex, pregnant and weeks, after delivery)
         </button>
       )}
     </div>
@@ -111,7 +148,7 @@ function formOf(test) {
     const ranges = Object.fromEntries(
       test.fields
         .filter((f) => f.type === 'number')
-        .map((f) => [f.key, { low: text(f.low), high: text(f.high), range: test.fieldRanges?.[f.key]?.range ?? '', bands: (f.bands ?? []).map(bandForm), deltaPercent: text(f.deltaPercent) }]),
+        .map((f) => [f.key, { low: text(f.low), high: text(f.high), range: test.fieldRanges?.[f.key]?.range ?? '', bands: (f.bands ?? []).map(bandForm), deltaPercent: text(f.deltaPercent), criticalLow: text(f.criticalLow), criticalHigh: text(f.criticalHigh) }]),
     );
     return { ...common, ranges };
   }
@@ -121,7 +158,7 @@ function formOf(test) {
     name: test.name,
     group: test.group,
     sample: test.sample,
-    fields: test.fields.map((f) => ({ key: f.key, name: f.name, type: f.type, unit: f.unit ?? '', low: text(f.low), high: text(f.high), range: f.range ?? '', deltaPercent: text(f.deltaPercent), options: (f.options ?? []).join(', '), abnormal: (f.abnormal ?? []).join(', '), bands: (f.bands ?? []).map(bandForm), section: f.section ?? '', long: Boolean(f.long) })),
+    fields: test.fields.map((f) => ({ key: f.key, name: f.name, type: f.type, unit: f.unit ?? '', low: text(f.low), high: text(f.high), range: f.range ?? '', deltaPercent: text(f.deltaPercent), criticalLow: text(f.criticalLow), criticalHigh: text(f.criticalHigh), options: (f.options ?? []).join(', '), abnormal: (f.abnormal ?? []).join(', '), bands: (f.bands ?? []).map(bandForm), section: f.section ?? '', long: Boolean(f.long) })),
   };
 }
 
@@ -136,7 +173,7 @@ function bodyOf(test, form) {
     ...(form.template === 'culture' ? { antibiotics: lines(form.antibiotics) } : {}),
   };
   if (test && !test.custom) {
-    return { ...common, version: test.version, fieldRanges: Object.fromEntries(Object.entries(form.ranges).map(([k, r]) => [k, { low: num(r.low), high: num(r.high), range: r.range.trim(), bands: r.bands.map(bandBody), deltaPercent: num(r.deltaPercent) }])) };
+    return { ...common, version: test.version, fieldRanges: Object.fromEntries(Object.entries(form.ranges).map(([k, r]) => [k, { low: num(r.low), high: num(r.high), range: r.range.trim(), bands: r.bands.map(bandBody), deltaPercent: num(r.deltaPercent), criticalLow: num(r.criticalLow), criticalHigh: num(r.criticalHigh) }])) };
   }
   return {
     ...common,
@@ -148,7 +185,7 @@ function bodyOf(test, form) {
     fields: form.fields.map((f) => {
       const base = { ...(f.key ? { key: f.key } : {}), name: f.name.trim(), type: f.type, section: f.section.trim() };
       if (f.type === 'text') return { ...base, long: f.long };
-      if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: num(f.low), high: num(f.high), range: f.range.trim(), bands: f.bands.map(bandBody), deltaPercent: num(f.deltaPercent) };
+      if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: num(f.low), high: num(f.high), range: f.range.trim(), bands: f.bands.map(bandBody), deltaPercent: num(f.deltaPercent), criticalLow: num(f.criticalLow), criticalHigh: num(f.criticalHigh) };
       if (f.type === 'choice') return { ...base, options: list(f.options), abnormal: list(f.abnormal) };
       return base;
     }),
@@ -382,6 +419,7 @@ export function LabTestEditPage() {
                       <Field label="Big change from her last result (%)" id={`lt-${f.key}-delta`} hint="Empty = no flag. DRAFT until a doctor approves.">
                         <input id={`lt-${f.key}-delta`} inputMode="decimal" className="tabular" value={r.deltaPercent} disabled={locked} onChange={(e) => setRange(f.key, 'deltaPercent', e.target.value)} />
                       </Field>
+                      <CriticalLimits id={`lt-${f.key}`} value={r} disabled={locked} onChange={(k, v) => setRange(f.key, k, v)} />
                     </div>
                     <Bands bands={r.bands} baby={baby} prefix={at} errors={fields} disabled={locked} onChange={(v) => setRange(f.key, 'bands', v)} />
                   </fieldset>
@@ -426,6 +464,7 @@ export function LabTestEditPage() {
                         <Field label="Big change from her last result (%)" id={`lf-${i}-delta`} hint="Empty = no flag.">
                           <input id={`lf-${i}-delta`} inputMode="decimal" className="tabular" value={f.deltaPercent} disabled={locked} onChange={(e) => setField(i, 'deltaPercent', e.target.value)} />
                         </Field>
+                        <CriticalLimits id={`lf-${i}`} value={f} disabled={locked} onChange={(k, v) => setField(i, k, v)} />
                       </>
                     )}
                     {f.type === 'text' && (

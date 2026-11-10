@@ -19,6 +19,7 @@ import { shouldLogView } from '../analytics/auditThrottle.js';
 import { parsePeriod } from '../analytics/period.js';
 import { platformHospitals, platformSection } from '../analytics/platformTotals.js';
 import { WAIT_PERIODS, platformWaitingTimes } from '../analytics/waitingTimes.js';
+import { platformLabTimes } from '../analytics/labTimes.js';
 import { SECTIONS } from '../analytics/registry.js';
 import { cachedPlatformSection, keepPlatformSection, platformCacheKey } from '../analytics/sectionCache.js';
 
@@ -87,5 +88,16 @@ platformAnalyticsRouter.get('/waiting-times', async (req, res) => {
   const hospital = q.hospital === 'all' ? 'all' : String(tenants[0]._id);
   const key = `${req.user._id}|platform|${hospital}|waiting|platform`;
   if (shouldLogView(key, req.now)) await audit(req, 'ANALYTICS_VIEWED', { tenantId: null, details: { section: 'waiting', scope: 'platform', hospital } });
+  res.json({ audience: 'platform', calculatedAt: req.now, ...body });
+});
+
+// Lab times for the super admin (P9 – docs/LAB_BUILD_NOTE.md): per hospital and all together, numbers only.
+platformAnalyticsRouter.get('/lab-times', async (req, res) => {
+  const q = parse(z.object({ hospital: querySchema.shape.hospital, period: z.enum(Object.keys(WAIT_PERIODS)).optional() }), req.query);
+  const tenants = await platformHospitals(q.hospital);
+  const body = await platformLabTimes(tenants, { periodKey: q.period, now: req.now });
+  const hospital = q.hospital === 'all' ? 'all' : String(tenants[0]._id);
+  const key = `${req.user._id}|platform|${hospital}|lab_times|platform`;
+  if (shouldLogView(key, req.now)) await audit(req, 'ANALYTICS_VIEWED', { tenantId: null, details: { section: 'lab_times', scope: 'platform', hospital } });
   res.json({ audience: 'platform', calculatedAt: req.now, ...body });
 });

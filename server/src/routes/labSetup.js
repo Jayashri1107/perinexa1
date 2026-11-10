@@ -51,6 +51,9 @@ const bandSchema = z
     ageUnit: z.enum(AGE_UNITS).default('years'),
     fromAge: z.number().int().min(0).max(3650).nullable().default(null),
     toAge: z.number().int().min(0).max(3650).nullable().default(null),
+    // P4: weeks of pregnancy at the sample (only with "pregnant"), from her EDD
+    fromWeeks: z.number().int().min(0).max(45).nullable().default(null),
+    toWeeks: z.number().int().min(0).max(45).nullable().default(null),
     low: limit,
     high: limit,
     range: safeText('Range in words', 150).default(''),
@@ -70,6 +73,9 @@ const fieldSchema = z
     bands: z.array(bandSchema).max(MAX_BANDS, `At most ${MAX_BANDS} group ranges`).default([]),
     // Lab version 2: flag "Big change" when the value moved by at least this much from her last result (per cent)
     deltaPercent: z.number().min(1).max(1000).nullable().default(null),
+    // P5 (docs/LAB_BUILD_NOTE.md): the hospital's critical limits - a value at or beyond one needs the lab's call
+    criticalLow: limit,
+    criticalHigh: limit,
     // Report templates: the heading it prints under ("Microscopy"), and a paragraph instead of one line (words only)
     section: safeText('Section', 60).default(''),
     long: z.boolean().default(false),
@@ -77,7 +83,15 @@ const fieldSchema = z
   .strict();
 const optionalLimit = z.number('Enter a number').finite().nullable().optional(); // left out = the built-in limit
 const rangeSchema = z
-  .object({ low: optionalLimit, high: optionalLimit, range: safeText('Usual range in words', 150).default(''), bands: z.array(bandSchema).max(MAX_BANDS).optional(), deltaPercent: z.number().min(1).max(1000).nullable().default(null) })
+  .object({
+    low: optionalLimit,
+    high: optionalLimit,
+    range: safeText('Usual range in words', 150).default(''),
+    bands: z.array(bandSchema).max(MAX_BANDS).optional(),
+    deltaPercent: z.number().min(1).max(1000).nullable().default(null),
+    criticalLow: limit,
+    criticalHigh: limit,
+  })
   .strict();
 const hours = z.number('Enter the hours').int().min(1).max(2000).nullable().default(null);
 const commonShape = {
@@ -113,8 +127,16 @@ function checkBands(bands, who, at, fields) {
     if (b.low == null && b.high == null) fields[here] = 'Enter the lower or the upper limit (or both).';
     else if (b.low != null && b.high != null && b.low > b.high) fields[here] = 'The lower limit must not be above the upper limit.';
     if (b.fromAge != null && b.toAge != null && b.fromAge > b.toAge) fields[here] = 'The first age must not be after the last.';
+    if ((b.fromWeeks != null || b.toWeeks != null) && b.pregnant !== 'yes') fields[here] = 'Weeks of pregnancy are only for a range for pregnant women.';
+    if (b.fromWeeks != null && b.toWeeks != null && b.fromWeeks > b.toWeeks) fields[here] = 'The first week must not be after the last.';
+    if (b.pregnant && who === 'newborn') fields[here] = "Pregnant or after delivery is not for a baby's test.";
     if (!b.sex && !b.pregnant && b.fromAge == null && b.toAge == null) fields[here] = 'Say whom this range is for (an age, pregnant or not, women or men).';
   });
+}
+
+/** The critical limits of one value (P5): the low one below the high one. */
+function checkCritical(r, at, fields) {
+  if (r.criticalLow != null && r.criticalHigh != null && r.criticalLow >= r.criticalHigh) fields[at] = 'The low critical limit must be below the high one.';
 }
 
 /** The hospital's own test's values: keys kept or given, choices checked, limits in order. */
@@ -132,10 +154,11 @@ function checkedFields(data, fields) {
     if (f.type === 'number') {
       if (f.low != null && f.high != null && f.low > f.high) fields[at] = 'The lower limit must not be above the upper limit.';
       checkBands(f.bands, data.who, at, fields);
+      checkCritical(f, at, fields);
     }
     const base = { key, name: f.name.trim(), type: f.type, ...(f.section.trim() ? { section: f.section.trim() } : {}) };
     if (f.type === 'text' && f.long) return { ...base, long: true };
-    if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: f.low, high: f.high, range: f.range.trim() || rangeText(f.low, f.high, f.unit.trim()), bands: f.bands, deltaPercent: f.deltaPercent };
+    if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: f.low, high: f.high, range: f.range.trim() || rangeText(f.low, f.high, f.unit.trim()), bands: f.bands, deltaPercent: f.deltaPercent, criticalLow: f.criticalLow, criticalHigh: f.criticalHigh };
     if (f.type === 'choice') return { ...base, options: f.options.map((o) => o.trim()), abnormal: f.abnormal };
     return base;
   });
@@ -148,7 +171,7 @@ const clinicalOf = (s) =>
   JSON.stringify({ ...(s.custom ? { name: s.name, sample: s.sample, group: s.group, who: s.who, fields: s.fields } : { fieldRanges: s.fieldRanges ?? {} }), method: s.report?.method ?? null, notes: s.report?.notes ?? null });
 
 /** A group range in one shape, to tell whether the hospital's ranges differ from the built-in ones. */
-const bandKey = (b) => JSON.stringify([b.sex ?? '', b.pregnant ?? '', b.ageUnit ?? 'years', b.fromAge ?? null, b.toAge ?? null, b.low ?? null, b.high ?? null, b.range ?? '']);
+const bandKey = (b) => JSON.stringify([b.sex ?? '', b.pregnant ?? '', b.ageUnit ?? 'years', b.fromAge ?? null, b.toAge ?? null, b.low ?? null, b.high ?? null, b.range ?? '', b.fromWeeks ?? null, b.toWeeks ?? null]);
 const sameBands = (a, b) => JSON.stringify((a ?? []).map(bandKey)) === JSON.stringify((b ?? []).map(bandKey));
 
 /** What the hospital changed in how a test prints, over the built-in settings (only the parts that differ). */
@@ -253,6 +276,7 @@ labSetupRouter.put('/tests/:key', async (req, res) => {
       const high = r.high === undefined ? f.high : r.high;
       if (low != null && high != null && low > high) fields[`fieldRanges.${k}`] = 'The lower limit must not be above the upper limit.';
       checkBands(r.bands ?? [], builtIn.who, `fieldRanges.${k}`, fields);
+      checkCritical(r, `fieldRanges.${k}`, fields);
       const entry = {};
       if (low !== f.low) entry.low = low;
       if (high !== f.high) entry.high = high;
@@ -260,6 +284,8 @@ labSetupRouter.put('/tests/:key', async (req, res) => {
       // The built-in group ranges (men) stay unless the hospital's differ (an empty list then removes them)
       if (r.bands !== undefined && !sameBands(r.bands, f.bands)) entry.bands = r.bands;
       if (r.deltaPercent != null) entry.deltaPercent = r.deltaPercent;
+      if (r.criticalLow != null) entry.criticalLow = r.criticalLow;
+      if (r.criticalHigh != null) entry.criticalHigh = r.criticalHigh;
       if (Object.keys(entry).length) ranges[k] = entry;
     }
     s.fieldRanges = ranges;

@@ -7,8 +7,9 @@ import { Alert, Field, StatusPill, formatDateTime, useDialogFocus } from '../../
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { WorkDoneSection } from './WorkDoneSection.jsx';
+import { ResultsOverTime } from './LabTrends.jsx';
 import { PatientScans } from '../imaging/ImagingPages.jsx';
-import { FLAG_LOOK, dayOfLife, orderLook, packageFits, packageNames, packageWhen, resultLine, testsFor } from './labFormat.js';
+import { CRITICAL_LOOK, FLAG_LOOK, dayOfLife, orderLook, packageFits, packageNames, packageWhen, resultLine, testsFor } from './labFormat.js';
 
 // The Lab tab on the patient record (Version 2, lab module): every lab order, newest first, with its status and
 // the results in one line; "Order tests" for the patient's doctor and RMOs. An order opens on its own page.
@@ -229,6 +230,11 @@ export function PatientLabTab() {
                 Urgent
               </StatusPill>
             )}
+            {o.critical?.values?.length > 0 && (
+              <StatusPill tone={CRITICAL_LOOK.tone} icon={CRITICAL_LOOK.icon}>
+                {o.critical.acknowledged ? 'Critical – acknowledged' : CRITICAL_LOOK.word}
+              </StatusPill>
+            )}
             {o.abnormal && ['reported', 'reviewed'].includes(o.status) && (
               <StatusPill tone="high" icon={FLAG_LOOK.abnormal.icon}>
                 Outside range
@@ -275,6 +281,8 @@ export function PatientLabTab() {
         )}
       </section>
       <DataTable caption="Lab orders" columns={columns} rows={data?.orders} loading={loading} onRowClick={(o) => navigate(`/patients/${patient.id}/lab/${o.id}`)} emptyText="No lab tests ordered yet." />
+      {/* P6 (docs/LAB_BUILD_NOTE.md): her results by date, and graphs of the values followed over time */}
+      {data?.orders && <ResultsOverTime orders={data.orders} />}
       <PatientScans patient={patient} />
       <WorkDoneSection patient={patient} />
       {ordering && (
