@@ -11,6 +11,7 @@ const LIQUOR = ['Adequate', 'Reduced (oligohydramnios)', 'Increased (polyhydramn
 const PLACENTA = ['Anterior', 'Posterior', 'Fundal', 'Lateral', 'Low lying', 'Covering the internal os'];
 const PRESENTATION = ['Cephalic', 'Breech', 'Transverse', 'Oblique', 'Variable'];
 const PRESENT = ['Present', 'Absent'];
+const CHORIONICITY = ['Dichorionic diamniotic (DCDA)', 'Monochorionic diamniotic (MCDA)', 'Monochorionic monoamniotic (MCMA)', 'Not certain'];
 
 export const MODALITIES = { usg: 'Ultrasound', xray: 'X-ray', other: 'Other imaging' };
 
@@ -38,6 +39,35 @@ export const STUDIES = [
     modality: 'usg',
     name: 'USG – growth and well-being (third trimester)',
     fields: [choice('presentation', 'Presentation', PRESENTATION), num('bpd', 'BPD', 'mm'), num('hc', 'Head circumference', 'mm'), num('ac', 'Abdominal circumference', 'mm'), num('fl', 'Femur length', 'mm'), num('efw', 'Estimated fetal weight', 'g'), text('efwCentile', 'EFW centile'), num('afi', 'Amniotic fluid index (AFI)', 'cm'), num('dvp', 'Deepest vertical pocket', 'cm'), choice('placenta', 'Placenta', PLACENTA), text('doppler', 'Doppler (UA PI, MCA PI, CPR)'), num('fhr', 'Fetal heart rate', 'bpm')],
+  },
+  {
+    // Twins (owner's go-ahead, 10 Nov 2026 – docs/USG_APPS_REVIEW.md U4): chorionicity, each twin by itself, and the
+    // weight difference worked out from the two estimated weights (client/src/pages/imaging/usgCalc.js). DRAFT.
+    key: 'usg_twins',
+    modality: 'usg',
+    name: 'USG – twins (growth and well-being)',
+    fields: [
+      choice('chorionicity', 'Chorionicity', CHORIONICITY),
+      choice('presentation1', 'Twin 1 – presentation', PRESENTATION),
+      num('bpd1', 'Twin 1 – BPD', 'mm'),
+      num('hc1', 'Twin 1 – head circumference', 'mm'),
+      num('ac1', 'Twin 1 – abdominal circumference', 'mm'),
+      num('fl1', 'Twin 1 – femur length', 'mm'),
+      num('efw1', 'Twin 1 – estimated fetal weight', 'g'),
+      num('dvp1', 'Twin 1 – deepest vertical pocket', 'cm'),
+      num('fhr1', 'Twin 1 – fetal heart rate', 'bpm'),
+      choice('presentation2', 'Twin 2 – presentation', PRESENTATION),
+      num('bpd2', 'Twin 2 – BPD', 'mm'),
+      num('hc2', 'Twin 2 – head circumference', 'mm'),
+      num('ac2', 'Twin 2 – abdominal circumference', 'mm'),
+      num('fl2', 'Twin 2 – femur length', 'mm'),
+      num('efw2', 'Twin 2 – estimated fetal weight', 'g'),
+      num('dvp2', 'Twin 2 – deepest vertical pocket', 'cm'),
+      num('fhr2', 'Twin 2 – fetal heart rate', 'bpm'),
+      text('discordance', 'Weight difference between the twins'),
+      text('placenta', 'Placenta(s)'),
+      num('cervix', 'Cervical length', 'mm'),
+    ],
   },
   {
     key: 'usg_pelvis',

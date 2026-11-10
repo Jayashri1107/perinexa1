@@ -20,6 +20,7 @@ import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../u
 import { DEFAULT_USE, USE_RULES, fetusesOf, sameName, tableOf, usedValue } from '../imaging/machineReadings.js';
 import { MachineImage, MachineStudy } from '../models/MachineStudy.js';
 import { objectId, parse } from '../utils/validate.js';
+import { urgentFindingsOf } from '../imaging/urgentFindings.js';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md). Two routers:
 //  - patientImagingRouter, /api/patients/:id/imaging: her studies (those who may see her medical details) and a new
@@ -80,7 +81,7 @@ function view(req, o, patient) {
     saved: stampView(o.saved),
     signed: stampView(o.signed),
     cancelled: o.cancelled ? { ...stampView(o.cancelled), reason: o.cancelled.reason } : null,
-    ...(clinical ? { indication: o.indication ?? '', images: imagesView(o), report: reportView(o.report), amendments: (o.amendments ?? []).map((m) => ({ ...stampView(m), reason: m.reason, report: reportView(m.report) })) } : {}),
+    ...(clinical ? { urgentFindings: o.urgentFindings ?? [], urgentSeen: stampView(o.urgentSeen), indication: o.indication ?? '', images: imagesView(o), report: reportView(o.report), amendments: (o.amendments ?? []).map((m) => ({ ...stampView(m), reason: m.reason, report: reportView(m.report) })) } : {}),
     rev: o.rev ?? 0,
     patient: patient
       ? {
@@ -258,10 +259,55 @@ imagingRouter.get('/dashboard', async (req, res) => {
   res.json({ counts: { bookedToday, toScan, toReport, toSign, signedToday, toConfirm } });
 });
 
+// ---------- Urgent scan findings for her doctor (docs/USG_APPS_REVIEW.md U2) ----------
+// Signed reports with urgent findings not yet marked seen, for a doctor, of the patients whose doctor she is (or who
+// have none) – the same rule as laboratory results to review. Newest first. Marking them seen is in the audit log.
+imagingRouter.get('/urgent', async (req, res) => {
+  if (!hasRole(req.membership, 'doctor')) return res.json({ studies: null });
+  const rows = await ImagingOrder.find({ tenantId: req.tenantId, status: 'signed', 'urgentFindings.0': { $exists: true }, urgentSeen: null }).sort({ 'signed.at': -1 }).limit(200);
+  const found = rows.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: rows.map((r) => r.patientId) } }) : [];
+  const mine = new Map(found.filter((p) => patientAccess(req, p).editClinical).map((p) => [String(p._id), p]));
+  res.json({ studies: rows.filter((o) => mine.has(String(o.patientId))).map((o) => view(req, o, mine.get(String(o.patientId)))) });
+});
+
+imagingRouter.post('/:id/urgent-seen', async (req, res) => {
+  const { o, patient } = await loadStudy(req);
+  if (!(hasRole(req.membership, 'doctor') && patientAccess(req, patient).editClinical)) throw forbidden("Her doctor marks the scan's urgent findings seen.");
+  if (!o.urgentFindings?.length) throw conflict('This report has no urgent findings.');
+  if (!o.urgentSeen) {
+    o.urgentSeen = stampOf(req);
+    await o.save();
+    await audit(req, 'IMAGING_URGENT_SEEN', { details: ids(o, patient) });
+  }
+  res.json({ study: view(req, o, patient) });
+});
+
+// The growth across scans (docs/USG_APPS_REVIEW.md U1): her pregnancy scans of this pregnancy with a measurement,
+// done or signed, oldest first – the day, the study and the measurements only. For those who see her details.
+const GROWTH_KEYS = ['bpd', 'hc', 'ac', 'fl', 'efw', 'bpd1', 'hc1', 'ac1', 'fl1', 'efw1', 'bpd2', 'hc2', 'ac2', 'fl2', 'efw2'];
+async function growthOf(req, o, patient) {
+  if (!clinicalOf(req, patient) || patient.careType !== 'antenatal') return null;
+  const edd = eddInUse(patient);
+  const since = edd ? addDays(edd, -300) : null;
+  const rows = await ImagingOrder.find({
+    tenantId: req.tenantId,
+    patientId: patient._id,
+    study: { $in: ['usg_anomaly', 'usg_growth', 'usg_twins'] },
+    status: { $in: ['done', 'signed'] },
+    ...(since ? { 'done.at': { $gte: since } } : {}),
+  })
+    .sort({ 'done.at': 1 })
+    .limit(30)
+    .lean();
+  return rows
+    .map((r) => ({ id: String(r._id), study: r.study, on: r.done?.at ?? null, current: String(r._id) === String(o._id), values: Object.fromEntries(GROWTH_KEYS.filter((k) => r.report?.values?.[k] != null && r.report.values[k] !== '').map((k) => [k, r.report.values[k]])) }))
+    .filter((r) => r.on && Object.keys(r.values).length);
+}
+
 imagingRouter.get('/:id', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   await audit(req, 'IMAGING_VIEWED', { details: ids(o, patient) });
-  res.json({ study: view(req, o, patient), template: studyByKey.get(o.study) ?? null });
+  res.json({ study: view(req, o, patient), template: studyByKey.get(o.study) ?? null, growth: await growthOf(req, o, patient) });
 });
 
 imagingRouter.post('/:id/schedule', async (req, res) => {
@@ -339,7 +385,8 @@ imagingRouter.post('/:id/sign', async (req, res) => {
   if (!view(req, o, patient).access.canSign) throw forbidden('A doctor signs the report once it is written.');
   checkRev(o, body.rev);
   if (!o.report.impression && !o.report.findings) throw invalid({ impression: 'Write the findings or the impression before signing.' });
-  Object.assign(o, { status: 'signed', signed: stampOf(req), rev: o.rev + 1 });
+  // Urgent findings from the signed values (a change after signing and a new signature works them out again)
+  Object.assign(o, { status: 'signed', signed: stampOf(req), rev: o.rev + 1, urgentFindings: urgentFindingsOf(o.study, o.report?.values), urgentSeen: null });
   await o.save();
   await audit(req, 'IMAGING_SIGNED', { details: ids(o, patient) });
   res.json({ study: view(req, o, patient) });

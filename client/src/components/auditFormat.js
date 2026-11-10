@@ -362,6 +362,7 @@ export const AUDIT_LABELS = {
   IMAGING_SAVED: 'Scan report saved',
   IMAGING_AMENDED: 'Scan report changed after signing',
   IMAGING_SIGNED: 'Scan report signed',
+  IMAGING_URGENT_SEEN: 'Urgent scan findings marked seen',
   IMAGING_CANCELLED: 'Scan cancelled',
   IMAGING_PRINTED: 'Scan report printed',
   IMAGING_IMAGE_ADDED: 'Scan picture added',
@@ -752,6 +753,7 @@ export const AUDIT_TONES = {
   IMAGING_SAVED: 'patient',
   IMAGING_AMENDED: 'patient',
   IMAGING_SIGNED: 'patient',
+  IMAGING_URGENT_SEEN: 'patient',
   IMAGING_CANCELLED: 'patient',
   IMAGING_PRINTED: 'patient',
   IMAGING_IMAGE_ADDED: 'patient',
@@ -1470,6 +1472,7 @@ export function describeAudit(entry) {
     case 'IMAGING_SAVED':
     case 'IMAGING_AMENDED':
     case 'IMAGING_SIGNED':
+    case 'IMAGING_URGENT_SEEN':
     case 'IMAGING_CANCELLED':
     case 'IMAGING_PRINTED':
     case 'IMAGING_IMAGE_ADDED':

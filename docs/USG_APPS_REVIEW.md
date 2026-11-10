@@ -365,3 +365,40 @@ engine's summary of it was seen – check it before relying on it.
 
 astraia's own website and the IOTA group's site could not be reached from here; the Tricefy and older ViewPoint
 brochures could not be opened.
+
+## 9. Built in perinexa1 – stage 1 (10 Nov 2026)
+
+The owner agreed to build U1–U5. The developer chose two stages: what needs no new medical reference numbers now, and
+the rest once the owner gives the published tables to copy from (no reference value is typed from memory).
+
+**Stage 1 – built:**
+- **U2 Urgent findings reach her doctor.** When a scan report is signed, written rules (never AI) pick the findings
+  (`server/src/imaging/urgentFindings.js`): no cardiac activity, ectopic suspected, pregnancy not seen in the uterus,
+  fetal heart rate under 100 or over 180 bpm, placenta covering the internal os, AFI 5 cm or less or 25 cm or more,
+  deepest vertical pocket under 2 or over 8 cm, cervical length under 25 mm, NT 3.5 mm or more, nasal bone not seen,
+  monochorionic monoamniotic twins, and twins' weight difference of 25 % or more. They show on the scan's page and on
+  **Today → Urgent scan findings** of her doctor (the treating doctor, or any doctor for an unassigned patient – as
+  laboratory results to review) until a doctor marks them **Seen** (`IMAGING_URGENT_SEEN` in the audit log). A changed
+  report that is signed again is checked again. **⚠️ DRAFT: the list and the limits are the owner's to approve.**
+- **U4 Twins template** (`usg_twins`): chorionicity; for each twin presentation, BPD, HC, AC, FL, estimated weight,
+  deepest vertical pocket and heart rate; placenta(s), cervical length. Each twin's weight (Hadlock 1985) and centile
+  for the weeks by her dates, and the weight difference with which twin is heavier, are worked out; the report's
+  sentences are written for each twin. Weeks come from her dates (no dating from twins' biometry).
+- **U1 Growth across scans, first part:** on the page and in the printed report of an anomaly, growth or twins scan –
+  the estimated weight of each of her scans of this pregnancy on the Hadlock 1991 10th, 50th and 90th centile lines
+  (the curve the app already used for the weight centile), twin 2 as squares, and a table of BPD, HC, AC, FL and weight
+  (with its centile) across the scans. Measurements only are sent (`growth` on `GET /api/imaging/:id`).
+
+**Stage 2 – waiting for the owner's tables:**
+- **U1, second part:** centile bands for BPD, HC, AC and FL (which reference: Hadlock 1984, INTERGROWTH-21st, an Indian
+  chart).
+- **U3 Doppler in full:** uterine, umbilical, middle cerebral arteries, ductus venosus, the CPR, each with its normal
+  range by weeks, and the rules for each – the published tables and the owner's choice of source.
+- **U5 A second growth chart** for the owner to choose (INTERGROWTH-21st or a chart fitted to Indian babies), named on
+  every report. Hadlock stays until the owner decides.
+
+Code: `server/src/imaging/urgentFindings.js`, `templates.js` (`usg_twins`), `routes/imaging.js` (`/urgent`,
+`/:id/urgent-seen`, `growth`), `models/ImagingOrder.js` (`urgentFindings`, `urgentSeen`); website `usgCalc.js`
+(twins, `weightBand`), `GrowthAcrossScans.jsx`, `ImagingPages.jsx`, `TodayPage.jsx`. Tests:
+`server/tests/usg-stage1.test.js`, `client/src/pages/imaging/usgStage1.test.jsx`.
+

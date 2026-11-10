@@ -170,7 +170,10 @@ doctors, the hospital admin and the super admin (numbers only for the last two);
 delays marked against the hospital's own usual time. Details and the perinexa1 differences (super admin rule, moments
 perinexa1 already notes): `docs/PATIENT_FLOW_PLAN.md`.
 
-## Sonography: what the leading applications offer (10 Nov 2026, not built)
+## Sonography: what the leading applications offer (10 Nov 2026) – U1 (first part), U2, U4 built 10 Nov 2026
+Stage 1 built at the owner's go-ahead (`docs/USG_APPS_REVIEW.md` section 9); U3, U5 and the centile bands wait for the
+owner's published tables. The text below is the original entry.
+
 From the other Perinexa copy: a review of astraia, GE ViewPoint, Sonio, Tricefy, AS Software, Indian products, the
 FMF/Barcelona/IOTA calculators and India's PC-PNDT and medical-device rules, with a ranked list U1–U16 in
 `docs/USG_APPS_REVIEW.md`. Perinexa1 already has U9 (follicular template), the image part of U12, U16 (machine link)

@@ -17,6 +17,7 @@ import { SCAN_ROLES } from '../../platform/modules.js';
 import { ApiImage } from '../../components/ApiImage.jsx';
 import { MachinePanel, machineImageUrl } from './MachinePanel.jsx';
 import { USE_WORDS } from './machineTable.js';
+import { GrowthAcrossScans } from './GrowthAcrossScans.jsx';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): the worklist (to schedule, scheduled, to report,
 // signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
@@ -492,7 +493,9 @@ export function MachineReadingsTable({ machine, className = 'ptable pdoc-table' 
 }
 
 /** What the report says: the patient, the values, the machine's readings, findings, impression, the chosen pictures. */
-function ReportBody({ s, template }) {
+const GROWTH_STUDIES = ['usg_anomaly', 'usg_growth', 'usg_twins'];
+
+function ReportBody({ s, template, growth = null }) {
   return (
     <>
       <h1 className="pdoc-title">{s.studyName}</h1>
@@ -529,12 +532,56 @@ function ReportBody({ s, template }) {
             ))}
         </div>
       )}
+      {/* The growth across her scans, printed with the report (docs/USG_APPS_REVIEW.md U1) */}
+      {GROWTH_STUDIES.includes(s.study) && growth?.length > 0 && <GrowthAcrossScans growth={growth} eddByDates={s.patient?.eddByDates ?? null} />}
       <p className="pdoc-small">The sex of the fetus is not determined or disclosed (PCPNDT Act, 1994).</p>
     </>
   );
 }
 
-function ReportPrint({ s, template, onClose, autoPrint = false }) {
+/**
+ * Urgent findings of a signed report (docs/USG_APPS_REVIEW.md U2): on her doctor's Today page until a doctor marks them
+ * seen. The words come from fixed rules (server/src/imaging/urgentFindings.js – DRAFT for the owner).
+ */
+function UrgentFindings({ s, onSaved, onError }) {
+  const { activeMembership } = useAuth();
+  if (!s.urgentFindings?.length) return null;
+  const seen = async () => {
+    try {
+      onSaved((await api(`/imaging/${s.id}/urgent-seen`, { method: 'POST' })).study, 'Marked seen. It is off your Today page.');
+    } catch (err) {
+      onError(err);
+    }
+  };
+  return (
+    <section className="card img-urgent" aria-labelledby="img-urgent-title">
+      <h2 id="img-urgent-title">
+        <StatusPill tone="high">Urgent findings</StatusPill>
+      </h2>
+      <ul>
+        {s.urgentFindings.map((u) => (
+          <li key={u.key}>{u.text}</li>
+        ))}
+      </ul>
+      {s.urgentSeen ? (
+        <p className="muted">
+          Seen by {s.urgentSeen.byName}, {formatDateTime(s.urgentSeen.at)}
+        </p>
+      ) : (
+        <div className="row">
+          <span className="hint">On her doctor&apos;s Today page until a doctor marks them seen.</span>
+          {(activeMembership?.roles ?? []).includes('doctor') && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={seen}>
+              <CircleCheck aria-hidden="true" /> Seen
+            </button>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReportPrint({ s, template, growth = null, onClose, autoPrint = false }) {
   const lh = useFetch('/tenant/settings/letterhead');
   const record = () => api(`/imaging/${s.id}/printed`, { method: 'POST' });
   return (
@@ -544,7 +591,7 @@ function ReportPrint({ s, template, onClose, autoPrint = false }) {
       ) : (
         <PrintDocument draft="DRAFT report template – not yet approved by the hospital's doctor.">
           {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
-          <ReportBody s={s} template={template} />
+          <ReportBody s={s} template={template} growth={growth} />
           <div className="pdoc-sigs">
             <div className="pdoc-sig">
               <h2 className="pdoc-sig-title">Signed by</h2>
@@ -721,13 +768,14 @@ export function ImagingStudyPage() {
         {s.images && !reviewing && s.status !== 'requested' && <MachinePanel s={s} onSaved={saved} onError={failed} />}
         <div className="img-study">
         <div className="img-study-main">
+        <UrgentFindings s={s} onSaved={saved} onError={failed} />
         {reviewing && s.status === 'done' && s.report && (
           // The final report as it will print (docs/USG_MACHINE_PLAN.md step 4): finalising signs it and prints it
           <section className="card img-review" aria-labelledby="img-review-title">
             <h2 id="img-review-title">Review the final report</h2>
             <p className="hint">This is the report as it will print. Finalising signs it; after that, a change needs a reason.</p>
             <div className="img-review-sheet">
-              <ReportBody s={s} template={data?.template} />
+              <ReportBody s={s} template={data?.template} growth={data?.growth} />
             </div>
             <div className="row">
               {a.canSign ? (
@@ -768,13 +816,18 @@ export function ImagingStudyPage() {
             {s.report.impression && <p>{s.report.impression}</p>}
           </section>
         )}
+        {!reviewing && GROWTH_STUDIES.includes(s.study) && data?.growth?.length > 0 && (
+          <section className="card">
+            <GrowthAcrossScans growth={data.growth} eddByDates={s.patient?.eddByDates ?? null} />
+          </section>
+        )}
         </div>
         <aside className="img-study-side">
           <ScanImages s={s} onSaved={saved} onError={failed} />
         </aside>
         </div>
       </div>
-      {printing && <ReportPrint s={s} template={data?.template} autoPrint={printing === 'auto'} onClose={() => setPrinting(false)} />}
+      {printing && <ReportPrint s={s} template={data?.template} growth={data?.growth} autoPrint={printing === 'auto'} onClose={() => setPrinting(false)} />}
     </>
   );
 }

@@ -346,3 +346,19 @@
   body:not(.pv-open) .ov-facts > .ov-facts-side { margin: 0; columns: 2; column-gap: 3mm; }
   body:not(.pv-open) .ov-facts-side > .card { display: block; width: 100%; margin: 0 0 3mm; }
 }
+
+/* Growth across scans (docs/USG_APPS_REVIEW.md U1): the weight graph and the table, on the scan page and in its print */
+.gr-wrap { margin: var(--space-3) 0; }
+.gr-graph { display: block; width: 100%; max-width: 160mm; height: auto; margin: var(--space-2) 0; }
+.gr-grid { stroke: var(--slate-300); stroke-width: 0.5; }
+.gr-tick { fill: var(--slate-600); font-size: 10px; }
+.gr-band { stroke-width: 1.5; }
+.gr-p50 { stroke: var(--indigo-700); }
+.gr-p10, .gr-p90 { stroke: var(--indigo-200); stroke-dasharray: 4 3; }
+.gr-point { fill: var(--teal-500); stroke: var(--surface); stroke-width: 1; }
+.gr-current { fill: var(--status-high-solid); }
+.gr-row-current td { font-weight: 600; }
+.gr-table th, .gr-table td { font-size: var(--fs-print-small); }
+/* Urgent findings of a signed scan report (U2) */
+.img-urgent { border-left: 3px solid var(--status-high-solid); }
+.img-urgent ul { margin: var(--space-2) 0; padding-left: var(--space-4); }
