@@ -237,7 +237,7 @@ export function MachinePanel({ s, onSaved, onError }) {
   if (!data) return null;
   return (
     <section className="card" aria-labelledby="img-machine-title">
-      <h2 id="img-machine-title">
+      <h2 id="img-machine-title" className="img-heading">
         <MonitorDown aria-hidden="true" /> From the machine
       </h2>
       <p className="hint">DRAFT – what the ultrasound machine sent. Check the patient, choose the pictures, then check the readings and fill the report.</p>

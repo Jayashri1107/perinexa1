@@ -538,8 +538,8 @@
 /* Sonography list (10 Nov 2026): the machine as one status line, the list as a table with a next-step button per row */
 .img-machine { padding-block: var(--space-3); }
 .img-machine-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
-.img-machine-line h2 { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--fs-body); }
-.img-machine-line .hint { flex: 1 1 260px; margin: 0; }
+.img-machine-line h2 { margin: 0; font-size: var(--fs-body); }
+.img-machine-words { margin: var(--space-2) 0 0; }
 .img-worklist { padding: 0; overflow: hidden; }
 .img-worklist > .dt-wrap { margin: 0; border: 0; }
 .img-table td, .img-table th { vertical-align: middle; }
@@ -548,4 +548,20 @@
 .img-pills { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
 .img-next { text-align: right; white-space: nowrap; }
 .img-empty { padding: var(--space-6); margin: 0; text-align: center; }
-.img-lists { margin-bottom: var(--space-2); }
+.img-lists { margin-bottom: calc(var(--space-2) * -1); align-self: flex-start; }
+
+/* Scan pages (10 Nov 2026): one column with even gaps; icons beside their headings; the scan's progress line */
+.img-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.img-page > .card, .img-page > .kpi-grid, .img-page > .img-study { margin: 0; }
+.img-heading { display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.img-heading svg { flex-shrink: 0; width: 20px; height: 20px; }
+.img-head .plan-card-head { margin-bottom: var(--space-2); }
+.img-steps { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5, var(--space-4)); margin: var(--space-3) 0; padding: 0; list-style: none; }
+.img-steps li { display: inline-flex; align-items: flex-start; gap: var(--space-1); color: var(--slate-600); font-size: var(--fs-label); }
+.img-steps li svg { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; }
+.img-steps li.is-done { color: var(--status-stable-fg); }
+.img-steps li.is-now { color: var(--indigo-700); font-weight: 600; }
+.img-step-when { display: block; color: var(--slate-600); font-size: var(--fs-caption); font-weight: 400; }
+.img-actions { flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+.img-book { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.img-book-label { color: var(--slate-600); font-size: var(--fs-label); }

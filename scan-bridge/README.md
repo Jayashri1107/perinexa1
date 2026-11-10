@@ -28,7 +28,7 @@ generated pictures marked SAMPLE – for the first ultrasound order on today's w
    copy) and `BRIDGE_KEY=` the key. The Orthanc lines are not needed for the demo.
 3. As a doctor, order an ultrasound scan for a sample patient (her Lab tab → Order a scan, e.g. USG – growth).
 4. Run `node scan-bridge/demo.mjs` (or `node scan-bridge/demo.mjs P-000123` for a patient without an order).
-5. Sonography → open her scan → **From the machine**: the pictures and the average table. **Mark done**, tick pictures,
+5. Sonography → open her scan → **From the machine**: the pictures and the average table. **Scan done**, tick pictures,
    confirm, **Add to the report**; untick a reading or change a rule, **Fill the report with these values**; **Write the
    report from the readings**, **Save**; as a doctor **Review the final report** → **Finalise – sign and print**.
 
