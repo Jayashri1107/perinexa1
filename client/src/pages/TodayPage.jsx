@@ -29,7 +29,8 @@ import { AppointmentChip, ArrivalDialog, NeedsTimeNotice, NextPatientCard, Quick
 import { AiBriefCard } from './ai/AiBriefCard.jsx';
 import { useLibraryDrafts } from './library/ApprovalsPage.jsx';
 import { KIND_LABELS } from './inpatient/inpatientFormat.js';
-import { FLAG_LOOK, testNames } from './lab/labFormat.js';
+import { CRITICAL_LOOK, FLAG_LOOK, testNames } from './lab/labFormat.js';
+import { AcknowledgeButton } from './lab/LabCritical.jsx';
 import { ReminderDialog } from './reminders/ReminderDialog.jsx';
 import { DischargesSection, DoctorsToday, TomorrowCalls } from './appointments/DeskToday.jsx';
 import { paymentsToCollect, receptionCounts } from './todayReception.js';
@@ -1071,7 +1072,12 @@ function RoleToday({ roles, lensBar = null }) {
                       to={`/patients/${o.patient.id}/lab/${o.id}`}
                       openLabel="Open the results"
                       marker={
-                        o.abnormal ? (
+                        // P5 (docs/LAB_BUILD_NOTE.md): critical results not yet acknowledged come first, marked Critical
+                        o.critical?.values?.length && !o.critical.acknowledged ? (
+                          <StatusPill tone={CRITICAL_LOOK.tone} icon={CRITICAL_LOOK.icon}>
+                            {CRITICAL_LOOK.word}
+                          </StatusPill>
+                        ) : o.abnormal ? (
                           <StatusPill tone="high" icon={FLAG_LOOK.abnormal.icon}>
                             Outside range
                           </StatusPill>
@@ -1081,6 +1087,7 @@ function RoleToday({ roles, lensBar = null }) {
                       <p className="hint">
                         {testNames(o)} · reported by {o.reported?.byName}, {formatDateTime(o.reported?.at)}
                       </p>
+                      <AcknowledgeButton order={o} onDone={() => labReview.reload()} onError={setMarkError} />
                     </PatientRow>
                   ))}
                 </ul>

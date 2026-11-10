@@ -565,3 +565,30 @@
 .img-actions { flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
 .img-book { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .img-book-label { color: var(--slate-600); font-size: var(--fs-label); }
+
+/* ---------- The lab's four features of 10 Nov 2026 (docs/LAB_BUILD_NOTE.md) ---------- */
+/* P5: the call about a critical result, and the critical result's card */
+.lab-critical-call legend svg { width: 1em; height: 1em; vertical-align: -0.125em; color: var(--status-high-fg); }
+.lab-critical-card { border-left: 4px solid var(--status-high-fg); }
+/* P6: the big-change question, results over time and the small graphs */
+.lab-delta-question ul { margin: var(--space-2) 0; padding-left: 1.2em; }
+.lab-over-time h2 svg { width: 1em; height: 1em; vertical-align: -0.125em; }
+.lab-over-time-wrap { overflow-x: auto; }
+.lab-over-time-table th[scope='row'] { white-space: nowrap; }
+.lab-over-time-table td { white-space: nowrap; }
+.lab-trends { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+.lab-trend { margin: 0; }
+.lab-trend figcaption { margin-bottom: var(--space-1); }
+.lab-trend-svg { width: 100%; height: auto; display: block; }
+.lab-trend-grid { stroke: var(--chart-grid); stroke-width: 1; }
+.lab-trend-axis { fill: var(--chart-axis); font-size: 11px; }
+.lab-trend-line { fill: none; stroke: var(--chart-bar); stroke-width: 2; }
+.lab-trend-point { fill: var(--surface); stroke: var(--chart-bar); stroke-width: 2; }
+.lab-trend-point-flag { fill: var(--status-high-fg); stroke: var(--status-high-fg); }
+
+/* Lab pages made of cards one under the other (test settings, Register, Find, test packages): an even gap between the
+   cards – they touched before (10 Nov 2026). A back link or a button keeps its own width. */
+.pf-content.lab-stack { display: flex; flex-direction: column; gap: var(--space-6); }
+.pf-content.lab-stack > * { margin-top: 0; margin-bottom: 0; }
+.pf-content.lab-stack > .btn-link, .pf-content.lab-stack > .btn, .pf-content.lab-stack > .row { align-self: flex-start; }
+.pf-content.lab-stack > .btn-link + * { margin-top: calc(var(--space-6) * -0.5); }

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { CircleCheck, Send, Truck, Undo2 } from 'lucide-react';
 import { api } from '../../api.js';
 import { Alert, Field, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
-import { REJECT_REASONS } from './labFormat.js';
+import { REJECT_REASONS, criticalCallBody, emptyCall } from './labFormat.js';
+import { CallFields, callProblem } from './LabCritical.jsx';
 
 // Parts of one lab order for the full lab system (docs/LAB_LIMS_PLAN.md): rejecting a sample, the check before the
 // report, and tests sent to an outside lab. Each change answers with the order, passed to onSaved(order, message).
@@ -76,14 +77,25 @@ export function VerifyCard({ order, onSaved, onError }) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  // P5: a critical value – the checker sends the results to the doctor, so the checker notes the call
+  const critical = order.tests.flatMap((t) => t.values.filter((v) => v.critical));
+  const [call, setCall] = useState(emptyCall);
+  const [callError, setCallError] = useState(null);
+  const [callFields, setCallFields] = useState({});
   const approve = async () => {
+    if (critical.length && callProblem(call)) return setCallError(callProblem(call));
     setBusy(true);
+    setCallError(null);
     try {
-      onSaved((await api(`/lab/orders/${order.id}/verify`, { method: 'POST', body: { rev: order.rev } })).order, 'Checked. The results are reported to the doctor.');
+      onSaved((await api(`/lab/orders/${order.id}/verify`, { method: 'POST', body: { rev: order.rev, ...(critical.length ? criticalCallBody(call) : {}) } })).order, 'Checked. The results are reported to the doctor.');
     } catch (err) {
-      onError(err);
+      if (err.status === 400) {
+        setCallError(err.message);
+        setCallFields(err.fields ?? {});
+      } else onError(err);
       setBusy(false);
     }
+    return undefined;
   };
   const sendBack = async (e) => {
     e.preventDefault();
@@ -104,6 +116,12 @@ export function VerifyCard({ order, onSaved, onError }) {
         Entered by {order.entered?.byName}, {formatDateTime(order.entered?.at)}. Check every value against the sample and the machine print-out before
         approving.
       </p>
+      {critical.length > 0 && (
+        <>
+          <Alert type="error">{callError}</Alert>
+          <CallFields id="lab-verify-call" values={critical} value={call} onChange={setCall} errors={callFields} />
+        </>
+      )}
       <div className="row">
         <button type="button" className="btn btn-primary" disabled={busy} onClick={approve}>
           <CircleCheck aria-hidden="true" /> {busy && !asking ? 'Saving…' : 'Approve and report'}

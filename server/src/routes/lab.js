@@ -18,6 +18,7 @@ import {
   dueAt,
   ensureSampleNo,
   fieldFor,
+  isCritical,
   labCatalogue,
   labSetup,
   labSignatories,
@@ -132,23 +133,41 @@ labRouter.use((req, _res, next) => {
 // ---------- The view of an order ----------
 
 const stampView = (s) => (s ? { byName: s.byName, at: s.at } : null);
-const valueView = (v) => ({
+// clinical: may see whom a range was for (her weeks of pregnancy); the lab sees the range's numbers and words only
+const valueView = (v, clinical = true) => ({
   key: v.key,
   value: v.value,
   flag: v.flag,
   ...(v.name ? { name: v.name } : {}),
   ...(v.unit ? { unit: v.unit } : {}),
   ...(v.range ? { range: v.range } : {}),
+  ...(clinical && v.rangeWho ? { rangeWho: v.rangeWho } : {}),
   ...(v.deltaPercent != null ? { deltaPercent: v.deltaPercent } : {}),
   ...(v.bigChange ? { bigChange: true } : {}),
   ...(v.section ? { section: v.section } : {}),
   ...(v.calculated ? { calculated: true } : {}),
+  ...(v.critical ? { critical: true } : {}),
 });
+const callView = (c) => ({ byName: c.byName, at: c.at, toldName: c.toldName, toldRole: c.toldRole, how: c.how, readBack: Boolean(c.readBack) });
+/**
+ * P5: the critical values and the record of the call, for anyone who sees the order (the lab made the call; the
+ * doctor acknowledges). Only the values and limits – never a red-flag rule or her record.
+ */
+const criticalView = (c) =>
+  c?.values?.length || c?.calls?.length
+    ? {
+        values: (c.values ?? []).map((v) => ({ testKey: v.testKey, valueKey: v.valueKey })),
+        calls: (c.calls ?? []).map(callView),
+        notReached: (c.notReached ?? []).map((n) => ({ byName: n.byName, at: n.at, triedName: n.triedName })),
+        acknowledged: stampView(c.acknowledged),
+        open: Boolean(c.open),
+      }
+    : null;
 const outsideView = (o) => (o?.sent ? { labName: o.labName, ref: o.ref ?? '', sent: stampView(o.sent), received: stampView(o.received) } : null);
-const testView = (t) => ({
+const testView = (t, { clinical = true } = {}) => ({
   key: t.key,
   name: t.name,
-  values: (t.values ?? []).map(valueView),
+  values: (t.values ?? []).map((v) => valueView(v, clinical)),
   text: t.text ?? '',
   department: t.department ?? '',
   outside: outsideView(t.outside),
@@ -189,7 +208,7 @@ export function orderView(order, access, more = {}) {
     verifyToken: DONE.includes(status) ? (order.verifyToken ?? null) : null,
     dueAt: order.dueAt ?? null,
     late: isLate(order, more.now ?? new Date()),
-    tests: order.tests.map(testView),
+    tests: order.tests.map((t) => testView(t, { clinical: access.clinical })),
     noteToLab: order.noteToLab ?? '',
     packages: access.clinical ? (order.packages ?? []).map((p) => (typeof p === 'string' ? { key: p, name: p } : { key: p.key, name: p.name, version: p.version, approved: p.approved })) : [],
     labNote: order.labNote ?? '',
@@ -208,12 +227,17 @@ export function orderView(order, access, more = {}) {
       byName: m.byName,
       at: m.at,
       reason: m.reason ?? '',
-      ...(access.clinical ? { tests: (m.tests ?? []).map(testView), labNote: m.labNote ?? '', reviewedByName: m.reviewedByName ?? null, reviewedAt: m.reviewedAt ?? null } : {}),
+      ...(access.clinical ? { tests: (m.tests ?? []).map((t) => testView(t)), labNote: m.labNote ?? '', reviewedByName: m.reviewedByName ?? null, reviewedAt: m.reviewedAt ?? null } : {}),
     })),
     files: (order.files ?? []).map((f) => ({ id: String(f.fileId), fileName: f.fileName, mediaType: f.mediaType, size: f.size, byName: f.byName, at: f.at })),
     abnormal: Boolean(order.abnormal),
+    critical: criticalView(order.critical),
+    deltaChecks: (order.deltaChecks ?? []).map((d) => ({ byName: d.byName, at: d.at, values: (d.values ?? []).map((v) => ({ testKey: v.testKey, valueKey: v.valueKey, value: v.value })) })),
     rev: order.rev ?? 0,
     access: {
+      // P5: the lab notes a call later (after "nobody reached"); the doctor who may review acknowledges
+      canCallCritical: access.report && DONE.includes(status) && Boolean(order.critical?.values?.length),
+      canAcknowledge: access.review && DONE.includes(status) && Boolean(order.critical?.values?.length) && !order.critical?.acknowledged && order.source !== 'walk_in',
       canCollect: access.collect && status === 'ordered',
       canLabel: access.collect && ['ordered', 'collected'].includes(status),
       canReceive: access.report && status === 'collected' && !order.received,
@@ -607,6 +631,8 @@ labRouter.get('/tests', async (req, res) => {
 // to orders with a test of that department. Doctors, RMOs and nurses see only patients whose medical details they may
 // see.
 const LISTS = {
+  // P5: critical results reported without reaching anyone – first, until a call is noted
+  critical: { filter: { status: { $in: DONE }, 'critical.open': true }, sort: { 'reported.at': 1 } },
   collect: { filter: { status: 'ordered' }, sort: { urgent: -1, createdAt: 1 } },
   receive: { filter: { status: 'collected', received: null }, sort: { urgent: -1, 'collected.at': 1 } },
   report: { filter: { status: 'collected', received: { $ne: null } }, sort: { urgent: -1, createdAt: 1 } },
@@ -668,7 +694,10 @@ labRouter.get('/worklist', async (req, res) => {
 labRouter.get('/to-review', async (req, res) => {
   if (!hasRole(req.membership, 'doctor')) return res.json({ orders: null });
   const orders = await LabOrder.find({ tenantId: req.tenantId, status: 'reported', source: { $ne: 'walk_in' } }).sort({ abnormal: -1, 'reported.at': 1 }).limit(300);
-  res.json({ orders: await withPatients(req, orders, (a) => a.review) });
+  // P5: critical results not yet acknowledged come first, apart from the others
+  const shown = await withPatients(req, orders, (a) => a.review);
+  const waiting = (o) => (o.critical?.values?.length && !o.critical.acknowledged ? 0 : 1);
+  res.json({ orders: shown.map((o, i) => [o, i]).sort(([a, i], [b, j]) => waiting(a) - waiting(b) || i - j).map(([o]) => o) });
 });
 
 // Find (feature 6): by sample number (a label's barcode "261017-0003-2" finds its order), patient number or name,
@@ -764,7 +793,7 @@ labRouter.get('/orders/:orderId', async (req, res) => {
   // The result form suggests flags from the ranges that apply to this patient (her age, pregnancy); her earlier results
   // of the same values (trends, Lab version 2); the tests whose quality control was rejected today; who signs the
   // printed report (report templates)
-  res.json({ order: { ...(await viewFor(req, order, access, setup)), patient: patientBrief(patient) }, catalogue: catalogueView(catalogue, rangeContext(patient, req.now)), verify: setup.verify, previous, qcRejected: qc, signer: reportSigner(signatories, order) });
+  res.json({ order: { ...(await viewFor(req, order, access, setup)), patient: patientBrief(patient) }, catalogue: catalogueView(catalogue, rangeContext(patient, sampleTime(order, req.now)), { clinical: access.clinical }), verify: setup.verify, previous, qcRejected: qc, signer: reportSigner(signatories, order) });
 });
 
 // The labels were printed (the browser prints them): the order gets its sample number if it had none (older orders).
@@ -871,8 +900,105 @@ const resultsSchema = z
     report: z.boolean().default(false), // finish: the results go to the doctor (or to the check)
     reason: safeText('Reason', 500).default(''),
     qcReason: safeText('Reason', 300).default(''), // reporting while a test's quality control is rejected today
+    // P5: the call about a critical value, or who was tried when nobody could be reached
+    criticalCall: z.lazy(() => criticalCallSchema).nullable().default(null),
+    criticalNotReached: z.lazy(() => notReachedSchema).nullable().default(null),
+    // P6: "a big change – check the sample and the number" answered with Confirm and report
+    deltaConfirmed: z.boolean().default(false),
   })
   .strict();
+
+// ---------- P5: critical results with a record of the call (docs/LAB_BUILD_NOTE.md section 6) ----------
+// A value at or beyond the hospital's critical limit (Lab setup; none until the owner sets them) cannot go to the
+// doctor without the lab noting whom it told – name, role, how, and that the value was read back – or, if nobody
+// could be reached, who was tried. `at`: when, if not now (the call is often made before the results are typed).
+const callAt = z.iso.datetime({ offset: true, message: 'Enter a valid time' }).nullable().default(null);
+const criticalCallSchema = z
+  .object({
+    toldName: safeText('Name', 100),
+    toldRole: safeText('Role', 60),
+    how: z.enum(['phone', 'in_person'], 'Choose how they were told'),
+    readBack: z.boolean().default(false),
+    at: callAt,
+  })
+  .strict();
+const notReachedSchema = z.object({ triedName: safeText('Who was tried', 200), at: callAt }).strict();
+
+const criticalOf = (tests) => tests.flatMap((t) => (t.values ?? []).filter((v) => v.critical).map((v) => ({ testKey: t.key, valueKey: v.key })));
+const valueId = (v) => `${v.testKey}.${v.valueKey}`;
+
+/** The call (or not-reached note) sent, checked: { call } | { notReached } | null. */
+function checkedCall(req, order, body) {
+  const when = (at, field) => {
+    if (!at) return req.now;
+    const d = new Date(at);
+    if (d.getTime() > req.now.getTime() + 60_000) throw invalid({ [field]: 'The time is in the future.' });
+    if (order.ordered?.at && d < new Date(order.ordered.at)) throw invalid({ [field]: 'The time is before the order.' });
+    return d;
+  };
+  if (body.criticalCall) {
+    const c = body.criticalCall;
+    const fields = {};
+    if (c.toldName.trim().length < 2) fields['criticalCall.toldName'] = 'Write whom you told.';
+    if (c.toldRole.trim().length < 2) fields['criticalCall.toldRole'] = 'Write their role (doctor, RMO, nurse …).';
+    if (!c.readBack) fields['criticalCall.readBack'] = 'Ask them to read the value back, then tick here.';
+    if (Object.keys(fields).length) throw invalid(fields, 'Note the call about the critical result.');
+    return { call: { ...stampOf(req), toldName: c.toldName.trim(), toldRole: c.toldRole.trim(), how: c.how, readBack: true, at: when(c.at, 'criticalCall.at'), notedAt: req.now } };
+  }
+  if (body.criticalNotReached) {
+    const n = body.criticalNotReached;
+    if (n.triedName.trim().length < 2) throw invalid({ 'criticalNotReached.triedName': 'Write whom you tried to reach.' });
+    return { notReached: { ...stampOf(req), triedName: n.triedName.trim(), at: when(n.at, 'criticalNotReached.at'), notedAt: req.now } };
+  }
+  return null;
+}
+
+/** The answer when a critical value needs its call: 409 CRITICAL_CALL with the values (names, numbers, units). */
+function needsCall(tests, fresh) {
+  const ids = new Set(fresh.map(valueId));
+  const values = tests.flatMap((t) => (t.values ?? []).filter((v) => ids.has(`${t.key}.${v.key}`)).map((v) => ({ testKey: t.key, valueKey: v.key, name: v.name ?? v.key, value: v.value, unit: v.unit ?? '' })));
+  return Object.assign(conflict('A result is critical: note whom you told before it is reported.', 'CRITICAL_CALL'), { details: { values } });
+}
+
+/**
+ * The order's critical values after a report (now: all critical values; fresh: those new to the doctor) and the call
+ * noted. A fresh value needs a new acknowledgement; "nobody reached" keeps the order open in the lab's list.
+ */
+function setCritical(order, now, fresh, note) {
+  if (!now.length && !order.critical) return;
+  const c = order.critical ? order.critical.toObject?.() ?? order.critical : { values: [], calls: [], notReached: [], acknowledged: null, open: false };
+  c.values = now;
+  if (fresh.length) c.acknowledged = null;
+  if (note?.call) {
+    c.calls = [...(c.calls ?? []), note.call];
+    c.open = false;
+  } else if (note?.notReached) {
+    c.notReached = [...(c.notReached ?? []), note.notReached];
+    c.open = true;
+  }
+  if (!now.length) c.open = false;
+  order.critical = c;
+}
+async function auditCall(req, order, patient, note, values) {
+  if (note?.call) await audit(req, 'LAB_CRITICAL_CALL_NOTED', { details: ids(order, { mrn: patient.mrn, values }) });
+  else if (note?.notReached) await audit(req, 'LAB_CRITICAL_NOT_REACHED', { details: ids(order, { mrn: patient.mrn, values }) });
+}
+
+// ---------- P6: a second look at a big change ----------
+// A value past the hospital's "big change" limit from her last result (Lab setup, deltaPercent; none until set) asks
+// once, when the results are reported: "Hb 7.1 g/dL; it was 11.8 on 29 Oct. Check the sample and the number." –
+// Change, or Confirm and report. It never blocks; the confirmation is kept on the order (who, when, which values).
+function bigChanges(tests, previous, order) {
+  const asked = new Set((order.deltaChecks ?? []).flatMap((d) => (d.values ?? []).map((v) => `${v.testKey}.${v.valueKey}=${v.value}`)));
+  return tests.flatMap((t) =>
+    (t.values ?? [])
+      .filter((v) => v.bigChange && !asked.has(`${t.key}.${v.key}=${v.value}`))
+      .map((v) => {
+        const prev = previous[t.key]?.[v.key]?.[0];
+        return { testKey: t.key, valueKey: v.key, name: v.name ?? v.key, value: v.value, unit: v.unit ?? '', previous: prev?.value ?? null, previousAt: prev?.at ?? null };
+      }),
+  );
+}
 
 /**
  * The sent results, checked against the order's tests and the hospital's test list (values, choices and flags).
@@ -882,6 +1008,12 @@ const resultsSchema = z
  * Her earlier reported results of this order's tests (Lab version 2 – trends): { testKey: { fieldKey: [{ value, flag,
  * at }] } }, newest first, at most 5 each – from orders reported before this one.
  */
+/**
+ * P4: the time a result is judged at - the sample's (her weeks, a baby's age), also when typed or changed later. A
+ * sample not marked taken is taken now (the report stamps it).
+ */
+const sampleTime = (order, now) => order.collected?.at ?? now;
+
 async function previousResults(tenantId, order) {
   const keys = order.tests.map((t) => t.key).filter((k) => k !== OTHER_TEST);
   if (!keys.length) return {};
@@ -933,7 +1065,7 @@ function checkedTests(order, sent, catalogue, ctx, previous = {}) {
       }
       if (v.value === '') continue;
       const field = fieldFor(raw, ctx);
-      const words = { name: field.name, ...(field.unit ? { unit: field.unit } : {}), ...(field.range ? { range: field.range } : {}) };
+      const words = { name: field.name, ...(field.unit ? { unit: field.unit } : {}), ...(field.range ? { range: field.range } : {}), ...(field.band ? { rangeWho: field.band } : {}) };
       const section = field.section ? { section: field.section } : {};
       if (field.type === 'text') {
         if (mentionsFetalSex(v.value)) fields[at] = PCPNDT_MESSAGE;
@@ -958,7 +1090,7 @@ function checkedTests(order, sent, catalogue, ctx, previous = {}) {
         const pct = Math.round(((Number(value) - Number(prev.value)) / Math.abs(Number(prev.value))) * 1000) / 10;
         delta = { deltaPercent: pct, bigChange: field.deltaPercent != null && Math.abs(pct) >= field.deltaPercent };
       }
-      values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words, ...section, ...delta });
+      values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words, ...section, ...delta, ...(isCritical(field, value) ? { critical: true } : {}) });
     }
     // Values worked out from the others (report templates – lab/labCalcs.js): only when left empty and their inputs
     // were typed; a value typed (an analyser's own MCV) is kept
@@ -968,7 +1100,7 @@ function checkedTests(order, sent, catalogue, ctx, previous = {}) {
       const value = calculate(raw.calc, numbers);
       if (value == null) continue;
       const field = fieldFor(raw, ctx);
-      values.push({ key: raw.key, value, flag: flagFor(field, value), name: field.name, ...(field.unit ? { unit: field.unit } : {}), ...(field.range ? { range: field.range } : {}), ...(field.section ? { section: field.section } : {}), calculated: true });
+      values.push({ key: raw.key, value, flag: flagFor(field, value), name: field.name, ...(field.unit ? { unit: field.unit } : {}), ...(field.range ? { range: field.range } : {}), ...(field.section ? { section: field.section } : {}), calculated: true, ...(isCritical(field, value) ? { critical: true } : {}) });
     }
     // In the test's order, so the report reads as the template lays it out
     const place = new Map((def?.fields ?? []).map((f, n) => [f.key, n]));
@@ -994,8 +1126,10 @@ const hasResult = (t) => t.values.some((v) => v.value !== '' && !v.calculated) |
 
 /** The report: the results go to the doctor (with the check on, `verified` says who checked them). */
 function markReported(req, order) {
+  const first = !order.reported;
   order.status = 'reported';
   order.reported = stampOf(req);
+  if (first && !order.firstReported) order.firstReported = order.reported; // P9: the first report's time, kept
   // The secret code of the report's QR code (the public page names the hospital: the hospital's id goes first)
   if (!order.verifyToken) order.verifyToken = `${String(order.tenantId)}.${randomBytes(12).toString('hex')}`;
   if (!order.collected) {
@@ -1012,7 +1146,7 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   const body = parse(resultsSchema, req.body);
   checkRev(order, body.rev);
   const [catalogue, setup, previous] = await Promise.all([labCatalogue(req.tenantId), labSetup(req.tenantId), previousResults(req.tenantId, order)]);
-  const tests = checkedTests(order, body.tests, catalogue, rangeContext(patient, req.now), previous);
+  const tests = checkedTests(order, body.tests, catalogue, rangeContext(patient, sampleTime(order, req.now)), previous);
   // Quality control (Lab version 2): finishing results while a test's control was rejected today needs a reason
   if (body.report || DONE.includes(order.status)) {
     const qc = await qcRejected(req.tenantId, order.tests.map((t) => t.key), req.now);
@@ -1023,13 +1157,26 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   }
   const amending = DONE.includes(order.status);
   if (amending && body.reason.trim().length < 5) throw invalid({ reason: 'The results were already reported: write why they are changed.' });
-  if (!order.received && !amending) order.received = stampOf(req); // typed without "received": received now
   if ((body.report || amending) && order.files.length === 0) {
     const missing = Object.fromEntries(tests.map((t, i) => [t, i]).filter(([t]) => !hasResult(t)).map(([, i]) => [`tests.${i}`, 'Enter the result (or attach the report).']));
     if (Object.keys(missing).length) throw invalid(missing, 'Enter every result, or attach the report file, before reporting.');
   }
+  // P6: a big change from her last result asks once, before the results go out (also when sent for the check)
+  const big = body.report || amending ? bigChanges(tests, previous, order) : [];
+  if (big.length && !body.deltaConfirmed) {
+    throw Object.assign(conflict('A result is far from her last one: check the sample and the number.', 'DELTA_CHECK'), { details: { values: big } });
+  }
+  // P5: a critical value new to the doctor needs the call (or who was tried) before it reaches the doctor
+  const goesOut = amending || (body.report && !setup.verify && order.status !== 'entered');
+  const criticalNow = criticalOf(tests);
+  const before = new Set(amending ? criticalOf(order.tests).map(valueId) : []);
+  const fresh = goesOut ? criticalNow.filter((v) => !before.has(valueId(v))) : [];
+  const note = fresh.length ? checkedCall(req, order, body) : null;
+  if (fresh.length && !note) throw needsCall(tests, fresh);
+  if (!order.received && !amending) order.received = stampOf(req); // typed without "received": received now
+  if (big.length) order.deltaChecks.push({ ...stampOf(req), values: big.map((v) => ({ testKey: v.testKey, valueKey: v.valueKey, value: v.value })) });
   if (amending) {
-    order.amendments.push({ ...stampOf(req), reason: body.reason.trim(), tests: order.tests.map(testView), labNote: order.labNote, reviewedByName: order.reviewed?.byName ?? null, reviewedAt: order.reviewed?.at ?? null });
+    order.amendments.push({ ...stampOf(req), reason: body.reason.trim(), tests: order.tests.map((t) => testView(t)), labNote: order.labNote, reviewedByName: order.reviewed?.byName ?? null, reviewedAt: order.reviewed?.at ?? null });
     order.reviewed = null;
   }
   order.tests = tests;
@@ -1049,6 +1196,7 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
     markReported(req, order);
     action = 'LAB_RESULTS_REPORTED';
   }
+  if (goesOut) setCritical(order, criticalNow, fresh, note);
   // The lab's stock this order used is taken once, when it is first reported (Lab version 2)
   let stock = null;
   if (order.status === 'reported' && !order.stockTaken) {
@@ -1058,7 +1206,9 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
   order.rev += 1;
   await order.save();
   await audit(req, action, { details: ids(order, { mrn: patient.mrn }) });
-  if (order.status === 'reported' && order.source !== 'walk_in') await notify(req, { userIds: [order.ordered?.by] }, { kind: 'lab', text: `Lab results to review: ${patient.fullName}${order.abnormal ? ' – outside the usual range' : ''}.`, link: `/lab/orders/${order._id}` });
+  if (big.length) await audit(req, 'LAB_DELTA_CONFIRMED', { details: ids(order, { mrn: patient.mrn, values: big.length }) });
+  await auditCall(req, order, patient, note, fresh.length);
+  if (order.status === 'reported' && order.source !== 'walk_in') await notify(req, { userIds: [order.ordered?.by] }, { kind: 'lab', text: `${fresh.length ? 'Critical lab result' : 'Lab results to review'}: ${patient.fullName}${!fresh.length && order.abnormal ? ' – outside the usual range' : ''}.`, link: `/lab/orders/${order._id}` });
   res.json({ order: await viewFor(req, order, access, setup), ...(stock?.short.length ? { stockShort: stock.short } : {}) });
 });
 
@@ -1067,14 +1217,19 @@ labRouter.put('/orders/:orderId/results', async (req, res) => {
 labRouter.post('/orders/:orderId/verify', async (req, res) => {
   const { order, patient, access } = await loadOrder(req);
   const setup = await labSetup(req.tenantId);
-  const body = parse(z.object({ rev }).strict(), req.body);
+  const body = parse(z.object({ rev, criticalCall: criticalCallSchema.nullable().default(null), criticalNotReached: notReachedSchema.nullable().default(null) }).strict(), req.body);
   if (!access.view) throw forbidden("You can't see this patient's lab orders.");
   if (order.status !== 'entered') throw conflict('These results are not waiting for a check.');
   if (!mayVerify(req, access, setup)) throw forbidden(setup.verify ? 'You are not one of the people who check lab results here.' : 'Results are not checked before the report in this hospital.');
   if (String(order.entered?.by) === String(req.user._id)) throw forbidden('Someone other than the person who entered the results must check them.');
   checkRev(order, body.rev);
+  // P5: the checker sends the results to the doctor, so the checker notes the call about a critical value
+  const fresh = criticalOf(order.tests);
+  const note = fresh.length ? checkedCall(req, order, body) : null;
+  if (fresh.length && !note) throw needsCall(order.tests, fresh);
   order.verified = stampOf(req);
   markReported(req, order);
+  setCritical(order, fresh, fresh, note);
   if (!order.stockTaken) {
     order.stockTaken = true;
     await takeStock(req, order);
@@ -1082,6 +1237,7 @@ labRouter.post('/orders/:orderId/verify', async (req, res) => {
   order.rev += 1;
   await order.save();
   await audit(req, 'LAB_RESULTS_VERIFIED', { details: ids(order, { mrn: patient.mrn }) });
+  await auditCall(req, order, patient, note, fresh.length);
   res.json({ order: await viewFor(req, order, access, setup) });
 });
 
@@ -1190,7 +1346,7 @@ labRouter.post('/orders/:orderId/files', async (req, res) => {
   if (amending && body.reason.trim().length < 5) throw invalid({ reason: 'The results were already reported: write why a file is added.' });
   const file = await storeFile(req, { patientId: order.patientId, kind: 'lab_report', ownerId: order._id, body });
   if (amending) {
-    order.amendments.push({ ...stampOf(req), reason: body.reason.trim(), tests: order.tests.map(testView), labNote: order.labNote, reviewedByName: order.reviewed?.byName ?? null, reviewedAt: order.reviewed?.at ?? null });
+    order.amendments.push({ ...stampOf(req), reason: body.reason.trim(), tests: order.tests.map((t) => testView(t)), labNote: order.labNote, reviewedByName: order.reviewed?.byName ?? null, reviewedAt: order.reviewed?.at ?? null });
     order.reviewed = null;
     order.status = 'reported';
     order.reported = stampOf(req);
@@ -1252,9 +1408,13 @@ labRouter.post('/orders/:orderId/review', async (req, res) => {
   if (order.abnormal && body.comment.trim().length < 3) throw invalid({ comment: 'A result is outside the usual range: write what was done about it.' });
   order.status = 'reviewed';
   order.reviewed = { ...stampOf(req), comment: body.comment.trim() };
+  // P5: reviewing a critical result also acknowledges it (the doctor has seen it)
+  const acknowledging = Boolean(order.critical?.values?.length && !order.critical.acknowledged);
+  if (acknowledging) order.critical.acknowledged = stampOf(req);
   order.rev += 1;
   await order.save();
   await audit(req, 'LAB_RESULTS_REVIEWED', { details: ids(order, { mrn: patient.mrn }) });
+  if (acknowledging) await audit(req, 'LAB_CRITICAL_ACKNOWLEDGED', { details: ids(order, { mrn: patient.mrn }) });
   // A reviewed haemoglobin now counts: the risk level is worked out again (covered by the entry above).
   const riskChanged = await riskAfterLab(req, patient);
   let planChanged = false;
@@ -1271,4 +1431,37 @@ labRouter.post('/orders/:orderId/review', async (req, res) => {
     console.error('Care plan after a lab review failed', err?.message ?? err);
   }
   res.json({ order: await viewFor(req, order, access), planChanged, riskChanged });
+});
+
+// P5: the call noted later – after "nobody could be reached", or a further call. The lab, or whoever may enter results.
+labRouter.post('/orders/:orderId/critical-call', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'report');
+  const body = parse(z.object({ rev, criticalCall: criticalCallSchema.nullable().default(null), criticalNotReached: notReachedSchema.nullable().default(null) }).strict(), req.body);
+  if (!DONE.includes(order.status) || !order.critical?.values?.length) throw conflict('This order has no reported critical result.');
+  checkRev(order, body.rev);
+  const note = checkedCall(req, order, body);
+  if (!note) throw invalid({ criticalCall: 'Note whom you told, or whom you tried.' });
+  setCritical(order, order.critical.values.map((v) => ({ testKey: v.testKey, valueKey: v.valueKey })), [], note);
+  order.rev += 1;
+  await order.save();
+  await auditCall(req, order, patient, note, order.critical.values.length);
+  res.json({ order: await viewFor(req, order, access) });
+});
+
+// P5: the doctor acknowledges a critical result – one click, who and when. Whoever may review it (her doctor, or a
+// doctor for an unassigned patient); whether an RMO may acknowledge at night is the owner's decision (section 7).
+labRouter.post('/orders/:orderId/acknowledge', async (req, res) => {
+  const { order, patient, access } = await loadOrder(req);
+  assertCan(access, 'review');
+  const body = parse(z.object({ rev }).strict(), req.body);
+  if (!DONE.includes(order.status) || !order.critical?.values?.length) throw conflict('This order has no reported critical result.');
+  if (order.source === 'walk_in') throw conflict('A walk-in order goes to the referring doctor.');
+  if (order.critical.acknowledged) throw conflict(`Already acknowledged by ${order.critical.acknowledged.byName}.`, 'ALREADY_ACKNOWLEDGED');
+  checkRev(order, body.rev);
+  order.critical.acknowledged = stampOf(req);
+  order.rev += 1;
+  await order.save();
+  await audit(req, 'LAB_CRITICAL_ACKNOWLEDGED', { details: ids(order, { mrn: patient.mrn }) });
+  res.json({ order: await viewFor(req, order, access) });
 });

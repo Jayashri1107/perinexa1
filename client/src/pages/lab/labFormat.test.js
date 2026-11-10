@@ -1,6 +1,6 @@
 // The lab module's helpers (Version 2): flags, one-line results, and the result form (fake sample values).
 import { describe, expect, it } from 'vitest';
-import { flagFor, formFromOrder, orderLook, resultLine, testNames, testsFromForm } from './labFormat.js';
+import { flagFor, formFromOrder, orderLook, resultLine, testNames, testsFromForm, criticalCallBody, emptyCall, graphPoints, isCriticalValue, resultsOverTime } from './labFormat.js';
 
 const hb = { key: 'hb', name: 'Haemoglobin', type: 'number', unit: 'g/dL', low: 11, high: 16 };
 const hiv = { key: 'hiv', name: 'HIV', type: 'choice', options: ['Non-reactive', 'Reactive'], abnormal: ['Reactive'] };
@@ -89,5 +89,24 @@ describe('baby packages by day of life', () => {
     expect(packageDays({ fromDay: 14, toDay: null })).toBe('From day 14');
     expect(testsFor({ careType: 'newborn' })).toBe('newborn');
     expect(testsFor({ careType: 'antenatal' })).toBe('adult');
+  });
+});
+
+// The lab's four features of 10 Nov 2026 (docs/LAB_BUILD_NOTE.md): P5 critical values, P6 results over time
+describe('critical values and results over time', () => {
+  it('a value is critical at or beyond the hospital limit, as on the server', () => {
+    const f = { type: 'number', criticalLow: 6, criticalHigh: 20 };
+    expect([isCriticalValue(f, '6'), isCriticalValue(f, '6.1'), isCriticalValue(f, '20'), isCriticalValue(f, ''), isCriticalValue({ type: 'number' }, '1')]).toEqual([true, false, true, false, false]);
+  });
+  it('the call or the not-reached note, trimmed', () => {
+    expect(criticalCallBody({ ...emptyCall(), toldName: ' Dr A ', toldRole: 'Doctor', readBack: true })).toEqual({ criticalCall: { toldName: 'Dr A', toldRole: 'Doctor', how: 'phone', readBack: true } });
+    expect(criticalCallBody({ ...emptyCall(), notReached: true, triedName: ' Dr A ' })).toEqual({ criticalNotReached: { triedName: 'Dr A' } });
+  });
+  it('one row per value and one column per reported sample, newest first; confidential tests left out', () => {
+    const order = (id, at, status, hb) => ({ id, status, collected: { at }, tests: [{ key: 'hb', values: [{ key: 'hb', value: hb, name: 'Haemoglobin', unit: 'g/dL', flag: '' }] }, { key: 'hiv', values: [{ key: 'hiv', value: 'Non-reactive' }] }] });
+    const { columns, rows } = resultsOverTime([order('a', '2026-10-01T05:00:00Z', 'reviewed', '11.8'), order('b', '2026-10-20T05:00:00Z', 'reported', '9.1'), order('c', '2026-10-25T05:00:00Z', 'collected', '')]);
+    expect(columns.map((c) => c.id)).toEqual(['b', 'a']);
+    expect(rows.map((r) => r.id)).toEqual(['hb.hb']);
+    expect(graphPoints(rows[0], columns).map((p) => p.value)).toEqual([11.8, 9.1]);
   });
 });

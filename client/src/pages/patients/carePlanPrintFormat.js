@@ -314,8 +314,8 @@ export const DRAFT_PLAN_WORDS = W('', 'मसुदा – डॉक्टरा
 // sample sheet (Anandi Hospital): the facts, "Special care needed", one row for each month of pregnancy with a column
 // for each type of item, "Today:" in this month, the delivery plan and the doctor's remarks typed at printing, the
 // danger signs, three reminders and the closing line.
-// ⚠️ DRAFT: the sample's English wording is the owner's; the Marathi and Hindi, the plain words for the risk reasons and
-// the danger-sign list wait for the owner's approval and a fluent speaker (docs/TRANSLATIONS_TO_CHECK.md).
+// Wording approved by the owner on 10 Nov 2026 (the plain words for the risk reasons, the danger signs, the reminders and
+// the closing line). The Marathi and Hindi stay listed for a fluent speaker's check (docs/TRANSLATIONS_TO_CHECK.md).
 
 /** The months of pregnancy as on the owner's sample sheet: [month, from week, to week]. Month 9 runs on to 42 w 6 d. */
 export const PREGNANCY_MONTHS = [
@@ -339,7 +339,7 @@ export const TABLE_COLUMNS = [
   { key: 'advice', kinds: ['advice'] },
 ];
 
-/** The fixed words of the table page ({ en, mr, hi }). ⚠️ DRAFT Marathi and Hindi. */
+/** The fixed words of the table page ({ en, mr, hi }). Marathi and Hindi: for the fluent-speaker check. */
 export const TABLE_LABELS = {
   title: W('9-Month Pregnancy Plan', 'गरोदरपणाचा ९ महिन्यांचा तपासणी प्रवास', '९ महीने की गर्भावस्था योजना'),
   month: W('Month', 'महिना', 'महीना'),
@@ -362,9 +362,11 @@ export const TABLE_LABELS = {
   remarks: W('Doctor’s remarks', 'डॉक्टरांची टिप्पणी', 'डॉक्टर की टिप्पणी'),
   danger: W('Danger signs – come to hospital immediately', 'धोक्याची लक्षणे – त्वरित रुग्णालयात या', 'ख़तरे के लक्षण – तुरंत अस्पताल आएँ'),
   date: W('Date', 'तारीख', 'तारीख़'),
+  rmo: W('RMO', 'आरएमओ', 'आरएमओ'),
+  consultant: W('Consultant', 'सल्लागार डॉक्टर', 'परामर्शदाता डॉक्टर'),
 };
 
-/** The danger signs of the sample sheet, in its order (two columns on paper). ⚠️ DRAFT – the owner approves. */
+/** The danger signs of the sample sheet, in its order (two columns on paper). Approved by the owner, 10 Nov 2026. */
 export const DANGER_SIGNS = [
   W('Bleeding from vagina', 'योनीमार्गातून रक्तस्राव', 'योनि से ख़ून आना'),
   W('Leaking of water', 'पाणी जाणे', 'पानी जाना'),
@@ -378,14 +380,14 @@ export const DANGER_SIGNS = [
   W('Continuous vomiting', 'सतत उलट्या', 'लगातार उल्टी'),
 ];
 
-/** The three standing reminders of the sample sheet. ⚠️ DRAFT – the owner approves. */
+/** The three standing reminders of the sample sheet. Approved by the owner, 10 Nov 2026. */
 export const PLAN_REMINDERS = [
   W('From 28 weeks count baby movements daily – at least 10 in 2 hours.', '२८ आठवड्यांनंतर रोज बाळाच्या हालचाली मोजा – २ तासांत किमान १० हालचाली.', '२८ हफ़्ते के बाद रोज़ शिशु की हलचल गिनें – २ घंटे में कम से कम १०।'),
   W('Take iron and calcium tablets daily, at different times.', 'लोह व कॅल्शियमच्या गोळ्या रोज, वेगवेगळ्या वेळी घ्या.', 'आयरन और कैल्शियम की गोलियाँ रोज़, अलग-अलग समय पर लें।'),
   W('Bring this plan and all reports to every visit.', 'प्रत्येक भेटीला ही योजना व सर्व रिपोर्ट्स सोबत आणा.', 'हर जाँच पर यह योजना और सभी रिपोर्ट साथ लाएँ।'),
 ];
 
-/** The closing line of the sample sheet. ⚠️ DRAFT Marathi and Hindi. */
+/** The closing line of the sample sheet. Approved by the owner, 10 Nov 2026. */
 export const TABLE_NOTE = W(
   'Dates are approximate target dates; the doctor may change the plan at any visit. Fetal sex is not disclosed (PC-PNDT Act).',
   'तारखा अंदाजे आहेत; डॉक्टर कोणत्याही भेटीत योजना बदलू शकतात. गर्भाचे लिंग सांगितले जात नाही (PC-PNDT कायदा).',
@@ -396,7 +398,7 @@ export const TABLE_NOTE = W(
  * "Special care needed": her risk reasons in plain words for a paper the family reads. Only the reasons listed here
  * print; the others never do – an infection needing specialist care (it may be HIV: the neutral-name rule), a mental
  * health condition, tuberculosis, a stillbirth or newborn death before. Several reasons with the same plain words print
- * once. ⚠️ DRAFT – the owner approves the words and the list.
+ * once. The words and the list approved by the owner, 10 Nov 2026.
  */
 export const SPECIAL_CARE_WORDS = {
   age: W('Mother’s age (under 18 or over 35)', 'आईचे वय (१८ पेक्षा कमी किंवा ३५ पेक्षा जास्त)', 'माँ की उम्र (१८ से कम या ३५ से ज़्यादा)'),

@@ -339,6 +339,9 @@ const ByDoctorPage = screen(load104, 'ByDoctorPage');
 // Waiting times (docs/PATIENT_FLOW_PLAN.md): doctors, hospital admins, and the super admin on the platform
 const loadWaiting = () => import('./pages/analytics/WaitingTimesPage.jsx');
 const WaitingTimesPage = screen(loadWaiting, 'WaitingTimesPage');
+// Lab times (P9 – docs/LAB_BUILD_NOTE.md): the same audiences as Waiting times
+const loadLabTimes = () => import('./pages/analytics/LabTimesPage.jsx');
+const LabTimesPage = screen(loadLabTimes, 'LabTimesPage');
 const load105 = () => import('./pages/analytics/AnalyticsPage.jsx');
 const AnalyticsPage = screen(load105, 'AnalyticsPage');
 const load106 = () => import('./pages/analytics/AnalyticsSectionRoute.jsx');
@@ -451,6 +454,7 @@ export function App() {
 
                 <Route path="analytics" element={<AnalyticsPage key="overview" section="overview" platform />} />
                 <Route path="analytics/waiting" element={<WaitingTimesPage platform />} />
+                <Route path="analytics/lab-times" element={<LabTimesPage platform />} />
                 <Route path="analytics/:section" element={<AnalyticsSectionRoute platform />} />
 
                 {/* One page; the old addresses of its event groups open it with that Type chosen */}
@@ -698,6 +702,7 @@ export function App() {
                     <Route index element={<ByDoctorPage />} />
                   </Route>
                   <Route path="waiting" element={<WaitingTimesPage />} />
+                  <Route path="lab-times" element={<LabTimesPage />} />
                   <Route path=":section" element={<AnalyticsSectionRoute />} />
                 </Route>
                 <Route path="care-plans" element={<Navigate to="/care-plans/templates" replace />} />

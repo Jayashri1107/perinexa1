@@ -2,7 +2,8 @@
 // rejection reasons, the hospital's test list (built-in tests as the hospital changed them, plus its own tests) and
 // the usual range that applies to one patient.
 import { CONFIDENTIAL_NAME, CONFIDENTIAL_TESTS } from '../billing/billingRules.js';
-import { hospitalToday } from '../careplans/dates.js';
+import { gaOn, hospitalToday } from '../careplans/dates.js';
+import { eddInUse } from '../patients/pregnancyFindings.js';
 import { nextNumber } from '../models/Counter.js';
 import { LabSetup } from '../models/LabSetup.js';
 import { LabTestSetting } from '../models/LabTestSetting.js';
@@ -105,13 +106,16 @@ export const shownName = (test) => (isConfidential(test.key) ? CONFIDENTIAL_NAME
 // The patient's own sex: a baby's as recorded after birth, an adult's as the lab recorded it at a walk-in registration
 // (every other adult in Perinexa is a women's-care patient). Never a fetus's (PCPNDT).
 export const BAND_SEX = ['', 'female', 'male'];
-export const BAND_PREGNANT = ['', 'yes', 'no'];
+// 'postnatal': after delivery (postnatal care) - P4 of docs/LAB_BUILD_NOTE.md
+export const BAND_PREGNANT = ['', 'yes', 'no', 'postnatal'];
 export const AGE_UNITS = ['years', 'days'];
 
 /**
  * What decides which range applies to a patient: age in years (adults) or days of life (a baby), the patient's sex
  * (a baby's recorded after birth; an adult's recorded by the lab for a walk-in, else female – Perinexa's adults are
- * women's-care patients), and whether she is pregnant (antenatal care).
+ * women's-care patients), whether she is pregnant (antenatal care) and her weeks from the EDD in use, or after
+ * delivery (postnatal care). now: the time of the SAMPLE (P4 – a result is judged as she was when it was taken, also
+ * when it is typed or changed later).
  */
 export function rangeContext(patient, now = new Date()) {
   const baby = patient.careType === 'newborn';
@@ -123,7 +127,14 @@ export function rangeContext(patient, now = new Date()) {
     ageDays,
     sex: baby ? (['female', 'male'].includes(patient.newborn?.sex) ? patient.newborn.sex : '') : patient.sex === 'male' ? 'male' : 'female',
     pregnant: patient.careType === 'antenatal',
+    postnatal: patient.careType === 'postnatal',
+    // Weeks of pregnancy on the sample's day (null without an EDD: a range by weeks then does not apply)
+    weeks: patient.careType === 'antenatal' ? (gaOnSample(patient, now)?.weeks ?? null) : null,
   };
+}
+function gaOnSample(patient, at) {
+  const edd = eddInUse(patient);
+  return edd ? gaOn(edd, hospitalToday(at)) : null;
 }
 
 const inAge = (band, ctx) => {
@@ -138,6 +149,11 @@ export function bandFits(band, ctx) {
   if (band.sex && band.sex !== ctx.sex) return false;
   if (band.pregnant === 'yes' && !ctx.pregnant) return false;
   if (band.pregnant === 'no' && ctx.pregnant) return false;
+  if (band.pregnant === 'postnatal' && !ctx.postnatal) return false;
+  if (band.pregnant === 'yes' && (band.fromWeeks != null || band.toWeeks != null)) {
+    if (ctx.weeks == null) return false;
+    if ((band.fromWeeks != null && ctx.weeks < band.fromWeeks) || (band.toWeeks != null && ctx.weeks > band.toWeeks)) return false;
+  }
   return inAge(band, ctx);
 }
 
@@ -148,11 +164,15 @@ export function rangeText(low, high, unit) {
   return '';
 }
 
-/** "Pregnant, 18–45 years" – who a group range is for. baby: a baby's test (a girl or a boy, not women or men). */
-export function bandWho(band, baby = false) {
+/**
+ * "Pregnant, 14–27 weeks, 18–45 years" – who a group range is for. baby: a baby's test (a girl or a boy, not women
+ * or men). weeks: false leaves the weeks out (the words the lab sees and the report prints - need-to-know).
+ */
+export function bandWho(band, baby = false, { weeks = true } = {}) {
   const parts = [];
-  if (band.pregnant === 'yes') parts.push('pregnant');
+  if (band.pregnant === 'yes') parts.push(weeks ? `pregnant${weeksWords(band)}` : 'pregnant');
   if (band.pregnant === 'no') parts.push('not pregnant');
+  if (band.pregnant === 'postnatal') parts.push('after delivery');
   if (band.sex) parts.push(baby ? (band.sex === 'female' ? 'baby girl' : 'baby boy') : band.sex === 'female' ? 'women' : 'men');
   if (band.fromAge != null || band.toAge != null) {
     const u = band.ageUnit === 'days' ? 'days of life' : 'years';
@@ -164,13 +184,36 @@ export function bandWho(band, baby = false) {
   return text ? text[0].toUpperCase() + text.slice(1) : 'Everyone';
 }
 
-/** A number field as it applies to this patient: the first group range that fits, else the field's own range. */
+/**
+ * Whether a number value is critical (P5 - docs/LAB_BUILD_NOTE.md): at or below the hospital's low critical limit, or
+ * at or above its high one. The limits are about the number alone (not her weeks or record), so the lab may see them.
+ */
+export function isCritical(field, value) {
+  if (field?.type !== 'number' || value === '' || value == null) return false;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return false;
+  return (field.criticalLow != null && n <= field.criticalLow) || (field.criticalHigh != null && n >= field.criticalHigh);
+}
+
+function weeksWords(band) {
+  if (band.fromWeeks != null && band.toWeeks != null) return `, ${band.fromWeeks}–${band.toWeeks} weeks`;
+  if (band.fromWeeks != null) return `, from ${band.fromWeeks} weeks`;
+  if (band.toWeeks != null) return `, up to ${band.toWeeks} weeks`;
+  return '';
+}
+
+/**
+ * A number field as it applies to this patient: the first group range that fits, else the field's own range.
+ * range: the words printed and shown to the lab (no weeks); band: who the range is for, with the weeks (clinical
+ * users only - lab/labSetup.js catalogueView and routes/lab.js leave it out for the lab).
+ */
 export function fieldFor(field, ctx) {
   if (field.type !== 'number') return field;
   const band = (field.bands ?? []).find((b) => bandFits(b, ctx));
   if (!band) return field;
   const who = bandWho(band, ctx?.baby);
-  return { ...field, low: band.low ?? null, high: band.high ?? null, range: band.range || `${rangeText(band.low, band.high, field.unit)} (${who.toLowerCase()})`, band: who };
+  const shown = bandWho(band, ctx?.baby, { weeks: false });
+  return { ...field, low: band.low ?? null, high: band.high ?? null, range: band.range || `${rangeText(band.low, band.high, field.unit)} (${shown.toLowerCase()})`, band: who };
 }
 
 // ---------- The hospital's test list ----------
@@ -196,11 +239,12 @@ function builtInAsSet(t, s) {
   const fields = t.fields.map((f) => {
     const r = ranges[f.key];
     // The built-in group ranges (men) stay until the hospital sets its own (an empty list removes them)
-    if (!r || f.type !== 'number') return { ...f, bands: f.type === 'number' ? (f.bands ?? []) : [], deltaPercent: null };
+    // Critical limits (P5): none built in - the hospital's own, set and approved like a range (LAB_BUILD_NOTE section 7)
+    if (!r || f.type !== 'number') return { ...f, bands: f.type === 'number' ? (f.bands ?? []) : [], deltaPercent: null, criticalLow: null, criticalHigh: null };
     const changed = r.low !== undefined || r.high !== undefined;
     const low = r.low !== undefined ? r.low : f.low;
     const high = r.high !== undefined ? r.high : f.high;
-    return { ...f, low, high, range: r.range || (changed ? rangeText(low, high, f.unit) : f.range), bands: r.bands !== undefined ? r.bands : (f.bands ?? []), deltaPercent: r.deltaPercent ?? null };
+    return { ...f, low, high, range: r.range || (changed ? rangeText(low, high, f.unit) : f.range), bands: r.bands !== undefined ? r.bands : (f.bands ?? []), deltaPercent: r.deltaPercent ?? null, criticalLow: r.criticalLow ?? null, criticalHigh: r.criticalHigh ?? null };
   });
   return {
     key: t.key,
@@ -238,7 +282,10 @@ function customAsSet(s) {
     group: s.group || 'other',
     sample: s.sample,
     who: s.who,
-    fields: (s.fields ?? []).map((f) => ({ ...f, bands: f.type === 'number' ? (f.bands ?? []) : [], deltaPercent: f.type === 'number' ? (f.deltaPercent ?? null) : null })),
+    fields: (s.fields ?? []).map((f) => {
+      const n = f.type === 'number';
+      return { ...f, bands: n ? (f.bands ?? []) : [], deltaPercent: n ? (f.deltaPercent ?? null) : null, criticalLow: n ? (f.criticalLow ?? null) : null, criticalHigh: n ? (f.criticalHigh ?? null) : null };
+    }),
     planKeys: [],
     report: reportOf(null, s.report),
     antibiotics: s.antibiotics ?? [],
@@ -274,7 +321,7 @@ export const setupOf = (catalogue, key) => (key === OTHER_TEST ? OTHER_SETUP : (
  * The test list for the browser. ctx (a patient's rangeContext): the number fields carry the range that applies to
  * this patient (the result form suggests the flag from it).
  */
-export function catalogueView(catalogue, ctx = null) {
+export function catalogueView(catalogue, ctx = null, { clinical = true } = {}) {
   return {
     groups: LAB_GROUPS,
     departments: DEPARTMENTS,
@@ -291,8 +338,9 @@ export function catalogueView(catalogue, ctx = null) {
       report: t.report,
       antibiotics: t.antibiotics,
       fields: t.fields.map((f) => {
-        const { bands, ...rest } = ctx ? fieldFor(f, ctx) : f;
-        return rest;
+        // The lab sees the range's numbers, not whom it is for (her weeks of pregnancy - need-to-know, P4)
+        const { bands, band, ...rest } = ctx ? fieldFor(f, ctx) : f;
+        return clinical && band ? { ...rest, band } : rest;
       }),
     })),
   };

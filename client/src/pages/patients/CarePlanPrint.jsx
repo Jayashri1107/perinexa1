@@ -393,9 +393,10 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose, 
         {staff ? (
           <StaffCopy patient={patient} plan={plan} />
         ) : (
-          <PatientCopy patient={patient} plan={plan} options={shown} lang={lang} edit={tableEdit} />
+          <PatientCopy patient={patient} plan={plan} options={shown} lang={lang} edit={tableEdit} signer={{ rmo: hasRole(activeMembership, 'rmo') && !hasRole(activeMembership, 'doctor') ? user.name : '', on: printedAt }} />
         )}
-        {signs && <DoctorSignature user={user} />}
+        {/* The month table has the sample sheet's own signature line (RMO, Consultant, Date) */}
+        {signs && !asTable && <DoctorSignature user={user} />}
         <LetterheadFooter letterhead={letterhead} />
       </PrintDocument>
     </PrintPreview>
@@ -423,7 +424,7 @@ function BiValue({ en, other, lang }) {
  * under or after the English. Items print in her language only when they have a translation (planItemText); the
  * doctor's advice always prints as typed.
  */
-export function PatientCopy({ patient, plan, options, lang = 'en', edit = null }) {
+export function PatientCopy({ patient, plan, options, lang = 'en', edit = null, signer = null }) {
   const second = secondLanguage(lang);
   const asTable = options.layout === 'table' && canPrintMonthTable(plan);
   const copy = patientCopy(plan, options);
@@ -440,7 +441,7 @@ export function PatientCopy({ patient, plan, options, lang = 'en', edit = null }
     </>
   );
   const start = startDayLabel(plan);
-  if (asTable) return <TablePage patient={patient} plan={plan} options={options} lang={lang} what={what} edit={edit} />;
+  if (asTable) return <TablePage patient={patient} plan={plan} options={options} lang={lang} what={what} edit={edit} signer={signer} />;
   return (
     <>
       <h1 className="pdoc-title">{title}</h1>
@@ -569,7 +570,7 @@ export function PatientCopy({ patient, plan, options, lang = 'en', edit = null }
  * the danger signs, three reminders and the closing line. ⚠️ DRAFT wording (see carePlanPrintFormat.js).
  * edit ({ onAdd(row, column), onRemove(item) }, or null): the Add and Remove buttons in the preview, which never print.
  */
-function TablePage({ patient, plan, options, lang, what, edit }) {
+function TablePage({ patient, plan, options, lang, what, edit, signer }) {
   const second = secondLanguage(lang);
   const T = (key) => <BiLabel words={TABLE_LABELS[key]} lang={lang} />;
   const label = (key) => <BiLabel words={L[key]} lang={lang} />;
@@ -657,6 +658,18 @@ function TablePage({ patient, plan, options, lang, what, edit }) {
       <p className="pdoc-note">
         <Bi words={TABLE_NOTE} />
       </p>
+      {/* The sample sheet's signature line: the RMO (named when an RMO prints it), her consultant, and the date */}
+      <div className="pmt-signs">
+        <span>
+          {T('rmo')} {signer?.rmo ? <strong>{signer.rmo}</strong> : null} <span className="pmt-sign-blank" />
+        </span>
+        <span>
+          {T('consultant')}: {patient.assignedDoctorName ? <strong>{patient.assignedDoctorName}</strong> : null} <span className="pmt-sign-blank" />
+        </span>
+        <span>
+          {T('date')}: <span className="pdoc-tabular">{formatDate(signer?.on ?? new Date())}</span>
+        </span>
+      </div>
     </>
   );
 }

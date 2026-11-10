@@ -31,6 +31,7 @@ import { DRILLDOWN_ROLES } from '../analytics/roles.js';
 import { REFRESH_RISK_SECTIONS, SECTIONS, needsOf } from '../analytics/registry.js';
 import { visibleSet } from '../analytics/visibility.js';
 import { WAIT_PERIODS, hospitalWaitingTimes } from '../analytics/waitingTimes.js';
+import { hospitalLabTimes } from '../analytics/labTimes.js';
 
 export const analyticsRouter = Router();
 
@@ -228,5 +229,14 @@ analyticsRouter.get('/waiting-times', async (req, res) => {
   const q = parse(z.object({ period: z.enum(Object.keys(WAIT_PERIODS)).optional() }), req.query);
   const body = await hospitalWaitingTimes(req, { audience: req.analyticsAudience, periodKey: q.period });
   await logView(req, 'waiting', 'hospital');
+  res.json({ audience: req.analyticsAudience, calculatedAt: req.now, ...body });
+});
+
+// Lab times (P9 – docs/LAB_BUILD_NOTE.md, analytics/labTimes.js): the same audiences and protection as Waiting times.
+// Stages only, never a technician or a doctor; no patient lists.
+analyticsRouter.get('/lab-times', async (req, res) => {
+  const q = parse(z.object({ period: z.enum(Object.keys(WAIT_PERIODS)).optional() }), req.query);
+  const body = await hospitalLabTimes(req, { audience: req.analyticsAudience, periodKey: q.period });
+  await logView(req, 'lab_times', 'hospital');
   res.json({ audience: req.analyticsAudience, calculatedAt: req.now, ...body });
 });

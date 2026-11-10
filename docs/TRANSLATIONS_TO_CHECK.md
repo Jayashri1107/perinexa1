@@ -700,3 +700,10 @@ Every phrase of the table page, word for word (`TABLE_LABELS`, `DANGER_SIGNS`, `
 | Autoimmune illness | ऑटोइम्यून आजार | ऑटोइम्यून बीमारी |
 
 Also in that file: `०१२३४५६७८९` (Devanagari digits for "महिना ३").
+
+Every phrase of the table page, word for word (`TABLE_LABELS`, `DANGER_SIGNS`, `PLAN_REMINDERS`, `TABLE_NOTE`, `SPECIAL_CARE_WORDS`):
+
+| English | Marathi | Hindi |
+| --- | --- | --- |
+| RMO | आरएमओ | आरएमओ |
+| Consultant | सल्लागार डॉक्टर | परामर्शदाता डॉक्टर |

@@ -85,6 +85,16 @@ describe('one Dictate for the whole page', () => {
     const twice = 'C/O white discharge for one week. Previously delivered twice, both normal.';
     expect(withHistorySheet(extractPatientDetails(twice, { careType: 'antenatal', now }), twice, { careType: 'antenatal', readDate, now }).unused).toEqual([]);
   });
+  it('writes the complaint once: in "complaints of", not again as "Reason for visit" in the notes; other notes stay', () => {
+    const read = (said, careType = 'gynaecology') => withHistorySheet(extractPatientDetails(said, { careType, now }), said, { careType, readDate, now });
+    const a = read('C/O white discharge for one week. Previously delivered twice, both normal.');
+    expect(a.values.history.complaint).toBe('white discharge for one week');
+    expect(a.values.notes).toBeUndefined();
+    expect(a.paths).not.toContain('notes');
+    expect(a.found.some((f) => f.path === 'notes')).toBe(false);
+    const b = read('Patient is 35 years with complaints of pain in abdomen. Previous LSCS in 2020 for breech.', 'antenatal');
+    expect(b.values.notes).toBe('Breech presentation');
+  });
   it("adds the type of care's line only when it is on the page", () => {
     const text = 'Trying to conceive since 2 years';
     const base = extractPatientDetails(text, { careType: 'infertility', now });

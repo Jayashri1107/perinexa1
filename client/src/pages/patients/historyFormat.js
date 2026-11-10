@@ -299,5 +299,31 @@ export function withHistorySheet(result, text, { careType, careLine = false, rea
     const rest = plainWords(anchorsOf.reduce((x, rx) => x.replace(rx, ' '), u.text));
     return !rest || taken.some((s) => s.includes(rest));
   };
-  return { ...result, values, paths: [...new Set(paths)], found, unused: (result.unused ?? []).filter((u) => !covered(u)) };
+  // The complaint is written once (10 Nov 2026): when the sheet's "complaints of" took it, the voice entry's
+  // "Reason for visit: …" note saying the same is left out of the notes; any other note stays
+  let foundOut = found;
+  let pathsOut = [...new Set(paths)];
+  // (number words as digits: the voice entry writes "1 week" where the sheet keeps "one week")
+  const norm = (x) => plainWords(x).replace(/\b[a-z]+\b/g, (w) => (WORD_NUMBERS[w] != null ? String(WORD_NUMBERS[w]) : w));
+  const complaint = norm(sheet.complaint ?? '');
+  if (complaint && typeof values.notes === 'string') {
+    const same = (piece) => {
+      const m = /^Reason for visit:\s*(.*)$/i.exec(piece.trim());
+      const r = m ? norm(m[1]) : '';
+      return Boolean(r) && (r.includes(complaint) || complaint.includes(r));
+    };
+    const kept = values.notes.split('; ').filter((p) => !same(p));
+    if (kept.length !== values.notes.split('; ').length) {
+      const notes = kept.join('; ');
+      if (notes) values.notes = notes;
+      else {
+        delete values.notes;
+        pathsOut = pathsOut.filter((p) => p !== 'notes');
+      }
+      foundOut = found
+        .map((f) => (f.path !== 'notes' ? f : notes ? { ...f, text: notes, ...(f.pieces ? { pieces: f.pieces.filter((p) => !same(p.text ?? '')) } : {}) } : null))
+        .filter(Boolean);
+    }
+  }
+  return { ...result, values, paths: pathsOut, found: foundOut, unused: (result.unused ?? []).filter((u) => !covered(u)) };
 }
