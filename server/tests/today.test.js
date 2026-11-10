@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
+import { Admission } from '../src/models/Admission.js';
+import { Patient } from '../src/models/Patient.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-09-28T06:00:00Z'); // hospital today: 28 Sep 2026
@@ -174,6 +176,35 @@ describe('today', () => {
     body = (await today('reception')).body;
     expect([...body.dueNow, ...body.overdue].map((r) => r.patient.id)).not.toContain(due.id);
     expect([...body.dueNow, ...body.overdue].map((r) => r.patient.id)).not.toContain(gyn.id);
+  });
+});
+
+describe('colour labels on Today (owner, 10 Nov 2026)', () => {
+  it("doctors and RMOs get each patient's admission type and billing type – her stay's while admitted – reception gets neither", async () => {
+    const pregnant = await register('Asha Label', { today: true });
+    const gynae = await register('Bina Label', { careType: 'gynaecology', today: true });
+    // (in hospital and registered before today: on Today's patients because her doctor started a visit today)
+    const admitted = await register('Chitra Label', { careType: 'gynaecology' });
+    await Patient.updateOne({ tenantId: hospital._id, _id: pregnant.id }, { $set: { 'payer.type': 'insurance' } });
+    await Patient.updateOne({ tenantId: hospital._id, _id: admitted.id }, { $set: { 'payer.type': 'cash' } });
+    await Admission.create({ tenantId: hospital._id, patientId: admitted.id, careType: 'gynaecology', admittedAt: new Date(), ward: 'Ward A', bed: 'A-1', stayType: 'delivered', billingType: 'package', admittedBy: people.drA._id, admittedByName: 'Sample drA', clientRequestId: randomUUID() });
+    await visit('drA', admitted);
+
+    const labels = (body) => Object.fromEntries(body.patients.map((r) => [r.patient.fullName, [r.stayType, r.billingType]]));
+    for (const who of ['drA', 'rmo']) {
+      const res = await today(who, '?scope=all');
+      expect(res.status).toBe(200);
+      const got = labels(res.body);
+      expect(got['Asha Label']).toEqual(['anc', 'insurance']);
+      expect(got['Bina Label']).toEqual(['other', '']);
+      expect(got['Chitra Label']).toEqual(['delivered', 'package']);
+    }
+    const desk = await today('reception', '?scope=all');
+    expect(desk.status).toBe(200);
+    for (const r of desk.body.patients) {
+      expect(r).not.toHaveProperty('stayType');
+      expect(r).not.toHaveProperty('billingType');
+    }
   });
 });
 

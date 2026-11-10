@@ -85,7 +85,14 @@ function TodaysPatients({ rows, progress, showDoctor, canMark, onMark, onUndo, o
                   patient={{ ...r.patient, assignedDoctorName: showDoctor ? r.patient.doctorName : null }}
                   to={r.visitId ? `/patients/${r.patient.id}/visits/${r.visitId}` : undefined}
                   openLabel={r.visitId ? 'Open the visit' : 'Open the record'}
-                  marker={<AppointmentChip appointment={r.appointment} />}
+                  marker={
+                    <>
+                      <AppointmentChip appointment={r.appointment} />
+                      {/* Doctors and RMOs (the server sends these only to them): admission type and billing type (10 Nov 2026) */}
+                      {r.stayType && <StayTypeLabel type={r.stayType} />}
+                      {r.billingType && <BillingLabel type={r.billingType} />}
+                    </>
+                  }
                 >
                   <div className="wl-row-head">
                     <span className="wl-counts">
