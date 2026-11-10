@@ -75,7 +75,7 @@ export function AskRecordsPage() {
       <PageHeader
         breadcrumbs={[{ label: 'Analytics', to: hasRole(activeMembership, 'doctor') ? '/analytics' : '/analytics/ask' }, { label: 'Ask your records' }]}
         title="Ask your records"
-        tabs={hasRole(activeMembership, 'doctor') ? analyticsTabs('/analytics', '', { ask: true, report: true }) : [ASK_TAB]}
+        tabs={hasRole(activeMembership, 'doctor') ? analyticsTabs('/analytics', '', { ask: true, report: true, waiting: true }) : [ASK_TAB]}
       />
       <div className="pf-content ask-page">
         <form

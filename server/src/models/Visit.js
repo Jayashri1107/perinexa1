@@ -151,6 +151,21 @@ const visitSchema = new mongoose.Schema(
 
     createdBy: { type: ObjectId, ref: 'User', required: true },
     createdByName: { type: String, required: true },
+
+    // Patient timeline (owner's decisions of 10 Nov 2026 – docs/PATIENT_FLOW_PLAN.md): the moments of her OPD day that
+    // no other record keeps, noted by the server's clock from what staff already do – no buttons. Each is written
+    // once and never changed (visits/flow.js). The role is kept, never the person (decision 6).
+    //  - startedRole: the role of whoever started the visit; vitalsFirstAt: the first save of vital signs;
+    //  - rmoFirstAt / doctorFirstAt: the first time an RMO (without the doctor role) / a doctor opened the visit while
+    //    it could still be written, on the day of the visit ("starts seeing her", decision 2);
+    //  - finishedAt: the first of prescription or summary printed, saved as PDF or sent, or the visit signed.
+    flow: {
+      startedRole: { type: String, enum: ['doctor', 'rmo', 'nurse', 'other', null], default: null },
+      vitalsFirstAt: { type: Date, default: null },
+      rmoFirstAt: { type: Date, default: null },
+      doctorFirstAt: { type: Date, default: null },
+      finishedAt: { type: Date, default: null },
+    },
   },
   { timestamps: true },
 );

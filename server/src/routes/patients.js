@@ -815,7 +815,11 @@ export async function registerPatient(req, body) {
   if (!can.allowed) throw forbidden('Only reception, the referral desk, the lab, doctors and RMOs can register patients.');
   await ensureStandardTemplates(req.tenantId); // any pending rule upgrade runs now, not in the middle of saving
   const sentPregnancy = can.clinical && body?.pregnancy !== undefined;
-  const data = parse(sentPregnancy ? createSchemas.withDates : createSchemas.basic, body);
+  // Patient timeline (docs/PATIENT_FLOW_PLAN.md, moment a): how long the New patient form was open, in seconds. The
+  // start is worked out from the server's clock; more than an hour means the form was left open, and is not kept.
+  const { registrationSeconds, ...fields } = body ?? {};
+  const data = parse(sentPregnancy ? createSchemas.withDates : createSchemas.basic, fields);
+  const formSeconds = Number.isInteger(registrationSeconds) && registrationSeconds >= 0 && registrationSeconds <= 3600 ? registrationSeconds : null;
   if (!can.clinical) {
     // Reception registers identity (and newborn birth details); medical details come from clinicians.
     for (const section of ['pregnancy', 'obstetric', 'medical', 'abortion', 'fertility', 'history']) delete data[section];
@@ -873,6 +877,7 @@ export async function registerPatient(req, body) {
     mrn: `P-${String(seq).padStart(6, '0')}`,
     tenantId: req.tenantId,
     createdBy: req.user._id,
+    registrationStartedAt: formSeconds === null ? null : new Date((req.now ?? new Date()).getTime() - formSeconds * 1000),
   });
   // Only ids go into the audit log, never the patient's personal details.
   await audit(req, 'PATIENT_CREATED', { details: { patientId: patient._id.toString(), mrn: patient.mrn, careType: patient.careType } });

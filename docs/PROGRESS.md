@@ -1,5 +1,23 @@
 # Progress
 
+## Patient timeline and waiting times (10 Nov 2026)
+The owner agreed to build it now (freeze lifted for this feature, `docs/HANDOVER.md`). First version, OPD visits only
+(`docs/PATIENT_FLOW_PLAN.md` section 9). Times are noted by themselves from what staff already do – no new buttons:
+when the New patient form was opened, the first vital signs, the first time an RMO and then a doctor opens the visit
+on its day, and the visit finished (printed, sent or signed); arrival, payment, lab and pharmacy times are read from
+their own records. The role is kept, never the person.
+- **Time in hospital** (visit page, fold-out panel): her doctor only – each look is in the audit log; never RMOs,
+  nurses, reception, the hospital admin or a super admin. The moments of the day and the minutes of each stage, with
+  "Longer than usual" once the hospital has 30 visits of a stage in the last three months.
+- **Analytics → Waiting times**: each stage's usual and slow time, by hour, weekday and month, and how complete the
+  numbers are. Doctors: exact, their patients; hospital admin: finished months, "Too few visits to show" below 10
+  visits; super admin (Platform → Analytics → Waiting times): numbers only, per hospital.
+- **Before using it:** tell the staff that stage times are measured, to find queues – not to rank people.
+- **How to check (fake data only):** register a new patient (reception), start a visit and save vital signs (nurse),
+  open the visit as an RMO, then as the doctor, print the prescription. As the doctor: the visit page → **Time in
+  hospital**. As the doctor: Analytics → **Waiting times** → "This month so far". As an RMO or the hospital admin, the
+  panel is not there; the admin sees "Last month" only.
+
 ## The pregnancy plan as a month-by-month table (10 Nov 2026)
 The owner agreed to build it now (freeze lifted for this feature, `docs/HANDOVER.md`). Care plan tab → **Print** →
 Patient copy → **Layout: Month-by-month table** (pregnancy plans only; other plans and pregnancy-loss care keep the

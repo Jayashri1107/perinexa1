@@ -30,6 +30,7 @@ import { countOf, tilesJSON, toPublicCards } from '../analytics/publicCards.js';
 import { DRILLDOWN_ROLES } from '../analytics/roles.js';
 import { REFRESH_RISK_SECTIONS, SECTIONS, needsOf } from '../analytics/registry.js';
 import { visibleSet } from '../analytics/visibility.js';
+import { WAIT_PERIODS, hospitalWaitingTimes } from '../analytics/waitingTimes.js';
 
 export const analyticsRouter = Router();
 
@@ -217,4 +218,15 @@ analyticsRouter.get('/list', async (req, res) => {
   const patientIds = [...new Set(body.patients.map((p) => p.id))].sort();
   await audit(req, 'ANALYTICS_LIST_VIEWED', { details: { patientIds, count: patientIds.length, page: body.page } });
   res.json(body);
+});
+
+// ---------- Waiting times (owner's decisions of 10 Nov 2026 – docs/PATIENT_FLOW_PLAN.md, analytics/waitingTimes.js) ----------
+// Doctors: exact numbers for the patients they may see; hospital admins: whole finished months, a time only from enough
+// visits, counts rounded. Stages only, never a person; no patient lists. Opening it is logged as an Analytics view.
+
+analyticsRouter.get('/waiting-times', async (req, res) => {
+  const q = parse(z.object({ period: z.enum(Object.keys(WAIT_PERIODS)).optional() }), req.query);
+  const body = await hospitalWaitingTimes(req, { audience: req.analyticsAudience, periodKey: q.period });
+  await logView(req, 'waiting', 'hospital');
+  res.json({ audience: req.analyticsAudience, calculatedAt: req.now, ...body });
 });

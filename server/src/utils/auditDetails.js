@@ -22,6 +22,7 @@ const CONSENT_DETAIL_FIELDS = ['patientId', 'mrn', 'consentId', 'fileId', 'acces
 const VISIT_ACTIONS = new Set([
   'VISITS_VIEWED',
   'VISIT_VIEWED',
+  'VISIT_TIMELINE_VIEWED',
   'VISIT_CREATED',
   'VISIT_UPDATED',
   'VISIT_CANCELLED',

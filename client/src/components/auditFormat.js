@@ -254,6 +254,7 @@ export const AUDIT_LABELS = {
   CONSENT_SCAN_OPENED: 'Scan of a signed consent opened',
   VISITS_VIEWED: 'Visits viewed',
   VISIT_VIEWED: 'Visit viewed',
+  VISIT_TIMELINE_VIEWED: 'Time in hospital viewed',
   VISIT_CREATED: 'Visit started',
   VISIT_UPDATED: 'Visit updated',
   VISIT_CANCELLED: 'Visit marked entered in error',
@@ -671,6 +672,7 @@ export const AUDIT_TONES = {
   LAB_PACKAGE_APPROVED: 'info',
   VISITS_VIEWED: 'patient',
   VISIT_VIEWED: 'patient',
+  VISIT_TIMELINE_VIEWED: 'patient',
   VISIT_CREATED: 'patient',
   VISIT_UPDATED: 'patient',
   VISIT_CANCELLED: 'info',
@@ -906,6 +908,7 @@ const CATEGORY_ICONS = {
   CONSENT_SCAN_OPENED: FileText,
   VISITS_VIEWED: FileText,
   VISIT_VIEWED: FileText,
+  VISIT_TIMELINE_VIEWED: FileText,
   VISIT_CREATED: FileText,
   VISIT_UPDATED: FileText,
   VISIT_SIGNED: BadgeCheck,
@@ -1328,6 +1331,7 @@ export function describeAudit(entry) {
     // Visits: the record number and which parts were saved – never what was written.
     case 'VISITS_VIEWED':
     case 'VISIT_VIEWED':
+    case 'VISIT_TIMELINE_VIEWED':
       return `${opened(d)}${accessText(d)}`;
     case 'VISIT_UPDATED':
       return `${record(d)}${d.sections?.length ? `: ${d.sections.map((x) => VISIT_PARTS[x] ?? x).join(', ')}` : ''}`;

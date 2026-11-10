@@ -549,6 +549,8 @@ const patientSchema = new mongoose.Schema(
     },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // Patient timeline (docs/PATIENT_FLOW_PLAN.md): when the New patient form was opened (server's clock), or null
+    registrationStartedAt: { type: Date, default: null },
   },
   // optimisticConcurrency: a save based on an out-of-date copy fails instead of silently overwriting
   // someone else's change (e.g. a doctor's override saved at the same moment).

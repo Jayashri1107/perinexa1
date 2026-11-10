@@ -159,7 +159,9 @@ The owner's decisions of 10 Nov 2026: not built now, and an edit in the table ch
 = plan item, removed line = "not needed"), not the printout only. Layout, mapping onto the care plan and print code,
 and the open points: `docs/PLAN_TABLE_LAYOUT.md` (section 5 decisions, section 6 open).
 
-## Patient timeline and waiting times (10 Nov 2026, not built)
+## Patient timeline and waiting times (10 Nov 2026) – first version built 10 Nov 2026 at the owner's go-ahead
+Built in perinexa1 the same day (`docs/PATIENT_FLOW_PLAN.md` section 9); the text below is the original entry.
+
 From the other Perinexa copy. The owner wants the time noted at every point of contact of an outpatient's day
 (reception, registration, vitals, RMO, doctor, lab, billing, pharmacy) so a delay can be traced, and a "Waiting times"
 section in Analytics. Seven owner decisions of 10 Nov 2026: not built now; "RMO/doctor login" = the moment each
