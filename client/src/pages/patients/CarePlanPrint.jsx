@@ -672,8 +672,9 @@ export function MonthTable({ plan, options, lang = 'en', what, edit = null }) {
   const label = (words) => <BiLabel words={words} lang={lang} />;
   const removeButton = (it) =>
     edit && !tableItemDone(it) ? (
-      <button type="button" className="btn btn-link pmt-edit" onClick={() => edit.onRemove(it)} aria-label={`Remove ${it.name} – mark it not needed`}>
-        <X aria-hidden="true" /> Remove
+      // A small × at the end of the line (the words are its label and tooltip), so the line keeps its width
+      <button type="button" className="btn btn-link pmt-edit pmt-remove" onClick={() => edit.onRemove(it)} aria-label={`Remove ${it.name} – mark it not needed`} title="Remove – mark it not needed">
+        <X aria-hidden="true" />
       </button>
     ) : null;
   const line = (it) => {
