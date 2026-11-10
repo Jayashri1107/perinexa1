@@ -364,7 +364,10 @@
 
 /* The history-taking sheet (docs/HISTORY_SHEET_LAYOUT.md): the paper template's lines with blanks, the heard strip,
    and three closed drop-downs */
-.hs-heard { margin: var(--space-3) 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.hs-heard { display: flex; align-items: flex-start; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mist-100); color: var(--slate-600); font-size: var(--fs-label); line-height: var(--lh-label); }
+.hs-heard-text { flex: 1; min-width: 0; }
+.hs-heard-remove { flex-shrink: 0; display: inline-flex; align-items: center; gap: var(--space-1); padding: 0; min-height: 0; font-size: var(--fs-label); }
+.hs-heard-remove svg { width: 14px; height: 14px; }
 /* No "From voice – check" marks on the sheet (section 5): the blank's own colour shows what Dictate filled */
 .hs .voice-mark, .hs .voice-tag { display: none; }
 .hs-lines { display: flex; flex-direction: column; gap: var(--space-3); }

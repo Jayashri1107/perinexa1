@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { WeightInput } from '../../components/WeightInput.jsx';
-import { ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, Plus, Trash2, X } from 'lucide-react';
 import { Field } from '../../components/ui.jsx';
 import { EMPTY_PREGNANCY, HISTORY_LABELS } from './historyFormat.js';
 
@@ -56,7 +56,7 @@ function More({ id, title, force = false, children }) {
   );
 }
 
-export function HistorySheet({ values: h, set, setPregnancies, fe, age, lmp, onLmp, extraLine, obstetric, medical, medicalOpen = false, heard = '', voiced = () => false }) {
+export function HistorySheet({ values: h, set, setPregnancies, fe, age, lmp, onLmp, extraLine, obstetric, medical, medicalOpen = false, heard = '', onClearHeard = null, voiced = () => false }) {
   const row = (i, k) => (e) => setPregnancies(h.pregnancies.map((r, j) => (j === i ? { ...r, [k]: e.target.value } : r)));
   const mark = (k) => (voiced(k) ? ' hs-heard-mark' : '');
   // A drop-down opens by itself when something in it was refused (e.g. words about a baby's sex), so it is seen
@@ -68,7 +68,13 @@ export function HistorySheet({ values: h, set, setPregnancies, fe, age, lmp, onL
       {heard && (
         <p className="hs-heard">
           <span className="sr-only">Heard: </span>
-          {heard}
+          <span className="hs-heard-text">{heard}</span>
+          {/* What was heard is shown only, never saved; Remove takes the line away (the blanks it filled stay as they are) */}
+          {onClearHeard && (
+            <button type="button" className="btn btn-link hs-heard-remove" onClick={onClearHeard} aria-label="Remove the line of what was heard">
+              <X aria-hidden="true" /> Remove
+            </button>
+          )}
         </p>
       )}
 

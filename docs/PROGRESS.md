@@ -1,5 +1,15 @@
 # Progress
 
+## History-taking sheet: dictation fixes from the tablet test (10 Nov 2026)
+- **Complaints (C/o):** Dictate now also takes the complaint from "came (first time) with …", "c/o …", "chief complaint …" and
+  "presented with …", and stops before "advise …" (advice still goes to the notes) – before, only "with complaints of" did.
+- **Previous deliveries:** also from "previous delivery", "previously delivered", "past deliveries", "delivery history" and
+  "previous LSCS / caesarean / normal delivery …".
+- **The grey line of what was heard** has a **Remove** button (it is shown only, never saved; the blanks it filled stay).
+- **How to check:** New patient → a type with the history sheet → Dictate "Came first time with PV bleeding since
+  morning. Advise sonography. Previous delivery one normal delivery in 2021" → C/o and Previous deliveries are filled
+  and marked From voice; "Advise sonography" is offered for the notes; Remove takes the grey line away.
+
 ## The pregnancy plan as a month-by-month table (10 Nov 2026)
 The owner agreed to build it now (freeze lifted for this feature, `docs/HANDOVER.md`). Care plan tab → **Print** →
 Patient copy → **Layout: Month-by-month table** (pregnancy plans only; other plans and pregnancy-loss care keep the
