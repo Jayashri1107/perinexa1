@@ -24,6 +24,19 @@ describe('reading the sentence as written on the paper template', () => {
     expect(readSentence('')).toEqual({});
     expect(readSentence('she is well')).toEqual({});
   });
+  it('takes the complaint from the words doctors say instead of the template’s, and stops before advice (10 Nov 2026)', () => {
+    expect(readSentence('Came first time with PV bleeding since morning. Advise sonography.')).toEqual({ complaint: 'PV bleeding since morning' });
+    expect(readSentence('Came 1st time with PV bleeding since morning advised sonography')).toEqual({ complaint: 'PV bleeding since morning' });
+    expect(readSentence('C/O white discharge for one week')).toEqual({ complaint: 'white discharge for one week' });
+    expect(readSentence('Chief complaint is pain in abdomen. LMP 2 October cycle regular')).toEqual({ complaint: 'pain in abdomen', cycle: 'regular' });
+    expect(readSentence('She presented with headache and swelling of feet')).toEqual({ complaint: 'headache and swelling of feet' });
+  });
+  it('fills previous deliveries from the other ways of saying it (10 Nov 2026)', () => {
+    expect(readSentence('Previous delivery one normal delivery in 2021')).toEqual({ previousDeliveries: 'one normal delivery in 2021' });
+    expect(readSentence('Previously delivered twice, both normal')).toEqual({ previousDeliveries: 'twice, both normal' });
+    expect(readSentence('Past deliveries two caesareans')).toEqual({ previousDeliveries: 'two caesareans' });
+    expect(readSentence('Previous LSCS in 2020 for breech. Any other history nil')).toEqual({ previousDeliveries: 'LSCS in 2020 for breech', otherHistory: 'nil' });
+  });
 });
 
 describe("the type of care's own line", () => {
