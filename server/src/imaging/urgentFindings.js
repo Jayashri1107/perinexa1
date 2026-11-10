@@ -36,7 +36,8 @@ export function urgentFindingsOf(study, values = {}) {
   if (!PREGNANCY.has(study)) return [];
   const v = values ?? {};
   const out = [];
-  const add = (key, text) => out.push({ key, text });
+  // (each finding starts with a capital: "Fetal heart rate …", "Twin 1: fetal heart rate …")
+  const add = (key, text) => out.push({ key, text: text.charAt(0).toUpperCase() + text.slice(1) });
   if (study === 'usg_early') {
     if (v.site === 'Ectopic suspected') add('ectopic', 'Ectopic pregnancy suspected');
     if (v.site === 'Not seen in the uterus') add('not_in_uterus', 'Pregnancy not seen in the uterus');
