@@ -60,6 +60,23 @@ const LISTS = [
   ['report', 'To report'],
   ['signed', 'Signed (last 7 days)'],
 ];
+// The next step of a study on the Sonography list (the row's button opens the study for it)
+function nextStep(s) {
+  if (s.status === 'requested') return { label: 'Confirm or decline', primary: false };
+  if (s.status === 'ordered' || s.status === 'scheduled') return { label: 'Start the scan', primary: true };
+  if (s.status === 'done' && !s.report) return { label: 'Write the report', primary: true };
+  if (s.status === 'done') return { label: s.access?.canSign ? 'Review and sign' : 'Report written – open', primary: Boolean(s.access?.canSign) };
+  if (s.status === 'signed') return { label: 'View report', primary: false };
+  return { label: 'Open', primary: false };
+}
+const EMPTY_WORDS = {
+  requested: 'No scan booked by reception is waiting for confirmation.',
+  ordered: 'No scan is waiting to be scheduled or done.',
+  scheduled: 'No scan is booked for a time.',
+  report: 'No scan is waiting for its report.',
+  signed: 'No report was signed in the last 7 days.',
+};
+
 const localInput = (d) => {
   const x = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return x.toISOString().slice(0, 16);
@@ -123,38 +140,74 @@ function ScanWorklist() {
           ))}
         </div>
         <Alert type="error">{error}</Alert>
-        <section className="card">
+        <section className="card img-worklist">
           {loading && !data ? (
             <p className="muted">Loading…</p>
           ) : !data?.studies.length ? (
-            <p className="muted">Nothing here.</p>
+            <p className="muted img-empty">{EMPTY_WORDS[list]}</p>
           ) : (
-            <ul className="wl-list">
-              {(shown ?? []).map((s) => (
-                <li key={s.id}>
-                  <div className="wl-row-head">
-                    <span className="wl-who">
-                      <Link to={`/scans/${s.id}`} className="strong-name">
-                        {s.patient.fullName}
-                      </Link>
-                      <span className="muted tabular">{[s.patient.mrn, s.patient.age != null ? `${s.patient.age} yrs` : null, s.studyName].filter(Boolean).join(' · ')}</span>
-                    </span>
-                    <span className="wl-counts">
-                      {s.urgent && (
-                        <StatusPill tone="high" icon={Siren}>
-                          Urgent
-                        </StatusPill>
-                      )}
-                      <StudyStatus s={s} />
-                    </span>
-                  </div>
-                  <span className="hint">
-                    {s.requestedBy ? `Booked by ${s.ordered.byName} for ${s.requestedBy.name}` : `Ordered by ${s.ordered.byName}`}, {formatDateTime(s.ordered.at)}
-                    {s.scheduledFor ? ` · for ${formatDateTime(s.scheduledFor)}` : ''}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="dt-wrap">
+              <table className="dt img-table">
+                <caption className="sr-only">{LISTS.find(([k]) => k === list)?.[1]}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Patient</th>
+                    <th scope="col">Study</th>
+                    <th scope="col">{list === 'signed' ? 'Signed' : list === 'scheduled' ? 'Booked for' : 'Ordered'}</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">
+                      <span className="sr-only">Next step</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(shown ?? []).map((s) => {
+                    const next = nextStep(s);
+                    return (
+                      <tr key={s.id}>
+                        <td>
+                          <Link to={`/scans/${s.id}`} className="strong-name">
+                            {s.patient.fullName}
+                          </Link>
+                          <span className="img-sub tabular">{[s.patient.mrn, s.patient.age != null ? `${s.patient.age} yrs` : null].filter(Boolean).join(' · ')}</span>
+                        </td>
+                        <td>{s.studyName.replace(/^USG – /, '')}</td>
+                        <td className="tabular">
+                          {list === 'signed' ? (
+                            <>
+                              {s.signed ? formatDateTime(s.signed.at) : ''}
+                              <span className="img-sub">{s.signed?.byName}</span>
+                            </>
+                          ) : list === 'scheduled' && s.scheduledFor ? (
+                            formatDateTime(s.scheduledFor)
+                          ) : (
+                            <>
+                              {formatDateTime(s.ordered.at)}
+                              <span className="img-sub">{s.requestedBy ? `Booked by ${s.ordered.byName} for ${s.requestedBy.name}` : s.ordered.byName}</span>
+                            </>
+                          )}
+                        </td>
+                        <td>
+                          <span className="img-pills">
+                            {s.urgent && (
+                              <StatusPill tone="high" icon={Siren}>
+                                Urgent
+                              </StatusPill>
+                            )}
+                            <StudyStatus s={s} />
+                          </span>
+                        </td>
+                        <td className="img-next">
+                          <Link to={`/scans/${s.id}`} className={`btn btn-sm ${next.primary ? 'btn-primary' : 'btn-secondary'}`}>
+                            {next.label}
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
           {pager}
         </section>
@@ -185,26 +238,33 @@ export function MachineUnmatched() {
     }
   };
   return (
-    <section className="card" aria-labelledby="img-unlinked-title">
-      <div className="plan-card-head">
+    <section className="card img-machine" aria-labelledby="img-unlinked-title">
+      {/* One line: the machine's state – "Connected" only once the scan bridge has been heard from */}
+      <div className="img-machine-line">
         <h2 id="img-unlinked-title">
-          <MonitorDown aria-hidden="true" /> From the ultrasound machine
+          <MonitorDown aria-hidden="true" /> Ultrasound machine
         </h2>
-        {data.bridge?.on ? (
+        {data.bridge?.on && data.bridge.lastContactAt ? (
           <StatusPill tone="stable" icon={CircleCheck}>
             Connected
+          </StatusPill>
+        ) : data.bridge?.on ? (
+          <StatusPill tone="due" icon={Hourglass}>
+            Waiting for the scan bridge
           </StatusPill>
         ) : (
           <StatusPill tone="inactive" icon={CircleMinus}>
             Not set up
           </StatusPill>
         )}
+        <span className="hint">
+          {data.bridge?.on
+            ? data.bridge.lastContactAt
+              ? `Last heard from ${formatDateTime(data.bridge.lastContactAt)}. Open a scan to use its pictures and readings.`
+              : 'The key is made; the scan bridge on the hospital PC has not connected yet (scan-bridge/README.md).'
+            : 'Set up by the hospital admin: Hospital admin → Ultrasound machine.'}
+        </span>
       </div>
-      <p className="hint">
-        {data.bridge?.on
-          ? `${data.bridge.lastContactAt ? `Last heard from the scan bridge ${formatDateTime(data.bridge.lastContactAt)}.` : 'The scan bridge has not been heard from yet.'} Open a scan to choose its pictures and readings from the machine.`
-          : 'The machine is not connected yet. The hospital admin sets it up in Hospital admin → Ultrasound machine (scan-bridge/README.md).'}
-      </p>
       <Alert type="success" onClose={() => setNotice(null)}>
         {notice}
       </Alert>

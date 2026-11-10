@@ -456,7 +456,7 @@ const imageOf = (o, fileId) => (o.images ?? []).find((i) => String(i.fileId) ===
 imagingRouter.post('/:id/images', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   const { rev, ...file } = parse(fileUploadSchema.omit({ reason: true }).extend({ rev: z.number().int().min(0) }).strict(), req.body);
-  if (!view(req, o, patient).access.canImages) throw forbidden('Pictures are added by a doctor, RMO or sonography staff once the study is done, before it is signed.');
+  if (!view(req, o, patient).access.canImages) throw forbidden('Sonography adds pictures once the study is done, before it is signed.');
   checkRev(o, rev);
   if ((o.images ?? []).filter((i) => !i.removed).length >= MAX_IMAGES) throw invalid({ file: `At most ${MAX_IMAGES} pictures per study.` });
   const stored = await storeFile(req, { patientId: patient._id, kind: 'scan_image', ownerId: o._id, body: file, types: IMAGE_TYPES });
@@ -481,7 +481,7 @@ imagingRouter.get('/:id/images/:fileId', async (req, res) => {
 imagingRouter.patch('/:id/images/:fileId', async (req, res) => {
   const { o, patient } = await loadStudy(req);
   const body = parse(z.object({ rev: z.number().int().min(0), inPrint: z.boolean().optional(), remove: safeText('Reason', 300).optional() }).strict(), req.body);
-  if (!view(req, o, patient).access.canImages) throw forbidden('Pictures are changed by a doctor, RMO or sonography staff before the report is signed.');
+  if (!view(req, o, patient).access.canImages) throw forbidden('Sonography changes pictures before the report is signed.');
   checkRev(o, body.rev);
   const image = imageOf(o, parse(objectId, req.params.fileId));
   if (!image) throw new HttpError(404, 'This picture was not found.', 'NOT_FOUND');
@@ -612,7 +612,7 @@ imagingRouter.post('/:id/machine/:machineId/pictures', async (req, res) => {
     z.object({ rev: z.number().int().min(0), imageIds: z.array(objectId).min(1, 'Choose the pictures').max(MAX_IMAGES), noSexShown: z.literal(true, "Confirm that the pictures do not show the baby's sex.") }).strict(),
     req.body,
   );
-  if (!view(req, o, patient).access.canImages) throw forbidden('Pictures are added by a doctor, RMO or sonography staff once the study is done, before it is signed.');
+  if (!view(req, o, patient).access.canImages) throw forbidden('Sonography adds pictures once the study is done, before it is signed.');
   checkRev(o, body.rev);
   const m = await machineStudyOf(req, o, req.params.machineId);
   const wanted = [...new Set(body.imageIds)].map((id) => m.images.find((i) => String(i.imageId) === id));
