@@ -1,5 +1,32 @@
 # Progress
 
+## Lab: the owner's four features P4, P5, P6, P9 (10 Nov 2026, branch `lab-four`)
+Built in perinexa1 from `docs/LAB_BUILD_NOTE.md` (the other Perinexa copy's note). **Every clinical number is left
+empty or DRAFT for the owner** (section 7 of the note): no critical limits, no ranges by weeks, no "big change" limits,
+no new expected times are filled in – the screens work as soon as she enters them in **Lab → Tests**.
+- **P4 Ranges that fit the patient:** a group range can now be for *pregnant, from week … to week …* (weeks from her
+  EDD) or *after delivery*; a result is judged on the **sample's** day (also when typed or changed later), and the
+  range used is kept with the result. Lab staff see the numbers only – never her weeks; doctors see "Pregnant, 14–27
+  weeks" beside the range.
+- **P5 Critical results:** *Critical at or below / at or above* per value in Lab → Tests (DRAFT until a doctor
+  approves). A critical value cannot be reported (or checked, with the hospital's check on) without noting whom the lab
+  told – name, role, phone or in person, read back – or, if nobody answered, whom it tried; such an order stays first
+  in the Lab worklist as **Critical – call not completed** until a call is noted. On the doctor's **Today** critical
+  results come first with **Acknowledge** (reviewing also acknowledges). Audited (ids only).
+- **P6 Earlier results and a big change:** a value past the hospital's "big change" limit asks once before the report
+  – "Haemoglobin 5.8 g/dL; it was 10.7 on 10 Nov" – **Change** or **Confirm and report**; the confirmation is kept.
+  Her **Lab** tab has **Results over time** (one row per value, one column per sample date) and small graphs of Hb,
+  platelets, TSH, beta hCG, fasting and post-meal sugar, a baby's bilirubin and sugar (the proposed set).
+- **P9 Time taken:** the first report's time is now kept (a change after the report no longer hides it); **Analytics
+  → Lab times** shows order → sample → report → review, the whole, the share late, by urgency, department, hour, day
+  and month, and for critical results report → first call and → acknowledgement. Doctors exact; hospital admins whole
+  months with small numbers hidden; the super admin numbers only; never per person.
+- **How to check (fake data only):** as a doctor in Lab → Tests → Haemoglobin, enter *Critical at or below* 6 and a
+  "big change" of 20 %. Order Hb twice for a pregnancy patient; as the lab, report 10.7 on the first, then type 5.8 on
+  the second – the call form appears; tick *Nobody could be reached*, press **Report results**, answer the big-change
+  question with **Confirm and report**. The Lab worklist shows *Critical – call not completed*; the doctor's Today
+  lists it first with **Acknowledge**; her Lab tab shows the table and the graph; Analytics → Lab times shows the times.
+
 ## Who works the scans (owner, 10 Nov 2026)
 - **Her doctor / RMO:** orders from her **Lab** tab; the scan page shows "With sonography" until the report is signed,
   then the report, the growth graph and Print; urgent findings and **Scans to confirm** (reception's bookings) are on

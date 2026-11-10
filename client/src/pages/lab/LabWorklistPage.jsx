@@ -8,7 +8,7 @@ import { Alert, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { Section } from '../worklist/WorklistSections.jsx';
-import { DEPARTMENTS, FLAG_LOOK, LATE_LOOK, orderLook, testNames } from './labFormat.js';
+import { CRITICAL_LOOK, DEPARTMENTS, FLAG_LOOK, LATE_LOOK, OPEN_CALL_LOOK, orderLook, testNames } from './labFormat.js';
 import { homeWord } from './LabWalkIn.jsx';
 import { ExportButton } from '../../components/ExportButton.jsx';
 
@@ -19,6 +19,8 @@ import { ExportButton } from '../../components/ExportButton.jsx';
 // medical details they may see.
 
 const LISTS = [
+  // P5 (docs/LAB_BUILD_NOTE.md): critical results reported without reaching anyone, until a call is noted
+  { key: 'critical', label: 'Critical – call not completed', icon: OPEN_CALL_LOOK.icon, empty: 'Every critical result has its call noted.' },
   { key: 'collect', label: 'Samples to take', icon: TestTube, empty: 'No samples waiting.' },
   { key: 'receive', label: 'Samples to receive', icon: Inbox, empty: 'No sample waiting to reach the lab.' },
   { key: 'report', label: 'Results to enter', icon: ClipboardList, empty: 'No results waiting to be entered.' },
@@ -65,6 +67,16 @@ export function LabRow({ o, list }) {
           {o.status === 'ordered' && o.rejections?.length > 0 && (
             <StatusPill tone="watch" icon={Ban}>
               New sample needed
+            </StatusPill>
+          )}
+          {o.critical?.open && (
+            <StatusPill tone={OPEN_CALL_LOOK.tone} icon={OPEN_CALL_LOOK.icon}>
+              {OPEN_CALL_LOOK.word}
+            </StatusPill>
+          )}
+          {o.critical?.values?.length > 0 && !o.critical.open && (
+            <StatusPill tone={CRITICAL_LOOK.tone} icon={CRITICAL_LOOK.icon}>
+              {CRITICAL_LOOK.word}
             </StatusPill>
           )}
           {o.abnormal && ['reported', 'reviewed'].includes(o.status) && (
@@ -128,7 +140,8 @@ export function LabWorklistPage() {
   const current = LISTS.find((l) => l.key === list);
   const count = (key) => (key === 'done' ? null : data?.counts?.[key]);
   // "Results to check" only where the hospital checks results (or something is still waiting for a check)
-  const shown = LISTS.filter((l) => l.key !== 'verify' || data?.verify || data?.counts?.verify > 0 || list === 'verify');
+  // "Critical – call not completed" only while one is waiting (P5)
+  const shown = LISTS.filter((l) => (l.key !== 'verify' || data?.verify || data?.counts?.verify > 0 || list === 'verify') && (l.key !== 'critical' || data?.counts?.critical > 0 || list === 'critical'));
   const go = (next) => {
     const p = { ...(next.list && next.list !== 'collect' ? { list: next.list } : {}), ...(next.department ? { department: next.department } : {}) };
     setParams(p, { replace: true });

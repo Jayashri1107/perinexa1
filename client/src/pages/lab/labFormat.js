@@ -1,6 +1,6 @@
 // Words, colours and small helpers for the lab module (Version 2). Statuses and flags are colour + icon + word
 // (brand guide). The test list and the reference values come from the server (GET /api/lab/tests).
-import { ArrowDown, ArrowUp, CircleCheck, CircleMinus, ClipboardCheck, Clock, FileText, TestTube, TriangleAlert } from 'lucide-react';
+import { ArrowDown, ArrowUp, CircleCheck, CircleMinus, ClipboardCheck, Clock, FileText, OctagonAlert, PhoneOff, TestTube, TriangleAlert } from 'lucide-react';
 
 export const ORDER_STATUS = {
   ordered: { tone: 'due', icon: Clock, word: 'Sample to take' },
@@ -199,6 +199,67 @@ export const isConfidential = (test) => CONFIDENTIAL_TESTS.includes(test.key);
 export const shownName = (test) => (isConfidential(test) ? CONFIDENTIAL_NAME : test.name);
 
 export const LATE_LOOK = { tone: 'high', icon: Clock, word: 'Late' };
+
+// ---------- P5 critical results and P6 results over time (docs/LAB_BUILD_NOTE.md) ----------
+
+export const CRITICAL_LOOK = { tone: 'high', icon: OctagonAlert, word: 'Critical' };
+export const OPEN_CALL_LOOK = { tone: 'high', icon: PhoneOff, word: 'Call not completed' };
+export const CALL_HOW = { phone: 'By phone', in_person: 'In person' };
+
+/** Whether a typed number is at or beyond the hospital's critical limits (server: lab/labSetup.js isCritical). */
+export function isCriticalValue(field, value) {
+  if (field?.type !== 'number' || value === '' || value == null) return false;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return false;
+  return (field.criticalLow != null && n <= field.criticalLow) || (field.criticalHigh != null && n >= field.criticalHigh);
+}
+
+export const emptyCall = () => ({ notReached: false, toldName: '', toldRole: '', how: 'phone', readBack: false, triedName: '' });
+/** The request's part for a call: { criticalCall } or { criticalNotReached }. */
+export const criticalCallBody = (call) =>
+  call.notReached
+    ? { criticalNotReached: { triedName: call.triedName.trim() } }
+    : { criticalCall: { toldName: call.toldName.trim(), toldRole: call.toldRole.trim(), how: call.how, readBack: call.readBack } };
+/** "Haemoglobin 5.8 g/dL; Platelets 18000 /µL" */
+export const criticalValueWords = (values) => values.map((v) => `${v.name ?? v.valueKey ?? v.key} ${v.value}${v.unit ? ` ${v.unit}` : ''}`).join('; ');
+
+/**
+ * P6: the values drawn as a graph over time – the note's proposed first set, for the owner to confirm (section 7):
+ * haemoglobin, platelets, TSH, beta hCG, fasting and post-meal sugar, a baby's bilirubin and sugar. "testKey.valueKey".
+ */
+export const GRAPH_VALUES = ['hb.hb', 'cbc.hb', 'cbc.platelets', 'tsh.tsh', 'bhcg.bhcg', 'fbs.fbs', 'ppbs.ppbs', 'nb_bilirubin.total', 'nb_sugar.glucose'];
+
+/**
+ * Her results over time from the orders on her Lab tab: one row per value (test and value), one column per sample
+ * date – reported and reviewed orders only, their current values. Confidential tests (HIV) are left out (they have
+ * their own path). { columns: [{ id, at }], rows: [{ id, name, unit, cells: { [columnId]: value } }] }, newest first.
+ */
+export function resultsOverTime(orders) {
+  const done = (orders ?? []).filter((o) => ['reported', 'reviewed'].includes(o.status));
+  const columns = done
+    .map((o) => ({ id: o.id, at: o.collected?.at ?? o.reported?.at }))
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+  const rows = new Map();
+  for (const o of done) {
+    for (const t of o.tests) {
+      if (isConfidential(t)) continue;
+      for (const v of t.values ?? []) {
+        if (v.value === '' || v.value == null) continue;
+        const id = `${t.key}.${v.key}`;
+        if (!rows.has(id)) rows.set(id, { id, name: v.name ?? v.key, unit: v.unit ?? '', cells: {} });
+        rows.get(id).cells[o.id] = v;
+      }
+    }
+  }
+  return { columns, rows: [...rows.values()] };
+}
+
+/** The points of one value for a graph: [{ at, value }] oldest first, numbers only. */
+export const graphPoints = (row, columns) =>
+  columns
+    .filter((c) => row.cells[c.id] && Number.isFinite(Number(row.cells[c.id].value)))
+    .map((c) => ({ at: c.at, value: Number(row.cells[c.id].value), flag: row.cells[c.id].flag }))
+    .sort((a, b) => new Date(a.at) - new Date(b.at));
 
 /** "3 h 20 min" or "2 days 4 h" – the time from the order to the report (or to now). */
 export function duration(from, to) {

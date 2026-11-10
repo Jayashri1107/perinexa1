@@ -21,6 +21,8 @@ const valueSchema = new mongoose.Schema(
     name: String,
     unit: String,
     range: String,
+    // P4: whom the range used was for, with her weeks ("Pregnant, 14–27 weeks") - shown to clinical users only
+    rangeWho: String,
     // Lab version 2 (docs/LAB_V2_PLAN.md): the change from her earlier result of this value (per cent), and whether it
     // passed the hospital's limit for this value ("Big change")
     deltaPercent: { type: Number, default: null },
@@ -29,6 +31,25 @@ const valueSchema = new mongoose.Schema(
     // other values (lab/labCalcs.js) rather than typed
     section: String,
     calculated: { type: Boolean, default: false },
+    // P5: at or beyond the hospital's critical limit when it was saved (lab/labSetup.js isCritical)
+    critical: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+// P5 (docs/LAB_BUILD_NOTE.md): the critical values of a reported order and the record of the call. The told person's
+// name is staff, typed by the lab. `open`: reported without reaching anyone - it stays at the top of the lab's list
+// ("Call not completed") until a call is noted. A new critical value (an amendment) needs a new call and a new
+// acknowledgement.
+const criticalSchema = new mongoose.Schema(
+  {
+    values: { type: [new mongoose.Schema({ testKey: String, valueKey: String }, { _id: false })], default: [] },
+    calls: {
+      type: [new mongoose.Schema({ ...byFields, toldName: String, toldRole: String, how: { type: String, enum: ['phone', 'in_person'] }, readBack: Boolean, notedAt: Date }, { _id: false })],
+      default: [],
+    },
+    notReached: { type: [new mongoose.Schema({ ...byFields, triedName: String, notedAt: Date }, { _id: false })], default: [] },
+    acknowledged: { type: new mongoose.Schema(byFields, { _id: false }), default: null },
+    open: { type: Boolean, default: false },
   },
   { _id: false },
 );
@@ -112,6 +133,10 @@ const orderSchema = new mongoose.Schema(
     entered: stamp(), // who typed the results that were then checked (with the check on)
     verified: stamp(), // who checked them (with the check on); the report is then stamped with the same person and time
     reported: stamp(),
+    // The first report (P9 – docs/LAB_BUILD_NOTE.md): set once and never changed, so an amendment (which stamps
+    // `reported` again) does not lose the time the results first went out. Not set on orders reported before
+    // 10 Nov 2026 (analytics/labTimes.js then uses `reported` when the order has no amendments).
+    firstReported: stamp(),
     reviewed: {
       type: new mongoose.Schema({ ...byFields, comment: { type: String, default: '' } }, { _id: false }),
       default: null,
@@ -138,6 +163,12 @@ const orderSchema = new mongoose.Schema(
       default: [],
     },
     abnormal: { type: Boolean, default: false }, // any value flagged Low, High or Abnormal
+    critical: { type: criticalSchema, default: null }, // P5: set once a reported order had a critical value
+    // P6: "a big change - check the sample and the number", confirmed by the person reporting (asked once per value)
+    deltaChecks: {
+      type: [new mongoose.Schema({ ...byFields, values: [new mongoose.Schema({ testKey: String, valueKey: String, value: String }, { _id: false })] }, { _id: false })],
+      default: [],
+    },
     rev: { type: Number, default: 0 },
     clientRequestId: { type: String, required: true, maxlength: 64 },
   },
@@ -151,5 +182,6 @@ orderSchema.index({ tenantId: 1, sampleNo: 1 });
 orderSchema.index({ tenantId: 1, verifyToken: 1 });
 orderSchema.index({ tenantId: 1, 'home.on': 1 });
 orderSchema.index({ tenantId: 1, 'ordered.at': -1 });
+orderSchema.index({ tenantId: 1, 'critical.open': 1 });
 
 export const LabOrder = mongoose.model('LabOrder', orderSchema);

@@ -89,7 +89,9 @@ describe('trends and delta checks', () => {
     const second = made2.body.order;
     const page = (await (await as('lab')).get(lab(second.id))).body;
     expect(page.previous.hb.hb[0]).toMatchObject({ value: '12.0', flag: 'normal' });
-    const out = (await report(second, '9.0')).body.order;
+    // P6 (docs/LAB_BUILD_NOTE.md): the big change asks once before the report – tests/lab-four.test.js
+    expect((await report(second, '9.0')).body.error.code).toBe('DELTA_CHECK');
+    const out = (await report(second, '9.0', { deltaConfirmed: true })).body.order;
     expect(out.tests[0].values[0]).toMatchObject({ value: '9.0', deltaPercent: -25, bigChange: true });
   });
 });

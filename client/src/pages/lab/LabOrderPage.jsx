@@ -10,6 +10,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
 import { OutsideSection, RejectDialog, VerifyCard } from './LabOrderExtras.jsx';
+import { CallFields, CriticalCard, CriticalPill, DeltaQuestion, callProblem } from './LabCritical.jsx';
 import { AntibioticTable, calcHint, previewCalc } from './LabTemplateParts.jsx';
 import { LabLabels, LabReportPrint } from './LabPrints.jsx';
 import { HomeCard, PreviousResults } from './LabWalkIn.jsx';
@@ -31,6 +32,9 @@ import {
   SENSITIVITY,
   antibioticRows,
   bySection,
+  criticalCallBody,
+  emptyCall,
+  isCriticalValue,
   testDef,
   testsFromForm,
   turnaround,
@@ -80,7 +84,7 @@ function ResultsView({ order, catalogue }) {
                       <tr key={v.key}>
                         <th scope="row">{w.name}</th>
                         <td>
-                          <strong className="tabular pre-line">{v.value}</strong> {w.unit} <FlagPill flag={v.flag} />
+                          <strong className="tabular pre-line">{v.value}</strong> {w.unit} <FlagPill flag={v.flag} /> {v.critical && <CriticalPill />}
                           {v.calculated && <span className="muted"> (worked out)</span>}
                           {v.bigChange && (
                             <StatusPill tone="watch" icon={Siren}>
@@ -89,7 +93,11 @@ function ResultsView({ order, catalogue }) {
                             </StatusPill>
                           )}
                         </td>
-                        <td className="muted">{w.range}</td>
+                        <td className="muted">
+                          {w.range}
+                          {/* P4: whom the range was for (her weeks of pregnancy) – clinical users only, from the server */}
+                          {v.rangeWho && <span className="lab-order-sub">{v.rangeWho}</span>}
+                        </td>
                       </tr>
                     );
                   })}
@@ -141,6 +149,19 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
   const [saving, setSaving] = useState(null); // 'save' | 'report'
+  // P6: the server's "far from her last result" question, and whether it was confirmed (sent again with the call)
+  const [delta, setDelta] = useState(null);
+  const [deltaOk, setDeltaOk] = useState(false);
+  // P5: the call about a critical value – asked when a typed value is critical and the results go to the doctor now,
+  // or when the server asks (an amendment that makes a value critical)
+  const [call, setCall] = useState(emptyCall);
+  const [askedCritical, setAskedCritical] = useState(null);
+  const goesOut = amending || (!verify && order.status !== 'entered');
+  const typedCritical = order.tests.flatMap((t, i) => {
+    const def = testDef(catalogue, t.key);
+    return (def?.fields ?? []).filter((f) => isCriticalValue(f, form[i]?.values?.[f.key]?.value)).map((f) => ({ name: f.name, value: form[i].values[f.key].value, unit: f.unit }));
+  });
+  const callNeeded = Boolean(askedCritical) || (goesOut && !amending && typedCritical.length > 0);
 
   const setValue = (i, f, value) =>
     setForm((cur) =>
@@ -156,7 +177,7 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
   const setText = (i, text) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, text } : e)));
   const setAntibiotics = (i, rows) => setForm((cur) => cur.map((e, j) => (j === i ? { ...e, antibiotics: rows } : e)));
 
-  const send = async (report) => {
+  const send = async (report, confirmed = deltaOk) => {
     const texts = [labNote, reason, ...form.flatMap((e) => [e.text, ...Object.values(e.values).map((v) => v.value)])];
     if (pcpndt && texts.some((t) => mentionsFetalSex(t))) {
       setError(PCPNDT_MESSAGE);
@@ -166,11 +187,28 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
       setFields({ reason: 'Write why the results are changed.' });
       return;
     }
+    const withCall = report && callNeeded;
+    if (withCall && callProblem(call)) {
+      setError(callProblem(call));
+      return;
+    }
     setSaving(report ? 'report' : 'save');
     setError(null);
     setFields({});
     try {
-      const res = await api(`/lab/orders/${order.id}/results`, { method: 'PUT', body: { rev: order.rev, tests: testsFromForm(order, form, catalogue), labNote: labNote.trim(), report, reason: reason.trim(), qcReason: qcReason.trim() } });
+      const res = await api(`/lab/orders/${order.id}/results`, {
+        method: 'PUT',
+        body: {
+          rev: order.rev,
+          tests: testsFromForm(order, form, catalogue),
+          labNote: labNote.trim(),
+          report,
+          reason: reason.trim(),
+          qcReason: qcReason.trim(),
+          deltaConfirmed: Boolean(report && confirmed),
+          ...(withCall ? criticalCallBody(call) : {}),
+        },
+      });
       const words =
         res.order.status === 'entered' && report
           ? 'Results entered. They go to the doctor once a second person has checked them.'
@@ -179,9 +217,14 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
             : 'Results saved – not reported yet.';
       onSaved(res.order, `${words}${res.stockShort?.length ? ` Not enough stock for: ${res.stockShort.join(', ')} – check Lab → Stock.` : ''}`);
     } catch (err) {
+      setSaving(null);
+      if (err.code === 'DELTA_CHECK') {
+        setDelta(err.details?.values ?? []);
+        return;
+      }
+      if (err.code === 'CRITICAL_CALL') setAskedCritical(err.details?.values ?? []);
       setError(err.message);
       setFields(err.fields ?? {});
-      setSaving(null);
     }
   };
 
@@ -316,6 +359,19 @@ function ResultsForm({ order, catalogue, pcpndt, amending, primary, verify, qcRe
         <Field label="Why are the results changed?" id="lab-reason" error={fields.reason}>
           <input id="lab-reason" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
+      )}
+      {callNeeded && <CallFields id="lab-call" values={askedCritical ?? typedCritical} value={call} onChange={setCall} errors={fields} />}
+      {delta && (
+        <DeltaQuestion
+          values={delta}
+          busy={saving === 'report'}
+          onChange={() => setDelta(null)}
+          onConfirm={() => {
+            setDelta(null);
+            setDeltaOk(true);
+            send(true, true);
+          }}
+        />
       )}
       <div className="row">
         <button type="submit" className={`btn ${primary ? 'btn-primary' : 'btn-secondary'}`} disabled={Boolean(saving)}>
@@ -623,6 +679,7 @@ export function LabOrderPage() {
                   {LATE_LOOK.word}
                 </StatusPill>
               )}
+              {order.critical?.values?.length > 0 && <CriticalPill />}
               {order.status === 'ordered' && order.rejections?.length > 0 && (
                 <StatusPill tone="watch" icon={Ban}>
                   New sample needed
@@ -804,6 +861,9 @@ export function LabOrderPage() {
             {order.lastSaved && open && <p className="hint">Last saved by {order.lastSaved.byName}, {formatDateTime(order.lastSaved.at)} – not reported yet.</p>}
           </section>
         )}
+
+        {/* P5: the critical values, the calls, Acknowledge (doctor) and Note the call (lab) */}
+        {done && <CriticalCard order={order} onSaved={saved} onError={failed} />}
 
         <PreviousResults order={order} catalogue={catalogue} previous={data?.previous} />
 

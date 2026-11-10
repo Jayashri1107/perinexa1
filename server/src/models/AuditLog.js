@@ -322,6 +322,12 @@ export const AUDIT_ACTIONS = [
   'LAB_TEST_UPDATED',
   'LAB_TEST_APPROVED',
   'LAB_SETTINGS_CHANGED',
+  // The lab's four features of 10 Nov 2026 (docs/LAB_BUILD_NOTE.md): the call about a critical result, nobody
+  // reached, the doctor's acknowledgement, and a big change confirmed before the report
+  'LAB_CRITICAL_CALL_NOTED',
+  'LAB_CRITICAL_NOT_REACHED',
+  'LAB_CRITICAL_ACKNOWLEDGED',
+  'LAB_DELTA_CONFIRMED',
   // The medical records module (9 Nov 2026, from the other Perinexa copy): documents attached to a record listed,
   // attached, opened, marked as put on the wrong record; the records index, the incomplete-records list and the copies
   // register opened; a copy of a record given, and such an entry marked as a mistake (ids, the kind of document or copy
@@ -655,6 +661,8 @@ export const AUDIT_CATEGORIES = {
 AUDIT_CATEGORIES.patients.push('NICU_ADMISSION_UPDATED', 'NICU_ADMISSION_SIGNED', 'NICU_REGISTER_EXPORTED', 'NICU_BOARD_VIEWED', 'NICU_DESK_VIEWED');
 // IPD discharge and the IPD bill window (9 Nov 2026)
 AUDIT_CATEGORIES.patients.push('DISCHARGE_DETAILS_RECORDED', 'IPD_STAYS_VIEWED', 'BILL_FINALISED', 'BILL_REOPENED', 'BILL_ADMIN_CHARGE_SET');
+// The lab's critical results and big-change checks (10 Nov 2026 - docs/LAB_BUILD_NOTE.md)
+AUDIT_CATEGORIES.patients.push('LAB_CRITICAL_CALL_NOTED', 'LAB_CRITICAL_NOT_REACHED', 'LAB_CRITICAL_ACKNOWLEDGED', 'LAB_DELTA_CONFIRMED');
 
 const auditLogSchema = new mongoose.Schema({
   action: { type: String, enum: AUDIT_ACTIONS, required: true, index: true },

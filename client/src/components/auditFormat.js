@@ -411,6 +411,10 @@ export const AUDIT_LABELS = {
   LAB_SAMPLE_REJECTED: 'Lab sample rejected',
   LAB_RESULTS_ENTERED: 'Lab results entered (to check)',
   LAB_RESULTS_VERIFIED: 'Lab results checked and reported',
+  LAB_CRITICAL_CALL_NOTED: 'Critical lab result: call noted',
+  LAB_CRITICAL_NOT_REACHED: 'Critical lab result: nobody reached',
+  LAB_CRITICAL_ACKNOWLEDGED: 'Critical lab result acknowledged',
+  LAB_DELTA_CONFIRMED: 'Lab result far from the last one: confirmed',
   LAB_RESULTS_SENT_BACK: 'Lab results sent back by the checker',
   LAB_SENT_OUTSIDE: 'Lab tests sent to an outside lab',
   LAB_OUTSIDE_RECEIVED: 'Lab tests back from an outside lab',
@@ -790,6 +794,10 @@ export const AUDIT_TONES = {
   LAB_SAMPLE_REJECTED: 'patient',
   LAB_RESULTS_ENTERED: 'patient',
   LAB_RESULTS_VERIFIED: 'patient',
+  LAB_CRITICAL_CALL_NOTED: 'patient',
+  LAB_CRITICAL_NOT_REACHED: 'patient',
+  LAB_CRITICAL_ACKNOWLEDGED: 'patient',
+  LAB_DELTA_CONFIRMED: 'patient',
   LAB_RESULTS_SENT_BACK: 'patient',
   LAB_SENT_OUTSIDE: 'patient',
   LAB_OUTSIDE_RECEIVED: 'patient',
@@ -1383,6 +1391,12 @@ export function describeAudit(entry) {
     case 'LAB_RESULTS_ENTERED':
     case 'LAB_RESULTS_VERIFIED':
     case 'LAB_RESULTS_SENT_BACK':
+    case 'LAB_CRITICAL_ACKNOWLEDGED':
+      return record(d);
+    case 'LAB_CRITICAL_CALL_NOTED':
+    case 'LAB_CRITICAL_NOT_REACHED':
+    case 'LAB_DELTA_CONFIRMED':
+      return joined(record(d), d.values != null ? count(d.values, 'value') : '');
     case 'WORK_DONE_VIEWED':
     case 'WORK_DONE_RECORDED':
     case 'WORK_DONE_CANCELLED':
