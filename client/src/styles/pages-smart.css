@@ -355,3 +355,10 @@
 /* Today's patients as a table (owner, 10 Nov 2026 – TodayPage.jsx TodaysPatients): name over number, labels in a row */
 .td-pt { display: flex; flex-direction: column; gap: 2px; }
 .td-labels { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+
+/* Billing labels filled, so they stand out from the light admission-type labels (owner, 10 Nov 2026): the strong
+   colour of each pair as the fill, white bold word and icon (contrast 6.5–8 : 1) */
+.pill.bill-label { color: var(--on-solid); font-weight: 700; }
+.pill.bill-insurance { background: var(--status-due-fg); }
+.pill.bill-cash { background: var(--status-stable-fg); }
+.pill.bill-package { background: var(--status-admitted-fg); }
