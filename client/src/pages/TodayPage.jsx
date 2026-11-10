@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Tip } from '../components/Tip.jsx';
 import { Archive, Baby, FileClock, BadgeCheck, Banknote, BedDouble, CalendarPlus, ClockAlert, Siren, DoorOpen, FileOutput, FilePen, FlaskConical, MessageCircleReply, PhoneCall, Receipt, Send, TestTube, CalendarClock, CalendarX2, ClipboardList, Clock, Hash, PenLine, Phone, TriangleAlert, UserCheck, UserPlus, Users, Wallet } from 'lucide-react';
-import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { formatNumber, LIST_PAGES, Paged } from '../components/DataTable.jsx';
+import { DataTable, formatNumber, LIST_PAGES, Paged } from '../components/DataTable.jsx';
 import { MenuButton } from '../components/MenuButton.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { Alert, KpiCard, StatusPill, formatDate, formatDateTime, formatTime } from '../components/ui.jsx';
@@ -71,70 +71,105 @@ const STAFF_ROLE_TILES = [
   { role: 'billing', label: 'Accounts' },
 ];
 
-function TodaysPatients({ rows, progress, showDoctor, canMark, onMark, onUndo, onSlip, busy }) {
+/**
+ * Today's patients as a table, one line each (owner, 10 Nov 2026): name and number, her doctor, the admission type and
+ * billing labels (doctors and RMOs – the server sends them only to them), where she is in the queue, how she came, and
+ * the buttons. A double-click on a row opens her visit (or her record when no visit is started); the name is a link too.
+ */
+function TodaysPatients({ rows, progress, canMark, onMark, onUndo, onSlip, busy }) {
+  const navigate = useNavigate();
+  const openOf = (r) => (r.visitId ? `/patients/${r.patient.id}/visits/${r.visitId}` : `/patients/${r.patient.id}`);
+  const columns = [
+    {
+      key: 'patient',
+      header: 'Patient',
+      render: (r) => (
+        <span className="td-pt">
+          <Link to={openOf(r)} className="strong-name">
+            {r.patient.fullName}
+          </Link>
+          <span className="muted tabular">{r.patient.mrn}</span>
+        </span>
+      ),
+    },
+    // Her doctor today: the one she is booked with, else her own doctor
+    { key: 'doctor', header: 'Doctor', render: (r) => r.appointment?.doctorName ?? r.patient.doctorName ?? <span className="muted">Not assigned</span> },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (r) =>
+        r.stayType || r.billingType ? (
+          <span className="td-labels">
+            {r.stayType && <StayTypeLabel type={r.stayType} />}
+            {r.billingType && <BillingLabel type={r.billingType} />}
+          </span>
+        ) : (
+          <span className="muted">–</span>
+        ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (r) => {
+        const look = QUEUE_LOOK[r.queue] ?? (r.arrivedAt ? QUEUE_LOOK.waiting : QUEUE_LOOK.expected);
+        const visit = r.visitId ? progress.get(r.visitId) : null;
+        return (
+          <span className="td-labels">
+            {r.emergency && r.queue !== 'done' && (
+              <StatusPill tone="high" icon={Siren}>
+                Emergency
+              </StatusPill>
+            )}
+            <StatusPill tone={look.tone} icon={look.icon}>
+              {look.label}
+              {r.arrivedAt ? ` · ${formatTime(r.arrivedAt)}` : ''}
+            </StatusPill>
+            {visit && <VisitProgress visit={visit} />}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'came',
+      header: 'Came',
+      render: (r) => (
+        <span className="td-labels">
+          <AppointmentChip appointment={r.appointment} />
+          {!r.appointment && <span className="muted">{r.booked ? 'Booked' : 'No booking'}</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      render: (r) => (
+        <span className="td-labels">
+          {canMark && !r.arrivedAt && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMark(r.patient)} disabled={busy === r.patient.id}>
+              <UserCheck aria-hidden="true" /> Mark arrived
+            </button>
+          )}
+          {canMark && r.arrivalMarked && !r.visitStarted && (
+            <button type="button" className="btn btn-link btn-sm" onClick={() => onUndo(r.patient)} disabled={busy === r.patient.id} aria-label={`Undo arrival of ${r.patient.fullName}`}>
+              Undo
+            </button>
+          )}
+          {r.appointment?.kind === 'token' && <TokenButton appointment={{ ...r.appointment, doctor: { name: r.appointment.doctorName } }} onPrint={onSlip} />}
+        </span>
+      ),
+    },
+  ];
   return (
     <Section id="td-patients" icon={Users} title="Today's patients" count={rows.length} empty="Nobody is booked for today, and no visit has been started yet.">
-      <Paged rows={rows} label="patients" {...LIST_PAGES}>
-        {(page) => (
-          <ul className="wl-list">
-            {page.map((r) => {
-              const visit = r.visitId ? progress.get(r.visitId) : null;
-              return (
-                <PatientRow
-                  key={r.patient.id}
-                  patient={{ ...r.patient, assignedDoctorName: showDoctor ? r.patient.doctorName : null }}
-                  to={r.visitId ? `/patients/${r.patient.id}/visits/${r.visitId}` : undefined}
-                  openLabel={r.visitId ? 'Open the visit' : 'Open the record'}
-                  marker={
-                    <>
-                      <AppointmentChip appointment={r.appointment} />
-                      {/* Doctors and RMOs (the server sends these only to them): admission type and billing type (10 Nov 2026) */}
-                      {r.stayType && <StayTypeLabel type={r.stayType} />}
-                      {r.billingType && <BillingLabel type={r.billingType} />}
-                    </>
-                  }
-                >
-                  <div className="wl-row-head">
-                    <span className="wl-counts">
-                      {/* The live queue: her state (and Emergency), the time she arrived */}
-                      {r.emergency && r.queue !== 'done' && (
-                        <StatusPill tone="high" icon={Siren}>
-                          Emergency
-                        </StatusPill>
-                      )}
-                      {(() => {
-                        const look = QUEUE_LOOK[r.queue] ?? (r.arrivedAt ? QUEUE_LOOK.waiting : QUEUE_LOOK.expected);
-                        return (
-                          <StatusPill tone={look.tone} icon={look.icon}>
-                            {look.label}
-                            {r.arrivedAt ? ` · arrived ${formatTime(r.arrivedAt)}` : ''}
-                          </StatusPill>
-                        );
-                      })()}
-                      {canMark && !r.arrivedAt && (
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => onMark(r.patient)} disabled={busy === r.patient.id}>
-                          <UserCheck aria-hidden="true" /> Mark arrived
-                        </button>
-                      )}
-                      {canMark && r.arrivalMarked && !r.visitStarted && (
-                        <button type="button" className="btn btn-link btn-sm" onClick={() => onUndo(r.patient)} disabled={busy === r.patient.id} aria-label={`Undo arrival of ${r.patient.fullName}`}>
-                          Undo
-                        </button>
-                      )}
-                      {r.appointment?.kind === 'token' && <TokenButton appointment={{ ...r.appointment, doctor: { name: r.appointment.doctorName } }} onPrint={onSlip} />}
-                      {visit && <VisitProgress visit={visit} />}
-                    </span>
-                  </div>
-                  <p className="hint">
-                    {r.appointment?.kind === 'token' ? `Walk-in, token ${r.appointment.token}` : r.booked || r.appointment ? 'Booked for today' : 'Came without a booking'}
-                    {r.patient.phone ? ` · ${r.patient.phone}` : ''}
-                  </p>
-                </PatientRow>
-              );
-            })}
-          </ul>
-        )}
-      </Paged>
+      <DataTable
+        caption="Today's patients – double-click a row to open her visit or record"
+        rows={rows.map((r) => ({ ...r, id: r.patient.id }))}
+        columns={columns}
+        pageSize={LIST_PAGES.initial}
+        pageLabel="patients"
+        rowClassName={() => 'dt-clickable'}
+        onRowDoubleClick={(r) => navigate(openOf(r))}
+      />
     </Section>
   );
 }
@@ -681,7 +716,6 @@ function RoleToday({ roles, lensBar = null }) {
     <TodaysPatients
       rows={today.data.patients}
       progress={progress}
-      showDoctor={scope === 'all'}
       canMark={today.data.canMarkArrived}
       busy={marking}
       onMark={(p) => arrival('POST', p, today.data.patients.find((r) => r.patient.id === p.id))}
