@@ -350,6 +350,7 @@ export const ROLE_LABELS = {
   referral_desk: 'Referral desk',
   followup_coordinator: 'Newborn follow-up coordinator',
   quality: 'Quality lead',
+  records: 'Medical records',
 };
 export const ROLE_HINTS = {
   admin: 'Manages staff, print settings and the audit log',
@@ -364,6 +365,7 @@ export const ROLE_HINTS = {
   referral_desk: 'Referral desk: logs referrals from other doctors, books appointments and sends replies; never the medical record',
   followup_coordinator: 'Newborn follow-up: the babies’ screening and clinic dates and the defaulters to call; never the medical record',
   quality: 'Quality lead: reviews incidents, records their actions and closes them, and sees the clinical audit numbers; never the medical record',
+  records: 'Medical records: finds every record, attaches scanned papers, keeps the copies register and the incomplete-records list; never the clinical notes',
 };
 export const ROLES = Object.keys(ROLE_LABELS);
 export const roleLabel = (role) => ROLE_LABELS[role] ?? role;

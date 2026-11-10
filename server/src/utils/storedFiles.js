@@ -9,14 +9,18 @@ import { safeText } from './pcpndt.js';
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-export const fileUploadSchema = z
-  .object({
-    fileName: z.string().trim().min(1).max(200),
-    mediaType: z.enum(FILE_TYPES, 'Only PDF, JPEG, PNG or WebP files.'),
-    data: z.string().min(8).max(7_000_000, 'The file is too large (at most 5 MB).'),
-    reason: safeText('Reason', 500).default(''),
-  })
-  .strict();
+const mb = (bytes) => `${Math.round(bytes / (1024 * 1024))} MB`;
+/** The upload body for a file of at most `maxBytes` (5 MB unless the caller allows more – a scanned document: 15 MB). */
+export const uploadSchema = (maxBytes = MAX_FILE_BYTES) =>
+  z
+    .object({
+      fileName: z.string().trim().min(1).max(200),
+      mediaType: z.enum(FILE_TYPES, 'Only PDF, JPEG, PNG or WebP files.'),
+      data: z.string().min(8).max(Math.ceil((maxBytes * 4) / 3) + 1000, `The file is too large (at most ${mb(maxBytes)}).`),
+      reason: safeText('Reason', 500).default(''),
+    })
+    .strict();
+export const fileUploadSchema = uploadSchema();
 
 const MAGIC = {
   'application/pdf': (b) => b.subarray(0, 5).toString('latin1') === '%PDF-',
@@ -37,11 +41,11 @@ const invalid = (message) => Object.assign(new HttpError(400, message, 'VALIDATI
  * (NO_PATIENT_KINDS).
  * types: the file types this place takes (a released note or discharge card: PDF only); any PDF or photo by default.
  */
-export async function storeFile(req, { patientId = null, kind, ownerId, body, types = FILE_TYPES }) {
+export async function storeFile(req, { patientId = null, kind, ownerId, body, types = FILE_TYPES, maxBytes = MAX_FILE_BYTES }) {
   if (!patientId && !NO_PATIENT_KINDS.includes(kind)) throw new Error(`A stored file of kind ${kind} needs a patient`);
   if (!types.includes(body.mediaType)) throw invalid(types.length === 1 && types[0] === 'application/pdf' ? 'Only a PDF file.' : 'Only PDF, JPEG, PNG or WebP files.');
   const data = Buffer.from(body.data, 'base64');
-  if (data.length > MAX_FILE_BYTES) throw invalid('The file is too large (at most 5 MB).');
+  if (data.length > maxBytes) throw invalid(`The file is too large (at most ${mb(maxBytes)}).`);
   if (!MAGIC[body.mediaType](data)) throw invalid('This file is not a readable PDF or photo.');
   return StoredFile.create({ tenantId: req.tenantId, patientId, kind, ownerId, fileName: cleanFileName(body.fileName), mediaType: body.mediaType, size: data.length, data, by: req.user._id, byName: req.user.name });
 }

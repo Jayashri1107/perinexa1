@@ -12,7 +12,7 @@ import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
 import { billScan, billScanCancelled } from '../billing/hooks.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { departmentListed, patientAccess } from '../utils/patientAccess.js';
 import { findPatient } from '../utils/patientLookup.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
 import { eddInUse } from '../patients/pregnancyFindings.js';
@@ -109,7 +109,8 @@ async function loadStudy(req) {
   const o = await ImagingOrder.findOne({ tenantId: req.tenantId, _id: parse(objectId, req.params.id) });
   if (!o) throw new HttpError(404, 'This study was not found.', 'NOT_FOUND');
   const patient = await Patient.findOne({ tenantId: req.tenantId, _id: o.patientId });
-  if (!patient) throw new HttpError(404, 'This study was not found.', 'NOT_FOUND');
+  // (a study of another department's patient is "not found" for a doctor – departments, 9 Nov 2026)
+  if (!patient || patientAccess(req, patient).hidden) throw new HttpError(404, 'This study was not found.', 'NOT_FOUND');
   return { o, patient };
 }
 const checkRev = (o, rev) => {
@@ -230,7 +231,9 @@ imagingRouter.get('/worklist', async (req, res) => {
   const since = addDays(hospitalToday(req.now), -7);
   const where = { tenantId: req.tenantId, status: LISTS[list].status, ...(list === 'signed' ? { 'signed.at': { $gte: hospitalDayStart(since) } } : {}) };
   const rows = await ImagingOrder.find(where).sort(LISTS[list].sort).limit(300);
-  const patients = new Map((rows.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: rows.map((r) => r.patientId) } }) : []).map((p) => [String(p._id), p]));
+  // only patients the department rule lets this person see (departments, 9 Nov 2026); the counts stay numbers only
+  const found = rows.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: rows.map((r) => r.patientId) } }) : [];
+  const patients = new Map(found.filter((p) => departmentListed(req, p)).map((p) => [String(p._id), p]));
   const counts = {};
   for (const [k, l] of Object.entries(LISTS)) if (k !== 'signed') counts[k] = await ImagingOrder.countDocuments({ tenantId: req.tenantId, status: l.status });
   res.json({ list, studies: rows.map((o) => view(req, o, patients.get(String(o.patientId)))).filter((v) => v.patient), counts });
@@ -484,7 +487,8 @@ imagingRouter.post('/machine/:machineId/link', async (req, res) => {
   const body = parse(z.object({ mrn: z.string().trim().min(1, 'Enter her patient number').max(40) }).strict(), req.body);
   if (m.patientId) throw conflict('This study is already linked to a patient.');
   const patient = await Patient.findOne({ tenantId: req.tenantId, mrn: { $in: [...new Set([body.mrn, body.mrn.toUpperCase()])] } });
-  if (!patient) throw invalid({ mrn: 'No patient has this number.' });
+  // another department's patient: as if no one had the number, for a doctor (departments, 9 Nov 2026)
+  if (!patient || patientAccess(req, patient).hidden) throw invalid({ mrn: 'No patient has this number.' });
   Object.assign(m, { patientId: patient._id, matchedBy: 'hand', linked: stampOf(req) });
   await m.save();
   await audit(req, 'MACHINE_STUDY_LINKED', { details: { machineStudyId: String(m._id), patientId: String(patient._id), mrn: patient.mrn } });
@@ -499,6 +503,7 @@ imagingRouter.get('/machine/:machineId/images/:imageId', async (req, res) => {
   if (!m.images.some((i) => String(i.imageId) === String(imageId))) throw new HttpError(404, 'This picture was not found.', 'NOT_FOUND');
   if (m.patientId) {
     const patient = await Patient.findOne({ tenantId: req.tenantId, _id: m.patientId });
+    if (patient && patientAccess(req, patient).hidden) throw new HttpError(404, 'This picture was not found.', 'NOT_FOUND'); // departments, 9 Nov 2026
     if (!patient || !clinicalOf(req, patient)) throw forbidden("You can't see this patient's scans.");
   }
   const image = await MachineImage.findOne({ tenantId: req.tenantId, _id: imageId, machineStudyId: m._id });

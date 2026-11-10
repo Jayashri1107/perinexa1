@@ -265,6 +265,14 @@ export function workForCopy(w) {
   return { id: w.id, group: w.group, name: w.name, on: w.on, doneByName: w.doneByName ?? '' };
 }
 
+// ---------- Documents attached to the record (scans and outside papers) ----------
+
+/** What a document is and when it was attached – never the file. One marked as put on the wrong record has no content. */
+export function patientDocumentForCopy(d) {
+  if (d.cancelled) return { id: d.id, documentOn: d.documentOn, enteredInError: stamp(d.cancelled) };
+  return { id: d.id, docType: d.docType, title: d.title, documentOn: d.documentOn, fileName: d.file?.fileName ?? '', note: d.note ?? '', uploaded: stamp(d.uploaded) };
+}
+
 // ---------- Stays in hospital ----------
 
 const TIME_OF = { round: 'at', delivery: 'deliveredAt', operation: 'performedAt', discharge: 'dischargedAt' };

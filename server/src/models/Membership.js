@@ -11,7 +11,10 @@ import mongoose from 'mongoose';
 // screening and follow-up clinic dates and the defaulters to call – never the medical record (routes/newbornFollowUp.js).
 // "quality" = the quality lead (Group A, item 6): reviews incidents, records their actions and closes them; reads the
 // clinical audit's numbers – never the medical record (routes/incidents.js).
-export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk', 'followup_coordinator', 'quality'];
+// "records" = the medical records staff (9 Nov 2026, the medical records module from the other Perinexa copy): a
+// patient role that sees a record's identity details and the documents attached to it – never the clinical notes – and
+// the Records menu (routes/records.js).
+export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 'lab', 'sonographer', 'pharmacist', 'billing', 'referral_desk', 'followup_coordinator', 'quality', 'records'];
 
 // What a hospital admin may do to the hospital's staff – only what the super admin gave them (owner, 12 Oct 2026):
 // reset a password, remove or restore access, change roles, edit name and email. Without it they see who works there.
@@ -19,12 +22,42 @@ export const TENANT_ROLES = ['admin', 'doctor', 'rmo', 'nurse', 'receptionist', 
 export const ADMIN_RIGHTS = ['addPeople', 'resetPassword', 'access', 'roles', 'details'];
 // A doctor's department in this hospital (owner, 27 Oct 2026): registration shows the department first, then its
 // doctors. Set by the hospital admin; the same list is in client/src/platform/departments.js. A doctor may work in more than
-// one department (29 Oct 2026, e.g. Medicine and Neonatology): departments; department is the first of them.
-export const DEPARTMENTS = [
-  'Obstetrics & Gynaecology', 'Paediatrics', 'Neonatology', 'General', 'General Medicine', 'General Surgery', 'Anaesthesia', 'Cardiology', 'Dietetics',
-  'Gastroenterology', 'Genetic Counselling', 'Lactation', 'Neurology', 'Medical Oncology', 'Surgical Oncology', 'Orthopaedics', 'Pathology', 'Physiotherapy',
-  'Plastic & Reconstructive Surgery', 'Radiology', 'Interventional Radiology', 'Urology', 'Yoga',
-];
+// one department (29 Oct 2026): departments; department is the first of them.
+// The owner's 9 departments (9 Nov 2026, docs/DEPARTMENT_ACCESS_PLAN.md): a doctor sees only the patients of their
+// departments (utils/patientAccess.js). They replace the 23 used before; OLD_DEPARTMENTS says where each old one went.
+export const DEPARTMENTS = ['Obgy', 'Pediatric', 'Radiology', 'Anesthesia', 'Diet and yoga', 'Surgery', 'Fetal medicine', 'Counselling', 'Cardiology'];
+// The departments before 9 Nov 2026 → the new one ('' = none: the admin chooses again). Used by
+// scripts/move-departments.js and scripts/hospital-doctors.js.
+export const OLD_DEPARTMENTS = {
+  'Obstetrics & Gynaecology': 'Obgy',
+  Paediatrics: 'Pediatric',
+  Neonatology: 'Pediatric',
+  Anaesthesia: 'Anesthesia',
+  Dietetics: 'Diet and yoga',
+  Yoga: 'Diet and yoga',
+  'General Surgery': 'Surgery',
+  'Genetic Counselling': 'Counselling',
+  Radiology: 'Radiology',
+  'Interventional Radiology': 'Radiology',
+  Cardiology: 'Cardiology',
+  General: '',
+  'General Medicine': '',
+  Gastroenterology: '',
+  Lactation: '',
+  Neurology: '',
+  'Medical Oncology': '',
+  'Surgical Oncology': '',
+  Orthopaedics: '',
+  Pathology: '',
+  Physiotherapy: '',
+  'Plastic & Reconstructive Surgery': '',
+  Urology: '',
+};
+/** The new departments for a list of old (or already new) names, in the list's order, without repeats. PURE. */
+export const newDepartments = (names = []) => {
+  const mapped = names.map((n) => (DEPARTMENTS.includes(n) ? n : (OLD_DEPARTMENTS[n] ?? '')));
+  return DEPARTMENTS.filter((d) => mapped.includes(d));
+};
 
 /** A doctor's departments, also on memberships saved before a doctor could have more than one. */
 export const departmentsOf = (m) => (m?.departments?.length ? [...m.departments] : m?.department ? [m.department] : []);

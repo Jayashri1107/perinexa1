@@ -117,8 +117,10 @@ export async function prefillFor(req, baby, motherId) {
   };
   const out = { values, from, motherId: motherId ? String(motherId) : null, motherMrn: null, motherHidden: false, allergyAlert: '', gestationWeeks: null, weightGrams: baby.newborn?.birthWeightGrams ?? null, deliveryNoteId: null };
   const mother = motherId ? await Patient.findOne({ _id: motherId, tenantId: req.tenantId }) : null;
-  const seeMother = mother && patientAccess(req, mother).view.has('pregnancy');
-  if (mother) out.motherMrn = mother.mrn;
+  // Another department's mother is not shown at all – not even her number (departments, 9 Nov 2026)
+  const motherAccess = mother ? patientAccess(req, mother) : null;
+  const seeMother = mother && motherAccess.view.has('pregnancy');
+  if (mother && !motherAccess.hidden) out.motherMrn = mother.mrn;
   if (mother && !seeMother) out.motherHidden = true;
   if (seeMother) {
     const birthAt = baby.newborn?.birthAt ? new Date(baby.newborn.birthAt) : new Date();

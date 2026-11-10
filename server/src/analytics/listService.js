@@ -107,8 +107,8 @@ const ROW_KEYS = {
 export const LIST_ROW_KEYS = [...Object.keys(ROW_KEYS), 'access'];
 
 // The fields read for the patients on a page (full documents: the access rules read them). Of the newborn
-// details only the birth time.
-const LIST_FIELDS = '_id tenantId mrn fullName ageYears ageRecordedOn careType assignedDoctor sensitive pregnancy.effectiveEdd risk.level newborn.birthAt createdAt';
+// details only the birth time. With the department fields: the department rule reads them (departments, 9 Nov 2026).
+const LIST_FIELDS = '_id tenantId mrn fullName ageYears ageRecordedOn careType assignedDoctor sensitive department departmentReferrals babyDepartments pregnancy.effectiveEdd risk.level newborn.birthAt createdAt';
 
 /** The page's patients, fresh from the database, in this hospital only. */
 const fetchPatients = (tenantId, ids) => Patient.find({ tenantId, _id: { $in: ids } }).select(LIST_FIELDS);

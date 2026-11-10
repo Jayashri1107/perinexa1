@@ -26,7 +26,7 @@ import { OpdSchedule } from '../models/OpdSchedule.js';
 import { Patient } from '../models/Patient.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { assertNotHidden, patientAccess } from '../utils/patientAccess.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { isClosed } from '../patients/deathRules.js';
 import { bookingJoinsRecord } from '../referrals/referralService.js';
@@ -61,7 +61,7 @@ const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Please enter a time 
 const ids = (a, extra = {}) => ({ appointmentId: String(a._id), ...(a.patientId ? { patientId: String(a.patientId) } : {}), doctorId: String(a.doctorId), date: isoDay(a.on), ...extra });
 
 async function viewOf(req, appt) {
-  const [view] = await viewsOf(req.tenantId, [appt.toObject ? appt.toObject() : appt], hospitalToday(req.now));
+  const [view] = await viewsOf(req.tenantId, [appt.toObject ? appt.toObject() : appt], hospitalToday(req.now), req);
   return view;
 }
 
@@ -143,7 +143,7 @@ appointmentsRouter.put('/timings/:doctorId', async (req, res) => {
   // Bookings from today on that no longer fit (leave, no OPD that day, or outside the hours): reception moves them.
   const ahead = await Appointment.find({ tenantId: req.tenantId, doctorId, on: { $gte: today }, kind: 'slot', status: 'booked', start: { $ne: null } }).sort({ on: 1, start: 1 }).limit(500).lean();
   const affected = ahead.filter((a) => slotCheck(schedule, a.on, a.start, a.minutes ?? SLOT_MINUTES) !== 'ok');
-  res.json({ doctor, timings: timingsView(schedule), canEdit: true, slotMinutes: SLOT_MINUTES, visitLengths: VISIT_LENGTHS, placed, affected: await viewsOf(req.tenantId, affected, today) });
+  res.json({ doctor, timings: timingsView(schedule), canEdit: true, slotMinutes: SLOT_MINUTES, visitLengths: VISIT_LENGTHS, placed, affected: await viewsOf(req.tenantId, affected, today, req) });
 });
 
 // ---------- One doctor's day ----------
@@ -158,7 +158,9 @@ appointmentsRouter.get('/day', async (req, res) => {
   const today = hospitalToday(req.now);
   const schedule = await OpdSchedule.findOne({ tenantId: req.tenantId, doctorId: q.doctorId }).lean();
   const appts = await Appointment.find({ tenantId: req.tenantId, doctorId: q.doctorId, on: day, status: 'booked' }).sort({ start: 1, token: 1, createdAt: 1 }).lean();
-  const views = await viewsOf(req.tenantId, appts, today);
+  // A booking of a patient hidden by the department rule stays in its slot as "booked", with no name, so the time is
+  // not booked twice; it is left out of the other lists (departments, 9 Nov 2026)
+  const views = await viewsOf(req.tenantId, appts, today, req);
   const starts = slotStarts(sessionsOn(schedule, day));
   const onLeave = leaveOn(schedule, day);
   const nowMinutes = day.getTime() === today.getTime() ? hospitalMinutes(req.now) : day < today ? 24 * 60 : -1;
@@ -187,8 +189,8 @@ appointmentsRouter.get('/day', async (req, res) => {
     leave: onLeave ? { from: isoDay(onLeave.from), to: isoDay(onLeave.to), note: onLeave.note ?? '' } : null,
     slots,
     // Booked at a time that is no longer one of the doctor's slots (timings changed), or still with no time.
-    other: views.filter((v) => v.kind === 'slot' && (!v.start || !slotSet.has(v.start))),
-    tokens: views.filter((v) => v.kind === 'token'),
+    other: views.filter((v) => !v.hidden && v.kind === 'slot' && (!v.start || !slotSet.has(v.start))),
+    tokens: views.filter((v) => !v.hidden && v.kind === 'token'),
     canBook: canBook(req),
     canTakeFee: canTakeFee(req),
     slotMinutes: SLOT_MINUTES,
@@ -231,7 +233,8 @@ appointmentsRouter.get('/desk', async (req, res) => {
     };
   });
   if (countsOnly) return res.json({ today: isoDay(today), tomorrow: isoDay(tomorrow), doctors: desk, tomorrowList: [], countsOnly: true });
-  const tomorrowViews = await viewsOf(req.tenantId, tomorrowAppts, today);
+  // (the counts above stay whole; the list names only patients this person may see – departments, 9 Nov 2026)
+  const tomorrowViews = (await viewsOf(req.tenantId, tomorrowAppts, today, req)).filter((v) => !v.hidden);
   res.json({ today: isoDay(today), tomorrow: isoDay(tomorrow), doctors: desk, tomorrowList: tomorrowViews });
 });
 
@@ -279,7 +282,8 @@ appointmentsRouter.get('/needs-time', async (req, res) => {
   if (!hasRole(req.membership, ...QUEUE_ROLES)) throw forbidden('Appointments are for hospital staff.');
   const today = hospitalToday(req.now);
   const appts = await Appointment.find({ tenantId: req.tenantId, kind: 'slot', status: 'booked', start: null, on: { $gte: today } }).sort({ on: 1, createdAt: 1 }).limit(300).lean();
-  res.json({ appointments: await viewsOf(req.tenantId, appts, today), canBook: canBook(req) });
+  // only patients this person may see (departments, 9 Nov 2026)
+  res.json({ appointments: (await viewsOf(req.tenantId, appts, today, req)).filter((v) => !v.hidden), canBook: canBook(req) });
 });
 
 // ---------- Today's waiting lists ----------
@@ -288,13 +292,17 @@ appointmentsRouter.get('/needs-time', async (req, res) => {
  * Today's waiting list of each doctor (owner: booked patients go in at their time, walk-ins fill the gaps in token
  * order): who has arrived and not yet been seen, in the order to call them; also who is still expected.
  */
-export const queuesFor = async (req) => ({ ...(await queuesOf(req.tenantId, req.now)), me: hasRole(req.membership, 'doctor') ? String(req.user._id) : null });
+export const queuesFor = async (req) => ({ ...(await queuesOf(req.tenantId, req.now, req)), me: hasRole(req.membership, 'doctor') ? String(req.user._id) : null });
 
-/** The waiting lists of a hospital today (also for the waiting-room screen, which shows no names). */
-export async function queuesOf(tenantId, now) {
+/**
+ * The waiting lists of a hospital today (also for the waiting-room screen, which shows no names). req (optional): the
+ * person asking – patients the department rule hides from them are left out of the lists (departments, 9 Nov 2026);
+ * without it (the waiting-room screen, the queue-time message) every patient counts.
+ */
+export async function queuesOf(tenantId, now, req = null) {
   const today = hospitalToday(now);
   const appts = await Appointment.find({ tenantId, on: today, status: 'booked' }).lean();
-  const views = await viewsOf(tenantId, appts, today);
+  const views = (await viewsOf(tenantId, appts, today, req)).filter((v) => !v.hidden);
   const nowMinutes = hospitalMinutes(now);
   const doctors = await hospitalDoctors(tenantId);
   const queues = doctors
@@ -320,6 +328,7 @@ appointmentsRouter.get('/patient/:patientId', async (req, res) => {
   const { patientId } = parse(z.object({ patientId: objectId }), req.params);
   const patient = await Patient.findOne({ tenantId: req.tenantId, _id: patientId });
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  assertNotHidden(req, patient); // departments, 9 Nov 2026
   if (!patientAccess(req, patient).view.has('phone')) throw forbidden("You can't see this patient's appointments.");
   const appts = await Appointment.find({ tenantId: req.tenantId, patientId }).sort({ on: -1, start: -1, token: -1 }).limit(200).lean();
   const today = hospitalToday(req.now);
@@ -339,6 +348,7 @@ appointmentsRouter.post('/patient/:patientId/card-printed', async (req, res) => 
   const { patientId } = parse(z.object({ patientId: objectId }), req.params);
   const patient = await Patient.findOne({ tenantId: req.tenantId, _id: patientId });
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  assertNotHidden(req, patient); // departments, 9 Nov 2026
   if (!patientAccess(req, patient).view.has('phone')) throw forbidden("You can't print this patient's card.");
   await audit(req, 'PATIENT_CARD_PRINTED', { details: { patientId: String(patient._id), mrn: patient.mrn } });
   res.json({ ok: true });

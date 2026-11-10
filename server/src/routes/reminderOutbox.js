@@ -196,6 +196,8 @@ reminderOutboxRouter.post('/:messageId/sent-by-hand', async (req, res) => {
   let m = await ReminderMessage.findOne({ _id: id, tenantId: req.tenantId });
   if (!m) throw new HttpError(404, 'This message was not found.', 'NOT_FOUND');
   const p = await Patient.findOne({ _id: m.patientId, tenantId: req.tenantId });
+  // a message of another department's patient is "not found" for a doctor (departments, 9 Nov 2026)
+  if (p && patientAccess(req, p).hidden) throw new HttpError(404, 'This message was not found.', 'NOT_FOUND');
   if (!p || !maySeeMessage(req, p, m)) throw forbidden("You can't send this patient's reminders.");
   // A general message is checked once more (the page may have been open for hours): still true, not too old, and
   // reminders still switched on. One that cannot be checked is not recorded as sent.

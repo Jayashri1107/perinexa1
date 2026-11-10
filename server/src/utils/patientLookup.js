@@ -4,6 +4,7 @@
 import { applyCurrentRisk, ensureStandardTemplates, riskIsStale, riskTemplateFor } from '../careplans/templatesService.js';
 import { Patient } from '../models/Patient.js';
 import { HttpError } from './httpError.js';
+import { assertNotHidden } from './patientAccess.js';
 import { idParams, parse } from './validate.js';
 
 /** The patient with this id in this hospital (404 otherwise). */
@@ -20,7 +21,8 @@ export async function findPatientById(tenantId, id) {
 /** The patient in the URL (/patients/:id). */
 export async function findPatient(req) {
   const { id } = parse(idParams, req.params);
-  return findPatientById(req.tenantId, id);
+  // Another department's patient is "not found" for a doctor (owner, 9 Nov 2026 – utils/patientAccess.js)
+  return assertNotHidden(req, await findPatientById(req.tenantId, id));
 }
 
 /**
@@ -50,5 +52,6 @@ export async function loadPatientById({ tenantId, now }, id) {
 /** The patient in the URL, with a current risk level (GET /patients/:id, and every care-plan route). */
 export async function loadPatientForPlan(req) {
   const { id } = parse(idParams, req.params);
+  assertNotHidden(req, await findPatientById(req.tenantId, id)); // before the risk is worked out or saved
   return loadPatientById({ tenantId: req.tenantId, now: req.now ?? new Date() }, id);
 }

@@ -1,5 +1,31 @@
 # Progress
 
+## Medical records module (9 Nov 2026, from the other Perinexa copy)
+Brought from `girishsolanke/perinexa` (branch `mrd-records`, commit bcb7f949 of 9 Nov 2026, the owner's request
+there). That copy has its own history and its own versions of Clinical Requirements items 1–7, so only the records
+module was carried over, by hand, onto this copy's code (local branch `mrd-records`).
+- **Documents on a record:** every record has a **Documents** tab for scans and photos of paper (an old case sheet, a
+  discharge summary or report from another hospital, an outside prescription, a referral letter, an operation note on
+  paper, another document – never identity documents such as Aadhaar). Kind, title, the date on the paper, the stay it
+  belongs to (optional), a note; PDF or photo up to **15 MB**. Never deleted: one put on the wrong record is marked so
+  with a reason and is then opened only by those who could have marked it. Seen and opened by those who see her
+  medical details and by the new **Medical records** login; attached by those who record on the record and by that
+  login. **Reception** (developer's choice, 9 Nov 2026) attaches documents and sees the list (kind, title, date) but
+  never opens a file or reads its note, and sees nothing of it on a sensitive record. Every opening is audited (ids and
+  the kind of document – never a title).
+- **The Records menu** (the records login, doctors and RMOs): **Index** (every record with its type of care, doctor,
+  registration date, last stay and number of documents), **Incomplete records** (a visit unsigned the day after; an
+  inpatient document still a draft once the stay is over or after 7 days), **Copies register** (every copy of a record
+  given out: what, to whom, on what authority, when asked and when given – over 72 hours is shown in red). The copy of
+  the whole record offers **Record in the copies register**, and lists the attached documents (titles and dates only).
+- **Kept from this copy's rules:** the department rule (9 Nov 2026) holds in the Records lists too – a doctor whose
+  only patient role is doctor lists only the patients of their departments, and a record hidden from them is "not
+  found" (`departmentListFilter`, `assertNotHidden` in `routes/records.js`).
+- **One way to open a stored file:** `openStoredFile` (`client/src/components/fileUpload.js`); the scanned consent
+  forms and the lab report files now open through it as well.
+- **Not built (later):** paper file tracking, the retention list, MRD statistics, moving files to object storage (S3
+  needs `@aws-sdk/client-s3`, a new dependency for the developer to agree to).
+
 ## Colour labels: billing type and admission type (9 Nov 2026)
 - **Built, on branch `admission-colours`:** every admission now asks **Billing type** (Insurance, Cash, Package) and
   **Admission type** (ANC, PNC, Delivered, Other) – the bed board, the ward admission on the Stays tab, and the three
@@ -1360,6 +1386,14 @@ Agreed order (one step at a time, each tested and committed):
 owner's or an expert's check: the care-plan templates, the lab's usual ranges, the HMIS rows, the reminder wording in Marathi and Hindi. Use fake data only until the app has been reviewed.
 
 ## Next
+- **On the ideas list, nothing built – three notes from the other Perinexa copy (10 Nov 2026).** Brought over from
+  `girishsolanke/perinexa` (branches `ideas-plan-table`, `ideas-patient-timeline`, `ideas-usg-apps-review`), each with
+  a note at the top on where perinexa1 differs: the **pregnancy plan as a month-by-month table**
+  (`docs/PLAN_TABLE_LAYOUT.md` – the owner's two decisions in section 5, open points in section 6), a **patient
+  timeline and waiting times in Analytics** (`docs/PATIENT_FLOW_PLAN.md` – seven owner decisions; perinexa1's super
+  admin rule and already-noted moments differ), and **what the leading sonography applications offer**
+  (`docs/USG_APPS_REVIEW.md` – U1–U16; perinexa1 already has the follicular template, images and the machine link).
+  Entries in `docs/IDEAS_FOR_LATER.md`. **Nothing is built**; the feature pause holds until the health check.
 - **Layout agreed, nothing built – a new patient as a history-taking sheet (27 Oct 2026).** The owner asked that the tabs
   for a new patient's details ask only for the history, with every hint, example, voice panel, risk warning and AI
   check hidden, and that the layout be agreed before anything is built. The draft is in
@@ -3234,6 +3268,24 @@ Automated: `npm test` (server `tests/crs-pph.test.js` – acceptance tests 1–5
 8. **Print OBG-F-07**: A4 portrait – header, E-MOTIVE in three columns, observations, labs and outcome, footer
    "OBG-F-07 · v1.0".
 9. **Clinical audit → Monthly dashboards → Obstetrics**: the five PPH rows (OBG-A-05).
+
+## How to test the medical records module (fake data only)
+Log in as Dr. Riley Demo unless a step says otherwise.
+1. Open a demo patient → **Documents** → **Attach a document**: choose *Report from outside*, write a title, pick a
+   date, choose a small made-up PDF or photo → **Attach the document**. **Open** shows it in a new tab.
+2. **Wrong record** on a document: a reason is asked; it stays, marked, and the demo nurse can no longer open it. As
+   the demo receptionist: the Documents tab is there, attaching works, the list shows each file's size but no Open
+   button; on a record marked sensitive the tab is not there.
+3. **Records → Index**: search by name or number, filter by type of care. **Incomplete records**: a visit left
+   unsigned appears the next day.
+4. **Records → Copies register → A copy was given**: choose *Particular documents*, an insurer, a made-up receiver,
+   a request date a week ago, given today, and the authorisation → it shows in red (over 72 hours). **Made by
+   mistake** marks it with a reason.
+5. Patient → **More → Copy of the whole record**: the preview has **Record in the copies register**; the copy lists
+   the attached documents.
+6. As the hospital admin give a made-up user the role **Medical records**; as that user the menu has Patients and
+   Records, a patient shows identity details and **Documents** only, and Today shows *Incomplete records*.
+7. A doctor with a department: Records → Index lists only that department's patients (and those with none).
 
 ## How to test Clinical Requirements Group A (fake data only)
 Automatic tests: `npm test` from the project root (server files `crs-*.test.js`; website tests next to each page).

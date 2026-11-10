@@ -380,7 +380,7 @@ describe('the billing department (billing role, 7 Oct 2026)', () => {
 describe('the printed bill and the daily collection', () => {
   it("gives the bill her age and her doctor's department, the hospital's notes, and the day by OPD/IPD and group", async () => {
     await prices({ consult_new: 50000, 'lab:cbc': 25000 });
-    await Membership.updateOne({ tenantId: hospital._id, userId: people.drA._id }, { $set: { department: 'Obstetrics & Gynaecology' } });
+    await Membership.updateOne({ tenantId: hospital._id, userId: people.drA._id }, { $set: { department: 'Obgy' } });
     const p = await register('Receipt Mother');
     await startVisit(p);
     await order(p, ['cbc']);
@@ -394,7 +394,7 @@ describe('the printed bill and the daily collection', () => {
 
     const one = (await (await as('reception')).get(`/api/billing/bills/${b.id}`)).body;
     expect(one.billNotes).toBe('First consultation – Rs 500\nFollow-up – Rs 300');
-    expect(one.bill.doctorDepartment).toBe('Obstetrics & Gynaecology');
+    expect(one.bill.doctorDepartment).toBe('Obgy');
     expect(typeof one.bill.patient.age).toBe('number');
 
     const daily = (await (await as('reception')).get('/api/billing/reports/daily?date=2026-09-28')).body;

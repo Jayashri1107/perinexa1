@@ -6,7 +6,7 @@ import { api, newRequestId } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { Alert, Field, StatusPill, formatDate, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
-import { FILE_TYPES, fileBody, fileProblem, fileSize } from '../../components/fileUpload.js';
+import { FILE_TYPES, fileBody, fileProblem, fileSize, openStoredFile } from '../../components/fileUpload.js';
 import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { CARE_TYPE_SHORT } from '../patients/patientFormat.js';
@@ -349,9 +349,9 @@ function Scans({ patient, consent, canAdd, onAdded, onError }) {
   return (
     <span className="cf-scans">
       {scans.map((f, i) => (
-        <a key={f.id} href={`/api/patients/${patient.id}/consents/${consent.id}/scans/${f.id}`} target="_blank" rel="noopener noreferrer" className="t-caption">
+        <button key={f.id} type="button" className="btn btn-link btn-sm t-caption" onClick={() => openStoredFile(`/patients/${patient.id}/consents/${consent.id}/scans/${f.id}`).catch((err) => setError(err.message))}>
           <Paperclip aria-hidden="true" /> Scan {scans.length > 1 ? i + 1 : ''} ({fileSize(f.size)})
-        </a>
+        </button>
       ))}
       {canAdd && scans.length < 3 && (
         <>

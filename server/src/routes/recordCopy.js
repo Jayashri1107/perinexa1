@@ -47,6 +47,7 @@ import {
   stayForCopy,
   visitForCopy,
   workForCopy,
+  patientDocumentForCopy,
 } from '../patients/recordCopyView.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
@@ -58,6 +59,8 @@ import { labAccess, orderView } from './lab.js';
 import { cycleView as fertilityCycleView, planView as fertilityPlanView } from './fertilityPlans.js';
 import { FertilityCycle } from '../models/FertilityCycle.js';
 import { workDoneView } from './workDone.js';
+import { documentsAccess, documentView as patientDocumentView } from './records.js';
+import { PatientDocument } from '../models/PatientDocument.js';
 
 // A complete copy of one patient's record: /api/patients/:id/record-copy. Mounted inside the patients router, after
 // its role gate. For the patient herself (her right to a copy of her data – Digital Personal Data Protection Act
@@ -78,7 +81,7 @@ const forbidden = (message) => new HttpError(403, message, 'FORBIDDEN');
 
 // A copy must be complete. A record has far fewer entries than this; if one ever has more, the newest are copied
 // and the copy says which part is not complete (`cut`) – it never looks complete when it is not.
-export const COPY_LIMITS = { visits: 1000, labOrders: 1000, stays: 200, documents: 3000, nursing: 10000, consents: 1000, appointments: 1000, workDone: 1000, notes: 500, carePlans: 50, fertilityPlans: 50, fertilityCycles: 300, imaging: 500, referrals: 200, specimens: 500, scores: 500 };
+export const COPY_LIMITS = { visits: 1000, labOrders: 1000, stays: 200, documents: 3000, nursing: 10000, consents: 1000, appointments: 1000, workDone: 1000, notes: 500, carePlans: 50, fertilityPlans: 50, fertilityCycles: 300, imaging: 500, referrals: 200, specimens: 500, scores: 500, patientDocuments: 500 };
 
 function assertCanCopy(req, patient) {
   const access = patientAccess(req, patient);
@@ -255,7 +258,7 @@ recordCopyRouter.get('/', async (req, res) => {
   // rest of the record, which only reads.
   const plans = await carePlansForCopy(planCtx(req), patient, { limit: COPY_LIMITS.carePlans });
   if (plans.more) cut.push('carePlans');
-  const [patientView, visits, orders, work, notes, consents, stays, appointments, fertilityPlans, fertilityCycles, imaging, referrals, specimens, scores, followUp] = await Promise.all([
+  const [patientView, visits, orders, work, notes, consents, stays, appointments, fertilityPlans, fertilityCycles, imaging, referrals, specimens, scores, followUp, patientDocuments] = await Promise.all([
     patientPart(req, patient, access),
     newest(Visit.find(own).sort({ visitOn: -1, createdAt: -1, _id: -1 }), COPY_LIMITS.visits),
     newest(LabOrder.find(own).sort({ createdAt: -1, _id: -1 }), COPY_LIMITS.labOrders),
@@ -272,8 +275,9 @@ recordCopyRouter.get('/', async (req, res) => {
     specimensPart(req, patient, cut),
     scoresPart(req, patient, cut),
     followUpPart(req, patient),
+    newest(PatientDocument.find(own).sort({ documentOn: -1, createdAt: -1, _id: -1 }).lean(), COPY_LIMITS.patientDocuments),
   ]);
-  for (const [key, part] of Object.entries({ visits, labOrders: orders, workDone: work, notes, consents })) if (part.more) cut.push(key);
+  for (const [key, part] of Object.entries({ visits, labOrders: orders, workDone: work, notes, consents, patientDocuments })) if (part.more) cut.push(key);
 
   const labOrders = orders.rows.map((o) => labOrderForCopy({ ...orderView(o, lab), collectedAtReport: o.collectedAtReport === true }));
   const copy = {
@@ -297,6 +301,8 @@ recordCopyRouter.get('/', async (req, res) => {
     specimens,
     scores,
     followUp,
+    // Scanned and outside documents attached to the record: what they are, never the files (routes/records.js)
+    patientDocuments: patientDocuments.rows.map((d) => patientDocumentForCopy(patientDocumentView(d, documentsAccess(req, patient)))),
     cut,
   };
   await audit(req, 'PATIENT_RECORD_COPIED', { details: ids(patient, access) });

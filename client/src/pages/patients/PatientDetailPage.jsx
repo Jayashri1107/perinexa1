@@ -26,6 +26,7 @@ import { DuplicateBanner, DuplicateHistory, EarlierRecordsNote, MarkDuplicateDia
 import { ClosedBanner, DeathHistory, RecordDeathDialog, UndoDeathDialog } from './DeathDialogs.jsx';
 import { PatientMessagesDialog } from './PatientMessagesDialog.jsx';
 import { PatientForm } from './PatientForm.jsx';
+import { DepartmentReferralsCard, SendToDepartmentDialog } from './DepartmentReferrals.jsx';
 import { RecordCopy } from './RecordCopy.jsx';
 import { RiskBadge, RiskCard } from './RiskCard.jsx';
 import { SafetyStrip } from './SafetyStrip.jsx';
@@ -244,6 +245,7 @@ export function PatientDetailPage() {
   const [confirmSensitive, setConfirmSensitive] = useState(false);
   const [writingLetter, setWritingLetter] = useState(false);
   const [changingDoctor, setChangingDoctor] = useState(false);
+  const [sendingToDepartment, setSendingToDepartment] = useState(false);
   const [messaging, setMessaging] = useState(false);
   const [printingCard, setPrintingCard] = useState(false); // the patient card (reception)
   const [admitting, setAdmitting] = useState(false); // admit to a free bed (reception, her doctor, RMOs)
@@ -314,6 +316,7 @@ export function PatientDetailPage() {
     patient.currentAge !== undefined || patient.newborn ? ageText(patient) : null,
     patient.careType === 'antenatal' && patient.gestationalAge ? `${formatGestationShort(patient.gestationalAge)} pregnant` : null,
     patient.careType === 'abortion' ? (LOSS_LABELS[patient.abortion?.lossType] ?? null) : null,
+    patient.department !== undefined ? (patient.department ? patient.department : 'No department yet') : null,
     patient.assignedDoctorName !== undefined ? (patient.assignedDoctorName ? `Doctor: ${patient.assignedDoctorName}` : 'No doctor assigned') : null,
     patient.abha?.linked ? `ABHA ${patient.abha.masked}` : null,
   ]
@@ -363,6 +366,8 @@ export function PatientDetailPage() {
     ...(isReception && open ? [{ group: 'This record', label: 'Book a scan', icon: ScanLine, onSelect: () => setBookingScan(true) }] : []),
     ...(editInMenu ? [{ group: 'This record', label: 'Edit details', icon: Pencil, onSelect: () => navigate(`${base}/edit`) }] : []),
     ...(a.canAssign ? [{ group: 'This record', label: 'Change doctor', icon: UserRound, onSelect: () => setChangingDoctor(true) }] : []),
+    // Sending her to another department (owner, 9 Nov 2026): her doctor or an RMO
+    ...(open && a.canEditClinical ? [{ group: 'This record', label: 'Send to another department', icon: Send, onSelect: () => setSendingToDepartment(true) }] : []),
     ...(a.canMarkSensitive ? [{ label: patient.sensitive ? 'Remove sensitive marking' : 'Mark sensitive', group: 'This record', icon: Lock, onSelect: () => setConfirmSensitive(true) }] : []),
     ...(a.canAddEmergencyNote ? [{ group: 'This record', label: 'Emergency note', icon: Siren, onSelect: () => setEmergencyOpen(true) }] : []),
     ...(a.canEditClinical && hasRole(activeMembership, 'doctor', 'rmo') ? [{ group: 'Print and send', label: 'Write a letter', icon: FileText, onSelect: () => setWritingLetter(true) }] : []),
@@ -433,6 +438,9 @@ export function PatientDetailPage() {
         ...(billsIpd ? [{ label: 'IPD bill', to: `${base}/ipd-bill`, end: true }] : []),
       ]
     : [];
+  // Scanned and outside documents attached to the record (also reception and the medical records staff): a tab of its
+  // own in the main row, beside OPD and IPD – the papers belong to her visits and to her stays (developer, 9 Nov 2026)
+  const documentsTab = a.canViewDocuments ? [{ label: 'Documents', to: `${base}/documents`, end: true }] : [];
   const inSections = (list) => list.some((t) => location.pathname === t.to || location.pathname.startsWith(`${t.to}/`));
   // In hospital now or before (or a stay page open): then OPD and IPD are shown apart
   const grouped = ipdSections.length > 0 && (patient.hadStay || Boolean(patient.currentAdmission) || inSections(ipdSections));
@@ -448,6 +456,7 @@ export function PatientDetailPage() {
       : opdSections),
     // Reception and billing (no inpatient records): the IPD tab is her IPD bill
     ...(!ipdSections.length && billsIpd ? [{ label: 'IPD', to: `${base}/ipd-bill`, end: true }] : []),
+    ...documentsTab,
     // Billing: reception and the billing department (the hospital admin opens bills from Billing)
     ...(hasRole(activeMembership, 'receptionist', 'billing') ? [{ label: 'Bills', to: `${base}/bills`, end: true }] : []),
     // ABDM linking (M1): her ABHA – reception, doctors and RMOs
@@ -462,7 +471,7 @@ export function PatientDetailPage() {
   ];
   // Phones (the app's look, 6 Nov 2026): her overview opens on large buttons to the rest of the record, in place of
   // the row of tabs; OPD and IPD stand for their sections
-  const places = (grouped ? [...opdSections, ...ipdSections] : tabs).filter((t) => t.to !== base && t.to !== `${base}/edit`);
+  const places = (grouped ? [...opdSections, ...ipdSections, ...documentsTab] : tabs).filter((t) => t.to !== base && t.to !== `${base}/edit`);
   return (
     <>
       <PageHeader
@@ -660,6 +669,17 @@ export function PatientDetailPage() {
           onDone={(text) => {
             setMessaging(false);
             setFlash(text);
+            reload();
+          }}
+        />
+      )}
+      {sendingToDepartment && (
+        <SendToDepartmentDialog
+          patient={patient}
+          onCancel={() => setSendingToDepartment(false)}
+          onSent={(department) => {
+            setSendingToDepartment(false);
+            setFlash(`Sent to ${department}. Its doctors can now open her record.`);
             reload();
           }}
         />
@@ -1123,6 +1143,13 @@ export function PatientOverviewTab() {
           {p.access.canViewNotes && <NotesCard patient={p} version={notesVersion} />}
         </div>
       )}
+      <DepartmentReferralsCard
+        patient={p}
+        onChanged={(text) => {
+          setFlash(text);
+          reload();
+        }}
+      />
       {wasDuplicate && <DuplicateHistory patient={p} />}
       <DeathHistory patient={p} />
     </FoldCards>

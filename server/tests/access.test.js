@@ -50,7 +50,8 @@ afterAll(disconnectTestDb);
 const view = async (who, patient) => (await sessions[who].get(`/api/patients/${patient.id}`)).body.patient;
 // The referral desk (docs/REFERRALS_PLAN.md): what it needs to register the woman a doctor sent, find her again and
 // book her – never the medical record.
-const DESK_KEYS = ['access', 'ageRecordedOn', 'ageYears', 'assignedDoctor', 'assignedDoctorName', 'careType', 'createdAt', 'currentAge', 'fullName', 'id', 'mrn', 'phone', 'tenantId', 'updatedAt'];
+// department (9 Nov 2026): the desk books her with her department's doctors
+const DESK_KEYS = ['access', 'ageRecordedOn', 'ageYears', 'assignedDoctor', 'assignedDoctorName', 'careType', 'createdAt', 'currentAge', 'department', 'fullName', 'id', 'mrn', 'phone', 'tenantId', 'updatedAt'];
 
 describe('what each role can see', () => {
   it("assigned doctor and RMO see everything and can edit", async () => {

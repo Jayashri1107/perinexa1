@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { Membership, TENANT_ROLES, hasRole } from '../models/Membership.js';
+import { Membership, TENANT_ROLES, departmentsOf, hasRole } from '../models/Membership.js';
 import { Tenant } from '../models/Tenant.js';
 import { User, canEditPlatform, isPlatformUser } from '../models/User.js';
 import { HttpError } from '../utils/httpError.js';
@@ -101,6 +101,8 @@ function placeView(m, mode) {
     adminSwitch: hasAdminSwitch(m.roles),
     ...(hasAdminSwitch(m.roles) ? { clinicalRoles: m.roles.filter((r) => r !== 'admin') } : {}),
     adminRights: roles.includes('admin') ? [...(m.adminRights ?? [])] : [],
+    // A doctor's departments here (owner, 9 Nov 2026): the website offers "Close referral" to that department's doctors
+    departments: m.roles?.includes('doctor') ? departmentsOf(m) : [],
   };
 }
 

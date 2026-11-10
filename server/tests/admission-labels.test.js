@@ -88,14 +88,14 @@ describe('who sees the billing type', () => {
   it('doctors and RMOs get it on the inpatient list and the stay; nurses never do, nor who pays on the record', async () => {
     const [b1] = await bedsOf(['L1']);
     const p = await register('Seen Mother', { payer: { type: 'insurance', name: 'Sample Insurer', number: 'SMP-1' } });
-    const admitted = await admitAtBed(b1, p, { billingType: 'insurance', stayType: 'anc', department: 'Obstetrics & Gynaecology' });
+    const admitted = await admitAtBed(b1, p, { billingType: 'insurance', stayType: 'anc', department: 'Obgy' });
     expect(admitted.status, JSON.stringify(admitted.body)).toBe(201);
     for (const who of ['drA', 'rmo']) {
       const row = (await (await as(who)).get('/api/inpatients')).body.admitted.find((s) => s.patient.id === p.id);
-      expect(row).toMatchObject({ billingType: 'insurance', stayType: 'anc', department: 'Obstetrics & Gynaecology' });
+      expect(row).toMatchObject({ billingType: 'insurance', stayType: 'anc', department: 'Obgy' });
     }
     const nurseRow = (await (await as('nurse')).get('/api/inpatients')).body.admitted.find((s) => s.patient.id === p.id);
-    expect(nurseRow).toMatchObject({ stayType: 'anc', department: 'Obstetrics & Gynaecology' });
+    expect(nurseRow).toMatchObject({ stayType: 'anc', department: 'Obgy' });
     expect(nurseRow).not.toHaveProperty('billingType');
     const id = admitted.body.admission.id;
     expect((await (await as('drA')).get(`/api/patients/${p.id}/admissions/${id}`)).body.admission.billingType).toBe('insurance');

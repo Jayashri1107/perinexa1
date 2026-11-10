@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { Membership } from '../src/models/Membership.js';
+import { DEPARTMENTS, Membership } from '../src/models/Membership.js';
 import { Tenant } from '../src/models/Tenant.js';
 import { User } from '../src/models/User.js';
 import { hashPassword } from '../src/utils/password.js';
@@ -72,8 +72,13 @@ export async function createTenant(name) {
 }
 
 // role can be one role ('doctor') or several (['doctor', 'admin']).
-export const addMember = (user, tenant, role = 'doctor', extra = {}) =>
-  Membership.create({ userId: user._id, tenantId: tenant._id, roles: [role].flat(), ...extra });
+// A doctor is in every department unless the test says otherwise (departments, 9 Nov 2026): a doctor with no department
+// sees only their own patients, and the tests from before departments expect every doctor to see every patient.
+export const addMember = (user, tenant, role = 'doctor', extra = {}) => {
+  const roles = [role].flat();
+  const inDepartment = roles.includes('doctor') && extra.department === undefined && extra.departments === undefined ? { department: DEPARTMENTS[0], departments: [...DEPARTMENTS] } : {};
+  return Membership.create({ userId: user._id, tenantId: tenant._id, roles, ...inDepartment, ...extra });
+};
 
 // Logs in and returns a browser-like agent that keeps the login cookie.
 // Also returns activeTenantId, and helpers that send the "selected hospital" header.

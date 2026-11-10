@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import mongoose from 'mongoose';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { DEPARTMENTS } from '../src/models/Membership.js';
 import { buildContext, computeSections } from '../src/analytics/compute.js';
 import { NEEDS, loadHospital } from '../src/analytics/load.js';
 import { currentPlansNow } from '../src/analytics/populations.js';
@@ -106,7 +107,8 @@ function keysDeep(value, out = new Set()) {
 }
 
 // A request-like object for the service functions (what patientAccess reads).
-const reqFor = (user, roles) => ({ user, membership: { roles } });
+// departments (9 Nov 2026): a doctor here is in every department, so the department rule hides nobody from them
+const reqFor = (user, roles) => ({ user, membership: { roles, departments: roles.includes('doctor') ? [...DEPARTMENTS] : [] } });
 
 const ALL_SECTIONS = ['overview', 'pregnancy', 'risk', 'care', 'newborn', 'deliveries'];
 

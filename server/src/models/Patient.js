@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { addDays, gaOn, hospitalToday, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { tenantScoped } from '../utils/tenantScope.js';
+import { DEPARTMENTS } from './Membership.js';
 import { CONCEPTION, FOLIC_ACID, PLANNED, PREGNANCY_TEXTS, BIRTH_MODES, CYCLE_KINDS, DIETS, FAMILY_HISTORY, FLOW, HABIT, HISTORY_NUMBERS, HISTORY_TEXTS, IMMUNISATION_STATUS, PERIOD_PAIN, PREGNANCY_NUMBERS, PREGNANCY_OUTCOMES, YES_NO } from '../patients/historyFields.js';
 import { CYCLE_PATTERNS, ENDOMETRIOSIS_STATUS, FERTILITY_DIAGNOSES, FERTILITY_NUMBERS, FERTILITY_TEXTS, FERTILITY_TYPES, OVULATION_STATUS, SEMEN_STATUS, TUBAL_STATUS, UTERINE_FINDINGS } from '../fertility/fertilityFields.js';
 import { ANTI_D, ECTOPIC_SITES, HISTOLOGY, LOSS_FINDING_KEYS, MANAGEMENT, MAX_WEEKS, MOLE_KINDS, OUTCOME_LABELS, STORED_LOSS_TYPE_KEYS, gaFrom } from '../patients/abortionRules.js';
@@ -216,6 +217,33 @@ const patientSchema = new mongoose.Schema(
 
     // The doctor responsible for this patient (a member of the same hospital with the doctor role).
     assignedDoctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // Her department (owner, 9 Nov 2026 – docs/DEPARTMENT_ACCESS_PLAN.md): chosen at registration. A doctor sees only
+    // the patients of their departments (utils/patientAccess.js). '' = not set yet (records from before): every doctor
+    // with a department sees her until reception gives her one. A baby is in Pediatric unless chosen otherwise.
+    department: { type: String, enum: ['', ...DEPARTMENTS], default: '' },
+    // Sent to another department by her doctor or an RMO (Anesthesia before an operation, Counselling, Diet and yoga …):
+    // while open, that department's doctors may open her record as they would their own department's patients.
+    departmentReferrals: {
+      type: [
+        new mongoose.Schema(
+          {
+            department: { type: String, enum: DEPARTMENTS, required: true },
+            reason: { type: String, trim: true, maxlength: 300, default: '' },
+            by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+            byName: { type: String, default: '' },
+            at: { type: Date, default: null },
+            closedAt: { type: Date, default: null },
+            closedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+            closedByName: { type: String, default: '' },
+          },
+          { _id: true },
+        ),
+      ],
+      default: [],
+    },
+    // A mother's babies' departments (kept by patients/departments.js when a baby is registered or moved): the baby's
+    // doctors may read the mother's record (owner, 9 Nov 2026).
+    babyDepartments: { type: [{ type: String, enum: DEPARTMENTS }], default: [] },
     // Sensitive records (e.g. infertility, pregnancy loss): medical details only for the treating doctor and RMOs.
     sensitive: { type: Boolean, default: false },
     // The day of the latest visit that was not cancelled (kept by utils/lastVisit.js; the list sorts by it).
@@ -540,6 +568,7 @@ patientSchema.index({ tenantId: 1, 'abha.number': 1 }, { unique: true, partialFi
 patientSchema.index({ tenantId: 1, 'pregnancy.effectiveEdd': 1 });
 patientSchema.index({ tenantId: 1, 'pregnancy.lmp': 1 }); // the calendar's LMP dates
 patientSchema.index({ tenantId: 1, 'newborn.mother': 1 });
+patientSchema.index({ tenantId: 1, department: 1 });
 patientSchema.index({ tenantId: 1, 'risk.level': 1, createdAt: -1 });
 patientSchema.index({ tenantId: 1, 'risk.templateId': 1 });
 patientSchema.index({ tenantId: 1, careType: 1, 'risk.recheckAt': 1 });

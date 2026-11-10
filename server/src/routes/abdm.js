@@ -15,7 +15,7 @@ import { Tenant } from '../models/Tenant.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { patientAccess } from '../utils/patientAccess.js';
+import { departmentListed, patientAccess } from '../utils/patientAccess.js';
 import { objectId, parse } from '../utils/validate.js';
 import { ABDM_HIU_CALLBACK_PATHS, abdmFetchPublicRouter, abdmFetchRouter } from './abdmFetch.js';
 import { ABDM_CALLBACK_PATHS, abdmRecordsPublicRouter, abdmRecordsRouter, recordsAccess } from './abdmRecords.js';
@@ -49,11 +49,14 @@ const practiceHint = () => (abdmMode() === 'practice' ? { practiceOtp: PRACTICE_
 
 async function patientFor(req, id) {
   const patient = await Patient.findOne({ tenantId: req.tenantId, _id: id });
-  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  // (another department's patient is "not found" for a doctor – departments, 9 Nov 2026)
+  if (!patient || patientAccess(req, patient).hidden) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
   if (!patientAccess(req, patient).view.has('phone')) throw forbidden("You can't change this patient's ABHA.");
   return patient;
 }
 const ids = (p, extra = {}) => ({ patientId: String(p._id), mrn: p.mrn, ...extra });
+// What the department rule needs to judge a record (departments, 9 Nov 2026)
+const DEPT_FIELDS = { assignedDoctor: 1, department: 1, departmentReferrals: 1, babyDepartments: 1 };
 const abhaView = (p) => (p.abha?.number ? { number: p.abha.number, masked: maskAbha(p.abha.number), address: p.abha.address ?? '', nameOnAbha: p.abha.nameOnAbha ?? '', method: p.abha.method, byName: p.abha.byName ?? '', at: p.abha.at ?? null } : null);
 
 // ---------- Status and settings ----------
@@ -259,11 +262,12 @@ abdmRouter.get('/scan-share', async (req, res) => {
   desk(req);
   const on = hospitalToday(req.now);
   const list = await ScanShare.find({ tenantId: req.tenantId, on }).sort({ token: 1 }).lean();
-  const holders = await Patient.find({ tenantId: req.tenantId, 'abha.number': { $in: list.map((s) => s.profile.abhaNumber) } }, { fullName: 1, mrn: 1, 'abha.number': 1, duplicateOf: 1 }).lean();
+  // (only records the department rule lets this person see are named – departments, 9 Nov 2026)
+  const holders = (await Patient.find({ tenantId: req.tenantId, 'abha.number': { $in: list.map((s) => s.profile.abhaNumber) } }, { fullName: 1, mrn: 1, 'abha.number': 1, duplicateOf: 1, ...DEPT_FIELDS }).lean()).filter((p) => departmentListed(req, p));
   // An ABHA that is on a record marked as a duplicate: the desk is pointed to her main record, and told that the
   // ABHA is still on the earlier one (abhaOn) – it is unlinked there and linked on the main record (nothing moves by itself)
   const mainIds = holders.filter(isDuplicate).map((p) => p.duplicateOf.patient);
-  const mains = new Map((mainIds.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: mainIds } }, { fullName: 1, mrn: 1 }).lean() : []).map((m) => [String(m._id), m]));
+  const mains = new Map((mainIds.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: mainIds } }, { fullName: 1, mrn: 1, ...DEPT_FIELDS }).lean() : []).filter((m) => departmentListed(req, m)).map((m) => [String(m._id), m]));
   const known = new Map(
     holders.map((p) => {
       const main = isDuplicate(p) ? mains.get(String(p.duplicateOf.patient)) : null;

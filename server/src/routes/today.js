@@ -22,6 +22,7 @@ import { Visit } from '../models/Visit.js';
 import { inHospitalNow } from '../reminders/generalReminders.js';
 import { VACCINATION_LIST_DAYS } from '../reminders/reminderRules.js';
 import { HttpError } from '../utils/httpError.js';
+import { departmentListFilter } from '../utils/patientAccess.js';
 import { parse } from '../utils/validate.js';
 
 // The Today page's lists (Feature 10, daily lists): GET /api/today?scope=mine|all. For the calendar roles (doctors,
@@ -103,8 +104,8 @@ export async function todayFor(req, askedScope) {
 
   const ids = [...new Set([...bookings.keys(), ...firstVisit.keys(), ...arrivals.keys(), ...registered.keys()])];
   // (a record marked as a duplicate of another is not on today's lists: she is expected on her main record; nor is a
-  // record closed after a death)
-  const found = ids.length ? await Patient.find({ tenantId, _id: { $in: ids }, ...IN_USE }).select(`${PATIENT_FIELDS} ageYears ageRecordedOn createdAt`).lean() : [];
+  // record closed after a death; nor a patient the department rule hides from this doctor – departments, 9 Nov 2026)
+  const found = ids.length ? await Patient.find({ tenantId, _id: { $in: ids }, ...IN_USE, ...departmentListFilter(req) }).select(`${PATIENT_FIELDS} ageYears ageRecordedOn createdAt`).lean() : [];
   const shown = found.map((p) => ({ p, level: calendarLevel(req, p) })).filter(({ p, level }) => level && inScope(req, scope, p));
   // Follow-ups added by hand that are still open (she has not checked in for them yet)
   const followUps = await openFollowUpsOf(tenantId, shown.map(({ p }) => p._id));
