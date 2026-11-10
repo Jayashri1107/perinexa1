@@ -147,10 +147,12 @@ describe('who works the scans (owner, 10 Nov 2026)', () => {
     expect(after.report.impression).toBe('Sample impression.');
     expect(after.access.canPrint).toBe(true);
   });
-  it('another doctor cannot open her scan; doctors and RMOs have the to-confirm list, sonography staff not', async () => {
+  it('another doctor reads her scan as her record (department rule) but cannot sign or mark it seen; the to-confirm list is for doctors and RMOs', async () => {
     const p = await mother();
     const s = (await (await as('drA')).post(`/api/patients/${p.id}/imaging`).send({ clientRequestId: randomUUID(), study: 'usg_growth' })).body.study;
-    expect((await (await as('drB')).get(`/api/imaging/${s.id}`)).status).toBe(404);
+    const other = await (await as('drB')).get(`/api/imaging/${s.id}`);
+    expect(other.status).toBe(200);
+    expect(other.body.study.access).toMatchObject({ isSonography: false, canSign: false, canReport: false, canDone: false });
     expect((await (await as('drA')).get('/api/imaging/to-confirm')).body.studies).toEqual([]);
     expect((await (await as('sono')).get('/api/imaging/to-confirm')).body.studies).toBeNull();
   });
