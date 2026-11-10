@@ -75,6 +75,16 @@ describe('one Dictate for the whole page', () => {
     // What the sheet took is not offered again as "not understood"
     expect(r.unused.some((u) => /backache/i.test(u.text))).toBe(false);
   });
+  it('fills C/o and previous deliveries from the way doctors say it, and asks only about the advice (tablet test, 10 Nov 2026)', () => {
+    const spoken = 'Came first time with PV bleeding since morning. Advise sonography. Previous delivery one normal delivery in 2021.';
+    const r = withHistorySheet(extractPatientDetails(spoken, { careType: 'gynaecology', now }), spoken, { careType: 'gynaecology', readDate, now });
+    expect(r.values.history).toMatchObject({ complaint: 'PV bleeding since morning', previousDeliveries: 'one normal delivery in 2021' });
+    expect(r.paths).toEqual(expect.arrayContaining(['history.complaint', 'history.previousDeliveries']));
+    // "Previous delivery" is the blank's heading, not something to ask about; the advice is offered for the notes
+    expect(r.unused.map((u) => u.text)).toEqual(['Advise sonography']);
+    const twice = 'C/O white discharge for one week. Previously delivered twice, both normal.';
+    expect(withHistorySheet(extractPatientDetails(twice, { careType: 'antenatal', now }), twice, { careType: 'antenatal', readDate, now }).unused).toEqual([]);
+  });
   it("adds the type of care's line only when it is on the page", () => {
     const text = 'Trying to conceive since 2 years';
     const base = extractPatientDetails(text, { careType: 'infertility', now });

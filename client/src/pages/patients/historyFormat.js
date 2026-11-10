@@ -290,9 +290,14 @@ export function withHistorySheet(result, text, { careType, careLine = false, rea
   if (line.on) add('delivery', 'on', line.on, 'Delivered on');
   if (line.mode) add('delivery', 'mode', line.mode, 'Mode of delivery');
   const taken = [...Object.values(sheet), ...Object.values(line)].map(plainWords).filter((t) => t.length > 2);
+  // A piece is covered when the sheet took it – also once its anchor words are left out ("Previous delivery", "Previously
+  // delivered twice" when the blank took "twice, both normal"): those words are the blank's heading, not something to ask
+  const anchorsOf = [...ANCHORS, ...(CARE_ANCHORS[careType] ?? [])].map(([, rx]) => new RegExp(rx.source, 'gi'));
   const covered = (u) => {
     const t = plainWords(u.text);
-    return !t || taken.some((s) => s.includes(t) || t.includes(s));
+    if (!t || taken.some((s) => s.includes(t) || t.includes(s))) return true;
+    const rest = plainWords(anchorsOf.reduce((x, rx) => x.replace(rx, ' '), u.text));
+    return !rest || taken.some((s) => s.includes(rest));
   };
   return { ...result, values, paths: [...new Set(paths)], found, unused: (result.unused ?? []).filter((u) => !covered(u)) };
 }
