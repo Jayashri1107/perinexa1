@@ -137,7 +137,7 @@ export function AnalyticsPage({ section, platform = false }) {
         title="Analytics"
         documentTitle="Analytics"
         subtitle={platform ? SUBTITLE.platform : SUBTITLE.hospital}
-        tabs={analyticsTabs(base, analyticsSearch(params, audience), { ask: !platform && audience === 'doctor', report: !platform && audience === 'doctor' })}
+        tabs={analyticsTabs(base, analyticsSearch(params, audience), { ask: !platform && audience === 'doctor', report: !platform && audience === 'doctor', waiting: true })}
       />
       <div className="pf-content an-page">
         <AnalyticsFilters

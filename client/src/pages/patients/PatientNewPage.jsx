@@ -158,6 +158,9 @@ export function PatientNewPage() {
   const [params, setParams] = useSearchParams();
   const setting = SETTINGS.some(([k]) => k === params.get('as')) ? params.get('as') : 'opd';
   const [admitting, setAdmitting] = useState(null); // { patient, registered, go } – registered as IPD or day care
+  // Patient timeline (docs/PATIENT_FLOW_PLAN.md): how long the form was open is sent with Save; the server works out
+  // when registration started from its own clock (more than an hour is not kept)
+  const openedAt = useRef(Date.now());
   const location = useLocation();
   // A quick booking being registered (appointment booking: "Register" on the Today page): its name, phone and doctor
   // fill in the form, and once she is saved the booking joins her record. Carried in the page's navigation state.
@@ -204,7 +207,8 @@ export function PatientNewPage() {
   const clinicalStep = (v) => roles.includes('rmo') || (roles.includes('doctor') && (!v.assignedDoctor || v.assignedDoctor === user.id));
 
   // Saves the patient's details. Records with the same phone number or name: nothing is saved – the warning opens.
-  const save = async (payload, { another = false } = {}) => {
+  const save = async (form, { another = false } = {}) => {
+    const payload = { ...form, registrationSeconds: Math.round((Date.now() - openedAt.current) / 1000) };
     if (!chargesOk(charges.lines)) throw new Error('Enter the amount for each service charge, or remove it.');
     let patient;
     try {
@@ -262,6 +266,7 @@ export function PatientNewPage() {
 
   // After she is saved: her ABHA or quick booking joins the new record, then page 2 (or her record).
   const afterRegistered = async (patient, another = false) => {
+    openedAt.current = Date.now(); // "Save and register another": the next registration starts now
     let registered = `${patient.fullName} was registered in ${activeMembership.tenantName} as ${patient.mrn}.`;
     if (fromAbha) {
       try {

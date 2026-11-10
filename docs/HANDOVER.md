@@ -189,6 +189,10 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   it now (reversing "not built now" of the same morning); the developer chose the defaults for the open points –
   no new patient wording beyond the table's headings, the usual reason on removing a line, no rewording or moving in
   the table – `docs/PLAN_TABLE_LAYOUT.md` section 7.
+- **Feature freeze lifted for the patient timeline and waiting times (10 Nov 2026)**: the owner agreed to build it
+  now (reversing "not built now" of the same morning). Developer's decision the same day: the super admin gets
+  numbers only, **always** – also when working inside a hospital, never one patient's timeline or a list.
+  `docs/PATIENT_FLOW_PLAN.md` section 9.
 - **Feature freeze lifted for admission like a hospital system (17 Oct 2026)**: IPD/OPD numbers, admission form,
   wristband, checklist, doctor's admission request, discharge clearance and gate pass – `docs/ADMISSION_DESK_PLAN.md`.
 - **Lab version 2 (17 Oct 2026)**: the freeze is lifted for 8 more lab parts, and **the lab may register walk-in

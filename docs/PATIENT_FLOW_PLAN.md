@@ -1,4 +1,4 @@
-# Patient timeline and waiting times – asked 10 Nov 2026 (nothing built)
+# Patient timeline and waiting times – asked 10 Nov 2026 (first version built in perinexa1 on 10 Nov 2026 – section 9)
 
 > **Perinexa1 copy (brought over 10 Nov 2026 from `girishsolanke/perinexa`, commit 0f2a14cd).** Written against the
 > other Perinexa copy; read these differences before building:
@@ -216,3 +216,40 @@ For the owner, when it is taken up:
 9. **Reception's habit.** The whole-visit time (stage 4) is only as good as "Mark arrived". Whether reception must
    mark every patient arrived before a visit can start is a change to their work – the owner's call.
 10. **Telling the staff** (section 7) before it is switched on.
+
+## 9. Built in perinexa1 (10 Nov 2026) – first version
+
+The owner agreed to build it now. Built as sections 3 to 6 propose, for **OPD visits only** (point 7), with these
+choices for the open points:
+
+- **Storage (point 1):** a `flow` part on the visit (`startedRole`, `vitalsFirstAt`, `rmoFirstAt`, `doctorFirstAt`,
+  `finishedAt`), each written once with an update that only matches while the field is empty; and
+  `Patient.registrationStartedAt` from the seconds the New patient form was open (more than an hour: not kept). The
+  other moments are read from their own records. No ready-made rows (speed: for the health check).
+- **"Starts seeing her" (point 2):** the first time an RMO (without the doctor role) or a doctor **opens** the visit
+  on its own day while it can still be written. A person with both roles counts as the doctor (point 3). Platform
+  users working in a hospital are not counted.
+- **Finished (moment g):** the first of prescription or summary printed, saved as PDF or sent on WhatsApp, or the
+  visit signed.
+- **Time in hospital** on the visit page: a fold-out panel that loads when opened (each look is
+  `VISIT_TIMELINE_VIEWED` in the audit log). Doctor role only; **never** a super admin or platform admin, also inside
+  a hospital (developer's decision); 403 for RMOs, nurses, reception and the hospital admin. Times and stage names
+  only. "Longer than usual" = over the time 9 of 10 visits of the last three finished months took, from 30 visits per
+  stage; worked out once a day per hospital.
+- **Waiting times** is a page of its own under Analytics (tab "Waiting times"), not a card of the existing tabs: the
+  tabs' protection (`mask.js`) is built for counts and stays exactly as it was. Doctors: exact numbers, "This month
+  so far" too, only patients they may see (`visibility.js`). Hospital admin: whole finished months; a usual or slow
+  time only from 10 visits (`WAIT_MIN_N`), otherwise "Too few visits to show"; counts rounded to 5. Super admin
+  (Platform → Analytics → Waiting times): the same, per hospital and all hospitals, numbers only. By stage, by hour of
+  arrival, by weekday, by month, and how complete the numbers are.
+- **Not in this first version:** limits in minutes per stage (decision 7, "later"); the list of the slowest visits for
+  doctors; the second visit of a day, lab-only or pharmacy-only patients, emergencies and admitted patients; no
+  back-filling (point 5) – the four new moments exist from 10 Nov 2026.
+- **Still for the owner:** points 6, 8, 9 and 10 above – above all, **tell the staff** that stage times are measured
+  before this is used.
+
+Code: `server/src/visits/flow.js` (moments, stages, loading), `server/src/analytics/waitingTimes.js` (the numbers and
+who sees what), the routes `GET /api/patients/:id/visits/:visitId/timeline`, `GET /api/analytics/waiting-times`,
+`GET /api/platform/analytics/waiting-times`; website `VisitTimeline.jsx`, `WaitingTimesPage.jsx`. Tests:
+`server/tests/patient-timeline.test.js`, `client/src/pages/visits/visitTimelineFormat.test.js`.
+

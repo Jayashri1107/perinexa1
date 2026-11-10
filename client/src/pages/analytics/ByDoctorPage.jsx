@@ -22,7 +22,7 @@ export function ByDoctorPage() {
         title="By doctor"
         documentTitle="Analytics by doctor"
         help="The headline numbers for each doctor's own patients, and for the whole hospital. Counts only."
-        tabs={analyticsTabs('/analytics', '', { ask: true, report: true })}
+        tabs={analyticsTabs('/analytics', '', { ask: true, report: true, waiting: true })}
       />
       <div className="pf-content an-page">
         <Alert type="error">{error}</Alert>

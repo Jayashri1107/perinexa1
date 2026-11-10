@@ -92,7 +92,7 @@ export function MonthlyReportPage() {
         title="Monthly report"
         documentTitle="Monthly report"
         help="The month's numbers in the order of the HMIS monthly form – to type into the HMIS portal or print – and the last 12 months as charts. Counts only."
-        tabs={analyticsTabs('/analytics', '', { ask: true, report: true })}
+        tabs={analyticsTabs('/analytics', '', { ask: true, report: true, waiting: true })}
       />
       <div className="pf-content">
         <Alert type="error">{error ?? trend.error}</Alert>

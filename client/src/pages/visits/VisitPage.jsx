@@ -24,6 +24,7 @@ import { PrescriptionForm } from './PrescriptionForm.jsx';
 import { RxDocument, rxPage } from './RxDocument.jsx';
 import { VisitDetailsForm } from './VisitDetailsForm.jsx';
 import { AdditionsCard, SignDialog, SignedPill, VisitHistory, signedText } from './VisitSignature.jsx';
+import { VisitTimeline } from './VisitTimeline.jsx';
 import { DESIGNS } from './rxFormat.js';
 import { useVisitDraft } from './visitDraft.js';
 import { blobToBase64, showWhatsappNumber, whatsappLink, whatsappNumber } from './whatsapp.js';
@@ -628,6 +629,7 @@ export function VisitPage() {
         />
       </div>
 
+      <VisitTimeline patient={patient} visitId={v.id} version={v.updatedAt} />
       <VisitHistory patient={patient} visitId={v.id} version={v.updatedAt} />
 
       {signing && (
