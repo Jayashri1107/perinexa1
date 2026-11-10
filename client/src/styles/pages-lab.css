@@ -585,3 +585,10 @@
 .lab-trend-line { fill: none; stroke: var(--chart-bar); stroke-width: 2; }
 .lab-trend-point { fill: var(--surface); stroke: var(--chart-bar); stroke-width: 2; }
 .lab-trend-point-flag { fill: var(--status-high-fg); stroke: var(--status-high-fg); }
+
+/* Lab pages made of cards one under the other (test settings, Register, Find, test packages): an even gap between the
+   cards – they touched before (10 Nov 2026). A back link or a button keeps its own width. */
+.pf-content.lab-stack { display: flex; flex-direction: column; gap: var(--space-6); }
+.pf-content.lab-stack > * { margin-top: 0; margin-bottom: 0; }
+.pf-content.lab-stack > .btn-link, .pf-content.lab-stack > .btn, .pf-content.lab-stack > .row { align-self: flex-start; }
+.pf-content.lab-stack > .btn-link + * { margin-top: calc(var(--space-6) * -0.5); }

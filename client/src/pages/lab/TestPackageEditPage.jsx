@@ -40,7 +40,7 @@ export function TestPackageEditPage() {
     return (
       <>
         <PageHeader breadcrumbs={crumbs} title="Package not found" />
-        <div className="pf-content">
+        <div className="pf-content lab-stack">
           <div className="card narrow">
             <Alert type="error">{existing.error}</Alert>
           </div>
@@ -53,7 +53,7 @@ export function TestPackageEditPage() {
     return (
       <>
         <PageHeader breadcrumbs={crumbs} title={isNew ? 'New test package' : `Edit: ${p.name}`} />
-        <div className="pf-content">
+        <div className="pf-content lab-stack">
           <Alert type="warning">Only doctors can add or change test packages.</Alert>
         </div>
       </>
@@ -107,7 +107,7 @@ export function TestPackageEditPage() {
   return (
     <>
       <PageHeader breadcrumbs={crumbs} title={isNew ? 'New test package' : `Edit: ${p.name}`} subtitle="Saving creates a new draft version. A doctor approves it again." />
-      <div className="pf-content">
+      <div className="pf-content lab-stack">
         <form className="card form-card" onSubmit={save} noValidate>
           <Alert type="error">{error}</Alert>
           <fieldset className="fieldset">

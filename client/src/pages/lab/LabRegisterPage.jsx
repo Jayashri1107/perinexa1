@@ -88,7 +88,7 @@ export function LabRegisterPage() {
   return (
     <>
       <PageHeader tabs={HOSPITAL_LAB.tabs} title="Lab register" documentTitle="Lab register" help="The lab's orders between two dates with the day's counts. Print it, or save it as a file for Excel." />
-      <div className="pf-content">
+      <div className="pf-content lab-stack">
         <form
           className="card lab-find"
           noValidate

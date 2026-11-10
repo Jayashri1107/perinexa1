@@ -78,7 +78,7 @@ export function TestPackagePage() {
     return (
       <>
         <PageHeader breadcrumbs={crumbs('Not found')} title="Package not found" />
-        <div className="pf-content">
+        <div className="pf-content lab-stack">
           <div className="card narrow">
             <Alert type="error">{error}</Alert>
             <p>
@@ -159,7 +159,7 @@ export function TestPackagePage() {
           )
         }
       />
-      <div className="pf-content">
+      <div className="pf-content lab-stack">
         <Alert type="success" onClose={() => setFlash(null)}>
           {flash}
         </Alert>
