@@ -248,11 +248,24 @@ export function careNowText(p) {
   return { postnatal: 'After delivery', gynaecology: 'Gynaecology', infertility: 'Fertility care' }[p.careType] ?? CARE_TYPE_SHORT[p.careType] ?? '';
 }
 
-/** "Today", "Yesterday", "3 days ago", "5 weeks ago", "4 months ago" (hospital dates at midnight UTC). */
+// The hospital's day (India) of an instant, as midnight UTC – as the server's hospitalToday (careplans/dates.js)
+const HOSPITAL_TZ = 'Asia/Kolkata';
+const hospitalDayMs = (instant) => Date.parse(`${new Date(instant).toLocaleDateString('en-CA', { timeZone: HOSPITAL_TZ })}T00:00:00Z`);
+// A hospital date is stored as midnight UTC; any other time of day is an instant (e.g. when she was registered)
+const isMidnightUtc = (d) => d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+
+/**
+ * "Today", "Yesterday", "3 days ago", "5 weeks ago", "4 months ago". day: a hospital date (midnight UTC, e.g. the last
+ * visit day) or an instant (e.g. createdAt), which counts on the hospital's day it fell on – 10 Nov 2026: a patient
+ * registered yesterday evening (after 17:30 in India) was labelled "Today", because the time was rounded to the
+ * nearest day. "Today" is the hospital's today too, whatever the device's clock zone.
+ */
 export function sinceText(day, now = new Date()) {
   if (!day) return '';
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const days = Math.round((today - new Date(day).getTime()) / 86_400_000);
+  const d = new Date(day);
+  if (Number.isNaN(d.getTime())) return '';
+  const today = hospitalDayMs(now);
+  const days = Math.round((today - (isMidnightUtc(d) ? d.getTime() : hospitalDayMs(d))) / 86_400_000);
   if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 14) return `${days} days ago`;
