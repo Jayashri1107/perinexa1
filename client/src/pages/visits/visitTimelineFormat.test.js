@@ -43,7 +43,8 @@ describe('Waiting times', () => {
     const tabs = analyticsTabs('/analytics', '', { waiting: true, report: true });
     expect(tabs.map((t) => t.label)).toContain('Waiting times');
     expect(tabs.find((t) => t.label === 'Waiting times').to).toBe('/analytics/waiting');
-    expect(analyticsTabs('/platform/analytics', '', { waiting: true }).at(-1).to).toBe('/platform/analytics/waiting');
+    // Lab times (P9 – docs/LAB_BUILD_NOTE.md) follows Waiting times
+    expect(analyticsTabs('/platform/analytics', '', { waiting: true }).slice(-2).map((t) => t.to)).toEqual(['/platform/analytics/waiting', '/platform/analytics/lab-times']);
     expect(analyticsTabs('/analytics').map((t) => t.label)).not.toContain('Waiting times');
   });
 });
