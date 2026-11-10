@@ -53,8 +53,10 @@ export function WaitingTimesPage({ platform = false }) {
           )}
         </div>
         {loading && !data && <p className="muted">Loading…</p>}
+        {/* The analytics grid, as on the other Analytics pages: the cards were stacked full width with no gap between
+            them; now each stage table across the top, the three "whole visit" tables side by side under it */}
         {data && (
-          <>
+          <div className="an-grid wt-grid">
             <section className="panel an-card an-wide" aria-labelledby="wt-stages">
               <header className="an-card-head">
                 <h2 id="wt-stages">Each stage</h2>
@@ -198,7 +200,7 @@ export function WaitingTimesPage({ platform = false }) {
                 <p className="hint help">A low share means that stage is measured on few visits. Times are noted from 10 Nov 2026 on; earlier visits have no RMO, doctor or vitals times.</p>
               </div>
             </section>
-          </>
+          </div>
         )}
       </div>
     </>

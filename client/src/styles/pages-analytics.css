@@ -244,3 +244,16 @@
 .an-page .an-headline .kpi, .an-page .an-kpis .kpi { padding: var(--space-3) var(--space-4); gap: var(--space-1); }
 .an-page .an-group-block { margin-bottom: var(--space-2); }
 .an-page .an-filters { margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); }
+
+/* ---------- Waiting times (10 Nov 2026) ---------- */
+/* By hour, by weekday and by month side by side (three columns on a wide screen, as the other analytics grids);
+   each card only as tall as its table. The completeness list: one line per figure with a thin rule between. */
+.an-page .wt-grid { align-items: start; }
+@container (min-width: 900px) { .an-page .wt-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.an-page .wt-grid > .an-card:not(.an-wide) .an-table th[scope='row'] { white-space: nowrap; }
+.an-page .wt-grid .an-table th[scope='row'] .pill { margin-left: var(--space-1); }
+.an-list { margin: 0; padding: 0; list-style: none; }
+.an-list li { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.an-list li:first-child { padding-top: 0; }
+.an-list li:last-child { border-bottom: none; }
+.an-list strong { color: var(--ink); }
