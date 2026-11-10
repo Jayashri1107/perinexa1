@@ -14,7 +14,8 @@ import { runDemo, samplePng } from '../../scan-bridge/demo.mjs';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-10-29T05:00:00Z');
-const ROLES = { drA: 'doctor', rmo: 'rmo', sono: 'sonographer', reception: 'receptionist', admin: 'admin' };
+// Who scans has the Sonography role (owner, 10 Nov 2026): drA is a doctor who scans, the RMO here also does scans
+const ROLES = { drA: ['doctor', 'sonographer'], rmo: ['rmo', 'sonographer'], sono: 'sonographer', reception: 'receptionist', admin: 'admin' };
 
 // A made-up OB structured report (DICOM TID 5000) as Orthanc's simplified JSON: fetal biometry for fetus A with three
 // BPD readings and the machine's mean, HC in cm, AC, FL, AFI, the heart rate, a measurement Perinexa does not know, a

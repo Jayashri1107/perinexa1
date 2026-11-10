@@ -16,7 +16,7 @@ import { AppLayout } from './components/AppLayout.jsx';
 import { PageHeader } from './components/PageHeader.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, FORMULARY_ROLES, THEATRE_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, RECORDS_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, FORMULARY_ROLES, THEATRE_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, RECORDS_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, SCAN_VIEW_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 import { CASE_REVIEW_ROLES } from './pages/quality/qualityFormat.js';
 import { PRIVILEGE_ROLES } from './pages/privileges/privilegeRoles.js';
 
@@ -535,9 +535,13 @@ export function App() {
                 {/* The registers were removed on 2 Oct 2026; old links go to the monthly report in Analytics. */}
                 <Route path="registers/*" element={<RegistersRedirect />} />
                 {/* USG and radiology (Lab version 2) */}
-                <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="Sonography is for doctors, RMOs and sonography staff." />}>
+                {/* The Sonography module for the Sonography role (and the admin's counts); one scan's page also for her
+                    treating doctor or RMO, who sees the signed report (owner, 10 Nov 2026) */}
+                <Route path="scans" element={<RequireTenantRole roles={SCAN_PAGE_ROLES} message="The Sonography module is for the Sonography role. Doctors order scans from her Lab tab." />}>
                   <Route index element={<ImagingWorklistPage />} />
-                  <Route path=":id" element={<ImagingStudyPage />} />
+                </Route>
+                <Route path="scans/:id" element={<RequireTenantRole roles={SCAN_VIEW_ROLES} message="Scans are for her doctor, RMOs and sonography." />}>
+                  <Route index element={<ImagingStudyPage />} />
                 </Route>
                 <Route path="nicu-register" element={<RequireTenantRole roles={THEATRE_ROLES} message="The NICU register is for doctors, RMOs and nurses." />}>
                   <Route index element={<NicuRegisterPage />} />

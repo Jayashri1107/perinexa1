@@ -177,10 +177,12 @@ export const HOSPITAL_LAB = {
 };
 
 // USG and radiology (Lab version 2 part 8): the scan worklist and reports. Same list as server/src/routes/imaging.js.
-// Sonography (owner, 24 Oct 2026): doctors, RMOs and sonography staff work the scans; the hospital admin sees the
-// dashboard's counts only. Same list as server/src/routes/imaging.js.
-export const SCAN_ROLES = ['doctor', 'rmo', 'sonographer'];
+// Sonography (owner, 10 Nov 2026 – replaces 24 Oct): the Sonography module (menu, worklist) is for the Sonography role
+// only; the hospital admin sees the dashboard's counts. Doctors and RMOs order from her Lab tab and open a scan's own
+// page (SCAN_VIEW_ROLES) for its signed report. Same rule as server/src/routes/imaging.js.
+export const SCAN_ROLES = ['sonographer'];
 export const SCAN_PAGE_ROLES = [...SCAN_ROLES, 'admin'];
+export const SCAN_VIEW_ROLES = ['doctor', 'rmo', 'sonographer'];
 const HOSPITAL_SCANS = {
   key: 'scans',
   label: 'Sonography',

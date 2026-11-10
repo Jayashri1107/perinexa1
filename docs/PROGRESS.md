@@ -1,5 +1,13 @@
 # Progress
 
+## Who works the scans (owner, 10 Nov 2026)
+- **Her doctor / RMO:** orders from her **Lab** tab; the scan page shows "With sonography" until the report is signed,
+  then the report, the growth graph and Print; urgent findings and **Scans to confirm** (reception's bookings) are on
+  **Today**. No Sonography menu.
+- **Sonography role:** the Sonography menu and worklist, schedule, mark done, the machine, values, writing the report.
+- **Signing:** a doctor who also has the Sonography role. **The hospital admin must add the Sonography role to each
+  doctor who scans** (Users & access) – otherwise that doctor no longer sees the Sonography menu.
+
 ## Sonography, stage 1: urgent findings, twins, growth across scans (10 Nov 2026)
 The owner agreed to build U1–U5 of `docs/USG_APPS_REVIEW.md`; stage 1 is built (section 9 there).
 - **Urgent findings:** a signed scan report with, for example, no cardiac activity, placenta covering the os, very

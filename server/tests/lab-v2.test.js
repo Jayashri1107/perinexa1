@@ -13,7 +13,8 @@ import { PriceItem } from '../src/models/PriceItem.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-10-17T05:00:00Z');
-const ROLES = { drA: 'doctor', rmo: 'rmo', nurse: 'nurse', reception: 'receptionist', lab: 'lab', lab2: 'lab', admin: 'admin', sono: 'sonographer' };
+// drA scans too: doctor and Sonography (owner, 10 Nov 2026 – only the Sonography role works the scans; a doctor with it signs)
+const ROLES = { drA: ['doctor', 'sonographer'], rmo: 'rmo', nurse: 'nurse', reception: 'receptionist', lab: 'lab', lab2: 'lab', admin: 'admin', sono: 'sonographer' };
 let app;
 let hospital;
 let people;
@@ -206,9 +207,10 @@ describe('USG and radiology', () => {
     expect((await (await as('reception')).get('/api/imaging/worklist?list=ordered')).status).toBe(403);
     expect((await (await as('nurse')).get('/api/imaging/worklist?list=ordered')).status).toBe(403);
     expect((await (await as('reception')).post(`/api/imaging/${s.id}/schedule`).send({ rev: s.rev, scheduledFor: '2026-10-18T05:30:00.000Z' })).status).toBe(403);
-    const desk = (await (await as('rmo')).get('/api/imaging/worklist?list=ordered')).body.studies[0];
+    expect((await (await as('rmo')).get('/api/imaging/worklist?list=ordered')).status).toBe(403); // the Sonography module only
+    const desk = (await (await as('sono')).get('/api/imaging/worklist?list=ordered')).body.studies[0];
     expect(desk).toMatchObject({ studyName: 'USG – NT scan (11–13+6 weeks)', patient: { fullName: 'Scan Mother' } });
-    s = (await (await as('rmo')).post(`/api/imaging/${s.id}/schedule`).send({ rev: s.rev, scheduledFor: '2026-10-18T05:30:00.000Z' })).body.study;
+    s = (await (await as('sono')).post(`/api/imaging/${s.id}/schedule`).send({ rev: s.rev, scheduledFor: '2026-10-18T05:30:00.000Z' })).body.study;
     s = (await (await as('drA')).post(`/api/imaging/${s.id}/done`).send({ rev: s.rev })).body.study;
     // Her EDD by dates is on the scan page for the weight centile (her doctor sees her details)
     expect((await (await as('drA')).get(`/api/imaging/${s.id}`)).body.study.patient.eddByDates).toBeTruthy();
@@ -244,7 +246,7 @@ describe('USG and radiology', () => {
     await reported(); // to sign
     const r = await reported();
     expect((await (await as('drA')).post(`/api/imaging/${r.id}/sign`).send({ rev: r.rev })).status).toBe(200); // signed today
-    const res = await (await as('rmo')).get('/api/imaging/dashboard');
+    const res = await (await as('sono')).get('/api/imaging/dashboard');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ counts: { bookedToday: 1, toScan: 3, toReport: 1, toSign: 1, signedToday: 1, toConfirm: 0 } });
     expect((await (await as('reception')).get('/api/imaging/dashboard')).status).toBe(403);
