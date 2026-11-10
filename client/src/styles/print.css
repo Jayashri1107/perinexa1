@@ -118,6 +118,7 @@
 .pmt-empty { display: inline-block; border: 1px solid var(--print-ink); }
 .pmt-date { white-space: nowrap; }
 .pmt-today { margin: 0 0 var(--space-1); }
+.pmt-today-line { display: flex; gap: var(--space-1); align-items: flex-start; }
 .pmt-today-mark { display: block; }
 .pmt-before th, .pmt-before td { color: var(--slate-600); background: var(--status-inactive-bg); }
 .pmt-current th.pmt-month { border-left: 3px solid var(--indigo-800); }

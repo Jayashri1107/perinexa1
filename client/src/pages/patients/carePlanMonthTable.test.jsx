@@ -215,6 +215,9 @@ describe('the table on paper', () => {
 
   it('shows Add and Remove only when the preview may change the plan', () => {
     expect(html()).not.toContain('pmt-edit');
+    // On paper (not changing lines) this month's Today items are one line per column, as on the sample sheet
+    expect(html()).toContain('pmt-today-line');
+    expect(text(html())).toContain('Today: medication iron');
     const withEdit = html('en', {}, { onAdd: () => {}, onRemove: () => {} });
     expect(withEdit).toContain('Remove scan scanAnomaly – mark it not needed');
     expect(withEdit).toContain('Add to Scans, Month 5');

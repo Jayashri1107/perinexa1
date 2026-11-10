@@ -288,6 +288,9 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose, 
   // tab's own dialogs: the same checks, reasons, history and audit entries. Only for those who may change the plan.
   const [edit, setEdit] = useState(null); // { type: 'add', initial } | { type: 'not_needed', item }
   const canEditTable = asTable && Boolean(plan.canChangePlan) && Boolean(onSaved);
+  // The preview shows the page as it prints: Add and Remove appear only after "Add or remove lines" (10 Nov 2026 – with
+  // them on every line the cells wrapped and the page did not look like the paper)
+  const [editing, setEditing] = useState(false);
   const editProps = {
     patient,
     plan,
@@ -301,7 +304,8 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose, 
     },
     onCancel: () => setEdit(null),
   };
-  const tableEdit = canEditTable
+  const tableEdit =
+    canEditTable && editing
     ? {
         onAdd: (row, col) => {
           const w = addWeeksForRow(row, plan);
@@ -329,6 +333,11 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose, 
             List
           </button>
         </div>
+        {canEditTable && asTable && (
+          <button type="button" className="btn btn-secondary btn-sm" aria-pressed={editing} onClick={() => setEditing((on) => !on)}>
+            {editing ? 'Done changing lines' : 'Add or remove lines'}
+          </button>
+        )}
       </div>
     )}
     <PrintLanguageChoice
@@ -367,7 +376,7 @@ export function CarePlanPrintPreview({ patient, plan, options, onBack, onClose, 
         <>
           {lh.error && !lh.data ? "The letterhead couldn't be loaded, so only the hospital's name is printed. " : ''}
           Check the page, then print it on A4 paper.{' '}
-          {canEditTable && 'Add and Remove change her saved care plan; the buttons do not print. '}
+          {canEditTable && editing && 'Add and Remove change her saved care plan; they do not print. '}
           {!staff && (
             <button type="button" className="btn btn-link plan-inline-link" onClick={() => onBack({ language, layout })}>
               Change what is printed
@@ -721,13 +730,29 @@ export function MonthTable({ plan, options, lang = 'en', what, edit = null }) {
               return (
                 <td key={c.key}>
                   {isVisit && row.beforeRegistration && <span className="pdoc-sub">{label(TABLE_LABELS.beforeRegistration)}</span>}
-                  {isVisit && row.current && <strong className="pmt-today-mark">{label(TABLE_LABELS.today)}</strong>}
-                  {today.length > 0 && (
-                    <div className="pmt-today">
-                      <strong>{label(TABLE_LABELS.today)}:</strong>
-                      <ul className="pmt-list">{today.map(render)}</ul>
-                    </div>
-                  )}
+                  {isVisit && row.current && today.length === 0 && <strong className="pmt-today-mark">{label(TABLE_LABELS.today)}</strong>}
+                  {today.length > 0 &&
+                    (edit ? (
+                      // Changing lines: one per line, each with its Remove
+                      <div className="pmt-today">
+                        <strong>{label(TABLE_LABELS.today)}:</strong>
+                        <ul className="pmt-list">{today.map(render)}</ul>
+                      </div>
+                    ) : (
+                      // On paper, as on the sample sheet: one box and one line – "☐ Today: NT scan; Double marker"
+                      <p className="pmt-today pmt-today-line">
+                        <span className="pmt-box pmt-empty" aria-hidden="true" />
+                        <span>
+                          <strong>{label(TABLE_LABELS.today)}:</strong>{' '}
+                          {today.map((it, i) => (
+                            <span key={it.id}>
+                              {i > 0 && '; '}
+                              {isVisit ? tableLineDate(it) || what(it) : what(it)}
+                            </span>
+                          ))}
+                        </span>
+                      </p>
+                    ))}
                   {row.cells[c.key].length > 0 && <ul className="pmt-list">{row.cells[c.key].map(render)}</ul>}
                   {edit && !row.beforeRegistration && (
                     <button type="button" className="btn btn-link pmt-edit" onClick={() => edit.onAdd(row, c.key)} aria-label={`Add to ${TABLE_LABELS[c.key].en}, ${monthWords(row.month)}`}>
