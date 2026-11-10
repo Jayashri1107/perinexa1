@@ -159,9 +159,11 @@ After the first test print, the developer asked for the printout to look like th
 - Items keep **the patient's wording**, not the sample's clinical names: the sample prints "HIV (with consent)", and
   the neutral name for HIV tests must stay on everything the patient reads.
 - Colours from `tokens.css` (indigo), not the sample's wine red (brand rules).
-- Not built: the signature line with RMO and consultant names (the doctor's own signature prints as before) and page 3
-  of the sample (the ANC booking history sheet – `docs/HISTORY_SHEET_LAYOUT.md`).
+- The sample's **signature line** (added the same day): RMO (named when an RMO prints it) · Consultant: her doctor ·
+  Date, in place of the single doctor's signature on the table page.
+- Not built: page 3 of the sample (the ANC booking history sheet – `docs/HISTORY_SHEET_LAYOUT.md`).
 
-**For the owner to approve:** the plain words for each risk reason and which reasons never print, the danger-sign
-list, the three reminders, the closing line, and the Marathi and Hindi (`docs/TRANSLATIONS_TO_CHECK.md`).
+**Approved by the owner on 10 Nov 2026** (the developer's note): the plain words for each risk reason and which
+reasons never print, the danger-sign list, the three reminders and the closing line. The Marathi and Hindi stay listed
+for a fluent speaker's check (`docs/TRANSLATIONS_TO_CHECK.md`).
 

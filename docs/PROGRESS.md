@@ -1,11 +1,19 @@
 # Progress
 
+## Lab and pharmacy notes from the other Perinexa copy (10 Nov 2026, nothing built)
+Brought over from `girishsolanke/perinexa` with a note at the top of each on where perinexa1 differs: the lab –
+`docs/PATHOLOGY_APPS_REVIEW.md` and `docs/LAB_BUILD_NOTE.md` (the owner's four features P4, P5, P6, P9); the pharmacy
+– `docs/PHARMACY_APPS_REVIEW.md` and `docs/PHARMACY_BUILD_NOTE.md` (the owner's 18 features and decisions). Entries in
+`docs/IDEAS_FOR_LATER.md`. **Nothing is built.**
+
 ## History-taking sheet: dictation fixes from the tablet test (10 Nov 2026)
 - **Complaints (C/o):** Dictate now also takes the complaint from "came (first time) with …", "c/o …", "chief complaint …" and
   "presented with …", and stops before "advise …" (advice still goes to the notes) – before, only "with complaints of" did.
 - **Previous deliveries:** also from "previous delivery", "previously delivered", "past deliveries", "delivery history" and
   "previous LSCS / caesarean / normal delivery …".
 - **The grey line of what was heard** has a **Remove** button (it is shown only, never saved; the blanks it filled stay).
+- The complaint is written once: in "complaints of", no longer again in the notes as "Reason for visit"; the heading
+  words of a filled blank ("Previous delivery") are not asked about.
 - **How to check:** New patient → a type with the history sheet → Dictate "Came first time with PV bleeding since
   morning. Advise sonography. Previous delivery one normal delivery in 2021" → C/o and Previous deliveries are filled
   and marked From voice; "Advise sonography" is offered for the notes; Remove takes the grey line away.
@@ -40,8 +48,10 @@ with its history and audit entries, and never print. Marathi or Hindi headings u
 for the owner's open points: `docs/PLAN_TABLE_LAYOUT.md` section 7. No server change.
 - **Same day: laid out like the owner's sample sheet** ("9-Month Pregnancy Plan"): her facts, Special care needed,
   "Month 3 · 9–13 wk", visit days only, **Today:** in each column of this month, "☐ text · 07 Dec", delivery plan and
-  doctor's remarks typed at printing, ten danger signs, three reminders, the closing line. The clinical wording is
-  **DRAFT for the owner to approve** (`docs/PLAN_TABLE_LAYOUT.md` section 7a).
+  doctor's remarks typed at printing, ten danger signs, three reminders, the closing line, and the signature line (RMO ·
+  Consultant · Date). The clinical wording was **approved by the owner on 10 Nov 2026**; the Marathi and Hindi wait for
+  a fluent speaker (`docs/PLAN_TABLE_LAYOUT.md` section 7a). In the preview, "Add or remove lines" shows a delete icon on
+  each line and Add in each cell; otherwise the preview is the paper.
 - **How to check (fake data only):** a pregnancy patient with an active plan → Care plan → Print → Patient copy →
   Month-by-month table → Preview. Untick "Only from today's visit" to see all months. Click Add in Scans of next
   month, save, and the line appears; Remove a line, choose a reason, and it disappears (the Care plan tab shows it as

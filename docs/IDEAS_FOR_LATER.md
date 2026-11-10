@@ -190,3 +190,19 @@ and part of U8 – see the note at the top of that file and ideas 17–22 above.
 
 **Not to be copied:** anything that records, shows or hints at the baby's sex; AI reading of scan images; PC-PNDT
 registers and Form F stay on paper (owner's decision).
+
+## Lab: four features the owner chose (10 Nov 2026, not built)
+From the other Perinexa copy. After a review of pathology software (`docs/PATHOLOGY_APPS_REVIEW.md`) the owner chose
+four lab features and only these: **P4** usual ranges that fit the patient (pregnant by weeks, after delivery, a baby
+by age), **P5** critical results with a record of whom the lab told and when, acknowledged by the doctor, **P6**
+earlier results with a graph and a second look at a big change, **P9** time taken (expected time per test, late
+tests, the lab's times in Analytics). Build note for the developer: `docs/LAB_BUILD_NOTE.md` (read against
+perinexa1's own lab first).
+
+## Pharmacy: eighteen features the owner chose (10 Nov 2026, not built)
+From the other Perinexa copy. After a review of pharmacy software (`docs/PHARMACY_APPS_REVIEW.md`) the owner chose 18
+features and gave decisions the same day (among them: the pharmacist sees a patient's allergies; a substitute only
+with the doctor's yes, written down, never for the doctors' list; sales by doctor for the pharmacist and the super
+admin only, totals; no bills sent on WhatsApp; a reason for every repeat sale). Build note with four stages and the
+questions still open: `docs/PHARMACY_BUILD_NOTE.md` (read against perinexa1's own pharmacy first).
+
