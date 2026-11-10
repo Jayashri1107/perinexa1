@@ -983,7 +983,7 @@ export function PatientOverviewTab() {
 
       <div className="ov-row ov-facts">
         {p.careType === 'antenatal' && has('pregnancy') && (
-          <section className="card">
+          <section className="card ov-preg">
             <h2>Pregnancy</h2>
             {!p.pregnancy?.effectiveEdd && <Alert type="warning">Pregnancy dates not entered yet – a doctor or RMO should add the LMP or scan EDD.</Alert>}
             <Details
@@ -1002,111 +1002,114 @@ export function PatientOverviewTab() {
           </section>
         )}
 
-        {p.careType === 'abortion' && has('abortion') && <PregnancyLossCard patient={p} />}
+        {/* Every other fact card: beside the Pregnancy card, in two columns that share the rest of the width */}
+        <div className="ov-facts-side">
+          {p.careType === 'abortion' && has('abortion') && <PregnancyLossCard patient={p} />}
 
-        {p.careType !== 'newborn' && has('history') && <HistoryCard patient={p} />}
+          {p.careType !== 'newborn' && has('history') && <HistoryCard patient={p} />}
 
-        {p.careType === 'infertility' && has('fertility') && <FertilityCard patient={p} />}
+          {p.careType === 'infertility' && has('fertility') && <FertilityCard patient={p} />}
 
-        {p.careType === 'postnatal' && has('postnatal') && (
-          <section className="card">
-            <h2>After delivery</h2>
-            <Details
-              rows={[
-                ['Delivered', p.lastDelivery?.at ? `${formatDate(p.lastDelivery.at)}${p.lastDelivery.mode ? ` – ${DELIVERY_MODE_LABELS[p.lastDelivery.mode] ?? p.lastDelivery.mode}` : ''}` : 'Not recorded yet'],
-                ['Breastfeeding', p.postnatal?.breastfeeding ? BREASTFEEDING_LABELS[p.postnatal.breastfeeding] : 'Not recorded yet'],
-              ]}
-            />
-          </section>
-        )}
+          {p.careType === 'postnatal' && has('postnatal') && (
+            <section className="card">
+              <h2>After delivery</h2>
+              <Details
+                rows={[
+                  ['Delivered', p.lastDelivery?.at ? `${formatDate(p.lastDelivery.at)}${p.lastDelivery.mode ? ` – ${DELIVERY_MODE_LABELS[p.lastDelivery.mode] ?? p.lastDelivery.mode}` : ''}` : 'Not recorded yet'],
+                  ['Breastfeeding', p.postnatal?.breastfeeding ? BREASTFEEDING_LABELS[p.postnatal.breastfeeding] : 'Not recorded yet'],
+                ]}
+              />
+            </section>
+          )}
 
-        {isNewborn && has('newborn') && (
-          <section className="card">
-            <div className="plan-card-head">
-              <h2>Birth details</h2>
-              {/* The baby keepsake card for the family (doctor ideas #10) */}
-              <KeepsakeButton patient={p} />
-            </div>
-            {p.newborn?.birthAt && <Tip id="keepsake-2026-10" />}
-            <Details
-              rows={[
-                ['Born', p.newborn?.birthAt ? formatDateTime(p.newborn.birthAt) : ''],
-                ['Birth weight', p.newborn?.birthWeightGrams ? `${p.newborn.birthWeightGrams} g` : ''],
-                ['Sex', NEWBORN_SEX_LABELS[p.newborn?.sex] ?? ''],
-                ...(has('medical') ? [['Blood group', p.medical?.bloodGroup]] : []),
-                [
-                  'Mother',
-                  p.motherInfo ? (
-                    <span key="m" className="name-cell">
-                      <Avatar name={p.motherInfo.fullName} seed={p.motherInfo.id} />
-                      <span className="name-cell-text">
-                        <Link to={`/patients/${p.motherInfo.id}`}>{p.motherInfo.fullName}</Link>
-                        <span className="muted tabular">
-                          {p.motherInfo.mrn}
-                          {p.motherInfo.closed ? ' · Record closed' : ''}
+          {isNewborn && has('newborn') && (
+            <section className="card">
+              <div className="plan-card-head">
+                <h2>Birth details</h2>
+                {/* The baby keepsake card for the family (doctor ideas #10) */}
+                <KeepsakeButton patient={p} />
+              </div>
+              {p.newborn?.birthAt && <Tip id="keepsake-2026-10" />}
+              <Details
+                rows={[
+                  ['Born', p.newborn?.birthAt ? formatDateTime(p.newborn.birthAt) : ''],
+                  ['Birth weight', p.newborn?.birthWeightGrams ? `${p.newborn.birthWeightGrams} g` : ''],
+                  ['Sex', NEWBORN_SEX_LABELS[p.newborn?.sex] ?? ''],
+                  ...(has('medical') ? [['Blood group', p.medical?.bloodGroup]] : []),
+                  [
+                    'Mother',
+                    p.motherInfo ? (
+                      <span key="m" className="name-cell">
+                        <Avatar name={p.motherInfo.fullName} seed={p.motherInfo.id} />
+                        <span className="name-cell-text">
+                          <Link to={`/patients/${p.motherInfo.id}`}>{p.motherInfo.fullName}</Link>
+                          <span className="muted tabular">
+                            {p.motherInfo.mrn}
+                            {p.motherInfo.closed ? ' · Record closed' : ''}
+                          </span>
                         </span>
                       </span>
-                    </span>
-                  ) : (
-                    'Not linked'
-                  ),
-                ],
-                ['Father', p.newborn?.fatherName ?? ''],
-              ]}
-            />
-          </section>
-        )}
+                    ) : (
+                      'Not linked'
+                    ),
+                  ],
+                  ['Father', p.newborn?.fatherName ?? ''],
+                ]}
+              />
+            </section>
+          )}
 
-        {isNewborn && has('newbornCare') && (
-          <section className="card">
-            <h2>Care after birth</h2>
-            <Details
-              rows={[
-                ['NICU or SNCU', nicuStayText(p.newbornCare?.nicu, formatDate)],
-                ['Feeding at discharge', FEEDING_AT_DISCHARGE_LABELS[p.newbornCare?.feedingAtDischarge ?? ''] ?? 'Not recorded'],
-              ]}
-            />
-            <p className="hint">{p.access.canEditClinical ? <Link to={`/patients/${p.id}/edit`}>Change it in Edit details</Link> : 'The doctor or an RMO records it in Edit details.'}</p>
-          </section>
-        )}
+          {isNewborn && has('newbornCare') && (
+            <section className="card">
+              <h2>Care after birth</h2>
+              <Details
+                rows={[
+                  ['NICU or SNCU', nicuStayText(p.newbornCare?.nicu, formatDate)],
+                  ['Feeding at discharge', FEEDING_AT_DISCHARGE_LABELS[p.newbornCare?.feedingAtDischarge ?? ''] ?? 'Not recorded'],
+                ]}
+              />
+              <p className="hint">{p.access.canEditClinical ? <Link to={`/patients/${p.id}/edit`}>Change it in Edit details</Link> : 'The doctor or an RMO records it in Edit details.'}</p>
+            </section>
+          )}
 
-        {!isNewborn && has('obstetric') && (
-          <section className="card fold-open">
-            <h2>Obstetric history</h2>
-            <Details
-              rows={[
-                ['Summary', formatGpla(p.obstetric)],
-                ['Previous caesareans', p.obstetric?.previousCaesareans ?? ''],
-                [
-                  'Problems in previous pregnancies',
-                  p.obstetric?.pastComplications?.length
-                    ? p.obstetric.pastComplications.map((c) => PAST_COMPLICATION_LABELS[c] ?? c).join(', ')
-                    : isFirstPregnancy(p.careType, p.obstetric)
-                      ? 'None (first pregnancy)'
-                      : p.obstetric?.complicationsReviewed
-                        ? 'None (confirmed)'
-                        : 'Not recorded yet',
-                ],
-              ]}
-            />
-          </section>
-        )}
+          {!isNewborn && has('obstetric') && (
+            <section className="card fold-open">
+              <h2>Obstetric history</h2>
+              <Details
+                rows={[
+                  ['Summary', formatGpla(p.obstetric)],
+                  ['Previous caesareans', p.obstetric?.previousCaesareans ?? ''],
+                  [
+                    'Problems in previous pregnancies',
+                    p.obstetric?.pastComplications?.length
+                      ? p.obstetric.pastComplications.map((c) => PAST_COMPLICATION_LABELS[c] ?? c).join(', ')
+                      : isFirstPregnancy(p.careType, p.obstetric)
+                        ? 'None (first pregnancy)'
+                        : p.obstetric?.complicationsReviewed
+                          ? 'None (confirmed)'
+                          : 'Not recorded yet',
+                  ],
+                ]}
+              />
+            </section>
+          )}
 
-        {!isNewborn && has('medical') && (
-          <section className="card fold-open">
-            <h2>Medical background</h2>
-            <Details
-              rows={[
-                ['Blood group', p.medical?.bloodGroup],
-                ['Height', p.medical?.heightCm ? `${p.medical.heightCm} cm` : ''],
-                ['Weight', p.medical?.weightKg ? `${p.medical.weightKg} kg` : ''],
-                ['BMI', b ?? ''],
-                ['Conditions', conditions || (p.medical?.conditionsReviewed ? 'None known (confirmed)' : 'Not recorded yet')],
-                ['Allergies', p.medical?.allergies?.trim() || 'Not recorded yet'],
-              ]}
-            />
-          </section>
-        )}
+          {!isNewborn && has('medical') && (
+            <section className="card fold-open">
+              <h2>Medical background</h2>
+              <Details
+                rows={[
+                  ['Blood group', p.medical?.bloodGroup],
+                  ['Height', p.medical?.heightCm ? `${p.medical.heightCm} cm` : ''],
+                  ['Weight', p.medical?.weightKg ? `${p.medical.weightKg} kg` : ''],
+                  ['BMI', b ?? ''],
+                  ['Conditions', conditions || (p.medical?.conditionsReviewed ? 'None known (confirmed)' : 'Not recorded yet')],
+                  ['Allergies', p.medical?.allergies?.trim() || 'Not recorded yet'],
+                ]}
+              />
+            </section>
+          )}
+        </div>
       </div>
 
       {hasMore && (
