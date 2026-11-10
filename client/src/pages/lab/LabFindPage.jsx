@@ -58,7 +58,7 @@ export function LabFindPage() {
   return (
     <>
       <PageHeader tabs={HOSPITAL_LAB.tabs} title="Find lab orders" documentTitle="Find lab orders" help="Type or scan a sample number, or type a patient number or name. Dates, status and department narrow the list." />
-      <div className="pf-content">
+      <div className="pf-content lab-stack">
         <form className="card lab-find" onSubmit={find} noValidate>
           <Alert type="error">{error}</Alert>
           <div className="form-grid">

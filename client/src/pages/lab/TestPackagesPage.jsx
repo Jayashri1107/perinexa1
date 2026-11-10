@@ -77,7 +77,7 @@ export function TestPackagesPage() {
           )
         }
       />
-      <div className="pf-content">
+      <div className="pf-content lab-stack">
         <Alert type="error">{error}</Alert>
         {anyDraft && (
           <Alert type="warning">

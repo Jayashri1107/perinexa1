@@ -274,8 +274,8 @@ export function LabTestEditPage() {
 
   const title = creating ? 'Add a test' : (test?.name ?? 'Lab test');
   const header = <PageHeader tabs={HOSPITAL_LAB.tabs} breadcrumbs={[{ label: 'Lab tests', to: '/lab/tests' }, { label: title }]} title={title} documentTitle="Lab test" />;
-  if (loadError) return (<>{header}<div className="pf-content"><Alert type="error">{loadError}</Alert></div></>);
-  if (!source || !form) return (<>{header}<div className="pf-content"><p className="muted">{source && !test && !creating ? 'This test is not on the list.' : 'Loading…'}</p></div></>);
+  if (loadError) return (<>{header}<div className="pf-content lab-stack"><Alert type="error">{loadError}</Alert></div></>);
+  if (!source || !form) return (<>{header}<div className="pf-content lab-stack"><p className="muted">{source && !test && !creating ? 'This test is not on the list.' : 'Loading…'}</p></div></>);
   const baby = (test?.who ?? form.who) === 'newborn';
   const own = creating || test?.custom;
   const locked = !canEdit;
@@ -283,7 +283,7 @@ export function LabTestEditPage() {
   return (
     <>
       {header}
-      <div className="pf-content">
+      <div className="pf-content lab-stack">
         <Link to="/lab/tests" className="btn btn-link btn-sm">
           All tests
         </Link>
