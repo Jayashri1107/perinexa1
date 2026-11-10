@@ -1386,6 +1386,14 @@ Agreed order (one step at a time, each tested and committed):
 owner's or an expert's check: the care-plan templates, the lab's usual ranges, the HMIS rows, the reminder wording in Marathi and Hindi. Use fake data only until the app has been reviewed.
 
 ## Next
+- **On the ideas list, nothing built – three notes from the other Perinexa copy (10 Nov 2026).** Brought over from
+  `girishsolanke/perinexa` (branches `ideas-plan-table`, `ideas-patient-timeline`, `ideas-usg-apps-review`), each with
+  a note at the top on where perinexa1 differs: the **pregnancy plan as a month-by-month table**
+  (`docs/PLAN_TABLE_LAYOUT.md` – the owner's two decisions in section 5, open points in section 6), a **patient
+  timeline and waiting times in Analytics** (`docs/PATIENT_FLOW_PLAN.md` – seven owner decisions; perinexa1's super
+  admin rule and already-noted moments differ), and **what the leading sonography applications offer**
+  (`docs/USG_APPS_REVIEW.md` – U1–U16; perinexa1 already has the follicular template, images and the machine link).
+  Entries in `docs/IDEAS_FOR_LATER.md`. **Nothing is built**; the feature pause holds until the health check.
 - **Layout agreed, nothing built – a new patient as a history-taking sheet (27 Oct 2026).** The owner asked that the tabs
   for a new patient's details ask only for the history, with every hint, example, voice panel, risk warning and AI
   check hidden, and that the layout be agreed before anything is built. The draft is in

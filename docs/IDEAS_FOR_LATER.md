@@ -148,3 +148,41 @@ because package prices, what each includes, and what happens to charges beyond i
 is picked: a package on the price list with its included groups or items, chosen on the stay's bill; lines it covers
 print at ₹0 under the package; anything beyond prints as extra.
 
+## The pregnancy plan as a month-by-month table (10 Nov 2026, not built)
+From the other Perinexa copy (`girishsolanke/perinexa`). The owner wants the patient's copy of the pregnancy plan as a
+table like the ANC desk's "9-Month Pregnancy Plan" sheet – one row per month; columns for visit dates, scans, tests,
+medicines and vaccines, and advice – with an option to leave out what has passed its dates, and editable so the
+doctor adds or removes lines before giving it to the patient **(clinical wording)**. Today's patient copy is a list.
+The owner's decisions of 10 Nov 2026: not built now, and an edit in the table changes the saved care plan (added line
+= plan item, removed line = "not needed"), not the printout only. Layout, mapping onto the care plan and print code,
+and the open points: `docs/PLAN_TABLE_LAYOUT.md` (section 5 decisions, section 6 open).
+
+## Patient timeline and waiting times (10 Nov 2026, not built)
+From the other Perinexa copy. The owner wants the time noted at every point of contact of an outpatient's day
+(reception, registration, vitals, RMO, doctor, lab, billing, pharmacy) so a delay can be traced, and a "Waiting times"
+section in Analytics. Seven owner decisions of 10 Nov 2026: not built now; "RMO/doctor login" = the moment each
+starts seeing her; times noted automatically, no new buttons; one patient's timeline for her doctor only; numbers for
+doctors, the hospital admin and the super admin (numbers only for the last two); stages only, no split by named staff;
+delays marked against the hospital's own usual time. Details and the perinexa1 differences (super admin rule, moments
+perinexa1 already notes): `docs/PATIENT_FLOW_PLAN.md`.
+
+## Sonography: what the leading applications offer (10 Nov 2026, not built)
+From the other Perinexa copy: a review of astraia, GE ViewPoint, Sonio, Tricefy, AS Software, Indian products, the
+FMF/Barcelona/IOTA calculators and India's PC-PNDT and medical-device rules, with a ranked list U1–U16 in
+`docs/USG_APPS_REVIEW.md`. Perinexa1 already has U9 (follicular template), the image part of U12, U16 (machine link)
+and part of U8 – see the note at the top of that file and ideas 17–22 above. Still missing here, most useful first:
+
+| # | Idea | Why it helps |
+| --- | --- | --- |
+| U1 | **Growth charts and the trend across scans** – a centile and graph per measurement, earlier scans on the same graph, printed **(clinical)** | Only the weight has a centile today |
+| U2 | **Urgent scan findings reach her doctor** on Today, from an owner-approved list **(clinical)** | Works like a lab result outside its range |
+| U3 | **Doppler in full** with centiles and rules **(clinical)** | Today two boxes, no normal range |
+| U4 | **Twins template** – chorionicity, each twin, weight difference **(clinical)** | Today one choice "Twins" |
+| U5 | **A second growth chart for the owner to choose**, the chart named on every report **(clinical)** | Hadlock stays until the owner decides |
+| U6 | **Anomaly scan as a checklist**, what was not seen listed before signing – no genital area **(clinical)** | Nothing forgotten, without AI |
+| U7 | **Gynaecology in standard terms** – IOTA Simple Rules, O-RADS, FIGO fibroid types, PCOM **(clinical)** | Today free text per ovary |
+| U10 | **Scan quality figures in Analytics** (estimated weight against birth weight) **(clinical choice of figures)** | An audit only a whole-hospital record can do |
+| U11, U13–U15 | Sharing the signed report; recording a risk result worked out elsewhere; fetal echo and brain templates | Privacy, PC-PNDT and the lawyer first. **Not recommended:** working out FMF or IOTA risks inside Perinexa (medical-device rules) |
+
+**Not to be copied:** anything that records, shows or hints at the baby's sex; AI reading of scan images; PC-PNDT
+registers and Form F stay on paper (owner's decision).
