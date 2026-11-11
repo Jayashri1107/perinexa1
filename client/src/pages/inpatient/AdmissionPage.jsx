@@ -6,6 +6,7 @@ import { PainChartSection } from '../anaesthesia/PainChart.jsx';
 import { PphChartSection } from './PphChart.jsx';
 import { DischargeChecklistSection } from './DischargeChecklist.jsx';
 import { StayDischargeCard } from './StayDischarge.jsx';
+import { AskPharmacy } from './AskPharmacy.jsx';
 import { ArrowLeft, BedDouble, CircleCheck, CircleMinus, FilePlus2, HeartPulse, Scale, Siren } from 'lucide-react';
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { api, newRequestId } from '../../api.js';
@@ -416,6 +417,9 @@ export function AdmissionPage() {
           </ul>
         )}
       </section>
+
+      {/* PH12: the ward asks the pharmacy */}
+      <AskPharmacy patient={patient} />
 
       <MeowsChart patient={patient} admissionId={a.id} />
 

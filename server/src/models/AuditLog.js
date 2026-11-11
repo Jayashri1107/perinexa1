@@ -337,6 +337,9 @@ export const AUDIT_ACTIONS = [
   'PHARMACY_DAY_CLOSED', // PH15: the counter's day closed with the cash counted
   'PHARMACY_DOCTOR_SALES_VIEWED', // PH24: sales by doctor opened (the pharmacist, or the super admin)
   'PHARMACY_KIT_CHANGED', // PH14: a kit made, changed or stopped
+  'WARD_REQUEST_MADE', // PH12: the ward asked the pharmacy for a patient
+  'WARD_REQUEST_CANCELLED',
+  'WARD_REQUEST_REFUSED', // PH12: the pharmacy refused a line, with the reason
   'LAB_CRITICAL_CALL_NOTED',
   'LAB_CRITICAL_NOT_REACHED',
   'LAB_CRITICAL_ACKNOWLEDGED',
@@ -664,6 +667,9 @@ export const AUDIT_CATEGORIES = {
     'PHARMACY_DAY_CLOSED',
     'PHARMACY_DOCTOR_SALES_VIEWED',
     'PHARMACY_KIT_CHANGED',
+    'WARD_REQUEST_MADE',
+    'WARD_REQUEST_CANCELLED',
+    'WARD_REQUEST_REFUSED',
     'PHARMACY_DEBIT_NOTE_PRINTED',
     'PHARMACY_EINVOICE_DOWNLOADED',
     'TALLY_SETTINGS_CHANGED',

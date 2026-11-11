@@ -29,6 +29,7 @@ import { CONTROLLED, NEEDS_PRESCRIPTION } from './pharmacyRules.js';
 import { givenFromPrescriptions, givenWords } from './rxGiven.js';
 import { neverSubstitute, substituteFor } from './substitutes.js';
 import { Membership } from '../models/Membership.js';
+import { WardRequest, statusOfLines } from '../models/WardRequest.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
 const rupeesOf = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -226,6 +227,17 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     const by = visit.prescription?.by ? await User.findById(visit.prescription.by, { name: 1, professional: 1 }).lean() : null;
     if (by) doctor = { name: by.name, reg: by.professional?.registrationNumber ?? '', userId: by._id }; // PH24: the doctor's id
   }
+  // PH12: an issue answering the ward's request – the doctor who ordered it is the prescriber (a doctor's order on the
+  // ward); the narcotic and Schedule X rule still needs that doctor's registration number
+  let wardRequest = null;
+  if (body.wardRequestId) {
+    if (body.kind !== 'issue' || !patient) throw bad('A ward request is answered by an issue to its patient.');
+    wardRequest = await WardRequest.findOne({ tenantId, _id: body.wardRequestId, patientId: patient._id });
+    if (!wardRequest) throw new HttpError(404, 'This ward request was not found for this patient.', 'NOT_FOUND');
+    if (!['requested', 'part_issued'].includes(wardRequest.status)) throw new HttpError(409, 'This ward request is already closed.', 'CONFLICT');
+    if (visitId) throw bad('Answer the ward request or use a prescription, not both.');
+    doctor = { name: wardRequest.orderedBy.name, reg: wardRequest.orderedBy.reg ?? '', userId: wardRequest.orderedBy.userId ?? null };
+  }
 
   const ids = [...new Set(body.lines.map((l) => String(l.medicineId)))];
   const meds = new Map((await Medicine.find({ tenantId, _id: { $in: ids }, active: true }).lean()).map((m) => [String(m._id), m]));
@@ -233,7 +245,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
   body.lines.forEach((l, i) => {
     const m = meds.get(String(l.medicineId));
     if (!m) return (fields[`lines.${i}.medicineId`] = 'Choose a medicine in use.');
-    if (NEEDS_PRESCRIPTION.includes(m.schedule) && !visitId && !(body.rxSeen && doctor?.name)) {
+    if (NEEDS_PRESCRIPTION.includes(m.schedule) && !visitId && !wardRequest && !(body.rxSeen && doctor?.name)) {
       fields[`lines.${i}.medicineId`] = `${m.name} needs a prescription: choose her Perinexa prescription, or write the doctor's name and tick "prescription seen".`;
     }
     // PH2: a medicine that is not sold loose goes in whole packs only
@@ -371,6 +383,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     visitId,
     rxSeen: Boolean(body.rxSeen),
     kitName: kitName ?? '',
+    wardRequestId: wardRequest?._id ?? null,
     admissionId: stay?._id ?? null,
     lines,
     discountPercent: pct,
@@ -379,6 +392,16 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     paymentRemarks: patient ? '' : (body.paymentRemarks ?? ''),
     created: stampOf(req),
   });
+
+  // PH12: what was issued is counted on the ward's request
+  if (wardRequest) {
+    const given = new Map();
+    for (const l of lines) given.set(String(l.medicineId), (given.get(String(l.medicineId)) ?? 0) + l.qty);
+    for (const l of wardRequest.lines) if (!l.refused) l.issuedQty = (l.issuedQty ?? 0) + (given.get(String(l.medicineId)) ?? 0);
+    wardRequest.status = statusOfLines(wardRequest.lines);
+    wardRequest.issues.push({ invoiceId: invoice._id, number, ...stampOf(req) });
+    await wardRequest.save();
+  }
 
   // A registered patient: the invoice goes on her hospital bill (her stay's while she is admitted)
   if (patient) {

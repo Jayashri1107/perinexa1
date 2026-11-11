@@ -480,6 +480,9 @@ export const AUDIT_LABELS = {
   PHARMACY_DAY_CLOSED: 'Pharmacy counter day closed',
   PHARMACY_DOCTOR_SALES_VIEWED: 'Pharmacy sales by doctor opened',
   PHARMACY_KIT_CHANGED: 'Pharmacy kit changed',
+  WARD_REQUEST_MADE: 'Ward asked the pharmacy',
+  WARD_REQUEST_CANCELLED: 'Ward request cancelled',
+  WARD_REQUEST_REFUSED: 'Ward request line refused by the pharmacy',
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
@@ -1653,6 +1656,10 @@ export function describeAudit(entry) {
       return `Batch ${d.batch ?? ''}${d.reason ? ` · ${{ recalled: 'recalled', quality: 'quality doubt', other: 'other reason' }[d.reason] ?? d.reason}` : ''}`;
     case 'MEDICINE_MARKS_CHANGED':
       return `Version ${d.version ?? ''}${d.highAlert ? ' · high alert' : ''}${d.lookAlike ? ` · ${count(d.lookAlike, 'look-alike')}` : ''}${d.role ? ` · proposed as ${d.role}` : ''}`;
+    case 'WARD_REQUEST_MADE':
+    case 'WARD_REQUEST_CANCELLED':
+    case 'WARD_REQUEST_REFUSED':
+      return `${d.number ?? ''}${d.urgent ? ' · urgent' : ''}${d.lines ? ` · ${d.lines} line${d.lines === 1 ? '' : 's'}` : ''}`;
     case 'PHARMACY_KIT_CHANGED':
       return `${d.name ?? ''}${d.added ? ' · added' : ''}${d.stopped ? ' · stopped' : ''}${d.lines ? ` · ${d.lines} line${d.lines === 1 ? '' : 's'}` : ''}`;
     case 'PHARMACY_DOCTOR_SALES_VIEWED':

@@ -295,6 +295,7 @@ const HOSPITAL_PHARMACY = {
 const PHARMACIST_MENU = [
   // New bill and Sold as one Sales bill page with two tabs (9 Nov 2026); a bill opened from the list stays under it
   { key: 'pharmacy', label: 'Sales bill', icon: ReceiptText, to: '/pharmacy', end: true, activeFor: ['/pharmacy/issue', '/pharmacy/invoices'] },
+  { key: 'pharmacy-ward-requests', label: 'Ward requests', icon: BedDouble, to: '/pharmacy/ward-requests' }, // PH12
   { key: 'pharmacy-suppliers', label: 'Suppliers', icon: Truck, to: '/pharmacy/suppliers' },
   { key: 'pharmacy-purchases', label: 'Purchase bills', icon: PackagePlus, to: '/pharmacy/purchases', activeFor: ['/pharmacy/orders', '/pharmacy/supplier-returns'] },
   { key: 'pharmacy-stock', label: 'Stock', icon: Boxes, to: '/pharmacy/stock' },

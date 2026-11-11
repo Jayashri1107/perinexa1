@@ -57,6 +57,8 @@ import { supplierAccount } from '../pharmacy/supplierAccount.js';
 import { nextNumber } from '../models/Counter.js';
 import { daysOutOfStock, expiryLoss, h1Use, nonMoving, prescriptionsFilled, profitByMedicine } from '../pharmacy/figures.js';
 import { doctorOf, salesByDoctor } from '../pharmacy/salesByDoctor.js';
+import { WardRequest, statusOfLines } from '../models/WardRequest.js';
+import { wardRequestView } from './wardRequests.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -297,6 +299,47 @@ pharmacyRouter.patch('/suppliers/:id', async (req, res) => {
   await s.save();
   await audit(req, 'PHARMACY_SUPPLIER_CHANGED', { details: { supplierId: String(s._id), fields: Object.keys(body) } });
   res.json({ supplier: supplierView(s) });
+});
+
+// ---------- PH12: the ward's requests (docs/PHARMACY_BUILD_NOTE.md) ----------
+// The pharmacist's list: open ones first, urgent first, then the oldest. Issuing is POST /invoices with wardRequestId.
+const OPEN_REQUEST = ['requested', 'part_issued'];
+pharmacyRouter.get('/ward-requests', async (req, res) => {
+  const q = parse(z.object({ open: z.enum(['1', '0']).optional() }).strict(), req.query);
+  const filter = { tenantId: req.tenantId, ...(q.open === '1' ? { status: { $in: OPEN_REQUEST } } : {}) };
+  const list = await WardRequest.find(filter).sort({ createdAt: -1 }).limit(q.open === '1' ? 500 : 100).lean();
+  const shut = (r) => (OPEN_REQUEST.includes(r.status) ? 0 : 1);
+  list.sort((a, b) => shut(a) - shut(b) || (shut(a) === 0 ? Number(b.urgent) - Number(a.urgent) || a.createdAt - b.createdAt : b.createdAt - a.createdAt));
+  const patients = new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: list.map((r) => r.patientId) } }, { fullName: 1, mrn: 1 }).lean()).map((p) => [String(p._id), p]));
+  const stays = new Map((await Admission.find({ tenantId: req.tenantId, _id: { $in: list.map((r) => r.admissionId) } }, { ward: 1, bed: 1, status: 1 }).lean()).map((a) => [String(a._id), a]));
+  // Each line's medicine as the counter knows it (to fill the issue), with what is in stock
+  const medIds = [...new Set(list.flatMap((r) => r.lines.map((l) => String(l.medicineId))))];
+  const meds = await Medicine.find({ tenantId: req.tenantId, _id: { $in: medIds } }).lean();
+  const stock = await stockOf(req.tenantId, meds.map((m) => m._id));
+  const medView = new Map(meds.map((m) => [String(m._id), medicineView(m, stock.get(String(m._id)) ?? 0)]));
+  res.json({
+    requests: list.map((r) => {
+      const p = patients.get(String(r.patientId));
+      const a = stays.get(String(r.admissionId));
+      const v = wardRequestView(r);
+      return { ...v, lines: v.lines.map((l) => ({ ...l, medicine: medView.get(l.medicineId) ?? null })), patient: p ? { id: String(p._id), fullName: p.fullName, mrn: p.mrn } : null, stay: a ? { ward: a.ward ?? '', bed: a.bed ?? '', admitted: a.status === 'admitted' } : null };
+    }),
+  });
+});
+// A line the pharmacy will not give (out of stock, not kept, a question for the doctor): with the reason, shown on the ward
+pharmacyRouter.post('/ward-requests/:id/refuse', async (req, res) => {
+  desk(req);
+  const body = parse(z.object({ medicineId: objectId, reason: z.string().trim().min(3, 'Write why.').max(200) }).strict(), req.body);
+  const r = await WardRequest.findOne({ tenantId: req.tenantId, _id: idParam(req) });
+  if (!r) throw new HttpError(404, 'Request not found.', 'NOT_FOUND');
+  if (!OPEN_REQUEST.includes(r.status)) throw new HttpError(409, 'This request is already closed.', 'CONFLICT');
+  const line = r.lines.find((l) => String(l.medicineId) === String(body.medicineId));
+  if (!line || line.refused || line.issuedQty >= line.qty) throw new HttpError(409, 'This line is not open.', 'CONFLICT');
+  line.refused = { by: req.user._id, byName: req.user.name, at: req.now, reason: body.reason };
+  r.status = statusOfLines(r.lines);
+  await r.save();
+  await audit(req, 'WARD_REQUEST_REFUSED', { details: { patientId: String(r.patientId), requestId: String(r._id), number: r.number, medicineId: String(body.medicineId) } });
+  res.json({ request: wardRequestView(r.toObject()) });
 });
 
 // ---------- PH16: the supplier's bill from a file (docs/PHARMACY_BUILD_NOTE.md) ----------
@@ -956,6 +999,7 @@ const invoiceFields = z
     visitId: objectId.optional(),
     rxSeen: z.boolean().default(false),
     kitId: objectId.optional(), // PH14: an issue filled from a kit (its name is kept on the invoice)
+    wardRequestId: objectId.optional(), // PH12: an issue answering the ward's request
     lines: z
       .array(
         z

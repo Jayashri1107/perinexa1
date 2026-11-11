@@ -5,10 +5,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { User } from '../src/models/User.js';
 import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-11-11T06:00:00Z');
-const ROLES = { drA: 'doctor', nurse: 'nurse', reception: 'receptionist', pharm: 'pharmacist', admin: 'admin' };
+const ROLES = { drA: 'doctor', drB: 'doctor', rmo: 'rmo', nurse: 'nurse', reception: 'receptionist', pharm: 'pharmacist', admin: 'admin' };
 let app;
 let hospital;
 let people;
@@ -29,6 +30,7 @@ beforeEach(async () => {
     people[key] = await createUser({ name: `Sample ${key}` });
     await addMember(people[key], hospital, role);
   }
+  await User.updateOne({ _id: people.drA._id }, { $set: { 'professional.registrationNumber': 'MMC-12345' } });
   await ensureStandardTemplates(hospital._id);
 });
 afterEach(() => vi.useRealTimers());
@@ -115,5 +117,66 @@ describe('PH14 – kits and consumables', () => {
     const theirs = await loginAs(theirDoc, { app });
     expect(ok(await theirs.get('/api/pharmacy-kits')).kits).toEqual([]);
     expect((await theirs.post('/api/pharmacy-kits').send({ name: 'Stolen', lines: [{ medicineId: m.id, qty: 1 }] })).status).toBe(400);
+  });
+});
+
+describe('PH12 – the ward asks on screen', () => {
+  const wr = async (p, method, path, body, who = 'nurse') => (await as(who))[method](`/api/patients/${p.id}/ward-requests${path}`).send(body);
+
+  it('a nurse asks for an admitted patient naming the doctor; the stock list shows words only; the pharmacist issues part, the rest stays open', async () => {
+    const oxy = await medicine({ name: 'Sample Oxytocin 5 IU', form: 'injection', unit: 'ampoule', schedule: 'H', reorderLevel: 2 });
+    const pad = await medicine({ name: 'Sample Maternity Pad', form: 'other', unit: 'piece', kind: 'consumable', reorderLevel: 5 });
+    await stock(oxy, 10);
+    await stock(pad, 3);
+    const notIn = ok(await (await as('reception')).post('/api/patients').send(samplePatient({ fullName: 'Sample Home Mother', assignedDoctor: people.drA._id.toString() })), 201).patient;
+    expect((await wr(notIn, 'post', '', { lines: [{ medicineId: oxy.id, qty: 1 }], orderedById: String(people.drA._id) })).status).toBe(409);
+    const p = await admitted('Sample Ward Mother');
+    const found = ok(await wr(p, 'get', '/medicines?q=Sample'));
+    expect(found.medicines.map((m) => [m.name, m.stock])).toEqual([
+      ['Sample Maternity Pad', 'low'],
+      ['Sample Oxytocin 5 IU', 'in'],
+    ]);
+    expect(JSON.stringify(found)).not.toMatch(/Paise|qtyLeft|"qty"/);
+    // A nurse must name the doctor who ordered; the receptionist and the pharmacist cannot ask
+    expect((await wr(p, 'post', '', { lines: [{ medicineId: oxy.id, qty: 2 }] })).status).toBe(400);
+    for (const who of ['reception', 'pharm']) expect((await wr(p, 'post', '', { lines: [{ medicineId: oxy.id, qty: 2 }], orderedById: String(people.drA._id) }, who)).status, who).toBe(403);
+    const asked = ok(await wr(p, 'post', '', { lines: [{ medicineId: oxy.id, qty: 2 }, { medicineId: pad.id, qty: 5 }], urgent: true, orderedById: String(people.drA._id) }), 201).request;
+    expect(asked).toMatchObject({ number: 'WR-000001', status: 'requested', urgent: true, orderedBy: { name: people.drA.name, reg: 'MMC-12345' } });
+    // The pharmacist's list: urgent and open first, with ward and bed
+    const list = ok(await ph('get', '/ward-requests?open=1')).requests;
+    expect(list.map((r) => [r.number, r.patient.fullName])).toEqual([['WR-000001', 'Sample Ward Mother']]);
+    // Issue the oxytocin (Schedule H – the request's doctor is the prescriber) and 3 pads; 2 pads stay open
+    const inv = ok(await ph('post', '/invoices', { kind: 'issue', patientId: p.id, wardRequestId: asked.id, lines: [{ medicineId: oxy.id, qty: 2 }, { medicineId: pad.id, qty: 3 }] }), 201).invoice;
+    expect(inv.doctor).toMatchObject({ name: people.drA.name, reg: 'MMC-12345' });
+    let mine = ok(await wr(p, 'get', '')).requests[0];
+    expect(mine.status).toBe('part_issued');
+    expect(mine.lines.map((l) => [l.name, l.qty, l.issuedQty])).toEqual([
+      ['Sample Oxytocin 5 IU', 2, 2],
+      ['Sample Maternity Pad', 5, 3],
+    ]);
+    // The rest is refused with a reason the ward sees; the request is then closed
+    expect((await ph('post', `/ward-requests/${asked.id}/refuse`, { medicineId: oxy.id, reason: 'Already given' })).status).toBe(409);
+    ok(await ph('post', `/ward-requests/${asked.id}/refuse`, { medicineId: pad.id, reason: 'Out of stock – the ward store has some' }));
+    mine = ok(await wr(p, 'get', '')).requests[0];
+    expect(mine.status).toBe('issued');
+    expect(mine.lines[1].refused).toMatchObject({ reason: 'Out of stock – the ward store has some' });
+    expect((await ph('post', '/invoices', { kind: 'issue', patientId: p.id, wardRequestId: asked.id, lines: [{ medicineId: pad.id, qty: 1 }] })).status).toBe(409);
+    expect((await wr(p, 'post', `/${asked.id}/cancel`, { reason: 'Not needed' })).status).toBe(409);
+    expect(await AuditLog.countDocuments({ action: { $in: ['WARD_REQUEST_MADE', 'WARD_REQUEST_REFUSED'] } })).toBe(2);
+  });
+
+  it('a narcotic still needs the ordering doctor’s registration number; a request is cancelled before the pharmacy answers', async () => {
+    const morph = await medicine({ name: 'Sample Morphine 10 mg', form: 'injection', unit: 'ampoule', schedule: 'narcotic' });
+    await stock(morph, 5);
+    const p = await admitted('Sample Pain Mother');
+    // drB has no registration number
+    const asked = ok(await wr(p, 'post', '', { lines: [{ medicineId: morph.id, qty: 1 }], orderedById: String(people.drB._id) }), 201).request;
+    const res = await ph('post', '/invoices', { kind: 'issue', patientId: p.id, wardRequestId: asked.id, lines: [{ medicineId: morph.id, qty: 1 }] });
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/registration number/);
+    ok(await wr(p, 'post', `/${asked.id}/cancel`, { reason: 'Ordered by mistake' }));
+    // An RMO asking is the one who ordered
+    const own = ok(await wr(p, 'post', '', { lines: [{ medicineId: morph.id, qty: 1 }] }, 'rmo'), 201).request;
+    expect(own.orderedBy.name).toBe(people.rmo.name);
   });
 });

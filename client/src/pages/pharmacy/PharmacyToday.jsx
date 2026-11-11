@@ -1,4 +1,4 @@
-import { BedDouble, CalendarClock, PackageCheck, PackagePlus, PackageSearch, PackageX, Pill, Receipt, ShoppingCart, Truck } from 'lucide-react';
+import { BedDouble, CalendarClock, PackageCheck, PackagePlus, PackageSearch, PackageX, Pill, Receipt, ShoppingCart, Siren, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatNumber } from '../../components/DataTable.jsx';
 import { Alert } from '../../components/ui.jsx';
@@ -16,6 +16,7 @@ export function PharmacyToday() {
   const alerts = useFetch('/pharmacy/reports/alerts');
   const wards = useFetch('/pharmacy/inpatients');
   const orders = useFetch('/pharmacy/orders');
+  const asked = useFetch('/pharmacy/ward-requests', { open: '1' }); // PH12
 
   const today = invoices.data?.invoices ?? [];
   const sold = today.filter((i) => i.kind !== 'issue');
@@ -42,6 +43,13 @@ export function PharmacyToday() {
   return (
     <>
       {error && <Alert type="error">{error}</Alert>}
+      {/* PH12: the wards' open requests, urgent ones named */}
+      {asked.data?.requests.length > 0 && (
+        <Alert type={asked.data.requests.some((r) => r.urgent) ? 'warning' : 'info'} icon={Siren}>
+          {plural(asked.data.requests.length, 'ward request is', 'ward requests are')} open
+          {asked.data.requests.some((r) => r.urgent) ? `, ${asked.data.requests.filter((r) => r.urgent).length} urgent` : ''}. <Link to="/pharmacy/ward-requests">Open the ward requests</Link>
+        </Alert>
+      )}
       <nav className="ph-stats" aria-label="Pharmacy at a glance">
         {stats.map((s) => (
           <Link key={s.label} to={s.to} className={`ph-stat${s.tone ? ` is-${s.tone}` : ''}`} title={s.why}>
