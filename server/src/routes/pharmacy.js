@@ -59,6 +59,7 @@ import { daysOutOfStock, expiryLoss, h1Use, nonMoving, prescriptionsFilled, prof
 import { doctorOf, salesByDoctor } from '../pharmacy/salesByDoctor.js';
 import { WardRequest, statusOfLines } from '../models/WardRequest.js';
 import { wardRequestView } from './wardRequests.js';
+import { CarePlan } from '../models/CarePlan.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -762,8 +763,18 @@ pharmacyRouter.get('/batches/recipients', async (req, res) => {
   const rows = [...byInvoice.values()].filter((r) => r.qty > 0);
   const pids = [...new Set(rows.map((r) => r.patientId).filter(Boolean))];
   const patients = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, 'death.on': 1 }).lean() : []).map((p) => [String(p._id), p]));
+  // PH8: vaccinations recorded on care plans with this batch number – a count only for the pharmacist (names stay with
+  // the doctors, on each patient's care plan)
+  const batchRx = new RegExp(`^${escapeRegex(q.batch)}$`, 'i');
+  const vaccinated = await CarePlan.aggregate([
+    { $match: { tenantId: req.tenantId, 'items.done.vaccine.batch': batchRx } },
+    { $unwind: '$items' },
+    { $match: { 'items.state': 'done', 'items.done.vaccine.batch': batchRx } },
+    { $count: 'n' },
+  ]);
   await audit(req, 'PHARMACY_BATCH_RECIPIENTS_VIEWED', { details: { medicineId: q.medicineId, batch: q.batch, results: rows.length } });
   res.json({
+    vaccinationsRecorded: vaccinated[0]?.n ?? 0,
     medicine: { id: String(m._id), name: m.name, manufacturer: m.manufacturer ?? '', unit: m.unit },
     batch: q.batch,
     hold: batches.find((b) => b.hold)?.hold ? (({ reason: r, note, byName, at }) => ({ reason: r, note: note ?? '', byName: byName ?? '', at }))(batches.find((b) => b.hold).hold) : null,

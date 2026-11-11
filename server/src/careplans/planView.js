@@ -216,6 +216,7 @@ function itemView(plan, it, { E, statuses }) {
           note: it.done.note ?? '',
           via: it.done.via ?? 'manual',
           labOrderId: it.done.labOrderId ? String(it.done.labOrderId) : null,
+          vaccine: it.done.vaccine?.batch ? { batch: it.done.vaccine.batch, expiry: it.done.vaccine.expiry ?? '', manufacturer: it.done.vaccine.manufacturer ?? '' } : null, // PH8
           ...actorView(it.done),
         }
       : null,

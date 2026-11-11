@@ -31,12 +31,23 @@ const customTiming = z.discriminatedUnion('type', [
 ]);
 
 /** PATCH /items/:itemId – one action on one item (§7.2). */
+/** PH8: the vaccine given (asked when a vaccination is marked done here; optional when it was given elsewhere). */
+export const vaccineSchema = z
+  .object({
+    batch: safeText('Batch', 40).min(1, 'Write the batch number on the vial.'),
+    expiry: z.union([z.literal(''), z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Choose the expiry month.')]).default(''),
+    manufacturer: safeText('Manufacturer', 120).default(''),
+    stockBatchId: objectId.optional(),
+  })
+  .strict();
+
 export const itemActionSchema = z.discriminatedUnion('action', [
   item('done', {
     on: requiredDateOnly('Date'),
     elsewhere: z.boolean().default(false),
     result: safeText('Result', 500).default(''),
     note: safeText('Note', 1000).default(''),
+    vaccine: vaccineSchema.nullable().default(null),
   }),
   item('reopen', { reason: reason() }),
   item('not_needed', { reasonCode: z.enum(NOT_NEEDED_REASONS, 'Please choose a reason'), reason: reason() }).superRefine((b, ctx) => {

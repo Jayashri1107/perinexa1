@@ -308,3 +308,8 @@
 .plan-summary-next > * { margin: 0; }
 .plan-summary .plan-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
 .plan-summary-note { margin-left: auto; font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+/* PH8: the vaccine's batch when a vaccination is marked done (the dialog and the visit's tick list) */
+.plan-vaccine { border: 1px solid var(--card-border); border-radius: var(--radius-md, 8px); padding: var(--space-3); margin: var(--space-3) 0; }
+.plan-vaccine legend { font-weight: 600; padding: 0 var(--space-1); }
+.vs-plan-vaccine .plan-vaccine { margin-left: var(--space-5); }

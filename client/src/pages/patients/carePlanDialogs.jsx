@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { vaccineWords } from './carePlanPrintFormat.js';
 import { CircleCheck, CopyPlus, TriangleAlert } from 'lucide-react';
 import { ApiError, api, newRequestId } from '../../api.js';
 import { Alert, Avatar, Field, FieldError, StatusPill, formatDate, formatDateTime, useDialogFocus } from '../../components/ui.jsx';
@@ -193,6 +194,47 @@ function ItemHeading({ item, plan, patient }) {
 
 // ---------- Item dialogs ----------
 
+/**
+ * PH8: the vaccine's batch, expiry month and maker – typed from the vial, or picked from the pharmacy's batches in
+ * stock (doctors and RMOs see those; for others the list stays empty and they type it).
+ */
+export function VaccineFields({ value, onChange, optional = false, error, itemName = '', idPrefix = 'done-vacc' }) {
+  const [find, setFind] = useState('');
+  const term = find.trim();
+  const stock = useFetch(term.length >= 2 ? '/pharmacy-stock/vaccine-batches' : null, { q: term });
+  const set = (k) => (e) => onChange({ ...value, [k]: e.target.value, ...(k === 'batch' ? { stockBatchId: null } : {}) });
+  return (
+    <fieldset className="plan-vaccine">
+      <legend>The vaccine given{optional ? ' (if she has the details)' : ''}</legend>
+      <Field label="Find the batch in the pharmacy's stock (optional)" id={`${idPrefix}-find`} keepHint hint={`Type the vaccine's name, e.g. ${itemName.split(/[ –(]/)[0] || 'BCG'}.`}>
+        <input id={`${idPrefix}-find`} value={find} maxLength={60} onChange={(e) => setFind(e.target.value)} />
+      </Field>
+      {(stock.data?.batches ?? []).length > 0 && (
+        <ul className="plain-list">
+          {stock.data.batches.slice(0, 6).map((b) => (
+            <li key={b.stockBatchId}>
+              <button type="button" className="btn btn-link btn-sm" onClick={() => { onChange({ batch: b.batch, expiry: b.expiry, manufacturer: b.manufacturer, stockBatchId: b.stockBatchId }); setFind(''); }}>
+                {b.name} · batch {b.batch} · expiry {b.expiry.slice(5)}/{b.expiry.slice(0, 4)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="form-grid">
+        <Field label={optional ? 'Batch number (optional)' : 'Batch number'} id={`${idPrefix}-batch`} error={error}>
+          <input id={`${idPrefix}-batch`} value={value.batch} maxLength={40} onChange={set('batch')} />
+        </Field>
+        <Field label="Expiry (optional)" id={`${idPrefix}-exp`}>
+          <input id={`${idPrefix}-exp`} type="month" value={value.expiry} onChange={set('expiry')} />
+        </Field>
+        <Field label="Manufacturer (optional)" id={`${idPrefix}-maker`}>
+          <input id={`${idPrefix}-maker`} value={value.manufacturer} maxLength={120} onChange={set('manufacturer')} />
+        </Field>
+      </div>
+    </fieldset>
+  );
+}
+
 /** Mark done. elsewhere: opened from "Done elsewhere" (the box starts ticked). */
 export function MarkDoneDialog({ patient, plan, item, elsewhere: startElsewhere = false, onSaved, onConflict, onCancel }) {
   const [on, setOn] = useState(toDateInput(plan.today));
@@ -200,6 +242,9 @@ export function MarkDoneDialog({ patient, plan, item, elsewhere: startElsewhere 
   const [result, setResult] = useState('');
   const [note, setNote] = useState('');
   const takesResult = item.kind === 'investigation' || item.kind === 'scan';
+  // PH8: a vaccination given here – the vial's batch (required), expiry month and maker
+  const isVaccine = item.kind === 'vaccination';
+  const [vaccine, setVaccine] = useState({ batch: '', expiry: '', manufacturer: '', stockBatchId: null });
   const wasOpen = itemState(item) === 'open';
   const save = useSave((res) => onSaved(res, `${item.name} marked done (${formatDate(on)}).`, { undoItemId: wasOpen ? item.id : null }), onConflict);
   const warning = afterItemWarning(item, plan, on);
@@ -207,12 +252,14 @@ export function MarkDoneDialog({ patient, plan, item, elsewhere: startElsewhere 
   const isDatingScan = item.key === 'scan_dating' || (item.kind === 'scan' && /dating/i.test(item.name));
 
   const submit = () => {
-    const errors = { ...pcpndtErrors({ result, note }), ...(on ? {} : { on: 'Please enter the date it was done.' }) };
-    save.submit(() => changeItem(patient.id, item, { action: 'done', on, elsewhere, result: takesResult ? result.trim() : '', note: note.trim() }), errors);
+    const needsBatch = isVaccine && !elsewhere && !vaccine.batch.trim();
+    const errors = { ...pcpndtErrors({ result, note }), ...(on ? {} : { on: 'Please enter the date it was done.' }), ...(needsBatch ? { 'vaccine.batch': 'Write the batch number on the vial.' } : {}) };
+    const given = isVaccine && vaccine.batch.trim() ? { batch: vaccine.batch.trim(), expiry: vaccine.expiry, manufacturer: vaccine.manufacturer.trim(), ...(vaccine.stockBatchId ? { stockBatchId: vaccine.stockBatchId } : {}) } : null;
+    save.submit(() => changeItem(patient.id, item, { action: 'done', on, elsewhere, result: takesResult ? result.trim() : '', note: note.trim(), vaccine: given }), errors);
   };
 
   return (
-    <PlanDialog id="plan-done" title={`Mark done: ${item.name}`} save={save} shown={['on', 'result', 'note']} submitLabel="Mark done" submitIcon={CircleCheck} onSubmit={submit} onCancel={onCancel}>
+    <PlanDialog id="plan-done" title={`Mark done: ${item.name}`} save={save} shown={['on', 'result', 'note', 'vaccine.batch']} submitLabel="Mark done" submitIcon={CircleCheck} onSubmit={submit} onCancel={onCancel}>
       <ItemHeading item={item} plan={plan} patient={patient} />
       {item.kind === 'scan' && (
         <Alert type="warning">Record findings needed for care. Never record or disclose the baby's sex (PCPNDT Act).</Alert>
@@ -227,6 +274,7 @@ export function MarkDoneDialog({ patient, plan, item, elsewhere: startElsewhere 
         <input type="checkbox" checked={elsewhere} onChange={(e) => setElsewhere(e.target.checked)} />
         <span>Done elsewhere (outside report)</span>
       </label>
+      {isVaccine && <VaccineFields value={vaccine} onChange={setVaccine} optional={elsewhere} error={save.fields['vaccine.batch']} itemName={item.name} />}
       {takesResult && (
         <Field label="Result (optional)" id="done-result" error={save.fields.result}>
           <input id="done-result" value={result} onChange={(e) => setResult(e.target.value)} maxLength={500} placeholder="e.g. Hb 11.2 g/dL" />
@@ -570,6 +618,7 @@ export function ItemDetailsDialog({ patient, plan, item, onSaved, onConflict, on
       `${formatDate(item.done.on)}${item.done.gaOn ? ` (${gaText(item.done.gaOn)})` : ''}${item.done.elsewhere ? ' · elsewhere' : ''} · recorded by ${item.done.byName}`,
     ],
     item.done?.result && ['Result', item.done.result],
+    item.done?.vaccine && ['Vaccine', vaccineWords(item.done.vaccine)], // PH8
     item.done?.note && ['Note when done', item.done.note],
     item.notNeeded && [
       'Not needed',

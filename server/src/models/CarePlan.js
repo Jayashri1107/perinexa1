@@ -64,7 +64,10 @@ const itemSchema = new mongoose.Schema({            // keeps its own _id = the s
   // staff-owned: ONLY explicit actions by a person write these
   state: { type: String, enum: ['open', 'done', 'not_needed'], default: 'open' },
   done: nested({ on: { type: Date, required: true }, elsewhere: { type: Boolean, default: false }, result: { type: String, maxlength: 500, default: '' },
-    note: { type: String, maxlength: 1000, default: '' }, via: { type: String, enum: ['manual', 'visit', 'lab'], default: 'manual' }, visitId: { type: ObjectId, default: null }, labOrderId: { type: ObjectId, default: null }, ...actor }),
+    note: { type: String, maxlength: 1000, default: '' }, via: { type: String, enum: ['manual', 'visit', 'lab'], default: 'manual' }, visitId: { type: ObjectId, default: null }, labOrderId: { type: ObjectId, default: null },
+    // PH8: a vaccination given here – the vial's batch, expiry month and maker (and the pharmacy batch it came from)
+    vaccine: nested({ batch: { type: String, maxlength: 40 }, expiry: { type: String, maxlength: 7, default: '' }, manufacturer: { type: String, maxlength: 120, default: '' }, stockBatchId: { type: ObjectId, default: null } }),
+    ...actor }),
   notNeeded: nested({ reasonCode: { type: String, enum: NOT_NEEDED_REASONS, required: true }, reason: { type: String, maxlength: 300, default: '' }, ...actor }),
   manualDate: nested({ dueFrom: { type: Date, required: true }, dueBy: { type: Date, required: true }, reason: { type: String, maxlength: 300, default: '' }, ...actor }),
   forceInclude: nested({ reason: { type: String, required: true, minlength: 5, maxlength: 300 }, ...actor }),

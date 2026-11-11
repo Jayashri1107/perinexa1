@@ -5,7 +5,7 @@ import { hasRole } from '../models/Membership.js';
 import { Medicine, StockBatch } from '../models/Pharmacy.js';
 import { matchLine, readLine, statusFor, stockIndex } from '../pharmacy/stockMatch.js';
 import { HttpError } from '../utils/httpError.js';
-import { parse } from '../utils/validate.js';
+import { escapeRegex, parse } from '../utils/validate.js';
 import { RX_FORMS } from '../visits/rxCodes.js';
 
 // Pharmacy stock while prescribing: /api/pharmacy-stock. For those who write prescriptions (doctors and RMOs) – the
@@ -50,6 +50,21 @@ export const pharmacyStockRouter = Router();
 pharmacyStockRouter.use((req, _res, next) => {
   if (!hasRole(req.membership, ...PRESCRIBER_ROLES)) throw new HttpError(403, 'Pharmacy stock while prescribing is shown to doctors and RMOs.', 'FORBIDDEN');
   next();
+});
+
+// PH8: the batches in stock of a vaccine (found by name), for a vaccination marked done – batch, expiry, maker only
+pharmacyStockRouter.get('/vaccine-batches', async (req, res) => {
+  const q = parse(z.object({ q: z.string().trim().min(2).max(60) }).strict(), req.query);
+  const rx = new RegExp(escapeRegex(q.q), 'i');
+  const meds = await Medicine.find({ tenantId: req.tenantId, active: true, $or: [{ name: rx }, { generic: rx }] }, { name: 1, manufacturer: 1 }).limit(20).lean();
+  const byId = new Map(meds.map((m) => [String(m._id), m]));
+  const batches = meds.length ? await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(hospitalToday(req.now)) }, hold: null }).sort({ expiry: 1 }).limit(30).lean() : [];
+  res.json({
+    batches: batches.map((b) => {
+      const m = byId.get(String(b.medicineId));
+      return { stockBatchId: String(b._id), name: m.name, batch: b.batch, expiry: b.expiry.toISOString().slice(0, 7), manufacturer: m.manufacturer ?? '' };
+    }),
+  });
 });
 
 // POST (a list is sent), but it only reads. Answers in the order asked: { pharmacy, stock: ['in' | 'low' | 'out' | null] }.

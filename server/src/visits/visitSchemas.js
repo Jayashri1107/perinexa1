@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import { safeText } from '../utils/pcpndt.js';
+import { vaccineSchema } from '../careplans/planSchemas.js';
 import { dateOnly, objectId, requiredDateOnly } from '../utils/validate.js';
 import {
   FETAL_MOVEMENTS,
@@ -120,7 +121,7 @@ export function visitSchemas({ pcpndt = true } = {}) {
       .object({
         vitals: vitals.optional(),
         details: details.optional(),
-        doneItems: z.array(z.object({ id: objectId, rev }).strict()).max(40).default([]),
+        doneItems: z.array(z.object({ id: objectId, rev, vaccine: vaccineSchema.nullable().default(null) }).strict()).max(40).default([]), // PH8
       })
       .strict()
       .refine((b) => b.vitals || b.details || b.doneItems.length, 'Nothing to save'),
