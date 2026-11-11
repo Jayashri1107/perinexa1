@@ -8,5 +8,12 @@ export const DEPARTMENTS = ['Obgy', 'Pediatric', 'Radiology', 'Anesthesia', 'Die
 export const departmentsOfDoctor = (d) => (d?.departments?.length ? d.departments : d?.department ? [d.department] : []);
 /** Is this doctor in the department? ('' = any department) */
 export const inDepartment = (d, department) => !department || departmentsOfDoctor(d).includes(department);
+/**
+ * The doctors offered as her doctor once a department is chosen: that department's doctors, and always the doctor
+ * filling in the form (`me`) and the doctor already chosen (`current`) – a doctor the admin has not yet given this
+ * department keeps their own name, so the patient they register stays theirs and opens for them.
+ */
+export const doctorsOffered = (doctors, department, { me = null, current = '' } = {}) =>
+  doctors.filter((d) => inDepartment(d, department) || (me && d.id === me) || (current && d.id === current));
 /** The departments that have a doctor, in the list's order. */
 export const departmentsWithDoctors = (doctors) => DEPARTMENTS.filter((dep) => doctors.some((d) => departmentsOfDoctor(d).includes(dep)));

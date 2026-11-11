@@ -100,6 +100,31 @@ describe('a doctor sees only their departments', () => {
     expect(await listed('none')).toEqual(['Own Patient']);
   });
 
+  it('a doctor who registers a patient hidden from them gets her number back, nothing clinical, and no record to open', async () => {
+    // Another department's patient (a Pediatric patient registered by an Obgy doctor)
+    let res = await (await as('obgy')).post('/api/patients').send(samplePatient({ fullName: 'Sent To Pediatric', careType: 'gynaecology', department: 'Pediatric', assignedDoctor: people.peds.id }));
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const p = res.body.patient;
+    expect(p.access.hidden).toBe(true);
+    expect(p.mrn).toMatch(/\S/);
+    expect(Object.keys(p).sort()).toEqual(['access', 'assignedDoctorName', 'department', 'fullName', 'id', 'mrn']);
+    expect(p).toMatchObject({ fullName: 'Sent To Pediatric', department: 'Pediatric', assignedDoctorName: 'Sample peds' });
+    expect(p.access).toMatchObject({ canEditClinical: false, canViewVisits: false, canViewCarePlan: false });
+    expect((await (await as('obgy')).get(`/api/patients/${p.id}`)).status).toBe(404);
+    expect(await Patient.countDocuments({ tenantId: hospital._id, fullName: 'Sent To Pediatric' })).toBe(1); // she is saved
+
+    // A doctor with no department registering a patient for nobody in particular
+    res = await (await as('none')).post('/api/patients').send(samplePatient({ fullName: 'Nobody Assigned', careType: 'gynaecology' }));
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.patient).toMatchObject({ fullName: 'Nobody Assigned', assignedDoctorName: null, access: { hidden: true } });
+
+    // Their own patient, and their department's: the whole record as before (no "hidden")
+    res = await (await as('obgy')).post('/api/patients').send(samplePatient({ fullName: 'Own Obgy Patient', careType: 'gynaecology', department: 'Obgy' }));
+    expect(res.status).toBe(201);
+    expect(res.body.patient.access.hidden).toBeUndefined();
+    expect(res.body.patient.access.canEditClinical).toBe(true);
+  });
+
   it('reception moves her to another department (recorded); "needs a department" lists those without one', async () => {
     const p = await register({ fullName: 'Moving Patient', careType: 'gynaecology' });
     expect(await listed('desk', '&department=none')).toEqual(['Moving Patient']);

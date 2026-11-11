@@ -284,3 +284,14 @@ export const ARRIVAL_ROLES = ['receptionist', 'nurse', 'doctor', 'rmo'];
  */
 export const arrivesOnRegistration = ({ setting, booking = null, fromSignup = null, roles = [] }) =>
   setting === 'opd' && !booking && !fromSignup && roles.some((r) => ARRIVAL_ROLES.includes(r));
+
+/**
+ * A doctor registered her into another department (or, with no department of their own, not for themselves): the
+ * department rule (owner, 9 Nov 2026) hides her record from them, so it is not opened – this says where she is.
+ */
+export function hiddenRegistrationNote(patient) {
+  const where = [patient.department, patient.assignedDoctorName].filter(Boolean).join(', ');
+  return where
+    ? `Her record is with ${where}, so it does not open for you. Reception, an RMO or that department’s doctors can open it.`
+    : 'Her record is outside your departments, so it does not open for you. Reception or an RMO can open it, or give her a department.';
+}
