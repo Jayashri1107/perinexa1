@@ -11,11 +11,12 @@ import { canRegisterPatients, patientTabs } from '../../platform/modules.js';
 import { AdmitDialog } from '../beds/BedBoardPage.jsx';
 import { NO_CHARGES, RegistrationCharges, billCharges, billedText, chargesOk } from '../billing/ServiceChargeDialog.jsx';
 import { PatientForm } from './PatientForm.jsx';
+import { PatientNotOpened } from './PatientNotFound.jsx';
 import { VoiceEntry } from './VoiceEntry.jsx';
 import { careTypeFromSpeech, withoutCareTypeWords } from './careTypeSpeech.js';
 import { hearingPhrases } from './obgyTerms.js';
 import { PossibleMatchesDialog } from './PossibleMatchesDialog.jsx';
-import { CARE_TYPE_HINTS, CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, ageText, arrivesOnRegistration } from './patientFormat.js';
+import { CARE_TYPE_HINTS, CARE_TYPE_LABELS, CARE_TYPE_SHORT, CARE_TYPES, NEW_PATIENT_LINKS, ageText, arrivesOnRegistration, hiddenRegistrationNote } from './patientFormat.js';
 
 // An icon for each type of care on the chooser
 const CARE_TYPE_ICONS = { antenatal: HeartPulse, postnatal: Users, infertility: Flower2, gynaecology: Stethoscope, abortion: HeartHandshake, newborn: Baby };
@@ -305,6 +306,18 @@ export function PatientNewPage() {
         // Today's patients lists her anyway (registered today); she can be marked arrived there
       }
     }
+    // Registered, but the department rule hides her record from this doctor (owner, 9 Nov 2026): her record is never
+    // opened (it would only say "Patient not found") and no bed is offered – the form stays, with where she is.
+    if (patient.access?.hidden) {
+      const lost = dictatedClinical.current ? ' The clinical details that were said were not kept.' : '';
+      setMatches(null);
+      setChoosing(null);
+      dictatedClinical.current = null;
+      setSavedNote(`${registered} ${hiddenRegistrationNote(patient)}${lost}`);
+      setRound((r) => r + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (setting !== 'opd') {
       const go = (note, stayId = null) => {
         setAdmitting(null);
@@ -459,7 +472,7 @@ export function NewPatientClinicalPage() {
   const { activeMembership } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { data, error } = useFetch(`/patients/${id}`);
+  const { data, error, status, loading, reload } = useFetch(`/patients/${id}`);
   const [flash, setFlash] = useState(location.state?.flash ?? null);
   // Read here, forgotten once the page is open (read without removing, so React's double start in development keeps it).
   const [dictated] = useState(() => carriedOver.get(id) ?? null);
@@ -470,22 +483,9 @@ export function NewPatientClinicalPage() {
   const breadcrumbs = [{ label: 'Patients', to: '/patients' }, { label: 'New patient' }];
   const tabs = patientTabs(activeMembership.roles);
 
-  if (error && !patient) {
-    return (
-      <>
-        <PageHeader breadcrumbs={breadcrumbs} title="Patient not found" tabs={tabs} />
-        <div className="pf-content">
-          <div className="card narrow pf-message">
-            <p>
-              This patient doesn't exist in <strong>{activeMembership.tenantName}</strong>, or you don't have access.
-            </p>
-            <Link to="/patients" className="btn btn-link">
-              Back to patients
-            </Link>
-          </div>
-        </div>
-      </>
-    );
+  // (only while nothing is loading: useFetch keeps the old error during "Try again")
+  if (error && !patient && !loading) {
+    return <PatientNotOpened status={status} error={error} tenantName={activeMembership.tenantName} breadcrumbs={breadcrumbs} tabs={tabs} onRetry={reload} />;
   }
   if (!patient) return <FullPageSpinner />;
 
