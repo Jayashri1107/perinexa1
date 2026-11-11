@@ -72,6 +72,18 @@ const supplierSchema = new mongoose.Schema(
     phone: text(30),
     address: text(300),
     creditDays: { type: Number, min: 0, max: 365, default: 0 }, // PH11: a bill is due this many days after its date
+    // PH16: this supplier's bill file – which heading holds each field, and their item names matched to our medicines
+    // (picked by the pharmacist once, then remembered). It only fills the purchase form.
+    billFile: {
+      type: new mongoose.Schema(
+        {
+          columns: { type: Map, of: String, default: undefined },
+          items: [new mongoose.Schema({ key: String, name: String, medicineId: { type: ObjectId, ref: 'Medicine' } }, { _id: false })],
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     active: { type: Boolean, default: true },
   },
   { timestamps: true },

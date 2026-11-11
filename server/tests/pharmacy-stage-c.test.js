@@ -262,3 +262,33 @@ describe('PH17 – the order suggestion by the last weeks of use', () => {
     expect((await ph('get', '/orders/suggest?mode=guess')).status).toBe(400);
   });
 });
+
+describe('PH16 – the supplier bill from a file (columns and item matches remembered per supplier)', () => {
+  it('matches by remembered name, then the same name; remembers picks and headings; never another hospital’s medicine', async () => {
+    const sup = ok(await ph('post', '/suppliers', { name: 'Sample File Supplier' }), 201).supplier;
+    const other = ok(await ph('post', '/suppliers', { name: 'Sample Second Supplier' }), 201).supplier;
+    const para = await medicine({ name: 'Sample Para 500' });
+    const cough = await medicine({ name: 'Sample Cough Syrup', form: 'syrup', unit: 'bottle' });
+    expect(ok(await ph('get', `/suppliers/${sup.id}/bill-file`)).columns).toEqual({});
+    let m = ok(await ph('post', `/suppliers/${sup.id}/bill-file/match`, { names: ['sample para 500.', 'SMPL COUGH SYP 100ML'] })).matches;
+    expect(m.map((x) => [x.medicine?.id ?? null, x.how])).toEqual([
+      [para.id, 'same_name'],
+      [null, null],
+    ]);
+    // The pharmacist picks the cough syrup once; the headings are kept
+    ok(await ph('put', `/suppliers/${sup.id}/bill-file`, { columns: { batch: 'Lot', rate: 'Our Rate', hsn: '' }, items: [{ name: 'SMPL COUGH SYP 100ML', medicineId: cough.id }] }));
+    expect(ok(await ph('get', `/suppliers/${sup.id}/bill-file`)).columns).toEqual({ batch: 'Lot', rate: 'Our Rate' });
+    m = ok(await ph('post', `/suppliers/${sup.id}/bill-file/match`, { names: ['Smpl Cough Syp 100ml'] })).matches;
+    expect(m[0]).toMatchObject({ medicine: { id: cough.id }, how: 'remembered' });
+    // Another supplier's names are its own
+    m = ok(await ph('post', `/suppliers/${other.id}/bill-file/match`, { names: ['SMPL COUGH SYP 100ML'] })).matches;
+    expect(m[0].medicine).toBeNull();
+    // A medicine of another hospital is refused; a receptionist cannot
+    const elsewhere = await createTenant('Pharmacy Other Hospital');
+    const theirPharm = await createUser({ name: 'Sample other pharmacist' });
+    await addMember(theirPharm, elsewhere, 'pharmacist');
+    const theirMed = ok(await (await loginAs(theirPharm, { app })).post('/api/pharmacy/medicines').send({ name: 'Sample Their Tab', form: 'tablet', unit: 'tablet', gstRate: 5 }), 201).medicine;
+    expect((await ph('put', `/suppliers/${sup.id}/bill-file`, { items: [{ name: 'X', medicineId: theirMed.id }] })).status).toBe(400);
+    expect((await ph('post', `/suppliers/${sup.id}/bill-file/match`, { names: ['x'] }, 'reception')).status).toBe(403);
+  });
+});

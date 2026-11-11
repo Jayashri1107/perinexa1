@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CircleAlert, CircleCheck, CircleSlash, PackagePlus, Plus, Save, Trash2, X } from 'lucide-react';
+import { CircleAlert, CircleCheck, CircleSlash, FileUp, PackagePlus, Plus, Save, Trash2, X } from 'lucide-react';
 import { Link, NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { SearchInput, usePagedRows } from '../../components/DataTable.jsx';
@@ -12,6 +12,7 @@ import { gstinProblem, gstinState } from './gstin.js';
 import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, medicineLabel, medicinesToCheck, orderLook, receiveLines, receivedFlash, scannedForPurchase, packWords } from './pharmacyFormat.js';
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { SupplierAccountCard } from './SupplierAccount.jsx';
+import { BillFileDialog } from './BillFile.jsx';
 
 // Pharmacy → Purchases (supplier invoices: stock in, batch by batch – also received against a purchase order),
 // → Medicines (the stock list, with the barcodes on their packs) and → Suppliers, each supplier with its own page:
@@ -503,6 +504,8 @@ export function NewPurchasePage() {
   const setX = (field) => (e) => setExtra({ ...extra, [field]: e.target.value });
   const [enteredAt] = useState(() => new Date());
   const [editing, setEditing] = useState(null); // the pop-up: { line, isNew }
+  const [billFile, setBillFile] = useState(false); // PH16: the supplier's bill from a file
+  const [fromFile, setFromFile] = useState(null); // what the file filled in
 
   // The lines start as what the order still expects (none without an order) until the pharmacist changes them
   const orderLines = useMemo(() => (order ? receiveLines(order).map((x, i) => ({ ...blankLine(x.medicine, `${x.medicine.id}-order-${i}`), qty: String(x.qty) })) : []), [order]);
@@ -672,6 +675,17 @@ export function NewPurchasePage() {
           <section className="card bill-section ph-grn-items" aria-labelledby="pu-lines">
             <h2 id="pu-lines">Items</h2>
             <FindMedicine label="Item name" onPick={(m) => setEditing({ line: emptyLine(m), isNew: true })} onScan={scan} />
+            <p className="row">
+              <button type="button" className="btn btn-secondary" disabled={!supplier} onClick={() => setBillFile(true)}>
+                <FileUp aria-hidden="true" /> Bill from a file
+              </button>
+              <span className="hint">{supplier ? 'The supplier’s CSV or Excel bill fills the items; open each line to check it.' : 'Choose the supplier first to fill the items from its bill file.'}</span>
+            </p>
+            {fromFile && (
+              <Alert type="info" onClose={() => setFromFile(null)}>
+                {fromFile}
+              </Alert>
+            )}
             {lines.length > 0 ? (
               <div className="ph-grn-scroll">
                 <table className="bill-lines ph-grn-lines">
@@ -845,6 +859,17 @@ export function NewPurchasePage() {
           </div>
         </section>
       </div>
+      {billFile && supplier && (
+        <BillFileDialog
+          supplier={supplier}
+          onClose={() => setBillFile(false)}
+          onFill={(filled, left) => {
+            setLines((ls) => [...ls, ...filled.map((l) => ({ ...l, key: `${l.medicine.id}-${(lineSeq += 1)}` }))]);
+            setBillFile(false);
+            setFromFile(`${filled.length} line${filled.length === 1 ? '' : 's'} filled from the file${left ? `; ${left} left out` : ''}. Open each line to check its batch, expiry and prices before saving.`);
+          }}
+        />
+      )}
       {editing && (
         <GrnLineDialog
           line={editing.line}

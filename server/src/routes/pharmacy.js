@@ -43,7 +43,7 @@ import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, in
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
-import { checkOpening, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
+import { checkOpening, nameKey, openingSchema, saveOpening } from '../pharmacy/openingStock.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
 import { escapeRegex, objectId, parse, requiredDateOnly } from '../utils/validate.js';
@@ -288,6 +288,61 @@ pharmacyRouter.patch('/suppliers/:id', async (req, res) => {
   await s.save();
   await audit(req, 'PHARMACY_SUPPLIER_CHANGED', { details: { supplierId: String(s._id), fields: Object.keys(body) } });
   res.json({ supplier: supplierView(s) });
+});
+
+// ---------- PH16: the supplier's bill from a file (docs/PHARMACY_BUILD_NOTE.md) ----------
+// The file is read in the browser and only fills the purchase form; saving goes through POST /purchases with all its
+// checks. Here: the supplier's saved column headings, matching its item names to our medicines (remembered matches
+// first, then the same name), and remembering what the pharmacist picked.
+const BILL_FILE_FIELDS = ['name', 'batch', 'expiry', 'qty', 'freeQty', 'rate', 'mrp', 'disc', 'gstRate', 'packSize', 'hsn'];
+const billFileSupplier = async (req) => {
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: idParam(req) });
+  if (!s) throw new HttpError(404, 'Supplier not found.', 'NOT_FOUND');
+  return s;
+};
+pharmacyRouter.get('/suppliers/:id/bill-file', async (req, res) => {
+  desk(req);
+  const s = await billFileSupplier(req);
+  res.json({ columns: Object.fromEntries(s.billFile?.columns ?? []), fields: BILL_FILE_FIELDS });
+});
+pharmacyRouter.post('/suppliers/:id/bill-file/match', async (req, res) => {
+  desk(req);
+  const s = await billFileSupplier(req);
+  const { names } = parse(z.object({ names: z.array(z.string().trim().min(1).max(200)).max(500) }).strict(), req.body);
+  const remembered = new Map((s.billFile?.items ?? []).map((x) => [x.key, String(x.medicineId)]));
+  const meds = await Medicine.find({ tenantId: req.tenantId, active: true }).lean();
+  const byId = new Map(meds.map((m) => [String(m._id), m]));
+  const byName = new Map(meds.map((m) => [nameKey(m.name), m]));
+  const matches = names.map((name) => {
+    const k = nameKey(name);
+    const kept = remembered.has(k) ? byId.get(remembered.get(k)) : null; // a stopped medicine is not matched
+    const m = kept ?? byName.get(k) ?? null;
+    return { name, medicine: m ? medicineView(m) : null, how: kept ? 'remembered' : m ? 'same_name' : null };
+  });
+  res.json({ matches });
+});
+pharmacyRouter.put('/suppliers/:id/bill-file', async (req, res) => {
+  desk(req);
+  const s = await billFileSupplier(req);
+  const body = parse(
+    z
+      .object({
+        columns: z.partialRecord(z.enum(BILL_FILE_FIELDS), z.string().trim().max(80)).optional(),
+        items: z.array(z.object({ name: z.string().trim().min(1).max(200), medicineId: objectId }).strict()).max(500).default([]),
+      })
+      .strict(),
+    req.body,
+  );
+  const ids = [...new Set(body.items.map((x) => x.medicineId))];
+  const found = await Medicine.countDocuments({ tenantId: req.tenantId, _id: { $in: ids } });
+  if (found !== ids.length) throw new HttpError(400, 'A medicine was not found.', 'VALIDATION');
+  const items = new Map((s.billFile?.items ?? []).map((x) => [x.key, x]));
+  for (const x of body.items) items.set(nameKey(x.name), { key: nameKey(x.name), name: x.name, medicineId: x.medicineId });
+  const columns = body.columns ? Object.fromEntries(Object.entries(body.columns).filter(([, v]) => v)) : Object.fromEntries(s.billFile?.columns ?? []);
+  s.billFile = { columns, items: [...items.values()].slice(-5000) };
+  await s.save();
+  await audit(req, 'PHARMACY_SUPPLIER_CHANGED', { details: { supplierId: String(s._id), fields: ['billFile'], items: body.items.length } });
+  res.json({ columns, remembered: s.billFile.items.length });
 });
 
 // ---------- PH11: what each supplier is owed (docs/PHARMACY_BUILD_NOTE.md) ----------

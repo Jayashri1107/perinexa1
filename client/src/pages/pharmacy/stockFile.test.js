@@ -1,6 +1,6 @@
 import { deflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { readCsv, readExpiry, readNumber, readXlsx, stockLines, packSizeOf } from './stockFile.js';
+import { billHeadings, billLines, formLineFromBill, packSizeOf, readCsv, readExpiry, readNumber, readXlsx, stockLines } from './stockFile.js';
 
 // Reading the old pharmacy software's stock list for Opening stock. Fake sample stock only.
 
@@ -165,5 +165,36 @@ describe('the pack size and the manufacturer', () => {
       ['SAMPLE TAB', 'B1', '06/2029', 20, 5, 3, 'Sample Pharma', '1x10'],
     ]);
     expect(lines[0]).toMatchObject({ manufacturer: 'Sample Pharma', packSize: 10 });
+  });
+});
+
+describe('PH16 – a supplier bill file', () => {
+  const rows = [
+    ['Sample Distributors', '', '', '', '', '', '', ''],
+    ['Product', 'Pack', 'Batch No', 'Exp', 'Qty', 'Free', 'PTR', 'MRP', 'Disc %', 'GST'],
+    ['SAMPLE PARA 500 TAB', '1x10', 'SP101', '06/28', 5, 1, '42.50', '60.00', 2, 0.05],
+    ['', '', 'SP102', 'Jul-2028', 3, '', '42.50', '60.00', '', 0.05],
+    ['Total', '', '', '', 8, '', '', '', '', ''],
+  ];
+  it('finds the heading row and the columns by the usual names', () => {
+    const head = billHeadings(rows);
+    expect(head.index).toBe(1);
+    expect(head.columns).toMatchObject({ name: 0, packSize: 1, batch: 2, expiry: 3, qty: 4, freeQty: 5, rate: 6, mrp: 7, disc: 8, gstRate: 9 });
+  });
+  it('a supplier’s saved heading wins over the usual name', () => {
+    const odd = [['Item', 'Lot', 'Exp', 'Bill Qty', 'Net Amt', 'Our Rate']];
+    expect(billHeadings(odd)).toBeNull(); // no batch column by its usual name
+    expect(billHeadings(odd, { batch: 'Lot', rate: 'Our Rate' }).columns).toMatchObject({ name: 0, batch: 1, expiry: 2, qty: 3, rate: 5 });
+  });
+  it('the lines: a batch under the item above, totals left out; as purchase-form lines', () => {
+    const head = billHeadings(rows);
+    const lines = billLines(rows, head.index, head.columns);
+    expect(lines.map((l) => [l.name, l.batch, l.expiry, l.qty, l.packSize, l.gstRate])).toEqual([
+      ['SAMPLE PARA 500 TAB', 'SP101', '2028-06', 5, 10, 5],
+      ['SAMPLE PARA 500 TAB', 'SP102', '2028-07', 3, null, 5],
+    ]);
+    const med = { id: 'm1', name: 'Sample Para 500', packSize: 15, gstRate: 12 };
+    expect(formLineFromBill(lines[0], med)).toEqual({ medicine: med, batch: 'SP101', expiry: '2028-06', conv: '10', qty: '5', freeQty: '1', rate: '42.5', mrp: '60', disc: '2', gst: '5' });
+    expect(formLineFromBill(lines[1], med)).toMatchObject({ conv: '15', freeQty: '', disc: '' });
   });
 });
