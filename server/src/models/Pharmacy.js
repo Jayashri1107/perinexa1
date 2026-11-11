@@ -230,6 +230,10 @@ const batchSchema = new mongoose.Schema(
     // batches bought by the unit.
     packMrpPaise: { type: Number, default: null },
     unitsPerPack: { type: Number, default: null },
+    // PH5: on hold (recalled, a quality doubt …) – it cannot be sold or issued until released; returned units come back
+    // onto the hold. Every batch with the same number of the same medicine is held together.
+    hold: { type: new mongoose.Schema({ reason: { type: String, enum: ['recalled', 'quality', 'other'] }, note: String, ...stamp }, { _id: false }), default: null },
+    released: { type: [new mongoose.Schema({ heldReason: String, reason: String, ...stamp }, { _id: false })], default: [] },
     qtyIn: { type: Number, required: true, min: 0 },
     qtyLeft: { type: Number, required: true, min: 0 },
     purchaseId: { type: ObjectId, ref: 'Purchase', default: null },

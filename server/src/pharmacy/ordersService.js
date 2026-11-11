@@ -185,7 +185,8 @@ export async function suggestFromLowStock(req) {
   const tenantId = req.tenantId;
   const today = hospitalToday(req.now);
   const meds = await Medicine.find({ tenantId, active: true }).sort({ name: 1 }).lean();
-  const usableRows = await StockBatch.aggregate([{ $match: { tenantId, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) } } }, { $group: { _id: '$medicineId', qty: { $sum: '$qtyLeft' } } }]);
+  // PH5: held stock is not usable stock
+  const usableRows = await StockBatch.aggregate([{ $match: { tenantId, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null } }, { $group: { _id: '$medicineId', qty: { $sum: '$qtyLeft' } } }]);
   const usable = new Map(usableRows.map((r) => [String(r._id), r.qty]));
   const low = meds.filter((m) => (usable.get(String(m._id)) ?? 0) <= (m.reorderLevel ?? 0));
   if (!low.length) return [];

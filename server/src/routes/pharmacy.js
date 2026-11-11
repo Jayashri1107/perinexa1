@@ -37,7 +37,7 @@ import {
   SUPPLIER_RETURN_REASON_LABELS,
   cleanBarcode,
 } from '../pharmacy/pharmacyRules.js';
-import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, returnItems, stockOf, writeOff } from '../pharmacy/pharmacyService.js';
+import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS } from '../pharmacy/pharmacyService.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
@@ -191,7 +191,7 @@ pharmacyRouter.get('/medicines', async (req, res) => {
   const next = new Map();
   if (q.search) {
     const t = today(req);
-    for (const b of await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(t) } }, { medicineId: 1, mrpPaise: 1, expiry: 1 }).sort({ expiry: 1 }).lean()) {
+    for (const b of await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, ...usableMatch(t) }, { medicineId: 1, mrpPaise: 1, expiry: 1 }).sort({ expiry: 1 }).lean()) {
       if (!next.has(String(b.medicineId))) next.set(String(b.medicineId), b.mrpPaise);
     }
   }
@@ -442,12 +442,13 @@ pharmacyRouter.get('/stock', async (req, res) => {
   }
   const rows = meds.map((m) => {
     const bs = byMed.get(String(m._id)) ?? [];
-    const usable = bs.filter((b) => !isExpired(b, t));
+    const usable = bs.filter((b) => !isExpired(b, t) && !b.hold); // PH5: held stock is shown apart
     const qtyUsable = usable.reduce((s, b) => s + b.qtyLeft, 0);
     const nearest = usable.map((b) => b.expiry).sort((a, b) => a - b)[0] ?? null;
     return {
       ...medicineView(m),
       qty: qtyUsable,
+      heldQty: bs.filter((b) => b.hold && !isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0),
       expiredQty: bs.filter((b) => isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0),
       costValuePaise: bs.reduce((s, b) => s + b.qtyLeft * b.costPaise, 0),
       mrpValuePaise: bs.reduce((s, b) => s + grossOf(b, b.qtyLeft), 0), // PH2: from the pack's MRP where known
@@ -519,6 +520,79 @@ pharmacyRouter.get('/stock/:id', async (req, res) => {
   });
 });
 
+// ---------- PH5: a batch on hold, and who received it (docs/PHARMACY_BUILD_NOTE.md) ----------
+// A recall names a manufacturer's batch number; the same number can be in several stock batches (two purchases), so
+// the hold works on { medicine, batch number } – all of them at once. Held stock cannot be sold or issued (usableMatch);
+// it can still be returned to the supplier, written off or counted. No notice goes to her doctor (owner, 10 Nov 2026).
+
+const holdTarget = z.object({ medicineId: objectId, batch: z.string().trim().min(1).max(40) });
+const sameBatch = (req, b) => ({ tenantId: req.tenantId, medicineId: b.medicineId, batch: new RegExp(`^${escapeRegex(b.batch)}$`, 'i') });
+
+pharmacyRouter.post('/batches/hold', async (req, res) => {
+  desk(req);
+  const body = parse(holdTarget.extend({ reason: z.enum(Object.keys(HOLD_REASONS), 'Choose why it is held.'), note: z.string().trim().max(200).default('') }).strict(), req.body);
+  if (body.reason === 'other' && body.note.length < 3) throw new HttpError(400, 'Write why the batch is held.', 'VALIDATION');
+  const list = await StockBatch.find(sameBatch(req, body), { _id: 1, hold: 1 }).lean();
+  if (!list.length) throw new HttpError(404, 'No batch with this number for this medicine.', 'NOT_FOUND');
+  if (list.every((b) => b.hold)) throw new HttpError(409, 'This batch is already on hold.', 'ALREADY_HELD');
+  await StockBatch.updateMany({ ...sameBatch(req, body), hold: null }, { $set: { hold: { reason: body.reason, note: body.note, by: req.user._id, byName: req.user.name, at: req.now } } });
+  await audit(req, 'PHARMACY_BATCH_HELD', { details: { medicineId: body.medicineId, batch: body.batch, reason: body.reason, batches: list.length } });
+  res.json({ held: list.length });
+});
+
+pharmacyRouter.post('/batches/release', async (req, res) => {
+  desk(req);
+  const body = parse(holdTarget.extend({ reason: reason('Releasing a batch') }).strict(), req.body);
+  const list = await StockBatch.find({ ...sameBatch(req, body), hold: { $ne: null } }).lean();
+  if (!list.length) throw new HttpError(409, 'This batch is not on hold.', 'NOT_HELD');
+  for (const b of list) {
+    await StockBatch.updateOne({ tenantId: req.tenantId, _id: b._id }, { $set: { hold: null }, $push: { released: { heldReason: b.hold.reason, reason: body.reason, by: req.user._id, byName: req.user.name, at: req.now } } });
+  }
+  await audit(req, 'PHARMACY_BATCH_RELEASED', { details: { medicineId: body.medicineId, batch: body.batch, batches: list.length } });
+  res.json({ released: list.length });
+});
+
+// Who received this batch: every sale and issue from it, net of returns – date, invoice, the patient (what the
+// pharmacist already sees: name, number, phone; a closed record says so) or the walk-in's name – and what is still in
+// stock. Read from the stock moves: nothing new is stored.
+pharmacyRouter.get('/batches/recipients', async (req, res) => {
+  desk(req);
+  const q = parse(holdTarget.strict(), req.query);
+  const m = await Medicine.findOne({ tenantId: req.tenantId, _id: q.medicineId }, { name: 1, manufacturer: 1, unit: 1 }).lean();
+  if (!m) throw new HttpError(404, 'Medicine not found.', 'NOT_FOUND');
+  const batches = await StockBatch.find(sameBatch(req, q)).lean();
+  const moves = batches.length ? await StockMove.find({ tenantId: req.tenantId, batchId: { $in: batches.map((b) => b._id) }, kind: { $in: ['sale', 'issue', 'return'] } }).sort({ at: 1, _id: 1 }).lean() : [];
+  const byInvoice = new Map();
+  for (const mv of moves) {
+    const k = mv.ref?.number ?? String(mv._id);
+    if (!byInvoice.has(k)) byInvoice.set(k, { number: mv.ref?.number ?? '', kind: mv.kind === 'issue' ? 'issue' : 'sale', at: mv.at, patientId: mv.patientId ? String(mv.patientId) : null, customer: mv.customer ?? '', qty: 0 });
+    const r = byInvoice.get(k);
+    if (mv.kind === 'issue') r.kind = 'issue';
+    r.qty += -mv.qty; // a sale or issue is −, a return +
+  }
+  const rows = [...byInvoice.values()].filter((r) => r.qty > 0);
+  const pids = [...new Set(rows.map((r) => r.patientId).filter(Boolean))];
+  const patients = new Map((pids.length ? await Patient.find({ tenantId: req.tenantId, _id: { $in: pids } }, { fullName: 1, mrn: 1, phone: 1, 'death.on': 1 }).lean() : []).map((p) => [String(p._id), p]));
+  await audit(req, 'PHARMACY_BATCH_RECIPIENTS_VIEWED', { details: { medicineId: q.medicineId, batch: q.batch, results: rows.length } });
+  res.json({
+    medicine: { id: String(m._id), name: m.name, manufacturer: m.manufacturer ?? '', unit: m.unit },
+    batch: q.batch,
+    hold: batches.find((b) => b.hold)?.hold ? (({ reason: r, note, byName, at }) => ({ reason: r, note: note ?? '', byName: byName ?? '', at }))(batches.find((b) => b.hold).hold) : null,
+    inStock: batches.reduce((s, b) => s + b.qtyLeft, 0),
+    recipients: rows.map((r) => {
+      const p = r.patientId ? patients.get(r.patientId) : null;
+      return {
+        date: isoDay(toHospitalDate(r.at)),
+        number: r.number,
+        kind: r.kind,
+        qty: r.qty,
+        patient: p ? (isClosed(p) ? { fullName: p.fullName, mrn: p.mrn, phone: '', closed: true } : { fullName: p.fullName, mrn: p.mrn, phone: p.phone ?? '', closed: false }) : null,
+        customer: p ? '' : r.customer,
+      };
+    }),
+  });
+});
+
 async function loadBatch(req) {
   const b = await StockBatch.findOne({ tenantId: req.tenantId, _id: idParam(req) }).lean();
   if (!b) throw new HttpError(404, 'Batch not found.', 'NOT_FOUND');
@@ -549,7 +623,7 @@ pharmacyRouter.post('/batches/:id/count', async (req, res) => {
 // The batches a medicine can be sold from (not expired, with stock), earliest expiry first.
 pharmacyRouter.get('/medicines/:id/batches', async (req, res) => {
   const t = today(req);
-  const list = await StockBatch.find({ tenantId: req.tenantId, medicineId: idParam(req), qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(t) } }).sort({ expiry: 1 }).lean();
+  const list = await StockBatch.find({ tenantId: req.tenantId, medicineId: idParam(req), ...usableMatch(t) }).sort({ expiry: 1 }).lean();
   // As the store's earlier software showed them at the counter (7 Nov 2026): where each batch was bought – the supplier,
   // its bill number and date – and the pack it came in (units per pack and the pack's MRP). Opening stock has none.
   const purchases = new Map(
@@ -1016,7 +1090,7 @@ pharmacyRouter.get('/reports/alerts', async (req, res) => {
   const meds = await Medicine.find({ tenantId: req.tenantId, active: true }).sort({ name: 1 }).lean();
   const batches = await StockBatch.find({ tenantId: req.tenantId, qtyLeft: { $gt: 0 } }).sort({ expiry: 1 }).lean();
   const usable = new Map();
-  for (const b of batches) if (!isExpired(b, t)) usable.set(String(b.medicineId), (usable.get(String(b.medicineId)) ?? 0) + b.qtyLeft);
+  for (const b of batches) if (!isExpired(b, t) && !b.hold) usable.set(String(b.medicineId), (usable.get(String(b.medicineId)) ?? 0) + b.qtyLeft);
   const names = new Map(meds.map((m) => [String(m._id), m]));
   const soon = batches.filter((b) => daysLeft(b.expiry, t) <= EXPIRY_REPORT_DAYS && names.has(String(b.medicineId)));
   res.json({

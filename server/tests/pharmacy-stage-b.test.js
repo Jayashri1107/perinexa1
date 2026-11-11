@@ -131,3 +131,73 @@ describe('PH6 – "already sold" on a prescription', () => {
     expect((await rxOf(main))[0].items[0]).toMatchObject({ givenQty: 20, givenInFull: true });
   });
 });
+
+describe('PH5 – a batch on hold, and who received it', () => {
+  const batchOf = async (m, batch) => (await (await import('../src/models/Pharmacy.js')).StockBatch.find({ tenantId: hospital._id, medicineId: m.id, batch }).sort({ expiry: 1 }).lean());
+  async function buy(m, batch, expiry, qty = 20) {
+    const sup = ok(await ph('post', '/suppliers', { name: `Sample Supplier ${randomUUID().slice(0, 4)}` }), 201).supplier;
+    ok(await ph('post', '/purchases', { supplierId: sup.id, invoiceNo: `INV-${randomUUID().slice(0, 6)}`, invoiceDate: '2026-11-10', lines: [{ medicineId: m.id, batch, expiry, qty, ratePaise: 300, mrpPaise: 500 }] }), 201);
+  }
+  const walkIn = (m, qty, extra = {}) => ph('post', '/invoices', { kind: 'sale', customer: { name: 'Sample Walk In' }, lines: [{ medicineId: m.id, qty, ...extra }], payment: { mode: 'cash' } });
+
+  it('first-expiry skips a held batch and sells the next; a held batch chosen by hand is refused; held stock is not "in stock"', async () => {
+    const m = await medicine({ name: 'Sample Recall Tab', generic: 'Sample', reorderLevel: 25, manufacturer: 'Sample Makers' });
+    await buy(m, 'R1', '2027-01');
+    await buy(m, 'R2', '2028-01');
+    // Two purchases of the same recalled batch number: both are held
+    await buy(m, 'R1', '2027-01', 5);
+    ok(await ph('post', '/batches/hold', { medicineId: m.id, batch: 'r1', reason: 'recalled', note: 'Recall notice 10 Nov' }));
+    expect((await batchOf(m, 'R1')).every((b) => b.hold?.reason === 'recalled')).toBe(true);
+    expect((await ph('post', '/batches/hold', { medicineId: m.id, batch: 'R1', reason: 'recalled' })).status).toBe(409);
+    const sale = ok(await walkIn(m, 3), 201).invoice;
+    expect(sale.lines[0].batch).toBe('R2');
+    const [r1] = await batchOf(m, 'R1');
+    const byHand = await walkIn(m, 1, { batchId: String(r1._id) });
+    expect(byHand.status).toBe(409);
+    expect(byHand.body.error.code).toBe('ON_HOLD');
+    // The stock list: 17 usable (R2), 25 held; the low mark counts only usable stock
+    const row = ok(await ph('get', '/stock')).medicines.find((x) => x.id === m.id);
+    expect(row).toMatchObject({ qty: 17, heldQty: 25, low: true });
+    // The doctor's "in stock" leaves it out too
+    expect((await ph('get', `/medicines/${m.id}/batches`)).body.batches.map((b) => b.batch)).toEqual(['R2']);
+    // Released: sold again
+    expect((await ph('post', '/batches/release', { medicineId: m.id, batch: 'R1', reason: 'x' })).status).toBe(400);
+    ok(await ph('post', '/batches/release', { medicineId: m.id, batch: 'R1', reason: 'The recall names another batch' }));
+    expect(ok(await walkIn(m, 1), 201).invoice.lines[0].batch).toBe('R1');
+    const actions = (await AuditLog.find({ action: /PHARMACY_BATCH_/ }).sort({ _id: 1 }).lean()).map((e) => e.action);
+    expect(actions).toEqual(['PHARMACY_BATCH_HELD', 'PHARMACY_BATCH_RELEASED']);
+  });
+
+  it('who received it: sales and issues net of returns, with what the pharmacist already sees; a return comes back onto the hold', async () => {
+    const m = await medicine({ name: 'Sample Recipients Tab', generic: 'Sample' });
+    await buy(m, 'W1', '2027-06');
+    const p = await register('Sample Recall Mother');
+    const toHer = ok(await ph('post', '/invoices', { kind: 'sale', patientId: p.id, lines: [{ medicineId: m.id, qty: 6 }] }), 201).invoice;
+    ok(await walkIn(m, 2), 201);
+    ok(await ph('post', '/batches/hold', { medicineId: m.id, batch: 'W1', reason: 'quality', note: '' }));
+    // She brings 2 back: they return onto the held batch – never into saleable stock
+    ok(await ph('post', `/invoices/${toHer.id}/returns`, { items: [{ lineId: toHer.lines[0].id, qty: 2 }], reason: 'Recalled' }));
+    const [w1] = await batchOf(m, 'W1');
+    expect(w1).toMatchObject({ qtyLeft: 14, hold: { reason: 'quality' } });
+    expect((await walkIn(m, 1)).status).toBe(409); // nothing usable
+    const list = ok(await ph('get', `/batches/recipients?medicineId=${m.id}&batch=W1`));
+    expect(list).toMatchObject({ batch: 'W1', inStock: 14, hold: { reason: 'quality' }, medicine: { name: 'Sample Recipients Tab' } });
+    expect(list.recipients.map((r) => [r.qty, r.patient?.mrn ?? null, r.customer])).toEqual([
+      [4, p.mrn, ''],
+      [2, null, 'Sample Walk In'],
+    ]);
+    expect(list.recipients[0].patient).toMatchObject({ fullName: 'Sample Recall Mother', closed: false });
+    expect((await ph('get', `/batches/recipients?medicineId=${m.id}&batch=W1`, undefined, 'admin')).status).toBe(403);
+    expect(await AuditLog.countDocuments({ action: 'PHARMACY_BATCH_RECIPIENTS_VIEWED' })).toBe(1);
+  });
+
+  it("another hospital's batch with the same number is untouched", async () => {
+    const m = await medicine({ name: 'Sample Shared Number Tab' });
+    await buy(m, 'S1', '2027-06');
+    const other = await createTenant('Other Pharmacy Hospital');
+    const { StockBatch } = await import('../src/models/Pharmacy.js');
+    await StockBatch.collection.insertOne({ tenantId: other._id, medicineId: new mongoose.Types.ObjectId(m.id), batch: 'S1', expiry: new Date('2027-06-30'), mrpPaise: 500, costPaise: 300, qtyIn: 5, qtyLeft: 5, hold: null });
+    ok(await ph('post', '/batches/hold', { medicineId: m.id, batch: 'S1', reason: 'recalled' }));
+    expect((await StockBatch.collection.findOne({ tenantId: other._id })).hold).toBeNull();
+  });
+});

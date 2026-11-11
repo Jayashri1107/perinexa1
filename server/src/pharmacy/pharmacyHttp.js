@@ -86,6 +86,8 @@ export const batchView = (b, t) => ({
   qtyIn: b.qtyIn,
   // PH2: the pack's MRP and size, when the batch was bought by the pack
   ...(b.packMrpPaise && b.unitsPerPack > 1 ? { packMrpPaise: b.packMrpPaise, unitsPerPack: b.unitsPerPack } : {}),
+  // PH5: on hold – it cannot be sold or issued
+  hold: b.hold ? { reason: b.hold.reason, note: b.hold.note ?? '', byName: b.hold.byName ?? '', at: b.hold.at ?? null } : null,
 });
 
 /** A supplier as the website gets it. */

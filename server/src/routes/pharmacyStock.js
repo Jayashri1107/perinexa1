@@ -38,7 +38,8 @@ const checkSchema = z
 async function usableStock(tenantId, medicineIds, today) {
   if (!medicineIds.length) return new Map();
   const rows = await StockBatch.aggregate([
-    { $match: { tenantId, medicineId: { $in: medicineIds }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) } } },
+    // PH5: a batch on hold is not "in stock" for the doctor
+    { $match: { tenantId, medicineId: { $in: medicineIds }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null } },
     { $group: { _id: '$medicineId', qty: { $sum: '$qtyLeft' } } },
   ]);
   return new Map(rows.map((r) => [String(r._id), r.qty]));

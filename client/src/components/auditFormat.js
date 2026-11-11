@@ -469,6 +469,9 @@ export const AUDIT_LABELS = {
   PHARMACY_ORDER_PRINTED: 'Purchase order printed',
   PHARMACY_SUPPLIER_RETURNED: 'Stock returned to a supplier',
   PHARMACY_SUPPLIER_CREDIT_NOTE: "Supplier's credit note for a return entered",
+  PHARMACY_BATCH_HELD: 'Medicine batch put on hold',
+  PHARMACY_BATCH_RELEASED: 'Medicine batch released from hold',
+  PHARMACY_BATCH_RECIPIENTS_VIEWED: 'Who received a medicine batch: list opened',
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
@@ -1638,6 +1641,12 @@ export function describeAudit(entry) {
       return `${d.number ?? ''}${d.qty != null ? ` · ${count(d.qty, 'unit')}` : ''}${d.lines != null ? ` in ${count(d.lines, 'batch', 'batches')}` : ''}${d.amountPaise != null ? ` · ${rupeesOf(d.amountPaise)}` : ''}${d.reason ? ` · ${SUPPLIER_RETURN_WORDS[d.reason] ?? d.reason}` : ''}${d.controlled ? ' · controlled medicine' : ''}`;
     case 'PHARMACY_SUPPLIER_RETURN_CANCELLED':
       return `${d.number ?? ''}${d.qty != null ? ` · ${count(d.qty, 'unit')} back in stock` : ''}${d.amountPaise != null ? ` · ${rupeesOf(d.amountPaise)}` : ''}${d.controlled ? ' · controlled medicine' : ''}`;
+    case 'PHARMACY_BATCH_HELD':
+      return `Batch ${d.batch ?? ''}${d.reason ? ` · ${{ recalled: 'recalled', quality: 'quality doubt', other: 'other reason' }[d.reason] ?? d.reason}` : ''}`;
+    case 'PHARMACY_BATCH_RELEASED':
+      return `Batch ${d.batch ?? ''}`;
+    case 'PHARMACY_BATCH_RECIPIENTS_VIEWED':
+      return `Batch ${d.batch ?? ''}${d.results != null ? ` · ${count(d.results, 'sale or issue', 'sales and issues')}` : ''}`;
     case 'PHARMACY_SUPPLIER_CREDIT_NOTE':
       return `${d.number ?? ''}${d.amountPaise != null ? ` · ${rupeesOf(d.amountPaise)}` : ''}${d.changed ? ' · corrected' : ''}`;
     case 'PHARMACY_EINVOICE_DOWNLOADED':

@@ -40,6 +40,13 @@ export const endOfMonth = (ym) => {
 };
 export const isExpired = (batch, today) => utcDay(batch.expiry) < utcDay(today);
 
+/**
+ * PH5 (docs/PHARMACY_BUILD_NOTE.md): the stock that may be sold, issued or counted as "in stock" – some left, not
+ * expired, not on hold. Every usable-stock query uses this one filter.
+ */
+export const usableMatch = (today) => ({ qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null });
+export const HOLD_REASONS = { recalled: 'Recalled', quality: 'Quality doubt', other: 'Other' };
+
 /** Units in stock of each medicine (all batches, expired or not): Map "<medicineId>" -> qty. */
 export async function stockOf(tenantId, medicineIds = null) {
   const rows = await StockBatch.aggregate([
@@ -148,10 +155,11 @@ async function allocate(req, medicine, qty, batchId, today) {
     const b = await StockBatch.findOne({ tenantId: req.tenantId, _id: batchId, medicineId: medicine._id }).lean();
     if (!b) throw bad(`${medicine.name}: choose a batch of this medicine.`);
     if (isExpired(b, today)) throw conflict(`${medicine.name}, batch ${b.batch}, has expired and cannot be sold.`, 'EXPIRED');
+    if (b.hold) throw conflict(`${medicine.name}, batch ${b.batch}, is on hold (${HOLD_REASONS[b.hold.reason] ?? b.hold.reason}) and cannot be sold or issued.`, 'ON_HOLD');
     if (b.qtyLeft < qty) throw conflict(`${medicine.name}, batch ${b.batch}: only ${b.qtyLeft} left.`, 'OUT_OF_STOCK');
     return [{ batch: b, qty }];
   }
-  const batches = await StockBatch.find({ tenantId: req.tenantId, medicineId: medicine._id, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) } }).sort({ expiry: 1, createdAt: 1 }).lean();
+  const batches = await StockBatch.find({ tenantId: req.tenantId, medicineId: medicine._id, ...usableMatch(today) }).sort({ expiry: 1, createdAt: 1 }).lean();
   const out = [];
   let need = qty;
   for (const b of batches) {
@@ -160,7 +168,7 @@ async function allocate(req, medicine, qty, batchId, today) {
     out.push({ batch: b, qty: take });
     need -= take;
   }
-  if (need > 0) throw conflict(`${medicine.name}: only ${qty - need} in stock (not expired).`, 'OUT_OF_STOCK');
+  if (need > 0) throw conflict(`${medicine.name}: only ${qty - need} in stock (not expired, not on hold).`, 'OUT_OF_STOCK');
   return out;
 }
 
