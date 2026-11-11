@@ -124,6 +124,9 @@ function initialValues(p) {
     },
     newborn: {
       birthAt: toDateTimeInput(p?.newborn?.birthAt),
+      // Only the date (an older baby for follow-up or vaccination, 11 Nov 2026): no hour asked
+      birthTimeKnown: p?.newborn?.birthTimeKnown ?? true,
+      birthDate: toDateTimeInput(p?.newborn?.birthAt).slice(0, 10),
       birthWeightGrams: str(p?.newborn?.birthWeightGrams),
       sex: p?.newborn?.sex ?? '',
       mother: p?.newborn?.mother ?? '',
@@ -175,7 +178,12 @@ export function toPayload(v, isEdit, access, part, loaded = null) {
     });
     for (const k of ['pinCode', 'city', 'state', 'referredBy', 'payer']) if (payload[k] === undefined) delete payload[k];
     if (!isNewborn) Object.assign(payload, { ageYears: v.ageYears, emergencyContact: v.emergencyContact, idProof: v.idProof });
-    if (isNewborn && access.canEditNewborn) payload.newborn = { ...v.newborn, birthAt: v.newborn.birthAt ? new Date(v.newborn.birthAt).toISOString() : '' };
+    if (isNewborn && access.canEditNewborn) {
+      const { birthDate, ...newborn } = v.newborn;
+      // Time not known: midday of that day (the same date in every time zone), marked so no time is ever shown
+      const birthAt = newborn.birthTimeKnown ? newborn.birthAt : birthDate ? `${birthDate}T12:00` : '';
+      payload.newborn = { ...newborn, birthAt: birthAt ? new Date(birthAt).toISOString() : '' };
+    }
     // Her department (owner, 9 Nov 2026): a doctor sees only the patients of their departments
     if (v.department) payload.department = v.department;
     if (!access.canEditIdentity) {
@@ -471,7 +479,30 @@ export function PatientForm({
   // (lmpCarryOver): Antenatal → Abortion (the same pregnancy), and back only for an old threatened miscarriage. Judged
   // from the stored type, so passing through another type first changes nothing. An LMP copied into the pregnancy
   // says so under the field until it is changed by hand or the type changes again.
+  // "Baby – vaccination or follow-up" in the Type of care list (11 Nov 2026): still a baby's record; the choice only
+  // sets the birth details for an older baby (date of birth only) and, registering, the Pediatric department
+  const FOLLOW_UP = 'newborn:followup';
+  const babyChoice = (next) => {
+    if (!isNewborn || !next.startsWith('newborn')) return false;
+    const followUp = next === FOLLOW_UP;
+    setV({ ...v, newborn: { ...v.newborn, birthTimeKnown: !followUp, birthDate: v.newborn.birthDate || (v.newborn.birthAt ?? '').slice(0, 10) }, ...(followUp && !isEdit && !v.department ? { department: 'Pediatric' } : {}) });
+    return true;
+  };
+  const typeOptions = (disabledFor) =>
+    CARE_TYPES.flatMap((t) => [
+      <option key={t} value={t} disabled={disabledFor?.(t)}>
+        {CARE_TYPE_LABELS[t]}
+      </option>,
+      ...(t === 'newborn'
+        ? [
+            <option key={FOLLOW_UP} value={FOLLOW_UP} disabled={disabledFor?.(t)}>
+              Baby – vaccination or follow-up
+            </option>,
+          ]
+        : []),
+    ]);
   const setCareType = (e) => {
+    if (babyChoice(e.target.value)) return;
     const next = e.target.value;
     unmark('careType');
     const out = { ...v, careType: next };
@@ -546,6 +577,8 @@ export function PatientForm({
 
   const type = isEdit ? v.careType : (careType ?? v.careType);
   const isNewborn = type === 'newborn';
+  const typeValue = isNewborn && !v.newborn.birthTimeKnown ? FOLLOW_UP : type;
+  const typeHint = typeValue === FOLLOW_UP ? 'Older baby: date of birth only, Pediatric' : CARE_TYPE_HINTS[type];
   const clinical = access.canEditClinical;
   const firstPregnancy = isFirstPregnancy(type, v.obstetric);
   const fe = (path) => fieldErrors[path];
@@ -744,24 +777,23 @@ export function PatientForm({
                     {/* Editing a record: the type of care can be changed here. Registering: chosen from the New patient menu, and
                         changed here if the menu choice was wrong. */}
                     {!isEdit && onCareTypeChange && (
-                      <Field label="Type of care" id="careType" hint={CARE_TYPE_HINTS[type]}>
-                        <select id="careType" value={type} onChange={(e) => onCareTypeChange(e.target.value)}>
-                          {CARE_TYPES.map((t) => (
-                            <option key={t} value={t}>
-                              {CARE_TYPE_LABELS[t]}
-                            </option>
-                          ))}
+                      <Field label="Type of care" id="careType" hint={typeHint}>
+                        <select
+                          id="careType"
+                          value={typeValue}
+                          onChange={(e) => {
+                            if (babyChoice(e.target.value)) return;
+                            onCareTypeChange(e.target.value === FOLLOW_UP ? 'newborn' : e.target.value, { followUp: e.target.value === FOLLOW_UP });
+                          }}
+                        >
+                          {typeOptions()}
                         </select>
                       </Field>
                     )}
                     {isEdit && (
-                      <Field label="Type of care" id="careType" error={fe('careType')} hint={CARE_TYPE_HINTS[type]}>
-                        <select id="careType" value={type} onChange={setCareType}>
-                          {CARE_TYPES.map((t) => (
-                            <option key={t} value={t} disabled={(t === 'newborn') !== (patient.careType === 'newborn')}>
-                              {CARE_TYPE_LABELS[t]}
-                            </option>
-                          ))}
+                      <Field label="Type of care" id="careType" error={fe('careType')} hint={typeHint}>
+                        <select id="careType" value={typeValue} onChange={setCareType}>
+                          {typeOptions((t) => (t === 'newborn') !== (patient.careType === 'newborn'))}
                         </select>
                       </Field>
                     )}
@@ -926,10 +958,17 @@ export function PatientForm({
                   <section className="card form-section">
                     <h2>Birth details</h2>
                     <div className="form-grid">
-                      <Field label="Date and time of birth" id="birthAt" error={fe('newborn.birthAt')} hint={v.newborn.birthAt ? formatDateTime(v.newborn.birthAt) : undefined} keepHint>
-                        <DateTimeInput id="birthAt" className={vc('newborn.birthAt')} value={v.newborn.birthAt} onChange={setIn('newborn', 'birthAt')} max={toDateTimeInput(new Date())} />
-                        {vm('newborn.birthAt')}
-                      </Field>
+                      {v.newborn.birthTimeKnown ? (
+                        <Field label="Date and time of birth" id="birthAt" error={fe('newborn.birthAt')} hint={v.newborn.birthAt ? formatDateTime(v.newborn.birthAt) : undefined} keepHint>
+                          <DateTimeInput id="birthAt" className={vc('newborn.birthAt')} value={v.newborn.birthAt} onChange={setIn('newborn', 'birthAt')} max={toDateTimeInput(new Date())} />
+                          {vm('newborn.birthAt')}
+                        </Field>
+                      ) : (
+                        <Field label="Date of birth" id="birthAt" error={fe('newborn.birthAt')} hint="Used for the baby's age and the vaccination dates.">
+                          <input id="birthAt" type="date" className={vc('newborn.birthAt')} value={v.newborn.birthDate} max={toDateTimeInput(new Date()).slice(0, 10)} onChange={setIn('newborn', 'birthDate')} />
+                          {vm('newborn.birthAt')}
+                        </Field>
+                      )}
                       <Field label="Birth weight" id="birthWeight" error={fe('newborn.birthWeightGrams')}>
                         <WeightInput id="birthWeight" className={vc('newborn.birthWeightGrams')} value={v.newborn.birthWeightGrams} onChange={setIn('newborn', 'birthWeightGrams')} />
                         {vm('newborn.birthWeightGrams')}
@@ -947,6 +986,18 @@ export function PatientForm({
                       </Field>
                       {showClinical && bloodGroupField}
                     </div>
+                    {/* An older baby for follow-up or vaccination (11 Nov 2026): the date of birth only, no hour */}
+                    <label className="check birth-time-unknown">
+                      <input
+                        type="checkbox"
+                        checked={!v.newborn.birthTimeKnown}
+                        onChange={(e) => {
+                          const unknown = e.target.checked;
+                          setV({ ...v, newborn: { ...v.newborn, birthTimeKnown: !unknown, birthDate: v.newborn.birthDate || (v.newborn.birthAt ?? '').slice(0, 10) } });
+                        }}
+                      />{' '}
+                      Time of birth not known – the baby is here for follow-up or vaccination
+                    </label>
                     <MotherPicker
                       value={v.newborn.mother}
                       initial={patient?.motherInfo ? { fullName: patient.motherInfo.fullName, mrn: patient.motherInfo.mrn } : null}

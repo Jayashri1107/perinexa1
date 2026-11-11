@@ -4,7 +4,7 @@ import { api } from '../../api.js';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { linesByHead } from './billHeads.js';
-import { NO_SEX_WORDS_HINT, rupees, toInput, toPaise } from './billingFormat.js';
+import { rupees, toInput, toPaise } from './billingFormat.js';
 import { Modal } from './billingUi.jsx';
 
 // Adding and taking off services as on the hospital's old billing screen (11 Nov 2026): one row above the services –
@@ -234,12 +234,16 @@ export function ServiceEntryRow({ bill, roles, onDone, autoFocus = false }) {
   );
 }
 
-/** Take the ticked lines off, with one reason for all. Stops at the first refusal; what was taken off stays off. */
+/**
+ * Remove services from a bill: one or several (ticked). No reason is asked (11 Nov 2026) – who removed it and when are
+ * kept on the line (shown with "Show removed services") and in the audit log. One confirm click, so a stray click on
+ * Remove does not take a charge off. Stops at the first refusal; what was removed stays removed.
+ */
 export function RemoveTickedDialog({ bill, lines, onClose, onDone }) {
-  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const sum = lines.reduce((s, l) => s + l.amountPaise, 0);
+  const one = lines.length === 1;
   const go = async () => {
     setBusy(true);
     setError(null);
@@ -247,10 +251,10 @@ export function RemoveTickedDialog({ bill, lines, onClose, onDone }) {
     let n = 0;
     try {
       for (const l of lines) {
-        last = await api(`/billing/bills/${bill.id}/lines/${l.id}/remove`, { method: 'POST', body: { reason: reason.trim() } });
+        last = await api(`/billing/bills/${bill.id}/lines/${l.id}/remove`, { method: 'POST', body: {} });
         n += 1;
       }
-      onDone(last, `${n} service${n > 1 ? 's' : ''} removed: ${rupees(sum)}.`);
+      onDone(last, one ? `Removed: ${lines[0].name}.` : `${n} services removed: ${rupees(sum)}.`);
     } catch (err) {
       setBusy(false);
       setError(`${lines[n].name}: ${err.message}${n ? ` (${n} removed before it)` : ''}`);
@@ -258,20 +262,18 @@ export function RemoveTickedDialog({ bill, lines, onClose, onDone }) {
     }
   };
   return (
-    <Modal id="bill-remove-ticked" title={`Remove ${lines.length} service${lines.length > 1 ? 's' : ''}`} onClose={onClose}>
+    <Modal id="bill-remove-ticked" title={one ? `Remove ${lines[0].name}` : `Remove ${lines.length} services`} onClose={onClose}>
       <p>
-        {lines.map((l) => l.name).join(', ')} – {rupees(sum)} comes off the bill. The lines are kept, marked Removed, with the reason.
+        {one ? '' : `${lines.map((l) => l.name).join(', ')} – `}
+        {rupees(sum)} comes off the bill{bill.paid > 0 ? '; if it was paid for, the bill shows the money to give back' : ''}.
       </p>
       <Alert type="error">{error}</Alert>
-      <Field label="Reason" id="bill-remove-ticked-reason" hint={NO_SEX_WORDS_HINT}>
-        <input id="bill-remove-ticked-reason" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} autoFocus />
-      </Field>
       <div className="row">
-        <button type="button" className="btn btn-danger" disabled={reason.trim().length < 3 || busy} onClick={go}>
-          {busy ? 'Removing…' : 'Remove them'}
+        <button type="button" className="btn btn-danger" disabled={busy} onClick={go} autoFocus>
+          {busy ? 'Removing…' : one ? 'Remove it' : 'Remove them'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
-          Keep them
+          {one ? 'Keep it' : 'Keep them'}
         </button>
       </div>
     </Modal>

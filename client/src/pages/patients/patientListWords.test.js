@@ -27,7 +27,7 @@ describe('the Patients list in plain words', () => {
 
 describe('the New patient menu', () => {
   it('lists Abortion (pregnancy loss) between Gynaecology and Newborn', () => {
-    expect(NEW_PATIENT_LINKS.map((l) => l.to.split('/').pop())).toEqual(['antenatal', 'postnatal', 'infertility', 'gynaecology', 'abortion', 'newborn']);
+    expect(NEW_PATIENT_LINKS.map((l) => l.to.split('/').pop())).toEqual(['antenatal', 'postnatal', 'infertility', 'gynaecology', 'abortion', 'newborn', 'newborn?for=followup']); // the older baby's card (11 Nov 2026)
     expect(CARE_TYPE_LABELS.abortion).toBe('Abortion (pregnancy loss)');
     expect(JSON.stringify(NEW_PATIENT_LINKS)).not.toMatch(/MTP|terminat/i);
   });

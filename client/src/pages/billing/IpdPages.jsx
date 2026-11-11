@@ -697,19 +697,8 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         />
       )}
       {dialog === 'removeTicked' && tickedLines.length > 0 && <RemoveTickedDialog bill={bill} lines={tickedLines} onClose={() => setDialog(null)} onDone={done} />}
-      {dialog?.remove && (
-        <ReasonDialog
-          id="ipd-remove"
-          title={`Remove ${dialog.remove.name}`}
-          text={`${rupees(dialog.remove.amountPaise)} comes off the bill. The line is kept, marked Removed, with the reason (Show removed services).`}
-          label="Reason"
-          confirmLabel="Remove it"
-          path={`/billing/bills/${bill.id}/lines/${dialog.remove.id}/remove`}
-          message={`Removed: ${dialog.remove.name}.`}
-          onClose={() => setDialog(null)}
-          onDone={done}
-        />
-      )}
+      {/* Remove a service: one confirm click, no reason asked (11 Nov 2026) */}
+      {dialog?.remove && <RemoveTickedDialog bill={bill} lines={[dialog.remove]} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'clear' && (
         <ClearDialog
           stay={{ id: stay.id, balancePaise: bill ? bill.balance : 0, patient }}
@@ -971,7 +960,8 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                                   {l.removed && (
                                     <span className="svc-removed-why">
                                       Removed by {l.removed.byName}
-                                      {l.removed.at ? `, ${formatDateTime(l.removed.at)}` : ''}: {l.removed.reason}
+                                      {l.removed.at ? `, ${formatDateTime(l.removed.at)}` : ''}
+                                      {l.removed.reason ? `: ${l.removed.reason}` : ''}
                                     </span>
                                   )}
                                   {l.priceNotSet && !l.removed && <span className="muted"> – price not set</span>}
