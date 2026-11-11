@@ -673,3 +673,34 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .bills-table td:nth-child(6) { white-space: normal; min-width: 150px; }
 .bills-head h2 { flex: 1 1 100%; }
 .bills-tools { flex: 1 1 100%; }
+
+/* Daily expenses: tick to print, the voucher and the expenses sheet (owner, 11 Nov 2026) */
+.exp-print-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin: 0 0 var(--space-2); }
+.exp-print-bar .muted { font-size: var(--fs-label); }
+.dc-expenses .exp-pick { width: 1%; text-align: center; }
+.dc-expenses .exp-pick input { width: 18px; height: 18px; margin: 0; }
+.dc-expenses tr.exp-picked td { background: var(--selected-bg); }
+.exv { margin-top: 4mm; }
+.exv-title { width: max-content; margin: 0 auto 4mm; padding: 1mm 10mm; border: 1px solid var(--print-ink); font-size: 16pt; letter-spacing: 0.04em; text-transform: uppercase; }
+.pdoc .exv-table { width: 100%; border-collapse: collapse; }
+.pdoc .exv-table th, .pdoc .exv-table td { border: 1px solid var(--print-ink); padding: 2.5mm 3mm; text-align: left; vertical-align: top; background: none; color: var(--print-ink); }
+.pdoc .exv-table .exv-right { width: 32%; }
+.pdoc .exv-table .exv-amount { width: 28%; text-align: center; font-variant-numeric: tabular-nums; }
+.pdoc .exv-table th.exv-amount { font-weight: 600; vertical-align: bottom; }
+.exv-body td { height: 22mm; }
+.exv-body p, .exv-foot p { margin: 0 0 2mm; }
+.exv-label { font-weight: 600; margin-right: 2mm; }
+.exv-total-label { float: right; font-weight: 600; }
+.exv-signs { display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: end; gap: 4mm; margin-top: 4mm; }
+.exv-signs > strong { text-align: center; }
+.exv-receiver { display: flex; flex-direction: column; align-items: flex-end; gap: 1mm; font-weight: 600; }
+.exv-sign-box { width: 30mm; height: 12mm; border: 1px solid var(--print-ink); }
+.pdoc .exs-table { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+.pdoc .exs-table th, .pdoc .exs-table td { background: none; border: 0; padding: 1.2mm 2mm; text-align: left; color: var(--print-ink); }
+.pdoc .exs-table thead th { border-bottom: 1px solid var(--print-ink); font-weight: 600; }
+.pdoc .exs-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.pdoc .exs-table .exs-group th { font-weight: 600; padding-top: 2.5mm; }
+.pdoc .exs-table .exs-subtotal th, .pdoc .exs-table .exs-subtotal td { font-weight: 600; text-align: right; border-top: 1px solid var(--print-rule); }
+.pdoc .exs-table .exs-total th, .pdoc .exs-table .exs-total td { font-weight: 700; text-align: right; border-top: 1px solid var(--print-ink); border-bottom: 1px solid var(--print-ink); }
+.exs-table tbody { break-inside: auto; }
+.exs-table tr { break-inside: avoid; }
