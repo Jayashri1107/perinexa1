@@ -1,7 +1,8 @@
 # Progress
 
-## Pharmacy Stage D, part 1: kits and ward requests (11 Nov 2026, branch `pharm-stage-d`)
-PH14 and PH12 of `docs/PHARMACY_BUILD_NOTE.md`, with the owner's approval of 11 Nov 2026.
+## Pharmacy Stage D: kits, ward requests, stock places, vaccine batch; Tally purchases (11 Nov 2026, branch `pharm-stage-d`)
+Stage D of `docs/PHARMACY_BUILD_NOTE.md` (PH14, PH12, PH13, PH8) and the leftovers of Stages A and C, with the owner's
+approval of 11 Nov 2026 and the developer's go-ahead for PH13 and PH8.
 - **PH14 Kits and consumables:** Formulary → **Kits** (doctors) and Pharmacy → Medicines → **Kits** (the hospital
   admin): a named set of medicines and items with quantities. Perinexa ships none. At the issue counter **From a kit**
   fills the lines and says what is short; the invoice keeps the kit's name. A medicine can be a **Consumable item**:
@@ -10,12 +11,33 @@ PH14 and PH12 of `docs/PHARMACY_BUILD_NOTE.md`, with the owner's approval of 11 
   doctor, RMOs): pick medicines (in stock / low / not in stock only), the doctor who ordered, urgent or not. The
   pharmacist sees a notice on Today and Pharmacy → **Ward requests**: **Issue** opens the issue counter filled with
   what is still to give; **Will not give** with a reason the ward sees. The paper slip still works.
-- **Not built yet:** PH13 (stock kept outside the pharmacy – labour room, theatre, wards – with a nurse's issue from
-  her place: an access change and a change to every stock batch) and PH8 (the vaccine's batch when a vaccination is
-  marked done – changes the visit's tick list and the care plan's Mark done). Both wait for the developer's go-ahead.
+- **PH13 Stock places:** Formulary → **Stock places** (doctors, RMOs, nurses) and Pharmacy → Stock → **Stock places**
+  (the pharmacist, the hospital admin). A doctor or the admin adds a place (labour room, theatre, ward, emergency tray)
+  and names its staff. The pharmacist **moves stock here** and **back to pharmacy** (a narcotic or Schedule X move needs
+  a second person; the registers show "at … / to … / from …"). The staff and the pharmacist **check** a place: every
+  batch counted, a different count corrects the stock, expired stock is taken out; a place shows **Check due**. The
+  place's staff **use for a patient** – an admitted patient they may chart for, the doctor who ordered – as an issue
+  on her bill; they see names, batches and quantities only. The counter, ward issues and the doctor's "in stock" count
+  the pharmacy only; order suggestions count every place. Existing batches are the pharmacy's (no change to them).
+- **PH8 Vaccine batch:** marking a vaccination done here (the care plan's Mark done, or ticking it at a visit) asks
+  the vial's batch number (required), expiry and maker – typed, or picked from the pharmacy's batches in stock. Given
+  elsewhere: optional. The batch shows on the item and on the patient's copy. The pharmacist's "Who received it"
+  counts vaccinations recorded with that batch number (names stay with the doctors).
+- **Opening stock:** narcotic and Schedule X lines need a second person who signs in.
+- **Tally:** pharmacy purchases (by GST rate, input GST, the bill's discount, charges and rounding) and supplier
+  payments now go to Tally; a cancelled one is reversed. Purchases entered before the GRN form (no tax) are listed in
+  the batch's warnings and not sent. New account names in Accounts → Tally (Pharmacy purchases by rate, Discount
+  received, Freight and charges, Rounding off) and a new voucher type "Perinexa Purchase". **Tell the accountant not to
+  type purchases or supplier payments in Tally any more.**
+- **Still not built:** the lab's critical-value choices and red-flag rules beside ranges, and sonography stage 2
+  (centile bands, Doppler ranges, a second growth chart) – they wait for the owner's published numbers and tables.
+  PH26 (AI forecast) waits for enough sales history. The refrigerator log (PH8) was put off by the owner.
 - **How to check (fake data only):** as a doctor, Formulary → Kits → New kit with two medicines. Admit a sample
   patient; as a nurse, her stay page → Ask the pharmacy → two medicines, ordered by a doctor, Urgent. As the
   pharmacist: Today shows the notice → Ward requests → Issue; give less of one line, then Will not give the rest.
+  As a doctor, Formulary → Stock places → New place "Labour room" with a nurse as staff; as the pharmacist, open it →
+  Move stock here; as that nurse, Use for a patient. On a baby's care plan, Mark done the birth vaccines – the batch
+  is asked.
 
 ## Pharmacy Stage C: money and figures (11 Nov 2026, branch `pharm-stage-c`)
 Stage C of `docs/PHARMACY_BUILD_NOTE.md` (PH11, PH15, PH24, PH17, PH16), with the owner's approval of 11 Nov 2026.
