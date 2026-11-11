@@ -82,7 +82,7 @@ const HOSPITAL_EXPORT_DETAIL_FIELDS = ['patients', 'records', 'files', 'counts']
 // and the NAMES of the details changed – never what was typed (an insurer, a policy, claim or PM-JAY number), an
 // amount or a link. The routes write nothing else; this is a second guard.
 const BILLING_EXTRA_ACTIONS = new Set(['BILL_INSURANCE_CHANGED', 'CLAIM_FORM_PRINTED', 'UPI_LINK_MADE']);
-const BILLING_EXTRA_DETAIL_FIELDS = ['billId', 'number', 'patientId', 'fields', 'removed', 'via', 'layout'];
+const BILLING_EXTRA_DETAIL_FIELDS = ['billId', 'number', 'patientId', 'fields', 'removed', 'via', 'layout', 'fromPaise', 'approvedPaise'];
 // The Tally link (16 Oct 2026): the NAMES of the settings changed, the batch's number and period, counts, which file,
 // and an entry's key (a document number) and new status – never an account name, an amount of one entry or a note
 // typed. The super admin's log keeps counts and plain words only (no batch or document numbers).

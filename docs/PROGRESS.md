@@ -20,6 +20,12 @@ photos showed real patients and were not kept).
   doctor visits then go on bills **by themselves**, as the price list already says for keyed items.
 - **Fixed in passing:** the printed IPD bill was squeezed to 160px since 9 Nov (the list's doctor-column class
   `ipd-doc` was the print document's class too); the column is now `ipd-doc-cell`.
+- **Cashless insurance (11 Nov 2026):** **Cashless insurance** on the IPD bill (totals) and the OPD bill (Amount):
+  insurer, TPA, pre-authorisation number and the **approved amount**. It comes off what the patient pays at once:
+  Patient to pay = Net pay − insurance − paid by patient; Due from insurance until the insurer's money is recorded
+  (Take payment → Paid by Insurance). A cash/UPI/card payment can't be more than her part. Reception, billing and the
+  admin; each change audited (`INSURANCE_CLAIM_SET`, with the amount before). Unpaid → **From insurance** tile. Sums
+  in `server/src/billing/money.js` (claimApproved, insuranceShare, insuranceDue, patientBalance …).
 - **How to check (fake data only):** run `npm run load:service-rates`; as the billing clerk open Billing → IPD → a
   stay: choose Anaesthesia charges, change the rate to 9000, Add. Tick two items → Take off ticked → reason. Print
   interim bill → Details.

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BedDouble, ChevronLeft, ChevronRight, CircleAlert, Clock, Download, Phone, RotateCcw, Save, Search, Stethoscope, Wallet } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight, CircleAlert, Clock, Download, Phone, RotateCcw, Save, Search, ShieldCheck, Stethoscope, Wallet } from 'lucide-react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -32,6 +32,7 @@ const UNPAID_VIEWS = {
   ipd: { title: 'IPD bills to collect', empty: 'No IPD bill is unpaid.' },
   old: { title: 'Owing over 30 days', empty: 'No bill has been owing over 30 days.' },
   back: { title: 'Money to give back', empty: 'No money is due back.' },
+  insurer: { title: 'Due from insurance', empty: 'Nothing is due from an insurer.' },
 };
 
 /** "11 Nov 2026" from "2026-11-11". */
@@ -70,12 +71,13 @@ export function UnpaidPage() {
     ipd: owing.filter((b) => b.kind === 'ipd'),
     old: owing.filter((b) => b.days >= 30),
     back: bills.filter((b) => b.balance < 0),
+    insurer: bills.filter((b) => b.insuranceDue > 0), // cashless: approved, not yet paid by the insurer (11 Nov 2026)
   };
-  const sum = (list) => list.reduce((s, b) => s + Math.abs(b.balance), 0);
+  const sum = (list, key = 'balance') => list.reduce((s, b) => s + Math.abs(b[key]), 0);
   const words = q.trim().toLowerCase();
   const rows = lists[view].filter((b) => !words || [b.number, b.patient?.fullName, b.patient?.mrn, b.patient?.phone].some((t) => String(t ?? '').toLowerCase().includes(words)));
   const tile = (key, label, tone, icon) => (
-    <Tile label={`${label} · ${lists[key].length}`} value={rupees(sum(lists[key]))} tone={lists[key].length ? tone : 'neutral'} icon={icon} pressed={view === key} onClick={() => setView(key)} />
+    <Tile label={`${label} · ${lists[key].length}`} value={rupees(sum(lists[key], key === 'insurer' ? 'insuranceDue' : 'balance'))} tone={lists[key].length ? tone : 'neutral'} icon={icon} pressed={view === key} onClick={() => setView(key)} />
   );
   return (
     <>
@@ -87,6 +89,7 @@ export function UnpaidPage() {
           {tile('opd', 'OPD', 'neutral', Stethoscope)}
           {tile('ipd', 'IPD', 'neutral', BedDouble)}
           {tile('old', 'Over 30 days', 'watch', CircleAlert)}
+          {tile('insurer', 'From insurance', 'due', ShieldCheck)}
           {tile('back', 'To give back', 'due', RotateCcw)}
         </div>
         <section className="card ipd-list-card" aria-labelledby="unpaid-title">
@@ -124,7 +127,7 @@ export function UnpaidPage() {
                       Paid
                     </th>
                     <th scope="col" className="num">
-                      {view === 'back' ? 'Due back' : 'Balance'}
+                      {view === 'back' ? 'Due back' : view === 'insurer' ? 'Due from insurance' : 'Balance'}
                     </th>
                     <th scope="col" className="ipd-act-col">
                       <span className="sr-only">Actions</span>
@@ -163,7 +166,13 @@ export function UnpaidPage() {
                       <td className="num tabular">{rupees(b.total)}</td>
                       <td className="num tabular">{rupees(b.paid)}</td>
                       <td className="num tabular">
-                        <strong>{rupees(Math.abs(b.balance))}</strong>
+                        <strong>{rupees(view === 'insurer' ? b.insuranceDue : Math.abs(b.balance))}</strong>
+                        {/* Cashless: what she pays and what the insurer owes */}
+                        {view !== 'insurer' && b.insuranceDue > 0 && (
+                          <span className="ipd-sub">
+                            patient {rupees(Math.max(0, b.patientBalance))} · insurance {rupees(b.insuranceDue)}
+                          </span>
+                        )}
                       </td>
                       <td className="ipd-act-col">
                         {b.balance > 0 ? (

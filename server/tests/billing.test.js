@@ -80,7 +80,28 @@ describe('money', () => {
       paid: 800,
       balance: 0,
       status: 'paid',
+      claimApproved: 0,
+      insuranceShare: 0,
+      insurancePaid: 0,
+      insuranceDue: 0,
+      patientPaid: 800,
+      patientBalance: 0,
     });
+  });
+
+  it('cashless insurance: the approved amount comes off what the patient pays; the insurer pays it later (11 Nov 2026)', () => {
+    const lines = [{ amountPaise: 9852400 }];
+    const discount = { paise: 1252400 }; // net 86,000
+    const approved = { lines, discount, claim: { approvedPaise: 6000000 }, payments: [{ kind: 'deposit', mode: 'cash', amountPaise: 1000000 }] };
+    expect(totals(approved)).toMatchObject({ total: 8600000, claimApproved: 6000000, insuranceShare: 6000000, insuranceDue: 6000000, patientPaid: 1000000, patientBalance: 1600000, balance: 7600000, status: 'part_paid' });
+    // The insurer pays part, then the rest
+    const part = { ...approved, payments: [...approved.payments, { kind: 'payment', mode: 'insurance', amountPaise: 4000000 }] };
+    expect(totals(part)).toMatchObject({ insurancePaid: 4000000, insuranceDue: 2000000, patientBalance: 1600000, balance: 3600000 });
+    // The insurer pays more than approved: its share follows the money; the patient owes less
+    const more = { ...approved, payments: [...approved.payments, { kind: 'payment', mode: 'insurance', amountPaise: 6500000 }] };
+    expect(totals(more)).toMatchObject({ insuranceShare: 6500000, insuranceDue: 0, patientBalance: 1100000 });
+    // Approved above the bill (the bill went down): the share stops at the bill
+    expect(totals({ lines: [{ amountPaise: 50000 }], claim: { approvedPaise: 90000 }, payments: [] })).toMatchObject({ insuranceShare: 50000, patientBalance: 0, insuranceDue: 50000 });
   });
 
   it('bed days: the day of admission counts, the day of discharge does not, at least 1', () => {
@@ -231,6 +252,32 @@ describe('bills and payments at the desk', () => {
     expect(higher.body.bill.lines.at(-1)).toMatchObject({ ratePaise: 4500000, amountPaise: 9000000 });
     const changed = await AuditLog.find({ tenantId: hospital._id, action: 'BILL_ITEM_ADDED', 'details.listPricePaise': 4000000 }).lean();
     expect(changed.map((a) => a.details.ratePaise).sort()).toEqual([3500000, 4500000]);
+  });
+
+  it('cashless insurance: the approved amount comes off what she pays, the insurer pays it later, each change audited (11 Nov 2026)', async () => {
+    const list = await prices({ consult_new: 50000, 'Surgeon fee': 4000000 });
+    const p = await register('Cashless Mother');
+    await startVisit(p);
+    const [b] = await billsOf(p);
+    const desk = await as('reception');
+    const surgeon = list.find((i) => i.name === 'Surgeon fee');
+    expect((await desk.post(`/api/billing/bills/${b.id}/lines`).send({ priceItemId: surgeon.id })).status).toBe(201); // net 40,500
+    const claim = (approvedPaise) => desk.put(`/api/billing/bills/${b.id}/claim`).send({ approvedPaise });
+    // No insurer yet: refused, with the field
+    expect((await claim(3000000)).body.error.fields.approvedPaise).toMatch(/insurance details first/);
+    expect((await desk.put(`/api/billing/bills/${b.id}/insurance`).send({ insurer: 'Sample Health Insurance', tpa: 'Sample TPA' })).status).toBe(200);
+    expect((await claim(5000000)).status).toBe(400); // more than the bill
+    const set = await claim(3000000);
+    expect(set.status).toBe(200);
+    expect(set.body.bill).toMatchObject({ total: 4050000, claimApproved: 3000000, insuranceDue: 3000000, patientBalance: 1050000, balance: 4050000, claim: { approvedPaise: 3000000, byName: 'Sample reception' } });
+    // She pays her part, never more
+    expect((await pay(b.id, { mode: 'cash', amountPaise: 1050001 })).status).toBe(400);
+    expect((await pay(b.id, { mode: 'cash', amountPaise: 1050000 })).body.bill).toMatchObject({ patientBalance: 0, insuranceDue: 3000000, status: 'part_paid' });
+    // The insurer pays: the bill is paid
+    expect((await pay(b.id, { mode: 'insurance', amountPaise: 3000000, reference: 'CL-77' })).body.bill).toMatchObject({ insurancePaid: 3000000, insuranceDue: 0, balance: 0, status: 'paid' });
+    // The details cannot be taken off while an amount is approved
+    expect((await desk.put(`/api/billing/bills/${b.id}/insurance`).send({})).status).toBe(409);
+    expect((await AuditLog.findOne({ tenantId: hospital._id, action: 'INSURANCE_CLAIM_SET' }).lean()).details).toMatchObject({ number: b.number, fromPaise: 0, approvedPaise: 3000000 });
   });
 
   it('an unpaid bill can be cancelled; the next charge that day opens a new bill', async () => {

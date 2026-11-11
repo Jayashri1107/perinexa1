@@ -479,6 +479,7 @@ export const AUDIT_LABELS = {
   TALLY_VOUCHER_STATUS: 'Tally entry status changed',
   // Billing extras (4 Oct 2026)
   BILL_INSURANCE_CHANGED: 'Insurance details of a bill changed',
+  INSURANCE_CLAIM_SET: 'Insurance approved amount set on a bill',
   CLAIM_FORM_PRINTED: 'Claim form printed',
   UPI_LINK_MADE: 'UPI payment link made',
   BILLING_SETTINGS_CHANGED: 'Billing settings changed',
@@ -1690,6 +1691,9 @@ export function describeAudit(entry) {
     case 'BILL_ITEM_ADDED':
     case 'BILL_ITEM_REMOVED':
       return joined(billOf(d), d.amountPaise != null ? rupeesOf(d.amountPaise) : '');
+    case 'INSURANCE_CLAIM_SET':
+      // The amount the insurer approved (cashless), with what it was before
+      return joined(billOf(d), d.approvedPaise ? `${d.fromPaise ? `${rupeesOf(d.fromPaise)} → ` : ''}${rupeesOf(d.approvedPaise)} approved` : 'approved amount taken off');
     case 'DISCOUNT_GIVEN': {
       // A value of 0 takes the discount off
       if (d.value === 0) return joined(billOf(d), 'discount taken off');
