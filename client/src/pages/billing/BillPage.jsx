@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, Minus, PencilLine, Plus, Printer, RotateCcw, Search, Tag, Wallet, X } from 'lucide-react';
+import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, Minus, PencilLine, Plus, Printer, RotateCcw, Search, Tag, Trash2, Wallet, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -921,8 +921,8 @@ export function BillPage() {
                 Items <span className="muted">· {lines.length}</span>
               </h2>
               {tickedLines.length > 0 && (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('removeTicked')}>
-                  Take off ticked ({tickedLines.length})
+                <button type="button" className="btn btn-secondary btn-sm svc-remove" onClick={() => setDialog('removeTicked')}>
+                  <Trash2 aria-hidden="true" /> Remove ticked ({tickedLines.length})
                 </button>
               )}
             </div>
@@ -1012,8 +1012,8 @@ export function BillPage() {
                       </td>
                       <td className="bill-col-actions">
                         {open && (
-                          <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ remove: l })} aria-label={`Take ${l.name} off the bill`}>
-                            Take off
+                          <button type="button" className="btn btn-secondary btn-sm svc-remove" onClick={() => setDialog({ remove: l })}>
+                            <Trash2 aria-hidden="true" /> Remove<span className="sr-only"> {l.name}</span>
                           </button>
                         )}
                       </td>
@@ -1109,7 +1109,7 @@ export function BillPage() {
 
         {removed.length > 0 && (
           <section className="card bill-section" aria-labelledby="bill-removed">
-            <h2 id="bill-removed">Taken off</h2>
+            <h2 id="bill-removed">Removed services</h2>
             <ul className="appt-lines">
               {removed.map((l) => (
                 <li key={l.id}>
@@ -1156,12 +1156,12 @@ export function BillPage() {
       {dialog?.remove && (
         <ReasonDialog
           id="bill-remove"
-          title={`Take "${dialog.remove.name}" off`}
+          title={`Remove "${dialog.remove.name}"`}
           text={b.paid > 0 ? 'If it was already paid for, the bill will show the money to give back.' : null}
           label="Why"
-          confirmLabel="Take it off"
+          confirmLabel="Remove it"
           path={`/billing/bills/${b.id}/lines/${dialog.remove.id}/remove`}
-          message={`${dialog.remove.name} was taken off.`}
+          message={`Removed: ${dialog.remove.name}.`}
           onClose={() => setDialog(null)}
           onDone={done}
         />

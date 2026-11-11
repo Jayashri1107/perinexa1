@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { BadgePercent, BedDouble, ClipboardCheck, DoorOpen, FileCheck, FileClock, LockOpen, Plus, Printer, Search, Wallet, X } from 'lucide-react';
+import { BadgePercent, Ban, BedDouble, ClipboardCheck, DoorOpen, FileCheck, FileClock, LockOpen, Plus, Printer, Search, Trash2, Wallet, X } from 'lucide-react';
 import { Link, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { MenuButton } from '../../components/MenuButton.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { Letterhead } from '../../components/print/Letterhead.jsx';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
@@ -568,7 +569,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   const [group, setGroup] = useState('');
   const [showRemoved, setShowRemoved] = useState(false);
   const [ticked, setTicked] = useState(() => new Set()); // lines ticked to take off together
-  const [layout, setLayout] = useState('details');
+  const [layout, setLayout] = useState('details'); // the print's layout, chosen in the Print menu
   const [dialog, setDialog] = useState(initialDialog); // add | advance | refund | discharge | admin | concession | final | reopen | clear | { remove: line }
   const [printing, setPrinting] = useState(null); // 'bill' | 'gatepass'
   const [flash, setFlash] = useState(null);
@@ -591,6 +592,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   const live = bill ? bill.lines.filter((l) => !l.removed) : [];
   const shown = bill ? bill.lines.filter((l) => (showRemoved || !l.removed) && (!group || l.group === group)) : [];
   const tickable = editable ? shown.filter((l) => !l.removed) : [];
+  const removedCount = bill ? bill.lines.filter((l) => l.removed).length : 0;
   const tickedLines = tickable.filter((l) => ticked.has(l.id));
   const tick = (id, on) =>
     setTicked((set) => {
@@ -621,10 +623,22 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   );
   const actions = (
           <>
+            {/* Print as Details (the headed bill), Date-wise draft or Summary – one menu (11 Nov 2026) */}
             {bill && (
-              <button type="button" className="btn btn-secondary" onClick={() => setPrinting('bill')}>
-                <Printer aria-hidden="true" /> {bill.final ? 'Print final bill' : stay.status === 'admitted' ? 'Print interim bill' : 'Print draft bill'}
-              </button>
+              <MenuButton
+                className="btn btn-secondary"
+                icon={Printer}
+                label={bill.final ? 'Print final bill' : stay.status === 'admitted' ? 'Print interim bill' : 'Print draft bill'}
+                align="end"
+                items={[...BILL_LAYOUTS].sort((a, b) => (b.key === 'details') - (a.key === 'details')).map((l) => ({
+                  label: l.key === 'details' ? 'Details (by heading)' : l.label,
+                  icon: Printer,
+                  onSelect: () => {
+                    setLayout(l.key);
+                    setPrinting('bill');
+                  },
+                }))}
+              />
             )}
             {/* With money still due she may leave only with a reason (e.g. insurance claim pending) */}
             {step.key === 'final' && primary?.label === 'Take payment' && (
@@ -704,12 +718,12 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
       {dialog?.remove && (
         <ReasonDialog
           id="ipd-remove"
-          title={`Take off ${dialog.remove.name}`}
-          text={`${rupees(dialog.remove.amountPaise)} comes off the bill. The item stays on the list as taken off.`}
+          title={`Remove ${dialog.remove.name}`}
+          text={`${rupees(dialog.remove.amountPaise)} comes off the bill. The line is kept, marked Removed, with the reason (Show removed services).`}
           label="Reason"
-          confirmLabel="Take it off"
+          confirmLabel="Remove it"
           path={`/billing/bills/${bill.id}/lines/${dialog.remove.id}/remove`}
-          message="Item taken off."
+          message={`Removed: ${dialog.remove.name}.`}
           onClose={() => setDialog(null)}
           onDone={done}
         />
@@ -735,7 +749,14 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         <div className="ipd-layout">
           {/* Left: her details and the bill's sums */}
           <aside className="card ipd-side" aria-label="Patient and stay">
-            <dl className="ipd-facts">
+            {/* Label beside value, as the old screen's left panel (11 Nov 2026); her name first */}
+            <dl className="ipd-facts ipd-facts-rows">
+              <div className="ipd-wide ipd-who">
+                <dt>Patient</dt>
+                <dd>
+                  <strong>{patient.fullName}</strong>
+                </dd>
+              </div>
               <div>
                 <dt>UHID</dt>
                 <dd className="tabular">
@@ -749,12 +770,6 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
               <div>
                 <dt>MLC</dt>
                 <dd>{stay.mlc ? 'Yes' : 'No'}</dd>
-              </div>
-              <div className="ipd-wide">
-                <dt>Patient</dt>
-                <dd>
-                  <strong>{patient.fullName}</strong>
-                </dd>
               </div>
               <div>
                 <dt>Age</dt>
@@ -892,11 +907,12 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                           </select>
                         </label>
                         <label>
-                          <input type="checkbox" checked={showRemoved} onChange={(e) => setShowRemoved(e.target.checked)} /> Items taken off
+                          <input type="checkbox" checked={showRemoved} onChange={(e) => setShowRemoved(e.target.checked)} /> Show removed services
+                          {removedCount > 0 ? ` (${removedCount})` : ''}
                         </label>
                         {tickedLines.length > 0 && (
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('removeTicked')}>
-                            Take off ticked ({tickedLines.length})
+                          <button type="button" className="btn btn-secondary btn-sm svc-remove" onClick={() => setDialog('removeTicked')}>
+                            <Trash2 aria-hidden="true" /> Remove ticked ({tickedLines.length})
                           </button>
                         )}
                       </div>
@@ -930,7 +946,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                               </th>
                               <th scope="col">Doctor</th>
                               <th scope="col">
-                                <span className="sr-only">Take off</span>
+                                <span className="sr-only">Remove</span>
                               </th>
                             </tr>
                           </thead>
@@ -950,11 +966,11 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                                 <td>{i + 1}</td>
                                 <td>{l.addedAt ? formatDateTime(l.addedAt) : '–'}</td>
                                 <td>
-                                  {l.name}
+                                  <span className="svc-name">{l.name}</span>
                                   {l.removed && (
-                                    <span className="muted">
-                                      {' '}
-                                      – taken off by {l.removed.byName}: {l.removed.reason}
+                                    <span className="svc-removed-why">
+                                      Removed by {l.removed.byName}
+                                      {l.removed.at ? `, ${formatDateTime(l.removed.at)}` : ''}: {l.removed.reason}
                                     </span>
                                   )}
                                   {l.priceNotSet && !l.removed && <span className="muted"> – price not set</span>}
@@ -963,11 +979,17 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                                 <td className="num tabular">{l.qty}</td>
                                 <td className="num tabular">{rupees(l.amountPaise)}</td>
                                 <td>{l.doctorName || '–'}</td>
-                                <td>
-                                  {editable && !l.removed && (
-                                    <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ remove: l })}>
-                                      Take off<span className="sr-only"> {l.name}</span>
+                                <td className="svc-action">
+                                  {l.removed ? (
+                                    <StatusPill tone="inactive" icon={Ban}>
+                                      Removed
+                                    </StatusPill>
+                                  ) : (
+                                    editable && (
+                                      <button type="button" className="btn btn-secondary btn-sm svc-remove" onClick={() => setDialog({ remove: l })}>
+                                      <Trash2 aria-hidden="true" /> Remove<span className="sr-only"> {l.name}</span>
                                     </button>
+                                    )
                                   )}
                                 </td>
                               </tr>
@@ -1114,41 +1136,16 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                   )}
                 </div>
 
-                {/* The foot: print layout, administrative charges, concession and the sums */}
+                {/* The foot as the old screen's (11 Nov 2026): the sums in one column, administrative charges and the
+                    concession in it with their own Change; giving money back beside them when it is due */}
                 <div className="ipd-foot">
-                  <fieldset className="ipd-layouts">
-                    <legend>Print as</legend>
-                    {BILL_LAYOUTS.map((l) => (
-                      <label key={l.key}>
-                        <input type="radio" name="ipd-layout" value={l.key} checked={layout === l.key} onChange={() => setLayout(l.key)} /> {l.label}
-                      </label>
-                    ))}
-                  </fieldset>
-                  <div className="ipd-foot-actions">
-                    <div>
-                      <span className="muted">Administrative charges</span> <strong className="tabular">{rupees(adminChargeOf(bill.lines))}</strong>{' '}
-                      {editable && (
-                        <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('admin')}>
-                          Change<span className="sr-only"> the administrative charges</span>
-                        </button>
-                      )}
-                    </div>
-                    <div>
-                      <span className="muted">Concession</span>{' '}
-                      {bill.discountInfo ? (
-                        <span>
-                          {bill.discountInfo.reason}
-                          {bill.discountInfo.authorisedByName ? ` · authorised by ${bill.discountInfo.authorisedByName}` : ''}
-                        </span>
-                      ) : (
-                        <span>None</span>
-                      )}{' '}
-                      {open && (
-                        <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('concession')}>
-                          <BadgePercent aria-hidden="true" /> {bill.discountInfo ? 'Change' : 'Give concession'}
-                        </button>
-                      )}
-                    </div>
+                  <div className="ipd-foot-note">
+                    {bill.discountInfo && (
+                      <p className="muted">
+                        Concession: {bill.discountInfo.reason}
+                        {bill.discountInfo.authorisedByName ? ` · authorised by ${bill.discountInfo.authorisedByName}` : ''}
+                      </p>
+                    )}
                     {open && bill.balance < 0 && (
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('refund')}>
                         Give money back
@@ -1158,10 +1155,29 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                   <dl className="ipd-totals">
                     <div>
                       <dt>Total amount</dt>
-                      <dd>{rupees(bill.subtotal)}</dd>
+                      <dd>{rupees(bill.subtotal - adminChargeOf(bill.lines))}</dd>
                     </div>
                     <div>
-                      <dt>Concession</dt>
+                      <dt>
+                        Administrative charges
+                        {editable && (
+                          <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('admin')}>
+                            Change<span className="sr-only"> the administrative charges</span>
+                          </button>
+                        )}
+                      </dt>
+                      <dd>{rupees(adminChargeOf(bill.lines))}</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        Concession
+                        {open && (
+                          <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('concession')}>
+                            <BadgePercent aria-hidden="true" /> {bill.discountInfo ? 'Change' : 'Give'}
+                            <span className="sr-only"> concession</span>
+                          </button>
+                        )}
+                      </dt>
                       <dd>{bill.discount ? `−${rupees(bill.discount)}` : rupees(0)}</dd>
                     </div>
                     <div className="ipd-net">
