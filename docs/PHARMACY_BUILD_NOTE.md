@@ -7,7 +7,7 @@
 > "what exists" again against this code before building. The ideas list in this repository is
 > `docs/IDEAS_FOR_LATER.md`. **Stage A (PH4, PH2, PH3, PH1) built on 11 Nov 2026, branch `pharm-stage-a` – see
 > `docs/PROGRESS.md` and the note under Stage A below.** **Stage B (PH6, PH5, PH7, PH10) built on 11 Nov 2026, branch
-> `pharm-stage-b` – see the note under Stage B.** Stages C and D are not built.
+> `pharm-stage-b` – see the note under Stage B.** **Stages C and D built on 11 Nov 2026 (branches `pharm-stage-c`, `pharm-stage-d`) – see the notes under each stage.** Not built: PH26 (its condition is not met), the refrigerator log of PH8 (put off by the owner), a photo or PDF reader for PH16. There is no printed pick list in perinexa1; the marks show on Sell, Issue and Stock.
 
 Written 10 Nov 2026 for the developer, at the owner's request. After a comparison with pharmacy (medical store)
 programs and hospital pharmacy modules (`docs/PHARMACY_APPS_REVIEW.md`), the owner chose **these 18 features and only
@@ -209,8 +209,8 @@ rows that are right** – nothing is saved before that.
 > website Formulary → Medicine marks), a witness on `POST /batches/:id/writeoff` for X and narcotic medicines. PH10 –
 > `pharmacy/substitutes.js` (sure only when a brand was written and another brand of the same generic is chosen –
 > unclear cases are left as before rather than blocked), `NoSubstitute` model (doctors), `substitution` on the sale
-> line, `GET /medicines/:id/substitutes`, `GET /doctors`, `409 SUBSTITUTE_NEEDS_DOCTOR` / `NO_SUBSTITUTE`. Not built:
-> the printed pick list's marks; the formulary's own `highAlert` is still separate. Tests:
+> line, `GET /medicines/:id/substitutes`, `GET /doctors`, `409 SUBSTITUTE_NEEDS_DOCTOR` / `NO_SUBSTITUTE`. The formulary's own
+> `highAlert` feeds the marks since 11 Nov 2026 (`pharmacy/formularyAlerts.js`). Tests:
 > `server/tests/pharmacy-stage-b.test.js`.
 
 ### PH6 – "already sold" on a prescription
