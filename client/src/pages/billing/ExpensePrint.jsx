@@ -1,4 +1,4 @@
-import { Letterhead } from '../../components/print/Letterhead.jsx';
+import { Hospital } from 'lucide-react';
 import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview.jsx';
 import { formatDate, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -13,11 +13,53 @@ import { expenseFor, expenseSheet, paidHow } from './expenseFormat.js';
 const amount = (paise) => (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const periodLabel = (from, to) => (from === to ? formatDate(from) : `${formatDate(from)} to ${formatDate(to)}`);
 
+/**
+ * The head of a printed voucher or sheet (owner, 11 Nov 2026: "make the header attractive"): the hospital's logo, name
+ * and address on the left, the document's name in an indigo badge on the right with its number and date under it, and
+ * a two-tone rule below. facts: [label, value] pairs shown in the badge.
+ */
+export function ExpenseDocHead({ letterhead, title, facts = [] }) {
+  const lh = letterhead ?? {};
+  const contact = [lh.phone && `Phone ${lh.phone}`, lh.email].filter(Boolean).join('  ·  ');
+  return (
+    <header className="exh">
+      <div className="exh-hospital">
+        {lh.logo ? (
+          <img className="exh-logo" src={lh.logo} alt="" />
+        ) : (
+          <div className="exh-mark" aria-hidden="true">
+            <Hospital />
+          </div>
+        )}
+        <div className="exh-text">
+          <div className="exh-name">{lh.name || 'Hospital name'}</div>
+          {lh.tagline && <div className="exh-tagline">{lh.tagline}</div>}
+          {lh.address && <div className="exh-line">{lh.address}</div>}
+          {contact && <div className="exh-line">{contact}</div>}
+          {lh.registrationNumber && <div className="exh-line">Reg. No. {lh.registrationNumber}</div>}
+        </div>
+      </div>
+      <div className="exh-badge">
+        <h1 className="exh-title">{title}</h1>
+        {facts.length > 0 && (
+          <dl className="exh-facts">
+            {facts.map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+    </header>
+  );
+}
+
 /** One expense as a voucher. */
 export function ExpenseVoucher({ expense: e, hospitalName }) {
   return (
     <div className="exv">
-      <h1 className="exv-title">Voucher</h1>
       <table className="exv-table">
         <tbody>
           <tr>
@@ -81,14 +123,10 @@ export function ExpenseVoucher({ expense: e, hospitalName }) {
 }
 
 /** Several expenses as the daily expenses sheet. */
-export function ExpenseSheet({ expenses, from, to }) {
+export function ExpenseSheet({ expenses }) {
   const sheet = expenseSheet(expenses);
   return (
     <>
-      <div className="bill-doc-titlebar">
-        <h1 className="pdoc-title">Daily expenses sheet – {periodLabel(from, to)}</h1>
-        <span className="pdoc-small">Print date {formatDateTime(new Date())}</span>
-      </div>
       <table className="exs-table">
         <thead>
           <tr>
@@ -144,6 +182,24 @@ export function ExpenseSheet({ expenses, from, to }) {
   );
 }
 
+/** What the head says: a voucher's number and date, or the sheet's period, count and print time. */
+export function expenseHead(expenses, printedAt = new Date()) {
+  const days = expenses.map((e) => e.date).sort();
+  const [from, to] = [days[0], days[days.length - 1]];
+  if (expenses.length === 1) {
+    const e = expenses[0];
+    return { title: 'Payment voucher', facts: [e.voucherNo && ['Voucher no.', e.voucherNo], ['Date', `${formatDate(e.date)}${e.time ? `, ${e.time}` : ''}`]].filter(Boolean) };
+  }
+  return {
+    title: 'Daily expenses sheet',
+    facts: [
+      [from === to ? 'Date' : 'Period', periodLabel(from, to)],
+      ['Expenses', String(expenses.filter((e) => !e.cancelled).length)],
+      ['Printed', formatDateTime(printedAt)],
+    ],
+  };
+}
+
 /** The print preview: a voucher for one expense, the sheet for several (its period: their first and last day). */
 export function ExpensePrintPreview({ expenses, onClose }) {
   const days = expenses.map((e) => e.date).sort();
@@ -163,8 +219,8 @@ export function ExpensePrintPreview({ expenses, onClose }) {
       onClose={onClose}
     >
       <PrintDocument className="bill-doc exp-print-doc">
-        {letterhead && <Letterhead letterhead={letterhead} centered />}
-        {one ? <ExpenseVoucher expense={one} hospitalName={hospitalName} /> : <ExpenseSheet expenses={expenses} from={from} to={to} />}
+        {letterhead && <ExpenseDocHead letterhead={letterhead} {...expenseHead(expenses)} />}
+        {one ? <ExpenseVoucher expense={one} hospitalName={hospitalName} /> : <ExpenseSheet expenses={expenses} />}
       </PrintDocument>
     </PrintPreview>
   );

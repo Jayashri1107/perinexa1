@@ -2,7 +2,7 @@
 // list on the Daily Expenses page has a tick box on each expense not cancelled. Made-up names and amounts.
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { ExpenseSheet, ExpenseVoucher } from './ExpensePrint.jsx';
+import { ExpenseDocHead, ExpenseSheet, ExpenseVoucher, expenseHead } from './ExpensePrint.jsx';
 import { ExpensesList } from './ExpenseEntry.jsx';
 
 const text = (html) => html.replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -18,8 +18,7 @@ describe('the expense voucher', () => {
 describe('the daily expenses sheet', () => {
   it('groups by how paid with a total for each and for all, without the cancelled', () => {
     const list = [exp('1'), exp('2', { paidTo: 'Sample Doctor B', amountPaise: 450000, time: '10:12' }), exp('3', { paidTo: 'Sample Recharge', amountPaise: 22000, mode: 'upi', walletName: 'PhonePe' }), exp('4', { paidTo: 'Entered twice', cancelled: { reason: 'x' } })];
-    const t = text(renderToStaticMarkup(<table><tbody><tr><td><ExpenseSheet expenses={list} from="2026-11-11" to="2026-11-11" /></td></tr></tbody></table>));
-    expect(t).toContain('Daily expenses sheet – 11 Nov 2026');
+    const t = text(renderToStaticMarkup(<table><tbody><tr><td><ExpenseSheet expenses={list} /></td></tr></tbody></table>));
     const order = ['Cash', 'Sample Doctor A', 'Sample Doctor B', 'Cash amount 6,000.00', 'UPI / wallet', 'Sample Recharge', 'UPI / wallet amount 220.00', 'Total amount 6,220.00'];
     const at = order.map((p) => t.indexOf(p));
     expect(at.every((n) => n >= 0)).toBe(true);
@@ -37,5 +36,21 @@ describe('ticking expenses to print', () => {
   });
   it('has no tick boxes where the list is not for printing (the daily summary)', () => {
     expect(renderToStaticMarkup(<ExpensesList expenses={[exp('1')]} />)).not.toContain('checkbox');
+  });
+});
+
+describe('the head of the printout', () => {
+  const lh = { name: 'Sample Hospital', address: 'Sample Road', phone: '0000000000' };
+  const head = (list) => text(renderToStaticMarkup(<ExpenseDocHead letterhead={lh} {...expenseHead(list, new Date('2026-11-11T10:00:00Z'))} />));
+  it('a voucher: the hospital, "Payment voucher", its number and date', () => {
+    const t = head([exp('1')]);
+    for (const part of ['Sample Hospital', 'Sample Road', 'Phone 0000000000', 'Payment voucher', 'Voucher no. 01', 'Date 11 Nov 2026, 08:30']) expect(t).toContain(part);
+  });
+  it('a voucher without a number leaves the number out', () => {
+    expect(head([exp('1', { voucherNo: '' })])).not.toContain('Voucher no.');
+  });
+  it('the sheet: its period, how many expenses and when printed', () => {
+    const t = head([exp('1'), exp('2', { date: '2026-11-12' }), exp('3', { cancelled: { reason: 'x' } })]);
+    for (const part of ['Daily expenses sheet', 'Period 11 Nov 2026 to 12 Nov 2026', 'Expenses 2', 'Printed 11 Nov 2026']) expect(t).toContain(part);
   });
 });
