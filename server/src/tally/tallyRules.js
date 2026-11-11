@@ -14,10 +14,10 @@ export const BATCH_PREFIX = 'TB';
 export const MAX_BATCH_VOUCHERS = 5000;
 
 // The kinds of Tally entry Perinexa writes, and the Tally voucher type each one is a child of.
-export const VOUCHER_KINDS = ['sales', 'receipt', 'payment', 'credit_note', 'debit_note', 'journal'];
-export const KIND_TO_TYPE = { sales: 'sales', receipt: 'receipt', payment: 'payment', credit_note: 'creditNote', debit_note: 'debitNote', journal: 'journal' };
-export const TALLY_PARENT_TYPES = { sales: 'Sales', receipt: 'Receipt', payment: 'Payment', creditNote: 'Credit Note', debitNote: 'Debit Note', journal: 'Journal' };
-export const KIND_LABELS = { sales: 'Sales', receipt: 'Receipt', payment: 'Payment', credit_note: 'Credit note', debit_note: 'Debit note', journal: 'Journal' };
+export const VOUCHER_KINDS = ['sales', 'receipt', 'payment', 'credit_note', 'debit_note', 'journal', 'purchase'];
+export const KIND_TO_TYPE = { sales: 'sales', receipt: 'receipt', payment: 'payment', credit_note: 'creditNote', debit_note: 'debitNote', journal: 'journal', purchase: 'purchase' };
+export const TALLY_PARENT_TYPES = { sales: 'Sales', receipt: 'Receipt', payment: 'Payment', creditNote: 'Credit Note', debitNote: 'Debit Note', journal: 'Journal', purchase: 'Purchase' };
+export const KIND_LABELS = { sales: 'Sales', receipt: 'Receipt', payment: 'Payment', credit_note: 'Credit note', debit_note: 'Debit note', journal: 'Journal', purchase: 'Purchase' };
 
 // What became of an entry: exported (in a file, waiting for Tally), imported (the accountant confirmed it), failed
 // (Tally refused it – the admin records Tally's words), skipped (left out on purpose, with a reason). An exported entry
@@ -52,11 +52,20 @@ export const DEFAULT_LEDGERS = {
   inputSgst: 'Input SGST',
   inputIgst: 'Input IGST',
   purchaseReturns: 'Purchase returns',
+  // PH3 and PH11: purchases from suppliers by GST rate ({ '5': 'Pharmacy purchases 5%' … }; a rate without a name gets
+  // the default below), the bill's discounts and charges, the rupee rounding
+  pharmacyPurchases: {},
+  discountReceived: 'Discount received',
+  purchaseCharges: 'Freight and charges on purchases',
+  roundOff: 'Rounding off',
 };
 export const defaultPharmacySales = (rate) => (Number(rate) === 0 ? 'Pharmacy sales exempt' : `Pharmacy sales ${rate}%`);
+export const defaultPharmacyPurchases = (rate) => (Number(rate) === 0 ? 'Pharmacy purchases exempt' : `Pharmacy purchases ${rate}%`);
+// A supplier payment's mode → the money account it leaves (models/Pharmacy.js SUPPLIER_PAYMENT_MODES)
+export const SUPPLIER_PAYMENT_ACCOUNT = { cash: 'cash', cheque: 'cheque', bank: 'neft', upi: 'upi' };
 
 // Perinexa's own voucher types in Tally, so the accountant's own numbering is never touched (manual numbers).
-export const DEFAULT_VOUCHER_TYPES = { sales: 'Perinexa Sales', receipt: 'Perinexa Receipt', payment: 'Perinexa Payment', creditNote: 'Perinexa Credit Note', debitNote: 'Perinexa Debit Note', journal: 'Perinexa Journal' };
+export const DEFAULT_VOUCHER_TYPES = { sales: 'Perinexa Sales', receipt: 'Perinexa Receipt', payment: 'Perinexa Payment', creditNote: 'Perinexa Credit Note', debitNote: 'Perinexa Debit Note', journal: 'Perinexa Journal', purchase: 'Perinexa Purchase' };
 
 // The GST duty accounts are never created by Perinexa's file: the accountant creates them in Tally with their GST
 // details (the tags for those are not published). Perinexa only names them.
@@ -77,6 +86,7 @@ export function withDefaults(raw = {}) {
       modes: { ...DEFAULT_LEDGERS.modes, ...plain(r.ledgers?.modes) },
       schemes: (r.ledgers?.schemes ?? []).map((s) => ({ scheme: s.scheme ?? '', ledger: s.ledger ?? '' })).filter((s) => s.scheme && s.ledger),
       pharmacySales: plain(r.ledgers?.pharmacySales),
+      pharmacyPurchases: plain(r.ledgers?.pharmacyPurchases),
     },
     voucherTypes: { ...DEFAULT_VOUCHER_TYPES, ...plain(r.voucherTypes) },
     updatedByName: r.updatedByName ?? '',

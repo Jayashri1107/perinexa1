@@ -157,6 +157,10 @@ const tenantSchema = new mongoose.Schema(
         inputSgst: { type: String, trim: true, maxlength: 100, default: undefined },
         inputIgst: { type: String, trim: true, maxlength: 100, default: undefined },
         purchaseReturns: { type: String, trim: true, maxlength: 100, default: undefined },
+        pharmacyPurchases: { type: Map, of: String, default: undefined }, // PH3: by GST rate
+        discountReceived: { type: String, trim: true, maxlength: 100, default: undefined },
+        purchaseCharges: { type: String, trim: true, maxlength: 100, default: undefined },
+        roundOff: { type: String, trim: true, maxlength: 100, default: undefined },
       },
       voucherTypes: { type: Map, of: String, default: undefined },
       updatedByName: { type: String, trim: true, maxlength: 100, default: '' },

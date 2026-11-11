@@ -22,7 +22,7 @@ export const STATUS_LOOK = {
   failed: { tone: 'high', label: 'Refused by Tally' },
   skipped: { tone: 'inactive', label: 'Skipped' },
 };
-export const KIND_WORDS = { sales: 'Sales', receipt: 'Receipt', payment: 'Payment', credit_note: 'Credit note', debit_note: 'Debit note', journal: 'Journal' };
+export const KIND_WORDS = { sales: 'Sales', receipt: 'Receipt', payment: 'Payment', credit_note: 'Credit note', debit_note: 'Debit note', journal: 'Journal', purchase: 'Purchase' };
 // The statuses inside a sentence ("7 waiting for Tally, 2 imported")
 const STATUS_WORDS = { exported: 'waiting for Tally', imported: 'imported', failed: 'refused by Tally', skipped: 'skipped' };
 
@@ -451,6 +451,9 @@ const SINGLE = [
   ['discount', 'Discount allowed'],
   ['exemptIssues', 'Medicines issued to admitted patients, if booked as exempt'],
   ['purchaseReturns', 'Purchase returns (stock sent back to a supplier)'],
+  ['discountReceived', 'Discount received on purchase bills'],
+  ['purchaseCharges', 'Freight and charges on purchase bills'],
+  ['roundOff', 'Rounding off (purchase bills)'],
 ];
 const GST = [
   ['outputCgst', 'Output CGST'],
@@ -466,6 +469,7 @@ const TYPES = [
   ['creditNote', 'Credit note'],
   ['debitNote', 'Debit note'],
   ['journal', 'Journal'],
+  ['purchase', 'Purchase'],
 ];
 const RATES = ['0', '5', '12', '18'];
 
@@ -576,6 +580,11 @@ export function TallySettingsPage() {
                 {SINGLE.map(([k, label]) => (
                   <Field key={k} label={label} id={`tally-${k}`}>
                     <input id={`tally-${k}`} value={v.ledgers[k] ?? ''} maxLength={100} onChange={ledger(k)} />
+                  </Field>
+                ))}
+                {rates.map((r) => (
+                  <Field key={`p${r}`} label={`Pharmacy purchases at ${r}% GST`} id={`tally-ppurch-${r}`}>
+                    <input id={`tally-ppurch-${r}`} value={v.ledgers.pharmacyPurchases?.[r] ?? ''} placeholder={Number(r) === 0 ? 'Pharmacy purchases exempt' : `Pharmacy purchases ${r}%`} maxLength={100} onChange={(e) => change({ ledgers: { ...v.ledgers, pharmacyPurchases: { ...v.ledgers.pharmacyPurchases, [r]: e.target.value } } })} />
                   </Field>
                 ))}
                 {rates.map((r) => (

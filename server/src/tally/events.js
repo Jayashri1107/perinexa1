@@ -16,7 +16,7 @@
 
 import { liveLines } from '../billing/money.js';
 import { dateWords } from '../careplans/dates.js';
-import { GST_ROLES, defaultPharmacySales } from './tallyRules.js';
+import { GST_ROLES, SUPPLIER_PAYMENT_ACCOUNT, defaultPharmacyPurchases, defaultPharmacySales } from './tallyRules.js';
 
 // ---------- Roles and account names ----------
 
@@ -32,6 +32,9 @@ const ROLE_WORDS = {
   isgst: 'Input SGST',
   iigst: 'Input IGST',
   preturns: 'Purchase returns',
+  pdiscount: 'Discount received on purchases',
+  pcharges: 'Freight and charges on purchases',
+  roundoff: 'Rounding off',
 };
 const GROUP_WORDS = { consultation: 'Consultation', procedure: 'Procedure', scan: 'Scan', lab: 'Lab test', inpatient: 'Inpatient', medicine: 'Medicine (hospital bill)', other: 'Other' };
 const MODE_WORDS = { cash: 'Cash', upi: 'UPI', card: 'Card', insurance: 'Insurance or scheme' };
@@ -79,6 +82,14 @@ export function ledgerFor(settings, role, parties = new Map()) {
       return L.inputIgst ?? '';
     case 'preturns':
       return L.purchaseReturns ?? '';
+    case 'ppurch':
+      return L.pharmacyPurchases?.[rest] || defaultPharmacyPurchases(rest);
+    case 'pdiscount':
+      return L.discountReceived ?? '';
+    case 'pcharges':
+      return L.purchaseCharges ?? '';
+    case 'roundoff':
+      return L.roundOff ?? '';
     case 'buyer':
     case 'supplier':
       return parties.get(role)?.ledger ?? '';
@@ -94,6 +105,7 @@ export function roleWords(role) {
   if (kind === 'mode') return `Money received by ${MODE_WORDS[rest] ?? rest}`;
   if (kind === 'insurance') return rest ? `Insurance or scheme: ${rest}` : 'Insurance or scheme (no scheme named)';
   if (kind === 'psales') return `Pharmacy sales at ${rest}% GST`;
+  if (kind === 'ppurch') return `Pharmacy purchases at ${rest}% GST`;
   if (kind === 'buyer') return `Business buyer with GSTIN ${rest}`;
   if (kind === 'supplier') return 'A supplier';
   return ROLE_WORDS[kind] ?? role;
@@ -119,7 +131,13 @@ export function parentGroupFor(role) {
     case 'mode':
       return role === 'mode:cash' ? 'Cash-in-Hand' : 'Bank Accounts';
     case 'preturns':
+    case 'ppurch':
       return 'Purchase Accounts';
+    case 'pdiscount':
+      return 'Indirect Incomes';
+    case 'pcharges':
+    case 'roundoff':
+      return 'Indirect Expenses';
     case 'supplier':
       return 'Sundry Creditors';
     default:
@@ -306,6 +324,37 @@ export function supplierReturnVector(ret, supplierRole) {
   return vec;
 }
 
+/**
+ * PH3: a purchase from a supplier (the GRN as entered): purchases by GST rate (after the line discounts), input GST,
+ * the bill's other discounts (received) and charges, the rupee rounding; the supplier is owed the net. No medicine
+ * names. null when the purchase has no tax fields (entered before the GRN, or a line without its pack): not sent.
+ * A cancelled purchase is empty – a purchase already sent is then reversed.
+ */
+export function purchaseVector(p, supplierRole) {
+  const vec = new Map();
+  if (!p.grn || !(p.lines ?? []).length || p.lines.some((l) => !l.pack || l.pack.taxablePaise == null)) return null;
+  if (p.status === 'cancelled') return vec;
+  const g = p.grn;
+  for (const l of p.lines) add(vec, `ppurch:${l.gstRate ?? 0}`, l.pack.taxablePaise);
+  add(vec, 'icgst', g.cgstPaise ?? 0);
+  add(vec, 'isgst', g.sgstPaise ?? 0);
+  add(vec, 'iigst', g.igstPaise ?? 0);
+  add(vec, 'pdiscount', -((g.schemeDiscPaise ?? 0) + (g.discPaise ?? 0) + (g.crnAdjPaise ?? 0)));
+  add(vec, 'pcharges', (g.otherChargesPaise ?? 0) + (g.surchargePaise ?? 0) + (g.freightPaise ?? 0));
+  add(vec, 'roundoff', g.roundingPaise ?? 0);
+  add(vec, supplierRole, -(g.netPaise ?? 0));
+  return vec;
+}
+
+/** PH11: a payment to a supplier: the supplier's account is paid from the money account of its mode. Cancelled: empty. */
+export function supplierPaymentVector(pay, supplierRole) {
+  const vec = new Map();
+  if (pay.cancelled) return vec;
+  add(vec, supplierRole, pay.amountPaise);
+  add(vec, `mode:${SUPPLIER_PAYMENT_ACCOUNT[pay.mode] ?? pay.mode}`, -pay.amountPaise);
+  return vec;
+}
+
 // ---------- Entries ----------
 
 /**
@@ -342,7 +391,7 @@ export function classifyBillDelta(delta) {
   return 'journal';
 }
 
-const SUFFIX = { sales: 'S', credit_note: 'CN', journal: 'J', debit_note: 'DN', receipt: 'R', payment: 'P' };
+const SUFFIX = { sales: 'S', credit_note: 'CN', journal: 'J', debit_note: 'DN', receipt: 'R', payment: 'P', purchase: 'PU' };
 /** The key (and Tally voucher number) of the next entry of a channel: the document's number first, then e.g. "/CN1". */
 export function nextKey(number, channel, kind, existing) {
   if (channel === 'deposits') return existing.length ? `${number}/DEP${existing.length + 1}` : `${number}/DEP`;
@@ -410,7 +459,7 @@ function billLastChange(bill, stay, dayOf) {
  *   the entries kept so far (lean TallyVoucher: key, kind, status, source, lines); dayOf: instant → hospital day (or null).
  * Returns { events, warnings, missing (roles without an account name), parties (role → { ledger, name, gstin, state }) }.
  */
-export function deriveEvents({ settings, booksFrom, from = booksFrom, to, bills, stays, earlierBills = [], invoices, supplierReturns, existing, dayOf }) {
+export function deriveEvents({ settings, booksFrom, from = booksFrom, to, bills, stays, earlierBills = [], invoices, supplierReturns, purchases = [], supplierPayments = [], existing, dayOf }) {
   const events = [];
   const warnings = [];
   const missing = new Set();
@@ -517,6 +566,33 @@ export function deriveEvents({ settings, booksFrom, from = booksFrom, to, bills,
     parties.set(role, { ledger: ret.supplierName, name: ret.supplierName, gstin: ret.supplierGstin ?? '', state: '' });
     const source = { model: 'SupplierReturn', id: String(ret._id), number: ret.number };
     push(channelEvent({ ...common, source, channel: 'main', current: supplierReturnVector(ret, role), existing: channelOf('SupplierReturn', String(ret._id), 'main'), firstKind: 'debit_note', laterKind: 'journal', date: d, lastChange: dayOf(ret.cancelled?.at), narration: `Perinexa debit note ${ret.number} to the supplier` }));
+  }
+
+  // PH3: purchases from suppliers (a cancelled one after it was sent is reversed); those without tax fields stay out
+  const untaxed = [];
+  for (const pu of purchases) {
+    const d = dayOf(pu.created?.at);
+    if (!withinBooks(d, booksFrom, to)) continue;
+    const role = `supplier:${pu.supplierId}`;
+    parties.set(role, { ledger: pu.supplierName, name: pu.supplierName, gstin: pu.supplierGstin ?? '', state: '' });
+    const current = purchaseVector(pu, role);
+    if (!current) {
+      untaxed.push(pu.number);
+      continue;
+    }
+    const source = { model: 'Purchase', id: String(pu._id), number: pu.number };
+    push(channelEvent({ ...common, source, channel: 'main', current, existing: channelOf('Purchase', String(pu._id), 'main'), firstKind: 'purchase', laterKind: 'journal', date: d, lastChange: dayOf(pu.cancelled?.at), narration: `Perinexa purchase ${pu.number}, supplier bill ${pu.invoiceNo}` }));
+  }
+  if (untaxed.length) warnings.push(`${untaxed.length} purchase${untaxed.length === 1 ? ' was' : 's were'} entered without the bill's tax (before the GRN form) and ${untaxed.length === 1 ? 'is' : 'are'} not sent: ${untaxed.slice(0, 10).join(', ')}${untaxed.length > 10 ? ' …' : ''}. The accountant enters ${untaxed.length === 1 ? 'it' : 'them'} by hand.`);
+
+  // PH11: payments to suppliers (a cancelled one after it was sent is reversed)
+  for (const pay of supplierPayments) {
+    const d = dayOf(pay.on);
+    if (!withinBooks(d, booksFrom, to)) continue;
+    const role = `supplier:${pay.supplierId}`;
+    parties.set(role, { ledger: pay.supplierName, name: pay.supplierName, gstin: pay.supplierGstin ?? '', state: '' });
+    const source = { model: 'SupplierPayment', id: String(pay._id), number: pay.number };
+    push(channelEvent({ ...common, source, channel: 'main', current: supplierPaymentVector(pay, role), existing: channelOf('SupplierPayment', String(pay._id), 'main'), firstKind: 'payment', laterKind: 'journal', date: d, lastChange: dayOf(pay.cancelled?.at), narration: `Perinexa payment ${pay.number} to the supplier${pay.reference ? `, ${pay.reference}` : ''}` }));
   }
 
   events.sort((a, b) => a.date - b.date || a.key.localeCompare(b.key));
