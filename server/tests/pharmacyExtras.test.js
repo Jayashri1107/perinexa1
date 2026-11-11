@@ -576,8 +576,9 @@ describe('returns to a supplier', () => {
     expect(ok(await ph('get', '/supplier-returns', undefined, 'admin')).returns.map((r) => [r.number, r.status])).toEqual([['SR-000001', 'cancelled']]);
     const csv = await ph('get', '/export?from=2026-09-01&to=2026-09-30&what=supplier_returns', undefined, 'admin');
     const rows = csv.text.split('\r\n').filter(Boolean);
-    expect(rows[0]).toMatch(/,Amount,Status$/);
-    expect(rows[1]).toMatch(/SR-000001,.*,472\.50,Cancelled$/);
+    // PH3: the supplier's credit note in the last three columns (none here)
+    expect(rows[0]).toMatch(/,Amount,Status,Supplier credit note,Credit note date,Credit note amount$/);
+    expect(rows[1]).toMatch(/SR-000001,.*,472\.50,Cancelled,,,$/);
 
     // A narcotic that comes back into stock needs a witness, as the return did; both are in its register with the balance
     const back = ok(await ph('post', '/supplier-returns', { supplierId: sup.id, reason: 'recalled', witness: { email: people.nurse.email, password: PASSWORD }, lines: [{ batchId: batch('Morphine 10 mg/ml').id, qty: 4 }] }), 201).return;

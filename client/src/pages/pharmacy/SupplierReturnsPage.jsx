@@ -9,6 +9,7 @@ import { Alert, Field, StatusPill, formatDate, formatDateTime } from '../../comp
 import { useFetch } from '../../hooks/useFetch.js';
 import { WitnessFields, emptyWitness } from '../../components/WitnessFields.jsx';
 import { dayLabel } from '../appointments/appointmentFormat.js';
+import { toPaise } from '../billing/billingFormat.js';
 import { SUPPLIER_RETURN_REASONS, debitSums, expiryLabel, medicineLabel, momentDay, returnBatchesShown, returnChosen, unitsLabel } from './pharmacyFormat.js';
 import { Modal, PharmacyHeader, PharmacyLetterhead, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
@@ -468,6 +469,70 @@ export function CancelReturnForm({ ret, onClose, onDone }) {
   );
 }
 
+/** PH3: the supplier's credit note for a return – number, date, amount – entered or corrected by the pharmacist. */
+function CreditNoteCard({ ret, onDone }) {
+  const c = ret.creditNote;
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ number: c?.number ?? '', date: c?.date ?? new Date().toISOString().slice(0, 10), amount: c ? (c.amountPaise / 100).toFixed(2) : (ret.totals.amountPaise / 100).toFixed(2) });
+  const s = useSend((out) => {
+    setOpen(false);
+    onDone(out);
+  });
+  const amountPaise = toPaise(form.amount);
+  const ready = form.number.trim() && /^\d{4}-\d{2}-\d{2}$/.test(form.date) && Number.isFinite(amountPaise) && amountPaise > 0;
+  const gap = Number.isFinite(amountPaise) ? amountPaise - ret.totals.amountPaise : 0;
+  return (
+    <section className="card bill-section" aria-labelledby="sr-cn-title">
+      <h2 id="sr-cn-title">Supplier’s credit note</h2>
+      {c && !open && (
+        <p>
+          {c.number}, dated {formatDate(c.date)} · {money(c.amountPaise)}
+          {c.amountPaise !== ret.totals.amountPaise ? ` (the debit note is ${money(ret.totals.amountPaise)})` : ''} · entered by {c.byName}{' '}
+          {ret.canCancel && (
+            <button type="button" className="btn btn-link btn-sm" onClick={() => setOpen(true)}>
+              Correct it
+            </button>
+          )}
+        </p>
+      )}
+      {!c && !open && (
+        <p className="muted">
+          Not received yet.{' '}
+          {ret.canCancel && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>
+              Enter the credit note
+            </button>
+          )}
+        </p>
+      )}
+      {open && (
+        <>
+          <Alert type="error">{s.error}</Alert>
+          <div className="form-grid">
+            <Field label="Credit note number" id="sr-cn-no" error={s.fields.number}>
+              <input id="sr-cn-no" maxLength={60} value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
+            </Field>
+            <Field label="Date" id="sr-cn-date" error={s.fields.date}>
+              <input id="sr-cn-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            </Field>
+            <Field label="Amount ₹" id="sr-cn-amt" error={s.fields.amountPaise} hint={gap ? `${money(Math.abs(gap))} ${gap > 0 ? 'more' : 'less'} than the debit note.` : 'Same as the debit note.'} keepHint>
+              <input id="sr-cn-amt" inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+            </Field>
+          </div>
+          <div className="row">
+            <button type="button" className="btn btn-primary" disabled={!ready || s.busy} onClick={() => s.send(`/pharmacy/supplier-returns/${ret.id}/credit-note`, { number: form.number.trim(), date: form.date, amountPaise })}>
+              {s.busy ? 'Saving…' : 'Save the credit note'}
+            </button>
+            <button type="button" className="btn btn-link" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export function SupplierReturnPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -571,8 +636,10 @@ export function SupplierReturnPage() {
         </section>
         <p className="hint">
           {typed}
-          {typedEnd}The supplier’s credit note is recorded by your accountant; Perinexa keeps the debit note and the stock.
+          {typedEnd}Perinexa keeps the debit note and the stock.
         </p>
+        {/* PH3 (docs/PHARMACY_BUILD_NOTE.md): the supplier's own credit note, entered when it arrives */}
+        {!cancelled && <CreditNoteCard ret={r} onDone={(out) => { setChanged(out.return); setFlash(`Supplier's credit note ${out.return.creditNote.number} recorded.`); }} />}
         {r.canCancel && (
           <p>
             <button type="button" className="btn btn-link btn-sm bill-cancel" onClick={() => setCancelling(true)}>

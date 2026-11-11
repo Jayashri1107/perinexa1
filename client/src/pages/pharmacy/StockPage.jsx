@@ -7,7 +7,7 @@ import { PrintDocument, PrintPreview } from '../../components/print/PrintPreview
 import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { WitnessFields, emptyWitness } from '../../components/WitnessFields.jsx';
-import { CONTROLLED, MOVE_LABELS, expiryLabel, medicineLabel } from './pharmacyFormat.js';
+import { CONTROLLED, MOVE_LABELS, expiryLabel, inPacks, medicineLabel } from './pharmacyFormat.js';
 import { BarcodeBox, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
 // Pharmacy → Stock: every medicine with its usable and expired stock, value, nearest expiry and the low mark; one
@@ -92,7 +92,8 @@ export function StockPage() {
           }
           columns={[
             { key: 'name', header: 'Medicine', render: (m) => <span>{medicineLabel(m)} <ScheduleMark schedule={m.schedule} />{!m.active && <span className="muted"> (stopped)</span>}</span> },
-            { key: 'qty', header: 'In stock', align: 'right', render: (m) => <span className="tabular">{m.qty} {m.unit}{m.qty === 1 ? '' : 's'}</span> },
+            // PH2: a medicine bought by the pack also in packs – "143 tablets – 14 strips and 3 tablets"
+            { key: 'qty', header: 'In stock', align: 'right', render: (m) => <span className="tabular">{m.qty} {m.unit}{m.qty === 1 ? '' : 's'}{m.packSize > 1 && m.qty >= m.packSize ? <span className="ph-line-note">{inPacks(m.qty, m)}</span> : null}</span> },
             {
               key: 'low',
               header: 'Status',

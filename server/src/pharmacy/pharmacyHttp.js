@@ -65,12 +65,28 @@ export const medicineView = (m, stock = null) => ({
   scheduleLabel: SCHEDULE_LABELS[m.schedule ?? ''],
   controlled: CONTROLLED.includes(m.schedule),
   reorderLevel: m.reorderLevel ?? 0,
+  manufacturer: m.manufacturer ?? '',
+  packSize: m.packSize ?? 1,
+  packName: m.packName ?? '',
+  looseSale: m.looseSale !== false,
   barcodes: m.barcodes ?? [],
   active: m.active,
   ...(stock != null ? { inStock: stock, low: m.active && stock <= (m.reorderLevel ?? 0) } : {}),
 });
 
-export const batchView = (b, t) => ({ id: String(b._id), batch: b.batch, expiry: isoDay(b.expiry), daysLeft: daysLeft(b.expiry, t), expired: isExpired(b, t), mrpPaise: b.mrpPaise, costPaise: b.costPaise, qtyLeft: b.qtyLeft, qtyIn: b.qtyIn });
+export const batchView = (b, t) => ({
+  id: String(b._id),
+  batch: b.batch,
+  expiry: isoDay(b.expiry),
+  daysLeft: daysLeft(b.expiry, t),
+  expired: isExpired(b, t),
+  mrpPaise: b.mrpPaise,
+  costPaise: b.costPaise,
+  qtyLeft: b.qtyLeft,
+  qtyIn: b.qtyIn,
+  // PH2: the pack's MRP and size, when the batch was bought by the pack
+  ...(b.packMrpPaise && b.unitsPerPack > 1 ? { packMrpPaise: b.packMrpPaise, unitsPerPack: b.unitsPerPack } : {}),
+});
 
 /** A supplier as the website gets it. */
 export const supplierView = (s) => ({ id: String(s._id), name: s.name, gstin: s.gstin ?? '', drugLicence: s.drugLicence ?? '', phone: s.phone ?? '', address: s.address ?? '', active: s.active });

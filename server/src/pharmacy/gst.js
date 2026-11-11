@@ -1,9 +1,19 @@
 // GST for pharmacy invoices. PURE. Medicines are sold at MRP, which already includes GST: the taxable value is worked
 // back from the amount, and the GST is split equally into CGST and SGST (a sale inside the state). Amounts in paise.
 
-/** A line's money: amount (after the sale's discount %), taxable value, GST, CGST, SGST. */
-export function lineMoney({ qty, mrpPaise, gstRate, discountPercent = 0 }) {
-  const gross = qty * mrpPaise;
+/**
+ * PH2: a line's value at MRP. A batch with its pack's MRP (`packMrpPaise`, `unitsPerPack`) is priced from the pack: a
+ * whole pack costs exactly its printed MRP, and loose units are rounded DOWN to the paisa once per line – so no way of
+ * splitting a pack costs more than its MRP (a strip of 15 at ₹100: 15 tablets ₹100.00, 7 tablets ₹46.66).
+ */
+export function grossOf(batch, qty) {
+  if (batch?.packMrpPaise && batch?.unitsPerPack > 1) return Math.floor((qty * batch.packMrpPaise) / batch.unitsPerPack);
+  return qty * batch.mrpPaise;
+}
+
+/** A line's money: amount (after the sale's discount %), taxable value, GST, CGST, SGST. grossPaise: grossOf(). */
+export function lineMoney({ qty, mrpPaise, gstRate, discountPercent = 0, grossPaise = null }) {
+  const gross = grossPaise ?? qty * mrpPaise;
   const amount = Math.round((gross * (100 - discountPercent)) / 100);
   const taxable = Math.round((amount * 100) / (100 + gstRate));
   const gst = amount - taxable;

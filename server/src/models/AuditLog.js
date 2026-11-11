@@ -324,6 +324,7 @@ export const AUDIT_ACTIONS = [
   'LAB_SETTINGS_CHANGED',
   // The lab's four features of 10 Nov 2026 (docs/LAB_BUILD_NOTE.md): the call about a critical result, nobody
   // reached, the doctor's acknowledgement, and a big change confirmed before the report
+  'PHARMACY_SUPPLIER_CREDIT_NOTE', // PH3: the supplier's credit note for a return entered
   'LAB_CRITICAL_CALL_NOTED',
   'LAB_CRITICAL_NOT_REACHED',
   'LAB_CRITICAL_ACKNOWLEDGED',
@@ -639,6 +640,7 @@ export const AUDIT_CATEGORIES = {
     'PHARMACY_ORDER_PRINTED',
     'PHARMACY_SUPPLIER_RETURNED',
     'PHARMACY_SUPPLIER_RETURN_CANCELLED',
+    'PHARMACY_SUPPLIER_CREDIT_NOTE',
     'PHARMACY_DEBIT_NOTE_PRINTED',
     'PHARMACY_EINVOICE_DOWNLOADED',
     'TALLY_SETTINGS_CHANGED',

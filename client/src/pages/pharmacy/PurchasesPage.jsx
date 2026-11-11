@@ -9,7 +9,7 @@ import { dayLabel } from '../appointments/appointmentFormat.js';
 import { toPaise } from '../billing/billingFormat.js';
 import { grnLineFigures, grnTotals } from './grnFormat.js';
 import { gstinProblem, gstinState } from './gstin.js';
-import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, medicineLabel, medicinesToCheck, orderLook, receiveLines, receivedFlash, scannedForPurchase } from './pharmacyFormat.js';
+import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, medicineLabel, medicinesToCheck, orderLook, receiveLines, receivedFlash, scannedForPurchase, packWords } from './pharmacyFormat.js';
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 
 // Pharmacy → Purchases (supplier invoices: stock in, batch by batch – also received against a purchase order),
@@ -282,7 +282,8 @@ export function SupplierPage() {
 
 let lineSeq = 0;
 // A line as typed: quantities, rate and MRP per pack of `conv` units of sale (GRN, owner 26 Oct 2026)
-const blankLine = (m, key) => ({ key, medicine: m, batch: '', expiry: '', conv: '1', qty: '', freeQty: '', rate: '', mrp: '', disc: '', gst: String(m.gstRate ?? 5) });
+// PH2: the pack (ConvF) starts as the medicine's own pack size
+const blankLine = (m, key) => ({ key, medicine: m, batch: '', expiry: '', conv: String(m.packSize > 1 ? m.packSize : 1), qty: '', freeQty: '', rate: '', mrp: '', disc: '', gst: String(m.gstRate ?? 5) });
 const emptyLine = (m) => blankLine(m, `${m.id}-${(lineSeq += 1)}`);
 const BILL_GST_RATES = [0, 5, 12, 18];
 const TAX_LABELS = { cgst_sgst: 'CGST + SGST', igst: 'IGST' };
@@ -481,7 +482,9 @@ export function NewPurchasePage() {
   const ours = gstinState(settings.data?.settings.gstin ?? '');
   const theirs = gstinState(supplier?.gstin ?? '');
   const taxType = taxChoice ?? (ours && theirs && ours.code !== theirs.code ? 'igst' : 'cgst_sgst');
-  const [extra, setExtra] = useState({ scheme: '', discPercent: '', crnAdj: '', other: '', surcharge: '', freight: '', receivedBy: '', remark: '' });
+  const [extra, setExtra] = useState({ scheme: '', discPercent: '', crnAdj: '', other: '', surcharge: '', freight: '', receivedBy: '', remark: '', printed: '' });
+  // PH3: the server's "the bill says ₹… but the lines add up to ₹…" – answered with Save as it is
+  const [differs, setDiffers] = useState(null);
   const setX = (field) => (e) => setExtra({ ...extra, [field]: e.target.value });
   const [enteredAt] = useState(() => new Date());
   const [editing, setEditing] = useState(null); // the pop-up: { line, isNew }
@@ -491,11 +494,18 @@ export function NewPurchasePage() {
   const [changedLines, setChangedLines] = useState(null);
   const lines = changedLines ?? orderLines;
   const setLines = (change) => setChangedLines((ls) => change(ls ?? orderLines));
-  const s = useSend((res) => {
+  const s = useSend(
+    (res) => {
     if (!res.order) return navigate(fromSupplier && fromSupplier === supplierId ? `/pharmacy/suppliers/${fromSupplier}` : '/pharmacy/purchases');
     const said = receivedFlash(res);
     return navigate(`/pharmacy/orders/${res.order.id}`, { state: said.warning ? { warning: said.text } : { flash: said.text } });
-  });
+    },
+    (err) => {
+      if (err.code !== 'BILL_TOTAL_DIFFERS') return false;
+      setDiffers(err.details ?? {});
+      return true;
+    },
+  );
   const put = (l) => setLines((ls) => (ls.some((y) => y.key === l.key) ? ls.map((y) => (y.key === l.key ? l : y)) : [...ls, l]));
   const scan = (m) => {
     const out = scannedForPurchase(m);
@@ -520,6 +530,9 @@ export function NewPurchasePage() {
     amountsOk ? bill : { taxType },
   );
   const toFill = parsed.filter((x) => !lineOk(x)).length;
+  // PH3: the bill's total as printed, against the sums (more than ₹1 apart is shown before saving)
+  const printedPaise = extra.printed.trim() ? toPaise(extra.printed) : null;
+  const printedGap = printedPaise != null && !Number.isNaN(printedPaise) ? printedPaise - sums.netPaise : null;
   const ok = supplierId && invoiceNo.trim() && parsed.length > 0 && !toFill && amountsOk && sums.netPaise >= 0;
   const closeTo = order ? `/pharmacy/orders/${order.id}` : fromSupplier ? `/pharmacy/suppliers/${fromSupplier}` : '/pharmacy/purchases';
 
@@ -535,14 +548,14 @@ export function NewPurchasePage() {
       </>
     );
   }
-  const save = () =>
+  const save = (totalConfirmed = false) =>
     s.send('/pharmacy/purchases', {
       supplierId,
       invoiceNo: invoiceNo.trim(),
       invoiceDate,
       ...(order ? { orderId: order.id } : {}),
       lines: parsed.map((x) => ({ medicineId: x.l.medicine.id, batch: x.l.batch.trim(), expiry: x.l.expiry, conv: x.conv, qty: x.qty, freeQty: x.free, ratePaise: x.rate, mrpPaise: x.mrp, discPercent: x.disc, gstRate: x.gst })),
-      grn: { ...bill, gateEntryNo: gateEntryNo.trim(), payment, receivedBy: extra.receivedBy.trim(), remark: extra.remark.trim() },
+      grn: { ...bill, gateEntryNo: gateEntryNo.trim(), payment, receivedBy: extra.receivedBy.trim(), remark: extra.remark.trim(), printedTotalPaise: printedPaise != null && !Number.isNaN(printedPaise) ? printedPaise : null, totalConfirmed },
     });
   return (
     <>
@@ -774,16 +787,41 @@ export function NewPurchasePage() {
               <Field label="Remark" id="pu-remark">
                 <input id="pu-remark" value={extra.remark} maxLength={300} onChange={setX('remark')} />
               </Field>
+              <Field
+                label="Bill total as printed ₹"
+                id="pu-printed"
+                hint={printedGap == null ? 'Type the supplier’s total to check the sums.' : Math.abs(printedGap) <= 100 ? 'Matches the sums (within ₹1).' : undefined}
+                error={printedGap != null && Math.abs(printedGap) > 100 ? `The lines add up to ${money(sums.netPaise)} – ${money(Math.abs(printedGap))} ${printedGap > 0 ? 'less' : 'more'} than the bill. Check the rates, discounts and GST.` : undefined}
+                keepHint
+              >
+                <input id="pu-printed" inputMode="decimal" value={extra.printed} onChange={setX('printed')} />
+              </Field>
             </div>
             <GrnSummary sums={sums} taxType={taxType} />
           </div>
           {!amountsOk && <p className="field-error">Write the amounts in rupees (for example 125.50) and the discount as 0 to 100 %.</p>}
           {amountsOk && sums.netPaise < 0 && <p className="field-error">The discounts are more than the bill.</p>}
+          {differs && (
+            <Alert type="warning" onClose={() => setDiffers(null)}>
+              The bill says {money(differs.printedTotalPaise)} but the lines add up to {money(differs.netPaise)}. Check the lines first; save the bill as it is only if the supplier’s total is wrong.{' '}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={s.busy}
+                onClick={() => {
+                  setDiffers(null);
+                  save(true);
+                }}
+              >
+                Save as it is
+              </button>
+            </Alert>
+          )}
           <div className="ph-grn-actions">
             <button type="button" className="btn btn-secondary" onClick={() => document.getElementById('pu-crn')?.focus()}>
               CRN adjust
             </button>
-            <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={save}>
+            <button type="button" className="btn btn-primary" disabled={!ok || s.busy} onClick={() => save(false)}>
               <Save aria-hidden="true" /> {s.busy ? 'Saving…' : 'Save and add to stock'}
             </button>
             <Link className="btn btn-secondary" to={closeTo}>
@@ -844,7 +882,7 @@ export function GrnSummary({ sums, taxType }) {
 
 // ---------- Medicines ----------
 
-const emptyMedicine = { name: '', generic: '', form: 'tablet', strength: '', unit: 'tablet', hsn: '3004', gstRate: 5, schedule: '', reorderLevel: 0, barcodes: [] };
+const emptyMedicine = { name: '', generic: '', form: 'tablet', strength: '', unit: 'tablet', hsn: '3004', gstRate: 5, schedule: '', reorderLevel: 0, manufacturer: '', packSize: 1, packName: '', looseSale: true, barcodes: [] };
 const MAX_BARCODES = 10;
 
 /**
@@ -911,7 +949,23 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
   const barcodes = pending && isBarcode(pending) && !m.barcodes.includes(pending) ? [...m.barcodes, pending] : m.barcodes;
   const barcodeError = Object.entries(s.fields).find(([k]) => k === 'barcodes' || k.startsWith('barcodes.'))?.[1];
   const gstRates = lists?.gstRates ?? [0, 5, 18];
-  const body = { name: m.name.trim(), generic: m.generic.trim(), form: m.form, strength: m.strength.trim(), unit: m.unit.trim(), hsn: m.hsn.trim(), gstRate: Number(m.gstRate), schedule: m.schedule, reorderLevel: Number(m.reorderLevel) || 0, barcodes };
+  const body = {
+    name: m.name.trim(),
+    generic: m.generic.trim(),
+    form: m.form,
+    strength: m.strength.trim(),
+    unit: m.unit.trim(),
+    hsn: m.hsn.trim(),
+    gstRate: Number(m.gstRate),
+    schedule: m.schedule,
+    reorderLevel: Number(m.reorderLevel) || 0,
+    // PH4 and PH2 (docs/PHARMACY_BUILD_NOTE.md)
+    manufacturer: (m.manufacturer ?? '').trim(),
+    packSize: Math.max(1, Math.min(1000, Number.parseInt(m.packSize, 10) || 1)),
+    packName: (m.packName ?? '').trim(),
+    looseSale: m.looseSale !== false,
+    barcodes,
+  };
   return (
     <Modal id="ph-med" title={medicine ? `Change ${medicine.name}` : 'Add a medicine'} onClose={onClose} wide>
       <Alert type="error">{s.error}</Alert>
@@ -962,7 +1016,21 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
         <Field label="Reorder level" id="med-reorder" hint="Low-stock alert at or below this">
           <input id="med-reorder" inputMode="numeric" value={m.reorderLevel} onChange={f('reorderLevel')} />
         </Field>
+        <Field label="Manufacturer" id="med-mfr" error={s.fields.manufacturer} hint="As on the pack – what a recall names.">
+          <input id="med-mfr" value={m.manufacturer ?? ''} maxLength={120} onChange={f('manufacturer')} />
+        </Field>
+        <Field label="Pack" id="med-packname" error={s.fields.packName} hint="strip, box, bottle … (empty: bought by the unit)">
+          <input id="med-packname" value={m.packName ?? ''} maxLength={20} onChange={f('packName')} />
+        </Field>
+        <Field label={`${m.unit || 'Unit'}s in a pack`} id="med-packsize" error={s.fields.packSize} hint="Purchases and the counter count in packs from this.">
+          <input id="med-packsize" inputMode="numeric" value={m.packSize ?? 1} onChange={f('packSize')} />
+        </Field>
       </div>
+      {Number(m.packSize) > 1 && (
+        <label className="check">
+          <input type="checkbox" checked={m.looseSale !== false} onChange={(e) => setM({ ...m, looseSale: e.target.checked })} /> A {m.packName || 'pack'} may be split at the counter (sold by the {m.unit || 'unit'})
+        </label>
+      )}
       <BarcodesField barcodes={m.barcodes} onChange={(list) => setM({ ...m, barcodes: list })} typed={typedBarcode} setTyped={setTypedBarcode} error={barcodeError} />
       {['X', 'narcotic'].includes(m.schedule) && <Alert type="warning">Controlled medicine: sold only to registered patients against a prescription with the doctor’s registration number; its own register; counts need a witness. Narcotics need the hospital’s NDPS recognition (RMI).</Alert>}
       <div className="row">
@@ -985,6 +1053,8 @@ export function MedicinesPage() {
   const canEdit = Boolean(settings.data?.canEdit);
   const [search, setSearch] = useState('');
   const toCheck = medicinesToCheck(res.data?.medicines);
+  // PH4: medicines in use without a manufacturer (a recall names one)
+  const noMaker = (res.data?.medicines ?? []).filter((m) => m.active && !m.manufacturer);
   const found = useMemo(() => {
     const all = res.data?.medicines;
     const q = search.toLowerCase();
@@ -1022,6 +1092,11 @@ export function MedicinesPage() {
             medicine that has none of these needs no change.
           </Alert>
         )}
+        {canEdit && noMaker.length > 0 && (
+          <Alert type="info">
+            {noMaker.length === 1 ? '1 medicine has' : `${noMaker.length} medicines have`} no manufacturer yet. A recall names the manufacturer and the batch: add it with Change when you next have the pack in hand.
+          </Alert>
+        )}
         <section className="card bill-section">
           <div className="ph-list-search">
             <SearchInput value={search} onChange={setSearch} placeholder="Find a medicine by name, generic name or barcode" label="Find a medicine" />
@@ -1053,6 +1128,8 @@ export function MedicinesPage() {
                     </td>
                     <td>
                       {FORM_LABELS[m.form]} · {m.unit}
+                      {m.packSize > 1 && <span className="ph-line-note">{packWords(m)}</span>}
+                      {m.manufacturer && <span className="ph-line-note">{m.manufacturer}</span>}
                     </td>
                     <td className="ph-med-tax">
                       {m.hsn || '–'} · {m.gstRate}%

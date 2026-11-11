@@ -119,6 +119,16 @@ export function readCsv(text) {
   return rows;
 }
 
+/** PH2: the units in a pack from what old software writes ("10", "10's", "1x10", "10 TAB", "1*15"); null if unclear. */
+export function packSizeOf(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return Number.isInteger(v) && v >= 1 && v <= 1000 ? v : null;
+  const t = String(v).toLowerCase().replace(/\s+/g, '');
+  const m = t.match(/^(?:\d+[x*])?(\d+)/);
+  const n = m ? Number(m[1]) : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= 1000 ? n : null;
+}
+
 // ---------- The columns ----------
 
 const key = (text) => String(text ?? '').toLowerCase().replace(/[^a-z0-9%]/g, '');
@@ -137,9 +147,12 @@ const HEADINGS = {
   schedule: ['schedule', 'sch', 'drugschedule', 'schtype'],
   form: ['form', 'dosageform', 'itemtype'],
   unit: ['unit', 'uom', 'units'],
+  // PH4 and PH2 (docs/PHARMACY_BUILD_NOTE.md): for a medicine new to the list
+  manufacturer: ['manufacturer', 'mfr', 'mfg', 'mfgby', 'company', 'companyname', 'make', 'marketedby'],
+  packSize: ['pack', 'packsize', 'packing', 'conv', 'convf', 'unitsperpack', 'perpack'],
 };
 export const NEEDED = ['name', 'batch', 'expiry', 'qty'];
-export const FIELD_LABELS = { name: 'Item name', batch: 'Batch', expiry: 'Expiry', qty: 'Quantity', mrp: 'MRP', mrpTotal: 'Total MRP', rate: 'Purchase rate', rateTotal: 'Total purchase value', gstRate: 'GST %', hsn: 'HSN', schedule: 'Schedule', form: 'Form', unit: 'Unit' };
+export const FIELD_LABELS = { name: 'Item name', batch: 'Batch', expiry: 'Expiry', qty: 'Quantity', mrp: 'MRP', mrpTotal: 'Total MRP', rate: 'Purchase rate', rateTotal: 'Total purchase value', gstRate: 'GST %', hsn: 'HSN', schedule: 'Schedule', form: 'Form', unit: 'Unit', manufacturer: 'Manufacturer', packSize: 'Pack size' };
 
 /** Which column holds each field, from a heading row: { field: column index }. */
 export function columnsOf(headings) {
@@ -245,6 +258,9 @@ export function stockLines(rows) {
       schedule: text('schedule'),
       form: text('form'),
       unit: text('unit'),
+      manufacturer: text('manufacturer'),
+      // "10", "10's", "1x10", "10 TAB": the units in a pack
+      packSize: packSizeOf(at(row, 'packSize')),
     });
   }
   const has = (f) => f in c;
