@@ -214,6 +214,25 @@ describe('bills and payments at the desk', () => {
     expect(actions.sort()).toEqual(['BILL_ITEM_ADDED', 'BILL_ITEM_ADDED', 'BILL_ITEM_REMOVED', 'DISCOUNT_GIVEN', 'PAYMENT_RECEIVED', 'PAYMENT_RECEIVED', 'REFUND_GIVEN']);
   });
 
+  it('another rate for a listed service: the billing department and the admin only, never ₹0, with the list price in the audit log (11 Nov 2026)', async () => {
+    const list = await prices({ consult_new: 50000, 'Surgeon fee': 4000000 });
+    const p = await register('Rate Mother');
+    await startVisit(p);
+    const [b] = await billsOf(p);
+    const surgeon = list.find((i) => i.name === 'Surgeon fee');
+    const line = (who, body) => as(who).then((s) => s.post(`/api/billing/bills/${b.id}/lines`).send({ priceItemId: surgeon.id, ...body }));
+    expect((await line('reception', { ratePaise: 3500000 })).status).toBe(403);
+    expect((await line('reception', { ratePaise: 4000000 })).status).toBe(201); // the list rate: anyone who bills
+    expect((await line('billing', { ratePaise: 0 })).status).toBe(400);
+    const lower = await line('billing', { ratePaise: 3500000 });
+    expect(lower.status).toBe(201);
+    expect(lower.body.bill.lines.at(-1)).toMatchObject({ name: 'Surgeon fee', ratePaise: 3500000, qty: 1, amountPaise: 3500000 });
+    const higher = await line('admin', { ratePaise: 4500000, qty: 2 });
+    expect(higher.body.bill.lines.at(-1)).toMatchObject({ ratePaise: 4500000, amountPaise: 9000000 });
+    const changed = await AuditLog.find({ tenantId: hospital._id, action: 'BILL_ITEM_ADDED', 'details.listPricePaise': 4000000 }).lean();
+    expect(changed.map((a) => a.details.ratePaise).sort()).toEqual([3500000, 4500000]);
+  });
+
   it('an unpaid bill can be cancelled; the next charge that day opens a new bill', async () => {
     await prices({ consult_new: 50000, consult_follow: 30000 });
     const p = await register('Cancel Mother');

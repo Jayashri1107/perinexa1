@@ -220,13 +220,20 @@ billingRouter.post('/bills/:id/lines', async (req, res) => {
   if (!item) throw new HttpError(400, 'Choose an item that is in use on the price list.', 'VALIDATION');
   if (!item.pricePaise && !body.ratePaise) throw Object.assign(new HttpError(400, 'This item has no price on the list: enter the amount.', 'VALIDATION'), { fields: { ratePaise: 'Enter the amount.' } });
   await refuseFetalSex(req, bill, { name: body.name });
-  const rate = item.pricePaise || body.ratePaise;
+  // A listed item at another rate for this bill (11 Nov 2026: surgeon, anaesthesia and OT differ per case) – the
+  // billing department and the hospital admin only; the list price is kept in the audit log beside the rate used
+  const otherRate = Boolean(item.pricePaise) && body.ratePaise != null && body.ratePaise !== item.pricePaise;
+  if (otherRate) {
+    assertRole(req, ['billing', 'admin'], 'Only the billing department or the hospital admin may change a listed rate.');
+    if (body.ratePaise < 1) throw Object.assign(new HttpError(400, 'Enter a rate above ₹0.', 'VALIDATION'), { fields: { ratePaise: 'Enter a rate above ₹0.' } });
+  }
+  const rate = otherRate ? body.ratePaise : item.pricePaise || body.ratePaise;
   // A confidential test keeps its neutral name on the bill, also when added by hand (labLineName)
   const listed = item.key?.startsWith('lab:') ? labLineName({ key: item.key.slice(4), name: item.name }) : item.name;
   if (body.doctorId && !(await Membership.exists({ tenantId: req.tenantId, userId: body.doctorId, roles: 'doctor', isActive: true }))) throw Object.assign(new HttpError(400, 'Choose a doctor of this hospital.', 'VALIDATION'), { fields: { doctorId: 'Choose a doctor of this hospital.' } });
   const after = await pushLines(req, bill._id, [{ item, name: !item.pricePaise && body.name ? body.name : listed, qty: body.qty, ratePaise: rate, source: 'manual', doctorId: body.doctorId ?? null }]);
   if (!after) throw (await Bill.exists({ tenantId: req.tenantId, _id: bill._id, final: { $ne: null } })) ? conflict(FINAL_MESSAGE, 'FINAL') : conflict('This bill was cancelled.', 'CANCELLED');
-  await audit(req, 'BILL_ITEM_ADDED', { details: ids(bill, { priceItemId: String(item._id), amountPaise: rate * body.qty }) });
+  await audit(req, 'BILL_ITEM_ADDED', { details: ids(bill, { priceItemId: String(item._id), amountPaise: rate * body.qty, ...(otherRate ? { ratePaise: rate, listPricePaise: item.pricePaise } : {}) }) });
   res.status(201).json({ bill: await viewOf(req, after) });
 });
 

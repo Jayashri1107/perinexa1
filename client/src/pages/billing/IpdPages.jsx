@@ -10,9 +10,10 @@ import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.js
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { ClearDialog, StayPaper } from '../beds/AdmissionDesk.jsx';
-import { AddItemDialog, DiscountDialog, PaymentDialog, ReasonDialog, linesByGroup } from './BillPage.jsx';
+import { AddItemDialog, DiscountDialog, PaymentDialog, ReasonDialog } from './BillPage.jsx';
 import { BillStatus } from './BillsPage.jsx';
 import { amountInWords } from './amountWords.js';
+import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
 import { GROUP_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
 import { InlineForms, Modal, useSend } from './billingUi.jsx';
 import { BILL_LAYOUTS, adminChargeOf, advanceTotal, billTitle, linesByDate, stayStep, summaryByGroup } from './ipdFormat.js';
@@ -200,7 +201,7 @@ export function IpdStaysPage() {
                       <WhoCell s={s} from={FROM} />
                       <WhenCell at={s.admittedAt} />
                       <PlaceCell s={s} />
-                      <td className="ipd-doc">{s.doctorName || '–'}</td>
+                      <td className="ipd-doc-cell">{s.doctorName || '–'}</td>
                       <td className="num tabular">{s.bill ? rupees(s.bill.total) : '–'}</td>
                       <td className="num tabular">{s.bill ? rupees(s.bill.paid) : '–'}</td>
                       <td className="num tabular">
@@ -328,7 +329,7 @@ export function IpdDischargesPage() {
                         <WhoCell s={s} from={FROM} />
                         <WhenCell at={s.dischargedAt} />
                         <PlaceCell s={s} />
-                        <td className="ipd-doc">{s.doctorName || '–'}</td>
+                        <td className="ipd-doc-cell">{s.doctorName || '–'}</td>
                         <td title={s.discharge?.label}>{s.discharge ? shortType(s.discharge.label) : <span className="muted">Not recorded</span>}</td>
                         <td className="num tabular">{s.bill ? rupees(s.bill.total) : '–'}</td>
                         <td className="num tabular">
@@ -566,16 +567,19 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   const [tab, setTab] = useState('services');
   const [group, setGroup] = useState('');
   const [showRemoved, setShowRemoved] = useState(false);
+  const [ticked, setTicked] = useState(() => new Set()); // lines ticked to take off together
   const [layout, setLayout] = useState('details');
   const [dialog, setDialog] = useState(initialDialog); // add | advance | refund | discharge | admin | concession | final | reopen | clear | { remove: line }
   const [printing, setPrinting] = useState(null); // 'bill' | 'gatepass'
   const [flash, setFlash] = useState(null);
   const data = res.data;
-  const done = (_out, message) => {
-    setDialog(null);
-    setFlash(message ?? null);
+  const done = (_out, message, { keepOpen = false } = {}) => {
+    setTicked(new Set());
     res.reload();
     onChanged?.();
+    if (keepOpen) return;
+    setDialog(null);
+    setFlash(message ?? null);
   };
 
   if (res.error && !data) return <div className={embedded ? '' : 'pf-content'}><Alert type="error">{res.error}</Alert></div>;
@@ -586,6 +590,15 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   const editable = open && !bill.final;
   const live = bill ? bill.lines.filter((l) => !l.removed) : [];
   const shown = bill ? bill.lines.filter((l) => (showRemoved || !l.removed) && (!group || l.group === group)) : [];
+  const tickable = editable ? shown.filter((l) => !l.removed) : [];
+  const tickedLines = tickable.filter((l) => ticked.has(l.id));
+  const tick = (id, on) =>
+    setTicked((set) => {
+      const next = new Set(set);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   const advance = bill ? advanceTotal(bill.payments) : 0;
   const refunds = bill ? bill.payments.filter((p) => p.kind === 'refund').reduce((s, p) => s + p.amountPaise, 0) : 0;
 
@@ -687,6 +700,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
           onDone={done}
         />
       )}
+      {dialog === 'removeTicked' && tickedLines.length > 0 && <RemoveTickedDialog bill={bill} lines={tickedLines} onClose={() => setDialog(null)} onDone={done} />}
       {dialog?.remove && (
         <ReasonDialog
           id="ipd-remove"
@@ -716,6 +730,8 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         </InlineForms.Provider>
         {step.next && !flash && <p className="muted">{step.next}</p>}
         {!bill && <Alert type="info">This stay has no bill.</Alert>}
+        {/* The entry strip of the hospital's old billing screen (11 Nov 2026): across the page, on one line */}
+        {editable && <ServiceEntryRow bill={bill} roles={activeMembership?.roles ?? []} onDone={done} onMore={() => setDialog('add')} />}
         <div className="ipd-layout">
           {/* Left: her details and the bill's sums */}
           <aside className="card ipd-side" aria-label="Patient and stay">
@@ -841,11 +857,6 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
             {bill && (
               <>
                 <div className="ipd-toolbar">
-                  {editable && (
-                    <button type="button" className="btn btn-secondary" onClick={() => setDialog('add')}>
-                      <Plus aria-hidden="true" /> Add services
-                    </button>
-                  )}
                   <span className="muted tabular">Bill {bill.number}</span>
                   {bill.final && (
                     <StatusPill tone="due" icon={FileCheck}>
@@ -883,11 +894,28 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                         <label>
                           <input type="checkbox" checked={showRemoved} onChange={(e) => setShowRemoved(e.target.checked)} /> Items taken off
                         </label>
+                        {tickedLines.length > 0 && (
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('removeTicked')}>
+                            Take off ticked ({tickedLines.length})
+                          </button>
+                        )}
                       </div>
                       <div className="table-scroll">
                         <table className="bill-report">
                           <thead>
                             <tr>
+                              <th scope="col" className="ipd-tick">
+                                {tickable.length > 0 ? (
+                                  <input
+                                    type="checkbox"
+                                    aria-label="Tick all items"
+                                    checked={tickedLines.length === tickable.length}
+                                    onChange={(e) => setTicked(new Set(e.target.checked ? tickable.map((l) => l.id) : []))}
+                                  />
+                                ) : (
+                                  <span className="sr-only">Tick</span>
+                                )}
+                              </th>
                               <th scope="col">Sr.</th>
                               <th scope="col">Date</th>
                               <th scope="col">Service</th>
@@ -909,13 +937,16 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                           <tbody>
                             {shown.length === 0 && (
                               <tr>
-                                <td colSpan={8} className="muted">
+                                <td colSpan={9} className="muted">
                                   No items.
                                 </td>
                               </tr>
                             )}
                             {shown.map((l, i) => (
                               <tr key={l.id} className={l.removed ? 'ipd-removed' : undefined}>
+                                <td className="ipd-tick">
+                                  {editable && !l.removed && <input type="checkbox" aria-label={`Tick ${l.name}`} checked={ticked.has(l.id)} onChange={(e) => tick(l.id, e.target.checked)} />}
+                                </td>
                                 <td>{i + 1}</td>
                                 <td>{l.addedAt ? formatDateTime(l.addedAt) : '–'}</td>
                                 <td>
@@ -1253,22 +1284,8 @@ function IpdBillPrint({ data, layout, onClose }) {
             </tbody>
           </table>
 
-          {layout === 'details' && (
-            <table className="bill-doc-lines">
-              {head}
-              {linesByGroup(lines).map((g) => (
-                <tbody key={g.group}>
-                  <tr className="bill-doc-group">
-                    <td />
-                    <th scope="rowgroup" colSpan={5}>
-                      {GROUP_LABELS[g.group] ?? 'Other'} charges
-                    </th>
-                  </tr>
-                  {g.lines.map(lineRow)}
-                </tbody>
-              ))}
-            </table>
-          )}
+          {/* As the hospital's old IP final bill (11 Nov 2026): under headings with their totals, the class beneath */}
+          {layout === 'details' && <HeadedBillLines lines={lines} classLabel={stay.ward} />}
           {layout === 'datewise' && (
             <table className="bill-doc-lines">
               {head}
@@ -1319,33 +1336,29 @@ function IpdBillPrint({ data, layout, onClose }) {
                 <th scope="row">Total amount</th>
                 <td>{rupees(bill.subtotal)}</td>
               </tr>
-              {bill.discount > 0 && (
-                <tr>
-                  <th scope="row">
-                    Concession{bill.discountInfo?.authorisedByName ? ` (authorised by ${bill.discountInfo.authorisedByName})` : ''}
-                  </th>
-                  <td>−{rupees(bill.discount)}</td>
-                </tr>
-              )}
               <tr>
-                <th scope="row">Net payable amount</th>
+                <th scope="row">
+                  Discount amount{bill.discountInfo?.authorisedByName ? ` (authorised by ${bill.discountInfo.authorisedByName})` : ''}
+                </th>
+                <td>{rupees(bill.discount ?? 0)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Net pay amount</th>
                 <td>{rupees(bill.total)}</td>
               </tr>
               <tr>
-                <th scope="row">Advance and payments</th>
+                <th scope="row">Paid amount</th>
                 <td>{rupees(bill.paid)}</td>
               </tr>
-              {bill.balance !== 0 && (
-                <tr className="bill-doc-balance">
-                  <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance'}</th>
-                  <td>{rupees(Math.abs(bill.balance))}</td>
-                </tr>
-              )}
+              <tr className="bill-doc-balance">
+                <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
+                <td>{rupees(Math.abs(bill.balance))}</td>
+              </tr>
             </tbody>
           </table>
         </div>
         <p className="bill-doc-words">
-          <strong>Net payable in words:</strong> {amountInWords(bill.total)}
+          <strong>Amount in words:</strong> {amountInWords(bill.total)}
         </p>
         {bill.payments.length > 0 && (
           <p className="pdoc-small">
