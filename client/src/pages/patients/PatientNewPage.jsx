@@ -437,7 +437,14 @@ export function PatientNewPage() {
               }
               careType={careType}
               beforeActions={canCharge && careType ? <RegistrationCharges charges={charges} onCharges={setCharges} /> : null}
-              onCareTypeChange={(type) => navigate({ pathname: `/patients/new/${type}`, search: location.search }, { replace: true, state: location.state })}
+              onCareTypeChange={(type, { followUp = false } = {}) => {
+                // "Baby – vaccination or follow-up" chosen from another type of care keeps ?for=followup (11 Nov 2026)
+                const search = new URLSearchParams(location.search);
+                if (followUp) search.set('for', 'followup');
+                else search.delete('for');
+                const text = search.toString();
+                navigate({ pathname: `/patients/new/${type}`, search: text ? `?${text}` : '' }, { replace: true, state: location.state });
+              }}
               part="info"
               onSubmit={save}
               submitLabel="Register patient"

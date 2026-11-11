@@ -479,7 +479,30 @@ export function PatientForm({
   // (lmpCarryOver): Antenatal → Abortion (the same pregnancy), and back only for an old threatened miscarriage. Judged
   // from the stored type, so passing through another type first changes nothing. An LMP copied into the pregnancy
   // says so under the field until it is changed by hand or the type changes again.
+  // "Baby – vaccination or follow-up" in the Type of care list (11 Nov 2026): still a baby's record; the choice only
+  // sets the birth details for an older baby (date of birth only) and, registering, the Pediatric department
+  const FOLLOW_UP = 'newborn:followup';
+  const babyChoice = (next) => {
+    if (!isNewborn || !next.startsWith('newborn')) return false;
+    const followUp = next === FOLLOW_UP;
+    setV({ ...v, newborn: { ...v.newborn, birthTimeKnown: !followUp, birthDate: v.newborn.birthDate || (v.newborn.birthAt ?? '').slice(0, 10) }, ...(followUp && !isEdit && !v.department ? { department: 'Pediatric' } : {}) });
+    return true;
+  };
+  const typeOptions = (disabledFor) =>
+    CARE_TYPES.flatMap((t) => [
+      <option key={t} value={t} disabled={disabledFor?.(t)}>
+        {CARE_TYPE_LABELS[t]}
+      </option>,
+      ...(t === 'newborn'
+        ? [
+            <option key={FOLLOW_UP} value={FOLLOW_UP} disabled={disabledFor?.(t)}>
+              Baby – vaccination or follow-up
+            </option>,
+          ]
+        : []),
+    ]);
   const setCareType = (e) => {
+    if (babyChoice(e.target.value)) return;
     const next = e.target.value;
     unmark('careType');
     const out = { ...v, careType: next };
@@ -554,6 +577,8 @@ export function PatientForm({
 
   const type = isEdit ? v.careType : (careType ?? v.careType);
   const isNewborn = type === 'newborn';
+  const typeValue = isNewborn && !v.newborn.birthTimeKnown ? FOLLOW_UP : type;
+  const typeHint = typeValue === FOLLOW_UP ? 'Older baby: date of birth only, Pediatric' : CARE_TYPE_HINTS[type];
   const clinical = access.canEditClinical;
   const firstPregnancy = isFirstPregnancy(type, v.obstetric);
   const fe = (path) => fieldErrors[path];
@@ -752,24 +777,23 @@ export function PatientForm({
                     {/* Editing a record: the type of care can be changed here. Registering: chosen from the New patient menu, and
                         changed here if the menu choice was wrong. */}
                     {!isEdit && onCareTypeChange && (
-                      <Field label="Type of care" id="careType" hint={CARE_TYPE_HINTS[type]}>
-                        <select id="careType" value={type} onChange={(e) => onCareTypeChange(e.target.value)}>
-                          {CARE_TYPES.map((t) => (
-                            <option key={t} value={t}>
-                              {CARE_TYPE_LABELS[t]}
-                            </option>
-                          ))}
+                      <Field label="Type of care" id="careType" hint={typeHint}>
+                        <select
+                          id="careType"
+                          value={typeValue}
+                          onChange={(e) => {
+                            if (babyChoice(e.target.value)) return;
+                            onCareTypeChange(e.target.value === FOLLOW_UP ? 'newborn' : e.target.value, { followUp: e.target.value === FOLLOW_UP });
+                          }}
+                        >
+                          {typeOptions()}
                         </select>
                       </Field>
                     )}
                     {isEdit && (
-                      <Field label="Type of care" id="careType" error={fe('careType')} hint={CARE_TYPE_HINTS[type]}>
-                        <select id="careType" value={type} onChange={setCareType}>
-                          {CARE_TYPES.map((t) => (
-                            <option key={t} value={t} disabled={(t === 'newborn') !== (patient.careType === 'newborn')}>
-                              {CARE_TYPE_LABELS[t]}
-                            </option>
-                          ))}
+                      <Field label="Type of care" id="careType" error={fe('careType')} hint={typeHint}>
+                        <select id="careType" value={typeValue} onChange={setCareType}>
+                          {typeOptions((t) => (t === 'newborn') !== (patient.careType === 'newborn'))}
                         </select>
                       </Field>
                     )}
