@@ -352,7 +352,7 @@
 .bill-totals .bill-balance th, .bill-totals .bill-balance td { font-size: var(--fs-h3); line-height: var(--lh-h3); padding-top: var(--space-2); }
 .bill-head { box-shadow: var(--shadow-card); }
 .bill-head-grid dd { font-size: var(--fs-body); }
-@media (max-width: 1100px) { .bill-body { grid-template-columns: 1fr; } .bill-body > .bill-totals { position: static; justify-self: end; width: min(100%, 420px); } }
+@media (max-width: 1500px) { .bill-body { grid-template-columns: 1fr; } .bill-body > .bill-totals { position: static; justify-self: end; width: min(100%, 420px); } }
 .bill-add-step { padding-bottom: var(--space-3); margin-bottom: var(--space-3); border-bottom: 1px solid var(--card-border); }
 .bill-add-title { display: flex; align-items: center; gap: var(--space-2); }
 .bill-add-num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--indigo-700); color: var(--on-solid); font-size: var(--fs-label); font-weight: 600; flex-shrink: 0; }
@@ -388,8 +388,14 @@
 .ipd-tabs [role='tab']:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
 .ipd-panel { min-height: 160px; }
 .ipd-filters { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; margin-bottom: var(--space-2); }
-.ipd-removed td { color: var(--slate-600); text-decoration: line-through; }
-.ipd-removed td .muted { text-decoration: none; }
+/* A removed line (11 Nov 2026): shaded, the service and amounts struck through, who removed it and why beneath, a
+   Removed pill in the last column (colour + icon + word) */
+.ipd-panel .bill-report tr.ipd-removed td { color: var(--slate-600); background: var(--status-inactive-bg); }
+.ipd-removed .svc-name, .ipd-removed td.num { text-decoration: line-through; }
+.svc-removed-why { display: block; font-size: 0.8125rem; color: var(--slate-600); text-decoration: none; }
+.svc-action { white-space: nowrap; text-align: right; }
+.svc-remove { color: var(--status-high-fg); }
+.svc-remove svg.lucide { width: 14px; height: 14px; }
 .ipd-foot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-4); align-items: start; padding-top: var(--space-3); border-top: 1px solid var(--border); }
 .ipd-layouts { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .ipd-layouts legend { font-size: 0.8125rem; color: var(--slate-600); padding: 0; }
@@ -495,7 +501,7 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .ipd-name:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
 .ipd-sub { display: block; font-size: 0.8125rem; color: var(--slate-600); }
 .ipd-when span:first-child, .ipd-place span:first-child { display: block; }
-.ipd-doc { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.ipd-doc-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 .ipd-act-col { text-align: right; width: 1%; }
 .ipd-row-actions { flex-wrap: nowrap; justify-content: flex-end; }
 @media (max-width: 719px) {
@@ -514,10 +520,140 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .ipd-main .bill-report { margin-bottom: 0; }
 .ipd-main .bill-report th, .ipd-main .bill-report td { padding: var(--space-2); }
 .ipd-main .bill-report td:nth-child(2) { white-space: nowrap; }
-.ipd-main .bill-report td:nth-child(3) { min-width: 180px; }
 .ipd-page .ipd-layout { grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); }
 /* A form opened in the IPD bill page: a panel above the bill, its heading and Close on one row */
 .inline-form { border: 1px solid var(--indigo-200); box-shadow: var(--shadow-card); scroll-margin-top: var(--space-12); outline: none; }
 .inline-form-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .inline-form-head h2 { margin: 0; font-size: 1.125rem; }
 .inline-form .row { margin-top: var(--space-4); }
+
+/* The entry strip and tick boxes (11 Nov 2026), as on the hospital's old billing screen: one band across the page –
+   Service name, Rate, Qty, Doctor name, Total amount, Add – on one line from 1100px; it wraps on smaller screens */
+.svc-entry { margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--surface); border: 1px solid var(--card-border); border-left: 4px solid var(--indigo-800); border-radius: var(--radius-sm); }
+.svc-entry-row { display: grid; grid-template-columns: minmax(220px, 3fr) 110px 70px minmax(150px, 2fr) 120px auto; gap: var(--space-3); align-items: end; }
+.svc-entry-row .field { margin: 0; min-width: 0; }
+.svc-entry-row .field label { font-size: 0.8125rem; font-weight: 600; }
+.svc-entry-row select, .svc-entry-row input { width: 100%; min-width: 0; }
+.svc-entry-row input#svc-entry-rate, .svc-entry-row input#svc-entry-qty { text-align: right; }
+.svc-entry-total { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.svc-entry-total-label { font-size: 0.8125rem; font-weight: 600; }
+.svc-entry-total strong { display: block; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--mist-50); text-align: right; font-size: 1rem; }
+.svc-entry-row > .btn { min-width: 96px; justify-content: center; }
+.svc-entry-hint { margin: var(--space-2) 0 0; font-size: 0.8125rem; }
+.svc-entry-hint:empty { display: none; }
+@media (max-width: 1100px) {
+  .svc-entry-row { grid-template-columns: 1fr 1fr 1fr; grid-auto-flow: row dense; }
+  .svc-entry-row > .field:first-child, .svc-entry-row > .field:nth-child(4) { grid-column: span 3; }
+}
+@media (max-width: 560px) {
+  .svc-entry-row { grid-template-columns: 1fr 1fr; }
+  .svc-entry-row > .field:first-child, .svc-entry-row > .field:nth-child(4) { grid-column: span 2; }
+}
+.ipd-tick, .bill-lines .bill-col-tick { width: 36px; text-align: center; }
+
+/* The bill's tabs as the old system's grid: a dark header, close rows, every other row shaded */
+.ipd-panel .bill-report { width: 100%; border-collapse: collapse; border: 1px solid var(--border); font-size: 0.875rem; }
+.ipd-panel .bill-report thead th { background: var(--indigo-800); color: var(--surface); font-weight: 600; padding: var(--space-2); border-right: 1px solid var(--indigo-600); white-space: nowrap; }
+.ipd-panel .bill-report td { padding: 6px var(--space-2); border-right: 1px solid var(--border); }
+.ipd-panel .bill-report td.num { white-space: nowrap; }
+.ipd-panel .bill-report tbody tr:nth-child(even) td { background: var(--mist-50); }
+.ipd-panel .bill-report tbody tr:hover td { background: var(--indigo-100); }
+
+/* The printed bill under headings with their totals (billHeads.js), the class beneath each heading */
+.bill-doc-headed .bill-doc-group th { text-decoration: none; }
+.bill-doc-headed .bill-doc-group td { font-weight: 600; padding-top: 2mm; }
+.bill-doc-class { display: block; font-weight: 600; font-size: 0.85em; text-transform: uppercase; }
+.bill-doc-headed tbody { border-bottom: 1px solid var(--print-rule); }
+.bill-doc-headed .bill-doc-indent { padding-left: 6mm; }
+
+/* The IPD bill's left panel and foot (11 Nov 2026), as the old screen: each label beside its value in close rows; the
+   sums in one column on the right with administrative charges and the concession inside it */
+.ipd-facts.ipd-facts-rows { grid-template-columns: 1fr; gap: 0; }
+.ipd-facts-rows > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-2); align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--card-border); }
+.ipd-facts-rows > div:last-child { border-bottom: 0; }
+.ipd-facts-rows dt { font-size: 0.8125rem; }
+.ipd-facts-rows dd { font-size: 0.875rem; font-weight: 500; }
+.ipd-facts-rows .ipd-who { display: block; padding: 0 0 var(--space-2); }
+.ipd-facts-rows .ipd-who dt { font-size: 0.75rem; }
+.ipd-facts-rows .ipd-who dd { font-size: 1rem; }
+.ipd-page .ipd-foot { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: end; }
+.ipd-foot-note { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.ipd-foot-note p { margin: 0; font-size: 0.875rem; }
+.ipd-page .ipd-totals { padding: var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-sm); background: var(--mist-50); gap: var(--space-2); }
+.ipd-page .ipd-totals > div { align-items: center; }
+.ipd-page .ipd-totals dt { display: flex; align-items: center; gap: var(--space-2); font-size: 0.875rem; }
+.ipd-page .ipd-totals dt .btn { padding: 0; min-height: 0; }
+.ipd-page .ipd-totals .ipd-net dt, .ipd-page .ipd-totals .ipd-net dd { font-size: 1rem; color: var(--ink); }
+@media (max-width: 900px) { .ipd-page .ipd-foot { grid-template-columns: 1fr; } }
+
+/* The left panel's bill box and discharge (11 Nov 2026): rows like the details above, the balance stressed */
+.ipd-facts-rows > div { grid-template-columns: 104px minmax(0, 1fr); }
+.ipd-side-title { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--card-border); font-size: 0.9375rem; }
+.ipd-sums.ipd-sums-rows { grid-template-columns: 1fr; gap: 0; padding: var(--space-1) var(--space-3); }
+.ipd-sums-rows > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); padding: 6px 0; border-bottom: 1px solid var(--card-border); }
+.ipd-sums-rows dt { font-size: 0.8125rem; }
+.ipd-sums-rows dd { font-size: 0.875rem; font-weight: 500; }
+.ipd-sums-rows .ipd-sums-balance { border-bottom: 0; }
+.ipd-sums-rows .ipd-sums-balance dt { font-weight: 600; color: var(--ink); font-size: 0.875rem; }
+.ipd-sums-rows .ipd-sums-balance dd { font-weight: 700; font-size: 1.125rem; }
+.ipd-side-note { margin: 0; font-size: 0.8125rem; }
+.unpaid-table .ipd-sub { display: block; }
+.unpaid-table td.unpaid-wrap { white-space: normal; min-width: 120px; }
+.ipd-page .ipd-layout { grid-template-columns: minmax(270px, 300px) minmax(0, 1fr); }
+.ipd-facts-rows dd { overflow-wrap: normal; }
+
+/* Service name as a box to type in (11 Nov 2026): the matching services drop down under it */
+.svc-pick { position: relative; }
+.svc-pick-box { position: relative; display: block; }
+.svc-pick-box svg { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--slate-600); pointer-events: none; }
+.svc-pick-box input { padding-left: calc(var(--space-3) + 22px); }
+.svc-pick-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); min-width: 320px; max-height: 320px; overflow-y: auto; margin: 0; padding: var(--space-1) 0; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-card); }
+.svc-pick-opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-3); padding: 6px var(--space-3); cursor: pointer; font-size: 0.875rem; }
+.svc-pick-opt.is-active { background: var(--indigo-100); }
+.svc-pick-group { grid-column: 1 / -1; margin: var(--space-1) 0 2px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--slate-600); }
+.svc-pick-price { color: var(--slate-600); }
+.svc-pick-none { padding: var(--space-2) var(--space-3); font-size: 0.875rem; color: var(--slate-600); }
+
+/* The IPD bill page fits the screen (11 Nov 2026): closer spacing, the entry strip on one line with "Add several" beside
+   Add, the patient panel's rows closer; on a laptop the panel narrows, on a tablet it goes above the bill */
+.ipd-page { display: flex; flex-direction: column; gap: var(--space-3); }
+.ipd-page > .alert, .ipd-page > .ipd-next { margin: 0; }
+.ipd-page .svc-entry { margin-bottom: 0; padding: var(--space-2) var(--space-3); }
+.svc-entry-go { display: flex; align-items: center; gap: var(--space-1); }
+.svc-entry-go .btn-link { white-space: nowrap; }
+.svc-entry-hint { margin-top: var(--space-1); }
+.ipd-page .ipd-side { padding: var(--space-3); gap: var(--space-2); }
+.ipd-facts-rows > div { padding: 3px 0; }
+.ipd-facts-rows .ipd-who { padding-bottom: var(--space-1); }
+.ipd-sums-rows > div { padding: 4px 0; }
+.ipd-page .ipd-main { padding: var(--space-3); }
+.ipd-page .ipd-panel .bill-report td { padding: 4px var(--space-2); }
+.ipd-page .svc-remove { padding: 2px var(--space-2); min-height: 0; }
+@media (max-width: 1280px) {
+  .ipd-page .ipd-layout { grid-template-columns: 240px minmax(0, 1fr); }
+  .ipd-facts-rows > div { grid-template-columns: 88px minmax(0, 1fr); }
+}
+@media (max-width: 1100px) {
+  .ipd-page .ipd-layout { grid-template-columns: 1fr; }
+  .ipd-page .ipd-facts-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); }
+  .ipd-page .ipd-facts-rows .ipd-who { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .ipd-page .ipd-facts-rows { grid-template-columns: 1fr; }
+}
+/* The services table on a laptop: the time under the date, room for the service name, amounts and Remove on one line */
+.ipd-page .ipd-panel .bill-report .ipd-when span { display: block; white-space: nowrap; }
+.ipd-page .ipd-panel .bill-report .ipd-when .ipd-sub { font-size: 0.75rem; }
+.ipd-page .ipd-panel .svc-table td:nth-child(4) { min-width: 170px; }
+.ipd-page .ipd-panel .bill-report .svc-action { width: 1%; }
+.ipd-page .ipd-panel .bill-report th { white-space: nowrap; }
+@media (max-width: 1440px) {
+  .ipd-page .svc-remove-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ipd-page .ipd-panel .svc-remove { padding: 4px 6px; }
+}
+.unpaid-phone { display: inline-flex; align-items: center; gap: 2px; }
+.unpaid-phone svg { width: 12px; height: 12px; }
+/* The OPD bill page (11 Nov 2026): the entry strip across the page as on the IPD bill */
+.bill-page > .svc-entry { margin: 0 0 var(--space-4); }
+/* The bill header: the title row takes the full width, so Print, UPI link and Take payment sit at its right */
+.ph-pay-foot .ph-main { flex: 1 1 100%; }

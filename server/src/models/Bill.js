@@ -83,6 +83,10 @@ const billSchema = new mongoose.Schema(
     reopened: { type: [new mongoose.Schema({ ...stamp, reason: String }, { _id: false })], default: [] },
     payments: { type: [paymentSchema], default: [] },
     insurance: { type: insuranceSchema, default: null },
+    // Cashless insurance (11 Nov 2026): the amount the insurer or TPA approved for this bill. It comes off what the
+    // patient pays at once (billing/money.js); the insurer's money is a payment by Insurance. Each change is in the
+    // audit log (INSURANCE_CLAIM_SET, with the amount before). null = none.
+    claim: { type: new mongoose.Schema({ approvedPaise: { type: Number, min: 1, required: true }, ...stamp }, { _id: false }), default: null },
     status: { type: String, enum: ['open', 'cancelled'], default: 'open' },
     cancelled: { type: new mongoose.Schema({ ...stamp, reason: String }, { _id: false }), default: null },
   },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, Minus, PencilLine, Plus, Printer, RotateCcw, Search, Tag, Wallet, X } from 'lucide-react';
+import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, PencilLine, Printer, RotateCcw, ShieldCheck, Tag, Trash2, Wallet, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -16,8 +16,9 @@ import { BillStatus } from './BillsPage.jsx';
 import { TallyMarks } from './TallyPage.jsx';
 import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
 import { Modal, useSend } from './billingUi.jsx';
-import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { amountInWords } from './amountWords.js';
+import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
+import { ClaimDialog, claimRows, hasClaim } from './InsuranceClaim.jsx';
 
 // One bill (billing): its items (added by the work done, or by reception from the price list), discount, payments,
 // deposits and refunds, and what is still to pay or to give back. Reception (and the hospital admin) do everything,
@@ -25,268 +26,20 @@ import { amountInWords } from './amountWords.js';
 // Billing extras (BillingExtras.jsx): insurance or scheme details, the claim form and the PM-JAY claim sheet (A4), and
 // the UPI payment link – which records nothing; the payment is recorded here with "Take payment".
 
-// Adding items (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md: "make sure it get easy to add them"): type a few
-// letters or tap a common item, it goes into a list; change the quantity with − and +; choose the doctor once; one
-// button adds them all. Lab tests, scans, beds, nursing, ward rounds and medicines come onto the bill by themselves.
-const QUICK_GROUPS = ['consultation', 'procedure', 'inpatient', 'other'];
-
-export function AddItemDialog({ bill, onClose, onDone }) {
-  const prices = useFetch('/billing/prices');
-  const doctors = useFetch('/tenant/doctors'); // with each doctor's department (Admin → Users)
-  const [query, setQuery] = useState('');
-  const [basket, setBasket] = useState([]); // { item, qty, amount, name }
-  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
-  const [picking, setPicking] = useState(false);
-  const [doctorId, setDoctorId] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const all = (prices.data?.items ?? []).filter((i) => i.active);
-  const allDoctors = doctors.data?.doctors ?? [];
-  const ownDoctor = allDoctors.find((d) => d.name === bill.doctorName);
-  const departments = departmentsWithDoctors(allDoctors);
-  const [department, setDepartment] = useState(null); // null: her doctor's department
-  const dept = department ?? ownDoctor?.department ?? '';
-  const doctorList = allDoctors.filter((d) => inDepartment(d, dept));
-  const chosenDoctor = doctorId ?? (doctorList.some((d) => d.id === ownDoctor?.id) ? ownDoctor.id : '');
-  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const found = all.filter((i) => words.every((w) => i.name.toLowerCase().includes(w)));
-  // Common items: those with a price in the groups reception adds by hand (consultation first); if none is priced yet, the consultations
-  const priced = all.filter((i) => QUICK_GROUPS.includes(i.group) && i.pricePaise > 0).sort((x, y) => QUICK_GROUPS.indexOf(x.group) - QUICK_GROUPS.indexOf(y.group));
-  const quick = (priced.length ? priced : all.filter((i) => i.group === 'consultation')).slice(0, 12);
-
-  const add = (item) =>
-    setBasket((list) => (list.some((r) => r.item.id === item.id) ? list.map((r) => (r.item.id === item.id ? { ...r, qty: r.qty + 1 } : r)) : [...list, { item, qty: 1, amount: '', name: '' }]));
-  const change = (id, patch) => setBasket((list) => list.map((r) => (r.item.id === id ? { ...r, ...patch } : r)));
-  const drop = (id) => setBasket((list) => list.filter((r) => r.item.id !== id));
-  const rateOf = (r) => (r.item.pricePaise ? r.item.pricePaise : toPaise(r.amount));
-  const ready = basket.length > 0 && basket.every((r) => Number.isInteger(r.qty) && r.qty >= 1 && rateOf(r) > 0);
-  const total = basket.reduce((sum, r) => sum + (rateOf(r) > 0 ? rateOf(r) * r.qty : 0), 0);
-  const hasMedicine = basket.some((r) => r.item.group === 'medicine');
-
-  const addAll = async () => {
-    setBusy(true);
-    setError(null);
-    let last = null;
-    const left = [...basket];
-    try {
-      while (left.length) {
-        const r = left[0];
-        const needsAmount = !r.item.pricePaise;
-        last = await api(`/billing/bills/${bill.id}/lines`, {
-          method: 'POST',
-          body: {
-            priceItemId: r.item.id,
-            qty: r.qty,
-            ...(needsAmount ? { ratePaise: rateOf(r), ...(r.name.trim().length >= 2 ? { name: r.name.trim() } : {}) } : {}),
-            ...(chosenDoctor ? { doctorId: chosenDoctor } : {}),
-          },
-        });
-        left.shift();
-      }
-      onDone(last, `Added ${basket.length} item${basket.length > 1 ? 's' : ''}: ${rupees(total)}.`);
-    } catch (err) {
-      // What was added stays on the bill; what is left stays in the list to try again
-      setBasket(left);
-      setError(`${left[0].item.name}: ${err.message}`);
-      setBusy(false);
-      if (last) onDone(last, null, { keepOpen: true });
-    }
-  };
-
-  return (
-    <Modal id="bill-add" title="Add items" wide onClose={onClose}>
-      <Alert type="error">{error || prices.error}</Alert>
-      {/* Owner, 27 Oct 2026: first the service from a list, then the doctor (of a department) – then what is to be added */}
-      <section className="bill-add-step" aria-labelledby="bill-add-s1">
-        <h3 id="bill-add-s1" className="bill-add-title">
-          <span className="bill-add-num">1</span> Service
-        </h3>
-        <div className="bill-add-pickrow">
-          <div className="bill-add-search">
-            <Search aria-hidden="true" />
-            <label htmlFor="bill-add-q" className="sr-only">
-              Narrow the list
-            </label>
-            <input id="bill-add-q" type="search" placeholder="Narrow the list – e.g. consult, CTG" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
-          </div>
-          <label htmlFor="bill-add-service" className="sr-only">
-            Choose a service
-          </label>
-          {onPhone && (
-            <button type="button" id="bill-add-service" className="bill-add-select bill-pick-btn" onClick={() => setPicking(true)}>
-              {prices.data ? `Choose a service${words.length ? ` (${found.length} found)` : ''}…` : 'Loading the price list…'}
-            </button>
-          )}
-          {onPhone && picking && (
-            <div className="bill-pick" onClick={(e) => e.target === e.currentTarget && setPicking(false)}>
-              <div className="bill-pick-sheet" role="dialog" aria-label="Choose a service">
-                <h3>Choose a service</h3>
-                {(prices.data?.groups ?? [])
-                  .filter((g) => found.some((i) => i.group === g.key))
-                  .map((g) => (
-                    <section key={g.key} aria-label={g.label}>
-                      <h4>{g.label}</h4>
-                      {found
-                        .filter((i) => i.group === g.key)
-                        .map((i) => (
-                          <button
-                            key={i.id}
-                            type="button"
-                            onClick={() => {
-                              add(i);
-                              setPicking(false);
-                            }}
-                          >
-                            <span>{i.name}</span>
-                            <span className="muted tabular">{i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}</span>
-                          </button>
-                        ))}
-                    </section>
-                  ))}
-              </div>
-            </div>
-          )}
-          {!onPhone && (
-          <select
-            id="bill-add-service"
-            className="bill-add-select"
-            value=""
-            autoFocus
-            onChange={(e) => {
-              const item = all.find((i) => i.id === e.target.value);
-              if (item) add(item);
-            }}
-          >
-            <option value="">{prices.data ? `Choose a service${words.length ? ` (${found.length} found)` : ''}…` : 'Loading the price list…'}</option>
-            {(prices.data?.groups ?? [])
-              .filter((g) => found.some((i) => i.group === g.key))
-              .map((g) => (
-                <optgroup key={g.key} label={g.label}>
-                  {found
-                    .filter((i) => i.group === g.key)
-                    .map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name} – {i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
-          </select>
-          )}
-        </div>
-        {quick.length > 0 && !words.length && (
-          <div className="bill-add-groups" role="group" aria-label="Common services">
-            {quick.slice(0, 6).map((i) => (
-              <button key={i.id} type="button" className="bill-add-chip" onClick={() => add(i)}>
-                <Plus aria-hidden="true" /> {i.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="bill-add-step" aria-labelledby="bill-add-s2">
-        <h3 id="bill-add-s2" className="bill-add-title">
-          <span className="bill-add-num">2</span> Doctor
-        </h3>
-        <div className="form-grid">
-          {departments.length > 0 && (
-            <Field label="Department" id="bill-add-dept">
-              <select
-                id="bill-add-dept"
-                value={dept}
-                onChange={(e) => {
-                  setDepartment(e.target.value);
-                  setDoctorId(null);
-                }}
-              >
-                <option value="">All departments</option>
-                {departments.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
-          <Field label="Doctor" id="bill-add-doctor" hint="Printed with these items on the bill.">
-            <select id="bill-add-doctor" value={chosenDoctor} onChange={(e) => setDoctorId(e.target.value)}>
-              <option value="">No doctor</option>
-              {doctorList.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                  {d.id === ownDoctor?.id ? ' (her doctor)' : ''}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </section>
-
-      {/* Medicines come from the pharmacy stock (owner, 13 Oct 2026): sold there, they come onto this bill by themselves */}
-      {hasMedicine && (
-        <Alert type="info">
-          Medicines from the hospital pharmacy come onto this bill by themselves (Pharmacy → Sell, or Issue to ward). Add a medicine here only if it did
-          not come from the pharmacy – it does not take anything from the stock.
-        </Alert>
-      )}
-
-      <h3 className="bill-add-title">
-        <span className="bill-add-num">3</span> To add {basket.length > 0 && <span className="muted">· {basket.length}</span>}
-      </h3>
-      {basket.length === 0 ? (
-        <p className="muted">Choose a service above to put it here.</p>
-      ) : (
-        <ul className="bill-add-basket">
-          {basket.map((r) => (
-            <li key={r.item.id}>
-              <div className="bill-add-row">
-                <span className="bill-add-pick-name">{r.item.name}</span>
-                <span className="bill-add-qty">
-                  <button type="button" className="icon-btn" onClick={() => (r.qty > 1 ? change(r.item.id, { qty: r.qty - 1 }) : drop(r.item.id))} aria-label={`One less ${r.item.name}`}>
-                    <Minus aria-hidden="true" />
-                  </button>
-                  <input inputMode="numeric" aria-label={`Quantity of ${r.item.name}`} value={r.qty} onChange={(e) => change(r.item.id, { qty: Number(e.target.value) || 0 })} />
-                  <button type="button" className="icon-btn" onClick={() => change(r.item.id, { qty: r.qty + 1 })} aria-label={`One more ${r.item.name}`}>
-                    <Plus aria-hidden="true" />
-                  </button>
-                </span>
-                <span className="num">{rateOf(r) > 0 ? rupees(rateOf(r) * r.qty) : '–'}</span>
-                <button type="button" className="icon-btn" onClick={() => drop(r.item.id)} aria-label={`Take ${r.item.name} out of the list`}>
-                  <X aria-hidden="true" />
-                </button>
-              </div>
-              {!r.item.pricePaise && (
-                <div className="form-grid">
-                  <Field label="Amount (₹ each)" id={`bill-add-amount-${r.item.id}`}>
-                    <input id={`bill-add-amount-${r.item.id}`} inputMode="decimal" value={r.amount} onChange={(e) => change(r.item.id, { amount: e.target.value })} />
-                  </Field>
-                  <Field label="What it is for (optional)" id={`bill-add-name-${r.item.id}`} hint={NO_SEX_WORDS_HINT}>
-                    <input id={`bill-add-name-${r.item.id}`} value={r.name} maxLength={120} onChange={(e) => change(r.item.id, { name: e.target.value })} />
-                  </Field>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="row">
-        <button type="button" className="btn btn-primary" disabled={!ready || busy} onClick={addAll}>
-          <Plus aria-hidden="true" /> {busy ? 'Adding…' : basket.length ? `Add to the bill · ${rupees(total)}` : 'Add to the bill'}
-        </button>
-        <button type="button" className="btn btn-link" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-    </Modal>
-  );
-}
+// Adding items: the entry strip above the items (ServiceEntry.jsx, 11 Nov 2026) – one way to add services.
 
 export function PaymentDialog({ bill, refund = false, onClose, onDone }) {
   const due = refund ? -bill.balance : Math.max(bill.balance, 0);
   const deposit = !refund && bill.stay?.inHospital;
-  const [amount, setAmount] = useState(toInput(due));
-  const [mode, setMode] = useState('cash');
+  // Cashless (11 Nov 2026): she pays her part; Paid by Insurance takes what is due from the insurer
+  const cashless = !refund && bill.claimApproved > 0;
+  const dueFor = (m) => (cashless ? Math.max(0, m === 'insurance' ? bill.insuranceDue : bill.patientBalance) : due);
+  const [amount, setAmount] = useState(toInput(dueFor('cash')));
+  const [mode, setModeOnly] = useState('cash');
+  const setMode = (m) => {
+    setModeOnly(m);
+    if (cashless) setAmount(toInput(dueFor(m)));
+  };
   const [reference, setReference] = useState('');
   // Paid by insurance: the insurer and the claim number come from the bill's insurance details, so the two agree
   const [scheme, setScheme] = useState(bill.insurance?.insurer ?? '');
@@ -299,7 +52,13 @@ export function PaymentDialog({ bill, refund = false, onClose, onDone }) {
   return (
     <Modal id="bill-pay" title={refund ? 'Give money back' : deposit ? 'Take a deposit' : 'Take payment'} onClose={onClose}>
       <p>
-        {refund ? `Due back to the patient: ${rupees(due)}.` : deposit ? `She is in hospital: this is a deposit, set against the final bill. Balance so far: ${rupees(bill.balance)}.` : `Balance to pay: ${rupees(due)}.`}
+        {refund
+          ? `Due back to the patient: ${rupees(due)}.`
+          : cashless
+            ? `Patient to pay: ${rupees(Math.max(0, bill.patientBalance))} · due from insurance: ${rupees(bill.insuranceDue)}.`
+            : deposit
+              ? `She is in hospital: this is a deposit, set against the final bill. Balance so far: ${rupees(bill.balance)}.`
+              : `Balance to pay: ${rupees(due)}.`}
       </p>
       <Alert type="error">{s.error}</Alert>
       <div className="form-grid">
@@ -602,7 +361,6 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
     .map((t) => t.trim())
     .filter(Boolean);
   const title = receipt ? (payment?.corrections?.length ? 'Receipt (corrected)' : 'Receipt') : bill.kind === 'ipd' ? 'IPD Bill' : 'OPD Receipt';
-  let n = 0; // the items' numbers, across the groups
   return (
     <PrintPreview
       title={receipt ? 'Receipt – print preview' : 'Bill – print preview'}
@@ -673,44 +431,8 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
               {payment.kind === 'refund' ? ' – refunded to the patient' : ''}.
             </p>
           ) : (
-            <table className="bill-doc-lines">
-              <thead>
-                <tr>
-                  <th scope="col">Sr. no.</th>
-                  <th scope="col">Service description</th>
-                  <th scope="col">Doctor name</th>
-                  <th scope="col" className="num">
-                    Rate
-                  </th>
-                  <th scope="col" className="num">
-                    Unit
-                  </th>
-                  <th scope="col" className="num">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              {linesByGroup(lines).map((g) => (
-                <tbody key={g.group}>
-                  <tr className="bill-doc-group">
-                    <td />
-                    <th scope="rowgroup" colSpan={5}>
-                      {GROUP_LABELS[g.group] ?? 'Other'} charges
-                    </th>
-                  </tr>
-                  {g.lines.map((l) => (
-                    <tr key={l.id}>
-                      <td>{(n += 1)}</td>
-                      <td>{l.name}</td>
-                      <td>{l.doctorName}</td>
-                      <td className="num">{rupees(l.ratePaise)}</td>
-                      <td className="num">{l.qty}</td>
-                      <td className="num">{rupees(l.amountPaise)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              ))}
-            </table>
+            // As the hospital's old IP final bill (11 Nov 2026): the items under headings with their totals
+            <HeadedBillLines lines={lines} classLabel={bill.stay?.ward ?? ''} />
           )}
           {payment?.corrections?.length ? (
             <p className="pdoc-small bill-doc-corrected">
@@ -724,38 +446,53 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
           <table className="bill-doc-sums">
             <tbody>
               <tr>
-                <th scope="row">Bill amount</th>
+                <th scope="row">Total amount</th>
                 <td>{rupees(bill.subtotal ?? bill.total)}</td>
               </tr>
               {bill.discount > 0 && (
                 <tr>
-                  <th scope="row">Discount</th>
-                  <td>−{rupees(bill.discount)}</td>
+                  <th scope="row">Discount amount</th>
+                  <td>{rupees(bill.discount)}</td>
                 </tr>
               )}
               <tr>
-                <th scope="row">Net payable amount</th>
+                <th scope="row">Net pay amount</th>
                 <td>{rupees(bill.total)}</td>
               </tr>
+              {/* Cashless (11 Nov 2026): the insurer's part, what she paid, what she still pays, what the insurer owes */}
+              {!payment &&
+                claimRows(bill).map(([key, label, value, strong]) => (
+                  <tr key={key} className={strong ? 'bill-doc-balance' : undefined}>
+                    <th scope="row">{label}</th>
+                    <td>{rupees(value)}</td>
+                  </tr>
+                ))}
+              {(payment || !hasClaim(bill)) && (
               <tr>
                 <th scope="row">Paid amount</th>
                 <td>{rupees(bill.paid)}</td>
               </tr>
+              )}
               {(payment || modes) && (
                 <tr>
                   <th scope="row">Payment mode</th>
                   <td>{payment ? MODE_LABELS[payment.mode] : modes}</td>
                 </tr>
               )}
-              {bill.balance !== 0 && (
+              {bill.balance !== 0 && (payment || !hasClaim(bill)) && (
                 <tr className="bill-doc-balance">
-                  <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance'}</th>
+                  <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
                   <td>{rupees(Math.abs(bill.balance))}</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        {!payment && (
+          <p className="bill-doc-words">
+            <strong>Amount in words:</strong> {amountInWords(bill.total)}
+          </p>
+        )}
         {received > 0 && payment?.kind !== 'refund' && (
           <p className="bill-doc-words">
             <strong>Received with thanks:</strong> {amountInWords(received)}
@@ -804,9 +541,11 @@ export function BillPage() {
   const [dialog, setDialog] = useState(() => (new URLSearchParams(query).get('pay') === '1' ? 'pay' : null));
   const [printing, setPrinting] = useState(null); // { receipt? } | { claim: 'claim' | 'pmjay' }
   const [flash, setFlash] = useState(null);
+  const [ticked, setTicked] = useState(() => new Set()); // items ticked to take off together (11 Nov 2026)
   const b = bill ?? res.data?.bill;
   const done = (out, message, { keepOpen = false } = {}) => {
     setBill(out.bill);
+    setTicked(new Set());
     corr.reload();
     if (keepOpen) return;
     setDialog(null);
@@ -820,6 +559,15 @@ export function BillPage() {
   const lines = b.lines.filter((l) => !l.removed);
   const removed = b.lines.filter((l) => l.removed);
   const unpriced = lines.filter((l) => l.priceNotSet).length;
+  const editable = open && !b.final; // a stay's final bill takes no item until reopened
+  const tickedLines = editable ? lines.filter((l) => ticked.has(l.id)) : [];
+  const tick = (id, on) =>
+    setTicked((set) => {
+      const next = new Set(set);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   const canCorrect = (p) => open && (corr.data?.correctableBy?.[p.id] === 'desk' || corr.data?.isAdmin);
   const printItems = [
     { label: 'Print the bill', icon: Printer, onSelect: () => setPrinting({}) },
@@ -831,7 +579,7 @@ export function BillPage() {
   return (
     <>
       <PageHeader
-        className="ph-bill-foot"
+        className="ph-pay-foot"
         breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: b.number }]}
         title={`Bill ${b.number}`}
         documentTitle="Bill"
@@ -909,12 +657,6 @@ export function BillPage() {
               <dt>Date</dt>
               <dd>{dayLabel(b.date)}</dd>
             </div>
-            <div>
-              <dt>Status</dt>
-              <dd>
-                <BillStatus status={b.status} />
-              </dd>
-            </div>
             {b.stay && (
               <>
                 <div>
@@ -934,15 +676,17 @@ export function BillPage() {
           </dl>
         </section>
 
+        {/* The entry strip of the hospital's old billing screen (11 Nov 2026): across the page, as on the IPD bill */}
+        {editable && <ServiceEntryRow bill={b} roles={activeMembership?.roles ?? []} onDone={done} />}
         <div className="bill-body">
           <section className="card bill-section bill-items" aria-labelledby="bill-items">
             <div className="row-between">
               <h2 id="bill-items">
                 Items <span className="muted">· {lines.length}</span>
               </h2>
-              {open && (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('add')}>
-                  <Plus aria-hidden="true" /> Add items
+              {tickedLines.length > 0 && (
+                <button type="button" className="btn btn-secondary btn-sm svc-remove" onClick={() => setDialog('removeTicked')}>
+                  <Trash2 aria-hidden="true" /> Remove ticked ({tickedLines.length})
                 </button>
               )}
             </div>
@@ -956,6 +700,13 @@ export function BillPage() {
               <table className="bill-lines">
                 <thead>
                   <tr>
+                    <th scope="col" className="bill-col-tick">
+                      {editable && lines.length > 0 ? (
+                        <input type="checkbox" aria-label="Tick all items" checked={tickedLines.length === lines.length} onChange={(e) => setTicked(new Set(e.target.checked ? lines.map((l) => l.id) : []))} />
+                      ) : (
+                        <span className="sr-only">Tick</span>
+                      )}
+                    </th>
                     <th scope="col" className="bill-col-no">
                       No.
                     </th>
@@ -983,6 +734,7 @@ export function BillPage() {
                 <tbody>
                   {lines.map((l, i) => (
                     <tr key={l.id} className={l.priceNotSet ? 'is-unpriced' : ''}>
+                      <td className="bill-col-tick">{editable && <input type="checkbox" aria-label={`Tick ${l.name}`} checked={ticked.has(l.id)} onChange={(e) => tick(l.id, e.target.checked)} />}</td>
                       <td data-label="No." className="bill-col-no tabular">
                         {i + 1}
                       </td>
@@ -1022,8 +774,8 @@ export function BillPage() {
                       </td>
                       <td className="bill-col-actions">
                         {open && (
-                          <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog({ remove: l })} aria-label={`Take ${l.name} off the bill`}>
-                            Take off
+                          <button type="button" className="btn btn-secondary btn-sm svc-remove" onClick={() => setDialog({ remove: l })}>
+                            <Trash2 aria-hidden="true" /> Remove<span className="sr-only"> {l.name}</span>
                           </button>
                         )}
                       </td>
@@ -1031,7 +783,7 @@ export function BillPage() {
                   ))}
                   {!lines.length && (
                     <tr>
-                      <td colSpan={8} className="muted">
+                      <td colSpan={9} className="muted">
                         No items yet.
                       </td>
                     </tr>
@@ -1060,16 +812,33 @@ export function BillPage() {
                   <th scope="row">Total</th>
                   <td>{rupees(b.total)}</td>
                 </tr>
-                <tr>
-                  <th scope="row">Paid</th>
-                  <td>{rupees(b.paid)}</td>
-                </tr>
-                <tr className="bill-balance">
-                  <th scope="row">{b.balance < 0 ? 'To give back' : 'Balance to pay'}</th>
-                  <td>{rupees(Math.abs(b.balance))}</td>
-                </tr>
+                {hasClaim(b) ? (
+                  claimRows(b).map(([key, label, value, strong]) => (
+                    <tr key={key} className={key === 'patientBalance' ? 'bill-balance' : strong ? 'bill-total' : undefined}>
+                      <th scope="row">{label}</th>
+                      <td>{rupees(value)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <>
+                    <tr>
+                      <th scope="row">Paid</th>
+                      <td>{rupees(b.paid)}</td>
+                    </tr>
+                    <tr className="bill-balance">
+                      <th scope="row">{b.balance < 0 ? 'To give back' : 'Balance to pay'}</th>
+                      <td>{rupees(Math.abs(b.balance))}</td>
+                    </tr>
+                  </>
+                )}
               </tbody>
             </table>
+            {/* Cashless insurance: the approved amount comes off what she pays (11 Nov 2026) */}
+            {open && b.total > 0 && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('claim')}>
+                <ShieldCheck aria-hidden="true" /> {b.claimApproved > 0 ? 'Change the insurance approved amount' : 'Cashless insurance'}
+              </button>
+            )}
             {open && b.subtotal > 0 && (
               <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('discount')}>
                 <BadgePercent aria-hidden="true" /> {b.discountInfo ? 'Change the discount' : 'Give a discount'}
@@ -1119,7 +888,7 @@ export function BillPage() {
 
         {removed.length > 0 && (
           <section className="card bill-section" aria-labelledby="bill-removed">
-            <h2 id="bill-removed">Taken off</h2>
+            <h2 id="bill-removed">Removed services</h2>
             <ul className="appt-lines">
               {removed.map((l) => (
                 <li key={l.id}>
@@ -1142,9 +911,9 @@ export function BillPage() {
         )}
       </div>
 
-      {dialog === 'add' && <AddItemDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
       {(dialog === 'pay' || dialog === 'refund') && <PaymentDialog bill={b} refund={dialog === 'refund'} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'discount' && <DiscountDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog === 'claim' && <ClaimDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'insurance' && <InsuranceDialog bill={b} earlier={res.data?.earlierInsurance ?? null} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'upi' && <UpiLinkDialog bill={b} upiReady={Boolean(res.data?.upiReady)} onClose={() => setDialog(null)} />}
       {dialog?.correct && <CorrectPaymentDialog bill={b} payment={dialog.correct} onClose={() => setDialog(null)} onDone={done} />}
@@ -1162,15 +931,16 @@ export function BillPage() {
           onDone={done}
         />
       )}
+      {dialog === 'removeTicked' && tickedLines.length > 0 && <RemoveTickedDialog bill={b} lines={tickedLines} onClose={() => setDialog(null)} onDone={done} />}
       {dialog?.remove && (
         <ReasonDialog
           id="bill-remove"
-          title={`Take "${dialog.remove.name}" off`}
+          title={`Remove "${dialog.remove.name}"`}
           text={b.paid > 0 ? 'If it was already paid for, the bill will show the money to give back.' : null}
           label="Why"
-          confirmLabel="Take it off"
+          confirmLabel="Remove it"
           path={`/billing/bills/${b.id}/lines/${dialog.remove.id}/remove`}
-          message={`${dialog.remove.name} was taken off.`}
+          message={`Removed: ${dialog.remove.name}.`}
           onClose={() => setDialog(null)}
           onDone={done}
         />

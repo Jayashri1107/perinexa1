@@ -1,5 +1,35 @@
 # Progress
 
+## Bill services like the old hospital software (11 Nov 2026, branch `service-bill`)
+From photos of the hospital's old billing screens and two IP final bills (only service names and rates were taken; the
+photos showed real patients and were not kept).
+- **One-line entry** on the IPD bill window and the OPD bill page: Service name · Rate · Qty · Doctor name · Total amount
+  · Add. "Add several at once" opens the earlier Add items form.
+- **Another rate on a bill:** the rate fills from the price list; the **billing department and the hospital admin** may
+  type another one (surgeon, anaesthesia and OT differ per case). Reception gets 403. The audit log keeps the rate used
+  and the list price (`BILL_ITEM_ADDED` → `ratePaise`, `listPricePaise`).
+- **Tick boxes** on each item (and tick all): **Take off ticked (n)** takes them off with one reason. Each one is still
+  the usual audited take-off, and stays on the list as taken off.
+- **The printed bill** (IPD Details layout and the OPD bill): items under **Registration, Hospital charges, Doctor
+  charges, OT charges**, then Procedure / Pathology / Scan / Pharmacy / Other, each with its total and the ward (class)
+  beneath; "price × qty"; Total, Discount, Net pay, Paid and Balance amount; amount in words
+  (`client/src/pages/billing/billHeads.js`).
+- **Rates:** `npm run load:service-rates` fills in every hospital's ₹0 prices (a price already set is never changed):
+  registration ₹300, nursing ₹500/day, doctor visit ₹1,000, surgeon ₹40,000, anaesthesia ₹10,000, OT ₹12,000, room
+  Deluxe AC ₹2,000/day, Super Deluxe AC ₹3,000/day (`server/src/billing/serviceRates.js`). Registration, nursing and
+  doctor visits then go on bills **by themselves**, as the price list already says for keyed items.
+- **Fixed in passing:** the printed IPD bill was squeezed to 160px since 9 Nov (the list's doctor-column class
+  `ipd-doc` was the print document's class too); the column is now `ipd-doc-cell`.
+- **Cashless insurance (11 Nov 2026):** **Cashless insurance** on the IPD bill (totals) and the OPD bill (Amount):
+  insurer, TPA, pre-authorisation number and the **approved amount**. It comes off what the patient pays at once:
+  Patient to pay = Net pay − insurance − paid by patient; Due from insurance until the insurer's money is recorded
+  (Take payment → Paid by Insurance). A cash/UPI/card payment can't be more than her part. Reception, billing and the
+  admin; each change audited (`INSURANCE_CLAIM_SET`, with the amount before). Unpaid → **From insurance** tile. Sums
+  in `server/src/billing/money.js` (claimApproved, insuranceShare, insuranceDue, patientBalance …).
+- **How to check (fake data only):** run `npm run load:service-rates`; as the billing clerk open Billing → IPD → a
+  stay: choose Anaesthesia charges, change the rate to 9000, Add. Tick two items → Take off ticked → reason. Print
+  interim bill → Details.
+
 ## Pharmacy Stage A: manufacturer, pack sizes, the bill as printed, opening stock (11 Nov 2026, branch `pharm-stage-a`)
 Stage A of `docs/PHARMACY_BUILD_NOTE.md` (PH4, PH2, PH3, PH1), built against what perinexa1 already had (the GRN by the
 pack with discount and IGST, opening stock from Excel).
