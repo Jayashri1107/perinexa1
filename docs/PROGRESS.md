@@ -1,5 +1,35 @@
 # Progress
 
+## Pharmacy Stage B: safety at the counter (11 Nov 2026, branch `pharm-stage-b`)
+Stage B of `docs/PHARMACY_BUILD_NOTE.md` (PH6, PH5, PH7, PH10), with the owner's approval of 11 Nov 2026 to build the
+remaining development.
+- **PH6 Already sold:** each prescription line at the counter says "Given: 10 on 2026-11-03 (PH-000412). Still to
+  give: 10." The quantity offered is what is still to give. A line given in full is sold again only with a reason –
+  for every medicine (owner) – kept on the invoice; the audit log counts the repeats. Sales from before today are
+  listed with the prescription, never guessed onto a line.
+- **PH5 Batch on hold:** Stock → a medicine → **Put on hold** (recalled / quality doubt / other). Every batch with that
+  number of the medicine is held: not sold, not issued, not "in stock" for the doctor, not counted for reordering; a
+  patient's return of it goes back onto the hold. **Who received it** lists every sale and issue net of returns
+  (date, invoice, patient and phone, or the walk-in's name) and prints. **Release** with a reason. No notice to her
+  doctor (owner).
+- **PH7 Warnings:** the counter shows her **allergy line** (owner's decision 2 – that field only) and warns when a
+  medicine matches it (no reason asked – owner); a walk-in shows "ask about allergies". **Formulary → Medicine marks**:
+  "High alert" and "looks or sounds like", in force only once a doctor and the pharmacist – two people – have both
+  confirmed; any change clears it; shown at the counter. Writing off a narcotic or Schedule X medicine needs a witness
+  who signs in, as a count does.
+- **PH10 Substitutes:** a prescribed line has **Other brands** – the same generic, strength and form in stock (never a
+  combination). Choosing one asks which doctor agreed; the bill prints "Given in place of …, agreed by …". A medicine
+  on the doctors' **Never substitute** list (Formulary → Medicine marks; doctors write it) gets no other brand, even
+  from a forged request. A generic prescription takes any brand without a question.
+- **Content each hospital writes, all empty:** the never-substitute list (doctors), the high-alert and look-alike
+  marks (a doctor and the pharmacist).
+- **How to check (fake data only):** prescribe Folic acid 5 mg 1-0-1 for 10 days; at the counter "Use this
+  prescription", sell 10 – the card says "Still to give: 10"; sell 10 more, then a third time asks why. Stock → the
+  medicine → Put on hold → the counter no longer offers that batch; Who received it lists the sales. As a doctor add
+  allergies "Penicillin" to a patient and prescribe Amoxicillin – the counter shows the allergy and a warning. Formulary
+  → Medicine marks: the pharmacist marks a medicine High alert, a doctor confirms – the counter shows "High alert".
+  Prescribe a brand, choose Other brands, pick the other brand and the doctor – the bill prints it.
+
 ## Bill services like the old hospital software (11 Nov 2026, branch `service-bill`)
 From photos of the hospital's old billing screens and two IP final bills (only service names and rates were taken; the
 photos showed real patients and were not kept).

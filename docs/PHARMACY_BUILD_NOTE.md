@@ -6,7 +6,8 @@
 > `pharmacyRegister.js`, `pharmacySupplierReturns.js`, `docs/PHARMACY_PLAN.md`, `docs/TALLY_PLAN.md`). Read
 > "what exists" again against this code before building. The ideas list in this repository is
 > `docs/IDEAS_FOR_LATER.md`. **Stage A (PH4, PH2, PH3, PH1) built on 11 Nov 2026, branch `pharm-stage-a` – see
-> `docs/PROGRESS.md` and the note under Stage A below.** Stages B, C and D are not built.
+> `docs/PROGRESS.md` and the note under Stage A below.** **Stage B (PH6, PH5, PH7, PH10) built on 11 Nov 2026, branch
+> `pharm-stage-b` – see the note under Stage B.** Stages C and D are not built.
 
 Written 10 Nov 2026 for the developer, at the owner's request. After a comparison with pharmacy (medical store)
 programs and hospital pharmacy modules (`docs/PHARMACY_APPS_REVIEW.md`), the owner chose **these 18 features and only
@@ -200,6 +201,17 @@ rows that are right** – nothing is saved before that.
   another's; the registers show the starting row; a controlled medicine without a witness is refused.
 
 ## 4. Stage B – safety at the counter
+
+> **Built in perinexa1 (11 Nov 2026).** PH6 – `rxItemId` and `repeatReason` on sale lines, `pharmacy/rxGiven.js`,
+> `409 ALREADY_SOLD`. PH5 – `StockBatch.hold` / `released`, one usable-stock filter (`usableMatch` in
+> `pharmacyService.js`), `POST /batches/hold`, `/batches/release`, `GET /batches/recipients`. PH7 – `allergyFor` on the
+> prescriptions answer (allergy text only), `Medicine.marks` with two-person confirmation (`routes/medicineMarks.js`,
+> website Formulary → Medicine marks), a witness on `POST /batches/:id/writeoff` for X and narcotic medicines. PH10 –
+> `pharmacy/substitutes.js` (sure only when a brand was written and another brand of the same generic is chosen –
+> unclear cases are left as before rather than blocked), `NoSubstitute` model (doctors), `substitution` on the sale
+> line, `GET /medicines/:id/substitutes`, `GET /doctors`, `409 SUBSTITUTE_NEEDS_DOCTOR` / `NO_SUBSTITUTE`. Not built:
+> the printed pick list's marks; the formulary's own `highAlert` is still separate. Tests:
+> `server/tests/pharmacy-stage-b.test.js`.
 
 ### PH6 – "already sold" on a prescription
 
