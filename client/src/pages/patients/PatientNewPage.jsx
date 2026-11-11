@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Baby, BedDouble, Check, ChevronRight, HeartHandshake, HeartPulse, Flower2, Mic, Stethoscope, Sun, UserPlus, Users } from 'lucide-react';
+import { Baby, BedDouble, Check, ChevronRight, HeartHandshake, HeartPulse, Flower2, Mic, Stethoscope, Sun, Syringe, UserPlus, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -173,6 +173,8 @@ export function PatientNewPage() {
   // in the form; once saved (or an existing record chosen) her sign-up is approved for that record.
   const fromSignup = location.state?.fromSignup ?? null;
   const roles = activeMembership.roles;
+  // "Baby – vaccination or follow-up" (11 Nov 2026): the baby form with the date of birth only and Pediatric chosen
+  const babyFollowUp = chosen === 'newborn' && params.get('for') === 'followup';
   const canCharge = ['receptionist', 'billing', 'admin'].some((r) => roles.includes(r));
   const [charges, setCharges] = useState(NO_CHARGES);
   const clinical = roles.includes('doctor') || roles.includes('rmo');
@@ -364,7 +366,7 @@ export function PatientNewPage() {
             <SayCareType onChosen={chooseBySpeech} />
             <ul className="care-type-cards">
               {NEW_PATIENT_LINKS.map((l) => {
-                const Icon = CARE_TYPE_ICONS[l.type] ?? UserPlus;
+                const Icon = l.followUp ? Syringe : (CARE_TYPE_ICONS[l.type] ?? UserPlus);
                 return (
                   <li key={l.to}>
                     <Link to={l.to} className="care-type-card" state={linkState}>
@@ -373,7 +375,7 @@ export function PatientNewPage() {
                       </span>
                       <span className="care-type-text">
                         <strong>{l.label}</strong>
-                        <span>{CARE_TYPE_HINTS[l.type]}</span>
+                        <span>{l.hint ?? CARE_TYPE_HINTS[l.type]}</span>
                       </span>
                       <ChevronRight className="care-type-go" aria-hidden="true" />
                     </Link>
@@ -420,9 +422,19 @@ export function PatientNewPage() {
               {setting !== 'opd' && <p className="hint">After she is registered, choose her bed: the admission opens as {setting === 'ipd' ? 'an inpatient stay' : 'day care'}.</p>}
             </div>
             <PatientForm
-              key={booking?.id ?? fromAbha?.id ?? fromSignup?.id ?? `new-${round}`}
+              key={booking?.id ?? fromAbha?.id ?? fromSignup?.id ?? `new-${round}${babyFollowUp ? '-followup' : ''}`}
               spoken={round === 0 ? spoken.text : ''}
-              prefill={booking ? { fullName: booking.name, phone: booking.phone, assignedDoctor: booking.doctorId ?? '' } : fromAbha ? { fullName: fromAbha.name, phone: fromAbha.phone ?? '', ageYears: fromAbha.age ?? '' } : fromSignup ? { fullName: fromSignup.name, phone: fromSignup.phone ?? '', ageYears: fromSignup.age ?? '' } : null}
+              prefill={
+                booking
+                  ? { fullName: booking.name, phone: booking.phone, assignedDoctor: booking.doctorId ?? '' }
+                  : fromAbha
+                    ? { fullName: fromAbha.name, phone: fromAbha.phone ?? '', ageYears: fromAbha.age ?? '' }
+                    : fromSignup
+                      ? { fullName: fromSignup.name, phone: fromSignup.phone ?? '', ageYears: fromSignup.age ?? '' }
+                      : babyFollowUp
+                        ? { department: 'Pediatric', newborn: { birthTimeKnown: false } } // an older baby for vaccination or follow-up
+                        : null
+              }
               careType={careType}
               beforeActions={canCharge && careType ? <RegistrationCharges charges={charges} onCharges={setCharges} /> : null}
               onCareTypeChange={(type) => navigate({ pathname: `/patients/new/${type}`, search: location.search }, { replace: true, state: location.state })}

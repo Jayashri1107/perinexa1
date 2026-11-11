@@ -124,6 +124,9 @@ function initialValues(p) {
     },
     newborn: {
       birthAt: toDateTimeInput(p?.newborn?.birthAt),
+      // Only the date (an older baby for follow-up or vaccination, 11 Nov 2026): no hour asked
+      birthTimeKnown: p?.newborn?.birthTimeKnown ?? true,
+      birthDate: toDateTimeInput(p?.newborn?.birthAt).slice(0, 10),
       birthWeightGrams: str(p?.newborn?.birthWeightGrams),
       sex: p?.newborn?.sex ?? '',
       mother: p?.newborn?.mother ?? '',
@@ -175,7 +178,12 @@ export function toPayload(v, isEdit, access, part, loaded = null) {
     });
     for (const k of ['pinCode', 'city', 'state', 'referredBy', 'payer']) if (payload[k] === undefined) delete payload[k];
     if (!isNewborn) Object.assign(payload, { ageYears: v.ageYears, emergencyContact: v.emergencyContact, idProof: v.idProof });
-    if (isNewborn && access.canEditNewborn) payload.newborn = { ...v.newborn, birthAt: v.newborn.birthAt ? new Date(v.newborn.birthAt).toISOString() : '' };
+    if (isNewborn && access.canEditNewborn) {
+      const { birthDate, ...newborn } = v.newborn;
+      // Time not known: midday of that day (the same date in every time zone), marked so no time is ever shown
+      const birthAt = newborn.birthTimeKnown ? newborn.birthAt : birthDate ? `${birthDate}T12:00` : '';
+      payload.newborn = { ...newborn, birthAt: birthAt ? new Date(birthAt).toISOString() : '' };
+    }
     // Her department (owner, 9 Nov 2026): a doctor sees only the patients of their departments
     if (v.department) payload.department = v.department;
     if (!access.canEditIdentity) {
@@ -926,10 +934,17 @@ export function PatientForm({
                   <section className="card form-section">
                     <h2>Birth details</h2>
                     <div className="form-grid">
-                      <Field label="Date and time of birth" id="birthAt" error={fe('newborn.birthAt')} hint={v.newborn.birthAt ? formatDateTime(v.newborn.birthAt) : undefined} keepHint>
-                        <DateTimeInput id="birthAt" className={vc('newborn.birthAt')} value={v.newborn.birthAt} onChange={setIn('newborn', 'birthAt')} max={toDateTimeInput(new Date())} />
-                        {vm('newborn.birthAt')}
-                      </Field>
+                      {v.newborn.birthTimeKnown ? (
+                        <Field label="Date and time of birth" id="birthAt" error={fe('newborn.birthAt')} hint={v.newborn.birthAt ? formatDateTime(v.newborn.birthAt) : undefined} keepHint>
+                          <DateTimeInput id="birthAt" className={vc('newborn.birthAt')} value={v.newborn.birthAt} onChange={setIn('newborn', 'birthAt')} max={toDateTimeInput(new Date())} />
+                          {vm('newborn.birthAt')}
+                        </Field>
+                      ) : (
+                        <Field label="Date of birth" id="birthAt" error={fe('newborn.birthAt')} hint="Used for the baby's age and the vaccination dates.">
+                          <input id="birthAt" type="date" className={vc('newborn.birthAt')} value={v.newborn.birthDate} max={toDateTimeInput(new Date()).slice(0, 10)} onChange={setIn('newborn', 'birthDate')} />
+                          {vm('newborn.birthAt')}
+                        </Field>
+                      )}
                       <Field label="Birth weight" id="birthWeight" error={fe('newborn.birthWeightGrams')}>
                         <WeightInput id="birthWeight" className={vc('newborn.birthWeightGrams')} value={v.newborn.birthWeightGrams} onChange={setIn('newborn', 'birthWeightGrams')} />
                         {vm('newborn.birthWeightGrams')}
@@ -947,6 +962,18 @@ export function PatientForm({
                       </Field>
                       {showClinical && bloodGroupField}
                     </div>
+                    {/* An older baby for follow-up or vaccination (11 Nov 2026): the date of birth only, no hour */}
+                    <label className="check birth-time-unknown">
+                      <input
+                        type="checkbox"
+                        checked={!v.newborn.birthTimeKnown}
+                        onChange={(e) => {
+                          const unknown = e.target.checked;
+                          setV({ ...v, newborn: { ...v.newborn, birthTimeKnown: !unknown, birthDate: v.newborn.birthDate || (v.newborn.birthAt ?? '').slice(0, 10) } });
+                        }}
+                      />{' '}
+                      Time of birth not known – the baby is here for follow-up or vaccination
+                    </label>
                     <MotherPicker
                       value={v.newborn.mother}
                       initial={patient?.motherInfo ? { fullName: patient.motherInfo.fullName, mrn: patient.motherInfo.mrn } : null}

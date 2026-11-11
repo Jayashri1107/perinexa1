@@ -30,7 +30,7 @@ function NewRegistration({ roles }) {
         {newPatientLinks(roles).map((l) => (
           <Link key={l.to} to={l.to} className="opd-care">
             <strong>{l.label}</strong>
-            {CARE_TYPE_HINTS[l.type] && <span className="muted">{CARE_TYPE_HINTS[l.type]}</span>}
+            {(l.hint ?? CARE_TYPE_HINTS[l.type]) && <span className="muted">{l.hint ?? CARE_TYPE_HINTS[l.type]}</span>}
           </Link>
         ))}
       </div>

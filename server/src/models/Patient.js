@@ -394,6 +394,9 @@ const patientSchema = new mongoose.Schema(
     },
     newborn: {
       birthAt: { type: Date, default: null },
+      // false: only the date of birth is known – an older baby registered for follow-up or vaccination (11 Nov 2026);
+      // birthAt is then midday of that day (the same date in every time zone) and no time is shown. Every earlier record has its time (true).
+      birthTimeKnown: { type: Boolean, default: true },
       birthWeightGrams: num(200, 7000),
       sex: { type: String, enum: [...NEWBORN_SEX, ''], default: '' },
       mother: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', default: null },
