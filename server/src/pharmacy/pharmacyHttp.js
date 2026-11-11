@@ -50,6 +50,9 @@ export async function settingsOf(tenantId) {
     pin: p.pin ?? '',
     address: p.address || t?.letterhead?.address || '',
     phone: p.phone || t?.letterhead?.phone || '',
+    reorderLookBackDays: p.reorderLookBackDays ?? 30,
+    reorderLeadDays: p.reorderLeadDays ?? 3,
+    reorderCoverDays: p.reorderCoverDays ?? 15,
   };
 }
 
@@ -72,6 +75,7 @@ export const medicineView = (m, stock = null) => ({
   packSize: m.packSize ?? 1,
   packName: m.packName ?? '',
   looseSale: m.looseSale !== false,
+  preferredSupplierId: m.preferredSupplierId ? String(m.preferredSupplierId) : null, // PH17
   barcodes: m.barcodes ?? [],
   active: m.active,
   ...(stock != null ? { inStock: stock, low: m.active && stock <= (m.reorderLevel ?? 0) } : {}),

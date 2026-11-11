@@ -206,3 +206,59 @@ describe('PH24 – sales by doctor (the pharmacist and the super admin only)', (
     expect(JSON.stringify(res.body)).not.toMatch(/Walk In|PH-0|Sample Platform Tab/);
   });
 });
+
+describe('PH17 – the order suggestion by the last weeks of use', () => {
+  const sell = async (m, qty) => ok(await ph('post', '/invoices', { kind: 'sale', customer: { name: 'Sample Walk In' }, lines: [{ medicineId: m.id, qty }], payments: [{ mode: 'cash', amountPaise: qty * 1500 }] }), 201);
+  const at = (iso) => {
+    vi.setSystemTime(new Date(iso));
+    sessions = {}; // a clock jump would log the sessions out for inactivity
+  };
+
+  it('use per day counts only the days in stock (pure)', async () => {
+    const { useOf, orderByUse } = await import('../src/pharmacy/reorderByUse.js');
+    const d = (day) => new Date(`2026-11-${String(day).padStart(2, '0')}T00:00:00Z`);
+    // 10 in on day 1, 10 sold on day 6 (out of stock to day 11), 20 in on day 11, none sold after: window days 1–21
+    const moves = [
+      { kind: 'purchase', qty: 10, balanceAfter: 10, at: d(1) },
+      { kind: 'sale', qty: -10, balanceAfter: 0, at: d(6) },
+      { kind: 'purchase', qty: 20, balanceAfter: 20, at: d(11) },
+    ];
+    const u = useOf(moves, d(1), d(21));
+    expect(u).toMatchObject({ netOut: 10, daysInStock: 15 });
+    expect(u.perDay).toBeCloseTo(10 / 15);
+    expect(orderByUse({ perDay: 2, leadDays: 3, coverDays: 15, usable: 20, onOrder: 6, byLevel: 0 })).toBe(10);
+    expect(orderByUse({ perDay: 0, leadDays: 3, coverDays: 15, usable: 20, onOrder: 0, byLevel: 30 })).toBe(30);
+  });
+
+  it('by use lists what will not last; the preferred supplier and the last price; the settings change the days', async () => {
+    const supA = ok(await ph('post', '/suppliers', { name: 'Sample Usual Supplier' }), 201).supplier;
+    const supB = ok(await ph('post', '/suppliers', { name: 'Sample Other Supplier' }), 201).supplier;
+    const m = await medicine({ name: 'Sample Fast Tab', reorderLevel: 10 });
+    expect(ok(await ph('get', `/medicines/${m.id}/last-price`)).last).toBeNull();
+    at('2026-10-12T06:00:00Z');
+    await bill(supB, m, { date: '2026-10-12', qty: 100 });
+    at('2026-10-20T06:00:00Z');
+    await sell(m, 40);
+    at('2026-11-05T06:00:00Z');
+    await sell(m, 40);
+    at(NOW.toISOString());
+    // 80 used in the 30 days in stock: about 2.7 a day; 20 left lasts under the 3 + 15 days
+    const byLevel = ok(await ph('get', '/orders/suggest'));
+    expect(byLevel.suggestions.find((s) => s.medicine.id === m.id)).toBeUndefined();
+    const byUse = ok(await ph('get', '/orders/suggest?mode=use'));
+    const s = byUse.suggestions.find((x) => x.medicine.id === m.id);
+    expect(s).toMatchObject({ suggestedQty: 48 - 20, perDay: 2.7, daysInStock: 30, lastSupplier: { id: supB.id, preferred: false }, lastPrice: { ratePaise: 1000, date: '2026-10-12' } });
+    // The preferred supplier wins over the last one
+    ok(await ph('patch', `/medicines/${m.id}`, { preferredSupplierId: supA.id }));
+    const again = ok(await ph('get', '/orders/suggest?mode=use')).suggestions.find((x) => x.medicine.id === m.id);
+    expect(again.lastSupplier).toMatchObject({ id: supA.id, name: 'Sample Usual Supplier', preferred: true });
+    // The last price paid, for the purchase screen
+    expect(ok(await ph('get', `/medicines/${m.id}/last-price`)).last).toMatchObject({ ratePaise: 1000, date: '2026-10-12', supplier: 'Sample Other Supplier' });
+    // Fewer days to cover: 2.7 × (3 + 4) = 19 – the 20 left lasts, so it is not suggested
+    const set = ok(await ph('put', '/settings', { reorderCoverDays: 4 }));
+    expect(set.settings).toMatchObject({ reorderLookBackDays: 30, reorderLeadDays: 3, reorderCoverDays: 4 });
+    expect(ok(await ph('get', '/orders/suggest?mode=use')).suggestions.find((x) => x.medicine.id === m.id)).toBeUndefined();
+    expect((await ph('put', '/settings', { reorderCoverDays: 0 })).status).toBe(400);
+    expect((await ph('get', '/orders/suggest?mode=guess')).status).toBe(400);
+  });
+});

@@ -288,7 +288,9 @@ export function suggestionNote(s) {
     `${s.inStock} in stock`,
     `reorder at ${s.reorderLevel}`,
     s.onOrder ? `${s.onOrder} on order (${s.onOrders.join(', ')})` : null,
-    s.lastSupplier ? `last bought from ${s.lastSupplier.name}` : null,
+    s.perDay ? `uses about ${s.perDay} a day` : null,
+    s.lastSupplier ? `${s.lastSupplier.preferred ? 'usually ordered from' : 'last bought from'} ${s.lastSupplier.name}` : null,
+    s.lastPrice ? `last paid ₹${(s.lastPrice.ratePaise / 100).toFixed(2)}${s.lastPrice.conv > 1 ? ` a pack of ${s.lastPrice.conv}` : ''} (${s.lastPrice.date})` : null,
   ]
     .filter(Boolean)
     .join(' · ');

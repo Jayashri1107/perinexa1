@@ -39,7 +39,9 @@ pharmacyOrdersRouter.get('/', async (req, res) => {
 // Medicines at or below their reorder level, to fill a new order with ("Suggest from low stock").
 pharmacyOrdersRouter.get('/suggest', async (req, res) => {
   editor(req);
-  res.json({ suggestions: await suggestFromLowStock(req), times: ORDER_SUGGEST_TIMES });
+  // PH17: mode 'use' – by the last weeks' use (the look-back, the supplier's days and the cover from the settings)
+  const { mode } = parse(z.object({ mode: z.enum(['level', 'use']).default('level') }).strict(), req.query);
+  res.json({ suggestions: await suggestFromLowStock(req, { mode }), times: ORDER_SUGGEST_TIMES, mode });
 });
 
 pharmacyOrdersRouter.post('/', async (req, res) => {

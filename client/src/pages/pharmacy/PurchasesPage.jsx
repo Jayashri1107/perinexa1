@@ -349,6 +349,8 @@ function GrnTabs({ desk }) {
  */
 function GrnLineDialog({ line, isNew, onClose, onDone }) {
   const [l, setL] = useState(line);
+  // PH17: the last price paid for this medicine (per pack as on that bill)
+  const lastPrice = useFetch(`/pharmacy/medicines/${line.medicine.id}/last-price`).data?.last ?? null;
   const [tried, setTried] = useState(false);
   const f = (k) => (e) => setL({ ...l, [k]: e.target.value });
   const x = parseLine(l);
@@ -397,7 +399,17 @@ function GrnLineDialog({ line, isNew, onClose, onDone }) {
           <Field label="Disc amount" id="gl-discamt">
             {shown('gl-discamt', money(fig.discPaise))}
           </Field>
-          <Field label="Rate ₹ (per pack)" id="gl-rate" error={err('rate')}>
+          <Field
+            label="Rate ₹ (per pack)"
+            id="gl-rate"
+            error={err('rate')}
+            keepHint
+            hint={
+              lastPrice
+                ? `Last paid ${money(lastPrice.ratePaise)} a pack of ${lastPrice.conv} on ${lastPrice.date}${lastPrice.supplier ? ` (${lastPrice.supplier})` : ''}${x.rate && lastPrice.conv === x.conv && x.rate > lastPrice.ratePaise ? ' – today’s rate is higher' : ''}.`
+                : undefined
+            }
+          >
             <input id="gl-rate" inputMode="decimal" value={l.rate} onChange={f('rate')} />
           </Field>
           <Field label="MRP ₹ (per pack)" id="gl-mrp" error={err('mrp')}>
@@ -944,6 +956,7 @@ export function BarcodesField({ barcodes, onChange, typed, setTyped, error }) {
 
 function MedicineDialog({ medicine, lists, onClose, onDone }) {
   const [m, setM] = useState(medicine ? { ...medicine, barcodes: medicine.barcodes ?? [] } : { ...emptyMedicine });
+  const supplierList = useFetch('/pharmacy/suppliers').data?.suppliers ?? []; // PH17: the preferred supplier
   const [typedBarcode, setTypedBarcode] = useState('');
   const s = useSend(onDone);
   const f = (k) => (e) => setM({ ...m, [k]: e.target.value });
@@ -967,6 +980,7 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
     packSize: Math.max(1, Math.min(1000, Number.parseInt(m.packSize, 10) || 1)),
     packName: (m.packName ?? '').trim(),
     looseSale: m.looseSale !== false,
+    preferredSupplierId: m.preferredSupplierId || null,
     barcodes,
   };
   return (
@@ -1027,6 +1041,18 @@ function MedicineDialog({ medicine, lists, onClose, onDone }) {
         </Field>
         <Field label={`${m.unit || 'Unit'}s in a pack`} id="med-packsize" error={s.fields.packSize} hint="Purchases and the counter count in packs from this.">
           <input id="med-packsize" inputMode="numeric" value={m.packSize ?? 1} onChange={f('packSize')} />
+        </Field>
+        <Field label="Usually ordered from" id="med-supplier" hint="Order suggestions use this supplier (else the one it was last bought from).">
+          <select id="med-supplier" value={m.preferredSupplierId ?? ''} onChange={f('preferredSupplierId')}>
+            <option value="">The supplier it was last bought from</option>
+            {supplierList
+              .filter((x) => x.active || x.id === m.preferredSupplierId)
+              .map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+          </select>
         </Field>
       </div>
       {Number(m.packSize) > 1 && (

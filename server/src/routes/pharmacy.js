@@ -104,6 +104,10 @@ const settingsSchema = z
     // City or town (the bill's jurisdiction line, the e-invoice file) and PIN code (the e-invoice file)
     place: z.string().trim().max(50),
     pin: z.string().trim().regex(/^([1-9]\d{5})?$/, 'A PIN code has 6 digits.'),
+    // PH17: reorder by use
+    reorderLookBackDays: z.number().int().min(7).max(180),
+    reorderLeadDays: z.number().int().min(0).max(60),
+    reorderCoverDays: z.number().int().min(1).max(120),
   })
   .partial()
   .strict();
@@ -143,6 +147,7 @@ const medicineFields = {
   packSize: z.number().int().min(1, 'A pack holds at least 1.').max(1000),
   packName: z.string().trim().max(20),
   looseSale: z.boolean(),
+  preferredSupplierId: objectId.nullable(), // PH17
   // The barcodes on its packs (typed, or scanned: a scanner types the digits). Kept without spaces, in capitals.
   barcodes: z
     .array(z.string().max(60).transform(cleanBarcode).pipe(z.string().regex(BARCODE_PATTERN, 'A barcode has 4 to 32 digits or letters.')))
@@ -163,6 +168,7 @@ const medicineSchema = z
     packSize: medicineFields.packSize.default(1),
     packName: medicineFields.packName.default(''),
     looseSale: medicineFields.looseSale.default(true),
+    preferredSupplierId: medicineFields.preferredSupplierId.default(null),
     barcodes: medicineFields.barcodes.optional(),
     active: medicineFields.active.optional(),
   })
@@ -730,6 +736,16 @@ pharmacyRouter.get('/doctors', async (req, res) => {
   const members = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'doctor' }, { userId: 1 }).lean();
   const users = await User.find({ _id: { $in: members.map((x) => x.userId) } }, { name: 1 }).sort({ name: 1 }).lean();
   res.json({ doctors: users.map((u) => ({ id: String(u._id), name: u.name })) });
+});
+
+// PH17: the last price paid for a medicine (purchase entry and the order screen): per pack as on the bill, with its date
+// and supplier. null when it was never bought.
+pharmacyRouter.get('/medicines/:id/last-price', async (req, res) => {
+  const p = await Purchase.findOne({ tenantId: req.tenantId, status: 'active', 'lines.medicineId': idParam(req) }, { invoiceDate: 1, supplierId: 1, lines: 1 }).sort({ invoiceDate: -1, createdAt: -1 }).lean();
+  if (!p) return res.json({ last: null });
+  const l = p.lines.find((x) => String(x.medicineId) === String(idParam(req)));
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: p.supplierId }, { name: 1 }).lean();
+  res.json({ last: { ratePaise: l.pack?.ratePaise ?? l.ratePaise, conv: l.pack?.conv ?? 1, unitRatePaise: l.ratePaise, date: isoDay(p.invoiceDate), supplier: s?.name ?? '' } });
 });
 
 // The batches a medicine can be sold from (not expired, with stock), earliest expiry first.

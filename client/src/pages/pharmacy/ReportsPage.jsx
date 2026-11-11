@@ -628,6 +628,13 @@ export function ReportsPage() {
   );
 }
 
+// PH17: reorder by use – [key, label, lowest, highest]
+const REORDER_FIELDS = [
+  ['reorderLookBackDays', 'Days of use looked at', 7, 180],
+  ['reorderLeadDays', 'Days an order takes to come', 0, 60],
+  ['reorderCoverDays', 'Days an order should cover', 1, 120],
+];
+
 export function PharmacySettingsPage() {
   const res = useFetch('/pharmacy/settings');
   const [form, setForm] = useState(null);
@@ -684,8 +691,31 @@ export function PharmacySettingsPage() {
                 </Field>
               ))}
             </div>
+            <h3>Order suggestions by use</h3>
+            <div className="form-grid">
+              {REORDER_FIELDS.map(([k, label]) => (
+                <Field key={k} label={label} id={`phs-${k}`} error={s.fields[k]}>
+                  <input id={`phs-${k}`} inputMode="numeric" value={v[k] ?? ''} onChange={f(k)} disabled={!canEdit} />
+                </Field>
+              ))}
+            </div>
             {canEdit && (
-              <button type="button" className="btn btn-primary" disabled={!form || pinWrong || s.busy} onClick={() => s.send('/pharmacy/settings', Object.fromEntries(fields.map(([k]) => [k, (v[k] ?? '').trim()])), 'PUT')}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!form || pinWrong || s.busy}
+                onClick={() =>
+                  s.send(
+                    '/pharmacy/settings',
+                    {
+                      ...Object.fromEntries(fields.map(([k]) => [k, (v[k] ?? '').trim()])),
+                      // PH17: reorder by use
+                      ...Object.fromEntries(REORDER_FIELDS.map(([k, , lo, hi]) => [k, Math.min(hi, Math.max(lo, Number.parseInt(v[k], 10) || lo))])),
+                    },
+                    'PUT',
+                  )
+                }
+              >
                 <Save aria-hidden="true" /> Save
               </button>
             )}

@@ -33,6 +33,8 @@ const medicineSchema = new mongoose.Schema(
     packSize: { type: Number, min: 1, max: 1000, default: 1 },
     packName: text(20),
     looseSale: { type: Boolean, default: true },
+    // PH17: the supplier it is usually ordered from (else the supplier of its newest batch)
+    preferredSupplierId: { type: ObjectId, ref: 'Supplier', default: null },
     // PH7: "High alert" and "looks or sounds like" – in force only once a doctor and the pharmacist have both confirmed
     // this version (routes/medicineMarks.js). null: no marks.
     marks: {
