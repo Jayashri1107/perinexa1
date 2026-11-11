@@ -116,7 +116,7 @@ export function ServicePicker({ id, items, groups, value, onPick, loading = fals
   );
 }
 
-export function ServiceEntryRow({ bill, roles, onDone, onMore }) {
+export function ServiceEntryRow({ bill, roles, onDone, autoFocus = false }) {
   const prices = useFetch('/billing/prices');
   const doctors = useFetch('/tenant/doctors');
   const [itemId, setItemId] = useState('');
@@ -186,6 +186,7 @@ export function ServiceEntryRow({ bill, roles, onDone, onMore }) {
             groups={groups}
             value={item ?? null}
             loading={!prices.data}
+            autoFocus={autoFocus}
             onPick={(i) => {
               choose(i.id);
               // Straight on to the rate (when it may be typed) or the quantity
@@ -219,11 +220,6 @@ export function ServiceEntryRow({ bill, roles, onDone, onMore }) {
           <button type="button" className="btn btn-secondary" disabled={!ready} onClick={add}>
             <Plus aria-hidden="true" /> {busy ? 'Adding…' : 'Add'}
           </button>
-          {onMore && (
-            <button type="button" className="btn btn-link btn-sm" onClick={onMore}>
-              Add several
-            </button>
-          )}
         </div>
       </div>
       {/* A note only when there is something to say (no empty line under the strip) */}

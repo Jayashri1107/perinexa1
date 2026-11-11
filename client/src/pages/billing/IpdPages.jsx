@@ -11,7 +11,7 @@ import { Alert, Field, StatusPill, formatDateTime } from '../../components/ui.js
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { ClearDialog, StayPaper } from '../beds/AdmissionDesk.jsx';
-import { AddItemDialog, DiscountDialog, PaymentDialog, ReasonDialog } from './BillPage.jsx';
+import { DiscountDialog, PaymentDialog, ReasonDialog } from './BillPage.jsx';
 import { BillStatus } from './BillsPage.jsx';
 import { amountInWords } from './amountWords.js';
 import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
@@ -551,7 +551,8 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   const [showRemoved, setShowRemoved] = useState(false);
   const [ticked, setTicked] = useState(() => new Set()); // lines ticked to take off together
   const [layout, setLayout] = useState('details'); // the print's layout, chosen in the Print menu
-  const [dialog, setDialog] = useState(initialDialog); // add | advance | refund | discharge | admin | concession | final | reopen | clear | { remove: line }
+  // One way to add services: the entry strip (11 Nov 2026). Opened on "add" (the list's Services), its box gets the cursor
+  const [dialog, setDialog] = useState(initialDialog === 'add' ? null : initialDialog); // advance | refund | discharge | admin | concession | final | reopen | clear | { remove: line }
   const [printing, setPrinting] = useState(null); // 'bill' | 'gatepass'
   const [flash, setFlash] = useState(null);
   const data = res.data;
@@ -676,7 +677,6 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         </Alert>
         {/* The forms open here, in the page above the bill (owner, 9 Nov 2026) – not as windows over it */}
         <InlineForms.Provider value>
-      {dialog === 'add' && <AddItemDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
       {(dialog === 'advance' || dialog === 'refund') && <PaymentDialog bill={bill} refund={dialog === 'refund'} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'discharge' && <DischargeDialog data={data} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'admin' && <AdminChargeDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
@@ -728,7 +728,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         {step.next && !flash && step.key !== 'in' && <p className="muted ipd-next">{step.next}</p>}
         {!bill && <Alert type="info">This stay has no bill.</Alert>}
         {/* The entry strip of the hospital's old billing screen (11 Nov 2026): across the page, on one line */}
-        {editable && <ServiceEntryRow bill={bill} roles={activeMembership?.roles ?? []} onDone={done} onMore={() => setDialog('add')} />}
+        {editable && <ServiceEntryRow bill={bill} roles={activeMembership?.roles ?? []} onDone={done} autoFocus={initialDialog === 'add'} />}
         <div className="ipd-layout">
           {/* Left: her details and the bill's sums */}
           <aside className="card ipd-side" aria-label="Patient and stay">
