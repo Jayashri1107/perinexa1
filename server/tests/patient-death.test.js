@@ -215,7 +215,7 @@ describe('recording a death', () => {
     expect(res.body.death).toMatchObject({ on: '2026-10-08T00:00:00.000Z', place: 'here', timing: null, ageDays: 2 });
     // On the mother's record the baby's record is marked closed – nothing about why (reception sees the babies too)
     for (const who of ['reception', 'drA']) {
-      expect((await view(who, mother)).body.patient.babies, who).toEqual([{ id: baby.id, fullName: 'Baby Sample', mrn: baby.mrn, birthAt: '2026-10-05T20:00:00.000Z', closed: true }]);
+      expect((await view(who, mother)).body.patient.babies, who).toEqual([{ id: baby.id, fullName: 'Baby Sample', mrn: baby.mrn, birthAt: '2026-10-05T20:00:00.000Z', birthTimeKnown: true, closed: true }]);
     }
     // The mother's record is not touched
     expect((await view('drA', mother)).body.patient).not.toHaveProperty('closed');

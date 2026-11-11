@@ -168,6 +168,23 @@ describe('registering a newborn', () => {
     expect(detail.body.patient.babies.map((b) => b.fullName)).toEqual(['Baby of Mother One']);
   });
 
+  it('an older baby for follow-up or vaccination: the date of birth only, no time (11 Nov 2026)', async () => {
+    const s = await loginAs(doctor, { app });
+    // No date at all: the message says the date is needed
+    const none = await s.post('/api/patients').send({ careType: 'newborn', fullName: 'Vaccine Baby', newborn: { birthTimeKnown: false } });
+    expect(none.status).toBe(400);
+    expect(JSON.stringify(none.body.error)).toMatch(/Date of birth is required/);
+    // Midday of the day of birth (12:00 in India), marked "time not known"
+    const day = new Date(Date.now() - 90 * 86400000);
+    const birthAt = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 12) - 330 * 60000).toISOString();
+    const res = await s.post('/api/patients').send({ careType: 'newborn', fullName: 'Vaccine Baby', newborn: { birthAt, birthTimeKnown: false } });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.patient.newborn).toMatchObject({ birthAt, birthTimeKnown: false });
+    // A baby registered with its time keeps the old way
+    const timed = await s.post('/api/patients').send({ careType: 'newborn', fullName: 'Timed Baby', newborn: { birthAt: new Date(Date.now() - 3600000).toISOString() } });
+    expect(timed.body.patient.newborn.birthTimeKnown).toBe(true);
+  });
+
   it('requires the time of birth and a mother from the same hospital', async () => {
     const s = await loginAs(doctor, { app });
     expect((await s.post('/api/patients').send({ careType: 'newborn', fullName: 'Baby', newborn: {} })).status).toBe(400);

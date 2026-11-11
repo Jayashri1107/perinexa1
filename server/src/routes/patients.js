@@ -407,8 +407,10 @@ const HISTORY_NOT_NEWBORN = "The history-taking sheet is not for a baby's record
 const newbornSchema = z.object({
   birthAt: z.preprocess(
     emptyToNull,
-    z.union([z.iso.datetime('Please enter the date and time of birth').transform((d) => new Date(d)), z.null()]),
+    z.union([z.iso.datetime('Please enter the date of birth').transform((d) => new Date(d)), z.null()]),
   ),
+  // Only the date is known (an older baby for follow-up or vaccination, 11 Nov 2026): no hour is asked
+  birthTimeKnown: z.boolean('birthTimeKnown must be true or false').default(true),
   birthWeightGrams: z.preprocess(emptyToNull, optionalNumber('Birth weight', 200, 7000)).default(null),
   sex: z.enum([...NEWBORN_SEX, ''], 'Please choose an option').default(''),
   mother: z.preprocess(emptyToNull, z.union([objectId, z.null()])).default(null),
@@ -471,7 +473,7 @@ const makeCreateSchema = ({ requireDates }) => z
     for (const issue of fetalSexIssues(d.careType, d, null)) ctx.addIssue(issue);
     if (d.careType === 'newborn') {
       const birthAt = d.newborn?.birthAt;
-      if (!birthAt) ctx.addIssue({ code: 'custom', path: ['newborn', 'birthAt'], message: 'Date and time of birth is required' });
+      if (!birthAt) ctx.addIssue({ code: 'custom', path: ['newborn', 'birthAt'], message: d.newborn?.birthTimeKnown === false ? 'Date of birth is required' : 'Date and time of birth is required (or tick Time of birth not known)' });
       else if (isDate(birthAt) && birthAt.getTime() > Date.now() + 5 * 60 * 1000) {
         ctx.addIssue({ code: 'custom', path: ['newborn', 'birthAt'], message: 'Date of birth cannot be in the future' });
       }
@@ -971,12 +973,12 @@ patientsRouter.get('/:id', async (req, res) => {
   const babies =
     patient.careType === 'newborn'
       ? []
-      : await Patient.find({ tenantId: req.tenantId, 'newborn.mother': { $in: [patient._id, ...earlier.ids] }, ...NOT_DUPLICATE, ...departmentListFilter(req) }, { fullName: 1, mrn: 1, 'newborn.birthAt': 1, 'death.on': 1 }).lean();
+      : await Patient.find({ tenantId: req.tenantId, 'newborn.mother': { $in: [patient._id, ...earlier.ids] }, ...NOT_DUPLICATE, ...departmentListFilter(req) }, { fullName: 1, mrn: 1, 'newborn.birthAt': 1, 'newborn.birthTimeKnown': 1, 'death.on': 1 }).lean();
   const full = {
     ...out,
     createdByName: createdBy?.name ?? null,
     // (closed: the baby's record is closed – only that, never why)
-    babies: babies.map((b) => ({ id: b._id.toString(), fullName: b.fullName, mrn: b.mrn, birthAt: b.newborn?.birthAt, ...(isClosed(b) ? { closed: true } : {}) })),
+    babies: babies.map((b) => ({ id: b._id.toString(), fullName: b.fullName, mrn: b.mrn, birthAt: b.newborn?.birthAt, birthTimeKnown: b.newborn?.birthTimeKnown !== false, ...(isClosed(b) ? { closed: true } : {}) })),
     ...(earlierRecords.length ? { earlierRecords } : {}),
     ...(earlier.details.length ? { earlierRecordDetails: earlier.details } : {}),
     ...(carePlanSummary === undefined ? {} : { carePlanSummary }),
