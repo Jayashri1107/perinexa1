@@ -6,7 +6,8 @@ import { desk, idParam, notFound, qty, reason, settingsOf } from '../pharmacy/ph
 import { CONTROLLED, SUPPLIER_RETURN_REASONS, SUPPLIER_RETURN_REASON_LABELS } from '../pharmacy/pharmacyRules.js';
 import { cancelSupplierReturn, createSupplierReturn, returnTotals, returnableBatches, supplierReturnViews } from '../pharmacy/supplierReturnsService.js';
 import { audit } from '../utils/audit.js';
-import { objectId, parse } from '../utils/validate.js';
+import { objectId, parse, requiredDateOnly } from '../utils/validate.js';
+import { paise } from '../pharmacy/pharmacyHttp.js';
 import { capitalizeName } from '../utils/personName.js';
 
 // Stock returned to a supplier: /api/pharmacy/supplier-returns (mounted inside routes/pharmacy.js, after its
@@ -74,6 +75,23 @@ pharmacySupplierReturnsRouter.post('/:id/cancel', async (req, res) => {
   const t = returnTotals(ret);
   await audit(req, 'PHARMACY_SUPPLIER_RETURN_CANCELLED', { details: { returnId: String(ret._id), number: ret.number, supplierId: String(ret.supplierId), lines: ret.lines.length, qty: t.qty, amountPaise: t.amountPaise, controlled: ret.lines.some((l) => CONTROLLED.includes(l.schedule)) } });
   res.json({ return: await one(req, ret), settings: await settingsOf(req.tenantId) });
+});
+
+// PH3 (docs/PHARMACY_BUILD_NOTE.md): the supplier's own credit note for this return – its number, date and amount –
+// entered when it arrives, usually days after the stock went back. Typed again to correct it. Not on a cancelled return.
+pharmacySupplierReturnsRouter.post('/:id/credit-note', async (req, res) => {
+  desk(req);
+  const body = parse(
+    z.object({ number: z.string().trim().min(1, 'Enter the credit note number.').max(60), date: requiredDateOnly('Credit note date'), amountPaise: paise.min(1, 'Enter the amount.') }).strict(),
+    req.body,
+  );
+  const ret = await loadReturn(req);
+  if (ret.status === 'cancelled') throw Object.assign(new Error('This return was cancelled.'), { status: 409, code: 'CANCELLED' });
+  const changed = Boolean(ret.creditNote);
+  ret.creditNote = { number: body.number, date: body.date, amountPaise: body.amountPaise, by: req.user._id, byName: req.user.name, at: req.now };
+  await ret.save();
+  await audit(req, 'PHARMACY_SUPPLIER_CREDIT_NOTE', { details: { returnId: String(ret._id), number: ret.number, amountPaise: body.amountPaise, ...(changed ? { changed: true } : {}) } });
+  res.json({ return: await one(req, ret) });
 });
 
 pharmacySupplierReturnsRouter.post('/:id/printed', async (req, res) => {

@@ -26,6 +26,13 @@ const medicineSchema = new mongoose.Schema(
     gstRate: { type: Number, enum: [...GST_RATES, ...OLD_GST_RATES], default: DEFAULT_GST_RATE }, // new choices: GST_RATES only (routes)
     schedule: { type: String, enum: SCHEDULES, default: '' },
     reorderLevel: { type: Number, min: 0, default: 0 },
+    // PH4 (docs/PHARMACY_BUILD_NOTE.md): the manufacturer, as a recall names it. Not a register particular.
+    manufacturer: text(120),
+    // PH2: how it is bought – a pack (strip, box, bottle …) of `packSize` units of sale – and whether a pack may be
+    // split at the counter (false: sold in whole packs only)
+    packSize: { type: Number, min: 1, max: 1000, default: 1 },
+    packName: text(20),
+    looseSale: { type: Boolean, default: true },
     // The barcodes printed on its packs (typed or scanned), without spaces and in capitals. Found by exact match.
     barcodes: { type: [String], default: [] },
     active: { type: Boolean, default: true },
@@ -70,6 +77,7 @@ const purchaseLineSchema = new mongoose.Schema({
   // stock goes back to the supplier). Not recorded on older purchases: the medicine's present ones are used.
   hsn: { type: String, default: '' },
   gstRate: { type: Number, default: null },
+  manufacturer: { type: String, default: '' }, // PH4: the medicine's manufacturer on the day of the purchase
   // The line as written on the supplier's bill (GRN, 26 Oct 2026): a pack of `conv` units, its quantity, free
   // quantity, MRP and rate per pack, the discount, and the sums (server/src/pharmacy/grn.js). Not on older purchases.
   pack: {
@@ -102,6 +110,8 @@ const grnSchema = new mongoose.Schema(
     igstPaise: Number,
     roundingPaise: Number,
     netPaise: Number,
+    // PH3: the bill's total as printed by the supplier, typed to check the sums (null when not typed)
+    printedTotalPaise: { type: Number, default: null },
   },
   { _id: false },
 );
@@ -162,6 +172,7 @@ const supplierReturnLineSchema = new mongoose.Schema({
   hsn: { type: String, default: '' },
   gstRate: { type: Number, required: true },
   schedule: { type: String, default: '' },
+  manufacturer: { type: String, default: '' }, // PH4
   batchId: { type: ObjectId, ref: 'StockBatch', required: true },
   batch: { type: String, required: true },
   expiry: { type: Date, required: true },
@@ -187,6 +198,11 @@ const supplierReturnSchema = new mongoose.Schema(
     witness: text(150), // Schedule X and narcotic medicines
     interState: { type: Boolean, default: false }, // the supplier is in another state: IGST instead of CGST + SGST
     lines: { type: [supplierReturnLineSchema], default: [] },
+    // PH3: the supplier's own credit note for this return, entered when it arrives (later than the return)
+    creditNote: {
+      type: new mongoose.Schema({ number: String, date: Date, amountPaise: Number, ...stamp }, { _id: false }),
+      default: null,
+    },
     // A return entered by mistake is cancelled, never deleted: its units go back on their batches (5 Oct 2026).
     // Returns made before that have no status: they count as active.
     status: { type: String, enum: ['active', 'cancelled'], default: 'active' },
@@ -207,8 +223,13 @@ const batchSchema = new mongoose.Schema(
     medicineId: { type: ObjectId, ref: 'Medicine', required: true },
     batch: { type: String, required: true },
     expiry: { type: Date, required: true },
-    mrpPaise: { type: Number, required: true },
+    mrpPaise: { type: Number, required: true }, // per unit (rounded down from the pack's MRP)
     costPaise: { type: Number, required: true }, // purchase price per unit
+    // PH2: the pack's printed MRP and how many units it holds (from the purchase bill). A sale is priced from these, so
+    // a whole pack costs exactly its MRP and loose units are rounded down once per line. Null on older batches and on
+    // batches bought by the unit.
+    packMrpPaise: { type: Number, default: null },
+    unitsPerPack: { type: Number, default: null },
     qtyIn: { type: Number, required: true, min: 0 },
     qtyLeft: { type: Number, required: true, min: 0 },
     purchaseId: { type: ObjectId, ref: 'Purchase', default: null },
@@ -260,6 +281,8 @@ const invoiceLineSchema = new mongoose.Schema({
   expiry: { type: Date, required: true },
   qty: { type: Number, required: true, min: 1 },
   mrpPaise: { type: Number, required: true },
+  // PH2: the line at MRP before the sale's discount, priced from the pack (null on older lines: qty × mrpPaise)
+  grossPaise: { type: Number, default: null },
   amountPaise: { type: Number, required: true },
   taxablePaise: { type: Number, required: true },
   gstPaise: { type: Number, required: true },

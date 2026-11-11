@@ -1,6 +1,6 @@
 import { deflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { readCsv, readExpiry, readNumber, readXlsx, stockLines } from './stockFile.js';
+import { readCsv, readExpiry, readNumber, readXlsx, stockLines, packSizeOf } from './stockFile.js';
 
 // Reading the old pharmacy software's stock list for Opening stock. Fake sample stock only.
 
@@ -118,9 +118,9 @@ describe('the stock lines of a sheet', () => {
     const { lines, missing } = stockLines(rows);
     expect(missing).toEqual([]);
     expect(lines).toEqual([
-      { row: 4, name: 'SAMPLE CANNULA CHILD', batch: 'G24G040630', expiry: '2029-06', qty: 3, mrpPaise: 25200, ratePaise: 2673, gstRate: null, hsn: null, schedule: null, form: null, unit: null },
-      { row: 5, name: 'SAMPLE CANNULA CHILD', batch: 'G24G040631', expiry: '2028-03', qty: 61, mrpPaise: 10000, ratePaise: 2000, gstRate: null, hsn: null, schedule: null, form: null, unit: null },
-      { row: 6, name: 'SAMPLE DROP', batch: '26490618', expiry: '2029-06', qty: 3, mrpPaise: 4833, ratePaise: 3750, gstRate: null, hsn: null, schedule: null, form: null, unit: null },
+      { row: 4, name: 'SAMPLE CANNULA CHILD', batch: 'G24G040630', expiry: '2029-06', qty: 3, mrpPaise: 25200, ratePaise: 2673, gstRate: null, hsn: null, schedule: null, form: null, unit: null, manufacturer: null, packSize: null },
+      { row: 5, name: 'SAMPLE CANNULA CHILD', batch: 'G24G040631', expiry: '2028-03', qty: 61, mrpPaise: 10000, ratePaise: 2000, gstRate: null, hsn: null, schedule: null, form: null, unit: null, manufacturer: null, packSize: null },
+      { row: 6, name: 'SAMPLE DROP', batch: '26490618', expiry: '2029-06', qty: 3, mrpPaise: 4833, ratePaise: 3750, gstRate: null, hsn: null, schedule: null, form: null, unit: null, manufacturer: null, packSize: null },
     ]);
   });
   it('uses per-unit columns and GST, HSN and schedule when the file has them (a GST % cell may hold 0.05)', () => {
@@ -151,5 +151,19 @@ describe('an Excel (.xlsx) file', () => {
   });
   it('says so when the file is not an Excel file', async () => {
     await expect(readXlsx(new TextEncoder().encode('just text'))).rejects.toThrow('not an Excel');
+  });
+});
+
+// PH2 and PH4 (docs/PHARMACY_BUILD_NOTE.md): the pack size and the manufacturer of a medicine new to the list
+describe('the pack size and the manufacturer', () => {
+  it('reads a pack size as old software writes it', () => {
+    expect(['10', "10's", '1x10', '1*15', '10 TAB', 15, 'box', '', null, 0, 2000].map(packSizeOf)).toEqual([10, 10, 10, 15, 10, 15, null, null, null, null, null]);
+  });
+  it('takes the manufacturer and pack columns', () => {
+    const { lines } = stockLines([
+      ['Item', 'Batch', 'Expiry', 'Qty', 'MRP', 'Rate', 'Mfr', 'Packing'],
+      ['SAMPLE TAB', 'B1', '06/2029', 20, 5, 3, 'Sample Pharma', '1x10'],
+    ]);
+    expect(lines[0]).toMatchObject({ manufacturer: 'Sample Pharma', packSize: 10 });
   });
 });

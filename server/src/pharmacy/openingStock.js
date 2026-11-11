@@ -36,6 +36,8 @@ export const openingSchema = z
             schedule: cell,
             form: cell,
             unit: cell,
+            manufacturer: cell, // PH4
+            packSize: cell, // PH2
           })
           .strict(),
       )
@@ -87,7 +89,7 @@ const UNIT_OF = { tablet: 'tablet', capsule: 'capsule', syrup: 'bottle', suspens
 const whole = (v) => (typeof v === 'number' ? v : str(v) === '' ? null : Number(str(v)));
 
 /** One line judged: what it will become, and its problems (nothing is saved while any line has one). */
-function judge(raw, medicines, today) {
+function judge(raw, medicines, today, earlier = new Set()) {
   const problems = [];
   const notes = [];
   const name = str(raw.name);
@@ -109,6 +111,9 @@ function judge(raw, medicines, today) {
   else if (Number.isInteger(mrpPaise) && ratePaise > mrpPaise) problems.push('The purchase rate is above the MRP.');
 
   const existing = name ? medicines.get(nameKey(name)) : null;
+  // PH1: the same batch of the same medicine already came in as opening stock – the file (or this line) was brought in
+  // before; bringing it in again would count the stock twice
+  if (existing && batch && earlier.has(`${String(existing._id)}|${batch.toLowerCase()}`)) problems.push(`Batch ${batch} of ${existing.name} was already brought in as opening stock: leave this line out.`);
   let medicine;
   if (existing) {
     if (!existing.active) problems.push(`${existing.name} is stopped on the medicine list: start using it again first (Pharmacy → Medicines).`);
@@ -127,7 +132,10 @@ function judge(raw, medicines, today) {
     else if (!str(raw.schedule)) notes.push('Schedule not given: set it in Pharmacy → Medicines for H, H1, X and narcotic medicines.');
     const form = readForm(raw.form, name);
     const unit = str(raw.unit).slice(0, 30) || UNIT_OF[form];
-    medicine = { id: null, name, form, unit, gstRate, schedule: schedule ?? '', hsn: /^(\d{4}|\d{6}|\d{8})$/.test(hsn) ? hsn : '', isNew: true };
+    const pack = whole(raw.packSize);
+    if (raw.packSize != null && str(raw.packSize) !== '' && !(Number.isInteger(pack) && pack >= 1 && pack <= 1000)) problems.push(`The pack size “${str(raw.packSize)}” is not a number of units (1 to 1000).`);
+    const manufacturer = str(raw.manufacturer).slice(0, 120);
+    medicine = { id: null, name, form, unit, gstRate, schedule: schedule ?? '', hsn: /^(\d{4}|\d{6}|\d{8})$/.test(hsn) ? hsn : '', manufacturer, packSize: Number.isInteger(pack) && pack >= 1 && pack <= 1000 ? pack : 1, isNew: true };
   }
   const expired = goodExpiry && isExpired({ expiry: endOfMonth(expiry) }, today);
   if (expired) notes.push('Expired: it comes in as stock to write off or return.');
@@ -138,7 +146,12 @@ function judge(raw, medicines, today) {
 export async function checkOpening(req, lines, today) {
   const list = await Medicine.find({ tenantId: req.tenantId }, { name: 1, form: 1, unit: 1, gstRate: 1, schedule: 1, hsn: 1, active: 1 }).lean();
   const medicines = new Map(list.map((m) => [nameKey(m.name), m]));
-  const judged = lines.map((l) => judge(l, medicines, today));
+  // Batches that already came in as opening stock (medicine | batch number)
+  const earlierBatches = await StockMove.find({ tenantId: req.tenantId, kind: 'opening' }, { batchId: 1 }).lean();
+  const earlier = new Set(
+    (earlierBatches.length ? await StockBatch.find({ tenantId: req.tenantId, _id: { $in: earlierBatches.map((m) => m.batchId) } }, { medicineId: 1, batch: 1 }).lean() : []).map((b) => `${String(b.medicineId)}|${String(b.batch).toLowerCase()}`),
+  );
+  const judged = lines.map((l) => judge(l, medicines, today, earlier));
   // A new medicine named on several lines is made once, as its first line describes it.
   const first = new Map();
   for (const l of judged) {
@@ -175,8 +188,8 @@ export async function saveOpening(req, lines, today) {
   const todo = checked.lines.filter((l) => !l.skip);
   for (const l of todo) {
     if (!l.medicine.isNew || made.has(nameKey(l.name))) continue;
-    const { name, form, unit, gstRate, schedule, hsn } = l.medicine;
-    const m = await Medicine.create({ tenantId: req.tenantId, name, form, unit, gstRate, schedule, hsn, updatedByName: req.user.name });
+    const { name, form, unit, gstRate, schedule, hsn, manufacturer, packSize } = l.medicine;
+    const m = await Medicine.create({ tenantId: req.tenantId, name, form, unit, gstRate, schedule, hsn, manufacturer: manufacturer ?? '', packSize: packSize ?? 1, updatedByName: req.user.name });
     made.set(nameKey(l.name), m._id);
   }
   for (const l of todo) {

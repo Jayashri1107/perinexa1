@@ -193,6 +193,44 @@ export const einvoiceHsnOk = (hsn) => /^(\d{6}|\d{8})$/.test(String(hsn ?? '').t
  * 4 Oct 2026 a fault emptied exactly these when a medicine was stopped or used again, so a prescription medicine or
  * a narcotic may have lost its schedule. They are listed for a person to check – nothing is guessed or changed.
  */
+/**
+ * PH2 (docs/PHARMACY_BUILD_NOTE.md): a medicine's pack in words – "Strip of 10 tablets", "not split" when a pack is sold
+ * whole only.
+ */
+export const packWords = (m) => {
+  if (!(m?.packSize > 1)) return '';
+  const name = m.packName || 'pack';
+  return `${name[0].toUpperCase()}${name.slice(1)} of ${m.packSize} ${m.unit || 'unit'}s${m.looseSale === false ? ' – not split' : ''}`;
+};
+
+/**
+ * PH2: what `qty` units of a batch cost at MRP – as the server works it out (server/src/pharmacy/gst.js grossOf): from
+ * the pack's MRP when the batch was bought by the pack (a whole pack exactly its MRP, loose units rounded down), else
+ * the unit MRP × qty. null when the price is not known yet.
+ */
+export function priceOf(b, qty) {
+  if (!Number.isFinite(qty)) return null;
+  if (b?.packMrpPaise && b?.unitsPerPack > 1) return Math.floor((qty * b.packMrpPaise) / b.unitsPerPack);
+  return b?.mrpPaise ? b.mrpPaise * qty : null;
+}
+
+/** PH2: a quantity that breaks a pack of a medicine that is not sold loose – the words to show, else null. */
+export const looseProblem = (m, qty) =>
+  m?.looseSale === false && m?.packSize > 1 && Number.isFinite(qty) && qty % m.packSize !== 0 ? `Sold in whole ${m.packName || 'pack'}s of ${m.packSize} only.` : null;
+
+/** PH2: units in packs and loose units: 143 tablets in strips of 10 → "14 strips and 3 tablets". */
+export function inPacks(units, m) {
+  const size = m?.packSize ?? 1;
+  const unit = m?.unit || 'unit';
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  if (!(size > 1) || !Number.isFinite(units)) return plural(units, unit);
+  const packs = Math.floor(units / size);
+  const loose = units % size;
+  const name = m.packName || 'pack';
+  if (!packs) return plural(loose, unit);
+  return loose ? `${plural(packs, name)} and ${plural(loose, unit)}` : plural(packs, name);
+}
+
 export const medicinesToCheck = (medicines) => (medicines ?? []).filter((m) => !m.generic && !m.strength && !m.hsn && !m.schedule && !(m.reorderLevel > 0));
 
 /** "12 tablets", "1 bottle" */

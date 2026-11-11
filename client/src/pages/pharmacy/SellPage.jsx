@@ -5,7 +5,7 @@ import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
-import { CONTROLLED, FREQUENCY_WORDS, einvoiceHsnOk, expiryLabel, medicineLabel, prescribedLines, scannedForList } from './pharmacyFormat.js';
+import { CONTROLLED, FREQUENCY_WORDS, einvoiceHsnOk, expiryLabel, inPacks, looseProblem, medicineLabel, prescribedLines, priceOf, scannedForList } from './pharmacyFormat.js';
 import { BatchGrid, PaymentWindow } from './CounterParts.jsx';
 import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
@@ -30,7 +30,10 @@ export const DOSE_CHOICES = Object.entries(FREQUENCY_WORDS)
   });
 
 // The bill's total at MRP (before any discount), and the hospital's date and time for the top of the bill
-const grossOf = (lines) => lines.reduce((n, l) => n + (l.mrpPaise && /^\d+$/.test(l.qty) ? l.mrpPaise * Number(l.qty) : 0), 0);
+// PH2: a line bought by the pack is priced from the pack's MRP (pharmacyFormat.js priceOf)
+const grossOf = (lines) => lines.reduce((n, l) => n + (/^\d+$/.test(l.qty) ? (priceOf(l, Number(l.qty)) ?? 0) : 0), 0);
+// PH2: the batch's pack price, kept on a line (packMrpPaise, unitsPerPack) – none for a batch bought by the unit
+const packOf = (b) => ({ packMrpPaise: b?.packMrpPaise ?? null, unitsPerPack: b?.unitsPerPack ?? null });
 const nowStamp = () => {
   const d = new Date();
   const date = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -203,7 +206,7 @@ function BatchPicker({ line, onChange, onPrice = null }) {
   const mrp = shown?.mrpPaise ?? null;
   const expiry = shown?.expiry ?? null;
   useEffect(() => {
-    if (onPrice && (mrp !== (line.mrpPaise ?? null) || expiry !== (line.expiry ?? null))) onPrice({ mrpPaise: mrp, expiry });
+    if (onPrice && (mrp !== (line.mrpPaise ?? null) || expiry !== (line.expiry ?? null))) onPrice({ mrpPaise: mrp, expiry, ...packOf(shown) });
   }, [mrp, expiry, line.mrpPaise, line.expiry, onPrice]);
   return (
     <select className="ph-batch" aria-label={`Batch of ${line.medicine.name}`} value={line.batchId ?? ''} onChange={(e) => onChange(e.target.value || null)}>
@@ -393,13 +396,13 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const addFromBatch = (m, batch, qty, dose) =>
     setLines((ls) => {
       const same = ls.find((l) => l.medicine.id === m.id && (l.batchId === batch.id || (!l.batchId && !l.prescribed)));
-      if (same) return ls.map((l) => (l === same ? { ...l, batchId: batch.id, batchNo: batch.batch, mrpPaise: batch.mrpPaise, expiry: batch.expiry, qty: String((Number(l.qty) || 0) + qty), dose: dose || l.dose } : l));
-      return [...ls, { key: `${m.id}-${batch.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: batch.id, batchNo: batch.batch, mrpPaise: batch.mrpPaise, expiry: batch.expiry, dose }];
+      if (same) return ls.map((l) => (l === same ? { ...l, batchId: batch.id, batchNo: batch.batch, mrpPaise: batch.mrpPaise, ...packOf(batch), expiry: batch.expiry, qty: String((Number(l.qty) || 0) + qty), dose: dose || l.dose } : l));
+      return [...ls, { key: `${m.id}-${batch.id}-${Date.now()}`, medicine: m, qty: String(qty), batchId: batch.id, batchNo: batch.batch, mrpPaise: batch.mrpPaise, ...packOf(batch), expiry: batch.expiry, dose }];
     });
   // As in the store's earlier software (6 and 7 Nov 2026): choose the medicine from the drop-down, then its batch from
   // the batch list, write the quantity and dose, then Add
   const [entry, setEntry] = useState(null); // { medicine, batch, qty, dose }
-  const entryOk = Boolean(entry?.batch) && /^\d+$/.test(entry.qty) && Number(entry.qty) >= 1 && Number(entry.qty) <= entry.batch.qtyLeft;
+  const entryOk = Boolean(entry?.batch) && /^\d+$/.test(entry.qty) && Number(entry.qty) >= 1 && Number(entry.qty) <= entry.batch.qtyLeft && !looseProblem(entry.medicine, Number(entry.qty));
   const [finderKey, setFinderKey] = useState(0); // a new, empty Item name box (with the cursor) after each Add
   const qtyBox = useRef(null);
   // A batch chosen: the cursor goes to Qty, as in the earlier software
@@ -452,7 +455,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
     const gross = grossOf(lines);
     setDiscount(text === '' || !Number.isFinite(n) || !gross ? '' : String(Math.round(((n * 100) / gross) * 100 * 10000) / 10000));
   };
-  const qtyOk = lines.length > 0 && lines.every((l) => /^\d+$/.test(l.qty) && Number(l.qty) > 0);
+  const qtyOk = lines.length > 0 && lines.every((l) => /^\d+$/.test(l.qty) && Number(l.qty) > 0 && !looseProblem(l.medicine, Number(l.qty)));
   const whoOk = who === 'walkin' ? customer.name.trim().length >= 2 : Boolean(patient);
   const ready = qtyOk && whoOk && (!isBusiness || buyerOk) && (pct === 0 || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100;
 
@@ -482,12 +485,12 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const setQty = (key, qty) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, qty } : x)));
   const setLine = (key, change) => setLines((ls) => ls.map((x) => (x.key === key ? { ...x, ...change } : x)));
   // Each row's amount at its batch MRP, and the total after the discount (the invoice has the exact figures)
-  const rowPaise = (l) => (l.mrpPaise && /^\d+$/.test(l.qty) ? l.mrpPaise * Number(l.qty) : null);
+  const rowPaise = (l) => (/^\d+$/.test(l.qty) ? priceOf(l, Number(l.qty)) : null);
   const grossPaise = grossOf(lines);
   const totalPaise = Math.round(grossPaise * (1 - (Number.isFinite(pct) ? pct : 0) / 100));
   // The GST inside the prices (MRP includes GST), after the discount
   const gstPaise = Math.round(lines.reduce((n, l) => n + ((rowPaise(l) ?? 0) * (1 - (Number.isFinite(pct) ? pct : 0) / 100) * l.medicine.gstRate) / (100 + l.medicine.gstRate), 0));
-  const entryAmount = entry?.batch && /^\d+$/.test(entry.qty) ? entry.batch.mrpPaise * Number(entry.qty) : null;
+  const entryAmount = entry?.batch && /^\d+$/.test(entry.qty) ? priceOf(entry.batch, Number(entry.qty)) : null;
   const close = embedded && onCancel ? onCancel : () => navigate('/pharmacy/invoices');
   // Medicines added or changed after a discount was given: the % stays, the amount follows it
   useEffect(() => {
@@ -689,6 +692,16 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                   </button>
                 </div>
                 {entry?.batch && Number(entry.qty) > entry.batch.qtyLeft && <p className="field-error">Only {entry.batch.qtyLeft} in batch {entry.batch.batch}: choose another batch for the rest.</p>}
+                {/* PH2: a medicine bought by the pack – the quantity in packs, and a whole pack in one press */}
+                {entry?.batch && entry.medicine.packSize > 1 && (
+                  <p className={looseProblem(entry.medicine, Number(entry.qty)) ? 'field-error' : 'hint'}>
+                    {/^\d+$/.test(entry.qty) && Number(entry.qty) > 0 ? `= ${inPacks(Number(entry.qty), entry.medicine)}. ` : ''}
+                    {looseProblem(entry.medicine, Number(entry.qty)) ?? ''}{' '}
+                    <button type="button" className="btn btn-link btn-sm" onClick={() => setEntry({ ...entry, qty: String((Number(entry.qty) || 0) + entry.medicine.packSize) })}>
+                      + 1 {entry.medicine.packName || 'pack'} ({entry.medicine.packSize})
+                    </button>
+                  </p>
+                )}
                 {entry && !entry.batch && <BatchGrid medicine={entry.medicine} onPick={(batch) => setEntry({ ...entry, batch })} onCancel={() => { setEntry(null); setFinderKey((k) => k + 1); }} />}
                 <details className="ph-counter-barcode">
                   <summary>Scan a barcode</summary>
@@ -740,6 +753,9 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                                 </button>
                               )}
                               <input className="bill-price-input" inputMode="numeric" aria-label={`Quantity of ${l.medicine.name}`} value={l.qty} onChange={(e) => setQty(l.key, e.target.value.replace(/\D/g, ''))} />
+                              {l.medicine.packSize > 1 && /^\d+$/.test(l.qty) && Number(l.qty) > 0 && (
+                                <span className={`ph-line-note${looseProblem(l.medicine, Number(l.qty)) ? ' field-error' : ''}`}>{looseProblem(l.medicine, Number(l.qty)) ?? inPacks(Number(l.qty), l.medicine)}</span>
+                              )}
                               {onPhone && (
                                 <button type="button" className="ph-qty-step" aria-label={`One more ${l.medicine.name}`} onClick={() => stepQty(l, 1)}>
                                   <Plus aria-hidden="true" />

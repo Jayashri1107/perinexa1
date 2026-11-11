@@ -58,6 +58,7 @@ function debitLine(batch, medicine, fact) {
     hsn: fact?.line.hsn || medicine.hsn || '',
     gstRate: fact?.line.gstRate ?? medicine.gstRate,
     schedule: medicine.schedule ?? '',
+    manufacturer: fact?.line.manufacturer || medicine.manufacturer || '', // PH4
     batchId: batch._id,
     batch: batch.batch,
     expiry: batch.expiry,
@@ -222,6 +223,8 @@ export async function supplierReturnViews(req, returns) {
       controlled: r.lines.some((l) => CONTROLLED.includes(l.schedule)),
       status: r.status === 'cancelled' ? 'cancelled' : 'active',
       cancelled: r.status === 'cancelled' && r.cancelled ? { at: r.cancelled.at ?? null, byName: r.cancelled.byName ?? '', reason: r.cancelled.reason ?? '', witness: r.cancelled.witness ?? '' } : null,
+      // PH3: the supplier's own credit note for this return, once entered
+      creditNote: r.creditNote ? { number: r.creditNote.number, date: isoDay(r.creditNote.date), amountPaise: r.creditNote.amountPaise, byName: r.creditNote.byName ?? '', at: r.creditNote.at ?? null } : null,
       // May this person cancel it (the pharmacist, while it is not cancelled)? The server checks again.
       canCancel: r.status !== 'cancelled' && hasRole(req.membership, ...PHARMACY_DESK_ROLES),
       lines: r.lines.map((l) => ({

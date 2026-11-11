@@ -5,7 +5,8 @@
 > (GRN), opening stock import, the sales register, supplier returns, the stock sheet and Tally (`pharmacyStock.js`,
 > `pharmacyRegister.js`, `pharmacySupplierReturns.js`, `docs/PHARMACY_PLAN.md`, `docs/TALLY_PLAN.md`). Read
 > "what exists" again against this code before building. The ideas list in this repository is
-> `docs/IDEAS_FOR_LATER.md`. **Nothing is built**; when is for the developer and the owner to agree.
+> `docs/IDEAS_FOR_LATER.md`. **Stage A (PH4, PH2, PH3, PH1) built on 11 Nov 2026, branch `pharm-stage-a` – see
+> `docs/PROGRESS.md` and the note under Stage A below.** Stages B, C and D are not built.
 
 Written 10 Nov 2026 for the developer, at the owner's request. After a comparison with pharmacy (medical store)
 programs and hospital pharmacy modules (`docs/PHARMACY_APPS_REVIEW.md`), the owner chose **these 18 features and only
@@ -93,6 +94,16 @@ The features lean on each other; four stages, one branch per feature inside each
 | D – the hospital side | PH13, PH12, PH14, PH8 | PH13 is the largest change in this note; PH12 and PH14 are simple once it exists |
 
 ## 3. Stage A – the data underneath
+
+> **Built in perinexa1 (11 Nov 2026).** Differences from what follows: PH2 – perinexa1's purchase line already kept
+> the bill's pack (`pack.conv`, `pack.mrpPaise`); the batch now keeps `packMrpPaise` and `unitsPerPack` from it and a
+> sale line `grossPaise` (`pharmacy/gst.js grossOf`); the medicine has `packSize`, `packName`, `looseSale`. PH3 –
+> discount, IGST and rounding were already in the GRN; added `grn.printedTotalPaise` (409 `BILL_TOTAL_DIFFERS` beyond
+> ₹1 unless `totalConfirmed`), `SupplierReturn.creditNote` (`POST /supplier-returns/:id/credit-note`, audit
+> `PHARMACY_SUPPLIER_CREDIT_NOTE`) and the register in `GET /reports/purchases`. **Purchases to Tally are not built.**
+> PH1 – opening stock already existed (Excel read in the browser, `pharmacy/openingStock.js`); added the manufacturer
+> and pack-size columns and the refusal of a batch already brought in. No `StockImport` model and no witness for
+> controlled opening stock yet. Tests: `server/tests/pharmacy-stage-a.test.js`.
 
 ### PH4 – the manufacturer's name
 

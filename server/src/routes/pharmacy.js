@@ -13,7 +13,7 @@ import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { einvoiceHsn, einvoiceOf, einvoiceProblems } from '../pharmacy/einvoice.js';
 import { PAYMENT_MODES, TAX_TYPES, grnTotals, perUnit } from '../pharmacy/grn.js';
-import { byRate, suggestedQty, sum } from '../pharmacy/gst.js';
+import { byRate, suggestedQty, sum, grossOf } from '../pharmacy/gst.js';
 import { cleanGstin, gstinProblem, gstinState } from '../pharmacy/gstin.js';
 import { applyPurchase, countPurchaseOnOrder, orderToReceive } from '../pharmacy/ordersService.js';
 import { batchView, desk, editor, forbidden, idParam, medicineView, paise, qty, reason, reports, settingsOf, supplierView, today } from '../pharmacy/pharmacyHttp.js';
@@ -130,6 +130,11 @@ const medicineFields = {
   gstRate: z.union(GST_RATES.map((r) => z.literal(r)), { error: `GST is ${GST_RATES.join(', ')} % since 22 September 2025 (medicines 5 %).` }),
   schedule: z.enum(SCHEDULES),
   reorderLevel: z.number().int().min(0).max(MAX_QTY),
+  // PH4: the manufacturer (for a recall); PH2: the pack it is bought in, and whether a pack may be split
+  manufacturer: z.string().trim().max(120),
+  packSize: z.number().int().min(1, 'A pack holds at least 1.').max(1000),
+  packName: z.string().trim().max(20),
+  looseSale: z.boolean(),
   // The barcodes on its packs (typed, or scanned: a scanner types the digits). Kept without spaces, in capitals.
   barcodes: z
     .array(z.string().max(60).transform(cleanBarcode).pipe(z.string().regex(BARCODE_PATTERN, 'A barcode has 4 to 32 digits or letters.')))
@@ -146,6 +151,10 @@ const medicineSchema = z
     hsn: medicineFields.hsn.default(''),
     schedule: medicineFields.schedule.default(''),
     reorderLevel: medicineFields.reorderLevel.default(0),
+    manufacturer: medicineFields.manufacturer.default(''),
+    packSize: medicineFields.packSize.default(1),
+    packName: medicineFields.packName.default(''),
+    looseSale: medicineFields.looseSale.default(true),
     barcodes: medicineFields.barcodes.optional(),
     active: medicineFields.active.optional(),
   })
@@ -307,11 +316,18 @@ const purchaseSchema = z
         otherChargesPaise: paise.default(0),
         surchargePaise: paise.default(0),
         freightPaise: paise.default(0),
+        // PH3: the bill's total as printed, typed to check the sums; a difference above ₹1 is asked about first
+        printedTotalPaise: paise.nullable().default(null),
+        totalConfirmed: z.boolean().default(false),
       })
       .strict()
       .optional(),
   })
   .strict();
+
+// PH3: the largest difference between the bill as printed and the sums worked out here that is let through unasked
+export const BILL_TOTAL_SLACK_PAISE = 100;
+const rupees = (p) => `₹${(p / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /**
  * The bill as entered → what the stock keeps: lines per unit of sale (with the line as on the bill in `pack`), and
@@ -326,13 +342,20 @@ async function asStock(req, body) {
   const lines = body.lines;
   const sums = grnTotals(lines, body.grn ?? {});
   if (sums.netPaise < 0) throw new HttpError(400, 'The discounts are more than the bill: check the scheme discount, the discount and the credit note.', 'VALIDATION_ERROR');
+  // PH3: the supplier's printed total against the sums – more than ₹1 apart is asked about before the stock comes in
+  const printed = body.grn?.printedTotalPaise;
+  if (printed != null && Math.abs(printed - sums.netPaise) > BILL_TOTAL_SLACK_PAISE && !body.grn.totalConfirmed) {
+    throw Object.assign(new HttpError(409, `The bill says ${rupees(printed)} but the lines add up to ${rupees(sums.netPaise)}: check the rates, discounts and GST, or confirm the bill as it is.`, 'BILL_TOTAL_DIFFERS'), {
+      details: { printedTotalPaise: printed, netPaise: sums.netPaise },
+    });
+  }
   return {
     ...body,
     lines: body.lines.map((l, i) => {
       const { conv, discPercent, ...rest } = l;
       return { ...rest, ...perUnit(l), pack: { conv, qty: l.qty, freeQty: l.freeQty, ratePaise: l.ratePaise, mrpPaise: l.mrpPaise, discPercent, ...sums.lines[i] } };
     }),
-    grn: body.grn ? { ...body.grn, ...Object.fromEntries(Object.entries(sums).filter(([k]) => k !== 'lines')) } : null,
+    grn: body.grn ? (({ totalConfirmed, ...g }) => ({ ...g, ...Object.fromEntries(Object.entries(sums).filter(([k]) => k !== 'lines')) }))(body.grn) : null,
   };
 }
 
@@ -354,7 +377,7 @@ async function purchaseViews(req, list) {
     at: p.created?.at ?? null,
     // The bill's details and sums (GRN), and each line as on the bill (pack) – null on older purchases
     grn: p.grn ?? null,
-    lines: p.lines.map((l) => ({ name: l.name, batch: l.batch, expiry: isoDay(l.expiry), qty: l.qty, freeQty: l.freeQty, ratePaise: l.ratePaise, mrpPaise: l.mrpPaise, hsn: l.hsn ?? '', gstRate: l.gstRate ?? null, pack: l.pack ?? null })),
+    lines: p.lines.map((l) => ({ name: l.name, batch: l.batch, expiry: isoDay(l.expiry), qty: l.qty, freeQty: l.freeQty, ratePaise: l.ratePaise, mrpPaise: l.mrpPaise, hsn: l.hsn ?? '', gstRate: l.gstRate ?? null, manufacturer: l.manufacturer ?? '', pack: l.pack ?? null })),
   }));
 }
 
@@ -426,7 +449,7 @@ pharmacyRouter.get('/stock', async (req, res) => {
       qty: qtyUsable,
       expiredQty: bs.filter((b) => isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0),
       costValuePaise: bs.reduce((s, b) => s + b.qtyLeft * b.costPaise, 0),
-      mrpValuePaise: bs.reduce((s, b) => s + b.qtyLeft * b.mrpPaise, 0),
+      mrpValuePaise: bs.reduce((s, b) => s + grossOf(b, b.qtyLeft), 0), // PH2: from the pack's MRP where known
       nearestExpiry: nearest ? isoDay(nearest) : null,
       expiringSoon: nearest ? daysLeft(nearest, t) <= EXPIRY_WARNING_DAYS : false,
       low: m.active && qtyUsable <= (m.reorderLevel ?? 0),
@@ -453,7 +476,7 @@ pharmacyRouter.get('/stock-sheet', async (req, res) => {
       expiry: isoDay(b.expiry),
       expired: isExpired(b, t),
       qty: b.qtyLeft,
-      mrpValuePaise: b.qtyLeft * b.mrpPaise,
+      mrpValuePaise: grossOf(b, b.qtyLeft),
       costValuePaise: b.qtyLeft * b.costPaise,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) || a.expiry.localeCompare(b.expiry) || a.batch.localeCompare(b.batch));
@@ -1074,8 +1097,46 @@ pharmacyRouter.get('/reports/purchases', async (req, res) => {
   const bySupplier = [...by.values()].map((r) => ({ ...r, netPaise: r.totalPaise - r.returnedPaise })).sort((a, b) => b.netPaise - a.netPaise || a.supplier.localeCompare(b.supplier));
   const totalPaise = bySupplier.reduce((s, r) => s + r.totalPaise, 0);
   const returnedPaise = bySupplier.reduce((s, r) => s + r.returnedPaise, 0);
-  res.json({ from: isoDay(q.from), to: isoDay(q.to), bySupplier, totalPaise, returnedPaise, netPaise: totalPaise - returnedPaise });
+  res.json({ from: isoDay(q.from), to: isoDay(q.to), bySupplier, totalPaise, returnedPaise, netPaise: totalPaise - returnedPaise, register: purchaseRegister(list, names) });
 });
+
+/**
+ * PH3: the purchase register – one row per bill of the period: taxable value, GST by rate, CGST, SGST, IGST, rounding
+ * and the bill's total. Bills entered before the GRN (no tax recorded) are listed apart and left out of the tax totals.
+ */
+export function purchaseRegister(list, names) {
+  const rows = [];
+  const noTax = [];
+  for (const p of [...list].sort((a, b) => new Date(a.invoiceDate) - new Date(b.invoiceDate) || a.number.localeCompare(b.number))) {
+    const base = { number: p.number, supplier: names.get(String(p.supplierId)) ?? '', invoiceNo: p.invoiceNo, invoiceDate: isoDay(p.invoiceDate) };
+    if (!p.grn || p.grn.netPaise == null) {
+      noTax.push({ ...base, valuePaise: p.totalPaise });
+      continue;
+    }
+    const rates = new Map();
+    for (const l of p.lines) {
+      const r = l.gstRate ?? 0;
+      const x = rates.get(r) ?? { rate: r, taxablePaise: 0, gstPaise: 0 };
+      x.taxablePaise += l.pack?.taxablePaise ?? 0;
+      x.gstPaise += l.pack?.gstPaise ?? 0;
+      rates.set(r, x);
+    }
+    rows.push({
+      ...base,
+      interState: p.grn.taxType === 'igst',
+      taxablePaise: (p.grn.netPaise ?? 0) - (p.grn.gstPaise ?? 0) - (p.grn.roundingPaise ?? 0),
+      byRate: [...rates.values()].sort((a, b) => a.rate - b.rate),
+      cgstPaise: p.grn.cgstPaise ?? 0,
+      sgstPaise: p.grn.sgstPaise ?? 0,
+      igstPaise: p.grn.igstPaise ?? 0,
+      roundingPaise: p.grn.roundingPaise ?? 0,
+      netPaise: p.grn.netPaise,
+      printedTotalPaise: p.grn.printedTotalPaise ?? null,
+    });
+  }
+  const total = (k) => rows.reduce((s, r) => s + (r[k] ?? 0), 0);
+  return { rows, noTax, totals: { taxablePaise: total('taxablePaise'), cgstPaise: total('cgstPaise'), sgstPaise: total('sgstPaise'), igstPaise: total('igstPaise'), roundingPaise: total('roundingPaise'), netPaise: total('netPaise') } };
+}
 
 // ---------- Export for the accountant (admin) ----------
 
@@ -1105,18 +1166,18 @@ pharmacyRouter.get('/export', async (req, res) => {
     const list = await SupplierReturn.find({ tenantId: req.tenantId, 'created.at': { $gte: from, $lt: to } }).sort({ 'created.at': 1 }).lean();
     const names = new Map((await Supplier.find({ tenantId: req.tenantId, _id: { $in: list.map((r) => r.supplierId) } }, { name: 1, gstin: 1 }).lean()).map((x) => [String(x._id), x]));
     // Cancelled returns are listed too, marked so (like cancelled purchases): the accountant leaves them out
-    rows = [['Debit note', 'Date', 'Supplier', 'Supplier GSTIN', 'Reason', 'Supplier invoice', 'Medicine', 'HSN', 'Batch', 'Expiry', 'Qty', 'Rate', 'Taxable', 'GST %', 'CGST', 'SGST', 'IGST', 'Amount', 'Status']];
+    rows = [['Debit note', 'Date', 'Supplier', 'Supplier GSTIN', 'Reason', 'Supplier invoice', 'Medicine', 'Manufacturer', 'HSN', 'Batch', 'Expiry', 'Qty', 'Rate', 'Taxable', 'GST %', 'CGST', 'SGST', 'IGST', 'Amount', 'Status', 'Supplier credit note', 'Credit note date', 'Credit note amount']];
     for (const r of list) {
       const sup = names.get(String(r.supplierId));
       for (const l of r.lines) {
-        rows.push([r.number, isoDay(toHospitalDate(r.created.at)), sup?.name ?? '', sup?.gstin ?? '', SUPPLIER_RETURN_REASON_LABELS[r.reason] ?? r.reason, l.invoiceNo ?? '', l.name, l.hsn, l.batch, isoDay(l.expiry), l.qty, rs(l.ratePaise), rs(l.taxablePaise), l.gstRate, rs(l.cgstPaise), rs(l.sgstPaise), rs(l.igstPaise), rs(l.amountPaise), r.status === 'cancelled' ? 'Cancelled' : 'Returned']);
+        rows.push([r.number, isoDay(toHospitalDate(r.created.at)), sup?.name ?? '', sup?.gstin ?? '', SUPPLIER_RETURN_REASON_LABELS[r.reason] ?? r.reason, l.invoiceNo ?? '', l.name, l.manufacturer ?? '', l.hsn, l.batch, isoDay(l.expiry), l.qty, rs(l.ratePaise), rs(l.taxablePaise), l.gstRate, rs(l.cgstPaise), rs(l.sgstPaise), rs(l.igstPaise), rs(l.amountPaise), r.status === 'cancelled' ? 'Cancelled' : 'Returned', r.creditNote?.number ?? '', r.creditNote?.date ? isoDay(r.creditNote.date) : '', r.creditNote ? rs(r.creditNote.amountPaise) : '']);
       }
     }
   } else {
     const list = await Purchase.find({ tenantId: req.tenantId, invoiceDate: { $gte: q.from, $lte: q.to } }).sort({ invoiceDate: 1 }).lean();
     const views = await purchaseViews(req, list);
-    rows = [['Purchase', 'Supplier', 'Invoice', 'Invoice date', 'Status', 'Medicine', 'Batch', 'Expiry', 'Qty', 'Free', 'Rate', 'MRP', 'Value', 'Purchase order']];
-    for (const v of views) for (const l of v.lines) rows.push([v.number, v.supplier, v.invoiceNo, v.invoiceDate, v.status, l.name, l.batch, l.expiry, l.qty, l.freeQty, rs(l.ratePaise), rs(l.mrpPaise), rs(l.ratePaise * l.qty), v.order?.number ?? '']);
+    rows = [['Purchase', 'Supplier', 'Invoice', 'Invoice date', 'Status', 'Medicine', 'Manufacturer', 'Batch', 'Expiry', 'Qty', 'Free', 'Rate', 'MRP', 'Value', 'Purchase order']];
+    for (const v of views) for (const l of v.lines) rows.push([v.number, v.supplier, v.invoiceNo, v.invoiceDate, v.status, l.name, l.manufacturer ?? '', l.batch, l.expiry, l.qty, l.freeQty, rs(l.ratePaise), rs(l.mrpPaise), rs(l.ratePaise * l.qty), v.order?.number ?? '']);
   }
   await audit(req, 'PHARMACY_EXPORTED', { details: { what: q.what, from: isoDay(q.from), to: isoDay(q.to), rows: rows.length - 1 } });
   res.set('Content-Type', 'text/csv; charset=utf-8');

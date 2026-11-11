@@ -468,6 +468,7 @@ export const AUDIT_LABELS = {
   PHARMACY_ORDER_CANCELLED: 'Purchase order cancelled',
   PHARMACY_ORDER_PRINTED: 'Purchase order printed',
   PHARMACY_SUPPLIER_RETURNED: 'Stock returned to a supplier',
+  PHARMACY_SUPPLIER_CREDIT_NOTE: "Supplier's credit note for a return entered",
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
@@ -1636,6 +1637,8 @@ export function describeAudit(entry) {
       return `${d.number ?? ''}${d.qty != null ? ` · ${count(d.qty, 'unit')}` : ''}${d.lines != null ? ` in ${count(d.lines, 'batch', 'batches')}` : ''}${d.amountPaise != null ? ` · ${rupeesOf(d.amountPaise)}` : ''}${d.reason ? ` · ${SUPPLIER_RETURN_WORDS[d.reason] ?? d.reason}` : ''}${d.controlled ? ' · controlled medicine' : ''}`;
     case 'PHARMACY_SUPPLIER_RETURN_CANCELLED':
       return `${d.number ?? ''}${d.qty != null ? ` · ${count(d.qty, 'unit')} back in stock` : ''}${d.amountPaise != null ? ` · ${rupeesOf(d.amountPaise)}` : ''}${d.controlled ? ' · controlled medicine' : ''}`;
+    case 'PHARMACY_SUPPLIER_CREDIT_NOTE':
+      return `${d.number ?? ''}${d.amountPaise != null ? ` · ${rupeesOf(d.amountPaise)}` : ''}${d.changed ? ' · corrected' : ''}`;
     case 'PHARMACY_EINVOICE_DOWNLOADED':
       return `${d.creditNote ? `Credit note ${d.creditNote} of invoice ${d.number ?? ''}` : `Invoice ${d.number ?? ''}`}`;
     case 'BILL_INSURANCE_CHANGED':

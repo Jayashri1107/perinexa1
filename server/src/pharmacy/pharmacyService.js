@@ -24,7 +24,7 @@ import { refuseNewOnClosed } from '../patients/deathRules.js';
 import { earlierRecordIds } from '../patients/duplicateService.js';
 import { HttpError } from '../utils/httpError.js';
 import { buyerState } from './einvoice.js';
-import { lineMoney, partOf, sum } from './gst.js';
+import { lineMoney, partOf, sum, grossOf } from './gst.js';
 import { CONTROLLED, NEEDS_PRESCRIPTION } from './pharmacyRules.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
@@ -95,9 +95,11 @@ export async function createPurchase(req, body) {
     // Each line keeps the medicine's HSN code and GST rate of today: a debit note (a return to the supplier) uses them
     lines: body.lines.map((l) => {
       const m = meds.get(String(l.medicineId));
-      return { ...l, name: m.name, expiry: endOfMonth(l.expiry), hsn: m.hsn ?? '', gstRate: l.gstRate ?? m.gstRate };
+      return { ...l, name: m.name, expiry: endOfMonth(l.expiry), hsn: m.hsn ?? '', gstRate: l.gstRate ?? m.gstRate, manufacturer: m.manufacturer ?? '' };
     }),
-    totalPaise: body.lines.reduce((s, l) => s + l.ratePaise * l.qty, 0),
+    // The purchase value before GST: a line typed by the pack counts as typed (rate × packs), not as the per-unit rate
+    // rounded and multiplied back (a strip of 15 at ₹70 was ₹70.05 that way)
+    totalPaise: body.lines.reduce((s, l) => s + (l.pack?.totalPaise ?? l.ratePaise * l.qty), 0),
     orderId: body.orderId ?? null,
     grn: body.grn ?? null,
     created: stampOf(req),
@@ -111,6 +113,8 @@ export async function createPurchase(req, body) {
       expiry: line.expiry,
       mrpPaise: line.mrpPaise,
       costPaise: units ? Math.round((line.ratePaise * line.qty) / units) : line.ratePaise,
+      // PH2: bought by the pack – a sale is priced from the pack's printed MRP (pharmacy/gst.js grossOf)
+      ...(line.pack?.conv > 1 && line.pack?.mrpPaise ? { packMrpPaise: line.pack.mrpPaise, unitsPerPack: line.pack.conv } : {}),
       qtyIn: units,
       qtyLeft: 0,
       purchaseId: purchase._id,
@@ -211,6 +215,10 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     if (NEEDS_PRESCRIPTION.includes(m.schedule) && !visitId && !(body.rxSeen && doctor?.name)) {
       fields[`lines.${i}.medicineId`] = `${m.name} needs a prescription: choose her Perinexa prescription, or write the doctor's name and tick "prescription seen".`;
     }
+    // PH2: a medicine that is not sold loose goes in whole packs only
+    if (m.looseSale === false && (m.packSize ?? 1) > 1 && l.qty % m.packSize !== 0) {
+      fields[`lines.${i}.qty`] = `${m.name} is sold in whole ${m.packName || 'pack'}s of ${m.packSize} only.`;
+    }
     if (CONTROLLED.includes(m.schedule)) {
       if (!patient) fields[`lines.${i}.medicineId`] = `${m.name} is given only to a registered patient.`;
       else if (!doctor?.reg) fields[`lines.${i}.medicineId`] = `${m.name} needs the prescribing doctor's registration number.`;
@@ -252,8 +260,9 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
           expiry: part.batch.expiry,
           qty: part.qty,
           mrpPaise: part.batch.mrpPaise,
+          grossPaise: grossOf(part.batch, part.qty),
           dose: l.dose ?? '',
-          ...lineMoney({ qty: part.qty, mrpPaise: part.batch.mrpPaise, gstRate: m.gstRate, discountPercent: pct }),
+          ...lineMoney({ qty: part.qty, mrpPaise: part.batch.mrpPaise, gstRate: m.gstRate, discountPercent: pct, grossPaise: grossOf(part.batch, part.qty) }),
         });
       }
     }
@@ -271,7 +280,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
   if (dryRun) {
     return {
       totalPaise: total,
-      atMrpPaise: lines.reduce((n, l) => n + l.qty * l.mrpPaise, 0),
+      atMrpPaise: lines.reduce((n, l) => n + (l.grossPaise ?? l.qty * l.mrpPaise), 0),
       lines: lines.map((l) => ({ medicineId: String(l.medicineId), name: l.name, batch: l.batch, expiry: l.expiry, qty: l.qty, mrpPaise: l.mrpPaise, amountPaise: l.amountPaise })),
     };
   }
@@ -371,7 +380,7 @@ export function invoiceTotals(inv) {
   const paid = (inv.payments ?? []).reduce((s, p) => s + (p.kind === 'refund' ? -p.amountPaise : p.amountPaise), 0);
   const net = sold.amountPaise - returned.amountPaise;
   return {
-    grossPaise: inv.lines.reduce((s, l) => s + l.qty * l.mrpPaise, 0),
+    grossPaise: inv.lines.reduce((s, l) => s + (l.grossPaise ?? l.qty * l.mrpPaise), 0),
     totalPaise: sold.amountPaise,
     returnedPaise: returned.amountPaise,
     netPaise: net,

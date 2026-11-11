@@ -385,7 +385,75 @@ function PurchasesReport({ p }) {
           </tr>
         </tbody>
       </table>
+      {p.register && <PurchaseRegister register={p.register} />}
     </section>
+  );
+}
+
+/** PH3 (docs/PHARMACY_BUILD_NOTE.md): the purchase register – one row per bill with its tax, and the totals. */
+function PurchaseRegister({ register: r }) {
+  return (
+    <>
+      <h3 className="ph-register-title">Purchase register</h3>
+      <p className="hint">One row per supplier bill of the period: taxable value, GST and the bill’s total. Bills entered before GST was recorded are listed apart and left out of the tax totals.</p>
+      <div className="ph-grn-scroll">
+        <table className="bill-report">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Bill</th>
+              <th scope="col">Supplier</th>
+              <th scope="col" className="num">Taxable</th>
+              <th scope="col">GST by rate</th>
+              <th scope="col" className="num">CGST</th>
+              <th scope="col" className="num">SGST</th>
+              <th scope="col" className="num">IGST</th>
+              <th scope="col" className="num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.rows.map((x) => (
+              <tr key={x.number}>
+                <td className="tabular">{x.invoiceDate}</td>
+                <td>
+                  {x.invoiceNo} <span className="muted">({x.number})</span>
+                </td>
+                <td>{x.supplier}</td>
+                <td className="num">{money(x.taxablePaise)}</td>
+                <td>{x.byRate.map((b) => `${b.rate}%: ${money(b.gstPaise)}`).join(' · ')}</td>
+                <td className="num">{x.cgstPaise ? money(x.cgstPaise) : '—'}</td>
+                <td className="num">{x.sgstPaise ? money(x.sgstPaise) : '—'}</td>
+                <td className="num">{x.igstPaise ? money(x.igstPaise) : '—'}</td>
+                <td className="num">{money(x.netPaise)}</td>
+              </tr>
+            ))}
+            {!r.rows.length && (
+              <tr>
+                <td colSpan={9} className="muted">
+                  No bill with GST recorded in this period.
+                </td>
+              </tr>
+            )}
+            <tr className="bill-report-total">
+              <th scope="row" colSpan={3}>
+                All bills
+              </th>
+              <td className="num">{money(r.totals.taxablePaise)}</td>
+              <td />
+              <td className="num">{money(r.totals.cgstPaise)}</td>
+              <td className="num">{money(r.totals.sgstPaise)}</td>
+              <td className="num">{money(r.totals.igstPaise)}</td>
+              <td className="num">{money(r.totals.netPaise)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {r.noTax.length > 0 && (
+        <p className="hint">
+          Tax not recorded ({r.noTax.length} bill{r.noTax.length === 1 ? '' : 's'}, entered before the GRN form): {r.noTax.map((x) => `${x.invoiceNo} (${x.supplier}, ${money(x.valuePaise)})`).join('; ')}.
+        </p>
+      )}
+    </>
   );
 }
 

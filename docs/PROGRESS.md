@@ -1,5 +1,31 @@
 # Progress
 
+## Pharmacy Stage A: manufacturer, pack sizes, the bill as printed, opening stock (11 Nov 2026, branch `pharm-stage-a`)
+Stage A of `docs/PHARMACY_BUILD_NOTE.md` (PH4, PH2, PH3, PH1), built against what perinexa1 already had (the GRN by the
+pack with discount and IGST, opening stock from Excel).
+- **PH4 Manufacturer:** on the medicine (Pharmacy → Medicines → Change), kept on each purchase and supplier-return line
+  as it was that day, in the purchases and supplier-returns exports; a notice lists medicines without one. Not on the
+  registers or the printed invoice (the pharmacist's answer).
+- **PH2 Pack sizes:** a medicine has its pack (strip, box …), the units in it, and whether a pack may be split. Purchase
+  entry starts each line with that pack size. A batch bought by the pack is sold from the pack's printed MRP: a whole
+  strip costs exactly its MRP, loose tablets are rounded down once per line (a strip of 15 at ₹100: 15 tablets
+  ₹100.00, 7 tablets ₹46.66 – before, ₹99.90 and ₹46.62). The counter shows "= 1 strip and 3 tablets" with
+  **+ 1 strip**; a medicine marked "not split" sells in whole packs only. Stock shows "38 tablets – 2 strips and 8
+  tablets" and values it at the pack price.
+- **PH3 The bill:** **Bill total as printed** on a purchase – more than ₹1 from the sums is asked about (**Save as it
+  is**); the supplier's **credit note** (number, date, amount) on a return to the supplier; a **purchase register** on
+  Reports → Purchases (one row per bill: taxable, GST by rate, CGST / SGST / IGST, total; older bills without tax
+  listed apart). A bill typed by the pack now totals exactly as typed (₹280.00, not ₹280.20).
+- **PH1 Opening stock:** the file may carry a **manufacturer** and a **pack size** column for medicines new to the list;
+  a batch already brought in as opening stock is refused (the same file twice).
+- **Not done in Stage A:** purchases to **Tally** (a new kind of entry and account name in the accountant's settings –
+  its own step, with the accountant), and a witness for opening stock of controlled medicines.
+- **How to check (fake data only):** as the pharmacist, Medicines → Add a medicine with pack "strip", 15 tablets in a
+  pack, a manufacturer. Purchase bills → Add: the line's ConvF is 15; type 4 strips at ₹70, MRP ₹100, and a printed
+  total of ₹300 – the warning shows ₹294.00. Sales bill → walk-in → the medicine → quantity 18: "= 1 strip and 3
+  tablets", ₹120.00. Stock shows the strips. Reports → Purchases shows the register. Return a batch to the supplier and
+  enter its credit note on the return's page.
+
 ## Lab: the owner's four features P4, P5, P6, P9 (10 Nov 2026, branch `lab-four`)
 Built in perinexa1 from `docs/LAB_BUILD_NOTE.md` (the other Perinexa copy's note). **Every clinical number is left
 empty or DRAFT for the owner** (section 7 of the note): no critical limits, no ranges by weeks, no "big change" limits,

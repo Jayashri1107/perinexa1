@@ -47,7 +47,8 @@ export function Modal({ id, title, onClose, wide = false, children }) {
 }
 
 /** Sends a change; on success calls onDone(answer). Keeps the error and the fields the server named. */
-export function useSend(onDone) {
+// onError (optional): sees the error first; when it returns true the error is its own to show (not the usual line)
+export function useSend(onDone, onError = null) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [fields, setFields] = useState({});
@@ -60,9 +61,10 @@ export function useSend(onDone) {
       setBusy(false);
       onDone(res);
     } catch (err) {
+      setBusy(false);
+      if (onError?.(err)) return;
       setError(err.message);
       setFields(err.fields ?? {});
-      setBusy(false);
     }
   };
   return { busy, error, fields, send, setError };

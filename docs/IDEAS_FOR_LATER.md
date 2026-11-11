@@ -204,10 +204,12 @@ was built in perinexa1). Still open: the owner's numbers (section 7), a critical
 "Growth"), the red-flag rules beside the ranges on the approval screen, `withinDays` for a big change, the lab's closed
 hours in Lab times, and whether an RMO may acknowledge at night.
 
-## Pharmacy: eighteen features the owner chose (10 Nov 2026, not built)
+## Pharmacy: eighteen features the owner chose (10 Nov 2026 – Stage A built 11 Nov 2026, see `docs/PROGRESS.md`)
 From the other Perinexa copy. After a review of pharmacy software (`docs/PHARMACY_APPS_REVIEW.md`) the owner chose 18
 features and gave decisions the same day (among them: the pharmacist sees a patient's allergies; a substitute only
 with the doctor's yes, written down, never for the doctors' list; sales by doctor for the pharmacist and the super
 admin only, totals; no bills sent on WhatsApp; a reason for every repeat sale). Build note with four stages and the
-questions still open: `docs/PHARMACY_BUILD_NOTE.md` (read against perinexa1's own pharmacy first).
+questions still open: `docs/PHARMACY_BUILD_NOTE.md` (read against perinexa1's own pharmacy first). Still to build:
+purchases to Tally (PH3), Stage B (PH6, PH5, PH7, PH10), Stage C (PH11, PH15, PH24, PH17, PH16, PH26), Stage D (PH13,
+PH12, PH14, PH8).
 
