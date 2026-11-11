@@ -162,3 +162,47 @@ describe('PH15 – the missing reports and the day closing', () => {
     expect((await AuditLog.findOne({ action: 'PHARMACY_DAY_CLOSED' }).lean()).details).toMatchObject({ date: '2026-11-11', differencePaise: -100 });
   });
 });
+
+describe('PH24 – sales by doctor (the pharmacist and the super admin only)', () => {
+  it('grouped by the prescription doctor, by registration number, or by the typed name; returns netted; not for the admin or doctors', async () => {
+    const sup = ok(await ph('post', '/suppliers', { name: 'Sample Doctor Sales Supplier' }), 201).supplier;
+    const m = await medicine({ name: 'Sample By Doctor Tab' });
+    await bill(sup, m, { qty: 200 });
+    const sale = (doctor, qty = 2) => ph('post', '/invoices', { kind: 'sale', customer: { name: 'Sample Walk In' }, doctor, rxSeen: true, lines: [{ medicineId: m.id, qty }], payments: [{ mode: 'cash', amountPaise: qty * 1500 }] });
+    const a1 = ok(await sale({ name: 'Dr A. Kulkarni', reg: '' }), 201).invoice;
+    ok(await sale({ name: 'dr a kulkarni', reg: '' }), 201);
+    ok(await sale({ name: 'Dr Sample Reg', reg: 'MMC-99' }), 201);
+    ok(await sale({ name: 'Sample Reg Again', reg: 'mmc 99' }), 201);
+    // A Perinexa prescription: the doctor's id
+    const p = ok(await (await as('reception')).post('/api/patients').send(samplePatient({ fullName: 'Sample By Doctor Mother', assignedDoctor: people.drA._id.toString() })), 201).patient;
+    const v = ok(await (await as('drA')).post(`/api/patients/${p.id}/visits`).send({ clientRequestId: randomUUID() }), 201).visit;
+    ok(await (await as('drA')).put(`/api/patients/${p.id}/visits/${v.id}/prescription`).send({ rev: 0, items: [{ drug: 'Sample By Doctor Tab', form: 'tab', dose: '1', frequency: '1-0-0', durationValue: 2, durationUnit: 'days' }] }));
+    ok(await ph('post', '/invoices', { kind: 'sale', patientId: p.id, visitId: v.id, lines: [{ medicineId: m.id, qty: 2 }] }), 201);
+    ok(await ph('post', `/invoices/${a1.id}/returns`, { items: [{ lineId: a1.lines[0].id, qty: 1 }], reason: 'Not needed', refund: { mode: 'cash' } }));
+    const r = ok(await ph('get', '/reports/by-doctor?from=2026-11-01&to=2026-11-30'));
+    const by = Object.fromEntries(r.doctors.map((x) => [x.name, [x.invoices, x.amountPaise, x.inHospital]]));
+    expect(by['Dr A. Kulkarni']).toEqual([2, 4500, false]); // 3000 + 3000 − 1500 returned
+    expect(by['Dr Sample Reg']).toEqual([2, 6000, false]);
+    expect(by['Sample drA']).toEqual([1, 3000, true]);
+    for (const who of ['admin', 'drA']) expect((await ph('get', '/reports/by-doctor?from=2026-11-01&to=2026-11-30', undefined, who)).status).toBe(403);
+    expect(await AuditLog.countDocuments({ action: 'PHARMACY_DOCTOR_SALES_VIEWED' })).toBe(1);
+  });
+
+  it('the super admin: per hospital, numbers only; a doctor under 5 invoices is added up with the others', async () => {
+    const sup = ok(await ph('post', '/suppliers', { name: 'Sample Platform Supplier' }), 201).supplier;
+    const m = await medicine({ name: 'Sample Platform Tab' });
+    await bill(sup, m, { qty: 200 });
+    for (let i = 0; i < 5; i += 1) ok(await ph('post', '/invoices', { kind: 'sale', customer: { name: `Sample Walk In ${i}` }, doctor: { name: 'Dr Busy Sample', reg: 'MMC-5' }, rxSeen: true, lines: [{ medicineId: m.id, qty: 1 }], payments: [{ mode: 'cash', amountPaise: 1500 }] }), 201);
+    ok(await ph('post', '/invoices', { kind: 'sale', customer: { name: 'Sample Walk In X' }, doctor: { name: 'Dr Rare Sample', reg: '' }, rxSeen: true, lines: [{ medicineId: m.id, qty: 1 }], payments: [{ mode: 'cash', amountPaise: 1500 }] }), 201);
+    const { createSuperAdmin } = await import('./helpers.js');
+    const root = await loginAs(await createSuperAdmin(), { app });
+    const res = await root.get('/api/platform/analytics/pharmacy-by-doctor?hospital=all&from=2026-11-01&to=2026-11-30');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const h = res.body.hospitals.find((x) => x.name === 'Pharmacy C Hospital');
+    expect(h.doctors).toEqual([
+      { name: 'Dr Busy Sample', inHospital: false, invoices: 5, amountPaise: 7500 },
+      { name: 'Other doctors', inHospital: null, invoices: 1, amountPaise: 1500, others: 1 },
+    ]);
+    expect(JSON.stringify(res.body)).not.toMatch(/Walk In|PH-0|Sample Platform Tab/);
+  });
+});

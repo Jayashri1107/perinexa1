@@ -9,12 +9,11 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { hospitalToday } from '../careplans/dates.js';
 import { CARE_TYPES } from '../models/Patient.js';
 import { Tenant } from '../models/Tenant.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
-import { parse } from '../utils/validate.js';
+import { parse, requiredDateOnly } from '../utils/validate.js';
 import { shouldLogView } from '../analytics/auditThrottle.js';
 import { parsePeriod } from '../analytics/period.js';
 import { platformHospitals, platformSection } from '../analytics/platformTotals.js';
@@ -22,6 +21,9 @@ import { WAIT_PERIODS, platformWaitingTimes } from '../analytics/waitingTimes.js
 import { platformLabTimes } from '../analytics/labTimes.js';
 import { SECTIONS } from '../analytics/registry.js';
 import { cachedPlatformSection, keepPlatformSection, platformCacheKey } from '../analytics/sectionCache.js';
+import { PLATFORM_DOCTOR_MIN_INVOICES, platformRows, salesByDoctor } from '../pharmacy/salesByDoctor.js';
+import { PharmacyInvoice } from '../models/Pharmacy.js';
+import { addDays, hospitalDayStart, hospitalToday, isoDay } from '../careplans/dates.js';
 
 export const platformAnalyticsRouter = Router();
 
@@ -34,6 +36,24 @@ const querySchema = z.object({
   to: z.string().max(10).optional(),
   scope: z.enum(['hospital', 'mine']).optional(),
   careType: z.enum(['all', ...CARE_TYPES]).default('all'),
+});
+
+// PH24 (owner's decision 5): pharmacy sales by doctor for the super admin – per hospital, per doctor: a count and an
+// amount; no invoice number, no patient, no medicine. A doctor's name is a staff name. A line only from
+// PLATFORM_DOCTOR_MIN_INVOICES invoices (one invoice is one patient's purchase); the rest added up as "Other doctors".
+platformAnalyticsRouter.get('/pharmacy-by-doctor', async (req, res) => {
+  const q = parse(z.object({ hospital: querySchema.shape.hospital, from: requiredDateOnly('From'), to: requiredDateOnly('To') }).strict(), req.query);
+  if (q.to < q.from) throw new HttpError(400, 'The first date must be before the second.', 'VALIDATION');
+  const tenants = await platformHospitals(q.hospital);
+  const hospitals = [];
+  for (const t of tenants) {
+    const invoices = await PharmacyInvoice.find({ tenantId: t._id, 'created.at': { $gte: hospitalDayStart(q.from), $lt: hospitalDayStart(addDays(q.to, 1)) } }, { doctor: 1, lines: 1, returns: 1, payments: 1, patientId: 1 }).lean();
+    const rows = platformRows(salesByDoctor(invoices));
+    if (rows.length) hospitals.push({ id: String(t._id), name: t.name, doctors: rows });
+  }
+  const key = `${req.user._id}|platform|${q.hospital}|pharmacy_doctors|platform`;
+  if (shouldLogView(key, req.now)) await audit(req, 'PHARMACY_DOCTOR_SALES_VIEWED', { tenantId: null, details: { scope: 'platform', hospital: q.hospital, from: isoDay(q.from), to: isoDay(q.to) } });
+  res.json({ from: isoDay(q.from), to: isoDay(q.to), minInvoices: PLATFORM_DOCTOR_MIN_INVOICES, hospitals });
 });
 
 // The hospitals for the picker: every hospital, by name (inactive ones can be picked on their own).

@@ -13,6 +13,7 @@ import { MOVE_LABELS, expiryLabel } from './pharmacyFormat.js';
 import { PharmacyHeader, PharmacyLetterhead, money, useSend } from './pharmacyUi.jsx';
 import { SupplierDues } from './SupplierAccount.jsx';
 import { DayClosing, FiguresReport } from './PharmacyFigures.jsx';
+import { SalesByDoctorReport } from './SalesByDoctor.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
 // as cards, then one report at a time – stock alerts (low stock, expiring and expired batches), sales and GST by rate,
@@ -465,7 +466,9 @@ export function ReportsPage() {
   const { activeMembership } = useAuth();
   const admin = activeMembership.roles.includes('admin');
   const [params, setParams] = useSearchParams();
-  const views = admin ? [...VIEWS, ['export', 'Export']] : VIEWS;
+  // PH24: sales by doctor for the pharmacist only (never the hospital admin – owner's decision 5)
+  const pharmacist = activeMembership.roles.includes('pharmacist');
+  const views = [...VIEWS, ...(pharmacist ? [['by-doctor', 'Sales by doctor']] : []), ...(admin ? [['export', 'Export']] : [])];
   const view = views.some(([k]) => k === params.get('view')) ? params.get('view') : 'alerts';
   const now = new Date();
   const [from, setFrom] = useState(isoOf(new Date(now.getFullYear(), now.getMonth(), 1)));
@@ -554,6 +557,7 @@ export function ReportsPage() {
         {view === 'purchases' && <SupplierDues />}
         {view === 'figures' && <FiguresReport from={from} to={to} />}
         {view === 'day' && <DayClosing />}
+        {view === 'by-doctor' && pharmacist && <SalesByDoctorReport from={from} to={to} />}
 
         {view === 'registers' && (
           <section className="card bill-section" aria-labelledby="rep-reg">

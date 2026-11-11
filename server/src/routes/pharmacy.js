@@ -32,6 +32,7 @@ import {
   MIN_REASON,
   PHARMACY_EINVOICE_ROLES,
   PHARMACY_EXPORT_ROLES,
+  PHARMACY_DOCTOR_SALES_ROLES,
   PHARMACY_ROLES,
   SCHEDULES,
   SCHEDULE_LABELS,
@@ -55,6 +56,7 @@ import { neverSubstitute, sameMedicine } from '../pharmacy/substitutes.js';
 import { supplierAccount } from '../pharmacy/supplierAccount.js';
 import { nextNumber } from '../models/Counter.js';
 import { daysOutOfStock, expiryLoss, h1Use, nonMoving, prescriptionsFilled, profitByMedicine } from '../pharmacy/figures.js';
+import { doctorOf, salesByDoctor } from '../pharmacy/salesByDoctor.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -1209,6 +1211,18 @@ const period = (q) => {
   if (q.to < q.from || daysBetween(q.from, q.to) > 366) throw new HttpError(400, 'Choose a period of at most one year, ending after it starts.', 'VALIDATION');
   return [hospitalDayStart(q.from), hospitalDayStart(addDays(q.to, 1))];
 };
+
+// ---------- PH24: sales by doctor (docs/PHARMACY_BUILD_NOTE.md, owner's decision 5) ----------
+// The pharmacist only – NOT reports(req), which lets the hospital admin in. Not in the export, not in Analytics.
+pharmacyRouter.get('/reports/by-doctor', async (req, res) => {
+  if (!hasRole(req.membership, ...PHARMACY_DOCTOR_SALES_ROLES)) throw forbidden('Sales by doctor are for the pharmacist only.');
+  const q = parse(periodSchema, req.query);
+  const [from, to] = period(q);
+  const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, 'created.at': { $gte: from, $lt: to } }, { doctor: 1, lines: 1, returns: 1, payments: 1, patientId: 1 }).lean();
+  const rows = salesByDoctor(invoices);
+  await audit(req, 'PHARMACY_DOCTOR_SALES_VIEWED', { details: { from: isoDay(q.from), to: isoDay(q.to), doctors: rows.length } });
+  res.json({ from: isoDay(q.from), to: isoDay(q.to), doctors: rows.map(({ key, ...r }) => r), withoutDoctor: invoices.filter((i) => !doctorOf(i)).length });
+});
 
 // ---------- PH15: the missing reports and the day's closing (docs/PHARMACY_BUILD_NOTE.md) ----------
 

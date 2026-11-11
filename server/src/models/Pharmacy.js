@@ -338,7 +338,8 @@ const invoiceSchema = new mongoose.Schema(
       type: new mongoose.Schema({ name: String, gstin: String, address: String, place: String, pin: String, state: String, stateCode: String }, { _id: false }),
       default: null,
     },
-    doctor: { type: new mongoose.Schema({ name: String, reg: String }, { _id: false }), default: null },
+    // userId: the prescription's doctor (PH24, kept from 11 Nov 2026); an outside doctor has a typed name only
+    doctor: { type: new mongoose.Schema({ name: String, reg: String, userId: { type: ObjectId, default: null } }, { _id: false }), default: null },
     visitId: { type: ObjectId, ref: 'Visit', default: null }, // the Perinexa prescription it was sold from
     rxSeen: { type: Boolean, default: false }, // an outside prescription was seen
     admissionId: { type: ObjectId, ref: 'Admission', default: null },

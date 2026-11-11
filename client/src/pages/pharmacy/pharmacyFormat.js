@@ -234,6 +234,9 @@ export const packWords = (m) => {
  * the pack's MRP when the batch was bought by the pack (a whole pack exactly its MRP, loose units rounded down), else
  * the unit MRP × qty. null when the price is not known yet.
  */
+/** PH24: who sees pharmacy sales by doctor in a hospital (server: pharmacyRules.js PHARMACY_DOCTOR_SALES_ROLES). */
+export const PHARMACY_DOCTOR_SALES_ROLES = ['pharmacist'];
+
 export function priceOf(b, qty) {
   if (!Number.isFinite(qty)) return null;
   if (b?.packMrpPaise && b?.unitsPerPack > 1) return Math.floor((qty * b.packMrpPaise) / b.unitsPerPack);

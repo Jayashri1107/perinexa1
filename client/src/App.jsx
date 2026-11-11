@@ -344,6 +344,9 @@ const WaitingTimesPage = screen(loadWaiting, 'WaitingTimesPage');
 // Lab times (P9 – docs/LAB_BUILD_NOTE.md): the same audiences as Waiting times
 const loadLabTimes = () => import('./pages/analytics/LabTimesPage.jsx');
 const LabTimesPage = screen(loadLabTimes, 'LabTimesPage');
+// PH24: the super admin's pharmacy sales by doctor (numbers only)
+const loadPharmDoctors = () => import('./pages/pharmacy/SalesByDoctor.jsx');
+const PlatformPharmacyDoctorsPage = screen(loadPharmDoctors, 'PlatformPharmacyDoctorsPage');
 const load105 = () => import('./pages/analytics/AnalyticsPage.jsx');
 const AnalyticsPage = screen(load105, 'AnalyticsPage');
 const load106 = () => import('./pages/analytics/AnalyticsSectionRoute.jsx');
@@ -457,6 +460,7 @@ export function App() {
                 <Route path="analytics" element={<AnalyticsPage key="overview" section="overview" platform />} />
                 <Route path="analytics/waiting" element={<WaitingTimesPage platform />} />
                 <Route path="analytics/lab-times" element={<LabTimesPage platform />} />
+                <Route path="analytics/pharmacy-doctors" element={<PlatformPharmacyDoctorsPage />} />
                 <Route path="analytics/:section" element={<AnalyticsSectionRoute platform />} />
 
                 {/* One page; the old addresses of its event groups open it with that Type chosen */}

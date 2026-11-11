@@ -216,7 +216,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     visitId = visit._id;
     rxItems = new Map((visit.prescription?.items ?? []).map((it) => [String(it._id), it]));
     const by = visit.prescription?.by ? await User.findById(visit.prescription.by, { name: 1, professional: 1 }).lean() : null;
-    if (by) doctor = { name: by.name, reg: by.professional?.registrationNumber ?? '' };
+    if (by) doctor = { name: by.name, reg: by.professional?.registrationNumber ?? '', userId: by._id }; // PH24: the doctor's id
   }
 
   const ids = [...new Set(body.lines.map((l) => String(l.medicineId)))];
