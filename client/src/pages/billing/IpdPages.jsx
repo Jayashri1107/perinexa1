@@ -15,8 +15,8 @@ import { AddItemDialog, DiscountDialog, PaymentDialog, ReasonDialog } from './Bi
 import { BillStatus } from './BillsPage.jsx';
 import { amountInWords } from './amountWords.js';
 import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
-import { GROUP_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
-import { InlineForms, Modal, useSend } from './billingUi.jsx';
+import { MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
+import { InlineForms, Modal, Tile, useSend } from './billingUi.jsx';
 import { BILL_LAYOUTS, adminChargeOf, advanceTotal, billTitle, linesByDate, stayStep, summaryByGroup } from './ipdFormat.js';
 
 // Billing → IPD (docs/IPD_DISCHARGE_BILLING_PLAN.md, 9 Nov 2026), like the hospital's old HIMS: the patients in hospital
@@ -114,25 +114,6 @@ function PlaceCell({ s }) {
 }
 /** "DAMA (discharge against medical advice)" → "DAMA" in the list; the full words on hover. */
 const shortType = (label) => (label ? label.split(' (')[0] : '');
-
-/** A number tile at the top of a list; a button when it filters the list. */
-function Tile({ label, value, tone = 'neutral', pressed, onClick, icon: Icon }) {
-  const body = (
-    <>
-      <span className="ipd-tile-label">
-        {Icon && <Icon aria-hidden="true" />} {label}
-      </span>
-      <strong className="ipd-tile-value tabular">{value}</strong>
-    </>
-  );
-  return onClick ? (
-    <button type="button" className={`ipd-tile ipd-tile-${tone}`} aria-pressed={pressed} onClick={onClick}>
-      {body}
-    </button>
-  ) : (
-    <div className={`ipd-tile ipd-tile-${tone}`}>{body}</div>
-  );
-}
 
 const Loading = () => (
   <p className="muted" aria-busy="true">
@@ -566,7 +547,6 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   const { activeMembership } = useAuth();
   const res = useFetch(`/billing/ipd/stays/${stayId}`);
   const [tab, setTab] = useState('services');
-  const [group, setGroup] = useState('');
   const [showRemoved, setShowRemoved] = useState(false);
   const [ticked, setTicked] = useState(() => new Set()); // lines ticked to take off together
   const [layout, setLayout] = useState('details'); // the print's layout, chosen in the Print menu
@@ -590,7 +570,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
   const open = bill && !bill.cancelled;
   const editable = open && !bill.final;
   const live = bill ? bill.lines.filter((l) => !l.removed) : [];
-  const shown = bill ? bill.lines.filter((l) => (showRemoved || !l.removed) && (!group || l.group === group)) : [];
+  const shown = bill ? bill.lines.filter((l) => showRemoved || !l.removed) : [];
   const tickable = editable ? shown.filter((l) => !l.removed) : [];
   const removedCount = bill ? bill.lines.filter((l) => l.removed).length : 0;
   const tickedLines = tickable.filter((l) => ticked.has(l.id));
@@ -796,35 +776,45 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                 <dd>{stay.doctorName || '–'}</dd>
               </div>
               <div className="ipd-wide">
-                <dt>Company / payer</dt>
+                <dt>Payer</dt>
                 <dd>{stay.payer || 'Self'}</dd>
               </div>
             </dl>
             {bill && (
-              <dl className="ipd-sums" aria-label="Bill information">
-                <div>
-                  <dt>Bill amount</dt>
-                  <dd>{rupees(bill.total)}</dd>
-                </div>
-                <div>
-                  <dt>Advance</dt>
-                  <dd>{rupees(advance)}</dd>
-                </div>
-                <div>
-                  <dt>{bill.balance < 0 ? 'Due back' : 'Balance'}</dt>
-                  <dd>
-                    <strong>{rupees(Math.abs(bill.balance))}</strong>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Refunded</dt>
-                  <dd>{rupees(refunds)}</dd>
-                </div>
-              </dl>
+              <>
+                <h3 className="ipd-side-title">Bill</h3>
+                <dl className="ipd-sums ipd-sums-rows" aria-label="Bill information">
+                  <div>
+                    <dt>Bill amount</dt>
+                    <dd>{rupees(bill.total)}</dd>
+                  </div>
+                  <div>
+                    <dt>Advance</dt>
+                    <dd>{rupees(advance)}</dd>
+                  </div>
+                  {refunds > 0 && (
+                    <div>
+                      <dt>Refunded</dt>
+                      <dd>{rupees(refunds)}</dd>
+                    </div>
+                  )}
+                  <div className="ipd-sums-balance">
+                    <dt>{bill.balance < 0 ? 'Due back' : 'Balance'}</dt>
+                    <dd>{rupees(Math.abs(bill.balance))}</dd>
+                  </div>
+                </dl>
+              </>
             )}
-            <h3 className="ipd-side-title">Discharge</h3>
+            <h3 className="ipd-side-title">
+              Discharge{' '}
+              {stay.status === 'admitted' && (
+                <StatusPill tone="admitted" icon={BedDouble}>
+                  In hospital
+                </StatusPill>
+              )}
+            </h3>
             {stay.status === 'admitted' ? (
-              <p className="muted">In hospital. The doctor signs the discharge card first; then the discharge is recorded here.</p>
+              <p className="muted ipd-side-note">The doctor signs the discharge card first; then the discharge is recorded here.</p>
             ) : (
               <dl className="ipd-facts">
                 <div className="ipd-wide">
@@ -894,18 +884,8 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                 <div id="ipd-panel" role="tabpanel" aria-labelledby={`ipd-tab-${tab}`} className="ipd-panel">
                   {tab === 'services' && (
                     <>
+                      {/* No group filter (11 Nov 2026): every service shows; the printed bill groups them under headings */}
                       <div className="ipd-filters">
-                        <label>
-                          Group{' '}
-                          <select value={group} onChange={(e) => setGroup(e.target.value)}>
-                            <option value="">All</option>
-                            {Object.entries(GROUP_LABELS).map(([k, label]) => (
-                              <option key={k} value={k}>
-                                {label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
                         <label>
                           <input type="checkbox" checked={showRemoved} onChange={(e) => setShowRemoved(e.target.checked)} /> Show removed services
                           {removedCount > 0 ? ` (${removedCount})` : ''}
