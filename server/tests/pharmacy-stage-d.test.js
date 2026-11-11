@@ -6,7 +6,7 @@ import { createApp } from '../src/app.js';
 import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans/templatesService.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { User } from '../src/models/User.js';
-import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
+import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-11-11T06:00:00Z');
 const ROLES = { drA: 'doctor', drB: 'doctor', rmo: 'rmo', nurse: 'nurse', reception: 'receptionist', pharm: 'pharmacist', admin: 'admin' };
@@ -178,5 +178,23 @@ describe('PH12 – the ward asks on screen', () => {
     // An RMO asking is the one who ordered
     const own = ok(await wr(p, 'post', '', { lines: [{ medicineId: morph.id, qty: 1 }] }, 'rmo'), 201).request;
     expect(own.orderedBy.name).toBe(people.rmo.name);
+  });
+});
+
+describe('Opening stock of narcotic and Schedule X medicines', () => {
+  it('needs a second person who signs in; the stock move keeps the witness', async () => {
+    const lines = [
+      { row: 2, name: 'Sample Morphine 10 mg', batch: 'MO1', expiry: '2028-06', qty: 5, mrpPaise: 2000, ratePaise: 1500, schedule: 'narcotic', form: 'injection', unit: 'ampoule' },
+      { row: 3, name: 'Sample Para Tab', batch: 'PA1', expiry: '2028-06', qty: 50, mrpPaise: 200, ratePaise: 100 },
+    ];
+    const refused = await ph('post', '/opening-stock', { lines });
+    expect(refused.status).toBe(400);
+    expect(refused.body.error.message).toMatch(/narcotic or Schedule X/);
+    expect((await ph('post', '/opening-stock', { lines, witness: { email: people.nurse.email, password: 'wrong-password' } })).status).toBe(400);
+    const done = ok(await ph('post', '/opening-stock', { lines, witness: { email: people.nurse.email, password: PASSWORD } }), 201).imported;
+    expect(done).toMatchObject({ batches: 2, controlled: 1, witness: `${people.nurse.name} (Nurse)` });
+    const { StockMove } = await import('../src/models/Pharmacy.js');
+    const moves = await StockMove.find({ tenantId: hospital._id, kind: 'opening' }).lean();
+    expect(moves.map((m) => m.witness ?? '').sort()).toEqual(['', `${people.nurse.name} (Nurse)`]);
   });
 });

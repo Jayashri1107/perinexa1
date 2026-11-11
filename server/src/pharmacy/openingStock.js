@@ -12,6 +12,8 @@ import { Medicine, StockBatch, StockMove } from '../models/Pharmacy.js';
 import { HttpError } from '../utils/httpError.js';
 import { endOfMonth, isExpired, moveStock } from './pharmacyService.js';
 import { DEFAULT_GST_RATE, FORMS, GST_RATES, MAX_PAISE, MAX_QTY, OLD_GST_RATES, SCHEDULES } from './pharmacyRules.js';
+import { pharmacyWitnessField, pharmacyWitnessName } from '../auth/witness.js';
+import { CONTROLLED } from './pharmacyRules.js';
 
 export const MAX_OPENING_LINES = 5000;
 
@@ -43,6 +45,8 @@ export const openingSchema = z
       )
       .min(1, 'The file has no stock lines.')
       .max(MAX_OPENING_LINES, `At most ${MAX_OPENING_LINES} lines at a time: split the file.`),
+    // A narcotic or Schedule X line needs a second person who checked the count and signs in (as a write-off does)
+    witness: pharmacyWitnessField,
   })
   .strict();
 
@@ -180,10 +184,17 @@ export async function checkOpening(req, lines, today) {
 }
 
 /** Saves the opening stock: the new medicines, then each batch with its 'opening' stock move. */
-export async function saveOpening(req, lines, today) {
+export async function saveOpening(req, lines, today, witness = '') {
   const checked = await checkOpening(req, lines, today);
   if (checked.summary.problems) throw new HttpError(400, `${checked.summary.problems} lines have problems: correct the file and check it again. Nothing was saved.`, 'VALIDATION');
   if (!checked.summary.batches) throw new HttpError(400, 'The file has no stock to bring in.', 'VALIDATION');
+  // Narcotic and Schedule X stock comes in only with a witness who signed in (the count is the register's first line)
+  const controlled = checked.lines.filter((l) => !l.skip && CONTROLLED.includes(l.medicine.schedule));
+  let witnessName = '';
+  if (controlled.length) {
+    if (!witness) throw Object.assign(new HttpError(400, `${controlled.length} line${controlled.length === 1 ? ' is' : 's are'} narcotic or Schedule X stock: a second person who checked the count signs in for it.`, 'VALIDATION'), { fields: { 'witness.email': 'A second person (pharmacist, doctor, RMO or nurse) types their email and password.' } });
+    witnessName = await pharmacyWitnessName(req, witness, 'pharmacy_opening_stock');
+  }
   const made = new Map(); // name key → medicine id
   const todo = checked.lines.filter((l) => !l.skip);
   for (const l of todo) {
@@ -195,7 +206,7 @@ export async function saveOpening(req, lines, today) {
   for (const l of todo) {
     const medicineId = l.medicine.isNew ? made.get(nameKey(l.name)) : l.medicine.id;
     const batch = await StockBatch.create({ tenantId: req.tenantId, medicineId, batch: l.batch, expiry: endOfMonth(l.expiry), mrpPaise: l.mrpPaise, costPaise: l.ratePaise, qtyIn: l.qty, qtyLeft: 0 });
-    await moveStock(req, batch, l.qty, { kind: 'opening', reason: 'Opening stock' });
+    await moveStock(req, batch, l.qty, { kind: 'opening', reason: 'Opening stock', ...(CONTROLLED.includes(l.medicine.schedule) ? { witness: witnessName } : {}) });
   }
-  return { ...checked.summary, medicinesAdded: made.size };
+  return { ...checked.summary, medicinesAdded: made.size, controlled: controlled.length, witness: witnessName };
 }

@@ -688,9 +688,9 @@ pharmacyRouter.post('/opening-stock/check', async (req, res) => {
 
 pharmacyRouter.post('/opening-stock', async (req, res) => {
   editor(req);
-  const { lines } = parse(openingSchema, req.body);
-  const done = await saveOpening(req, lines, today(req));
-  await audit(req, 'PHARMACY_OPENING_STOCK_IMPORTED', { details: { batches: done.batches, medicinesAdded: done.medicinesAdded, units: done.units, mrpValuePaise: done.mrpValuePaise, costValuePaise: done.costValuePaise } });
+  const { lines, witness } = parse(openingSchema, req.body);
+  const done = await saveOpening(req, lines, today(req), witness || '');
+  await audit(req, 'PHARMACY_OPENING_STOCK_IMPORTED', { details: { batches: done.batches, medicinesAdded: done.medicinesAdded, units: done.units, mrpValuePaise: done.mrpValuePaise, costValuePaise: done.costValuePaise, ...(done.witness ? { controlled: done.controlled, witness: done.witness } : {}) } });
   res.status(201).json({ imported: done });
 });
 
