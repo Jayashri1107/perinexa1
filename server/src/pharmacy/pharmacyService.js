@@ -24,8 +24,9 @@ import { refuseNewOnClosed } from '../patients/deathRules.js';
 import { earlierRecordIds } from '../patients/duplicateService.js';
 import { HttpError } from '../utils/httpError.js';
 import { buyerState } from './einvoice.js';
-import { lineMoney, partOf, sum, grossOf } from './gst.js';
+import { lineMoney, partOf, sum, grossOf, suggestedQty } from './gst.js';
 import { CONTROLLED, NEEDS_PRESCRIPTION } from './pharmacyRules.js';
+import { givenFromPrescriptions, givenWords } from './rxGiven.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
 const rupeesOf = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -195,6 +196,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
   // The prescription: a Perinexa one (its doctor and registration number), or an outside one seen by the pharmacist.
   let doctor = body.doctor?.name ? { name: body.doctor.name, reg: body.doctor.reg ?? '' } : null;
   let visitId = null;
+  let rxItems = null; // PH6: the prescription's lines (by id)
   if (body.visitId) {
     if (!patient) throw bad('A Perinexa prescription belongs to a registered patient: choose her first.');
     // Her own prescription – also one written on a record that was marked as a duplicate of hers (nothing is moved:
@@ -202,6 +204,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     const visit = await Visit.findOne({ tenantId, _id: body.visitId, patientId: { $in: [patient._id, ...(await earlierRecordIds(tenantId, patient._id))] }, status: 'active' }, { prescription: 1 }).lean();
     if (!visit) throw bad('That prescription is not this patient’s.');
     visitId = visit._id;
+    rxItems = new Map((visit.prescription?.items ?? []).map((it) => [String(it._id), it]));
     const by = visit.prescription?.by ? await User.findById(visit.prescription.by, { name: 1, professional: 1 }).lean() : null;
     if (by) doctor = { name: by.name, reg: by.professional?.registrationNumber ?? '' };
   }
@@ -225,6 +228,27 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     }
   });
   if (Object.keys(fields).length) throw bad(Object.values(fields)[0], fields);
+
+  // PH6: a line sold from a prescription line keeps the link; a line already given in full is sold again only with a
+  // reason – for every medicine (owner, 10 Nov 2026), whatever its schedule
+  const linked = body.lines.filter((l) => l.rxItemId);
+  if (linked.length) {
+    if (!rxItems) throw bad('A prescription line was sent without its prescription: choose her prescription again.');
+    for (const l of linked) if (!rxItems.has(String(l.rxItemId))) throw bad('A line is not on this prescription: choose her prescription again.');
+    const given = await givenFromPrescriptions(tenantId, [visitId]);
+    const repeats = [];
+    for (const l of linked) {
+      const item = rxItems.get(String(l.rxItemId));
+      const sold = given.byItem.get(String(l.rxItemId)) ?? [];
+      const words = givenWords(sold, suggestedQty(item));
+      if (words.givenInFull && (l.repeatReason ?? '').trim().length < 3) repeats.push({ rxItemId: String(l.rxItemId), drug: item.drug, sold });
+    }
+    if (repeats.length) {
+      const first = repeats[0];
+      const when = first.sold.map((s) => `${s.qty} on ${s.date} (${s.number})`).join(', ');
+      throw Object.assign(conflict(`${first.drug} was already given: ${when}. Write why it is sold again.`, 'ALREADY_SOLD'), { details: { repeats } });
+    }
+  }
 
   // Take the stock (batch by batch); if any line can't be had, what was taken goes back.
   const number = dryRun ? '' : padded('PH', await nextNumber(tenantId, 'pharmacy-invoice'));
@@ -262,6 +286,8 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
           mrpPaise: part.batch.mrpPaise,
           grossPaise: grossOf(part.batch, part.qty),
           dose: l.dose ?? '',
+          rxItemId: l.rxItemId ?? null,
+          repeatReason: l.rxItemId ? (l.repeatReason ?? '').trim() : '',
           ...lineMoney({ qty: part.qty, mrpPaise: part.batch.mrpPaise, gstRate: m.gstRate, discountPercent: pct, grossPaise: grossOf(part.batch, part.qty) }),
         });
       }

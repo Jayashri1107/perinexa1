@@ -291,6 +291,10 @@ const invoiceLineSchema = new mongoose.Schema({
   returnedQty: { type: Number, default: 0 },
   // How to take it, as the pharmacist writes it on the bill (6 Nov 2026), e.g. 1-0-1 after food; '' = not written
   dose: { type: String, default: '', maxlength: 60 },
+  // PH6 (docs/PHARMACY_BUILD_NOTE.md): the prescription line it was sold from (an item of the visit's prescription), and
+  // why it was sold again when that line had already been given in full. Not on older lines.
+  rxItemId: { type: ObjectId, default: null },
+  repeatReason: { type: String, default: '' },
 });
 const returnLineSchema = new mongoose.Schema(
   { lineId: ObjectId, qty: Number, amountPaise: Number, taxablePaise: Number, gstPaise: Number, cgstPaise: Number, sgstPaise: Number },
@@ -346,4 +350,6 @@ invoiceSchema.plugin(tenantScoped);
 invoiceSchema.index({ tenantId: 1, number: 1 }, { unique: true });
 invoiceSchema.index({ tenantId: 1, 'created.at': -1 });
 invoiceSchema.index({ tenantId: 1, patientId: 1, 'created.at': -1 });
+// PH6: what was sold from a prescription
+invoiceSchema.index({ tenantId: 1, visitId: 1 }, { partialFilterExpression: { visitId: { $type: 'objectId' } } });
 export const PharmacyInvoice = mongoose.model('PharmacyInvoice', invoiceSchema);

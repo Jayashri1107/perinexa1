@@ -49,6 +49,7 @@ import { pharmacyOrdersRouter } from './pharmacyOrders.js';
 import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
+import { givenFromPrescriptions, givenWords } from '../pharmacy/rxGiven.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -590,6 +591,9 @@ pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
       .slice(0, 3)
       .map((x) => ({ id: String(x.m._id), name: x.m.name, generic: x.m.generic ?? '', strength: x.m.strength ?? '', schedule: x.m.schedule ?? '', unit: x.m.unit, gstRate: x.m.gstRate, inStock: stock.get(String(x.m._id)) ?? 0 }));
   };
+  // PH6: what was already sold from these prescriptions (net of returns) – by prescription line where the sale says
+  // which line, else (older sales) listed with the prescription only
+  const given = await givenFromPrescriptions(req.tenantId, visits.map((v) => v._id));
   await audit(req, 'PHARMACY_PRESCRIPTIONS_VIEWED', { details: { patientId: String(patient._id), mrn: patient.mrn, prescriptions: visits.length } });
   res.json({
     // duplicateOf: this record is marked as a duplicate – it takes no sale ({ id, mrn } of the main record to open)
@@ -610,7 +614,9 @@ pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
         // Written on her earlier record (its patient number), not on this one
         fromRecord: earlier.get(String(v.patientId)) ?? null,
         doctor: by ? { name: by.name, reg: by.professional?.registrationNumber ?? '' } : null,
+        soldUnlinked: given.unlinked.get(String(v._id)) ?? [],
         items: v.prescription.items.map((it) => ({
+          ...givenWords(given.byItem.get(String(it._id)) ?? [], suggestedQty(it)),
           id: String(it._id),
           drug: it.drug,
           form: it.form,
@@ -668,7 +674,22 @@ const invoiceFields = z
     doctor: z.object({ name: z.string().trim().max(150).transform(capitalizeName).default(''), reg: z.string().trim().max(60).default('') }).strict().optional(),
     visitId: objectId.optional(),
     rxSeen: z.boolean().default(false),
-    lines: z.array(z.object({ medicineId: objectId, qty, batchId: objectId.optional(), dose: z.string().trim().max(60, 'Write the dose in at most 60 letters').default('') }).strict()).min(1, 'Add at least one medicine.').max(60),
+    lines: z
+      .array(
+        z
+          .object({
+            medicineId: objectId,
+            qty,
+            batchId: objectId.optional(),
+            dose: z.string().trim().max(60, 'Write the dose in at most 60 letters').default(''),
+            // PH6: the prescription line it is sold from, and why it is sold again when already given in full
+            rxItemId: objectId.optional(),
+            repeatReason: z.string().trim().max(200).default(''),
+          })
+          .strict(),
+      )
+      .min(1, 'Add at least one medicine.')
+      .max(60),
     discountPercent: z.number().min(0).max(100).default(0),
     discountReason: z.string().trim().max(200).default(''),
     payment: z.object({ mode: z.enum(COUNTER_MODES), reference: z.string().trim().max(80).default('') }).strict().optional(),
@@ -717,7 +738,17 @@ pharmacyRouter.post('/invoices', async (req, res) => {
   const inv = await createInvoice(req, body);
   const t = invoiceTotals(inv);
   await audit(req, body.kind === 'issue' ? 'PHARMACY_ISSUED' : 'PHARMACY_SOLD', {
-    details: { invoiceId: String(inv._id), number: inv.number, ...(inv.patientId ? { patientId: String(inv.patientId) } : { walkIn: true }), ...(inv.buyer ? { business: true } : {}), lines: inv.lines.length, amountPaise: t.netPaise, controlled: inv.lines.some((l) => CONTROLLED.includes(l.schedule)) },
+    details: {
+      invoiceId: String(inv._id),
+      number: inv.number,
+      ...(inv.patientId ? { patientId: String(inv.patientId) } : { walkIn: true }),
+      ...(inv.buyer ? { business: true } : {}),
+      lines: inv.lines.length,
+      amountPaise: t.netPaise,
+      controlled: inv.lines.some((l) => CONTROLLED.includes(l.schedule)),
+      // PH6: prescription lines sold again after they were given in full (the reasons stay on the invoice)
+      ...(inv.lines.some((l) => l.repeatReason) ? { repeats: new Set(inv.lines.filter((l) => l.repeatReason).map((l) => String(l.rxItemId))).size } : {}),
+    },
   });
   res.status(201).json({ invoice: await oneView(req, inv) });
 });

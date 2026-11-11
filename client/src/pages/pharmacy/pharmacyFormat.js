@@ -173,11 +173,23 @@ export function prescribedLines(lines, rx) {
   for (const it of rx.items) {
     const best = it.matches.find((m) => m.inStock > 0) ?? it.matches[0];
     if (!best) continue;
+    // PH6 (docs/PHARMACY_BUILD_NOTE.md): the line remembers the prescription line it is sold from; what is still to give
+    // is the quantity; a line already given in full needs a reason to be sold again
+    const rx6 = { rxItemId: it.id, givenInFull: Boolean(it.givenInFull), sold: it.sold ?? [], repeatReason: '' };
+    const qty = it.stillToGive > 0 ? it.stillToGive : (it.suggestedQty ?? 1);
     const i = out.findIndex((l) => l.medicine.id === best.id);
-    if (i >= 0) out[i] = { ...out[i], prescribed: true };
-    else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(it.suggestedQty ?? 1), batchId: null, prescribed: true, ...(it.dose ? { dose: it.dose } : {}) });
+    if (i >= 0) out[i] = { ...out[i], prescribed: true, ...rx6 };
+    else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(qty), batchId: null, prescribed: true, ...rx6, ...(it.dose ? { dose: it.dose } : {}) });
   }
   return out;
+}
+
+/** PH6: "Given: 10 on 2026-11-03 (PH-000412). Still to give: 20." – '' when nothing was sold from the line. */
+export function givenLine(it) {
+  if (!it?.sold?.length) return '';
+  const given = it.sold.map((s) => `${s.qty} on ${s.date} (${s.number})`).join(', ');
+  if (it.givenInFull) return `Given: ${given}. Given in full.`;
+  return `Given: ${given}.${it.stillToGive != null ? ` Still to give: ${it.stillToGive}.` : ''}`;
 }
 /** The same for a new purchase, where a medicine may be on the list more than once (one line for each batch). */
 export function scannedForPurchase(medicine) {

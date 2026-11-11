@@ -5,7 +5,7 @@ import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { dayLabel } from '../appointments/appointmentFormat.js';
 import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
-import { CONTROLLED, FREQUENCY_WORDS, einvoiceHsnOk, expiryLabel, inPacks, looseProblem, medicineLabel, prescribedLines, priceOf, scannedForList } from './pharmacyFormat.js';
+import { CONTROLLED, FREQUENCY_WORDS, einvoiceHsnOk, expiryLabel, givenLine, inPacks, looseProblem, medicineLabel, prescribedLines, priceOf, scannedForList } from './pharmacyFormat.js';
 import { BatchGrid, PaymentWindow } from './CounterParts.jsx';
 import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
@@ -279,6 +279,8 @@ function Prescriptions({ patientId, onUse, chosenVisit, useFirst = null }) {
                     {it.dose} {FREQUENCY_WORDS[it.frequency] || it.frequencyText}
                     {it.durationValue ? `, ${it.durationValue} ${it.durationUnit}` : ''}
                   </span>
+                  {/* PH6: what was already given from this line */}
+                  {givenLine(it) && <span className={`ph-rx-given${it.givenInFull ? ' is-full' : ''}`}>{givenLine(it)}</span>}
                   {it.matches.length ? (
                     <span className="ph-rx-match">
                       <CircleCheck aria-hidden="true" /> In stock: {it.matches.map((m) => `${m.name} (${m.inStock})`).join(', ')}
@@ -291,6 +293,7 @@ function Prescriptions({ patientId, onUse, chosenVisit, useFirst = null }) {
                 </li>
               ))}
             </ul>
+            {rx.soldUnlinked?.length > 0 && <p className="hint">Sold from this prescription before: {rx.soldUnlinked.map((x) => `${x.number} on ${x.date}`).join(', ')}.</p>}
             <button type="button" className={`btn btn-sm ph-rx-use ${chosen ? 'btn-secondary is-chosen' : 'btn-secondary'}`} onClick={() => onUse(rx)}>
               {chosen ? <CircleCheck aria-hidden="true" /> : <ClipboardList aria-hidden="true" />} {chosen ? 'On the bill' : 'Use this prescription'}
             </button>
@@ -456,8 +459,10 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
     setDiscount(text === '' || !Number.isFinite(n) || !gross ? '' : String(Math.round(((n * 100) / gross) * 100 * 10000) / 10000));
   };
   const qtyOk = lines.length > 0 && lines.every((l) => /^\d+$/.test(l.qty) && Number(l.qty) > 0 && !looseProblem(l.medicine, Number(l.qty)));
+  // PH6: a prescription line given in full is sold again only with a reason
+  const repeatsOk = lines.every((l) => !l.givenInFull || (l.repeatReason ?? '').trim().length >= 3);
   const whoOk = who === 'walkin' ? customer.name.trim().length >= 2 : Boolean(patient);
-  const ready = qtyOk && whoOk && (!isBusiness || buyerOk) && (pct === 0 || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100;
+  const ready = qtyOk && repeatsOk && whoOk && (!isBusiness || buyerOk) && (pct === 0 || discountReason.trim().length >= 3) && pct >= 0 && pct <= 100;
 
   // Save: the Payment window opens with the bill's figures; its Save makes the invoice (a walk-in with how they paid)
   const bodyOf = () => {
@@ -468,7 +473,14 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
       ...(visitId ? { visitId } : {}),
       ...(!visitId && (doctor.name.trim() || doctor.reg.trim()) ? { doctor: { name: doctor.name.trim(), reg: doctor.reg.trim() } } : {}),
       rxSeen: !visitId && rxSeen,
-      lines: lines.map((l) => ({ medicineId: l.medicine.id, qty: Number(l.qty), ...(l.batchId ? { batchId: l.batchId } : {}), ...(l.dose?.trim() ? { dose: l.dose.trim() } : {}) })),
+      lines: lines.map((l) => ({
+        medicineId: l.medicine.id,
+        qty: Number(l.qty),
+        ...(l.batchId ? { batchId: l.batchId } : {}),
+        ...(l.dose?.trim() ? { dose: l.dose.trim() } : {}),
+        // PH6: the prescription line it is sold from (only with her Perinexa prescription), and why again
+        ...(visitId && l.rxItemId ? { rxItemId: l.rxItemId, ...(l.givenInFull ? { repeatReason: (l.repeatReason ?? '').trim() } : {}) } : {}),
+      })),
       discountPercent: pct,
       discountReason: discountReason.trim(),
     };
@@ -786,6 +798,19 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                               )}
                             </td>
                           </tr>
+                          {/* PH6: already given in full – sold again only with a reason */}
+                          {l.givenInFull && (
+                            <tr>
+                              <td colSpan={9} className="ph-repeat-row">
+                                <label className="ph-repeat">
+                                  <span className={(l.repeatReason ?? '').trim().length >= 3 ? 'hint' : 'field-error'}>
+                                    {l.medicine.name} was already given in full ({l.sold.map((x) => `${x.qty} on ${x.date}, ${x.number}`).join('; ')}). Why is it sold again?
+                                  </span>
+                                  <input maxLength={200} value={l.repeatReason ?? ''} onChange={(e) => setLine(l.key, { repeatReason: e.target.value })} aria-label={`Why ${l.medicine.name} is sold again`} />
+                                </label>
+                              </td>
+                            </tr>
+                          )}
                           {l.prescribed && l.medicine.inStock < Number(l.qty) && (
                             <tr>
                               <td colSpan={9} className="field-error ph-prescribed-short">
