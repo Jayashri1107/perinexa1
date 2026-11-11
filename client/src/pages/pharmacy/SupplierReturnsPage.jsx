@@ -486,7 +486,7 @@ function CreditNoteCard({ ret, onDone }) {
       <h2 id="sr-cn-title">Supplier’s credit note</h2>
       {c && !open && (
         <p>
-          {c.number}, dated {c.date} · {money(c.amountPaise)}
+          {c.number}, dated {formatDate(c.date)} · {money(c.amountPaise)}
           {c.amountPaise !== ret.totals.amountPaise ? ` (the debit note is ${money(ret.totals.amountPaise)})` : ''} · entered by {c.byName}{' '}
           {ret.canCancel && (
             <button type="button" className="btn btn-link btn-sm" onClick={() => setOpen(true)}>
