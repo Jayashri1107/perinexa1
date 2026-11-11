@@ -69,6 +69,7 @@ const supplierSchema = new mongoose.Schema(
     drugLicence: text(80),
     phone: text(30),
     address: text(300),
+    creditDays: { type: Number, min: 0, max: 365, default: 0 }, // PH11: a bill is due this many days after its date
     active: { type: Boolean, default: true },
   },
   { timestamps: true },
@@ -374,6 +375,29 @@ invoiceSchema.index({ tenantId: 1, patientId: 1, 'created.at': -1 });
 // PH6: what was sold from a prescription
 invoiceSchema.index({ tenantId: 1, visitId: 1 }, { partialFilterExpression: { visitId: { $type: 'objectId' } } });
 export const PharmacyInvoice = mongoose.model('PharmacyInvoice', invoiceSchema);
+
+// ---------- PH11: a payment to a supplier (SP-000001) ----------
+// Entered by the pharmacist; the hospital admin sees it. Cancelled with a reason, never deleted.
+export const SUPPLIER_PAYMENT_MODES = ['cash', 'cheque', 'bank', 'upi'];
+const supplierPaymentSchema = new mongoose.Schema(
+  {
+    number: { type: String, required: true },
+    supplierId: { type: ObjectId, ref: 'Supplier', required: true },
+    on: { type: Date, required: true },
+    amountPaise: { type: Number, required: true, min: 1 },
+    mode: { type: String, enum: SUPPLIER_PAYMENT_MODES, required: true },
+    reference: text(80), // the cheque or transaction number
+    purchaseIds: { type: [ObjectId], default: [] }, // the bills it settles, when named
+    note: text(200),
+    created: { type: stampSchema, required: true },
+    cancelled: { type: reasonStamp, default: null },
+  },
+  { timestamps: true },
+);
+supplierPaymentSchema.plugin(tenantScoped);
+supplierPaymentSchema.index({ tenantId: 1, number: 1 }, { unique: true });
+supplierPaymentSchema.index({ tenantId: 1, supplierId: 1, on: -1 });
+export const SupplierPayment = mongoose.model('SupplierPayment', supplierPaymentSchema);
 
 // ---------- PH10: the doctors' "never substitute" list ----------
 // Medicines the doctors do not allow another brand of (a narrow-range drug, a brand-specific formulation …). Matched by

@@ -7,7 +7,7 @@ import { Admission } from '../models/Admission.js';
 import { Arrival } from '../models/Arrival.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierReturn } from '../models/Pharmacy.js';
+import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn, SUPPLIER_PAYMENT_MODES } from '../models/Pharmacy.js';
 import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
@@ -26,6 +26,7 @@ import {
   FORMS,
   GST_RATES,
   MAX_BARCODES,
+  MAX_PAISE,
   OLD_GST_RATES,
   MAX_QTY,
   MIN_REASON,
@@ -37,7 +38,7 @@ import {
   SUPPLIER_RETURN_REASON_LABELS,
   cleanBarcode,
 } from '../pharmacy/pharmacyRules.js';
-import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS } from '../pharmacy/pharmacyService.js';
+import { cancelPurchase, countStock, createInvoice, createPurchase, daysLeft, invoiceTotals, invoiceViews, isExpired, returnItems, stockOf, writeOff, usableMatch, HOLD_REASONS, padded } from '../pharmacy/pharmacyService.js';
 import { isDuplicate } from '../patients/duplicateRules.js';
 import { isClosed } from '../patients/deathRules.js';
 import { NOT_CANCELLED, returnTotals } from '../pharmacy/supplierReturnsService.js';
@@ -51,6 +52,8 @@ import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
 import { givenFromPrescriptions, givenWords } from '../pharmacy/rxGiven.js';
 import { neverSubstitute, sameMedicine } from '../pharmacy/substitutes.js';
+import { supplierAccount } from '../pharmacy/supplierAccount.js';
+import { nextNumber } from '../models/Counter.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -240,6 +243,7 @@ const supplierFields = {
   drugLicence: z.string().trim().max(80),
   phone: z.string().trim().max(30),
   address: z.string().trim().max(300),
+  creditDays: z.number().int().min(0).max(365), // PH11
   active: z.boolean(),
 };
 const supplierSchema = z
@@ -249,6 +253,7 @@ const supplierSchema = z
     drugLicence: supplierFields.drugLicence.default(''),
     phone: supplierFields.phone.default(''),
     address: supplierFields.address.default(''),
+    creditDays: supplierFields.creditDays.default(0),
     active: supplierFields.active.optional(),
   })
   .strict();
@@ -274,6 +279,73 @@ pharmacyRouter.patch('/suppliers/:id', async (req, res) => {
   await s.save();
   await audit(req, 'PHARMACY_SUPPLIER_CHANGED', { details: { supplierId: String(s._id), fields: Object.keys(body) } });
   res.json({ supplier: supplierView(s) });
+});
+
+// ---------- PH11: what each supplier is owed (docs/PHARMACY_BUILD_NOTE.md) ----------
+// The pharmacist enters payments; the pharmacist and the hospital admin see the account. Amounts and ids in the audit
+// log. Payments are not sent to Tally yet (that comes with purchases to Tally – the accountant keeps entering them
+// there until then).
+
+async function accountOf(req, supplier) {
+  const [purchases, returns, payments] = await Promise.all([
+    Purchase.find({ tenantId: req.tenantId, supplierId: supplier._id }, { number: 1, invoiceNo: 1, invoiceDate: 1, totalPaise: 1, grn: 1, status: 1 }).lean(),
+    SupplierReturn.find({ tenantId: req.tenantId, supplierId: supplier._id }, { number: 1, lines: 1, status: 1, created: 1, createdAt: 1 }).lean(),
+    SupplierPayment.find({ tenantId: req.tenantId, supplierId: supplier._id }).sort({ on: -1, _id: -1 }).lean(),
+  ]);
+  return supplierAccount({ supplier, purchases, returns, payments, today: today(req) });
+}
+
+pharmacyRouter.get('/suppliers/:id/account', async (req, res) => {
+  reports(req);
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: idParam(req) }).lean();
+  if (!s) throw new HttpError(404, 'Supplier not found.', 'NOT_FOUND');
+  res.json({ supplier: supplierView(s), ...(await accountOf(req, s)), canPay: hasRole(req.membership, 'pharmacist'), modes: SUPPLIER_PAYMENT_MODES });
+});
+
+pharmacyRouter.post('/suppliers/:id/payments', async (req, res) => {
+  desk(req);
+  const body = parse(
+    z.object({ on: requiredDateOnly('Date'), amountPaise: z.number().int().min(1, 'Write the amount paid.').max(MAX_PAISE), mode: z.enum(SUPPLIER_PAYMENT_MODES, 'Choose how it was paid.'), reference: z.string().trim().max(80).default(''), purchaseIds: z.array(objectId).max(50).default([]), note: z.string().trim().max(200).default('') }).strict(),
+    req.body,
+  );
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: idParam(req) }).lean();
+  if (!s) throw new HttpError(404, 'Supplier not found.', 'NOT_FOUND');
+  if (body.mode !== 'cash' && body.reference.length < 2) throw Object.assign(new HttpError(400, 'Write the cheque or transaction number.', 'VALIDATION'), { fields: { reference: 'Write the cheque or transaction number.' } });
+  if (body.on > utcDay(today(req))) throw Object.assign(new HttpError(400, 'The date is in the future.', 'VALIDATION'), { fields: { on: 'The date is in the future.' } });
+  if (body.purchaseIds.length && (await Purchase.countDocuments({ tenantId: req.tenantId, supplierId: s._id, _id: { $in: body.purchaseIds }, status: { $ne: 'cancelled' } })) !== new Set(body.purchaseIds.map(String)).size) {
+    throw new HttpError(400, 'A bill chosen is not this supplier’s.', 'VALIDATION');
+  }
+  const number = padded('SP', await nextNumber(req.tenantId, 'pharmacy-supplier-payment'));
+  const p = await SupplierPayment.create({ tenantId: req.tenantId, number, supplierId: s._id, ...body, created: { by: req.user._id, byName: req.user.name, at: req.now } });
+  await audit(req, 'PHARMACY_SUPPLIER_PAID', { details: { paymentId: String(p._id), number, supplierId: String(s._id), amountPaise: body.amountPaise, mode: body.mode, bills: body.purchaseIds.length } });
+  res.status(201).json({ payment: { id: String(p._id), number }, ...(await accountOf(req, s)) });
+});
+
+pharmacyRouter.post('/supplier-payments/:id/cancel', async (req, res) => {
+  desk(req);
+  const { reason: why } = parse(z.object({ reason: reason('Cancelling a payment') }).strict(), req.body);
+  const p = await SupplierPayment.findOne({ tenantId: req.tenantId, _id: idParam(req) });
+  if (!p) throw new HttpError(404, 'Payment not found.', 'NOT_FOUND');
+  if (p.cancelled) throw new HttpError(409, 'This payment was already cancelled.', 'CONFLICT');
+  p.cancelled = { by: req.user._id, byName: req.user.name, at: req.now, reason: why };
+  await p.save();
+  await audit(req, 'PHARMACY_SUPPLIER_PAYMENT_CANCELLED', { details: { paymentId: String(p._id), number: p.number, supplierId: String(p.supplierId), amountPaise: p.amountPaise } });
+  const s = await Supplier.findOne({ tenantId: req.tenantId, _id: p.supplierId }).lean();
+  res.json(await accountOf(req, s));
+});
+
+// Owed and overdue, every supplier (Reports → Purchases)
+pharmacyRouter.get('/reports/supplier-dues', async (req, res) => {
+  reports(req);
+  const suppliers = await Supplier.find({ tenantId: req.tenantId }).sort({ name: 1 }).lean();
+  const rows = [];
+  for (const s of suppliers) {
+    const a = await accountOf(req, s);
+    if (!a.bills.length && !a.payments.length) continue;
+    rows.push({ id: String(s._id), name: s.name, creditDays: s.creditDays ?? 0, ...a.totals, taxMissing: a.taxMissing });
+  }
+  rows.sort((x, y) => y.overduePaise - x.overduePaise || y.owedPaise - x.owedPaise);
+  res.json({ suppliers: rows, owedPaise: rows.reduce((t, r) => t + r.owedPaise, 0), overduePaise: rows.reduce((t, r) => t + r.overduePaise, 0) });
 });
 
 // ---------- Purchases ----------
@@ -1308,7 +1380,7 @@ const rs = (p) => (p / 100).toFixed(2);
 
 pharmacyRouter.get('/export', async (req, res) => {
   if (!hasRole(req.membership, ...PHARMACY_EXPORT_ROLES)) throw forbidden('The export is for the hospital admin.');
-  const q = parse(z.object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['sales', 'purchases', 'supplier_returns']) }).strict(), req.query);
+  const q = parse(z.object({ from: requiredDateOnly('From'), to: requiredDateOnly('To'), what: z.enum(['sales', 'purchases', 'supplier_returns', 'supplier_payments']) }).strict(), req.query);
   const [from, to] = period(q);
   let rows;
   if (q.what === 'sales') {
@@ -1320,6 +1392,12 @@ pharmacyRouter.get('/export', async (req, res) => {
         rows.push([v.number, isoDay(toHospitalDate(new Date(v.date))), v.kind === 'issue' ? 'Issue (inpatient)' : 'Sale', v.patient?.mrn ?? '', v.patient?.fullName ?? v.customer?.name ?? '', v.doctor?.name ?? '', l.name, l.hsn, l.batch, l.expiry, l.qty, l.returnedQty, rs(l.mrpPaise), rs(l.amountPaise), rs(l.taxablePaise), l.gstRate, rs(l.cgstPaise), rs(l.sgstPaise), v.buyer?.name ?? '', v.buyer?.gstin ?? '']);
       }
     }
+  } else if (q.what === 'supplier_payments') {
+    // PH11: payments to suppliers (cancelled ones listed, marked)
+    const list = await SupplierPayment.find({ tenantId: req.tenantId, on: { $gte: q.from, $lte: q.to } }).sort({ on: 1, number: 1 }).lean();
+    const names = new Map((await Supplier.find({ tenantId: req.tenantId, _id: { $in: list.map((p) => p.supplierId) } }, { name: 1, gstin: 1 }).lean()).map((x) => [String(x._id), x]));
+    rows = [['Payment', 'Date', 'Supplier', 'Supplier GSTIN', 'Mode', 'Reference', 'Amount', 'Status']];
+    for (const p of list) rows.push([p.number, isoDay(p.on), names.get(String(p.supplierId))?.name ?? '', names.get(String(p.supplierId))?.gstin ?? '', p.mode, p.reference ?? '', rs(p.amountPaise), p.cancelled ? 'Cancelled' : 'Paid']);
   } else if (q.what === 'supplier_returns') {
     const list = await SupplierReturn.find({ tenantId: req.tenantId, 'created.at': { $gte: from, $lt: to } }).sort({ 'created.at': 1 }).lean();
     const names = new Map((await Supplier.find({ tenantId: req.tenantId, _id: { $in: list.map((r) => r.supplierId) } }, { name: 1, gstin: 1 }).lean()).map((x) => [String(x._id), x]));

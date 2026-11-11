@@ -11,6 +11,7 @@ import { grnLineFigures, grnTotals } from './grnFormat.js';
 import { gstinProblem, gstinState } from './gstin.js';
 import { FORM_LABELS, SCHEDULE_LABELS, cleanBarcode, expiryLabel, isBarcode, medicineLabel, medicinesToCheck, orderLook, receiveLines, receivedFlash, scannedForPurchase, packWords } from './pharmacyFormat.js';
 import { FindMedicine, Modal, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
+import { SupplierAccountCard } from './SupplierAccount.jsx';
 
 // Pharmacy → Purchases (supplier invoices: stock in, batch by batch – also received against a purchase order),
 // → Medicines (the stock list, with the barcodes on their packs) and → Suppliers, each supplier with its own page:
@@ -263,6 +264,8 @@ export function SupplierPage() {
             </dl>
           </section>
         )}
+        {/* PH11: what this supplier is owed, and the payments */}
+        {x && <SupplierAccountCard supplierId={x.id} />}
         <h2 className="td-group-title">Bills from this supplier</h2>
         <PurchaseCards res={bills} desk={desk} empty="No bills from this supplier yet. Press Add bill when a delivery comes." />
       </div>
@@ -1180,10 +1183,10 @@ function MedicineActive({ m, onDone }) {
 // ---------- Suppliers ----------
 
 function SupplierDialog({ supplier, onClose, onDone }) {
-  const [x, setX] = useState(supplier ? { ...supplier } : { name: '', gstin: '', drugLicence: '', phone: '', address: '' });
+  const [x, setX] = useState(supplier ? { ...supplier, creditDays: String(supplier.creditDays ?? 0) } : { name: '', gstin: '', drugLicence: '', phone: '', address: '', creditDays: '0' });
   const s = useSend(onDone);
   const f = (k) => (e) => setX({ ...x, [k]: e.target.value });
-  const body = { name: x.name.trim(), gstin: x.gstin.trim(), drugLicence: x.drugLicence.trim(), phone: x.phone.trim(), address: x.address.trim() };
+  const body = { name: x.name.trim(), gstin: x.gstin.trim(), drugLicence: x.drugLicence.trim(), phone: x.phone.trim(), address: x.address.trim(), creditDays: Math.max(0, Math.min(365, Number.parseInt(x.creditDays, 10) || 0)) };
   return (
     <Modal id="ph-sup" title={supplier ? `Change ${supplier.name}` : 'Add a supplier'} onClose={onClose}>
       <Alert type="error">{s.error}</Alert>
@@ -1199,6 +1202,9 @@ function SupplierDialog({ supplier, onClose, onDone }) {
         </Field>
         <Field label="Phone" id="sup-phone">
           <input id="sup-phone" value={x.phone} maxLength={30} onChange={f('phone')} />
+        </Field>
+        <Field label="Credit days" id="sup-credit" hint="A bill is due this many days after its date (PH11).">
+          <input id="sup-credit" inputMode="numeric" value={x.creditDays} onChange={f('creditDays')} />
         </Field>
       </div>
       <Field label="Address" id="sup-address">

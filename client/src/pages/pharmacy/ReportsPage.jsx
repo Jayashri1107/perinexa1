@@ -11,6 +11,7 @@ import { dayLabel } from '../appointments/appointmentFormat.js';
 import { gstinProblem } from './gstin.js';
 import { MOVE_LABELS, expiryLabel } from './pharmacyFormat.js';
 import { PharmacyHeader, PharmacyLetterhead, money, useSend } from './pharmacyUi.jsx';
+import { SupplierDues } from './SupplierAccount.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
 // as cards, then one report at a time – stock alerts (low stock, expiring and expired batches), sales and GST by rate,
@@ -547,6 +548,7 @@ export function ReportsPage() {
         {view === 'alerts' && (alerts.error ? <Alert type="error">{alerts.error}</Alert> : a && <StockAlerts a={a} />)}
         {view === 'sales' && (sales.error ? <Alert type="error">{sales.error}</Alert> : s && <SalesReport s={s} />)}
         {view === 'purchases' && (purchases.error ? <Alert type="error">{purchases.error}</Alert> : p && <PurchasesReport p={p} />)}
+        {view === 'purchases' && <SupplierDues />}
 
         {view === 'registers' && (
           <section className="card bill-section" aria-labelledby="rep-reg">
@@ -590,6 +592,9 @@ export function ReportsPage() {
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => download('supplier_returns')}>
                 <Download aria-hidden="true" /> Returns to suppliers
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => download('supplier_payments')}>
+                <Download aria-hidden="true" /> Payments to suppliers
               </button>
             </div>
           </section>
