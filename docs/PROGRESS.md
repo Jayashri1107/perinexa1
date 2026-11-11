@@ -1,5 +1,28 @@
 # Progress
 
+## Pharmacy Stage C: money and figures (11 Nov 2026, branch `pharm-stage-c`)
+Stage C of `docs/PHARMACY_BUILD_NOTE.md` (PH11, PH15, PH24, PH17, PH16), with the owner's approval of 11 Nov 2026.
+- **PH11 What each supplier is owed:** a supplier's page shows its bills, returns and payments, what is owed and what
+  is overdue after its credit days. **Pay** enters a payment (cash, cheque, bank, UPI); it settles the oldest bills
+  first unless bills are named. A wrong payment is cancelled with a reason. Reports → **Supplier dues** lists all.
+- **PH15 Reports:** Reports → **Figures** – profit by medicine, slow stock (no sale for 90 days), value lost to expiry,
+  days out of stock, prescriptions filled, H1 use by month. Reports → **Day closing** – cash expected against cash
+  counted, once a day, a difference needs a note. A write-off now says expired, damaged or other.
+- **PH24 Sales by doctor:** Reports → **Sales by doctor**, for the pharmacist only (not the hospital admin, not the
+  doctors). The super admin sees Analytics → Pharmacy by doctor: counts and amounts per hospital, a doctor shown only
+  from 5 invoices.
+- **PH17 Order by use:** Orders → **Suggest by use** – what will not last the supplier's days plus the days to cover at
+  the last weeks' use (days out of stock not counted). Pharmacy settings set the three numbers (30 / 3 / 15 days). A
+  medicine can name the supplier it is usually ordered from. The purchase line shows the last price paid.
+- **PH16 Bill from a file:** New purchase → **Bill from a file** – the supplier's CSV or Excel bill fills the items.
+  The columns and the supplier's item names matched to our medicines are remembered per supplier. Every line is still
+  opened and checked; saving is the usual purchase entry. A medicine not on the list is never made from the file.
+- **Not built:** PH26 (AI forecast) – it is to be built only if it beats PH17 on the hospital's own past sales, and
+  there are none yet. Purchases and supplier payments to Tally are still not built.
+- **How to check (fake data only):** Suppliers → a supplier → set credit days 15 → add two bills → Pay ₹500 – the oldest
+  bill goes down. Orders → Suggest by use after some sales. New purchase → choose the supplier → Bill from a file with
+  a CSV having Item, Batch, Exp, Qty, Rate columns.
+
 ## Pharmacy Stage B: safety at the counter (11 Nov 2026, branch `pharm-stage-b`)
 Stage B of `docs/PHARMACY_BUILD_NOTE.md` (PH6, PH5, PH7, PH10), with the owner's approval of 11 Nov 2026 to build the
 remaining development.

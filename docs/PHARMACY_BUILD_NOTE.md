@@ -324,6 +324,19 @@ nothing is offered: "The doctors do not allow another brand for this medicine."
 
 ## 5. Stage C – money and figures
 
+> **Built in perinexa1 (11 Nov 2026), except PH26.** PH11 – `pharmacy/supplierAccount.js`, `SupplierPayment`
+> (SP-numbers, cancelled never deleted), `GET /suppliers/:id/account`, `POST /suppliers/:id/payments`,
+> `GET /reports/supplier-dues`; payments are not sent to Tally yet. PH15 – `pharmacy/figures.js` (profit by medicine,
+> slow stock, expiry loss, days out of stock, prescriptions filled, H1 use), `StockMove.writeoffKind`, invoice line
+> `costPaise`, `PharmacyDayClose` and `POST /day-close`. PH24 – `pharmacy/salesByDoctor.js`, invoice `doctor.userId`,
+> `GET /reports/by-doctor` (pharmacist only), `GET /api/platform/analytics/pharmacy-by-doctor` (numbers only, a doctor
+> from 5 invoices). PH17 – `pharmacy/reorderByUse.js`, `GET /orders/suggest?mode=use`, `Tenant.pharmacy.reorder*Days`
+> (30 / 3 / 15), `Medicine.preferredSupplierId`, `GET /medicines/:id/last-price` (shown on the purchase line).
+> PH16 – `Supplier.billFile` (column headings and item matches, per supplier), `GET/PUT /suppliers/:id/bill-file`,
+> `POST /suppliers/:id/bill-file/match`, website `BillFile.jsx` and `stockFile.js billHeadings / billLines`; CSV and
+> .xlsx only, no photo or PDF. **PH26 is not built**: its own condition (a back-test showing it beats PH17) needs months
+> of a hospital's real sales, which do not exist yet. Tests: `server/tests/pharmacy-stage-c.test.js`.
+
 ### PH11 – what each supplier is owed
 
 - `Supplier.creditDays`. A `SupplierPayment` model: supplier, date, amount, mode (cash, cheque, bank, UPI),
