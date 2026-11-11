@@ -602,10 +602,13 @@ async function loadBatch(req) {
 
 pharmacyRouter.post('/batches/:id/writeoff', async (req, res) => {
   desk(req);
-  const body = parse(z.object({ qty, reason: reason('Writing off stock') }).strict(), req.body);
+  // PH7: a controlled medicine's write-off needs a witness who signs in, as its count does
+  const body = parse(z.object({ qty, reason: reason('Writing off stock'), witness: pharmacyWitnessField }).strict(), req.body);
   const { b, m } = await loadBatch(req);
-  const after = await writeOff(req, b, body.qty, body.reason);
-  await audit(req, 'PHARMACY_STOCK_WRITTEN_OFF', { details: { medicineId: String(m._id), batchId: String(b._id), qty: body.qty, reason: body.reason } });
+  if (CONTROLLED.includes(m.schedule) && !body.witness) throw Object.assign(new HttpError(400, `${m.name} is a controlled medicine: a second person who checked the write-off signs in for it.`, 'VALIDATION'), { fields: { 'witness.email': 'A second person (pharmacist, doctor, RMO or nurse) types their email and password.' } });
+  body.witness = await pharmacyWitnessName(req, body.witness || null, 'pharmacy_writeoff');
+  const after = await writeOff(req, b, body.qty, body.reason, body.witness);
+  await audit(req, 'PHARMACY_STOCK_WRITTEN_OFF', { details: { medicineId: String(m._id), batchId: String(b._id), qty: body.qty, reason: body.reason, ...(body.witness ? { witness: body.witness } : {}) } });
   res.json({ batch: batchView(after, today(req)) });
 });
 
@@ -640,10 +643,23 @@ pharmacyRouter.get('/medicines/:id/batches', async (req, res) => {
 
 // ---------- What to sell or issue ----------
 
+/**
+ * PH7: her allergy line for the pharmacist – { status: 'recorded' | 'none' | 'not_asked', text } (the website's
+ * patientFormat.js allergyStatus). A baby's record has no allergy field: 'not_asked'.
+ */
+export function allergyFor(patient) {
+  const text = String(patient?.medical?.allergies ?? '').trim();
+  if (!text) return { status: 'not_asked', text: '' };
+  if (/^(none|nil|no)( known)?( (drug )?allerg(y|ies))?\.?$|^nkda$|^nka$/i.test(text)) return { status: 'none', text };
+  return { status: 'recorded', text };
+}
+
 // A patient's recent prescriptions – the medicines only, matched to the stock list by name (pharmacist).
 pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
   desk(req);
-  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: idParam(req) }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, 'death.on': 1 }).lean();
+  // PH7 (owner's decision 2, 10 Nov 2026): the pharmacist sees her allergies – medical.allergies and nothing else of
+  // her record (patientAccess is not widened; this narrow projection is the one path)
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: idParam(req) }, { fullName: 1, mrn: 1, phone: 1, duplicateOf: 1, 'death.on': 1, careType: 1, 'medical.allergies': 1 }).lean();
   if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
   // Also the prescriptions written on a record that was marked as a duplicate of hers (her earlier record): she is
   // sold to on this record, and the paper in her hand may be from the other one. Nothing is moved.
@@ -668,7 +684,8 @@ pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
   // PH6: what was already sold from these prescriptions (net of returns) – by prescription line where the sale says
   // which line, else (older sales) listed with the prescription only
   const given = await givenFromPrescriptions(req.tenantId, visits.map((v) => v._id));
-  await audit(req, 'PHARMACY_PRESCRIPTIONS_VIEWED', { details: { patientId: String(patient._id), mrn: patient.mrn, prescriptions: visits.length } });
+  const allergies = allergyFor(patient);
+  await audit(req, 'PHARMACY_PRESCRIPTIONS_VIEWED', { details: { patientId: String(patient._id), mrn: patient.mrn, prescriptions: visits.length, ...(allergies.status === 'recorded' ? { allergiesShown: true } : {}) } });
   res.json({
     // duplicateOf: this record is marked as a duplicate – it takes no sale ({ id, mrn } of the main record to open)
     // closed: the record is closed (no counter sale – never why)
@@ -679,6 +696,7 @@ pharmacyRouter.get('/patients/:id/prescriptions', async (req, res) => {
       phone: patient.phone ?? '',
       duplicateOf: isDuplicate(patient) ? { id: String(patient.duplicateOf.patient), mrn: patient.duplicateOf.mrn } : null,
       closed: isClosed(patient),
+      allergies,
     },
     prescriptions: visits.map((v) => {
       const by = v.prescription?.by ? doctors.get(String(v.prescription.by)) : null;

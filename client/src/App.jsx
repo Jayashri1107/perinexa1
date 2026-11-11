@@ -330,6 +330,8 @@ const IncidentsPage = screen(loadCrs6, 'IncidentsPage');
 const IncidentPage = screen(loadCrs6, 'IncidentPage');
 const loadCrs7 = () => import('./pages/formulary/FormularyPage.jsx');
 const FormularyPage = screen(loadCrs7, 'FormularyPage');
+const loadMarks = () => import('./pages/pharmacy/MedicineMarks.jsx');
+const MedicineMarksPage = screen(loadMarks, 'MedicineMarksPage');
 const loadCrs16 = () => import('./pages/theatre/TheatreListPage.jsx');
 const TheatreListPage = screen(loadCrs16, 'TheatreListPage');
 const loadCrs16b = () => import('./pages/theatre/TheatreCasePage.jsx');
@@ -568,6 +570,10 @@ export function App() {
                 </Route>
                 <Route path="formulary" element={<RequireTenantRole roles={FORMULARY_ROLES} message="The formulary is for doctors, RMOs, nurses and the pharmacist." />}>
                   <Route index element={<FormularyPage />} />
+                  {/* PH7: high-alert and look-alike marks – a doctor and the pharmacist together */}
+                  <Route path="marks" element={<RequireTenantRole roles={['doctor', 'pharmacist']} message="Medicine marks are written by doctors and the pharmacist." />}>
+                    <Route index element={<MedicineMarksPage />} />
+                  </Route>
                 </Route>
                 <Route path="privileges" element={<RequireTenantRole roles={PRIVILEGE_ROLES} message="The privileges register is for the hospital admin, the quality lead, doctors, RMOs and nurses." />}>
                   <Route index element={<PrivilegesPage />} />

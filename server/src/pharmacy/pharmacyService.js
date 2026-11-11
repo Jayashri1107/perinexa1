@@ -392,9 +392,9 @@ export async function returnItems(req, invoice, items, reason, refund) {
   return { invoice, number, credit };
 }
 
-/** Writes off stock (expired, damaged, lost) with a reason. */
-export async function writeOff(req, batch, qty, reason) {
-  return moveStock(req, batch, -qty, { kind: 'writeoff', reason });
+/** Writes off stock (expired, damaged, lost) with a reason (and the witness of a controlled medicine – PH7). */
+export async function writeOff(req, batch, qty, reason, witness = '') {
+  return moveStock(req, batch, -qty, { kind: 'writeoff', reason, witness: witness ?? '' });
 }
 
 /** Sets a batch to the counted quantity, with a reason (and a witness for Schedule X and narcotic medicines). */

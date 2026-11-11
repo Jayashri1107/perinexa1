@@ -520,7 +520,7 @@ export const HOSPITAL_INCIDENTS = { key: 'incidents', label: 'Incidents', icon: 
 // The theatre list and the WHO Surgical Safety Checklist (Group B item 16): doctors, RMOs and nurses
 export const THEATRE_ROLES = ['doctor', 'rmo', 'nurse'];
 export const HOSPITAL_THEATRE = { key: 'theatre', label: 'Theatre', icon: Scissors, to: '/theatre', tabs: [{ label: 'Theatre list', to: '/theatre', end: false }] };
-export const HOSPITAL_FORMULARY = { key: 'formulary', label: 'Formulary', icon: Pill, to: '/formulary', tabs: [{ label: 'Formulary', to: '/formulary', end: true }] };
+export const HOSPITAL_FORMULARY = { key: 'formulary', label: 'Formulary', icon: Pill, to: '/formulary', tabs: [{ label: 'Formulary', to: '/formulary', end: true }, { label: 'Medicine marks', to: '/formulary/marks', end: true }] };
 // Clinical privileges (Group C, PX-X-07): kept by the hospital admin and the quality lead; doctors read them (RMOs
 // and nurses can open /privileges, and see the check on each theatre case)
 export const PRIVILEGE_MENU_ROLES = ['admin', 'quality', 'doctor'];

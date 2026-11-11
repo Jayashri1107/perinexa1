@@ -33,6 +33,21 @@ const medicineSchema = new mongoose.Schema(
     packSize: { type: Number, min: 1, max: 1000, default: 1 },
     packName: text(20),
     looseSale: { type: Boolean, default: true },
+    // PH7: "High alert" and "looks or sounds like" – in force only once a doctor and the pharmacist have both confirmed
+    // this version (routes/medicineMarks.js). null: no marks.
+    marks: {
+      type: new mongoose.Schema(
+        {
+          highAlert: { type: Boolean, default: false },
+          lookAlike: { type: [new mongoose.Schema({ medicineId: ObjectId, name: String }, { _id: false })], default: [] },
+          version: { type: Number, default: 1 },
+          confirmations: { type: [new mongoose.Schema({ ...stamp, role: String, version: Number }, { _id: false })], default: [] },
+          updatedByName: String,
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     // The barcodes printed on its packs (typed or scanned), without spaces and in capitals. Found by exact match.
     barcodes: { type: [String], default: [] },
     active: { type: Boolean, default: true },

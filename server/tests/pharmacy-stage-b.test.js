@@ -8,7 +8,7 @@ import { ensureStandardTemplates, resetApprovalBackfill } from '../src/careplans
 import { AuditLog } from '../src/models/AuditLog.js';
 import { Patient } from '../src/models/Patient.js';
 import { User } from '../src/models/User.js';
-import { addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
+import { PASSWORD, addMember, connectTestDb, createTenant, createUser, disconnectTestDb, loginAs, resetTestDb, samplePatient } from './helpers.js';
 
 const NOW = new Date('2026-11-11T06:00:00Z');
 const ROLES = { drA: 'doctor', reception: 'receptionist', pharm: 'pharmacist', admin: 'admin' };
@@ -199,5 +199,63 @@ describe('PH5 – a batch on hold, and who received it', () => {
     await StockBatch.collection.insertOne({ tenantId: other._id, medicineId: new mongoose.Types.ObjectId(m.id), batch: 'S1', expiry: new Date('2027-06-30'), mrpPaise: 500, costPaise: 300, qtyIn: 5, qtyLeft: 5, hold: null });
     ok(await ph('post', '/batches/hold', { medicineId: m.id, batch: 'S1', reason: 'recalled' }));
     expect((await StockBatch.collection.findOne({ tenantId: other._id })).hold).toBeNull();
+  });
+});
+
+describe('PH7 – warnings at the counter', () => {
+  it('the pharmacist gets her allergy line and nothing else of her medical details; a walk-in has none', async () => {
+    const res = await (await as('drA')).post('/api/patients').send(samplePatient({ fullName: 'Sample Allergy Mother', assignedDoctor: people.drA._id.toString(), medical: { allergies: 'Penicillin – rash', bloodGroup: 'B+', conditions: ['diabetes'] } }));
+    const p = ok(res, 201).patient;
+    const body = ok(await ph('get', `/patients/${p.id}/prescriptions`));
+    expect(body.patient.allergies).toEqual({ status: 'recorded', text: 'Penicillin – rash' });
+    expect(JSON.stringify(body)).not.toMatch(/B\+|diabetes|bloodGroup|conditions/);
+    const entry = await AuditLog.findOne({ action: 'PHARMACY_PRESCRIPTIONS_VIEWED' }).lean();
+    expect(entry.details.allergiesShown).toBe(true);
+    expect(JSON.stringify(entry.details)).not.toMatch(/Penicillin/);
+    // The hospital admin has no counter: 403
+    expect((await ph('get', `/patients/${p.id}/prescriptions`, undefined, 'admin')).status).toBe(403);
+    const none = ok(await (await as('drA')).post('/api/patients').send(samplePatient({ fullName: 'Sample None Known', medical: { allergies: 'None known' } })), 201).patient;
+    expect(ok(await ph('get', `/patients/${none.id}/prescriptions`)).patient.allergies.status).toBe('none');
+  });
+
+  it('high-alert and look-alike marks: proposed by one, in force only once a doctor and the pharmacist have both confirmed', async () => {
+    const a = await medicine({ name: 'Sample Insulin Regular' });
+    const b = await medicine({ name: 'Sample Insulin Rapid' });
+    const marks = async (who, method, path, body) => (await as(who))[method](`/api/medicine-marks${path}`).send(body);
+    expect((await marks('reception', 'get', '/')).status).toBe(403);
+    const proposed = ok(await marks('pharm', 'put', `/${a.id}`, { highAlert: true, lookAlike: [b.id], version: 0 })).medicine;
+    expect(proposed.marks).toMatchObject({ highAlert: true, inForce: false, version: 1, confirmations: [{ role: 'pharmacist' }] });
+    // Not shown at the counter yet
+    let shown = ok(await ph('get', '/medicines?search=Insulin Regular')).medicines[0];
+    expect(shown).toMatchObject({ highAlert: false, lookAlike: [] });
+    // The same person cannot confirm twice
+    expect((await marks('pharm', 'post', `/${a.id}/confirm`, { version: 1 })).body.error.code).toBe('SAME_PERSON');
+    const confirmed = ok(await marks('drA', 'post', `/${a.id}/confirm`, { version: 1 })).medicine;
+    expect(confirmed.marks.inForce).toBe(true);
+    shown = ok(await ph('get', '/medicines?search=Insulin Regular')).medicines[0];
+    expect(shown).toMatchObject({ highAlert: true, lookAlike: [{ id: b.id, name: 'Sample Insulin Rapid' }] });
+    // Any change clears the agreement
+    ok(await marks('drA', 'put', `/${a.id}`, { highAlert: true, lookAlike: [], version: 1 }));
+    expect(ok(await ph('get', '/medicines?search=Insulin Regular')).medicines[0].highAlert).toBe(false);
+    expect((await marks('drA', 'put', `/${a.id}`, { highAlert: false, lookAlike: [], version: 1 })).body.error.code).toBe('STALE');
+    expect(await AuditLog.countDocuments({ action: { $in: ['MEDICINE_MARKS_CHANGED', 'MEDICINE_MARKS_CONFIRMED'] } })).toBe(3);
+  });
+
+  it('a narcotic write-off without a witness is refused; with one it goes in, with the witness on the move', async () => {
+    const m = await medicine({ name: 'Sample Morphine 10', schedule: 'narcotic' });
+    await stock(m, 10, 2000);
+    const { StockBatch, StockMove } = await import('../src/models/Pharmacy.js');
+    const b = await StockBatch.findOne({ tenantId: hospital._id, medicineId: m.id }).lean();
+    const no = await ph('post', `/batches/${b._id}/writeoff`, { qty: 1, reason: 'Ampoule broken' });
+    expect(no.status).toBe(400);
+    expect(no.body.error.fields).toHaveProperty(['witness.email']);
+    ok(await ph('post', `/batches/${b._id}/writeoff`, { qty: 1, reason: 'Ampoule broken', witness: { email: people.drA.email, password: PASSWORD } }));
+    const move = await StockMove.findOne({ tenantId: hospital._id, kind: 'writeoff' }).lean();
+    expect(move.witness).toBe('Sample drA (Doctor)');
+    // An ordinary medicine needs none
+    const plain = await medicine({ name: 'Sample Plain Tab' });
+    await stock(plain, 10);
+    const pb = await StockBatch.findOne({ tenantId: hospital._id, medicineId: plain.id }).lean();
+    ok(await ph('post', `/batches/${pb._id}/writeoff`, { qty: 1, reason: 'Damaged' }));
   });
 });

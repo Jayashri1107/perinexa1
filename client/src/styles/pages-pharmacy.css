@@ -611,3 +611,11 @@
 .ph-repeat-row { background: var(--status-watch-bg); }
 .ph-repeat { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .ph-repeat input { flex: 1 1 220px; min-width: 0; }
+
+/* PH7: her allergy line and the counter's warnings (allergy, look-alike) – shown, never asked about */
+.ph-allergy { margin: 0 0 var(--space-2); font-size: var(--fs-caption); color: var(--slate-600); }
+.ph-allergy.is-recorded { color: var(--status-high-fg); }
+.ph-allergy svg, .ph-warn svg { width: 1em; height: 1em; vertical-align: -0.125em; }
+.ph-warn-row { background: var(--status-high-bg); }
+.ph-warn { display: block; color: var(--status-high-fg); font-size: var(--fs-caption); }
+.mm-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--card-border); }

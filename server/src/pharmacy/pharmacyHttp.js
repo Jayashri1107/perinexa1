@@ -10,6 +10,7 @@ import { HttpError } from '../utils/httpError.js';
 import { objectId, parse } from '../utils/validate.js';
 import { CONTROLLED, MAX_PAISE, MAX_QTY, MIN_REASON, PHARMACY_DESK_ROLES, PHARMACY_REPORT_ROLES, SCHEDULE_LABELS } from './pharmacyRules.js';
 import { daysLeft, isExpired } from './pharmacyService.js';
+import { marksInForce } from '../routes/medicineMarks.js';
 
 export const forbidden = (message) => new HttpError(403, message, 'FORBIDDEN');
 export const notFound = (what) => new HttpError(404, `${what} not found.`, 'NOT_FOUND');
@@ -66,6 +67,8 @@ export const medicineView = (m, stock = null) => ({
   controlled: CONTROLLED.includes(m.schedule),
   reorderLevel: m.reorderLevel ?? 0,
   manufacturer: m.manufacturer ?? '',
+  // PH7: the high-alert and look-alike marks – only while a doctor and the pharmacist have both confirmed them
+  ...(marksInForce(m.marks) ? { highAlert: Boolean(m.marks.highAlert), lookAlike: (m.marks.lookAlike ?? []).map((x) => ({ id: String(x.medicineId), name: x.name })) } : { highAlert: false, lookAlike: [] }),
   packSize: m.packSize ?? 1,
   packName: m.packName ?? '',
   looseSale: m.looseSale !== false,

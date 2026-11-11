@@ -221,11 +221,14 @@ function StockSheet({ onClose }) {
   );
 }
 
-function WriteOffDialog({ batch, onClose, onDone }) {
+function WriteOffDialog({ batch, controlled = false, onClose, onDone }) {
   const [qty, setQty] = useState(String(batch.qtyLeft));
   const [reason, setReason] = useState(batch.expired ? 'Expired' : '');
+  // PH7: a narcotic or Schedule X write-off – a second person signs in, as for a count
+  const [witness, setWitness] = useState(emptyWitness);
   const s = useSend(onDone);
   const n = Number(qty);
+  const witnessOk = !controlled || (witness.email.trim().length >= 3 && witness.password.length >= 1);
   return (
     <Modal id="ph-wo" title={`Write off batch ${batch.batch}`} onClose={onClose}>
       <p>{batch.qtyLeft} in this batch. Expired, damaged or lost stock leaves the stock with a reason.</p>
@@ -238,8 +241,9 @@ function WriteOffDialog({ batch, onClose, onDone }) {
           <input id="ph-wo-reason" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
         </Field>
       </div>
+      {controlled && <WitnessFields id="ph-wo-wit" value={witness} onChange={setWitness} errors={s.fields} what="Writing off a narcotic or Schedule X medicine" />}
       <div className="row">
-        <button type="button" className="btn btn-danger" disabled={!Number.isInteger(n) || n < 1 || n > batch.qtyLeft || reason.trim().length < 3 || s.busy} onClick={() => s.send(`/pharmacy/batches/${batch.id}/writeoff`, { qty: n, reason: reason.trim() })}>
+        <button type="button" className="btn btn-danger" disabled={!Number.isInteger(n) || n < 1 || n > batch.qtyLeft || reason.trim().length < 3 || !witnessOk || s.busy} onClick={() => s.send(`/pharmacy/batches/${batch.id}/writeoff`, { qty: n, reason: reason.trim(), witness: controlled ? witness : '' })}>
           {s.busy ? 'Saving…' : 'Write off'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
@@ -398,7 +402,7 @@ export function MedicineStockPage() {
           </section>
         )}
       </div>
-      {dialog?.kind === 'writeoff' && <WriteOffDialog batch={dialog.batch} onClose={() => setDialog(null)} onDone={done('Written off.')} />}
+      {dialog?.kind === 'writeoff' && <WriteOffDialog batch={dialog.batch} controlled={CONTROLLED.includes(d.medicine.schedule)} onClose={() => setDialog(null)} onDone={done('Written off.')} />}
       {dialog?.kind === 'hold' && <HoldDialog medicine={d.medicine} batch={dialog.batch} onClose={() => setDialog(null)} onDone={done(`Batch ${dialog.batch.batch} is on hold: it cannot be sold or issued.`)} />}
       {dialog?.kind === 'release' && <ReleaseDialog medicine={d.medicine} batch={dialog.batch} onClose={() => setDialog(null)} onDone={done(`Batch ${dialog.batch.batch} released.`)} />}
       {dialog?.kind === 'recipients' && <RecipientsPrint medicine={d.medicine} batch={dialog.batch} onClose={() => setDialog(null)} />}

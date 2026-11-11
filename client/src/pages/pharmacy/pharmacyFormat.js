@@ -1,4 +1,5 @@
 import { FilePen, PackageCheck, PackageOpen, Send, ShieldAlert, TriangleAlert } from 'lucide-react';
+import { allergyNames, termMatches } from '../medsafety/medSafety.js';
 
 // Pharmacy (docs/PHARMACY_PLAN.md): words and lists shared by the pharmacy pages. Same role lists as
 // server/src/pharmacy/pharmacyRules.js. Amounts come in paise (billing/billingFormat.js formats them).
@@ -182,6 +183,19 @@ export function prescribedLines(lines, rx) {
     else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(qty), batchId: null, prescribed: true, ...rx6, ...(it.dose ? { dose: it.dose } : {}) });
   }
   return out;
+}
+
+/**
+ * PH7 (docs/PHARMACY_BUILD_NOTE.md): does a medicine's brand or generic name match her allergy line? Text against text
+ * – it will miss, so her allergy line is always shown and this warning is an extra (the doctors' matcher,
+ * medsafety/medSafety.js). Returns the allergy group or word matched, or null. No reason is asked (owner, 10 Nov 2026).
+ */
+export function allergyClash(medicine, allergyText) {
+  const { groups, words } = allergyNames(allergyText ?? '');
+  const name = `${medicine?.name ?? ''} ${medicine?.generic ?? ''}`.toLowerCase();
+  const group = groups.find((g) => g.members.some((m) => termMatches(name, m)) || g.words.some((w) => termMatches(name, w)));
+  if (group) return group.name;
+  return words.find((w) => termMatches(name, w)) ?? null;
 }
 
 /** PH6: "Given: 10 on 2026-11-03 (PH-000412). Still to give: 20." – '' when nothing was sold from the line. */
