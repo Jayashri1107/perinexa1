@@ -388,8 +388,14 @@
 .ipd-tabs [role='tab']:focus-visible { outline: none; box-shadow: var(--focus-ring-inset); }
 .ipd-panel { min-height: 160px; }
 .ipd-filters { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; margin-bottom: var(--space-2); }
-.ipd-removed td { color: var(--slate-600); text-decoration: line-through; }
-.ipd-removed td .muted { text-decoration: none; }
+/* A removed line (11 Nov 2026): shaded, the service and amounts struck through, who removed it and why beneath, a
+   Removed pill in the last column (colour + icon + word) */
+.ipd-panel .bill-report tr.ipd-removed td { color: var(--slate-600); background: var(--status-inactive-bg); }
+.ipd-removed .svc-name, .ipd-removed td.num { text-decoration: line-through; }
+.svc-removed-why { display: block; font-size: 0.8125rem; color: var(--slate-600); text-decoration: none; }
+.svc-action { white-space: nowrap; text-align: right; }
+.svc-remove { color: var(--status-high-fg); }
+.svc-remove svg.lucide { width: 14px; height: 14px; }
 .ipd-foot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-4); align-items: start; padding-top: var(--space-3); border-top: 1px solid var(--border); }
 .ipd-layouts { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .ipd-layouts legend { font-size: 0.8125rem; color: var(--slate-600); padding: 0; }
@@ -560,3 +566,23 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .bill-doc-class { display: block; font-weight: 600; font-size: 0.85em; text-transform: uppercase; }
 .bill-doc-headed tbody { border-bottom: 1px solid var(--print-rule); }
 .bill-doc-headed .bill-doc-indent { padding-left: 6mm; }
+
+/* The IPD bill's left panel and foot (11 Nov 2026), as the old screen: each label beside its value in close rows; the
+   sums in one column on the right with administrative charges and the concession inside it */
+.ipd-facts.ipd-facts-rows { grid-template-columns: 1fr; gap: 0; }
+.ipd-facts-rows > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-2); align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--card-border); }
+.ipd-facts-rows > div:last-child { border-bottom: 0; }
+.ipd-facts-rows dt { font-size: 0.8125rem; }
+.ipd-facts-rows dd { font-size: 0.875rem; font-weight: 500; }
+.ipd-facts-rows .ipd-who { display: block; padding: 0 0 var(--space-2); }
+.ipd-facts-rows .ipd-who dt { font-size: 0.75rem; }
+.ipd-facts-rows .ipd-who dd { font-size: 1rem; }
+.ipd-page .ipd-foot { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); align-items: end; }
+.ipd-foot-note { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.ipd-foot-note p { margin: 0; font-size: 0.875rem; }
+.ipd-page .ipd-totals { padding: var(--space-3); border: 1px solid var(--card-border); border-radius: var(--radius-sm); background: var(--mist-50); gap: var(--space-2); }
+.ipd-page .ipd-totals > div { align-items: center; }
+.ipd-page .ipd-totals dt { display: flex; align-items: center; gap: var(--space-2); font-size: 0.875rem; }
+.ipd-page .ipd-totals dt .btn { padding: 0; min-height: 0; }
+.ipd-page .ipd-totals .ipd-net dt, .ipd-page .ipd-totals .ipd-net dd { font-size: 1rem; color: var(--ink); }
+@media (max-width: 900px) { .ipd-page .ipd-foot { grid-template-columns: 1fr; } }

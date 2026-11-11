@@ -145,17 +145,17 @@ export function RemoveTickedDialog({ bill, lines, onClose, onDone }) {
         last = await api(`/billing/bills/${bill.id}/lines/${l.id}/remove`, { method: 'POST', body: { reason: reason.trim() } });
         n += 1;
       }
-      onDone(last, `${n} item${n > 1 ? 's' : ''} taken off: ${rupees(sum)}.`);
+      onDone(last, `${n} service${n > 1 ? 's' : ''} removed: ${rupees(sum)}.`);
     } catch (err) {
       setBusy(false);
-      setError(`${lines[n].name}: ${err.message}${n ? ` (${n} taken off before it)` : ''}`);
+      setError(`${lines[n].name}: ${err.message}${n ? ` (${n} removed before it)` : ''}`);
       if (last) onDone(last, null, { keepOpen: true });
     }
   };
   return (
-    <Modal id="bill-remove-ticked" title={`Take off ${lines.length} item${lines.length > 1 ? 's' : ''}`} onClose={onClose}>
+    <Modal id="bill-remove-ticked" title={`Remove ${lines.length} service${lines.length > 1 ? 's' : ''}`} onClose={onClose}>
       <p>
-        {lines.map((l) => l.name).join(', ')} – {rupees(sum)} comes off the bill. The items stay on the list as taken off.
+        {lines.map((l) => l.name).join(', ')} – {rupees(sum)} comes off the bill. The lines are kept, marked Removed, with the reason.
       </p>
       <Alert type="error">{error}</Alert>
       <Field label="Reason" id="bill-remove-ticked-reason" hint={NO_SEX_WORDS_HINT}>
@@ -163,7 +163,7 @@ export function RemoveTickedDialog({ bill, lines, onClose, onDone }) {
       </Field>
       <div className="row">
         <button type="button" className="btn btn-danger" disabled={reason.trim().length < 3 || busy} onClick={go}>
-          {busy ? 'Taking off…' : 'Take them off'}
+          {busy ? 'Removing…' : 'Remove them'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
           Keep them
