@@ -139,6 +139,16 @@ describe('PH3 – the bill as printed, the credit note, the register', () => {
     expect(rep.bySupplier[0].totalPaise).toBe(28000);
   });
 
+  it('a whole strip of 15 bought at ₹70 goes back on the debit note at exactly ₹70, not 15 × ₹4.67', async () => {
+    const m = await medicine({ name: 'Sample Strip Return Tab' });
+    const sup = await supplier();
+    ok(await stripBill(sup, m, { conv: 15, packs: 2, packMrp: 10000, packRate: 7000 }), 201);
+    const batch = await StockBatch.findOne({ tenantId: hospital._id, medicineId: m.id }).lean();
+    expect(batch.costPaise).toBe(467); // the stock's unit cost stays rounded
+    const ret = ok(await ph('post', '/supplier-returns', { supplierId: sup.id, reason: 'damaged', lines: [{ batchId: String(batch._id), qty: 15 }] }), 201).return;
+    expect(ret.lines[0]).toMatchObject({ qty: 15, taxablePaise: 7000 });
+  });
+
   it("the supplier's credit note is entered on a return, corrected, and audited with ids and amounts", async () => {
     const m = await medicine({ name: 'Sample Return Tab' });
     const sup = await supplier();

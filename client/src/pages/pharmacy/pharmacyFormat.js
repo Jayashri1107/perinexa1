@@ -342,7 +342,7 @@ export function debitSums(rows) {
   let taxable = 0;
   let gst = 0;
   for (const r of rows) {
-    const t = r.qty * r.ratePaise;
+    const t = Math.round(r.qty * (r.exactRate ?? r.ratePaise)); // the billed rate, unrounded, as the server
     taxable += t;
     gst += Math.round((t * r.gstRate) / 100);
   }

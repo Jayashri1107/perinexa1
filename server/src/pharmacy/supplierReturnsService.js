@@ -63,6 +63,13 @@ function debitLine(batch, medicine, fact) {
     batch: batch.batch,
     expiry: batch.expiry,
     ratePaise: batch.costPaise,
+    // The rate as the supplier billed it, per unit and unrounded (a strip of 15 at ₹70 is ₹4.666… a tablet): a whole
+    // strip sent back is credited exactly ₹70, not 15 × ₹4.67 = ₹70.05. Older batches: the stock's unit cost.
+    exactRate: (() => {
+      const k = fact?.line.pack;
+      const units = k ? (k.qty + (k.freeQty ?? 0)) * (k.conv ?? 1) : 0;
+      return k?.ratePaise && units ? (k.ratePaise * k.qty) / units : batch.costPaise; // free units share the cost, as the stock's unit cost
+    })(),
     purchaseId: fact?.purchase._id ?? null,
     purchaseNumber: fact?.purchase.number ?? '',
     invoiceNo: fact?.purchase.invoiceNo ?? '',
@@ -106,6 +113,7 @@ export async function returnableBatches(req, supplierId) {
           hsn: line.hsn,
           gstRate: line.gstRate,
           ratePaise: line.ratePaise,
+          exactRate: line.exactRate, // the billed rate per unit, unrounded (the debit note's sums use it)
           purchaseNumber: line.purchaseNumber,
           invoiceNo: line.invoiceNo,
           invoiceDate: line.invoiceDate ? isoDay(line.invoiceDate) : null,
@@ -158,7 +166,8 @@ export async function createSupplierReturn(req, body) {
       const after = await moveStock(req, b, -l.qty, meta);
       taken.push({ batch: after, qty: l.qty });
       const line = debitLine(b, m, facts.get(String(b._id)));
-      lines.push({ ...line, qty: l.qty, ...debitMoney({ qty: l.qty, ratePaise: line.ratePaise, gstRate: line.gstRate, interState }) });
+      const { exactRate, ...kept } = line;
+      lines.push({ ...kept, qty: l.qty, ...debitMoney({ qty: l.qty, ratePaise: exactRate, gstRate: line.gstRate, interState }) });
     }
   } catch (err) {
     // A batch ran out between the check and the move (someone sold or returned it at that moment): what was already

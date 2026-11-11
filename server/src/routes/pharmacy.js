@@ -61,6 +61,7 @@ import { WardRequest, statusOfLines } from '../models/WardRequest.js';
 import { wardRequestView } from './wardRequests.js';
 import { CarePlan } from '../models/CarePlan.js';
 import { StockLocation } from '../models/Pharmacy.js';
+import { formularyHighAlerts, withFormularyAlert } from '../pharmacy/formularyAlerts.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -219,7 +220,8 @@ pharmacyRouter.get('/medicines', async (req, res) => {
       if (!next.has(String(b.medicineId))) next.set(String(b.medicineId), b.mrpPaise);
     }
   }
-  res.json({ medicines: meds.map((m) => ({ ...medicineView(m, stock.get(String(m._id)) ?? 0), ...(q.search ? { mrpPaise: next.get(String(m._id)) ?? null } : {}) })) });
+  const alerts = await formularyHighAlerts(req.tenantId); // PH7: the formulary's high alert too
+  res.json({ medicines: meds.map((m) => ({ ...withFormularyAlert(medicineView(m, stock.get(String(m._id)) ?? 0), m, alerts), ...(q.search ? { mrpPaise: next.get(String(m._id)) ?? null } : {}) })) });
 });
 
 pharmacyRouter.post('/medicines', async (req, res) => {
@@ -625,6 +627,7 @@ pharmacyRouter.get('/stock', async (req, res) => {
   const t = today(req);
   const meds = await Medicine.find({ tenantId: req.tenantId }).sort({ name: 1 }).lean();
   const batches = await StockBatch.find({ tenantId: req.tenantId, qtyLeft: { $gt: 0 } }).lean();
+  const alerts = await formularyHighAlerts(req.tenantId); // PH7: the formulary's high alert too
   const byMed = new Map();
   for (const b of batches) {
     const k = String(b.medicineId);
@@ -637,7 +640,7 @@ pharmacyRouter.get('/stock', async (req, res) => {
     const qtyUsable = usable.reduce((s, b) => s + b.qtyLeft, 0);
     const nearest = usable.map((b) => b.expiry).sort((a, b) => a - b)[0] ?? null;
     return {
-      ...medicineView(m),
+      ...withFormularyAlert(medicineView(m), m, alerts),
       qty: qtyUsable,
       heldQty: bs.filter((b) => b.hold && !isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0),
       expiredQty: bs.filter((b) => isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0),
@@ -706,7 +709,7 @@ pharmacyRouter.get('/stock/:id', async (req, res) => {
   const batchName = new Map(batches.map((b) => [String(b._id), b.batch]));
   const placeNames = new Map((await StockLocation.find({ tenantId: req.tenantId, _id: { $in: batches.map((b) => b.locationId).filter(Boolean) } }, { name: 1 }).lean()).map((x) => [String(x._id), x.name]));
   res.json({
-    medicine: medicineView(m, batches.filter((b) => !isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0)),
+    medicine: withFormularyAlert(medicineView(m, batches.filter((b) => !isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0)), m, await formularyHighAlerts(req.tenantId)),
     batches: batches.filter((b) => b.qtyLeft > 0 || daysBetween(b.updatedAt ?? b.createdAt, req.now ?? new Date()) < 90).map((b) => ({ ...batchView(b, t), place: b.locationId ? (placeNames.get(String(b.locationId)) ?? 'A place') : '' })), // PH13: '' = the pharmacy
     moves: moves.map((x) => ({ at: x.at, kind: x.kind, qty: x.qty, balanceAfter: x.balanceAfter, batch: batchName.get(String(x.batchId)) ?? '', ref: x.ref?.number ?? '', reason: x.reason ?? '', witness: x.witness ?? '', byName: x.byName ?? '' })),
   });
@@ -847,7 +850,8 @@ pharmacyRouter.get('/medicines/:id/substitutes', async (req, res) => {
     stock.set(k, s);
   }
   const list = same.filter((x) => stock.has(String(x._id))).sort((a, b) => a.name.localeCompare(b.name) || stock.get(String(a._id)).expiry - stock.get(String(b._id)).expiry);
-  res.json({ blocked, substitutes: list.map((x) => ({ ...medicineView(x, stock.get(String(x._id)).qty), nearestExpiry: isoDay(stock.get(String(x._id)).expiry) })) });
+  const alerts = await formularyHighAlerts(req.tenantId);
+  res.json({ blocked, substitutes: list.map((x) => ({ ...withFormularyAlert(medicineView(x, stock.get(String(x._id)).qty), x, alerts), nearestExpiry: isoDay(stock.get(String(x._id)).expiry) })) });
 });
 
 // PH10: the hospital's doctors, for "which doctor agreed" to another brand

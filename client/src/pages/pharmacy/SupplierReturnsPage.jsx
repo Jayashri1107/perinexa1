@@ -93,7 +93,7 @@ export function NewSupplierReturnPage() {
   const keptInList = onlyExpired ? chosen.filter((x) => !x.b.expired).length : 0;
   const bad = chosen.filter((x) => x.qty == null);
   const controlled = chosen.some((x) => x.b.controlled);
-  const sums = debitSums(chosen.filter((x) => x.qty != null).map((x) => ({ qty: x.qty, ratePaise: x.b.ratePaise, gstRate: x.b.gstRate })));
+  const sums = debitSums(chosen.filter((x) => x.qty != null).map((x) => ({ qty: x.qty, ratePaise: x.b.ratePaise, exactRate: x.b.exactRate, gstRate: x.b.gstRate })));
   const ready = chosen.length > 0 && bad.length === 0 && reason && (!controlled || (witness.email.trim().length >= 3 && witness.password.length >= 1));
   const choose = (id) => {
     setSupplierId(id);
@@ -259,7 +259,7 @@ export function NewSupplierReturnPage() {
                       {x.qty != null ? unitsLabel(x.qty, x.b.unit) : 'Check the quantity'}
                     </td>
                     <td data-label="Purchase value" className="num">
-                      {x.qty != null ? money(x.qty * x.b.ratePaise) : ''}
+                      {x.qty != null ? money(Math.round(x.qty * (x.b.exactRate ?? x.b.ratePaise))) : ''}
                     </td>
                   </tr>
                 ))}
