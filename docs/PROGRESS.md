@@ -1,5 +1,22 @@
 # Progress
 
+## Pharmacy Stage D, part 1: kits and ward requests (11 Nov 2026, branch `pharm-stage-d`)
+PH14 and PH12 of `docs/PHARMACY_BUILD_NOTE.md`, with the owner's approval of 11 Nov 2026.
+- **PH14 Kits and consumables:** Formulary → **Kits** (doctors) and Pharmacy → Medicines → **Kits** (the hospital
+  admin): a named set of medicines and items with quantities. Perinexa ships none. At the issue counter **From a kit**
+  fills the lines and says what is short; the invoice keeps the kit's name. A medicine can be a **Consumable item**:
+  no schedule, not in the registers, not shown to doctors as "in stock".
+- **PH12 Ward requests:** on an admitted patient's stay page, **Pharmacy requests → Ask the pharmacy** (nurses, her
+  doctor, RMOs): pick medicines (in stock / low / not in stock only), the doctor who ordered, urgent or not. The
+  pharmacist sees a notice on Today and Pharmacy → **Ward requests**: **Issue** opens the issue counter filled with
+  what is still to give; **Will not give** with a reason the ward sees. The paper slip still works.
+- **Not built yet:** PH13 (stock kept outside the pharmacy – labour room, theatre, wards – with a nurse's issue from
+  her place: an access change and a change to every stock batch) and PH8 (the vaccine's batch when a vaccination is
+  marked done – changes the visit's tick list and the care plan's Mark done). Both wait for the developer's go-ahead.
+- **How to check (fake data only):** as a doctor, Formulary → Kits → New kit with two medicines. Admit a sample
+  patient; as a nurse, her stay page → Ask the pharmacy → two medicines, ordered by a doctor, Urgent. As the
+  pharmacist: Today shows the notice → Ward requests → Issue; give less of one line, then Will not give the rest.
+
 ## Pharmacy Stage C: money and figures (11 Nov 2026, branch `pharm-stage-c`)
 Stage C of `docs/PHARMACY_BUILD_NOTE.md` (PH11, PH15, PH24, PH17, PH16), with the owner's approval of 11 Nov 2026.
 - **PH11 What each supplier is owed:** a supplier's page shows its bills, returns and payments, what is owed and what

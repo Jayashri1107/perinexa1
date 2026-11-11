@@ -428,6 +428,17 @@ Every `aggregate()` starts with a `$match` on `tenantId` (the guard in `utils/te
 
 ## 6. Stage D – the hospital side
 
+> **PH14 and PH12 built in perinexa1 (11 Nov 2026); PH13 and PH8 not yet.** PH14 – `Kit` model, `/api/pharmacy-kits`
+> (`routes/pharmacyKits.js`: a doctor or the hospital admin writes, the pharmacist reads with what is short),
+> `kitId` on an issue (the invoice keeps `kitName`), `Medicine.kind` 'medicine' | 'consumable' (a consumable has no
+> schedule – 400 – and is left out of `/api/pharmacy-stock/check`). Website: Formulary → Kits, Pharmacy → Medicines →
+> Kits, "From a kit" at the issue counter. PH12 – `WardRequest` model (WR-numbers, `statusOfLines`),
+> `/api/patients/:id/ward-requests` (`routes/wardRequests.js`: those with the nursing chart's access, current stay only,
+> stock words only), `GET /pharmacy/ward-requests`, `POST /pharmacy/ward-requests/:id/refuse`, `wardRequestId` on an
+> issue (the ordering doctor becomes the prescriber; the narcotic and X rule still needs that doctor's registration
+> number). Website: "Pharmacy requests" on the stay page, Pharmacy → Ward requests, a notice on the pharmacist's Today.
+> Tests: `server/tests/pharmacy-stage-d.test.js`.
+
 ### PH13 – stock outside the pharmacy
 
 **The owner's decision 4**: which places exist is decided by each hospital's doctor and admin. Perinexa ships none
