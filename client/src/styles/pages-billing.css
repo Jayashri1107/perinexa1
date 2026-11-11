@@ -495,7 +495,7 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .ipd-name:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
 .ipd-sub { display: block; font-size: 0.8125rem; color: var(--slate-600); }
 .ipd-when span:first-child, .ipd-place span:first-child { display: block; }
-.ipd-doc { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.ipd-doc-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 .ipd-act-col { text-align: right; width: 1%; }
 .ipd-row-actions { flex-wrap: nowrap; justify-content: flex-end; }
 @media (max-width: 719px) {
@@ -521,3 +521,42 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .inline-form-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .inline-form-head h2 { margin: 0; font-size: 1.125rem; }
 .inline-form .row { margin-top: var(--space-4); }
+
+/* The entry strip and tick boxes (11 Nov 2026), as on the hospital's old billing screen: one band across the page –
+   Service name, Rate, Qty, Doctor name, Total amount, Add – on one line from 1100px; it wraps on smaller screens */
+.svc-entry { margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--surface); border: 1px solid var(--card-border); border-left: 4px solid var(--indigo-800); border-radius: var(--radius-sm); }
+.svc-entry-row { display: grid; grid-template-columns: minmax(240px, 3fr) 120px 76px minmax(170px, 2fr) 140px auto; gap: var(--space-3); align-items: end; }
+.svc-entry-row .field { margin: 0; min-width: 0; }
+.svc-entry-row .field label { font-size: 0.8125rem; font-weight: 600; }
+.svc-entry-row select, .svc-entry-row input { width: 100%; min-width: 0; }
+.svc-entry-row input#svc-entry-rate, .svc-entry-row input#svc-entry-qty { text-align: right; }
+.svc-entry-total { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.svc-entry-total-label { font-size: 0.8125rem; font-weight: 600; }
+.svc-entry-total strong { display: block; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--mist-50); text-align: right; font-size: 1rem; }
+.svc-entry-row > .btn { min-width: 96px; justify-content: center; }
+.svc-entry-hint { margin: var(--space-2) 0 0; font-size: 0.8125rem; }
+.svc-entry-hint:empty { display: none; }
+@media (max-width: 1100px) {
+  .svc-entry-row { grid-template-columns: 1fr 1fr 1fr; grid-auto-flow: row dense; }
+  .svc-entry-row > .field:first-child, .svc-entry-row > .field:nth-child(4) { grid-column: span 3; }
+}
+@media (max-width: 560px) {
+  .svc-entry-row { grid-template-columns: 1fr 1fr; }
+  .svc-entry-row > .field:first-child, .svc-entry-row > .field:nth-child(4) { grid-column: span 2; }
+}
+.ipd-tick, .bill-lines .bill-col-tick { width: 36px; text-align: center; }
+
+/* The bill's tabs as the old system's grid: a dark header, close rows, every other row shaded */
+.ipd-panel .bill-report { width: 100%; border-collapse: collapse; border: 1px solid var(--border); font-size: 0.875rem; }
+.ipd-panel .bill-report thead th { background: var(--indigo-800); color: var(--surface); font-weight: 600; padding: var(--space-2); border-right: 1px solid var(--indigo-600); white-space: nowrap; }
+.ipd-panel .bill-report td { padding: 6px var(--space-2); border-right: 1px solid var(--border); }
+.ipd-panel .bill-report td.num { white-space: nowrap; }
+.ipd-panel .bill-report tbody tr:nth-child(even) td { background: var(--mist-50); }
+.ipd-panel .bill-report tbody tr:hover td { background: var(--indigo-100); }
+
+/* The printed bill under headings with their totals (billHeads.js), the class beneath each heading */
+.bill-doc-headed .bill-doc-group th { text-decoration: none; }
+.bill-doc-headed .bill-doc-group td { font-weight: 600; padding-top: 2mm; }
+.bill-doc-class { display: block; font-weight: 600; font-size: 0.85em; text-transform: uppercase; }
+.bill-doc-headed tbody { border-bottom: 1px solid var(--print-rule); }
+.bill-doc-headed .bill-doc-indent { padding-left: 6mm; }

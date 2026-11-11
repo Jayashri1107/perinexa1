@@ -18,6 +18,7 @@ import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HIN
 import { Modal, useSend } from './billingUi.jsx';
 import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { amountInWords } from './amountWords.js';
+import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
 
 // One bill (billing): its items (added by the work done, or by reception from the price list), discount, payments,
 // deposits and refunds, and what is still to pay or to give back. Reception (and the hospital admin) do everything,
@@ -602,7 +603,6 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
     .map((t) => t.trim())
     .filter(Boolean);
   const title = receipt ? (payment?.corrections?.length ? 'Receipt (corrected)' : 'Receipt') : bill.kind === 'ipd' ? 'IPD Bill' : 'OPD Receipt';
-  let n = 0; // the items' numbers, across the groups
   return (
     <PrintPreview
       title={receipt ? 'Receipt – print preview' : 'Bill – print preview'}
@@ -673,44 +673,8 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
               {payment.kind === 'refund' ? ' – refunded to the patient' : ''}.
             </p>
           ) : (
-            <table className="bill-doc-lines">
-              <thead>
-                <tr>
-                  <th scope="col">Sr. no.</th>
-                  <th scope="col">Service description</th>
-                  <th scope="col">Doctor name</th>
-                  <th scope="col" className="num">
-                    Rate
-                  </th>
-                  <th scope="col" className="num">
-                    Unit
-                  </th>
-                  <th scope="col" className="num">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              {linesByGroup(lines).map((g) => (
-                <tbody key={g.group}>
-                  <tr className="bill-doc-group">
-                    <td />
-                    <th scope="rowgroup" colSpan={5}>
-                      {GROUP_LABELS[g.group] ?? 'Other'} charges
-                    </th>
-                  </tr>
-                  {g.lines.map((l) => (
-                    <tr key={l.id}>
-                      <td>{(n += 1)}</td>
-                      <td>{l.name}</td>
-                      <td>{l.doctorName}</td>
-                      <td className="num">{rupees(l.ratePaise)}</td>
-                      <td className="num">{l.qty}</td>
-                      <td className="num">{rupees(l.amountPaise)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              ))}
-            </table>
+            // As the hospital's old IP final bill (11 Nov 2026): the items under headings with their totals
+            <HeadedBillLines lines={lines} classLabel={bill.stay?.ward ?? ''} />
           )}
           {payment?.corrections?.length ? (
             <p className="pdoc-small bill-doc-corrected">
@@ -724,17 +688,17 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
           <table className="bill-doc-sums">
             <tbody>
               <tr>
-                <th scope="row">Bill amount</th>
+                <th scope="row">Total amount</th>
                 <td>{rupees(bill.subtotal ?? bill.total)}</td>
               </tr>
               {bill.discount > 0 && (
                 <tr>
-                  <th scope="row">Discount</th>
-                  <td>−{rupees(bill.discount)}</td>
+                  <th scope="row">Discount amount</th>
+                  <td>{rupees(bill.discount)}</td>
                 </tr>
               )}
               <tr>
-                <th scope="row">Net payable amount</th>
+                <th scope="row">Net pay amount</th>
                 <td>{rupees(bill.total)}</td>
               </tr>
               <tr>
@@ -749,13 +713,18 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
               )}
               {bill.balance !== 0 && (
                 <tr className="bill-doc-balance">
-                  <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance'}</th>
+                  <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
                   <td>{rupees(Math.abs(bill.balance))}</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        {!payment && (
+          <p className="bill-doc-words">
+            <strong>Amount in words:</strong> {amountInWords(bill.total)}
+          </p>
+        )}
         {received > 0 && payment?.kind !== 'refund' && (
           <p className="bill-doc-words">
             <strong>Received with thanks:</strong> {amountInWords(received)}
@@ -804,9 +773,11 @@ export function BillPage() {
   const [dialog, setDialog] = useState(() => (new URLSearchParams(query).get('pay') === '1' ? 'pay' : null));
   const [printing, setPrinting] = useState(null); // { receipt? } | { claim: 'claim' | 'pmjay' }
   const [flash, setFlash] = useState(null);
+  const [ticked, setTicked] = useState(() => new Set()); // items ticked to take off together (11 Nov 2026)
   const b = bill ?? res.data?.bill;
   const done = (out, message, { keepOpen = false } = {}) => {
     setBill(out.bill);
+    setTicked(new Set());
     corr.reload();
     if (keepOpen) return;
     setDialog(null);
@@ -820,6 +791,15 @@ export function BillPage() {
   const lines = b.lines.filter((l) => !l.removed);
   const removed = b.lines.filter((l) => l.removed);
   const unpriced = lines.filter((l) => l.priceNotSet).length;
+  const editable = open && !b.final; // a stay's final bill takes no item until reopened
+  const tickedLines = editable ? lines.filter((l) => ticked.has(l.id)) : [];
+  const tick = (id, on) =>
+    setTicked((set) => {
+      const next = new Set(set);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   const canCorrect = (p) => open && (corr.data?.correctableBy?.[p.id] === 'desk' || corr.data?.isAdmin);
   const printItems = [
     { label: 'Print the bill', icon: Printer, onSelect: () => setPrinting({}) },
@@ -940,12 +920,14 @@ export function BillPage() {
               <h2 id="bill-items">
                 Items <span className="muted">· {lines.length}</span>
               </h2>
-              {open && (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('add')}>
-                  <Plus aria-hidden="true" /> Add items
+              {tickedLines.length > 0 && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDialog('removeTicked')}>
+                  Take off ticked ({tickedLines.length})
                 </button>
               )}
             </div>
+            {/* The one-line entry of the hospital's old billing screen (11 Nov 2026); several at once in the Add items form */}
+            {editable && <ServiceEntryRow bill={b} roles={activeMembership?.roles ?? []} onDone={done} onMore={() => setDialog('add')} />}
             {unpriced > 0 && (
               <p className="bill-unpriced-note">
                 <CircleAlert aria-hidden="true" /> {unpriced} item{unpriced > 1 ? 's have' : ' has'} no price yet (₹0).{' '}
@@ -956,6 +938,13 @@ export function BillPage() {
               <table className="bill-lines">
                 <thead>
                   <tr>
+                    <th scope="col" className="bill-col-tick">
+                      {editable && lines.length > 0 ? (
+                        <input type="checkbox" aria-label="Tick all items" checked={tickedLines.length === lines.length} onChange={(e) => setTicked(new Set(e.target.checked ? lines.map((l) => l.id) : []))} />
+                      ) : (
+                        <span className="sr-only">Tick</span>
+                      )}
+                    </th>
                     <th scope="col" className="bill-col-no">
                       No.
                     </th>
@@ -983,6 +972,7 @@ export function BillPage() {
                 <tbody>
                   {lines.map((l, i) => (
                     <tr key={l.id} className={l.priceNotSet ? 'is-unpriced' : ''}>
+                      <td className="bill-col-tick">{editable && <input type="checkbox" aria-label={`Tick ${l.name}`} checked={ticked.has(l.id)} onChange={(e) => tick(l.id, e.target.checked)} />}</td>
                       <td data-label="No." className="bill-col-no tabular">
                         {i + 1}
                       </td>
@@ -1031,7 +1021,7 @@ export function BillPage() {
                   ))}
                   {!lines.length && (
                     <tr>
-                      <td colSpan={8} className="muted">
+                      <td colSpan={9} className="muted">
                         No items yet.
                       </td>
                     </tr>
@@ -1162,6 +1152,7 @@ export function BillPage() {
           onDone={done}
         />
       )}
+      {dialog === 'removeTicked' && tickedLines.length > 0 && <RemoveTickedDialog bill={b} lines={tickedLines} onClose={() => setDialog(null)} onDone={done} />}
       {dialog?.remove && (
         <ReasonDialog
           id="bill-remove"
