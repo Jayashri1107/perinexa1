@@ -78,7 +78,7 @@ export function BillFileDialog({ supplier, onClose, onFill }) {
 
   return (
     <Modal id="bill-file" title={`Bill from a file – ${supplier.name}`} onClose={onClose} wide>
-      <p className="hint">The file is read on this computer. It fills the items of this purchase; open each line to check it before saving.</p>
+      <p className="hint bf-intro">The file is read on this computer. It fills the items of this purchase; open each line to check it before saving.</p>
       <Field label="The supplier’s bill (CSV or Excel .xlsx)" id="bf-file">
         <input id="bf-file" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" onChange={choose} disabled={busy} />
       </Field>
