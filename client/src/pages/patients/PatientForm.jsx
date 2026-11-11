@@ -44,7 +44,7 @@ import { lookupPin } from './pinLookup.js';
 import { useUnsavedWarning } from '../../hooks/useUnsavedWarning.js';
 import { HistorySheet } from './HistorySheet.jsx';
 import { SEX_CHECKED_TEXTS, historyEmpty, historyPayload, historyValues, withHistorySheet } from './historyFormat.js';
-import { DEPARTMENTS, inDepartment } from '../../platform/departments.js';
+import { DEPARTMENTS, doctorsOffered, inDepartment } from '../../platform/departments.js';
 import { FertilitySection } from './FertilitySection.jsx';
 import { fertilityNumberErrors, fertilityPayload, fertilityValues } from './fertilityFormat.js';
 import { FormSteps } from '../../components/FormSteps.jsx';
@@ -421,6 +421,7 @@ export function PatientForm({
   const canChangeDoctor = !isEdit || Boolean(access?.canAssign);
   const doctors = useFetch(canChangeDoctor ? '/tenant/doctors' : null);
   const allDoctors = doctors.data?.doctors ?? [];
+  const me = doctors.data?.me ?? null; // the doctor filling in the form (none for reception)
 
   // Another page (or another type of care from the New patient menu): the recording stops, so the microphone
   // never stays on for a page that is no longer being filled in.
@@ -435,9 +436,8 @@ export function PatientForm({
   // A doctor registering a patient is suggested as the assigned doctor – once, when the list arrives,
   // so that choosing "Not assigned yet" afterwards sticks.
   useEffect(() => {
-    const me = doctors.data?.me;
     if (!isEdit && me) setV((cur) => (cur.assignedDoctor ? cur : { ...cur, assignedDoctor: me }));
-  }, [doctors.data, isEdit]);
+  }, [me, isEdit]);
 
   // A field changed by hand has been checked: its "From voice" mark goes, and voice never changes it again.
   const unmark = (...paths) => {
@@ -884,9 +884,12 @@ export function PatientForm({
                             onChange={(e) => {
                               const next = e.target.value;
                               unmark('department');
-                              // a doctor of another department is no longer offered
+                              // a doctor of another department is no longer offered – except the doctor registering
+                              // her, who stays her doctor (a doctor not yet given this department by the admin
+                              // would otherwise lose her name, and then could not open the record she just made)
                               const chosen = canChangeDoctor ? allDoctors.find((d) => d.id === v.assignedDoctor) : null;
-                              setV((cur) => ({ ...cur, department: next, ...(next && chosen && !inDepartment(chosen, next) ? { assignedDoctor: '' } : {}) }));
+                              const drop = next && chosen && !inDepartment(chosen, next) && chosen.id !== me;
+                              setV((cur) => ({ ...cur, department: next, ...(drop ? { assignedDoctor: '' } : {}) }));
                             }}
                           >
                             <option value="">{isEdit ? 'Not given yet' : 'Choose a department…'}</option>
@@ -902,7 +905,7 @@ export function PatientForm({
                         <Field label="Assigned doctor" id="assignedDoctor" error={fe('assignedDoctor')} hint={isEdit ? 'The doctor responsible for this patient. A change is saved with the other changes and recorded.' : doctorHint}>
                           <select id="assignedDoctor" value={v.assignedDoctor} onChange={set('assignedDoctor')}>
                             <option value="">Not assigned yet</option>
-                            {allDoctors.filter((d) => inDepartment(d, department)).map((d) => (
+                            {doctorsOffered(allDoctors, department, { me, current: v.assignedDoctor }).map((d) => (
                               <option key={d.id} value={d.id}>
                                 {d.name}
                                 {d.qualification ? ` (${d.qualification})` : ''}

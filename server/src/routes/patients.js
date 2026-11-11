@@ -903,7 +903,16 @@ patientsRouter.post('/', async (req, res) => {
   const out = await registerPatient(req, req.body);
   if (out.matches) return res.status(409).json({ error: out.matches });
   const [named] = await withNames([out.patient]);
-  return res.status(201).json({ patient: projectPatient(named, patientAccess(req, out.patient)) });
+  const access = patientAccess(req, out.patient);
+  if (access.hidden) {
+    // A doctor registered her into another department (or, with no department of their own, for someone else): the
+    // department rule hides her record from them, so the website must not open it. They get back only what they just
+    // typed or chose – her number, name, department and doctor – to tell her where to go; nothing clinical.
+    const { id, mrn, fullName, department, assignedDoctorName } = named;
+    const shown = { id, mrn, fullName, department, assignedDoctorName: assignedDoctorName ?? null };
+    return res.status(201).json({ patient: { ...shown, access: { ...projectPatient(named, access).access, hidden: true } } });
+  }
+  return res.status(201).json({ patient: projectPatient(named, access) });
 });
 
 // The baby keepsake card was printed (doctor ideas #10): ids only. A baby's own record, born; staff who see her birth.

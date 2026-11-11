@@ -26,6 +26,7 @@ import { DuplicateBanner, DuplicateHistory, EarlierRecordsNote, MarkDuplicateDia
 import { ClosedBanner, DeathHistory, RecordDeathDialog, UndoDeathDialog } from './DeathDialogs.jsx';
 import { PatientMessagesDialog } from './PatientMessagesDialog.jsx';
 import { PatientForm } from './PatientForm.jsx';
+import { PatientNotOpened } from './PatientNotFound.jsx';
 import { DepartmentReferralsCard, SendToDepartmentDialog } from './DepartmentReferrals.jsx';
 import { RecordCopy } from './RecordCopy.jsx';
 import { RiskBadge, RiskCard } from './RiskCard.jsx';
@@ -223,7 +224,7 @@ export function PatientDetailPage() {
   const { id } = useParams();
   const { activeMembership } = useAuth();
   const location = useLocation();
-  const { data, error, reload } = useFetch(`/patients/${id}`);
+  const { data, error, status, loading, reload } = useFetch(`/patients/${id}`);
   // Referrals from other doctors (docs/REFERRALS_PLAN.md): doctors and RMOs get a Referrals tab when she has any (the
   // server lists only the referrals this person may open).
   const seesReferrals = hasRole(activeMembership, 'doctor', 'rmo');
@@ -276,25 +277,9 @@ export function PatientDetailPage() {
   useEffect(() => setLocalSummary(null), [patient]);
   const onPlanChanged = useCallback((summary) => setLocalSummary(summary ?? null), []);
 
-  if (error && !patient) {
-    return (
-      <>
-        <PageHeader
-          breadcrumbs={[{ label: 'Patients', to: '/patients' }, { label: 'Not found' }]}
-          title="Patient not found"
-        />
-        <div className="pf-content">
-          <div className="card narrow pf-message">
-            <p>
-              This patient doesn't exist in <strong>{activeMembership.tenantName}</strong>, or you don't have access.
-            </p>
-            <Link to="/patients" className="btn btn-link">
-              Back to patients
-            </Link>
-          </div>
-        </div>
-      </>
-    );
+  // (only while nothing is loading: useFetch keeps the old error during "Try again")
+  if (error && !patient && !loading) {
+    return <PatientNotOpened status={status} error={error} tenantName={activeMembership.tenantName} breadcrumbs={[{ label: 'Patients', to: '/patients' }]} onRetry={reload} />;
   }
   if (!patient) return <FullPageSpinner />;
 
