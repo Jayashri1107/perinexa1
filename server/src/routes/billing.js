@@ -314,6 +314,9 @@ billingRouter.post('/bills/:id/payments', async (req, res) => {
   const stayOpen = bill.kind === 'ipd' && (await viewOf(req, bill)).stay?.inHospital;
   if (body.kind === 'refund') {
     if (body.amountPaise > Math.max(0, -t.balance)) throw new HttpError(400, t.balance < 0 ? `At most ${(-t.balance / 100).toFixed(2)} can be refunded.` : 'Nothing is due back on this bill.', 'VALIDATION');
+  } else if (body.mode !== 'insurance' && t.claimApproved > 0 && body.amountPaise > Math.max(0, t.patientBalance) && !stayOpen) {
+    // Cashless (11 Nov 2026): the patient pays her part; the rest is due from the insurer
+    throw new HttpError(400, t.patientBalance > 0 ? `She has ${(t.patientBalance / 100).toFixed(2)} to pay; the rest is due from the insurer.` : 'She has nothing to pay: the rest is due from the insurer.', 'VALIDATION');
   } else if (!stayOpen && body.amountPaise > t.balance) {
     // Outside a stay, a payment can't be more than what is due (a deposit during a stay can).
     throw new HttpError(400, t.balance > 0 ? `The balance is ${(t.balance / 100).toFixed(2)}: take at most that.` : 'Nothing is due on this bill.', 'VALIDATION');
@@ -585,10 +588,33 @@ billingRouter.put('/bills/:id/insurance', async (req, res) => {
   }
   const changed = keys.filter((k) => (bill.insurance?.[k] ?? '') !== body[k]);
   if (!changed.length) return res.json({ bill: await viewOf(req, bill) });
+  if (!any && bill.claim?.approvedPaise) throw conflict('An insurance amount is approved on this bill: set it to 0 first, then take the details off.', 'CLAIM');
   const after = await Bill.findOneAndUpdate({ tenantId: req.tenantId, _id: bill._id, status: 'open' }, { $set: { insurance: any ? { ...body, ...stampOf(req) } : null } }, { returnDocument: 'after' }).lean();
   if (!after) throw conflict('This bill was cancelled.', 'CANCELLED');
   // Which details changed – never what was typed
   await audit(req, 'BILL_INSURANCE_CHANGED', { details: ids(bill, { fields: changed, ...(any ? {} : { removed: true }) }) });
+  res.json({ bill: await viewOf(req, after) });
+});
+
+// Cashless insurance (11 Nov 2026): the amount the insurer or TPA approved. It comes off what the patient pays at once;
+// 0 takes it off. Reception, the billing department and the hospital admin; each change in the audit log with the
+// amount before. Needs the insurer in the bill's insurance details; never more than the net bill.
+billingRouter.put('/bills/:id/claim', async (req, res) => {
+  const bill = await openBill(req);
+  const body = parse(z.object({ approvedPaise: paise }).strict(), req.body);
+  const field = (message) => Object.assign(new HttpError(400, 'Please check the highlighted fields.', 'VALIDATION'), { fields: { approvedPaise: message } });
+  if (body.approvedPaise > 0 && !(bill.insurance?.insurer ?? '').trim()) throw field('Add the insurance details first (Insurance or scheme → Add details).');
+  const { total } = totals(bill);
+  if (body.approvedPaise > total) throw field(`More than the net bill (${(total / 100).toFixed(2)}).`);
+  const before = bill.claim?.approvedPaise ?? 0;
+  if (before === body.approvedPaise) return res.json({ bill: await viewOf(req, bill) });
+  const after = await Bill.findOneAndUpdate(
+    { tenantId: req.tenantId, _id: bill._id, status: 'open' },
+    { $set: { claim: body.approvedPaise ? { approvedPaise: body.approvedPaise, ...stampOf(req) } : null } },
+    { returnDocument: 'after' },
+  ).lean();
+  if (!after) throw conflict('This bill was cancelled.', 'CANCELLED');
+  await audit(req, 'INSURANCE_CLAIM_SET', { details: ids(bill, { fromPaise: before, approvedPaise: body.approvedPaise }) });
   res.json({ bill: await viewOf(req, after) });
 });
 

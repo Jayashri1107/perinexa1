@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BadgePercent, Ban, BedDouble, ClipboardCheck, DoorOpen, FileCheck, FileClock, LockOpen, Plus, Printer, Search, Trash2, Wallet, X } from 'lucide-react';
+import { BadgePercent, Ban, BedDouble, ClipboardCheck, DoorOpen, FileCheck, FileClock, LockOpen, Plus, Printer, Search, ShieldCheck, Trash2, Wallet, X } from 'lucide-react';
 import { Link, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -15,6 +15,7 @@ import { AddItemDialog, DiscountDialog, PaymentDialog, ReasonDialog } from './Bi
 import { BillStatus } from './BillsPage.jsx';
 import { amountInWords } from './amountWords.js';
 import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
+import { ClaimDialog, claimRows, hasClaim } from './InsuranceClaim.jsx';
 import { MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
 import { InlineForms, Modal, Tile, useSend } from './billingUi.jsx';
 import { BILL_LAYOUTS, adminChargeOf, advanceTotal, billTitle, linesByDate, stayStep, summaryByGroup } from './ipdFormat.js';
@@ -679,6 +680,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
       {(dialog === 'advance' || dialog === 'refund') && <PaymentDialog bill={bill} refund={dialog === 'refund'} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'discharge' && <DischargeDialog data={data} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'admin' && <AdminChargeDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog === 'claim' && <ClaimDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'concession' && <DiscountDialog bill={bill} title="Concession" authorities={data.authorities} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'final' && <FinalDialog bill={bill} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'reopen' && (
@@ -799,10 +801,28 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                       <dd>{rupees(refunds)}</dd>
                     </div>
                   )}
-                  <div className="ipd-sums-balance">
-                    <dt>{bill.balance < 0 ? 'Due back' : 'Balance'}</dt>
-                    <dd>{rupees(Math.abs(bill.balance))}</dd>
-                  </div>
+                  {/* Cashless (11 Nov 2026): the insurer's part and what she still pays */}
+                  {hasClaim(bill) ? (
+                    <>
+                      <div>
+                        <dt>Insurance</dt>
+                        <dd>{rupees(bill.insuranceShare)}</dd>
+                      </div>
+                      <div className="ipd-sums-balance">
+                        <dt>{bill.patientBalance < 0 ? 'Due back' : 'Patient to pay'}</dt>
+                        <dd>{rupees(Math.abs(bill.patientBalance))}</dd>
+                      </div>
+                      <div>
+                        <dt>Due from insurance</dt>
+                        <dd>{rupees(bill.insuranceDue)}</dd>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="ipd-sums-balance">
+                      <dt>{bill.balance < 0 ? 'Due back' : 'Balance'}</dt>
+                      <dd>{rupees(Math.abs(bill.balance))}</dd>
+                    </div>
+                  )}
                 </dl>
               </>
             )}
@@ -1166,6 +1186,23 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                       <dt>Net payable</dt>
                       <dd>{rupees(bill.total)}</dd>
                     </div>
+                    {/* Cashless insurance (11 Nov 2026): the approved amount comes off what she pays */}
+                    {claimRows(bill).map(([key, label, value, strong]) => (
+                      <div key={key} className={key === 'patientBalance' ? 'ipd-net' : undefined}>
+                        <dt>{strong && key !== 'patientBalance' ? <strong>{label}</strong> : label}</dt>
+                        <dd>{rupees(value)}</dd>
+                      </div>
+                    ))}
+                    {open && bill.total > 0 && (
+                      <div>
+                        <dt>
+                          <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('claim')}>
+                            <ShieldCheck aria-hidden="true" /> {bill.claimApproved > 0 ? 'Change insurance approved' : 'Cashless insurance'}
+                          </button>
+                        </dt>
+                        <dd />
+                      </div>
+                    )}
                   </dl>
                 </div>
               </>
@@ -1344,14 +1381,26 @@ function IpdBillPrint({ data, layout, onClose }) {
                 <th scope="row">Net pay amount</th>
                 <td>{rupees(bill.total)}</td>
               </tr>
-              <tr>
-                <th scope="row">Paid amount</th>
-                <td>{rupees(bill.paid)}</td>
-              </tr>
-              <tr className="bill-doc-balance">
-                <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
-                <td>{rupees(Math.abs(bill.balance))}</td>
-              </tr>
+              {/* Cashless (11 Nov 2026): the insurer's part, what she paid, what she still pays, what the insurer owes */}
+              {hasClaim(bill) ? (
+                claimRows(bill).map(([key, label, value, strong]) => (
+                  <tr key={key} className={strong ? 'bill-doc-balance' : undefined}>
+                    <th scope="row">{label}</th>
+                    <td>{rupees(value)}</td>
+                  </tr>
+                ))
+              ) : (
+                <>
+                  <tr>
+                    <th scope="row">Paid amount</th>
+                    <td>{rupees(bill.paid)}</td>
+                  </tr>
+                  <tr className="bill-doc-balance">
+                    <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
+                    <td>{rupees(Math.abs(bill.balance))}</td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>

@@ -604,6 +604,8 @@ export function billView(b, { patients, stays, doctors = new Map(), departments 
     final: b.final ? { byName: b.final.byName ?? '', at: b.final.at ?? null } : null,
     cancelled: b.status === 'cancelled' && b.cancelled ? { reason: b.cancelled.reason ?? '', byName: b.cancelled.byName ?? '', at: b.cancelled.at ?? null } : null,
     insurer: b.insurance?.insurer ?? '', // who the claim is with (lists); every detail only with the full bill
+    // The insurer's approved amount (cashless), who set it and when; the sums are in totals (claimApproved …)
+    claim: b.claim?.approvedPaise ? { approvedPaise: b.claim.approvedPaise, byName: b.claim.byName ?? '', at: b.claim.at ?? null } : null,
     lastPayment: lastPayment(b), // the latest money in or out, for lists: when, how and what kind (null: none yet)
     refunded: (b.payments ?? []).filter((p) => p.kind === 'refund').reduce((sum, p) => sum + p.amountPaise, 0), // given back so far
     ...(full ? { lines: (b.lines ?? []).map((l) => lineView(l, doctors)), payments: (b.payments ?? []).map(paymentView), insurance: insuranceView(b.insurance) } : {}),

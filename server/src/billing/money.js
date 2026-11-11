@@ -32,13 +32,22 @@ export function totals(bill) {
   const total = subtotal - discount;
   const paid = (bill.payments ?? []).reduce((s, p) => s + (p.kind === 'refund' ? -p.amountPaise : p.amountPaise), 0);
   const balance = total - paid;
+  // Cashless insurance (11 Nov 2026): the amount the insurer or TPA approved comes off what the patient pays at once;
+  // money from the insurer is a payment by Insurance. The insurer's share is the approved amount, or what it has paid
+  // when that is more; never more than the bill. balance = patientBalance + insuranceDue.
+  const insurancePaid = (bill.payments ?? []).filter((p) => p.mode === 'insurance').reduce((s, p) => s + (p.kind === 'refund' ? -p.amountPaise : p.amountPaise), 0);
+  const claimApproved = Math.max(0, bill.claim?.approvedPaise ?? 0);
+  const insuranceShare = Math.max(0, Math.min(total, Math.max(claimApproved, insurancePaid)));
+  const patientPaid = paid - insurancePaid;
+  const patientBalance = total - insuranceShare - patientPaid;
+  const insuranceDue = insuranceShare - insurancePaid;
   let status;
   if (bill.status === 'cancelled') status = 'cancelled';
   else if (balance < 0) status = 'refund_due';
   else if (total === 0 && paid === 0) status = 'no_charges';
   else if (balance === 0) status = 'paid';
   else status = paid > 0 ? 'part_paid' : 'unpaid';
-  return { subtotal, discount, total, paid, balance, status };
+  return { subtotal, discount, total, paid, balance, status, claimApproved, insuranceShare, insurancePaid, insuranceDue, patientPaid, patientBalance };
 }
 
 /** A discount in paise: an amount, or a percentage of the subtotal (rounded to the paisa). */

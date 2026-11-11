@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, Minus, PencilLine, Plus, Printer, RotateCcw, Search, Tag, Trash2, Wallet, X } from 'lucide-react';
+import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, Minus, PencilLine, Plus, Printer, RotateCcw, Search, ShieldCheck, Tag, Trash2, Wallet, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -19,6 +19,7 @@ import { Modal, useSend } from './billingUi.jsx';
 import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { amountInWords } from './amountWords.js';
 import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
+import { ClaimDialog, claimRows, hasClaim } from './InsuranceClaim.jsx';
 
 // One bill (billing): its items (added by the work done, or by reception from the price list), discount, payments,
 // deposits and refunds, and what is still to pay or to give back. Reception (and the hospital admin) do everything,
@@ -286,8 +287,15 @@ export function AddItemDialog({ bill, onClose, onDone }) {
 export function PaymentDialog({ bill, refund = false, onClose, onDone }) {
   const due = refund ? -bill.balance : Math.max(bill.balance, 0);
   const deposit = !refund && bill.stay?.inHospital;
-  const [amount, setAmount] = useState(toInput(due));
-  const [mode, setMode] = useState('cash');
+  // Cashless (11 Nov 2026): she pays her part; Paid by Insurance takes what is due from the insurer
+  const cashless = !refund && bill.claimApproved > 0;
+  const dueFor = (m) => (cashless ? Math.max(0, m === 'insurance' ? bill.insuranceDue : bill.patientBalance) : due);
+  const [amount, setAmount] = useState(toInput(dueFor('cash')));
+  const [mode, setModeOnly] = useState('cash');
+  const setMode = (m) => {
+    setModeOnly(m);
+    if (cashless) setAmount(toInput(dueFor(m)));
+  };
   const [reference, setReference] = useState('');
   // Paid by insurance: the insurer and the claim number come from the bill's insurance details, so the two agree
   const [scheme, setScheme] = useState(bill.insurance?.insurer ?? '');
@@ -300,7 +308,13 @@ export function PaymentDialog({ bill, refund = false, onClose, onDone }) {
   return (
     <Modal id="bill-pay" title={refund ? 'Give money back' : deposit ? 'Take a deposit' : 'Take payment'} onClose={onClose}>
       <p>
-        {refund ? `Due back to the patient: ${rupees(due)}.` : deposit ? `She is in hospital: this is a deposit, set against the final bill. Balance so far: ${rupees(bill.balance)}.` : `Balance to pay: ${rupees(due)}.`}
+        {refund
+          ? `Due back to the patient: ${rupees(due)}.`
+          : cashless
+            ? `Patient to pay: ${rupees(Math.max(0, bill.patientBalance))} · due from insurance: ${rupees(bill.insuranceDue)}.`
+            : deposit
+              ? `She is in hospital: this is a deposit, set against the final bill. Balance so far: ${rupees(bill.balance)}.`
+              : `Balance to pay: ${rupees(due)}.`}
       </p>
       <Alert type="error">{s.error}</Alert>
       <div className="form-grid">
@@ -701,17 +715,27 @@ function BillPrint({ bill, receipt = null, notes = '', onClose }) {
                 <th scope="row">Net pay amount</th>
                 <td>{rupees(bill.total)}</td>
               </tr>
+              {/* Cashless (11 Nov 2026): the insurer's part, what she paid, what she still pays, what the insurer owes */}
+              {!payment &&
+                claimRows(bill).map(([key, label, value, strong]) => (
+                  <tr key={key} className={strong ? 'bill-doc-balance' : undefined}>
+                    <th scope="row">{label}</th>
+                    <td>{rupees(value)}</td>
+                  </tr>
+                ))}
+              {(payment || !hasClaim(bill)) && (
               <tr>
                 <th scope="row">Paid amount</th>
                 <td>{rupees(bill.paid)}</td>
               </tr>
+              )}
               {(payment || modes) && (
                 <tr>
                   <th scope="row">Payment mode</th>
                   <td>{payment ? MODE_LABELS[payment.mode] : modes}</td>
                 </tr>
               )}
-              {bill.balance !== 0 && (
+              {bill.balance !== 0 && (payment || !hasClaim(bill)) && (
                 <tr className="bill-doc-balance">
                   <th scope="row">{bill.balance < 0 ? 'Due back' : 'Balance amount'}</th>
                   <td>{rupees(Math.abs(bill.balance))}</td>
@@ -1044,16 +1068,33 @@ export function BillPage() {
                   <th scope="row">Total</th>
                   <td>{rupees(b.total)}</td>
                 </tr>
-                <tr>
-                  <th scope="row">Paid</th>
-                  <td>{rupees(b.paid)}</td>
-                </tr>
-                <tr className="bill-balance">
-                  <th scope="row">{b.balance < 0 ? 'To give back' : 'Balance to pay'}</th>
-                  <td>{rupees(Math.abs(b.balance))}</td>
-                </tr>
+                {hasClaim(b) ? (
+                  claimRows(b).map(([key, label, value, strong]) => (
+                    <tr key={key} className={key === 'patientBalance' ? 'bill-balance' : strong ? 'bill-total' : undefined}>
+                      <th scope="row">{label}</th>
+                      <td>{rupees(value)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <>
+                    <tr>
+                      <th scope="row">Paid</th>
+                      <td>{rupees(b.paid)}</td>
+                    </tr>
+                    <tr className="bill-balance">
+                      <th scope="row">{b.balance < 0 ? 'To give back' : 'Balance to pay'}</th>
+                      <td>{rupees(Math.abs(b.balance))}</td>
+                    </tr>
+                  </>
+                )}
               </tbody>
             </table>
+            {/* Cashless insurance: the approved amount comes off what she pays (11 Nov 2026) */}
+            {open && b.total > 0 && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('claim')}>
+                <ShieldCheck aria-hidden="true" /> {b.claimApproved > 0 ? 'Change the insurance approved amount' : 'Cashless insurance'}
+              </button>
+            )}
             {open && b.subtotal > 0 && (
               <button type="button" className="btn btn-link btn-sm" onClick={() => setDialog('discount')}>
                 <BadgePercent aria-hidden="true" /> {b.discountInfo ? 'Change the discount' : 'Give a discount'}
@@ -1129,6 +1170,7 @@ export function BillPage() {
       {dialog === 'add' && <AddItemDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
       {(dialog === 'pay' || dialog === 'refund') && <PaymentDialog bill={b} refund={dialog === 'refund'} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'discount' && <DiscountDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog === 'claim' && <ClaimDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'insurance' && <InsuranceDialog bill={b} earlier={res.data?.earlierInsurance ?? null} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'upi' && <UpiLinkDialog bill={b} upiReady={Boolean(res.data?.upiReady)} onClose={() => setDialog(null)} />}
       {dialog?.correct && <CorrectPaymentDialog bill={b} payment={dialog.correct} onClose={() => setDialog(null)} onDone={done} />}
