@@ -657,3 +657,19 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .bill-page > .svc-entry { margin: 0 0 var(--space-4); }
 /* The bill header: the title row takes the full width, so Print, UPI link and Take payment sit at its right */
 .ph-pay-foot .ph-main { flex: 1 1 100%; }
+
+/* Billing → Bills (11 Nov 2026): tiles, one toolbar (search, day, status) beside the list's title, a compact table */
+.bills-head { flex-wrap: wrap; gap: var(--space-3); }
+.bills-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.bills-tools .bill-filter select { min-width: 150px; }
+.bills-daynav input[type='date'] { width: 150px; }
+.bills-table .ipd-sub { display: block; }
+.bills-table td .pill { margin-bottom: 2px; }
+.bills-number { font-weight: 600; color: var(--ink); }
+.bills-table tr.bill-row-cancelled td { color: var(--slate-600); }
+.bills-table tr.bill-row-cancelled .ipd-name { color: var(--slate-600); text-decoration: line-through; }
+.bills-tools .ipd-search { flex: 1 1 220px; max-width: 300px; }
+.bills-tools .bill-filter select { min-width: 130px; }
+.bills-table td:nth-child(6) { white-space: normal; min-width: 150px; }
+.bills-head h2 { flex: 1 1 100%; }
+.bills-tools { flex: 1 1 100%; }
