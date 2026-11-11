@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { Medicine } from '../models/Pharmacy.js';
+import { Medicine, NoSubstitute } from '../models/Pharmacy.js';
+import { nameKey } from '../pharmacy/stockMatch.js';
 import { hasRole } from '../models/Membership.js';
 import { audit } from '../utils/audit.js';
 import { HttpError } from '../utils/httpError.js';
@@ -109,4 +110,35 @@ medicineMarksRouter.post('/:id/confirm', async (req, res) => {
   await m.save();
   await audit(req, 'MEDICINE_MARKS_CONFIRMED', { details: { medicineId: String(m._id), version: m.marks.version, role: roles[0], inForce: marksInForce(m.marks) } });
   res.json({ medicine: view(m.toObject()) });
+});
+
+// ---------- PH10: the doctors' "never substitute" list (doctors write it; the pharmacist reads it) ----------
+const noSubView = (x) => ({ id: String(x._id), text: x.text, active: x.active, addedByName: x.added?.byName ?? '', at: x.added?.at ?? null, stopped: x.stopped ? { byName: x.stopped.byName, at: x.stopped.at, reason: x.stopped.reason } : null });
+
+medicineMarksRouter.get('/no-substitute', async (req, res) => {
+  const list = await NoSubstitute.find({ tenantId: req.tenantId }).sort({ active: -1, text: 1 }).lean();
+  res.json({ entries: list.map(noSubView), canEdit: hasRole(req.membership, 'doctor') });
+});
+
+medicineMarksRouter.post('/no-substitute', async (req, res) => {
+  if (!hasRole(req.membership, 'doctor')) throw forbidden('Only doctors write the never-substitute list.');
+  const { text } = parse(z.object({ text: z.string().trim().min(3, 'Write the medicine (generic or brand name).').max(120) }).strict(), req.body);
+  const key = nameKey(text);
+  if (!key) throw new HttpError(400, 'Write the medicine by its name.', 'VALIDATION');
+  if (await NoSubstitute.exists({ tenantId: req.tenantId, key, active: true })) throw conflict('This medicine is already on the list.', 'DUPLICATE');
+  const x = await NoSubstitute.create({ tenantId: req.tenantId, text, key, added: { by: req.user._id, byName: req.user.name, at: req.now } });
+  await audit(req, 'NO_SUBSTITUTE_CHANGED', { details: { entryId: String(x._id), added: true } });
+  res.status(201).json({ entry: noSubView(x.toObject()) });
+});
+
+medicineMarksRouter.post('/no-substitute/:id/stop', async (req, res) => {
+  if (!hasRole(req.membership, 'doctor')) throw forbidden('Only doctors write the never-substitute list.');
+  const { reason } = parse(z.object({ reason: z.string().trim().min(3, 'Write why.').max(200) }).strict(), req.body);
+  const x = await NoSubstitute.findOne({ tenantId: req.tenantId, _id: parse(objectId, req.params.id), active: true });
+  if (!x) throw new HttpError(404, 'Entry not found.', 'NOT_FOUND');
+  x.active = false;
+  x.stopped = { by: req.user._id, byName: req.user.name, at: req.now, reason };
+  await x.save();
+  await audit(req, 'NO_SUBSTITUTE_CHANGED', { details: { entryId: String(x._id), stopped: true } });
+  res.json({ entry: noSubView(x.toObject()) });
 });

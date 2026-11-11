@@ -474,6 +474,7 @@ export const AUDIT_LABELS = {
   PHARMACY_BATCH_RECIPIENTS_VIEWED: 'Who received a medicine batch: list opened',
   MEDICINE_MARKS_CHANGED: 'High-alert or look-alike marks changed',
   MEDICINE_MARKS_CONFIRMED: 'High-alert or look-alike marks confirmed',
+  NO_SUBSTITUTE_CHANGED: 'Never-substitute list changed',
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
@@ -1647,6 +1648,8 @@ export function describeAudit(entry) {
       return `Batch ${d.batch ?? ''}${d.reason ? ` · ${{ recalled: 'recalled', quality: 'quality doubt', other: 'other reason' }[d.reason] ?? d.reason}` : ''}`;
     case 'MEDICINE_MARKS_CHANGED':
       return `Version ${d.version ?? ''}${d.highAlert ? ' · high alert' : ''}${d.lookAlike ? ` · ${count(d.lookAlike, 'look-alike')}` : ''}${d.role ? ` · proposed as ${d.role}` : ''}`;
+    case 'NO_SUBSTITUTE_CHANGED':
+      return d.stopped ? 'An entry stopped' : 'An entry added';
     case 'MEDICINE_MARKS_CONFIRMED':
       return `Version ${d.version ?? ''}${d.role ? ` · confirmed as ${d.role}` : ''}${d.inForce ? ' · now in force' : ''}`;
     case 'PHARMACY_BATCH_RELEASED':

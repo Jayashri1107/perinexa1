@@ -16,7 +16,7 @@ import { Admission } from '../models/Admission.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, PharmacyInvoice, Purchase, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
+import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
@@ -27,6 +27,8 @@ import { buyerState } from './einvoice.js';
 import { lineMoney, partOf, sum, grossOf, suggestedQty } from './gst.js';
 import { CONTROLLED, NEEDS_PRESCRIPTION } from './pharmacyRules.js';
 import { givenFromPrescriptions, givenWords } from './rxGiven.js';
+import { neverSubstitute, substituteFor } from './substitutes.js';
+import { Membership } from '../models/Membership.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
 const rupeesOf = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -240,9 +242,33 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
   // PH6: a line sold from a prescription line keeps the link; a line already given in full is sold again only with a
   // reason – for every medicine (owner, 10 Nov 2026), whatever its schedule
   const linked = body.lines.filter((l) => l.rxItemId);
+  const substitutions = new Map(); // PH10: line index → { prescribed, agreedById, agreedByName, at }
   if (linked.length) {
     if (!rxItems) throw bad('A prescription line was sent without its prescription: choose her prescription again.');
     for (const l of linked) if (!rxItems.has(String(l.rxItemId))) throw bad('A line is not on this prescription: choose her prescription again.');
+    // PH10: another brand than the one the doctor wrote – only with a doctor's yes, never for the doctors' list
+    const stockList = await Medicine.find({ tenantId, active: true }, { name: 1, generic: 1, strength: 1, form: 1 }).lean();
+    const never = new Set((await NoSubstitute.find({ tenantId, active: true }, { key: 1 }).lean()).map((x) => x.key));
+    for (const [i, l] of body.lines.entries()) {
+      if (!l.rxItemId) continue;
+      const item = rxItems.get(String(l.rxItemId));
+      const chosen = meds.get(String(l.medicineId));
+      const { substitute, prescribed } = substituteFor(item, chosen, stockList);
+      if (!substitute) continue;
+      if (neverSubstitute(never, item, [prescribed, chosen])) throw Object.assign(conflict(`The doctors do not allow another brand for ${item.drug}: give the brand prescribed, or ask the doctor to change the prescription.`, 'NO_SUBSTITUTE'), { details: { rxItemId: String(l.rxItemId) } });
+      const s = l.substitution;
+      if (!s || (!s.agreedById && (s.agreedByName ?? '').trim().length < 3)) {
+        throw Object.assign(conflict(`${chosen.name} is another brand than ${item.drug}, which the doctor wrote: write which doctor agreed.`, 'SUBSTITUTE_NEEDS_DOCTOR'), { details: { rxItemId: String(l.rxItemId), prescribed: item.drug } });
+      }
+      let agreedByName = (s.agreedByName ?? '').trim();
+      if (s.agreedById) {
+        const member = await Membership.findOne({ tenantId, userId: s.agreedById, isActive: true, roles: 'doctor' }, { _id: 1 }).lean();
+        const user = member ? await User.findById(s.agreedById, { name: 1 }).lean() : null;
+        if (!user) throw bad('Choose a doctor of this hospital, or type the outside doctor’s name.');
+        agreedByName = user.name;
+      }
+      substitutions.set(i, { prescribed: item.drug, agreedById: s.agreedById ?? null, agreedByName, at: req.now });
+    }
     const given = await givenFromPrescriptions(tenantId, [visitId]);
     const repeats = [];
     for (const l of linked) {
@@ -273,7 +299,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     doctorReg: doctor?.reg ?? '',
   };
   try {
-    for (const l of body.lines) {
+    for (const [lineNo, l] of body.lines.entries()) {
       const m = meds.get(String(l.medicineId));
       for (const part of await allocate(req, m, l.qty, l.batchId, today)) {
         if (!dryRun) {
@@ -296,6 +322,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
           dose: l.dose ?? '',
           rxItemId: l.rxItemId ?? null,
           repeatReason: l.rxItemId ? (l.repeatReason ?? '').trim() : '',
+          substitution: substitutions.get(lineNo) ?? null,
           ...lineMoney({ qty: part.qty, mrpPaise: part.batch.mrpPaise, gstRate: m.gstRate, discountPercent: pct, grossPaise: grossOf(part.batch, part.qty) }),
         });
       }
@@ -457,6 +484,8 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
       canReturn: (l.returnedQty ?? 0) < l.qty && !isExpired(l, today),
       mrpPaise: l.mrpPaise,
       dose: l.dose ?? '',
+      // PH10: given in place of the brand the doctor wrote
+      substitution: l.substitution ? { prescribed: l.substitution.prescribed, agreedByName: l.substitution.agreedByName } : null,
       amountPaise: l.amountPaise,
       taxablePaise: l.taxablePaise,
       cgstPaise: l.cgstPaise,

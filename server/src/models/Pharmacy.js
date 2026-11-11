@@ -314,6 +314,8 @@ const invoiceLineSchema = new mongoose.Schema({
   // why it was sold again when that line had already been given in full. Not on older lines.
   rxItemId: { type: ObjectId, default: null },
   repeatReason: { type: String, default: '' },
+  // PH10: given in place of the brand the doctor wrote, with which doctor agreed (null: not a substitute)
+  substitution: { type: new mongoose.Schema({ prescribed: String, agreedById: { type: ObjectId, default: null }, agreedByName: String, at: Date }, { _id: false }), default: null },
 });
 const returnLineSchema = new mongoose.Schema(
   { lineId: ObjectId, qty: Number, amountPaise: Number, taxablePaise: Number, gstPaise: Number, cgstPaise: Number, sgstPaise: Number },
@@ -372,3 +374,21 @@ invoiceSchema.index({ tenantId: 1, patientId: 1, 'created.at': -1 });
 // PH6: what was sold from a prescription
 invoiceSchema.index({ tenantId: 1, visitId: 1 }, { partialFilterExpression: { visitId: { $type: 'objectId' } } });
 export const PharmacyInvoice = mongoose.model('PharmacyInvoice', invoiceSchema);
+
+// ---------- PH10: the doctors' "never substitute" list ----------
+// Medicines the doctors do not allow another brand of (a narrow-range drug, a brand-specific formulation …). Matched by
+// its name words (stockMatch.js nameKey) against the prescribed text and the medicine's generic name. Only doctors add
+// or stop an entry; the pharmacist reads it. Never deleted. Perinexa ships it empty.
+const noSubstituteSchema = new mongoose.Schema(
+  {
+    text: { type: String, required: true, trim: true, maxlength: 120 },
+    key: { type: String, required: true },
+    active: { type: Boolean, default: true },
+    added: { type: stampSchema, required: true },
+    stopped: { type: reasonStamp, default: null },
+  },
+  { timestamps: true },
+);
+noSubstituteSchema.plugin(tenantScoped);
+noSubstituteSchema.index({ tenantId: 1, key: 1 });
+export const NoSubstitute = mongoose.model('NoSubstitute', noSubstituteSchema);

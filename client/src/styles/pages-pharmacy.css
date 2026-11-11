@@ -619,3 +619,6 @@
 .ph-warn-row { background: var(--status-high-bg); }
 .ph-warn { display: block; color: var(--status-high-fg); font-size: var(--fs-caption); }
 .mm-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--card-border); }
+
+/* PH10: given in place of the brand prescribed, on the printed bill */
+.ph-sub-note { font-size: 0.85em; font-style: italic; }

@@ -171,7 +171,71 @@ export function MedicineMarksPage() {
           </ul>
         </section>
       </div>
+      <div className="pf-content lab-stack mm-nosub">
+        <NeverSubstitute />
+      </div>
       {editing && <MarksDialog medicine={editing} onClose={() => setEditing(null)} onDone={() => done(`${editing.name}: saved. It is in force once the other role confirms it.`)} />}
     </>
+  );
+}
+
+/** PH10: the doctors' never-substitute list – doctors add and stop entries; the pharmacist reads it. Starts empty. */
+function NeverSubstitute() {
+  const res = useFetch('/medicine-marks/no-substitute');
+  const [text, setText] = useState('');
+  const [stopping, setStopping] = useState(null);
+  const [why, setWhy] = useState('');
+  const s = useSend(() => {
+    setText('');
+    setStopping(null);
+    setWhy('');
+    res.reload();
+  });
+  const d = res.data;
+  return (
+    <section className="card">
+      <h2>Never substitute</h2>
+      <p className="hint">Medicines the doctors do not allow another brand of. The pharmacy then gives only the brand prescribed. Doctors write this list; it starts empty.</p>
+      <Alert type="error">{s.error ?? res.error}</Alert>
+      <ul className="plain-list">
+        {(d?.entries ?? []).map((x) => (
+          <li key={x.id} className={x.active ? '' : 'muted'}>
+            <strong>{x.text}</strong> · added by {x.addedByName}
+            {x.stopped ? ` · stopped by ${x.stopped.byName}: ${x.stopped.reason}` : ''}
+            {d.canEdit && x.active && (
+              <button type="button" className="btn btn-link btn-sm" onClick={() => setStopping(x)}>
+                Stop
+              </button>
+            )}
+          </li>
+        ))}
+        {d && !d.entries.length && <li className="muted">None.</li>}
+      </ul>
+      {d?.canEdit && (
+        <div className="row">
+          <label className="sr-only" htmlFor="ns-text">
+            Medicine (generic or brand name)
+          </label>
+          <input id="ns-text" placeholder="Medicine (generic or brand name)" maxLength={120} value={text} onChange={(e) => setText(e.target.value)} />
+          <button type="button" className="btn btn-secondary" disabled={text.trim().length < 3 || s.busy} onClick={() => s.send('/medicine-marks/no-substitute', { text: text.trim() })}>
+            <Plus aria-hidden="true" /> Add
+          </button>
+        </div>
+      )}
+      {stopping && (
+        <Modal id="ns-stop" title={`Stop “${stopping.text}”`} onClose={() => setStopping(null)}>
+          <label htmlFor="ns-why">Why</label>
+          <input id="ns-why" maxLength={200} value={why} onChange={(e) => setWhy(e.target.value)} />
+          <div className="row">
+            <button type="button" className="btn btn-primary" disabled={why.trim().length < 3 || s.busy} onClick={() => s.send(`/medicine-marks/no-substitute/${stopping.id}/stop`, { reason: why.trim() })}>
+              Stop
+            </button>
+            <button type="button" className="btn btn-link" onClick={() => setStopping(null)}>
+              Cancel
+            </button>
+          </div>
+        </Modal>
+      )}
+    </section>
   );
 }

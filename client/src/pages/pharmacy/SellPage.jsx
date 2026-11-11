@@ -8,6 +8,7 @@ import { cleanGstin, gstinProblem, gstinState } from './gstin.js';
 import { CONTROLLED, FREQUENCY_WORDS, allergyClash, einvoiceHsnOk, expiryLabel, givenLine, inPacks, looseProblem, medicineLabel, prescribedLines, priceOf, scannedForList } from './pharmacyFormat.js';
 import { allergyStatus } from '../patients/patientFormat.js';
 import { HighAlertPill } from './MedicineMarks.jsx';
+import { OtherBrandsDialog } from './Substitutes.jsx';
 import { BatchGrid, PaymentWindow } from './CounterParts.jsx';
 import { BarcodeBox, MedicineFinder, PharmacyHeader, ScheduleMark, money, useSend } from './pharmacyUi.jsx';
 import { FindElsewhere, TypePill, billsPlace, useClickOrDouble } from './RegisterPage.jsx';
@@ -400,6 +401,8 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
   const [visitId, setVisitId] = useState(null);
   // PH7: her allergy line (owner's decision 2: the pharmacist sees her allergies and nothing else of her record)
   const [allergies, setAllergies] = useState(null);
+  // PH10: the prescription line whose other brands are being looked at
+  const [otherBrands, setOtherBrands] = useState(null);
   const [doctor, setDoctor] = useState({ name: '', reg: '' });
   const [rxSeen, setRxSeen] = useState(false);
   const [lines, setLines] = useState([]); // { key, medicine, qty, batchId }
@@ -503,7 +506,7 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
         ...(l.batchId ? { batchId: l.batchId } : {}),
         ...(l.dose?.trim() ? { dose: l.dose.trim() } : {}),
         // PH6: the prescription line it is sold from (only with her Perinexa prescription), and why again
-        ...(visitId && l.rxItemId ? { rxItemId: l.rxItemId, ...(l.givenInFull ? { repeatReason: (l.repeatReason ?? '').trim() } : {}) } : {}),
+        ...(visitId && l.rxItemId ? { rxItemId: l.rxItemId, ...(l.givenInFull ? { repeatReason: (l.repeatReason ?? '').trim() } : {}), ...(l.substitution ? { substitution: l.substitution } : {}) } : {}),
       })),
       discountPercent: pct,
       discountReason: discountReason.trim(),
@@ -776,6 +779,13 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
                           <tr>
                             <td data-label="Item name" className="ph-grid-name">
                               <strong>{l.medicine.name}</strong> <ScheduleMark schedule={l.medicine.schedule} /> <HighAlertPill medicine={l.medicine} />
+                              {/* PH10: given in place of the brand the doctor wrote, with the doctor who agreed */}
+                              {l.substitution && <span className="ph-line-note">In place of {l.prescribedName}, agreed by {l.substitution.agreedByName}</span>}
+                              {visitId && l.rxItemId && !l.substitution && (
+                                <button type="button" className="btn btn-link btn-sm" onClick={() => setOtherBrands(l)}>
+                                  Other brands
+                                </button>
+                              )}
                             </td>
                             <td data-label="Batch no" className="tabular">
                               {/* Chosen from the batch list: its number, as on the earlier bill; else (a prescription's line) a choice */}
@@ -920,7 +930,17 @@ export function SellPage({ kind = 'sale', start: given = null, embedded = false,
             </div>
           </section>
         </div>
-        {paying && (
+        {otherBrands && (
+        <OtherBrandsDialog
+          line={otherBrands}
+          onClose={() => setOtherBrands(null)}
+          onPick={(m, agreed) => {
+            setLine(otherBrands.key, { medicine: m, batchId: null, batchNo: null, mrpPaise: null, packMrpPaise: null, unitsPerPack: null, expiry: null, substitution: agreed, prescribedName: otherBrands.medicine.name });
+            setOtherBrands(null);
+          }}
+        />
+      )}
+      {paying && (
           <PaymentWindow
             body={paying}
             who={who === 'walkin' ? { uhid: '', name: customer.name.trim() } : { uhid: patient?.mrn ?? '', name: patient?.fullName ?? '' }}

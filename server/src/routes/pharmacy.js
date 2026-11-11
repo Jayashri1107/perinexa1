@@ -5,9 +5,9 @@ import { z } from 'zod';
 import { addDays, daysBetween, hospitalDayStart, isoDay, timeIn, toHospitalDate, utcDay } from '../careplans/dates.js';
 import { Admission } from '../models/Admission.js';
 import { Arrival } from '../models/Arrival.js';
-import { hasRole } from '../models/Membership.js';
+import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierReturn } from '../models/Pharmacy.js';
+import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierReturn } from '../models/Pharmacy.js';
 import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
@@ -50,6 +50,7 @@ import { pharmacyRegisterRouter } from './pharmacyRegister.js';
 import { pharmacySupplierReturnsRouter } from './pharmacySupplierReturns.js';
 import { capitalizeName } from '../utils/personName.js';
 import { givenFromPrescriptions, givenWords } from '../pharmacy/rxGiven.js';
+import { neverSubstitute, sameMedicine } from '../pharmacy/substitutes.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -623,6 +624,38 @@ pharmacyRouter.post('/batches/:id/count', async (req, res) => {
   res.json({ batch: batchView(after, today(req)) });
 });
 
+// PH10: other brands of the same medicine in stock (strict matcher: generic, strength, form) – alphabetical, then
+// earliest expiry; none for a medicine without a generic name. blocked: the doctors do not allow another brand of it.
+pharmacyRouter.get('/medicines/:id/substitutes', async (req, res) => {
+  desk(req);
+  const m = await Medicine.findOne({ tenantId: req.tenantId, _id: idParam(req) }).lean();
+  if (!m) throw new HttpError(404, 'Medicine not found.', 'NOT_FOUND');
+  const never = new Set((await NoSubstitute.find({ tenantId: req.tenantId, active: true }, { key: 1 }).lean()).map((x) => x.key));
+  const blocked = neverSubstitute(never, { drug: m.name }, [m]);
+  const all = blocked || !String(m.generic ?? '').trim() ? [] : await Medicine.find({ tenantId: req.tenantId, active: true, _id: { $ne: m._id }, generic: { $ne: '' } }).lean();
+  const same = all.filter((x) => sameMedicine(m, x));
+  const t = today(req);
+  const batches = same.length ? await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: same.map((x) => x._id) }, ...usableMatch(t) }, { medicineId: 1, qtyLeft: 1, expiry: 1 }).lean() : [];
+  const stock = new Map();
+  for (const b of batches) {
+    const k = String(b.medicineId);
+    const s = stock.get(k) ?? { qty: 0, expiry: b.expiry };
+    s.qty += b.qtyLeft;
+    if (b.expiry < s.expiry) s.expiry = b.expiry;
+    stock.set(k, s);
+  }
+  const list = same.filter((x) => stock.has(String(x._id))).sort((a, b) => a.name.localeCompare(b.name) || stock.get(String(a._id)).expiry - stock.get(String(b._id)).expiry);
+  res.json({ blocked, substitutes: list.map((x) => ({ ...medicineView(x, stock.get(String(x._id)).qty), nearestExpiry: isoDay(stock.get(String(x._id)).expiry) })) });
+});
+
+// PH10: the hospital's doctors, for "which doctor agreed" to another brand
+pharmacyRouter.get('/doctors', async (req, res) => {
+  desk(req);
+  const members = await Membership.find({ tenantId: req.tenantId, isActive: true, roles: 'doctor' }, { userId: 1 }).lean();
+  const users = await User.find({ _id: { $in: members.map((x) => x.userId) } }, { name: 1 }).sort({ name: 1 }).lean();
+  res.json({ doctors: users.map((u) => ({ id: String(u._id), name: u.name })) });
+});
+
 // The batches a medicine can be sold from (not expired, with stock), earliest expiry first.
 pharmacyRouter.get('/medicines/:id/batches', async (req, res) => {
   const t = today(req);
@@ -777,6 +810,8 @@ const invoiceFields = z
             // PH6: the prescription line it is sold from, and why it is sold again when already given in full
             rxItemId: objectId.optional(),
             repeatReason: z.string().trim().max(200).default(''),
+            // PH10: another brand than the doctor wrote – which doctor agreed (one of the hospital's, or a typed name)
+            substitution: z.object({ agreedById: objectId.optional(), agreedByName: z.string().trim().max(150).default('') }).strict().optional(),
           })
           .strict(),
       )

@@ -259,3 +259,57 @@ describe('PH7 – warnings at the counter', () => {
     ok(await ph('post', `/batches/${pb._id}/writeoff`, { qty: 1, reason: 'Damaged' }));
   });
 });
+
+describe('PH10 – substitutes only with a doctor’s yes', () => {
+  const ns = async (who, method, path, body) => (await as(who))[method](`/api/medicine-marks/no-substitute${path}`).send(body);
+  async function setup() {
+    const brandA = await medicine({ name: 'Sample Brand Alpha 500', generic: 'Paracetamol', strength: '500 mg' });
+    const brandB = await medicine({ name: 'Sample Brand Beta 500', generic: 'Paracetamol', strength: '500 mg' });
+    const combo = await medicine({ name: 'Sample Combo Tab', generic: 'Paracetamol + caffeine', strength: '500 mg + 65 mg' });
+    for (const m of [brandA, brandB, combo]) await stock(m, 50);
+    return { brandA, brandB, combo };
+  }
+  const RX = (drug) => ({ drug, form: 'tab', strength: '500 mg', dose: '1', frequency: '1-0-1', durationValue: 3, durationUnit: 'days' });
+
+  it('a generic prescription takes any brand without a question; a brand prescription needs the doctor who agreed', async () => {
+    const { brandA, brandB } = await setup();
+    const p = await register('Sample Sub Mother');
+    const g = await prescribe(p, [RX('Paracetamol')]);
+    const gi = (await rxOf(p))[0].items[0];
+    ok(await sell(p, g.id, [{ medicineId: brandB.id, qty: 6, rxItemId: gi.id }]), 201);
+    const b = await prescribe(p, [RX('Sample Brand Alpha 500')]);
+    const bi = (await rxOf(p)).find((rx) => rx.visitId === b.id).items[0];
+    const asked = await sell(p, b.id, [{ medicineId: brandB.id, qty: 6, rxItemId: bi.id }]);
+    expect(asked.status).toBe(409);
+    expect(asked.body.error).toMatchObject({ code: 'SUBSTITUTE_NEEDS_DOCTOR', details: { prescribed: 'Sample Brand Alpha 500' } });
+    const done = ok(await sell(p, b.id, [{ medicineId: brandB.id, qty: 6, rxItemId: bi.id, substitution: { agreedById: String(people.drA._id) } }]), 201).invoice;
+    expect(done.lines[0].substitution).toEqual({ prescribed: 'Sample Brand Alpha 500', agreedByName: 'Sample drA' });
+    // The brand itself needs nothing
+    const b2 = await prescribe(p, [RX('Sample Brand Alpha 500')]);
+    const b2i = (await rxOf(p)).find((rx) => rx.visitId === b2.id).items[0];
+    ok(await sell(p, b2.id, [{ medicineId: brandA.id, qty: 6, rxItemId: b2i.id }]), 201);
+    // A receptionist is not a doctor
+    const b3 = await prescribe(p, [RX('Sample Brand Alpha 500')]);
+    const b3i = (await rxOf(p)).find((rx) => rx.visitId === b3.id).items[0];
+    expect((await sell(p, b3.id, [{ medicineId: brandB.id, qty: 6, rxItemId: b3i.id, substitution: { agreedById: String(people.reception._id) } }])).status).toBe(400);
+  });
+
+  it('the other brands: the strict matcher – never a combination; none for a medicine on the doctors’ list', async () => {
+    const { brandA, brandB } = await setup();
+    const subs = ok(await ph('get', `/medicines/${brandA.id}/substitutes`));
+    expect(subs.substitutes.map((x) => x.name)).toEqual(['Sample Brand Beta 500']); // not 'Sample Combo Tab'
+    // Only doctors write the list
+    expect((await ns('pharm', 'post', '', { text: 'Paracetamol' })).status).toBe(403);
+    ok(await ns('drA', 'post', '', { text: 'Paracetamol' }), 201);
+    expect(ok(await ph('get', `/medicines/${brandA.id}/substitutes`))).toMatchObject({ blocked: true, substitutes: [] });
+    // Even a forged request is refused
+    const p = await register('Sample Never Sub Mother');
+    const v = await prescribe(p, [RX('Sample Brand Alpha 500')]);
+    const it = (await rxOf(p))[0].items[0];
+    const forged = await sell(p, v.id, [{ medicineId: brandB.id, qty: 6, rxItemId: it.id, substitution: { agreedByName: 'Dr Sample Outside' } }]);
+    expect(forged.body.error.code).toBe('NO_SUBSTITUTE');
+    // The pharmacist reads it
+    expect(ok(await ns('pharm', 'get', '')).entries.map((x) => x.text)).toEqual(['Paracetamol']);
+    expect(await AuditLog.countDocuments({ action: 'NO_SUBSTITUTE_CHANGED' })).toBe(1);
+  });
+});
