@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, Minus, PencilLine, Plus, Printer, RotateCcw, Search, ShieldCheck, Tag, Trash2, Wallet, X } from 'lucide-react';
+import { BadgePercent, Ban, CircleAlert, FileText, History, Link2, PencilLine, Printer, RotateCcw, ShieldCheck, Tag, Trash2, Wallet, X } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -16,7 +16,6 @@ import { BillStatus } from './BillsPage.jsx';
 import { TallyMarks } from './TallyPage.jsx';
 import { CLAIM_LAYOUTS, GROUP_LABELS, KIND_LABELS, MODE_LABELS, NO_SEX_WORDS_HINT, PAYMENT_KIND_LABELS, billingTabs, claimNumberHint, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
 import { Modal, useSend } from './billingUi.jsx';
-import { departmentsWithDoctors, inDepartment } from '../../platform/departments.js';
 import { amountInWords } from './amountWords.js';
 import { HeadedBillLines, RemoveTickedDialog, ServiceEntryRow } from './ServiceEntry.jsx';
 import { ClaimDialog, claimRows, hasClaim } from './InsuranceClaim.jsx';
@@ -27,262 +26,7 @@ import { ClaimDialog, claimRows, hasClaim } from './InsuranceClaim.jsx';
 // Billing extras (BillingExtras.jsx): insurance or scheme details, the claim form and the PM-JAY claim sheet (A4), and
 // the UPI payment link – which records nothing; the payment is recorded here with "Take payment".
 
-// Adding items (owner, 17 Oct 2026 – docs/RECEPTION_V2_PLAN.md: "make sure it get easy to add them"): type a few
-// letters or tap a common item, it goes into a list; change the quantity with − and +; choose the doctor once; one
-// button adds them all. Lab tests, scans, beds, nursing, ward rounds and medicines come onto the bill by themselves.
-const QUICK_GROUPS = ['consultation', 'procedure', 'inpatient', 'other'];
-
-export function AddItemDialog({ bill, onClose, onDone }) {
-  const prices = useFetch('/billing/prices');
-  const doctors = useFetch('/tenant/doctors'); // with each doctor's department (Admin → Users)
-  const [query, setQuery] = useState('');
-  const [basket, setBasket] = useState([]); // { item, qty, amount, name }
-  const onPhone = typeof window !== 'undefined' && Boolean(window.matchMedia?.('(max-width: 719px)').matches);
-  const [picking, setPicking] = useState(false);
-  const [doctorId, setDoctorId] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const all = (prices.data?.items ?? []).filter((i) => i.active);
-  const allDoctors = doctors.data?.doctors ?? [];
-  const ownDoctor = allDoctors.find((d) => d.name === bill.doctorName);
-  const departments = departmentsWithDoctors(allDoctors);
-  const [department, setDepartment] = useState(null); // null: her doctor's department
-  const dept = department ?? ownDoctor?.department ?? '';
-  const doctorList = allDoctors.filter((d) => inDepartment(d, dept));
-  const chosenDoctor = doctorId ?? (doctorList.some((d) => d.id === ownDoctor?.id) ? ownDoctor.id : '');
-  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const found = all.filter((i) => words.every((w) => i.name.toLowerCase().includes(w)));
-  // Common items: those with a price in the groups reception adds by hand (consultation first); if none is priced yet, the consultations
-  const priced = all.filter((i) => QUICK_GROUPS.includes(i.group) && i.pricePaise > 0).sort((x, y) => QUICK_GROUPS.indexOf(x.group) - QUICK_GROUPS.indexOf(y.group));
-  const quick = (priced.length ? priced : all.filter((i) => i.group === 'consultation')).slice(0, 12);
-
-  const add = (item) =>
-    setBasket((list) => (list.some((r) => r.item.id === item.id) ? list.map((r) => (r.item.id === item.id ? { ...r, qty: r.qty + 1 } : r)) : [...list, { item, qty: 1, amount: '', name: '' }]));
-  const change = (id, patch) => setBasket((list) => list.map((r) => (r.item.id === id ? { ...r, ...patch } : r)));
-  const drop = (id) => setBasket((list) => list.filter((r) => r.item.id !== id));
-  const rateOf = (r) => (r.item.pricePaise ? r.item.pricePaise : toPaise(r.amount));
-  const ready = basket.length > 0 && basket.every((r) => Number.isInteger(r.qty) && r.qty >= 1 && rateOf(r) > 0);
-  const total = basket.reduce((sum, r) => sum + (rateOf(r) > 0 ? rateOf(r) * r.qty : 0), 0);
-  const hasMedicine = basket.some((r) => r.item.group === 'medicine');
-
-  const addAll = async () => {
-    setBusy(true);
-    setError(null);
-    let last = null;
-    const left = [...basket];
-    try {
-      while (left.length) {
-        const r = left[0];
-        const needsAmount = !r.item.pricePaise;
-        last = await api(`/billing/bills/${bill.id}/lines`, {
-          method: 'POST',
-          body: {
-            priceItemId: r.item.id,
-            qty: r.qty,
-            ...(needsAmount ? { ratePaise: rateOf(r), ...(r.name.trim().length >= 2 ? { name: r.name.trim() } : {}) } : {}),
-            ...(chosenDoctor ? { doctorId: chosenDoctor } : {}),
-          },
-        });
-        left.shift();
-      }
-      onDone(last, `Added ${basket.length} item${basket.length > 1 ? 's' : ''}: ${rupees(total)}.`);
-    } catch (err) {
-      // What was added stays on the bill; what is left stays in the list to try again
-      setBasket(left);
-      setError(`${left[0].item.name}: ${err.message}`);
-      setBusy(false);
-      if (last) onDone(last, null, { keepOpen: true });
-    }
-  };
-
-  return (
-    <Modal id="bill-add" title="Add items" wide onClose={onClose}>
-      <Alert type="error">{error || prices.error}</Alert>
-      {/* Owner, 27 Oct 2026: first the service from a list, then the doctor (of a department) – then what is to be added */}
-      <section className="bill-add-step" aria-labelledby="bill-add-s1">
-        <h3 id="bill-add-s1" className="bill-add-title">
-          <span className="bill-add-num">1</span> Service
-        </h3>
-        <div className="bill-add-pickrow">
-          <div className="bill-add-search">
-            <Search aria-hidden="true" />
-            <label htmlFor="bill-add-q" className="sr-only">
-              Narrow the list
-            </label>
-            <input id="bill-add-q" type="search" placeholder="Narrow the list – e.g. consult, CTG" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
-          </div>
-          <label htmlFor="bill-add-service" className="sr-only">
-            Choose a service
-          </label>
-          {onPhone && (
-            <button type="button" id="bill-add-service" className="bill-add-select bill-pick-btn" onClick={() => setPicking(true)}>
-              {prices.data ? `Choose a service${words.length ? ` (${found.length} found)` : ''}…` : 'Loading the price list…'}
-            </button>
-          )}
-          {onPhone && picking && (
-            <div className="bill-pick" onClick={(e) => e.target === e.currentTarget && setPicking(false)}>
-              <div className="bill-pick-sheet" role="dialog" aria-label="Choose a service">
-                <h3>Choose a service</h3>
-                {(prices.data?.groups ?? [])
-                  .filter((g) => found.some((i) => i.group === g.key))
-                  .map((g) => (
-                    <section key={g.key} aria-label={g.label}>
-                      <h4>{g.label}</h4>
-                      {found
-                        .filter((i) => i.group === g.key)
-                        .map((i) => (
-                          <button
-                            key={i.id}
-                            type="button"
-                            onClick={() => {
-                              add(i);
-                              setPicking(false);
-                            }}
-                          >
-                            <span>{i.name}</span>
-                            <span className="muted tabular">{i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}</span>
-                          </button>
-                        ))}
-                    </section>
-                  ))}
-              </div>
-            </div>
-          )}
-          {!onPhone && (
-          <select
-            id="bill-add-service"
-            className="bill-add-select"
-            value=""
-            autoFocus
-            onChange={(e) => {
-              const item = all.find((i) => i.id === e.target.value);
-              if (item) add(item);
-            }}
-          >
-            <option value="">{prices.data ? `Choose a service${words.length ? ` (${found.length} found)` : ''}…` : 'Loading the price list…'}</option>
-            {(prices.data?.groups ?? [])
-              .filter((g) => found.some((i) => i.group === g.key))
-              .map((g) => (
-                <optgroup key={g.key} label={g.label}>
-                  {found
-                    .filter((i) => i.group === g.key)
-                    .map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name} – {i.pricePaise ? rupees(i.pricePaise) : 'amount to enter'}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
-          </select>
-          )}
-        </div>
-        {quick.length > 0 && !words.length && (
-          <div className="bill-add-groups" role="group" aria-label="Common services">
-            {quick.slice(0, 6).map((i) => (
-              <button key={i.id} type="button" className="bill-add-chip" onClick={() => add(i)}>
-                <Plus aria-hidden="true" /> {i.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="bill-add-step" aria-labelledby="bill-add-s2">
-        <h3 id="bill-add-s2" className="bill-add-title">
-          <span className="bill-add-num">2</span> Doctor
-        </h3>
-        <div className="form-grid">
-          {departments.length > 0 && (
-            <Field label="Department" id="bill-add-dept">
-              <select
-                id="bill-add-dept"
-                value={dept}
-                onChange={(e) => {
-                  setDepartment(e.target.value);
-                  setDoctorId(null);
-                }}
-              >
-                <option value="">All departments</option>
-                {departments.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
-          <Field label="Doctor" id="bill-add-doctor" hint="Printed with these items on the bill.">
-            <select id="bill-add-doctor" value={chosenDoctor} onChange={(e) => setDoctorId(e.target.value)}>
-              <option value="">No doctor</option>
-              {doctorList.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                  {d.id === ownDoctor?.id ? ' (her doctor)' : ''}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </section>
-
-      {/* Medicines come from the pharmacy stock (owner, 13 Oct 2026): sold there, they come onto this bill by themselves */}
-      {hasMedicine && (
-        <Alert type="info">
-          Medicines from the hospital pharmacy come onto this bill by themselves (Pharmacy → Sell, or Issue to ward). Add a medicine here only if it did
-          not come from the pharmacy – it does not take anything from the stock.
-        </Alert>
-      )}
-
-      <h3 className="bill-add-title">
-        <span className="bill-add-num">3</span> To add {basket.length > 0 && <span className="muted">· {basket.length}</span>}
-      </h3>
-      {basket.length === 0 ? (
-        <p className="muted">Choose a service above to put it here.</p>
-      ) : (
-        <ul className="bill-add-basket">
-          {basket.map((r) => (
-            <li key={r.item.id}>
-              <div className="bill-add-row">
-                <span className="bill-add-pick-name">{r.item.name}</span>
-                <span className="bill-add-qty">
-                  <button type="button" className="icon-btn" onClick={() => (r.qty > 1 ? change(r.item.id, { qty: r.qty - 1 }) : drop(r.item.id))} aria-label={`One less ${r.item.name}`}>
-                    <Minus aria-hidden="true" />
-                  </button>
-                  <input inputMode="numeric" aria-label={`Quantity of ${r.item.name}`} value={r.qty} onChange={(e) => change(r.item.id, { qty: Number(e.target.value) || 0 })} />
-                  <button type="button" className="icon-btn" onClick={() => change(r.item.id, { qty: r.qty + 1 })} aria-label={`One more ${r.item.name}`}>
-                    <Plus aria-hidden="true" />
-                  </button>
-                </span>
-                <span className="num">{rateOf(r) > 0 ? rupees(rateOf(r) * r.qty) : '–'}</span>
-                <button type="button" className="icon-btn" onClick={() => drop(r.item.id)} aria-label={`Take ${r.item.name} out of the list`}>
-                  <X aria-hidden="true" />
-                </button>
-              </div>
-              {!r.item.pricePaise && (
-                <div className="form-grid">
-                  <Field label="Amount (₹ each)" id={`bill-add-amount-${r.item.id}`}>
-                    <input id={`bill-add-amount-${r.item.id}`} inputMode="decimal" value={r.amount} onChange={(e) => change(r.item.id, { amount: e.target.value })} />
-                  </Field>
-                  <Field label="What it is for (optional)" id={`bill-add-name-${r.item.id}`} hint={NO_SEX_WORDS_HINT}>
-                    <input id={`bill-add-name-${r.item.id}`} value={r.name} maxLength={120} onChange={(e) => change(r.item.id, { name: e.target.value })} />
-                  </Field>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="row">
-        <button type="button" className="btn btn-primary" disabled={!ready || busy} onClick={addAll}>
-          <Plus aria-hidden="true" /> {busy ? 'Adding…' : basket.length ? `Add to the bill · ${rupees(total)}` : 'Add to the bill'}
-        </button>
-        <button type="button" className="btn btn-link" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-    </Modal>
-  );
-}
+// Adding items: the entry strip above the items (ServiceEntry.jsx, 11 Nov 2026) – one way to add services.
 
 export function PaymentDialog({ bill, refund = false, onClose, onDone }) {
   const due = refund ? -bill.balance : Math.max(bill.balance, 0);
@@ -933,7 +677,7 @@ export function BillPage() {
         </section>
 
         {/* The entry strip of the hospital's old billing screen (11 Nov 2026): across the page, as on the IPD bill */}
-        {editable && <ServiceEntryRow bill={b} roles={activeMembership?.roles ?? []} onDone={done} onMore={() => setDialog('add')} />}
+        {editable && <ServiceEntryRow bill={b} roles={activeMembership?.roles ?? []} onDone={done} />}
         <div className="bill-body">
           <section className="card bill-section bill-items" aria-labelledby="bill-items">
             <div className="row-between">
@@ -1167,7 +911,6 @@ export function BillPage() {
         )}
       </div>
 
-      {dialog === 'add' && <AddItemDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
       {(dialog === 'pay' || dialog === 'refund') && <PaymentDialog bill={b} refund={dialog === 'refund'} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'discount' && <DiscountDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
       {dialog === 'claim' && <ClaimDialog bill={b} onClose={() => setDialog(null)} onDone={done} />}
