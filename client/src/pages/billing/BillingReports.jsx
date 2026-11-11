@@ -126,7 +126,6 @@ export function UnpaidPage() {
                     <th scope="col" className="num">
                       {view === 'back' ? 'Due back' : 'Balance'}
                     </th>
-                    <th scope="col">Phone</th>
                     <th scope="col" className="ipd-act-col">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -139,7 +138,17 @@ export function UnpaidPage() {
                         <Link className="ipd-name" to={`/billing/bills/${b.id}`}>
                           {b.patient?.fullName ?? '–'}
                         </Link>
-                        <span className="ipd-sub tabular">{b.patient?.mrn}</span>
+                        <span className="ipd-sub tabular">
+                          {b.patient?.mrn}
+                          {b.patient?.phone && (
+                            <>
+                              {' · '}
+                              <a href={`tel:${b.patient.phone.replace(/\s+/g, '')}`} className="unpaid-phone">
+                                <Phone aria-hidden="true" /> {b.patient.phone}
+                              </a>
+                            </>
+                          )}
+                        </span>
                       </td>
                       <td>
                         <span className="tabular">{b.number}</span>
@@ -155,15 +164,6 @@ export function UnpaidPage() {
                       <td className="num tabular">{rupees(b.paid)}</td>
                       <td className="num tabular">
                         <strong>{rupees(Math.abs(b.balance))}</strong>
-                      </td>
-                      <td>
-                        {b.patient?.phone ? (
-                          <a className="btn btn-link btn-sm" href={`tel:${b.patient.phone.replace(/\s+/g, '')}`}>
-                            <Phone aria-hidden="true" /> {b.patient.phone}
-                          </a>
-                        ) : (
-                          <span className="muted">–</span>
-                        )}
                       </td>
                       <td className="ipd-act-col">
                         {b.balance > 0 ? (

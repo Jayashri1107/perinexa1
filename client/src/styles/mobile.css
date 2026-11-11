@@ -1547,17 +1547,17 @@ html.in-app { --safe-top: 0px; }
   .dc-kpis > .kpi:last-child { grid-column: 1 / -1; }
 
   /* ---------- App design: a bill – its next step at the foot ---------- */
-  .pf-has-tabbar:has(.ph-bill-foot) .pf-tabbar { display: none; }
-  .pf-main:has(.ph-bill-foot) .pf-content { padding-bottom: 92px; }
-  .ph-bill-foot .ph-actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: nowrap; gap: var(--space-2); width: auto; margin: 0; padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-3)); border-top: 1px solid var(--border); background: var(--surface); }
-  .ph-bill-foot .ph-actions:has(.menu-list) { z-index: 70; }
-  .ph-bill-foot .ph-tabs { flex: 1 1 100%; width: 100%; }
-  .ph-bill-foot .ph-actions > .btn-primary { flex: 1 1 auto; width: auto; min-height: 52px; font-size: var(--fs-body); }
-  .ph-bill-foot .ph-actions > .menu-button { flex: 1 1 auto; display: flex; }
-  .ph-bill-foot .ph-actions > .menu-button > .btn { width: 100%; min-height: 52px; }
-  .ph-bill-foot .ph-actions:has(> .btn-primary) > .menu-button { flex: none; }
-  .ph-bill-foot .ph-actions > .btn-secondary { flex: none; width: 52px; min-height: 52px; padding: 0; font-size: 0; }
-  .ph-bill-foot .ph-actions > .btn-secondary svg.lucide { width: 20px; height: 20px; }
+  .pf-has-tabbar:has(.ph-pay-foot) .pf-tabbar { display: none; }
+  .pf-main:has(.ph-pay-foot) .pf-content { padding-bottom: 92px; }
+  .ph-pay-foot .ph-actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: nowrap; gap: var(--space-2); width: auto; margin: 0; padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-3)); border-top: 1px solid var(--border); background: var(--surface); }
+  .ph-pay-foot .ph-actions:has(.menu-list) { z-index: 70; }
+  .ph-pay-foot .ph-tabs { flex: 1 1 100%; width: 100%; }
+  .ph-pay-foot .ph-actions > .btn-primary { flex: 1 1 auto; width: auto; min-height: 52px; font-size: var(--fs-body); }
+  .ph-pay-foot .ph-actions > .menu-button { flex: 1 1 auto; display: flex; }
+  .ph-pay-foot .ph-actions > .menu-button > .btn { width: 100%; min-height: 52px; }
+  .ph-pay-foot .ph-actions:has(> .btn-primary) > .menu-button { flex: none; }
+  .ph-pay-foot .ph-actions > .btn-secondary { flex: none; width: 52px; min-height: 52px; padding: 0; font-size: 0; }
+  .ph-pay-foot .ph-actions > .btn-secondary svg.lucide { width: 20px; height: 20px; }
 
   /* ---------- A patient's foot bar with extra buttons: they share the top row (one alone takes it all); the main
      button and More the bottom row – never squeezed into one row (6 Nov 2026) ---------- */
