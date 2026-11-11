@@ -479,6 +479,7 @@ export const AUDIT_LABELS = {
   PHARMACY_SUPPLIER_PAYMENT_CANCELLED: 'Payment to a supplier cancelled',
   PHARMACY_DAY_CLOSED: 'Pharmacy counter day closed',
   PHARMACY_DOCTOR_SALES_VIEWED: 'Pharmacy sales by doctor opened',
+  PHARMACY_KIT_CHANGED: 'Pharmacy kit changed',
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
@@ -1652,6 +1653,8 @@ export function describeAudit(entry) {
       return `Batch ${d.batch ?? ''}${d.reason ? ` · ${{ recalled: 'recalled', quality: 'quality doubt', other: 'other reason' }[d.reason] ?? d.reason}` : ''}`;
     case 'MEDICINE_MARKS_CHANGED':
       return `Version ${d.version ?? ''}${d.highAlert ? ' · high alert' : ''}${d.lookAlike ? ` · ${count(d.lookAlike, 'look-alike')}` : ''}${d.role ? ` · proposed as ${d.role}` : ''}`;
+    case 'PHARMACY_KIT_CHANGED':
+      return `${d.name ?? ''}${d.added ? ' · added' : ''}${d.stopped ? ' · stopped' : ''}${d.lines ? ` · ${d.lines} line${d.lines === 1 ? '' : 's'}` : ''}`;
     case 'PHARMACY_DOCTOR_SALES_VIEWED':
       return `${d.from ?? ''} to ${d.to ?? ''}${d.scope === 'platform' ? ' · all hospitals (numbers only)' : ''}`;
     case 'PHARMACY_DAY_CLOSED':

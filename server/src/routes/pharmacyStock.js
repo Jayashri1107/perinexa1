@@ -57,7 +57,8 @@ pharmacyStockRouter.use((req, _res, next) => {
 pharmacyStockRouter.post('/check', async (req, res) => {
   const { medicines } = parse(checkSchema, req.body);
   // Only medicines in use: a stopped medicine is not sold.
-  const list = await Medicine.find({ tenantId: req.tenantId, active: true }, { name: 1, generic: 1, form: 1, strength: 1, reorderLevel: 1 }).lean();
+  // PH14: consumables are not medicines a doctor prescribes
+  const list = await Medicine.find({ tenantId: req.tenantId, active: true, kind: { $ne: 'consumable' } }, { name: 1, generic: 1, form: 1, strength: 1, reorderLevel: 1 }).lean();
   if (!list.length) return res.json({ pharmacy: false, stock: medicines.map(() => null) });
   // Each line and the stock list are read once (not line by medicine): a long list and a full prescription stay quick.
   const lines = medicines.map(readLine);

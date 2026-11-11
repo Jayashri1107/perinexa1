@@ -16,7 +16,7 @@ import { AppLayout } from './components/AppLayout.jsx';
 import { PageHeader } from './components/PageHeader.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { ANALYTICS_ROLES, DRILLDOWN_ROLES } from './pages/analytics/analyticsRoles.js';
-import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, FORMULARY_ROLES, THEATRE_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, RECORDS_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, SCAN_VIEW_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
+import { APPOINTMENT_ROLES, BED_ROLES, CLINICAL_AUDIT_ROLES, FORMULARY_ROLES, HOSPITAL_FORMULARY, THEATRE_ROLES, NEWBORN_FOLLOW_UP_ROLES, SPECIMEN_ROLES, BILLING_MODULE_ROLES, FOLLOW_UP_ROLES, LAB_ROLES, PHARMACY_MODULE_ROLES, RECORDS_ROLES, REFERRAL_ROLES, SCAN_PAGE_ROLES, SCAN_VIEW_ROLES, STAFF_ROLE_PAGES } from './platform/modules.js';
 import { CASE_REVIEW_ROLES } from './pages/quality/qualityFormat.js';
 import { PRIVILEGE_ROLES } from './pages/privileges/privilegeRoles.js';
 
@@ -332,6 +332,8 @@ const loadCrs7 = () => import('./pages/formulary/FormularyPage.jsx');
 const FormularyPage = screen(loadCrs7, 'FormularyPage');
 const loadMarks = () => import('./pages/pharmacy/MedicineMarks.jsx');
 const MedicineMarksPage = screen(loadMarks, 'MedicineMarksPage');
+const loadKits = () => import('./pages/pharmacy/Kits.jsx');
+const KitsPage = screen(loadKits, 'KitsPage');
 const loadCrs16 = () => import('./pages/theatre/TheatreListPage.jsx');
 const TheatreListPage = screen(loadCrs16, 'TheatreListPage');
 const loadCrs16b = () => import('./pages/theatre/TheatreCasePage.jsx');
@@ -578,6 +580,10 @@ export function App() {
                   <Route path="marks" element={<RequireTenantRole roles={['doctor', 'pharmacist']} message="Medicine marks are written by doctors and the pharmacist." />}>
                     <Route index element={<MedicineMarksPage />} />
                   </Route>
+                  {/* PH14: kits – doctors make them, the pharmacist reads them */}
+                  <Route path="kits" element={<RequireTenantRole roles={['doctor', 'pharmacist']} message="Kits are made by doctors and the hospital admin, and read by the pharmacist." />}>
+                    <Route index element={<KitsPage tabs={HOSPITAL_FORMULARY.tabs} />} />
+                  </Route>
                 </Route>
                 <Route path="privileges" element={<RequireTenantRole roles={PRIVILEGE_ROLES} message="The privileges register is for the hospital admin, the quality lead, doctors, RMOs and nurses." />}>
                   <Route index element={<PrivilegesPage />} />
@@ -650,6 +656,7 @@ export function App() {
                   <Route path="supplier-returns" element={<SupplierReturnsPage />} />
                   <Route path="supplier-returns/:id" element={<SupplierReturnPage />} />
                   <Route path="medicines" element={<MedicinesPage />} />
+                  <Route path="kits" element={<KitsPage />} /> {/* PH14: the hospital admin's way to the kits */}
                   <Route path="suppliers" element={<SuppliersPage />} />
                   <Route path="suppliers/:id" element={<SupplierPage />} />
                   <Route path="reports" element={<ReportsPage />} />

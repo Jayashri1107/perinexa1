@@ -565,6 +565,7 @@ function InvoicePrint({ invoice: v, settings, stay, creditNote = null, onClose }
     ['Date', formatDateTime(ret ? ret.at : v.date)],
     [v.patient ? 'Patient' : 'Customer', who],
     ['Doctor', v.doctor ? `${v.doctor.name}${v.doctor.reg ? `, Reg. ${v.doctor.reg}` : ''}` : '–'],
+    ...(v.kitName ? [['Kit', v.kitName]] : []), // PH14
     ...(v.buyer ? [['GSTIN', v.buyer.gstin], ['Address', buyerAddress(v.buyer)]] : []),
     ...(creditNote ? [['Against bill', v.number]] : stay ? [['Ward', `${stay.ward ?? ''}${stay.bed ? `, bed ${stay.bed}` : ''}`]] : []),
   ];

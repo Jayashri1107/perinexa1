@@ -147,6 +147,7 @@ const medicineFields = {
   packSize: z.number().int().min(1, 'A pack holds at least 1.').max(1000),
   packName: z.string().trim().max(20),
   looseSale: z.boolean(),
+  kind: z.enum(['medicine', 'consumable']), // PH14
   preferredSupplierId: objectId.nullable(), // PH17
   // The barcodes on its packs (typed, or scanned: a scanner types the digits). Kept without spaces, in capitals.
   barcodes: z
@@ -168,6 +169,7 @@ const medicineSchema = z
     packSize: medicineFields.packSize.default(1),
     packName: medicineFields.packName.default(''),
     looseSale: medicineFields.looseSale.default(true),
+    kind: medicineFields.kind.default('medicine'),
     preferredSupplierId: medicineFields.preferredSupplierId.default(null),
     barcodes: medicineFields.barcodes.optional(),
     active: medicineFields.active.optional(),
@@ -177,6 +179,11 @@ const medicineSchema = z
 // "Stop using" – which sends only `active` – emptied the generic name, strength, HSN code, schedule and reorder
 // level: a narcotic lost its schedule. A change never fills anything in now.)
 const medicineChangeSchema = z.object(medicineFields).partial().strict();
+
+/** PH14: a consumable has no schedule (it never enters a register). */
+function consumableNoSchedule(m) {
+  if (m.kind === 'consumable' && m.schedule) throw Object.assign(new HttpError(400, 'A consumable has no schedule. Keep it a medicine, or clear the schedule.', 'VALIDATION'), { fields: { schedule: 'A consumable has no schedule.' } });
+}
 
 /** A barcode belongs to only one medicine in a hospital: refuses one that another medicine already holds. */
 async function barcodesFree(req, codes, exceptId = null) {
@@ -214,6 +221,7 @@ pharmacyRouter.get('/medicines', async (req, res) => {
 pharmacyRouter.post('/medicines', async (req, res) => {
   editor(req);
   const body = parse(medicineSchema, req.body);
+  consumableNoSchedule(body);
   await barcodesFree(req, body.barcodes);
   const m = await Medicine.create({ tenantId: req.tenantId, ...body, updatedByName: req.user.name });
   await audit(req, 'PHARMACY_MEDICINE_CHANGED', { details: { medicineId: String(m._id), added: true, schedule: m.schedule, ...(m.barcodes.length ? { barcodes: m.barcodes.length } : {}) } });
@@ -227,6 +235,7 @@ pharmacyRouter.patch('/medicines/:id', async (req, res) => {
   if (!m) throw new HttpError(404, 'Medicine not found.', 'NOT_FOUND');
   await barcodesFree(req, body.barcodes, m._id);
   Object.assign(m, body, { updatedByName: req.user.name });
+  consumableNoSchedule(m);
   await m.save();
   await audit(req, 'PHARMACY_MEDICINE_CHANGED', { details: { medicineId: String(m._id), fields: Object.keys(body), ...(body.barcodes ? { barcodes: m.barcodes.length } : {}) } });
   const stock = await stockOf(req.tenantId, [m._id]);
@@ -946,6 +955,7 @@ const invoiceFields = z
     doctor: z.object({ name: z.string().trim().max(150).transform(capitalizeName).default(''), reg: z.string().trim().max(60).default('') }).strict().optional(),
     visitId: objectId.optional(),
     rxSeen: z.boolean().default(false),
+    kitId: objectId.optional(), // PH14: an issue filled from a kit (its name is kept on the invoice)
     lines: z
       .array(
         z

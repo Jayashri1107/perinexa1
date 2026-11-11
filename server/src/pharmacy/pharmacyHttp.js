@@ -75,6 +75,7 @@ export const medicineView = (m, stock = null) => ({
   packSize: m.packSize ?? 1,
   packName: m.packName ?? '',
   looseSale: m.looseSale !== false,
+  kind: m.kind ?? 'medicine', // PH14
   preferredSupplierId: m.preferredSupplierId ? String(m.preferredSupplierId) : null, // PH17
   barcodes: m.barcodes ?? [],
   active: m.active,

@@ -16,7 +16,7 @@ import { Admission } from '../models/Admission.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
+import { Kit, Medicine, NoSubstitute, PharmacyInvoice, Purchase, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
@@ -187,6 +187,14 @@ async function allocate(req, medicine, qty, batchId, today) {
 export async function createInvoice(req, body, { dryRun = false } = {}) {
   const tenantId = req.tenantId;
   const today = hospitalToday(req.now);
+  // PH14: an issue filled from a kit keeps the kit's name (the lines are the pharmacist's, as issued)
+  let kitName = '';
+  if (body.kitId) {
+    if (body.kind !== 'issue') throw bad('A kit is issued to a patient, not sold.');
+    const kit = await Kit.findOne({ tenantId, _id: body.kitId }, { name: 1 }).lean();
+    if (!kit) throw new HttpError(404, 'Kit not found.', 'NOT_FOUND');
+    kitName = kit.name;
+  }
   let patient = null;
   if (body.patientId) {
     patient = await Patient.findOne({ tenantId, _id: body.patientId }, { _id: 1, fullName: 1, duplicateOf: 1, 'death.on': 1 }).lean();
@@ -362,6 +370,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     doctor,
     visitId,
     rxSeen: Boolean(body.rxSeen),
+    kitName: kitName ?? '',
     admissionId: stay?._id ?? null,
     lines,
     discountPercent: pct,
@@ -467,6 +476,7 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
     doctor: inv.doctor ? { name: inv.doctor.name, reg: inv.doctor.reg ?? '' } : null,
     fromPrescription: Boolean(inv.visitId),
     rxSeen: Boolean(inv.rxSeen),
+    kitName: inv.kitName ?? '', // PH14
     discountPercent: inv.discountPercent ?? 0,
     discountReason: inv.discountReason ?? '',
     billId: inv.billId ? String(inv.billId) : null,

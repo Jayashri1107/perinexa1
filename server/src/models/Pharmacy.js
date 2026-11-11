@@ -20,6 +20,8 @@ const medicineSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true, maxlength: 120 }, // brand, as on the pack
     generic: text(160),
     form: { type: String, enum: FORMS, default: 'tablet' },
+    // PH14: a consumable (gloves, cannula, suture …) – no schedule, not in the registers, not in the doctor's "in stock"
+    kind: { type: String, enum: ['medicine', 'consumable'], default: 'medicine' },
     strength: text(60),
     unit: { type: String, trim: true, maxlength: 30, default: 'tablet' }, // the unit of sale
     hsn: text(12),
@@ -355,6 +357,7 @@ const invoiceSchema = new mongoose.Schema(
     // userId: the prescription's doctor (PH24, kept from 11 Nov 2026); an outside doctor has a typed name only
     doctor: { type: new mongoose.Schema({ name: String, reg: String, userId: { type: ObjectId, default: null } }, { _id: false }), default: null },
     visitId: { type: ObjectId, ref: 'Visit', default: null }, // the Perinexa prescription it was sold from
+    kitName: { type: String, default: '' }, // PH14: issued from this kit
     rxSeen: { type: Boolean, default: false }, // an outside prescription was seen
     admissionId: { type: ObjectId, ref: 'Admission', default: null },
     lines: { type: [invoiceLineSchema], default: [] },
@@ -457,3 +460,22 @@ const noSubstituteSchema = new mongoose.Schema(
 noSubstituteSchema.plugin(tenantScoped);
 noSubstituteSchema.index({ tenantId: 1, key: 1 });
 export const NoSubstitute = mongoose.model('NoSubstitute', noSubstituteSchema);
+
+// ---------- PH14: kits (docs/PHARMACY_BUILD_NOTE.md, owner's decision 4) ----------
+// A named set of medicines and items with quantities (a delivery kit, a caesarean kit). Made by a doctor or the
+// hospital admin; the pharmacist uses it to fill an issue. No kit stock of its own: the lines are issued from the
+// medicines' own batches.
+const kitSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    note: text(300),
+    lines: { type: [new mongoose.Schema({ medicineId: { type: ObjectId, ref: 'Medicine', required: true }, qty: { type: Number, min: 1, max: 1000, required: true } }, { _id: false })], default: [] },
+    active: { type: Boolean, default: true },
+    created: { type: stampSchema, default: null },
+    updated: { type: stampSchema, default: null },
+  },
+  { timestamps: true },
+);
+kitSchema.plugin(tenantScoped);
+kitSchema.index({ tenantId: 1, name: 1 });
+export const Kit = mongoose.model('Kit', kitSchema);
