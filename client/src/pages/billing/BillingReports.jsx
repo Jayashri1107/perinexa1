@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Phone, Save } from 'lucide-react';
+import { BedDouble, ChevronLeft, ChevronRight, CircleAlert, Clock, Download, Phone, RotateCcw, Save, Search, Stethoscope, Wallet } from 'lucide-react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { api, apiFile } from '../../api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { DataTable } from '../../components/DataTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
 import { downloadFile } from '../../components/print/pdfExport.js';
-import { Alert, Field } from '../../components/ui.jsx';
+import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { billColumns } from './BillsPage.jsx';
-import { GROUP_LABELS, billingTabs, rupees, toInput, toPaise } from './billingFormat.js';
+import { GROUP_LABELS, billingTabs, rupees, takeMoneyLabel, toInput, toPaise } from './billingFormat.js';
+import { Tile } from './billingUi.jsx';
 import { FoldCards } from '../../components/FoldCards.jsx';
 
 // Billing reports (docs/BILLING_PLAN.md): unpaid bills (the daily collection is DailyCollectionPage.jsx),
@@ -22,51 +23,168 @@ function Header({ title, crumb, actions }) {
 
 // ---------- Unpaid ----------
 
+// The page as the IPD list (11 Nov 2026): number tiles that filter the list – to collect, OPD, IPD, owing over 30
+// days, to give back – a search, and one row per bill: the patient, how long it has been owing, the money, her phone,
+// and Take payment / Give back.
+const UNPAID_VIEWS = {
+  owed: { title: 'Still to collect', empty: 'Every bill is paid.' },
+  opd: { title: 'OPD bills to collect', empty: 'No OPD bill is unpaid.' },
+  ipd: { title: 'IPD bills to collect', empty: 'No IPD bill is unpaid.' },
+  old: { title: 'Owing over 30 days', empty: 'No bill has been owing over 30 days.' },
+  back: { title: 'Money to give back', empty: 'No money is due back.' },
+};
+
+/** "11 Nov 2026" from "2026-11-11". */
+const shortDay = (d) => (d ? new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '');
+
+/** How long a bill has been owing: colour, icon and words. */
+function DaysPill({ days }) {
+  if (days >= 30)
+    return (
+      <StatusPill tone="high" icon={CircleAlert}>
+        {days} days
+      </StatusPill>
+    );
+  if (days >= 7)
+    return (
+      <StatusPill tone="watch" icon={Clock}>
+        {days} days
+      </StatusPill>
+    );
+  return (
+    <StatusPill tone="neutral" icon={Clock}>
+      {days === 0 ? 'Today' : `${days} day${days > 1 ? 's' : ''}`}
+    </StatusPill>
+  );
+}
+
 export function UnpaidPage() {
-  const navigate = useNavigate();
   const res = useFetch('/billing/reports/unpaid');
-  const d = res.data;
+  const [view, setView] = useState('owed');
+  const [q, setQ] = useState('');
+  const bills = res.data?.bills ?? [];
+  const owing = bills.filter((b) => b.balance > 0);
+  const lists = {
+    owed: owing,
+    opd: owing.filter((b) => b.kind === 'opd'),
+    ipd: owing.filter((b) => b.kind === 'ipd'),
+    old: owing.filter((b) => b.days >= 30),
+    back: bills.filter((b) => b.balance < 0),
+  };
+  const sum = (list) => list.reduce((s, b) => s + Math.abs(b.balance), 0);
+  const words = q.trim().toLowerCase();
+  const rows = lists[view].filter((b) => !words || [b.number, b.patient?.fullName, b.patient?.mrn, b.patient?.phone].some((t) => String(t ?? '').toLowerCase().includes(words)));
+  const tile = (key, label, tone, icon) => (
+    <Tile label={`${label} · ${lists[key].length}`} value={rupees(sum(lists[key]))} tone={lists[key].length ? tone : 'neutral'} icon={icon} pressed={view === key} onClick={() => setView(key)} />
+  );
   return (
     <>
       <Header title="Unpaid bills" crumb="Unpaid" />
-      <div className="pf-content bill-page">
-        {res.error && <Alert type="error">{res.error}</Alert>}
-        {d && (
-          <p>
-            Still to collect: <strong>{rupees(d.owed)}</strong>
-            {d.dueBack ? (
-              <>
-                {' '}
-                · to give back: <strong>{rupees(d.dueBack)}</strong>
-              </>
-            ) : null}
-          </p>
-        )}
-        <DataTable
-          caption="Unpaid bills"
-          rows={d?.bills}
-          loading={res.loading}
-          onRowClick={(b) => navigate(`/billing/bills/${b.id}`)}
-          emptyText="Every bill is paid."
-          columns={[
-            ...billColumns(),
-            // Who the claim is with, when the bill has insurance or scheme details
-            { key: 'insurer', header: 'Insurance or scheme', render: (b) => b.insurer || '' },
-            { key: 'days', header: 'Days', align: 'right', render: (b) => <span className="tabular">{b.days}</span> },
-            {
-              key: 'phone',
-              header: 'Phone',
-              render: (b) =>
-                b.patient?.phone ? (
-                  <a className="btn btn-link btn-sm" href={`tel:${b.patient.phone.replace(/\s+/g, '')}`}>
-                    <Phone aria-hidden="true" /> {b.patient.phone}
-                  </a>
-                ) : (
-                  ''
-                ),
-            },
-          ]}
-        />
+      <div className="pf-content ipd-list-page">
+        <Alert type="error">{res.error}</Alert>
+        <div className="ipd-tiles" aria-label="Unpaid bills by kind">
+          {tile('owed', 'Still to collect', 'watch', Wallet)}
+          {tile('opd', 'OPD', 'neutral', Stethoscope)}
+          {tile('ipd', 'IPD', 'neutral', BedDouble)}
+          {tile('old', 'Over 30 days', 'watch', CircleAlert)}
+          {tile('back', 'To give back', 'due', RotateCcw)}
+        </div>
+        <section className="card ipd-list-card" aria-labelledby="unpaid-title">
+          <div className="ipd-list-head">
+            <h2 id="unpaid-title">{UNPAID_VIEWS[view].title}</h2>
+            <div className="ipd-search" role="search">
+              <label htmlFor="unpaid-q" className="sr-only">
+                Find a bill by name, UHID, phone or bill number
+              </label>
+              <span className="ipd-search-box">
+                <Search aria-hidden="true" />
+                <input id="unpaid-q" type="search" placeholder="Name, UHID, phone or bill no." value={q} maxLength={60} onChange={(e) => setQ(e.target.value)} />
+              </span>
+            </div>
+          </div>
+          {res.loading && !res.data ? (
+            <p className="muted" aria-busy="true">
+              Loading…
+            </p>
+          ) : rows.length === 0 ? (
+            <p className="muted ipd-empty">{words ? 'No bill matches this search.' : UNPAID_VIEWS[view].empty}</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="bill-report ipd-table unpaid-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Patient</th>
+                    <th scope="col">Bill</th>
+                    <th scope="col">Owing for</th>
+                    <th scope="col">Insurance or scheme</th>
+                    <th scope="col" className="num">
+                      Total
+                    </th>
+                    <th scope="col" className="num">
+                      Paid
+                    </th>
+                    <th scope="col" className="num">
+                      {view === 'back' ? 'Due back' : 'Balance'}
+                    </th>
+                    <th scope="col">Phone</th>
+                    <th scope="col" className="ipd-act-col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((b) => (
+                    <tr key={b.id}>
+                      <td className="ipd-who">
+                        <Link className="ipd-name" to={`/billing/bills/${b.id}`}>
+                          {b.patient?.fullName ?? '–'}
+                        </Link>
+                        <span className="ipd-sub tabular">{b.patient?.mrn}</span>
+                      </td>
+                      <td>
+                        <span className="tabular">{b.number}</span>
+                        <span className="ipd-sub">
+                          {b.kind === 'ipd' ? (b.stay?.inHospital ? 'IPD, in hospital' : 'IPD') : 'OPD'} · {shortDay(b.date)}
+                        </span>
+                      </td>
+                      <td>
+                        <DaysPill days={b.days} />
+                      </td>
+                      <td className="unpaid-wrap">{b.insurer || <span className="muted">–</span>}</td>
+                      <td className="num tabular">{rupees(b.total)}</td>
+                      <td className="num tabular">{rupees(b.paid)}</td>
+                      <td className="num tabular">
+                        <strong>{rupees(Math.abs(b.balance))}</strong>
+                      </td>
+                      <td>
+                        {b.patient?.phone ? (
+                          <a className="btn btn-link btn-sm" href={`tel:${b.patient.phone.replace(/\s+/g, '')}`}>
+                            <Phone aria-hidden="true" /> {b.patient.phone}
+                          </a>
+                        ) : (
+                          <span className="muted">–</span>
+                        )}
+                      </td>
+                      <td className="ipd-act-col">
+                        {b.balance > 0 ? (
+                          <Link to={`/billing/bills/${b.id}?pay=1`} className="btn btn-secondary btn-sm">
+                            <Wallet aria-hidden="true" /> {takeMoneyLabel(b)}
+                            <span className="sr-only"> for bill {b.number}</span>
+                          </Link>
+                        ) : (
+                          <Link to={`/billing/bills/${b.id}`} className="btn btn-secondary btn-sm">
+                            <RotateCcw aria-hidden="true" /> Give back
+                            <span className="sr-only"> for bill {b.number}</span>
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </div>
     </>
   );

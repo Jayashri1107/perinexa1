@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Search } from 'lucide-react';
 import { api } from '../../api.js';
 import { Alert, Field } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
@@ -13,6 +13,108 @@ import { Modal } from './billingUi.jsx';
 
 /** The billing department and the hospital admin may type another rate for a listed service (audited on the server). */
 export const canChangeRate = (roles = []) => roles.includes('billing') || roles.includes('admin');
+
+/**
+ * Service name as a box to type in (11 Nov 2026): a few letters show the services that match, with their price, under
+ * their group; pick one with the mouse or with the arrow keys and Enter. Escape closes the list. Every word typed must
+ * be in the name ("room del" finds "Room charge per day – Deluxe AC").
+ */
+export function ServicePicker({ id, items, groups, value, onPick, loading = false, ...aria }) {
+  const [text, setText] = useState(value?.name ?? '');
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const listRef = useRef(null);
+  useEffect(() => setText(value?.name ?? ''), [value?.id]);
+  const typed = open && text !== (value?.name ?? '') ? text : '';
+  const words = typed.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const order = groups.map((g) => g.key);
+  const shown = items.filter((i) => words.every((w) => i.name.toLowerCase().includes(w))).sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
+  const labelOf = Object.fromEntries(groups.map((g) => [g.key, g.label]));
+  const pick = (item) => {
+    onPick(item);
+    setText(item.name);
+    setOpen(false);
+  };
+  useEffect(() => {
+    listRef.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [active, open]);
+  const onKey = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setOpen(true);
+      setActive((a) => Math.min(a + 1, shown.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === 'Enter' && open && shown[active]) {
+      e.preventDefault();
+      pick(shown[active]);
+    } else if (e.key === 'Escape' && open) {
+      e.preventDefault();
+      setOpen(false);
+      setText(value?.name ?? '');
+    }
+  };
+  const listId = `${id}-list`;
+  return (
+    <div className="svc-pick">
+      <span className="svc-pick-box">
+        <Search aria-hidden="true" />
+        <input
+          {...aria}
+          id={id}
+          type="text"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={open && shown[active] ? `${listId}-${shown[active].id}` : undefined}
+          autoComplete="off"
+          placeholder={loading ? 'Loading the price list…' : 'Type to search, e.g. room, anaes'}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            setOpen(true);
+            setActive(0);
+          }}
+          onFocus={(e) => {
+            e.target.select();
+            setOpen(true);
+          }}
+          onBlur={() => {
+            setOpen(false);
+            setText(value?.name ?? '');
+          }}
+          onKeyDown={onKey}
+        />
+      </span>
+      {open && (
+        <ul id={listId} ref={listRef} className="svc-pick-list" role="listbox" aria-label="Services">
+          {shown.length === 0 && <li className="svc-pick-none">No service matches. Check the spelling, or ask the hospital admin to add it to the price list.</li>}
+          {shown.map((i, n) => (
+            <li
+              key={i.id}
+              id={`${listId}-${i.id}`}
+              data-index={n}
+              role="option"
+              aria-selected={n === active}
+              className={n === active ? 'svc-pick-opt is-active' : 'svc-pick-opt'}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                pick(i);
+              }}
+              onMouseEnter={() => setActive(n)}
+            >
+              {(n === 0 || shown[n - 1].group !== i.group) && <span className="svc-pick-group">{labelOf[i.group] ?? ''}</span>}
+              <span className="svc-pick-name">{i.name}</span>
+              <span className="svc-pick-price tabular">{i.pricePaise ? rupees(i.pricePaise) : 'Enter rate'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export function ServiceEntryRow({ bill, roles, onDone, onMore }) {
   const prices = useFetch('/billing/prices');
@@ -66,34 +168,36 @@ export function ServiceEntryRow({ bill, roles, onDone, onMore }) {
     }
   };
 
+  // Enter in the rate or the quantity adds the line; the service box is then ready for the next one
+  const enterAdds = (e) => {
+    if (e.key !== 'Enter' || !ready) return;
+    e.preventDefault();
+    add().then(() => document.getElementById('svc-entry-item')?.focus());
+  };
+
   return (
     <section className="svc-entry" aria-label="Add a service">
       <Alert type="error">{error || prices.error}</Alert>
       <div className="svc-entry-row">
         <Field label="Service name" id="svc-entry-item" error={fields.priceItemId}>
-          <select id="svc-entry-item" value={itemId} onChange={(e) => choose(e.target.value)}>
-            <option value="">{prices.data ? 'Choose a service…' : 'Loading the price list…'}</option>
-            {groups
-              .filter((g) => items.some((i) => i.group === g.key))
-              .map((g) => (
-                <optgroup key={g.key} label={g.label}>
-                  {items
-                    .filter((i) => i.group === g.key)
-                    .map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name}
-                        {i.pricePaise ? ` – ${rupees(i.pricePaise)}` : ''}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
-          </select>
+          <ServicePicker
+            id="svc-entry-item"
+            items={items}
+            groups={groups}
+            value={item ?? null}
+            loading={!prices.data}
+            onPick={(i) => {
+              choose(i.id);
+              // Straight on to the rate (when it may be typed) or the quantity
+              setTimeout(() => document.getElementById(i.pricePaise && !canChangeRate(roles) ? 'svc-entry-qty' : 'svc-entry-rate')?.focus(), 0);
+            }}
+          />
         </Field>
         <Field label="Rate (₹)" id="svc-entry-rate" error={fields.ratePaise}>
-          <input id="svc-entry-rate" inputMode="decimal" className="tabular" value={rate} readOnly={!rateEditable} onChange={(e) => setRate(e.target.value)} />
+          <input id="svc-entry-rate" inputMode="decimal" className="tabular" value={rate} readOnly={!rateEditable} onChange={(e) => setRate(e.target.value)} onKeyDown={enterAdds} />
         </Field>
         <Field label="Qty" id="svc-entry-qty" error={fields.qty}>
-          <input id="svc-entry-qty" inputMode="numeric" className="tabular" value={qty} onChange={(e) => setQty(e.target.value)} />
+          <input id="svc-entry-qty" inputMode="numeric" className="tabular" value={qty} onChange={(e) => setQty(e.target.value)} onKeyDown={enterAdds} />
         </Field>
         <Field label="Doctor name" id="svc-entry-doctor" error={fields.doctorId}>
           <select id="svc-entry-doctor" value={doctor} onChange={(e) => setDoctorId(e.target.value)}>

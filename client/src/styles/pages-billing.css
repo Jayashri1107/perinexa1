@@ -586,3 +586,31 @@ button.ipd-tile[aria-pressed='true'] { background: var(--selected-bg); box-shado
 .ipd-page .ipd-totals dt .btn { padding: 0; min-height: 0; }
 .ipd-page .ipd-totals .ipd-net dt, .ipd-page .ipd-totals .ipd-net dd { font-size: 1rem; color: var(--ink); }
 @media (max-width: 900px) { .ipd-page .ipd-foot { grid-template-columns: 1fr; } }
+
+/* The left panel's bill box and discharge (11 Nov 2026): rows like the details above, the balance stressed */
+.ipd-facts-rows > div { grid-template-columns: 104px minmax(0, 1fr); }
+.ipd-side-title { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--card-border); font-size: 0.9375rem; }
+.ipd-sums.ipd-sums-rows { grid-template-columns: 1fr; gap: 0; padding: var(--space-1) var(--space-3); }
+.ipd-sums-rows > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); padding: 6px 0; border-bottom: 1px solid var(--card-border); }
+.ipd-sums-rows dt { font-size: 0.8125rem; }
+.ipd-sums-rows dd { font-size: 0.875rem; font-weight: 500; }
+.ipd-sums-rows .ipd-sums-balance { border-bottom: 0; }
+.ipd-sums-rows .ipd-sums-balance dt { font-weight: 600; color: var(--ink); font-size: 0.875rem; }
+.ipd-sums-rows .ipd-sums-balance dd { font-weight: 700; font-size: 1.125rem; }
+.ipd-side-note { margin: 0; font-size: 0.8125rem; }
+.unpaid-table .ipd-sub { display: block; }
+.unpaid-table td.unpaid-wrap { white-space: normal; min-width: 120px; }
+.ipd-page .ipd-layout { grid-template-columns: minmax(270px, 300px) minmax(0, 1fr); }
+.ipd-facts-rows dd { overflow-wrap: normal; }
+
+/* Service name as a box to type in (11 Nov 2026): the matching services drop down under it */
+.svc-pick { position: relative; }
+.svc-pick-box { position: relative; display: block; }
+.svc-pick-box svg { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--slate-600); pointer-events: none; }
+.svc-pick-box input { padding-left: calc(var(--space-3) + 22px); }
+.svc-pick-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); min-width: 320px; max-height: 320px; overflow-y: auto; margin: 0; padding: var(--space-1) 0; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-card); }
+.svc-pick-opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-3); padding: 6px var(--space-3); cursor: pointer; font-size: 0.875rem; }
+.svc-pick-opt.is-active { background: var(--indigo-100); }
+.svc-pick-group { grid-column: 1 / -1; margin: var(--space-1) 0 2px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--slate-600); }
+.svc-pick-price { color: var(--slate-600); }
+.svc-pick-none { padding: var(--space-2) var(--space-3); font-size: 0.875rem; color: var(--slate-600); }

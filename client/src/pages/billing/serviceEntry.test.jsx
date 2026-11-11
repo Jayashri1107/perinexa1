@@ -64,7 +64,7 @@ describe('the one-line service entry', () => {
     answers['/tenant/doctors'] = { doctors: [{ id: 'd1', name: 'Dr Sample Doctor' }] };
     const html = words(renderToStaticMarkup(<ServiceEntryRow bill={{ id: BID, doctorName: 'Dr Sample Doctor' }} roles={roles} onDone={() => {}} onMore={() => {}} />));
     for (const label of ['Service name', 'Rate (₹)', 'Qty', 'Doctor name', 'Total amount', 'Add', 'Add several at once']) expect(text(html)).toContain(label);
-    expect(html).toContain('Surgeon fee – ₹40,000');
+    expect(html).toContain('role="combobox"'); // Service name: a box to type in, the matches drop down under it
     expect(html).toMatch(/<option value="d1" selected="">Dr Sample Doctor<\/option>/); // the bill's own doctor first
     expect(html).not.toContain('btn-primary');
     expect(html).toMatch(/<button type="button" class="btn btn-secondary" disabled="">/);

@@ -80,3 +80,22 @@ export function useSend(onDone) {
   };
   return { busy, error, fields, send };
 }
+
+/** A number tile at the top of a list; a button when it filters the list. */
+export function Tile({ label, value, tone = 'neutral', pressed, onClick, icon: Icon }) {
+  const body = (
+    <>
+      <span className="ipd-tile-label">
+        {Icon && <Icon aria-hidden="true" />} {label}
+      </span>
+      <strong className="ipd-tile-value tabular">{value}</strong>
+    </>
+  );
+  return onClick ? (
+    <button type="button" className={`ipd-tile ipd-tile-${tone}`} aria-pressed={pressed} onClick={onClick}>
+      {body}
+    </button>
+  ) : (
+    <div className={`ipd-tile ipd-tile-${tone}`}>{body}</div>
+  );
+}
