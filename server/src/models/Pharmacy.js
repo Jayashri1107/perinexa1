@@ -281,6 +281,8 @@ const moveSchema = new mongoose.Schema({
   supplierName: text(150),
   reason: text(200),
   witness: text(150), // stock counts, and returns to a supplier (and their cancelling) of Schedule X and narcotic medicines
+  // PH15: what kind of write-off (the value lost to expiry); '' on older write-offs (their reason is read)
+  writeoffKind: { type: String, enum: ['', 'expired', 'damaged', 'lost', 'other'], default: '' },
   ...stamp,
 });
 moveSchema.plugin(tenantScoped);
@@ -315,6 +317,8 @@ const invoiceLineSchema = new mongoose.Schema({
   // why it was sold again when that line had already been given in full. Not on older lines.
   rxItemId: { type: ObjectId, default: null },
   repeatReason: { type: String, default: '' },
+  // PH15: the batch's cost per unit at the sale (profit by medicine); null on older lines (the batch is looked up)
+  costPaise: { type: Number, default: null },
   // PH10: given in place of the brand the doctor wrote, with which doctor agreed (null: not a substitute)
   substitution: { type: new mongoose.Schema({ prescribed: String, agreedById: { type: ObjectId, default: null }, agreedByName: String, at: Date }, { _id: false }), default: null },
 });
@@ -398,6 +402,28 @@ supplierPaymentSchema.plugin(tenantScoped);
 supplierPaymentSchema.index({ tenantId: 1, number: 1 }, { unique: true });
 supplierPaymentSchema.index({ tenantId: 1, supplierId: 1, on: -1 });
 export const SupplierPayment = mongoose.model('SupplierPayment', supplierPaymentSchema);
+
+// ---------- PH15: the day's closing at the counter ----------
+// What the walk-ins paid by each mode, the refunds, and what went on the patients' hospital bills; the cash counted
+// and the difference. Carries the name of who closed it – no table of takings per pharmacist. One per day.
+const dayCloseSchema = new mongoose.Schema(
+  {
+    on: { type: Date, required: true }, // the hospital day (midnight UTC)
+    byMode: { type: mongoose.Schema.Types.Mixed, default: {} }, // { cash: paise, upi: paise … } paid less refunded
+    refundsPaise: { type: Number, default: 0 },
+    onBillsPaise: { type: Number, default: 0 },
+    invoices: { type: Number, default: 0 },
+    expectedCashPaise: { type: Number, required: true },
+    countedCashPaise: { type: Number, required: true },
+    differencePaise: { type: Number, required: true },
+    note: text(300),
+    created: { type: stampSchema, required: true },
+  },
+  { timestamps: true },
+);
+dayCloseSchema.plugin(tenantScoped);
+dayCloseSchema.index({ tenantId: 1, on: 1 }, { unique: true });
+export const PharmacyDayClose = mongoose.model('PharmacyDayClose', dayCloseSchema);
 
 // ---------- PH10: the doctors' "never substitute" list ----------
 // Medicines the doctors do not allow another brand of (a narrow-range drug, a brand-specific formulation …). Matched by

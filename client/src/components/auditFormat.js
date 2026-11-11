@@ -477,6 +477,7 @@ export const AUDIT_LABELS = {
   NO_SUBSTITUTE_CHANGED: 'Never-substitute list changed',
   PHARMACY_SUPPLIER_PAID: 'Payment to a supplier entered',
   PHARMACY_SUPPLIER_PAYMENT_CANCELLED: 'Payment to a supplier cancelled',
+  PHARMACY_DAY_CLOSED: 'Pharmacy counter day closed',
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
@@ -1650,6 +1651,8 @@ export function describeAudit(entry) {
       return `Batch ${d.batch ?? ''}${d.reason ? ` · ${{ recalled: 'recalled', quality: 'quality doubt', other: 'other reason' }[d.reason] ?? d.reason}` : ''}`;
     case 'MEDICINE_MARKS_CHANGED':
       return `Version ${d.version ?? ''}${d.highAlert ? ' · high alert' : ''}${d.lookAlike ? ` · ${count(d.lookAlike, 'look-alike')}` : ''}${d.role ? ` · proposed as ${d.role}` : ''}`;
+    case 'PHARMACY_DAY_CLOSED':
+      return `${d.date ?? ''}${d.countedCashPaise != null ? ` · cash counted ${rupeesOf(d.countedCashPaise)}` : ''}${d.differencePaise ? ` · difference ${rupeesOf(d.differencePaise)}` : ''}`;
     case 'PHARMACY_SUPPLIER_PAID':
     case 'PHARMACY_SUPPLIER_PAYMENT_CANCELLED':
       return `${d.number ?? ''}${d.amountPaise != null ? ` · ${rupeesOf(d.amountPaise)}` : ''}${d.mode ? ` · ${d.mode}` : ''}`;

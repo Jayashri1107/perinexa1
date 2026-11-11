@@ -12,6 +12,7 @@ import { gstinProblem } from './gstin.js';
 import { MOVE_LABELS, expiryLabel } from './pharmacyFormat.js';
 import { PharmacyHeader, PharmacyLetterhead, money, useSend } from './pharmacyUi.jsx';
 import { SupplierDues } from './SupplierAccount.jsx';
+import { DayClosing, FiguresReport } from './PharmacyFigures.jsx';
 
 // Pharmacy → Reports (laid out for easy reading, owner 26 Oct 2026): a period with quick choices, the period's numbers
 // as cards, then one report at a time – stock alerts (low stock, expiring and expired batches), sales and GST by rate,
@@ -84,6 +85,8 @@ const VIEWS = [
   ['sales', 'Sales & GST'],
   ['purchases', 'Purchases'],
   ['registers', 'Registers'],
+  ['figures', 'Profit and stock'], // PH15
+  ['day', 'Day closing'], // PH15
 ];
 
 /**
@@ -549,6 +552,8 @@ export function ReportsPage() {
         {view === 'sales' && (sales.error ? <Alert type="error">{sales.error}</Alert> : s && <SalesReport s={s} />)}
         {view === 'purchases' && (purchases.error ? <Alert type="error">{purchases.error}</Alert> : p && <PurchasesReport p={p} />)}
         {view === 'purchases' && <SupplierDues />}
+        {view === 'figures' && <FiguresReport from={from} to={to} />}
+        {view === 'day' && <DayClosing />}
 
         {view === 'registers' && (
           <section className="card bill-section" aria-labelledby="rep-reg">

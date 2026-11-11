@@ -7,7 +7,7 @@ import { Admission } from '../models/Admission.js';
 import { Arrival } from '../models/Arrival.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn, SUPPLIER_PAYMENT_MODES } from '../models/Pharmacy.js';
+import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn, SUPPLIER_PAYMENT_MODES, PharmacyDayClose } from '../models/Pharmacy.js';
 import { Tenant } from '../models/Tenant.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
@@ -54,6 +54,7 @@ import { givenFromPrescriptions, givenWords } from '../pharmacy/rxGiven.js';
 import { neverSubstitute, sameMedicine } from '../pharmacy/substitutes.js';
 import { supplierAccount } from '../pharmacy/supplierAccount.js';
 import { nextNumber } from '../models/Counter.js';
+import { daysOutOfStock, expiryLoss, h1Use, nonMoving, prescriptionsFilled, profitByMedicine } from '../pharmacy/figures.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -676,11 +677,12 @@ async function loadBatch(req) {
 pharmacyRouter.post('/batches/:id/writeoff', async (req, res) => {
   desk(req);
   // PH7: a controlled medicine's write-off needs a witness who signs in, as its count does
-  const body = parse(z.object({ qty, reason: reason('Writing off stock'), witness: pharmacyWitnessField }).strict(), req.body);
+  // PH15: what kind of loss it was (the value lost to expiry is counted from it)
+  const body = parse(z.object({ qty, reason: reason('Writing off stock'), witness: pharmacyWitnessField, kind: z.enum(['expired', 'damaged', 'lost', 'other']).default('other') }).strict(), req.body);
   const { b, m } = await loadBatch(req);
   if (CONTROLLED.includes(m.schedule) && !body.witness) throw Object.assign(new HttpError(400, `${m.name} is a controlled medicine: a second person who checked the write-off signs in for it.`, 'VALIDATION'), { fields: { 'witness.email': 'A second person (pharmacist, doctor, RMO or nurse) types their email and password.' } });
   body.witness = await pharmacyWitnessName(req, body.witness || null, 'pharmacy_writeoff');
-  const after = await writeOff(req, b, body.qty, body.reason, body.witness);
+  const after = await writeOff(req, b, body.qty, body.reason, body.witness, body.kind);
   await audit(req, 'PHARMACY_STOCK_WRITTEN_OFF', { details: { medicineId: String(m._id), batchId: String(b._id), qty: body.qty, reason: body.reason, ...(body.witness ? { witness: body.witness } : {}) } });
   res.json({ batch: batchView(after, today(req)) });
 });
@@ -1207,6 +1209,73 @@ const period = (q) => {
   if (q.to < q.from || daysBetween(q.from, q.to) > 366) throw new HttpError(400, 'Choose a period of at most one year, ending after it starts.', 'VALIDATION');
   return [hospitalDayStart(q.from), hospitalDayStart(addDays(q.to, 1))];
 };
+
+// ---------- PH15: the missing reports and the day's closing (docs/PHARMACY_BUILD_NOTE.md) ----------
+
+// The figures of a period: profit by medicine, slow and non-moving stock (now), the value lost to expiry, days out of
+// stock, prescriptions filled in-house (counts), and H1 use by month. The pharmacist and the hospital admin.
+pharmacyRouter.get('/reports/figures', async (req, res) => {
+  reports(req);
+  const q = parse(periodSchema, req.query);
+  const [from, to] = period(q);
+  const [profit, slow, expiry, out, rx, h1] = await Promise.all([
+    profitByMedicine(req.tenantId, from, to),
+    nonMoving(req.tenantId, req.now),
+    expiryLoss(req.tenantId, from, to),
+    daysOutOfStock(req.tenantId, from, new Date(Math.min(to, req.now))), // up to now within the current day
+    prescriptionsFilled(req.tenantId, from, to),
+    h1Use(req.tenantId, from, to),
+  ]);
+  res.json({ from: isoDay(q.from), to: isoDay(q.to), profit, nonMoving: slow, expiryLoss: expiry, outOfStock: out, prescriptions: rx, h1 });
+});
+
+/** The counter's takings of one hospital day: walk-in payments less refunds by mode, and what went on hospital bills. */
+async function takingsOf(req, day) {
+  const from = hospitalDayStart(day);
+  const to = hospitalDayStart(addDays(day, 1));
+  const invoices = await PharmacyInvoice.find({ tenantId: req.tenantId, $or: [{ 'created.at': { $gte: from, $lt: to } }, { 'payments.at': { $gte: from, $lt: to } }] }).lean();
+  const byMode = {};
+  let refundsPaise = 0;
+  let onBillsPaise = 0;
+  let count = 0;
+  for (const inv of invoices) {
+    const made = inv.created?.at >= from && inv.created?.at < to;
+    if (made) count += 1;
+    if (made && inv.patientId) onBillsPaise += invoiceTotals(inv).totalPaise;
+    for (const p of inv.payments ?? []) {
+      if (!(p.at >= from && p.at < to)) continue;
+      const v = p.kind === 'refund' ? -p.amountPaise : p.amountPaise;
+      byMode[p.mode] = (byMode[p.mode] ?? 0) + v;
+      if (p.kind === 'refund') refundsPaise += p.amountPaise;
+    }
+  }
+  return { byMode, refundsPaise, onBillsPaise, invoices: count, expectedCashPaise: byMode.cash ?? 0 };
+}
+
+pharmacyRouter.get('/reports/day', async (req, res) => {
+  reports(req);
+  const q = parse(z.object({ date: requiredDateOnly('Date') }).strict(), req.query);
+  const closed = await PharmacyDayClose.findOne({ tenantId: req.tenantId, on: q.date }).lean();
+  res.json({
+    date: isoDay(q.date),
+    ...(await takingsOf(req, q.date)),
+    closed: closed ? { expectedCashPaise: closed.expectedCashPaise, countedCashPaise: closed.countedCashPaise, differencePaise: closed.differencePaise, note: closed.note ?? '', byName: closed.created.byName, at: closed.created.at } : null,
+    canClose: hasRole(req.membership, 'pharmacist') && !closed,
+  });
+});
+
+pharmacyRouter.post('/day-close', async (req, res) => {
+  desk(req);
+  const body = parse(z.object({ date: requiredDateOnly('Date'), countedCashPaise: z.number().int().min(0).max(MAX_PAISE), note: z.string().trim().max(300).default('') }).strict(), req.body);
+  if (body.date > utcDay(today(req))) throw new HttpError(400, 'That day has not come yet.', 'VALIDATION');
+  if (await PharmacyDayClose.exists({ tenantId: req.tenantId, on: body.date })) throw new HttpError(409, 'This day is already closed.', 'ALREADY_CLOSED');
+  const t = await takingsOf(req, body.date);
+  const differencePaise = body.countedCashPaise - t.expectedCashPaise;
+  if (differencePaise !== 0 && body.note.length < 3) throw Object.assign(new HttpError(400, 'The cash counted is not what the counter took: write why.', 'VALIDATION'), { fields: { note: 'Write why the cash differs.' } });
+  await PharmacyDayClose.create({ tenantId: req.tenantId, on: body.date, ...t, countedCashPaise: body.countedCashPaise, differencePaise, note: body.note, created: { by: req.user._id, byName: req.user.name, at: req.now } });
+  await audit(req, 'PHARMACY_DAY_CLOSED', { details: { date: isoDay(body.date), expectedCashPaise: t.expectedCashPaise, countedCashPaise: body.countedCashPaise, differencePaise } });
+  res.status(201).json({ closed: true, differencePaise });
+});
 
 // Alerts: medicines at or below their reorder level; batches expiring within 90 days, and expired ones.
 pharmacyRouter.get('/reports/alerts', async (req, res) => {

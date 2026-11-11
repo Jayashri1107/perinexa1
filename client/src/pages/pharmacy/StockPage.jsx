@@ -224,6 +224,8 @@ function StockSheet({ onClose }) {
 function WriteOffDialog({ batch, controlled = false, onClose, onDone }) {
   const [qty, setQty] = useState(String(batch.qtyLeft));
   const [reason, setReason] = useState(batch.expired ? 'Expired' : '');
+  // PH15: what kind of loss (the value lost to expiry is counted from it)
+  const [kind, setKind] = useState(batch.expired ? 'expired' : 'damaged');
   // PH7: a narcotic or Schedule X write-off – a second person signs in, as for a count
   const [witness, setWitness] = useState(emptyWitness);
   const s = useSend(onDone);
@@ -237,13 +239,21 @@ function WriteOffDialog({ batch, controlled = false, onClose, onDone }) {
         <Field label="Quantity" id="ph-wo-qty">
           <input id="ph-wo-qty" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />
         </Field>
+        <Field label="Kind" id="ph-wo-kind">
+          <select id="ph-wo-kind" value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="expired">Expired</option>
+            <option value="damaged">Damaged</option>
+            <option value="lost">Lost</option>
+            <option value="other">Other</option>
+          </select>
+        </Field>
         <Field label="Reason" id="ph-wo-reason">
           <input id="ph-wo-reason" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
         </Field>
       </div>
       {controlled && <WitnessFields id="ph-wo-wit" value={witness} onChange={setWitness} errors={s.fields} what="Writing off a narcotic or Schedule X medicine" />}
       <div className="row">
-        <button type="button" className="btn btn-danger" disabled={!Number.isInteger(n) || n < 1 || n > batch.qtyLeft || reason.trim().length < 3 || !witnessOk || s.busy} onClick={() => s.send(`/pharmacy/batches/${batch.id}/writeoff`, { qty: n, reason: reason.trim(), witness: controlled ? witness : '' })}>
+        <button type="button" className="btn btn-danger" disabled={!Number.isInteger(n) || n < 1 || n > batch.qtyLeft || reason.trim().length < 3 || !witnessOk || s.busy} onClick={() => s.send(`/pharmacy/batches/${batch.id}/writeoff`, { qty: n, reason: reason.trim(), kind, witness: controlled ? witness : '' })}>
           {s.busy ? 'Saving…' : 'Write off'}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>

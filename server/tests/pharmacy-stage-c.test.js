@@ -108,3 +108,57 @@ describe('PH11 – what each supplier is owed', () => {
     expect(csv.text).toMatch(/^﻿Payment,Date,Supplier/);
   });
 });
+
+describe('PH15 – the missing reports and the day closing', () => {
+  // An outside prescription seen (an H1 medicine needs one)
+  const walkIn = (m, qty, pay) => ph('post', '/invoices', { kind: 'sale', customer: { name: 'Sample Walk In' }, doctor: { name: 'Dr Sample Outside', reg: 'MMC-1' }, rxSeen: true, lines: [{ medicineId: m.id, qty }], payments: [{ mode: pay ?? 'cash', amountPaise: qty * 1500 }] });
+
+  it('profit by medicine (net of returns), the value lost to expiry, H1 use by month, prescriptions filled', async () => {
+    const sup = ok(await ph('post', '/suppliers', { name: 'Sample Figures Supplier' }), 201).supplier;
+    const m = await medicine({ name: 'Sample Profit Tab', schedule: 'H1' });
+    await bill(sup, m, { qty: 100 }); // cost ₹10 a unit, MRP ₹15
+    const sale = ok(await walkIn(m, 10), 201).invoice; // ₹150 incl. 5 % GST → taxable ₹142.86
+    ok(await ph('post', `/invoices/${sale.id}/returns`, { items: [{ lineId: sale.lines[0].id, qty: 2 }], reason: 'Not needed', refund: { mode: 'cash' } }));
+    const batch = await StockBatch.findOne({ tenantId: hospital._id, medicineId: m.id }).lean();
+    ok(await ph('post', `/batches/${batch._id}/writeoff`, { qty: 5, reason: 'Past its date', kind: 'expired' }));
+    ok(await ph('post', `/batches/${batch._id}/writeoff`, { qty: 1, reason: 'Strip torn', kind: 'damaged' }));
+    const f = ok(await ph('get', '/reports/figures?from=2026-11-01&to=2026-11-30', undefined, 'admin'));
+    const row = f.profit.rows.find((r) => r.medicineId === m.id);
+    expect(row).toMatchObject({ qty: 8, costPaise: 8000 });
+    // Net of the 2 returned: 8 of the 10 units' taxable value (within a paisa of rounding)
+    expect(Math.abs(row.salesPaise - Math.round((sale.lines[0].taxablePaise * 8) / 10))).toBeLessThanOrEqual(1);
+    expect(row.profitPaise).toBe(row.salesPaise - 8000);
+    expect(f.expiryLoss).toMatchObject({ writtenOffPaise: 5000, writeOffs: 1 });
+    expect(f.h1.months).toEqual(['2026-11']);
+    expect(f.h1.rows[0]).toMatchObject({ name: 'Sample Profit Tab', byMonth: { '2026-11': 8 } });
+    expect(f.prescriptions).toMatchObject({ written: 0, filled: 0 });
+  });
+
+  it('slow stock: usable stock with no sale for 90 days; a medicine sold this week is not listed', async () => {
+    const sup = ok(await ph('post', '/suppliers', { name: 'Sample Slow Supplier' }), 201).supplier;
+    const still = await medicine({ name: 'Sample Still Tab' });
+    const moving = await medicine({ name: 'Sample Moving Tab' });
+    await bill(sup, still, { qty: 20 });
+    await bill(sup, moving, { qty: 20 });
+    ok(await walkIn(moving, 1), 201);
+    const f = ok(await ph('get', '/reports/figures?from=2026-11-01&to=2026-11-30'));
+    expect(f.nonMoving.rows.map((r) => [r.name, r.band, r.valuePaise])).toEqual([['Sample Still Tab', 'non_moving', 20000]]);
+  });
+
+  it('the day closing: cash expected from the walk-ins less refunds; a difference needs a note; once a day; audited', async () => {
+    const sup = ok(await ph('post', '/suppliers', { name: 'Sample Day Supplier' }), 201).supplier;
+    const m = await medicine({ name: 'Sample Day Tab' });
+    await bill(sup, m, { qty: 50 });
+    ok(await walkIn(m, 2), 201); // ₹30 cash
+    ok(await walkIn(m, 1, 'upi'), 201); // ₹15 UPI
+    const day = ok(await ph('get', '/reports/day?date=2026-11-11'));
+    expect(day).toMatchObject({ byMode: { cash: 3000, upi: 1500 }, expectedCashPaise: 3000, invoices: 2, closed: null, canClose: true });
+    expect((await ph('post', '/day-close', { date: '2026-11-11', countedCashPaise: 2900 })).status).toBe(400);
+    ok(await ph('post', '/day-close', { date: '2026-11-11', countedCashPaise: 2900, note: 'Ten rupees short – change given wrongly' }), 201);
+    expect((await ph('post', '/day-close', { date: '2026-11-11', countedCashPaise: 3000 })).status).toBe(409);
+    const after = ok(await ph('get', '/reports/day?date=2026-11-11', undefined, 'admin'));
+    expect(after.closed).toMatchObject({ differencePaise: -100, byName: 'Sample pharm' });
+    expect(after.canClose).toBe(false);
+    expect((await AuditLog.findOne({ action: 'PHARMACY_DAY_CLOSED' }).lean()).details).toMatchObject({ date: '2026-11-11', differencePaise: -100 });
+  });
+});
