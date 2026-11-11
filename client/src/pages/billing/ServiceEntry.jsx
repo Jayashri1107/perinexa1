@@ -215,20 +215,25 @@ export function ServiceEntryRow({ bill, roles, onDone, onMore }) {
             {total != null ? rupees(total) : '–'}
           </strong>
         </div>
-        <button type="button" className="btn btn-secondary" disabled={!ready} onClick={add}>
-          <Plus aria-hidden="true" /> {busy ? 'Adding…' : 'Add'}
-        </button>
-      </div>
-      <p className="muted svc-entry-hint">
-        {item && listed && !rateEditable ? 'Listed rate. The billing department or the hospital admin can change it for this bill.' : ''}
-        {item && listed && rateEditable && ratePaise !== item.pricePaise ? `List rate ${rupees(item.pricePaise)} – the rate you typed is kept in the audit log. ` : ''}
-        {item && !listed ? 'This service has no listed price: enter the rate. ' : ''}
-        {onMore && (
-          <button type="button" className="btn btn-link btn-sm" onClick={onMore}>
-            Add several at once
+        <div className="svc-entry-go">
+          <button type="button" className="btn btn-secondary" disabled={!ready} onClick={add}>
+            <Plus aria-hidden="true" /> {busy ? 'Adding…' : 'Add'}
           </button>
-        )}
-      </p>
+          {onMore && (
+            <button type="button" className="btn btn-link btn-sm" onClick={onMore}>
+              Add several
+            </button>
+          )}
+        </div>
+      </div>
+      {/* A note only when there is something to say (no empty line under the strip) */}
+      {item && (
+        <p className="muted svc-entry-hint">
+          {listed && !rateEditable ? 'Listed rate. The billing department or the hospital admin can change it for this bill.' : ''}
+          {listed && rateEditable && ratePaise !== item.pricePaise ? `List rate ${rupees(item.pricePaise)} – the rate you typed is kept in the audit log.` : ''}
+          {!listed ? 'This service has no listed price: enter the rate.' : ''}
+        </p>
+      )}
     </section>
   );
 }

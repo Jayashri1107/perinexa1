@@ -811,7 +811,7 @@ export function BillPage() {
   return (
     <>
       <PageHeader
-        className="ph-bill-foot"
+        className="ph-pay-foot"
         breadcrumbs={[{ label: 'Billing', to: '/billing' }, { label: b.number }]}
         title={`Bill ${b.number}`}
         documentTitle="Bill"
@@ -889,12 +889,6 @@ export function BillPage() {
               <dt>Date</dt>
               <dd>{dayLabel(b.date)}</dd>
             </div>
-            <div>
-              <dt>Status</dt>
-              <dd>
-                <BillStatus status={b.status} />
-              </dd>
-            </div>
             {b.stay && (
               <>
                 <div>
@@ -914,6 +908,8 @@ export function BillPage() {
           </dl>
         </section>
 
+        {/* The entry strip of the hospital's old billing screen (11 Nov 2026): across the page, as on the IPD bill */}
+        {editable && <ServiceEntryRow bill={b} roles={activeMembership?.roles ?? []} onDone={done} onMore={() => setDialog('add')} />}
         <div className="bill-body">
           <section className="card bill-section bill-items" aria-labelledby="bill-items">
             <div className="row-between">
@@ -926,8 +922,6 @@ export function BillPage() {
                 </button>
               )}
             </div>
-            {/* The one-line entry of the hospital's old billing screen (11 Nov 2026); several at once in the Add items form */}
-            {editable && <ServiceEntryRow bill={b} roles={activeMembership?.roles ?? []} onDone={done} onMore={() => setDialog('add')} />}
             {unpriced > 0 && (
               <p className="bill-unpriced-note">
                 <CircleAlert aria-hidden="true" /> {unpriced} item{unpriced > 1 ? 's have' : ' has'} no price yet (₹0).{' '}

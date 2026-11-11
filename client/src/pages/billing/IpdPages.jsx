@@ -722,7 +722,8 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
         />
       )}
         </InlineForms.Provider>
-        {step.next && !flash && <p className="muted">{step.next}</p>}
+        {/* What comes next – not while she is in hospital, where the entry strip says it (11 Nov 2026) */}
+        {step.next && !flash && step.key !== 'in' && <p className="muted ipd-next">{step.next}</p>}
         {!bill && <Alert type="info">This stay has no bill.</Alert>}
         {/* The entry strip of the hospital's old billing screen (11 Nov 2026): across the page, on one line */}
         {editable && <ServiceEntryRow bill={bill} roles={activeMembership?.roles ?? []} onDone={done} onMore={() => setDialog('add')} />}
@@ -897,7 +898,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                         )}
                       </div>
                       <div className="table-scroll">
-                        <table className="bill-report">
+                        <table className="bill-report svc-table">
                           <thead>
                             <tr>
                               <th scope="col" className="ipd-tick">
@@ -925,8 +926,8 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                                 Amount
                               </th>
                               <th scope="col">Doctor</th>
-                              <th scope="col">
-                                <span className="sr-only">Remove</span>
+                              <th scope="col" className="svc-action">
+                                Remove
                               </th>
                             </tr>
                           </thead>
@@ -944,7 +945,7 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                                   {editable && !l.removed && <input type="checkbox" aria-label={`Tick ${l.name}`} checked={ticked.has(l.id)} onChange={(e) => tick(l.id, e.target.checked)} />}
                                 </td>
                                 <td>{i + 1}</td>
-                                <td>{l.addedAt ? formatDateTime(l.addedAt) : '–'}</td>
+                                <WhenCell at={l.addedAt} />
                                 <td>
                                   <span className="svc-name">{l.name}</span>
                                   {l.removed && (
@@ -966,8 +967,9 @@ export function IpdBillWindow({ stayId, embedded = false, onChanged, initialDial
                                     </StatusPill>
                                   ) : (
                                     editable && (
-                                      <button type="button" className="btn btn-secondary btn-sm svc-remove" onClick={() => setDialog({ remove: l })}>
-                                      <Trash2 aria-hidden="true" /> Remove<span className="sr-only"> {l.name}</span>
+                                      <button type="button" className="btn btn-secondary btn-sm svc-remove" title={`Remove ${l.name}`} onClick={() => setDialog({ remove: l })}>
+                                      <Trash2 aria-hidden="true" /> <span className="svc-remove-word">Remove</span>
+                                        <span className="sr-only"> {l.name}</span>
                                     </button>
                                     )
                                   )}
