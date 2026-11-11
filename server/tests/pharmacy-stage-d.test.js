@@ -198,3 +198,90 @@ describe('Opening stock of narcotic and Schedule X medicines', () => {
     expect(moves.map((m) => m.witness ?? '').sort()).toEqual(['', `${people.nurse.name} (Nurse)`]);
   });
 });
+
+describe('PH13 – stock kept outside the pharmacy', () => {
+  const places = async (method, path, body, who = 'drA') => (await as(who))[method](`/api/stock-places${path}`).send(body);
+  const pharmacyBatch = async (m) => {
+    const { StockBatch } = await import('../src/models/Pharmacy.js');
+    return StockBatch.findOne({ tenantId: hospital._id, medicineId: m.id, locationId: null }).lean();
+  };
+
+  it('a doctor makes a place with its staff; the pharmacist moves stock there (total unchanged); the counter takes only from the pharmacy', async () => {
+    const pad = await medicine({ name: 'Sample Delivery Pad', form: 'other', unit: 'piece', kind: 'consumable' });
+    await stock(pad, 30);
+    expect((await places('post', '', { name: 'X room', staffIds: [] }, 'pharm')).status).toBe(403);
+    expect((await places('post', '', { name: 'Bad room', staffIds: [String(people.reception._id)] })).status).toBe(400);
+    const room = ok(await places('post', '', { name: 'Sample Labour Room', kind: 'labour_room', checkEveryDays: 7, staffIds: [String(people.nurse._id)] }), 201).place;
+    const b = await pharmacyBatch(pad);
+    // Only the pharmacist moves stock
+    expect((await places('post', `/${room.id}/move-in`, { batchId: String(b._id), qty: 10 }, 'nurse')).status).toBe(403);
+    expect(ok(await places('post', `/${room.id}/move-in`, { batchId: String(b._id), qty: 20 }, 'pharm'), 201).moved).toMatchObject({ qty: 20, from: 'Pharmacy', to: 'Sample Labour Room' });
+    const detail = ok(await places('get', `/${room.id}`, undefined, 'nurse'));
+    expect(detail.stock).toEqual([expect.objectContaining({ name: 'Sample Delivery Pad', batch: b.batch, qty: 20 })]);
+    expect(JSON.stringify(detail.stock)).not.toMatch(/Paise/);
+    expect(detail.place.checkOverdue).toBe(true); // never checked
+    // The medicine's total stays 30; the counter has only the pharmacy's 10
+    const { StockMove } = await import('../src/models/Pharmacy.js');
+    const moves = await StockMove.find({ tenantId: hospital._id, medicineId: pad.id, kind: { $in: ['transfer_out', 'transfer_in'] } }).sort({ _id: 1 }).lean();
+    expect(moves.map((x) => [x.kind, x.qty, x.place, x.otherPlace])).toEqual([
+      ['transfer_out', -20, '', 'Sample Labour Room'],
+      ['transfer_in', 20, 'Sample Labour Room', 'Pharmacy'],
+    ]);
+    expect(moves[1].balanceAfter).toBe(30);
+    const sale = await ph('post', '/invoices', { kind: 'sale', customer: { name: 'Sample Walk In' }, lines: [{ medicineId: pad.id, qty: 15 }], payment: { mode: 'cash' } });
+    expect(sale.status).toBe(409);
+    // Back to the pharmacy: merged into its batch
+    ok(await places('post', `/${room.id}/move-out`, { batchId: detail.stock[0].batchId, qty: 5 }, 'pharm'), 201);
+    expect((await pharmacyBatch(pad)).qtyLeft).toBe(15);
+    // A place with stock cannot be stopped
+    expect((await places('put', `/${room.id}`, { name: 'Sample Labour Room', staffIds: [String(people.nurse._id)], active: false })).status).toBe(409);
+  });
+
+  it('a nurse of the place uses its stock for a patient she charts for – names only; a hold reaches the place; a check corrects the count', async () => {
+    const oxy = await medicine({ name: 'Sample Oxytocin 5 IU', form: 'injection', unit: 'ampoule', schedule: 'H' });
+    await stock(oxy, 20);
+    const room = ok(await places('post', '', { name: 'Sample Theatre', kind: 'theatre', staffIds: [String(people.nurse._id)] }), 201).place;
+    const b = await pharmacyBatch(oxy);
+    ok(await places('post', `/${room.id}/move-in`, { batchId: String(b._id), qty: 6 }, 'pharm'), 201);
+    const p = await admitted('Sample Theatre Mother');
+    // Not on the staff: refused; on the staff: an issue on her bill, the doctor who ordered as prescriber
+    expect((await places('post', `/${room.id}/use`, { patientId: p.id, orderedById: String(people.drA._id), lines: [{ medicineId: oxy.id, qty: 1 }] }, 'reception')).status).toBe(403);
+    const pts = ok(await places('get', `/${room.id}/patients`, undefined, 'nurse')).patients;
+    expect(pts.map((x) => x.fullName)).toContain('Sample Theatre Mother');
+    expect((await places('post', `/${room.id}/use`, { patientId: p.id, lines: [{ medicineId: oxy.id, qty: 1 }] }, 'nurse')).status).toBe(400); // no doctor named
+    const used = ok(await places('post', `/${room.id}/use`, { patientId: p.id, orderedById: String(people.drA._id), lines: [{ medicineId: oxy.id, qty: 2 }] }, 'nurse'), 201).used;
+    expect(used).toMatchObject({ place: 'Sample Theatre', lines: [{ name: 'Sample Oxytocin 5 IU', qty: 2 }] });
+    expect(JSON.stringify(used)).not.toMatch(/Paise|amount/i);
+    const inv = ok(await ph('get', '/invoices')).invoices.find((x) => x.number === used.number);
+    expect(inv).toBeTruthy();
+    // A hold on the batch number holds the place's copy too
+    ok(await ph('post', '/batches/hold', { medicineId: oxy.id, batch: b.batch, reason: 'recalled' }));
+    expect((await places('post', `/${room.id}/use`, { patientId: p.id, orderedById: String(people.drA._id), lines: [{ medicineId: oxy.id, qty: 1 }] }, 'nurse')).status).toBe(409);
+    // A check: every batch counted; a difference corrects the stock
+    const stockNow = ok(await places('get', `/${room.id}`, undefined, 'nurse')).stock;
+    expect((await places('post', `/${room.id}/checks`, { lines: [] }, 'nurse')).status).toBe(400);
+    const check = ok(await places('post', `/${room.id}/checks`, { lines: [{ batchId: stockNow[0].batchId, found: 3 }], note: 'One broken' }, 'nurse'), 201).check;
+    expect(check).toMatchObject({ differences: 1, expiredOut: 0 });
+    const after = ok(await places('get', `/${room.id}`, undefined, 'nurse'));
+    expect(after.stock[0].qty).toBe(3);
+    expect(after.place.checkOverdue).toBe(false);
+  });
+
+  it('a narcotic move needs a witness; the doctor’s stock check counts the pharmacy only; another hospital sees nothing', async () => {
+    const morph = await medicine({ name: 'Sample Morphine 10 mg', generic: 'Morphine', strength: '10 mg', form: 'injection', unit: 'ampoule', schedule: 'narcotic', reorderLevel: 0 });
+    await stock(morph, 4);
+    const room = ok(await places('post', '', { name: 'Sample Emergency Tray', kind: 'tray', staffIds: [String(people.nurse._id)] }), 201).place;
+    const b = await pharmacyBatch(morph);
+    expect((await places('post', `/${room.id}/move-in`, { batchId: String(b._id), qty: 4 }, 'pharm')).status).toBe(400);
+    ok(await places('post', `/${room.id}/move-in`, { batchId: String(b._id), qty: 4, witness: { email: people.nurse.email, password: PASSWORD } }, 'pharm'), 201);
+    const check = ok(await (await as('drA')).post('/api/pharmacy-stock/check').send({ medicines: [{ drug: 'Morphine', strength: '10 mg', form: 'inj' }] }));
+    expect(check.stock[0]).not.toBe('in');
+    const other = await createTenant('Pharmacy D Places Other');
+    const theirDoc = await createUser({ name: 'Sample their doctor' });
+    await addMember(theirDoc, other, 'doctor');
+    const theirs = await loginAs(theirDoc, { app });
+    expect(ok(await theirs.get('/api/stock-places')).places).toEqual([]);
+    expect((await theirs.get(`/api/stock-places/${room.id}`)).status).toBe(404);
+    expect(await AuditLog.countDocuments({ action: 'STOCK_TRANSFERRED', 'details.witness': { $exists: true } })).toBe(1);
+  });
+});

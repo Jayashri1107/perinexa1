@@ -39,7 +39,7 @@ async function usableStock(tenantId, medicineIds, today) {
   if (!medicineIds.length) return new Map();
   const rows = await StockBatch.aggregate([
     // PH5: a batch on hold is not "in stock" for the doctor
-    { $match: { tenantId, medicineId: { $in: medicineIds }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null } },
+    { $match: { tenantId, medicineId: { $in: medicineIds }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null, locationId: null } }, // PH13: the pharmacy's
     { $group: { _id: '$medicineId', qty: { $sum: '$qtyLeft' } } },
   ]);
   return new Map(rows.map((r) => [String(r._id), r.qty]));
@@ -58,7 +58,7 @@ pharmacyStockRouter.get('/vaccine-batches', async (req, res) => {
   const rx = new RegExp(escapeRegex(q.q), 'i');
   const meds = await Medicine.find({ tenantId: req.tenantId, active: true, $or: [{ name: rx }, { generic: rx }] }, { name: 1, manufacturer: 1 }).limit(20).lean();
   const byId = new Map(meds.map((m) => [String(m._id), m]));
-  const batches = meds.length ? await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(hospitalToday(req.now)) }, hold: null }).sort({ expiry: 1 }).limit(30).lean() : [];
+  const batches = meds.length ? await StockBatch.find({ tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(hospitalToday(req.now)) }, hold: null, locationId: null }).sort({ expiry: 1 }).limit(30).lean() : [];
   res.json({
     batches: batches.map((b) => {
       const m = byId.get(String(b.medicineId));

@@ -60,6 +60,7 @@ import { doctorOf, salesByDoctor } from '../pharmacy/salesByDoctor.js';
 import { WardRequest, statusOfLines } from '../models/WardRequest.js';
 import { wardRequestView } from './wardRequests.js';
 import { CarePlan } from '../models/CarePlan.js';
+import { StockLocation } from '../models/Pharmacy.js';
 
 // Pharmacy and medicine stock (docs/PHARMACY_PLAN.md, approved 3 Oct 2026), for the pharmacist (and the hospital admin
 // for the reports and the medicine list):
@@ -703,9 +704,10 @@ pharmacyRouter.get('/stock/:id', async (req, res) => {
   const batches = await StockBatch.find({ tenantId: req.tenantId, medicineId: m._id }).sort({ expiry: 1 }).lean();
   const moves = await StockMove.find({ tenantId: req.tenantId, medicineId: m._id }).sort({ at: -1, _id: -1 }).limit(100).lean();
   const batchName = new Map(batches.map((b) => [String(b._id), b.batch]));
+  const placeNames = new Map((await StockLocation.find({ tenantId: req.tenantId, _id: { $in: batches.map((b) => b.locationId).filter(Boolean) } }, { name: 1 }).lean()).map((x) => [String(x._id), x.name]));
   res.json({
     medicine: medicineView(m, batches.filter((b) => !isExpired(b, t)).reduce((s, b) => s + b.qtyLeft, 0)),
-    batches: batches.filter((b) => b.qtyLeft > 0 || daysBetween(b.updatedAt ?? b.createdAt, req.now ?? new Date()) < 90).map((b) => batchView(b, t)),
+    batches: batches.filter((b) => b.qtyLeft > 0 || daysBetween(b.updatedAt ?? b.createdAt, req.now ?? new Date()) < 90).map((b) => ({ ...batchView(b, t), place: b.locationId ? (placeNames.get(String(b.locationId)) ?? 'A place') : '' })), // PH13: '' = the pharmacy
     moves: moves.map((x) => ({ at: x.at, kind: x.kind, qty: x.qty, balanceAfter: x.balanceAfter, batch: batchName.get(String(x.batchId)) ?? '', ref: x.ref?.number ?? '', reason: x.reason ?? '', witness: x.witness ?? '', byName: x.byName ?? '' })),
   });
 });
@@ -1465,6 +1467,8 @@ pharmacyRouter.get('/reports/register', async (req, res) => {
       kind: x.kind,
       ref: x.ref?.number ?? '',
       batch: batches.get(String(x.batchId)) ?? '',
+      place: x.place ?? '', // PH13: '' = the pharmacy
+      otherPlace: x.otherPlace ?? '',
       in: x.qty > 0 ? x.qty : 0,
       out: x.qty < 0 ? -x.qty : 0,
       balance: x.balanceAfter,

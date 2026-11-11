@@ -76,7 +76,7 @@ export async function returnableBatches(req, supplierId) {
   const supplier = await Supplier.findOne({ tenantId, _id: supplierId }).lean();
   if (!supplier) throw new HttpError(404, 'Supplier not found.', 'NOT_FOUND');
   const today = hospitalToday(req.now);
-  const batches = await StockBatch.find({ tenantId, supplierId: supplier._id, qtyLeft: { $gt: 0 } }).sort({ expiry: 1, createdAt: 1 }).limit(500).lean();
+  const batches = await StockBatch.find({ tenantId, supplierId: supplier._id, qtyLeft: { $gt: 0 }, locationId: null }) // PH13: from the pharmacy.sort({ expiry: 1, createdAt: 1 }).limit(500).lean();
   const meds = new Map((await Medicine.find({ tenantId, _id: { $in: batches.map((b) => b.medicineId) } }).lean()).map((m) => [String(m._id), m]));
   const facts = await purchaseFacts(tenantId, batches);
   const interState = isInterState((await settingsOf(tenantId)).gstin, supplier.gstin);

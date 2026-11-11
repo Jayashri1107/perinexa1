@@ -53,6 +53,9 @@ export function StockPage() {
               <Link className="btn btn-secondary btn-sm" to="/pharmacy/stock/import">
                 <FileUp aria-hidden="true" /> Import opening stock
               </Link>
+              <Link className="btn btn-secondary btn-sm" to="/pharmacy/places">
+                Stock places
+              </Link>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSheet(true)}>
                 <FileDown aria-hidden="true" /> Stock sheet
               </button>
@@ -339,7 +342,10 @@ export function MedicineStockPage() {
               <tbody>
                 {batchPage.shown.map((b) => (
                   <tr key={b.id}>
-                    <td>{b.batch}</td>
+                    <td>
+                      {b.batch}
+                      {b.place && <span className="ph-line-note">At {b.place}</span>}
+                    </td>
                     <td>
                       {expiryLabel(b.expiry)} {b.expired && <StatusPill tone="high">Expired</StatusPill>} <HoldPill hold={b.hold} />
                     </td>

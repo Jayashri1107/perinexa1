@@ -639,3 +639,6 @@
 .kit-line > span:first-child { flex: 1 1 auto; }
 .kit-qty { width: 5rem; }
 .ph-kit { margin-bottom: var(--space-3); }
+
+/* PH13: the staff of a place */
+.pl-staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--space-1) var(--space-3); }

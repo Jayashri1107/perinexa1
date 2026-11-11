@@ -1136,6 +1136,9 @@ export function MedicinesPage() {
             <Link className="btn btn-secondary" to="/pharmacy/kits">
               Kits
             </Link>
+            <Link className="btn btn-secondary" to="/pharmacy/places">
+              Stock places
+            </Link>
             {canEdit && (
               <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
                 <Plus aria-hidden="true" /> Add a medicine

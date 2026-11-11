@@ -336,6 +336,8 @@ const loadMarks = () => import('./pages/pharmacy/MedicineMarks.jsx');
 const MedicineMarksPage = screen(loadMarks, 'MedicineMarksPage');
 const loadKits = () => import('./pages/pharmacy/Kits.jsx');
 const KitsPage = screen(loadKits, 'KitsPage');
+const loadPlaces = () => import('./pages/pharmacy/StockPlaces.jsx');
+const StockPlacesPage = screen(loadPlaces, 'StockPlacesPage');
 const loadCrs16 = () => import('./pages/theatre/TheatreListPage.jsx');
 const TheatreListPage = screen(loadCrs16, 'TheatreListPage');
 const loadCrs16b = () => import('./pages/theatre/TheatreCasePage.jsx');
@@ -586,6 +588,8 @@ export function App() {
                   <Route path="kits" element={<RequireTenantRole roles={['doctor', 'pharmacist']} message="Kits are made by doctors and the hospital admin, and read by the pharmacist." />}>
                     <Route index element={<KitsPage tabs={HOSPITAL_FORMULARY.tabs} />} />
                   </Route>
+                  {/* PH13: stock kept outside the pharmacy – doctors, RMOs, nurses (their places) and the pharmacist */}
+                  <Route path="places" element={<StockPlacesPage tabs={HOSPITAL_FORMULARY.tabs} />} />
                 </Route>
                 <Route path="privileges" element={<RequireTenantRole roles={PRIVILEGE_ROLES} message="The privileges register is for the hospital admin, the quality lead, doctors, RMOs and nurses." />}>
                   <Route index element={<PrivilegesPage />} />
@@ -660,6 +664,7 @@ export function App() {
                   <Route path="medicines" element={<MedicinesPage />} />
                   <Route path="kits" element={<KitsPage />} /> {/* PH14: the hospital admin's way to the kits */}
                   <Route path="ward-requests" element={<WardRequestsPage />} /> {/* PH12: what the wards asked for */}
+                  <Route path="places" element={<StockPlacesPage />} /> {/* PH13: the pharmacist's and the hospital admin's way to the places */}
                   <Route path="suppliers" element={<SuppliersPage />} />
                   <Route path="suppliers/:id" element={<SupplierPage />} />
                   <Route path="reports" element={<ReportsPage />} />

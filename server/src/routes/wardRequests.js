@@ -48,7 +48,7 @@ export const wardRequestView = (r) => ({
 /** In stock / low / not in stock for each medicine – the doctors' words (routes/pharmacyStock.js groupStatus). */
 async function stockWords(req, meds) {
   const rows = await StockBatch.aggregate([
-    { $match: { tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(hospitalToday(req.now)) }, hold: null } },
+    { $match: { tenantId: req.tenantId, medicineId: { $in: meds.map((m) => m._id) }, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(hospitalToday(req.now)) }, hold: null, locationId: null } }, // PH13: the pharmacy's
     { $group: { _id: '$medicineId', qty: { $sum: '$qtyLeft' } } },
   ]);
   const usable = new Map(rows.map((r) => [String(r._id), r.qty]));

@@ -340,6 +340,10 @@ export const AUDIT_ACTIONS = [
   'WARD_REQUEST_MADE', // PH12: the ward asked the pharmacy for a patient
   'WARD_REQUEST_CANCELLED',
   'WARD_REQUEST_REFUSED', // PH12: the pharmacy refused a line, with the reason
+  'STOCK_PLACE_CHANGED', // PH13: a place that holds stock made, changed or stopped
+  'STOCK_TRANSFERRED', // PH13: stock moved between the pharmacy and a place
+  'STOCK_PLACE_CHECKED', // PH13: a place checked (counts, expired stock taken out)
+  'STOCK_PLACE_USED', // PH13: a place's stock used for a patient (an issue on her bill)
   'LAB_CRITICAL_CALL_NOTED',
   'LAB_CRITICAL_NOT_REACHED',
   'LAB_CRITICAL_ACKNOWLEDGED',
@@ -670,6 +674,10 @@ export const AUDIT_CATEGORIES = {
     'WARD_REQUEST_MADE',
     'WARD_REQUEST_CANCELLED',
     'WARD_REQUEST_REFUSED',
+    'STOCK_PLACE_USED',
+    'STOCK_PLACE_CHANGED',
+    'STOCK_TRANSFERRED',
+    'STOCK_PLACE_CHECKED',
     'PHARMACY_DEBIT_NOTE_PRINTED',
     'PHARMACY_EINVOICE_DOWNLOADED',
     'TALLY_SETTINGS_CHANGED',

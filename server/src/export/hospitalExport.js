@@ -91,7 +91,7 @@ import { OpdSchedule } from '../models/OpdSchedule.js';
 import { Patient } from '../models/Patient.js';
 import { PatientConsent } from '../models/PatientConsent.js';
 import { PatientNote } from '../models/PatientNote.js';
-import { Kit, Medicine, NoSubstitute, PharmacyDayClose, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn } from '../models/Pharmacy.js';
+import { Kit, LocationCheck, Medicine, StockLocation, NoSubstitute, PharmacyDayClose, PharmacyInvoice, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier, SupplierPayment, SupplierReturn } from '../models/Pharmacy.js';
 import { PrescriptionDesign } from '../models/PrescriptionDesign.js';
 import { PrescriptionSet } from '../models/PrescriptionSet.js';
 import { PriceItem } from '../models/PriceItem.js';
@@ -164,6 +164,8 @@ export const KINDS = [
   { file: 'pharmacy-no-substitute.json', model: NoSubstitute, what: 'Pharmacy: the medicines the doctors listed as never to be substituted (PH10).' },
   { file: 'pharmacy-supplier-payments.json', model: SupplierPayment, what: 'Pharmacy: payments to suppliers (PH11).' },
   { file: 'pharmacy-kits.json', model: Kit, what: 'Pharmacy: the kits (PH14).' },
+  { file: 'pharmacy-places.json', model: StockLocation, what: 'Pharmacy: the places that hold stock outside the pharmacy and their staff (PH13).' },
+  { file: 'pharmacy-place-checks.json', model: LocationCheck, what: 'Pharmacy: the checks of those places (PH13).' },
   { file: 'pharmacy-ward-requests.json', model: WardRequest, what: 'Pharmacy: what the wards asked for each admitted patient, and what was issued or refused (PH12).' },
   { file: 'pharmacy-day-closings.json', model: PharmacyDayClose, what: 'Pharmacy: the counter day closings with the cash counted (PH15).' },
   { file: 'tally-entries.json', model: TallyVoucher, what: 'The accounting entries written for Tally (bills, receipts, pharmacy invoices, credit and debit notes): their lines by account (an insurance line carries the scheme as reception typed it on the payment), the batch each went in, whether Tally imported, refused or skipped them, and the hospital admin\'s note on a refused or skipped entry. Document numbers, never a patient\'s name.' },
