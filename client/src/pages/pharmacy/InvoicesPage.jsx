@@ -489,7 +489,11 @@ export function BillPaper({ invoice: v, settings }) {
           {v.lines.map((l, i) => (
             <tr key={l.id}>
               <td>{i + 1}</td>
-              <td>{lineName(l)}</td>
+              <td>
+                {lineName(l)}
+                {/* PH10: printed with the line – given in place of the brand prescribed, and who agreed */}
+                {l.substitution && <div className="ph-sub-note">Given in place of {l.substitution.prescribed}, agreed by {l.substitution.agreedByName}</div>}
+              </td>
               {doses && <td>{l.dose ?? ''}</td>}
               <td>{l.batch}</td>
               <td className="nowrap">{expiryLabel(l.expiry).replace(' ', '-')}</td>
@@ -887,6 +891,7 @@ export function InvoicePage() {
                   <td data-label="Medicine">
                     {l.name} <ScheduleMark schedule={l.schedule} />
                     {l.returnedQty > 0 && <span className="muted"> · {l.returnedQty} returned</span>}
+                    {l.substitution && <span className="ph-line-note">Given in place of {l.substitution.prescribed}, agreed by {l.substitution.agreedByName}</span>}
                   </td>
                   <td data-label="Batch">{l.batch}</td>
                   <td data-label="Expiry">{expiryLabel(l.expiry)}</td>

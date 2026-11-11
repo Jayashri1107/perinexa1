@@ -453,7 +453,7 @@ const any = (roles, list) => roles.some((r) => list.includes(r));
 // registers the women other doctors send. Same rule as server/src/utils/patientAccess.js (creationAccess.fullIdentity).
 const BABY_REGISTER_ROLES = ['doctor', 'rmo', 'receptionist'];
 /** The "New patient" menu (type of care) for this person: without Newborn for the referral desk. */
-export const newPatientLinks = (roles = []) => (any(roles, BABY_REGISTER_ROLES) ? NEW_PATIENT_LINKS : NEW_PATIENT_LINKS.filter((l) => l.to !== '/patients/new/newborn'));
+export const newPatientLinks = (roles = []) => (any(roles, BABY_REGISTER_ROLES) ? NEW_PATIENT_LINKS : NEW_PATIENT_LINKS.filter((l) => l.type !== 'newborn')); // every baby card, the vaccination one too
 export const canSeePatients = (roles = []) => any(roles, PATIENT_ROLES);
 /**
  * The hospital's patient list and search: everyone who sees patients, except a pharmacist with no other patient
@@ -520,7 +520,7 @@ export const HOSPITAL_INCIDENTS = { key: 'incidents', label: 'Incidents', icon: 
 // The theatre list and the WHO Surgical Safety Checklist (Group B item 16): doctors, RMOs and nurses
 export const THEATRE_ROLES = ['doctor', 'rmo', 'nurse'];
 export const HOSPITAL_THEATRE = { key: 'theatre', label: 'Theatre', icon: Scissors, to: '/theatre', tabs: [{ label: 'Theatre list', to: '/theatre', end: false }] };
-export const HOSPITAL_FORMULARY = { key: 'formulary', label: 'Formulary', icon: Pill, to: '/formulary', tabs: [{ label: 'Formulary', to: '/formulary', end: true }] };
+export const HOSPITAL_FORMULARY = { key: 'formulary', label: 'Formulary', icon: Pill, to: '/formulary', tabs: [{ label: 'Formulary', to: '/formulary', end: true }, { label: 'Medicine marks', to: '/formulary/marks', end: true }] };
 // Clinical privileges (Group C, PX-X-07): kept by the hospital admin and the quality lead; doctors read them (RMOs
 // and nurses can open /privileges, and see the check on each theatre case)
 export const PRIVILEGE_MENU_ROLES = ['admin', 'quality', 'doctor'];

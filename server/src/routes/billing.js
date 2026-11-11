@@ -241,7 +241,8 @@ billingRouter.post('/bills/:id/lines/:lineId/remove', async (req, res) => {
   const bill = await openBill(req);
   refuseFinal(bill);
   const { lineId } = parse(z.object({ id: objectId, lineId: objectId }), req.params);
-  const body = parse(z.object({ reason: reason('Taking an item off') }).strict(), req.body);
+  // No reason is asked any more (11 Nov 2026): who removed it and when are kept on the line and in the audit log
+  const body = parse(z.object({ reason: z.string().trim().max(200).default('') }).strict(), req.body ?? {});
   await refuseFetalSex(req, bill, { reason: body.reason });
   const line = bill.lines.find((l) => String(l._id) === lineId);
   if (!line) throw new HttpError(404, 'Item not found on this bill.', 'NOT_FOUND');

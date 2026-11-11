@@ -3,6 +3,7 @@ import { BadgeCheck, CircleAlert } from 'lucide-react';
 import { api } from '../../api.js';
 import { SimpleTable } from '../quality/SimpleTable.jsx';
 import { PageHeader } from '../../components/PageHeader.jsx';
+import { HOSPITAL_FORMULARY } from '../../platform/modules.js';
 import { Alert, Field, StatusPill } from '../../components/ui.jsx';
 import { useFetch } from '../../hooks/useFetch.js';
 import { FormDialog } from '../quality/FormDialog.jsx';
@@ -135,6 +136,7 @@ export function FormularyPage() {
   return (
     <>
       <PageHeader
+        tabs={HOSPITAL_FORMULARY.tabs}
         title="Formulary"
         documentTitle="Formulary"
         help="The hospital's formulary. A dose is worked out only from a row a doctor and the pharmacist have both confirmed; any change needs both again."

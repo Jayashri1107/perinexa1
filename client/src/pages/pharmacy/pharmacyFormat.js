@@ -1,4 +1,5 @@
 import { FilePen, PackageCheck, PackageOpen, Send, ShieldAlert, TriangleAlert } from 'lucide-react';
+import { allergyNames, termMatches } from '../medsafety/medSafety.js';
 
 // Pharmacy (docs/PHARMACY_PLAN.md): words and lists shared by the pharmacy pages. Same role lists as
 // server/src/pharmacy/pharmacyRules.js. Amounts come in paise (billing/billingFormat.js formats them).
@@ -173,11 +174,36 @@ export function prescribedLines(lines, rx) {
   for (const it of rx.items) {
     const best = it.matches.find((m) => m.inStock > 0) ?? it.matches[0];
     if (!best) continue;
+    // PH6 (docs/PHARMACY_BUILD_NOTE.md): the line remembers the prescription line it is sold from; what is still to give
+    // is the quantity; a line already given in full needs a reason to be sold again
+    const rx6 = { rxItemId: it.id, givenInFull: Boolean(it.givenInFull), sold: it.sold ?? [], repeatReason: '' };
+    const qty = it.stillToGive > 0 ? it.stillToGive : (it.suggestedQty ?? 1);
     const i = out.findIndex((l) => l.medicine.id === best.id);
-    if (i >= 0) out[i] = { ...out[i], prescribed: true };
-    else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(it.suggestedQty ?? 1), batchId: null, prescribed: true, ...(it.dose ? { dose: it.dose } : {}) });
+    if (i >= 0) out[i] = { ...out[i], prescribed: true, ...rx6 };
+    else out.push({ key: `${best.id}-rx-${rx.visitId}`, medicine: best, qty: String(qty), batchId: null, prescribed: true, ...rx6, ...(it.dose ? { dose: it.dose } : {}) });
   }
   return out;
+}
+
+/**
+ * PH7 (docs/PHARMACY_BUILD_NOTE.md): does a medicine's brand or generic name match her allergy line? Text against text
+ * – it will miss, so her allergy line is always shown and this warning is an extra (the doctors' matcher,
+ * medsafety/medSafety.js). Returns the allergy group or word matched, or null. No reason is asked (owner, 10 Nov 2026).
+ */
+export function allergyClash(medicine, allergyText) {
+  const { groups, words } = allergyNames(allergyText ?? '');
+  const name = `${medicine?.name ?? ''} ${medicine?.generic ?? ''}`.toLowerCase();
+  const group = groups.find((g) => g.members.some((m) => termMatches(name, m)) || g.words.some((w) => termMatches(name, w)));
+  if (group) return group.name;
+  return words.find((w) => termMatches(name, w)) ?? null;
+}
+
+/** PH6: "Given: 10 on 2026-11-03 (PH-000412). Still to give: 20." – '' when nothing was sold from the line. */
+export function givenLine(it) {
+  if (!it?.sold?.length) return '';
+  const given = it.sold.map((s) => `${s.qty} on ${s.date} (${s.number})`).join(', ');
+  if (it.givenInFull) return `Given: ${given}. Given in full.`;
+  return `Given: ${given}.${it.stillToGive != null ? ` Still to give: ${it.stillToGive}.` : ''}`;
 }
 /** The same for a new purchase, where a medicine may be on the list more than once (one line for each batch). */
 export function scannedForPurchase(medicine) {
@@ -208,6 +234,9 @@ export const packWords = (m) => {
  * the pack's MRP when the batch was bought by the pack (a whole pack exactly its MRP, loose units rounded down), else
  * the unit MRP × qty. null when the price is not known yet.
  */
+/** PH24: who sees pharmacy sales by doctor in a hospital (server: pharmacyRules.js PHARMACY_DOCTOR_SALES_ROLES). */
+export const PHARMACY_DOCTOR_SALES_ROLES = ['pharmacist'];
+
 export function priceOf(b, qty) {
   if (!Number.isFinite(qty)) return null;
   if (b?.packMrpPaise && b?.unitsPerPack > 1) return Math.floor((qty * b.packMrpPaise) / b.unitsPerPack);
@@ -259,7 +288,9 @@ export function suggestionNote(s) {
     `${s.inStock} in stock`,
     `reorder at ${s.reorderLevel}`,
     s.onOrder ? `${s.onOrder} on order (${s.onOrders.join(', ')})` : null,
-    s.lastSupplier ? `last bought from ${s.lastSupplier.name}` : null,
+    s.perDay ? `uses about ${s.perDay} a day` : null,
+    s.lastSupplier ? `${s.lastSupplier.preferred ? 'usually ordered from' : 'last bought from'} ${s.lastSupplier.name}` : null,
+    s.lastPrice ? `last paid ₹${(s.lastPrice.ratePaise / 100).toFixed(2)}${s.lastPrice.conv > 1 ? ` a pack of ${s.lastPrice.conv}` : ''} (${s.lastPrice.date})` : null,
   ]
     .filter(Boolean)
     .join(' · ');

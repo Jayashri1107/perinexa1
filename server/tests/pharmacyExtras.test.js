@@ -230,7 +230,7 @@ describe('purchase orders', () => {
       ['Low Tab', 5, 20, 0, 35],
       ['Never Bought Tab', 0, 0, 0, 1],
     ]);
-    expect(rows[0].lastSupplier).toEqual({ id: sup.id, name: 'Sample Distributors' });
+    expect(rows[0].lastSupplier).toEqual({ id: sup.id, name: 'Sample Distributors', preferred: false });
     expect(rows[1].lastSupplier).toBeNull();
 
     // On a sent order: it counts as coming; a draft does not

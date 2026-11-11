@@ -195,6 +195,14 @@ The owner is a doctor, not a software person. Ask them before changing any of th
   writing the report) is for the **Sonography role** only; the report is **signed by a doctor who also has the
   Sonography role** (the authorised sonologist – PC-PNDT). A doctor who scans needs both roles: the hospital admin adds
   Sonography in Users & access. Code: `server/src/routes/imaging.js` (top), `client/src/platform/modules.js`.
+- **Pharmacy: the pharmacist sees a patient's allergies (owner, 10 Nov 2026 – decision 2 of
+  `docs/PHARMACY_BUILD_NOTE.md`)** – her allergy line only (`medical.allergies`), on the counter's prescriptions
+  (`GET /api/pharmacy/patients/:id/prescriptions`, `allergyFor`), never anything else of her record; `patientAccess`
+  is not widened. A warning shows when a medicine matches; no reason is asked. The owner's other pharmacy decisions
+  (substitutes only with a doctor's yes, never for the doctors' list; high-alert and look-alike marks by a doctor and
+  the pharmacist together; sales by doctor for the pharmacist and the super admin only; no bills sent on WhatsApp by
+  themselves; a reason for every repeat sale) are in that note's section 7. The remaining pharmacy, lab and
+  sonography development was approved by the owner on 11 Nov 2026.
 - **Feature freeze lifted for sonography U1–U5 (10 Nov 2026)**: the owner agreed to build them; built in two stages
   (developer's choice). Stage 1, built: U2 urgent findings to her doctor, U4 twins template, U1 the weight graph and the
   measurements across scans. Stage 2, waiting for the owner's published tables: U3 Doppler normal ranges, U5 a second

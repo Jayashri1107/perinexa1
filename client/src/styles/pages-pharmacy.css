@@ -604,3 +604,32 @@
 .ph-counter, .ph-counter-main, .ph-counter-main > * { min-width: 0; max-width: 100%; }
 /* The New bill tab (9 Nov 2026): above the people list, what to do and a new walk-in customer */
 .ph-pick-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+
+/* PH6 (docs/PHARMACY_BUILD_NOTE.md): what was already given from a prescription line, and the reason to sell it again */
+.ph-rx-given { display: block; font-size: var(--fs-caption); color: var(--slate-600); }
+.ph-rx-given.is-full { color: var(--status-watch-fg); }
+.ph-repeat-row { background: var(--status-watch-bg); }
+.ph-repeat { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ph-repeat input { flex: 1 1 220px; min-width: 0; }
+
+/* PH7: her allergy line and the counter's warnings (allergy, look-alike) – shown, never asked about */
+.ph-allergy { margin: 0 0 var(--space-2); font-size: var(--fs-caption); color: var(--slate-600); }
+.ph-allergy.is-recorded { color: var(--status-high-fg); }
+.ph-allergy svg, .ph-warn svg { width: 1em; height: 1em; vertical-align: -0.125em; }
+.ph-warn-row { background: var(--status-high-bg); }
+.ph-warn { display: block; color: var(--status-high-fg); font-size: var(--fs-caption); }
+.mm-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--card-border); }
+
+/* PH10: given in place of the brand prescribed, on the printed bill */
+.ph-sub-note { font-size: 0.85em; font-style: italic; }
+
+/* PH16: the supplier's bill from a file – its items matched to the medicines */
+.bf-items { list-style: none; margin: 0 0 var(--space-4); padding: 0; }
+.bf-intro { margin-bottom: var(--space-4); }
+.bf-item { display: grid; grid-template-columns: 1fr; gap: var(--space-2); padding: var(--space-3) 0; border-bottom: 1px solid var(--card-border); }
+.bf-name { font-weight: 600; overflow-wrap: anywhere; }
+.bf-match { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.bf-match .ph-finder, .bf-match > div { flex: 1 1 16rem; }
+.bf-ok { color: var(--status-stable-fg); width: 1em; height: 1em; }
+.bf-warn { color: var(--status-high-fg); display: inline-flex; gap: var(--space-1); align-items: center; }
+.bf-warn svg { width: 1em; height: 1em; }

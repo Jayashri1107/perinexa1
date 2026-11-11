@@ -20,10 +20,11 @@ import { stampOf } from '../billing/billingService.js';
 import { hospitalToday, isoDay, utcDay } from '../careplans/dates.js';
 import { hasRole } from '../models/Membership.js';
 import { nextNumber } from '../models/Counter.js';
-import { Medicine, Purchase, PurchaseOrder, StockBatch, Supplier } from '../models/Pharmacy.js';
+import { Medicine, Purchase, PurchaseOrder, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
 import { HttpError } from '../utils/httpError.js';
-import { canEdit, medicineView, supplierView } from './pharmacyHttp.js';
+import { canEdit, medicineView, settingsOf, supplierView } from './pharmacyHttp.js';
 import { ORDER_STATUS_LABELS, ORDER_SUGGEST_TIMES, PHARMACY_DESK_ROLES } from './pharmacyRules.js';
+import { orderByUse, useOf } from './reorderByUse.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
 const bad = (message, fields) => Object.assign(new HttpError(400, message, 'VALIDATION'), fields ? { fields } : {});
@@ -181,13 +182,34 @@ export function suggestedOrderQty({ reorderLevel = 0, usable = 0, onOrder = 0 })
  * Medicines in use at or below their reorder level (stock that has not expired), each with what is already on an open
  * order, a suggested quantity and the supplier it was last bought from.
  */
-export async function suggestFromLowStock(req) {
+export async function suggestFromLowStock(req, { mode = 'level' } = {}) {
   const tenantId = req.tenantId;
   const today = hospitalToday(req.now);
   const meds = await Medicine.find({ tenantId, active: true }).sort({ name: 1 }).lean();
-  const usableRows = await StockBatch.aggregate([{ $match: { tenantId, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) } } }, { $group: { _id: '$medicineId', qty: { $sum: '$qtyLeft' } } }]);
+  // PH17: by use – what each medicine used per day in stock over the look-back days
+  const settings = mode === 'use' ? await settingsOf(tenantId) : null;
+  const use = new Map();
+  if (mode === 'use') {
+    const to = req.now;
+    const from = new Date(to.getTime() - settings.reorderLookBackDays * 86_400_000);
+    const moves = await StockMove.find({ tenantId, at: { $lt: to } }, { medicineId: 1, kind: 1, qty: 1, balanceAfter: 1, at: 1 }).sort({ at: 1, _id: 1 }).lean();
+    const byMed = new Map();
+    for (const m of moves) {
+      const k = String(m.medicineId);
+      if (!byMed.has(k)) byMed.set(k, []);
+      byMed.get(k).push(m);
+    }
+    for (const [k, list] of byMed) use.set(k, useOf(list, from, to));
+  }
+  // PH5: held stock is not usable stock
+  const usableRows = await StockBatch.aggregate([{ $match: { tenantId, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null } }, { $group: { _id: '$medicineId', qty: { $sum: '$qtyLeft' } } }]);
   const usable = new Map(usableRows.map((r) => [String(r._id), r.qty]));
-  const low = meds.filter((m) => (usable.get(String(m._id)) ?? 0) <= (m.reorderLevel ?? 0));
+  const byUse = (m) => {
+    const u = use.get(String(m._id));
+    return u && u.perDay > 0 ? Math.ceil(u.perDay * (settings.reorderLeadDays + settings.reorderCoverDays)) : 0;
+  };
+  // By level: at or below the reorder level. By use: also what will not last the supplier's days and the cover.
+  const low = meds.filter((m) => (usable.get(String(m._id)) ?? 0) <= (m.reorderLevel ?? 0) || (mode === 'use' && (usable.get(String(m._id)) ?? 0) < byUse(m)));
   if (!low.length) return [];
 
   const open = await PurchaseOrder.find({ tenantId, status: { $in: OPEN }, closed: null }, { number: 1, lines: 1 }).lean();
@@ -209,7 +231,14 @@ export async function suggestFromLowStock(req) {
     { $group: { _id: '$medicineId', supplierId: { $first: '$supplierId' } } },
   ]);
   const lastSupplier = new Map(lastRows.map((r) => [String(r._id), String(r.supplierId)]));
+  // PH17: the preferred supplier first, else the supplier of the newest batch
+  for (const m of low) if (m.preferredSupplierId) lastSupplier.set(String(m._id), String(m.preferredSupplierId));
   const suppliers = new Map((await Supplier.find({ tenantId, _id: { $in: [...new Set(lastSupplier.values())] } }, { name: 1 }).lean()).map((s) => [String(s._id), s.name]));
+  // PH17: the last price paid (per pack as on the bill)
+  const lastPrice = new Map();
+  for (const p of await Purchase.find({ tenantId, status: 'active', 'lines.medicineId': { $in: low.map((m) => m._id) } }, { invoiceDate: 1, lines: 1 }).sort({ invoiceDate: 1, createdAt: 1 }).lean()) {
+    for (const l of p.lines) lastPrice.set(String(l.medicineId), { ratePaise: l.pack?.ratePaise ?? l.ratePaise, conv: l.pack?.conv ?? 1, date: isoDay(p.invoiceDate) });
+  }
 
   return low.map((m) => {
     const key = String(m._id);
@@ -222,8 +251,13 @@ export async function suggestFromLowStock(req) {
       reorderLevel: m.reorderLevel ?? 0,
       onOrder: ordered.qty,
       onOrders: ordered.orders,
-      suggestedQty: suggestedOrderQty({ reorderLevel: m.reorderLevel ?? 0, usable: have, onOrder: ordered.qty }),
-      lastSupplier: supplierId && suppliers.has(supplierId) ? { id: supplierId, name: suppliers.get(supplierId) } : null,
+      suggestedQty:
+        mode === 'use'
+          ? orderByUse({ perDay: use.get(key)?.perDay ?? 0, leadDays: settings.reorderLeadDays, coverDays: settings.reorderCoverDays, usable: have, onOrder: ordered.qty, byLevel: have <= (m.reorderLevel ?? 0) ? suggestedOrderQty({ reorderLevel: m.reorderLevel ?? 0, usable: have, onOrder: ordered.qty }) : 0 })
+          : suggestedOrderQty({ reorderLevel: m.reorderLevel ?? 0, usable: have, onOrder: ordered.qty }),
+      ...(mode === 'use' ? { perDay: Math.round((use.get(key)?.perDay ?? 0) * 10) / 10, daysInStock: use.get(key)?.daysInStock ?? 0 } : {}),
+      lastPrice: lastPrice.get(key) ?? null,
+      lastSupplier: supplierId && suppliers.has(supplierId) ? { id: supplierId, name: suppliers.get(supplierId), preferred: Boolean(m.preferredSupplierId) } : null,
     };
   });
 }

@@ -330,6 +330,8 @@ const IncidentsPage = screen(loadCrs6, 'IncidentsPage');
 const IncidentPage = screen(loadCrs6, 'IncidentPage');
 const loadCrs7 = () => import('./pages/formulary/FormularyPage.jsx');
 const FormularyPage = screen(loadCrs7, 'FormularyPage');
+const loadMarks = () => import('./pages/pharmacy/MedicineMarks.jsx');
+const MedicineMarksPage = screen(loadMarks, 'MedicineMarksPage');
 const loadCrs16 = () => import('./pages/theatre/TheatreListPage.jsx');
 const TheatreListPage = screen(loadCrs16, 'TheatreListPage');
 const loadCrs16b = () => import('./pages/theatre/TheatreCasePage.jsx');
@@ -342,6 +344,9 @@ const WaitingTimesPage = screen(loadWaiting, 'WaitingTimesPage');
 // Lab times (P9 – docs/LAB_BUILD_NOTE.md): the same audiences as Waiting times
 const loadLabTimes = () => import('./pages/analytics/LabTimesPage.jsx');
 const LabTimesPage = screen(loadLabTimes, 'LabTimesPage');
+// PH24: the super admin's pharmacy sales by doctor (numbers only)
+const loadPharmDoctors = () => import('./pages/pharmacy/SalesByDoctor.jsx');
+const PlatformPharmacyDoctorsPage = screen(loadPharmDoctors, 'PlatformPharmacyDoctorsPage');
 const load105 = () => import('./pages/analytics/AnalyticsPage.jsx');
 const AnalyticsPage = screen(load105, 'AnalyticsPage');
 const load106 = () => import('./pages/analytics/AnalyticsSectionRoute.jsx');
@@ -455,6 +460,7 @@ export function App() {
                 <Route path="analytics" element={<AnalyticsPage key="overview" section="overview" platform />} />
                 <Route path="analytics/waiting" element={<WaitingTimesPage platform />} />
                 <Route path="analytics/lab-times" element={<LabTimesPage platform />} />
+                <Route path="analytics/pharmacy-doctors" element={<PlatformPharmacyDoctorsPage />} />
                 <Route path="analytics/:section" element={<AnalyticsSectionRoute platform />} />
 
                 {/* One page; the old addresses of its event groups open it with that Type chosen */}
@@ -568,6 +574,10 @@ export function App() {
                 </Route>
                 <Route path="formulary" element={<RequireTenantRole roles={FORMULARY_ROLES} message="The formulary is for doctors, RMOs, nurses and the pharmacist." />}>
                   <Route index element={<FormularyPage />} />
+                  {/* PH7: high-alert and look-alike marks – a doctor and the pharmacist together */}
+                  <Route path="marks" element={<RequireTenantRole roles={['doctor', 'pharmacist']} message="Medicine marks are written by doctors and the pharmacist." />}>
+                    <Route index element={<MedicineMarksPage />} />
+                  </Route>
                 </Route>
                 <Route path="privileges" element={<RequireTenantRole roles={PRIVILEGE_ROLES} message="The privileges register is for the hospital admin, the quality lead, doctors, RMOs and nurses." />}>
                   <Route index element={<PrivilegesPage />} />

@@ -1,5 +1,58 @@
 # Progress
 
+## Pharmacy Stage C: money and figures (11 Nov 2026, branch `pharm-stage-c`)
+Stage C of `docs/PHARMACY_BUILD_NOTE.md` (PH11, PH15, PH24, PH17, PH16), with the owner's approval of 11 Nov 2026.
+- **PH11 What each supplier is owed:** a supplier's page shows its bills, returns and payments, what is owed and what
+  is overdue after its credit days. **Pay** enters a payment (cash, cheque, bank, UPI); it settles the oldest bills
+  first unless bills are named. A wrong payment is cancelled with a reason. Reports → **Supplier dues** lists all.
+- **PH15 Reports:** Reports → **Figures** – profit by medicine, slow stock (no sale for 90 days), value lost to expiry,
+  days out of stock, prescriptions filled, H1 use by month. Reports → **Day closing** – cash expected against cash
+  counted, once a day, a difference needs a note. A write-off now says expired, damaged or other.
+- **PH24 Sales by doctor:** Reports → **Sales by doctor**, for the pharmacist only (not the hospital admin, not the
+  doctors). The super admin sees Analytics → Pharmacy by doctor: counts and amounts per hospital, a doctor shown only
+  from 5 invoices.
+- **PH17 Order by use:** Orders → **Suggest by use** – what will not last the supplier's days plus the days to cover at
+  the last weeks' use (days out of stock not counted). Pharmacy settings set the three numbers (30 / 3 / 15 days). A
+  medicine can name the supplier it is usually ordered from. The purchase line shows the last price paid.
+- **PH16 Bill from a file:** New purchase → **Bill from a file** – the supplier's CSV or Excel bill fills the items.
+  The columns and the supplier's item names matched to our medicines are remembered per supplier. Every line is still
+  opened and checked; saving is the usual purchase entry. A medicine not on the list is never made from the file.
+- **Not built:** PH26 (AI forecast) – it is to be built only if it beats PH17 on the hospital's own past sales, and
+  there are none yet. Purchases and supplier payments to Tally are still not built.
+- **How to check (fake data only):** Suppliers → a supplier → set credit days 15 → add two bills → Pay ₹500 – the oldest
+  bill goes down. Orders → Suggest by use after some sales. New purchase → choose the supplier → Bill from a file with
+  a CSV having Item, Batch, Exp, Qty, Rate columns.
+
+## Pharmacy Stage B: safety at the counter (11 Nov 2026, branch `pharm-stage-b`)
+Stage B of `docs/PHARMACY_BUILD_NOTE.md` (PH6, PH5, PH7, PH10), with the owner's approval of 11 Nov 2026 to build the
+remaining development.
+- **PH6 Already sold:** each prescription line at the counter says "Given: 10 on 2026-11-03 (PH-000412). Still to
+  give: 10." The quantity offered is what is still to give. A line given in full is sold again only with a reason –
+  for every medicine (owner) – kept on the invoice; the audit log counts the repeats. Sales from before today are
+  listed with the prescription, never guessed onto a line.
+- **PH5 Batch on hold:** Stock → a medicine → **Put on hold** (recalled / quality doubt / other). Every batch with that
+  number of the medicine is held: not sold, not issued, not "in stock" for the doctor, not counted for reordering; a
+  patient's return of it goes back onto the hold. **Who received it** lists every sale and issue net of returns
+  (date, invoice, patient and phone, or the walk-in's name) and prints. **Release** with a reason. No notice to her
+  doctor (owner).
+- **PH7 Warnings:** the counter shows her **allergy line** (owner's decision 2 – that field only) and warns when a
+  medicine matches it (no reason asked – owner); a walk-in shows "ask about allergies". **Formulary → Medicine marks**:
+  "High alert" and "looks or sounds like", in force only once a doctor and the pharmacist – two people – have both
+  confirmed; any change clears it; shown at the counter. Writing off a narcotic or Schedule X medicine needs a witness
+  who signs in, as a count does.
+- **PH10 Substitutes:** a prescribed line has **Other brands** – the same generic, strength and form in stock (never a
+  combination). Choosing one asks which doctor agreed; the bill prints "Given in place of …, agreed by …". A medicine
+  on the doctors' **Never substitute** list (Formulary → Medicine marks; doctors write it) gets no other brand, even
+  from a forged request. A generic prescription takes any brand without a question.
+- **Content each hospital writes, all empty:** the never-substitute list (doctors), the high-alert and look-alike
+  marks (a doctor and the pharmacist).
+- **How to check (fake data only):** prescribe Folic acid 5 mg 1-0-1 for 10 days; at the counter "Use this
+  prescription", sell 10 – the card says "Still to give: 10"; sell 10 more, then a third time asks why. Stock → the
+  medicine → Put on hold → the counter no longer offers that batch; Who received it lists the sales. As a doctor add
+  allergies "Penicillin" to a patient and prescribe Amoxicillin – the counter shows the allergy and a warning. Formulary
+  → Medicine marks: the pharmacist marks a medicine High alert, a doctor confirms – the counter shows "High alert".
+  Prescribe a brand, choose Other brands, pick the other brand and the doctor – the bill prints it.
+
 ## Bill services like the old hospital software (11 Nov 2026, branch `service-bill`)
 From photos of the hospital's old billing screens and two IP final bills (only service names and rates were taken; the
 photos showed real patients and were not kept).

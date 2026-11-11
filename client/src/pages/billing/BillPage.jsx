@@ -182,16 +182,38 @@ export function DiscountDialog({ bill, authorities = null, title = 'Discount', o
 
 export function ReasonDialog({ id, title, text, label, confirmLabel, path, message, onClose, onDone }) {
   const [reason, setReason] = useState('');
+  const [missing, setMissing] = useState(false);
   const s = useSend(onDone);
+  // The button always answers (11 Nov 2026): without a reason it says so, instead of a click that does nothing
+  const confirm = () => {
+    if (reason.trim().length < 3) {
+      setMissing(true);
+      document.getElementById(`${id}-reason`)?.focus();
+      return;
+    }
+    s.send(path, { reason: reason.trim() }, () => message);
+  };
   return (
     <Modal id={id} title={title} onClose={onClose}>
       {text && <p>{text}</p>}
       <Alert type="error">{s.error}</Alert>
-      <Field label={label} id={`${id}-reason`} error={s.fields.reason} hint={NO_SEX_WORDS_HINT}>
-        <input id={`${id}-reason`} value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} autoFocus />
+      <Field label={label} id={`${id}-reason`} error={s.fields.reason || (missing && reason.trim().length < 3 ? 'Write the reason first (at least 3 letters).' : null)} hint={NO_SEX_WORDS_HINT}>
+        <input
+          id={`${id}-reason`}
+          value={reason}
+          maxLength={200}
+          onChange={(e) => setReason(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              confirm();
+            }
+          }}
+          autoFocus
+        />
       </Field>
       <div className="row">
-        <button type="button" className="btn btn-danger" disabled={reason.trim().length < 3 || s.busy} onClick={() => s.send(path, { reason: reason.trim() }, () => message)}>
+        <button type="button" className="btn btn-danger" disabled={s.busy} onClick={confirm}>
           {s.busy ? 'Saving…' : confirmLabel}
         </button>
         <button type="button" className="btn btn-link" onClick={onClose}>
@@ -894,7 +916,7 @@ export function BillPage() {
                 <li key={l.id}>
                   <s>{l.name}</s> {rupees(l.amountPaise)}{' '}
                   <span className="muted">
-                    – {l.removed.reason} ({l.removed.byName}, {formatDateTime(l.removed.at)})
+                    – {l.removed.reason ? `${l.removed.reason} ` : ''}({l.removed.byName}, {formatDateTime(l.removed.at)})
                   </span>
                 </li>
               ))}
@@ -932,19 +954,8 @@ export function BillPage() {
         />
       )}
       {dialog === 'removeTicked' && tickedLines.length > 0 && <RemoveTickedDialog bill={b} lines={tickedLines} onClose={() => setDialog(null)} onDone={done} />}
-      {dialog?.remove && (
-        <ReasonDialog
-          id="bill-remove"
-          title={`Remove "${dialog.remove.name}"`}
-          text={b.paid > 0 ? 'If it was already paid for, the bill will show the money to give back.' : null}
-          label="Why"
-          confirmLabel="Remove it"
-          path={`/billing/bills/${b.id}/lines/${dialog.remove.id}/remove`}
-          message={`Removed: ${dialog.remove.name}.`}
-          onClose={() => setDialog(null)}
-          onDone={done}
-        />
-      )}
+      {/* Remove a service: one confirm click, no reason asked (11 Nov 2026) */}
+      {dialog?.remove && <RemoveTickedDialog bill={b} lines={[dialog.remove]} onClose={() => setDialog(null)} onDone={done} />}
       {printing && !printing.claim && <BillPrint bill={b} receipt={printing.receipt ?? null} notes={res.data?.billNotes ?? ''} onClose={() => setPrinting(null)} />}
       {printing?.claim && <ClaimFormPrint bill={b} layout={printing.claim} onClose={() => setPrinting(null)} />}
     </>

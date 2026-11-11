@@ -16,7 +16,7 @@ import { Admission } from '../models/Admission.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
 import { Patient } from '../models/Patient.js';
-import { Medicine, PharmacyInvoice, Purchase, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
+import { Medicine, NoSubstitute, PharmacyInvoice, Purchase, StockBatch, StockMove, Supplier } from '../models/Pharmacy.js';
 import { User } from '../models/User.js';
 import { Visit } from '../models/Visit.js';
 import { refuseNewOnDuplicate } from '../patients/duplicateRules.js';
@@ -24,8 +24,11 @@ import { refuseNewOnClosed } from '../patients/deathRules.js';
 import { earlierRecordIds } from '../patients/duplicateService.js';
 import { HttpError } from '../utils/httpError.js';
 import { buyerState } from './einvoice.js';
-import { lineMoney, partOf, sum, grossOf } from './gst.js';
+import { lineMoney, partOf, sum, grossOf, suggestedQty } from './gst.js';
 import { CONTROLLED, NEEDS_PRESCRIPTION } from './pharmacyRules.js';
+import { givenFromPrescriptions, givenWords } from './rxGiven.js';
+import { neverSubstitute, substituteFor } from './substitutes.js';
+import { Membership } from '../models/Membership.js';
 
 const padded = (prefix, n) => `${prefix}-${String(n).padStart(6, '0')}`;
 const rupeesOf = (paise) => `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -38,6 +41,13 @@ export const endOfMonth = (ym) => {
   return new Date(Date.UTC(y, m, 0));
 };
 export const isExpired = (batch, today) => utcDay(batch.expiry) < utcDay(today);
+
+/**
+ * PH5 (docs/PHARMACY_BUILD_NOTE.md): the stock that may be sold, issued or counted as "in stock" – some left, not
+ * expired, not on hold. Every usable-stock query uses this one filter.
+ */
+export const usableMatch = (today) => ({ qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) }, hold: null });
+export const HOLD_REASONS = { recalled: 'Recalled', quality: 'Quality doubt', other: 'Other' };
 
 /** Units in stock of each medicine (all batches, expired or not): Map "<medicineId>" -> qty. */
 export async function stockOf(tenantId, medicineIds = null) {
@@ -147,10 +157,11 @@ async function allocate(req, medicine, qty, batchId, today) {
     const b = await StockBatch.findOne({ tenantId: req.tenantId, _id: batchId, medicineId: medicine._id }).lean();
     if (!b) throw bad(`${medicine.name}: choose a batch of this medicine.`);
     if (isExpired(b, today)) throw conflict(`${medicine.name}, batch ${b.batch}, has expired and cannot be sold.`, 'EXPIRED');
+    if (b.hold) throw conflict(`${medicine.name}, batch ${b.batch}, is on hold (${HOLD_REASONS[b.hold.reason] ?? b.hold.reason}) and cannot be sold or issued.`, 'ON_HOLD');
     if (b.qtyLeft < qty) throw conflict(`${medicine.name}, batch ${b.batch}: only ${b.qtyLeft} left.`, 'OUT_OF_STOCK');
     return [{ batch: b, qty }];
   }
-  const batches = await StockBatch.find({ tenantId: req.tenantId, medicineId: medicine._id, qtyLeft: { $gt: 0 }, expiry: { $gte: utcDay(today) } }).sort({ expiry: 1, createdAt: 1 }).lean();
+  const batches = await StockBatch.find({ tenantId: req.tenantId, medicineId: medicine._id, ...usableMatch(today) }).sort({ expiry: 1, createdAt: 1 }).lean();
   const out = [];
   let need = qty;
   for (const b of batches) {
@@ -159,7 +170,7 @@ async function allocate(req, medicine, qty, batchId, today) {
     out.push({ batch: b, qty: take });
     need -= take;
   }
-  if (need > 0) throw conflict(`${medicine.name}: only ${qty - need} in stock (not expired).`, 'OUT_OF_STOCK');
+  if (need > 0) throw conflict(`${medicine.name}: only ${qty - need} in stock (not expired, not on hold).`, 'OUT_OF_STOCK');
   return out;
 }
 
@@ -195,6 +206,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
   // The prescription: a Perinexa one (its doctor and registration number), or an outside one seen by the pharmacist.
   let doctor = body.doctor?.name ? { name: body.doctor.name, reg: body.doctor.reg ?? '' } : null;
   let visitId = null;
+  let rxItems = null; // PH6: the prescription's lines (by id)
   if (body.visitId) {
     if (!patient) throw bad('A Perinexa prescription belongs to a registered patient: choose her first.');
     // Her own prescription – also one written on a record that was marked as a duplicate of hers (nothing is moved:
@@ -202,8 +214,9 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     const visit = await Visit.findOne({ tenantId, _id: body.visitId, patientId: { $in: [patient._id, ...(await earlierRecordIds(tenantId, patient._id))] }, status: 'active' }, { prescription: 1 }).lean();
     if (!visit) throw bad('That prescription is not this patient’s.');
     visitId = visit._id;
+    rxItems = new Map((visit.prescription?.items ?? []).map((it) => [String(it._id), it]));
     const by = visit.prescription?.by ? await User.findById(visit.prescription.by, { name: 1, professional: 1 }).lean() : null;
-    if (by) doctor = { name: by.name, reg: by.professional?.registrationNumber ?? '' };
+    if (by) doctor = { name: by.name, reg: by.professional?.registrationNumber ?? '', userId: by._id }; // PH24: the doctor's id
   }
 
   const ids = [...new Set(body.lines.map((l) => String(l.medicineId)))];
@@ -226,6 +239,51 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
   });
   if (Object.keys(fields).length) throw bad(Object.values(fields)[0], fields);
 
+  // PH6: a line sold from a prescription line keeps the link; a line already given in full is sold again only with a
+  // reason – for every medicine (owner, 10 Nov 2026), whatever its schedule
+  const linked = body.lines.filter((l) => l.rxItemId);
+  const substitutions = new Map(); // PH10: line index → { prescribed, agreedById, agreedByName, at }
+  if (linked.length) {
+    if (!rxItems) throw bad('A prescription line was sent without its prescription: choose her prescription again.');
+    for (const l of linked) if (!rxItems.has(String(l.rxItemId))) throw bad('A line is not on this prescription: choose her prescription again.');
+    // PH10: another brand than the one the doctor wrote – only with a doctor's yes, never for the doctors' list
+    const stockList = await Medicine.find({ tenantId, active: true }, { name: 1, generic: 1, strength: 1, form: 1 }).lean();
+    const never = new Set((await NoSubstitute.find({ tenantId, active: true }, { key: 1 }).lean()).map((x) => x.key));
+    for (const [i, l] of body.lines.entries()) {
+      if (!l.rxItemId) continue;
+      const item = rxItems.get(String(l.rxItemId));
+      const chosen = meds.get(String(l.medicineId));
+      const { substitute, prescribed } = substituteFor(item, chosen, stockList);
+      if (!substitute) continue;
+      if (neverSubstitute(never, item, [prescribed, chosen])) throw Object.assign(conflict(`The doctors do not allow another brand for ${item.drug}: give the brand prescribed, or ask the doctor to change the prescription.`, 'NO_SUBSTITUTE'), { details: { rxItemId: String(l.rxItemId) } });
+      const s = l.substitution;
+      if (!s || (!s.agreedById && (s.agreedByName ?? '').trim().length < 3)) {
+        throw Object.assign(conflict(`${chosen.name} is another brand than ${item.drug}, which the doctor wrote: write which doctor agreed.`, 'SUBSTITUTE_NEEDS_DOCTOR'), { details: { rxItemId: String(l.rxItemId), prescribed: item.drug } });
+      }
+      let agreedByName = (s.agreedByName ?? '').trim();
+      if (s.agreedById) {
+        const member = await Membership.findOne({ tenantId, userId: s.agreedById, isActive: true, roles: 'doctor' }, { _id: 1 }).lean();
+        const user = member ? await User.findById(s.agreedById, { name: 1 }).lean() : null;
+        if (!user) throw bad('Choose a doctor of this hospital, or type the outside doctor’s name.');
+        agreedByName = user.name;
+      }
+      substitutions.set(i, { prescribed: item.drug, agreedById: s.agreedById ?? null, agreedByName, at: req.now });
+    }
+    const given = await givenFromPrescriptions(tenantId, [visitId]);
+    const repeats = [];
+    for (const l of linked) {
+      const item = rxItems.get(String(l.rxItemId));
+      const sold = given.byItem.get(String(l.rxItemId)) ?? [];
+      const words = givenWords(sold, suggestedQty(item));
+      if (words.givenInFull && (l.repeatReason ?? '').trim().length < 3) repeats.push({ rxItemId: String(l.rxItemId), drug: item.drug, sold });
+    }
+    if (repeats.length) {
+      const first = repeats[0];
+      const when = first.sold.map((s) => `${s.qty} on ${s.date} (${s.number})`).join(', ');
+      throw Object.assign(conflict(`${first.drug} was already given: ${when}. Write why it is sold again.`, 'ALREADY_SOLD'), { details: { repeats } });
+    }
+  }
+
   // Take the stock (batch by batch); if any line can't be had, what was taken goes back.
   const number = dryRun ? '' : padded('PH', await nextNumber(tenantId, 'pharmacy-invoice'));
   const taken = [];
@@ -241,7 +299,7 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
     doctorReg: doctor?.reg ?? '',
   };
   try {
-    for (const l of body.lines) {
+    for (const [lineNo, l] of body.lines.entries()) {
       const m = meds.get(String(l.medicineId));
       for (const part of await allocate(req, m, l.qty, l.batchId, today)) {
         if (!dryRun) {
@@ -262,6 +320,10 @@ export async function createInvoice(req, body, { dryRun = false } = {}) {
           mrpPaise: part.batch.mrpPaise,
           grossPaise: grossOf(part.batch, part.qty),
           dose: l.dose ?? '',
+          rxItemId: l.rxItemId ?? null,
+          repeatReason: l.rxItemId ? (l.repeatReason ?? '').trim() : '',
+          substitution: substitutions.get(lineNo) ?? null,
+          costPaise: part.batch.costPaise ?? null, // PH15
           ...lineMoney({ qty: part.qty, mrpPaise: part.batch.mrpPaise, gstRate: m.gstRate, discountPercent: pct, grossPaise: grossOf(part.batch, part.qty) }),
         });
       }
@@ -358,9 +420,9 @@ export async function returnItems(req, invoice, items, reason, refund) {
   return { invoice, number, credit };
 }
 
-/** Writes off stock (expired, damaged, lost) with a reason. */
-export async function writeOff(req, batch, qty, reason) {
-  return moveStock(req, batch, -qty, { kind: 'writeoff', reason });
+/** Writes off stock (expired, damaged, lost) with a reason (and the witness of a controlled medicine – PH7). */
+export async function writeOff(req, batch, qty, reason, witness = '', writeoffKind = '') {
+  return moveStock(req, batch, -qty, { kind: 'writeoff', reason, witness: witness ?? '', writeoffKind });
 }
 
 /** Sets a batch to the counted quantity, with a reason (and a witness for Schedule X and narcotic medicines). */
@@ -423,6 +485,8 @@ export function invoiceView(inv, { patient = null, today = new Date() } = {}) {
       canReturn: (l.returnedQty ?? 0) < l.qty && !isExpired(l, today),
       mrpPaise: l.mrpPaise,
       dose: l.dose ?? '',
+      // PH10: given in place of the brand the doctor wrote
+      substitution: l.substitution ? { prescribed: l.substitution.prescribed, agreedByName: l.substitution.agreedByName } : null,
       amountPaise: l.amountPaise,
       taxablePaise: l.taxablePaise,
       cgstPaise: l.cgstPaise,

@@ -7,6 +7,9 @@ export const PHARMACY_ROLES = ['pharmacist', 'admin'];
 export const PHARMACY_DESK_ROLES = ['pharmacist']; // sells, issues, receives, returns, writes off, counts
 export const PHARMACY_REPORT_ROLES = ['pharmacist', 'admin'];
 export const PHARMACY_EXPORT_ROLES = ['admin'];
+// PH24 (owner's decision 5): pharmacy sales by doctor – the pharmacist only in a hospital (never the hospital admin);
+// the super admin sees numbers on the platform side. The website keeps a copy (pharmacyFormat.js).
+export const PHARMACY_DOCTOR_SALES_ROLES = ['pharmacist'];
 
 export const FORMS = ['tablet', 'capsule', 'syrup', 'suspension', 'drops', 'injection', 'infusion', 'cream', 'ointment', 'gel', 'pessary', 'suppository', 'inhaler', 'sachet', 'other'];
 // GST rates since 22 September 2025 (56th GST Council; Notifications 9/2025 and 10/2025 – Central Tax (Rate)): the

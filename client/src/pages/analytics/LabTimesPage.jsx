@@ -67,7 +67,7 @@ export function LabTimesPage({ platform = false }) {
         title="Lab times"
         documentTitle="Analytics – lab times"
         help="How long lab orders take, from the times the computer notes as staff work. Stages only – never a person."
-        tabs={analyticsTabs(base, '', platform ? { waiting: true } : { ask: true, report: doctor, waiting: true })}
+        tabs={analyticsTabs(base, '', platform ? { waiting: true, pharmacyDoctors: true } : { ask: true, report: doctor, waiting: true })}
       />
       <div className="pf-content an-page">
         <Alert type="error">{error}</Alert>
