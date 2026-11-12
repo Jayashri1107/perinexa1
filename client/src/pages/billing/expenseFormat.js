@@ -183,3 +183,32 @@ export function expenseSheet(list = []) {
   groups.sort((a, b) => rank(a.mode) - rank(b.mode));
   return { groups, totalPaise: groups.reduce((s, g) => s + g.totalPaise, 0) };
 }
+
+/** Day arithmetic on 'YYYY-MM-DD' (no time zone): addDays('2026-11-01', -1) → '2026-10-31'. */
+const addDays = (day, n) => {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * The quick periods on the Daily Expenses page (12 Nov 2026): today, yesterday, this week (from Monday) and this month,
+ * each { key, label, from, to }. today: 'YYYY-MM-DD' in the hospital.
+ */
+export function quickPeriods(today) {
+  const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday 0
+  return [
+    { key: 'today', label: 'Today', from: today, to: today },
+    { key: 'yesterday', label: 'Yesterday', from: addDays(today, -1), to: addDays(today, -1) },
+    { key: 'week', label: 'This week', from: addDays(today, -weekday), to: today },
+    { key: 'month', label: 'This month', from: `${today.slice(0, 8)}01`, to: today },
+  ];
+}
+
+/** The figures over the list: the total, how many, cash and the rest, how many cancelled (amounts in paise). */
+export function expenseFigures(list = []) {
+  const kept = list.filter((e) => !e.cancelled);
+  const cashPaise = kept.filter((e) => e.mode === 'cash').reduce((s, e) => s + e.amountPaise, 0);
+  const totalPaise = expensesTotal(kept);
+  return { totalPaise, count: kept.length, cashPaise, otherPaise: totalPaise - cashPaise, cancelled: list.length - kept.length };
+}
