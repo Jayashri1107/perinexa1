@@ -18,6 +18,7 @@ import { ApiImage } from '../../components/ApiImage.jsx';
 import { MachinePanel, machineImageUrl } from './MachinePanel.jsx';
 import { USE_WORDS } from './machineTable.js';
 import { GrowthAcrossScans } from './GrowthAcrossScans.jsx';
+import { DopplerMarks } from './ReferenceMarks.jsx';
 
 // USG and radiology (Lab version 2 part 8 – docs/LAB_V2_PLAN.md): the worklist (to schedule, scheduled, to report,
 // signed), one study (schedule, done, the report from a DRAFT template, sign, print), and a patient's scans with the
@@ -555,7 +556,7 @@ export function MachineReadingsTable({ machine, className = 'ptable pdoc-table' 
 /** What the report says: the patient, the values, the machine's readings, findings, impression, the chosen pictures. */
 const GROWTH_STUDIES = ['usg_anomaly', 'usg_growth', 'usg_twins'];
 
-function ReportBody({ s, template, growth = null }) {
+function ReportBody({ s, template, growth = null, references = null }) {
   return (
     <>
       <h1 className="pdoc-title">{s.studyName}</h1>
@@ -593,7 +594,8 @@ function ReportBody({ s, template, growth = null }) {
         </div>
       )}
       {/* The growth across her scans, printed with the report (docs/USG_APPS_REVIEW.md U1) */}
-      {GROWTH_STUDIES.includes(s.study) && growth?.length > 0 && <GrowthAcrossScans growth={growth} eddByDates={s.patient?.eddByDates ?? null} />}
+      {GROWTH_STUDIES.includes(s.study) && growth?.length > 0 && <GrowthAcrossScans growth={growth} eddByDates={s.patient?.eddByDates ?? null} references={references} />}
+      {s.study === 'usg_doppler' && <DopplerMarks values={s.report?.values ?? {}} on={s.done?.at ?? s.scheduledFor ?? null} eddByDates={s.patient?.eddByDates ?? null} references={references} />}
       <p className="pdoc-small">The sex of the fetus is not determined or disclosed (PCPNDT Act, 1994).</p>
     </>
   );
@@ -641,7 +643,7 @@ function UrgentFindings({ s, onSaved, onError }) {
   );
 }
 
-function ReportPrint({ s, template, growth = null, onClose, autoPrint = false }) {
+function ReportPrint({ s, template, growth = null, references = null, onClose, autoPrint = false }) {
   const lh = useFetch('/tenant/settings/letterhead');
   const record = () => api(`/imaging/${s.id}/printed`, { method: 'POST' });
   return (
@@ -651,7 +653,7 @@ function ReportPrint({ s, template, growth = null, onClose, autoPrint = false })
       ) : (
         <PrintDocument draft="DRAFT report template – not yet approved by the hospital's doctor.">
           {lh.data?.letterhead && <Letterhead letterhead={lh.data.letterhead} />}
-          <ReportBody s={s} template={template} growth={growth} />
+          <ReportBody s={s} template={template} growth={growth} references={references} />
           <div className="pdoc-sigs">
             <div className="pdoc-sig">
               <h2 className="pdoc-sig-title">Signed by</h2>
@@ -878,7 +880,7 @@ export function ImagingStudyPage() {
             <h2 id="img-review-title">Review the final report</h2>
             <p className="hint">This is the report as it will print. Finalising signs it; after that, a change needs a reason.</p>
             <div className="img-review-sheet">
-              <ReportBody s={s} template={data?.template} growth={data?.growth} />
+              <ReportBody s={s} template={data?.template} growth={data?.growth} references={data?.references} />
             </div>
             <div className="row">
               {a.canSign ? (
@@ -921,7 +923,12 @@ export function ImagingStudyPage() {
         )}
         {!reviewing && GROWTH_STUDIES.includes(s.study) && data?.growth?.length > 0 && (
           <section className="card">
-            <GrowthAcrossScans growth={data.growth} eddByDates={s.patient?.eddByDates ?? null} />
+            <GrowthAcrossScans growth={data.growth} eddByDates={s.patient?.eddByDates ?? null} references={data.references} />
+          </section>
+        )}
+        {!reviewing && s.study === 'usg_doppler' && s.report?.values && (
+          <section className="card">
+            <DopplerMarks values={s.report.values} on={s.done?.at ?? s.scheduledFor ?? null} eddByDates={s.patient?.eddByDates ?? null} references={data?.references} />
           </section>
         )}
         </div>
@@ -930,7 +937,7 @@ export function ImagingStudyPage() {
         </aside>
         </div>
       </div>
-      {printing && <ReportPrint s={s} template={data?.template} growth={data?.growth} autoPrint={printing === 'auto'} onClose={() => setPrinting(false)} />}
+      {printing && <ReportPrint s={s} template={data?.template} growth={data?.growth} references={data?.references} autoPrint={printing === 'auto'} onClose={() => setPrinting(false)} />}
     </>
   );
 }

@@ -41,6 +41,15 @@ export const STUDIES = [
     fields: [choice('presentation', 'Presentation', PRESENTATION), num('bpd', 'BPD', 'mm'), num('hc', 'Head circumference', 'mm'), num('ac', 'Abdominal circumference', 'mm'), num('fl', 'Femur length', 'mm'), num('efw', 'Estimated fetal weight', 'g'), text('efwCentile', 'EFW centile'), num('afi', 'Amniotic fluid index (AFI)', 'cm'), num('dvp', 'Deepest vertical pocket', 'cm'), choice('placenta', 'Placenta', PLACENTA), text('doppler', 'Doppler (UA PI, MCA PI, CPR)'), num('fhr', 'Fetal heart rate', 'bpm')],
   },
   {
+    // Fetal Doppler (owner's go-ahead, 12 Nov 2026 – docs/USG_APPS_REVIEW.md U3): each index as a number; the CPR is
+    // worked out (MCA PI ÷ UA PI). Each value is marked against the hospital's approved reference table for her weeks
+    // (Imaging → Reference tables) – none until a doctor approves one. DRAFT.
+    key: 'usg_doppler',
+    modality: 'usg',
+    name: 'USG – fetal Doppler',
+    fields: [num('uaPi', 'Umbilical artery PI', ''), choice('uaEdf', 'Umbilical artery end-diastolic flow', ['Present', 'Absent', 'Reversed']), num('mcaPi', 'Middle cerebral artery PI', ''), num('mcaPsv', 'MCA peak systolic velocity', 'cm/s'), num('utaPi', 'Uterine arteries mean PI', ''), choice('utaNotch', 'Uterine artery notching', ['None', 'One side', 'Both sides']), num('dvPi', 'Ductus venosus PIV', ''), choice('dvAwave', 'Ductus venosus a-wave', ['Positive', 'Absent', 'Reversed']), num('efw', 'Estimated fetal weight', 'g'), text('doppler', 'Other Doppler findings')],
+  },
+  {
     // Twins (owner's go-ahead, 10 Nov 2026 – docs/USG_APPS_REVIEW.md U4): chorionicity, each twin by itself, and the
     // weight difference worked out from the two estimated weights (client/src/pages/imaging/usgCalc.js). DRAFT.
     key: 'usg_twins',

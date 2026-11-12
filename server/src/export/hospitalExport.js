@@ -27,6 +27,7 @@
 //  - If anything goes wrong (or the operator stops it), what was written is removed again.
 // There is no web endpoint for any of this, on purpose.
 
+import { UsgReference } from '../models/UsgReference.js';
 import { mkdir, open, readdir, realpath, rm, rmdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -164,6 +165,7 @@ export const KINDS = [
   { file: 'pharmacy-no-substitute.json', model: NoSubstitute, what: 'Pharmacy: the medicines the doctors listed as never to be substituted (PH10).' },
   { file: 'pharmacy-supplier-payments.json', model: SupplierPayment, what: 'Pharmacy: payments to suppliers (PH11).' },
   { file: 'pharmacy-kits.json', model: Kit, what: 'Pharmacy: the kits (PH14).' },
+  { file: 'usg-reference-tables.json', model: UsgReference, what: 'Scans: the reference tables the doctors copied in and approved (centiles, Doppler).' },
   { file: 'pharmacy-places.json', model: StockLocation, what: 'Pharmacy: the places that hold stock outside the pharmacy and their staff (PH13).' },
   { file: 'pharmacy-place-checks.json', model: LocationCheck, what: 'Pharmacy: the checks of those places (PH13).' },
   { file: 'pharmacy-ward-requests.json', model: WardRequest, what: 'Pharmacy: what the wards asked for each admitted patient, and what was issued or refused (PH12).' },

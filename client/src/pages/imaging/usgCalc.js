@@ -11,6 +11,7 @@
 //  - Estimated fetal weight: Hadlock FP et al., Am J Obstet Gynecol 1985;151:333-337 (BPD-HC-AC-FL; HC-AC-FL).
 //  - Weight centile for the weeks: Hadlock FP et al., Radiology 1991;181:129-133 (in-utero weight standard).
 //  - Weeks from the mean sac diameter, before an embryo is measured: days = MSD in mm + 30.
+import { cprOf } from './referenceTables.js';
 
 export const CALC_SOURCES = 'DRAFT – Hadlock (CRL 1992, biometry 1984, weight 1985, centile 1991); MSD + 30 days';
 
@@ -97,7 +98,7 @@ const dayOf = (d) => {
 };
 const showDay = (ms) => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-const PREGNANCY_STUDIES = ['usg_early', 'usg_nt', 'usg_anomaly', 'usg_growth', 'usg_twins'];
+const PREGNANCY_STUDIES = ['usg_early', 'usg_nt', 'usg_anomaly', 'usg_growth', 'usg_twins', 'usg_doppler'];
 export const isPregnancyStudy = (study) => PREGNANCY_STUDIES.includes(study);
 
 /** Weeks of pregnancy by her dates on a day (the EDD on her record); null when not known. */
@@ -240,6 +241,8 @@ export function draftReport(study, values, calc, fields = []) {
   } else {
     // Other scans: each reading as a line, in the template's order
     for (const f of fields) if (filled(v[f.key])) lines.push(`${f.name}: ${fmt(v[f.key])}${f.unit && reading(v[f.key]) ? ` ${f.unit}` : ''}.`.replace(/\.\.$/, '.'));
+    // Fetal Doppler (stage 2): the cerebroplacental ratio worked out
+    if (study === 'usg_doppler' && cprOf(v) != null) lines.push(`Cerebroplacental ratio (MCA PI ÷ UA PI): ${cprOf(v)}.`);
   }
   let impression = '';
   if (study === 'usg_twins') {

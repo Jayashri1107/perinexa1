@@ -13,6 +13,9 @@ const setupSchema = new mongoose.Schema(
     set: { type: String, enum: ['lab'], default: 'lab' }, // one per hospital (see the unique index)
     verify: { type: Boolean, default: false },
     verifierIds: { type: [mongoose.Schema.Types.ObjectId], ref: 'User', default: [] },
+    // P5 (docs/LAB_BUILD_NOTE.md section 7, the owner's choice): an RMO who may chart for her may also acknowledge a
+    // critical result (at night, when her doctor is away). Off: only the doctor who may review acknowledges.
+    rmoAcknowledges: { type: Boolean, default: false },
     updatedByName: { type: String, default: '' },
     // Who signs the printed lab report (report templates – docs/LAB_TEMPLATES_PLAN.md part 4): a pathologist or the lab
     // in charge, with qualification, registration number and a picture of the signature. The picture prints only on a

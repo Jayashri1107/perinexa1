@@ -19,7 +19,7 @@ export function LabSettingsPage() {
   const [saveError, setSaveError] = useState(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
-    if (data) setForm({ verify: data.verify, verifierIds: data.verifierIds });
+    if (data) setForm({ verify: data.verify, verifierIds: data.verifierIds, rmoAcknowledges: Boolean(data.rmoAcknowledges) });
   }, [data]);
   const toggle = (id) => setForm((f) => ({ ...f, verifierIds: f.verifierIds.includes(id) ? f.verifierIds.filter((x) => x !== id) : [...f.verifierIds, id] }));
   const save = async (e) => {
@@ -28,7 +28,7 @@ export function LabSettingsPage() {
     setSaveError(null);
     try {
       const res = await api('/lab-setup/settings', { method: 'PUT', body: form });
-      setForm({ verify: res.verify, verifierIds: res.verifierIds });
+      setForm({ verify: res.verify, verifierIds: res.verifierIds, rmoAcknowledges: Boolean(res.rmoAcknowledges) });
       setNotice(res.verify ? 'Saved. Results now go to the doctor only after a second person has checked them.' : 'Saved. Results go to the doctor as soon as they are reported.');
     } catch (err) {
       setSaveError(err.message);
@@ -73,6 +73,12 @@ export function LabSettingsPage() {
                 </div>
               </fieldset>
             )}
+            <h2>Critical results</h2>
+            <label className="check">
+              <input type="checkbox" checked={Boolean(form.rmoAcknowledges)} disabled={locked} onChange={(e) => setForm({ ...form, rmoAcknowledges: e.target.checked })} /> An RMO may also acknowledge a critical
+              result (for example at night)
+            </label>
+            <p className="hint">Off: only her doctor (or a doctor for an unassigned patient) acknowledges. On: an RMO who looks after her may too. The owner's choice.</p>
             {!locked && (
               <div className="row">
                 <button type="submit" className="btn btn-primary" disabled={saving}>

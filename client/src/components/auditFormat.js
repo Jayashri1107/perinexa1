@@ -487,6 +487,8 @@ export const AUDIT_LABELS = {
   STOCK_TRANSFERRED: 'Stock moved between places',
   STOCK_PLACE_CHECKED: 'Place stock checked',
   STOCK_PLACE_USED: 'Stock used from a place for a patient',
+  USG_REFERENCE_CHANGED: 'Scan reference table changed',
+  USG_REFERENCE_APPROVED: 'Scan reference table approved',
   PHARMACY_SUPPLIER_RETURN_CANCELLED: 'Return to a supplier cancelled',
   PHARMACY_DEBIT_NOTE_PRINTED: 'Debit note printed',
   PHARMACY_EINVOICE_DOWNLOADED: 'E-invoice file downloaded',
@@ -1660,6 +1662,9 @@ export function describeAudit(entry) {
       return `Batch ${d.batch ?? ''}${d.reason ? ` · ${{ recalled: 'recalled', quality: 'quality doubt', other: 'other reason' }[d.reason] ?? d.reason}` : ''}`;
     case 'MEDICINE_MARKS_CHANGED':
       return `Version ${d.version ?? ''}${d.highAlert ? ' · high alert' : ''}${d.lookAlike ? ` · ${count(d.lookAlike, 'look-alike')}` : ''}${d.role ? ` · proposed as ${d.role}` : ''}`;
+    case 'USG_REFERENCE_CHANGED':
+    case 'USG_REFERENCE_APPROVED':
+      return `${d.key ?? ''} · version ${d.version ?? ''} · ${d.weeks ?? 0} weeks`;
     case 'STOCK_PLACE_CHANGED':
       return `${d.name ?? ''}${d.added ? ' · added' : ''}${d.stopped ? ' · stopped' : ''}`;
     case 'STOCK_TRANSFERRED':

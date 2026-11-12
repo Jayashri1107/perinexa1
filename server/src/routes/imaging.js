@@ -1,3 +1,4 @@
+import { approvedReferences } from './usgReferences.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { hospitalDoctor, hospitalDoctors } from '../appointments/appointmentService.js';
@@ -332,7 +333,9 @@ imagingRouter.get('/:id', async (req, res) => {
   // Outside the Sonography module: only a scan of a patient whose details this person may see (her treating team)
   if (!hasRole(req.membership, 'sonographer') && !clinicalOf(req, patient)) throw new HttpError(404, 'This study was not found.', 'NOT_FOUND');
   await audit(req, 'IMAGING_VIEWED', { details: ids(o, patient) });
-  res.json({ study: view(req, o, patient), template: studyByKey.get(o.study) ?? null, growth: await growthOf(req, o, patient) });
+  // Stage 2: the hospital's approved reference tables (centile bands, the second weight chart, Doppler) – clinical users
+  const references = clinicalOf(req, patient) ? await approvedReferences(req.tenantId) : {};
+  res.json({ study: view(req, o, patient), template: studyByKey.get(o.study) ?? null, growth: await growthOf(req, o, patient), references });
 });
 
 imagingRouter.post('/:id/schedule', async (req, res) => {

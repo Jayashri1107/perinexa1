@@ -344,6 +344,8 @@ export const AUDIT_ACTIONS = [
   'STOCK_TRANSFERRED', // PH13: stock moved between the pharmacy and a place
   'STOCK_PLACE_CHECKED', // PH13: a place checked (counts, expired stock taken out)
   'STOCK_PLACE_USED', // PH13: a place's stock used for a patient (an issue on her bill)
+  'USG_REFERENCE_CHANGED', // sonography stage 2: a reference table written (a new DRAFT)
+  'USG_REFERENCE_APPROVED', // … and approved by a doctor
   'LAB_CRITICAL_CALL_NOTED',
   'LAB_CRITICAL_NOT_REACHED',
   'LAB_CRITICAL_ACKNOWLEDGED',
@@ -678,6 +680,8 @@ export const AUDIT_CATEGORIES = {
     'STOCK_PLACE_CHANGED',
     'STOCK_TRANSFERRED',
     'STOCK_PLACE_CHECKED',
+    'USG_REFERENCE_CHANGED',
+    'USG_REFERENCE_APPROVED',
     'PHARMACY_DEBIT_NOTE_PRINTED',
     'PHARMACY_EINVOICE_DOWNLOADED',
     'TALLY_SETTINGS_CHANGED',

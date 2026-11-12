@@ -28,15 +28,17 @@ The four features are built with **no clinical numbers filled in** (section 7 is
   per test in Lab → Tests). Added to them: `fromWeeks` / `toWeeks` (only with "pregnant"; weeks from `eddInUse` on the
   sample's day) and `pregnant: 'postnatal'` (after delivery). The context is worked out at the sample's time
   (`sampleTime` in `routes/lab.js`). Each value keeps `range` (words without the weeks – what the lab sees and the
-  report prints) and `rangeWho` ("Pregnant, 14–27 weeks" – clinical users only). The red-flag rules are **not** yet
-  shown beside the ranges on the approval screen.
+  report prints) and `rangeWho` ("Pregnant, 14–27 weeks" – clinical users only). The red-flag rules that read each value
+  are shown beside its ranges for doctors (12 Nov 2026, `redFlagsByValue` in `routes/labSetup.js`; never for lab staff).
 - **P5** – the critical limits are `criticalLow` / `criticalHigh` on a number value **in the hospital's test settings**
   (`LabTestSetting`, the same DRAFT → doctor-approved versions as the ranges) rather than a separate list document.
-  Number values only: a critical *choice* (a baby's blood culture "Growth") is not built yet. The order keeps
+  Critical *choices* (12 Nov 2026): `criticalOptions` on a choice value, in the same settings, empty until the
+  hospital lists some; never on a confidential test (HIV). The order keeps
   `critical { values, calls, notReached, acknowledged, open }`; `PUT /results` (report or amendment) and
   `POST /verify` (the hospital's check) answer `409 CRITICAL_CALL` without a call or a not-reached note;
   `POST /orders/:id/critical-call` and `POST /orders/:id/acknowledge` (whoever may review; reviewing also
-  acknowledges). The worklist has a `critical` list. Who acknowledges at night (RMO or doctor) is still open.
+  acknowledges). The worklist has a `critical` list. An RMO may also acknowledge when a doctor turns on Lab → Settings → "An RMO may also acknowledge"
+  (`LabSetup.rmoAcknowledges`, off by default – the owner's choice, 12 Nov 2026).
 - **P6** – perinexa1 already had her earlier results beside each value and a "Big change" mark (`deltaPercent`, Lab
   version 2). Added: the question before the report (`409 DELTA_CHECK` unless `deltaConfirmed`; kept in
   `order.deltaChecks`, audited `LAB_DELTA_CONFIRMED`), asked once per value; Results over time and inline-SVG graphs on

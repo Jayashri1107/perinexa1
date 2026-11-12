@@ -237,7 +237,7 @@ export function orderView(order, access, more = {}) {
     access: {
       // P5: the lab notes a call later (after "nobody reached"); the doctor who may review acknowledges
       canCallCritical: access.report && DONE.includes(status) && Boolean(order.critical?.values?.length),
-      canAcknowledge: access.review && DONE.includes(status) && Boolean(order.critical?.values?.length) && !order.critical?.acknowledged && order.source !== 'walk_in',
+      canAcknowledge: (access.review || Boolean(more.rmoAcknowledges)) && DONE.includes(status) && Boolean(order.critical?.values?.length) && !order.critical?.acknowledged && order.source !== 'walk_in',
       canCollect: access.collect && status === 'ordered',
       canLabel: access.collect && ['ordered', 'collected'].includes(status),
       canReceive: access.report && status === 'collected' && !order.received,
@@ -269,9 +269,12 @@ async function loadOrder(req) {
   return { order, patient, access: labAccess(req, patient) };
 }
 /** The order's view for this person, with the hospital's check worked out. */
+/** P5: an RMO who may chart for her acknowledges a critical result when the hospital chose so (Lab → Settings). */
+const rmoMayAcknowledge = (req, access, setup) => !access.review && access.view && access.clinical && hasRole(req.membership, 'rmo') && Boolean(setup?.rmoAcknowledges);
+
 async function viewFor(req, order, access, setup = null) {
   const s = setup ?? (await labSetup(req.tenantId));
-  return orderView(order, access, { canVerify: mayVerify(req, access, s), userId: req.user._id, now: req.now });
+  return orderView(order, access, { canVerify: mayVerify(req, access, s), rmoAcknowledges: rmoMayAcknowledge(req, access, s), userId: req.user._id, now: req.now });
 }
 // A reviewed haemoglobin counts for the risk level (the lowest Hb of this pregnancy – careplans/readings.js).
 // After a doctor's review the level is worked out again and the care plan follows. (A result changed after its
@@ -655,7 +658,7 @@ async function withPatients(req, orders, keep, setup = null) {
       if (!p) return null;
       const access = labAccess(req, p);
       if (!keep(access)) return null;
-      const view = orderView(o, access, { canVerify: mayVerify(req, access, s), userId: req.user._id, now: req.now });
+      const view = orderView(o, access, { canVerify: mayVerify(req, access, s), rmoAcknowledges: rmoMayAcknowledge(req, access, s), userId: req.user._id, now: req.now });
       return { ...view, patient: patientBrief(p, p.assignedDoctor ? (names.get(String(p.assignedDoctor)) ?? null) : null) };
     })
     .filter(Boolean);
@@ -1453,7 +1456,9 @@ labRouter.post('/orders/:orderId/critical-call', async (req, res) => {
 // doctor for an unassigned patient); whether an RMO may acknowledge at night is the owner's decision (section 7).
 labRouter.post('/orders/:orderId/acknowledge', async (req, res) => {
   const { order, patient, access } = await loadOrder(req);
-  assertCan(access, 'review');
+  // P5: whoever may review; also an RMO who may chart for her when the hospital chose so (Lab → Settings)
+  const rmoMay = rmoMayAcknowledge(req, access, await labSetup(req.tenantId));
+  if (!rmoMay) assertCan(access, 'review');
   const body = parse(z.object({ rev }).strict(), req.body);
   if (!DONE.includes(order.status) || !order.critical?.values?.length) throw conflict('This order has no reported critical result.');
   if (order.source === 'walk_in') throw conflict('A walk-in order goes to the referring doctor.');
