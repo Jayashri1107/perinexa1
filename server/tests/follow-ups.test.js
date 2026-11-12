@@ -130,7 +130,7 @@ describe('follow-ups', () => {
 
     // Birth doses given; the 6-week doses open on 12 Nov – listed from 5 Nov, not on 4 Nov
     const item = (await plan(b)).items.find((i) => i.key === 'nb_vacc_birth');
-    expect((await (await as('rmo')).patch(`/api/patients/${b.id}/care-plan/items/${item.id}`).send({ rev: item.rev, action: 'done', on: '2026-10-02' })).status).toBe(200);
+    expect((await (await as('rmo')).patch(`/api/patients/${b.id}/care-plan/items/${item.id}`).send({ rev: item.rev, action: 'done', on: '2026-10-02', vaccine: { batch: 'BCG-SAMPLE-3' } })).status).toBe(200);
     on('2026-11-04');
     expect((await followUps()).body.babiesSoon).toEqual([]);
     on('2026-11-08');
