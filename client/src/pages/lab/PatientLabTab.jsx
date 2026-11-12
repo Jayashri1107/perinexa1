@@ -282,7 +282,7 @@ export function PatientLabTab() {
       </section>
       <DataTable caption="Lab orders" columns={columns} rows={data?.orders} loading={loading} onRowClick={(o) => navigate(`/patients/${patient.id}/lab/${o.id}`)} emptyText="No lab tests ordered yet." />
       {/* P6 (docs/LAB_BUILD_NOTE.md): her results by date, and graphs of the values followed over time */}
-      {data?.orders && <ResultsOverTime orders={data.orders} />}
+      {data?.orders && <ResultsOverTime orders={data.orders} patient={patient} />}
       <PatientScans patient={patient} />
       <WorkDoneSection patient={patient} />
       {ordering && (

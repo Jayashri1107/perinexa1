@@ -2,6 +2,24 @@
 // (brand guide). The test list and the reference values come from the server (GET /api/lab/tests).
 import { ArrowDown, ArrowUp, CircleCheck, CircleMinus, ClipboardCheck, Clock, FileText, OctagonAlert, PhoneOff, TestTube, TriangleAlert } from 'lucide-react';
 
+/** P9: how long since a time, in plain words – "25 min", "3 h 10 min", "2 days 4 h". PURE. */
+export function waitedWords(since, now = new Date()) {
+  const min = Math.max(0, Math.floor((new Date(now) - new Date(since)) / 60_000));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h${min % 60 ? ` ${min % 60} min` : ''}`;
+  const d = Math.floor(h / 24);
+  return `${d} day${d === 1 ? '' : 's'}${h % 24 ? ` ${h % 24} h` : ''}`;
+}
+
+/** P6: "+12.5 %", or "−2.1 g/dL" when there is no per cent (her last value was 0) – the change from her last result. */
+export function bigChangeWords(v, unit = '') {
+  const sign = (n) => (n > 0 ? '+' : n < 0 ? '−' : '');
+  if (v.deltaPercent != null) return `${sign(v.deltaPercent)}${Math.abs(v.deltaPercent)} %`;
+  if (v.deltaAmount != null) return `${sign(v.deltaAmount)}${Math.abs(v.deltaAmount)}${unit ? ` ${unit}` : ''}`;
+  return '';
+}
+
 export const ORDER_STATUS = {
   ordered: { tone: 'due', icon: Clock, word: 'Sample to take' },
   collected: { tone: 'due', icon: TestTube, word: 'Sample taken' },

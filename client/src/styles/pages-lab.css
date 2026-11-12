@@ -582,6 +582,7 @@
 .lab-trend-svg { width: 100%; height: auto; display: block; }
 .lab-trend-grid { stroke: var(--chart-grid); stroke-width: 1; }
 .lab-trend-axis { fill: var(--chart-axis); font-size: 11px; }
+.lab-trend-weeks { display: block; font-weight: 400; color: var(--slate-600); font-size: var(--fs-caption); } /* P6: weeks of pregnancy under a date */
 .lab-trend-line { fill: none; stroke: var(--chart-bar); stroke-width: 2; }
 .lab-trend-point { fill: var(--surface); stroke: var(--chart-bar); stroke-width: 2; }
 .lab-trend-point-flag { fill: var(--status-high-fg); stroke: var(--status-high-fg); }

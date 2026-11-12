@@ -1,5 +1,22 @@
 # Progress
 
+## Lab: a simpler Lab → New, and the last parts of P6 and P9 (12 Nov 2026, branch `lab-new-ui`)
+- **Lab → New patient test** in four plain steps: 1 Patient (search, or **+ New patient**: name, age, mobile, woman or
+  man, pregnant or not, address – no care type or department to choose), 2 Doctor and tests, 3 Sample (now, later, at
+  her home), 4 Payment (Cash, UPI, Card or Pay later; a discount only when added). A bar at the foot always shows the
+  amount and the one button, which says what is still missing. The same save as before (`POST /api/lab/walk-in`).
+- **P6:** a big change can also be set as an amount (for example Hb by 2 g/dL) and only against her result of the last
+  N days (Lab → Tests, DRAFT until a doctor approves). The graphs on her Lab tab show the weeks of pregnancy under the
+  dates, and a baby's bilirubin against its age in hours.
+- **P9:** the lab's list shows how long each open order has waited; an order amended before 10 Nov 2026 takes its first
+  report time from the audit log.
+- **Still the owner's:** whether the lab's closed hours are taken out of the lab's times.
+
+## Lab: admitted patients for the lab, and the lab user's test checklist (12 Nov 2026, branch `lab-inpatients`)
+- **Lab → Admitted** (lab staff only): who is in hospital now – ward, bed, name and patient number – with her lab
+  orders open or reported in the last two days, and "Only those with a sample to take". Nothing else of her record.
+- `docs/LAB_USER_TEST_CHECKLIST.md`: what the lab user tests and checks, step by step, with sample patients only.
+
 ## Sonography stage 2: reference tables, centile bands, Doppler, a second weight chart (12 Nov 2026, branch `lab-owner-values`)
 The owner approved stage 2 (`docs/USG_APPS_REVIEW.md` U1, U3, U5). No reference value is built in.
 - **Scans → Reference tables** (doctors write and approve; RMOs and sonographers read): for each of BPD, HC, AC, FL, a
@@ -1667,7 +1684,7 @@ Agreed order (one step at a time, each tested and committed):
 owner's or an expert's check: the care-plan templates, the lab's usual ranges, the HMIS rows, the reminder wording in Marathi and Hindi. Use fake data only until the app has been reviewed.
 
 ## Next
-- **On the ideas list, nothing built – three notes from the other Perinexa copy (10 Nov 2026).** Brought over from
+- **Built since (10–12 Nov 2026) – three notes from the other Perinexa copy (10 Nov 2026).** Brought over from
   `girishsolanke/perinexa` (branches `ideas-plan-table`, `ideas-patient-timeline`, `ideas-usg-apps-review`), each with
   a note at the top on where perinexa1 differs: the **pregnancy plan as a month-by-month table**
   (`docs/PLAN_TABLE_LAYOUT.md` – the owner's two decisions in section 5, open points in section 6), a **patient

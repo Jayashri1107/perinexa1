@@ -230,6 +230,8 @@ const load76 = () => import('./pages/lab/LabOrderPage.jsx');
 const LabOrderPage = screen(load76, 'LabOrderPage');
 const load77 = () => import('./pages/lab/LabWorklistPage.jsx');
 const LabWorklistPage = screen(load77, 'LabWorklistPage');
+const loadLabIp = () => import('./pages/lab/LabInpatientsPage.jsx');
+const LabInpatientsPage = screen(loadLabIp, 'LabInpatientsPage');
 const load78 = () => import('./pages/lab/LabDashboardPage.jsx');
 const LabDashboardPage = screen(load78, 'LabDashboardPage');
 const load79 = () => import('./pages/lab/LabRegistrationPage.jsx');
@@ -540,6 +542,10 @@ export function App() {
                     <Route index element={<LabRegistrationPage />} />
                   </Route>
                   <Route path="results" element={<LabResultsPage />} />
+                  {/* Admitted patients for the lab: name, number, ward, bed and her lab orders only (12 Nov 2026) */}
+                  <Route path="inpatients" element={<RequireTenantRole roles={['lab']} message="This list is for the lab." />}>
+                    <Route index element={<LabInpatientsPage />} />
+                  </Route>
                   <Route path="orders/:orderId" element={<LabOrderPage />} />
                   <Route path="find" element={<LabFindPage />} />
                   <Route path="register" element={<LabRegisterPage />} />

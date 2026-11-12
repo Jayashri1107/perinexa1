@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { hasRole } from '../models/Membership.js';
 import { LabOrder } from '../models/LabOrder.js';
 import { Patient, currentAge } from '../models/Patient.js';
+import { Admission } from '../models/Admission.js';
 import { User } from '../models/User.js';
 import { markDoneFromLab, planCtx, syncPlanSafely } from '../careplans/plansService.js';
 import { refreshPatientRiskSafely } from '../careplans/templatesService.js';
@@ -36,7 +37,7 @@ import { isDuplicate, refuseNewOnDuplicate } from '../patients/duplicateRules.js
 import { isClosed, refuseNewOnClosed } from '../patients/deathRules.js';
 import { findPatient } from '../utils/patientLookup.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex, safeText } from '../utils/pcpndt.js';
-import { hospitalDayStart, hospitalToday } from '../careplans/dates.js';
+import { hospitalDayStart, hospitalToday, utcDay } from '../careplans/dates.js';
 import { fileEntry, fileUploadSchema, findFile, sendFile, storeFile } from '../utils/storedFiles.js';
 import { escapeRegex, objectId, parse } from '../utils/validate.js';
 import { documentOffer, offerView, sendPatientPdf } from '../visits/whatsappDocuments.js';
@@ -47,7 +48,7 @@ import { Membership } from '../models/Membership.js';
 import { takeStock } from '../lab/stock.js';
 import { Bill } from '../models/Bill.js';
 import { nextNumber } from '../models/Counter.js';
-import { discountPaise, totals } from '../billing/money.js';
+import { discountPaise, liveLines, totals } from '../billing/money.js';
 import { padded } from '../billing/billingService.js';
 
 // The lab module (Version 2; the full lab system of docs/LAB_LIMS_PLAN.md). Two routers:
@@ -143,6 +144,7 @@ const valueView = (v, clinical = true) => ({
   ...(v.range ? { range: v.range } : {}),
   ...(clinical && v.rangeWho ? { rangeWho: v.rangeWho } : {}),
   ...(v.deltaPercent != null ? { deltaPercent: v.deltaPercent } : {}),
+  ...(v.deltaAmount != null ? { deltaAmount: v.deltaAmount } : {}),
   ...(v.bigChange ? { bigChange: true } : {}),
   ...(v.section ? { section: v.section } : {}),
   ...(v.calculated ? { calculated: true } : {}),
@@ -476,6 +478,20 @@ async function homeCollector(req, id) {
   return { collectorId: m.userId, collectorName: u?.name ?? '' };
 }
 
+// Lab → New (12 Nov 2026): what is already due on her bill today before the tests are added – the registration fee of a
+// new patient, for example – so the lab's "To pay" is the whole amount. Names and amounts only; nothing for a patient in
+// hospital (her stay bill is the billing desk's).
+labRouter.get('/walk-in/bill', async (req, res) => {
+  if (!isLab(req)) throw forbidden('This is for the lab.');
+  const { patientId } = parse(z.object({ patientId: objectId }).strict(), req.query);
+  const patient = await Patient.findOne({ tenantId: req.tenantId, _id: patientId }, { _id: 1 }).lean();
+  if (!patient) throw new HttpError(404, 'Patient not found.', 'NOT_FOUND');
+  if (await Admission.exists({ tenantId: req.tenantId, patientId, status: 'admitted' })) return res.json({ admitted: true, duePaise: 0, items: [] });
+  const bill = await Bill.findOne({ tenantId: req.tenantId, patientId, kind: 'opd', on: utcDay(hospitalToday(req.now)), status: 'open' }).lean();
+  if (!bill) return res.json({ admitted: false, duePaise: 0, items: [] });
+  res.json({ admitted: false, billNumber: bill.number, duePaise: Math.max(0, totals(bill).balance), items: liveLines(bill).filter((l) => l.ratePaise > 0).map((l) => ({ name: l.name, amountPaise: l.ratePaise * (l.qty ?? 1) })) });
+});
+
 labRouter.post('/walk-in', async (req, res) => {
   if (!isLab(req)) throw forbidden('The lab enters walk-in orders.');
   const body = parse(walkInSchema, req.body);
@@ -573,6 +589,36 @@ labRouter.get('/home', async (req, res) => {
 // ---------- The lab's dashboard (owner, 19 Oct 2026 – docs/LAB_DASHBOARD_PLAN.md, eLabAssist-style) ----------
 // Lab staff: for a period (today by default) – orders registered (walk-in or from a doctor), reported, tests and
 // charges by department; and now – what waits at each step and what is late. Numbers only: no patient, no test names.
+// Admitted patients for the lab (12 Nov 2026, the developer's request): who is in hospital now – her name, patient
+// number, ward and bed – and her lab orders that are open or reported in the last two days, to collect samples on the
+// wards. Nothing else of her record (no doctor, diagnosis, notes or bill). The neutral name for a confidential test.
+labRouter.get('/inpatients', async (req, res) => {
+  if (!isLab(req)) throw forbidden('This list is for the lab.');
+  const stays = await Admission.find({ tenantId: req.tenantId, status: 'admitted' }, { patientId: 1, ward: 1, bed: 1, admittedAt: 1 }).lean();
+  const patients = new Map((await Patient.find({ tenantId: req.tenantId, _id: { $in: stays.map((s) => s.patientId) } }, { fullName: 1, mrn: 1 }).lean()).map((p) => [String(p._id), p]));
+  const since = new Date(req.now.getTime() - 2 * 86_400_000);
+  const orders = await LabOrder.find(
+    { tenantId: req.tenantId, patientId: { $in: [...patients.values()].map((p) => p._id) }, $or: [{ status: { $in: OPEN } }, { status: { $in: DONE }, 'reported.at': { $gte: since } }] },
+    { patientId: 1, status: 1, sampleNo: 1, urgent: 1, 'tests.key': 1, 'tests.name': 1, createdAt: 1 },
+  )
+    .sort({ createdAt: 1 })
+    .lean();
+  const byPatient = new Map();
+  for (const o of orders) {
+    const k = String(o.patientId);
+    if (!byPatient.has(k)) byPatient.set(k, []);
+    byPatient.get(k).push({ id: String(o._id), status: o.status, sampleNo: o.sampleNo ?? null, urgent: Boolean(o.urgent), tests: (o.tests ?? []).map((t) => shownName(t)) });
+  }
+  const rows = stays
+    .filter((s) => patients.has(String(s.patientId)))
+    .map((s) => {
+      const p = patients.get(String(s.patientId));
+      return { patient: { id: String(p._id), fullName: p.fullName, mrn: p.mrn }, ward: s.ward ?? '', bed: s.bed ?? '', orders: byPatient.get(String(p._id)) ?? [] };
+    })
+    .sort((a, b) => a.ward.localeCompare(b.ward) || String(a.bed).localeCompare(String(b.bed), undefined, { numeric: true }) || a.patient.fullName.localeCompare(b.patient.fullName));
+  res.json({ inpatients: rows });
+});
+
 labRouter.get('/dashboard', async (req, res) => {
   if (!isLab(req)) throw forbidden('The lab dashboard is for the lab.');
   const q = parse(z.object({ from: z.iso.date().optional(), to: z.iso.date().optional() }).strict(), req.query);
@@ -1087,11 +1133,18 @@ function checkedTests(order, sent, catalogue, ctx, previous = {}) {
       }
       if (field.type === 'choice' && !field.options.includes(v.value)) fields[at] = 'Choose one of the options.';
       // The change from her last result of this value (trends), and "Big change" past the hospital's limit
-      const prev = previous[t.key]?.[v.key]?.[0];
+      // P6: only against a result from the hospital's last N days (deltaWithinDays) when set; a big change by the per cent
+      // limit or by the fixed amount (deltaAmount, in the value's unit), whichever the hospital set
+      const prevAny = previous[t.key]?.[v.key]?.[0];
+      const tooOld = prevAny && field.deltaWithinDays != null && ctx.sampleAt && prevAny.at && new Date(ctx.sampleAt) - new Date(prevAny.at) > field.deltaWithinDays * 86_400_000;
+      const prev = tooOld ? null : prevAny;
       let delta = {};
-      if (field.type === 'number' && prev && Number(prev.value) !== 0 && Number.isFinite(Number(prev.value)) && Number.isFinite(Number(value))) {
-        const pct = Math.round(((Number(value) - Number(prev.value)) / Math.abs(Number(prev.value))) * 1000) / 10;
-        delta = { deltaPercent: pct, bigChange: field.deltaPercent != null && Math.abs(pct) >= field.deltaPercent };
+      if (field.type === 'number' && prev && Number.isFinite(Number(prev.value)) && Number.isFinite(Number(value))) {
+        const diff = Number(value) - Number(prev.value);
+        const pct = Number(prev.value) !== 0 ? Math.round((diff / Math.abs(Number(prev.value))) * 1000) / 10 : null;
+        const byPct = pct != null && field.deltaPercent != null && Math.abs(pct) >= field.deltaPercent;
+        const byAmount = field.deltaAmount != null && Math.abs(diff) >= field.deltaAmount;
+        delta = { ...(pct != null ? { deltaPercent: pct } : {}), deltaAmount: Math.round(diff * 1000) / 1000, bigChange: byPct || byAmount };
       }
       values.push({ key: v.key, value, flag: v.flag || flagFor(field, value), ...words, ...section, ...delta, ...(isCritical(field, value) ? { critical: true } : {}) });
     }
