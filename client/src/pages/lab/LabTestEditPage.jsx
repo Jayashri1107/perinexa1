@@ -9,6 +9,7 @@ import { useFetch } from '../../hooks/useFetch.js';
 import { PCPNDT_MESSAGE, mentionsFetalSex } from '../../pcpndtWords.js';
 import { DEPARTMENTS, TEMPLATES } from './labFormat.js';
 import { TestStatus, rupees } from './LabTestsPage.jsx';
+const RED_FLAG_LEVEL_WORDS = { urgent: 'Urgent', watch: 'Watch' }; // server: redflags/redFlags.js RED_FLAG_LEVELS
 
 // Lab → Tests → one test (docs/LAB_LIMS_PLAN.md features 2 and 3).
 //  - Any test: its department, turnaround times (routine and urgent), usual outside lab, and whether it is offered.
@@ -34,7 +35,7 @@ const bandBody = (b) => ({
   high: num(b.high),
   range: b.range.trim(),
 });
-const emptyField = () => ({ name: '', type: 'number', unit: '', low: '', high: '', range: '', deltaPercent: '', criticalLow: '', criticalHigh: '', options: '', abnormal: '', bands: [], section: '', long: false });
+const emptyField = () => ({ name: '', type: 'number', unit: '', low: '', high: '', range: '', deltaPercent: '', criticalLow: '', criticalHigh: '', options: '', abnormal: '', criticalOptions: '', bands: [], section: '', long: false });
 
 /** The critical limits of one number value (P5): a value at or beyond one needs the lab's call to a doctor. */
 function CriticalLimits({ id, value, onChange, disabled }) {
@@ -150,7 +151,9 @@ function formOf(test) {
         .filter((f) => f.type === 'number')
         .map((f) => [f.key, { low: text(f.low), high: text(f.high), range: test.fieldRanges?.[f.key]?.range ?? '', bands: (f.bands ?? []).map(bandForm), deltaPercent: text(f.deltaPercent), criticalLow: text(f.criticalLow), criticalHigh: text(f.criticalHigh) }]),
     );
-    return { ...common, ranges };
+    // P5: the critical choices of a built-in choice value (empty until the hospital lists some)
+    const choices = Object.fromEntries(test.fields.filter((f) => f.type === 'choice').map((f) => [f.key, f.criticalOptions ?? []]));
+    return { ...common, ranges, choices };
   }
   return {
     ...common,
@@ -158,7 +161,7 @@ function formOf(test) {
     name: test.name,
     group: test.group,
     sample: test.sample,
-    fields: test.fields.map((f) => ({ key: f.key, name: f.name, type: f.type, unit: f.unit ?? '', low: text(f.low), high: text(f.high), range: f.range ?? '', deltaPercent: text(f.deltaPercent), criticalLow: text(f.criticalLow), criticalHigh: text(f.criticalHigh), options: (f.options ?? []).join(', '), abnormal: (f.abnormal ?? []).join(', '), bands: (f.bands ?? []).map(bandForm), section: f.section ?? '', long: Boolean(f.long) })),
+    fields: test.fields.map((f) => ({ key: f.key, name: f.name, type: f.type, unit: f.unit ?? '', low: text(f.low), high: text(f.high), range: f.range ?? '', deltaPercent: text(f.deltaPercent), criticalLow: text(f.criticalLow), criticalHigh: text(f.criticalHigh), options: (f.options ?? []).join(', '), abnormal: (f.abnormal ?? []).join(', '), criticalOptions: (f.criticalOptions ?? []).join(', '), bands: (f.bands ?? []).map(bandForm), section: f.section ?? '', long: Boolean(f.long) })),
   };
 }
 
@@ -173,7 +176,7 @@ function bodyOf(test, form) {
     ...(form.template === 'culture' ? { antibiotics: lines(form.antibiotics) } : {}),
   };
   if (test && !test.custom) {
-    return { ...common, version: test.version, fieldRanges: Object.fromEntries(Object.entries(form.ranges).map(([k, r]) => [k, { low: num(r.low), high: num(r.high), range: r.range.trim(), bands: r.bands.map(bandBody), deltaPercent: num(r.deltaPercent), criticalLow: num(r.criticalLow), criticalHigh: num(r.criticalHigh) }])) };
+    return { ...common, version: test.version, fieldRanges: Object.fromEntries(Object.entries(form.ranges).map(([k, r]) => [k, { low: num(r.low), high: num(r.high), range: r.range.trim(), bands: r.bands.map(bandBody), deltaPercent: num(r.deltaPercent), criticalLow: num(r.criticalLow), criticalHigh: num(r.criticalHigh) }]).concat(Object.entries(form.choices ?? {}).map(([k, opts]) => [k, { criticalOptions: opts }]))) };
   }
   return {
     ...common,
@@ -186,7 +189,7 @@ function bodyOf(test, form) {
       const base = { ...(f.key ? { key: f.key } : {}), name: f.name.trim(), type: f.type, section: f.section.trim() };
       if (f.type === 'text') return { ...base, long: f.long };
       if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: num(f.low), high: num(f.high), range: f.range.trim(), bands: f.bands.map(bandBody), deltaPercent: num(f.deltaPercent), criticalLow: num(f.criticalLow), criticalHigh: num(f.criticalHigh) };
-      if (f.type === 'choice') return { ...base, options: list(f.options), abnormal: list(f.abnormal) };
+      if (f.type === 'choice') return { ...base, options: list(f.options), abnormal: list(f.abnormal), criticalOptions: list(f.criticalOptions) };
       return base;
     }),
   };
@@ -406,6 +409,21 @@ export function LabTestEditPage() {
                     </legend>
                     {fields[at] && <p className="field-error">{fields[at]}</p>}
                     <p className="hint">Built-in DRAFT: {b?.range || 'no usual range'}</p>
+                    {/* P4: the hospital's red-flag rules on this value, beside its ranges (doctors only) – they should agree */}
+                    {test.redFlags?.[f.key]?.length > 0 && (
+                      <div className="lab-redflags">
+                        <p className="hint">
+                          Red-flag rules on this value{test.redFlagStatus === 'draft' ? ' (DRAFT)' : ''} – check the ranges and critical limits agree with them:
+                        </p>
+                        <ul className="plain-list">
+                          {test.redFlags[f.key].map((x) => (
+                            <li key={x.key}>
+                              <strong>{x.label}</strong> <span className="muted">· {RED_FLAG_LEVEL_WORDS[x.level] ?? x.level} · {x.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     <div className="form-grid">
                       <Field label="Lower limit" id={`lt-${f.key}-low`}>
                         <input id={`lt-${f.key}-low`} inputMode="decimal" className="tabular" value={r.low} disabled={locked} onChange={(e) => setRange(f.key, 'low', e.target.value)} />
@@ -422,6 +440,36 @@ export function LabTestEditPage() {
                       <CriticalLimits id={`lt-${f.key}`} value={r} disabled={locked} onChange={(k, v) => setRange(f.key, k, v)} />
                     </div>
                     <Bands bands={r.bands} baby={baby} prefix={at} errors={fields} disabled={locked} onChange={(v) => setRange(f.key, 'bands', v)} />
+                  </fieldset>
+                );
+              })}
+
+          {/* P5: a built-in choice value's critical choices – never on a confidential test (it has its own path) */}
+          {!own &&
+            !test.confidential &&
+            test.fields
+              .filter((f) => f.type === 'choice')
+              .map((f) => {
+                const chosen = form.choices?.[f.key] ?? [];
+                const at = `fieldRanges.${f.key}`;
+                return (
+                  <fieldset key={f.key} className="fieldset">
+                    <legend>{f.name}: critical choices</legend>
+                    {fields[at] && <p className="field-error">{fields[at]}</p>}
+                    <p className="hint">A result with a ticked choice is Critical: the lab calls a doctor before reporting. None ticked = never critical. DRAFT until a doctor approves.</p>
+                    <div className="row">
+                      {(f.options ?? []).map((o) => (
+                        <label key={o} className="checkbox">
+                          <input
+                            type="checkbox"
+                            checked={chosen.includes(o)}
+                            disabled={locked}
+                            onChange={(e) => set('choices', { ...form.choices, [f.key]: e.target.checked ? [...chosen, o] : chosen.filter((x) => x !== o) })}
+                          />{' '}
+                          {o}
+                        </label>
+                      ))}
+                    </div>
                   </fieldset>
                 );
               })}
@@ -479,6 +527,9 @@ export function LabTestEditPage() {
                         </Field>
                         <Field label="Options flagged Abnormal" id={`lf-${i}-abnormal`}>
                           <input id={`lf-${i}-abnormal`} maxLength={400} value={f.abnormal} disabled={locked} onChange={(e) => setField(i, 'abnormal', e.target.value)} />
+                        </Field>
+                        <Field label="Critical options (the lab calls a doctor)" id={`lf-${i}-critical`} hint="Separated by commas. Empty = none. DRAFT until a doctor approves.">
+                          <input id={`lf-${i}-critical`} maxLength={400} value={f.criticalOptions} disabled={locked} onChange={(e) => setField(i, 'criticalOptions', e.target.value)} />
                         </Field>
                       </>
                     )}

@@ -1,5 +1,17 @@
 # Progress
 
+## Lab: critical choices, red flags beside ranges, RMO acknowledgement (12 Nov 2026, branch `lab-owner-values`)
+The owner approved the remaining lab work (`docs/LAB_BUILD_NOTE.md` section 7). The clinical values stay the owner's:
+the screens are built, the lists ship empty and DRAFT.
+- **Critical choices:** Lab → Tests → a test with a choice result (ICT, a culture …) → tick the options that are
+  critical. A result with one needs the lab's call before it is reported, as a critical number does. Not on the HIV test.
+- **Red-flag rules beside the ranges:** a doctor opening a test sees the hospital's red-flag rules that read each value
+  (for example "Severe anaemia – Haemoglobin (lab) under 7 g/dL"), to keep the ranges and the rules in agreement.
+  Lab staff never see them.
+- **RMO acknowledgement:** Lab → Settings → "An RMO may also acknowledge a critical result" – off until a doctor turns
+  it on (the owner's choice).
+- **For the owner to fill in:** the critical limits and choices of each test, and whether RMOs acknowledge.
+
 ## Pharmacy Stage D: kits, ward requests, stock places, vaccine batch; Tally purchases (11 Nov 2026, branch `pharm-stage-d`)
 Stage D of `docs/PHARMACY_BUILD_NOTE.md` (PH14, PH12, PH13, PH8) and the leftovers of Stages A and C, with the owner's
 approval of 11 Nov 2026 and the developer's go-ahead for PH13 and PH8.

@@ -113,7 +113,7 @@ export const NUMBER_OPS = ['lt', 'lte', 'gt', 'gte'];
 // and the text of such a rule say it.
 export const RULE_VALUES_WITHIN_DAYS = 7;
 // One quantity measured in two places – at a visit (point of care) and by the lab: [the visit's check, the lab's].
-const SAME_QUANTITY = [
+export const SAME_QUANTITY = [
   ['hb', 'labHb'],
   ['urineAlbumin', 'labUrineAlbumin'],
 ];

@@ -189,6 +189,8 @@ export function bandWho(band, baby = false, { weeks = true } = {}) {
  * at or above its high one. The limits are about the number alone (not her weeks or record), so the lab may see them.
  */
 export function isCritical(field, value) {
+  // P5: a choice the hospital lists as critical (a baby's blood culture "Growth") – its own list, empty until it adds one
+  if (field?.type === 'choice') return value != null && value !== '' && (field.criticalOptions ?? []).some((o) => o.toLowerCase() === String(value).trim().toLowerCase());
   if (field?.type !== 'number' || value === '' || value == null) return false;
   const n = Number(value);
   if (!Number.isFinite(n)) return false;
@@ -240,6 +242,7 @@ function builtInAsSet(t, s) {
     const r = ranges[f.key];
     // The built-in group ranges (men) stay until the hospital sets its own (an empty list removes them)
     // Critical limits (P5): none built in - the hospital's own, set and approved like a range (LAB_BUILD_NOTE section 7)
+    if (f.type === 'choice') return { ...f, bands: [], deltaPercent: null, criticalLow: null, criticalHigh: null, criticalOptions: r?.criticalOptions ?? [] }; // P5: the hospital's critical choices
     if (!r || f.type !== 'number') return { ...f, bands: f.type === 'number' ? (f.bands ?? []) : [], deltaPercent: null, criticalLow: null, criticalHigh: null };
     const changed = r.low !== undefined || r.high !== undefined;
     const low = r.low !== undefined ? r.low : f.low;
@@ -284,7 +287,7 @@ function customAsSet(s) {
     who: s.who,
     fields: (s.fields ?? []).map((f) => {
       const n = f.type === 'number';
-      return { ...f, bands: n ? (f.bands ?? []) : [], deltaPercent: n ? (f.deltaPercent ?? null) : null, criticalLow: n ? (f.criticalLow ?? null) : null, criticalHigh: n ? (f.criticalHigh ?? null) : null };
+      return { ...f, bands: n ? (f.bands ?? []) : [], deltaPercent: n ? (f.deltaPercent ?? null) : null, criticalLow: n ? (f.criticalLow ?? null) : null, criticalHigh: n ? (f.criticalHigh ?? null) : null, ...(f.type === 'choice' ? { criticalOptions: f.criticalOptions ?? [] } : {}) };
     }),
     planKeys: [],
     report: reportOf(null, s.report),
@@ -370,7 +373,7 @@ export function reportSigner(signatories, order) {
 /** The lab's settings (the defaults when the hospital has none). */
 export async function labSetup(tenantId) {
   const s = await LabSetup.findOne({ tenantId, set: 'lab' }).lean();
-  return { verify: Boolean(s?.verify), verifierIds: (s?.verifierIds ?? []).map(String), updatedByName: s?.updatedByName ?? '', updatedAt: s?.updatedAt ?? null };
+  return { verify: Boolean(s?.verify), verifierIds: (s?.verifierIds ?? []).map(String), rmoAcknowledges: Boolean(s?.rmoAcknowledges), updatedByName: s?.updatedByName ?? '', updatedAt: s?.updatedAt ?? null };
 }
 
 export { labNumber };

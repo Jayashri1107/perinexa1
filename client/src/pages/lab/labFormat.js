@@ -208,6 +208,7 @@ export const CALL_HOW = { phone: 'By phone', in_person: 'In person' };
 
 /** Whether a typed number is at or beyond the hospital's critical limits (server: lab/labSetup.js isCritical). */
 export function isCriticalValue(field, value) {
+  if (field?.type === 'choice') return value != null && value !== '' && (field.criticalOptions ?? []).some((o) => o.toLowerCase() === String(value).trim().toLowerCase());
   if (field?.type !== 'number' || value === '' || value == null) return false;
   const n = Number(value);
   if (!Number.isFinite(n)) return false;

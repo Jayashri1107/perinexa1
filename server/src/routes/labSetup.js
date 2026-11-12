@@ -2,10 +2,12 @@ import { checkedImage } from '../utils/imageData.js';
 import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import { AGE_UNITS, BAND_PREGNANT, BAND_SEX, DEPARTMENT_KEYS, DEPARTMENTS, TEMPLATE_KEYS, TEMPLATES, labCatalogue, labSetup, labSignatories, rangeText } from '../lab/labSetup.js';
+import { isConfidential, AGE_UNITS, BAND_PREGNANT, BAND_SEX, DEPARTMENT_KEYS, DEPARTMENTS, TEMPLATE_KEYS, TEMPLATES, labCatalogue, labSetup, labSignatories, rangeText } from '../lab/labSetup.js';
 import { LAB_GROUPS, LAB_TESTS, testByKey } from '../lab/labTests.js';
 import { LabSetup } from '../models/LabSetup.js';
 import { LabTestSetting } from '../models/LabTestSetting.js';
+import { RedFlagRuleSet } from '../models/RedFlagRuleSet.js';
+import { LAB_FACTOR_SOURCES, SAME_QUANTITY, ruleText } from '../redflags/redFlags.js';
 import { Membership, hasRole } from '../models/Membership.js';
 import { PriceItem } from '../models/PriceItem.js';
 import { Referrer } from '../models/Referrer.js';
@@ -76,6 +78,8 @@ const fieldSchema = z
     // P5 (docs/LAB_BUILD_NOTE.md): the hospital's critical limits - a value at or beyond one needs the lab's call
     criticalLow: limit,
     criticalHigh: limit,
+    // P5: a choice's options that are critical (the lab must call) – of a choice value only
+    criticalOptions: z.array(z.string().max(40)).max(12).default([]),
     // Report templates: the heading it prints under ("Microscopy"), and a paragraph instead of one line (words only)
     section: safeText('Section', 60).default(''),
     long: z.boolean().default(false),
@@ -91,6 +95,7 @@ const rangeSchema = z
     deltaPercent: z.number().min(1).max(1000).nullable().default(null),
     criticalLow: limit,
     criticalHigh: limit,
+    criticalOptions: z.array(z.string().max(40)).max(12).optional(), // P5: a choice value's critical options
   })
   .strict();
 const hours = z.number('Enter the hours').int().min(1).max(2000).nullable().default(null);
@@ -150,6 +155,7 @@ function checkedFields(data, fields) {
     if (f.type === 'choice') {
       if (f.options.length < 2) fields[at] = 'A choice needs at least two options.';
       if (f.abnormal.some((a) => !f.options.includes(a))) fields[at] = 'An abnormal choice must be one of the options.';
+      if (f.criticalOptions.some((a) => !f.options.includes(a))) fields[at] = 'A critical choice must be one of the options.';
     }
     if (f.type === 'number') {
       if (f.low != null && f.high != null && f.low > f.high) fields[at] = 'The lower limit must not be above the upper limit.';
@@ -159,7 +165,7 @@ function checkedFields(data, fields) {
     const base = { key, name: f.name.trim(), type: f.type, ...(f.section.trim() ? { section: f.section.trim() } : {}) };
     if (f.type === 'text' && f.long) return { ...base, long: true };
     if (f.type === 'number') return { ...base, unit: f.unit.trim(), low: f.low, high: f.high, range: f.range.trim() || rangeText(f.low, f.high, f.unit.trim()), bands: f.bands, deltaPercent: f.deltaPercent, criticalLow: f.criticalLow, criticalHigh: f.criticalHigh };
-    if (f.type === 'choice') return { ...base, options: f.options.map((o) => o.trim()), abnormal: f.abnormal };
+    if (f.type === 'choice') return { ...base, options: f.options.map((o) => o.trim()), abnormal: f.abnormal, criticalOptions: f.criticalOptions };
     return base;
   });
   if (!(data.group in LAB_GROUPS) || data.group.startsWith('nb_') !== (data.who === 'newborn')) fields.group = 'Choose a group for this kind of test.';
@@ -190,8 +196,32 @@ function reportChanges(builtIn, sent) {
 
 const auditOf = (s, extra = {}) => ({ test: s.key, name: s.custom ? s.name : testByKey.get(s.key)?.name, version: s.version, ...extra });
 
+/**
+ * P4 and P5 (docs/LAB_BUILD_NOTE.md): the hospital's red-flag rules that look at each lab value, for the doctor who
+ * approves the ranges – shown beside them so that a range and a rule do not contradict. Never for lab staff (the
+ * rules know her weeks and her record): { testKey: { valueKey: [{ label, level, text }] } }.
+ */
+async function redFlagsByValue(req) {
+  if (!isDoctor(req)) return null;
+  const set = await RedFlagRuleSet.findOne({ tenantId: req.tenantId, set: 'standard' }, { rules: 1, status: 1 }).lean();
+  const out = {};
+  for (const r of set?.rules ?? []) {
+    for (const c of r.conditions ?? []) {
+      // A visit's check of the same quantity (haemoglobin, urine albumin) also reads the lab's newer value
+      const factor = SAME_QUANTITY.find(([visit]) => visit === c.factor)?.[1] ?? c.factor;
+      for (const [testKey, valueKey] of Object.entries(LAB_FACTOR_SOURCES[factor]?.tests ?? {})) {
+        out[testKey] ??= {};
+        out[testKey][valueKey] ??= [];
+        if (!out[testKey][valueKey].some((x) => x.key === r.key)) out[testKey][valueKey].push({ key: r.key, label: r.label, level: r.level, text: ruleText(r) });
+      }
+    }
+  }
+  return { byTest: out, status: set?.status ?? 'draft' };
+}
+
 async function listView(req) {
   const catalogue = await labCatalogue(req.tenantId);
+  const flags = await redFlagsByValue(req);
   const settings = new Map((await LabTestSetting.find({ tenantId: req.tenantId, custom: false }, { key: 1, fieldRanges: 1 }).lean()).map((x) => [x.key, x]));
   const prices = new Map((await PriceItem.find({ tenantId: req.tenantId, key: { $in: catalogue.tests.map((t) => `lab:${t.key}`) } }, { key: 1, pricePaise: 1, active: 1 }).lean()).map((p) => [p.key.slice(4), p]));
   return {
@@ -204,7 +234,8 @@ async function listView(req) {
       return {
         ...t,
         pricePaise: prices.get(t.key)?.pricePaise ?? null,
-        ...(builtIn ? { fieldRanges: settings.get(t.key)?.fieldRanges ?? {}, builtIn: Object.fromEntries(builtIn.fields.map((f) => [f.key, { low: f.low ?? null, high: f.high ?? null, range: f.range ?? '' }])) } : {}),
+        ...(flags ? { redFlags: flags.byTest[t.key] ?? {}, redFlagStatus: flags.status } : {}),
+        ...(builtIn ? { confidential: isConfidential(t.key), fieldRanges: settings.get(t.key)?.fieldRanges ?? {}, builtIn: Object.fromEntries(builtIn.fields.map((f) => [f.key, { low: f.low ?? null, high: f.high ?? null, range: f.range ?? '' }])) } : {}),
       };
     }),
     canEdit: canEdit(req),
@@ -268,6 +299,14 @@ labSetupRouter.put('/tests/:key', async (req, res) => {
     const ranges = {};
     for (const [k, r] of Object.entries(body.fieldRanges)) {
       const f = builtIn.fields.find((x) => x.key === k);
+      // P5: a built-in choice value takes its critical choices only (never on a confidential test – the neutral name)
+      if (f?.type === 'choice') {
+        const opts = r.criticalOptions ?? [];
+        if (opts.some((a) => !f.options.includes(a))) fields[`fieldRanges.${k}`] = 'A critical choice must be one of the options.';
+        else if (opts.length && isConfidential(builtIn.key)) fields[`fieldRanges.${k}`] = 'This test is not put on the critical list: its result has its own confidential path.';
+        else if (opts.length) ranges[k] = { criticalOptions: opts };
+        continue;
+      }
       if (!f || f.type !== 'number') {
         fields[`fieldRanges.${k}`] = 'This test has no such number value.';
         continue;
@@ -351,14 +390,14 @@ labSetupRouter.get('/settings', async (req, res) => {
 
 labSetupRouter.put('/settings', async (req, res) => {
   if (!isDoctor(req)) throw forbidden('A doctor changes the lab settings.');
-  const body = parse(z.object({ verify: z.boolean(), verifierIds: z.array(objectId).max(50).default([]) }).strict(), req.body);
+  const body = parse(z.object({ verify: z.boolean(), verifierIds: z.array(objectId).max(50).default([]), rmoAcknowledges: z.boolean().optional() }).strict(), req.body);
   const ids = [...new Set(body.verifierIds)];
   if (ids.length) {
     const ok = await Membership.countDocuments({ tenantId: req.tenantId, isActive: true, roles: { $in: STAFF_ROLES }, userId: { $in: ids } });
     if (ok !== ids.length) throw invalid({ verifierIds: 'Choose lab staff, doctors or RMOs of this hospital.' });
   }
-  await LabSetup.updateOne({ tenantId: req.tenantId, set: 'lab' }, { $set: { verify: body.verify, verifierIds: ids, updatedByName: req.user.name } }, { upsert: true });
-  await audit(req, 'LAB_SETTINGS_CHANGED', { details: { verify: body.verify, checkers: ids.length } });
+  await LabSetup.updateOne({ tenantId: req.tenantId, set: 'lab' }, { $set: { verify: body.verify, verifierIds: ids, ...(body.rmoAcknowledges !== undefined ? { rmoAcknowledges: body.rmoAcknowledges } : {}), updatedByName: req.user.name } }, { upsert: true });
+  await audit(req, 'LAB_SETTINGS_CHANGED', { details: { verify: body.verify, checkers: ids.length, ...(body.rmoAcknowledges !== undefined ? { rmoAcknowledges: body.rmoAcknowledges } : {}) } });
   res.json(await settingsView(req));
 });
 
